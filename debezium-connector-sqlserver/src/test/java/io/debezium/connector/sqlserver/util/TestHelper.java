@@ -11,11 +11,14 @@ import java.nio.file.Path;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 
 import javax.management.InstanceNotFoundException;
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
 
+import org.awaitility.Awaitility;
+import org.awaitility.core.ConditionTimeoutException;
 import org.junit.Assert;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,6 +53,7 @@ public class TestHelper {
             + "EXEC sys.sp_cdc_disable_db";
     private static final String ENABLE_TABLE_CDC = "IF EXISTS(select 1 from sys.tables where name = '#' AND is_tracked_by_cdc=0)\n"
             + "EXEC sys.sp_cdc_enable_table @source_schema = N'dbo', @source_name = N'#', @role_name = NULL, @supports_net_changes = 0";
+    private static final String IS_CDC_ENABLED = "SELECT COUNT(1) FROM sys.databases WHERE name = '#' AND is_cdc_enabled=1";
     private static final String IS_CDC_TABLE_ENABLED = "SELECT COUNT(*) FROM sys.tables tb WHERE tb.is_tracked_by_cdc = 1 AND tb.name='#'";
     private static final String ENABLE_TABLE_CDC_WITH_CUSTOM_CAPTURE = "EXEC sys.sp_cdc_enable_table @source_schema = N'dbo', @source_name = N'%s', @capture_instance = N'%s', @role_name = NULL, @supports_net_changes = 0";
     private static final String DISABLE_TABLE_CDC = "EXEC sys.sp_cdc_disable_table @source_schema = N'dbo', @source_name = N'#', @capture_instance = 'all'";
@@ -106,15 +110,8 @@ public class TestHelper {
         // all tests must use a separate database...
         try (SqlServerConnection connection = adminConnection()) {
             connection.connect();
-            try {
-                connection.execute("USE testDB");
-                disableDbCdc(connection, "testDB");
-            }
-            catch (SQLException e) {
-            }
-            connection.execute("USE master");
-            String sql = "IF EXISTS(select 1 from sys.databases where name='testDB') DROP DATABASE testDB\n"
-                    + "CREATE DATABASE testDB\n";
+            dropTestDatabase(connection);
+            String sql = "CREATE DATABASE testDB\n";
             connection.execute(sql);
             connection.execute("USE testDB");
             connection.execute("ALTER DATABASE testDB SET ALLOW_SNAPSHOT_ISOLATION ON");
@@ -130,18 +127,59 @@ public class TestHelper {
     public static void dropTestDatabase() {
         try (SqlServerConnection connection = adminConnection()) {
             connection.connect();
-            try {
-                connection.execute("USE testDB");
-                disableDbCdc(connection, "testDB");
-            }
-            catch (SQLException e) {
-            }
-            connection.execute("USE master");
-            String sql = "IF EXISTS(select 1 from sys.databases where name='testDB') DROP DATABASE testDB";
-            connection.execute(sql);
+            dropTestDatabase(connection);
         }
         catch (SQLException e) {
             throw new IllegalStateException("Error while dropping test database", e);
+        }
+    }
+
+    private static void dropTestDatabase(SqlServerConnection connection) throws SQLException {
+        try {
+            Awaitility.await("Disabling CDC").atMost(60, TimeUnit.SECONDS).until(() -> {
+                try {
+                    connection.execute("USE testDB");
+                }
+                catch (SQLException e) {
+                    // if the database doesn't yet exist, there is no need to disable CDC
+                    return true;
+                }
+                try {
+                    disableDbCdc(connection, "testDB");
+                    return true;
+                }
+                catch (SQLException e) {
+                    return false;
+                }
+            });
+        }
+        catch (ConditionTimeoutException e) {
+            throw new IllegalArgumentException("Failed to disable CDC on testDB", e);
+        }
+
+        connection.execute("USE master");
+
+        try {
+            Awaitility.await("Dropping database testDB").atMost(60, TimeUnit.SECONDS).until(() -> {
+                try {
+                    String sql = "IF EXISTS(select 1 from sys.databases where name = 'testDB') DROP DATABASE testDB";
+                    connection.execute(sql);
+                    return true;
+                }
+                catch (SQLException e) {
+                    LOGGER.warn("DROP DATABASE testDB failed (will be retried): {}", e.getMessage());
+                    try {
+                        connection.execute("ALTER DATABASE testDB SET SINGLE_USER WITH ROLLBACK IMMEDIATE;");
+                    }
+                    catch (SQLException e2) {
+                        LOGGER.error("Failed to rollback immediately", e2);
+                    }
+                    return false;
+                }
+            });
+        }
+        catch (ConditionTimeoutException e) {
+            throw new IllegalStateException("Failed to drop test database", e);
         }
     }
 
@@ -162,8 +200,20 @@ public class TestHelper {
      *             if anything unexpected fails
      */
     public static void enableDbCdc(SqlServerConnection connection, String name) throws SQLException {
-        Objects.requireNonNull(name);
-        connection.execute(ENABLE_DB_CDC.replace(STATEMENTS_PLACEHOLDER, name));
+        try {
+            Objects.requireNonNull(name);
+            connection.execute(ENABLE_DB_CDC.replace(STATEMENTS_PLACEHOLDER, name));
+
+            // make sure testDB has cdc-enabled before proceeding; throwing exception if it fails
+            Awaitility.await().atMost(60, TimeUnit.SECONDS).until(() -> {
+                final String sql = IS_CDC_ENABLED.replace(STATEMENTS_PLACEHOLDER, name);
+                return connection.queryAndMap(sql, connection.singleResultMapper(rs -> rs.getLong(1), "")) == 1L;
+            });
+        }
+        catch (SQLException e) {
+            LOGGER.error("Failed to enable CDC on database " + name);
+            throw e;
+        }
     }
 
     /**
