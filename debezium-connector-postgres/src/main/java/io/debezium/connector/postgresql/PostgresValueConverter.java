@@ -542,6 +542,14 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 List<String> ltrees = Arrays.asList(s.split(","));
                 r.deliver(ltrees);
             }
+            else if (data instanceof List) {
+                List<Object> list = (List<Object>) data;
+                List<String> ltrees = new ArrayList<>(list.size());
+                for (Object value : list) {
+                    ltrees.add(value.toString());
+                }
+                r.deliver(ltrees);
+            }
             else if (data instanceof PgArray) {
                 PgArray pgArray = (PgArray) data;
                 try {
