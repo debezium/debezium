@@ -40,6 +40,7 @@ import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
 import io.debezium.data.Bits;
 import io.debezium.data.Enum;
 import io.debezium.data.Envelope;
+import io.debezium.data.SchemaAndValueField;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.heartbeat.Heartbeat;
@@ -901,6 +902,31 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
                         .build(), Arrays.asList("V1", "V2")));
 
         consumer.process(record -> assertReadRecord(record, Collect.hashMapOf("public.enum_array_table", expected)));
+    }
+
+    @Test
+    @FixFor("DBZ-1969")
+    public void shouldSnapshotTimeArrayTypesAsKnownTypes() throws Exception {
+        TestHelper.execute("CREATE TABLE time_array_table (pk SERIAL, "
+                + "timea time[] NOT NULL, "
+                + "timetza timetz[] NOT NULL, "
+                + "timestampa timestamp[] NOT NULL, "
+                + "timestamptza timestamptz[] NOT NULL, primary key(pk));");
+        TestHelper.execute("INSERT INTO time_array_table (timea, timetza, timestampa, timestamptza) "
+                + "values ("
+                + "'{00:01:02,01:02:03}', "
+                + "'{13:51:02+0200,14:51:03+0200}', "
+                + "'{2020-04-01 00:01:02,2020-04-01 01:02:03}', "
+                + "'{2020-04-01 13:51:02+0200,2020-04-01 14:51:03+0200}')");
+
+        buildNoStreamProducer(TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, false)
+                .with(PostgresConnectorConfig.TABLE_WHITELIST, "public.time_array_table"));
+
+        final TestConsumer consumer = testConsumer(1, "public");
+        consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
+
+        consumer.process(record -> assertReadRecord(record, Collect.hashMapOf("public.time_array_table", schemaAndValuesForTimeArrayTypes())));
     }
 
     private void buildNoStreamProducer(Configuration.Builder config) {

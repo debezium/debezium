@@ -6,6 +6,8 @@
 
 package io.debezium.connector.postgresql;
 
+import static java.time.ZoneId.systemDefault;
+
 import java.io.StringWriter;
 import java.io.UnsupportedEncodingException;
 import java.math.BigDecimal;
@@ -13,9 +15,11 @@ import java.nio.charset.Charset;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Duration;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.OffsetTime;
 import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoField;
@@ -63,6 +67,9 @@ import io.debezium.relational.Column;
 import io.debezium.relational.ValueConverter;
 import io.debezium.time.Interval;
 import io.debezium.time.MicroDuration;
+import io.debezium.time.MicroTime;
+import io.debezium.time.MicroTimestamp;
+import io.debezium.time.NanoTime;
 import io.debezium.time.ZonedTime;
 import io.debezium.time.ZonedTimestamp;
 import io.debezium.util.NumberConversions;
@@ -232,9 +239,22 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.JSON_ARRAY:
                 return SchemaBuilder.array(Json.builder().optional().build());
             case PgOid.TIME_ARRAY:
+                return SchemaBuilder.array(MicroTime.builder().optional().build());
             case PgOid.TIMETZ_ARRAY:
+                return SchemaBuilder.array(ZonedTime.builder().optional().build());
             case PgOid.TIMESTAMP_ARRAY:
+                if (adaptiveTimePrecisionMode || adaptiveTimeMicrosecondsPrecisionMode) {
+                    if (getTimePrecision(column) <= 3) {
+                        return SchemaBuilder.array(io.debezium.time.Timestamp.builder().optional().build());
+                    }
+                    if (getTimePrecision(column) <= 6) {
+                        return SchemaBuilder.array(MicroTimestamp.builder().optional().build());
+                    }
+                    return SchemaBuilder.array(NanoTime.builder().optional().build());
+                }
+                return SchemaBuilder.array(org.apache.kafka.connect.data.Timestamp.builder().optional().build());
             case PgOid.TIMESTAMPTZ_ARRAY:
+                return SchemaBuilder.array(ZonedTimestamp.builder().optional().build());
             case PgOid.BYTEA_ARRAY:
             case PgOid.OID_ARRAY:
             case PgOid.MONEY_ARRAY:
@@ -384,14 +404,14 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.UUID_ARRAY:
             case PgOid.JSONB_ARRAY:
             case PgOid.JSON_ARRAY:
-                return createArrayConverter(column, fieldDefn);
-
-            // TODO DBZ-459 implement support for these array types; for now we just fall back to the default, i.e.
-            // having no converter, so to be consistent with the schema definitions above
             case PgOid.TIME_ARRAY:
             case PgOid.TIMETZ_ARRAY:
             case PgOid.TIMESTAMP_ARRAY:
             case PgOid.TIMESTAMPTZ_ARRAY:
+                return createArrayConverter(column, fieldDefn);
+
+            // TODO DBZ-459 implement support for these array types; for now we just fall back to the default, i.e.
+            // having no converter, so to be consistent with the schema definitions above
             case PgOid.BYTEA_ARRAY:
             case PgOid.OID_ARRAY:
             case PgOid.MONEY_ARRAY:
@@ -466,7 +486,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
         final Field elementField = new Field(elementColumnName, 0, elementSchema);
         final ValueConverter elementConverter = converter(elementColumn, elementField);
 
-        return data -> convertArray(column, fieldDefn, elementConverter, data);
+        return data -> convertArray(column, fieldDefn, elementType, elementConverter, data);
     }
 
     @Override
@@ -833,10 +853,11 @@ public class PostgresValueConverter extends JdbcValueConverters {
         });
     }
 
-    protected Object convertArray(Column column, Field fieldDefn, ValueConverter elementConverter, Object data) {
+    protected Object convertArray(Column column, Field fieldDefn, PostgresType elementType, ValueConverter elementConverter, Object data) {
         return convertValue(column, fieldDefn, data, Collections.emptyList(), (r) -> {
             if (data instanceof List) {
                 r.deliver(((List<?>) data).stream()
+                        .map(value -> resolveArrayValue(value, elementType))
                         .map(elementConverter::convert)
                         .collect(Collectors.toList()));
             }
@@ -845,7 +866,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
                     final Object[] values = (Object[]) ((PgArray) data).getArray();
                     final List<Object> converted = new ArrayList<>(values.length);
                     for (Object value : values) {
-                        converted.add(elementConverter.convert(value));
+                        converted.add(elementConverter.convert(resolveArrayValue(value, elementType)));
                     }
                     r.deliver(converted);
                 }
@@ -854,6 +875,33 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 }
             }
         });
+    }
+
+    private Object resolveArrayValue(Object value, PostgresType elementType) {
+        // PostgreSQL time data types with time-zones are handled differently when included in an array.
+        // The values are automatically translated to the local JVM time-zone and need to be converted back to GMT
+        // before delegating the value to the element converter.
+        switch (elementType.getOid()) {
+            case PgOid.TIMETZ: {
+                if (value instanceof java.sql.Time) {
+                    ZonedDateTime zonedDateTime = ZonedDateTime.of(LocalDate.now(), ((java.sql.Time) value).toLocalTime(), systemDefault());
+                    // Daylight savings gets applied by PgArray, need to account for that here
+                    zonedDateTime = zonedDateTime.plus(systemDefault().getRules().getDaylightSavings(zonedDateTime.toInstant()));
+                    return OffsetTime.of(zonedDateTime.withZoneSameInstant(ZoneOffset.UTC).toLocalTime(), ZoneOffset.UTC);
+                }
+                break;
+            }
+            case PgOid.TIMESTAMPTZ: {
+                if (value instanceof java.sql.Timestamp) {
+                    // Daylight savings isn't applied here, no need to account for it
+                    ZonedDateTime zonedDateTime = ZonedDateTime.of(((java.sql.Timestamp) value).toLocalDateTime(), systemDefault());
+                    return OffsetDateTime.of(zonedDateTime.withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime(), ZoneOffset.UTC);
+                }
+            }
+        }
+
+        // no special handling is needed, return value as-is
+        return value;
     }
 
     private boolean isVariableScaleDecimal(final Column column) {

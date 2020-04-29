@@ -580,6 +580,30 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
                 new SchemaAndValueField("tz_large", ZonedTimestamp.builder().optional().build(), expectedTzLarge));
     }
 
+    protected List<SchemaAndValueField> schemaAndValuesForTimeArrayTypes() {
+        final long expectedTime1 = LocalTime.parse("00:01:02").toNanoOfDay() / 1_000;
+        final long expectedTime2 = LocalTime.parse("01:02:03").toNanoOfDay() / 1_000;
+        final String expectedTimeTz1 = "11:51:02Z";
+        final String expectedTimeTz2 = "12:51:03Z";
+        final long expectedTimestamp1 = OffsetDateTime.of(2020, 4, 1, 0, 1, 2, 0, ZoneOffset.UTC).toInstant().toEpochMilli() * 1000;
+        final long expectedTimestamp2 = OffsetDateTime.of(2020, 4, 1, 1, 2, 3, 0, ZoneOffset.UTC).toInstant().toEpochMilli() * 1000;
+        final String expectedTimestampTz1 = "2020-04-01T11:51:02Z";
+        final String expectedTimestampTz2 = "2020-04-01T12:51:03Z";
+
+        return Arrays.asList(new SchemaAndValueField("timea",
+                SchemaBuilder.array(MicroTime.builder().optional().build()).build(),
+                Arrays.asList(expectedTime1, expectedTime2)),
+                new SchemaAndValueField("timetza",
+                        SchemaBuilder.array(ZonedTime.builder().optional().build()).build(),
+                        Arrays.asList(expectedTimeTz1, expectedTimeTz2)),
+                new SchemaAndValueField("timestampa",
+                        SchemaBuilder.array(MicroTimestamp.builder().optional().build()).build(),
+                        Arrays.asList(expectedTimestamp1, expectedTimestamp2)),
+                new SchemaAndValueField("timestamptza",
+                        SchemaBuilder.array(ZonedTimestamp.builder().optional().build()).build(),
+                        Arrays.asList(expectedTimestampTz1, expectedTimestampTz2)));
+    }
+
     protected List<SchemaAndValueField> schemaAndValuesForIntervalAsString() {
         // 1 year, 2 months, 3 days, 4 hours, 5 minutes, 6 seconds, 78000 ms
         final String expectedInterval = "P1Y2M3DT4H5M6.78S";
