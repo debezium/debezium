@@ -20,6 +20,8 @@ import static org.junit.Assert.assertNotNull;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.Arrays;
 import java.util.Collections;
@@ -63,6 +65,7 @@ import io.debezium.connector.postgresql.spi.SlotState;
 import io.debezium.data.Bits;
 import io.debezium.data.Enum;
 import io.debezium.data.Envelope;
+import io.debezium.data.SchemaAndValueField;
 import io.debezium.data.SpecialValueDecimal;
 import io.debezium.data.VariableScaleDecimal;
 import io.debezium.data.VerifyRecord;
@@ -81,6 +84,10 @@ import io.debezium.relational.RelationalChangeRecordEmitter;
 import io.debezium.relational.RelationalDatabaseConnectorConfig.DecimalHandlingMode;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
+import io.debezium.time.MicroTime;
+import io.debezium.time.MicroTimestamp;
+import io.debezium.time.ZonedTime;
+import io.debezium.time.ZonedTimestamp;
 import io.debezium.util.Stopwatch;
 import io.debezium.util.Testing;
 
@@ -2143,6 +2150,72 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         SourceRecord deleteRec = consumer.remove();
         VerifyRecord.isValidDelete(deleteRec, PK_FIELD, 1);
         assertSourceInfo(updateRec, "postgres", "public", "enum_array_table");
+        assertThat(consumer.isEmpty()).isTrue();
+    }
+
+    @Test
+    @FixFor("DBZ-1969")
+    public void shouldStreamTimeArrayTypesAsKnownTypes() throws Exception {
+        TestHelper.execute("CREATE TABLE time_array_table (pk SERIAL, "
+                + "timea time[] NOT NULL, "
+                + "timetza timetz[] NOT NULL, "
+                + "timestampa timestamp[] NOT NULL, "
+                + "timestamptza timestamptz[] NOT NULL, primary key(pk));");
+        startConnector(config -> config
+                .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, false)
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
+                .with(PostgresConnectorConfig.TABLE_WHITELIST, "public.time_array_table"), false);
+
+        waitForStreamingToStart();
+
+        consumer = testConsumer(1);
+
+        // INSERT
+        executeAndWait("INSERT INTO time_array_table (timea, timetza, timestampa, timestamptza) "
+                + "values ("
+                + "'{00:01:02,01:02:03}', "
+                + "'{13:51:02+0200,14:51:03+0200}', "
+                + "'{2020-04-01 00:01:02,2020-04-01 01:02:03}', "
+                + "'{2020-04-01 13:51:02+02,2020-04-01 14:51:03+02}')");
+
+        SourceRecord insert = assertRecordInserted("public.time_array_table", PK_FIELD, 1);
+        assertSourceInfo(insert, "postgres", "public", "time_array_table");
+        assertRecordSchemaAndValues(schemaAndValuesForTimeArrayTypes(), insert, Envelope.FieldName.AFTER);
+        assertThat(consumer.isEmpty()).isTrue();
+
+        // UPDATE
+        executeAndWait("UPDATE time_array_table SET "
+                + "timea = '{00:01:02,02:03:04}', "
+                + "timetza = '{00:01:02-0400,01:03:04-0400}', "
+                + "timestampa = '{2020-04-01 00:01:02,2020-04-25 03:04:05}', "
+                + "timestamptza = '{2020-04-01 00:01:02-04,2020-04-25 03:04:05-04}'");
+
+        SourceRecord update = consumer.remove();
+        assertSourceInfo(update, "postgres", "public", "time_array_table");
+
+        List<SchemaAndValueField> expectedUpdate = Arrays.asList(
+                new SchemaAndValueField("timea",
+                        SchemaBuilder.array(MicroTime.builder().optional().build()).build(),
+                        Arrays.asList(LocalTime.parse("00:01:02").toNanoOfDay() / 1_000,
+                                LocalTime.parse("02:03:04").toNanoOfDay() / 1_000)),
+                new SchemaAndValueField("timetza",
+                        SchemaBuilder.array(ZonedTime.builder().optional().build()).build(),
+                        Arrays.asList("04:01:02Z", "05:03:04Z")),
+                new SchemaAndValueField("timestampa",
+                        SchemaBuilder.array(MicroTimestamp.builder().optional().build()).build(),
+                        Arrays.asList(OffsetDateTime.of(2020, 4, 1, 0, 1, 2, 0, ZoneOffset.UTC).toInstant().toEpochMilli() * 1_000,
+                                OffsetDateTime.of(2020, 4, 25, 3, 4, 5, 0, ZoneOffset.UTC).toInstant().toEpochMilli() * 1_000)),
+                new SchemaAndValueField("timestamptza",
+                        SchemaBuilder.array(ZonedTimestamp.builder().optional().build()).build(),
+                        Arrays.asList("2020-04-01T04:01:02Z", "2020-04-25T07:04:05Z")));
+        assertRecordSchemaAndValues(expectedUpdate, update, Envelope.FieldName.AFTER);
+        assertThat(consumer.isEmpty()).isTrue();
+
+        // DELETE
+        executeAndWait("DELETE FROM time_array_table;");
+        SourceRecord deleteRec = consumer.remove();
+        VerifyRecord.isValidDelete(deleteRec, PK_FIELD, 1);
+        assertSourceInfo(deleteRec, "postgres", "public", "time_array_table");
         assertThat(consumer.isEmpty()).isTrue();
     }
 
