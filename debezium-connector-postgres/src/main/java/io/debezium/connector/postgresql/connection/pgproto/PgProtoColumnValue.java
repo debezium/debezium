@@ -278,6 +278,9 @@ public class PgProtoColumnValue extends AbstractColumnValue<PgProto.DatumMessage
             case PgOid.INT8RANGE_ARRAY:
                 return true;
             default:
+                if (TypeRegistry.TYPE_NAME_LTREE_ARRAY.equals(type.getName())) {
+                    return false;
+                }
                 return type.isArrayType();
         }
     }
