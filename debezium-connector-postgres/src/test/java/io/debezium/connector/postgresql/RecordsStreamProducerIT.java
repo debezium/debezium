@@ -2130,7 +2130,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
         List<SchemaAndValueField> expectedUpdate = Arrays.asList(
                 new SchemaAndValueField(PK_FIELD, Schema.INT32_SCHEMA, 1),
-                new SchemaAndValueField("value", SchemaBuilder.array(Enum.builder("V1"))
+                new SchemaAndValueField("value", SchemaBuilder.array(Enum.builder("V1,V2"))
                         .parameter(TestHelper.TYPE_NAME_PARAMETER_KEY, "_TEST_TYPE")
                         .parameter(TestHelper.TYPE_LENGTH_PARAMETER_KEY, String.valueOf(Integer.MAX_VALUE))
                         .parameter(TestHelper.TYPE_SCALE_PARAMETER_KEY, "0")
