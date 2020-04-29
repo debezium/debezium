@@ -149,7 +149,7 @@ public class PgProtoColumnValue extends AbstractColumnValue<PgProto.DatumMessage
     @Override
     public LocalDate asLocalDate() {
         if (value.hasDatumInt32()) {
-            return LocalDate.ofEpochDay((long) value.getDatumInt32());
+            return LocalDate.ofEpochDay(value.getDatumInt32());
         }
 
         final String s = asString();
@@ -278,7 +278,7 @@ public class PgProtoColumnValue extends AbstractColumnValue<PgProto.DatumMessage
             case PgOid.INT8RANGE_ARRAY:
                 return true;
             default:
-                return false;
+                return type.isArrayType();
         }
     }
 
@@ -313,21 +313,13 @@ public class PgProtoColumnValue extends AbstractColumnValue<PgProto.DatumMessage
     public Object asDefault(TypeRegistry typeRegistry, int columnType, String columnName, String fullType, boolean includeUnknownDatatypes,
                             PgConnectionSupplier connection) {
         final PostgresType type = typeRegistry.get(columnType);
-        if (type.getOid() == typeRegistry.geometryOid() || type.getOid() == typeRegistry.geographyOid() || type.getOid() == typeRegistry.citextOid()) {
+        if (type.getOid() == typeRegistry.geometryOid() ||
+                type.getOid() == typeRegistry.geographyOid() ||
+                type.getOid() == typeRegistry.citextOid() ||
+                type.getOid() == typeRegistry.hstoreOid()) {
             return asByteArray();
         }
-        if (type.getOid() == typeRegistry.hstoreOid()) {
-            return asByteArray();
-        }
-        if (type.getOid() == typeRegistry.geometryArrayOid() ||
-                type.getOid() == typeRegistry.geographyArrayOid() ||
-                type.getOid() == typeRegistry.citextArrayOid() ||
-                type.getOid() == typeRegistry.hstoreArrayOid()) {
-            return asArray(columnName, type, fullType, connection);
-        }
-        if (type.isArrayType() && type.getElementType().isEnumType()) {
-            return asArray(columnName, type, fullType, connection);
-        }
+
         // unknown data type is sent by decoder as binary value
         if (includeUnknownDatatypes) {
             return asByteArray();
@@ -335,5 +327,4 @@ public class PgProtoColumnValue extends AbstractColumnValue<PgProto.DatumMessage
 
         return null;
     }
-
 }
