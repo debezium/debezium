@@ -1090,9 +1090,7 @@ public class VerifyRecord {
             valueSchemasEqual = Objects.equals(schema1.valueSchema(), schema2.valueSchema());
         }
         else if (schema1.type() == Type.ARRAY && schema2.type() == Type.ARRAY) {
-            String valueSchema1String = SchemaUtil.asString(schema1.valueSchema());
-            String valueSchema2String = SchemaUtil.asString(schema2.valueSchema());
-            valueSchemasEqual = valueSchema1String.equals(valueSchema2String);
+            valueSchemasEqual = areConnectSchemasEqual(schema1.valueSchema(), schema2.valueSchema());
         }
         else if (schema1.type() == Type.STRUCT && schema2.type() == Type.STRUCT) {
             fieldsEqual = areFieldListsEqual(schema1.fields(), schema2.fields());
