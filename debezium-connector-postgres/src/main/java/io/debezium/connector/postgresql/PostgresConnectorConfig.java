@@ -1005,6 +1005,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     HSTORE_HANDLING_MODE,
                     INTERVAL_HANDLING_MODE,
                     SCHEMA_REFRESH_MODE)
+            .excluding(INCLUDE_SCHEMA_CHANGES)
             .create();
 
     /**
