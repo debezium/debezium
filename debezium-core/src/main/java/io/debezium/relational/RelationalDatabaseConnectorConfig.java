@@ -277,6 +277,9 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withDefault(DEFAULT_SNAPSHOT_LOCK_TIMEOUT_MILLIS)
             .withDescription("The maximum number of millis to wait for table locks at the beginning of a snapshot. If locks cannot be acquired in this " +
                     "time frame, the snapshot will be aborted. Defaults to 10 seconds");
+
+    // TODO - belongs to HistorizedRelationalDatabaseConnectorConfig but should be move there
+    // after MySQL rewrite
     public static final Field INCLUDE_SCHEMA_CHANGES = Field.create("include.schema.changes")
             .withDisplayName("Include database schema changes")
             .withType(Type.BOOLEAN)
@@ -324,7 +327,8 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
                     SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE,
                     MASK_COLUMN_WITH_HASH,
                     MASK_COLUMN,
-                    TRUNCATE_COLUMN)
+                    TRUNCATE_COLUMN,
+                    INCLUDE_SCHEMA_CHANGES)
             .create();
 
     private final RelationalTableFilters tableFilters;
