@@ -110,7 +110,7 @@ public class EventDispatcher<T extends DataCollectionId> {
         this.emitTombstonesOnDelete = connectorConfig.isEmitTombstoneOnDelete();
         this.inconsistentSchemaHandler = inconsistentSchemaHandler != null ? inconsistentSchemaHandler : this::errorOnMissingSchema;
 
-        this.transactionMonitor = new TransactionMonitor(connectorConfig, metadataProvider, this::dispatchTransactionMessage);
+        this.transactionMonitor = new TransactionMonitor(connectorConfig, metadataProvider, this::enqueueTransactionMessage);
         if (customHeartbeat != null) {
             heartbeat = customHeartbeat;
         }
@@ -303,11 +303,11 @@ public class EventDispatcher<T extends DataCollectionId> {
         queue.enqueue(new DataChangeEvent(record));
     }
 
-    public void dispatchTransactionMessage(SourceRecord record) throws InterruptedException {
+    private void enqueueTransactionMessage(SourceRecord record) throws InterruptedException {
         queue.enqueue(new DataChangeEvent(record));
     }
 
-    public void dispatchSchemaChangeMessage(SourceRecord record) throws InterruptedException {
+    private void enqueueSchemaChangeMessage(SourceRecord record) throws InterruptedException {
         queue.enqueue(new DataChangeEvent(record));
     }
 
@@ -448,7 +448,7 @@ public class EventDispatcher<T extends DataCollectionId> {
                 final Struct value = schemaChangeRecordValue(event);
                 final SourceRecord record = new SourceRecord(null, event.getOffset(), topicName, partition,
                         schemaChangeKeySchema, key, schemaChangeValueSchema, value);
-                dispatchSchemaChangeMessage(record);
+                enqueueSchemaChangeMessage(record);
             }
         }
     }
