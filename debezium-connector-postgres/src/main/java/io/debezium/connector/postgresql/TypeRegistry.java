@@ -408,93 +408,63 @@ public class TypeRegistry {
         try {
             LOGGER.trace("Type '{}' not cached, attempting to lookup from database.", name);
             final Connection connection = this.connection.connection();
-            final TypeInfo typeInfo = ((BaseConnection) connection).getTypeInfo();
-            final SqlTypeMapper sqlTypeMapper = new SqlTypeMapper(connection, typeInfo);
 
             try (final PreparedStatement statement = connection.prepareStatement(SQL_NAME_LOOKUP)) {
                 statement.setString(1, name);
-                try (final ResultSet rs = statement.executeQuery()) {
-                    while (rs.next()) {
-                        final int oid = (int) rs.getLong("oid");
-                        final int parentTypeOid = (int) rs.getLong("parentoid");
-                        final int modifiers = (int) rs.getLong("modifiers");
-                        String typeName = rs.getString("name");
-                        String category = rs.getString("category");
-
-                        PostgresType.Builder builder = new PostgresType.Builder(
-                                this,
-                                typeName,
-                                oid,
-                                sqlTypeMapper.getSqlType(typeName),
-                                modifiers,
-                                typeInfo);
-
-                        if (CATEGORY_ENUM.equals(category)) {
-                            builder = builder.enumValues(resolveEnumValues(connection, oid));
-                        }
-                        else if (CATEGORY_ARRAY.equals(category)) {
-                            builder = builder.elementType((int) rs.getLong("element"));
-                        }
-
-                        PostgresType result = builder.parentType(parentTypeOid).build();
-                        addType(result);
-
-                        return result;
-                    }
-                }
+                return loadType(connection, statement);
             }
         }
         catch (SQLException e) {
             throw new ConnectException("Database connection failed during resolving unknown type", e);
         }
-
-        return null;
     }
 
     private PostgresType resolveUnknownType(int lookupOid) {
         try {
             LOGGER.trace("Type OID '{}' not cached, attempting to lookup from database.", lookupOid);
             final Connection connection = this.connection.connection();
-            final TypeInfo typeInfo = ((BaseConnection) connection).getTypeInfo();
-            final SqlTypeMapper sqlTypeMapper = new SqlTypeMapper(connection, typeInfo);
 
             try (final PreparedStatement statement = connection.prepareStatement(SQL_OID_LOOKUP)) {
                 statement.setInt(1, lookupOid);
-                try (final ResultSet rs = statement.executeQuery()) {
-                    while (rs.next()) {
-                        final int oid = (int) rs.getLong("oid");
-                        final int parentTypeOid = (int) rs.getLong("parentoid");
-                        final int modifiers = (int) rs.getLong("modifiers");
-                        String typeName = rs.getString("name");
-                        String category = rs.getString("category");
-
-                        PostgresType.Builder builder = new PostgresType.Builder(
-                                this,
-                                typeName,
-                                oid,
-                                sqlTypeMapper.getSqlType(typeName),
-                                modifiers,
-                                typeInfo);
-
-                        if (CATEGORY_ENUM.equals(category)) {
-                            builder = builder.enumValues(resolveEnumValues(connection, oid));
-                        }
-                        else if (CATEGORY_ARRAY.equals(category)) {
-                            builder = builder.elementType((int) rs.getLong("element"));
-                        }
-
-                        PostgresType result = builder.parentType(parentTypeOid).build();
-                        addType(result);
-
-                        return result;
-                    }
-                }
+                return loadType(connection, statement);
             }
         }
         catch (SQLException e) {
             throw new ConnectException("Database connection failed during resolving unknown type", e);
         }
+    }
 
+    private PostgresType loadType(Connection connection, PreparedStatement statement) throws SQLException {
+        final TypeInfo typeInfo = ((BaseConnection) connection).getTypeInfo();
+        final SqlTypeMapper sqlTypeMapper = new SqlTypeMapper(connection, typeInfo);
+        try (final ResultSet rs = statement.executeQuery()) {
+            while (rs.next()) {
+                final int oid = (int) rs.getLong("oid");
+                final int parentTypeOid = (int) rs.getLong("parentoid");
+                final int modifiers = (int) rs.getLong("modifiers");
+                String typeName = rs.getString("name");
+                String category = rs.getString("category");
+
+                PostgresType.Builder builder = new PostgresType.Builder(
+                        this,
+                        typeName,
+                        oid,
+                        sqlTypeMapper.getSqlType(typeName),
+                        modifiers,
+                        typeInfo);
+
+                if (CATEGORY_ENUM.equals(category)) {
+                    builder = builder.enumValues(resolveEnumValues(connection, oid));
+                }
+                else if (CATEGORY_ARRAY.equals(category)) {
+                    builder = builder.elementType((int) rs.getLong("element"));
+                }
+
+                PostgresType result = builder.parentType(parentTypeOid).build();
+                addType(result);
+                return result;
+            }
+        }
         return null;
     }
 
