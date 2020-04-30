@@ -287,9 +287,6 @@ public class EventRouterConfigDefinition {
                 }
             }
         }
-        if (!eventTypeMappingProvided) {
-            additionalFields.add(0, new AdditionalField(AdditionalFieldPlacement.ENVELOPE, eventTypeColumn, EventRouter.ENVELOPE_EVENT_TYPE));
-        }
 
         return additionalFields;
     }
