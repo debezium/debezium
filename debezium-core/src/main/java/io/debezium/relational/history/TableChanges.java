@@ -38,6 +38,11 @@ public class TableChanges implements Iterable<TableChange> {
         return this;
     }
 
+    public TableChanges drop(Table table) {
+        changes.add(new TableChange(TableChangeType.DROP, table));
+        return this;
+    }
+
     @Override
     public Iterator<TableChange> iterator() {
         return changes.iterator();

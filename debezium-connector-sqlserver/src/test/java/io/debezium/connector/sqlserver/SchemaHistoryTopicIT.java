@@ -27,6 +27,8 @@ import io.debezium.util.Testing;
 
 /**
  * Integration test for the Debezium SQL Server connector.
+ * The tests should verify the {@code CREATE} schema events from snapshot and the {@code CREATE} and
+ * the {@code ALTER} schem events from streaming
  *
  * @author Jiri Pechanec
  */
@@ -97,6 +99,7 @@ public class SchemaHistoryTopicIT extends AbstractConnectorTest {
         Assertions.assertThat(((Struct) schemaRecords.get(2).value()).getStruct("source").getString("snapshot")).isEqualTo("last");
 
         List<Struct> tableChanges = ((Struct) schemaRecords.get(0).value()).getArray("tableChanges");
+        Assertions.assertThat(tableChanges).hasSize(1);
         Assertions.assertThat(tableChanges.get(0).get("type")).isEqualTo("CREATE");
 
         records = consumeRecordsByTopic(RECORDS_PER_TABLE * TABLES);
@@ -141,6 +144,7 @@ public class SchemaHistoryTopicIT extends AbstractConnectorTest {
         Assertions.assertThat(((Struct) schemaRecord.value()).getStruct("source").getString("snapshot")).isNull();
 
         tableChanges = ((Struct) schemaRecord.value()).getArray("tableChanges");
+        Assertions.assertThat(tableChanges).hasSize(1);
         Assertions.assertThat(tableChanges.get(0).get("type")).isEqualTo("ALTER");
         Assertions.assertThat(lastUpdate.sourceOffset()).isEqualTo(schemaRecord.sourceOffset());
 
@@ -220,6 +224,7 @@ public class SchemaHistoryTopicIT extends AbstractConnectorTest {
         Assertions.assertThat(((Struct) schemaRecords.get(2).value()).getStruct("source").getString("snapshot")).isEqualTo("true");
 
         final List<Struct> tableChanges = ((Struct) schemaRecords.get(0).value()).getArray("tableChanges");
+        Assertions.assertThat(tableChanges).hasSize(1);
         Assertions.assertThat(tableChanges.get(0).get("type")).isEqualTo("CREATE");
 
         records = consumeRecordsByTopic(RECORDS_PER_TABLE * TABLES);

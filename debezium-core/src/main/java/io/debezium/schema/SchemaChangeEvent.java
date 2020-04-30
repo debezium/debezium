@@ -55,9 +55,13 @@ public class SchemaChangeEvent {
         switch (type) {
             case CREATE:
                 tables.forEach(tableChanges::create);
+                break;
             case ALTER:
                 tables.forEach(tableChanges::alter);
+                break;
             case DROP:
+                tables.forEach(tableChanges::drop);
+                break;
         }
     }
 

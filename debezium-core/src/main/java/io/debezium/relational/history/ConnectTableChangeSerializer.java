@@ -140,6 +140,6 @@ public class ConnectTableChangeSerializer implements TableChanges.TableChangesSe
 
     @Override
     public TableChanges deserialize(List<Struct> data, boolean useCatalogBeforeSchema) {
-        throw new UnsupportedOperationException("Deserialization fro Connect Struct is not supported");
+        throw new UnsupportedOperationException("Deserialization from Connect Struct is not supported");
     }
 }
