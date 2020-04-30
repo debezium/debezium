@@ -279,6 +279,10 @@ public class PostgresType {
             return this;
         }
 
+        public boolean hasParentType() {
+            return this.parentTypeOid != 0;
+        }
+
         public Builder elementType(int elementTypeOid) {
             this.elementTypeOid = elementTypeOid;
             return this;
@@ -291,7 +295,7 @@ public class PostgresType {
 
         public PostgresType build() {
             PostgresType parentType = null;
-            if (parentTypeOid != 0) {
+            if (this.hasParentType()) {
                 parentType = typeRegistry.get(parentTypeOid);
             }
 
