@@ -59,13 +59,9 @@ public class TypeRegistry {
     private static final String CATEGORY_ARRAY = "A";
     private static final String CATEGORY_ENUM = "E";
 
-    private static final String SQL_NON_ARRAY_TYPES = "SELECT t.oid AS oid, t.typname AS name, t.typbasetype AS parentoid, t.typtypmod as modifiers, t.typcategory as category "
+    private static final String SQL_TYPES = "SELECT t.oid AS oid, t.typname AS name, t.typelem AS element, t.typbasetype AS parentoid, t.typtypmod as modifiers, t.typcategory as category "
             + "FROM pg_catalog.pg_type t JOIN pg_catalog.pg_namespace n ON (t.typnamespace = n.oid) "
-            + "WHERE n.nspname != 'pg_toast' AND t.typcategory <> 'A'";
-
-    private static final String SQL_ARRAY_TYPES = "SELECT t.oid AS oid, t.typname AS name, t.typelem AS element, t.typbasetype AS parentoid, t.typtypmod as modifiers, t.typcategory as category "
-            + "FROM pg_catalog.pg_type t JOIN pg_catalog.pg_namespace n ON (t.typnamespace = n.oid) "
-            + "WHERE n.nspname != 'pg_toast' AND t.typcategory = 'A'";
+            + "WHERE n.nspname != 'pg_toast'";
 
     private static final String SQL_NAME_LOOKUP = "SELECT t.oid as oid, t.typname AS name, t.typelem AS element, t.typbasetype AS parentoid, t.typtypmod AS modifiers, t.typcategory as category "
             + "FROM pg_catalog.pg_type t JOIN pg_catalog.pg_namespace n ON (t.typnamespace = n.oid) "
@@ -315,7 +311,7 @@ public class TypeRegistry {
 
             try (final Statement statement = pgConnection.createStatement()) {
                 // Read non-array types
-                try (final ResultSet rs = statement.executeQuery(SQL_NON_ARRAY_TYPES)) {
+                try (final ResultSet rs = statement.executeQuery(SQL_TYPES)) {
                     final List<PostgresType.Builder> delayResolvedBuilders = new ArrayList<>();
                     while (rs.next()) {
                         // Coerce long to int so large unsigned values are represented as signed
@@ -337,45 +333,11 @@ public class TypeRegistry {
                         if (CATEGORY_ENUM.equals(category)) {
                             builder = builder.enumValues(resolveEnumValues(pgConnection, oid));
                         }
-
-                        // If the type does have have a base type, we can build/add immediately.
-                        if (parentTypeOid == 0) {
-                            addType(builder.build());
-                            continue;
+                        else if (CATEGORY_ARRAY.equals(category)) {
+                            builder = builder.elementType((int) rs.getLong("element"));
                         }
 
-                        // For types with base type mappings, they need to be delayed.
-                        builder = builder.parentType(parentTypeOid);
-                        delayResolvedBuilders.add(builder);
-                    }
-
-                    // Resolve delayed builders
-                    for (PostgresType.Builder builder : delayResolvedBuilders) {
-                        addType(builder.build());
-                    }
-                }
-
-                // Read array types
-                try (final ResultSet rs = statement.executeQuery(SQL_ARRAY_TYPES)) {
-                    final List<PostgresType.Builder> delayResolvedBuilders = new ArrayList<>();
-                    while (rs.next()) {
-                        // int2vector and oidvector will not be treated as arrays
-                        final int oid = (int) rs.getLong("oid");
-                        final int parentTypeOid = (int) rs.getLong("parentoid");
-                        final int modifiers = (int) rs.getLong("modifiers");
-                        String typeName = rs.getString("name");
-
-                        PostgresType.Builder builder = new PostgresType.Builder(
-                                this,
-                                typeName,
-                                oid,
-                                sqlTypeMapper.getSqlType(typeName),
-                                modifiers,
-                                typeInfo);
-
-                        builder = builder.elementType((int) rs.getLong("element"));
-
-                        // If the type doesnot have a base type, we can build/add immediately
+                        // If the type does have have a base type, we can build/add immediately.
                         if (parentTypeOid == 0) {
                             addType(builder.build());
                             continue;
