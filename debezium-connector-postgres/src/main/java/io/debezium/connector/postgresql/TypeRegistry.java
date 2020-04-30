@@ -310,41 +310,18 @@ public class TypeRegistry {
             final SqlTypeMapper sqlTypeMapper = new SqlTypeMapper(pgConnection, typeInfo);
 
             try (final Statement statement = pgConnection.createStatement()) {
-                // Read non-array types
                 try (final ResultSet rs = statement.executeQuery(SQL_TYPES)) {
                     final List<PostgresType.Builder> delayResolvedBuilders = new ArrayList<>();
                     while (rs.next()) {
-                        // Coerce long to int so large unsigned values are represented as signed
-                        // Same technique is used in TypeInfoCache
-                        final int oid = (int) rs.getLong("oid");
-                        final int parentTypeOid = (int) rs.getLong("parentoid");
-                        final int modifiers = (int) rs.getLong("modifiers");
-                        String typeName = rs.getString("name");
-                        String category = rs.getString("category");
-
-                        PostgresType.Builder builder = new PostgresType.Builder(
-                                this,
-                                typeName,
-                                oid,
-                                sqlTypeMapper.getSqlType(typeName),
-                                modifiers,
-                                typeInfo);
-
-                        if (CATEGORY_ENUM.equals(category)) {
-                            builder = builder.enumValues(resolveEnumValues(pgConnection, oid));
-                        }
-                        else if (CATEGORY_ARRAY.equals(category)) {
-                            builder = builder.elementType((int) rs.getLong("element"));
-                        }
+                        PostgresType.Builder builder = createTypeBuilderFromResultSet(pgConnection, rs, typeInfo, sqlTypeMapper);
 
                         // If the type does have have a base type, we can build/add immediately.
-                        if (parentTypeOid == 0) {
+                        if (!builder.hasParentType()) {
                             addType(builder.build());
                             continue;
                         }
 
                         // For types with base type mappings, they need to be delayed.
-                        builder = builder.parentType(parentTypeOid);
                         delayResolvedBuilders.add(builder);
                     }
 
@@ -364,6 +341,32 @@ public class TypeRegistry {
                 throw new ConnectException("Could not initialize type registry", e);
             }
         }
+    }
+
+    private PostgresType.Builder createTypeBuilderFromResultSet(Connection connection, ResultSet rs, TypeInfo typeInfo, SqlTypeMapper sqlTypeMapper) throws SQLException {
+        // Coerce long to int so large unsigned values are represented as signed
+        // Same technique is used in TypeInfoCache
+        final int oid = (int) rs.getLong("oid");
+        final int parentTypeOid = (int) rs.getLong("parentoid");
+        final int modifiers = (int) rs.getLong("modifiers");
+        String typeName = rs.getString("name");
+        String category = rs.getString("category");
+
+        PostgresType.Builder builder = new PostgresType.Builder(
+                this,
+                typeName,
+                oid,
+                sqlTypeMapper.getSqlType(typeName),
+                modifiers,
+                typeInfo);
+
+        if (CATEGORY_ENUM.equals(category)) {
+            builder = builder.enumValues(resolveEnumValues(connection, oid));
+        }
+        else if (CATEGORY_ARRAY.equals(category)) {
+            builder = builder.elementType((int) rs.getLong("element"));
+        }
+        return builder.parentType(parentTypeOid);
     }
 
     private PostgresType resolveUnknownType(String name) {
@@ -401,28 +404,7 @@ public class TypeRegistry {
         final SqlTypeMapper sqlTypeMapper = new SqlTypeMapper(connection, typeInfo);
         try (final ResultSet rs = statement.executeQuery()) {
             while (rs.next()) {
-                final int oid = (int) rs.getLong("oid");
-                final int parentTypeOid = (int) rs.getLong("parentoid");
-                final int modifiers = (int) rs.getLong("modifiers");
-                String typeName = rs.getString("name");
-                String category = rs.getString("category");
-
-                PostgresType.Builder builder = new PostgresType.Builder(
-                        this,
-                        typeName,
-                        oid,
-                        sqlTypeMapper.getSqlType(typeName),
-                        modifiers,
-                        typeInfo);
-
-                if (CATEGORY_ENUM.equals(category)) {
-                    builder = builder.enumValues(resolveEnumValues(connection, oid));
-                }
-                else if (CATEGORY_ARRAY.equals(category)) {
-                    builder = builder.elementType((int) rs.getLong("element"));
-                }
-
-                PostgresType result = builder.parentType(parentTypeOid).build();
+                PostgresType result = createTypeBuilderFromResultSet(connection, rs, typeInfo, sqlTypeMapper).build();
                 addType(result);
                 return result;
             }
