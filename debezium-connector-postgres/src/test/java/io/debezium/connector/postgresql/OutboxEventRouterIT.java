@@ -133,6 +133,7 @@ public class OutboxEventRouterIT extends AbstractConnectorTest {
         assertThat(routedEvent.topic()).isEqualTo("outbox.event.User");
 
         Struct valueStruct = requireStruct(routedEvent.value(), "test payload");
+        assertThat(valueStruct.schema().name()).isEqualTo("test_server.outboxsmtit.outbox.Value-outbox");
         assertThat(valueStruct.getString("eventType")).isEqualTo("UserCreated");
         JsonNode payload = (new ObjectMapper()).readTree(valueStruct.getString("payload"));
         assertThat(payload.get("email")).isEqualTo(null);
@@ -235,6 +236,7 @@ public class OutboxEventRouterIT extends AbstractConnectorTest {
         // Validate metadata
         Schema expectedSchema = SchemaBuilder.struct()
                 .version(1)
+                .name("test_server.outboxsmtit.outbox.Value-outbox")
                 .field("payload", Json.builder().optional().build())
                 .field("eventType", Schema.STRING_SCHEMA)
                 .field("eventVersion", Schema.INT32_SCHEMA)
@@ -469,6 +471,37 @@ public class OutboxEventRouterIT extends AbstractConnectorTest {
 
         // Validate message body
         assertThat(eventRouted.value()).isNull();
+    }
+
+    @Test
+    @FixFor("DBZ-1963")
+    public void shouldEmitValueSchemaWithNonDefaultName() throws Exception {
+        outboxEventRouter = new EventRouter<>();
+        final Map<String, String> config = new HashMap<>();
+        config.put("debezium.schema.name.suffix", "-outbox-non-default");
+        outboxEventRouter.configure(config);
+
+        startConnectorWithInitialSnapshotRecord();
+
+        TestHelper.execute(createEventInsert(
+                UUID.fromString("59a42efd-b015-44a9-9dde-cb36d9002425"),
+                "UserCreated",
+                "User",
+                "10711fa5",
+                "{}",
+                ""));
+
+        SourceRecords actualRecords = consumeRecordsByTopic(1);
+        assertThat(actualRecords.topics().size()).isEqualTo(1);
+
+        SourceRecord newEventRecord = actualRecords.recordsForTopic(topicName("outboxsmtit.outbox")).get(0);
+        SourceRecord routedEvent = outboxEventRouter.apply(newEventRecord);
+
+        assertThat(routedEvent).isNotNull();
+        assertThat(routedEvent.topic()).isEqualTo("outbox.event.User");
+
+        Struct valueStruct = requireStruct(routedEvent.value(), "test payload");
+        assertThat(valueStruct.schema().name()).isEqualTo("test_server.outboxsmtit.outbox.Value-outbox-non-default");
     }
 
     private void startConnectorWithInitialSnapshotRecord() throws Exception {

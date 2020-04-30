@@ -65,6 +65,7 @@ public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R
     private List<AdditionalField> additionalFields;
 
     private Schema defaultValueSchema;
+    private String valueSchemaSuffix;
     private final Map<Integer, Schema> versionedValueSchema = new HashMap<>();
 
     private boolean onlyHeadersInOutputMessage = false;
@@ -267,6 +268,7 @@ public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R
         fieldSchemaVersion = config.getString(EventRouterConfigDefinition.FIELD_SCHEMA_VERSION);
         routeByField = config.getString(EventRouterConfigDefinition.ROUTE_BY_FIELD);
         routeTombstoneOnEmptyPayload = config.getBoolean(EventRouterConfigDefinition.ROUTE_TOMBSTONE_ON_EMPTY_PAYLOAD);
+        valueSchemaSuffix = config.getString(EventRouterConfigDefinition.SCHEMA_NAME_SUFFIX);
 
         final Map<String, String> regexRouterConfig = new HashMap<>();
         regexRouterConfig.put("regex", config.getString(EventRouterConfigDefinition.ROUTE_TOPIC_REGEX));
@@ -303,7 +305,7 @@ public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R
     }
 
     private SchemaBuilder getSchemaBuilder(Schema debeziumEventSchema) {
-        SchemaBuilder schemaBuilder = SchemaBuilder.struct();
+        SchemaBuilder schemaBuilder = SchemaBuilder.struct().name(debeziumEventSchema.name() + valueSchemaSuffix);
 
         // Add payload field
         schemaBuilder

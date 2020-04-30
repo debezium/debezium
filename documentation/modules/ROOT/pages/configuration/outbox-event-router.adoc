@@ -156,6 +156,11 @@ In such case the field could be placed either in envelope or among other headers
 |`warn`
 |Debezium
 |While Debezium is monitoring the table, it's not expecting to see 'update' row events, in case it happens, this transform can log it as warning, error or stop the process. Options are `warn`, `error` and `fatal`
+
+|`debezium.schema.name.suffix`
+|`-outbox`
+|Debezium
+|Specifies the suffix to append to the original message's value schema name for the emitted outbox message.
 |=======================
 
 === Default table columns
