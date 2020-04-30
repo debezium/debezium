@@ -3,7 +3,7 @@
     <parent>
         <groupId>org.jboss</groupId>
         <artifactId>jboss-parent</artifactId>
-        <version>35</version>
+        <version>36</version>
         <!-- same as parent POM -->
     </parent>
 
@@ -21,8 +21,9 @@
         <version.enforcer.plugin>3.0.0-M2</version.enforcer.plugin>
         <version.jar.plugin>3.0.2</version.jar.plugin>
         <version.source.plugin>3.1.0</version.source.plugin>
-        <version.checkstyle.plugin>3.0.0</version.checkstyle.plugin>
+        <version.checkstyle.plugin>3.1.1</version.checkstyle.plugin>
         <version.compiler.plugin>3.8.1</version.compiler.plugin>
+        <version.checkstyle>8.32</version.checkstyle>
     </properties>
 
     <!--
