@@ -69,6 +69,10 @@ public final class CommitLogUtil {
      * If the directory does not contain any commit logs, an empty array is returned.
      */
     public static File[] getCommitLogs(File directory) {
+        if (!directory.isDirectory()) {
+            throw new IllegalArgumentException("Given directory does not exist: " + directory);
+        }
+
         return directory.listFiles(f -> f.isFile() && FILENAME_REGEX_PATTERN.matcher(f.getName()).matches());
     }
 
