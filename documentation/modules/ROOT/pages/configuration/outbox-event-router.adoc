@@ -36,8 +36,7 @@ In order to understand the configuration and terms used in this SMT, let's look 
 # Kafka Message Headers: "id=4d47e190-0402-4048-bc2c-89dd54343cdc"
 # Kafka Message Timestamp: 1556890294484
 {
-  "eventType": "OrderCreated",
-  "payload": "{\"id\": 1, \"lineItems\": [{\"id\": 1, \"item\": \"Debezium in Action\", \"status\": \"ENTERED\", \"quantity\": 2, \"totalPrice\": 39.98}, {\"id\": 2, \"item\": \"Debezium for Dummies\", \"status\": \"ENTERED\", \"quantity\": 1, \"totalPrice\": 29.99}], \"orderDate\": \"2019-01-31T12:13:01\", \"customerId\": 123}"
+  "{\"id\": 1, \"lineItems\": [{\"id\": 1, \"item\": \"Debezium in Action\", \"status\": \"ENTERED\", \"quantity\": 2, \"totalPrice\": 39.98}, {\"id\": 2, \"item\": \"Debezium for Dummies\", \"status\": \"ENTERED\", \"quantity\": 1, \"totalPrice\": 29.99}], \"orderDate\": \"2019-01-31T12:13:01\", \"customerId\": 123}"
 }
 ----
 
@@ -90,69 +89,69 @@ This result was achieved with the link:#configuration-options[default configurat
 |Group
 |Description
 
-|`table.field.event.id`
+|[[configuration-property-table-field-event-id]]<<configuration-property-table-field-event-id, `table.field.event.id`>>
 |`id`
 |Table
 |The column which contains the event ID within the outbox table
 
-|`table.field.event.key`
+|[[configuration-property-table-field-event-key]]<<configuration-property-table-field-event-key, `table.field.event.key`>>
 |`aggregateid`
 |Table
 |The column which contains the event key within the outbox table; when this is set the value of this column will be used as a Kafka message key
 
-|`table.field.event.type`
+|[[configuration-property-table-field-event-type]]<<configuration-property-table-field-event-type, `table.field.event.type`>>
 |`type`
 |Table
 |The column which contains the event type within the outbox table
 
-|`table.field.event.timestamp`
+|[[configuration-property-table-field-event-timestamp]]<<configuration-property-table-field-event-timestamp, `table.field.event.timestamp`>>
 |
 |Table
 |Optionally you can override the Kafka message timestamp with a value from a chosen field, otherwise it'll be the Debezium event processed timestamp.
 
-|`table.field.event.payload`
+|[[configuration-property-table-field-event-payload]]<<configuration-property-table-field-event-payload, `table.field.event.payload`>>
 |`payload`
 |Table
 |The column which contains the event payload within the outbox table
 
-|`table.field.event.payload.id`
+|[[configuration-property-table-field-event-payload-id]]<<configuration-property-table-field-event-payload-id, `table.field.event.payload.id`>>
 |`aggregateid`
 |Table
 |The column which contains the payload ID within the outbox table
 
-|`table.fields.additional.placement`
+|[[configuration-property-table-fields-additional-placement]]<<configuration-property-table-fields-additional-placement, `table.fields.additional.placement`>>
 |
 |Table, Envelope
 |Extra fields can be added as part of the event envelope or as message header; the format is a list of colon-delimited pairs or trios when you desire to have aliases, e.g. `id:header,field_name:envelope:alias`. Placement options are `header` and `envelope`. +
 It is possible to configure `eventType` field among additional fields.
 In such case the field could be placed either in envelope or among other headers.
 
-|`table.field.event.schema.version`
+|[[configuration-property-table-field-event-schema-version]]<<configuration-property-table-field-event-schema-version, `table.field.event.schema.version`>>
 |
 |Table, Schema
 |When set, it'll be used as schema version as in the https://kafka.apache.org/20/javadoc/org/apache/kafka/connect/data/ConnectSchema.html#version--[Kafka Connect Schema] javadoc
 
-|`route.by.field`
+|[[configuration-property-route-by-field]]<<configuration-property-route-by-field, `route.by.field`>>
 |`aggregatetype`
 |Router
 |The column which determines how the events will be routed, the value will become part of the topic name
 
-|`route.topic.regex`
+|[[configuration-property-route-topic-regex]]<<configuration-property-route-topic-regex, `route.topic.regex`>>
 |`(?<routedByValue>.*)`
 |Router
 |The default regex to use within the RegexRouter, the default capture will allow to replace the routed field into a new topic name defined in `route.topic.replacement`
 
-|`route.topic.replacement`
+|[[configuration-property-route-topic-replacement]]<<configuration-property-route-topic-replacement, `route.topic.replacement`>>
 |`outbox.event{zwsp}.pass:[${routedByValue}]`
 |Router
 |The name of the topic in which the events will be routed, a replacement `pass:[${routedByValue}]` is available which is the value of The column configured via `route.by.field`
 
-|`route.tombstone.on.empty.payload`
+|[[configuration-property-route-tombstone-on-empty-payload]]<<configuration-property-route-tombstone-on-empty-payload, `route.tombstone.on.empty.payload`>>
 |`false`
 |Router
 |Whether or not an empty or `null` payload should cause a tombstone event.
 
-|`debezium.op.invalid.behavior`
+|[[configuration-property-debezium-op-invalid-behavior]]<<configuration-property-debezium-op-invalid-behavior, `debezium.op.invalid.behavior`>>
 |`warn`
 |Debezium
 |While Debezium is monitoring the table, it's not expecting to see 'update' row events, in case it happens, this transform can log it as warning, error or stop the process. Options are `warn`, `error` and `fatal`
@@ -184,14 +183,14 @@ After observing all those pieces we can see what the default configuration does:
 |The `id` shows up as a header in the Kafka message, this is the unique ID of the event, can be used for consumer side dedupe for instance.
 
 |`aggregatetype`
-|Is the default field for the routing, it gets append to the topic name (check configuration `route.topic.replacement`)
+|Is the default field for the routing, it gets append to the topic name (check configuration <<configuration-property-route-topic-replacement, `route.topic.replacement`>>)
 
 |`aggregateid`
 |Becomes the Kafka message key, which is important for keeping ordering within Kafka partitions
 
 |`type`
-|The `type` column becomes either part of the message envelope as `eventType` or message header. +
-See option `table.fields.additional.placement` for more details.
+|The `type` column is not part of the message envelope or headers by default.
+In order to include this in the message, explicitly specify it using the <<configuration-property-table-fields-additional-placement, `table.fields.additional.placement`>> option. +
 
 |`payload`
 |The JSON representation of the event itself, becomes either part of the message as `payload` or if other metadata including `eventType` are delivered as headers then the payload becomes the message itself without an encapsulation in an envelope
@@ -221,9 +220,31 @@ apply the following configuration to the connector:
 ----
 transforms=outbox,...
 transforms.outbox.type=io.debezium.transforms.outbox.EventRouter
-transforms.outbox.table.fields.additional.placement=type:header:eventType
 value.converter=io.debezium.converters.ByteBufferConverter
 ----
 
-This moves the `eventType` value into a Kafka message header, leaving only the `payload` column value (the Avro data) as the sole message value.
-Using `ByteBufferConverter` as the value converter will propagate that value as-is into the Kafka message value.
+By default only the `payload` column value (the Avro data) is the sole message value.
+Using `ByteBufferConverter` as the value converter propagates that value as-is into the Kafka message value.
+
+=== Emitting messages with the event type field
+
+The `eventType` field is not emitted in the outbox routing SMT by default.
+If this field is to be included as part of the emitted message, the connector configuration must include a `table.fields.additional.placement` option to control where the field is to be added.
+
+To emit the `eventType` in the Kafka message headers, use:
+
+[source]
+----
+transforms=outbox,...
+transforms.outbox.type=io.debezium.transforms.outbox.EventRouter
+transforms.outbox.table.fields.additional.placement=type:header:eventType
+----
+
+To emit the `eventType` in the Kafka message envelope, use:
+
+[source]
+----
+transforms=outbox,...
+transforms.outbox.type=io.debezium.transforms.outbox.EventRouter
+transforms.outbox.table.fields.additional.placement=type:envelope:eventType
+----
