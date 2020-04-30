@@ -63,13 +63,9 @@ public class TypeRegistry {
             + "FROM pg_catalog.pg_type t JOIN pg_catalog.pg_namespace n ON (t.typnamespace = n.oid) "
             + "WHERE n.nspname != 'pg_toast'";
 
-    private static final String SQL_NAME_LOOKUP = "SELECT t.oid as oid, t.typname AS name, t.typelem AS element, t.typbasetype AS parentoid, t.typtypmod AS modifiers, t.typcategory as category "
-            + "FROM pg_catalog.pg_type t JOIN pg_catalog.pg_namespace n ON (t.typnamespace = n.oid) "
-            + "WHERE n.nspname != 'pg_toast' AND t.typname = ?";
+    private static final String SQL_NAME_LOOKUP = SQL_TYPES + " AND t.typname = ?";
 
-    private static final String SQL_OID_LOOKUP = "SELECT t.oid as oid, t.typname AS name, t.typelem AS element, t.typbasetype AS parentoid, t.typtypmod AS modifiers, t.typcategory as category "
-            + "FROM pg_catalog.pg_type t JOIN pg_catalog.pg_namespace n ON (t.typnamespace = n.oid) "
-            + "WHERE n.nspname != 'pg_toast' AND t.oid = ?";
+    private static final String SQL_OID_LOOKUP = SQL_TYPES + " AND t.oid = ?";
 
     private static final String SQL_ENUM_VALUES_LOOKUP = "select t.enumlabel as enum_value "
             + "FROM pg_catalog.pg_enum t "
