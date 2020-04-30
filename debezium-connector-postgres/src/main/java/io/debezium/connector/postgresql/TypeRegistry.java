@@ -56,6 +56,7 @@ public class TypeRegistry {
     // PostgreSQL driver reports user-defined Domain types as Types.DISTINCT
     public static final int DOMAIN_TYPE = Types.DISTINCT;
 
+    private static final String CATEGORY_ARRAY = "A";
     private static final String CATEGORY_ENUM = "E";
 
     private static final String SQL_NON_ARRAY_TYPES = "SELECT t.oid AS oid, t.typname AS name, t.typbasetype AS parentoid, t.typtypmod as modifiers, t.typcategory as category "
@@ -66,21 +67,13 @@ public class TypeRegistry {
             + "FROM pg_catalog.pg_type t JOIN pg_catalog.pg_namespace n ON (t.typnamespace = n.oid) "
             + "WHERE n.nspname != 'pg_toast' AND t.typcategory = 'A'";
 
-    private static final String SQL_NON_ARRAY_TYPE_NAME_LOOKUP = "SELECT t.oid as oid, t.typname AS name, t.typbasetype AS parentoid, t.typtypmod AS modifiers, t.typcategory as category "
+    private static final String SQL_NAME_LOOKUP = "SELECT t.oid as oid, t.typname AS name, t.typelem AS element, t.typbasetype AS parentoid, t.typtypmod AS modifiers, t.typcategory as category "
             + "FROM pg_catalog.pg_type t JOIN pg_catalog.pg_namespace n ON (t.typnamespace = n.oid) "
-            + "WHERE n.nspname != 'pg_toast' AND t.typcategory <> 'A' AND t.typname = ?";
+            + "WHERE n.nspname != 'pg_toast' AND t.typname = ?";
 
-    private static final String SQL_NON_ARRAY_TYPE_OID_LOOKUP = "SELECT t.oid as oid, t.typname AS name, t.typbasetype AS parentoid, t.typtypmod AS modifiers, t.typcategory as category "
+    private static final String SQL_OID_LOOKUP = "SELECT t.oid as oid, t.typname AS name, t.typelem AS element, t.typbasetype AS parentoid, t.typtypmod AS modifiers, t.typcategory as category "
             + "FROM pg_catalog.pg_type t JOIN pg_catalog.pg_namespace n ON (t.typnamespace = n.oid) "
-            + "WHERE n.nspname != 'pg_toast' AND t.typcategory <> 'A' AND t.oid = ?";
-
-    private static final String SQL_ARRAY_TYPE_NAME_LOOKUP = "SELECT t.oid as oid, t.typname AS name, t.typelem AS element, t.typbasetype AS parentoid, t.typtypmod AS modifiers, t.typcategory as category "
-            + "FROM pg_catalog.pg_type t JOIN pg_catalog.pg_namespace n ON (t.typnamespace = n.oid) "
-            + "WHERE n.nspname != 'pg_toast' AND t.typcategory = 'A' AND t.typname = ?";
-
-    private static final String SQL_ARRAY_TYPE_OID_LOOKUP = "SELECT t.oid as oid, t.typname AS name, t.typelem AS element, t.typbasetype AS parentoid, t.typtypmod AS modifiers, t.typcategory as category "
-            + "FROM pg_catalog.pg_type t JOIN pg_catalog.pg_namespace n ON (t.typnamespace = n.oid) "
-            + "WHERE n.nspname != 'pg_toast' AND t.typcategory = 'A' AND t.oid = ?";
+            + "WHERE n.nspname != 'pg_toast' AND t.oid = ?";
 
     private static final String SQL_ENUM_VALUES_LOOKUP = "select t.enumlabel as enum_value "
             + "FROM pg_catalog.pg_enum t "
@@ -418,7 +411,7 @@ public class TypeRegistry {
             final TypeInfo typeInfo = ((BaseConnection) connection).getTypeInfo();
             final SqlTypeMapper sqlTypeMapper = new SqlTypeMapper(connection, typeInfo);
 
-            try (final PreparedStatement statement = connection.prepareStatement(SQL_NON_ARRAY_TYPE_NAME_LOOKUP)) {
+            try (final PreparedStatement statement = connection.prepareStatement(SQL_NAME_LOOKUP)) {
                 statement.setString(1, name);
                 try (final ResultSet rs = statement.executeQuery()) {
                     while (rs.next()) {
@@ -439,32 +432,9 @@ public class TypeRegistry {
                         if (CATEGORY_ENUM.equals(category)) {
                             builder = builder.enumValues(resolveEnumValues(connection, oid));
                         }
-
-                        PostgresType result = builder.parentType(parentTypeOid).build();
-                        addType(result);
-
-                        return result;
-                    }
-                }
-            }
-            try (final PreparedStatement statement = connection.prepareStatement(SQL_ARRAY_TYPE_NAME_LOOKUP)) {
-                statement.setString(1, name);
-                try (final ResultSet rs = statement.executeQuery()) {
-                    while (rs.next()) {
-                        final int oid = (int) rs.getLong("oid");
-                        final int parentTypeOid = (int) rs.getLong("parentoid");
-                        final int modifiers = (int) rs.getLong("modifiers");
-                        String typeName = rs.getString("name");
-
-                        PostgresType.Builder builder = new PostgresType.Builder(
-                                this,
-                                typeName,
-                                oid,
-                                sqlTypeMapper.getSqlType(typeName),
-                                modifiers,
-                                typeInfo);
-
-                        builder = builder.elementType((int) rs.getLong("element"));
+                        else if (CATEGORY_ARRAY.equals(category)) {
+                            builder = builder.elementType((int) rs.getLong("element"));
+                        }
 
                         PostgresType result = builder.parentType(parentTypeOid).build();
                         addType(result);
@@ -488,7 +458,7 @@ public class TypeRegistry {
             final TypeInfo typeInfo = ((BaseConnection) connection).getTypeInfo();
             final SqlTypeMapper sqlTypeMapper = new SqlTypeMapper(connection, typeInfo);
 
-            try (final PreparedStatement statement = connection.prepareStatement(SQL_NON_ARRAY_TYPE_OID_LOOKUP)) {
+            try (final PreparedStatement statement = connection.prepareStatement(SQL_OID_LOOKUP)) {
                 statement.setInt(1, lookupOid);
                 try (final ResultSet rs = statement.executeQuery()) {
                     while (rs.next()) {
@@ -509,32 +479,9 @@ public class TypeRegistry {
                         if (CATEGORY_ENUM.equals(category)) {
                             builder = builder.enumValues(resolveEnumValues(connection, oid));
                         }
-
-                        PostgresType result = builder.parentType(parentTypeOid).build();
-                        addType(result);
-
-                        return result;
-                    }
-                }
-            }
-            try (final PreparedStatement statement = connection.prepareStatement(SQL_ARRAY_TYPE_OID_LOOKUP)) {
-                statement.setInt(1, lookupOid);
-                try (final ResultSet rs = statement.executeQuery()) {
-                    while (rs.next()) {
-                        final int oid = (int) rs.getLong("oid");
-                        final int parentTypeOid = (int) rs.getLong("parentoid");
-                        final int modifiers = (int) rs.getLong("modifiers");
-                        String typeName = rs.getString("name");
-
-                        PostgresType.Builder builder = new PostgresType.Builder(
-                                this,
-                                typeName,
-                                oid,
-                                sqlTypeMapper.getSqlType(typeName),
-                                modifiers,
-                                typeInfo);
-
-                        builder = builder.elementType((int) rs.getLong("element"));
+                        else if (CATEGORY_ARRAY.equals(category)) {
+                            builder = builder.elementType((int) rs.getLong("element"));
+                        }
 
                         PostgresType result = builder.parentType(parentTypeOid).build();
                         addType(result);
