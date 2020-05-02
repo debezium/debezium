@@ -12,6 +12,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -59,17 +60,18 @@ public class TypeRegistry {
     private static final String CATEGORY_ARRAY = "A";
     private static final String CATEGORY_ENUM = "E";
 
-    private static final String SQL_TYPES = "SELECT t.oid AS oid, t.typname AS name, t.typelem AS element, t.typbasetype AS parentoid, t.typtypmod as modifiers, t.typcategory as category "
-            + "FROM pg_catalog.pg_type t JOIN pg_catalog.pg_namespace n ON (t.typnamespace = n.oid) "
+    private static final String SQL_ENUM_VALUES = "SELECT t.enumtypid as id, array_agg(t.enumlabel) as values "
+            + "FROM pg_catalog.pg_enum t GROUP BY id";
+
+    private static final String SQL_TYPES = "SELECT t.oid AS oid, t.typname AS name, t.typelem AS element, t.typbasetype AS parentoid, t.typtypmod as modifiers, t.typcategory as category, e.values as enum_values "
+            + "FROM pg_catalog.pg_type t "
+            + "JOIN pg_catalog.pg_namespace n ON (t.typnamespace = n.oid) "
+            + "LEFT JOIN (" + SQL_ENUM_VALUES + ") e ON (t.oid = e.id) "
             + "WHERE n.nspname != 'pg_toast'";
 
     private static final String SQL_NAME_LOOKUP = SQL_TYPES + " AND t.typname = ?";
 
     private static final String SQL_OID_LOOKUP = SQL_TYPES + " AND t.oid = ?";
-
-    private static final String SQL_ENUM_VALUES_LOOKUP = "select t.enumlabel as enum_value "
-            + "FROM pg_catalog.pg_enum t "
-            + "WHERE t.enumtypid=? ORDER BY t.enumsortorder";
 
     private static final Map<String, String> LONG_TYPE_NAMES = Collections.unmodifiableMap(getLongTypeNames());
 
@@ -357,7 +359,8 @@ public class TypeRegistry {
                 typeInfo);
 
         if (CATEGORY_ENUM.equals(category)) {
-            builder = builder.enumValues(resolveEnumValues(connection, oid));
+            String[] enumValues = (String[]) rs.getArray("enum_values").getArray();
+            builder = builder.enumValues(Arrays.asList(enumValues));
         }
         else if (CATEGORY_ARRAY.equals(category)) {
             builder = builder.elementType((int) rs.getLong("element"));
@@ -406,19 +409,6 @@ public class TypeRegistry {
             }
         }
         return null;
-    }
-
-    private List<String> resolveEnumValues(Connection pgConnection, int enumOid) throws SQLException {
-        List<String> enumValues = new ArrayList<>();
-        try (final PreparedStatement enumStatement = pgConnection.prepareStatement(SQL_ENUM_VALUES_LOOKUP)) {
-            enumStatement.setInt(1, enumOid);
-            try (final ResultSet enumRs = enumStatement.executeQuery()) {
-                while (enumRs.next()) {
-                    enumValues.add(enumRs.getString("enum_value"));
-                }
-            }
-        }
-        return enumValues.isEmpty() ? null : enumValues;
     }
 
     /**
