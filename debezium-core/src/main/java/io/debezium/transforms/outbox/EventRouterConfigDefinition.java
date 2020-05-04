@@ -226,13 +226,6 @@ public class EventRouterConfigDefinition {
                     " in case something else is processed this transform can log it as warning, error or stop the" +
                     " process");
 
-    static final Field SCHEMA_NAME_SUFFIX = Field.create("debezium.schema.name.suffix")
-            .withDisplayName("The suffix to append to value schema")
-            .withDefault("-outbox")
-            .withWidth(ConfigDef.Width.MEDIUM)
-            .withImportance(ConfigDef.Importance.MEDIUM)
-            .withDescription("A suffix that is appended to the source message value schema for the emitted outbox message");
-
     static final Field[] CONFIG_FIELDS = {
             FIELD_EVENT_ID,
             FIELD_EVENT_KEY,
@@ -246,8 +239,7 @@ public class EventRouterConfigDefinition {
             ROUTE_TOPIC_REGEX,
             ROUTE_TOPIC_REPLACEMENT,
             ROUTE_TOMBSTONE_ON_EMPTY_PAYLOAD,
-            OPERATION_INVALID_BEHAVIOR,
-            SCHEMA_NAME_SUFFIX
+            OPERATION_INVALID_BEHAVIOR
     };
 
     /**
@@ -272,7 +264,7 @@ public class EventRouterConfigDefinition {
         Field.group(
                 config,
                 "Debezium",
-                OPERATION_INVALID_BEHAVIOR, SCHEMA_NAME_SUFFIX);
+                OPERATION_INVALID_BEHAVIOR);
         return config;
     }
 
