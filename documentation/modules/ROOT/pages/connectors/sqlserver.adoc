@@ -124,7 +124,7 @@ endif::cdc-product[]
 [[how-the-connector-works]]
 == How the SQL Server connector works
 
-[[snapshots]]
+[[snapshots-sqlserver]]
 === Snapshots
 
 SQL Server CDC is not designed to store the complete history of database changes.
@@ -161,7 +161,7 @@ After a restart, the connector will resume from the offset (commit and change LS
 
 The connector is able to detect whether the CDC is enabled or disabled for whitelisted source table during the runtime and modify its behaviour.
 
-[[topic-names]]
+[[topic-names-sqlserver]]
 === Topic names
 
 The SQL Server connector writes events for all insert, update, and delete operations on a single table to a single Kafka topic. The name of the Kafka topics always takes the form _serverName_._schemaName_._tableName_, where _serverName_ is the logical name of the connector as specified with the `database.server.name` configuration property, _schemaName_ is the name of the schema where the operation occurred, and _tableName_ is the name of the database table on which the operation occurred.
@@ -179,7 +179,7 @@ The user-facing schema change topic is not implemented yet (see {jira-url}/brows
 
 === Events
 
-All data change events produced by the SQL Server connector have a key and a value, although the structure of the key and value depend on the table from which the change events originated (see link:#topic-names[Topic names]).
+All data change events produced by the SQL Server connector have a key and a value, although the structure of the key and value depend on the table from which the change events originated (see link:#topic-names-sqlserver[Topic names]).
 
 [WARNING]
 ====
@@ -1056,11 +1056,11 @@ Typically, you configure the {prodname} SQL Server connector in a `.yaml` file u
 
 [source,yaml,options="nowrap"]
 ----
-apiVersion: 
-  kind: SqlServerConnector
+apiVersion: kafka.strimzi.io/v1beta1 
+  kind: KafkaConnector
   metadata:
     name: inventory-connector  // <1>
-    labels:
+    labels: strimzi.io/cluster: my-connect-cluster
   spec:
     class: io.debezium.connector.sqlserver.SqlServerConnector // <2>
     config:  
@@ -1094,13 +1094,13 @@ See the link:#sqlserver-connector-properties[complete list of connector properti
 This configuration can be sent via POST to a running Kafka Connect service, which will then record the configuration and start up the one connector task that will connect to the SQL Server database, read the transaction log, and record events to Kafka topics.
 
 
-[[monitoring]]
+[[monitoring-sqlserver]]
 === Monitoring
 
 Kafka, Zookeeper, and Kafka Connect all have built-in support for JMX metrics. The SQL Server connector also publishes a number of metrics about the connector's activities that can be monitored through JMX. The connector has two types of metrics. Snapshot metrics help you monitor the snapshot activity and are available when the connector is performing a snapshot. Streaming metrics help you monitor the progress and activity while the connector reads CDC table data.
 
 [[monitoring-snapshots]]
-[[snapshot-metrics]]
+[[snapshot-metrics-sqlserver]]
 ==== Snapshot Metrics
 
 ===== *MBean: debezium.sql_server:type=connector-metrics,context=snapshot,server=_<database.server.name>_*
@@ -1171,7 +1171,7 @@ Kafka, Zookeeper, and Kafka Connect all have built-in support for JMX metrics. T
 
 
 [[monitoring-streaming]]
-[[streaming-metrics]]
+[[streaming-metrics-sqlserver]]
 ==== Streaming Metrics
 
 ===== *MBean: debezium.sql_server:type=connector-metrics,context=streaming,server=_<database.server.name>_*
@@ -1471,7 +1471,7 @@ The connector will read the table contents in multiple batches of this size. Def
 
 |`snapshot.lock.timeout.ms`
 |`10000`
-|An integer value that specifies the maximum amount of time (in milliseconds) to wait to obtain table locks when performing a snapshot. If table locks cannot be acquired in this time interval, the snapshot will fail (also see link:#snapshots[snapshots]). +
+|An integer value that specifies the maximum amount of time (in milliseconds) to wait to obtain table locks when performing a snapshot. If table locks cannot be acquired in this time interval, the snapshot will fail (also see link:#snapshots-sqlserver[snapshots]). +
 When set to `0` the connector will fail immediately when it cannot obtain the lock. Value `-1` indicates infinite waiting.
 
 |`snapshot.select.statement.overrides`
