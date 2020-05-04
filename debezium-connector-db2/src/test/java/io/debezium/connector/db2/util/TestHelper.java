@@ -86,7 +86,8 @@ public class TestHelper {
 
         return builder.with(RelationalDatabaseConnectorConfig.SERVER_NAME, "testdb")
                 .with(Db2ConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
-                .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH);
+                .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
+                .with(RelationalDatabaseConnectorConfig.INCLUDE_SCHEMA_CHANGES, false);
     }
 
     public static Db2Connection adminConnection() {
@@ -181,7 +182,7 @@ public class TestHelper {
                 Assert.fail("Snapshot was not completed on time");
             }
             try {
-                final boolean completed = (boolean) mbeanServer.getAttribute(new ObjectName("debezium.sql_server:type=connector-metrics,context=snapshot,server=server1"),
+                final boolean completed = (boolean) mbeanServer.getAttribute(new ObjectName("debezium.db2_server:type=connector-metrics,context=snapshot,server=testdb"),
                         "SnapshotCompleted");
                 if (completed) {
                     break;

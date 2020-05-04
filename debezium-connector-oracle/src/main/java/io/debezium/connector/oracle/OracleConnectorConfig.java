@@ -201,6 +201,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
         V11("11"),
         V12Plus("12+");
+
         private final String version;
 
         private OracleVersion(String version) {

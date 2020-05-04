@@ -57,7 +57,8 @@ public class TestHelper {
                 .with(OracleConnectorConfig.PDB_NAME, "ORCLPDB1")
                 .with(OracleConnectorConfig.XSTREAM_SERVER_NAME, "dbzxout")
                 .with(OracleConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
-                .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH);
+                .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
+                .with(RelationalDatabaseConnectorConfig.INCLUDE_SCHEMA_CHANGES, false);
     }
 
     public static OracleConnection defaultConnection() {

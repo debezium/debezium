@@ -80,6 +80,11 @@
             <artifactId>fest-assert</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.awaitility</groupId>
+            <artifactId>awaitility</artifactId>
+            <scope>test</scope>
+        </dependency>
         <!-- Required by VerifyRecord -->
         <dependency>
             <groupId>io.confluent</groupId>
