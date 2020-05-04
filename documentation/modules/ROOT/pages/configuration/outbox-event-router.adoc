@@ -99,11 +99,6 @@ This result was achieved with the link:#configuration-options[default configurat
 |Table
 |The column which contains the event key within the outbox table; when this is set the value of this column will be used as a Kafka message key
 
-|[[configuration-property-table-field-event-type]]<<configuration-property-table-field-event-type, `table.field.event.type`>>
-|`type`
-|Table
-|The column which contains the event type within the outbox table
-
 |[[configuration-property-table-field-event-timestamp]]<<configuration-property-table-field-event-timestamp, `table.field.event.timestamp`>>
 |
 |Table
@@ -122,9 +117,7 @@ This result was achieved with the link:#configuration-options[default configurat
 |[[configuration-property-table-fields-additional-placement]]<<configuration-property-table-fields-additional-placement, `table.fields.additional.placement`>>
 |
 |Table, Envelope
-|Extra fields can be added as part of the event envelope or as message header; the format is a list of colon-delimited pairs or trios when you desire to have aliases, e.g. `id:header,field_name:envelope:alias`. Placement options are `header` and `envelope`. +
-It is possible to configure `eventType` field among additional fields.
-In such case the field could be placed either in envelope or among other headers.
+|Extra fields can be added as part of the event envelope or as message header; the format is a list of colon-delimited pairs or trios when you desire to have aliases, e.g. `id:header,field_name:envelope:alias`. Placement options are `header` and `envelope`.
 
 |[[configuration-property-table-field-event-schema-version]]<<configuration-property-table-field-event-schema-version, `table.field.event.schema.version`>>
 |
@@ -188,10 +181,6 @@ After observing all those pieces we can see what the default configuration does:
 |`aggregateid`
 |Becomes the Kafka message key, which is important for keeping ordering within Kafka partitions
 
-|`type`
-|The `type` column is not part of the message envelope or headers by default.
-In order to include this in the message, explicitly specify it using the <<configuration-property-table-fields-additional-placement, `table.fields.additional.placement`>> option. +
-
 |`payload`
 |The JSON representation of the event itself, becomes either part of the message as `payload` or if other metadata including `eventType` are delivered as headers then the payload becomes the message itself without an encapsulation in an envelope
 |=======================
@@ -226,12 +215,12 @@ value.converter=io.debezium.converters.ByteBufferConverter
 By default only the `payload` column value (the Avro data) is the sole message value.
 Using `ByteBufferConverter` as the value converter propagates that value as-is into the Kafka message value.
 
-=== Emitting messages with the event type field
+=== Emitting messages with additional fields
 
-The `eventType` field is not emitted in the outbox routing SMT by default.
-If this field is to be included as part of the emitted message, the connector configuration must include a `table.fields.additional.placement` option to control where the field is to be added.
+The outbox table may contain additional columns that need to be included in the emitted Kafka message.
+Suppose the table contains an `eventType` column that indicates the type a given event is (e.g. for events of the "purchase order" aggregate type, there might be event types like "order created", "order shipped", etc.).
 
-To emit the `eventType` in the Kafka message headers, use:
+To emit the `eventType` column in the Kafka message headers, use:
 
 [source]
 ----
@@ -240,7 +229,7 @@ transforms.outbox.type=io.debezium.transforms.outbox.EventRouter
 transforms.outbox.table.fields.additional.placement=type:header:eventType
 ----
 
-To emit the `eventType` in the Kafka message envelope, use:
+To emit the `eventType` column in the Kafka message envelope, use:
 
 [source]
 ----

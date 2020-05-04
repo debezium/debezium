@@ -45,7 +45,6 @@ public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R
 
     private static final Logger LOGGER = LoggerFactory.getLogger(EventRouter.class);
 
-    public static final String ENVELOPE_EVENT_TYPE = "eventType";
     private static final String ENVELOPE_PAYLOAD = "payload";
 
     private final ExtractField<R> afterExtractor = new ExtractField.Value<>();
