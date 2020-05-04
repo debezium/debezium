@@ -392,4 +392,9 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         // Everything checks out ok.
         return 0;
     }
+
+    @Override
+    public String getConnectorName() {
+        return Module.name();
+    }
 }

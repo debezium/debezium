@@ -34,6 +34,7 @@ public class Db2SchemaChangeEventEmitter implements SchemaChangeEventEmitter {
         final SchemaChangeEvent event = new SchemaChangeEvent(
                 offsetContext.getPartition(),
                 offsetContext.getOffset(),
+                offsetContext.getSourceInfo(),
                 changeTable.getSourceTableId().catalog(),
                 changeTable.getSourceTableId().schema(),
                 "N/A",

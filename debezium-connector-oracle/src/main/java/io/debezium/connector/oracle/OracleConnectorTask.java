@@ -76,8 +76,15 @@ public class OracleConnectorTask extends BaseSourceTask {
 
         final OracleEventMetadataProvider metadataProvider = new OracleEventMetadataProvider();
 
-        EventDispatcher<TableId> dispatcher = new EventDispatcher<>(connectorConfig, topicSelector, schema, queue,
-                connectorConfig.getTableFilters().dataCollectionFilter(), DataChangeEvent::new, metadataProvider);
+        EventDispatcher<TableId> dispatcher = new EventDispatcher<>(
+                connectorConfig,
+                topicSelector,
+                schema,
+                queue,
+                connectorConfig.getTableFilters().dataCollectionFilter(),
+                DataChangeEvent::new,
+                metadataProvider,
+                schemaNameAdjuster);
 
         ChangeEventSourceCoordinator coordinator = new ChangeEventSourceCoordinator(
                 previousOffset,

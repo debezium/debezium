@@ -60,8 +60,16 @@ public class OracleSchemaChangeEventEmitter implements SchemaChangeEventEmitter 
 
         Table table = tables.forTable(tableId);
 
-        receiver.schemaChangeEvent(new SchemaChangeEvent(offsetContext.getPartition(), offsetContext.getOffset(), ddlLcr.getSourceDatabaseName(), ddlLcr.getObjectOwner(),
-                ddlLcr.getDDLText(), table, eventType, false));
+        receiver.schemaChangeEvent(new SchemaChangeEvent(
+                offsetContext.getPartition(),
+                offsetContext.getOffset(),
+                offsetContext.getSourceInfo(),
+                ddlLcr.getSourceDatabaseName(),
+                ddlLcr.getObjectOwner(),
+                ddlLcr.getDDLText(),
+                table,
+                eventType,
+                false));
     }
 
     private SchemaChangeEventType getSchemaChangeEventType() {

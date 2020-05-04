@@ -111,7 +111,8 @@ public class Db2ConnectorTask extends BaseSourceTask {
                 queue,
                 connectorConfig.getTableFilters().dataCollectionFilter(),
                 DataChangeEvent::new,
-                metadataProvider);
+                metadataProvider,
+                schemaNameAdjuster);
 
         ChangeEventSourceCoordinator coordinator = new ChangeEventSourceCoordinator(
                 previousOffset,

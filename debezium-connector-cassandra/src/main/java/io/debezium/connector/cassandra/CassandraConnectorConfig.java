@@ -470,4 +470,9 @@ public class CassandraConnectorConfig extends CommonConnectorConfig {
     protected SourceInfoStructMaker<? extends AbstractSourceInfo> getSourceInfoStructMaker(Version version) {
         return new CassandraSourceInfoStructMaker(Module.name(), Module.version(), this);
     }
+
+    @Override
+    public String getConnectorName() {
+        return Module.name();
+    }
 }

@@ -217,8 +217,16 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
             Object res = rs.getObject(1);
             String ddl = ((Clob) res).getSubString(1, (int) ((Clob) res).length());
 
-            return new SchemaChangeEvent(snapshotContext.offset.getPartition(), snapshotContext.offset.getOffset(), snapshotContext.catalogName,
-                    table.id().schema(), ddl, table, SchemaChangeEventType.CREATE, true);
+            return new SchemaChangeEvent(
+                    snapshotContext.offset.getPartition(),
+                    snapshotContext.offset.getOffset(),
+                    snapshotContext.offset.getSourceInfo(),
+                    snapshotContext.catalogName,
+                    table.id().schema(),
+                    ddl,
+                    table,
+                    SchemaChangeEventType.CREATE,
+                    true);
         }
     }
 

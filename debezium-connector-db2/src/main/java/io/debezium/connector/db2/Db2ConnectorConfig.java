@@ -377,4 +377,9 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
 
         return Collections.unmodifiableMap(snapshotSelectOverridesByTable);
     }
+
+    @Override
+    public String getConnectorName() {
+        return Module.name();
+    }
 }
