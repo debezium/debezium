@@ -1641,11 +1641,11 @@ Typically, you configure the {prodname} PostgreSQL connector in a `.yaml` file u
 
 [source,yaml,options="nowrap"]
 ----
-apiVersion: 
-  kind: PostgresConnector
+apiVersion: kafka.strimzi.io/v1beta1
+  kind: KafkaConnector
   metadata:
     name: inventory-connector  // <1>
-    labels:  
+    labels: strimzi.io/cluster: my-connect-cluster
   spec:
     class: io.debezium.connector.postgresql.PostgresConnector
     tasksMax: 1  // <2>

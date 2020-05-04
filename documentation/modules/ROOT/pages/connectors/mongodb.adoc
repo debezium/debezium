@@ -623,11 +623,11 @@ Typically, you configure the {prodname} MongoDB connector in a `.yaml` file usin
 
 [source,yaml,options="nowrap"]
 ----
-apiVersion: 
-  kind: MongoDbConnector
+apiVersion: kafka.strimzi.io/v1beta1
+  kind: KafkaConnector
   metadata:
     name: inventory-connector  // <1>
-    labels:  
+    labels: strimzi.io/cluster: my-connect-cluster
   spec:
     class: io.debezium.connector.mongodb.MongoDbConnector // <2>
     config:  
