@@ -26,9 +26,10 @@ import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.util.Testing;
 
 /**
- * Integration test for the Debezium SQL Server connector.
+ * Integration test for the user-facing history topic of the Debezium SQL Server connector.
+ * <p>
  * The tests should verify the {@code CREATE} schema events from snapshot and the {@code CREATE} and
- * the {@code ALTER} schem events from streaming
+ * the {@code ALTER} schema events from streaming
  *
  * @author Jiri Pechanec
  */
