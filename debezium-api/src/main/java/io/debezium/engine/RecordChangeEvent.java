@@ -8,8 +8,12 @@ package io.debezium.engine;
 import io.debezium.common.annotation.Incubating;
 
 /**
- * The output format that contains both key and value - like {@link SourceRecord}.
+ * A data change event described as a single object.
+ *
+ * @param <V>
  */
 @Incubating
-public interface ContainerChangeEventFormat<T> extends ChangeEventFormat<T> {
+public interface RecordChangeEvent<V> {
+
+    public V record();
 }

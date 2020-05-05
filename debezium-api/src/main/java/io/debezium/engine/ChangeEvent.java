@@ -8,8 +8,15 @@ package io.debezium.engine;
 import io.debezium.common.annotation.Incubating;
 
 /**
- * The output format that is applicable separately to key and value.
+ * A data change event with key and value.
+ *
+ * @param <K>
+ * @param <V>
  */
 @Incubating
-public interface KeyValueChangeEventFormat<T> extends ChangeEventFormat<T> {
+public interface ChangeEvent<K, V> {
+
+    public K key();
+
+    public V value();
 }

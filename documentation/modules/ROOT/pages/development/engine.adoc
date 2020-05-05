@@ -71,8 +71,13 @@ Other connectors are used in a similar manner, except with connector-specific co
 
 Your application needs to set up an embedded engine for each connector instance you want to run.
 The `io.debezium.engine.DebeziumEngine<R>` class serves as an easy-to-use wrapper around any Debezium connector and completely manages the connector's lifecycle.
-Basically, you create the `DebeziumEngine` with a configuration (perhaps loaded from a properties file) that defines the environment for both the engine and the connector.
-You also provide parametrize the engine with the format int which you want to receive the messages (currently only `Connect` is supported) and with a function that it will call for every data change event produced by the connector.
+You create the `DebeziumEngine` instance using its builder API,
+providing the following things:
+
+* The format in which you want to receive the message, e.g. JSON, Avro or as Kafka Connect `SourceRecord`
+(see xref:output-message-formats[output message formats])
+* Configuration properties (perhaps loaded from a properties file) that define the environment for both the engine and the connector
+* A method that will be called for every data change event produced by the connector
 
 Here's an example of code that configures and runs an embedded xref:connectors/mysql.adoc[MySQL connector]:
 
@@ -97,7 +102,7 @@ Here's an example of code that configures and runs an embedded xref:connectors/m
           "/path/to/storage/dbhistory.dat");
     
     // Create the engine with this configuration ...
-    try (DebeziumEngine<SourceRecord> engine = DebeziumEngine.create(Connect.class)
+    try (DebeziumEngine<ChangeEvent<String, String>> engine = DebeziumEngine.create(Json.class)
             .using(props)
             .notifying(record -> {
                 System.out.println(record);
@@ -187,16 +192,16 @@ Now that we have a configuration, we can create our engine. Here again are the r
 [source,java,indent=0]
 ----
     // Create the engine with this configuration ...
-    try (DebeziumEngine<SourceRecord> engine = DebeziumEngine.create(Connect.class)
+    try (DebeziumEngine<ChangeEvent<String, String>> engine = DebeziumEngine.create(Json.class)
             .using(props)
             .notifying(record -> {
                 System.out.println(record);
-            }).build()) {
+            })
+            .build()) {
     }
 ----
 
-A fluent-style builder API is used to create an engine that uses our `Properties` object and that sends all data change records to the `handleEvent(SourceRecord)` method, which can be any method that matches the signature of the `java.util.function.Consumer<SourceRecord>` functional interface, where `SourceRecord` is the `org.apache.kafka.connect.source.SourceRecord` class.
-This example speaks specifically about `SourceRecord` but the engine implementation is parametrized but different types like `JSON` or `Avro` could be returned by the engine.
+All change events will be passed to the given handler method, which must match the signature of the `java.util.function.Consumer<R>` functional interface, where `<R>` must match the type of the format specified when calling `create()`.
 Note that your application's handler function should not throw any exceptions; if it does, the engine will log any exception thrown by the method and will continue to operate on the next source record, but your application will not have another chance to handle the particular source record that caused the exception, meaning your application might become inconsistent with the database.
 
 At this point, we have an existing `DebeziumEngine` object that is configured and ready to run, but it doesn't do anything.
@@ -221,7 +226,7 @@ Your application can stop the engine safely and gracefully by calling its `close
 
 or as the engine supports the `Closeable` interface it would be called automatically when the `try` block is left.
 
-The engine's connector will stop reading information from the source system, forward all remaining `SourceRecord` objects to your handler function, and flush the latest offets to offset storage.
+The engine's connector will stop reading information from the source system, forward all remaining change events to your handler function, and flush the latest offets to offset storage.
 Only after all of this completes will the engine's `run()` method return.
 If your application needs to wait for the engine to completely stop before exiting, you can do this with the `ExcecutorService` `shutdown` and `awaitTermination` methods:
 
@@ -251,15 +256,15 @@ Although the `DebeziumEngine` will indeed terminate when its thread is interrupt
 == Output Message Formats
 
 `DebeziumEngine#create()` can accept multiple different parameters that affect the format in which the messages are received by the consumer.
-Allowed values are
+Allowed values are:
 
-* `Connect.class` - the output value is Kafka Connect's `SourceRecord`
+* `Connect.class` - the output value is change event wrapping Kafka Connect's `SourceRecord`
 * `Json.class` - the output value is a pair of key and value encoded as `JSON` strings
 * `Avro.class` - the output value is a pair of key and value encoded as Avro serialized records
 * `CloudEvents.class` - the output value is a pair of key and value encoded as xref:integrations/cloudevents.adoc[Cloud Events] messages
 
 Internally, the engine uses the apropriate Kafka Connect converter implementation to which the conversion is delegated.
-The convertor can be parametrized using engine properties to modify its behaviour.
+The converter can be parametrized using engine properties to modify its behaviour.
 
 An example of `JSON` output format is
 [source,java,indent=0]
@@ -268,12 +273,12 @@ final Properties props = new Properties();
 ...
 props.setProperty("converter.schemas.enable", "false"); // don't include schema in message
 ...
-final DebeziumEngine<ChangeEvent<String>> engine = DebeziumEngine.create(Json.class)
+final DebeziumEngine<ChangeEvent<String, String>> engine = DebeziumEngine.create(Json.class)
     .using(props)
     .notifying((records, committer) -> {
 
-        for (ChangeEvent<String> r : records) {
-            System.out.println("Key = '" + key + "' value = '" + value + "'");
+        for (ChangeEvent<String, String> r : records) {
+            System.out.println("Key = '" + r.key() + "' value = '" + r.value() + "'");
             committer.markProcessed(r);
         }
 ...
@@ -318,12 +323,12 @@ This interface has single function with the following signature:
 [source,java,indent=0]
 ----
  /**
-   * Handles a batch of records, calling the {@link RecordCommitter#markProcessed(SourceRecord)}
+   * Handles a batch of records, calling the {@link RecordCommitter#markProcessed(Object)}
    * for each record and {@link RecordCommitter#markBatchFinished()} when this batch is finished.
    * @param records the records to be processed
    * @param committer the committer that indicates to the system that we are finished
    */
-  void handleBatch(List<SourceRecord> records, RecordCommitter committer) throws InterruptedException;
+  void handleBatch(List<R> records, RecordCommitter committer) throws InterruptedException;
 ----
 
 As mentioned in the Javadoc, the `RecordCommitter` object is to be called for each record and once each batch is finished.
@@ -334,13 +339,13 @@ To use the `ChangeConsumer` API, you must pass an implementation of the interfac
 [source,java,indent=0]
 ----
 
-class MyChangeConsumer implements EmbeddedEngine.ChangeConsumer {
+class MyChangeConsumer implements EmbeddedEngine.ChangeConsumer<RecordChangeEvent<SourceRecord>> {
   public void handleBatch(List<SourceRecord> records, RecordCommitter committer) throws InterruptedException {
     ...
   }
 }
 // Create the engine with this configuration ...
-DebeziumEngine<SourceRecord> engine = DebeziumEngine.create(Connect.class)
+DebeziumEngine<RecordChangeEvent<SourceRecord>> engine = DebeziumEngine.create(Connect.class)
         .using(props)
         .notifying(new MyChangeConsumer())
         .build();
