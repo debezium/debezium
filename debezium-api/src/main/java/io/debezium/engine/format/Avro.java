@@ -5,11 +5,11 @@
  */
 package io.debezium.engine.format;
 
-import io.debezium.engine.ChangeEventFormat;
-import io.debezium.engine.KeyValueChangeEventFormat;
+import io.debezium.common.annotation.Incubating;
 
 /**
- * A {@link ChangeEventFormat} defining the Avro format serialized as byte[].
+ * A {@link SerializationFormat} defining the Avro format serialized as byte[].
  */
-public class Avro implements KeyValueChangeEventFormat<byte[]> {
+@Incubating
+public class Avro implements SerializationFormat<byte[]> {
 }

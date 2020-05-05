@@ -7,7 +7,6 @@ package io.debezium.embedded;
 
 import java.io.IOException;
 import java.time.Clock;
-import java.util.List;
 import java.util.Properties;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -18,24 +17,24 @@ import org.apache.kafka.connect.storage.Converter;
 
 import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
-import io.debezium.engine.ChangeEventFormat;
-import io.debezium.engine.ContainerChangeEventFormat;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.engine.DebeziumEngine.Builder;
 import io.debezium.engine.DebeziumEngine.ChangeConsumer;
 import io.debezium.engine.DebeziumEngine.CompletionCallback;
 import io.debezium.engine.DebeziumEngine.ConnectorCallback;
 import io.debezium.engine.DebeziumEngine.RecordCommitter;
-import io.debezium.engine.KeyValueChangeEventFormat;
 import io.debezium.engine.format.Avro;
+import io.debezium.engine.format.ChangeEventFormat;
 import io.debezium.engine.format.CloudEvents;
 import io.debezium.engine.format.Json;
+import io.debezium.engine.format.KeyValueChangeEventFormat;
+import io.debezium.engine.format.SerializationFormat;
 import io.debezium.engine.spi.OffsetCommitPolicy;
 
 /**
  * A builder that creates a decorator around {@link EmbbeddedEngine} that is responsible for the conversion
  * to the final format.
- * 
+ *
  * @author Jiri Pechanec
  */
 public class ConvertingEngineBuilder<R> implements Builder<R> {
@@ -47,62 +46,43 @@ public class ConvertingEngineBuilder<R> implements Builder<R> {
     private static final String TOPIC_NAME = "debezium";
 
     private final Builder<SourceRecord> delegate;
-    private Class<? extends ContainerChangeEventFormat<?>> containerFormat;
-    private Class<? extends KeyValueChangeEventFormat<?>> formatKey;
-    private Class<? extends KeyValueChangeEventFormat<?>> formatValue;
+    private Class<? extends SerializationFormat<?>> formatKey;
+    private Class<? extends SerializationFormat<?>> formatValue;
     private Configuration config;
 
-    @SuppressWarnings("unchecked")
-    private Function<SourceRecord, R> toFormat = (record) -> (R) record;
-
-    private Function<R, SourceRecord> fromFormat = (record) -> (SourceRecord) record;
+    private Function<SourceRecord, R> toFormat;
+    private Function<R, SourceRecord> fromFormat;
 
     public ConvertingEngineBuilder() {
         this.delegate = EmbeddedEngine.create();
     }
 
-    @SuppressWarnings("unchecked")
     @Override
     public Builder<R> notifying(Consumer<R> consumer) {
-        if (isContainerFormat(Connect.class)) {
-            delegate.notifying((record) -> consumer.accept((R) record));
-        }
-        else {
-            delegate.notifying((record) -> consumer.accept(toFormat.apply(record)));
-        }
+        delegate.notifying((record) -> consumer.accept(toFormat.apply(record)));
         return this;
     }
 
-    private boolean isContainerFormat(Class<? extends ContainerChangeEventFormat<?>> format) {
-        return isFormat(this.containerFormat, format);
-    }
-
-    private boolean isFormat(Class<? extends ChangeEventFormat<?>> format1, Class<? extends ChangeEventFormat<?>> format2) {
+    private boolean isFormat(Class<? extends SerializationFormat<?>> format1, Class<? extends SerializationFormat<?>> format2) {
         return format1 == (Class<?>) format2;
     }
 
-    @SuppressWarnings("unchecked")
     @Override
     public Builder<R> notifying(ChangeConsumer<R> handler) {
-        if (isContainerFormat(Connect.class)) {
-            delegate.notifying((records, committer) -> handler.handleBatch((List<R>) records, (RecordCommitter<R>) committer));
-        }
-        else {
-            delegate.notifying(
-                    (records, committer) -> handler.handleBatch(records.stream().map(x -> toFormat.apply(x)).collect(Collectors.toList()),
-                            new RecordCommitter<R>() {
+        delegate.notifying(
+                (records, committer) -> handler.handleBatch(records.stream().map(x -> toFormat.apply(x)).collect(Collectors.toList()),
+                        new RecordCommitter<R>() {
 
-                                @Override
-                                public void markProcessed(R record) throws InterruptedException {
-                                    committer.markProcessed(fromFormat.apply(record));
-                                }
+                            @Override
+                            public void markProcessed(R record) throws InterruptedException {
+                                committer.markProcessed(fromFormat.apply(record));
+                            }
 
-                                @Override
-                                public void markBatchFinished() {
-                                    committer.markBatchFinished();
-                                }
-                            }));
-        }
+                            @Override
+                            public void markBatchFinished() {
+                                committer.markBatchFinished();
+                            }
+                        }));
         return this;
     }
 
@@ -144,16 +124,15 @@ public class ConvertingEngineBuilder<R> implements Builder<R> {
     }
 
     @Override
-    public Builder<R> asType(Class<? extends ContainerChangeEventFormat<R>> format) {
-        this.containerFormat = format;
+    public Builder<R> asType(ChangeEventFormat<SerializationFormat<?>> format) {
+        this.formatValue = format.getValueFormat();
         return this;
     }
 
     @Override
-    public <K, V> Builder<R> asType(Class<? extends KeyValueChangeEventFormat<K>> formatKey,
-                                    Class<? extends KeyValueChangeEventFormat<V>> formatValue) {
-        this.formatKey = formatKey;
-        this.formatValue = formatValue;
+    public Builder<R> asType(KeyValueChangeEventFormat<SerializationFormat<?>, SerializationFormat<?>> format) {
+        this.formatValue = format.getValueFormat();
+        this.formatKey = format.getKeyFormat();
         return this;
     }
 
@@ -164,7 +143,15 @@ public class ConvertingEngineBuilder<R> implements Builder<R> {
         Converter keyConverter;
         Converter valueConverter;
 
-        if (!isContainerFormat(Connect.class)) {
+        if (formatValue == Connect.class) {
+            toFormat = (record) -> {
+                return (R) new EmbeddedEngineChangeEvent<Void, SourceRecord>(
+                        null,
+                        record,
+                        record);
+            };
+        }
+        else {
             keyConverter = createConverter(formatKey, true);
             valueConverter = createConverter(formatValue, false);
             toFormat = (record) -> {
@@ -175,8 +162,9 @@ public class ConvertingEngineBuilder<R> implements Builder<R> {
                         value != null ? new String(value) : null,
                         record);
             };
-            fromFormat = (record) -> (SourceRecord) ((EmbeddedEngineChangeEvent<?, ?>) record).sourceRecord();
         }
+
+        fromFormat = (record) -> ((EmbeddedEngineChangeEvent<?, ?>) record).sourceRecord();
 
         return new DebeziumEngine<R>() {
 
@@ -192,7 +180,7 @@ public class ConvertingEngineBuilder<R> implements Builder<R> {
         };
     }
 
-    private Converter createConverter(Class<? extends KeyValueChangeEventFormat<?>> format, boolean key) {
+    private Converter createConverter(Class<? extends SerializationFormat<?>> format, boolean key) {
         // The converters can be configured both using converter.* prefix for cases when both converters
         // are the same or using key.converter.* and value.converter.* converter when converters
         // are different for key and value
