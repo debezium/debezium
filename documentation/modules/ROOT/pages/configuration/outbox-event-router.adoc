@@ -215,6 +215,7 @@ value.converter=io.debezium.converters.ByteBufferConverter
 By default only the `payload` column value (the Avro data) is the sole message value.
 Using `ByteBufferConverter` as the value converter propagates that value as-is into the Kafka message value.
 
+[[emitting-messages-with-additional-fields]]
 === Emitting messages with additional fields
 
 The outbox table may contain additional columns that need to be included in the emitted Kafka message.
