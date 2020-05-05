@@ -5,11 +5,10 @@
  */
 package io.debezium.engine.format;
 
-import io.debezium.engine.ChangeEventFormat;
-import io.debezium.engine.KeyValueChangeEventFormat;
+import io.debezium.engine.SerializationFormat;
 
 /**
- * A {@link ChangeEventFormat} defining the JSON format serialized as String.
+ * A {@link SerializationFormat} defining the JSON format serialized as String.
  */
-public class CloudEvents implements KeyValueChangeEventFormat<String> {
+public class CloudEvents implements SerializationFormat<String> {
 }

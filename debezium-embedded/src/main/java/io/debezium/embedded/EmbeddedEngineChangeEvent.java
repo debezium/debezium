@@ -7,9 +7,9 @@ package io.debezium.embedded;
 
 import org.apache.kafka.connect.source.SourceRecord;
 
-import io.debezium.engine.format.ChangeEvent;
+import io.debezium.engine.KeyValueChangeEvent;
 
-class EmbeddedEngineChangeEvent<K, V> implements ChangeEvent<K, V> {
+class EmbeddedEngineChangeEvent<K, V> implements KeyValueChangeEvent<K, V> {
 
     private final K key;
     private final V value;

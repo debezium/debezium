@@ -20,7 +20,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
 import io.debezium.common.annotation.Incubating;
-import io.debezium.engine.format.ChangeEvent;
+import io.debezium.engine.format.ChangeEventFormat;
 import io.debezium.engine.spi.OffsetCommitPolicy;
 
 /**
@@ -216,15 +216,7 @@ public interface DebeziumEngine<R> extends Runnable, Closeable {
          * @param format
          * @return this builder object so methods can be chained together; never null
          */
-        Builder<R> asType(Class<? extends ContainerChangeEventFormat<R>> format);
-
-        /**
-         * Prescribe the output format used by the {@link DebeziumEngine}.
-         * Usually called by {@link DebeziumEngine#create}.
-         * @param format
-         * @return this builder object so methods can be chained together; never null
-         */
-        <K, V> Builder<R> asType(Class<? extends KeyValueChangeEventFormat<K>> formatKey, Class<? extends KeyValueChangeEventFormat<V>> formatValue);
+        Builder<R> asType(ChangeEventFormat<SerializationFormat<?>> format);
 
         /**
          * Build a new connector with the information previously supplied to this builder.
@@ -243,8 +235,9 @@ public interface DebeziumEngine<R> extends Runnable, Closeable {
      * @return the new builder; never null
      */
     @SuppressWarnings({ "rawtypes", "unchecked" })
-    public static <K, V> Builder<ChangeEvent<K, V>> create(Class<? extends KeyValueChangeEventFormat<K>> keyFormat,
-                                                           Class<? extends KeyValueChangeEventFormat<V>> valueFormat) {
+    public static <K, V> Builder<KeyValueChangeEvent<K, V>> create(Class<? extends SerializationFormat<K>> keyFormat,
+                                                                   Class<? extends SerializationFormat<V>> valueFormat) {
+
         final ServiceLoader<Builder> loader = ServiceLoader.load(Builder.class);
         final Iterator<Builder> iterator = loader.iterator();
         if (!iterator.hasNext()) {
@@ -254,7 +247,7 @@ public interface DebeziumEngine<R> extends Runnable, Closeable {
         if (iterator.hasNext()) {
             LoggerFactory.getLogger(Builder.class).warn("More than one Debezium engine builder implementation was found, using {}", builder.getClass());
         }
-        return builder.asType(keyFormat, valueFormat);
+        return builder.asType(ChangeEventFormat.keyValueFormatOf(keyFormat, valueFormat));
     }
 
     /**
@@ -263,7 +256,7 @@ public interface DebeziumEngine<R> extends Runnable, Closeable {
      *
      * @return the new builder; never null
      */
-    public static <T> Builder<ChangeEvent<T, T>> create(Class<? extends KeyValueChangeEventFormat<T>> format) {
+    public static <T> Builder<KeyValueChangeEvent<T, T>> create(Class<? extends SerializationFormat<T>> format) {
         return create(format, format);
     }
 
@@ -274,7 +267,7 @@ public interface DebeziumEngine<R> extends Runnable, Closeable {
      * @return the new builder; never null
      */
     @SuppressWarnings({ "rawtypes", "unchecked" })
-    public static <T> Builder<T> container(Class<? extends ContainerChangeEventFormat<T>> format) {
+    public static <T, V extends SerializationFormat<T>> Builder<ChangeEvent<T>> create(ChangeEventFormat<V> format) {
         final ServiceLoader<Builder> loader = ServiceLoader.load(Builder.class);
         final Iterator<Builder> iterator = loader.iterator();
         if (!iterator.hasNext()) {

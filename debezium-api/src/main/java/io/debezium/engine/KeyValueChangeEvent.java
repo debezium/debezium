@@ -3,11 +3,9 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.engine.format;
+package io.debezium.engine;
 
-public interface ChangeEvent<K, V> {
+public interface KeyValueChangeEvent<K, V> extends ChangeEvent<V> {
 
     public K key();
-
-    public V value();
 }

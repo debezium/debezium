@@ -32,8 +32,10 @@ import org.junit.Test;
 import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
 import io.debezium.doc.FixFor;
+import io.debezium.engine.ChangeEvent;
 import io.debezium.engine.DebeziumEngine;
-import io.debezium.engine.format.ChangeEvent;
+import io.debezium.engine.KeyValueChangeEvent;
+import io.debezium.engine.format.ChangeEventFormat;
 import io.debezium.engine.format.Json;
 import io.debezium.util.Collect;
 import io.debezium.util.LoggingContext;
@@ -196,13 +198,13 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
         CountDownLatch allLatch = new CountDownLatch(6);
 
         // create an engine with our custom class
-        final DebeziumEngine<SourceRecord> engine = DebeziumEngine.container(Connect.class)
+        final DebeziumEngine<ChangeEvent<SourceRecord>> engine = DebeziumEngine.create(ChangeEventFormat.formatOf(Connect.class))
                 .using(props)
                 .notifying((records, committer) -> {
                     assertThat(records.size()).isGreaterThanOrEqualTo(NUMBER_OF_LINES);
                     Integer groupCount = records.size() / NUMBER_OF_LINES;
 
-                    for (SourceRecord r : records) {
+                    for (ChangeEvent<SourceRecord> r : records) {
                         committer.markProcessed(r);
                     }
 
@@ -258,15 +260,15 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
         CountDownLatch allLatch = new CountDownLatch(5);
 
         // create an engine with our custom class
-        final DebeziumEngine<SourceRecord> engine = DebeziumEngine.container(Connect.class)
+        final DebeziumEngine<ChangeEvent<SourceRecord>> engine = DebeziumEngine.create(ChangeEventFormat.formatOf(Connect.class))
                 .using(props)
                 .notifying((records, committer) -> {
                     assertThat(records.size()).isGreaterThanOrEqualTo(NUMBER_OF_LINES - 1);
-                    records.forEach(r -> assertThat(r.topic()).isEqualTo("trftopicX"));
+                    records.forEach(r -> assertThat(r.value().topic()).isEqualTo("trftopicX"));
                     Integer groupCount = records.size() / NUMBER_OF_LINES;
 
-                    for (SourceRecord r : records) {
-                        assertThat((String) r.value()).isNotEqualTo("Generated line number 1");
+                    for (ChangeEvent<SourceRecord> r : records) {
+                        assertThat((String) r.value().value()).isNotEqualTo("Generated line number 1");
                         committer.markProcessed(r);
                     }
 
@@ -318,7 +320,7 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
         props.setProperty("transforms.router.replacement", "trf$1");
 
         // create an engine with our custom class
-        DebeziumEngine.container(Connect.class)
+        DebeziumEngine.create(ChangeEventFormat.formatOf(Connect.class))
                 .using(props)
                 .notifying((records, committer) -> {
                 })
@@ -345,13 +347,13 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
         CountDownLatch allLatch = new CountDownLatch(6);
 
         // create an engine with our custom class
-        final DebeziumEngine<ChangeEvent<String, String>> engine = DebeziumEngine.create(Json.class)
+        final DebeziumEngine<KeyValueChangeEvent<String, String>> engine = DebeziumEngine.create(Json.class)
                 .using(props)
                 .notifying((records, committer) -> {
                     assertThat(records.size()).isGreaterThanOrEqualTo(NUMBER_OF_LINES);
                     Integer groupCount = records.size() / NUMBER_OF_LINES;
 
-                    for (ChangeEvent<String, String> r : records) {
+                    for (KeyValueChangeEvent<String, String> r : records) {
                         Assertions.assertThat(r.key()).isNull();
                         Assertions.assertThat(r.value()).startsWith("\"Generated line number ");
                         committer.markProcessed(r);

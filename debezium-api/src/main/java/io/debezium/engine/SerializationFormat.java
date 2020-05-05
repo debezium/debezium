@@ -8,8 +8,8 @@ package io.debezium.engine;
 import io.debezium.common.annotation.Incubating;
 
 /**
- * The output format that is applicable separately to key and value.
+ * The logical description of the output format used by the given instance of {@link DebeziumEngine}.
  */
 @Incubating
-public interface KeyValueChangeEventFormat<T> extends ChangeEventFormat<T> {
+public interface SerializationFormat<T> {
 }
