@@ -19,4 +19,6 @@ public interface ChangeEvent<K, V> {
     public K key();
 
     public V value();
+
+    public String destination();
 }

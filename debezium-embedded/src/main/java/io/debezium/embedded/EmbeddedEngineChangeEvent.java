@@ -37,6 +37,11 @@ class EmbeddedEngineChangeEvent<K, V> implements ChangeEvent<K, V>, RecordChange
         return value;
     }
 
+    @Override
+    public String destination() {
+        return sourceRecord.topic();
+    }
+
     public SourceRecord sourceRecord() {
         return sourceRecord;
     }
