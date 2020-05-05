@@ -8,8 +8,9 @@ package io.debezium.embedded;
 import org.apache.kafka.connect.source.SourceRecord;
 
 import io.debezium.engine.KeyValueChangeEvent;
+import io.debezium.engine.RecordChangeEvent;
 
-class EmbeddedEngineChangeEvent<K, V> implements KeyValueChangeEvent<K, V> {
+class EmbeddedEngineChangeEvent<K, V> implements RecordChangeEvent<SourceRecord>, KeyValueChangeEvent<K, V> {
 
     private final K key;
     private final V value;
@@ -31,12 +32,12 @@ class EmbeddedEngineChangeEvent<K, V> implements KeyValueChangeEvent<K, V> {
         return value;
     }
 
-    public SourceRecord sourceRecord() {
+    public SourceRecord record() {
         return sourceRecord;
     }
 
     @Override
     public String toString() {
-        return "EmbeddedEngineChangeEvent [key=" + key + ", value=" + value + ", sourceRecord=" + sourceRecord + "]";
+        return "EmbeddedEngineChangeEvent [key=" + key + ", value=" + value + ", record=" + sourceRecord + "]";
     }
 }

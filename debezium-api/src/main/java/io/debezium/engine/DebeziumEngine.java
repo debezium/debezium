@@ -267,7 +267,7 @@ public interface DebeziumEngine<R> extends Runnable, Closeable {
      * @return the new builder; never null
      */
     @SuppressWarnings({ "rawtypes", "unchecked" })
-    public static <T, V extends SerializationFormat<T>> Builder<ChangeEvent<T>> create(ChangeEventFormat<V> format) {
+    public static <T, V extends SerializationFormat<T>> Builder<RecordChangeEvent<T>> create(ChangeEventFormat<V> format) {
         final ServiceLoader<Builder> loader = ServiceLoader.load(Builder.class);
         final Iterator<Builder> iterator = loader.iterator();
         if (!iterator.hasNext()) {

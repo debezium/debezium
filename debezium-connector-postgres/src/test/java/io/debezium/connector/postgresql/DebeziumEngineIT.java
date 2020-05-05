@@ -26,9 +26,9 @@ import org.junit.Test;
 import io.debezium.doc.FixFor;
 import io.debezium.document.Document;
 import io.debezium.document.DocumentReader;
-import io.debezium.engine.ChangeEvent;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.engine.DebeziumEngine.CompletionCallback;
+import io.debezium.engine.KeyValueChangeEvent;
 import io.debezium.engine.format.Avro;
 import io.debezium.engine.format.CloudEvents;
 import io.debezium.engine.format.Json;
@@ -70,10 +70,10 @@ public class DebeziumEngineIT {
         CountDownLatch allLatch = new CountDownLatch(1);
 
         final ExecutorService executor = Executors.newFixedThreadPool(1);
-        try (final DebeziumEngine<ChangeEvent<String, String>> engine = DebeziumEngine.create(Json.class).using(props)
+        try (final DebeziumEngine<KeyValueChangeEvent<String, String>> engine = DebeziumEngine.create(Json.class).using(props)
                 .notifying((records, committer) -> {
 
-                    for (ChangeEvent<String, String> r : records) {
+                    for (KeyValueChangeEvent<String, String> r : records) {
                         Assertions.assertThat(r.key()).isNotNull();
                         Assertions.assertThat(r.value()).isNotNull();
                         try {
@@ -117,7 +117,7 @@ public class DebeziumEngineIT {
         CountDownLatch allLatch = new CountDownLatch(1);
 
         final ExecutorService executor = Executors.newFixedThreadPool(1);
-        try (final DebeziumEngine<ChangeEvent<byte[], byte[]>> engine = DebeziumEngine.create(Avro.class).using(props)
+        try (final DebeziumEngine<KeyValueChangeEvent<byte[], byte[]>> engine = DebeziumEngine.create(Avro.class).using(props)
                 .notifying((records, committer) -> {
                     Assert.fail("Should not be invoked due to serialization error");
                 })
@@ -156,10 +156,10 @@ public class DebeziumEngineIT {
         CountDownLatch allLatch = new CountDownLatch(1);
 
         final ExecutorService executor = Executors.newFixedThreadPool(1);
-        try (final DebeziumEngine<ChangeEvent<String, String>> engine = DebeziumEngine.create(Json.class, CloudEvents.class).using(props)
+        try (final DebeziumEngine<KeyValueChangeEvent<String, String>> engine = DebeziumEngine.create(Json.class, CloudEvents.class).using(props)
                 .notifying((records, committer) -> {
 
-                    for (ChangeEvent<String, String> r : records) {
+                    for (KeyValueChangeEvent<String, String> r : records) {
                         try {
                             final Document key = DocumentReader.defaultReader().read(r.key());
                             Assertions.assertThat(key.getInteger("id")).isEqualTo(1);

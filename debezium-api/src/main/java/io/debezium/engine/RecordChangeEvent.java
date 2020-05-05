@@ -5,7 +5,7 @@
  */
 package io.debezium.engine;
 
-public interface ChangeEvent<V> {
+public interface RecordChangeEvent<V> {
 
-    public V value();
+    public V record();
 }

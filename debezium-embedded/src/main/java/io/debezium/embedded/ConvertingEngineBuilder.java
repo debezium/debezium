@@ -162,7 +162,7 @@ public class ConvertingEngineBuilder<R> implements Builder<R> {
             };
         }
 
-        fromFormat = (record) -> ((EmbeddedEngineChangeEvent<?, ?>) record).sourceRecord();
+        fromFormat = (record) -> ((EmbeddedEngineChangeEvent<?, ?>) record).record();
 
         return new DebeziumEngine<R>() {
 

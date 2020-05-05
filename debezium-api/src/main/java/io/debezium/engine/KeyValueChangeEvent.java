@@ -5,7 +5,9 @@
  */
 package io.debezium.engine;
 
-public interface KeyValueChangeEvent<K, V> extends ChangeEvent<V> {
+public interface KeyValueChangeEvent<K, V> {
 
     public K key();
+
+    public V value();
 }
