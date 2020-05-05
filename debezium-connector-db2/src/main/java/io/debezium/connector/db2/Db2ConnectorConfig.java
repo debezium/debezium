@@ -54,7 +54,7 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
         /**
          * Perform a snapshot of the schema but no data upon initial startup of a connector.
          */
-        INITIAL_SCHEMA_ONLY("initial_schema_only", false);
+        SCHEMA_ONLY("schema_only", false);
 
         private final String value;
         private final boolean includeData;
@@ -217,7 +217,7 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
             .withDescription("The criteria for running a snapshot upon startup of the connector. "
                     + "Options include: "
                     + "'initial' (the default) to specify the connector should run a snapshot only when no offsets are available for the logical server name; "
-                    + "'initial_schema_only' to specify the connector should run a snapshot of the schema when no offsets are available for the logical server name. ");
+                    + "'schema_only' to specify the connector should run a snapshot of the schema when no offsets are available for the logical server name. ");
 
     public static final Field SNAPSHOT_ISOLATION_MODE = Field.create("snapshot.isolation.mode")
             .withDisplayName("Snapshot isolation mode")
