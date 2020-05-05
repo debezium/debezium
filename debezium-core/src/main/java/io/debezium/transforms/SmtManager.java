@@ -31,7 +31,7 @@ public class SmtManager<R extends ConnectRecord<R>> {
         if (record.valueSchema() == null ||
                 record.valueSchema().name() == null ||
                 !Envelope.isEnvelopeSchema(record.valueSchema())) {
-            LOGGER.warn("Expected Envelope for transformation, passing it unchanged");
+            LOGGER.debug("Expected Envelope for transformation, passing it unchanged");
             return false;
         }
         return true;
@@ -41,7 +41,7 @@ public class SmtManager<R extends ConnectRecord<R>> {
         if (record.keySchema() == null ||
                 record.keySchema().name() == null ||
                 !record.keySchema().name().endsWith(RECORD_ENVELOPE_KEY_SCHEMA_NAME_SUFFIX)) {
-            LOGGER.warn("Expected Key Schema for transformation, passing it unchanged. Message key: \"{}\"", record.key());
+            LOGGER.debug("Expected Key Schema for transformation, passing it unchanged. Message key: \"{}\"", record.key());
             return false;
         }
         return true;
