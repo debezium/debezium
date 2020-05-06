@@ -292,6 +292,11 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
                         return true;
                     }
                 }
+                PostgresType pgType = message.getType();
+                if (pgType.isEnumType() && !pgType.getEnumValues().contains(message.asString())) {
+                    logger.info("detected new enum value '{}' for column '{}'", message.asString(), columnName);
+                    return true;
+                }
                 if (metadataInMessage) {
                     final int localLength = column.length();
                     final int incomingLength = message.getTypeMetadata().getLength();
