@@ -64,7 +64,7 @@
         <version.org.slf4j>1.7.28</version.org.slf4j>
         <version.log4j>1.2.17</version.log4j>
         <!-- check new release version at https://github.com/confluentinc/schema-registry/releases -->
-        <version.confluent.platform>5.4.1</version.confluent.platform>
+        <version.confluent.platform>5.5.0</version.confluent.platform>
 
         <!-- Databases -->
         <version.postgresql.driver>42.2.12</version.postgresql.driver>
