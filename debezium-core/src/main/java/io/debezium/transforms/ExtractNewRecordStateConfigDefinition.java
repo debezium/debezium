@@ -12,7 +12,7 @@ import io.debezium.config.Field;
 
 public class ExtractNewRecordStateConfigDefinition {
 
-    public static final String DEBEZIUM_OPERATION_HEADER_KEY = "__debezium-operation";
+    public static final String DEBEZIUM_OPERATION_HEADER_KEY = "__op";
     public static final String DELETED_FIELD = "__deleted";
     public static final String METADATA_FIELD_PREFIX = "__";
 
@@ -87,32 +87,12 @@ public class ExtractNewRecordStateConfigDefinition {
                     + "drop - records are removed (the default),"
                     + "rewrite - __deleted field is added to records.");
 
-    public static final Field OPERATION_HEADER = Field.create("operation.header")
-            .withDisplayName("Adds a message header representing the applied operation")
-            .withType(ConfigDef.Type.BOOLEAN)
-            .withWidth(ConfigDef.Width.SHORT)
-            .withImportance(ConfigDef.Importance.LOW)
-            .withDefault(false)
-            .withDescription("DEPRECATED. Please use the 'add.fields' option instead. "
-                    + "Adds the operation type of the change event as a header."
-                    + "Its key is '" + ExtractNewRecordStateConfigDefinition.DEBEZIUM_OPERATION_HEADER_KEY + "'");
-
     public static final Field ROUTE_BY_FIELD = Field.create("route.by.field")
             .withDisplayName("The column which determines how the events will be routed, the value will replace the topic name.")
             .withType(ConfigDef.Type.STRING)
             .withWidth(ConfigDef.Width.LONG)
             .withImportance(ConfigDef.Importance.LOW)
             .withDefault("");
-
-    public static final Field ADD_SOURCE_FIELDS = Field.create("add.source.fields")
-            .withDisplayName("Adds the specified fields from the 'source' field from the payload if they exist.")
-            .withType(ConfigDef.Type.LIST)
-            .withWidth(ConfigDef.Width.LONG)
-            .withImportance(ConfigDef.Importance.LOW)
-            .withDefault("")
-            .withDescription("DEPRECATED. Please use the 'add.fields' option instead. "
-                    + "Adds each field listed from the 'source' element of the payload, prefixed with__ "
-                    + "Example: 'version,connector' would add __version and __connector fields");
 
     public static final Field ADD_FIELDS = Field.create("add.fields")
             .withDisplayName("Adds the specified field(s) to the message if they exist.")

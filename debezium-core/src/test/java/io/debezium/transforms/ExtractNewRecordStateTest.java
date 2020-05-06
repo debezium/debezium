@@ -12,7 +12,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
-import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
@@ -31,8 +30,6 @@ public class ExtractNewRecordStateTest {
 
     private static final String DROP_TOMBSTONES = "drop.tombstones";
     private static final String HANDLE_DELETES = "delete.handling.mode";
-    private static final String OPERATION_HEADER = "operation.header";
-    private static final String ADD_SOURCE_FIELDS = "add.source.fields";
     private static final String ROUTE_BY_FIELD = "route.by.field";
     private static final String ADD_FIELDS = "add.fields";
     private static final String ADD_HEADERS = "add.headers";
@@ -248,7 +245,7 @@ public class ExtractNewRecordStateTest {
         try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(HANDLE_DELETES, "rewrite");
-            props.put(OPERATION_HEADER, "true");
+            props.put(ADD_HEADERS, "op");
             transform.configure(props);
 
             final SourceRecord createRecord = createCreateRecord();
@@ -303,19 +300,6 @@ public class ExtractNewRecordStateTest {
             Iterator<Header> headers = unwrapped.headers().allWithName("application/debezium-test-header");
             assertThat(headers.hasNext()).isTrue();
             assertThat(headers.next().value().toString()).isEqualTo("shouldPropagatePreviousRecordHeaders");
-        }
-    }
-
-    @Test
-    public void testAddSourceField() {
-        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
-            final Map<String, String> props = new HashMap<>();
-            props.put(ADD_SOURCE_FIELDS, "lsn");
-            transform.configure(props);
-
-            final SourceRecord createRecord = createComplexCreateRecord();
-            final SourceRecord unwrapped = transform.apply(createRecord);
-            assertThat(((Struct) unwrapped.value()).get("__lsn")).isEqualTo(1234);
         }
     }
 
@@ -524,64 +508,17 @@ public class ExtractNewRecordStateTest {
         }
     }
 
-    @Test
-    public void testAddSourceFields() {
+    @Test(expected = IllegalArgumentException.class)
+    public void testAddFieldNonExistantField() {
         try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
-            props.put(ADD_SOURCE_FIELDS, "lsn , version");
-            transform.configure(props);
-
-            final SourceRecord createRecord = createComplexCreateRecord();
-            final SourceRecord unwrapped = transform.apply(createRecord);
-            assertThat(((Struct) unwrapped.value()).get("__lsn")).isEqualTo(1234);
-            assertThat(((Struct) unwrapped.value()).getString("__version")).isEqualTo("version!");
-        }
-    }
-
-    @Test(expected = ConfigException.class)
-    public void testAddSourceNonExistantField() {
-        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
-            final Map<String, String> props = new HashMap<>();
-            props.put(ADD_SOURCE_FIELDS, "nope");
+            props.put(ADD_FIELDS, "nope");
             transform.configure(props);
 
             final SourceRecord createRecord = createComplexCreateRecord();
             final SourceRecord unwrapped = transform.apply(createRecord);
 
             assertThat(((Struct) unwrapped.value()).schema().field("__nope")).isNull();
-        }
-    }
-
-    @Test
-    @FixFor("DBZ-1448")
-    public void testAddSourceFieldHandleDeleteRewrite() {
-        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
-            final Map<String, String> props = new HashMap<>();
-            props.put(HANDLE_DELETES, "rewrite");
-            props.put(ADD_SOURCE_FIELDS, "lsn");
-            transform.configure(props);
-
-            final SourceRecord deleteRecord = createDeleteRecord();
-            final SourceRecord unwrapped = transform.apply(deleteRecord);
-            assertThat(((Struct) unwrapped.value()).getString("__deleted")).isEqualTo("true");
-            assertThat(((Struct) unwrapped.value()).get("__lsn")).isEqualTo(1234);
-        }
-    }
-
-    @Test
-    @FixFor("DBZ-1448")
-    public void testAddSourceFieldsHandleDeleteRewrite() {
-        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
-            final Map<String, String> props = new HashMap<>();
-            props.put(HANDLE_DELETES, "rewrite");
-            props.put(ADD_SOURCE_FIELDS, "lsn,version");
-            transform.configure(props);
-
-            final SourceRecord deleteRecord = createDeleteRecord();
-            final SourceRecord unwrapped = transform.apply(deleteRecord);
-            assertThat(((Struct) unwrapped.value()).getString("__deleted")).isEqualTo("true");
-            assertThat(((Struct) unwrapped.value()).get("__lsn")).isEqualTo(1234);
-            assertThat(((Struct) unwrapped.value()).getString("__version")).isEqualTo("version!");
         }
     }
 
@@ -661,7 +598,7 @@ public class ExtractNewRecordStateTest {
     public void testSchemaChangeEventWithOperationHeader() {
         try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
-            props.put(OPERATION_HEADER, "true");
+            props.put(ADD_HEADERS, "op");
             transform.configure(props);
 
             final SourceRecord unknownRecord = createUnknownRecord();
