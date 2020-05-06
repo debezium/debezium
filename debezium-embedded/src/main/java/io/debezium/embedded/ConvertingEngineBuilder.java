@@ -46,15 +46,23 @@ public class ConvertingEngineBuilder<R> implements Builder<R> {
     private static final String TOPIC_NAME = "debezium";
 
     private final Builder<SourceRecord> delegate;
-    private Class<? extends SerializationFormat<?>> formatKey;
-    private Class<? extends SerializationFormat<?>> formatValue;
+    private final Class<? extends SerializationFormat<?>> formatKey;
+    private final Class<? extends SerializationFormat<?>> formatValue;
     private Configuration config;
 
     private Function<SourceRecord, R> toFormat;
     private Function<R, SourceRecord> fromFormat;
 
-    public ConvertingEngineBuilder() {
+    ConvertingEngineBuilder(ChangeEventFormat<?> format) {
         this.delegate = EmbeddedEngine.create();
+        this.formatKey = null;
+        this.formatValue = format.getValueFormat();
+    }
+
+    ConvertingEngineBuilder(KeyValueChangeEventFormat<?, ?> format) {
+        this.delegate = EmbeddedEngine.create();
+        this.formatKey = format.getKeyFormat();
+        this.formatValue = format.getValueFormat();
     }
 
     @Override
@@ -120,19 +128,6 @@ public class ConvertingEngineBuilder<R> implements Builder<R> {
     @Override
     public Builder<R> using(OffsetCommitPolicy policy) {
         delegate.using(policy);
-        return this;
-    }
-
-    @Override
-    public Builder<R> asType(ChangeEventFormat<SerializationFormat<?>> format) {
-        this.formatValue = format.getValueFormat();
-        return this;
-    }
-
-    @Override
-    public Builder<R> asType(KeyValueChangeEventFormat<SerializationFormat<?>, SerializationFormat<?>> format) {
-        this.formatValue = format.getValueFormat();
-        this.formatKey = format.getKeyFormat();
         return this;
     }
 
