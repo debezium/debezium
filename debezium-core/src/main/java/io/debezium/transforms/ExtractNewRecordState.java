@@ -17,7 +17,6 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.common.config.ConfigDef;
-import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.connect.connector.ConnectRecord;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -71,8 +70,6 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
 
     private boolean dropTombstones;
     private DeleteHandling handleDeletes;
-    private boolean addOperationHeader;
-    private List<String> addSourceFields;
     private List<FieldReference> additionalHeaders;
     private List<FieldReference> additionalFields;
     private String routeByField;
@@ -95,10 +92,6 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
 
         dropTombstones = config.getBoolean(ExtractNewRecordStateConfigDefinition.DROP_TOMBSTONES);
         handleDeletes = DeleteHandling.parse(config.getString(ExtractNewRecordStateConfigDefinition.HANDLE_DELETES));
-
-        addOperationHeader = config.getBoolean(ExtractNewRecordStateConfigDefinition.OPERATION_HEADER);
-
-        addSourceFields = determineAdditionalSourceField(config.getString(ExtractNewRecordStateConfigDefinition.ADD_SOURCE_FIELDS));
 
         additionalFields = FieldReference.fromConfiguration(config.getString(ExtractNewRecordStateConfigDefinition.ADD_FIELDS));
         additionalHeaders = FieldReference.fromConfiguration(config.getString(ExtractNewRecordStateConfigDefinition.ADD_HEADERS));
@@ -127,20 +120,8 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
         schemaUpdateCache = new BoundedConcurrentHashMap<>(SCHEMA_CACHE_SIZE);
     }
 
-    private static List<String> determineAdditionalSourceField(String addSourceFieldsConfig) {
-        if (Strings.isNullOrEmpty(addSourceFieldsConfig)) {
-            return Collections.emptyList();
-        }
-        else {
-            return Arrays.stream(addSourceFieldsConfig.split(","))
-                    .map(String::trim)
-                    .collect(Collectors.toList());
-        }
-    }
-
     @Override
     public R apply(final R record) {
-        Envelope.Operation operation;
         if (record.value() == null) {
             if (dropTombstones) {
                 LOGGER.trace("Tombstone {} arrived and requested to be dropped", record.key());
@@ -149,11 +130,6 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
             if (!additionalHeaders.isEmpty()) {
                 Headers headersToAdd = makeHeaders(additionalHeaders, (Struct) record.value());
                 headersToAdd.forEach(h -> record.headers().add(h));
-            }
-            else if (addOperationHeader) {
-                operation = Envelope.Operation.DELETE;
-                LOGGER.warn("operation.header has been deprecated and is scheduled for removal. Use add.headers instead.");
-                record.headers().addString(ExtractNewRecordStateConfigDefinition.DEBEZIUM_OPERATION_HEADER_KEY, operation.toString());
             }
             return record;
         }
@@ -165,18 +141,6 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
         if (!additionalHeaders.isEmpty()) {
             Headers headersToAdd = makeHeaders(additionalHeaders, (Struct) record.value());
             headersToAdd.forEach(h -> record.headers().add(h));
-        }
-        else if (addOperationHeader) {
-            LOGGER.warn("operation.header has been deprecated and is scheduled for removal. Use add.headers instead.");
-            String operationString = ((Struct) record.value()).getString("op");
-            operation = Envelope.Operation.forCode(operationString);
-
-            if (operationString.isEmpty() || operation == null) {
-                LOGGER.warn("Unknown operation thus unable to add the operation header into the message");
-            }
-            else {
-                record.headers().addString(ExtractNewRecordStateConfigDefinition.DEBEZIUM_OPERATION_HEADER_KEY, operation.code());
-            }
         }
 
         R newRecord = afterDelegate.apply(record);
@@ -195,7 +159,7 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
                 case REWRITE:
                     LOGGER.trace("Delete message {} requested to be rewritten", record.key());
                     R oldRecord = beforeDelegate.apply(record);
-                    oldRecord = !additionalFields.isEmpty() ? addFields(additionalFields, record, oldRecord) : addSourceFields(addSourceFields, record, oldRecord);
+                    oldRecord = addFields(additionalFields, record, oldRecord);
 
                     return removedDelegate.apply(oldRecord);
                 default:
@@ -210,7 +174,7 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
                 newRecord = setTopic(newTopicName, newRecord);
             }
 
-            newRecord = !additionalFields.isEmpty() ? addFields(additionalFields, record, newRecord) : addSourceFields(addSourceFields, record, newRecord);
+            newRecord = addFields(additionalFields, record, newRecord);
 
             // Handling insert and update records
             switch (handleDeletes) {
@@ -308,62 +272,13 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
         return updatedValue.put(fieldReference.getNewFieldName(), fieldReference.getValue(struct));
     }
 
-    private R addSourceFields(List<String> addSourceFields, R originalRecord, R unwrappedRecord) {
-        // Return if no source fields to add
-        if (addSourceFields.isEmpty()) {
-            return unwrappedRecord;
-        }
-
-        LOGGER.warn("add.source.fields has been deprecated and is scheduled for removal. Use add.fields instead.");
-
-        final Struct value = requireStruct(unwrappedRecord.value(), PURPOSE);
-        Struct source = ((Struct) originalRecord.value()).getStruct("source");
-
-        // Get (or compute) the updated schema from the cache
-        Schema updatedSchema = schemaUpdateCache.computeIfAbsent(value.schema(), s -> makeUpdatedSchema(s, source.schema(), addSourceFields));
-
-        // Create the updated struct
-        final Struct updatedValue = new Struct(updatedSchema);
-        for (org.apache.kafka.connect.data.Field field : value.schema().fields()) {
-            updatedValue.put(field.name(), value.get(field));
-        }
-        for (String sourceField : addSourceFields) {
-            updatedValue.put(ExtractNewRecordStateConfigDefinition.METADATA_FIELD_PREFIX + sourceField, source.get(sourceField));
-        }
-
-        return unwrappedRecord.newRecord(
-                unwrappedRecord.topic(),
-                unwrappedRecord.kafkaPartition(),
-                unwrappedRecord.keySchema(),
-                unwrappedRecord.key(),
-                updatedSchema,
-                updatedValue,
-                unwrappedRecord.timestamp());
-    }
-
-    private Schema makeUpdatedSchema(Schema schema, Schema sourceSchema, List<String> addSourceFields) {
-        final SchemaBuilder builder = SchemaUtil.copySchemaBasics(schema, SchemaBuilder.struct());
-        // Get fields from original schema
-        for (org.apache.kafka.connect.data.Field field : schema.fields()) {
-            builder.field(field.name(), field.schema());
-        }
-        // Add the requested source fields, throw exception if a specified source field is not part of the source schema
-        for (String sourceField : addSourceFields) {
-            if (sourceSchema.field(sourceField) == null) {
-                throw new ConfigException("Source field specified in 'add.source.fields' does not exist: " + sourceField);
-            }
-            builder.field(
-                    ExtractNewRecordStateConfigDefinition.METADATA_FIELD_PREFIX + sourceField,
-                    sourceSchema.field(sourceField).schema());
-        }
-        return builder.build();
-    }
-
     @Override
     public ConfigDef config() {
         final ConfigDef config = new ConfigDef();
-        Field.group(config, null, ExtractNewRecordStateConfigDefinition.DROP_TOMBSTONES, ExtractNewRecordStateConfigDefinition.HANDLE_DELETES,
-                ExtractNewRecordStateConfigDefinition.OPERATION_HEADER);
+        Field.group(config, null, ExtractNewRecordStateConfigDefinition.DROP_TOMBSTONES,
+                ExtractNewRecordStateConfigDefinition.HANDLE_DELETES, ExtractNewRecordStateConfigDefinition.ADD_FIELDS,
+                ExtractNewRecordStateConfigDefinition.ADD_HEADERS,
+                ExtractNewRecordStateConfigDefinition.ROUTE_BY_FIELD);
         return config;
     }
 
