@@ -737,7 +737,8 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
                                 return offsetReader;
                             }
 
-                            @Override
+                            // Purposely not marking this method with @Override as it was introduced in Kafka 2.x
+                            // and otherwise would break builds based on Kafka 1.x
                             public Map<String, String> configs() {
                                 // TODO Auto-generated method stub
                                 return null;
