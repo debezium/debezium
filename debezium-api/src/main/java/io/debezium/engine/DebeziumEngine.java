@@ -213,22 +213,6 @@ public interface DebeziumEngine<R> extends Runnable, Closeable {
         Builder<R> using(OffsetCommitPolicy policy);
 
         /**
-         * Prescribe the output format used by the {@link DebeziumEngine}.
-         * Usually called by {@link DebeziumEngine#create}.
-         * @param format
-         * @return this builder object so methods can be chained together; never null
-         */
-        Builder<R> asType(ChangeEventFormat<SerializationFormat<?>> format);
-
-        /**
-         * Prescribe the output format used by the {@link DebeziumEngine}.
-         * Usually called by {@link DebeziumEngine#create}.
-         * @param format
-         * @return this builder object so methods can be chained together; never null
-         */
-        Builder<R> asType(KeyValueChangeEventFormat<SerializationFormat<?>, SerializationFormat<?>> format);
-
-        /**
          * Build a new connector with the information previously supplied to this builder.
          *
          * @return the embedded connector; never null
@@ -264,18 +248,17 @@ public interface DebeziumEngine<R> extends Runnable, Closeable {
         return create(KeyValueChangeEventFormat.of(keyFormat, valueFormat));
     }
 
-    @SuppressWarnings({ "rawtypes", "unchecked" })
     public static <S, T, K extends SerializationFormat<S>, V extends SerializationFormat<T>> Builder<ChangeEvent<S, T>> create(KeyValueChangeEventFormat<K, V> format) {
-        final ServiceLoader<Builder> loader = ServiceLoader.load(Builder.class);
-        final Iterator<Builder> iterator = loader.iterator();
+        final ServiceLoader<BuilderFactory> loader = ServiceLoader.load(BuilderFactory.class);
+        final Iterator<BuilderFactory> iterator = loader.iterator();
         if (!iterator.hasNext()) {
             throw new DebeziumException("No implementation of Debezium engine builder was found");
         }
-        final Builder builder = iterator.next();
+        final BuilderFactory builder = iterator.next();
         if (iterator.hasNext()) {
             LoggerFactory.getLogger(Builder.class).warn("More than one Debezium engine builder implementation was found, using {}", builder.getClass());
         }
-        return builder.asType(format);
+        return builder.builder(format);
     }
 
     /**
@@ -284,18 +267,39 @@ public interface DebeziumEngine<R> extends Runnable, Closeable {
      *
      * @return the new builder; never null
      */
-    @SuppressWarnings({ "rawtypes", "unchecked" })
     public static <T, V extends SerializationFormat<T>> Builder<RecordChangeEvent<T>> create(ChangeEventFormat<V> format) {
-        final ServiceLoader<Builder> loader = ServiceLoader.load(Builder.class);
-        final Iterator<Builder> iterator = loader.iterator();
+        final ServiceLoader<BuilderFactory> loader = ServiceLoader.load(BuilderFactory.class);
+        final Iterator<BuilderFactory> iterator = loader.iterator();
         if (!iterator.hasNext()) {
             throw new DebeziumException("No implementation of Debezium engine builder was found");
         }
-        final Builder builder = iterator.next();
+        final BuilderFactory builder = iterator.next();
         if (iterator.hasNext()) {
             LoggerFactory.getLogger(Builder.class).warn("More than one Debezium engine builder implementation was found, using {}", builder.getClass());
         }
-        // For Connect format the message contains both key and value
-        return builder.asType(format);
+        return builder.builder(format);
+    }
+
+    /**
+     * Internal contract between the API and implementation, for bootstrapping the latter.
+     * Not intended for direct usage by application code.
+     */
+    public static interface BuilderFactory {
+
+        /**
+         * Prescribe the output format used by the {@link DebeziumEngine}.
+         * Usually called by {@link DebeziumEngine#create}.
+         * @param format
+         * @return this builder object so methods can be chained together; never null
+         */
+        <T, V extends SerializationFormat<T>> Builder<RecordChangeEvent<T>> builder(ChangeEventFormat<V> format);
+
+        /**
+         * Prescribe the output format used by the {@link DebeziumEngine}.
+         * Usually called by {@link DebeziumEngine#create}.
+         * @param format
+         * @return this builder object so methods can be chained together; never null
+         */
+        <S, T, K extends SerializationFormat<S>, V extends SerializationFormat<T>> Builder<ChangeEvent<S, T>> builder(KeyValueChangeEventFormat<K, V> format);
     }
 }

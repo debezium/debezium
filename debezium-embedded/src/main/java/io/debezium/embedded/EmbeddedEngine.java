@@ -53,8 +53,6 @@ import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.engine.StopEngineException;
-import io.debezium.engine.format.ChangeEventFormat;
-import io.debezium.engine.format.SerializationFormat;
 import io.debezium.engine.spi.OffsetCommitPolicy;
 import io.debezium.util.Clock;
 import io.debezium.util.VariableLatch;
@@ -521,12 +519,6 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
 
         @Override
         Builder using(OffsetCommitPolicy policy);
-
-        @Override
-        default Builder asType(ChangeEventFormat<SerializationFormat<?>> format) {
-            // The legacy EmbeddedEngine always returns SourceRecord
-            return this;
-        }
 
         @Override
         EmbeddedEngine build();
