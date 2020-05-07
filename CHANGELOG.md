@@ -25,6 +25,7 @@ May 7th, 2020 [Detailed release notes](https://issues.redhat.com/secure/ReleaseN
 * Remove obsolete metrics from downstream docs [DBZ-1947](https://issues.jboss.org/browse/DBZ-1947)
 * Outbox: Remove eventType field [DBZ-2014](https://issues.jboss.org/browse/DBZ-2014)
 * Upgrade Postgres driver to 42.2.12 [DBZ-2027](https://issues.jboss.org/browse/DBZ-2027)
+* Support different converters for key/value in embedded engine [DBZ-1970](https://issues.jboss.org/browse/DBZ-1970)
 
 
 ### Fixes since 1.2.0.Alpha1
