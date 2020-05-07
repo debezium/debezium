@@ -44,3 +44,5 @@ FrankMormino,Frank Mormino
 Fatih GÃ¼Ã§lÃ¼ Akkaya,Fatih Güçlü Akkaya
 rk3rn3r,René Kerner
 JanHendrikDolling,Jan Hendrik Dolling
+dajerome,David Jerome
+TovaCohen,Tova Cohen
