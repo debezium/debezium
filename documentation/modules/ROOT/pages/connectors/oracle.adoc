@@ -264,7 +264,8 @@ The message contains a logical representation of the table schema.
 
 The example of the message is:
 
-```json
+[source,json,indent=0,subs="attributes"]
+----
 {
   "schema": {
   ...
@@ -358,7 +359,7 @@ The example of the message is:
     ]
   }
 }
-```
+----
 
 The fields
 
@@ -373,7 +374,8 @@ The fields
 
 The schema change messages use as the key the name of the database to which the changes apply:
 
-```json
+[source,json,indent=0,subs="attributes"]
+----
 {
   "schema": {
     "type": "struct",
@@ -391,7 +393,7 @@ The schema change messages use as the key the name of the database to which the 
     "databaseName": "ORCLPDB1"
   }
 }
-```
+----
 
 [[events]]
 === Events
