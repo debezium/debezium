@@ -2,6 +2,68 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 1.2.0.Beta1
+May 7th, 2020 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12345561)
+
+### New features since 1.2.0.Alpha1
+
+* Don't try to database history topic if it exists already [DBZ-1886](https://issues.jboss.org/browse/DBZ-1886)
+* Deleted database history should be detected for all connectors [DBZ-1923](https://issues.jboss.org/browse/DBZ-1923)
+* Provide anchors to connector parameters [DBZ-1933](https://issues.jboss.org/browse/DBZ-1933)
+* move static methods TRUNCATE_COLUMN and MASK_COLUMN as attributes to RelationalDatabaseConnectorConfig [DBZ-1972](https://issues.jboss.org/browse/DBZ-1972)
+* Implement SKIPPED_OPERATIONS for mysql [DBZ-1895](https://issues.jboss.org/browse/DBZ-1895)
+* User facing schema history topic for SQL Server [DBZ-1904](https://issues.jboss.org/browse/DBZ-1904)
+* Multiline stack traces can be collapsed into a single log event  [DBZ-1913](https://issues.jboss.org/browse/DBZ-1913)
+* Introduce column.whitelist for Postgres Connector [DBZ-1962](https://issues.jboss.org/browse/DBZ-1962)
+* Add support for Postgres time, timestamp array columns [DBZ-1969](https://issues.jboss.org/browse/DBZ-1969)
+* Add support for Postgres Json and Jsonb array columns [DBZ-1990](https://issues.jboss.org/browse/DBZ-1990)
+* Content-based topic routing based on scripting languages [DBZ-2000](https://issues.jboss.org/browse/DBZ-2000)
+
+
+### Breaking changes since 1.2.0.Alpha1
+
+* Remove obsolete metrics from downstream docs [DBZ-1947](https://issues.jboss.org/browse/DBZ-1947)
+* Outbox: Remove eventType field [DBZ-2014](https://issues.jboss.org/browse/DBZ-2014)
+* Upgrade Postgres driver to 42.2.12 [DBZ-2027](https://issues.jboss.org/browse/DBZ-2027)
+
+
+### Fixes since 1.2.0.Alpha1
+
+* bit varying column has value that is too large to be cast to a long [DBZ-1949](https://issues.jboss.org/browse/DBZ-1949)
+* PostgreSQL Sink connector with outbox event router and Avro uses wrong default io.confluent schema namespace [DBZ-1963](https://issues.jboss.org/browse/DBZ-1963)
+* Stop processing new commitlogs in cdc folder [DBZ-1985](https://issues.jboss.org/browse/DBZ-1985)
+* [Doc] Debezium User Guide should provide example of DB connector yaml and deployment instructions [DBZ-2011](https://issues.jboss.org/browse/DBZ-2011)
+* ExtractNewRecordState SMT spamming logs for heartbeat messages [DBZ-2036](https://issues.jboss.org/browse/DBZ-2036)
+* MySQL alias `FLUSH TABLE` not handled [DBZ-2047](https://issues.jboss.org/browse/DBZ-2047)
+* Embedded engine not compatible with Kafka 1.x [DBZ-2054](https://issues.jboss.org/browse/DBZ-2054)
+
+
+### Other changes since 1.2.0.Alpha1
+
+* Blog post and demo about Debezium + Camel [DBZ-1656](https://issues.jboss.org/browse/DBZ-1656)
+* Refactor connector config code to share the configuration definition [DBZ-1750](https://issues.jboss.org/browse/DBZ-1750)
+* DB2 connector follow-up refactorings [DBZ-1753](https://issues.jboss.org/browse/DBZ-1753)
+* Oracle JDBC driver available in Maven Central [DBZ-1878](https://issues.jboss.org/browse/DBZ-1878)
+* Align snapshot/streaming semantics in MongoDB documentation [DBZ-1901](https://issues.jboss.org/browse/DBZ-1901)
+* Add MySQL 5.5 and 5.6 to test matrix. [DBZ-1953](https://issues.jboss.org/browse/DBZ-1953)
+* Upgrade to Quarkus to 1.4.1 release [DBZ-1975](https://issues.jboss.org/browse/DBZ-1975)
+* Version selector on releases page should show all versions [DBZ-1979](https://issues.jboss.org/browse/DBZ-1979)
+* Upgrade to Apache Kafka 2.5.0 and Confluent Platform 5.5.0 [DBZ-1981](https://issues.jboss.org/browse/DBZ-1981)
+* Fix broken link [DBZ-1983](https://issues.jboss.org/browse/DBZ-1983)
+* Update Outbox Quarkus extension yaml [DBZ-1991](https://issues.jboss.org/browse/DBZ-1991)
+* Allow for simplified property references in filter SMT with graal.js [DBZ-1993](https://issues.jboss.org/browse/DBZ-1993)
+* Avoid broken cross-book references in downstream docs [DBZ-1999](https://issues.jboss.org/browse/DBZ-1999)
+* Fix wrong attribute name in MongoDB connector [DBZ-2006](https://issues.jboss.org/browse/DBZ-2006)
+* Upgrade formatter and Impsort plugins [DBZ-2007](https://issues.jboss.org/browse/DBZ-2007)
+* Clarify support for non-primary key tables in PostgreSQL documentation [DBZ-2010](https://issues.jboss.org/browse/DBZ-2010)
+* Intermittent test failure on CI [DBZ-2030](https://issues.jboss.org/browse/DBZ-2030)
+* Cleanup Postgres TypeRegistry [DBZ-2038](https://issues.jboss.org/browse/DBZ-2038)
+* Upgrade to latest parent pom and checkstyle [DBZ-2039](https://issues.jboss.org/browse/DBZ-2039)
+* Reduce build output to avoid maximum log length problems on CI [DBZ-2043](https://issues.jboss.org/browse/DBZ-2043)
+* Postgres TypeRegistry makes one query per enum type at startup [DBZ-2044](https://issues.jboss.org/browse/DBZ-2044)
+
+
+
 ## 1.2.0.Alpha1
 April 16th, 2020 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12344691)
 
