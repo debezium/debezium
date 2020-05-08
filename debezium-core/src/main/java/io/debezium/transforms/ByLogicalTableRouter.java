@@ -69,6 +69,16 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
             .withValidation(Field::isRequired)
             .withDescription("The replacement string used in conjunction with " + TOPIC_REGEX.name() +
                     ". This will be used to create the new topic name.");
+    private static final Field KEY_ENFORCE_UNIQUENESS = Field.create("key.enforce.uniqueness")
+            .withDisplayName("Add source topic name into key")
+            .withType(ConfigDef.Type.BOOLEAN)
+            .withWidth(ConfigDef.Width.SHORT)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDefault(true)
+            .withDescription("Augment each record's key with a field denoting the source topic. This field " +
+                    "distinguishes records coming from different physical tables which may otherwise have " +
+                    "primary/unique key conflicts. If the source tables are guaranteed to have globally " +
+                    "unique keys then this may be set to false to disable key rewriting.");
     private static final Field KEY_FIELD_REGEX = Field.create("key.field.regex")
             .withDisplayName("Key field regex")
             .withType(ConfigDef.Type.STRING)
@@ -105,6 +115,7 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
     private Pattern topicRegex;
     private String topicReplacement;
     private Pattern keyFieldRegex;
+    private boolean keyEnforceUniqueness;
     private String keyFieldReplacement;
     private String keyFieldName;
     private final Cache<Schema, Schema> keySchemaUpdateCache = new SynchronizedCache<>(new LRUCache<Schema, Schema>(16));
@@ -146,6 +157,7 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
         final Field.Set configFields = Field.setOf(
                 TOPIC_REGEX,
                 TOPIC_REPLACEMENT,
+                KEY_ENFORCE_UNIQUENESS,
                 KEY_FIELD_REGEX,
                 KEY_FIELD_REPLACEMENT);
 
@@ -165,6 +177,7 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
             keyFieldReplacement = config.getString(KEY_FIELD_REPLACEMENT);
         }
         keyFieldName = config.getString(KEY_FIELD_NAME);
+        keyEnforceUniqueness = config.getBoolean(KEY_ENFORCE_UNIQUENESS);
     }
 
     @Override
@@ -226,6 +239,7 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
                 null,
                 TOPIC_REGEX,
                 TOPIC_REPLACEMENT,
+                KEY_ENFORCE_UNIQUENESS,
                 KEY_FIELD_REGEX,
                 KEY_FIELD_REPLACEMENT);
         return config;
@@ -265,7 +279,9 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
         // Now that multiple physical tables can share a topic, the event's key may need to be augmented to include
         // fields other than just those for the record's primary/unique key, since these are not guaranteed to be unique
         // across tables. We need some identifier added to the key that distinguishes the different physical tables.
-        builder.field(keyFieldName, Schema.STRING_SCHEMA);
+        if (keyEnforceUniqueness) {
+            builder.field(keyFieldName, Schema.STRING_SCHEMA);
+        }
 
         newKeySchema = builder.build();
         keySchemaUpdateCache.put(oldKeySchema, newKeySchema);
@@ -279,21 +295,24 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
         }
 
         String physicalTableIdentifier = oldTopic;
-        if (keyFieldRegex != null) {
-            physicalTableIdentifier = keyRegexReplaceCache.get(oldTopic);
-            if (physicalTableIdentifier == null) {
-                final Matcher matcher = keyFieldRegex.matcher(oldTopic);
-                if (matcher.matches()) {
-                    physicalTableIdentifier = matcher.replaceFirst(keyFieldReplacement);
-                    keyRegexReplaceCache.put(oldTopic, physicalTableIdentifier);
-                }
-                else {
-                    physicalTableIdentifier = oldTopic;
+        if (keyEnforceUniqueness) {
+            if (keyFieldRegex != null) {
+                physicalTableIdentifier = keyRegexReplaceCache.get(oldTopic);
+                if (physicalTableIdentifier == null) {
+                    final Matcher matcher = keyFieldRegex.matcher(oldTopic);
+                    if (matcher.matches()) {
+                        physicalTableIdentifier = matcher.replaceFirst(keyFieldReplacement);
+                        keyRegexReplaceCache.put(oldTopic, physicalTableIdentifier);
+                    }
+                    else {
+                        physicalTableIdentifier = oldTopic;
+                    }
                 }
             }
+
+            newKey.put(keyFieldName, physicalTableIdentifier);
         }
 
-        newKey.put(keyFieldName, physicalTableIdentifier);
         return newKey;
     }
 

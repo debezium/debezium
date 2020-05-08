@@ -53,8 +53,17 @@ The configuration above will match topics such as `myserver.mydb.customers_shard
 == Key Fields
 
 To address the concern of uniqueness across all the original tables discussed above,
-one more field for identifying the original (physical) table is inserted into the key structure of the change events.
+one more field for identifying the original (physical) table may be inserted into the key structure of the change events.
 By default, this field is named `\__dbz__physicalTableIdentifier` and has the original topic name as its value.
+
+If your tables already contain globally unique keys and you do not need to change the key structure, you can set the `key.enforce.uniqueness` property to `false`:
+
+[source]
+----
+...
+transforms.Reroute.key.enforce.uniqueness=false
+...
+----
 
 If needed, another _field name_ can be chosen by means of the `key.field.name` property
 (obviously you'll want to choose a field name that doesn't clash with existing primary key fields).

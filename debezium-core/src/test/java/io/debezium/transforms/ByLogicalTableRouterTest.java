@@ -216,6 +216,58 @@ public class ByLogicalTableRouterTest {
         assertThat(transformed1.key()).isNull();
     }
 
+    @Test
+    @FixFor("DBZ-2034")
+    public void testNamespaceReplacementWithoutKeyChange() {
+        final ByLogicalTableRouter<SourceRecord> router = new ByLogicalTableRouter<>();
+        final Map<String, String> props = new HashMap<>();
+
+        props.put("topic.regex", "(.*).dbz_shard_\\d+.(.*)");
+        props.put("topic.replacement", "dbz_core.$2");
+        props.put("key.enforce.uniqueness", "false");
+        router.configure(props);
+
+        Schema keySchema = SchemaBuilder.struct()
+                .name("s21.dbz_shard_21.address.Key")
+                .field("id", SchemaBuilder.int64().build())
+                .build();
+
+        Struct key1 = new Struct(keySchema).put("id", 123L);
+
+        SourceRecord record1 = new SourceRecord(
+                new HashMap<>(), new HashMap<>(), "s21.dbz_shard_21.address", keySchema, key1, null, null);
+
+        SourceRecord transformed1 = router.apply(record1);
+        assertThat(transformed1).isNotNull();
+        assertThat(transformed1.topic()).isEqualTo("dbz_core.address"); // no change expected
+
+        assertThat(transformed1.keySchema().name()).isEqualTo("dbz_core.address.Key");
+        assertThat(transformed1.keySchema().fields()).hasSize(1);
+        assertThat(transformed1.keySchema().fields().get(0).name()).isEqualTo("id");
+
+        assertThat(((Struct) transformed1.key()).get("id")).isEqualTo(123L);
+
+        Struct key2 = new Struct(keySchema).put("id", 123L);
+
+        // This second record is basically the same as the first, and should _actually_ be indistinguishable
+        keySchema = SchemaBuilder.struct()
+                .name("s22.dbz_shard_22.address.Key")
+                .field("id", SchemaBuilder.int64().build())
+                .build();
+        SourceRecord record2 = new SourceRecord(
+                new HashMap<>(), new HashMap<>(), "s22.dbz_shard_22.address", keySchema, key2, null, null);
+
+        SourceRecord transformed2 = router.apply(record2);
+        assertThat(transformed2).isNotNull();
+        assertThat(transformed2.topic()).isEqualTo("dbz_core.address");
+
+        assertThat(transformed2.keySchema().name()).isEqualTo("dbz_core.address.Key");
+        assertThat(transformed2.keySchema().fields()).hasSize(1);
+        assertThat(transformed2.keySchema().fields().get(0).name()).isEqualTo("id");
+
+        assertThat(((Struct) transformed2.key()).get("id")).isEqualTo(123L);
+    }
+
     // FIXME: This SMT can use more tests for more detailed coverage.
     // The creation of a DBZ-ish SourceRecord is required for each test
 }
