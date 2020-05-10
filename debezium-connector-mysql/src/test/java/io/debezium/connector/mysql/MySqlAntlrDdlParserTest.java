@@ -964,14 +964,20 @@ public class MySqlAntlrDdlParserTest {
                 + " c1 INTEGER NOT NULL, " + System.lineSeparator()
                 + " c2 VARCHAR(22) " + System.lineSeparator()
                 + ") engine=Aria;";
-        parser.parse(ddl1 + ddl2 + ddl3, tables);
-        assertThat(tables.size()).isEqualTo(3);
+        String ddl4 = "CREATE TABLE escaped_foo ( " + System.lineSeparator()
+                + " c1 INTEGER NOT NULL, " + System.lineSeparator()
+                + " c2 VARCHAR(22) " + System.lineSeparator()
+                + ") engine=TokuDB `compression`=tokudb_zlib;";
+        parser.parse(ddl1 + ddl2 + ddl3 + ddl4, tables);
+        assertThat(tables.size()).isEqualTo(4);
         listener.assertNext().createTableNamed("foo").ddlStartsWith("CREATE TABLE foo (");
         listener.assertNext().createTableNamed("bar").ddlStartsWith("CREATE TABLE bar (");
         listener.assertNext().createTableNamed("baz").ddlStartsWith("CREATE TABLE baz (");
+        listener.assertNext().createTableNamed("escaped_foo").ddlStartsWith("CREATE TABLE escaped_foo (");
         parser.parse("DROP TABLE foo", tables);
         parser.parse("DROP TABLE bar", tables);
         parser.parse("DROP TABLE baz", tables);
+        parser.parse("DROP TABLE escaped_foo", tables);
         assertThat(tables.size()).isEqualTo(0);
     }
 
