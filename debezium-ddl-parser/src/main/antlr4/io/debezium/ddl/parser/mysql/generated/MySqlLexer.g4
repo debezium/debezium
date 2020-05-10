@@ -363,7 +363,7 @@ COMMIT:                              'COMMIT';
 COMPACT:                             'COMPACT';
 COMPLETION:                          'COMPLETION';
 COMPRESSED:                          'COMPRESSED';
-COMPRESSION:                         'COMPRESSION';
+COMPRESSION:                         QUOTE_SYMB? 'COMPRESSION' QUOTE_SYMB?;
 CONCURRENT:                          'CONCURRENT';
 CONNECTION:                          'CONNECTION';
 CONSISTENT:                          'CONSISTENT';
