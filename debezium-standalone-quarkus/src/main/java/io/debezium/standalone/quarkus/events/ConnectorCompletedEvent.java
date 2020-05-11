@@ -49,4 +49,9 @@ public class ConnectorCompletedEvent {
     public Optional<Throwable> getError() {
         return Optional.ofNullable(error);
     }
+
+    @Override
+    public String toString() {
+        return "ConnectorCompletedEvent [success=" + success + ", message=" + message + ", error=" + error + "]";
+    }
 }

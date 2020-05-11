@@ -16,13 +16,14 @@ import javax.inject.Named;
 import org.eclipse.microprofile.config.Config;
 import org.eclipse.microprofile.config.ConfigProvider;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
 import io.debezium.engine.ChangeEvent;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.engine.DebeziumEngine.RecordCommitter;
 import io.debezium.standalone.quarkus.CustomConsumerBuilder;
-
 import software.amazon.awssdk.auth.credentials.ProfileCredentialsProvider;
 import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.regions.Region;
@@ -38,6 +39,8 @@ import software.amazon.awssdk.services.kinesis.model.PutRecordRequest;
 @Named("kinesis")
 @ApplicationScoped
 public class ChangeConsumer implements DebeziumEngine.ChangeConsumer<ChangeEvent<Object, Object>> {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(ChangeConsumer.class);
 
     private static final String PROP_PREFIX = "kinesis.";
     private static final String PROP_REGION_NAME = PROP_PREFIX + "region";
@@ -62,8 +65,10 @@ public class ChangeConsumer implements DebeziumEngine.ChangeConsumer<ChangeEvent
         if (customStreamNameMapper.isResolvable()) {
             streamNameMapper = customStreamNameMapper.get();
         }
+        LOGGER.info("Using '{}' stream name mapper", streamNameMapper);
         if (customClient.isResolvable()) {
             client = customClient.get();
+            LOGGER.info("Obtained custom configured KinesisClient '{}'", client);
             return;
         }
 
@@ -73,6 +78,7 @@ public class ChangeConsumer implements DebeziumEngine.ChangeConsumer<ChangeEvent
                 .region(Region.of(region))
                 .credentialsProvider(ProfileCredentialsProvider.create(credentialsProfile))
                 .build();
+        LOGGER.info("Using default KinesisClient '{}'", client);
     }
 
     private byte[] getByte(Object object) {
@@ -101,6 +107,7 @@ public class ChangeConsumer implements DebeziumEngine.ChangeConsumer<ChangeEvent
     public void handleBatch(List<ChangeEvent<Object, Object>> records, RecordCommitter<ChangeEvent<Object, Object>> committer)
             throws InterruptedException {
         for (ChangeEvent<Object, Object> record : records) {
+            LOGGER.trace("Received event '{}'", record);
             final PutRecordRequest putRecord = PutRecordRequest.builder()
                     .partitionKey(getString(record.key()))
                     .streamName(streamNameMapper.map(record.destination()))

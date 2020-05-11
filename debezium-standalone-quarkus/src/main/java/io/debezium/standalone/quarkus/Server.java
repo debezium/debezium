@@ -80,6 +80,7 @@ public class Server {
         final Set<Bean<?>> beans = beanManager.getBeans(name).stream()
                 .filter(x -> DebeziumEngine.ChangeConsumer.class.isAssignableFrom(x.getBeanClass()))
                 .collect(Collectors.toSet());
+        LOGGER.debug("Found {} candidate consumer(s)", beans.size());
 
         if (beans.size() == 0) {
             throw new DebeziumException("No Debezium consumer named '" + name + "' is available");
@@ -91,6 +92,7 @@ public class Server {
         @SuppressWarnings("unchecked")
         final Bean<DebeziumEngine.ChangeConsumer<ChangeEvent<?, ?>>> bean = (Bean<DebeziumEngine.ChangeConsumer<ChangeEvent<?, ?>>>) beans.iterator().next();
         consumer = bean.create(beanManager.createCreationalContext(null));
+        LOGGER.info("Consumer '{}' instantiated", consumer.getClass().getName());
 
         final Class<? extends SerializationFormat<?>> keyFormat = getFormat(config, PROP_KEY_FORMAT);
         final Class<? extends SerializationFormat<?>> valueFormat = getFormat(config, PROP_VALUE_FORMAT);
@@ -113,6 +115,7 @@ public class Server {
                 .build();
 
         executor.execute(() -> engine.run());
+        LOGGER.info("Engine executor started");
     }
 
     @SuppressWarnings("unchecked")
@@ -150,6 +153,7 @@ public class Server {
 
     public void stop(@Observes ShutdownEvent event) {
         try {
+            LOGGER.info("Received request to stop the engine");
             final Config config = ConfigProvider.getConfig();
             engine.close();
             executor.shutdown();
