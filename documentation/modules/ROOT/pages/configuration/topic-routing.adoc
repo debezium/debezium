@@ -1,3 +1,10 @@
+// Category: cdc-using
+// Type: assembly
+// :community:
+:product: 
+
+ifdef::community[]
+[id="topic-routing"]
 = Topic Routing
 include::../_attributes.adoc[]
 :toc:
@@ -7,46 +14,64 @@ include::../_attributes.adoc[]
 :source-highlighter: highlight.js
 
 toc::[]
+endif::community[]
 
-Debezium enables you to re-route the emitted change before the message reaches the converter using a single message transformation,
-or {link-kafka-docs}/#connect_transforms[SMT].
-The SMT provided by Debezium enables you to rewrite the topic and the key according to a regular expression and a replacement pattern,
-configurable per instance of Debezium.
+ifdef::product[]
+[id="routing-change-event-records-to-topics-that-you-specify"]
+= Routing change event records to topics that you specify
+endif::product[]
 
-The implementation does not care about the sanity of the change, this is in the responsibility of the user.
+Before Kafka records that contain database change events reach the Kafka Connect converter, you can re-route them to topics that you choose. 
+To do this, Debezium provides the `ByLogicalTableRouter` single message transformation (SMT). Configure this transformation in the Debezium connector's Kafka Connect `.properties` file. Configuration options enable you to specify the following: 
 
-== Use-Cases
+* An expression for identifying the records to route
+* The destination topic
+* How to ensure a unique key among the records being routed to the topic
 
-=== Logical Tables
+It is up to you to ensure that the transformation configuration provides the behavior that you want. Debezium does not validate the behavior that results from the way that you configure the transformation. 
 
-A logical table consists of one or more physical tables with the same table structure.
-A common use case is sharding, where for example two physical tables `db_shard1.my_table` and `db_shard2.my_table` together form one logical table.
+The `ByLogicalTableRouter` transformation is a 
+link:https://kafka.apache.org/documentation/#connect_transforms[Kafka Connect SMT].
 
-Typically the physical tables share the same schema.
+ifdef::product[]
+The following topics provide details: 
 
-Normally, Debezium connectors send each change event to a topic that is named by the database and table.
-But since the sharded tables have the same schema, we'd instead like to re-route each change event to a topic named by the _logical_ table name.
-This way, all changes events for any of the shards all go to the same topic.
+* xref:use-case-for-routing-records-to-topics-that-you-specify[]
+* xref:example-of-routing-records-for-multiple-tables-to-one-topic[]
+* xref:ensuring-unique-keys-across-records-routed-to-the-same-topic[]
+endif::product[]
 
-What happens if each physical table has a primary key that is only unique within that table?
-In this case, a row in shard 1 can have the same primary key as a row in shard 2.
-Since Debezium events are keyed by the columns that make up the primary key, the events for that row in shard 1 would have the same key as the row in shard 2,
-even though globally they are different rows.
-So, in addition to changing the topic name, we may also want to _modify the event key_ to add a field that makes the key globally unique.
+ifdef::community[]
+= Use case
+endif::community[]
 
-This SMT lets you specify how you want to choose the new topic name and then specify how to modify the change event key to ensure it is globally unique.
+ifdef::product[]
+// Type: concept
+[id="use-case-for-routing-records-to-topics-that-you-specify"]
+== Use case for routing records to topics that you specify
+endif::product[]
 
-=== Partitioned Postgres Tables
+The default behavior is that a Debezium connector sends each change event record to a topic whose name is formed from the name of the database and the name of the table in which the change was made. In other words, a topic receives records for one physical table. When you want a topic to receive records for more than one physical table, you must configure the Debezium connector to re-route the records to that topic. 
 
-when capturing changes from a partioned Postgres table,
-there will be one topic per partition table.
-Using this routing SMT allows you to emit all change events to a single topic for the entire partioned table.
-As key uniqueness across the different partition topics already is guaranteed in this case,
-the `key.enforce.uniqueness` option can be set to `false` (see below).
+A logical table is a common use case for routing records for multiple physical tables to one topic. In a logical table, there are multiple physical tables that all have the same schema. For example, sharded tables have the same schema. A logical table might consist of two or more sharded tables: `db_shard1.my_table` and `db_shard2.my_table`. The tables are in different shards and are physically distinct but together they form a logical table. 
+You can re-route change event records for tables in any of the shards to the same topic.
 
-== Topic Names
+ifdef::community[]
+= Example
+endif::community[]
 
-Below is an example for a configuration which replaces a part of the table in the topic with another string, allowing two tables to emit changes to the same topic:
+ifdef::product[]
+// Type: concept
+[id="example-of-routing-records-for-multiple-tables-to-one-topic"]
+== Example of routing records for multiple tables to one topic
+endif::product[]
+
+To route change event records for multiple physical tables to the same topic, configure the `ByLogicalTableRouter` transformation in the Kafka Connect `.properties` file for the Debezium connector. Configuration of the `ByLogicalTableRouter` SMT requires you to specify regular expressions that identify: 
+
+* The tables for which to route records. These tables must all have the same schema. 
+* The destination topic name.
+
+For example: 
 
 [source]
 ----
@@ -56,79 +81,61 @@ transforms.Reroute.topic.regex=(.*)customers_shard(.*)
 transforms.Reroute.topic.replacement=$1customers_all_shards
 ----
 
-The configuration above will match topics such as `myserver.mydb.customers_shard1`, `myserver.mydb.customers_shard2` etc. and replace it with `myserver.mydb.customers_all_shards.`
+`topic.regex`:: Specifies a regular expression that the transformation applies to each change event record to determine if it should be routed to a particular topic.  
++
+In the example, the regular expression, `(.*)customers_shard(.*)` matches records for changes to tables whose names include the `customers_shard` string. This would re-route records for tables with the following names:
++
+`myserver.mydb.customers_shard1` +
+`myserver.mydb.customers_shard2` +
+`myserver.mydb.customers_shard3`
 
-== Key Fields
+`topic.replacement`:: Specifies a regular expression that represents the destination topic name. The transformation routes each matching record to the topic identified by this expression. In this example, records for the three sharded tables listed above would be routed to the `myserver.mydb.customers_all_shards` topic. 
 
-To address the concern of uniqueness across all the original tables discussed above,
-one more field for identifying the original (physical) table may be inserted into the key structure of the change events.
-By default, this field is named `\__dbz__physicalTableIdentifier` and has the original topic name as its value.
+ifdef::community[]
+= Ensure unique key
+endif::community[]
 
-If your tables already contain globally unique keys and you do not need to change the key structure, you can set the `key.enforce.uniqueness` property to `false`:
+ifdef::product[]
+// Type: procedure
+[id="ensuring-unique-keys-across-records-routed-to-the-same-topic"]
+== Ensuring unique keys across records routed to the same topic
+endif::product[]
+
+A Debezium change event key uses the table columns that make up the table's primary key. To route records for multiple physical tables to one topic, the event key must be unique across all of those tables. However, it is possible for each physical table to have a primary key that is unique within only that table. For example, a row in the `myserver.mydb.customers_shard1` table might have the same key value as a row in the `myserver.mydb.customers_shard2` table. 
+
+To ensure that each event key is unique across the tables whose change event records go to the same topic, the `ByLogicalTableRouter` transformation inserts a field into change event keys. By default, the name of the inserted field is `+__dbz__+` followed by the default destination topic name.
+
+If you want to, you can configure the `ByLogicalTableRouter` transformation to insert a different field into the key. To do this, specify the `key.field.name` option and set it to a field name that does not clash with existing primary key field names. For example: 
 
 [source]
 ----
-...
-transforms.Reroute.key.enforce.uniqueness=false
-...
-----
-
-If needed, another _field name_ can be chosen by means of the `key.field.name` property
-(obviously you'll want to choose a field name that doesn't clash with existing primary key fields).
-For example the following configuration will use the name `shard_id` for the key field:
-
-[source]
-----
-...
+transforms=Reroute
+transforms.Reroute.type=io.debezium.transforms.ByLogicalTableRouter
+transforms.Reroute.topic.regex=(.*)customers_shard(.*)
+transforms.Reroute.topic.replacement=$1customers_all_shards
 transforms.Reroute.key.field.name=shard_id
-...
 ----
 
-The _value_ of the field can be adjusted via the `key.field.regex` and `key.field.replacement` properties.
-The former allows you to define a regular expression that will be applied to the original topic name to capture one or more groups of characters.
-The latter lets you specify an expression that defines the value for the field in terms of those captured groups.
-For example:
+This example adds the `shard_id` field to the key structure in routed records.
+
+If you want to adjust the value of key's new field, configure both of these options:
+
+`key.field.regex`:: Specifies a regular expression that the transformation applies to the default destination topic name to capture one or more groups of characters. 
+
+`key.field.replacement`:: Specifies a regular expression for the value of the inserted key field in terms of those captured groups. 
+
+For example: 
 
 [source]
 ----
-...
 transforms.Reroute.key.field.regex=(.*)customers_shard(.*)
 transforms.Reroute.key.field.replacement=$2
 ----
 
-This will apply the given regular expression to original topic names and use the second capturing group as value for the key field.
-Assuming the source topics are named `myserver.mydb.customers_shard1`, `myserver.mydb.customers_shard2` etc., the key field's values would be `1`, `2` etc.
+With this configuration, suppose that the default destination topic names are: 
 
-[[configuration-options]]
-== Configuration Options
-[cols="35%a,10%a,55%a",options="header"]
-|=======================
-|Property
-|Default
-|Description
+`myserver.mydb.customers_shard1` +
+`myserver.mydb.customers_shard2` +
+`myserver.mydb.customers_shard3`
 
-|`topic.regex`
-|
-|A regular expression for matching the topic(s) which should be re-routed.
-
-|`topic.replacement`
-|
-|The name of the topic to which re-routed events will be sent. May refer to capturing groups from the regular expression given via `topic.regex` via `$1`, `$2` etc.
-
-|`key.enforce.uniqueness`
-|`true`
-|Whether to add a field to the change event key that identifies the original table/topic name and thus helps to prevent collisions of change events for records with the same key originating from multiple source tables; either `true` or `false`
-
-|`key.field.name`
-|`__dbz__physicalTableIdentifier`
-|Name of a field to be added to the change event key for  identifying the original table/topic name; only takes affect if `key.enforce.uniqueness` is `true`
-
-|`key.field.regex`
-|
-|A regular expression applied to the original topic name to capture one or more groups of characters; only takes affect if `key.enforce.uniqueness` is `true`
-
-|`key.field.replacement`
-|
-|Expression that specifies the value for the added key field in terms of captured groups defined using `key.field.regex`; only takes affect if `key.enforce.uniqueness` is `true`
-
-|=======================
+The transformation uses the values in the second captured group, the shard numbers, as the value of the key's new field. In this example, the inserted key field's values would be `1`, `2`, or `3`.

@@ -1,3 +1,10 @@
+// Category: cdc-using
+// Type: assembly
+// :community:
+:product:
+
+ifdef::community[]
+[id="new-record-state-extraction"]
 = New Record State Extraction
 include::../_attributes.adoc[]
 :toc:
@@ -10,18 +17,56 @@ toc::[]
 
 [NOTE]
 ====
-This SMT is supported only for the SQL database connectors, it does not work with the MongoDB connector.
-See xref:configuration/mongodb-event-flattening.adoc[here] for the MongoDB equivalent to this SMT.
+This single message transformation (SMT) is supported for only the SQL database connectors. For the MongoDB connector, see the xref:configuration/mongodb-event-flattening.adoc[documentation for the MongoDB equivalent to this SMT].
 ====
+endif::community[]
 
-Debezium generates data change events in a form of a complex message structure.
+ifdef::product[]
+[id="extracting-source-record-after-state-from-debezium-change-events"]
+= Extracting source record `after` state from Debezium change events
+endif::product[]
+
+A Debezium database change event has a complex structure that provides a wealth of information. Kafka records that convey Debezium change events contain all of this information. 
+However, parts of a Kafka ecosystem expect Kafka records that provide a flat structure of field names and values. 
+To provide this kind of record, Debezium provides the `ExtractNewRecordState` single message transformation (SMT). Configure this transformation when consumers need Kafka records that have a format that is simpler than Kafka records that contain Debezium change events. 
+
+The `ExtractNewRecordState` transformation is a 
+link:https://kafka.apache.org/documentation/#connect_transforms[Kafka Connect SMT].
+
+ifdef::product[]
+The transformation is available to only SQL database connectors. 
+
+The following topics provide details: 
+
+* xref:description-of-debezium-change-event-structure[]
+* xref:behavior-of-debezium-extractnewrecordstate-transformation[]
+* xref:configuration-of-extractnewrecordstate-transformation[]
+* xref:example-of-adding-metadata-to-the-kafka-record-or-its-header[]
+* xref:options-for-configuring-extractnewrecordstate-transformation[]
+
+// Type: concept
+[id="description-of-debezium-change-event-structure"]
+== Description of Debezium change event structure
+endif::product[]
+
+ifdef::community[]
+== Change event structure
+endif::community[]
+
+Debezium generates database change events that have a complex structure.
 Each event consists of three parts:
 
-* metadata, comprising the type of operation, information on the event source, a timestamp, and optionally transaction information
-* the row data before change
-* the row data after change
+* Metadata, which includes but is not limited to:
 
-E.g. the general message structure for an `update` change looks like this:
+** The operation that made the change 
+** Source information such as the names of the database and table where the change was made
+** Time stamp for when the change was made
+** Optional transaction information
+
+* Row data before the change
+* Row data after the change
+
+For example, the structure of an `UPDATE` change event looks like this:
 
 [source,json,indent=0]
 ----
@@ -42,10 +87,13 @@ E.g. the general message structure for an `update` change looks like this:
 }
 ----
 
-More details about the message structure are provided in xref:connectors/index.adoc[the documentation for each connector].
+ifdef::community[]
+More details about change event structure are provided in 
+xref:connectors/index.adoc[the documentation for each connector].
+endif::community[]
 
-This format allows the user to get most information about changes happening in the system.
-The downside of using the complex format is that other connectors or other parts of the Kafka ecosystem usually expect the data in a simple message format that can generally be described like so:
+This complex format provides the most information about changes happening in the system.
+However, other connectors or other parts of the Kafka ecosystem usually expect the data in a simple format like this: 
 
 [source,json,indent=0]
 ----
@@ -55,22 +103,62 @@ The downside of using the complex format is that other connectors or other parts
 }
 ----
 
-Debezium provides {link-kafka-docs}/#connect_transforms[a single message transformation] that crosses the bridge between the complex and simple formats, the https://github.com/debezium/debezium/blob/master/debezium-core/src/main/java/io/debezium/transforms/ExtractNewRecordState.java[ExtractNewRecordState] SMT.
+To provide the needed Kafka record format for consumers, configure the `ExtractNewRecordState` SMT.
 
-The SMT provides three main functions.
-It
+ifdef::community[]
+== Behavior
+endif::community[]
 
-* extracts the `after` field from change events and replaces the original event just with this part
-* optionally filters delete and tombstone records, as per the capabilities and requirements of downstream consumers
-* optionally adds metadata fields from the change event to the outgoing flattened record
-* optionally add metadata fields to the header
+ifdef::product[]
+// Type: concept
+[id="behavior-of-debezium-extractnewrecordstate-transformation"]
+== Behavior of Debezium `ExtractNewRecordState` transformation
+endif::product[]
 
-The SMT can be applied either to a source connector (Debezium) or a sink connector.
-We generally recommend to apply the transformation on the sink side as it means that the messages stored in Apache Kafka will contain the whole context.
-The final decision depends on use case for each user.
+link:https://github.com/debezium/debezium/blob/master/debezium-core/src/main/java/io/debezium/transforms/ExtractNewRecordState.java[The `ExtractNewRecordState` SMT] extracts the `after` field from a Debezium change event in a Kafka record. The SMT replaces the original change event with only its `after` field to create a simple Kafka record. 
 
+You can configure the `ExtractNewRecordState` SMT for a Debezium connector, that is, for a source connector, or for a sink connector. The advantage of configuring `ExtractNewRecordState` for a sink connector is that records stored in Apache Kafka contain whole Debezium change events. The decision to apply the SMT to a source or sink connector depends on your particular use case. 
+
+You can configure the transformation to do either or both of the following: 
+
+* Add metadata from the change event to the simplified Kafka record or header.
+
+* Pass Kafka records that contain change events for `DELETE` operations to consumers. 
+
+The default behavior is that the transformation drops Kafka records for `DELETE` operation change events because most consumers cannot yet handle them. A database `DELETE` operation causes Debezium to generate two Kafka records: 
+
+* A record that contains `"op": "d",` and the `before` row data.
+* A tombstone record that has the same key as the deleted row and a value of `null`. This record is a marker for Apache Kafka. It indicates that 
+link:https://kafka.apache.org/documentation/#compaction[log compaction] can remove all records that have this key. 
+
+Instead of dropping the record that contains the `before` row data, you can configure the `ExtractNewRecordData` SMT to do one of the following: 
+
+* Pass the record as is.
+* Convert the record into another tombstone record and pass it on. 
+
+Similary, instead of dropping the tombstone record, you can configure the `ExtractNewRecordData` SMT to pass the tombstone record along. 
+
+ifdef::community[]
 == Configuration
-The configuration is a part of source/sink task connector and is expressed in a set of properties:
+endif::community[]
+
+ifdef::product[]
+// Type: concept
+[id="configuration-of-extractnewrecordstate-transformation"]
+== Configuration of `ExtractNewRecordState` transformation
+endif::product[]
+
+Configure the Debezium `ExtractNewRecordState` SMT in a Kafka Connect source or sink connector `.properties` file. To obtain the default behavior, specify something like the following: 
+
+[source]
+----
+transforms=unwrap,...
+transforms.unwrap.type=io.debezium.transforms.ExtractNewRecordState
+----
+
+As in any Kafka Connect connector `.properties` file, you can set `transforms=` to multiple, comma-separated, SMT aliases in the order in which you want Kafka Connect  to apply the SMTs. 
+
+To pass tombstone records for `DELETE` operations and also add metadata to the simplified Kafka record, specify something like this: 
 
 [source]
 ----
@@ -78,91 +166,165 @@ transforms=unwrap,...
 transforms.unwrap.type=io.debezium.transforms.ExtractNewRecordState
 transforms.unwrap.drop.tombstones=false
 transforms.unwrap.delete.handling.mode=rewrite
-transforms.unwrap.add.source.fields=table,lsn
+transforms.unwrap.add.fields=table,lsn
 ----
 
-=== Record filtering for delete records
+`drop-tombstones=false`:: Keeps tombstone records for `DELETE` operations in the event stream. 
 
-The SMT provides a special handling for events that signal a `delete` operation.
-When a `DELETE` is executed on a datasource then Debezium generates two events:
+`delete-handling-mode=rewrite`:: Adds metadata for `DELETE` operations to the simplified Kafka record. 
 
-* a record with `d` operation that contains only old row data
-* (optionally) a record with `null` value and the same key (a "tombstone" message). This record serves as a marker for Apache Kafka that all messages with this key can be removed from the topic during {link-kafka-docs}/#compaction[log compaction].
+`add.fields=table,lsn`:: Adds change event metadata for the `table` and `lsn` fields to the simplified Kafka record. 
 
-Upon processing these two records, the SMT can pass on the `d` record as is,
-convert it into another tombstone record or drop it.
-The original tombstone message can be passed on as is or also be dropped.
+ifdef::community[]
+== Adding metadata
+endif::community[]
+ 
+ifdef::product[]
+// Type: concept
+[id="example-of-adding-metadata-to-the-kafka-record-or-its-header"]
+== Example of adding metadata to the Kafka record or its header
+endif::product[]
 
-[NOTE]
-====
-The SMT by default filters out *both* delete records as widely used sink connectors do not support handling of tombstone messages at this point.
-====
+The `ExtractNewRecordState` SMT can add original, change event metadata to the simplified Kafka record or its header. For example, you might want the simplified record or its header to contain any of the following: 
 
-=== Adding metadata fields to the message
+* The type of operation that made the change
+* The name of the database or table that was changed
+* Connector-specific fields such as the Postgres LSN field
 
-The SMT can optionally add metadata fields from the original change event to the final flattened record. This functionality can be used to add things like the operation or the table from the change event, or connector-specific fields like the Postgres LSN field. For more information on what's available see xref:connectors/index.adoc[the documentation for each connector].
+ifdef::community[]
+For more information on what is available see xref:connectors/index.adoc[the documentation for each connector].
+endif::community[]
 
-In case of duplicate field names (e.g. "ts_ms" exists twice), the struct should be specified to get the correct field (e.g. "source.ts_ms"). The fields will be prefixed with "\\__" or "__<struct>_", depending on the specification of the struct. Please use a comma separated list without spaces.
-
-For example, the configuration
+To add metadata to the simplified Kafka record, specify the `add.fields` option. 
+To add metadata to the header of the simplified Kafka record, specify the `add.header` option. Each of these options takes a comma separated list of change event field names. Do not specify spaces. When there are duplicate field names, to add metadata for one of those fields, specify the struct as well as the field. For example:
 
 ----
 transforms=unwrap,...
 transforms.unwrap.type=io.debezium.transforms.ExtractNewRecordState
 transforms.unwrap.add.fields=op,table,lsn,source.ts_ms
+transforms.unwrap.add.headers=db
+transforms.unwrap.delete.handling.mode=rewrite
 ----
 
-will add
+With that configuration, a simplified Kafka record would contain something like the following: 
 
 ----
 { "__op" : "c", __table": "MY_TABLE", "__lsn": "123456789", "__source_ts_ms" : "123456789", ...}
 ----
 
-to the final flattened record.
+Also, simplified Kafka records would have a `__db` header. 
 
-For `DELETE` events, this option is only supported when the <<configuration-option-delete-handling-mode, `delete.handling.mode`>> option is set to "rewrite".
+In the simplified Kafka record, the SMT prefixes the metadata field names with a double underscore. When you specify a struct, the SMT also inserts an underscore between the struct name and the field name. 
 
-=== Adding metadata fields to the header
+To add metadata from a `DELETE` change event, you must also configure the `delete.handling.mode` option with a setting of `rewrite`.
 
-The SMT can optionally add metadata fields from the original change event to the header of the final flattened record. This functionality can be used to add things like the operation or the table from the change event, or connector-specific fields like the Postgres LSN field. For more information on what's available see xref:connectors/index.adoc[the documentation for each connector].
+ifdef::community[]
+// Do not include deprecated content in downstream doc
+== Determine original operation  [DEPRECATED]
 
-In case of duplicate field names (e.g. "ts_ms" exists twice), the struct should be specified to get the correct field (e.g. "source.ts_ms"). The fields will be prefixed with "\\__" or "__<struct>_", depending on the specification of the struct. Please use a comma separated list without spaces.
+_The `operation.header` option is deprecated and scheduled for removal. Please use add.headers instead. If both add.headers and operation.header are specified, the latter will be ignored._
+
+When a Kafka record is flattened the final result won't show whether it was an insert, update or first read
+(deletions can be detected via tombstones or rewrites, see link:#options-for-configuring-extractnewrecordstate-transformation[Configuration options]).
+
+To solve this problem Debezium offers an option to propagate the original operation via a header added to the Kafka record.
+To enable this feature the option `operation.header` must be set to `true`.
+
+[source]
+----
+transforms=unwrap,...
+transforms.unwrap.type=io.debezium.transforms.ExtractNewRecordState
+transforms.unwrap.operation.header=true
+----
+
+The possible values are the ones from the `op` field of the original change event.
+endif::community[]
+
+ifdef::community[]
+// Do not include deprecated content in downstream doc
+== Adding source metadata fields [DEPRECATED]
+
+_The `add.source.fields` option is deprecated and scheduled for removal. Please use add.fields instead. If both add.fields and add.source.fields are specified, the latter will be ignored._
+
+The SMT can optionally add metadata fields from the original change event's `source` structure to the final flattened record (prefixed with "__"). This functionality can be used to add things like the table from the change event, or connector-specific fields like the Postgres LSN field. For more information on what's available in the source structure see xref:connectors/index.adoc[the documentation for each connector].
 
 For example, the configuration
 
 ----
 transforms=unwrap,...
 transforms.unwrap.type=io.debezium.transforms.ExtractNewRecordState
-transforms.unwrap.add.headers=op,table,lsn,source.ts_ms
+transforms.unwrap.add.source.fields=table,lsn
 ----
 
-will add headers `__op`, `__table`, `__lsn` and `__source_ts_ms` to the outgoing record.
+will add
 
-[[configuration_options]]
+----
+{ "__table": "MY_TABLE", "__lsn": "123456789", ...}
+----
+
+to the final flattened record.
+
+For `DELETE` events, this option is only supported when the `delete.handling.mode` option is set to "rewrite".
+
 == Configuration options
-[cols="35%a,10%a,55%a"]
+
+endif::community[]
+
+ifdef::product[]
+// Type: reference
+[id="options-for-configuring-extractnewrecordstate-transformation"]
+== Options for configuring `ExtractNewRecordState` transformation
+endif::product[]
+
+The following table describes the options that you can specify for the `ExtractNewRecordState` SMT. 
+
+[cols="35%a,10%a,55%a",options="header"]
 |===
-|Property |Default |Description
+|Property
+|Default
+|Description
 
 |[[configuration-option-drop-tombstones]]<<configuration-option-drop-tombstones, `drop.tombstones`>>
 |`true`
-|The SMT removes the tombstone generated by Debezium from the stream.
+|Debezium generates a tombstone record for each `DELETE` operation. The default behavior is that `ExtractNewRecordState` removes tombstone records from the stream. To keep tombstone records in the stream, specify `drop.tombstones=false`.  
 
 |[[configuration-option-delete-handling-mode]]<<configuration-option-delete-handling-mode, `delete.handling.mode`>>
 |`drop`
-|The SMT can `drop` (the default), `rewrite` or pass delete events (`none`). The rewrite mode will add a `__deleted` column with true/false values based on record operation.
-
+|Debezium generates a change event record for each `DELETE` operation. The default behavior is that `ExtractNewRecordState` removes these records from the stream. To keep Kafka records for `DELETE` operations in the stream, set `delete.handling.mode` to `none` or `rewrite`. +
+ +
+Specify `none` to keep this change event record in the stream as it is. + 
+ +
+Specify `rewrite` to keep this change event record in the stream and also add a `__deleted` field set to `true` to the change event record. 
 
 |[[configuration-option-route-by-field]]<<configuration-option-route-by-field, `route.by.field`>>
 |
-|The column which determines how the events will be routed, the value will the topic name; obtained from the old record state for delete events, and from the new record state otherwise
+|The column that determines how the events will be routed. The value is a topic name obtained from the `after` state. For `DELETE` operations, the value is obtained from the `before` record state.
 
 |[[configuration-option-add-fields]]<<configuration-option-add-fields, `add.fields`>>
 |
-|Specify a list of metadata fields to add to the flattened message. In case of duplicate field names (e.g. "ts_ms" exists twice), the struct should be specified to get the correct field (e.g. "source.ts_ms"). The fields will be prefixed with "\\__" or "__<struct>__", depending on the specification of the struct. Please use a comma separated list without spaces.
+|Set this option to a comma-separated list, with no spaces, of metadata fields to add to the simplified Kafka record. When there are duplicate field names, to add metadata for one of those fields, specify the struct as well as the field, for example `source.ts_ms`. +
+ +
+ When the SMT adds metadata fields to the simplified record, it prefixes each metadata field name with a double underscore. For a struct specification, the SMT also inserts an underscore between the struct name and the field name. 
 
 |[[configuration-option-add-headers]]<<configuration-option-add-headers, `add.headers`>>
 |
-|Specify a list of metadata fields to add to the header of the flattened message. In case of duplicate field names (e.g. "ts_ms" exists twice), the struct should be specified to get the correct field (e.g. "source.ts_ms"). The fields will be prefixed with "\\__" or "__<struct>__", depending on the specification of the struct. Please use a comma separated list without spaces.
+|Set this option to a comma-separated list, with no spaces, of metadata fields to add to the header of the simplified Kafka record. When there are duplicate field names, to add metadata for one of those fields, specify the struct as well as the field, for example `source.ts_ms`. +
+ +
+ When the SMT adds metadata fields to the simplified record's header, it prefixes each metadata field name with a double underscore. For a struct specification, the SMT also inserts an underscore between the struct name and the field name. 
 
+ifdef::community[]
+// Do not include deprecated content in downstream doc
+|`operation.header` DEPRECATED
+|`false`
+|_This option is deprecated and scheduled for removal. Please use add.headers instead. If both add.headers and operation.header are specified, the latter will be ignored._
+
+The SMT adds the event operation (as obtained from the `op` field of the original record) as a Kafka record header.
+
+// Do not include deprecated content in downstream doc
+|`add.source.fields` DEPRECATED
+|
+|_This option is deprecated and scheduled for removal. Please use add.fields instead. If both add.fields and add.source.fields are specified, the latter will be ignored._
+
+Fields from the change event's `source` structure to add as metadata (prefixed with "__") to the flattened record.
+endif::community[]
 |===
