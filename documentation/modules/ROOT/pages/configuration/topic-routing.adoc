@@ -36,6 +36,14 @@ So, in addition to changing the topic name, we may also want to _modify the even
 
 This SMT lets you specify how you want to choose the new topic name and then specify how to modify the change event key to ensure it is globally unique.
 
+=== Partitioned Postgres Tables
+
+when capturing changes from a partioned Postgres table,
+there will be one topic per partition table.
+Using this routing SMT allows you to emit all change events to a single topic for the entire partioned table.
+As key uniqueness across the different partition topics already is guaranteed in this case,
+the `key.enforce.uniqueness` option can be set to `false` (see below).
+
 == Topic Names
 
 Below is an example for a configuration which replaces a part of the table in the topic with another string, allowing two tables to emit changes to the same topic:
@@ -90,3 +98,37 @@ transforms.Reroute.key.field.replacement=$2
 
 This will apply the given regular expression to original topic names and use the second capturing group as value for the key field.
 Assuming the source topics are named `myserver.mydb.customers_shard1`, `myserver.mydb.customers_shard2` etc., the key field's values would be `1`, `2` etc.
+
+[[configuration-options]]
+== Configuration Options
+[cols="35%a,10%a,55%a",options="header"]
+|=======================
+|Property
+|Default
+|Description
+
+|`topic.regex`
+|
+|A regular expression for matching the topic(s) which should be re-routed.
+
+|`topic.replacement`
+|
+|The name of the topic to which re-routed events will be sent. May refer to capturing groups from the regular expression given via `topic.regex` via `$1`, `$2` etc.
+
+|`key.enforce.uniqueness`
+|`true`
+|Whether to add a field to the change event key that identifies the original table/topic name and thus helps to prevent collisions of change events for records with the same key originating from multiple source tables; either `true` or `false`
+
+|`key.field.name`
+|`__dbz__physicalTableIdentifier`
+|Name of a field to be added to the change event key for  identifying the original table/topic name; only takes affect if `key.enforce.uniqueness` is `true`
+
+|`key.field.regex`
+|
+|A regular expression applied to the original topic name to capture one or more groups of characters; only takes affect if `key.enforce.uniqueness` is `true`
+
+|`key.field.replacement`
+|
+|Expression that specifies the value for the added key field in terms of captured groups defined using `key.field.regex`; only takes affect if `key.enforce.uniqueness` is `true`
+
+|=======================
