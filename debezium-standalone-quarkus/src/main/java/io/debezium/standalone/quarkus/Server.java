@@ -105,6 +105,9 @@ public class Server {
         if (keyFormat == Json.class && valueFormat == Json.class) {
             builder = createJsonJson(consumer);
         }
+        else if (keyFormat == Json.class && valueFormat == Avro.class) {
+            builder = createJsonAvro(consumer);
+        }
         else if (keyFormat == Avro.class && valueFormat == Avro.class) {
             builder = createAvroAvro(consumer);
         }
@@ -128,6 +131,12 @@ public class Server {
     final DebeziumEngine.Builder<?> createAvroAvro(DebeziumEngine.ChangeConsumer<?> consumer) {
         return DebeziumEngine.create(Avro.class, Avro.class)
                 .notifying((DebeziumEngine.ChangeConsumer<ChangeEvent<byte[], byte[]>>) consumer);
+    }
+
+    @SuppressWarnings("unchecked")
+    final DebeziumEngine.Builder<?> createJsonAvro(DebeziumEngine.ChangeConsumer<?> consumer) {
+        return DebeziumEngine.create(Json.class, Avro.class)
+                .notifying((DebeziumEngine.ChangeConsumer<ChangeEvent<String, byte[]>>) consumer);
     }
 
     private Properties configToProperties(Config config) {
