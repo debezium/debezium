@@ -731,13 +731,13 @@ This configuration can be sent via POST to a running Kafka Connect service, whic
 
 The {prodname} MongoDB connector has two metric types in addition to the built-in support for JMX metrics that Zookeeper, Kafka, and Kafka Connect have.
 
-* <<snapshot-metrics, snapshot metrics>>; for monitoring the connector when performing snapshots
-* <<streaming-metrics, streaming metrics>>; for monitoring the connector when processing oplog events
+* <<mongodb-snapshot-metrics, snapshot metrics>>; for monitoring the connector when performing snapshots
+* <<mongodb-streaming-metrics, streaming metrics>>; for monitoring the connector when processing oplog events
 
 Please refer to the xref:operations/monitoring.adoc[monitoring documentation] for details of how to expose these metrics via JMX.
 
 [[monitoring-snapshots]]
-[[snapshot-metrics]]
+[[mongodb-snapshot-metrics]]
 ==== Snapshot Metrics
 
 The *MBean* is `debezium.mongodb:type=connector-metrics,context=snapshot,server=_<mongodb.name>_`.
@@ -757,7 +757,7 @@ The {prodname} MongoDB connector also provides the following custom snapshot met
 |===
 
 [[monitoring-streaming]]
-[[streaming-metrics]]
+[[mongodb-streaming-metrics]]
 ==== Streaming Metrics
 
 The *MBean* is `debezium.sql_server:type=connector-metrics,context=streaming,server=_<mongodb.name>_`.

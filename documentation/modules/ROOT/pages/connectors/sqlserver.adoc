@@ -669,7 +669,7 @@ The `source` structure tells us information about SQL Server's record of this ch
 
 [NOTE]
 ====
-When the columns for a row's primary/unique key are updated, the value of the row's key has changed so {prodname} will output _three_ events: a `DELETE` event and a link:#tombstone-events[tombstone event] with the old key for the row, followed by an `INSERT` event with the new key for the row.
+When the columns for a row's primary/unique key are updated, the value of the row's key has changed so {prodname} will output _three_ events: a `DELETE` event and a link:#sqlserver-tombstone-events[tombstone event] with the old key for the row, followed by an `INSERT` event with the new key for the row.
 ====
 
 [[sqlserver-delete-events]]
@@ -724,12 +724,12 @@ The SQL Server connector's events are designed to work with https://cwiki.apache
 which allows for the removal of some older messages as long as at least the most recent message for every key is kept.
 This allows Kafka to reclaim storage space while ensuring the topic contains a complete dataset and can be used for reloading key-based state.
 
-[[tombstone-events]]
+[[sqlserver-tombstone-events]]
 When a row is deleted, the _delete_ event value listed above still works with log compaction, since Kafka can still remove all earlier messages with that same key.
 But only if the message value is `null` will Kafka know that it can remove _all messages_ with that same key.
 To make this possible, the SQL Server connector always follows the _delete_ event with a special _tombstone_ event that has the same key but `null` value.
 
-[[transaction-metadata]]
+[[sqlserver-transaction-metadata]]
 === Transaction Metadata
 
 [NOTE]
@@ -1606,7 +1606,7 @@ Possible values include "Z", "UTC", offset values like "+02:00", short zone ids 
 |`false`
 |When set to `true` Debezium generates events with transaction boundaries and enriches data events envelope with transaction metadata.
 
-See link:#transaction-metadata[Transaction Metadata] for additional details.
+See link:#sqlserver-transaction-metadata[Transaction Metadata] for additional details.
 
 |=======================
 
