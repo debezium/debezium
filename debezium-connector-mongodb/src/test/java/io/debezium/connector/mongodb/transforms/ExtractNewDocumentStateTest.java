@@ -47,12 +47,6 @@ import io.debezium.schema.TopicSelector;
 public class ExtractNewDocumentStateTest {
 
     private static final String SERVER_NAME = "serverX";
-    private static final String FLATTEN_STRUCT = "flatten.struct";
-    private static final String DELIMITER = "flatten.struct.delimiter";
-    private static final String OPERATION_HEADER = "operation.header";
-    private static final String HANDLE_DELETES = "delete.handling.mode";
-    private static final String DROP_TOMBSTONE = "drop.tombstones";
-    private static final String ADD_SOURCE_FIELDS = "add.source.fields";
 
     private Filters filters;
     private SourceInfo source;

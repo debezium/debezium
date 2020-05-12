@@ -29,6 +29,7 @@ import org.fest.assertions.Assertions;
 import org.junit.Test;
 
 import io.debezium.data.Envelope;
+import io.debezium.data.Envelope.Operation;
 import io.debezium.data.SchemaUtil;
 import io.debezium.doc.FixFor;
 import io.debezium.transforms.ExtractNewRecordStateConfigDefinition;
@@ -52,6 +53,8 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
     private static final String OPERATION_HEADER = "operation.header";
     private static final String DROP_TOMBSTONE = "drop.tombstones";
     private static final String ADD_SOURCE_FIELDS = "add.source.fields";
+    private static final String ADD_HEADERS = "add.headers";
+    private static final String ADD_FIELDS = "add.fields";
 
     @Override
     protected String getCollectionName() {
@@ -77,7 +80,7 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         });
 
         // First delete record to arrive is coming from the oplog
-        SourceRecord firstRecord = getRecordByOperation(Envelope.Operation.DELETE);
+        SourceRecord firstRecord = getRecordByOperation(Operation.DELETE);
         final SourceRecord transformedDelete = transformation.apply(firstRecord);
         assertThat(transformedDelete).isNull();
 
@@ -274,7 +277,7 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         waitForStreamingRunning();
 
         final Map<String, String> props = new HashMap<>();
-        props.put(ADD_SOURCE_FIELDS, "h,ts_ms,ord,db,rs");
+        props.put(ADD_SOURCE_FIELDS, "h,ts_ms,ord , db,rs");
         transformation.configure(props);
 
         // insert
@@ -400,7 +403,7 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         // then assert operation header is insert
         Iterator<Header> operationHeader = transformed.headers().allWithName(ExtractNewRecordStateConfigDefinition.DEBEZIUM_OPERATION_HEADER_KEY);
         assertThat((operationHeader).hasNext()).isTrue();
-        assertThat(operationHeader.next().value().toString()).isEqualTo(Envelope.Operation.CREATE.code());
+        assertThat(operationHeader.next().value().toString()).isEqualTo(Operation.CREATE.code());
 
         // acquire key and value Structs
         Struct key = (Struct) transformed.key();
@@ -520,7 +523,7 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         // then assert operation header is update
         Iterator<Header> operationHeader = transformed.headers().allWithName(ExtractNewRecordStateConfigDefinition.DEBEZIUM_OPERATION_HEADER_KEY);
         assertThat((operationHeader).hasNext()).isTrue();
-        assertThat(operationHeader.next().value().toString()).isEqualTo(Envelope.Operation.UPDATE.code());
+        assertThat(operationHeader.next().value().toString()).isEqualTo(Operation.UPDATE.code());
 
         // acquire key and value Structs
         Struct key = (Struct) transformed.key();
@@ -746,7 +749,7 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         // then assert operation header is delete
         Iterator<Header> operationHeader = transformed.headers().allWithName(ExtractNewRecordStateConfigDefinition.DEBEZIUM_OPERATION_HEADER_KEY);
         assertThat((operationHeader).hasNext()).isTrue();
-        assertThat(operationHeader.next().value().toString()).isEqualTo(Envelope.Operation.DELETE.code());
+        assertThat(operationHeader.next().value().toString()).isEqualTo(Operation.DELETE.code());
 
         assertThat(value).isNull();
     }
@@ -918,7 +921,7 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         // then assert operation header is delete
         Iterator<Header> operationHeader = transformed.headers().allWithName(ExtractNewRecordStateConfigDefinition.DEBEZIUM_OPERATION_HEADER_KEY);
         assertThat((operationHeader).hasNext()).isTrue();
-        assertThat(operationHeader.next().value().toString()).isEqualTo(Envelope.Operation.DELETE.code());
+        assertThat(operationHeader.next().value().toString()).isEqualTo(Operation.DELETE.code());
 
         // acquire key and value Structs
         Struct key = (Struct) transformed.key();
@@ -1195,7 +1198,248 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         assertThat(value.schema().fields()).hasSize(4);
     }
 
+    @Test
+    @FixFor("DBZ-1791")
+    public void testAddHeader() throws Exception {
+        waitForStreamingRunning();
+
+        final Map<String, String> props = new HashMap<>();
+        props.put(ADD_HEADERS, "op");
+        transformation.configure(props);
+
+        final SourceRecord createRecord = createCreateRecord();
+        final SourceRecord transformed = transformation.apply(createRecord);
+        assertThat(transformed.headers()).hasSize(1);
+        assertThat(getSourceRecordHeaderByKey(transformed, "__op")).isEqualTo(Operation.CREATE.code());
+    }
+
+    @Test
+    @FixFor("DBZ-1791")
+    public void testAddHeadrsForMissingOrInvalidFields() throws Exception {
+        waitForStreamingRunning();
+
+        final Map<String, String> props = new HashMap<>();
+        props.put(ADD_HEADERS, "op,id");
+        transformation.configure(props);
+
+        final SourceRecord createRecord = createCreateRecord();
+        final SourceRecord transformed = transformation.apply(createRecord);
+        assertThat(transformed.headers()).hasSize(2);
+        assertThat(getSourceRecordHeaderByKey(transformed, "__op")).isEqualTo(Operation.CREATE.code());
+        assertThat(getSourceRecordHeaderByKey(transformed, "__id")).isNull();
+    }
+
+    @Test
+    @FixFor("DBZ-1791")
+    public void testAddHeadersSpecifyingStruct() throws Exception {
+        waitForStreamingRunning();
+
+        final Map<String, String> props = new HashMap<>();
+        props.put(ADD_HEADERS, "op,source.rs,source.collection");
+        transformation.configure(props);
+
+        final SourceRecord createRecord = createCreateRecord();
+        final SourceRecord transformed = transformation.apply(createRecord);
+        assertThat(transformed.headers()).hasSize(3);
+        assertThat(getSourceRecordHeaderByKey(transformed, "__op")).isEqualTo(Operation.CREATE.code());
+        assertThat(getSourceRecordHeaderByKey(transformed, "__source_rs")).isEqualTo("rs0");
+        assertThat(getSourceRecordHeaderByKey(transformed, "__source_collection")).isEqualTo(getCollectionName());
+    }
+
+    @Test
+    @FixFor("DBZ-1791")
+    public void testAddField() throws Exception {
+        waitForStreamingRunning();
+
+        final Map<String, String> props = new HashMap<>();
+        props.put(ADD_FIELDS, "op");
+        transformation.configure(props);
+
+        final SourceRecord createRecord = createCreateRecord();
+        final SourceRecord transformed = transformation.apply(createRecord);
+        assertThat(((Struct) transformed.value()).get("__op")).isEqualTo(Operation.CREATE.code());
+    }
+
+    @Test
+    @FixFor("DBZ-1791")
+    public void testAddFields() throws Exception {
+        waitForStreamingRunning();
+
+        final Map<String, String> props = new HashMap<>();
+        props.put(ADD_FIELDS, "op , ts_ms");
+        transformation.configure(props);
+
+        final SourceRecord createRecord = createCreateRecord();
+        final SourceRecord transformed = transformation.apply(createRecord);
+        assertThat(((Struct) transformed.value()).get("__op")).isEqualTo(Operation.CREATE.code());
+        assertThat(((Struct) transformed.value()).get("__ts_ms")).isNotNull();
+    }
+
+    @Test
+    @FixFor("DBZ-1791")
+    public void testAddFieldsForMissingOptionalField() throws Exception {
+        waitForStreamingRunning();
+
+        final Map<String, String> props = new HashMap<>();
+        props.put(ADD_FIELDS, "op,id");
+        transformation.configure(props);
+
+        final SourceRecord createRecord = createCreateRecord();
+        final SourceRecord transformed = transformation.apply(createRecord);
+        assertThat(((Struct) transformed.value()).get("__op")).isEqualTo(Operation.CREATE.code());
+        assertThat(((Struct) transformed.value()).get("__id")).isNull();
+    }
+
+    @Test
+    @FixFor("DBZ-1791")
+    public void testAddFieldsSpecifyStruct() throws Exception {
+        waitForStreamingRunning();
+
+        final Map<String, String> props = new HashMap<>();
+        props.put(ADD_FIELDS, "op,source.rs,source.collection");
+        transformation.configure(props);
+
+        final SourceRecord createRecord = createCreateRecord();
+        final SourceRecord transformed = transformation.apply(createRecord);
+        assertThat(((Struct) transformed.value()).get("__op")).isEqualTo(Operation.CREATE.code());
+        assertThat(((Struct) transformed.value()).get("__source_rs")).isEqualTo("rs0");
+        assertThat(((Struct) transformed.value()).get("__source_collection")).isEqualTo(getCollectionName());
+    }
+
+    @Test
+    @FixFor("DBZ-1791")
+    public void testAddFieldHandleDeleteRewrite() throws Exception {
+        waitForStreamingRunning();
+
+        final Map<String, String> props = new HashMap<>();
+        props.put(HANDLE_DELETES, "rewrite");
+        props.put(ADD_FIELDS, "op");
+        transformation.configure(props);
+
+        final SourceRecord deleteRecord = createDeleteRecordWithTombstone().allRecordsInOrder().get(0);
+        final SourceRecord transformed = transformation.apply(deleteRecord);
+        assertThat(((Struct) transformed.value()).get("__deleted")).isEqualTo(true);
+        assertThat(((Struct) transformed.value()).get("__op")).isEqualTo(Operation.DELETE.code());
+    }
+
+    @Test
+    @FixFor("DBZ-1791")
+    public void tesAddFieldsHandleDeleteRewrite() throws Exception {
+        waitForStreamingRunning();
+
+        final Map<String, String> props = new HashMap<>();
+        props.put(HANDLE_DELETES, "rewrite");
+        props.put(ADD_FIELDS, "op,ts_ms");
+        transformation.configure(props);
+
+        final SourceRecord deleteRecord = createDeleteRecordWithTombstone().allRecordsInOrder().get(0);
+        final SourceRecord transformed = transformation.apply(deleteRecord);
+        assertThat(((Struct) transformed.value()).get("__deleted")).isEqualTo(true);
+        assertThat(((Struct) transformed.value()).get("__op")).isEqualTo(Operation.DELETE.code());
+        assertThat(((Struct) transformed.value()).get("__ts_ms")).isNotNull();
+    }
+
+    @Test
+    @FixFor("DBZ-1791")
+    public void testAddFieldsSpecifyStructHandleDeleteRewrite() throws Exception {
+        waitForStreamingRunning();
+
+        final Map<String, String> props = new HashMap<>();
+        props.put(HANDLE_DELETES, "rewrite");
+        props.put(ADD_FIELDS, "op,source.rs,source.collection");
+        transformation.configure(props);
+
+        final SourceRecord deleteRecord = createDeleteRecordWithTombstone().allRecordsInOrder().get(0);
+        final SourceRecord transformed = transformation.apply(deleteRecord);
+        assertThat(((Struct) transformed.value()).get("__deleted")).isEqualTo(true);
+        assertThat(((Struct) transformed.value()).get("__op")).isEqualTo(Operation.DELETE.code());
+        assertThat(((Struct) transformed.value()).get("__source_rs")).isEqualTo("rs0");
+        assertThat(((Struct) transformed.value()).get("__source_collection")).isEqualTo(getCollectionName());
+    }
+
+    @Test
+    @FixFor("DBZ-1791")
+    public void testAddFieldsHandleDeleteRewriteAndTombstone() throws Exception {
+        waitForStreamingRunning();
+
+        final Map<String, String> props = new HashMap<>();
+        props.put(HANDLE_DELETES, "rewrite");
+        props.put(ADD_FIELDS, "op,ts_ms");
+        props.put(DROP_TOMBSTONE, "false");
+        transformation.configure(props);
+
+        final SourceRecords records = createDeleteRecordWithTombstone();
+
+        final SourceRecord deleteRecord = records.allRecordsInOrder().get(0);
+        final SourceRecord deleteTransformed = transformation.apply(deleteRecord);
+        assertThat(((Struct) deleteTransformed.value()).get("__deleted")).isEqualTo(true);
+        assertThat(((Struct) deleteTransformed.value()).get("__op")).isEqualTo(Operation.DELETE.code());
+        assertThat(((Struct) deleteTransformed.value()).get("__ts_ms")).isNotNull();
+
+        final SourceRecord tombstoneRecord = records.allRecordsInOrder().get(1);
+        final SourceRecord tombstoneTransformed = transformation.apply(tombstoneRecord);
+        assertThat(tombstoneTransformed.value()).isNull();
+    }
+
+    private SourceRecord createCreateRecord() throws Exception {
+        ObjectId objId = new ObjectId();
+        Document obj = new Document()
+                .append("_id", objId)
+                .append("name", "Sally")
+                .append("address", new Document()
+                        .append("struct", "Morris Park Ave")
+                        .append("zipcode", "10462"));
+
+        primary().execute("insert", client -> {
+            client.getDatabase(DB_NAME).getCollection(getCollectionName()).insertOne(obj);
+        });
+
+        final SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic(topicName()).size()).isEqualTo(1);
+        assertNoRecordsToConsume();
+
+        return records.allRecordsInOrder().get(0);
+    }
+
+    private SourceRecords createDeleteRecordWithTombstone() throws Exception {
+        ObjectId objId = new ObjectId();
+        Document obj = new Document()
+                .append("_id", objId)
+                .append("name", "Sally")
+                .append("address", new Document()
+                        .append("struct", "Morris Park Ave")
+                        .append("zipcode", "10462"));
+
+        primary().execute("insert", client -> {
+            client.getDatabase(DB_NAME).getCollection(getCollectionName()).insertOne(obj);
+        });
+
+        final SourceRecords createRecords = consumeRecordsByTopic(1);
+        assertThat(createRecords.recordsForTopic(topicName()).size()).isEqualTo(1);
+        assertNoRecordsToConsume();
+
+        primary().execute("delete", client -> {
+            Document filter = Document.parse("{\"_id\": {\"$oid\": \"" + objId + "\"}}");
+            client.getDatabase(DB_NAME).getCollection(getCollectionName()).deleteOne(filter);
+        });
+
+        final SourceRecords deleteRecords = consumeRecordsByTopic(2);
+        assertThat(deleteRecords.recordsForTopic(topicName()).size()).isEqualTo(2);
+        assertNoRecordsToConsume();
+
+        return deleteRecords;
+    }
+
     private static void waitForStreamingRunning() throws InterruptedException {
         waitForStreamingRunning("mongodb", SERVER_NAME);
+    }
+
+    private String getSourceRecordHeaderByKey(SourceRecord record, String headerKey) {
+        Iterator<Header> headers = record.headers().allWithName(headerKey);
+        if (!headers.hasNext()) {
+            return null;
+        }
+        Object value = headers.next().value();
+        return value != null ? value.toString() : null;
     }
 }
