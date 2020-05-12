@@ -264,9 +264,12 @@ For `DELETE` events, this option is only supported when the `delete.handling.mod
 |`_`
 |Delimiter to concat between field names from the input record when generating field names for the output record. Only applies when `flatten.struct` is set to `true`
 
+ifndef::cdc-product[]
 |`operation.header`
 |`false`
-|The SMT adds the xref:connectors/mongodb.adoc#mongodb-change-events-value[event operation] as a message header.
+|The SMT adds the xref:connectors/mongodb.adoc#mongodb-change-events-value[event operation] as a message header. +
+This is deprecated as of Debezium 1.2, please use `add.headers` and `add.fields` instead.
+endif::[]
 
 |`drop.tombstones`
 |`true`
@@ -276,9 +279,26 @@ For `DELETE` events, this option is only supported when the `delete.handling.mod
 |`drop`
 |The SMT can `drop`, `rewrite` or pass delete records (`none`). The `rewrite` mode will add a `__deleted` field set to `true` or `false` depending on the represented operation.
 
-|`add.source.fields`
+ifndef::cdc-product[]
+|`add.source.fields` +
 |
-|Fields from the change event's `source` structure to add as metadata (prefixed with "__") to the flattened record
+|Fields from the change event's `source` structure to add as metadata (prefixed with "__") to the flattened record. +
+This is deprecated as of Debezium 1.2, please use `add.headers` and `add.fields` instead.
+endif::[]
+
+|`add.headers`
+|
+|Specify a list of metadata fields to add to header of the flattened message.
+In case of duplicate field names (e.g. "ts_ms" exists twice), the struct should be specified to get the correct field (e.g. "source.ts_ms").
+The fields will be prefixed with "__" or "__<struct>__", depending on the specification of the struct.
+Please use a comma separated list without spaces.
+
+|`add.fields`
+|
+|Specify a list of metadata fields to add to the flattened message.
+In case of duplicate field names (e.g. "ts_ms" exists twice), the struct should be specified to get the correct field (e.g. "source.ts_ms").
+The fields will be prefixed with "__" or "__<struct>__", depending on the specification of the struct.
+Please use a comma separated list without spaces.
 
 |`sanitize.field.names`
 |`false`
