@@ -101,7 +101,7 @@ endif::product[]
 
 A Debezium change event key uses the table columns that make up the table's primary key. To route records for multiple physical tables to one topic, the event key must be unique across all of those tables. However, it is possible for each physical table to have a primary key that is unique within only that table. For example, a row in the `myserver.mydb.customers_shard1` table might have the same key value as a row in the `myserver.mydb.customers_shard2` table. 
 
-To ensure that each event key is unique across the tables whose change event records go to the same topic, the `ByLogicalTableRouter` transformation inserts a field into change event keys. By default, the name of the inserted field is `+__dbz__+` followed by the default destination topic name.
+To ensure that each event key is unique across the tables whose change event records go to the same topic, the `ByLogicalTableRouter` transformation inserts a field into change event keys. By default, the name of the inserted field is `+__dbz__+` followed by the physical table identifier. The value of the inserted field is the default destination topic name.
 
 If you want to, you can configure the `ByLogicalTableRouter` transformation to insert a different field into the key. To do this, specify the `key.field.name` option and set it to a field name that does not clash with existing primary key field names. For example: 
 
