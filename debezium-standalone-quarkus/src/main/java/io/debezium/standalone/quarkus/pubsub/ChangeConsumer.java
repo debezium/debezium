@@ -7,7 +7,7 @@ package io.debezium.standalone.quarkus.pubsub;
 
 import java.util.List;
 
-import javax.enterprise.context.ApplicationScoped;
+import javax.enterprise.context.Dependent;
 import javax.inject.Named;
 
 import io.debezium.engine.ChangeEvent;
@@ -20,8 +20,8 @@ import io.debezium.engine.DebeziumEngine.RecordCommitter;
  * @author Jiri Pechanec
  *
  */
-@ApplicationScoped
 @Named("pub-sub")
+@Dependent
 public class ChangeConsumer implements DebeziumEngine.ChangeConsumer<ChangeEvent<?, ?>> {
 
     @Override

@@ -10,7 +10,8 @@ import java.util.Collections;
 import java.util.List;
 
 import javax.annotation.PostConstruct;
-import javax.enterprise.context.ApplicationScoped;
+import javax.annotation.PreDestroy;
+import javax.enterprise.context.Dependent;
 import javax.inject.Named;
 
 import io.debezium.DebeziumException;
@@ -19,7 +20,7 @@ import io.debezium.engine.DebeziumEngine;
 import io.debezium.engine.DebeziumEngine.RecordCommitter;
 import io.debezium.util.Testing;
 
-@ApplicationScoped
+@Dependent
 @Named("test")
 public class TestConsumer implements DebeziumEngine.ChangeConsumer<ChangeEvent<Object, Object>> {
 
@@ -28,6 +29,11 @@ public class TestConsumer implements DebeziumEngine.ChangeConsumer<ChangeEvent<O
     @PostConstruct
     void init() {
         Testing.print("Test consumer constructed");
+    }
+
+    @PreDestroy
+    void close() {
+        Testing.print("Test consumer destroyed");
     }
 
     @Override

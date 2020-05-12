@@ -8,7 +8,8 @@ package io.debezium.standalone.quarkus.kinesis;
 import java.util.List;
 
 import javax.annotation.PostConstruct;
-import javax.enterprise.context.ApplicationScoped;
+import javax.annotation.PreDestroy;
+import javax.enterprise.context.Dependent;
 import javax.enterprise.inject.Instance;
 import javax.inject.Inject;
 import javax.inject.Named;
@@ -24,6 +25,7 @@ import io.debezium.engine.ChangeEvent;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.engine.DebeziumEngine.RecordCommitter;
 import io.debezium.standalone.quarkus.CustomConsumerBuilder;
+
 import software.amazon.awssdk.auth.credentials.ProfileCredentialsProvider;
 import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.regions.Region;
@@ -37,7 +39,7 @@ import software.amazon.awssdk.services.kinesis.model.PutRecordRequest;
  *
  */
 @Named("kinesis")
-@ApplicationScoped
+@Dependent
 public class ChangeConsumer implements DebeziumEngine.ChangeConsumer<ChangeEvent<Object, Object>> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ChangeConsumer.class);
@@ -49,6 +51,9 @@ public class ChangeConsumer implements DebeziumEngine.ChangeConsumer<ChangeEvent
 
     @ConfigProperty(name = PROP_PREFIX + "credentials.profile", defaultValue = "default")
     String credentialsProfile;
+
+    @ConfigProperty(name = PROP_PREFIX + "null.key", defaultValue = "default")
+    String nullKey;
 
     private KinesisClient client = null;
     private StreamNameMapper streamNameMapper = (x) -> x;
@@ -81,6 +86,16 @@ public class ChangeConsumer implements DebeziumEngine.ChangeConsumer<ChangeEvent
         LOGGER.info("Using default KinesisClient '{}'", client);
     }
 
+    @PreDestroy
+    void close() {
+        try {
+            client.close();
+        }
+        catch (Exception e) {
+            LOGGER.warn("Exception while closing Kinesis client: {}", e);
+        }
+    }
+
     private byte[] getByte(Object object) {
         if (object instanceof byte[]) {
             return (byte[]) object;
@@ -109,7 +124,7 @@ public class ChangeConsumer implements DebeziumEngine.ChangeConsumer<ChangeEvent
         for (ChangeEvent<Object, Object> record : records) {
             LOGGER.trace("Received event '{}'", record);
             final PutRecordRequest putRecord = PutRecordRequest.builder()
-                    .partitionKey(getString(record.key()))
+                    .partitionKey((record.key() != null) ? getString(record.key()) : nullKey)
                     .streamName(streamNameMapper.map(record.destination()))
                     .data(SdkBytes.fromByteArray(getByte(record.value())))
                     .build();

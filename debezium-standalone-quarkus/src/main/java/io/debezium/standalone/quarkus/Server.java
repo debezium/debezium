@@ -14,6 +14,7 @@ import java.util.stream.Collectors;
 
 import javax.annotation.PostConstruct;
 import javax.enterprise.context.ApplicationScoped;
+import javax.enterprise.context.spi.CreationalContext;
 import javax.enterprise.event.Observes;
 import javax.enterprise.inject.spi.Bean;
 import javax.enterprise.inject.spi.BeanManager;
@@ -28,6 +29,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.DebeziumException;
 import io.debezium.engine.ChangeEvent;
 import io.debezium.engine.DebeziumEngine;
+import io.debezium.engine.DebeziumEngine.ChangeConsumer;
 import io.debezium.engine.format.Avro;
 import io.debezium.engine.format.Json;
 import io.debezium.engine.format.SerializationFormat;
@@ -38,7 +40,7 @@ import io.quarkus.runtime.Startup;
  * <p>The entry point of the Quarkus-based standalone server. The server is configured via Quarkus/Microprofile Configuration sources
  * and provides few out-of-the-box target implementations.</p>
  * <p>The implementation uses CDI to find all classes that implements {@link DebeziumEngine.ChangeConsumer} interface.
- * The candidate classes should be annotated with {@code @Named} annotation and should be {@code ApplicationScoped}.</p>
+ * The candidate classes should be annotated with {@code @Named} annotation and should be {@code Dependent}.</p>
  * <p>The configuration option {@code debezium.consumer} provides a name of the consumer that should be used and the value
  * must match to exactly one of the implementation classes.</p>
  *
@@ -69,9 +71,12 @@ public class Server {
     @Liveness
     ConnectorLifecycle health;
 
+    private Bean<DebeziumEngine.ChangeConsumer<ChangeEvent<?, ?>>> consumerBean;
+    private CreationalContext<ChangeConsumer<ChangeEvent<?, ?>>> consumerBeanCreationalContext;
     private DebeziumEngine.ChangeConsumer<ChangeEvent<?, ?>> consumer;
     private DebeziumEngine<?> engine;
 
+    @SuppressWarnings("unchecked")
     @PostConstruct
     public void start() {
         final Config config = ConfigProvider.getConfig();
@@ -89,9 +94,9 @@ public class Server {
             throw new DebeziumException("Multiple Debezium consumers named '" + name + "' were found");
         }
 
-        @SuppressWarnings("unchecked")
-        final Bean<DebeziumEngine.ChangeConsumer<ChangeEvent<?, ?>>> bean = (Bean<DebeziumEngine.ChangeConsumer<ChangeEvent<?, ?>>>) beans.iterator().next();
-        consumer = bean.create(beanManager.createCreationalContext(null));
+        consumerBean = (Bean<DebeziumEngine.ChangeConsumer<ChangeEvent<?, ?>>>) beans.iterator().next();
+        consumerBeanCreationalContext = beanManager.createCreationalContext(consumerBean);
+        consumer = consumerBean.create(consumerBeanCreationalContext);
         LOGGER.info("Consumer '{}' instantiated", consumer.getClass().getName());
 
         final Class<? extends SerializationFormat<?>> keyFormat = getFormat(config, PROP_KEY_FORMAT);
@@ -122,19 +127,19 @@ public class Server {
     }
 
     @SuppressWarnings("unchecked")
-    final DebeziumEngine.Builder<?> createJsonJson(DebeziumEngine.ChangeConsumer<?> consumer) {
+    private DebeziumEngine.Builder<?> createJsonJson(DebeziumEngine.ChangeConsumer<?> consumer) {
         return DebeziumEngine.create(Json.class, Json.class)
                 .notifying((DebeziumEngine.ChangeConsumer<ChangeEvent<String, String>>) consumer);
     }
 
     @SuppressWarnings("unchecked")
-    final DebeziumEngine.Builder<?> createAvroAvro(DebeziumEngine.ChangeConsumer<?> consumer) {
+    private DebeziumEngine.Builder<?> createAvroAvro(DebeziumEngine.ChangeConsumer<?> consumer) {
         return DebeziumEngine.create(Avro.class, Avro.class)
                 .notifying((DebeziumEngine.ChangeConsumer<ChangeEvent<byte[], byte[]>>) consumer);
     }
 
     @SuppressWarnings("unchecked")
-    final DebeziumEngine.Builder<?> createJsonAvro(DebeziumEngine.ChangeConsumer<?> consumer) {
+    private DebeziumEngine.Builder<?> createJsonAvro(DebeziumEngine.ChangeConsumer<?> consumer) {
         return DebeziumEngine.create(Json.class, Avro.class)
                 .notifying((DebeziumEngine.ChangeConsumer<ChangeEvent<String, byte[]>>) consumer);
     }
@@ -171,6 +176,7 @@ public class Server {
         catch (Exception e) {
             LOGGER.error("Exception while shuttting down Debezium", e);
         }
+        consumerBean.destroy(consumer, consumerBeanCreationalContext);
     }
 
     /**
