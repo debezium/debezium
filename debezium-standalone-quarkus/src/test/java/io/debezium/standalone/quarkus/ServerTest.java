@@ -41,6 +41,7 @@ public class ServerTest {
         Testing.Files.delete(TestConfigSource.TEST_FILE_PATH);
         Testing.Files.createTestingFile(TestConfigSource.TEST_FILE_PATH);
         appendLinesToSource(MESSAGE_COUNT);
+        Testing.Print.enable();
     }
 
     @Inject
