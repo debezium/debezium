@@ -21,6 +21,7 @@ import org.apache.kafka.connect.runtime.standalone.StandaloneConfig;
 import org.fest.assertions.Assertions;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 
 import io.debezium.doc.FixFor;
@@ -32,6 +33,10 @@ import io.debezium.engine.DebeziumEngine.CompletionCallback;
 import io.debezium.engine.format.Avro;
 import io.debezium.engine.format.CloudEvents;
 import io.debezium.engine.format.Json;
+import io.debezium.junit.EqualityCheck;
+import io.debezium.junit.SkipTestRule;
+import io.debezium.junit.SkipWhenKafkaVersion;
+import io.debezium.junit.SkipWhenKafkaVersion.KafkaVersion;
 import io.debezium.util.LoggingContext;
 import io.debezium.util.Testing;
 
@@ -43,6 +48,9 @@ import io.debezium.util.Testing;
 public class DebeziumEngineIT {
 
     protected static final Path OFFSET_STORE_PATH = Testing.Files.createTestingPath("connector-offsets.txt").toAbsolutePath();
+
+    @Rule
+    public SkipTestRule skipTest = new SkipTestRule();
 
     @Before
     public void before() throws SQLException {
@@ -103,6 +111,7 @@ public class DebeziumEngineIT {
 
     @Test
     @FixFor("DBZ-1807")
+    @SkipWhenKafkaVersion(check = EqualityCheck.EQUAL, value = KafkaVersion.KAFKA_1XX, description = "Not compatible with Kafka 1.x")
     public void shouldSerializeToAvro() throws Exception {
         final Properties props = new Properties();
         props.putAll(TestHelper.defaultConfig().build().asMap());

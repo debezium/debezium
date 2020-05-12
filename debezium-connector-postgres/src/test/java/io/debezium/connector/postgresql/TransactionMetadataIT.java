@@ -26,8 +26,12 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
 import io.debezium.connector.postgresql.junit.SkipTestDependingOnDecoderPluginNameRule;
 import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.junit.EqualityCheck;
+import io.debezium.junit.SkipWhenKafkaVersion;
+import io.debezium.junit.SkipWhenKafkaVersion.KafkaVersion;
 import io.debezium.util.Collect;
 
+@SkipWhenKafkaVersion(check = EqualityCheck.EQUAL, value = KafkaVersion.KAFKA_1XX, description = "Not compatible with Kafka 1.x")
 public class TransactionMetadataIT extends AbstractConnectorTest {
 
     private static final String INSERT_STMT = "INSERT INTO s1.a (aa) VALUES (1);" +
