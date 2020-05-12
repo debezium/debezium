@@ -27,6 +27,33 @@ public @interface SkipWhenKafkaVersion {
     String description() default "";
 
     public enum KafkaVersion {
+        KAFKA_1XX {
+            @Override
+            boolean isLessThan(int major, int minor, int patch) {
+                return major < 1;
+            }
+
+            @Override
+            boolean isLessThanOrEqualTo(int major, int minor, int patch) {
+                return isLessThan(major, minor, patch) || isEqualTo(major, minor, patch);
+            }
+
+            @Override
+            boolean isEqualTo(int major, int minor, int patch) {
+                return major == 1;
+            }
+
+            @Override
+            boolean isGreaterThanOrEqualTo(int major, int minor, int patch) {
+                return major > 1 || isEqualTo(major, minor, patch);
+            }
+
+            @Override
+            boolean isGreaterThan(int major, int minor, int patch) {
+                return major > 1;
+            }
+        },
+
         KAFKA_241 {
             @Override
             boolean isLessThan(int major, int minor, int patch) {

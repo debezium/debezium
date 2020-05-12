@@ -18,6 +18,7 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.fest.assertions.Assertions;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
@@ -26,6 +27,10 @@ import io.debezium.connector.sqlserver.util.TestHelper;
 import io.debezium.data.Envelope;
 import io.debezium.data.SchemaAndValueField;
 import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.junit.EqualityCheck;
+import io.debezium.junit.SkipTestRule;
+import io.debezium.junit.SkipWhenKafkaVersion;
+import io.debezium.junit.SkipWhenKafkaVersion.KafkaVersion;
 import io.debezium.util.Collect;
 import io.debezium.util.Testing;
 
@@ -34,9 +39,13 @@ import io.debezium.util.Testing;
  *
  * @author Jiri Pechanec
  */
+@SkipWhenKafkaVersion(check = EqualityCheck.EQUAL, value = KafkaVersion.KAFKA_1XX, description = "Not compatible with Kafka 1.x")
 public class TransactionMetadataIT extends AbstractConnectorTest {
 
     private SqlServerConnection connection;
+
+    @Rule
+    public SkipTestRule skipRule = new SkipTestRule();
 
     @Before
     public void before() throws SQLException {
