@@ -149,6 +149,26 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
             .withDescription("Whether field names will be sanitized to Avro naming conventions")
             .withDefault(Boolean.FALSE);
 
+    public static final Field ADD_SOURCE_FIELDS = Field.create("add.source.fields")
+            .withDisplayName("Adds the specified fields from the 'source' field from the payload if they exist.")
+            .withType(ConfigDef.Type.LIST)
+            .withWidth(ConfigDef.Width.LONG)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDefault("")
+            .withDescription("DEPRECATED. Please use the 'add.fields' option instead. "
+                     + "Adds each field listed from the 'source' element of the payload, prefixed with __ "
+                     + "Example: 'version,connector' would add __version and __connector fields");
+
+    public static final Field OPERATION_HEADER = Field.create("operation.header")
+            .withDisplayName("Adds a message header representing the applied operation")
+            .withType(Type.BOOLEAN)
+            .withWidth(Width.SHORT)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDefault(false)
+            .withDescription("DEPRECATED. Please use the 'add.fields' option instead. "
+                     + "Adds the operation type of the change event as a header."
+                     + "Its key is '" + ExtractNewRecordStateConfigDefinition.DEBEZIUM_OPERATION_HEADER_KEY + "'");
+
     private final ExtractField<R> afterExtractor = new ExtractField.Value<>();
     private final ExtractField<R> patchExtractor = new ExtractField.Value<>();
     private final ExtractField<R> keyExtractor = new ExtractField.Key<>();
@@ -447,7 +467,7 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
         smtManager = new SmtManager<>(config);
 
         final Field.Set configFields = Field.setOf(ARRAY_ENCODING, FLATTEN_STRUCT, DELIMITER,
-                ExtractNewRecordStateConfigDefinition.OPERATION_HEADER,
+                OPERATION_HEADER,
                 ExtractNewRecordStateConfigDefinition.HANDLE_DELETES,
                 ExtractNewRecordStateConfigDefinition.DROP_TOMBSTONES,
                 SANITIZE_FIELD_NAMES);
@@ -460,9 +480,9 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
                 ArrayEncoding.parse(config.getString(ARRAY_ENCODING)),
                 FieldNameSelector.defaultNonRelationalSelector(config.getBoolean(SANITIZE_FIELD_NAMES)));
 
-        addOperationHeader = config.getBoolean(ExtractNewRecordStateConfigDefinition.OPERATION_HEADER);
+        addOperationHeader = config.getBoolean(OPERATION_HEADER);
 
-        addSourceFields = determienAdditionalSourceField(config.getString(ExtractNewRecordStateConfigDefinition.ADD_SOURCE_FIELDS));
+        addSourceFields = determienAdditionalSourceField(config.getString(ADD_SOURCE_FIELDS));
 
         additionalHeaders = FieldReference.fromConfiguration(config.getString(ExtractNewRecordStateConfigDefinition.ADD_HEADERS));
         additionalFields = FieldReference.fromConfiguration(config.getString(ExtractNewRecordStateConfigDefinition.ADD_FIELDS));
