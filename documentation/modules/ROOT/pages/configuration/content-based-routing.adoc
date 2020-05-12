@@ -92,19 +92,19 @@ value.op == 'u' ? 'updates' : null
 |Default
 |Description
 
-|`topic.regex`
+|[[configuration-option-topic-regex]]<<configuration-option-topic-regex, `topic.regex`>>
 |
 |An optional regular expression for specifying the topic(s) this transformation should be applied to. Records on any topic whose name does not match the given expression are passed on as-is.
 
-|`language`
+|[[configuration-option-language]]<<configuration-option-language, `language`>>
 |
 |The language in which the expression is written. Must begin with `jsr223.`, e.g. `jsr223.groovy`, or `jsr223.graal.js`. Currently, only bootstrapping via the https://jcp.org/en/jsr/detail?id=223[JSR 223 API] ("Scripting for the Java (TM) Platform") is supported.
 
-|`topic.expression`
+|[[configuration-option-topic-expression]]<<configuration-option-topic-expression, `topic.expression`>>
 |
 |The expression evaluated for every message. Must evaluate to a `String` value where a result of non-null will re-route the message to a new topic, and a `null` value will keep it in the original topic.
 
-|`null.handling.mode`
+|[[configuration-option-null-handling-mode]]<<configuration-option-null-handling-mode, `null.handling.mode`>>
 |`keep`
 |Prescribes how the transformation should handle `null` (tombstone) messages. The options are: `keep` (the default) to pass the message through, `drop` to remove the messages completely, or `evaluate` to run the message through the topic expression.
 
