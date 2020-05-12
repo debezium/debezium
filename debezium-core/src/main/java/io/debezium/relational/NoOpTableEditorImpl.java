@@ -106,6 +106,11 @@ final class NoOpTableEditorImpl implements TableEditor {
     }
 
     @Override
+    public TableEditor updateColumn(Column column) {
+        return this;
+    }
+
+    @Override
     public TableEditor reorderColumn(String columnName, String afterColumnName) {
         return this;
     }

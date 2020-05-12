@@ -58,6 +58,28 @@ public class MySqlAntlrDdlParserTest {
         tables = new Tables();
     }
 
+    @Test
+    @FixFor("DBZ-2061")
+    public void shouldUpdateSchemaForChangeDefaultValue() {
+        String ddl = "CREATE TABLE mytable (id INT PRIMARY KEY, val1 INT);"
+                + "ALTER TABLE mytable ADD COLUMN last_val INT DEFAULT 5;";
+        parser.parse(ddl, tables);
+        assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
+        assertThat(tables.size()).isEqualTo(1);
+
+        parser.parse("ALTER TABLE mytable ALTER COLUMN last_val SET DEFAULT 10;", tables);
+        assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
+        assertThat(tables.size()).isEqualTo(1);
+
+        Table table = tables.forTable(null, null, "mytable");
+        assertThat(table.columns()).hasSize(3);
+        assertThat(table.columnWithName("id")).isNotNull();
+        assertThat(table.columnWithName("val1")).isNotNull();
+        assertThat(table.columnWithName("last_val")).isNotNull();
+        assertThat(table.columnWithName("last_val").defaultValue()).isEqualTo(10);
+    }
+
+    @Test
     @FixFor("DBZ-1833")
     public void shouldNotUpdateExistingTable() {
         String ddl = "CREATE TABLE mytable (id INT PRIMARY KEY, val1 INT)";
