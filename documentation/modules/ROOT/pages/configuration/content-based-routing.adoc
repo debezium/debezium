@@ -92,6 +92,10 @@ value.op == 'u' ? 'updates' : null
 |Default
 |Description
 
+|`topic.regex`
+|
+|An optional regular expression for specifying the topic(s) this transformation should be applied to. Records on any topic whose name does not match the given expression are passed on as-is.
+
 |`language`
 |
 |The language in which the expression is written. Must begin with `jsr223.`, e.g. `jsr223.groovy`, or `jsr223.graal.js`. Currently, only bootstrapping via the https://jcp.org/en/jsr/detail?id=223[JSR 223 API] ("Scripting for the Java (TM) Platform") is supported.
