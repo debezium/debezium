@@ -6,6 +6,7 @@
 package io.debezium.transforms;
 
 import java.util.Map;
+import java.util.regex.Pattern;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.connector.ConnectRecord;
@@ -21,6 +22,7 @@ import io.debezium.config.Field;
 import io.debezium.transforms.scripting.Engine;
 import io.debezium.transforms.scripting.GraalJsEngine;
 import io.debezium.transforms.scripting.Jsr223Engine;
+import io.debezium.util.Strings;
 
 /**
  * This is a base class for any SMT using scripting languages.
@@ -93,13 +95,21 @@ public abstract class ScriptingTransformation<R extends ConnectRecord<R>> implem
         }
     }
 
+    private static final Field TOPIC_REGEX = Field.create("topic.regex")
+            .withDisplayName("Topic regex")
+            .withType(ConfigDef.Type.STRING)
+            .withWidth(ConfigDef.Width.LONG)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withValidation(Field::isRegex)
+            .withDescription("A regex used for selecting the topic(s) to which this transformation should be applied.");
+
     public static final Field LANGUAGE = Field.create("language")
             .withDisplayName("Expression language")
             .withType(ConfigDef.Type.STRING)
             .withWidth(ConfigDef.Width.MEDIUM)
             .withImportance(ConfigDef.Importance.HIGH)
             .withValidation(Field::isRequired)
-            .withDescription("An expression language used to evaluate the expression. 'groovy' and 'graal.js' are supported.");
+            .withDescription("An expression language used to evaluate the expression. Must begin with 'jsr223.', e.g.  'jsr223.groovy' or 'jsr223.graal.js'.");
 
     public static final Field NULL_HANDLING = Field.create("null.handling.mode")
             .withDisplayName("Handle null records")
@@ -113,12 +123,13 @@ public abstract class ScriptingTransformation<R extends ConnectRecord<R>> implem
 
     protected Engine engine;
     private NullHandling nullHandling;
+    private Pattern topicPattern;
 
     @Override
     public void configure(Map<String, ?> configs) {
         final Configuration config = Configuration.from(configs);
 
-        final Field.Set configFields = Field.setOf(LANGUAGE, expressionField(), NULL_HANDLING);
+        final Field.Set configFields = Field.setOf(TOPIC_REGEX, LANGUAGE, expressionField(), NULL_HANDLING);
         if (!config.validateAndRecord(configFields, LOGGER::error)) {
             throw new DebeziumException("The provided configuration isn't valid; check the error log for details.");
         }
@@ -127,8 +138,6 @@ public abstract class ScriptingTransformation<R extends ConnectRecord<R>> implem
         String language = config.getString(LANGUAGE);
 
         LOGGER.info("Using language '{}' to evaluate expression '{}'", language, expression);
-
-        nullHandling = NullHandling.parse(config.getString(NULL_HANDLING));
 
         // currently only bootstrapping via JSR 223 is supported, but we could add
         // support for other means of bootstrapping later on, e.g. for "native"
@@ -154,10 +163,21 @@ public abstract class ScriptingTransformation<R extends ConnectRecord<R>> implem
         catch (Exception e) {
             throw new DebeziumException("Failed to parse expression '" + expression + "'", e);
         }
+
+        nullHandling = NullHandling.parse(config.getString(NULL_HANDLING));
+
+        String topicRegex = config.getString(TOPIC_REGEX);
+        if (!Strings.isNullOrEmpty(topicRegex)) {
+            this.topicPattern = Pattern.compile(topicRegex);
+        }
     }
 
     @Override
     public R apply(R record) {
+        if (topicPattern != null && !topicPattern.matcher(record.topic()).matches()) {
+            return record;
+        }
+
         if (record.value() == null) {
             if (nullHandling == NullHandling.KEEP) {
                 return record;
@@ -176,7 +196,7 @@ public abstract class ScriptingTransformation<R extends ConnectRecord<R>> implem
     @Override
     public ConfigDef config() {
         final ConfigDef config = new ConfigDef();
-        Field.group(config, null, LANGUAGE, expressionField(), NULL_HANDLING);
+        Field.group(config, null, TOPIC_REGEX, LANGUAGE, expressionField(), NULL_HANDLING);
         return config;
     }
 
