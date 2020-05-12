@@ -149,6 +149,15 @@ public interface TableEditor {
     TableEditor removeColumn(String columnName);
 
     /**
+     * Update the column with the given name. The existing column definition with the name as the column provided
+     * is replaced with the new one.
+     *
+     * @param column the new column definition
+     * @return this editor so callers can chain methods together
+     */
+    TableEditor updateColumn(Column column);
+
+    /**
      * Reorder the column with the given name to be positioned after the designated column. If {@code afterColumnName} is null,
      * the column will be moved to the first column.
      *

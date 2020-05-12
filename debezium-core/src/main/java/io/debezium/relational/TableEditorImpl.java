@@ -11,6 +11,7 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 final class TableEditorImpl implements TableEditor {
 
@@ -169,6 +170,14 @@ final class TableEditorImpl implements TableEditor {
         }
         assert positionsAreValid();
         pkColumnNames.remove(columnName);
+        return this;
+    }
+
+    @Override
+    public TableEditor updateColumn(Column newColumn) {
+        setColumns(columns().stream()
+                .map(c -> c.name().equals(newColumn.name()) ? newColumn : c)
+                .collect(Collectors.toList()));
         return this;
     }
 

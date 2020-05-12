@@ -10,13 +10,12 @@ import java.sql.Types;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.antlr.v4.runtime.tree.ParseTreeListener;
+
 import io.debezium.antlr.AntlrDdlParser;
 import io.debezium.antlr.DataTypeResolver;
-import io.debezium.connector.mysql.MySqlDefaultValueConverter;
-import io.debezium.connector.mysql.MySqlValueConverters;
+import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParser;
-import io.debezium.ddl.parser.mysql.generated.MySqlParser.CurrentTimestampContext;
-import io.debezium.ddl.parser.mysql.generated.MySqlParser.DefaultValueContext;
 import io.debezium.ddl.parser.mysql.generated.MySqlParserBaseListener;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
@@ -30,13 +29,15 @@ import io.debezium.relational.ddl.DataType;
  */
 public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
 
+    private final MySqlAntlrDdlParser parser;
     private final DataTypeResolver dataTypeResolver;
     private final TableEditor tableEditor;
     private ColumnEditor columnEditor;
     private boolean uniqueColumn;
     private Boolean optionalColumn;
+    private DefaultValueParserListener defaultValueListener;
 
-    private final MySqlDefaultValueConverter defaultValueConverter;
+    private final List<ParseTreeListener> listeners;
 
     /**
      * Whether to convert the column's default value into the corresponding schema type or not. This is done for column
@@ -46,17 +47,19 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
      */
     private final boolean convertDefault;
 
-    public ColumnDefinitionParserListener(TableEditor tableEditor, ColumnEditor columnEditor, DataTypeResolver dataTypeResolver, MySqlValueConverters converters,
-                                          boolean convertDefault) {
+    public ColumnDefinitionParserListener(TableEditor tableEditor, ColumnEditor columnEditor, MySqlAntlrDdlParser parser,
+                                          List<ParseTreeListener> listeners, boolean convertDefault) {
         this.tableEditor = tableEditor;
         this.columnEditor = columnEditor;
-        this.dataTypeResolver = dataTypeResolver;
+        this.parser = parser;
+        this.dataTypeResolver = parser.dataTypeResolver();
+        this.listeners = listeners;
         this.convertDefault = convertDefault;
-        this.defaultValueConverter = new MySqlDefaultValueConverter(converters);
     }
 
-    public ColumnDefinitionParserListener(TableEditor tableEditor, ColumnEditor columnEditor, DataTypeResolver dataTypeResolver, MySqlValueConverters converters) {
-        this(tableEditor, columnEditor, dataTypeResolver, converters, true);
+    public ColumnDefinitionParserListener(TableEditor tableEditor, ColumnEditor columnEditor, MySqlAntlrDdlParser parser,
+                                          List<ParseTreeListener> listeners) {
+        this(tableEditor, columnEditor, parser, listeners, true);
     }
 
     public void setColumnEditor(ColumnEditor columnEditor) {
@@ -76,6 +79,10 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
         uniqueColumn = false;
         optionalColumn = null;
         resolveColumnDataType(ctx.dataType());
+        parser.runIfNotNull(() -> {
+            defaultValueListener = new DefaultValueParserListener(columnEditor, parser.getConverters(), optionalColumn, convertDefault);
+            listeners.add(defaultValueListener);
+        }, tableEditor);
         super.enterColumnDefinition(ctx);
     }
 
@@ -89,6 +96,9 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
             tableEditor.addColumn(columnEditor.create());
             tableEditor.setPrimaryKeyNames(columnEditor.name());
         }
+        parser.runIfNotNull(() -> {
+            listeners.remove(defaultValueListener);
+        }, tableEditor);
         super.exitColumnDefinition(ctx);
     }
 
@@ -112,50 +122,6 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
     public void enterNullNotnull(MySqlParser.NullNotnullContext ctx) {
         optionalColumn = Boolean.valueOf(ctx.NOT() == null);
         super.enterNullNotnull(ctx);
-    }
-
-    @Override
-    public void enterDefaultValue(DefaultValueContext ctx) {
-        String sign = "";
-        if (ctx.NULL_LITERAL() != null) {
-            return;
-        }
-        if (ctx.unaryOperator() != null) {
-            sign = ctx.unaryOperator().getText();
-        }
-        if (ctx.constant() != null) {
-            if (ctx.constant().stringLiteral() != null) {
-                columnEditor.defaultValue(sign + unquote(ctx.constant().stringLiteral().getText()));
-            }
-            else if (ctx.constant().decimalLiteral() != null) {
-                columnEditor.defaultValue(sign + ctx.constant().decimalLiteral().getText());
-            }
-            else if (ctx.constant().BIT_STRING() != null) {
-                columnEditor.defaultValue(unquoteBinary(ctx.constant().BIT_STRING().getText()));
-            }
-            else if (ctx.constant().booleanLiteral() != null) {
-                columnEditor.defaultValue(ctx.constant().booleanLiteral().getText());
-            }
-            else if (ctx.constant().REAL_LITERAL() != null) {
-                columnEditor.defaultValue(ctx.constant().REAL_LITERAL().getText());
-            }
-        }
-        else if (ctx.currentTimestamp() != null && !ctx.currentTimestamp().isEmpty()) {
-            if (ctx.currentTimestamp().size() > 1 || (ctx.ON() == null && ctx.UPDATE() == null)) {
-                final CurrentTimestampContext currentTimestamp = ctx.currentTimestamp(0);
-                if (currentTimestamp.CURRENT_TIMESTAMP() != null || currentTimestamp.NOW() != null) {
-                    columnEditor.defaultValue("1970-01-01 00:00:00");
-                }
-                else {
-                    columnEditor.defaultValue(currentTimestamp.getText());
-                }
-            }
-        }
-        // For CREATE TABLE are all column default values converted only after charset is known
-        if (convertDefault) {
-            convertDefaultValueToSchemaType(columnEditor);
-        }
-        super.enterDefaultValue(ctx);
     }
 
     @Override
@@ -296,21 +262,5 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
         uniqueColumn = true;
         columnEditor.autoIncremented(true);
         columnEditor.generated(true);
-    }
-
-    private void convertDefaultValueToSchemaType(ColumnEditor columnEditor) {
-        if (optionalColumn != null) {
-            columnEditor.optional(optionalColumn.booleanValue());
-        }
-
-        defaultValueConverter.setColumnDefaultValue(columnEditor);
-    }
-
-    private String unquote(String stringLiteral) {
-        return stringLiteral.substring(1, stringLiteral.length() - 1);
-    }
-
-    private String unquoteBinary(String stringLiteral) {
-        return stringLiteral.substring(2, stringLiteral.length() - 1);
     }
 }
