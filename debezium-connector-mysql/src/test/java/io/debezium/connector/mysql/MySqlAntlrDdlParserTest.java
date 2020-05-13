@@ -233,6 +233,16 @@ public class MySqlAntlrDdlParserTest {
     }
 
     @Test
+    @FixFor("DBZ-2067")
+    public void shouldSupportInstantAlgoOnAlterStatements() {
+        final String ddl = "CREATE TABLE foo (id SERIAL, c1 INT);" +
+                "ALTER TABLE foo ADD COLUMN c2 INT, ALGORITHM=INSTANT;";
+        parser.parse(ddl, tables);
+
+        assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
+    }
+
+    @Test
     @FixFor("DBZ-1220")
     public void shouldParseFloatVariants() {
         final String ddl = "CREATE TABLE mytable (id SERIAL, f1 FLOAT, f2 FLOAT(4), f3 FLOAT(7,4));";
