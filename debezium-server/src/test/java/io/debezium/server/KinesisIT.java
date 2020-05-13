@@ -58,7 +58,7 @@ public class KinesisIT {
     }
 
     @Inject
-    Server server;
+    DebeziumServer server;
 
     void setupDependencies(@Observes ConnectorStartedEvent event) {
         if (!TestConfigSource.isE2eTest()) {

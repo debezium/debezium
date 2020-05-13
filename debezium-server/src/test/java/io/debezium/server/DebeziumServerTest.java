@@ -29,7 +29,7 @@ import io.quarkus.test.junit.QuarkusTest;
  * @author Jiri Pechanec
  */
 @QuarkusTest
-public class ServerTest {
+public class DebeziumServerTest {
 
     private static final int MESSAGE_COUNT = 5;
 
@@ -45,7 +45,7 @@ public class ServerTest {
     }
 
     @Inject
-    Server server;
+    DebeziumServer server;
 
     @Test
     public void testJson() throws Exception {

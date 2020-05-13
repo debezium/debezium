@@ -20,5 +20,8 @@ public interface ChangeEvent<K, V> {
 
     public V value();
 
+    /**
+     * @return - a name of the logical destination for which the event is intended
+     */
     public String destination();
 }
