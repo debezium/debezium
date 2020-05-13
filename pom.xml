@@ -488,6 +488,16 @@
                 <artifactId>debezium-ddl-parser</artifactId>
                 <version>${project.version}</version>
             </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
+                <artifactId>debezium-connector-mongodb</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
+                <artifactId>debezium-connector-sqlserver</artifactId>
+                <version>${project.version}</version>
+            </dependency>
 
             <!-- Debezium test artifacts -->
             <dependency>
