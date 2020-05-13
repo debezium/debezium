@@ -78,7 +78,9 @@ public class ConvertingEngineBuilder<R> implements Builder<R> {
     @Override
     public Builder<R> notifying(ChangeConsumer<R> handler) {
         delegate.notifying(
-                (records, committer) -> handler.handleBatch(records.stream().map(x -> toFormat.apply(x)).collect(Collectors.toList()),
+                (records, committer) -> handler.handleBatch(records.stream()
+                        .map(x -> toFormat.apply(x))
+                        .collect(Collectors.toList()),
                         new RecordCommitter<R>() {
 
                             @Override

@@ -5,6 +5,7 @@
  */
 package io.debezium.server;
 
+import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
@@ -49,14 +50,22 @@ import io.quarkus.runtime.Startup;
  */
 @ApplicationScoped
 @Startup
-public class Server {
+public class DebeziumServer {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(Server.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(DebeziumServer.class);
 
     private static final String PROP_PREFIX = "debezium.";
-    private static final String PROP_CONSUMER_NAME = PROP_PREFIX + "consumer";
-    private static final String PROP_KEY_FORMAT = PROP_PREFIX + "format.key";
-    private static final String PROP_VALUE_FORMAT = PROP_PREFIX + "format.value";
+    private static final String PROP_SOURCE_PREFIX = PROP_PREFIX + "source.";
+    private static final String PROP_SINK_PREFIX = PROP_PREFIX + "sink.";
+    private static final String PROP_FORMAT_PREFIX = PROP_PREFIX + "format.";
+    private static final String PROP_TRANSFORMS_PREFIX = PROP_PREFIX + "transforms.";
+    private static final String PROP_KEY_FORMAT_PREFIX = PROP_FORMAT_PREFIX + "key.";
+    private static final String PROP_VALUE_FORMAT_PREFIX = PROP_FORMAT_PREFIX + "value.";
+
+    private static final String PROP_TRANSFORMS = PROP_PREFIX + "transforms";
+    private static final String PROP_SINK_TYPE = PROP_SINK_PREFIX + "type";
+    private static final String PROP_KEY_FORMAT = PROP_FORMAT_PREFIX + "key";
+    private static final String PROP_VALUE_FORMAT = PROP_FORMAT_PREFIX + "value";
     private static final String PROP_TERMINATION_WAIT = PROP_PREFIX + "termination.wait";
 
     private static final String FORMAT_JSON = Json.class.getSimpleName().toLowerCase();
@@ -80,7 +89,7 @@ public class Server {
     @PostConstruct
     public void start() {
         final Config config = ConfigProvider.getConfig();
-        final String name = config.getValue(PROP_CONSUMER_NAME, String.class);
+        final String name = config.getValue(PROP_SINK_TYPE, String.class);
 
         final Set<Bean<?>> beans = beanManager.getBeans(name).stream()
                 .filter(x -> DebeziumEngine.ChangeConsumer.class.isAssignableFrom(x.getBeanClass()))
@@ -101,8 +110,19 @@ public class Server {
 
         final Class<? extends SerializationFormat<?>> keyFormat = getFormat(config, PROP_KEY_FORMAT);
         final Class<? extends SerializationFormat<?>> valueFormat = getFormat(config, PROP_VALUE_FORMAT);
-        final Properties props = configToProperties(config);
+        final Properties props = new Properties();
+        configToProperties(config, props, PROP_SOURCE_PREFIX, "");
+        configToProperties(config, props, PROP_FORMAT_PREFIX, "key.converter.");
+        configToProperties(config, props, PROP_FORMAT_PREFIX, "value.converter.");
+        configToProperties(config, props, PROP_KEY_FORMAT_PREFIX, "key.converter.");
+        configToProperties(config, props, PROP_VALUE_FORMAT_PREFIX, "value.converter.");
+        final Optional<String> transforms = config.getOptionalValue(PROP_TRANSFORMS, String.class);
+        if (transforms.isPresent()) {
+            props.setProperty("transforms", transforms.get());
+            configToProperties(config, props, PROP_TRANSFORMS_PREFIX, "transforms.");
+        }
         props.setProperty("name", name);
+        LOGGER.debug("Configuration for DebeziumEngine: {}", props);
 
         DebeziumEngine.Builder<?> builder = null;
         // TODO - apply variance and covariance rules on Debezium API to
@@ -144,14 +164,12 @@ public class Server {
                 .notifying((DebeziumEngine.ChangeConsumer<ChangeEvent<String, byte[]>>) consumer);
     }
 
-    private Properties configToProperties(Config config) {
-        final Properties props = new Properties();
+    private void configToProperties(Config config, Properties props, String oldPrefix, String newPrefix) {
         for (String name : config.getPropertyNames()) {
-            if (name.startsWith(PROP_PREFIX)) {
-                props.setProperty(name.substring(PROP_PREFIX.length()), config.getValue(name, String.class));
+            if (name.startsWith(oldPrefix)) {
+                props.setProperty(newPrefix + name.substring(oldPrefix.length()), config.getValue(name, String.class));
             }
         }
-        return props;
     }
 
     private Class<? extends SerializationFormat<?>> getFormat(Config config, String property) {

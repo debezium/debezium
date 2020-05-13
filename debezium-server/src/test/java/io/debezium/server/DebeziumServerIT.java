@@ -26,7 +26,7 @@ import io.quarkus.test.junit.QuarkusTest;
  * @author Jiri Pechanec
  */
 @QuarkusTest
-public class ServerIT {
+public class DebeziumServerIT {
 
     private static final int MESSAGE_COUNT = 4;
     protected static TestDatabase db = null;
@@ -43,7 +43,7 @@ public class ServerIT {
     }
 
     @Inject
-    Server server;
+    DebeziumServer server;
 
     void setupDependencies(@Observes ConnectorStartedEvent event) {
         if (!TestConfigSource.isItTest()) {

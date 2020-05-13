@@ -44,7 +44,7 @@ public class KinesisChangeConsumer implements DebeziumEngine.ChangeConsumer<Chan
 
     private static final Logger LOGGER = LoggerFactory.getLogger(KinesisChangeConsumer.class);
 
-    private static final String PROP_PREFIX = "kinesis.";
+    private static final String PROP_PREFIX = "debezium.sink.kinesis.";
     private static final String PROP_REGION_NAME = PROP_PREFIX + "region";
 
     private String region;
