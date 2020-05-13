@@ -1215,7 +1215,7 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
 
     @Test
     @FixFor("DBZ-1791")
-    public void testAddHeadrsForMissingOrInvalidFields() throws Exception {
+    public void testAddHeadersForMissingOrInvalidFields() throws Exception {
         waitForStreamingRunning();
 
         final Map<String, String> props = new HashMap<>();
