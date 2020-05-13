@@ -156,8 +156,8 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
             .withImportance(ConfigDef.Importance.LOW)
             .withDefault("")
             .withDescription("DEPRECATED. Please use the 'add.fields' option instead. "
-                     + "Adds each field listed from the 'source' element of the payload, prefixed with __ "
-                     + "Example: 'version,connector' would add __version and __connector fields");
+                    + "Adds each field listed from the 'source' element of the payload, prefixed with __ "
+                    + "Example: 'version,connector' would add __version and __connector fields");
 
     public static final Field OPERATION_HEADER = Field.create("operation.header")
             .withDisplayName("Adds a message header representing the applied operation")
@@ -166,8 +166,8 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
             .withImportance(ConfigDef.Importance.LOW)
             .withDefault(false)
             .withDescription("DEPRECATED. Please use the 'add.fields' option instead. "
-                     + "Adds the operation type of the change event as a header."
-                     + "Its key is '" + ExtractNewRecordStateConfigDefinition.DEBEZIUM_OPERATION_HEADER_KEY + "'");
+                    + "Adds the operation type of the change event as a header."
+                    + "Its key is '" + ExtractNewRecordStateConfigDefinition.DEBEZIUM_OPERATION_HEADER_KEY + "'");
 
     private final ExtractField<R> afterExtractor = new ExtractField.Value<>();
     private final ExtractField<R> patchExtractor = new ExtractField.Value<>();
@@ -468,8 +468,11 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
 
         final Field.Set configFields = Field.setOf(ARRAY_ENCODING, FLATTEN_STRUCT, DELIMITER,
                 OPERATION_HEADER,
+                ADD_SOURCE_FIELDS,
                 ExtractNewRecordStateConfigDefinition.HANDLE_DELETES,
                 ExtractNewRecordStateConfigDefinition.DROP_TOMBSTONES,
+                ExtractNewRecordStateConfigDefinition.ADD_HEADERS,
+                ExtractNewRecordStateConfigDefinition.ADD_FIELDS,
                 SANITIZE_FIELD_NAMES);
 
         if (!config.validateAndRecord(configFields, LOGGER::error)) {
@@ -482,7 +485,7 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
 
         addOperationHeader = config.getBoolean(OPERATION_HEADER);
 
-        addSourceFields = determienAdditionalSourceField(config.getString(ADD_SOURCE_FIELDS));
+        addSourceFields = determineAdditionalSourceField(config.getString(ADD_SOURCE_FIELDS));
 
         additionalHeaders = FieldReference.fromConfiguration(config.getString(ExtractNewRecordStateConfigDefinition.ADD_HEADERS));
         additionalFields = FieldReference.fromConfiguration(config.getString(ExtractNewRecordStateConfigDefinition.ADD_FIELDS));
@@ -509,7 +512,7 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
         recordFlattener.configure(delegateConfig);
     }
 
-    private static List<String> determienAdditionalSourceField(String addSourceFieldsConfig) {
+    private static List<String> determineAdditionalSourceField(String addSourceFieldsConfig) {
         if (Strings.isNullOrEmpty(addSourceFieldsConfig)) {
             return Collections.emptyList();
         }
