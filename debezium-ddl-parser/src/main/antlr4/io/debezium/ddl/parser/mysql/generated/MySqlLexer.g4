@@ -439,6 +439,7 @@ INPLACE:                             'INPLACE';
 INSERT_METHOD:                       'INSERT_METHOD';
 INSTALL:                             'INSTALL';
 INSTANCE:                            'INSTANCE';
+INSTANT:                             'INSTANT';
 INVISIBLE:                           'INVISIBLE';
 INVOKER:                             'INVOKER';
 IO:                                  'IO';
