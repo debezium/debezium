@@ -15,9 +15,11 @@ asciidoc:
     modules: '../../modules'
     mysql-version: '8.0'
     strimzi-version: '0.13.0'
-    community: 
+    community: true
     link-prefix: 'xref'
     link-avro-serialization: 'configuration/avro.adoc'
+    link-event-flattening: 'configuration/event-flattening.adoc'
+    link-topic-routing: 'configuration/topic-routing.adoc'
     link-mysql-connector: 'connectors/mysql.adoc'
     link-mongodb-connector: 'connectors/mongodb.adoc'
     link-postgresql-connector: 'connectors/postgresql.adoc'
