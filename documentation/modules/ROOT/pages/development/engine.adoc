@@ -328,7 +328,7 @@ This interface has single function with the following signature:
    * @param records the records to be processed
    * @param committer the committer that indicates to the system that we are finished
    */
-  void handleBatch(List<R> records, RecordCommitter committer) throws InterruptedException;
+  void handleBatch(List<R> records, RecordCommitter<R> committer) throws InterruptedException;
 ----
 
 As mentioned in the Javadoc, the `RecordCommitter` object is to be called for each record and once each batch is finished.
@@ -339,13 +339,13 @@ To use the `ChangeConsumer` API, you must pass an implementation of the interfac
 [source,java,indent=0]
 ----
 
-class MyChangeConsumer implements EmbeddedEngine.ChangeConsumer<RecordChangeEvent<SourceRecord>> {
-  public void handleBatch(List<SourceRecord> records, RecordCommitter committer) throws InterruptedException {
+class MyChangeConsumer implements DebeziumEngine.ChangeConsumer<RecordChangeEvent<SourceRecord>> {
+  public void handleBatch(List<RecordChangeEvent<SourceRecord>> records, RecordCommitter<RecordChangeEvent<SourceRecord>> committer) throws InterruptedException {
     ...
   }
 }
 // Create the engine with this configuration ...
-DebeziumEngine<RecordChangeEvent<SourceRecord>> engine = DebeziumEngine.create(Connect.class)
+DebeziumEngine<RecordChangeEvent<SourceRecord>> engine = DebeziumEngine.create(ChangeEventFormat.of(Connect.class))
         .using(props)
         .notifying(new MyChangeConsumer())
         .build();
