@@ -5,8 +5,6 @@
  */
 package io.debezium.connector.sqlserver;
 
-import static org.fest.assertions.Assertions.assertThat;
-
 import java.sql.SQLException;
 import java.util.concurrent.TimeUnit;
 
@@ -83,7 +81,12 @@ public class EventProcessingFailureHandlingIT extends AbstractConnectorTest {
         SourceRecords records = consumeRecordsByTopic(RECORDS_PER_TABLE);
         Assertions.assertThat(records.recordsForTopic("server1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
         Assertions.assertThat(records.recordsForTopic("server1.dbo.tableb")).isNull();
-        assertThat(logInterceptor.containsWarnMessage("Error while processing event at offset {")).isTrue();
+
+        Awaitility.await()
+                .alias("Found warning message in logs")
+                .atMost(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS).until(() -> {
+                    return logInterceptor.containsWarnMessage("Error while processing event at offset {");
+                });
     }
 
     @Test
@@ -135,9 +138,11 @@ public class EventProcessingFailureHandlingIT extends AbstractConnectorTest {
 
         SourceRecords records = consumeRecordsByTopic(1);
         Assertions.assertThat(records.recordsForTopic("server1.dbo.tablea")).hasSize(1);
-        assertThat(logInterceptor.containsStacktraceElement("Error while processing event at offset {")).isTrue();
-        Awaitility.await().atMost(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS).until(() -> {
-            return !engine.isRunning();
-        });
+        Awaitility.await()
+                .alias("Found warning message in logs")
+                .atMost(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS).until(() -> {
+                    boolean foundErrorMessageInLogs = logInterceptor.containsStacktraceElement("Error while processing event at offset {");
+                    return foundErrorMessageInLogs && !engine.isRunning();
+                });
     }
 }
