@@ -14,6 +14,7 @@ import java.util.Map;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.header.ConnectHeaders;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.Test;
 
@@ -98,6 +99,34 @@ public class FilterTest {
     }
 
     @Test
+    @FixFor("DBZ-2074")
+    public void shouldProcessTopic() {
+        try (final Filter<SourceRecord> transform = new Filter<>()) {
+            final Map<String, String> props = new HashMap<>();
+            props.put(EXPRESSION, "topic == 'dummy1'");
+            props.put(LANGUAGE, "jsr223.groovy");
+            transform.configure(props);
+            final SourceRecord record = createDeleteRecord(1);
+            assertThat(transform.apply(createDeleteRecord(2))).isNull();
+            assertThat(transform.apply(record)).isSameAs(record);
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-2074")
+    public void shouldProcessHeader() {
+        try (final Filter<SourceRecord> transform = new Filter<>()) {
+            final Map<String, String> props = new HashMap<>();
+            props.put(EXPRESSION, "header.idh.value == 1");
+            props.put(LANGUAGE, "jsr223.groovy");
+            transform.configure(props);
+            final SourceRecord record = createDeleteRecord(1);
+            assertThat(transform.apply(createDeleteRecord(2))).isNull();
+            assertThat(transform.apply(record)).isSameAs(record);
+        }
+    }
+
+    @Test
     @FixFor("DBZ-2024")
     public void shouldApplyTopicRegex() {
         try (final Filter<SourceRecord> transform = new Filter<>()) {
@@ -170,7 +199,13 @@ public class FilterTest {
         source.put("lsn", 1234);
         source.put("version", "version!");
         final Struct payload = deleteEnvelope.delete(before, source, Instant.now());
-        return new SourceRecord(new HashMap<>(), new HashMap<>(), "dummy", envelope.schema(), payload);
+        final ConnectHeaders headers = new ConnectHeaders();
+        headers.addInt("idh", id);
+        return new SourceRecord(new HashMap<>(), new HashMap<>(), "dummy" + id, 0,
+                null, null,
+                envelope.schema(), payload,
+                (long) id,
+                headers);
     }
 
     private SourceRecord createDeleteCustomerRecord(int id) {
@@ -205,6 +240,20 @@ public class FilterTest {
         try (final Filter<SourceRecord> transform = new Filter<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(EXPRESSION, "value.op != 'd' || value.before.id != 2");
+            props.put(LANGUAGE, "jsr223.graal.js");
+            transform.configure(props);
+            final SourceRecord record = createDeleteRecord(1);
+            assertThat(transform.apply(createDeleteRecord(2))).isNull();
+            assertThat(transform.apply(record)).isSameAs(record);
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-2074")
+    public void shouldRunJavaScriptWithHeaderAndTopic() {
+        try (final Filter<SourceRecord> transform = new Filter<>()) {
+            final Map<String, String> props = new HashMap<>();
+            props.put(EXPRESSION, "header.idh.value == 1 && topic.startsWith('dummy')");
             props.put(LANGUAGE, "jsr223.graal.js");
             transform.configure(props);
             final SourceRecord record = createDeleteRecord(1);

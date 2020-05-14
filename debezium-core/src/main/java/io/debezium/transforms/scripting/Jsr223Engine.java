@@ -5,6 +5,9 @@
  */
 package io.debezium.transforms.scripting;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import javax.script.Bindings;
 import javax.script.Compilable;
 import javax.script.CompiledScript;
@@ -13,6 +16,7 @@ import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
 
 import org.apache.kafka.connect.connector.ConnectRecord;
+import org.apache.kafka.connect.header.Header;
 
 import io.debezium.DebeziumException;
 
@@ -60,12 +64,38 @@ public class Jsr223Engine implements Engine {
     protected Bindings getBindings(ConnectRecord<?> record) {
         final Bindings bindings = engine.createBindings();
 
-        bindings.put("key", record.key());
-        bindings.put("value", record.value());
+        bindings.put("key", key(record));
+        bindings.put("value", value(record));
         bindings.put("keySchema", record.keySchema());
         bindings.put("valueSchema", record.valueSchema());
+        bindings.put("topic", record.topic());
+        bindings.put("header", headers(record));
 
         return bindings;
+    }
+
+    protected Object key(ConnectRecord<?> record) {
+        return record.key();
+    }
+
+    protected Object value(ConnectRecord<?> record) {
+        return record.value();
+    }
+
+    protected RecordHeader header(Header header) {
+        return new RecordHeader(header.schema(), header.value());
+    }
+
+    protected Object headers(ConnectRecord<?> record) {
+        return doHeaders(record);
+    }
+
+    protected Map<String, RecordHeader> doHeaders(ConnectRecord<?> record) {
+        final Map<String, RecordHeader> headers = new HashMap<>();
+        for (Header header : record.headers()) {
+            headers.put(header.key(), header(header));
+        }
+        return headers;
     }
 
     @SuppressWarnings("unchecked")
