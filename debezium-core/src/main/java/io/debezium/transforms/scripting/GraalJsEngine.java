@@ -7,12 +7,15 @@ package io.debezium.transforms.scripting;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import javax.script.Bindings;
+import javax.script.ScriptContext;
 
 import org.apache.kafka.connect.connector.ConnectRecord;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.header.Header;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyObject;
 
@@ -29,18 +32,31 @@ public class GraalJsEngine extends Jsr223Engine {
 
     @Override
     protected void configureEngine() {
+        final Bindings bindings = engine.getBindings(ScriptContext.ENGINE_SCOPE);
+        bindings.put("polyglot.js.allowHostAccess", true);
     }
 
     @Override
-    protected Bindings getBindings(ConnectRecord<?> record) {
-        Bindings bindings = engine.createBindings();
+    protected Object key(ConnectRecord<?> record) {
+        return asProxyObject((Struct) record.key());
+    }
 
-        bindings.put("key", asProxyObject((Struct) record.key()));
-        bindings.put("value", asProxyObject((Struct) record.value()));
-        bindings.put("keySchema", record.keySchema());
-        bindings.put("valueSchema", record.valueSchema());
+    @Override
+    protected Object value(ConnectRecord<?> record) {
+        return asProxyObject((Struct) record.value());
+    }
 
-        return bindings;
+    @Override
+    protected Object headers(ConnectRecord<?> record) {
+        return asProxyObject(doHeaders(record));
+    }
+
+    @Override
+    protected RecordHeader header(Header header) {
+        if (header.value() instanceof Struct) {
+            return new RecordHeader(header.schema(), asProxyObject((Struct) header.value()));
+        }
+        return super.header(header);
     }
 
     /**
@@ -80,6 +96,35 @@ public class GraalJsEngine extends Jsr223Engine {
                 }
 
                 return value;
+            }
+        };
+    }
+
+    /**
+     * Exposes the given Map as a {@link ProxyObject}, allowing for simplified
+     * property reference.
+     */
+    private ProxyObject asProxyObject(Map<String, ?> map) {
+        return new ProxyObject() {
+
+            @Override
+            public void putMember(String key, Value value) {
+                throw new UnsupportedOperationException("Record attributes must not be modified from within this transformation");
+            }
+
+            @Override
+            public boolean hasMember(String key) {
+                return map.containsKey(key);
+            }
+
+            @Override
+            public Object getMemberKeys() {
+                return map.keySet();
+            }
+
+            @Override
+            public Object getMember(String key) {
+                return map.get(key);
             }
         };
     }

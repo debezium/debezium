@@ -54,6 +54,8 @@ Debezium binds four variables into the evaluation context:
 * `value` - a value of the message
 * `keySchema` - the schema of the message key
 * `valueSchema` - the schema of the message value
+* `topic` - the name of the target topic
+* `headers` - the map of message headers keyed with header name and value composed of `schema` and `value` variables
 
 The `key` and `value` are of type `org.apache.kafka.connect.data.Struct` and `keySchema` and `valueSchema` are variables of type `org.apache.kafka.connect.data.Schema`.
 The expression can invoke arbitrary methods on the variables and should evaluate into a boolean value that decides whether the message is removed `true` or kept.
