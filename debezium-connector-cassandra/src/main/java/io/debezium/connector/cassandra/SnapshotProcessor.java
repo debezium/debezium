@@ -155,6 +155,7 @@ public class SnapshotProcessor extends AbstractProcessor {
         LOGGER.info("Executing snapshot query '{}' with consistency level {}", statement.getQueryString(), statement.getConsistencyLevel());
         ResultSet resultSet = cassandraClient.execute(statement);
         processResultSet(tableMetadata, resultSet);
+        LOGGER.debug("The snapshot of table '{}' has been taken", tableName(tableMetadata));
     }
 
     /**
