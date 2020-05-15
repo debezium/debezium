@@ -11,6 +11,10 @@ alter table t2 drop primary key;
 alter table t3 rename to table3column;
 alter table childtable add constraint `fk1` foreign key (idParent) references parenttable(id) on delete restrict on update cascade;
 alter table table3column default character set = cp1251;
+alter table table1 add primary key (id);
+alter table table1 add primary key table_pk (id);
+alter table table1 add primary key `table_pk` (id);
+alter table table1 add primary key `table_pk` (`id`);
 #end
 #begin
 -- Alter database
