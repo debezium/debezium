@@ -598,7 +598,7 @@ alterSpecification
         ')'                                                         #alterByAddColumns
     | ADD indexFormat=(INDEX | KEY) uid? indexType?
       indexColumnNames indexOption*                                 #alterByAddIndex
-    | ADD (CONSTRAINT name=uid?)? PRIMARY KEY
+    | ADD (CONSTRAINT name=uid?)? PRIMARY KEY index=uid?
       indexType? indexColumnNames indexOption*                      #alterByAddPrimaryKey
     | ADD (CONSTRAINT name=uid?)? UNIQUE 
       indexFormat=(INDEX | KEY)? indexName=uid?
