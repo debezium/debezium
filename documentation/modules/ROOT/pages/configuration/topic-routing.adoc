@@ -18,8 +18,8 @@ ifdef::product[]
 = Routing change event records to topics that you specify
 endif::product[]
 
-Each Kafka record that contains a database change event has a default destination topic. If you need to, you can re-route records to topics that you specify before the records reach the Kafka Connect converter. 
-To do this, {prodname} provides the `ByLogicalTableRouter` single message transformation (SMT). Configure this transformation in the {prodname} connector's Kafka Connect `.properties` file. Configuration options enable you to specify the following: 
+Each Kafka record that contains a data change event has a default destination topic. If you need to, you can re-route records to topics that you specify before the records reach the Kafka Connect converter. 
+To do this, {prodname} provides the `ByLogicalTableRouter` single message transformation (SMT). Configure this transformation in the {prodname} connector's Kafka Connect configuration. Configuration options enable you to specify the following: 
 
 * An expression for identifying the records to re-route
 * An expression that resolves to the destination topic
@@ -63,12 +63,12 @@ ifdef::product[]
 == Example of routing records for multiple tables to one topic
 endif::product[]
 
-To route change event records for multiple physical tables to the same topic, configure the `ByLogicalTableRouter` transformation in the Kafka Connect `.properties` file for the {prodname} connector. Configuration of the `ByLogicalTableRouter` SMT requires you to specify regular expressions that determine: 
+To route change event records for multiple physical tables to the same topic, configure the `ByLogicalTableRouter` transformation in the Kafka Connect configuration for the {prodname} connector. Configuration of the `ByLogicalTableRouter` SMT requires you to specify regular expressions that determine: 
 
 * The tables for which to route records. These tables must all have the same schema. 
 * The destination topic name.
 
-For example: 
+For example, configuration in a `.properties` file looks like this: 
 
 [source]
 ----
@@ -154,33 +154,33 @@ endif::product[]
 |Default
 |Description
 
-[id="configuration-option-topic-regex"]
-|{link-prefix}:{link-topic-routing}#configuration-option-topic-regex[`topic.regex`]
+[id="by-logical-table-router-topic-regex"]
+|{link-prefix}:{link-topic-routing}#by-logical-table-router-topic-regex[`topic.regex`]
 |
 |Specifies a regular expression that the transformation applies to each change event record to determine if it should be routed to a particular topic.
 
-[id="configuration-option-topic-replacement"]
-|{link-prefix}:{link-topic-routing}configuration-option-topic-replacement#[`topic.replacement`]
+[id="by-logical-table-router-topic-replacement"]
+|{link-prefix}:{link-topic-routing}by-logical-table-router-topic-replacement#[`topic.replacement`]
 |
 |Specifies a regular expression that represents the destination topic name. The transformation routes each matching record to the topic identified by this expression. This expression can refer to groups captured by the regular expression that you specify for `topic.regex`. To refer to a group, specify `$1`, `$2`, and so on. 
 
-[id="configuration-option-key-enforce-uniqueness"]
-|{link-prefix}:{link-topic-routing}#configuration-option-key-enforce-uniqueness[`key.enforce.uniqueness`]
+[id="by-logical-table-router-key-enforce-uniqueness"]
+|{link-prefix}:{link-topic-routing}#by-logical-table-router-key-enforce-uniqueness[`key.enforce.uniqueness`]
 |`true`
 |Indicates whether to add a field to the record's change event key. Adding a key field ensures that each event key is unique across the tables whose change event records go to the same topic. This helps to prevent collisions of change events for records that have the same key but that originate from different source tables. Specify `false` if you do not want the transformation to add a key field.
 
-[id="configuration-option-key-field-name"]
-|{link-prefix}:{link-topic-routing}#configuration-option-key-field-name[`key.field.name`]
+[id="by-logical-table-router-key-field-name"]
+|{link-prefix}:{link-topic-routing}#by-logical-table-router-key-field-name[`key.field.name`]
 |`+__dbz__physicalTableIdentifier+`
 |Name of a field to be added to the change event key. The value of this field identifies the original table name. For the SMT to add this field, `key.enforce.uniqueness` must be `true`, which is the default. 
 
-[id="configuration-option-key-field-regex"]
-|{link-prefix}:{link-topic-routing}#configuration-option-key-field-regex[`key.field.regex`]
+[id="by-logical-table-router-key-field-regex"]
+|{link-prefix}:{link-topic-routing}#by-logical-table-router-key-field-regex[`key.field.regex`]
 |
 |Specifies a regular expression that the transformation applies to the default destination topic name to capture one or more groups of characters. For the SMT to apply this expression, `key.enforce.uniqueness` must be `true`, which is the default. 
 
-[id="configuration-option-key-field-replacement"]
-|{link-prefix}:{link-topic-routing}#configuration-option-key-field-replacement[`key.field.replacement`]
+[id="by-logical-table-router-key-field-replacement"]
+|{link-prefix}:{link-topic-routing}#by-logical-table-router-key-field-replacement[`key.field.replacement`]
 |
 |Specifies a regular expression for determining the value of the inserted key field in terms of the groups captured by the expression specified for `key.field.regex`. For the SMT to apply this expression, `key.enforce.uniqueness` must be `true`, which is the default. 
 
