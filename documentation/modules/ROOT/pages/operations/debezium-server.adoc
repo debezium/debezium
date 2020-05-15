@@ -12,30 +12,31 @@ toc::[]
 This feature is currently in incubating state, i.e. exact semantics, configuration options etc. may change in future revisions, based on the feedback we receive. Please let us know if you encounter any problems while using this extension.
 ====
 
-Debezium provides an out-of-the-box application that streams changes from a source database to a sink system.
+Debezium provides a ready-to-use application that streams change events from a source database to messaging infrastructure like Amazon Kinesis or Google Pub/Sub.
+For streaming change events to Apache Kafka, it is recommended to deploy the Debezium connectors via Kafka Connect.
 
 == Installation
 
-To install the server download and upack the server distribution archive:
+To install the server download and unpack the server distribution archive:
 
 ifeval::['{page-version}' == 'master']
 * {link-server-snapshot}[Debezium Server distribution]
 
-NOTE: The above links is to nightly snapshot of the Debezium master branch.
-If you are looking for non-snapshot version, please select the appropriate version in the top right.
+NOTE: The above links refers to the nightly snapshot build of the Debezium master branch.
+If you are looking for a non-snapshot version, please select the appropriate version of this documentation in the menu to the right.
 endif::[]
 ifeval::['{page-version}' != 'master']
 * https://repo1.maven.org/maven2/io/debezium/debezium-server/{debezium-version}/debezium-server-{debezium-version}-distribution.tar.gz[Debezium Server distribution]
 endif::[]
 
-A directory named `debezium-server` will be created with content:
+A directory named `debezium-server` will be created with these contents:
 ----
 debezium-server/
 |-- CHANGELOG.md
 |-- conf
 |-- CONTRIBUTE.md
 |-- COPYRIGHT.txt
-|-- debezium-server-1.2.0-SNAPSHOT-runner.jar
+|-- debezium-server-{debezium-version}-runner.jar
 |-- lib
 |-- LICENSE-3rd-PARTIES.txt
 |-- LICENSE.txt
@@ -43,22 +44,22 @@ debezium-server/
 `-- run.sh
 ----
 
-The server is started using `run.sh` script, dependencies are stored in the `lib` directory and directory `conf` contains configuration files.
+The server is started using `run.sh` script, dependencies are stored in the `lib` directory, and the directory `conf` contains configuration files.
 
 == Configuration
 
 Debezium Server uses https://github.com/eclipse/microprofile-config[MicroProfile Configuration] for configuration.
 This means that the application can be configured from disparate sources like configuration files, environment variables, system properties etc.
 
-The main configuration file is `conf/application.properties`.
+The main configuration file is _conf/application.properties_.
 There are multiple sections configured:
 
-* `debezium.source` is for source connector configuration
+* `debezium.source` is for source connector configuration; each instance of Debezium Server runs exactly one connector
 * `debezium.sink` is for the sink system configuration
 * `debezium.format` is for the output serialization format configuration
-* `debezium.transforms` is for configuration of Kafka Connect SMTs
+* `debezium.transforms` is for the configuration of message transformations
 
-An example configuration file can look like:
+An example configuration file can look like so:
 
 ----
 debezium.sink.type=kinesis
@@ -75,7 +76,7 @@ debezium.source.database.server.name=tutorial
 debezium.source.schema.whitelist=inventory
 ----
 
-When the server is started it generates a sequnce of log messages like
+When the server is started it generates a seqeunce of log messages like this:
 
 ----
 __  ____  __  _____   ___  __ ____  ______ 
@@ -168,7 +169,7 @@ __  ____  __  _____   ___  __ ____  ______
 
 === Source configuration
 
-The source configuration uses the same configuration properties (just with `debezium.source` prefix) that are described in connectors' configurations together with few more specific necessary for running outside of Kafka Connect:
+The source configuration uses the same configuration properties that are described on the specific connector documentation pages (just with `debezium.source` prefix), together with few more specific ones, necessary for running outside of Kafka Connect:
 
 [cols="35%a,10%a,55%a",options="header"]
 |=======================
@@ -194,7 +195,7 @@ The source configuration uses the same configuration properties (just with `debe
 === Format configuration
 
 The message output format can be configured for both key and value separately.
-By default the output is in JSON format but an arbitrary implementation of Kafka Connect converter can be used.
+By default the output is in JSON format but an arbitrary implementation of Kafka Connect's `Converter` can be used.
 
 [cols="35%a,10%a,55%a",options="header"]
 |=======================
@@ -223,7 +224,7 @@ By default the output is in JSON format but an arbitrary implementation of Kafka
 
 === Transformation configuration
 
-Before the messages dare delivered to the sink they can run through a sequence of transformation.
+Before the messages are delivered to the sink, they can run through a sequence of transformations.
 The server supports https://cwiki.apache.org/confluence/display/KAFKA/KIP-66%3A+Single+Message+Transforms+for+Kafka+Connect[single message transformations] defined by Kafka Connect.
 The configuration will need to contain the list of transformations, implementation class for each transformation and configuration options for each of the transformations.
 
@@ -258,7 +259,7 @@ The sink is selected by configuration property `debezium.sink.type`.
 
 ==== Amazon Kinesis
 
-Amazon Kinesis is an implementation of data streming system with support form stream sharding and other techniques for high scalability.
+Amazon Kinesis is an implementation of data streaming system with support for stream sharding and other techniques for high scalability.
 Kinesis exposes a set of REST APIs and provides a (not-only) Java SDK that is used to implement the sink.
 
 [cols="35%a,10%a,55%a",options="header"]
@@ -277,18 +278,18 @@ Kinesis exposes a set of REST APIs and provides a (not-only) Java SDK that is us
 
 |[[kinesis-credentials-profile]]<<kinesis-credentials-profile, `debezium.sink.kinesis.creadentials.profile`>>
 |`default`
-|A credentials profile name use to communicate with Amazon API.
+|A credentials profile name used to communicate with Amazon API.
 
 |[[kinesis-null-key]]<<kinesis-null-key, `debezium.sink.kinesis.null.key`>>
 |`default`
-|Kinesis does not support the notion of message without key. So this string will be used as message key for messages from tables without primary key.
+|Kinesis does not support the notion of messages without key. So this string will be used as message key for messages from tables without primary key.
 
 |=======================
 
 
 ==== Injection points
 
-Kinesis sink beahviour can be modified by a custom code providing alternative implementations of requested functionality.
+The Kinesis sink behaviour can be modified by a custom logic providing alternative implementations for specific functionalities.
 When the alternative implementations are not available then the default ones are used.
 
 [cols="35%a,10%a,55%a",options="header"]
@@ -303,15 +304,16 @@ When the alternative implementations are not available then the default ones are
 
 |[[kinesis-ext-stream-name-mapper]]<<kinesis-ext-stream-name-mapper, `io.debezium.server.kinesis.StreamNameMapper`>>
 |
-|A code that maps the planned destination name into a physical Kinesis stream name. By default the same name is used.
+|Custom implementation maps the planned destination (topic) name into a physical Kinesis stream name. By default the same name is used.
 
 |=======================
 
 
 == Extensions
 
-Debezium Server uses https://quarkus.io/[Quarkus framework] and relies on dependency injection to enable developer to extend its behaviour.
-The server can be extended in two ways by providing a custom code:
+Debezium Server uses the https://quarkus.io/[Quarkus framework] and relies on dependency injection to enable developer to extend its behaviour.
+Note that only the JVM mode of Quarkus is supported, but not native execution via GraalVM.
+The server can be extended in two ways by providing a custom logic:
 
 * implementation of a new sink
 * customization of an existing sink - i.e. non-standard configuration
@@ -319,12 +321,12 @@ The server can be extended in two ways by providing a custom code:
 === Implementation of a new sink
 
 The new sink can be implemented as a CDI bean implementing interface `DebeziumEngine.ChangeConsumer` and with annotation `@Named` and unique name and scope `@Dependent`.
-The name of the bean is the used as the `debezium.sink.type` option.
+The name of the bean is used as the `debezium.sink.type` option.
 
 The sink needs to read the configuration using Microprofile Config API.
 The execution path must pass the messages into the target system and regularly commit the passed/processed messages.
 
-See https://github.com/debezium/debezium/blob/master/debezium-server/src/main/java/io/debezium/server/kinesis/KinesisChangeConsumer.java[Kinesis sink] implementation for further details.
+See the https://github.com/debezium/debezium/blob/master/debezium-server/src/main/java/io/debezium/server/kinesis/KinesisChangeConsumer.java[Kinesis sink] implementation for further details.
 
 
 === Customization of an existing sink
