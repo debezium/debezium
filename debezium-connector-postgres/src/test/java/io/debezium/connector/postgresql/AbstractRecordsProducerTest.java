@@ -477,9 +477,9 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
         String expectedBoundedInclusiveTsrange = String.format("[\"%s\",\"%s\"]", beginTsrange, endTsrange);
 
         // Tstzrange type
-        DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSSx");
-        Instant beginTstzrange = dateTimeFormatter.parse("2017-06-05 11:29:12.549426+00", Instant::from);
-        Instant endTstzrange = dateTimeFormatter.parse("2017-06-05 12:34:56.789012+00", Instant::from);
+        DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSSxxx");
+        Instant beginTstzrange = dateTimeFormatter.parse("2017-06-05 11:29:12.549426+00:00", Instant::from);
+        Instant endTstzrange = dateTimeFormatter.parse("2017-06-05 12:34:56.789012+00:00", Instant::from);
 
         // Acknowledge timezone expectation of the system running the test
         String beginSystemTime = dateTimeFormatter.withZone(ZoneId.systemDefault()).format(beginTstzrange);
@@ -666,9 +666,9 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
         element.put("scale", 3).put("value", new BigDecimal("3.333").unscaledValue().toByteArray());
         varnumArray.add(element);
 
-        DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSSx");
-        Instant begin = dateTimeFormatter.parse("2017-06-05 11:29:12.549426+00", Instant::from);
-        Instant end = dateTimeFormatter.parse("2017-06-05 12:34:56.789012+00", Instant::from);
+        DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSSxxx");
+        Instant begin = dateTimeFormatter.parse("2017-06-05 11:29:12.549426+00:00", Instant::from);
+        Instant end = dateTimeFormatter.parse("2017-06-05 12:34:56.789012+00:00", Instant::from);
 
         // Acknowledge timezone expectation of the system running the test
         String beginSystemTime = dateTimeFormatter.withZone(ZoneId.systemDefault()).format(begin);
