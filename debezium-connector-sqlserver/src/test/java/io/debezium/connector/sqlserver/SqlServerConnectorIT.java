@@ -1370,6 +1370,36 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
                         .isTrue();
     }
 
+    @Test
+    @FixFor("DBZ-1988")
+    public void shouldHonorSourceTimestampMode() throws InterruptedException, SQLException {
+        connection.execute("CREATE TABLE source_timestamp_mode (id int, name varchar(30) primary key(id))");
+        TestHelper.enableTableCdc(connection, "source_timestamp_mode");
+
+        final Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                .with(SqlServerConnectorConfig.TABLE_WHITELIST, "dbo.source_timestamp_mode")
+                .with(SqlServerConnectorConfig.SOURCE_TIMESTAMP_MODE, "processing")
+                .build();
+
+        start(SqlServerConnector.class, config);
+        assertConnectorIsRunning();
+
+        connection.execute("INSERT INTO source_timestamp_mode VALUES(1, 'abc')");
+
+        SourceRecords records = consumeRecordsByTopic(1);
+        List<SourceRecord> recordsForTopic = records.recordsForTopic("server1.dbo.source_timestamp_mode");
+        SourceRecord record = recordsForTopic.get(0);
+
+        long eventTs = (long) ((Struct) record.value()).get("ts_ms");
+        long sourceTs = (long) ((Struct) ((Struct) record.value()).get("source")).get("ts_ms");
+
+        // it's not exactly the same as ts_ms, but close enough;
+        assertThat(eventTs - sourceTs).isLessThan(100);
+
+        stopConnector();
+    }
+
     private void assertRecord(Struct record, List<SchemaAndValueField> expected) {
         expected.forEach(schemaAndValueField -> schemaAndValueField.assertFor(record));
     }

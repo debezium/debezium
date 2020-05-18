@@ -343,6 +343,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     private final String databaseName;
     private final SnapshotMode snapshotMode;
     private final SnapshotIsolationMode snapshotIsolationMode;
+    private final SourceTimestampMode sourceTimestampMode;
     private final ColumnNameFilter columnFilter;
     private final boolean readOnlyDatabaseConnection;
 
@@ -361,6 +362,8 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
         else {
             this.snapshotIsolationMode = SnapshotIsolationMode.parse(config.getString(SNAPSHOT_ISOLATION_MODE), SNAPSHOT_ISOLATION_MODE.defaultValueAsString());
         }
+
+        this.sourceTimestampMode = SourceTimestampMode.fromMode(config.getString(SOURCE_TIMESTAMP_MODE_CONFIG_NAME));
     }
 
     private static ColumnNameFilter getColumnNameFilter(String excludedColumnPatterns) {
@@ -386,6 +389,10 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
 
     public SnapshotMode getSnapshotMode() {
         return snapshotMode;
+    }
+
+    public SourceTimestampMode getSourceTimestampMode() {
+        return sourceTimestampMode;
     }
 
     public ColumnNameFilter getColumnFilter() {
