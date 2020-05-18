@@ -77,7 +77,6 @@ public class PostgresConnectorTask extends BaseSourceTask {
         final PostgresOffsetContext previousOffset = (PostgresOffsetContext) getPreviousOffset(new PostgresOffsetContext.Loader(connectorConfig));
         final Clock clock = Clock.system();
 
-        final SourceInfo sourceInfo = new SourceInfo(connectorConfig);
         LoggingContext.PreviousContext previousContext = taskContext.configureLoggingContext(CONTEXT_NAME);
         try {
             // Print out the server information
@@ -98,7 +97,7 @@ public class PostgresConnectorTask extends BaseSourceTask {
                 snapshotter.init(connectorConfig, null, slotInfo);
             }
             else {
-                LOGGER.info("Found previous offset {}", sourceInfo);
+                LOGGER.info("Found previous offset {}", previousOffset);
                 snapshotter.init(connectorConfig, previousOffset.asOffsetState(), slotInfo);
             }
 
