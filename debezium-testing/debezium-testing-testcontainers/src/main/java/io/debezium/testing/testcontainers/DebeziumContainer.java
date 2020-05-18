@@ -29,8 +29,8 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
     private final OkHttpClient client = new OkHttpClient();
     public static final MediaType JSON = MediaType.get("application/json; charset=utf-8");
 
-    public DebeziumContainer(final String version) {
-        super("debezium/connect:" + version);
+    public DebeziumContainer(final String containerImageName) {
+        super(containerImageName);
 
         setWaitStrategy(
                 Wait.forHttp("/connectors")
@@ -45,11 +45,6 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
         withEnv("CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE", "false");
 
         withExposedPorts(8083);
-    }
-
-    public DebeziumContainer(final String version, final KafkaContainer kafkaContainer) {
-        this(version);
-        withKafka(kafkaContainer);
     }
 
     public DebeziumContainer withKafka(final KafkaContainer kafkaContainer) {
