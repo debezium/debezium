@@ -60,18 +60,13 @@ public class MySqlTinyIntIT extends AbstractConnectorTest {
         // Use the DB configuration to define the connector's configuration ...
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL)
+                .with(MySqlConnectorConfig.TABLE_WHITELIST, DATABASE.qualifiedTableName("DBZ1773"))
                 .build();
 
         // Start the connector ...
         start(MySqlConnector.class, config);
 
-        // ---------------------------------------------------------------------------------------------------------------
-        // Consume all of the events due to startup and initialization of the database
-        // ---------------------------------------------------------------------------------------------------------------
-        final int numDatabase = 2;
-        final int numTables = 2;
-        final int numOthers = 2;
-        consumeRecords(numDatabase + numTables + numOthers);
+        consumeInitial();
 
         assertIntChangeRecord();
 
@@ -89,6 +84,7 @@ public class MySqlTinyIntIT extends AbstractConnectorTest {
         // Use the DB configuration to define the connector's configuration ...
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL)
+                .with(MySqlConnectorConfig.TABLE_WHITELIST, DATABASE.qualifiedTableName("DBZ1773"))
                 .with(MySqlConnectorConfig.CUSTOM_CONVERTERS, "boolean")
                 .with("boolean.type", TinyIntOneToBooleanConverter.class.getName())
                 .with("boolean.selector", ".*DBZ1773.b")
@@ -97,13 +93,7 @@ public class MySqlTinyIntIT extends AbstractConnectorTest {
         // Start the connector ...
         start(MySqlConnector.class, config);
 
-        // ---------------------------------------------------------------------------------------------------------------
-        // Consume all of the events due to startup and initialization of the database
-        // ---------------------------------------------------------------------------------------------------------------
-        final int numDatabase = 2;
-        final int numTables = 2;
-        final int numOthers = 2;
-        consumeRecords(numDatabase + numTables + numOthers);
+        consumeInitial();
 
         assertBooleanChangeRecord();
 
@@ -113,6 +103,43 @@ public class MySqlTinyIntIT extends AbstractConnectorTest {
         assertBooleanChangeRecord();
 
         stopConnector();
+    }
+
+    @Test
+    @FixFor("DBZ-2085")
+    public void shouldDefaultValueForTinyIntOneAsBoolean() throws SQLException, InterruptedException {
+        // Use the DB configuration to define the connector's configuration ...
+        config = DATABASE.defaultConfig()
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL)
+                .with(MySqlConnectorConfig.TABLE_WHITELIST, DATABASE.qualifiedTableName("DBZ2085"))
+                .with(MySqlConnectorConfig.CUSTOM_CONVERTERS, "boolean")
+                .with("boolean.type", TinyIntOneToBooleanConverter.class.getName())
+                .with("boolean.selector", ".*DBZ2085.b")
+                .build();
+
+        // Start the connector ...
+        start(MySqlConnector.class, config);
+
+        consumeInitial();
+
+        assertDefaultValueBooleanChangeRecord();
+
+        try (final Connection conn = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName()).connection()) {
+            conn.createStatement().execute("INSERT INTO DBZ2085 VALUES (DEFAULT, true)");
+        }
+        assertDefaultValueBooleanChangeRecord();
+
+        stopConnector();
+    }
+
+    private void consumeInitial() throws InterruptedException {
+        // ---------------------------------------------------------------------------------------------------------------
+        // Consume all of the events due to startup and initialization of the database
+        // ---------------------------------------------------------------------------------------------------------------
+        final int numDatabase = 2;
+        final int numTables = 4;
+        final int numOthers = 2;
+        consumeRecords(numDatabase + numTables + numOthers);
     }
 
     private void assertIntChangeRecord() throws InterruptedException {
@@ -135,5 +162,14 @@ public class MySqlTinyIntIT extends AbstractConnectorTest {
         Assertions.assertThat(change.getInt16("ti1")).isEqualTo((short) 5);
         Assertions.assertThat(change.getInt16("ti2")).isEqualTo((short) 50);
         Assertions.assertThat(change.getBoolean("b")).isEqualTo(true);
+    }
+
+    private void assertDefaultValueBooleanChangeRecord() throws InterruptedException {
+        final SourceRecord record = consumeRecord();
+        Assertions.assertThat(record).isNotNull();
+        final Struct change = ((Struct) record.value()).getStruct("after");
+
+        Assertions.assertThat(change.getBoolean("b")).isEqualTo(true);
+        Assertions.assertThat(change.schema().field("b").schema().defaultValue()).isEqualTo(false);
     }
 }
