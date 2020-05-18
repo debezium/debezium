@@ -194,6 +194,7 @@
                                     <descriptorRefs>
                                         <descriptorRef>connector-distribution</descriptorRef>
                                     </descriptorRefs>
+                                    <tarLongFileMode>posix</tarLongFileMode>
                                 </configuration>
                             </execution>
                         </executions>
