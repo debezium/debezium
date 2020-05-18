@@ -363,7 +363,7 @@ public class TableSchemaBuilder {
      * @param mapper the mapping function for the column; may be null if the columns is not to be mapped to different values
      */
     protected void addField(SchemaBuilder builder, Table table, Column column, ColumnMapper mapper) {
-        SchemaBuilder fieldBuilder = customConverterRegistry.registerConverterFor(table.id(), column)
+        final SchemaBuilder fieldBuilder = customConverterRegistry.registerConverterFor(table.id(), column)
                 .orElse(valueConverterProvider.schemaBuilder(column));
 
         if (fieldBuilder != null) {
@@ -377,7 +377,8 @@ public class TableSchemaBuilder {
 
             // if the default value is provided
             if (column.hasDefaultValue()) {
-                fieldBuilder.defaultValue(column.defaultValue());
+                fieldBuilder
+                        .defaultValue(customConverterRegistry.getValueConverter(table.id(), column).orElse(ValueConverter.passthrough()).convert(column.defaultValue()));
             }
 
             builder.field(fieldNamer.fieldNameFor(column), fieldBuilder.build());
