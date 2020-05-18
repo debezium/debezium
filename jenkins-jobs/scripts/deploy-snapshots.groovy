@@ -17,7 +17,7 @@ INCUBATOR_DIR = 'debezium-incubator'
 HOME_DIR = '/home/cloud-user'
 
 ORACLE_ARTIFACT_DIR = "$HOME_DIR/oracle-libs/12.2.0.1.0"
-ORACLE_ARTIFACT_VERSION = '12.1.0.2'
+ORACLE_ARTIFACT_VERSION = '12.2.0.1'
 
 node('Slave') {
 
