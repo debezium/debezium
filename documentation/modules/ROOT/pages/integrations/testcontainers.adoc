@@ -66,7 +66,7 @@ The existing Testcontainers support for https://www.testcontainers.org/modules/k
 
 Together with Debezium's `DebeziumContainer` class, a typical set-up will look like this:
 
-[source,java,indent=0]
+[source,java,indent=0,subs="verbatim,attributes"]
 ----
 public class DebeziumContainerTest {
 
@@ -81,7 +81,7 @@ public class DebeziumContainerTest {
                 .withNetworkAliases("postgres"); // <3>
 
     public static DebeziumContainer debeziumContainer =
-            new DebeziumContainer("{debezium-version}")
+            new DebeziumContainer("debezium/connect:{debezium-version}")
                 .withNetwork(network)
                 .withKafka(kafkaContainer)
                 .dependsOn(kafkaContainer); // <4>

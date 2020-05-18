@@ -55,7 +55,7 @@ public class DebeziumContainerTest {
             .withNetwork(network)
             .withNetworkAliases("postgres");
 
-    public static DebeziumContainer debeziumContainer = new DebeziumContainer("1.1.0.Beta1")
+    public static DebeziumContainer debeziumContainer = new DebeziumContainer("debezium/connect:1.1.1.Final")
             .withNetwork(network)
             .withKafka(kafkaContainer)
             .withLogConsumer(new Slf4jLogConsumer(LOGGER))
