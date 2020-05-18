@@ -50,8 +50,14 @@ endif::product[]
 
 The default behavior is that a {prodname} connector sends each change event record to a topic whose name is formed from the name of the database and the name of the table in which the change was made. In other words, a topic receives records for one physical table. When you want a topic to receive records for more than one physical table, you must configure the {prodname} connector to re-route the records to that topic. 
 
+.Logical tables
+
 A logical table is a common use case for routing records for multiple physical tables to one topic. In a logical table, there are multiple physical tables that all have the same schema. For example, sharded tables have the same schema. A logical table might consist of two or more sharded tables: `db_shard1.my_table` and `db_shard2.my_table`. The tables are in different shards and are physically distinct but together they form a logical table. 
 You can re-route change event records for tables in any of the shards to the same topic.
+
+.Partitioned PostgreSQL tables
+
+When the {prodname} PostgreSQL connector captures changes in a partitioned table, the default behavior is that change event records are routed to a different topic for each partition. To emit records from all partitions to one topic, configure the `ByLogicalTableRouter` SMT. Because each key in a partitioned table is guaranteed to be unique, configure {link-prefix}:{link-topic-routing}#by-logical-table-router-key-enforce-uniqueness[`key.enforce.uniqueness=false`] so that the SMT does not add a key field to ensure unique keys. The addition of a key field is default behavior. 
 
 ifdef::community[]
 == Example
@@ -167,7 +173,9 @@ endif::product[]
 [id="by-logical-table-router-key-enforce-uniqueness"]
 |{link-prefix}:{link-topic-routing}#by-logical-table-router-key-enforce-uniqueness[`key.enforce.uniqueness`]
 |`true`
-|Indicates whether to add a field to the record's change event key. Adding a key field ensures that each event key is unique across the tables whose change event records go to the same topic. This helps to prevent collisions of change events for records that have the same key but that originate from different source tables. Specify `false` if you do not want the transformation to add a key field.
+|Indicates whether to add a field to the record's change event key. Adding a key field ensures that each event key is unique across the tables whose change event records go to the same topic. This helps to prevent collisions of change events for records that have the same key but that originate from different source tables. +
+ +
+Specify `false` if you do not want the transformation to add a key field.  For example, if you are routing records from a partitioned PostgreSQL table to one topic, you can configure `key.enforce.uniqueness=false` because unique keys are guaranteed in partitioned PostgreSQL tables. 
 
 [id="by-logical-table-router-key-field-name"]
 |{link-prefix}:{link-topic-routing}#by-logical-table-router-key-field-name[`key.field.name`]
