@@ -57,6 +57,7 @@ public class SqlServerConnectorTask extends BaseSourceTask {
 
     @Override
     public ChangeEventSourceCoordinator start(Configuration config) {
+        final Clock clock = Clock.system();
         final SqlServerConnectorConfig connectorConfig = new SqlServerConnectorConfig(config);
         final TopicSelector<TableId> topicSelector = SqlServerTopicSelector.defaultSelector(connectorConfig);
         final SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create(LOGGER);
@@ -70,8 +71,8 @@ public class SqlServerConnectorTask extends BaseSourceTask {
         final Configuration jdbcConfig = config.filter(
                 x -> !(x.startsWith(DatabaseHistory.CONFIGURATION_FIELD_PREFIX_STRING) || x.equals(HistorizedRelationalDatabaseConnectorConfig.DATABASE_HISTORY.name())))
                 .subset("database.", true);
-        dataConnection = new SqlServerConnection(jdbcConfig);
-        metadataConnection = new SqlServerConnection(jdbcConfig);
+        dataConnection = new SqlServerConnection(jdbcConfig, clock, connectorConfig.getSourceTimestampMode());
+        metadataConnection = new SqlServerConnection(jdbcConfig, clock, connectorConfig.getSourceTimestampMode());
         try {
             dataConnection.setAutoCommit(false);
         }
@@ -87,8 +88,6 @@ public class SqlServerConnectorTask extends BaseSourceTask {
         }
 
         taskContext = new SqlServerTaskContext(connectorConfig, schema);
-
-        final Clock clock = Clock.system();
 
         // Set up the task record queue ...
         this.queue = new ChangeEventQueue.Builder<DataChangeEvent>()

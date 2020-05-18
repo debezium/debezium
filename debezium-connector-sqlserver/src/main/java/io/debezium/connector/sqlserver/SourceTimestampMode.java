@@ -1,9 +1,17 @@
+/*
+ * Copyright Debezium Authors.
+ *
+ * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
+ */
 package io.debezium.connector.sqlserver;
 
 import java.util.Arrays;
 
 import io.debezium.config.EnumeratedValue;
 
+/**
+ * Strategy for populating the source.ts_ms field in change events.
+ */
 public enum SourceTimestampMode implements EnumeratedValue {
 
     /**
@@ -27,7 +35,7 @@ public enum SourceTimestampMode implements EnumeratedValue {
         return value;
     }
 
-    static SourceTimestampMode getDefaultMode() {
+    public static SourceTimestampMode getDefaultMode() {
         return COMMIT;
     }
 
@@ -37,5 +45,4 @@ public enum SourceTimestampMode implements EnumeratedValue {
                 .findFirst()
                 .orElseGet(SourceTimestampMode::getDefaultMode);
     }
-
 }
