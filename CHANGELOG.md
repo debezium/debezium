@@ -2,6 +2,51 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 1.2.0.Beta2
+May 19th, 2020 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12345708)
+
+### New features since 1.2.0.Beta1
+
+* Add JDBC driver versions to docs [DBZ-2031](https://issues.jboss.org/browse/DBZ-2031)
+* Add a few more loggings for Cassandra Connector [DBZ-2066](https://issues.jboss.org/browse/DBZ-2066)
+* Provide ready-to-use standalone application based on the embedded engine [DBZ-651](https://issues.jboss.org/browse/DBZ-651)
+* Add option to skip LSN timestamp queries [DBZ-1988](https://issues.jboss.org/browse/DBZ-1988)
+* Add option to logical topic router for controlling placement of table information [DBZ-2034](https://issues.jboss.org/browse/DBZ-2034)
+* Add headers and topic name into scripting transforms [DBZ-2074](https://issues.jboss.org/browse/DBZ-2074)
+* Filter and content-based router SMTs should be restrictable to certain topics [DBZ-2024](https://issues.jboss.org/browse/DBZ-2024)
+
+
+### Breaking changes since 1.2.0.Beta1
+
+* Remove deprecated features [DBZ-1828](https://issues.jboss.org/browse/DBZ-1828)
+* Db2: Replace `initial_schema_only` with `schema_only` [DBZ-2051](https://issues.jboss.org/browse/DBZ-2051)
+* DebeziumContainer should allow for custom container images [DBZ-2070](https://issues.jboss.org/browse/DBZ-2070)
+
+
+### Fixes since 1.2.0.Beta1
+
+* Avro schema doesn't change if a column default value changes from 'foo' to 'bar' [DBZ-2061](https://issues.jboss.org/browse/DBZ-2061)
+* DDL statement throws error if compression keyword contains backticks (``) [DBZ-2062](https://issues.jboss.org/browse/DBZ-2062)
+* Error and connector stops when DDL contains algorithm=instant [DBZ-2067](https://issues.jboss.org/browse/DBZ-2067)
+* Debezium Engine advanced record consuming example broken [DBZ-2073](https://issues.jboss.org/browse/DBZ-2073)
+* Unable to parse MySQL ALTER statement with named primary key [DBZ-2080](https://issues.jboss.org/browse/DBZ-2080)
+* Missing schema-serializer dependency for Avro [DBZ-2082](https://issues.jboss.org/browse/DBZ-2082)
+* TinyIntOneToBooleanConverter doesn't seem to work with columns having a default value. [DBZ-2085](https://issues.jboss.org/browse/DBZ-2085)
+
+
+### Other changes since 1.2.0.Beta1
+
+* Add ability to insert fields from op field in ExtractNewDocumentState [DBZ-1791](https://issues.jboss.org/browse/DBZ-1791)
+* Test with MySQL 8.0.20 [DBZ-2041](https://issues.jboss.org/browse/DBZ-2041)
+* Update debezium-examples/tutorial README docker-compose file is missing [DBZ-2059](https://issues.jboss.org/browse/DBZ-2059)
+* Skip tests that are no longer compatible with Kafka 1.x [DBZ-2068](https://issues.jboss.org/browse/DBZ-2068)
+* Remove additional Jackson dependencies as of AK 2.5 [DBZ-2076](https://issues.jboss.org/browse/DBZ-2076)
+* Make EventProcessingFailureHandlingIT resilient against timing issues [DBZ-2078](https://issues.jboss.org/browse/DBZ-2078)
+* Tar packages must use posix format [DBZ-2088](https://issues.jboss.org/browse/DBZ-2088)
+* Remove unused sourceInfo variable [DBZ-2090](https://issues.jboss.org/browse/DBZ-2090)
+
+
+
 ## 1.2.0.Beta1
 May 7th, 2020 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12345561)
 
