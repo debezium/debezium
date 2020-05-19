@@ -15,7 +15,7 @@ Please let us know if you encounter any problems while using this feature.
 Also please reach out if you have requirements for specific sinks to be supported by Debezium Server (Apache Pulsar, NATS, etc.) or even would be interested in contributing the required implementation.
 ====
 
-Debezium provides a ready-to-use application that streams change events from a source database to messaging infrastructure like Amazon Kinesis or Google Pub/Sub.
+Debezium provides a ready-to-use application that streams change events from a source database to messaging infrastructure like Amazon Kinesis or Google Pub/Sub (planned).
 For streaming change events to Apache Kafka, it is recommended to deploy the Debezium connectors via Kafka Connect.
 
 == Installation
@@ -33,6 +33,8 @@ ifeval::['{page-version}' != 'master']
 endif::[]
 
 A directory named `debezium-server` will be created with these contents:
+
+[source,subs="verbatim,attributes"]
 ----
 debezium-server/
 |-- CHANGELOG.md
