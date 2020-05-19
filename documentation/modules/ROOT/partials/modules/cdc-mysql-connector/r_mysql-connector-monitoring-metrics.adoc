@@ -10,7 +10,7 @@ The {prodname} MySQL connector has three metric types in addition to the built-i
 * <<mysql-connector-binlog-metrics, binlog metrics>>; for monitoring the connector when reading CDC table data
 * <<mysql-connector-schema-history-metrics, schema history metrics>>; for monitoring the status of the connector's schema history
 
-Refer to the xref:operations/monitoring.adoc[monitoring documentation] for details of how to expose these metrics via JMX.
+Refer to the {link-prefix}:{link-debezium-monitoring}#monitoring-debezium[monitoring documentation] for details of how to expose these metrics via JMX.
 
 == Snapshot metrics
 [[mysql-connector-snapshot-metrics]]
