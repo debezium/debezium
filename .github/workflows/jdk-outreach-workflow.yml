@@ -1,0 +1,197 @@
+name: Java Quality Outreach
+"on":
+  schedule:
+  - cron: 0 22 * * *
+jobs:
+  sqlserver:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        java:
+        - "14"
+        - 15.0.0-ea.23
+    name: SQL Server - Java ${{ matrix.java }}
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: recursive
+    - name: Setup OpenJDK
+      uses: actions/setup-java@v1.3.0
+      with:
+        java-version: ${{ matrix.java }}
+    - name: Maven Build
+      run: mvn clean install -B -pl debezium-connector-sqlserver -am -Passembly -Dformat.formatter.goal=validate
+        -Dformat.imports.goal=check -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+  mysql:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        java:
+        - "14"
+        - 15.0.0-ea.23
+    name: MySQL - Java ${{ matrix.java }}
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: recursive
+    - name: Setup OpenJDK
+      uses: actions/setup-java@v1.3.0
+      with:
+        java-version: ${{ matrix.java }}
+    - name: Maven Build
+      run: mvn clean install -B -pl debezium-connector-mysql -am -Passembly -Dformat.formatter.goal=validate
+        -Dformat.imports.goal=check -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+  postgres-decoderbufs:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        java:
+        - "14"
+        - 15.0.0-ea.23
+    name: PostgreSQL Decoderbufs - Java ${{ matrix.java }}
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: recursive
+    - name: Setup OpenJDK
+      uses: actions/setup-java@v1.3.0
+      with:
+        java-version: ${{ matrix.java }}
+    - name: Maven Build
+      run: mvn clean install -B -pl debezium-connector-postgres -am -Passembly -Dformat.formatter.goal=validate
+        -Dformat.imports.goal=check -Dversion.postgres.server=9.6-devel -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+  postgres-wal2json:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        java:
+        - "14"
+        - 15.0.0-ea.23
+    name: PostgreSQL Wal2JSON - Java ${{ matrix.java }}
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: recursive
+    - name: Setup OpenJDK
+      uses: actions/setup-java@v1.3.0
+      with:
+        java-version: ${{ matrix.java }}
+    - name: Maven Build
+      run: mvn clean install -B -pl debezium-connector-postgres -am -Passembly,wal2json-decoder
+        -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dversion.postgres.server=9.6-devel
+        -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+  postgres-pgoutput:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        java:
+        - "14"
+        - 15.0.0-ea.23
+    name: PostgreSQL Pgoutput - Java ${{ matrix.java }}
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: recursive
+    - name: Setup OpenJDK
+      uses: actions/setup-java@v1.3.0
+      with:
+        java-version: ${{ matrix.java }}
+    - name: Maven Build
+      run: mvn clean install -B -pl debezium-connector-postgres -am -Passembly,pgoutput-decoder,postgres-10
+        -Ddebezium.test.records.waittime=5 -Dformat.formatter.goal=validate -Dformat.imports.goal=check
+        -Dversion.postgres.server=10-devel -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+  mongodb-32:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        java:
+        - "14"
+        - 15.0.0-ea.23
+    name: MongoDB 3.2 - Java ${{ matrix.java }}
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: recursive
+    - name: Setup OpenJDK
+      uses: actions/setup-java@v1.3.0
+      with:
+        java-version: ${{ matrix.java }}
+    - name: Maven Build
+      run: mvn clean install -B -pl debezium-connector-mongodb -am -Passembly -Dformat.formatter.goal=validate
+        -Dformat.imports.goal=check -Dversion.mongo.server=3.2 -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+  mongodb-36:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        java:
+        - "14"
+        - 15.0.0-ea.23
+    name: MongoDB 3.6 - Java ${{ matrix.java }}
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: recursive
+    - name: Setup OpenJDK
+      uses: actions/setup-java@v1.3.0
+      with:
+        java-version: ${{ matrix.java }}
+    - name: Maven Build
+      run: mvn clean install -B -pl debezium-connector-mongodb -am -Passembly -Dformat.formatter.goal=validate
+        -Dformat.imports.goal=check -Dversion.mongo.server=3.6 -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+  mongodb-40:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        java:
+        - "14"
+        - 15.0.0-ea.23
+    name: MongoDB 4.0 - Java ${{ matrix.java }}
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: recursive
+    - name: Setup OpenJDK
+      uses: actions/setup-java@v1.3.0
+      with:
+        java-version: ${{ matrix.java }}
+    - name: Maven Build
+      run: mvn clean install -B -pl debezium-connector-mongodb -am -Passembly -Dformat.formatter.goal=validate
+        -Dformat.imports.goal=check -Dversion.mongo.server=4.0 -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+  quarkus-outbox:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        java:
+        - "14"
+        - 15.0.0-ea.23
+    name: Quarkus Outbox Extension - Java ${{ matrix.java }}
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: recursive
+    - name: Setup OpenJDK
+      uses: actions/setup-java@v1.3.0
+      with:
+        java-version: ${{ matrix.java }}
+    - name: Maven Build
+      run: mvn clean install -B -pl debezium-quarkus-outbox -U -am -amd -Passembly
+        -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+  testing:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        java:
+        - "14"
+        - 15.0.0-ea.23
+    name: Testing module - Java ${{ matrix.java }}
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: recursive
+    - name: Setup OpenJDK
+      uses: actions/setup-java@v1.3.0
+      with:
+        java-version: ${{ matrix.java }}
+    - name: Maven Build
+      run: mvn clean install -B -pl debezium-testing -am -amd -Passembly -Dformat.formatter.goal=validate
+        -Dformat.imports.goal=check -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
