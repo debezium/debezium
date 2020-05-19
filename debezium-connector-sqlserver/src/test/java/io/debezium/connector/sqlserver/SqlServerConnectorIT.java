@@ -1384,7 +1384,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
-
+        waitForSnapshotToBeCompleted("sql_server", "server1");
         connection.execute("INSERT INTO source_timestamp_mode VALUES(1, 'abc')");
 
         SourceRecords records = consumeRecordsByTopic(1);
