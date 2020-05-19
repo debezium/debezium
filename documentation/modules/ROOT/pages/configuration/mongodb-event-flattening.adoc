@@ -301,7 +301,7 @@ Please use a comma separated list without spaces.
 |[[configuration-option-sanitize-field-names]]<<configuration-option-sanitize-field-names, `sanitize.field.names`>>
 |`false`
 |Whether field names will be sanitized to adhere to Avro naming requirements.
-See xref:configuration/avro.adoc#names[Avro naming] for more details.
+See {link-prefix}:{link-avro-serialization}#avro-naming[Avro naming] for more details.
 |===
 
 == Known limitations
