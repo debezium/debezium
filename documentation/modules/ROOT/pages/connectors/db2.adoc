@@ -1548,7 +1548,7 @@ This property contains a comma-separated list of fully-qualified tables _(SCHEMA
 |[[connector-property-sanitize-field-names]]<<connector-property-sanitize-field-names, `sanitize.field.names`>>
 |`true` when connector configuration explicitly specifies the `key.converter` or `value.converter` parameters to use Avro, otherwise defaults to `false`.
 |Whether field names will be sanitized to adhere to Avro naming requirements.
-See xref:configuration/avro.adoc#names[Avro naming] for more details.
+See {link-prefix}:{link-avro-serialization}#avro-naming[Avro naming] for more details.
 
 |[[connector-property-provide-transaction-metadata]]<<connector-property-provide-transaction-metadata, `provide.transaction.metadata` (Incubating)>>
 |`false`

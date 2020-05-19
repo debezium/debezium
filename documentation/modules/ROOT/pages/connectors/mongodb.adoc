@@ -951,7 +951,7 @@ The topic is named according to the pattern `<heartbeat.topics.prefix>.<server.n
 |`true` when connector configuration explicitly specifies the `key.converter` or `value.converter` parameters to use Avro, otherwise defaults to `false`.
 |Whether field names are sanitized to adhere to Avro naming requirements.
 ifndef::cdc-product[]
-See xref:configuration/avro.adoc#names[Avro naming] for more details.
+See {link-prefix}:{link-avro-serialization}#avro-naming[Avro naming] for more details.
 endif::cdc-product[]
 
 |[[connector-property-skipped-operations]]<<connector-property-skipped-operations, `skipped.operations`>>
