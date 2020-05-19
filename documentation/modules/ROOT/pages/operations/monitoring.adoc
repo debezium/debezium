@@ -1,5 +1,6 @@
-= Monitoring Debezium
-include::../_attributes.adoc[]
+[id="monitoring-debezium"]
+= Monitoring {prodname}
+
 :linkattrs:
 :icons: font
 :toc:

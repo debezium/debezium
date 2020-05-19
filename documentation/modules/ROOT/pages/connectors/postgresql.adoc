@@ -1,4 +1,3 @@
-
 [id="debezium-connector-for-postgresql"]
 = {prodname} Connector for PostgreSQL
 
@@ -479,7 +478,7 @@ This is particularly valuable for environments where installation of plug-ins is
 
 See link:#setting-up-PostgreSQL[Setting up PostgreSQL] for more details.
 
-[[topic-names]]
+[[postgresql-topic-names]]
 ==== Topics Names
 
 The PostgreSQL connector writes events for all insert, update, and delete operations on a single table to a single Kafka topic. By default, the Kafka topic name is _serverName_._schemaName_._tableName_ where _serverName_ is the logical name of the connector as specified with the `database.server.name` configuration property, _schemaName_ is the name of the database schema where the operation occurred, and _tableName_ is the name of the database table on which the operation occurred.
@@ -527,7 +526,7 @@ The `sourceOffset` portion of the message contains information about the locatio
 [[events]]
 ==== Events
 
-All data change events produced by the PostgreSQL connector have a key and a value, although the structure of the key and value depend on the table from which the change events originated (see link:#topic-names[Topic names]).
+All data change events produced by the PostgreSQL connector have a key and a value, although the structure of the key and value depend on the table from which the change events originated (see link:#postgresql-topic-names[Topic names]).
 
 [NOTE]
 ====
@@ -2034,7 +2033,7 @@ For example, `add-tables=public.table,public.table2;include-lsn=true`.
 |[[connector-property-sanitize-field-names]]<<connector-property-sanitize-field-names, `sanitize.field.names`>>
 |`true` when connector configuration explicitly specifies the `key.converter` or `value.converter` parameters to use Avro, otherwise defaults to `false`.
 |Whether field names will be sanitized to adhere to Avro naming requirements.
-See xref:configuration/avro.adoc#names[Avro naming] for more details.
+See {link-prefix}:{link-avro-serialization}#avro-naming[Avro naming] for more details.
 
 |[[connector-property-slot-max-retries]]<<connector-property-slot-max-retries, `slot.max.retries`>>
 |6
