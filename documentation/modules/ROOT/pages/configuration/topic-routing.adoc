@@ -143,6 +143,15 @@ With this configuration, suppose that the default destination topic names are:
 
 The transformation uses the values in the second captured group, the shard numbers, as the value of the key's new field. In this example, the inserted key field's values would be `1`, `2`, or `3`.
 
+If your tables contain globally unique keys and you do not need to change the key structure, you can set the `key.enforce.uniqueness` property to `false`:
+
+[source]
+----
+...
+transforms.Reroute.key.enforce.uniqueness=false
+...
+----
+
 ifdef::community[]
 [[configuration-options]]
 == Configuration options
@@ -166,7 +175,7 @@ endif::product[]
 |Specifies a regular expression that the transformation applies to each change event record to determine if it should be routed to a particular topic.
 
 [id="by-logical-table-router-topic-replacement"]
-|{link-prefix}:{link-topic-routing}by-logical-table-router-topic-replacement#[`topic.replacement`]
+|{link-prefix}:{link-topic-routing}#by-logical-table-router-topic-replacement[`topic.replacement`]
 |
 |Specifies a regular expression that represents the destination topic name. The transformation routes each matching record to the topic identified by this expression. This expression can refer to groups captured by the regular expression that you specify for `topic.regex`. To refer to a group, specify `$1`, `$2`, and so on. 
 
