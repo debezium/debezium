@@ -734,7 +734,7 @@ The {prodname} MongoDB connector has two metric types in addition to the built-i
 * <<mongodb-snapshot-metrics, snapshot metrics>>; for monitoring the connector when performing snapshots
 * <<mongodb-streaming-metrics, streaming metrics>>; for monitoring the connector when processing oplog events
 
-Please refer to the xref:operations/monitoring.adoc[monitoring documentation] for details of how to expose these metrics via JMX.
+Please refer to the {link-prefix}:{link-debezium-monitoring}#monitoring-debezium[monitoring documentation] for details of how to expose these metrics via JMX.
 
 [[monitoring-snapshots]]
 [[mongodb-snapshot-metrics]]

@@ -120,7 +120,7 @@ docker run -it --rm --name avro-consumer \
       --topic db.myschema.mytable
 ----
 
-[[names]]
+[[avro-naming]]
 == Naming
 
 As stated in the Avro link:https://avro.apache.org/docs/current/spec.html#names[documentation], names must adhere to the following rules:
