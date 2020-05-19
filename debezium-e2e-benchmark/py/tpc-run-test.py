@@ -16,6 +16,9 @@ import threading
 import jpype
 
 
+tpchomedir = "/home/tpc"
+
+
 def initsql(conn, config, tpcconfig):
     curs = conn.cursor()
     for sql in tpcconfig['jdbc'][config['config']['connector.class'].split('.')[3]]['initsql']:
@@ -64,13 +67,14 @@ def enablecdctablesql(conn, config, tpcconfig):
 
 
 def topicexport(bootstrapserver, count, commitinterval):
+    global tpchomedir
     consumer = KafkaConsumer('db2server.TPC.TEST',
                              bootstrap_servers=bootstrapserver,
                              auto_offset_reset='smallest',
                              enable_auto_commit=True,
                              )
     i = 0
-    file = open("/home/tpc/tpcdata/" + "tpc_" + str(count) +
+    file = open(tpchomedir + "/tpcdata/" + "tpc_" + str(count) +
                 "_" + str(commitinterval) + ".csv", "w")
     print('read from TOPIC')
     for message in consumer:
@@ -92,6 +96,7 @@ def topicexport(bootstrapserver, count, commitinterval):
 
 
 def getjdbcconnection(config, tpcconfig):
+    global tpchomedir
     connectiontype = config['config']['connector.class'].split('.')[3]
     jdbctype = 'jdbc:' + connectiontype + '://'
     if connectiontype == 'oracle':
@@ -102,7 +107,7 @@ def getjdbcconnection(config, tpcconfig):
                               config['config']['database.dbname'],
                               [config['config']['database.user'],
                                   config['config']['database.password']],
-                              '/home/tpc/jdbcdriver/' + tpcconfig['jdbc'][connectiontype]['jar'])
+                              tpchomedir + '/jdbcdriver/' + tpcconfig['jdbc'][connectiontype]['jar'])
     return conn
 
 
