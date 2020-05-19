@@ -334,26 +334,4 @@ If you specify a field that is not in the change event record, the SMT still add
 When the SMT adds metadata fields to the simplified record's header, it prefixes each metadata field name with a double underscore. For a struct specification, the SMT also inserts an underscore between the struct name and the field name. +
  +
 If you specify a field that is not in the change event record, the SMT does not add the field to the header.
-
-ifdef::community[]
-// Do not include deprecated content in downstream doc
-
-[id="extract-new-record-state-operation.header"]
-|{link-prefix}:{link-event-flattening}#extract-new-record-state-operation-header[`operation.header`] +
-DEPRECATED
-|`false`
-|_This option is deprecated and scheduled for removal. Please use add.headers instead. If both add.headers and operation.header are specified, the latter will be ignored._
-
-The SMT adds the event operation (as obtained from the `op` field of the original record) as a Kafka record header.
-
-// Do not include deprecated content in downstream doc
-
-[id="extract-new-record-state-add-source-fields"]
-|{link-prefix}:{link-event-flattening}#extract-new-record-state-add-source-fields[`add.source.fields`] +
-DEPRECATED
-|
-|_This option is deprecated and scheduled for removal. Please use add.fields instead. If both add.fields and add.source.fields are specified, the latter will be ignored._
-
-Fields from the change event's `source` structure to add as metadata (prefixed with "__") to the flattened record.
-endif::community[]
 |===
