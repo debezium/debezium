@@ -8,6 +8,7 @@ package io.debezium.connector.postgresql;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.connector.postgresql.spi.SlotCreationResult;
+import io.debezium.connector.postgresql.spi.SlotState;
 import io.debezium.connector.postgresql.spi.Snapshotter;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
@@ -31,11 +32,12 @@ public class PostgresChangeEventSourceFactory implements ChangeEventSourceFactor
     private final Snapshotter snapshotter;
     private final ReplicationConnection replicationConnection;
     private final SlotCreationResult slotCreatedInfo;
+    private final SlotState startingSlotInfo;
 
     public PostgresChangeEventSourceFactory(PostgresConnectorConfig configuration, Snapshotter snapshotter, PostgresConnection jdbcConnection,
                                             ErrorHandler errorHandler, EventDispatcher<TableId> dispatcher, Clock clock, PostgresSchema schema,
                                             PostgresTaskContext taskContext,
-                                            ReplicationConnection replicationConnection, SlotCreationResult slotCreatedInfo) {
+                                            ReplicationConnection replicationConnection, SlotCreationResult slotCreatedInfo, SlotState startingSlotInfo) {
         this.configuration = configuration;
         this.jdbcConnection = jdbcConnection;
         this.errorHandler = errorHandler;
@@ -46,6 +48,7 @@ public class PostgresChangeEventSourceFactory implements ChangeEventSourceFactor
         this.snapshotter = snapshotter;
         this.replicationConnection = replicationConnection;
         this.slotCreatedInfo = slotCreatedInfo;
+        this.startingSlotInfo = startingSlotInfo;
     }
 
     @Override
@@ -59,7 +62,8 @@ public class PostgresChangeEventSourceFactory implements ChangeEventSourceFactor
                 dispatcher,
                 clock,
                 snapshotProgressListener,
-                slotCreatedInfo);
+                slotCreatedInfo,
+                startingSlotInfo);
     }
 
     @Override
