@@ -66,10 +66,6 @@ public class PostgresTaskContext extends CdcSourceTaskContext {
 
     protected void refreshSchema(PostgresConnection connection, boolean printReplicaIdentityInfo) throws SQLException {
         schema.refresh(connection, printReplicaIdentityInfo);
-        // Open transaction unnecessary during task execution
-        if (!connection.connection().getAutoCommit()) {
-            connection.connection().commit();
-        }
     }
 
     Long getSlotXmin(PostgresConnection connection) throws SQLException {
