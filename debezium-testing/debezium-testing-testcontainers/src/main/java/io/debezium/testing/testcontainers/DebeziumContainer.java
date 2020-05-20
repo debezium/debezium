@@ -6,6 +6,7 @@
 package io.debezium.testing.testcontainers;
 
 import java.io.IOException;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import org.awaitility.Awaitility;
@@ -32,6 +33,16 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
     public DebeziumContainer(final String containerImageName) {
         super(containerImageName);
 
+        defaultConfig();
+    }
+
+    public DebeziumContainer(final Future<String> image) {
+        super(image);
+
+        defaultConfig();
+    }
+
+    private void defaultConfig() {
         setWaitStrategy(
                 Wait.forHttp("/connectors")
                         .forPort(KAFKA_CONNECT_PORT)
