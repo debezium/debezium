@@ -15,6 +15,7 @@ asciidoc:
     modules: '../../modules'
     mysql-version: '8.0'
     strimzi-version: '0.13.0'
+    apicurio-version: '1.1.2.Final'
     community: true
     link-prefix: 'xref'
     link-avro-serialization: 'configuration/avro.adoc'
