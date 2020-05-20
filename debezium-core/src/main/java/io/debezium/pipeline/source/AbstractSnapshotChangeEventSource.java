@@ -31,7 +31,7 @@ public abstract class AbstractSnapshotChangeEventSource implements SnapshotChang
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractSnapshotChangeEventSource.class);
 
     private final CommonConnectorConfig connectorConfig;
-    private final OffsetContext previousOffset;
+    protected final OffsetContext previousOffset;
     private final SnapshotProgressListener snapshotProgressListener;
 
     public AbstractSnapshotChangeEventSource(CommonConnectorConfig connectorConfig, OffsetContext previousOffset, SnapshotProgressListener snapshotProgressListener) {

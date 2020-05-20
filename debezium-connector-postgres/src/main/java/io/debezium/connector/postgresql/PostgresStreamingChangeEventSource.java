@@ -119,12 +119,20 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
             // refresh the schema so we have a latest view of the DB tables
             taskContext.refreshSchema(connection, true);
 
+            // If we need to do a pre-snapshot streaming catch up, we should allow the snapshot transaction to persist
+            // but normally we want to start streaming without any open transactions.
+            if (!isInPreSnapshotCatchUpStreaming()) {
+                connection.commit();
+            }
+
             this.lastCompletelyProcessedLsn = replicationStream.get().startLsn();
 
             if (walPosition.searchingEnabled()) {
                 searchWalPosition(context, stream, walPosition);
                 try {
-                    connection.commit();
+                    if (!isInPreSnapshotCatchUpStreaming()) {
+                        connection.commit();
+                    }
                 }
                 catch (Exception e) {
                     LOGGER.info("Commit failed while preparing for reconnect", e);
@@ -154,7 +162,9 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                 // replicationStream.close();
                 // close the connection - this should also disconnect the current stream even if it's blocking
                 try {
-                    connection.commit();
+                    if (!isInPreSnapshotCatchUpStreaming()) {
+                        connection.commit();
+                    }
                     replicationConnection.close();
                 }
                 catch (Exception e) {
@@ -167,7 +177,8 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
             throws SQLException, InterruptedException {
         LOGGER.info("Processing messages");
         int noMessageIterations = 0;
-        while (context.isRunning()) {
+        while (context.isRunning() && (offsetContext.getStreamingStoppingLsn() == null ||
+                (lastCompletelyProcessedLsn.compareTo(offsetContext.getStreamingStoppingLsn()) < 0))) {
 
             boolean receivedMessage = stream.readPending(message -> {
                 final Lsn lsn = stream.lastReceivedLsn();
@@ -238,7 +249,13 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                     pauseNoMessage.sleepWhen(true);
                 }
             }
-            connection.commit();
+            if (!isInPreSnapshotCatchUpStreaming()) {
+                // During catch up streaming, the streaming phase needs to hold a transaction open so that
+                // the phase can stream event up to a specific lsn and the snapshot that occurs after the catch up
+                // streaming will not lose the current view of data. Since we need to hold the transaction open
+                // for the snapshot, this block must not commit during catch up streaming.
+                connection.commit();
+            }
         }
     }
 
@@ -334,6 +351,23 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
         catch (SQLException e) {
             throw new ConnectException(e);
         }
+    }
+
+    /**
+     * Returns whether the current streaming phase is running a catch up streaming
+     * phase that runs before a snapshot. This is useful for transaction
+     * management.
+     *
+     * During pre-snapshot catch up streaming, we open the snapshot transaction
+     * early and hold the transaction open throughout the pre snapshot catch up
+     * streaming phase so that we know where to stop streaming and can start the
+     * snapshot phase at a consistent location. This is opposed the regular streaming,
+     * where we do not a lingering open transaction.
+     *
+     * @return true if the current streaming phase is performing catch up streaming
+     */
+    private boolean isInPreSnapshotCatchUpStreaming() {
+        return offsetContext.getStreamingStoppingLsn() != null;
     }
 
     @FunctionalInterface

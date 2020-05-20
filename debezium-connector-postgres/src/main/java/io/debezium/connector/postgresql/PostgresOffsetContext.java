@@ -41,6 +41,7 @@ public class PostgresOffsetContext implements OffsetContext {
     private boolean lastSnapshotRecord;
     private Lsn lastCompletelyProcessedLsn;
     private Lsn lastCommitLsn;
+    private Lsn streamingStoppingLsn = null;
     private final TransactionContext transactionContext;
 
     private PostgresOffsetContext(PostgresConnectorConfig connectorConfig, Lsn lsn, Lsn lastCompletelyProcessedLsn, Lsn lastCommitLsn, Long txId, Instant time,
@@ -161,6 +162,21 @@ public class PostgresOffsetContext implements OffsetContext {
 
     Lsn lastCommitLsn() {
         return lastCommitLsn;
+    }
+
+    /**
+     * Returns the LSN that the streaming phase should stream events up to or null if
+     * a stopping point is not set. If set during the streaming phase, any event with
+     * an LSN less than the stopping LSN will be processed and once the stopping LSN
+     * is reached, the streaming phase will end. Useful for a pre-snapshot catch up
+     * streaming phase.
+     */
+    Lsn getStreamingStoppingLsn() {
+        return streamingStoppingLsn;
+    }
+
+    public void setStreamingStoppingLsn(Lsn streamingStoppingLsn) {
+        this.streamingStoppingLsn = streamingStoppingLsn;
     }
 
     Long xmin() {

@@ -9,6 +9,7 @@ import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.kafka.connect.source.SourceConnector;
 import org.slf4j.Logger;
@@ -58,6 +59,7 @@ public class ChangeEventSourceCoordinator {
 
     private volatile boolean running;
     private volatile StreamingChangeEventSource streamingSource;
+    private final ReentrantLock commitOffsetLock = new ReentrantLock();
 
     private SnapshotChangeEventSourceMetrics snapshotMetrics;
     private StreamingChangeEventSourceMetrics streamingMetrics;
@@ -92,6 +94,13 @@ public class ChangeEventSourceCoordinator {
                 LOGGER.info("Context created");
 
                 SnapshotChangeEventSource snapshotSource = changeEventSourceFactory.getSnapshotChangeEventSource(previousOffset, snapshotMetrics);
+                CatchUpStreamingResult catchUpStreamingResult = executeCatchUpStreaming(previousOffset, context, snapshotSource);
+                if (catchUpStreamingResult.performedCatchUpStreaming) {
+                    streamingMetrics.connected(false);
+                    commitOffsetLock.lock();
+                    streamingSource = null;
+                    commitOffsetLock.unlock();
+                }
                 eventDispatcher.setEventListener(snapshotMetrics);
                 SnapshotResult snapshotResult = snapshotSource.execute(context);
                 LOGGER.info("Snapshot ended with {}", snapshotResult);
@@ -101,12 +110,7 @@ public class ChangeEventSourceCoordinator {
                 }
 
                 if (running && snapshotResult.isCompletedOrSkipped()) {
-                    streamingSource = changeEventSourceFactory.getStreamingChangeEventSource(snapshotResult.getOffset());
-                    eventDispatcher.setEventListener(streamingMetrics);
-                    streamingMetrics.connected(true);
-                    LOGGER.info("Starting streaming");
-                    streamingSource.execute(context);
-                    LOGGER.info("Finished streaming");
+                    streamEvents(snapshotResult.getOffset(), context);
                 }
             }
             catch (InterruptedException e) {
@@ -122,8 +126,23 @@ public class ChangeEventSourceCoordinator {
         });
     }
 
+    protected CatchUpStreamingResult executeCatchUpStreaming(OffsetContext previousOffset, ChangeEventSourceContext context,
+                                                             SnapshotChangeEventSource snapshotSource)
+            throws InterruptedException {
+        return new CatchUpStreamingResult(false);
+    }
+
+    protected void streamEvents(OffsetContext offsetContext, ChangeEventSourceContext context) throws InterruptedException {
+        streamingSource = changeEventSourceFactory.getStreamingChangeEventSource(offsetContext);
+        eventDispatcher.setEventListener(streamingMetrics);
+        streamingMetrics.connected(true);
+        LOGGER.info("Starting streaming");
+        streamingSource.execute(context);
+        LOGGER.info("Finished streaming");
+    }
+
     public void commitOffset(Map<String, ?> offset) {
-        if (streamingSource != null && offset != null) {
+        if (!commitOffsetLock.isLocked() && streamingSource != null && offset != null) {
             streamingSource.commitOffset(offset);
         }
     }
@@ -161,5 +180,15 @@ public class ChangeEventSourceCoordinator {
         public boolean isRunning() {
             return running;
         }
+    }
+
+    protected class CatchUpStreamingResult {
+
+        public boolean performedCatchUpStreaming;
+
+        public CatchUpStreamingResult(boolean performedCatchUpStreaming) {
+            this.performedCatchUpStreaming = performedCatchUpStreaming;
+        }
+
     }
 }

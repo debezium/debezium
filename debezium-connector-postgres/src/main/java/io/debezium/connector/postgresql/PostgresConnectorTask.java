@@ -170,7 +170,7 @@ public class PostgresConnectorTask extends BaseSourceTask {
                     heartbeat,
                     schemaNameAdjuster);
 
-            ChangeEventSourceCoordinator coordinator = new ChangeEventSourceCoordinator(
+            ChangeEventSourceCoordinator coordinator = new PostgresChangeEventSourceCoordinator(
                     previousOffset,
                     errorHandler,
                     PostgresConnector.class,
@@ -185,10 +185,13 @@ public class PostgresConnectorTask extends BaseSourceTask {
                             schema,
                             taskContext,
                             replicationConnection,
-                            slotCreatedInfo),
+                            slotCreatedInfo,
+                            slotInfo),
                     new DefaultChangeEventSourceMetricsFactory(),
                     dispatcher,
-                    schema);
+                    schema,
+                    snapshotter,
+                    slotInfo);
 
             coordinator.start(taskContext, this.queue, metadataProvider);
 
