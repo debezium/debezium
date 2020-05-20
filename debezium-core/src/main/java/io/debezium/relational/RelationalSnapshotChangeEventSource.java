@@ -99,8 +99,7 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
                 LOGGER.info("Previous snapshot was cancelled before completion; a new snapshot will be taken.");
             }
 
-            connection = jdbcConnection.connection();
-            connection.setAutoCommit(false);
+            connection = createSnapshotConnection();
             connectionCreated(ctx);
 
             LOGGER.info("Snapshot step 2 - Determining captured tables");
@@ -151,6 +150,12 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
         finally {
             rollbackTransaction(connection);
         }
+    }
+
+    public Connection createSnapshotConnection() throws SQLException {
+        Connection connection = jdbcConnection.connection();
+        connection.setAutoCommit(false);
+        return connection;
     }
 
     /**
