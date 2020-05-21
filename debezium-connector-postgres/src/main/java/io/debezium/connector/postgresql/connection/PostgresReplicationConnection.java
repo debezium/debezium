@@ -14,13 +14,19 @@ import java.sql.SQLException;
 import java.sql.SQLWarning;
 import java.sql.Statement;
 import java.time.Duration;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Optional;
 import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.postgresql.core.BaseConnection;
@@ -39,6 +45,8 @@ import io.debezium.connector.postgresql.TypeRegistry;
 import io.debezium.connector.postgresql.spi.SlotCreationResult;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.jdbc.JdbcConnectionException;
+import io.debezium.relational.RelationalTableFilters;
+import io.debezium.relational.TableId;
 import io.debezium.util.Clock;
 import io.debezium.util.Metronome;
 
@@ -54,6 +62,8 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
 
     private final String slotName;
     private final String publicationName;
+    private final RelationalTableFilters tableFilter;
+    private final PostgresConnectorConfig.AutoCreateMode publicationAutocreateMode;
     private final PostgresConnectorConfig.LogicalDecoder plugin;
     private final boolean dropSlotOnClose;
     private final boolean exportSnapshot;
@@ -70,22 +80,26 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
     /**
      * Creates a new replication connection with the given params.
      *
-     * @param config the JDBC configuration for the connection; may not be null
-     * @param slotName the name of the DB slot for logical replication; may not be null
-     * @param publicationName the name of the DB publication for logical replication; may not be null
-     * @param plugin decoder matching the server side plug-in used for streaming changes; may not be null
-     * @param dropSlotOnClose whether the replication slot should be dropped once the connection is closed
-     * @param statusUpdateInterval the interval at which the replication connection should periodically send status
-     * @param exportSnapshot whether the replication should export a snapshot when created
-     * @param typeRegistry registry with PostgreSQL types
-     * @param streamParams additional parameters to pass to the replication stream
-     * @param schema the schema; must not be null
-     *
-     * updates to the server
+     * @param config                    the JDBC configuration for the connection; may not be null
+     * @param slotName                  the name of the DB slot for logical replication; may not be null
+     * @param publicationName           the name of the DB publication for logical replication; may not be null
+     * @param tableFilter               the tables to watch of the DB publication for logical replication; may not be null
+     * @param publicationAutocreateMode the mode for publication autocreation; may not be null
+     * @param plugin                    decoder matching the server side plug-in used for streaming changes; may not be null
+     * @param dropSlotOnClose           whether the replication slot should be dropped once the connection is closed
+     * @param statusUpdateInterval      the interval at which the replication connection should periodically send status
+     * @param exportSnapshot            whether the replication should export a snapshot when created
+     * @param typeRegistry              registry with PostgreSQL types
+     * @param streamParams              additional parameters to pass to the replication stream
+     * @param schema                    the schema; must not be null
+     *                                  <p>
+     *                                  updates to the server
      */
     private PostgresReplicationConnection(Configuration config,
                                           String slotName,
                                           String publicationName,
+                                          RelationalTableFilters tableFilter,
+                                          PostgresConnectorConfig.AutoCreateMode publicationAutocreateMode,
                                           PostgresConnectorConfig.LogicalDecoder plugin,
                                           boolean dropSlotOnClose,
                                           boolean exportSnapshot,
@@ -98,6 +112,8 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         this.originalConfig = config;
         this.slotName = slotName;
         this.publicationName = publicationName;
+        this.tableFilter = tableFilter;
+        this.publicationAutocreateMode = publicationAutocreateMode;
         this.plugin = plugin;
         this.dropSlotOnClose = dropSlotOnClose;
         this.statusUpdateInterval = statusUpdateInterval;
@@ -116,6 +132,8 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
     }
 
     protected void initPublication() {
+        String createPublicationStmt;
+        String tableFilterString = null;
         if (PostgresConnectorConfig.LogicalDecoder.PGOUTPUT.equals(plugin)) {
             LOGGER.info("Initializing PgOutput logical decoder publication");
             try {
@@ -125,12 +143,31 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                         Long count = rs.getLong(1);
                         if (count == 0L) {
                             LOGGER.info("Creating new publication '{}' for plugin '{}'", publicationName, plugin);
-                            // Publication doesn't exist, create it.
-                            // todo: DBZ-766 - Change this to be restricted based on configured whitelist tables?
-                            // For situations where no publication exists, we likely cannot create it for all tables.
-                            // This is because postgres requires certain super user permissions to use "ALL TABLES".
-                            // We should restrict this to the configured tables here.
-                            stmt.execute(String.format("CREATE PUBLICATION %s FOR ALL TABLES;", publicationName));
+                            switch (publicationAutocreateMode) {
+                                case DISABLED:
+                                    throw new ConnectException("Publication autocreation is disabled, please create one and restart the connector.");
+                                case ALL_TABLES:
+                                    createPublicationStmt = String.format("CREATE PUBLICATION %s FOR ALL TABLES;", publicationName);
+                                    LOGGER.info("Creating Publication with statement '{}'", createPublicationStmt);
+                                    // Publication doesn't exist, create it.
+                                    stmt.execute(createPublicationStmt);
+                                    break;
+                                case FILTERED:
+                                    try {
+                                        Set<TableId> tablesToCapture = determineCapturedTables();
+                                        tableFilterString = tablesToCapture.stream().map(TableId::toDoubleQuotedString).collect(Collectors.joining(", "));
+                                        createPublicationStmt = String.format("CREATE PUBLICATION %s FOR TABLE %s;", publicationName, tableFilterString);
+                                        LOGGER.info("Creating Publication with statement '{}'", createPublicationStmt);
+                                        // Publication doesn't exist, create it but restrict to the tableFilter.
+                                        stmt.execute(createPublicationStmt);
+                                    }
+                                    catch (Exception e) {
+                                        LOGGER.error("Unable to create publication for {}", publicationName);
+                                        throw new ConnectException(String.format("Unable to create filtered publication %s for %s", publicationName, tableFilterString),
+                                                e);
+                                    }
+                                    break;
+                            }
                         }
                         else {
                             LOGGER.trace(
@@ -149,6 +186,34 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
             streamParams.put("proto_version", 1);
             streamParams.put("publication_names", publicationName);
         }
+    }
+
+    private Stream<TableId> toTableIds(Set<TableId> tableIds, Pattern pattern) {
+        return tableIds
+                .stream()
+                .filter(tid -> pattern.asPredicate().test(tid.toString()))
+                .sorted();
+    }
+
+    private Set<TableId> determineCapturedTables() throws Exception {
+        Set<TableId> allTableIds = this.connect().readTableNames(pgConnection().getCatalog(), null, null, new String[]{ "TABLE" });
+
+        Set<TableId> capturedTables = new HashSet<>();
+
+        for (TableId tableId : allTableIds) {
+            if (tableFilter.dataCollectionFilter().isIncluded(tableId)) {
+                LOGGER.trace("Adding table {} to the list of captured tables", tableId);
+                capturedTables.add(tableId);
+            }
+            else {
+                LOGGER.trace("Ignoring table {} as it's not included in the filter configuration", tableId);
+            }
+        }
+
+        return capturedTables
+                .stream()
+                .sorted()
+                .collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
     protected void initReplicationSlot() throws SQLException, InterruptedException {
@@ -211,13 +276,14 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
      * b. the slot isn't currently being used
      * 2. we query to get our potential start position in the slot (lsn)
      * 3. we try and start streaming, depending on our options (such as in wal2json)
-     *    this may fail, which can result in the connection being killed and we need to start
-     *    the process over if we are using a temporary slot
+     * this may fail, which can result in the connection being killed and we need to start
+     * the process over if we are using a temporary slot
      * 4. actually start the streamer
-     *
+     * <p>
      * This method takes care of all of these and this method queries for a default starting position
      * If you know where you are starting from you should call {@link #startStreaming(Long)}, this method
      * delegates to that method
+     *
      * @return
      * @throws SQLException
      * @throws InterruptedException
@@ -549,6 +615,8 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         private final Configuration config;
         private String slotName = DEFAULT_SLOT_NAME;
         private String publicationName = DEFAULT_PUBLICATION_NAME;
+        private RelationalTableFilters tableFilter;
+        private PostgresConnectorConfig.AutoCreateMode publicationAutocreateMode = PostgresConnectorConfig.AutoCreateMode.ALL_TABLES;
         private PostgresConnectorConfig.LogicalDecoder plugin = PostgresConnectorConfig.LogicalDecoder.DECODERBUFS;
         private boolean dropSlotOnClose = DEFAULT_DROP_SLOT_ON_CLOSE;
         private Duration statusUpdateIntervalVal;
@@ -573,6 +641,19 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         public Builder withPublication(String publicationName) {
             assert publicationName != null;
             this.publicationName = publicationName;
+            return this;
+        }
+
+        public Builder withTableFilter(RelationalTableFilters tableFilter) {
+            assert tableFilter != null;
+            this.tableFilter = tableFilter;
+            return this;
+        }
+
+        @Override
+        public Builder withPublicationAutocreateMode(PostgresConnectorConfig.AutoCreateMode publicationAutocreateMode) {
+            assert publicationName != null;
+            this.publicationAutocreateMode = publicationAutocreateMode;
             return this;
         }
 
@@ -622,7 +703,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         @Override
         public ReplicationConnection build() {
             assert plugin != null : "Decoding plugin name is not set";
-            return new PostgresReplicationConnection(config, slotName, publicationName, plugin, dropSlotOnClose, exportSnapshot,
+            return new PostgresReplicationConnection(config, slotName, publicationName, tableFilter, publicationAutocreateMode, plugin, dropSlotOnClose, exportSnapshot,
                     statusUpdateIntervalVal, typeRegistry, slotStreamParams, schema);
         }
 

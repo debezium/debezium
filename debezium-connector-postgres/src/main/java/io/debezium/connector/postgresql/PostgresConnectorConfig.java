@@ -592,6 +592,85 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withDescription("The name of the Postgres 10+ publication used for streaming changes from a plugin." +
                     "Defaults to '" + ReplicationConnection.Builder.DEFAULT_PUBLICATION_NAME + "'");
 
+    public enum AutoCreateMode implements EnumeratedValue {
+        /**
+         * No Publication will be created, it's expected the user
+         * has already created the publication.
+         */
+        DISABLED("disabled"),
+        /**
+         * Enable publication for all tables.
+         */
+        ALL_TABLES("all_tables"),
+        /**
+         * Enable publication on a specific set of tables.
+         */
+        FILTERED("filtered");
+
+        private final String value;
+
+        AutoCreateMode(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static AutoCreateMode parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+            for (AutoCreateMode option : AutoCreateMode.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
+            }
+            return null;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value        the configuration property value; may not be null
+         * @param defaultValue the default value; may be null
+         * @return the matching option, or null if no match is found and the non-null default is invalid
+         */
+        public static AutoCreateMode parse(String value, String defaultValue) {
+            AutoCreateMode mode = parse(value);
+            if (mode == null && defaultValue != null) {
+                mode = parse(defaultValue);
+            }
+            return mode;
+        }
+    }
+
+    public static final Field PUBLICATION_AUTOCREATE_MODE = Field.create("publication.autocreate.mode")
+            .withDisplayName("Publication Auto Create Mode")
+            .withEnum(AutoCreateMode.class, AutoCreateMode.ALL_TABLES)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .withDescription(
+                    "Applies only when streaming changes using pgoutput." +
+                            "Determine how creation of a publication should work, the default is all_tables." +
+                            "DISABLED - The connector will not attempt to create a publication at all. The expectation is " +
+                            "that the user has created the publication up-front. If the publication isn't found to exist upon " +
+                            "startup, the connector will throw an exception and stop." +
+                            "ALL_TABLES - If no publication exists, the connector will create a new publication for all tables. " +
+                            "Note this requires that the configured user has access. If the publication already exists, it will be used" +
+                            ". i.e CREATE PUBLICATION <publication_name> FOR ALL TABLES;" +
+                            "FILTERED - If no publication exists, the connector will create a new publication for all those tables matching" +
+                            "the current filter configuration (see table/database whitelist/blacklist properties). If the publication already" +
+                            " exists, it will be used. i.e CREATE PUBLICATION <publication_name> FOR TABLE <tbl1, tbl2, etc>");
+
     public static final Field STREAM_PARAMS = Field.create("slot.stream.params")
             .withDisplayName("Optional parameters to pass to the logical decoder when the stream is started.")
             .withType(Type.STRING)
@@ -880,6 +959,10 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         return getConfig().getString(PUBLICATION_NAME);
     }
 
+    protected AutoCreateMode publicationAutocreateMode() {
+        return AutoCreateMode.parse(getConfig().getString(PUBLICATION_AUTOCREATE_MODE));
+    }
+
     protected String streamParams() {
         return getConfig().getString(STREAM_PARAMS);
     }
@@ -981,6 +1064,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     PLUGIN_NAME,
                     SLOT_NAME,
                     PUBLICATION_NAME,
+                    PUBLICATION_AUTOCREATE_MODE,
                     DROP_SLOT_ON_STOP,
                     STREAM_PARAMS,
                     ON_CONNECT_STATEMENTS,

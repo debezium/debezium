@@ -1892,6 +1892,19 @@ See the {link-prefix}:{link-postgresql-connector}#postgresql-data-types[list of 
 Each item (regular expression) must match the fully-qualified `<fully-qualified table>:<a comma-separated list of columns>` representing the custom key. +
 Fully-qualified tables could be defined as _schemaName_._tableName_.
 
+|[[postgresql-publication-autocreate-mode]]<<postgresql-publication-autocreate-mode, `publication.autocreate.mode`>>
+|_all_tables_
+|Applies only when streaming changes using https://www.postgresql.org/docs/current/sql-createpublication.html[pgoutput].
+Determine how creation of a https://www.postgresql.org/docs/current/logical-replication-publication.html[publication] should work, the default is all_tables.
+_disabled_ - The connector will not attempt to create a publication at all. The expectation is
+that the user has created the publication up-front. If the publication isn't found to exist upon
+startup, the connector will throw an exception and stop.
+_all_tables_ - If no publication exists, the connector will create a new publication for all tables. Note this requires
+that the configured user has access. If the publication already exists, it will be used. i.e `CREATE PUBLICATION <publication_name> FOR ALL TABLES;`
+_filtered_ - If no publication exists, the connector will create a new publication for all those tables matching the
+current filter configuration (see table/database whitelist/blacklist properties). If the publication already exists,
+it will be used. i.e `CREATE PUBLICATION <publication_name> FOR TABLE <tbl1, tbl2, etc>`
+
 |===
 
 

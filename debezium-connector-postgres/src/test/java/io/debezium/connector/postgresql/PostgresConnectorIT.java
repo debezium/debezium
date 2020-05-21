@@ -11,6 +11,7 @@ import static io.debezium.connector.postgresql.TestHelper.topicName;
 import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static junit.framework.TestCase.assertEquals;
 import static org.fest.assertions.Assertions.assertThat;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -40,6 +41,7 @@ import org.fest.assertions.Assertions;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.ComparisonFailure;
 import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
@@ -1623,6 +1625,148 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
             CloudEventsConverterTest.shouldConvertToCloudEventsInJson(record, true);
             CloudEventsConverterTest.shouldConvertToCloudEventsInJsonWithDataAsAvro(record, true);
             CloudEventsConverterTest.shouldConvertToCloudEventsInAvro(record, "postgresql", "test_server", true);
+        }
+
+        stopConnector();
+    }
+
+    @Test
+    @FixFor("DBZ-1813")
+    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Publication configuration only valid for PGOUTPUT decoder")
+    public void shouldConfigureSubscriptionsForAllTablesByDefault() throws Exception {
+        // This captures all logged messages, allowing us to verify log message was written.
+        final LogInterceptor logInterceptor = new LogInterceptor();
+
+        TestHelper.dropAllSchemas();
+        TestHelper.dropPublication("cdc");
+        TestHelper.executeDDL("postgres_create_tables.ddl");
+
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.PUBLICATION_NAME, "cdc");
+
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+        waitForAvailableRecords(100, TimeUnit.MILLISECONDS);
+
+        stopConnector(value -> assertTrue(
+                logInterceptor.containsMessage("Creating Publication with statement 'CREATE PUBLICATION cdc FOR ALL TABLES;'") &&
+                        logInterceptor.containsMessage("Creating new publication 'cdc' for plugin 'PGOUTPUT'")));
+        assertTrue(TestHelper.publicationExists("cdc"));
+    }
+
+    @Test
+    @FixFor("DBZ-1813")
+    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Publication configuration only valid for PGOUTPUT decoder")
+    public void shouldConfigureSubscriptionsFromTableFilters() throws Exception {
+        // This captures all logged messages, allowing us to verify log message was written.
+        final LogInterceptor logInterceptor = new LogInterceptor();
+
+        TestHelper.dropAllSchemas();
+        TestHelper.dropPublication("cdc");
+        TestHelper.executeDDL("postgres_create_tables.ddl");
+        TestHelper.execute(SETUP_TABLES_STMT);
+
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.PUBLICATION_NAME, "cdc")
+                .with(PostgresConnectorConfig.TABLE_WHITELIST, "public.numeric_table,public.text_table,s1.a,s2.a")
+                .with(PostgresConnectorConfig.PUBLICATION_AUTOCREATE_MODE, PostgresConnectorConfig.AutoCreateMode.FILTERED.getValue());
+
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+        waitForAvailableRecords(100, TimeUnit.MILLISECONDS);
+
+        // check the records from the snapshot
+        assertRecordsFromSnapshot(2, 1, 1);
+
+        // insert 2 new records
+        TestHelper.execute(INSERT_STMT);
+        assertRecordsAfterInsert(2, 2, 2);
+
+        final long recordsCount = 10;
+        final int batchSize = 100;
+
+        batchInsertRecords(recordsCount, batchSize);
+        CompletableFuture.runAsync(() -> consumeRecords(recordsCount))
+                .exceptionally(throwable -> {
+                    throw new RuntimeException(throwable);
+                }).get();
+
+        stopConnector(value -> {
+            assertTrue(
+                    logInterceptor.containsMessage(
+                            "Creating Publication with statement 'CREATE PUBLICATION cdc FOR TABLE \"public\".\"numeric_table\", \"public\".\"text_table\", \"s1\".\"a\", \"s2\".\"a\";'")
+                            &&
+                            logInterceptor.containsMessage("Creating new publication 'cdc' for plugin 'PGOUTPUT'"));
+        });
+        assertTrue(TestHelper.publicationExists("cdc"));
+    }
+
+    @Test
+    @FixFor("DBZ-1813")
+    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Publication configuration only valid for PGOUTPUT decoder")
+    public void shouldThrowWhenAutocreationIsDisabled() throws Exception {
+        TestHelper.dropAllSchemas();
+        TestHelper.dropPublication("cdc");
+
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SLOT_NAME, "cdc")
+                .with(PostgresConnectorConfig.PUBLICATION_AUTOCREATE_MODE, PostgresConnectorConfig.AutoCreateMode.DISABLED.getValue());
+
+        EmbeddedEngine.CompletionCallback cb = new EmbeddedEngine.CompletionCallback() {
+            @Override
+            public void handle(boolean success, String message, Throwable error) {
+                assertEquals(error.getClass(), ConnectException.class);
+                assertEquals(error.getMessage(), "Publication autocreation is disabled, please create one and restart the connector.");
+            }
+        };
+        start(PostgresConnector.class, configBuilder.build(), cb);
+        waitForAvailableRecords(100, TimeUnit.MILLISECONDS);
+        stopConnector();
+
+        assertFalse(TestHelper.publicationExists("cdc"));
+    }
+
+    @Test
+    @FixFor("DBZ-1813")
+    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Publication configuration only valid for PGOUTPUT decoder")
+    public void shouldProduceMessagesOnlyForConfiguredTables() throws Exception {
+        final long recordsCount = 10;
+        final int batchSize = 100;
+
+        TestHelper.dropAllSchemas();
+        TestHelper.dropPublication("cdc");
+        TestHelper.executeDDL("postgres_create_tables.ddl");
+        TestHelper.execute(SETUP_TABLES_STMT);
+
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.PUBLICATION_NAME, "cdc")
+                .with(PostgresConnectorConfig.TABLE_WHITELIST, "public.text_table")
+                .with(PostgresConnectorConfig.PUBLICATION_AUTOCREATE_MODE, PostgresConnectorConfig.AutoCreateMode.FILTERED.getValue());
+
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+        waitForAvailableRecords(100, TimeUnit.MILLISECONDS);
+
+        // insert records to a watched table
+        batchInsertRecords(recordsCount, batchSize);
+        CompletableFuture.runAsync(() -> consumeRecords(recordsCount))
+                .exceptionally(throwable -> {
+                    throw new RuntimeException(throwable);
+                }).get();
+
+        // assert that inserts on unwatched tables are not emitted.
+        try {
+            // check the records from the snapshot
+            assertRecordsFromSnapshot(2, 1, 1);
+
+            // insert 2 new records
+            TestHelper.execute(INSERT_STMT);
+            assertRecordsAfterInsert(2, 2, 2);
+
+            fail("Insert events should be ignored");
+        }
+        catch (ComparisonFailure e) {
+            assertThat(e).hasMessage("expected:<[2]> but was:<[0]>");
         }
 
         stopConnector();
