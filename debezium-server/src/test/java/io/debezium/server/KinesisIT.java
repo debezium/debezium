@@ -61,7 +61,7 @@ public class KinesisIT {
     DebeziumServer server;
 
     void setupDependencies(@Observes ConnectorStartedEvent event) {
-        if (!TestConfigSource.isE2eTest()) {
+        if (!TestConfigSource.isKinesisTest()) {
             return;
         }
 
@@ -82,7 +82,7 @@ public class KinesisIT {
 
     @Test
     public void testKinesis() throws Exception {
-        if (!TestConfigSource.isE2eTest()) {
+        if (!TestConfigSource.isKinesisTest()) {
             return;
         }
         Testing.Print.enable();
