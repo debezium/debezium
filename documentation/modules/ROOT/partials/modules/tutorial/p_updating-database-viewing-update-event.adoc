@@ -39,12 +39,12 @@ mysql> SELECT * FROM customers;
 ----
 --
 
-ifndef::cdc-product[]
+ifdef::community[]
 . Switch to the terminal running `watch-topic` to see a _new_ fifth event.
-endif::cdc-product[]
-ifdef::cdc-product[]
+endif::community[]
+ifdef::product[]
 . Switch to the terminal running `kafka-console-consumer` to see a _new_ fifth event.
-endif::cdc-product[]
+endif::product[]
 +
 --
 By changing a record in the `customers` table, the {prodname} MySQL connector generated a new event.

@@ -314,23 +314,23 @@ This example shows a _create_ event for the `customers` table:
 }
 ----
 <1> The `schema` portion of this event’s _value_ shows the schema for the envelope, the schema for the source structure (which is specific to the MySQL connector and reused across all events), and the table-specific schemas for the `before` and `after` fields.
-ifndef::cdc-product[]
+ifdef::community[]
 +
 [TIP]
 ====
 The names of the schemas for the `before` and `after` fields are of the form `<logicalName>.<tableName>.Value`, and thus are entirely independent from all other schemas for all other tables. This means that when using the {link-prefix}:{link-avro-serialization}[Avro Converter], the resulting Avro schemas for each table in each logical source have their own evolution and history.
 ====
-endif::cdc-product[]
+endif::community[]
 
 <2> The `payload` portion of this event’s _value_ shows the information in the event, namely that it is describing that the row was created (because `op=c`), and that the `after` field value contains the values of the new inserted row's `id`, `first_name`, `last_name`, and `email` columns.
-ifndef::cdc-product[]
+ifdef::community[]
 +
 [TIP]
 ====
 It may appear that the JSON representations of the events are much larger than the rows they describe. This is because the JSON representation must include the schema and the payload portions of the message.
 However, by using the {link-prefix}:{link-avro-serialization}[Avro Converter], you can dramatically decrease the size of the actual messages written to the Kafka topics.
 ====
-endif::cdc-product[]
+endif::community[]
 
 === Update change event value
 

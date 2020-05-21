@@ -1,6 +1,6 @@
 = {prodname} Connector for MongoDB
 
-ifndef::cdc-product[]
+ifdef::community[]
 include::../_attributes.adoc[]
 :toc:
 :toc-placement: macro
@@ -9,15 +9,15 @@ include::../_attributes.adoc[]
 :source-highlighter: highlight.js
 
 toc::[]
-endif::cdc-product[]
+endif::community[]
 
-ifdef::cdc-product[]
+ifdef::product[]
 [IMPORTANT]
 ====
 Technology Preview features are not supported with Red Hat production service-level agreements (SLAs) and might not be functionally complete; therefore, Red Hat does not recommend implementing any Technology Preview features in production environments. This Technology Preview feature provides early access to upcoming product innovations, enabling you to test functionality and provide feedback during the development process.
 For more information about support scope, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope^].
 ====
-endif::cdc-product[]
+endif::product[]
 
 {prodname}'s MongoDB connector tracks a MongoDB replica set or a MongoDB sharded cluster for document changes in databases and collections, recording those changes as events in Kafka topics.
 The connector automatically handles the addition or removal of shards in a sharded cluster, changes in membership of each replica set, elections within each replica set, and awaiting the resolution of communications problems.
@@ -275,14 +275,14 @@ different types will get encoded as the event key's payload:
 |Binary  |BinData("a2Fma2E=",0)|`{ "id" : "{\"$binary\" : \"a2Fma2E=\", \"$type\" : \"00\"}" }`
 |==========================================
 
-ifndef::cdc-product[]
+ifdef::community[]
 [WARNING]
 ====
 The MongoDB connector ensures that all Kafka Connect _schema names_ are http://avro.apache.org/docs/current/spec.html#names[valid Avro schema names]. This means that the logical server name must start with Latin letters or an underscore (e.g., [a-z,A-Z,\_]), and the remaining characters in the logical server name and all characters in the database and collections names must be Latin letters, digits, or an underscore (e.g., [a-z,A-Z,0-9,\_]). If not, then all invalid characters will automatically be replaced with an underscore character.
 
 This can lead to unexpected conflicts in schemas names when the logical server name, database names, and collection names contain other characters, and the only distinguishing characters between collection full names are invalid and thus replaced with underscores. The connector attempts to produce an exception in this such cases, but only when the conflicts exist between schemas used within a single connector.
 ====
-endif::cdc-product[]
+endif::community[]
 
 [[mongodb-change-events-value]]
 ==== Change event's value
@@ -428,9 +428,9 @@ If we look at the `payload` portion of this event's _value_, we can see the info
 [NOTE]
 ====
 It may appear that the JSON representations of the events are much larger than the rows they describe. This is true, because the JSON representation must include the _schema_ and the _payload_ portions of the message.
-ifndef::cdc-product[]
+ifdef::community[]
 It is possible and even recommended to use the link:/docs/faq/#avro-converter[Avro Converter] to dramatically decrease the size of the actual messages written to the Kafka topics.
-endif::cdc-product[]
+endif::community[]
 ====
 
 The value of an _update_ change event on this collection will actually have the exact same _schema_, and its payload is structured the same but will hold different values. Specifically, an update event will not have an `after` value and will instead have a `patch` string containing the JSON representation of the idempotent update operation and a `filter` string containing the JSON representation of the selection criteria for the update.  The `filter` string can include multiple shard key fields for sharded collections. Here's an example:
@@ -613,7 +613,7 @@ An example of messages looks like
 [[mongodb-deploying-a-connector]]
 == Deploying the MongoDB connector
 
-ifndef::cdc-product[]
+ifdef::community[]
 If you've already installed https://zookeeper.apache.org[Zookeeper], http://kafka.apache.org/[Kafka], and {link-kafka-docs}.html#connect[Kafka Connect], then using Debezium's MongoDB connector is easy.
 Simply download the
 ifeval::['{page-version}' == 'master']
@@ -624,9 +624,9 @@ https://repo1.maven.org/maven2/io/debezium/debezium-connector-mongodb/{debezium-
 endif::[]
 extract the JARs into your Kafka Connect environment, and add the directory with the JARs to Kafka Connect's plugin path using the {link-kafka-docs}/#connectconfigs[plugin.path] configuration property.
 Restart your Kafka Connect process to pick up the new JARs.
-endif::cdc-product[]
+endif::community[]
 
-ifdef::cdc-product[]
+ifdef::product[]
 Installing the MongoDB connector is a simple process whereby you only need to download the JAR, extract it to your Kafka Connect environment, and ensure the plugin's parent directory is specified in your Kafka Connect environment.
 
 .Prerequisites
@@ -656,12 +656,12 @@ For more information on the deployment process, and deploying connectors with AM
 
 * link:https://access.redhat.com/documentation/en-us/red_hat_integration/2019-12/html-single/installing_change_data_capture_on_openshift[Installing {prodname} on OpenShift]
 * link:https://access.redhat.com/documentation/en-us/red_hat_integration/2019-12/html-single/installing_change_data_capture_on_rhel[Installing {prodname} on RHEL]
-endif::cdc-product[]
+endif::product[]
 
-ifndef::cdc-product[]
+ifdef::community[]
 If immutable containers are your thing, then check out https://hub.docker.com/r/debezium/[Debezium's Docker images] for Zookeeper, Kafka, and Kafka Connect with the MongoDB connector already pre-installed and ready to go.
 Our xref:tutorial.adoc[tutorial] even walks you through using these images, and this is a great way to learn what Debezium is all about. You can even link:/blog/2016/05/31/Debezium-on-Kubernetes/[run Debezium on Kubernetes and OpenShift].
-endif::cdc-product[]
+endif::community[]
 
 [[example]]
 [[mongodb-example-configuration]]
@@ -671,7 +671,7 @@ To use the connector to produce change events for a particular MongoDB replica s
 When the connector starts, it will perform a snapshot of the collections in your MongoDB replica sets and start reading the replica sets' oplogs, producing events for every inserted, updated, and deleted row.
 Optionally filter out collections that are not needed.
 
-ifndef::cdc-product[]
+ifdef::community[]
 
 Following is an example of the configuration for a MongoDB connector that monitors a MongoDB replica set `rs0` at port 27017 on 192.168.99.100, which we logically name `fullfillment`.
 Typically, you configure the {prodname} MongoDB connector in a `.json` file using the configuration properties available for the connector.
@@ -694,9 +694,9 @@ Typically, you configure the {prodname} MongoDB connector in a `.json` file usin
 <4> The _logical name_ of the MongoDB replica set, which forms a namespace for generated events and is used in all the names of the Kafka topics to which the connector writes, the Kafka Connect schema names, and the namespaces of the corresponding Avro schema when the Avro Connector is used.
 <5> A list of regular expressions that match the collection namespaces (for example, <dbName>.<collectionName>) of all collections to be monitored. This is optional.
 
-endif::[]
+endif::community[]
 
-ifdef::cdc-product[]
+ifdef::product[]
 Following is an example of the configuration for a MongoDB connector that monitors a MongoDB replica set `rs0` at port 27017 on 192.168.99.100, which we logically name `fullfillment`.
 Typically, you configure the {prodname} MongoDB connector in a `.yaml` file using the configuration properties available for the connector.
 
@@ -720,7 +720,7 @@ apiVersion: kafka.strimzi.io/v1beta1
 <4> The _logical name_ of the MongoDB replica set, which forms a namespace for generated events and is used in all the names of the Kafka topics to which the connector writes, the Kafka Connect schema names, and the namespaces of the corresponding Avro schema when the Avro Connector is used.
 <5> A list of regular expressions that match the collection namespaces (for example, <dbName>.<collectionName>) of all collections to be monitored. This is optional.
 
-endif::[]
+endif::product[]
 
 See the link:#mongodb-connector-properties[complete list of connector properties] that can be specified in these configurations.
 
@@ -919,7 +919,7 @@ The following _advanced_ configuration properties have good defaults that will w
 |`true`
 |Boolean value that specifies whether the addresses in 'mongodb.hosts' are seeds that should be used to discover all members of the cluster or replica set (`true`), or whether the address(es) in `mongodb.hosts` should be used as is (`false`). The default is `true` and should be used in all cases except where MongoDB is link:#mongodb-replicaset[fronted by a proxy].
 
-ifndef::cdc-product[]
+ifdef::community[]
 |[[connector-property-source-struct-version]]<<connector-property-source-struct-version, `source.struct.version`>>
 |v2
 |Schema version for the `source` block in CDC events. Debezium 0.10 introduced a few breaking +
@@ -927,7 +927,7 @@ changes to the structure of the `source` block in order to unify the exposed str
 all the connectors. +
 By setting this option to `v1` the structure used in earlier versions can be produced.
 Note that this setting is not recommended and is planned for removal in a future {prodname} version.
-endif::cdc-product[]
+endif::community[]
 
 |[[connector-property-heartbeat-interval-ms]]<<connector-property-heartbeat-interval-ms, `heartbeat.interval.ms`>>
 |`0`
@@ -950,9 +950,9 @@ The topic is named according to the pattern `<heartbeat.topics.prefix>.<server.n
 |[[connector-property-sanitize-field-names]]<<connector-property-sanitize-field-names, `sanitize.field.names`>>
 |`true` when connector configuration explicitly specifies the `key.converter` or `value.converter` parameters to use Avro, otherwise defaults to `false`.
 |Whether field names are sanitized to adhere to Avro naming requirements.
-ifndef::cdc-product[]
+ifdef::community[]
 See {link-prefix}:{link-avro-serialization}#avro-naming[Avro naming] for more details.
-endif::cdc-product[]
+endif::community[]
 
 |[[connector-property-skipped-operations]]<<connector-property-skipped-operations, `skipped.operations`>>
 |

@@ -1,7 +1,7 @@
 [id="debezium-connector-for-postgresql"]
 = {prodname} Connector for PostgreSQL
 
-ifndef::cdc-product[]
+ifdef::community[]
 include::../_attributes.adoc[]
 :toc:
 :toc-placement: macro
@@ -10,7 +10,7 @@ include::../_attributes.adoc[]
 :source-highlighter: highlight.js
 
 toc::[]
-endif::cdc-product[]
+endif::community[]
 
 {prodname}'s PostgreSQL Connector can monitor and record row-level changes in the schemas of a PostgreSQL database.
 
@@ -24,12 +24,12 @@ PostgreSQL's https://www.postgresql.org/docs/current/static/logicaldecoding-expl
 
 PostgreSQL connector contains two different parts which work together in order to be able to read and process server changes:
 
-ifdef::cdc-product[]
+ifdef::product[]
 * A logical decoding output plugin, which has to be installed and configured in the PostgreSQL server.
 * Java code (the actual Kafka Connect connector) which reads the changes produced by the plugin, using PostgreSQL's https://www.postgresql.org/docs/current/static/logicaldecoding-walsender.html[_streaming replication protocol_], via the PostgreSQL https://github.com/pgjdbc/pgjdbc[_JDBC driver_]
-endif::cdc-product[]
+endif::product[]
 
-ifndef::cdc-product[]
+ifdef::community[]
 * a logical decoding output plugin which has to be installed and configured in the PostgreSQL server, one of
 ** https://github.com/debezium/postgres-decoderbufs[decoderbufs] (maintained by the Debezium community, based on ProtoBuf)
 ** https://github.com/eulerto/wal2json[wal2json] (maintained by the wal2json community, based on JSON)
@@ -37,7 +37,7 @@ ifndef::cdc-product[]
 this plug-in is always present, meaning that no additional libraries must be installed,
 and the Debezium connector will interpret the raw replication event stream into change events directly.
 * Java code (the actual Kafka Connect connector) which reads the changes produced by the chosen plugin, using PostgreSQL's https://www.postgresql.org/docs/current/static/logicaldecoding-walsender.html[_streaming replication protocol_], via the PostgreSQL https://github.com/pgjdbc/pgjdbc[_JDBC driver_]
-endif::cdc-product[]
+endif::community[]
 
 The connector then produces a _change event_ for every row-level insert, update, and delete operation that was received, recording all the change events for each table in a separate Kafka topic. Your client applications read the Kafka topics that correspond to the database tables they're interested in following, and react to every row-level event it sees in those topics.
 
@@ -45,7 +45,7 @@ PostgreSQL normally purges WAL segments after some period of time. This means th
 
 The connector is also tolerant of failures. As the connector reads changes and produces events, it records the position in the write-ahead log with each event. If the connector stops for any reason (including communication failures, network problems, or crashes), upon restart it simply continues reading the WAL where it last left off. This includes snapshots: if the snapshot was not completed when the connector is stopped, upon restart it will begin a new snapshot.
 
-ifdef::cdc-product[]
+ifdef::product[]
 [[output-plugin]]
 === Logical decoding output plugin
 The `pgoutput` logical decoder is the only supported logical decoder in the Tecnhology Preview release of {prodname}.
@@ -53,7 +53,7 @@ The `pgoutput` logical decoder is the only supported logical decoder in the Tecn
 `pgoutput`, the standard logical decoding plug-in in PostgreSQL 10+, is maintained by the Postgres community, and is also used by Postgres for https://www.postgresql.org/docs/current/logical-replication-architecture.html[logical replication].
 The `pgoutput` plug-in is always present, meaning that no additional libraries must be installed,
 and the connector will interpret the raw replication event stream into change events directly.
-endif::cdc-product[]
+endif::product[]
 
 [[limitations]]
 [IMPORTANT]
@@ -74,7 +74,7 @@ With a single byte character encoding it is not possible to correctly process st
 [[setting-up-PostgreSQL]]
 == Setting up PostgreSQL
 
-ifdef::cdc-product[]
+ifdef::product[]
 This release of {prodname} only supports the native pgoutput logical replication stream.
 To set up PostgreSQL using pgoutput, you will need to enable a replication slot, and configure a user with sufficient privileges to perform the replication.
 
@@ -105,9 +105,9 @@ For more information, refer to the https://www.postgresql.org/docs/current/warm-
 ====
 We recommend reading and understanding the https://www.postgresql.org/docs/current/static/wal-configuration.html[WAL configuration documentation] regarding the mechanics and configuration of the PostgreSQL write-ahead log.
 ====
-endif::cdc-product[]
+endif::product[]
 
-ifndef::cdc-product[]
+ifdef::community[]
 Before using the PostgreSQL connector to monitor the changes committed on a PostgreSQL server,
 first decide which logical decoder method you intend to use.
 If you plan *not* to use the native pgoutput logical replication stream support,
@@ -235,7 +235,7 @@ Otherwise, its default value will be applied which adds a latency of about 200 m
 ====
 We strongly recommend reading and understanding https://www.postgresql.org/docs/current/static/wal-configuration.html[the official documentation] regarding the mechanics and configuration of the PostgreSQL write-ahead log.
 ====
-endif::cdc-product[]
+endif::community[]
 
 [[PostgreSQL-permissions]]
 === Setting up Permissions
@@ -274,14 +274,14 @@ host    replication     <youruser>  ::1/128                 trust   // <3>
 See https://www.postgresql.org/docs/current/static/datatype-net-types.html[_the PostgreSQL documentation_] for more information on network masks.
 ====
 
-ifndef::cdc-product[]
+ifdef::community[]
 [[supported-PostgreSQL-topologies]]
 == Supported PostgreSQL Topologies
 
 The PostgreSQL connector can be used with a standalone PostgreSQL server or with a cluster of PostgreSQL servers.
 
 As mentioned link:#limitations[in the beginning], PostgreSQL (for all versions <= 12) only supports logical replication slots on `primary` servers. This means that a replica in a PostgreSQL cluster cannot be configured for logical replication, and consequently that the Debezium PostgreSQL Connector can only connect and communicate with the primary server. Should this server fail, the connector will stop. When the cluster is repaired, if the original primary server is once again promoted to `primary`, the connector can simply be restarted. However, if a different PostgreSQL server _with the plugin and proper configuration_ is promoted to `primary`, the connector configuration must be changed to point to the new `primary` server and then can be restarted.
-endif::cdc-product[]
+endif::community[]
 
 [[wal-disk-space]]
 === WAL Disk Space Consumption
@@ -304,11 +304,11 @@ To overcome the third cause it is necessary to
 
  * enable periodic heartbeat record generation using the `heartbeat.interval.ms` configuration option
  * regularly emit change events from the database tracked by {prodname}
-ifndef::cdc-product[]
+ifdef::community[]
  ** In the case of `wal2json` decoder plugin, it is sufficient to generate empty events.
  This can be achieved for example by truncating an empty temporary table.
  ** For other decoder plug-ins, it is recommended to create a supplementary table that is not monitored by Debezium.
-endif::cdc-product[]
+endif::community[]
 
 A separate process would then periodically update the table (either inserting a new event or updating the same row all over).
 PostgreSQL then will invoke {prodname} which will confirm the latest LSN and allow the database to reclaim the WAL space.
@@ -346,7 +346,7 @@ The fourth snapshot mode, *initial only*, will perform a database snapshot and t
 
 The fifth snapshot mode, *exported*, will perform a database snapshot based on the point in time when the replication slot was created.  This mode is an excellent way to perform a snapshot in a lock-free way.
 
-ifndef::cdc-product[]
+ifdef::community[]
 The final snapshot mode, *custom*, allows the user to inject their own implementation of the `io.debezium.connector.postgresql.spi.Snapshotter` interface via the `snapshot.custom.class` configuration property, with the class on the classpath of your Kafka Connect cluster (or included in the JAR if using the `EmbeddedEngine`). For more details, see the link:#custom-snapshot[Custom Snapshot] section.
 
 
@@ -438,7 +438,7 @@ public interface Snapshotter {
 ----
 
 All of the builtin snapshot modes are implemented in terms of this interface as well.
-endif::cdc-product[]
+endif::community[]
 
 [[streaming-changes]]
 ==== Streaming Changes
@@ -1547,11 +1547,11 @@ For consistent toasted values handling we recommend to
 [[deploying-a-connector]]
 == Deploying the PostgreSQL Connector
 
-ifndef::cdc-product[]
+ifdef::community[]
 If you've already installed https://zookeeper.apache.org[Zookeeper], http://kafka.apache.org/[Kafka], and {link-kafka-docs}.html#connect[Kafka Connect], then using Debezium's PostgreSQL connector is easy. Simply download the https://repo1.maven.org/maven2/io/debezium/debezium-connector-postgres/{debezium-version}/debezium-connector-postgres-{debezium-version}-plugin.tar.gz[connector's plugin archive], extract the JARs into your Kafka Connect environment, and add the directory with the JARs to {link-kafka-docs}/#connectconfigs[Kafka Connect's plugin.path]. Restart your Kafka Connect process to pick up the new JARs.
-endif::cdc-product[]
+endif::community[]
 
-ifdef::cdc-product[]
+ifdef::product[]
 Installing the PostgreSQL connector is a simple process whereby you only need to download the JAR, extract it to your Kafka Connect environment, and ensure the plugin's parent directory is specified in your Kafka Connect environment.
 
 .Prerequisites
@@ -1581,11 +1581,11 @@ For more information on the deployment process, and deploying connectors with AM
 
 * link:https://access.redhat.com/documentation/en-us/red_hat_integration/2019-12/html-single/installing_change_data_capture_on_openshift[Installing {prodname} on OpenShift]
 * link:https://access.redhat.com/documentation/en-us/red_hat_integration/2019-12/html-single/installing_change_data_capture_on_rhel[Installing {prodname} on RHEL]
-endif::cdc-product[]
+endif::product[]
 
-ifndef::cdc-product[]
+ifdef::community[]
 If immutable containers are your thing, then check out https://hub.docker.com/r/debezium/[{prodname}'s Docker images] for Zookeeper, Kafka, PostgreSQL and Kafka Connect with the PostgreSQL connector already pre-installed and ready to go.  You can even link:/blog/2016/05/31/Debezium-on-Kubernetes/[run Debezium on Kubernetes and OpenShift].
-endif::cdc-product[]
+endif::community[]
 
 [[example-configuration]]
 === Example Configuration
@@ -1599,7 +1599,7 @@ To use the connector to produce change events for a particular PostgreSQL server
 When the connector starts, it will grab a consistent snapshot of the databases in your PostgreSQL server and start streaming changes, producing events for every inserted, updated, and deleted row. You can also choose to produce events for a subset of the schemas and tables.
 Optionally ignore, mask, or truncate columns that are sensitive, too large, or not needed.
 
-ifndef::cdc-product[]
+ifdef::community[]
 
 Following is an example of the configuration for a PostgreSQL connector that monitors a PostgreSQL server at port 5432 on 192.168.99.100, which we logically name `fullfillment`.
 Typically, you configure the {prodname} PostgreSQL connector in a `.json` file using the configuration properties available for the connector.
@@ -1631,9 +1631,9 @@ Typically, you configure the {prodname} PostgreSQL connector in a `.json` file u
 <8> The logical name of the PostgreSQL server/cluster, which forms a namespace and is used in all the names of the Kafka topics to which the connector writes, the Kafka Connect schema names, and the namespaces of the corresponding Avro schema when the Avro Connector is used.
 <9> A list of all tables hosted by this server that this connector will monitor. This is optional, and there are other properties for listing the schemas and tables to include or exclude from monitoring.
 
-endif::[]
+endif::community[]
 
-ifdef::cdc-product[]
+ifdef::product[]
 
 Following is an example of the configuration for a PostgreSQL connector that monitors a PostgreSQL server at port 5432 on 192.168.99.100, which we logically name `fullfillment`.
 Typically, you configure the {prodname} PostgreSQL connector in a `.yaml` file using the configuration properties available for the connector.
@@ -1672,7 +1672,7 @@ The server name is the logical identifier for the PostgreSQL server or cluster o
 This name will be used as the prefix for all Kafka topics.
 <6> Only changes in the `public.inventory` database will be detected.
 
-endif::[]
+endif::product[]
 
 See the link:#connector-properties[complete list of connector properties] that can be specified in these configurations.
 
@@ -1730,12 +1730,12 @@ The following configuration properties are _required_ unless a default value is 
 |[[connector-property-plugin-name]]<<connector-property-plugin-name, `plugin.name`>>
 |`decoderbufs`
 |The name of the Postgres link:#output-plugin[logical decoding plugin] installed on the server.
-ifdef::cdc-product[]
+ifdef::product[]
 The only supported value is `pgoutput`.
-endif::cdc-product[]
-ifndef::cdc-product[]
+endif::product[]
+ifdef::community[]
 Supported values are `decoderbufs`, `wal2json`, `wal2json_rds`, `wal2json_streaming`, `wal2json_rds_streaming` and `pgoutput`
-endif::cdc-product[]
+endif::community[]
 
 When the processed transactions are very large it is possible that the `JSON` batch event with all changes in the transaction will not fit into the hard-coded memory buffer of size 1 GB.
 In such cases it is possible to switch to so-called *streaming* mode when every change in transactions is sent as a separate message from PostgreSQL into {prodname}.
@@ -1915,13 +1915,13 @@ The following _advanced_ configuration properties have good defaults that will w
 |[[connector-property-snapshot-mode]]<<connector-property-snapshot-mode, `snapshot.mode`>>
 |`initial`
 |Specifies the criteria for running a snapshot upon startup of the connector. The default is *initial*, and specifies the connector can run a snapshot only when no offsets have been recorded for the logical server name. The *always* option specifies that the connector run a snapshot each time on startup. The *never* option specifies that the connect should never use snapshots and that upon first startup with a logical server name the connector should read from either from where it last left off (last LSN position) or start from the beginning from the point of the view of the logical replication slot. The *initial_only* option specifies that the connector should only take an initial snapshot and then stop, without processing any subsequent changes. The *exported* option specifies that the database snapshot will be based on the point in time when the replication slot was created and is an excellent way to perform the snapshot in a lock-free way.
-ifndef::cdc-product[]
+ifdef::community[]
 Finally, if set to *custom* then the user must also set `snapshot.custom.class` which is a custom implementation of the `io.debezium.connector.postgresql.spi.Snapshotter` interface. See link:#snapshots[snapshots].
 
 |[[connector-property-snapshot-custom-class]]<<connector-property-snapshot-custom-class, `snapshot.custom.class`>>
 |
 | A full java class name that must be an implementation of the `io.debezium.connector.postgresql.spi.Snapshotter` interface. Only used when `snapshot.mode` is *custom
-endif::cdc-product[]
+endif::community[]
 
 |[[connector-property-snapshot-lock-timeout-ms]]<<connector-property-snapshot-lock-timeout-ms, `snapshot.lock.timeout.ms`>>
 |`10000`
@@ -2024,10 +2024,10 @@ The connector will read the table contents in multiple batches of this size. Def
 |[[connector-property-slot-stream-params]]<<connector-property-slot-stream-params, `slot.stream.params`>>
 |
 |Optional list of parameters to be passed to the configured logical decoding plug-in.
-ifndef::cdc-product[]
+ifdef::community[]
 Can for instance be used to enable server-side table filtering when using the wal2json plug-in.
 Allowed values depend on the chosen plug-in are separated by semicolon.
-endif::cdc-product[]
+endif::community[]
 For example, `add-tables=public.table,public.table2;include-lsn=true`.
 
 |[[connector-property-sanitize-field-names]]<<connector-property-sanitize-field-names, `sanitize.field.names`>>
@@ -2090,7 +2090,7 @@ There are some really important caveats to failovers, and you should pause Debez
 
 One reliable method of recovering and verifying any lost changes (yet administratively difficult) is to recover a backup of your failed primary to the point immediately before it failed, which would allow you to inspect the replication slot for any unconsumed changes. In any case, it is crucial that you recreate the replication slot on the new primary prior to allowing writes to it.
 
-ifndef::cdc-product[]
+ifdef::community[]
 [NOTE]
 ====
 There are discussions in the PostgreSQL community around a feature called `failover slots` which would help mitigate this problem, but as of `12` they have not been implemented yet.  However, there is active development for Postgres 13 to support logical decoding on standbys, which is a major requirement to make failover possible.  You can find more about this on the
@@ -2098,7 +2098,7 @@ link:++https://www.postgresql.org/message-id/CAJ3gD9fE=0w50sRagcs+jrktBXuJAWGZQd
 
 You can find out more about the concept of failover slots here http://blog.2ndquadrant.com/failover-slots-postgresql[this blog post].
 ====
-endif::cdc-product[]
+endif::community[]
 
 === Kafka Connect Process Stops Gracefully
 
