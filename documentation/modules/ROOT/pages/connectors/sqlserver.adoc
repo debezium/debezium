@@ -1,6 +1,6 @@
 = {prodname} Connector for SQL Server
 
-ifndef::cdc-product[]
+ifdef::community[]
 include::../_attributes.adoc[]
 :toc:
 :toc-placement: macro
@@ -14,15 +14,15 @@ Want to help us further hone and improve it? link:/docs/contribute/[Learn how].
 ====
 
 toc::[]
-endif::cdc-product[]
+endif::community[]
 
-ifdef::cdc-product[]
+ifdef::product[]
 [IMPORTANT]
 ====
 Technology Preview features are not supported with Red Hat production service-level agreements (SLAs) and might not be functionally complete; therefore, Red Hat does not recommend implementing any Technology Preview features in production environments. This Technology Preview feature provides early access to upcoming product innovations, enabling you to test functionality and provide feedback during the development process.
 For more information about support scope, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope^].
 ====
-endif::cdc-product[]
+endif::product[]
 
 {prodname}'s SQL Server Connector can monitor and record the row-level changes in the schemas of a SQL Server database.
 
@@ -104,7 +104,7 @@ If the result is empty then please make sure that the user has privileges to acc
 The SQL Server plug-in has not been tested with SQL Server on Azure.
 We welcome any feedback from a user to try the plug-in with database in managed environment.
 
-ifndef::cdc-product[]
+ifdef::community[]
 [[always-on-replica]]
 === SQL Server Always On
 
@@ -119,7 +119,7 @@ When Debezium detects this configuration option then it will:
 
 ** set `snapshot.isolation.mode` to `snapshot` as this is the only one transaction isolation mode supported by raed-only replicas
 ** commit the (read-only) transaction in every execution of the streaming query loop, as this is necessary to get the latest view on CDC data
-endif::cdc-product[]
+endif::community[]
 
 [[how-the-connector-works]]
 == How the SQL Server connector works
@@ -386,7 +386,7 @@ If we look at the value of the key's `payload` field, we'll see that it is indee
 
 Therefore, we interpret this key as describing the row in the `dbo.customers` table (output from the connector named `server1`) whose `id` primary key column had a value of `1004`.
 
-ifndef::cdc-product[]
+ifdef::community[]
 [NOTE]
 ====
 Although the `column.blacklist` configuration property allows you to remove columns from the event values, all columns in a primary or unique key are always included in the event's key.
@@ -396,7 +396,7 @@ Although the `column.blacklist` configuration property allows you to remove colu
 ====
 If the table does not have a primary or unique key, then the change event's key will be null. This makes sense since the rows in a table without a primary or unique key constraint cannot be uniquely identified.
 ====
-endif::cdc-product[]
+endif::community[]
 
 [[change-event-values]]
 ==== Change Event Values
@@ -875,9 +875,9 @@ For instance this means that in case of a newly added column any change event pr
 If your application does not tolerate such a transition period we recommend to follow the cold schema update.
 
 ==== Example
-ifndef::cdc-product[]
+ifdef::community[]
 Let's deploy the SQL Server based https://github.com/debezium/debezium-examples/tree/master/tutorial#using-sql-server[Debezium tutorial] to demonstrate the hot schema update.
-endif::cdc-product[]
+endif::community[]
 
 In this example, a column `phone_number` is added to the `customers` table.
 
@@ -1035,9 +1035,9 @@ Other data type mappings are described in the following sections.
 If present, a column's default value is propagated to the corresponding field's Kafka Connect schema.
 Change messages will contain the field's default value
 (unless an explicit column value had been given), so there should rarely be the need to obtain the default value from the schema.
-ifndef::cdc-product[]
+ifdef::community[]
 Passing the default value helps though with satisfying the compatibility rules when xref:configuration/avro.adoc[using Avro] as serialization format together with the Confluent schema registry.
-endif::cdc-product[]
+endif::community[]
 
 [[sqlserver-temporal-values]]
 ==== Temporal values
@@ -1181,13 +1181,13 @@ The `connect.decimal.precision` schema parameter contains an integer representin
 [[sqlserver-deploying-a-connector]]
 == Deploying the SQL Server connector
 
-ifndef::cdc-product[]
+ifdef::community[]
 If you've already installed https://zookeeper.apache.org[Zookeeper], http://kafka.apache.org/[Kafka], and {link-kafka-docs}.html#connect[Kafka Connect], then using Debezium's SQL Server` connector is easy.
 Simply download the https://repo1.maven.org/maven2/io/debezium/debezium-connector-sqlserver/{debezium-version}/debezium-connector-sqlserver-{debezium-version}-plugin.tar.gz[connector's plugin archive], extract the JARs into your Kafka Connect environment, and add the directory with the JARs to {link-kafka-docs}/#connectconfigs[Kafka Connect's plugin.path].
 Restart your Kafka Connect process to pick up the new JARs.
-endif::cdc-product[]
+endif::community[]
 
-ifdef::cdc-product[]
+ifdef::product[]
 Installing the SQL Server connector is a simple process whereby you only need to download the JAR, extract it to your Kafka Connect environment, and ensure the plugin's parent directory is specified in your Kafka Connect environment.
 
 .Prerequisites
@@ -1217,12 +1217,12 @@ For more information on the deployment process, and deploying connectors with AM
 
 * link:https://access.redhat.com/documentation/en-us/red_hat_integration/2019-12/html-single/installing_change_data_capture_on_openshift[Installing {prodname} on OpenShift]
 * link:https://access.redhat.com/documentation/en-us/red_hat_integration/2019-12/html-single/installing_change_data_capture_on_rhel[Installing {prodname} on RHEL]
-endif::cdc-product[]
+endif::product[]
 
-ifndef::cdc-product[]
+ifdef::community[]
 If immutable containers are your thing, then check out https://hub.docker.com/r/debezium/[Debezium's Docker images] for Zookeeper, Kafka and Kafka Connect with the SQL Server connector already pre-installed and ready to go.
 You can even link:/docs/openshift/[run Debezium on OpenShift].
-endif::cdc-product[]
+endif::community[]
 
 [[example]]
 [[sqlserver-example-configuration]]
@@ -1237,7 +1237,7 @@ When the connector starts, it will grab a consistent snapshot of the schemas in 
 You can also choose to produce events for a subset of the schemas and tables.
 Optionally ignore, mask, or truncate columns that are sensitive, too large, or not needed.
 
-ifndef::cdc-product[]
+ifdef::community[]
 Following is an example of the configuration for a connector instance that monitors a SQL Server server at port 1433 on 192.168.99.100, which we logically name `fullfillment`.
 Typically, you configure the {prodname} SQL Server connector in a `.json` file using the configuration properties available for the connector.
 
@@ -1271,9 +1271,9 @@ Typically, you configure the {prodname} SQL Server connector in a `.json` file u
 <10> The list of Kafka brokers that this connector will use to write and recover DDL statements to the database history topic.
 <11> The name of the database history topic where the connector will write and recover DDL statements. This topic is for internal use only and should not be used by consumers.
 
-endif::[]
+endif::community[]
 
-ifdef::cdc-product[]
+ifdef::product[]
 Following is an example of the configuration for a connector instance that monitors a SQL Server server at port 1433 on 192.168.99.100, which we logically name `fullfillment`.
 Typically, you configure the {prodname} SQL Server connector in a `.yaml` file using the configuration properties available for the connector.
 
@@ -1310,7 +1310,7 @@ apiVersion: kafka.strimzi.io/v1beta1
 <10> The list of Kafka brokers that this connector will use to write and recover DDL statements to the database history topic.
 <11> The name of the database history topic where the connector will write and recover DDL statements. This topic is for internal use only and should not be used by consumers.
 
-endif::[]
+endif::product[]
 
 See the link:#sqlserver-connector-properties[complete list of connector properties] that can be specified in these configurations.
 
@@ -1577,7 +1577,7 @@ When set to `0` the connector will fail immediately when it cannot obtain the lo
 This property contains a comma-separated list of fully-qualified tables _(SCHEMA_NAME.TABLE_NAME)_. Select statements for the individual tables are specified in further configuration properties, one for each table, identified by the id `snapshot.select.statement.overrides.[SCHEMA_NAME].[TABLE_NAME]`. The value of those properties is the SELECT statement to use when retrieving data from the specific table during snapshotting. _A possible use case for large append-only tables is setting a specific point where to start (resume) snapshotting, in case a previous snapshotting was interrupted._ +
 *Note*: This setting has impact on snapshots only. Events captured during log reading are not affected by it.
 
-ifndef::cdc-product[]
+ifdef::community[]
 |[[connector-property-source-struct-version]]<<connector-property-source-struct-version, `source.struct.version`>>
 |v2
 |Schema version for the `source` block in CDC events; Debezium 0.10 introduced a few breaking +
@@ -1585,14 +1585,14 @@ changes to the structure of the `source` block in order to unify the exposed str
 all the connectors. +
 By setting this option to `v1` the structure used in earlier versions can be produced.
 Note that this setting is not recommended and is planned for removal in a future {prodname} version.
-endif::cdc-product[]
+endif::community[]
 
 |[[connector-property-sanitize-field-names]]<<connector-property-sanitize-field-names, `sanitize.field.names`>>
 |`true` when connector configuration explicitly specifies the `key.converter` or `value.converter` parameters to use Avro, otherwise defaults to `false`.
 |Whether field names are sanitized to adhere to Avro naming requirements.
-ifndef::cdc-product[]
+ifdef::community[]
 See {link-prefix}:{link-avro-serialization}#avro-naming[Avro naming] for more details.
-endif::cdc-product[]
+endif::community[]
 
 |[[connector-property-database-server-timezone]]<<connector-property-database-server-timezone, `database.server.timezone`>>
 |

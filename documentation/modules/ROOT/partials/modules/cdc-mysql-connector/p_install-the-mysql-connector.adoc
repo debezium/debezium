@@ -13,17 +13,17 @@ Installing the {prodname} MySQL connector is a simple process whereby you only n
 
 .Procedure
 
-ifdef::cdc-product[]
+ifdef::product[]
 . Download the {prodname} link:https://access.redhat.com/jbossnetwork/restricted/listSoftware.html?product=red.hat.integration&downloadType=distributions[MySQL connector].
-endif::cdc-product[]
-ifndef::cdc-product[]
+endif::product[]
+ifdef::community[]
 ifeval::['{page-version}' == 'master']
 . Download the {prodname} link:{link-mysql-plugin-snapshot}[MySQL connector plugin].
 endif::[]
 ifeval::['{page-version}' != 'master']
 . Download the {prodname} link:https://repo1.maven.org/maven2/io/debezium/debezium-connector-mysql/{debezium-version}/debezium-connector-mysql-{debezium-version}-plugin.tar.gz[MySQL connector plugin].
 endif::[]
-endif::cdc-product[]
+endif::community[]
 . Extract the files into your Kafka Connect environment.
 . Add the plugin's parent directory to your Kafka Connect plugin path:
 [source]

@@ -119,10 +119,10 @@ See xref:how-the-mysql-connector-maps-data-types_{context}[] for the list of MyS
 |[[connector-property-time-precision-mode]]<<connector-property-time-precision-mode, `time.precision.mode`>>
 |`adaptive_time{zwsp}_microseconds`
 | Time, date, and timestamps can be represented with different kinds of precision, including: `adaptive_time_microseconds` (the default) captures the date, datetime and timestamp values exactly as in the database using either millisecond, microsecond, or nanosecond precision values based on the database column's type, with the exception of TIME type fields, which are always captured as microseconds;
-ifndef::cdc-product[]
+ifdef::community[]
 // Do not include deprecated content in downstream doc
 `adaptive` (deprecated) captures the time and timestamp values exactly as in the database using either millisecond, microsecond, or nanosecond precision values based on the database column's type;
-endif::cdc-product[]
+endif::community[]
 or `connect` always represents time and timestamp values using Kafka Connect's built-in representations for Time, Date, and Timestamp, which uses millisecond precision regardless of the database columns' precision.
 
 |[[connector-property-decimal-handling-mode]]<<connector-property-decimal-handling-mode, `decimal.handling.mode`>>
@@ -181,13 +181,13 @@ WARNING: Enabling this option may expose tables or fields explicitly blacklisted
 |
 |A comma-separated list of regular expressions that match source UUIDs in the GTID set used to find the binlog position in the MySQL server. Only the GTID ranges that have sources matching none of these exclude patterns will be used. May not be used with `gtid.source.includes`.
 
-ifndef::cdc-product[]
+ifdef::community[]
 // Do not include deprecated content in downstream doc
 |[[connector-property-gtid-new-channel-position]]<<connector-property-gtid-new-channel-position, `gtid.new.channel.position`>> +
 _deprecated and scheduled for removal_
 |`earliest`
 | When set to `latest`, when the connector sees a new GTID channel, it will start consuming from the last executed transaction in that GTID channel. If set to `earliest` (default), the connector starts reading that channel from the first available (not purged) GTID position. `earliest` is useful when you have a active-passive MySQL setup where {prodname} is connected to master, in this case during failover the slave with new UUID (and GTID channel) starts receiving writes before {prodname} is connected. These writes would be lost when using `latest`.
-endif::cdc-product[]
+endif::community[]
 
 |[[connector-property-tombstones-on-delete]]<<connector-property-tombstones-on-delete, `tombstones.on.delete`>>
 |`true`
@@ -328,7 +328,7 @@ This is usually done by database. +
 Set to `true` (the default) when {prodname} should do the conversion. +
 Set to `false` when conversion is fully delegated to the database.
 
-ifndef::cdc-product[]
+ifdef::community[]
 |[[connector-property-source-struct-version]]<<connector-property-source-struct-version, `source.struct.version`>>
 |v2
 |Schema version for the `source` block in {prodname} events; {prodname} 0.10 introduced a few breaking +
@@ -336,7 +336,7 @@ changes to the structure of the `source` block in order to unify the exposed str
 all the connectors. +
 By setting this option to `v1` the structure used in earlier versions can be produced.
 Note that this setting is not recommended and is planned for removal in a future {prodname} version.
-endif::cdc-product[]
+endif::community[]
 
 |[[connector-property-sanitize-field-names]]<<connector-property-sanitize-field-names, `sanitize.field.names`>>
 |`true` when connector configuration explicitly specifies the `key.converter` or `value.converter` parameters to use Avro, otherwise defaults to `false`.
