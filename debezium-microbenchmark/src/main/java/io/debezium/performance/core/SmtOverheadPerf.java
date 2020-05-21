@@ -27,19 +27,15 @@ import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Warmup;
 
-import io.debezium.data.Envelope;
-import io.debezium.transforms.Filter;
-import io.debezium.util.Collect;
-
 /**
- * A basic test to compare performance of different implementations of filtering SMTs.
+ * A basic test to calculate overhead of using SMTs.
  *
  * @author Jiri Pechanec <jpechane@redhat.com>
  *
  */
-public class FilterSmtPerf {
+public class SmtOverheadPerf {
 
-    private static class NativeFilter implements Transformation<SourceRecord> {
+    private static class NewRecord implements Transformation<SourceRecord> {
 
         @Override
         public void configure(Map<String, ?> configs) {
@@ -47,12 +43,35 @@ public class FilterSmtPerf {
 
         @Override
         public SourceRecord apply(SourceRecord record) {
-            if (record.value() == null) {
-                return record;
-            }
-            if (Envelope.Operation.DELETE.code().equals(((Struct) record.value()).getString(Envelope.FieldName.OPERATION))) {
-                return null;
-            }
+            return record.newRecord(
+                    record.topic(),
+                    record.kafkaPartition(),
+                    record.keySchema(),
+                    record.key(),
+                    record.valueSchema(),
+                    record.value(),
+                    record.timestamp(),
+                    record.headers());
+        }
+
+        @Override
+        public ConfigDef config() {
+            return null;
+        }
+
+        @Override
+        public void close() {
+        }
+    }
+
+    private static class NoOp implements Transformation<SourceRecord> {
+
+        @Override
+        public void configure(Map<String, ?> configs) {
+        }
+
+        @Override
+        public SourceRecord apply(SourceRecord record) {
             return record;
         }
 
@@ -69,9 +88,8 @@ public class FilterSmtPerf {
     @State(Scope.Thread)
     public static class TransformState {
 
-        public Transformation<SourceRecord> nativeFilter;
-        public Transformation<SourceRecord> groovyFilter;
-        public Transformation<SourceRecord> jsFilter;
+        public Transformation<SourceRecord> newRecord;
+        public Transformation<SourceRecord> noop;
         public SourceRecord delete;
         public SourceRecord create;
 
@@ -87,14 +105,11 @@ public class FilterSmtPerf {
             createValue.put("op", "c");
             create = new SourceRecord(new HashMap<>(), new HashMap<>(), "top1", 1, schema, create);
 
-            nativeFilter = new NativeFilter();
-            nativeFilter.configure(new HashMap<>());
+            newRecord = new NewRecord();
+            newRecord.configure(new HashMap<>());
 
-            groovyFilter = new Filter<>();
-            groovyFilter.configure(Collect.hashMapOf("language", "jsr223.groovy", "condition", "value.op == 'd'"));
-
-            jsFilter = new Filter<>();
-            jsFilter.configure(Collect.hashMapOf("language", "jsr223.graal.js", "condition", "value.get('op') == 'd'"));
+            noop = new NoOp();
+            noop.configure(new HashMap<>());
         }
     }
 
@@ -104,10 +119,8 @@ public class FilterSmtPerf {
     @Fork(value = 1)
     @Warmup(iterations = 10, time = 1, timeUnit = TimeUnit.SECONDS)
     @Measurement(iterations = 3, time = 2, timeUnit = TimeUnit.SECONDS)
-    public void java(TransformState state) {
-        state.nativeFilter.apply(state.create);
-        state.nativeFilter.apply(state.create);
-        state.nativeFilter.apply(state.delete);
+    public void newRecord(TransformState state) {
+        state.newRecord.apply(state.create);
     }
 
     @Benchmark
@@ -116,10 +129,8 @@ public class FilterSmtPerf {
     @Fork(value = 1)
     @Warmup(iterations = 10, time = 1, timeUnit = TimeUnit.SECONDS)
     @Measurement(iterations = 3, time = 2, timeUnit = TimeUnit.SECONDS)
-    public void groovy(TransformState state) {
-        state.groovyFilter.apply(state.create);
-        state.groovyFilter.apply(state.create);
-        state.groovyFilter.apply(state.delete);
+    public void noop(TransformState state) {
+        state.noop.apply(state.create);
     }
 
     @Benchmark
@@ -128,9 +139,6 @@ public class FilterSmtPerf {
     @Fork(value = 1)
     @Warmup(iterations = 10, time = 1, timeUnit = TimeUnit.SECONDS)
     @Measurement(iterations = 3, time = 2, timeUnit = TimeUnit.SECONDS)
-    public void javascript(TransformState state) {
-        state.jsFilter.apply(state.create);
-        state.jsFilter.apply(state.create);
-        state.jsFilter.apply(state.delete);
+    public void base(TransformState state) {
     }
 }
