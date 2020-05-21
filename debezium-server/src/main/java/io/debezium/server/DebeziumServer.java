@@ -33,7 +33,6 @@ import io.debezium.engine.DebeziumEngine;
 import io.debezium.engine.DebeziumEngine.ChangeConsumer;
 import io.debezium.engine.format.Avro;
 import io.debezium.engine.format.Json;
-import io.debezium.engine.format.SerializationFormat;
 import io.quarkus.runtime.ShutdownEvent;
 import io.quarkus.runtime.Startup;
 
@@ -80,9 +79,9 @@ public class DebeziumServer {
     @Liveness
     ConnectorLifecycle health;
 
-    private Bean<DebeziumEngine.ChangeConsumer<ChangeEvent<?, ?>>> consumerBean;
-    private CreationalContext<ChangeConsumer<ChangeEvent<?, ?>>> consumerBeanCreationalContext;
-    private DebeziumEngine.ChangeConsumer<ChangeEvent<?, ?>> consumer;
+    private Bean<DebeziumEngine.ChangeConsumer<ChangeEvent<Object, Object>>> consumerBean;
+    private CreationalContext<ChangeConsumer<ChangeEvent<Object, Object>>> consumerBeanCreationalContext;
+    private DebeziumEngine.ChangeConsumer<ChangeEvent<Object, Object>> consumer;
     private DebeziumEngine<?> engine;
 
     @SuppressWarnings("unchecked")
@@ -103,13 +102,13 @@ public class DebeziumServer {
             throw new DebeziumException("Multiple Debezium consumers named '" + name + "' were found");
         }
 
-        consumerBean = (Bean<DebeziumEngine.ChangeConsumer<ChangeEvent<?, ?>>>) beans.iterator().next();
+        consumerBean = (Bean<DebeziumEngine.ChangeConsumer<ChangeEvent<Object, Object>>>) beans.iterator().next();
         consumerBeanCreationalContext = beanManager.createCreationalContext(consumerBean);
         consumer = consumerBean.create(consumerBeanCreationalContext);
         LOGGER.info("Consumer '{}' instantiated", consumer.getClass().getName());
 
-        final Class<? extends SerializationFormat<?>> keyFormat = getFormat(config, PROP_KEY_FORMAT);
-        final Class<? extends SerializationFormat<?>> valueFormat = getFormat(config, PROP_VALUE_FORMAT);
+        final Class<Any> keyFormat = (Class<Any>) getFormat(config, PROP_KEY_FORMAT);
+        final Class<Any> valueFormat = (Class<Any>) getFormat(config, PROP_VALUE_FORMAT);
         final Properties props = new Properties();
         configToProperties(config, props, PROP_SOURCE_PREFIX, "");
         configToProperties(config, props, PROP_FORMAT_PREFIX, "key.converter.");
@@ -124,19 +123,8 @@ public class DebeziumServer {
         props.setProperty("name", name);
         LOGGER.debug("Configuration for DebeziumEngine: {}", props);
 
-        DebeziumEngine.Builder<?> builder = null;
-        // TODO - apply variance and covariance rules on Debezium API to
-        // support direct assignment to DebeziumEngine.Builder<ChangeEvent<?, ?>>
-        if (keyFormat == Json.class && valueFormat == Json.class) {
-            builder = createJsonJson(consumer);
-        }
-        else if (keyFormat == Json.class && valueFormat == Avro.class) {
-            builder = createJsonAvro(consumer);
-        }
-        else if (keyFormat == Avro.class && valueFormat == Avro.class) {
-            builder = createAvroAvro(consumer);
-        }
-        engine = builder
+        engine = DebeziumEngine.create(keyFormat, valueFormat)
+                .notifying(consumer)
                 .using(props)
                 .using((DebeziumEngine.ConnectorCallback) health)
                 .using((DebeziumEngine.CompletionCallback) health)
@@ -144,24 +132,6 @@ public class DebeziumServer {
 
         executor.execute(() -> engine.run());
         LOGGER.info("Engine executor started");
-    }
-
-    @SuppressWarnings("unchecked")
-    private DebeziumEngine.Builder<?> createJsonJson(DebeziumEngine.ChangeConsumer<?> consumer) {
-        return DebeziumEngine.create(Json.class, Json.class)
-                .notifying((DebeziumEngine.ChangeConsumer<ChangeEvent<String, String>>) consumer);
-    }
-
-    @SuppressWarnings("unchecked")
-    private DebeziumEngine.Builder<?> createAvroAvro(DebeziumEngine.ChangeConsumer<?> consumer) {
-        return DebeziumEngine.create(Avro.class, Avro.class)
-                .notifying((DebeziumEngine.ChangeConsumer<ChangeEvent<byte[], byte[]>>) consumer);
-    }
-
-    @SuppressWarnings("unchecked")
-    private DebeziumEngine.Builder<?> createJsonAvro(DebeziumEngine.ChangeConsumer<?> consumer) {
-        return DebeziumEngine.create(Json.class, Avro.class)
-                .notifying((DebeziumEngine.ChangeConsumer<ChangeEvent<String, byte[]>>) consumer);
     }
 
     private void configToProperties(Config config, Properties props, String oldPrefix, String newPrefix) {
@@ -172,7 +142,7 @@ public class DebeziumServer {
         }
     }
 
-    private Class<? extends SerializationFormat<?>> getFormat(Config config, String property) {
+    private Class<?> getFormat(Config config, String property) {
         final String formatName = config.getOptionalValue(property, String.class).orElse(FORMAT_JSON);
         if (FORMAT_JSON.equals(formatName)) {
             return Json.class;
