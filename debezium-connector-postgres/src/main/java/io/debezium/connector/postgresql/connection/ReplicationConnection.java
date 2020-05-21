@@ -19,6 +19,7 @@ import io.debezium.connector.postgresql.PostgresConnectorConfig;
 import io.debezium.connector.postgresql.PostgresSchema;
 import io.debezium.connector.postgresql.TypeRegistry;
 import io.debezium.connector.postgresql.spi.SlotCreationResult;
+import io.debezium.relational.RelationalTableFilters;
 
 /**
  * A Postgres logical streaming replication connection. Replication connections are established for a slot and a given plugin
@@ -132,6 +133,24 @@ public interface ReplicationConnection extends AutoCloseable {
          * @see #DEFAULT_PUBLICATION_NAME
          */
         Builder withPublication(final String publicationName);
+
+        /**
+         * Sets the publication tables to watch for the PG logical publication
+         *
+         * @param tableFilter the configured table filters
+         * @return this instance
+         * @see #config.getTableFilters()
+         */
+        Builder withTableFilter(final RelationalTableFilters tableFilter);
+
+        /**
+         * Sets the publication autocreate mode for the PG logical publication
+         *
+         * @param publicationAutocreateMode the name of the publication, may not be null.
+         * @return this instance
+         * @see #PostgresConnectorConfig.PublicationAutocreateMode.ALL_TABLES
+         */
+        Builder withPublicationAutocreateMode(final PostgresConnectorConfig.AutoCreateMode publicationAutocreateMode);
 
         /**
          * Sets the instance for the PG logical decoding plugin
