@@ -44,6 +44,10 @@ public abstract class Metrics {
     public synchronized void register(Logger logger) {
         try {
             final MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
+            if (mBeanServer == null) {
+                logger.info("JMX not supported, bean '{}' not registered");
+                return;
+            }
             mBeanServer.registerMBean(this, name);
         }
         catch (JMException e) {
@@ -59,6 +63,10 @@ public abstract class Metrics {
         if (this.name != null) {
             try {
                 final MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
+                if (mBeanServer == null) {
+                    logger.debug("JMX not supported, beam '{}' not registered");
+                    return;
+                }
                 mBeanServer.unregisterMBean(name);
             }
             catch (JMException e) {
