@@ -30,12 +30,12 @@ mysql> DELETE FROM addresses WHERE customer_id=1004;
 ====
 --
 
-ifndef::cdc-product[]
+ifdef::community[]
 . Switch to the terminal running `watch-topic` to see _two_ new events.
-endif::cdc-product[]
-ifdef::cdc-product[]
+endif::community[]
+ifdef::product[]
 . Switch to the terminal running `kafka-console-consumer` to see _two_ new events.
-endif::cdc-product[]
+endif::product[]
 +
 By deleting a row in the `customers` table, the {prodname} MySQL connector generated two new events.
 

@@ -262,12 +262,12 @@ For `DELETE` events, this option is only supported when the `delete.handling.mod
 |`_`
 |Delimiter to concat between field names from the input record when generating field names for the output record. Only applies when `flatten.struct` is set to `true`
 
-ifndef::cdc-product[]
+ifdef::community[]
 |[[configuration-option-operation-header]]<<configuration-option-operation-header, `operation.header`>>
 |`false`
 |The SMT adds the xref:connectors/mongodb.adoc#mongodb-change-events-value[event operation] as a message header. +
 This is deprecated as of Debezium 1.2, please use <<configuration-option-add-headers, `add.headers`>> and <<configuration-option-add-fields, `add.fields`>> instead.
-endif::[]
+endif::community[]
 
 |[[configuration-option-drop-tombstones]]<<configuration-option-drop-tombstones, `drop.tombstones`>>
 |`true`
@@ -277,12 +277,12 @@ endif::[]
 |`drop`
 |The SMT can `drop`, `rewrite` or pass delete records (`none`). The `rewrite` mode will add a `__deleted` field set to `true` or `false` depending on the represented operation.
 
-ifndef::cdc-product[]
+ifdef::community[]
 |[[configuration-option-add-source-fields]]<<configuration-option-add-source-fields, `add.source.fields`>> +
 |
 |Fields from the change event's `source` structure to add as metadata (prefixed with "__") to the flattened record. +
 This is deprecated as of Debezium 1.2, please use <<configuration-option-add-headers, `add.headers`>> and <<configuration-option-add-fields, `add.fields`>> instead.
-endif::[]
+endif::community[]
 
 |[[configuration-option-add-headers]]<<configuration-option-add-headers, `add.headers`>>
 |
