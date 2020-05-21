@@ -3,10 +3,10 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.server.kinesis;
+package io.debezium.server;
 
 /**
- * Transforms the name of the record destination to the Kinesis stream name.
+ * Transforms the name of the record destination to the target stream name.
  *
  * @author Jiri Pechanec
  *
