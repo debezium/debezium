@@ -262,7 +262,7 @@ The configuration will need to contain the list of transformations, implementati
 === Sink configuration
 
 Sink configuration is specific for each sink type.
-Currently the only supported sink is https://aws.amazon.com/kinesis/[Amazon Kinesis].
+Currently the only supported sinks are https://aws.amazon.com/kinesis/[Amazon Kinesis] and https://cloud.google.com/pubsub/[Google Pub/Sub].
 
 The sink is selected by configuration property `debezium.sink.type`.
 
@@ -292,7 +292,8 @@ Kinesis exposes a set of REST APIs and provides a (not-only) Java SDK that is us
 
 |[[kinesis-null-key]]<<kinesis-null-key, `debezium.sink.kinesis.null.key`>>
 |`default`
-|Kinesis does not support the notion of messages without key. So this string will be used as message key for messages from tables without primary key.
+|Kinesis does not support the notion of messages without key.
+So this string will be used as message key for messages from tables without primary key.
 
 |===
 
@@ -312,9 +313,64 @@ When the alternative implementations are not available then the default ones are
 |`@CustomConsumerBuilder`
 |Custom configured instance of a `KinesisClient` used to send messages to target streams.
 
-|[[kinesis-ext-stream-name-mapper]]<<kinesis-ext-stream-name-mapper, `io.debezium.server.kinesis.StreamNameMapper`>>
+|[[kinesis-ext-stream-name-mapper]]<<kinesis-ext-stream-name-mapper, `io.debezium.server.StreamNameMapper`>>
 |
-|Custom implementation maps the planned destination (topic) name into a physical Kinesis stream name. By default the same name is used.
+|Custom implementation maps the planned destination (topic) name into a physical Kinesis stream name.
+By default the same name is used.
+
+|=======================
+
+
+==== Google Pub/Sub
+
+Google Pub/Sub is an implementation of messaging/eventing system designed for scalable batch and stream processing applications.
+Pub/Sub exposes a set of REST APIs and provides a (not-only) Java SDK that is used to implement the sink.
+
+[cols="35%a,10%a,55%a",options="header"]
+|=======================
+|Property
+|Default
+|Description
+
+|[[pubsub-type]]<<pubsub-type, `debezium.sink.type`>>
+|
+|Must be set to `pubsub`.
+
+|[[pubsub-project-id]]<<pubsub-projectid, `debezium.sink.pubsub.projectid`>>
+|_system-wide default project id_
+|A project name in which the target topics are created.
+
+|[[pubsub-ordering]]<<pubsub-ordering, `debezium.sink.pubsub.ordering.enabled`>>
+|`true`
+|Pub/Sub can optionally use a message key to guarantee the delivery of the messages in the same order as were sent for messages with the same order key.
+This feature can be disabled.
+
+|[[pubsub-null-key]]<<pubsub-null-key, `debezium.sink.pubsub.null.key`>>
+|`default`
+|Tables without primary key sends messages with `null` key.
+This is not supported by Pub/Sub so a surrogate key must be used.
+
+|=======================
+
+
+==== Injection points
+
+The Pub/Sub sink behaviour can be modified by a custom logic providing alternative implementations for specific functionalities.
+When the alternative implementations are not available then the default ones are used.
+
+[cols="35%a,10%a,55%a",options="header"]
+|=======================
+|Interface
+|CDI classifier
+|Description
+
+|[[pubsub-pub-builder]]<<pubsub-pub-builder, `io.debezium.server.pubsub.PubSubChangeConsumer.PublisherBuilder`>>
+|`@CustomConsumerBuilder`
+|A calss that provides custom configured instance of a `Publisher` used to send messages to a dedicated topic.
+
+|[[pubsub-ext-stream-name-mapper]]<<pubsub-ext-stream-name-mapper, `io.debezium.server.StreamNameMapper`>>
+|
+|Custom implementation maps the planned destination (topic) name into a physical Pub/Sub topic name. By default the same name is used.
 
 |===
 

@@ -13,6 +13,7 @@
 
     <properties>
         <version.kinesis>2.13.13</version.kinesis>
+        <version.pubsub>5.1.0</version.pubsub>
 
         <!-- Assembly configuration -->
         <assembly.descriptor>server-distribution</assembly.descriptor>
@@ -34,8 +35,15 @@
                 <artifactId>kinesis</artifactId>
                 <version>${version.kinesis}</version>
             </dependency>
+            <dependency>
+                <groupId>com.google.cloud</groupId>
+                <artifactId>libraries-bom</artifactId>
+                <version>${version.pubsub}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
         </dependencies>
-    </dependencyManagement>
+      </dependencyManagement>
 
     <dependencies>
         <!-- Quarkus extensions -->
@@ -71,6 +79,16 @@
         <dependency>
             <groupId>software.amazon.awssdk</groupId>
             <artifactId>kinesis</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>com.google.cloud</groupId>
+            <artifactId>google-cloud-pubsub</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>com.google.cloud</groupId>
+            <artifactId>google-cloud-core</artifactId>
             <optional>true</optional>
         </dependency>
 

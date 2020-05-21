@@ -24,6 +24,7 @@ import io.debezium.DebeziumException;
 import io.debezium.engine.ChangeEvent;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.engine.DebeziumEngine.RecordCommitter;
+import io.debezium.server.BaseChangeConsumer;
 import io.debezium.server.CustomConsumerBuilder;
 
 import software.amazon.awssdk.auth.credentials.ProfileCredentialsProvider;
@@ -40,7 +41,7 @@ import software.amazon.awssdk.services.kinesis.model.PutRecordRequest;
  */
 @Named("kinesis")
 @Dependent
-public class KinesisChangeConsumer implements DebeziumEngine.ChangeConsumer<ChangeEvent<Object, Object>> {
+public class KinesisChangeConsumer extends BaseChangeConsumer implements DebeziumEngine.ChangeConsumer<ChangeEvent<Object, Object>> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(KinesisChangeConsumer.class);
 
@@ -56,21 +57,13 @@ public class KinesisChangeConsumer implements DebeziumEngine.ChangeConsumer<Chan
     String nullKey;
 
     private KinesisClient client = null;
-    private StreamNameMapper streamNameMapper = (x) -> x;
 
     @Inject
     @CustomConsumerBuilder
     Instance<KinesisClient> customClient;
 
-    @Inject
-    Instance<StreamNameMapper> customStreamNameMapper;
-
     @PostConstruct
     void connect() {
-        if (customStreamNameMapper.isResolvable()) {
-            streamNameMapper = customStreamNameMapper.get();
-        }
-        LOGGER.info("Using '{}' stream name mapper", streamNameMapper);
         if (customClient.isResolvable()) {
             client = customClient.get();
             LOGGER.info("Obtained custom configured KinesisClient '{}'", client);
