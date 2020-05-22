@@ -16,7 +16,7 @@ This connector is currently in incubating state, i.e. exact semantics, configura
 The Cassanadra connector can monitor a Cassandra cluster and record all row-level changes. The connector must be deployed locally on each node in the Cassandra cluster. The first time the connector connects to a Cassandra node, it performs a snapshot of all CDC-enabled tables in all keyspaces. The connector will also read the changes that are written to Cassandra commit logs and generates corresponding insert, update, and delete events. All events for each table are recorded in a separate kafka topic, where they can be consumed easily by applications and services.
 
 
-[[overview]]
+[[cassandra-overview]]
 == Overview
 
 Cassandra is an open-sourced NoSQL database. Similar to most databases, the write path of Cassandra starts with the immeidate logging of a change into its commit log. The commit log resides locally on each node, recording every write made to that node.
@@ -25,7 +25,7 @@ Since Cassandra 3.0, a http://cassandra.apache.org/doc/3.11.3/operating/cdc.html
 
 The Cassandra connector resides on each Cassandra node and monitors the `cdc_raw` directory for change. It processes all local commit log segments as they are detected, produces a change event for every row-level insert, update, and delete operations in the commit log, publishes all change events for each table in a separate Kafka topic, and finally deletes the commit log from the `cdc_raw` directory. This last step is important because once CDC is enabled, Cassandra itself cannot purge the commit logs. If the `cdc_free_space_in_mb` fills up, writes to CDC-enabled tables will be rejected.
 
-The connector is tolerant of failures. As the connector reads commit logs and produces events, it records each commit log segment's filename and position along with each event. If the connector stops for any reason (including communication failures, network problems, or crashes), upon restart it simply continues reading the commit log where it last left off. This includes snapshots: if the snapshot was not completed when the connector is stopped, upon restart it will begin a new snapshot. We'll talk later about how the connector behaves link:#when-things-go-wrong[when things go wrong].
+The connector is tolerant of failures. As the connector reads commit logs and produces events, it records each commit log segment's filename and position along with each event. If the connector stops for any reason (including communication failures, network problems, or crashes), upon restart it simply continues reading the commit log where it last left off. This includes snapshots: if the snapshot was not completed when the connector is stopped, upon restart it will begin a new snapshot. We'll talk later about how the connector behaves link:#cassandra-when-things-go-wrong[when things go wrong].
 
 [NOTE]
 ====
@@ -93,7 +93,7 @@ ALTER TABLE foo WITH cdc=true;
 This section goes into detail about how the Cassandra connector performs snapshots, transforms commit log events into Debezium change events, handles commit log life cycle, records events into Kafka, manages schema evolution, and behaves when things go wrong.
 
 
-[[snapshots]]
+[[cassandra-snapshots]]
 === Snapshots
 
 When the Cassandra connector first starts on a Cassandra node, it will by default perform an initial snapshot of the cluster. This is the default mode, since most of the time CDC is enabled on non-empty tables and commit logs do not contain the complete history.
@@ -147,7 +147,7 @@ In Cassandra 4.0 on every segment fsync, an index file will be updated to reflec
 By default, Cassandra connector will delete commit logs which have been processed. It is not recommended to start the connector while deletion of commit logs is disabled, as this could bloat up disk storage and prevent further writes to the Cassandra cluster. To manage the commit logs in a custom manner (i.e. upload it to a cloud provider), the CommitLogTransfer interface can be implemented.
 
 
-[[topic-names]]
+[[cassandra-topic-names]]
 === Topics names
 
 The Cassandra connector writes events for all insert, update, and delete uperations on a single table to a single Kafka topic. The name of the Kafka topics always take the form
@@ -162,7 +162,7 @@ For example, consider a Cassandra installation with an `inventory` keyspace that
 
 **TODO**: for topic name, is _clusterName_._keyspaceName_._tableName_ okay? or should it be _connectorName_._keyspaceName_._tableName_ or _connectorName_._clusterName_._keyspaceName_._tableName_?
 
-[[schema-evolution]]
+[[cassandra-schema-evolution]]
 === Schema Evolution
 
 DDLs are not recorded in commit logs. When the schema of a table change, this change is issued from one of the Cassandra node and propagated to other nodes via Gossip Protocol. This implies detection of schema changes are achieved on a best-effort basis. This is done by periodically polling the schema of each cdc-enabled table in the cluster via a Cassandra driver, and then update the cached version of the schema. Because of this implementation, if a new column is added to a table and then writes are issued against that column immediately, it is possible that data from that column will not be reflected in the CDC event. This is why it is recommened to pause for some time (configured with `schema.refresh.interval.ms`) after issuing a schema change.
@@ -173,12 +173,12 @@ When sending a message to a topic, the Kafka Connect schema for the key and the 
 
 **TODO**: look into if it's possible to leverage schema history to rebuild schema that exist at the specific position in the commit log, rather than the current schema, when restarting the connector. I don't think it's possible right now, because writes to Cassandra node are not received in order.
 
-[[events]]
+[[cassandra-events]]
 === Events
 
-All data change events produced by the Cassandra connector have a key and a value, although the structure of the key and value depends on the table from which the change events originated (see link:#topic-names[Topic Names]).
+All data change events produced by the Cassandra connector have a key and a value, although the structure of the key and value depends on the table from which the change events originated (see link:#cassandra-topic-names[Topic Names]).
 
-[[change-events-key]]
+[[cassandra-change-events-key]]
 ==== Change Event's Key
 
 For a given table, the change event's key will have a structure that contains a field for each column in the primary key of the table at the time the event was created. Consider an `inventory` database with a `customers` table defined as:
@@ -233,7 +233,7 @@ Although the `column.blacklist` configuration property allows you to remove colu
 ====
 
 
-[[change-events-value]]
+[[cassandra-change-events-value]]
 ==== Change event's value
 
 The value of the change event message is a bit more complicated. Every change event value produced by Cassandra connector has an envelope structure with the following fields:
@@ -625,7 +625,7 @@ When we compare this to the value in the _insert_ and _update_ event, we see a c
 
 **TODO**: discuss tombstone events in Cassandra connector
 
-[[data-types]]
+[[cassandra-data-types]]
 === Data Types
 
 As described above, the Cassandra connector represents the changes to rows with events that are structured like the table in which the row exist. The event contains a field for each column value, and how that value is represented in the event depends on the Cassandra data type of the column. This section describes this mapping.
@@ -746,7 +746,7 @@ The following table describes how the connector maps each of the Cassandra data 
 
 **TODO**: add logical types
 
-[[when-things-go-wrong]]
+[[cassandra-when-things-go-wrong]]
 === When Things Go Wrong
 
 ==== Configuration And Startup Errors
@@ -777,12 +777,12 @@ Depending on the write load of a table, when a Cassandra connector is stopped fo
 
 If a Cassandra table temporarily disables CDC and then re-enables it again after some time, it must be re-bootstrapped. To re-bootstrap an individual table, you can manually remove the recorded offset line corresponding to that table from snapshot_offset.properties file.
 
-[[deploying-a-connector]]
+[[cassandra-deploying-a-connector]]
 == Deploying A Connector
 
-The Cassandra connector should be deployed each Cassandra node in a Cassandra cluster. The Cassandra connector Jar file takes in a cdc configuration (.properties) file. See link:#example-configuration[see example configurations] for reference.
+The Cassandra connector should be deployed each Cassandra node in a Cassandra cluster. The Cassandra connector Jar file takes in a cdc configuration (.properties) file. See link:#cassandra-example-configuration[see example configurations] for reference.
 
-[[example-configuration]]
+[[cassandra-example-configuration]]
 === Example configuration
 
 The following represents an example .properties configuration file for running and testing the Cassandra Connector locally:
@@ -815,12 +815,12 @@ snapshot.mode=ALWAYS
 latest.commit.log.only=true
 ----
 
-[[monitoring]]
+[[cassandra-monitoring]]
 === Monitoring
 
 Cassandra connector has built-in support for JMX metrics. The Cassandra driver also publishes a number of metrics about the driver's activities that can be monitored through JMX. The connector has two types of metrics. Snapshot metrics help you monitor the snapshot activity and are available when the connector is performing a snapshot. Binlog metrics help you monitor the progress and activity while the connector reads the Cassandra commit logs.
 
-[[snapshot-metrics]]
+[[cassandra-snapshot-metrics]]
 ==== Snapshot Metrics
 
 [cols="30%a,10%a,60%a",options="header"]
@@ -858,7 +858,7 @@ Cassandra connector has built-in support for JMX metrics. The Cassandra driver a
 |Map containing the number of rows scanned for each table in the snapshot. Tables are incrementally added to the Map during processing. Updates every 10,000 rows scanned and upon completing a table.
 |=======================
 
-[[commitlog-metrics]]
+[[cassandra-commitlog-metrics]]
 ==== Commitlog Metrics
 
 [cols="30%a,10%a,60%a",options="header"]
@@ -886,7 +886,7 @@ Cassandra connector has built-in support for JMX metrics. The Cassandra driver a
 |=======================
 
 
-[[connector-properties]]
+[[cassandra-connector-properties]]
 === Connector properties
 
 [cols="35%a,10%a,55%a",options="header"]
@@ -895,113 +895,113 @@ Cassandra connector has built-in support for JMX metrics. The Cassandra driver a
 |Default
 |Description
 
-|[[connector-property-snapshot-mode]]<<connector-property-snapshot-mode, `snapshot.mode`>>
+|[[cassandra-property-snapshot-mode]]<<cassandra-property-snapshot-mode, `snapshot.mode`>>
 |`INITIAL`
 |Specifies the criteria for running a snapshot (eg. initial sync) upon startup of the cassandra connector agent. Must be one of 'INITIAL', 'ALWAYS', or 'NEVER'. The default snapshot mode is 'INITIAL'.
 
-|[[connector-property-snapshot-consistency]]<<connector-property-snapshot-consistency, `snapshot.consistency`>>
+|[[cassandra-property-snapshot-consistency]]<<cassandra-property-snapshot-consistency, `snapshot.consistency`>>
 |`ALL`
 |Specify the {@link ConsistencyLevel} used for the snapshot query.
 
-|[[connector-property-http-port]]<<connector-property-http-port, `http.port`>>
+|[[cassandra-property-http-port]]<<cassandra-property-http-port, `http.port`>>
 |`8000`
 |The port used by the HTTP server for ping, health check, and build info
 
-|[[connector-property-cassandra-config]]<<connector-property-cassandra-config, `cassandra.config`>>
+|[[cassandra-property-cassandra-config]]<<cassandra-property-cassandra-config, `cassandra.config`>>
 |
 |The absolute path of the YAML config file used by a Cassandra node.
 
-|[[connector-property-cassandra-hosts]]<<connector-property-cassandra-hosts, `cassandra.hosts`>>
+|[[cassandra-property-cassandra-hosts]]<<cassandra-property-cassandra-hosts, `cassandra.hosts`>>
 |`localhost`
 |One or more addresses of Cassandra nodes that driver uses to discover topology, separated by ","
 
-|[[connector-property-cassandra-port]]<<connector-property-cassandra-port, `cassandra.port`>>
+|[[cassandra-property-cassandra-port]]<<cassandra-property-cassandra-port, `cassandra.port`>>
 |`9042`
 |The port used to connect to Cassandra host(s).
 
-|[[connector-property-cassandra-username]]<<connector-property-cassandra-username, `cassandra.username`>>
+|[[cassandra-property-cassandra-username]]<<cassandra-property-cassandra-username, `cassandra.username`>>
 |
 |The username used when connecting to Cassandra hosts.
 
-|[[connector-property-cassandra-password]]<<connector-property-cassandra-password, `cassandra.password`>>
+|[[cassandra-property-cassandra-password]]<<cassandra-property-cassandra-password, `cassandra.password`>>
 |
 |The password used when connecting to Cassandra hosts.
 
-|[[connector-property-cassandra-ssl-enabled]]<<connector-property-cassandra-ssl-enabled, `cassandra.ssl.enabled`>>
+|[[cassandra-property-cassandra-ssl-enabled]]<<cassandra-property-cassandra-ssl-enabled, `cassandra.ssl.enabled`>>
 |`false`
 |If set to true, Cassandra connector agent will use SSL to connect to Cassandra node.
 
-|[[connector-property-cassandra-ssl-config-path]]<<connector-property-cassandra-ssl-config-path, `cassandra.ssl.config.path`>>
+|[[cassandra-property-cassandra-ssl-config-path]]<<cassandra-property-cassandra-ssl-config-path, `cassandra.ssl.config.path`>>
 |
 |The SSL config file path required for storage node.
 
-|[[connector-property-commit-log-relocation-dir]]<<connector-property-commit-log-relocation-dir, `commit.log.relocation.dir`>>
+|[[cassandra-property-commit-log-relocation-dir]]<<cassandra-property-commit-log-relocation-dir, `commit.log.relocation.dir`>>
 |
 |The local directory which commit logs get relocated to once processed.
 
-|[[connector-property-commit-log-post-processing-enabled]]<<connector-property-commit-log-post-processing-enabled, `commit.log.post.processing.enabled`>>
+|[[cassandra-property-commit-log-post-processing-enabled]]<<cassandra-property-commit-log-post-processing-enabled, `commit.log.post.processing.enabled`>>
 |`true`
 |Determines whether or not the CommitLogPostProcessor should run. If disabled, commit logs would not be deleted post-process.
 
-|[[connector-property-commit-log-transfer-class]]<<connector-property-commit-log-transfer-class, `commit.log.transfer.class`>>
+|[[cassandra-property-commit-log-transfer-class]]<<cassandra-property-commit-log-transfer-class, `commit.log.transfer.class`>>
 |`io.debezium.connector.cassandra.BlackHoleCommitLogTransfer`
 |The fully qualified {@link CommitLogTransfer} class used to transfer commit logs. Built-in transfers are `BlackHoleCommitLogTransfer` and `GCSCommitLogTransfer`.
 
-|[[connector-property-remote-commit-log-relocation-dir]]<<connector-property-remote-commit-log-relocation-dir, `remote.commit.log.relocation.dir`>>
+|[[cassandra-property-remote-commit-log-relocation-dir]]<<cassandra-property-remote-commit-log-relocation-dir, `remote.commit.log.relocation.dir`>>
 |
 |The remote base directory to transfer commit log to. Required to be specified if GCSCommitLogTransfer is used as COMMIT_LOG_TRANSFER_CLASS. For example: "gcs://bucket-name/prefix-name".
 
-|[[connector-property-storage-credential-key-file]]<<connector-property-storage-credential-key-file, `storage.credential.key.file`>>
+|[[cassandra-property-storage-credential-key-file]]<<cassandra-property-storage-credential-key-file, `storage.credential.key.file`>>
 |
 |The path of the storage key file used for setting up credential to access remote storage service. If {@link GCSCommitLogTransfer} is used and this config is not provided, then Application Default Credential would be used.
 
-|[[connector-property-offset-backing-store-dir]]<<connector-property-offset-backing-store-dir, `offset.backing.store.dir`>>
+|[[cassandra-property-offset-backing-store-dir]]<<cassandra-property-offset-backing-store-dir, `offset.backing.store.dir`>>
 |
 |The directory to store offset tracking files.
 
-|[[connector-property-offset-flush-interval-ms]]<<connector-property-offset-flush-interval-ms, `offset.flush.interval.ms`>>
+|[[cassandra-property-offset-flush-interval-ms]]<<cassandra-property-offset-flush-interval-ms, `offset.flush.interval.ms`>>
 |`0`
 |The minimum amount of time to wait before committing the offset. The default value of 0 implies
 the offset will be flushed every time.
 
-|[[connector-property-max-offset-flush-size]]<<connector-property-max-offset-flush-size, `max.offset.flush.size`>>
+|[[cassandra-property-max-offset-flush-size]]<<cassandra-property-max-offset-flush-size, `max.offset.flush.size`>>
 |`100`
 |The maximum records that are allowed to be processed until it is required to flush offset to disk. This config is effective only if offset_flush_interval_ms != 0.
 
-|[[connector-property-max-queue-size]]<<connector-property-max-queue-size, `max.queue.size`>>
+|[[cassandra-property-max-queue-size]]<<cassandra-property-max-queue-size, `max.queue.size`>>
 |`8192`
 |Positive integer value that specifies the maximum size of the blocking queue into which change events read from the commit log are placed before they are written to Kafka. This queue can provide back pressure to the commit log reader when, for example, writes to Kafka are slower or if Kafka is not available. Events that appear in the queue are not included in the offsets periodically recorded by this connector. Defaults to 8192, and should always be larger than the maximum batch size specified in the max.batch.size property. The capacity of the queue to hold deserialized records before they are converted to Kafka Connect structs and emitted to Kafka.
 
-|[[connector-property-max-batch-size]]<<connector-property-max-batch-size, `max.batch.size`>>
+|[[cassandra-property-max-batch-size]]<<cassandra-property-max-batch-size, `max.batch.size`>>
 |`2048`
 |The maximum number of change events to dequeue each time.
 
-|[[connector-property-poll-interval-ms]]<<connector-property-poll-interval-ms, `poll.interval.ms`>>
+|[[cassandra-property-poll-interval-ms]]<<cassandra-property-poll-interval-ms, `poll.interval.ms`>>
 |`1000`
 |Positive integer value that specifies the number of milliseconds the commit log processor should wait during each iteration for new change events to appear in the queue. Defaults to 1000 milliseconds, or 1 second.
 
-|[[connector-property-schema-refresh-interval-ms]]<<connector-property-schema-refresh-interval-ms, `schema.refresh.interval.ms`>>
+|[[cassandra-property-schema-refresh-interval-ms]]<<cassandra-property-schema-refresh-interval-ms, `schema.refresh.interval.ms`>>
 |`10000`
 |Positive integer value that specifies the number of milliseconds the schema processor should wait before
 refreshing the cached Cassandra table schemas.
 
-|[[connector-property-cdc-dir-poll-interval-ms]]<<connector-property-cdc-dir-poll-interval-ms, `cdc.dir.poll.interval.ms`>>
+|[[cassandra-property-cdc-dir-poll-interval-ms]]<<cassandra-property-cdc-dir-poll-interval-ms, `cdc.dir.poll.interval.ms`>>
 |`10000`
 |The maximum amount of time to wait on each poll before reattempt.
 
-|[[connector-property-snapshot-scan-interval-ms]]<<connector-property-snapshot-scan-interval-ms, `snapshot.scan.interval.ms`>>
+|[[cassandra-property-snapshot-scan-interval-ms]]<<cassandra-property-snapshot-scan-interval-ms, `snapshot.scan.interval.ms`>>
 |`10000`
 |Positive integer value that specifies the number of milliseconds the snapshot processor should wait before re-scanning tables to look for new cdc-enabled tables. Defaults to 10000 milliseconds, or 10 seconds.
 
-|[[connector-property-tombstones-on-delete]]<<connector-property-tombstones-on-delete, `tombstones.on.delete`>>
+|[[cassandra-property-tombstones-on-delete]]<<cassandra-property-tombstones-on-delete, `tombstones.on.delete`>>
 |`false`
 |Whether deletion events should have a subsequent tombstone event (true) or not (false). It's important to note that in Cassandra, two events with the same key may be updating different columns of a given table. So this could potentially result in records being lost during compaction if they haven't been consumed by the consumer yet. In other words, do NOT set this to true if you have kafka compaction turned on.
 
-|[[connector-property-field-blacklist]]<<connector-property-field-blacklist, `field.blacklist`>>
+|[[cassandra-property-field-blacklist]]<<cassandra-property-field-blacklist, `field.blacklist`>>
 |
 |A comma-separated list of fully-qualified names of fields that should be excluded from change event message values. Fully-qualified names for fields are in the form keyspace_name>.<field_name>.<nested_field_name>.
 
-|[[connector-property-sanitize-field-names]]<<connector-property-sanitize-field-names, `sanitize.field.names`>>
+|[[cassandra-property-sanitize-field-names]]<<cassandra-property-sanitize-field-names, `sanitize.field.names`>>
 |`true` when connector configuration explicitly specifies the `key.converter` or `value.converter` parameters to use Avro, otherwise defaults to `false`.
 |Whether field names will be sanitized to adhere to Avro naming requirements.
 See {link-prefix}:{link-avro-serialization}#avro-naming[Avro naming] for more details.
