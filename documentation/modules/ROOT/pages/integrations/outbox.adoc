@@ -15,7 +15,7 @@ This feature is currently in incubating state, i.e. exact semantics, configurati
 
 == Overview
 
-This extension is inspired by the xref::configuration/outbox-event-router.adoc[Outbox Event Router] single message transformation (SMT).
+This extension is inspired by the {link-prefix}:{link-outbox-event-router}[Outbox Event Router] single message transformation (SMT).
 As discussed in the blog post link:/blog/2019/02/19/reliable-microservices-data-exchange-with-the-outbox-pattern/[Reliable Microservices Data Exchange with the Outbox Pattern], microservices often need to exchange information with one another and an excellent way to deal with that is using the Outbox pattern combined with Debezium's Outbox Event Router SMT.
 
 The following image shows the overall architecture of this pattern:

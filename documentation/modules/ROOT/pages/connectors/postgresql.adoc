@@ -151,7 +151,7 @@ As of January 2019, the following Postgres versions on RDS come with an up-to-da
 
 [TIP]
 ====
-Also see xref:postgres-plugins.adoc[Logical Decoding Output Plug-in Installation for PostgreSQL] for more detailed instructions of setting up and testing logical decoding plug-ins.
+Also see {link-prefix}:{link-postgresql-plugins}[Logical Decoding Output Plug-in Installation for PostgreSQL] for more detailed instructions of setting up and testing logical decoding plug-ins.
 ====
 
 [NOTE]
@@ -1685,7 +1685,7 @@ The {prodname} PostgreSQL connector has two metric types in addition to the buil
 * <<snapshot-metrics, snapshot metrics>>; for monitoring the connector when performing snapshots
 * <<streaming-metrics, streaming metrics>>; for monitoring the connector when processing change events via logical decoding
 
-Please refer to the xref:operations/monitoring.adoc[monitoring documentation] for details of how to expose these metrics via JMX.
+Please refer to the {link-prefix}:{link-debzium-monitoring}#monitoring-debezium[monitoring documentation] for details of how to expose these metrics via JMX.
 
 [[postgresql-snapshot-metrics]]
 ==== Snapshot Metrics
@@ -1890,7 +1890,7 @@ Fully-qualified names for columns are of the form _databaseName_._tableName_._co
 The schema parameters `pass:[_]pass:[_]debezium.source.column.type`, `pass:[_]pass:[_]debezium.source.column.length` and `pass:[_]pass:[_]debezium.source.column.scale` will be used to propagate the original type name and length (for variable-width types), respectively.
 Useful to properly size corresponding columns in sink databases.
 Fully-qualified data type names are of the form _databaseName_._tableName_._typeName_, or _databaseName_._schemaName_._tableName_._typeName_.
-See xref:data-types[] for the list of PostgreSQL-specific data type names.
+See the {link-prefix}:{link-postgresql-connector}#postgresql-data-types[list of PostgreSQL-specific data type names].
 
 |[[postgresql-property-message-key-columns]]<<postgresql-property-message-key-columns, `message.key.columns`>>
 |_empty string_
@@ -1987,7 +1987,7 @@ The topic is named according to the pattern `<heartbeat.topics.prefix>.<server.n
 |
 |If specified, this query will be executed upon every heartbeat against the source database.
 
-This can be used to overcome the situation described in xref:wal-disk-space[],
+This can be used to overcome the situation described in {link-prefix}:{link-postgresql-connector}#postgresql-wal-disk-space[WAL Disk Space Consumption],
 where capturing changes from a low-traffic database on the same host as a high-traffic database prevents Debezium from processing any WAL records and thus acknowledging WAL positions with the database.
 
 Inserting records into some heartbeat table (which must have been created upfront) will allow the connector to receive changes from the low-traffic database and acknowledge their LSNs,
