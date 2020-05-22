@@ -262,7 +262,7 @@ The configuration will need to contain the list of transformations, implementati
 === Sink configuration
 
 Sink configuration is specific for each sink type.
-Currently the only supported sinks are https://aws.amazon.com/kinesis/[Amazon Kinesis] and https://cloud.google.com/pubsub/[Google Pub/Sub].
+Currently the only supported sinks are https://aws.amazon.com/kinesis/[Amazon Kinesis] and https://cloud.google.com/pubsub/[Google Cloud Pub/Sub].
 
 The sink is selected by configuration property `debezium.sink.type`.
 
@@ -321,9 +321,9 @@ By default the same name is used.
 |=======================
 
 
-==== Google Pub/Sub
+==== Google Cloud Pub/Sub
 
-Google Pub/Sub is an implementation of messaging/eventing system designed for scalable batch and stream processing applications.
+Google Cloud Pub/Sub is an implementation of messaging/eventing system designed for scalable batch and stream processing applications.
 Pub/Sub exposes a set of REST APIs and provides a (not-only) Java SDK that is used to implement the sink.
 
 [cols="35%a,10%a,55%a",options="header"]
@@ -366,7 +366,7 @@ When the alternative implementations are not available then the default ones are
 
 |[[pubsub-pub-builder]]<<pubsub-pub-builder, `io.debezium.server.pubsub.PubSubChangeConsumer.PublisherBuilder`>>
 |`@CustomConsumerBuilder`
-|A calss that provides custom configured instance of a `Publisher` used to send messages to a dedicated topic.
+|A class that provides custom configured instance of a `Publisher` used to send messages to a dedicated topic.
 
 |[[pubsub-ext-stream-name-mapper]]<<pubsub-ext-stream-name-mapper, `io.debezium.server.StreamNameMapper`>>
 |
