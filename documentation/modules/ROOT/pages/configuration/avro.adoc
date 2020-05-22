@@ -28,6 +28,8 @@ which is essential for Debezium connectors that dynamically generate the message
 Over time, the change events captured by Debezium connectors and written by Kafka Connect into a topic may have different versions of the same schema,
 and Avro serialization makes it far easier for consumers to adapt to the changing schema.
 
+== The Apicurio API and Schema Registry
+
 The open-source project https://github.com/Apicurio/apicurio-registry[Apicurio Registry] provides several components that work with Avro:
 
 * An Avro converter that can be used in Kafka Connect workers to map the Kafka Connect schemas into Avro schemas and to then use those Avro schemas to serialize the message keys and values into the very compact Avro binary form.
@@ -52,7 +54,7 @@ Another option is using the Confluent schema registry, which is described furthe
 
 A system that wants to use Avro serialization needs to complete two steps:
 
-* Deploy a https://github.com/Apicurio/apicurio-registry[Apicurio API/Schema Registry] instance
+* Deploy an https://github.com/Apicurio/apicurio-registry[Apicurio API/Schema Registry] instance
 * Install the Avro converter from https://repo1.maven.org/maven2/io/apicurio/apicurio-registry-distro-connect-converter/{apicurio-version}/apicurio-registry-distro-connect-converter-{apicurio-version}-converter.tar.gz[the installation package] into Kafka's _libs_ directory or directly into a plug-in directory
 * Use thes the following properties to configure Apache Connect instance
 
@@ -73,8 +75,6 @@ value.converter.apicurio.registry.global-id=io.apicurio.registry.utils.serde.str
 Note that Kafka Connect internally always uses the JSON key/value converters for storing configuration and offsets.
 
 == Debezium Container Images
-
-See the https://github.com/debezium/debezium-examples/tree/master/tutorial#using-mysql-and-apicurio-registry[MySQL and the Avro message format] tutorial example for a quickstart with MySQL.
 
 Deploy an Apicurio Registry instance (this example uses a non-production in-memory instance):
 
@@ -128,7 +128,7 @@ As stated in the Avro link:https://avro.apache.org/docs/current/spec.html#names[
 * Start with `[A-Za-z_]`
 * Subsequently contain only `[A-Za-z0-9_]` characters
 
-Debezium uses the column's name as the basis for the Avro field.
+Debezium uses the column's name as the basis for the corresponding Avro field.
 This can lead to problems during serialization if the column name does not also adhere to the Avro naming rules above.
 Debezium provides a configuration option, `sanitize.field.names` that can be set to `true` if you have columns that do not adhere to the rule-set above, allowing those fields to be serialized without having to actually modify your schema.
 
