@@ -252,7 +252,7 @@ Your application should always properly stop the engine to ensure graceful and c
 For example, do not rely upon shutting down the `ExecutorService`, since that interrupts the running threads.
 Although the `DebeziumEngine` will indeed terminate when its thread is interrupted, the engine may not terminate cleanly, and when your application is restarted it may see some of the same source records that it had processed just prior to the shutdown.
 
-[[output-message-formats]]
+[[engine-output-message-formats]]
 == Output Message Formats
 
 `DebeziumEngine#create()` can accept multiple different parameters that affect the format in which the messages are received by the consumer.
@@ -286,7 +286,7 @@ final DebeziumEngine<ChangeEvent<String, String>> engine = DebeziumEngine.create
 
 Where the `ChangeEvent` datatype is the key/value pair.
 
-[[message-transformations]]
+[[engine-message-transformations]]
 == Message transformations
 
 Before the messages are delivered to the handler it is possible to run them through a pipeline of Kafka Connect  link:https://cwiki.apache.org/confluence/display/KAFKA/KIP-66%3A+Single+Message+Transforms+for+Kafka+Connect[Simple Message Transforms] (SMT).
