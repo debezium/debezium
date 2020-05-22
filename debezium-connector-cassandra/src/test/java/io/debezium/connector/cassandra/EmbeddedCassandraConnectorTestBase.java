@@ -10,7 +10,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.security.GeneralSecurityException;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Properties;
@@ -76,7 +75,7 @@ public abstract class EmbeddedCassandraConnectorTestBase {
     /**
      * Generate a task context with default test configs
      */
-    protected static CassandraConnectorContext generateTaskContext() throws GeneralSecurityException, IOException {
+    protected static CassandraConnectorContext generateTaskContext() throws Exception {
         Properties defaults = generateDefaultConfigMap();
         return new CassandraConnectorContext(new CassandraConnectorConfig(Configuration.from(defaults)));
     }
@@ -84,7 +83,7 @@ public abstract class EmbeddedCassandraConnectorTestBase {
     /**
      * General a task context with default and custom test configs
      */
-    protected static CassandraConnectorContext generateTaskContext(Map<String, Object> configs) throws GeneralSecurityException, IOException {
+    protected static CassandraConnectorContext generateTaskContext(Map<String, Object> configs) throws Exception {
         Properties defaults = generateDefaultConfigMap();
         defaults.putAll(configs);
         return new CassandraConnectorContext(new CassandraConnectorConfig(Configuration.from(defaults)));

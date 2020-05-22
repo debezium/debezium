@@ -24,20 +24,18 @@ public class UserTypeConverter implements TypeConverter<UserType> {
     @Override
     public UserType convert(DataType dataType) {
         com.datastax.driver.core.UserType userType = (com.datastax.driver.core.UserType) dataType;
-        List<DataType> innerTypes = dataType.getTypeArguments();
-        List<AbstractType<?>> innerAbstractTypes = new ArrayList<>(innerTypes.size());
-        for (DataType dt : innerTypes) {
-            innerAbstractTypes.add(CassandraTypeConverter.convert(dt));
-        }
 
         String typeNameString = userType.getTypeName();
         Collection<String> fieldNames = userType.getFieldNames();
+
+        List<AbstractType<?>> innerAbstractTypes = new ArrayList<>(fieldNames.size());
 
         ByteBuffer typeNameBuffer = UTF8Type.instance.fromString(typeNameString);
 
         List<FieldIdentifier> fieldIdentifiers = new ArrayList<>(fieldNames.size());
         for (String fieldName : fieldNames) {
             fieldIdentifiers.add(FieldIdentifier.forInternalString(fieldName));
+            innerAbstractTypes.add((CassandraTypeConverter.convert(userType.getFieldType(fieldName))));
         }
 
         return new UserType(userType.getKeyspace(),

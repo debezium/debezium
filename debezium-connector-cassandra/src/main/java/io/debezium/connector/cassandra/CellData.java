@@ -8,6 +8,7 @@ package io.debezium.connector.cassandra;
 import java.util.Objects;
 
 import org.apache.cassandra.db.marshal.AbstractType;
+import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
@@ -66,10 +67,32 @@ public class CellData implements KafkaRecord {
 
     @Override
     public Struct record(Schema schema) {
-        return new Struct(schema)
-                .put(CELL_VALUE_KEY, value)
+        Struct cellStruct = new Struct(schema)
                 .put(CELL_DELETION_TS_KEY, deletionTs)
                 .put(CELL_SET_KEY, true);
+
+        if (value instanceof Struct) {
+            Schema valueSchema = schema.field(CELL_VALUE_KEY).schema();
+            Struct clonedValue = cloneValue(valueSchema, (Struct) value);
+            cellStruct.put(CELL_VALUE_KEY, clonedValue);
+        }
+        else {
+            cellStruct.put(CELL_VALUE_KEY, value);
+        }
+
+        return cellStruct;
+    }
+
+    // Encountered DataException("Struct schemas do not match.") when value is a Struct.
+    // The error is because the valueSchema is optional, but the schema of value formed during deserialization is not.
+    // This is a temporary workaround to fix this problem.
+    private Struct cloneValue(Schema valueSchema, Struct value) {
+        Struct clonedValue = new Struct(valueSchema);
+        for (Field field : valueSchema.fields()) {
+            String fieldName = field.name();
+            clonedValue.put(fieldName, value.get(fieldName));
+        }
+        return clonedValue;
     }
 
     static Schema cellSchema(ColumnMetadata cm, boolean optional) {

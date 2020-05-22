@@ -307,10 +307,8 @@ public class CassandraTypeConverterTest {
         fieldNames.add("asciiField");
         fieldNames.add("doubleField");
         Mockito.when(userType.getFieldNames()).thenReturn(fieldNames);
-        List<DataType> typeArguments = new ArrayList<>();
-        typeArguments.add(DataType.ascii());
-        typeArguments.add(DataType.cdouble());
-        Mockito.when(userType.getTypeArguments()).thenReturn(typeArguments);
+        Mockito.when(userType.getFieldType("asciiField")).thenReturn(DataType.ascii());
+        Mockito.when(userType.getFieldType("doubleField")).thenReturn(DataType.cdouble());
         Mockito.when(userType.isFrozen()).thenReturn(false, true); // cheaty way to test non-frozen and then frozen path.
 
         ByteBuffer expectedTypeName = ByteBuffer.wrap("FooType".getBytes(Charset.defaultCharset()));

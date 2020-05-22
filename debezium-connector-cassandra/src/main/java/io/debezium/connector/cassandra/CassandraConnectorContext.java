@@ -5,8 +5,6 @@
  */
 package io.debezium.connector.cassandra;
 
-import java.io.IOException;
-import java.security.GeneralSecurityException;
 import java.util.Collections;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
@@ -26,31 +24,38 @@ public class CassandraConnectorContext extends CdcSourceTaskContext {
     private final SchemaHolder schemaHolder;
     private final OffsetWriter offsetWriter;
 
-    public CassandraConnectorContext(CassandraConnectorConfig config) throws GeneralSecurityException, IOException {
+    public CassandraConnectorContext(CassandraConnectorConfig config) throws Exception {
 
         super(config.getContextName(), config.getLogicalName(), Collections::emptySet);
-
         this.config = config;
 
-        // Loading up DDL schemas from disk
-        loadDdlFromDisk(this.config.cassandraConfig());
+        try {
+            // Loading up DDL schemas from disk
+            loadDdlFromDisk(this.config.cassandraConfig());
 
-        // Setting up Cassandra driver
-        this.cassandraClient = new CassandraClient(this.config);
+            // Setting up Cassandra driver
+            this.cassandraClient = new CassandraClient(this.config);
 
-        // Setting up record queue ...
-        this.queue = new ChangeEventQueue.Builder<Event>()
-                .pollInterval(this.config.pollIntervalMs())
-                .maxBatchSize(this.config.maxBatchSize())
-                .maxQueueSize(this.config.maxQueueSize())
-                .loggingContextSupplier(() -> this.configureLoggingContext(this.config.getContextName()))
-                .build();
+            // Setting up record queue ...
+            this.queue = new ChangeEventQueue.Builder<Event>()
+                    .pollInterval(this.config.pollIntervalMs())
+                    .maxBatchSize(this.config.maxBatchSize())
+                    .maxQueueSize(this.config.maxQueueSize())
+                    .loggingContextSupplier(() -> this.configureLoggingContext(this.config.getContextName()))
+                    .build();
 
-        // Setting up schema holder ...
-        this.schemaHolder = new SchemaHolder(this.cassandraClient, this.config.kafkaTopicPrefix(), this.config.getSourceInfoStructMaker());
+            // Setting up schema holder ...
+            this.schemaHolder = new SchemaHolder(this.cassandraClient, this.config.kafkaTopicPrefix(), this.config.getSourceInfoStructMaker());
 
-        // Setting up a file-based offset manager ...
-        this.offsetWriter = new FileOffsetWriter(this.config.offsetBackingStoreDir());
+            // Setting up a file-based offset manager ...
+            this.offsetWriter = new FileOffsetWriter(this.config.offsetBackingStoreDir());
+        }
+        catch (Exception e) {
+            // Clean up CassandraClient and FileOffsetWrite if connector context is failed to be initialized completely.
+            cleanUp();
+            throw e;
+        }
+
     }
 
     /**
@@ -67,8 +72,12 @@ public class CassandraConnectorContext extends CdcSourceTaskContext {
     }
 
     public void cleanUp() {
-        this.cassandraClient.close();
-        this.offsetWriter.close();
+        if (this.cassandraClient != null) {
+            this.cassandraClient.close();
+        }
+        if (this.offsetWriter != null) {
+            this.offsetWriter.close();
+        }
     }
 
     public CassandraConnectorConfig getCassandraConnectorConfig() {
