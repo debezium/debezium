@@ -74,7 +74,7 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
     @Test
     public void transactionMetadata() throws Exception {
         Configuration config = TestHelper.defaultConfig()
-                .with(RelationalDatabaseConnectorConfig.TABLE_WHITELIST, "ORCLPDB1\\.DEBEZIUM\\.CUSTOMER")
+                .with(RelationalDatabaseConnectorConfig.TABLE_WHITELIST, "DEBEZIUM\\.CUSTOMER")
                 .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
                 .with(OracleConnectorConfig.PROVIDE_TRANSACTION_METADATA, true)
                 .build();

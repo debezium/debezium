@@ -42,7 +42,6 @@ public class StreamingDatatypesIT extends AbstractOracleDatatypesTest {
 
     protected Builder connectorConfig() {
         String whitelistedTables = getAllTables().stream()
-                .map(t -> "ORCLPDB1." + t)
                 .map(t -> t.replaceAll("\\.", "\\\\."))
                 .collect(Collectors.joining(","));
 

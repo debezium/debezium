@@ -62,15 +62,15 @@ public class SnapshotDatatypesIT extends AbstractOracleDatatypesTest {
     private String getTableWhitelist() {
         switch (name.getMethodName()) {
             case "stringTypes":
-                return "ORCLPDB1.debezium.type_string";
+                return "debezium.type_string";
             case "fpTypes":
             case "fpTypesAsString":
             case "fpTypesAsDouble":
-                return "ORCLPDB1.debezium.type_fp";
+                return "debezium.type_fp";
             case "intTypes":
-                return "ORCLPDB1.debezium.type_int";
+                return "debezium.type_int";
             case "timeTypes":
-                return "ORCLPDB1.debezium.type_time";
+                return "debezium.type_time";
             default:
                 throw new IllegalArgumentException("Unexpected test method: " + name.getMethodName());
         }

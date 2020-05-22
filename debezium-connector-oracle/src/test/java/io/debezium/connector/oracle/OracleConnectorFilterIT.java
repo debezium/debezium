@@ -104,7 +104,7 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
         Configuration config = TestHelper.defaultConfig()
                 .with(
                         RelationalDatabaseConnectorConfig.TABLE_WHITELIST,
-                        "ORCLPDB1\\.DEBEZIUM2\\.TABLE2,ORCLPDB1\\.DEBEZIUM\\.TABLE1,ORCLPDB1\\.DEBEZIUM\\.TABLE3")
+                        "DEBEZIUM2\\.TABLE2,DEBEZIUM\\.TABLE1,DEBEZIUM\\.TABLE3")
                 .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_SCHEMA_ONLY)
                 .build();
 
@@ -156,7 +156,7 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
         Configuration config = TestHelper.defaultConfig()
                 .with(
                         RelationalDatabaseConnectorConfig.TABLE_BLACKLIST,
-                        "ORCLPDB1\\.DEBEZIUM\\.TABLE2,ORCLPDB1\\.DEBEZIUM\\.CUSTOMER.*")
+                        "DEBEZIUM\\.TABLE2,DEBEZIUM\\.CUSTOMER.*")
                 .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_SCHEMA_ONLY)
                 .build();
 

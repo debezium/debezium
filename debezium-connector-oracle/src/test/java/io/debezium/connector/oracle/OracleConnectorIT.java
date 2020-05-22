@@ -82,7 +82,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
     @Test
     public void shouldTakeSnapshot() throws Exception {
         Configuration config = TestHelper.defaultConfig()
-                .with(RelationalDatabaseConnectorConfig.TABLE_WHITELIST, "ORCLPDB1\\.DEBEZIUM\\.CUSTOMER")
+                .with(RelationalDatabaseConnectorConfig.TABLE_WHITELIST, "DEBEZIUM\\.CUSTOMER")
                 .build();
 
         int expectedRecordCount = 0;
@@ -131,7 +131,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
     @Test
     public void shouldContinueWithStreamingAfterSnapshot() throws Exception {
         Configuration config = TestHelper.defaultConfig()
-                .with(RelationalDatabaseConnectorConfig.TABLE_WHITELIST, "ORCLPDB1\\.DEBEZIUM\\.CUSTOMER")
+                .with(RelationalDatabaseConnectorConfig.TABLE_WHITELIST, "DEBEZIUM\\.CUSTOMER")
                 .build();
 
         int expectedRecordCount = 0;
@@ -202,7 +202,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
     @FixFor("DBZ-1223")
     public void shouldStreamTransaction() throws Exception {
         Configuration config = TestHelper.defaultConfig()
-                .with(RelationalDatabaseConnectorConfig.TABLE_WHITELIST, "ORCLPDB1\\.DEBEZIUM\\.CUSTOMER")
+                .with(RelationalDatabaseConnectorConfig.TABLE_WHITELIST, "DEBEZIUM\\.CUSTOMER")
                 .build();
 
         // Testing.Print.enable();
@@ -293,7 +293,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
     @Test
     public void shouldStreamAfterRestart() throws Exception {
         Configuration config = TestHelper.defaultConfig()
-                .with(RelationalDatabaseConnectorConfig.TABLE_WHITELIST, "ORCLPDB1\\.DEBEZIUM\\.CUSTOMER")
+                .with(RelationalDatabaseConnectorConfig.TABLE_WHITELIST, "DEBEZIUM\\.CUSTOMER")
                 .build();
 
         // Testing.Print.enable();
@@ -333,7 +333,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
     @Test
     public void shouldStreamAfterRestartAfterSnapshot() throws Exception {
         Configuration config = TestHelper.defaultConfig()
-                .with(RelationalDatabaseConnectorConfig.TABLE_WHITELIST, "ORCLPDB1\\.DEBEZIUM\\.CUSTOMER")
+                .with(RelationalDatabaseConnectorConfig.TABLE_WHITELIST, "DEBEZIUM\\.CUSTOMER")
                 .build();
 
         // Testing.Print.enable();
@@ -369,7 +369,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
     @Test
     public void shouldReadChangeStreamForExistingTable() throws Exception {
         Configuration config = TestHelper.defaultConfig()
-                .with(RelationalDatabaseConnectorConfig.TABLE_WHITELIST, "ORCLPDB1\\.DEBEZIUM\\.CUSTOMER")
+                .with(RelationalDatabaseConnectorConfig.TABLE_WHITELIST, "DEBEZIUM\\.CUSTOMER")
                 .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
                 .build();
 
@@ -459,7 +459,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
     @FixFor("DBZ-835")
     public void deleteWithoutTombstone() throws Exception {
         Configuration config = TestHelper.defaultConfig()
-                .with(RelationalDatabaseConnectorConfig.TABLE_WHITELIST, "ORCLPDB1\\.DEBEZIUM\\.CUSTOMER")
+                .with(RelationalDatabaseConnectorConfig.TABLE_WHITELIST, "DEBEZIUM\\.CUSTOMER")
                 .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
                 .with(OracleConnectorConfig.TOMBSTONES_ON_DELETE, false)
                 .build();
@@ -503,7 +503,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         TestHelper.dropTable(connection, "debezium.customer2");
 
         Configuration config = TestHelper.defaultConfig()
-                .with(RelationalDatabaseConnectorConfig.TABLE_WHITELIST, "ORCLPDB1\\.DEBEZIUM\\.CUSTOMER2")
+                .with(RelationalDatabaseConnectorConfig.TABLE_WHITELIST, "DEBEZIUM\\.CUSTOMER2")
                 .build();
 
         start(OracleConnector.class, config);
@@ -548,7 +548,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         // received from Postgres
         Configuration config = TestHelper.defaultConfig()
                 .with(Heartbeat.HEARTBEAT_INTERVAL, "1")
-                .with(OracleConnectorConfig.TABLE_WHITELIST, "ORCLPDB1\\.DEBEZIUM\\.DBZ800B")
+                .with(OracleConnectorConfig.TABLE_WHITELIST, "DEBEZIUM\\.DBZ800B")
                 .build();
 
         start(OracleConnector.class, config);
