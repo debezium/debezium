@@ -1155,11 +1155,11 @@ Only alphanumeric characters and underscores should be used.
 
 |[[connector-property-table-whitelist]]<<connector-property-table-whitelist, `table.whitelist`>>
 |_empty string_
-|An optional comma-separated list of regular expressions that match fully-qualified table identifiers for tables to be monitored; any table not included in the whitelist will be excluded from monitoring. Each identifier is of the form _databaseName_._tableName_. By default the connector will monitor every non-system table in each monitored database. May not be used with `table.blacklist`.
+|An optional comma-separated list of regular expressions that match fully-qualified table identifiers for tables to be monitored; any table not included in the whitelist will be excluded from monitoring. Each identifier is of the form _schemaName_._tableName_. By default the connector will monitor every non-system table in each monitored database. May not be used with `table.blacklist`.
 
 |[[connector-property-table-blacklist]]<<connector-property-table-blacklist, `table.blacklist`>>
 |_empty string_
-|An optional comma-separated list of regular expressions that match fully-qualified table identifiers for tables to be excluded from monitoring; any table not included in the blacklist will be monitored. Each identifier is of the form _databaseName_._tableName_. May not be used with `table.whitelist`.
+|An optional comma-separated list of regular expressions that match fully-qualified table identifiers for tables to be excluded from monitoring; any table not included in the blacklist will be monitored. Each identifier is of the form _schemaName_._tableName_. May not be used with `table.whitelist`.
 
 |[[connector-property-column-mask-hash]]<<connector-property-column-mask-hash, `column.mask.hash._hashAlgorithm_.with.salt._salt_`>>
 |_n/a_
