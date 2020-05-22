@@ -18,7 +18,7 @@ Most notably, the connector does not yet support changes to the structure of cap
 It is supported though to capture tables newly added while the connector is running
 (provided the new table's name matches the connector's filter configuration).
 
-[[overview]]
+[[oracle-overview]]
 == Overview
 
 Debezium ingests change events from Oracle using the https://docs.oracle.com/database/121/XSTRM/xstrm_intro.htm#XSTRM72647[XStream API].
@@ -195,16 +195,15 @@ So far, the connector has been tested with the pluggable database set-up (CDB/PD
 It should monitor a single PDB in this model.
 It should also work with traditional (non-CDB) set-ups, though this could not be tested so far.
 
-[[how-it-works]]
 [[how-the-oracle-connector-works]]
 == How the Oracle Connector Works
 
-[[database-schema-history]]
+[[oracle-database-schema-history]]
 === Database Schema History
 
 tbd.
 
-[[snapshots]]
+[[oracle-snapshots]]
 === Snapshots
 
 Most Oracle servers are configured to not retain the complete history of the database in the redo logs,
@@ -233,7 +232,7 @@ In this case step 6 from the snapshotting routine described above won't be appli
 I.e. the connector will still capture the structure of the relevant tables, but it won't create any `READ` events representing the complete dataset at the point of connector start-up.
 This can be useful if you're only interested in any data changes from now onwards but not the complete current state of all records.
 
-[[reading-the-log]]
+[[oracle-reading-the-log]]
 === Reading the Redo Log
 
 Upon first start-up, the connector takes a snapshot of the structure of the captured tables (DDL)
@@ -243,10 +242,10 @@ Processed SCNs are passed as offsets to Kafka Connect and regularly acknowledged
 (allowing it to discard older log files).
 After restart, the connector will resume from the offset (SCN) where it left off before.
 
-[[topic-names]]
+[[oracle-topic-names]]
 === Topics Names
 
-[[schema-change-topic]]
+[[oracle-schema-change-topic]]
 === Schema Change Topic
 
 [WARNING]
@@ -259,7 +258,7 @@ This topic should be considered as an internal state of the connector and should
 If the application needs to track changes in the source database there is the public-facing schema change topic.
 The topic name is the same as the logical server name configured in connector configuration.
 
-Debezium emits a new message to this topic whenever a new table is streamed from or when the structure of the table is altered ({link-prefix}:{link-oracle-connector}#schema-evolution[schema evolution procedure must be followed]).
+Debezium emits a new message to this topic whenever a new table is streamed from or when the structure of the table is altered ({link-prefix}:{link-oracle-connector}#oracle-schema-evolution[schema evolution procedure must be followed]).
 The message contains a logical representation of the table schema.
 
 The example of the message is:
@@ -395,10 +394,10 @@ The schema change messages use as the key the name of the database to which the 
 }
 ----
 
-[[events]]
+[[oracle-events]]
 === Events
 
-All data change events produced by the Oracle connector have a key and a value, although the structure of the key and value depend on the table from which the change events originated (see {link-prefix}:{link-oracle-connector}#topic-names[Topic names]).
+All data change events produced by the Oracle connector have a key and a value, although the structure of the key and value depend on the table from which the change events originated (see {link-prefix}:{link-oracle-connector}#oracle-topic-names[Topic names]).
 
 [WARNING]
 ====
@@ -415,7 +414,7 @@ This could be difficult for consumers to deal with, so to make it easy Kafka Con
 Every message key and value has two parts: a _schema_ and _payload_.
 The schema describes the structure of the payload, while the payload contains the actual data.
 
-[[change-event-keys]]
+[[oracle-change-event-keys]]
 ==== Change Event Keys
 
 For a given table, the change event's key will have a structure that contains a field for each column in the primary key (or unique key constraint) of the table at the time the event was created.
@@ -473,7 +472,7 @@ If the table does not have a primary or unique key, then the change event's key 
 ====
 ////
 
-[[change-event-values]]
+[[oracle-change-event-values]]
 ==== Change Event Values
 
 Like the message key, the value of a change event message has a _schema_ section and _payload_ section.
@@ -493,7 +492,7 @@ Whether or not this field and its elements are available is highly dependent on 
 
 And of course, the _schema_ portion of the event message's value contains a schema that describes this envelope structure and the nested fields within it.
 
-[[create-events]]
+[[oracle-create-events]]
 ===== Create events
 
 Let's look at what a _create_ event value might look like for our `customers` table:
@@ -651,7 +650,7 @@ This is true, because the JSON representation must include the _schema_ and the 
 It is possible and even recommended to use the link:/docs/faq/#avro-converter[Avro Converter] to dramatically decrease the size of the actual messages written to the Kafka topics.
 ====
 
-[[update-events]]
+[[oracle-update-events]]
 ===== Update events
 The value of an _update_ change event on this table will actually have the exact same _schema_, and its payload will be structured the same but will hold different values.
 Here's an example:
@@ -700,10 +699,10 @@ The `source` structure tells us information about Oracle's record of this change
 
 [NOTE]
 ====
-When the columns for a row's primary/unique key are updated, the value of the row's key has changed so Debezium will output _three_ events: a `DELETE` event and a {link-prefix}:{link-oracle-connector}#tombstone-events[tombstone event] with the old key for the row, followed by an `INSERT` event with the new key for the row.
+When the columns for a row's primary/unique key are updated, the value of the row's key has changed so Debezium will output _three_ events: a `DELETE` event and a {link-prefix}:{link-oracle-connector}#oracle-tombstone-events[tombstone event] with the old key for the row, followed by an `INSERT` event with the new key for the row.
 ====
 
-[[delete-events]]
+[[oracle-delete-events]]
 ===== Delete events
 
 So far we've seen samples of _create_ and _update_ events.
@@ -749,12 +748,12 @@ The Oracle connector's events are designed to work with https://cwiki.apache.org
 which allows for the removal of some older messages as long as at least the most recent message for every key is kept.
 This allows Kafka to reclaim storage space while ensuring the topic contains a complete dataset and can be used for reloading key-based state.
 
-[[tombstone-events]]
+[[oracle-tombstone-events]]
 When a row is deleted, the _delete_ event value listed above still works with log compaction, since Kafka can still remove all earlier messages with that same key.
 But only if the message value is `null` will Kafka know that it can remove _all messages_ with that same key.
 To make this possible, Debezium's Oracle connector always follows the _delete_ event with a special _tombstone_ event that has the same key but `null` value.
 
-[[transaction-metadata]]
+[[oracle-transaction-metadata]]
 === Transaction Metadata
 
 [NOTE]
@@ -833,7 +832,7 @@ An example of messages looks like
 }
 ----
 
-[[data-types]]
+[[oracle-data-types]]
 === Data Types
 
 As described above, the Debezium Oracle connector represents the changes to rows with events that are structured like the table in which the row exist.
@@ -847,7 +846,7 @@ The _semantic type_ describes how the Kafka Connect schema captures the _meaning
 Support for further data types will be added in subsequent releases.
 Please file a {jira-url}/browse/DBZ[JIRA issue] for any specific types you are missing.
 
-[[character-values]]
+[[oracle-character-values]]
 ==== Character Values
 
 [cols="20%a,15%a,30%a,35%a",options="header"]
@@ -884,7 +883,7 @@ Please file a {jira-url}/browse/DBZ[JIRA issue] for any specific types you are m
 
 |=======================
 
-[[numeric-values]]
+[[oracle-numeric-values]]
 ==== Numeric Values
 
 [cols="20%a,15%a,30%a,35%a",options="header"]
@@ -958,7 +957,7 @@ If P - S >= 19, the column will be mapped to `BYTES` (`org.apache.kafka.connect{
 
 |=======================
 
-[[decimal-values]]
+[[oracle-decimal-values]]
 ==== Decimal Values
 When `decimal.handling.mode` configuration property is set to `precise`, then the connector will use the predefined Kafka Connect `org.apache.kafka.connect.data.Decimal` or `io.debezium.data.VariableScaleDecimal` logical types for numeric columns as described above.
 This is the default mode.
@@ -966,7 +965,7 @@ This is the default mode.
 However, when `decimal.handling.mode` configuration property is set to `double`, then the connector will represent the values as Java double values with schema type `FLOAT64`.
 The last option for `decimal.handling.mode` configuration property is `string`. In this case the connector will represent the values as their formatted string representation with schema type `STRING`.
 
-[[temporal-values]]
+[[oracle-temporal-values]]
 ==== Temporal Values
 
 [cols="20%a,15%a,30%a,35%a",options="header"]
@@ -1008,7 +1007,7 @@ The last option for `decimal.handling.mode` configuration property is `string`. 
 
 |=======================
 
-[[deploying-a-connector]]
+[[oracle-deploying-a-connector]]
 == Deploying a Connector
 
 Due to licensing requirements, the Debezium Oracle Connector does not ship with the Oracle JDBC driver and the XStream API JAR.
@@ -1023,7 +1022,7 @@ Create the environment variable `LD_LIBRARY_PATH`, pointing to the Instant Clien
 LD_LIBRARY_PATH=/path/to/instant_client/
 ----
 
-[[example-configuration]]
+[[oracle-example-configuration]]
 === Example Configuration
 
 The following shows an example JSON request for registering an instance of the Debezium Oracle connector:
@@ -1050,7 +1049,7 @@ The following shows an example JSON request for registering an instance of the D
 ----
 
 
-[[monitoring]]
+[[oracle-monitoring]]
 === Monitoring
 
 The {prodname} Oracle connector has three metric types in addition to the built-in support for JMX metrics that Zookeeper, Kafka, and Kafka Connect have.
@@ -1061,31 +1060,31 @@ The {prodname} Oracle connector has three metric types in addition to the built-
 
 Please refer to the xref:operations/monitoring.adoc[monitoring documentation] for details of how to expose these metrics via JMX.
 
-[[monitoring-snapshots]]
-[[snapshot-metrics]]
+[[oracle-monitoring-snapshots]]
+[[oracle-snapshot-metrics]]
 ==== Snapshot Metrics
 
 The *MBean* is `debezium.oracle:type=connector-metrics,context=snapshot,server=_<database.server.name>_`.
 
 include::{partialsdir}/modules/cdc-all-connectors/r_connector-monitoring-snapshot-metrics.adoc[leveloffset=+1]
 
-[[monitoring-streaming]]
-[[streaming-metrics]]
+[[oracle-monitoring-streaming]]
+[[oracle-streaming-metrics]]
 ==== Streaming Metrics
 
 The *MBean* is `debezium.oracle:type=connector-metrics,context=streaming,server=_<database.server.name>_`.
 
 include::{partialsdir}/modules/cdc-all-connectors/r_connector-monitoring-streaming-metrics.adoc[leveloffset=+1]
 
-[[monitoring-schema-history]]
-[[schema-history-metrics]]
+[[oracle-monitoring-schema-history]]
+[[oracle-schema-history-metrics]]
 ==== Schema History Metrics
 
 The *MBean* is `debezium.mysql:type=connector-metrics,context=schema-history,server=_<database.server.name>_`.
 
 include::{partialsdir}/modules/cdc-all-connectors/r_connector-monitoring-schema-history-metrics.adoc[leveloffset=+1]
 
-[[connector-properties]]
+[[oracle-connector-properties]]
 === Connector Properties
 
 The following configuration properties are _required_ unless a default value is available.
@@ -1096,72 +1095,72 @@ The following configuration properties are _required_ unless a default value is 
 |Default
 |Description
 
-|[[connector-property-name]]<<connector-property-name, `name`>>
+|[[oracle-property-name]]<<oracle-property-name, `name`>>
 |
 |Unique name for the connector. Attempting to register again with the same name will fail. (This property is required by all Kafka Connect connectors.)
 
-|[[connector-property-connector-class]]<<connector-property-connector-class, `connector.class`>>
+|[[oracle-property-connector-class]]<<oracle-property-connector-class, `connector.class`>>
 |
 |The name of the Java class for the connector. Always use a value of `io.debezium{zwsp}.connector.oracle.OracleConnector` for the Oracle connector.
 
-|[[connector-property-tasks-max]]<<connector-property-tasks-max, `tasks.max`>>
+|[[oracle-property-tasks-max]]<<oracle-property-tasks-max, `tasks.max`>>
 |`1`
 |The maximum number of tasks that should be created for this connector. The Oracle connector always uses a single task and therefore does not use this value, so the default is always acceptable.
 
-|[[connector-property-database-hostname]]<<connector-property-database-hostname, `database.hostname`>>
+|[[oracle-property-database-hostname]]<<oracle-property-database-hostname, `database.hostname`>>
 |
 |IP address or hostname of the Oracle database server.
 
-|[[connector-property-database-port]]<<connector-property-database-port, `database.port`>>
+|[[oracle-property-database-port]]<<oracle-property-database-port, `database.port`>>
 |
 |Integer port number of the Oracle database server.
 
-|[[connector-property-database-user]]<<connector-property-database-user, `database.user`>>
+|[[oracle-property-database-user]]<<oracle-property-database-user, `database.user`>>
 |
 |Name of the user to use when connecting to the Oracle database server.
 
-|[[connector-property-database-password]]<<connector-property-database-password, `database.password`>>
+|[[oracle-property-database-password]]<<oracle-property-database-password, `database.password`>>
 |
 |Password to use when connecting to the Oracle database server.
 
-|[[connector-property-database-dbname]]<<connector-property-database-dbname, `database.dbname`>>
+|[[oracle-property-database-dbname]]<<oracle-property-database-dbname, `database.dbname`>>
 |
 |Name of the database to connect to. Must be the CDB name when working with the CDB + PDB model.
 
-|[[connector-property-database-pdb-name]]<<connector-property-database-pdb-name, `database.pdb.name`>>
+|[[oracle-property-database-pdb-name]]<<oracle-property-database-pdb-name, `database.pdb.name`>>
 |
 |Name of the PDB to connect to, when working with the CDB + PDB model.
 
-|[[connector-property-database-out-server-name]]<<connector-property-database-out-server-name, `database.out.server.name`>>
+|[[oracle-property-database-out-server-name]]<<oracle-property-database-out-server-name, `database.out.server.name`>>
 |
 |Name of the XStream outbound server configured in the database.
 
-|[[connector-property-database-server-name]]<<connector-property-database-server-name, `database.server.name`>>
+|[[oracle-property-database-server-name]]<<oracle-property-database-server-name, `database.server.name`>>
 |
 |Logical name that identifies and provides a namespace for the particular Oracle database server being monitored. The logical name should be unique across all other connectors, since it is used as a prefix for all Kafka topic names emanating from this connector.
 Only alphanumeric characters and underscores should be used.
 
-|[[connector-property-database-history-kafka-topic]]<<connector-property-database-history-kafka-topic, `database.history.kafka.topic`>>
+|[[oracle-property-database-history-kafka-topic]]<<oracle-property-database-history-kafka-topic, `database.history.kafka.topic`>>
 |
 |The full name of the Kafka topic where the connector will store the database schema history.
 
-|[[connector-property-database-history-kafka-bootstrap-servers]]<<connector-property-database-history-kafka-bootstrap-servers, `database.history{zwsp}.kafka.bootstrap.servers`>>
+|[[oracle-property-database-history-kafka-bootstrap-servers]]<<oracle-property-database-history-kafka-bootstrap-servers, `database.history{zwsp}.kafka.bootstrap.servers`>>
 |
 |A list of host/port pairs that the connector will use for establishing an initial connection to the Kafka cluster. This connection will be used for retrieving database schema history previously stored by the connector, and for writing each DDL statement read from the source database. This should point to the same Kafka cluster used by the Kafka Connect process.
 
-|[[connector-property-snapshot-mode]]<<connector-property-snapshot-mode, `snapshot.mode`>>
+|[[oracle-property-snapshot-mode]]<<oracle-property-snapshot-mode, `snapshot.mode`>>
 |_initial_
 |A mode for taking an initial snapshot of the structure and optionally data of captured tables. Supported values are _initial_ (will take a snapshot of structure and data of captured tables; useful if topics should be populated with a complete representation of the data from the captured tables) and _schema_only_ (will take a snapshot of the structure of captured tables only; useful if only changes happening from now onwards should be propagated to topics). Once the snapshot is complete, the connector will continue reading change events from the database's redo logs.
 
-|[[connector-property-table-whitelist]]<<connector-property-table-whitelist, `table.whitelist`>>
+|[[oracle-property-table-whitelist]]<<oracle-property-table-whitelist, `table.whitelist`>>
 |_empty string_
 |An optional comma-separated list of regular expressions that match fully-qualified table identifiers for tables to be monitored; any table not included in the whitelist will be excluded from monitoring. Each identifier is of the form _schemaName_._tableName_. By default the connector will monitor every non-system table in each monitored database. May not be used with `table.blacklist`.
 
-|[[connector-property-table-blacklist]]<<connector-property-table-blacklist, `table.blacklist`>>
+|[[oracle-property-table-blacklist]]<<oracle-property-table-blacklist, `table.blacklist`>>
 |_empty string_
 |An optional comma-separated list of regular expressions that match fully-qualified table identifiers for tables to be excluded from monitoring; any table not included in the blacklist will be monitored. Each identifier is of the form _schemaName_._tableName_. May not be used with `table.whitelist`.
 
-|[[connector-property-column-mask-hash]]<<connector-property-column-mask-hash, `column.mask.hash._hashAlgorithm_.with.salt._salt_`>>
+|[[oracle-property-column-mask-hash]]<<oracle-property-column-mask-hash, `column.mask.hash._hashAlgorithm_.with.salt._salt_`>>
 |_n/a_
 |An optional comma-separated list of regular expressions that match the fully-qualified names of character-based columns whose values should be pseudonyms in the change event message values with a field value consisting of the hashed value using the algorithm `_hashAlgorithm_` and salt `_salt_`.
 Based on the used hash function referential integrity is kept while data is pseudonymized. Supported hash functions are described in the {link-java7-standard-names}[MessageDigest section] of the Java Cryptography Architecture Standard Algorithm Name Documentation.
@@ -1177,57 +1176,57 @@ where `CzQMA0cB5K` is a randomly selected salt.
 
 Note: Depending on the `_hashAlgorithm_` used, the `_salt_` selected and the actual data set, the resulting masked data set may not be completely anonymized.
 
-|[[connector-property-decimal-handling-mode]]<<connector-property-decimal-handling-mode, `decimal.handling.mode`>>
+|[[oracle-property-decimal-handling-mode]]<<oracle-property-decimal-handling-mode, `decimal.handling.mode`>>
 |`precise`
 | Specifies how the connector should handle floating point values for `NUMBER`, `DECIMAL` and `NUMERIC` columns: `precise` (the default) represents them precisely using `java.math.BigDecimal` values represented in change events in a binary form; or `double` represents them using `double` values, which may result in a loss of precision but will be far easier to use. `string` option encodes values as formatted string which is easy to consume but a semantic information about the real type is lost. See <<decimal-values>>.
 
-|[[connector-property-event-processing-failure-handling-mode]]<<connector-property-event-processing-failure-handling-mode, `event.processing{zwsp}.failure.handling.mode`>>
+|[[oracle-property-event-processing-failure-handling-mode]]<<oracle-property-event-processing-failure-handling-mode, `event.processing{zwsp}.failure.handling.mode`>>
 |`fail`
 | Specifies how the connector should react to exceptions during processing of events.
 `fail` will propagate the exception (indicating the offset of the problematic event), causing the connector to stop. +
 `warn` will cause the problematic event to be skipped and the offset of the problematic event to be logged. +
 `skip` will cause the problematic event to be skipped.
 
-|[[connector-property-max-queue-size]]<<connector-property-max-queue-size, `max.queue.size`>>
+|[[oracle-property-max-queue-size]]<<oracle-property-max-queue-size, `max.queue.size`>>
 |`8192`
 |Positive integer value that specifies the maximum size of the blocking queue into which change events read from the database log are placed before they are written to Kafka. This queue can provide backpressure to the binlog reader when, for example, writes to Kafka are slower or if Kafka is not available. Events that appear in the queue are not included in the offsets periodically recorded by this connector. Defaults to 8192, and should always be larger than the maximum batch size specified in the `max.batch.size` property.
 
-|[[connector-property-max-batch-size]]<<connector-property-max-batch-size, `max.batch.size`>>
+|[[oracle-property-max-batch-size]]<<oracle-property-max-batch-size, `max.batch.size`>>
 |`2048`
 |Positive integer value that specifies the maximum size of each batch of events that should be processed during each iteration of this connector. Defaults to 2048.
 
-|[[connector-property-poll-interval-ms]]<<connector-property-poll-interval-ms, `poll.interval.ms`>>
+|[[oracle-property-poll-interval-ms]]<<oracle-property-poll-interval-ms, `poll.interval.ms`>>
 |`1000`
 |Positive integer value that specifies the number of milliseconds the connector should wait during each iteration for new change events to appear. Defaults to 1000 milliseconds, or 1 second.
 
-|[[connector-property-tombstones-on-delete]]<<connector-property-tombstones-on-delete, `tombstones.on.delete`>>
+|[[oracle-property-tombstones-on-delete]]<<oracle-property-tombstones-on-delete, `tombstones.on.delete`>>
 |`true`
 | Controls whether a tombstone event should be generated after a delete event. +
 When `true` the delete operations are represented by a delete event and a subsequent tombstone event. When `false` only a delete event is sent. +
 Emitting the tombstone event (the default behavior) allows Kafka to completely delete all events pertaining to the given key once the source record got deleted.
 
-|[[connector-property-message-key-columns]]<<connector-property-message-key-columns, `message.key.columns`>>
+|[[oracle-property-message-key-columns]]<<oracle-property-message-key-columns, `message.key.columns`>>
 |_empty string_
 | A semi-colon list of regular expressions that match fully-qualified tables and columns to map a primary key. +
 Each item (regular expression) must match the `<fully-qualified table>:<a comma-separated list of columns>` representing the custom key. +
 Fully-qualified tables could be defined as _pdbName_._schemaName_._tableName_.
 
-|[[connector-property-column-truncate-to-length-chars]]<<connector-property-column-truncate-to-length-chars, `column.truncate.to._length_.chars`>>
+|[[oracle-property-column-truncate-to-length-chars]]<<oracle-property-column-truncate-to-length-chars, `column.truncate.to._length_.chars`>>
 |_n/a_
 |An optional comma-separated list of regular expressions that match the fully-qualified names of character-based columns whose values should be truncated in the change event message values if the field values are longer than the specified number of characters. Multiple properties with different lengths can be used in a single configuration, although in each the length must be a positive integer. Fully-qualified names for columns are of the form _pdbName_._schemaName_._tableName_._columnName_.
 
-|[[connector-property-column-mask-with-length-chars]]<<connector-property-column-mask-with-length-chars, `column.mask.with._length_.chars`>>
+|[[oracle-property-column-mask-with-length-chars]]<<oracle-property-column-mask-with-length-chars, `column.mask.with._length_.chars`>>
 |_n/a_
 |An optional comma-separated list of regular expressions that match the fully-qualified names of character-based columns whose values should be replaced in the change event message values with a field value consisting of the specified number of asterisk (`*`) characters. Multiple properties with different lengths can be used in a single configuration, although in each the length must be a positive integer or zero. Fully-qualified names for columns are of the form _pdbName_._schemaName_._tableName_._columnName_.
 
-|[[connector-property-column-propagate-source-type]]<<connector-property-column-propagate-source-type, `column.propagate.source.type`>>
+|[[oracle-property-column-propagate-source-type]]<<oracle-property-column-propagate-source-type, `column.propagate.source.type`>>
 |_n/a_
 |An optional comma-separated list of regular expressions that match the fully-qualified names of columns whose original type and length should be added as a parameter to the corresponding field schemas in the emitted change messages.
 The schema parameters `pass:[_]pass:[_]debezium.source.column.type`, `pass:[_]pass:[_]debezium.source.column.length` and `pass:[_]pass:[_]debezium.source.column.scale` will be used to propagate the original type name and length (for variable-width types), respectively.
 Useful to properly size corresponding columns in sink databases.
 Fully-qualified names for columns are of the form _databaseName_._tableName_._columnName_, or _databaseName_._schemaName_._tableName_._columnName_.
 
-|[[connector-property-datatype-propagate-source-type]]<<connector-property-datatype-propagate-source-type, `datatype.propagate.source.type`>>
+|[[oracle-property-datatype-propagate-source-type]]<<oracle-property-datatype-propagate-source-type, `datatype.propagate.source.type`>>
 |_n/a_
 |An optional comma-separated list of regular expressions that match the database-specific data type name of columns whose original type and length should be added as a parameter to the corresponding field schemas in the emitted change messages.
 The schema parameters `pass:[_]pass:[_]debezium.source.column.type`, `pass:[_]pass:[_]debezium.source.column.length` and `pass:[_]pass:[_]debezium.source.column.scale` will be used to propagate the original type name and length (for variable-width types), respectively.
@@ -1235,7 +1234,7 @@ Useful to properly size corresponding columns in sink databases.
 Fully-qualified data type names are of the form _databaseName_._tableName_._typeName_, or _databaseName_._schemaName_._tableName_._typeName_.
 See xref:data-types[] for the list of Oracle-specific data type names.
 
-|[[connector-property-heartbeat-interval-ms]]<<connector-property-heartbeat-interval-ms, `heartbeat.interval.ms`>>
+|[[oracle-property-heartbeat-interval-ms]]<<oracle-property-heartbeat-interval-ms, `heartbeat.interval.ms`>>
 |`0`
 |Controls how frequently heartbeat messages are sent. +
 This property contains an interval in milli-seconds that defines how frequently the connector sends messages into a heartbeat topic.
@@ -1249,30 +1248,30 @@ and also may result in more change events to be re-sent after a connector restar
 Set this parameter to `0` to not send heartbeat messages at all. +
 Disabled by default.
 
-|[[connector-property-heartbeat-topics-prefix]]<<connector-property-heartbeat-topics-prefix, `heartbeat.topics.prefix`>>
+|[[oracle-property-heartbeat-topics-prefix]]<<oracle-property-heartbeat-topics-prefix, `heartbeat.topics.prefix`>>
 |`__debezium-heartbeat`
 |Controls the naming of the topic to which heartbeat messages are sent. +
 The topic is named according to the pattern `<heartbeat.topics.prefix>.<server.name>`.
 
-|[[connector-property-snapshot-delay-ms]]<<connector-property-snapshot-delay-ms, `snapshot.delay.ms`>>
+|[[oracle-property-snapshot-delay-ms]]<<oracle-property-snapshot-delay-ms, `snapshot.delay.ms`>>
 |
 |An interval in milli-seconds that the connector should wait before taking a snapshot after starting up; +
 Can be used to avoid snapshot interruptions when starting multiple connectors in a cluster, which may cause re-balancing of connectors.
 
-|[[connector-property-snapshot-fetch-size]]<<connector-property-snapshot-fetch-size, `snapshot.fetch.size`>>
+|[[oracle-property-snapshot-fetch-size]]<<oracle-property-snapshot-fetch-size, `snapshot.fetch.size`>>
 |`2000`
 |Specifies the maximum number of rows that should be read in one go from each table while taking a snapshot.
 The connector will read the table contents in multiple batches of this size. Defaults to 2000.
 
-|[[connector-property-sanitize-field-names]]<<connector-property-sanitize-field-names, `sanitize.field.names`>>
+|[[oracle-property-sanitize-field-names]]<<oracle-property-sanitize-field-names, `sanitize.field.names`>>
 |`true` when connector configuration explicitly specifies the `key.converter` or `value.converter` parameters to use Avro, otherwise defaults to `false`.
 |Whether field names will be sanitized to adhere to Avro naming requirements.
 See {link-prefix}:{link-avro-serialization}#avro-naming[Avro naming] for more details.
 
-|[[connector-property-provide-transaction-metadata]]<<connector-property-provide-transaction-metadata, `provide.transaction.metadata` (Incubating)>>
+|[[oracle-property-provide-transaction-metadata]]<<oracle-property-provide-transaction-metadata, `provide.transaction.metadata` (Incubating)>>
 |`false`
 |When set to `true` Debezium generates events with transaction boundaries and enriches data events envelope with transaction metadata.
 
-See {link-prefix}:{link-oracle-connector}#transaction-metadata[Transaction Metadata] for additional details.
+See {link-prefix}:{link-oracle-connector}#oracle-transaction-metadata[Transaction Metadata] for additional details.
 
 |=======================
