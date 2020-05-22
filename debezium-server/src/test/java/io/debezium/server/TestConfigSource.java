@@ -28,7 +28,6 @@ public class TestConfigSource implements ConfigSource {
 
     public TestConfigSource() {
         pubsubTest.put("debezium.sink.type", "pubsub");
-        pubsubTest.put("debezium.sink.", KINESIS_REGION);
         pubsubTest.put("debezium.source.connector.class", "io.debezium.connector.postgresql.PostgresConnector");
         pubsubTest.put("debezium.source." + StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
         pubsubTest.put("debezium.source.offset.flush.interval.ms", "0");

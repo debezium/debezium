@@ -35,7 +35,7 @@ import io.debezium.util.Testing;
 import io.quarkus.test.junit.QuarkusTest;
 
 /**
- * Integration test that verifies basic reading from PostgreSQL database and writing to Kinesis stream.
+ * Integration test that verifies basic reading from PostgreSQL database and writing to a Google Cloud PubSub stream.
  *
  * @author Jiri Pechanec
  */
