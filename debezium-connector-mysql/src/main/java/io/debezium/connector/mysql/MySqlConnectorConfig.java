@@ -483,9 +483,6 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
 
     private static final String DATABASE_WHITELIST_NAME = "database.whitelist";
     private static final String DATABASE_BLACKLIST_NAME = "database.blacklist";
-    private static final String TABLE_WHITELIST_NAME = "table.whitelist";
-    private static final String TABLE_BLACKLIST_NAME = "table.blacklist";
-    private static final String TABLE_IGNORE_BUILTIN_NAME = "table.ignore.builtin";
 
     /**
      * Default size of the binlog buffer used for examining transactions and
@@ -608,15 +605,8 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withDescription(
                     "Password to unlock the keystore file (store password) specified by 'ssl.trustore' configuration property or the 'javax.net.ssl.trustStore' system or JVM property.");
 
-    public static final Field TABLES_IGNORE_BUILTIN = Field.create(TABLE_IGNORE_BUILTIN_NAME)
-            .withDisplayName("Ignore system databases")
-            .withType(Type.BOOLEAN)
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.LOW)
-            .withDefault(true)
-            .withValidation(Field::isBoolean)
-            .withDependents(DATABASE_WHITELIST_NAME)
-            .withDescription("Flag specifying whether built-in tables should be ignored.");
+    public static final Field TABLES_IGNORE_BUILTIN = RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN
+            .withDependents(DATABASE_WHITELIST_NAME);
 
     public static final Field JDBC_DRIVER = Field.create("database.jdbc.driver")
             .withDisplayName("Jdbc Driver Class Name")
@@ -650,33 +640,6 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withValidation(MySqlConnectorConfig::validateDatabaseBlacklist)
             .withInvisibleRecommender()
             .withDescription("");
-
-    /**
-     * A comma-separated list of regular expressions that match the fully-qualified names of tables to be monitored.
-     * Fully-qualified names for tables are of the form {@code <databaseName>.<tableName>} or
-     * {@code <databaseName>.<schemaName>.<tableName>}. May not be used with {@link #TABLE_BLACKLIST}, and superseded by database
-     * inclusions/exclusions.
-     */
-    public static final Field TABLE_WHITELIST = Field.create(TABLE_WHITELIST_NAME)
-            .withDisplayName("Tables")
-            .withType(Type.LIST)
-            .withWidth(Width.LONG)
-            .withImportance(Importance.HIGH)
-            .withValidation(Field::isListOfRegex)
-            .withDescription("The tables for which changes are to be captured");
-
-    /**
-     * A comma-separated list of regular expressions that match the fully-qualified names of tables to be excluded from
-     * monitoring. Fully-qualified names for tables are of the form {@code <databaseName>.<tableName>} or
-     * {@code <databaseName>.<schemaName>.<tableName>}. May not be used with {@link #TABLE_WHITELIST}.
-     */
-    public static final Field TABLE_BLACKLIST = Field.create(TABLE_BLACKLIST_NAME)
-            .withDisplayName("Exclude Tables")
-            .withType(Type.STRING)
-            .withWidth(Width.LONG)
-            .withImportance(Importance.MEDIUM)
-            .withValidation(Field::isListOfRegex, MySqlConnectorConfig::validateTableBlacklist)
-            .withInvisibleRecommender();
 
     /**
      * A comma-separated list of regular expressions that match source UUIDs in the GTID set used to find the binlog
