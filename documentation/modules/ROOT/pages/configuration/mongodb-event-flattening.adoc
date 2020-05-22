@@ -205,7 +205,7 @@ Note that other mongo operations might cause an `$unset` internally, `$rename` i
 
 === Determine original operation
 
-When a message is flattened the final result won't show whether it was an insert, update or first read (Deletions can be detected via tombstones or rewrites, see link:#mongodb-extract-new-record-state-configuration-options[Configuration options]).
+When a message is flattened the final result won't show whether it was an insert, update or first read (Deletions can be detected via tombstones or rewrites, see {link-prefix}:{link-mongodb-event-flattening}#mongodb-extract-new-record-state-configuration-options[Configuration options]).
 
 To solve this problem Debezium offers an option to propagate the original operation via a header added to the message.
 To enable this feature the option `operation.header` must be set to `true`.

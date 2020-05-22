@@ -292,7 +292,7 @@ This topic should be considered as an internal state of the connector and should
 If the application needs to track changes in the source database there is the public-facing schema change topic.
 The topic name is the same as the logical server name configured in connector configuration.
 
-Debezium emits a new message to this topic whenever a new table is streamed from or when the structure of the table is altered (link:#db2-schema-evolution[schema evolution procedure must be followed]).
+Debezium emits a new message to this topic whenever a new table is streamed from or when the structure of the table is altered ({link-prefix}:{link-db2-connector}#db2-schema-evolution[schema evolution procedure must be followed]).
 The message contains a logical representation of the table schema.
 
 The example of the message is:
@@ -430,7 +430,7 @@ The schema change messages use as the key the name of the database to which the 
 
 === Events
 
-All data change events produced by the Db2 connector have a key and a value, although the structure of the key and value depend on the table from which the change events originated (see link:#db2-topic-names[Topic names]).
+All data change events produced by the Db2 connector have a key and a value, although the structure of the key and value depend on the table from which the change events originated (see {link-prefix}:{link-db2-connector}#db2-topic-names[Topic names]).
 
 [WARNING]
 ====
@@ -759,7 +759,7 @@ The `source` structure tells us information about Db2's record of this change (p
 
 [NOTE]
 ====
-When the columns for a row's primary/unique key are updated, the value of the row's key has changed so Debezium will output _three_ events: a `DELETE` event and a link:#db2-tombstone-events[tombstone event] with the old key for the row, followed by an `INSERT` event with the new key for the row.
+When the columns for a row's primary/unique key are updated, the value of the row's key has changed so Debezium will output _three_ events: a `DELETE` event and a {link-prefix}:{link-db2-connector}#db2-tombstone-events[tombstone event] with the old key for the row, followed by an `INSERT` event with the new key for the row.
 ====
 
 [[db2-delete-events]]
@@ -1254,8 +1254,8 @@ You can even link:/docs/openshift/[run Debezium on OpenShift].
 
 To use the connector to produce change events for a particular Db2 database or cluster:
 
-. enable the link:#setting-up-db2[CDC on Db2] to publish the _CDC_ events in the database
-. create a link:#db2-example-configuration[configuration file for the Db2 Connector] and use the {link-kafka-docs}/#connect_rest[Kafka Connect REST API] to add that connector to your Kafka Connect cluster.
+. enable the {link-prefix}:{link-db2-connector}#setting-up-db2[CDC on Db2] to publish the _CDC_ events in the database
+. create a {link-prefix}:{link-db2-connector}#db2-example-configuration[configuration file for the Db2 Connector] and use the {link-kafka-docs}/#connect_rest[Kafka Connect REST API] to add that connector to your Kafka Connect cluster.
 
 When the connector starts, it will grab a consistent snapshot of the schemas in your Db2 database and start streaming changes, producing events for every inserted, updated, and deleted row.
 You can also choose to produce events for a subset of the schemas and tables.
@@ -1297,7 +1297,7 @@ Using the Db2 connector is straightforward. Here is an example of the configurat
 <10> The list of Kafka brokers that this connector will use to write and recover DDL statements to the database history topic.
 <11> The name of the database history topic where the connector will write and recover DDL statements. This topic is for internal use only and should not be used by consumers.
 
-See the link:#db2-connector-properties[complete list of connector properties] that can be specified in these configurations.
+See the {link-prefix}:{link-db2-connector}#db2-connector-properties[complete list of connector properties] that can be specified in these configurations.
 
 This configuration can be sent via POST to a running Kafka Connect service, which will then record the configuration and start up the one connector task that will connect to the Db2 database, read the transaction log, and record events to Kafka topics.
 
@@ -1423,7 +1423,7 @@ Note: Depending on the `_hashAlgorithm_` used, the `_salt_` selected and the act
 
 |[[db2-property-time-precision-mode]]<<db2-property-time-precision-mode, `time.precision.mode`>>
 |`adaptive`
-| Time, date, and timestamps can be represented with different kinds of precision, including: `adaptive` (the default) captures the time and timestamp values exactly as in the database using either millisecond, microsecond, or nanosecond precision values based on the database column's type; or `connect` always represents time and timestamp values using Kafka Connect's built-in representations for Time, Date, and Timestamp, which uses millisecond precision regardless of the database columns' precision. See link:#db2-temporal-values[temporal values].
+| Time, date, and timestamps can be represented with different kinds of precision, including: `adaptive` (the default) captures the time and timestamp values exactly as in the database using either millisecond, microsecond, or nanosecond precision values based on the database column's type; or `connect` always represents time and timestamp values using Kafka Connect's built-in representations for Time, Date, and Timestamp, which uses millisecond precision regardless of the database columns' precision. See {link-prefix}:{link-db2-connector}#db2-temporal-values[temporal values].
 
 |[[db2-property-tombstones-on-delete]]<<db2-property-tombstones-on-delete, `tombstones.on.delete`>>
 |`true`
@@ -1536,7 +1536,7 @@ The connector will read the table contents in multiple batches of this size. Def
 
 |[[db2-property-snapshot-lock-timeout-ms]]<<db2-property-snapshot-lock-timeout-ms, `snapshot.lock.timeout.ms`>>
 |`10000`
-|An integer value that specifies the maximum amount of time (in milliseconds) to wait to obtain table locks when performing a snapshot. If table locks cannot be acquired in this time interval, the snapshot will fail (also see link:#db2-snapshots[snapshots]). +
+|An integer value that specifies the maximum amount of time (in milliseconds) to wait to obtain table locks when performing a snapshot. If table locks cannot be acquired in this time interval, the snapshot will fail (also see {link-prefix}:{link-db2-connector}#db2-snapshots[snapshots]). +
 When set to `0` the connector will fail immediately when it cannot obtain the lock. Value `-1` indicates infinite waiting.
 
 |[[db2-property-snapshot-select-statement-overrides]]<<db2-property-snapshot-select-statement-overrides, `snapshot.select.statement.overrides`>>
@@ -1554,7 +1554,7 @@ See {link-prefix}:{link-avro-serialization}#avro-naming[Avro naming] for more de
 |`false`
 |When set to `true` Debezium generates events with transaction boundaries and enriches data events envelope with transaction metadata.
 
-See link:#db2-transaction-metadata[Transaction Metadata] for additional details.
+See {link-prefix}:{link-db2-connector}#db2-transaction-metadata[Transaction Metadata] for additional details.
 |=======================
 
 The connector also supports _pass-through_ configuration properties that are used when creating the Kafka producer and consumer. Specifically, all connector configuration properties that begin with the `database.history.producer.` prefix are used (without the prefix) when creating the Kafka producer that writes to the database history, and all those that begin with the prefix `database.history.consumer.` are used (without the prefix) when creating the Kafka consumer that reads the database history upon connector startup.
