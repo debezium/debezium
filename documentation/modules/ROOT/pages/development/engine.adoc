@@ -75,11 +75,11 @@ You create the `DebeziumEngine` instance using its builder API,
 providing the following things:
 
 * The format in which you want to receive the message, e.g. JSON, Avro or as Kafka Connect `SourceRecord`
-(see xref:output-message-formats[output message formats])
+(see {link-prefix}:{link-engine}#engine-output-message-formats[output message formats])
 * Configuration properties (perhaps loaded from a properties file) that define the environment for both the engine and the connector
 * A method that will be called for every data change event produced by the connector
 
-Here's an example of code that configures and runs an embedded xref:connectors/mysql.adoc[MySQL connector]:
+Here's an example of code that configures and runs an embedded {link-prefix}:{link-mysql-connector}[MySQL connector]:
 
 [source,java,indent=0]
 ----
@@ -261,7 +261,7 @@ Allowed values are:
 * `Connect.class` - the output value is change event wrapping Kafka Connect's `SourceRecord`
 * `Json.class` - the output value is a pair of key and value encoded as `JSON` strings
 * `Avro.class` - the output value is a pair of key and value encoded as Avro serialized records
-* `CloudEvents.class` - the output value is a pair of key and value encoded as xref:integrations/cloudevents.adoc[Cloud Events] messages
+* `CloudEvents.class` - the output value is a pair of key and value encoded as {link-prefix}:{link-cloud-events}[Cloud Events] messages
 
 Internally, the engine uses the apropriate Kafka Connect converter implementation to which the conversion is delegated.
 The converter can be parametrized using engine properties to modify its behaviour.

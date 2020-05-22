@@ -1058,7 +1058,7 @@ The {prodname} Oracle connector has three metric types in addition to the built-
 * <<streaming-metrics, streaming metrics>>; for monitoring the connector when processing change events
 * <<schema-history-metrics, schema history metrics>>; for monitoring the status of the connector's schema history
 
-Please refer to the xref:operations/monitoring.adoc[monitoring documentation] for details of how to expose these metrics via JMX.
+Please refer to the {link-prefix}:{link-debezium-monitoring}#monitoring-debezium[monitoring documentation] for details of how to expose these metrics via JMX.
 
 [[oracle-monitoring-snapshots]]
 [[oracle-snapshot-metrics]]
@@ -1232,7 +1232,7 @@ Fully-qualified names for columns are of the form _databaseName_._tableName_._co
 The schema parameters `pass:[_]pass:[_]debezium.source.column.type`, `pass:[_]pass:[_]debezium.source.column.length` and `pass:[_]pass:[_]debezium.source.column.scale` will be used to propagate the original type name and length (for variable-width types), respectively.
 Useful to properly size corresponding columns in sink databases.
 Fully-qualified data type names are of the form _databaseName_._tableName_._typeName_, or _databaseName_._schemaName_._tableName_._typeName_.
-See xref:data-types[] for the list of Oracle-specific data type names.
+See the {link-prefix}:{link-oracle-connector}#oracle-data-types[list of Oracle-specific data type names].
 
 |[[oracle-property-heartbeat-interval-ms]]<<oracle-property-heartbeat-interval-ms, `heartbeat.interval.ms`>>
 |`0`

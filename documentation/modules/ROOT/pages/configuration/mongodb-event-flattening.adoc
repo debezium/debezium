@@ -17,7 +17,7 @@ Please see below for a descriptions of known limitations of this transformation.
 [NOTE]
 ====
 This SMT is supported only for the MongoDB connector.
-See xref:configuration/event-flattening.adoc[here] for the relational database equivalent to this SMT.
+See {link-prefix}:{link-event-flattening}[Extracting source record `after` state from {prodname} change events] for the relational database equivalent to this SMT.
 ====
 
 The Debezium MongoDB connector generates the data in a form of a complex message structure.
@@ -38,7 +38,7 @@ E.g. the general message structure for a insert event looks like this:
 }
 ----
 
-More details about the message structure are provided in xref:connectors/mongodb.adoc[the documentation] of the MongoDB connector.
+More details about the message structure are provided in {link-prefix}:{link-mongodb-connector}[the documentation] of the MongoDB connector.
 
 While this structure is a good fit to represent changes to MongoDB's schemaless collections,
 it's not understood by existing sink connectors as for instance the Confluent JDBC sink connector.
@@ -217,13 +217,13 @@ transforms.unwrap.type=io.debezium.connector.mongodb.transforms.ExtractNewDocume
 transforms.unwrap.operation.header=true
 ----
 
-The possible values are the ones from the `op` field of xref:connectors/mongodb.adoc#mongodb-change-events-value[MongoDB connector change events].
+The possible values are the ones from the `op` field of {link-prefix}:{link-mongodb-connector}#mongodb-change-events-value[MongoDB connector change events].
 
 === Adding source metadata fields
 
 The SMT can optionally add metadata fields from the original change event's `source` structure to the final flattened record (prefixed with "__").
 This functionality can be used to add things like the collection from the change event, or connector-specific fields like the replica set name.
-For more information on what's available in the source structure see xref:connectors/mongodb.adoc[the documentation] for the MongoDB connector.
+For more information on what's available in the source structure see {link-prefix}:{link-mongodb-connector}[the documentation] for the MongoDB connector.
 
 For example, the configuration
 
@@ -265,7 +265,7 @@ For `DELETE` events, this option is only supported when the `delete.handling.mod
 ifdef::community[]
 |[[mongodb-extract-new-record-state-operation-header]]<<mongodb-extract-new-record-state-operation-header, `operation.header`>>
 |`false`
-|The SMT adds the xref:connectors/mongodb.adoc#mongodb-change-events-value[event operation] as a message header. +
+|The SMT adds the {link-prefix}:{link-mongodb-connector}#mongodb-change-events-value[event operation] as a message header. +
 This is deprecated as of Debezium 1.2, please use <<mongodb-extract-new-record-state-add-headers, `add.headers`>> and <<mongodb-extract-new-record-state-add-fields, `add.fields`>> instead.
 endif::community[]
 
