@@ -172,6 +172,7 @@ __  ____  __  _____   ___  __ ____  ______
 2020-05-15 11:33:12,911 INFO  [io.quarkus] (main) Installed features: [cdi, smallrye-health]
 ----
 
+[id="debezium-source-configuration-properties"]
 === Source configuration
 
 The source configuration uses the same configuration properties that are described on the specific connector documentation pages (just with `debezium.source` prefix), together with few more specific ones, necessary for running outside of Kafka Connect:
@@ -182,21 +183,21 @@ The source configuration uses the same configuration properties that are describ
 |Default
 |Description
 
-|[[source-connector-class]]<<source-connector-class, `debezium.source.connector.class`>>
+|[[debezium-source-connector-class]]<<debezium-source-connector-class, `debezium.source.connector.class`>>
 |
 |The name of the Java class implementing the source connector.
 
-|[[source-offset-storage-file-filename]]<<source-offset-storage-file-filename, `debezium.source.offset.storage.file.filename`>>
+|[[debezium-source-offset-storage-file-filename]]<<debezium-source-offset-storage-file-filename, `debezium.source.offset.storage.file.filename`>>
 |
 |The file in which connector offsets are stored for non-Kafka deployments.
 
-|[[source-offset-flush-interval-ms]]<<source-offset-flush-interval-ms, `debezium.source.offset.flush.interval.ms`>>
+|[[debezium-source-offset-flush-interval-ms]]<<debezium-source-offset-flush-interval-ms, `debezium.source.offset.flush.interval.ms`>>
 |
 |Defines how frequently the offsets are flushed into the file.
 
 |=======================
 
-
+[id="debezium-format-configuration-options"]
 === Format configuration
 
 The message output format can be configured for both key and value separately.
@@ -226,7 +227,7 @@ By default the output is in JSON format but an arbitrary implementation of Kafka
 
 |=======================
 
-
+[id="debezium-transformations-configuration-options"]
 === Transformation configuration
 
 Before the messages are delivered to the sink, they can run through a sequence of transformations.
@@ -239,14 +240,17 @@ The configuration will need to contain the list of transformations, implementati
 |Default
 |Description
 
+[id="debezium-transformations"]
 |`debezium.transformations`
 |
 |The comma separated list of symbolic names of transformations.
 
+[id="debezium-transformations-name-class"]
 |`debezium.transformations.<name>.class`
 |
 |The name of Java class implementing the transformation with name `<name>`.
 
+[id="debezium-transformations-name"]
 |`debezium.transformations.<name>.*`
 |
 |Configuration properties passed to the transformation with name `<name>`.
