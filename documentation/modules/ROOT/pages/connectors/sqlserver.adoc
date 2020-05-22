@@ -185,7 +185,7 @@ This topic should be considered as an internal state of the connector and should
 If the application needs to track changes in the source database there is the public-facing schema change topic.
 The topic name is the same as the logical server name configured in connector configuration.
 
-Debezium emits a new message to this topic whenever a new table is streamed from or when the structure of the table is altered (link:#sqlserver-schema-evolution[schema evolution procedure must be followed]).
+Debezium emits a new message to this topic whenever a new table is streamed from or when the structure of the table is altered ({link-prefix}:{link-sqlserver-connector}#sqlserver-schema-evolution[schema evolution procedure must be followed]).
 The message contains a logical representation of the table schema.
 
 The example of the message is:
@@ -323,7 +323,7 @@ The schema change messages use as the key the name of the database to which the 
 
 === Events
 
-All data change events produced by the SQL Server connector have a key and a value, although the structure of the key and value depend on the table from which the change events originated (see link:#sqlserver-topic-names[Topic names]).
+All data change events produced by the SQL Server connector have a key and a value, although the structure of the key and value depend on the table from which the change events originated (see {link-prefix}:{link-sqlserver-connector}#sqlserver-topic-names[Topic names]).
 
 [WARNING]
 ====
@@ -669,7 +669,7 @@ The `source` structure tells us information about SQL Server's record of this ch
 
 [NOTE]
 ====
-When the columns for a row's primary/unique key are updated, the value of the row's key has changed so {prodname} will output _three_ events: a `DELETE` event and a link:#sqlserver-tombstone-events[tombstone event] with the old key for the row, followed by an `INSERT` event with the new key for the row.
+When the columns for a row's primary/unique key are updated, the value of the row's key has changed so {prodname} will output _three_ events: a `DELETE` event and a {link-prefix}:{link-sqlserver-connector}#sqlserver-tombstone-events[tombstone event] with the old key for the row, followed by an `INSERT` event with the new key for the row.
 ====
 
 [[sqlserver-delete-events]]
@@ -1215,8 +1215,8 @@ NOTE: The above example assumes you have extracted the {prodname} SQL Server con
 
 For more information on the deployment process, and deploying connectors with AMQ Streams, refer to the {prodname} installation guides.
 
-* link:https://access.redhat.com/documentation/en-us/red_hat_integration/2019-12/html-single/installing_change_data_capture_on_openshift[Installing {prodname} on OpenShift]
-* link:https://access.redhat.com/documentation/en-us/red_hat_integration/2019-12/html-single/installing_change_data_capture_on_rhel[Installing {prodname} on RHEL]
+* {LinkCDCInstallOpenShift}[{NameCDCInstallOpenShift}]
+* {LinkCDCInstallRHEL}[{NameCDCInstallRHEL}]
 endif::product[]
 
 ifdef::community[]
@@ -1229,7 +1229,7 @@ endif::community[]
 
 To use the connector to produce change events for a particular SQL Server database or cluster:
 
-. Enable the link:#setting-up-sqlserver[CDC on SQL Server] to publish the _CDC_ events in the database.
+. Enable the {link-prefix}:{link-sqlserver-connector}#setting-up-sqlserver[CDC on SQL Server] to publish the _CDC_ events in the database.
 . Create a configuration file for the SQL Server connector.
 
 When the connector starts, it will grab a consistent snapshot of the schemas in your SQL Server database and start streaming changes, producing events for every inserted, updated, and deleted row.
@@ -1311,7 +1311,7 @@ apiVersion: kafka.strimzi.io/v1beta1
 
 endif::product[]
 
-See the link:#sqlserver-connector-properties[complete list of connector properties] that can be specified in these configurations.
+See the {link-prefix}:{link-sqlserver-connector}#sqlserver-connector-properties[complete list of connector properties] that can be specified in these configurations.
 
 This configuration can be sent via POST to a running Kafka Connect service, which will then record the configuration and start up the one connector task that will connect to the SQL Server database, read the transaction log, and record events to Kafka topics.
 
@@ -1437,7 +1437,7 @@ Note: Depending on the `_hashAlgorithm_` used, the `_salt_` selected and the act
 
 |[[sqlserver-property-time-precision-mode]]<<sqlserver-property-time-precision-mode, `time.precision.mode`>>
 |`adaptive`
-| Time, date, and timestamps can be represented with different kinds of precision, including: `adaptive` (the default) captures the time and timestamp values exactly as in the database using either millisecond, microsecond, or nanosecond precision values based on the database column's type; or `connect` always represents time and timestamp values using Kafka Connect's built-in representations for Time, Date, and Timestamp, which uses millisecond precision regardless of the database columns' precision. See link:#sqlserver-temporal-values[temporal values].
+| Time, date, and timestamps can be represented with different kinds of precision, including: `adaptive` (the default) captures the time and timestamp values exactly as in the database using either millisecond, microsecond, or nanosecond precision values based on the database column's type; or `connect` always represents time and timestamp values using Kafka Connect's built-in representations for Time, Date, and Timestamp, which uses millisecond precision regardless of the database columns' precision. See {link-prefix}:{link-sqlserver-connector}#sqlserver-temporal-values[temporal values].
 
 |[[sqlserver-property-tombstones-on-delete]]<<sqlserver-property-tombstones-on-delete, `tombstones.on.delete`>>
 |`true`
@@ -1601,7 +1601,7 @@ Possible values include "Z", "UTC", offset values like "+02:00", short zone ids 
 |`false`
 |When set to `true` Debezium generates events with transaction boundaries and enriches data events envelope with transaction metadata.
 
-See link:#sqlserver-transaction-metadata[Transaction Metadata] for additional details.
+See {link-prefix}:{link-sqlserver-connector}#sqlserver-transaction-metadata[Transaction Metadata] for additional details.
 
 |=======================
 

@@ -256,7 +256,7 @@ Test that the `wal2json` is working properly by obtaining the `test_table` chang
 https://www.postgresql.org/docs/9.6/static/app-pgrecvlogical.html[pg_recvlogical] PostgreSQL client application
 that controls PostgreSQL logical decoding streams.
 
-Before starting make sure that you have logged in as a user with database replication permissions, as configured at a link:#setting_replication_permissions[previous step].
+Before starting make sure that you have logged in as a user with database replication permissions, as configured at a {link-prefix}:{link-postgresql-plugins}#setting_replication_permissions[previous step].
 Otherwise, the slot creation and streaming fails with the following error message:
 [source,bash]
 ----
@@ -361,7 +361,7 @@ Upon the `INSERT`, `UPDATE` and `DELETE` events, the `wal2json` plug-in outputs 
 
 [TIP]
 ====
-Note that the link:#replica-identity[REPLICA IDENTITY] of the table `test_table` is set to `DEFAULT`.
+Note that the {link-prefix}:{link-postgresql-plugins}#replica-identity[REPLICA IDENTITY] of the table `test_table` is set to `DEFAULT`.
 ====
 
 When the test is finished, the slot `test_slot` for the database `test` can be removed by the following command:
@@ -401,7 +401,7 @@ Replica Identity: FULL
 ----
 
 Here is the output of `wal2json` plug-in on `UPDATE` event and `REPLICA IDENTITY` set to `FULL`.
-Compare with the link:#update-table-change-event[respective output] when `REPLICA IDENTITY` is set to `DEFAULT`.
+Compare with the {link-prefix}:{link-postgresql-plugins}#update-table-change-event[respective output] when `REPLICA IDENTITY` is set to `DEFAULT`.
 
 ._Output for `UPDATE`_
 [source,json]

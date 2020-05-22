@@ -62,7 +62,7 @@ The connector's functionality relies on PostgreSQL's logical decoding feature.
 Please be aware of the following limitations which are also reflected by the connector:
 
 . Logical Decoding does not support DDL changes: this means that the connector is unable to report DDL change events back to consumers.
-. Logical Decoding replication slots are only supported on `primary` servers: this means that when there is a cluster of PostgreSQL servers, the connector can only run on the active `primary` server. It cannot run on `hot` or `warm` standby replicas. If the `primary` server fails or is demoted, the connector will stop. Once the `primary` has recovered the connector can simply be restarted. If a different PostgreSQL server has been promoted to `primary`, the connector configuration must be adjusted before the connector is restarted. Make sure you read more about how the connector behaves link:#postgresql-when-things-go-wrong[when things go wrong].
+. Logical Decoding replication slots are only supported on `primary` servers: this means that when there is a cluster of PostgreSQL servers, the connector can only run on the active `primary` server. It cannot run on `hot` or `warm` standby replicas. If the `primary` server fails or is demoted, the connector will stop. Once the `primary` has recovered the connector can simply be restarted. If a different PostgreSQL server has been promoted to `primary`, the connector configuration must be adjusted before the connector is restarted. Make sure you read more about how the connector behaves {link-prefix}:{link-postgresql-connector}#postgresql-when-things-go-wrong[when things go wrong].
 ====
 
 [IMPORTANT]
@@ -197,7 +197,7 @@ All up-to-date differences are tracked in a test suite https://github.com/debezi
 [[postgresql-server-configuration]]
 === Configuring the PostgreSQL Server
 
-If you are using one of the supported link:#postgresql-output-plugin[logical decoding plug-ins] (i.e. not pgoutput) and it has been installed,
+If you are using one of the supported {link-prefix}:{link-postgresql-connector}#postgresql-output-plugin[logical decoding plug-ins] (i.e. not pgoutput) and it has been installed,
 configure the server to load the plugin at startup:
 
 .postgresql.conf
@@ -280,7 +280,7 @@ ifdef::community[]
 
 The PostgreSQL connector can be used with a standalone PostgreSQL server or with a cluster of PostgreSQL servers.
 
-As mentioned link:#postgresql-limitations[in the beginning], PostgreSQL (for all versions <= 12) only supports logical replication slots on `primary` servers. This means that a replica in a PostgreSQL cluster cannot be configured for logical replication, and consequently that the Debezium PostgreSQL Connector can only connect and communicate with the primary server. Should this server fail, the connector will stop. When the cluster is repaired, if the original primary server is once again promoted to `primary`, the connector can simply be restarted. However, if a different PostgreSQL server _with the plugin and proper configuration_ is promoted to `primary`, the connector configuration must be changed to point to the new `primary` server and then can be restarted.
+As mentioned {link-prefix}:{link-postgresql-connector}#postgresql-limitations[in the beginning], PostgreSQL (for all versions <= 12) only supports logical replication slots on `primary` servers. This means that a replica in a PostgreSQL cluster cannot be configured for logical replication, and consequently that the Debezium PostgreSQL Connector can only connect and communicate with the primary server. Should this server fail, the connector will stop. When the cluster is repaired, if the original primary server is once again promoted to `primary`, the connector can simply be restarted. However, if a different PostgreSQL server _with the plugin and proper configuration_ is promoted to `primary`, the connector configuration must be changed to point to the new `primary` server and then can be restarted.
 endif::community[]
 
 [[postgresql-wal-disk-space]]
@@ -347,7 +347,7 @@ The fourth snapshot mode, *initial only*, will perform a database snapshot and t
 The fifth snapshot mode, *exported*, will perform a database snapshot based on the point in time when the replication slot was created.  This mode is an excellent way to perform a snapshot in a lock-free way.
 
 ifdef::community[]
-The final snapshot mode, *custom*, allows the user to inject their own implementation of the `io.debezium.connector.postgresql.spi.Snapshotter` interface via the `snapshot.custom.class` configuration property, with the class on the classpath of your Kafka Connect cluster (or included in the JAR if using the `EmbeddedEngine`). For more details, see the link:#postgresql-custom-snapshot[Custom Snapshot] section.
+The final snapshot mode, *custom*, allows the user to inject their own implementation of the `io.debezium.connector.postgresql.spi.Snapshotter` interface via the `snapshot.custom.class` configuration property, with the class on the classpath of your Kafka Connect cluster (or included in the JAR if using the `EmbeddedEngine`). For more details, see the {link-prefix}:{link-postgresql-connector}#postgresql-custom-snapshot[Custom Snapshot] section.
 
 
 [[postgresql-custom-snapshot]]
@@ -445,7 +445,7 @@ endif::community[]
 
 The PostgreSQL connector will typically spend the vast majority of its time streaming changes from the PostgreSQL server to which it is connected. This mechanism relies on https://www.postgresql.org/docs/current/static/protocol-replication.html[_PostgreSQL's replication protocol_] where the client can receive changes from the server as they are committed in the server's transaction log at certain positions (also known as `Log Sequence Numbers` or in short LSNs).
 
-Whenever the server commits a transaction, a separate server process invokes a callback function from the link:#postgresql-output-plugin[logical decoding plugin]. This function processes the changes from the transaction, converts them to a specific format (Protobuf or JSON in the case of {prodname} plugin) and writes them on an output stream which can then be consumed by clients.
+Whenever the server commits a transaction, a separate server process invokes a callback function from the {link-prefix}:{link-postgresql-connector}#postgresql-output-plugin[logical decoding plugin]. This function processes the changes from the transaction, converts them to a specific format (Protobuf or JSON in the case of {prodname} plugin) and writes them on an output stream which can then be consumed by clients.
 
 The PostgreSQL connector acts as a PostgreSQL client, and when it receives these changes it transforms the events into {prodname} _create_, _update_, or _delete_ events that include the LSN position of the event. The PostgreSQL connector forwards these change events to the Kafka Connect framework (running in the same process), which then asynchronously writes them in the same order to the appropriate Kafka topic. Kafka Connect uses the term _offset_ for the source-specific position information that {prodname} includes with each event, and Kafka Connect periodically records the most recent offset in another Kafka topic.
 
@@ -476,7 +476,7 @@ which means that this connector can consume that replication stream
 without the need for additional plug-ins being installed.
 This is particularly valuable for environments where installation of plug-ins isn't supported or allowed.
 
-See link:#setting-up-postgresql[Setting up PostgreSQL] for more details.
+See {link-prefix}:{link-postgresql-connector}#setting-up-postgresql[Setting up PostgreSQL] for more details.
 
 [[postgresql-topic-names]]
 ==== Topics Names
@@ -500,7 +500,7 @@ If on the other hand the tables were not part of a specific schema but rather cr
 [[postgresql-meta-information]]
 ==== Meta Information
 
-Each `record` produced by the PostgreSQL connector has, in addition to the link:#postgresql-events[_database event_], some meta-information about where the event occurred on the server, the name of the source partition and the name of the Kafka topic and partition where the event should be placed:
+Each `record` produced by the PostgreSQL connector has, in addition to the {link-prefix}:{link-postgresql-connector}#postgresql-events[_database event_], some meta-information about where the event occurred on the server, the name of the source partition and the name of the Kafka topic and partition where the event should be placed:
 
 [source,json,indent=0]
 ----
@@ -526,7 +526,7 @@ The `sourceOffset` portion of the message contains information about the locatio
 [[postgresql-events]]
 ==== Events
 
-All data change events produced by the PostgreSQL connector have a key and a value, although the structure of the key and value depend on the table from which the change events originated (see link:#postgresql-topic-names[Topic names]).
+All data change events produced by the PostgreSQL connector have a key and a value, although the structure of the key and value depend on the table from which the change events originated (see {link-prefix}:{link-postgresql-connector}#postgresql-topic-names[Topic names]).
 
 [NOTE]
 ====
@@ -610,11 +610,11 @@ The value of the change event message is a bit more complicated. Like the messag
 
 [WARNING]
 ====
-Whether or not this field is available is highly dependent on the link:#postgresql-replica-identity[_REPLICA IDENTITY_] setting for each table
+Whether or not this field is available is highly dependent on the {link-prefix}:{link-postgresql-connector}#postgresql-replica-identity[_REPLICA IDENTITY_] setting for each table
 ====
 
 * `after` is an optional field that if present contains the state of the row _after_ the event occurred. The structure is described by the same `PostgreSQL_server.public.customers.Value` Kafka Connect schema used in `before`.
-* `source` is a mandatory field that contains a structure describing the source metadata for the event, which in the case of PostgreSQL contains several fields: the {prodname} version, the connector name, the name of the affected database, schema and table, whether the event is part of an ongoing snapshot or not and the same fields from the record's link:#postgresql-meta-information[_meta information_] section
+* `source` is a mandatory field that contains a structure describing the source metadata for the event, which in the case of PostgreSQL contains several fields: the {prodname} version, the connector name, the name of the affected database, schema and table, whether the event is part of an ongoing snapshot or not and the same fields from the record's {link-prefix}:{link-postgresql-connector}#postgresql-meta-information[_meta information_] section
 * `ts_ms` is optional and if present contains the time (using the system clock in the JVM running the Kafka Connect task) at which the connector processed the event.
 
 And of course, the _schema_ portion of the event message's value contains a schema that describes this envelope structure and the nested fields within it.
@@ -861,7 +861,7 @@ The value of an _update_ change event on this table will actually have the exact
 When we compare this to the value in the _insert_ event, we see a couple of differences in the `payload` section:
 
 * The `op` field value is now `u`, signifying that this row changed because of an update
-* The `before` field now has the state of the row with the values before the database commit, but only for the primary key column `id`. This is because the  link:#postgresql-replica-identity[_REPLICA IDENTITY_] which is by default `DEFAULT`.
+* The `before` field now has the state of the row with the values before the database commit, but only for the primary key column `id`. This is because the  {link-prefix}:{link-postgresql-connector}#postgresql-replica-identity[_REPLICA IDENTITY_] which is by default `DEFAULT`.
 
 [NOTE]
 ====
@@ -876,7 +876,7 @@ There are several things we can learn by just looking at this `payload` section.
 
 [NOTE]
 ====
-When the columns for a row's primary/unique key are updated, the value of the row's key has changed so {prodname} will output _three_ events: a `DELETE` event and link:#postgresql-tombstone-events[tombstone event] with the old key for the row, followed by an `INSERT` event with the new key for the row.
+When the columns for a row's primary/unique key are updated, the value of the row's key has changed so {prodname} will output _three_ events: a `DELETE` event and {link-prefix}:{link-postgresql-connector}#postgresql-tombstone-events[tombstone event] with the old key for the row, followed by an `INSERT` event with the new key for the row.
 ====
 
 ===== Primary Key Update Header
@@ -927,7 +927,7 @@ So far we've seen samples of _create_ and _update_ events. Now, let's look at th
 If we look at the `payload` portion, we see a number of differences compared with the _create_ or _update_ event payloads:
 
 * The `op` field value is now `d`, signifying that this row was deleted
-* The `before` field now has the state of the row that was deleted with the database commit. Again this only contains the primary key column due to the link:#postgresql-replica-identity[_REPLICA IDENTITY_] setting
+* The `before` field now has the state of the row that was deleted with the database commit. Again this only contains the primary key column due to the {link-prefix}:{link-postgresql-connector}#postgresql-replica-identity[_REPLICA IDENTITY_] setting
 * The `after` field is null, signifying that the row no longer exists
 * The `source` field structure has many of the same values as before, except the `ts_ms`, `lsn` and `txId` fields have changed
 * The `ts_ms` shows the timestamp that {prodname} processed this event.
@@ -1578,8 +1578,8 @@ NOTE: The above example assumes you have extracted the {prodname} PostgreSQL con
 
 For more information on the deployment process, and deploying connectors with AMQ Streams, refer to the {prodname} installation guides.
 
-* link:https://access.redhat.com/documentation/en-us/red_hat_integration/2019-12/html-single/installing_change_data_capture_on_openshift[Installing {prodname} on OpenShift]
-* link:https://access.redhat.com/documentation/en-us/red_hat_integration/2019-12/html-single/installing_change_data_capture_on_rhel[Installing {prodname} on RHEL]
+* {LinkCDCInstallOpenShift}[{NameCDCInstallOpenShift}]
+* {LinkCDCInstallRHEL}[{NameCDCInstallRHEL}]
 endif::product[]
 
 ifdef::community[]
@@ -1591,8 +1591,8 @@ endif::community[]
 
 To use the connector to produce change events for a particular PostgreSQL server or cluster:
 
-. Install the link:#postgresql-output-plugin[logical decoding plugin]
-. Configure the link:#postgresql-server-configuration[PostgreSQL server] to support logical replication
+. Install the {link-prefix}:{link-postgresql-connector}#postgresql-output-plugin[logical decoding plugin]
+. Configure the {link-prefix}:{link-postgresql-connector}#postgresql-server-configuration[PostgreSQL server] to support logical replication
 . Create a configuration file for the PostgreSQL connector.
 
 When the connector starts, it will grab a consistent snapshot of the databases in your PostgreSQL server and start streaming changes, producing events for every inserted, updated, and deleted row. You can also choose to produce events for a subset of the schemas and tables.
@@ -1624,8 +1624,8 @@ Typically, you configure the {prodname} PostgreSQL connector in a `.json` file u
 <2> The name of this PostgreSQL connector class.
 <3> The address of the PostgreSQL server.
 <4> The port number of the PostgreSQL server.
-<5> The name of the PostgreSQL user that has the link:#postgresql-permissions[required privileges].
-<6> The password for the PostgreSQL user that has the link:#postgresql-permissions[required privileges].
+<5> The name of the PostgreSQL user that has the {link-prefix}:{link-postgresql-connector}#postgresql-permissions[required privileges].
+<6> The password for the PostgreSQL user that has the {link-prefix}:{link-postgresql-connector}#postgresql-permissions[required privileges].
 <7> The name of the PostgreSQL database to connect to
 <8> The logical name of the PostgreSQL server/cluster, which forms a namespace and is used in all the names of the Kafka topics to which the connector writes, the Kafka Connect schema names, and the namespaces of the corresponding Avro schema when the Avro Connector is used.
 <9> A list of all tables hosted by this server that this connector will monitor. This is optional, and there are other properties for listing the schemas and tables to include or exclude from monitoring.
@@ -1673,7 +1673,7 @@ This name will be used as the prefix for all Kafka topics.
 
 endif::product[]
 
-See the link:#postgresql-connector-properties[complete list of connector properties] that can be specified in these configurations.
+See the {link-prefix}:{link-postgresql-connector}#postgresql-connector-properties[complete list of connector properties] that can be specified in these configurations.
 
 This configuration can be sent via POST to a running Kafka Connect service, which will then record the configuration and start up the one connector task that will connect to the PostgreSQL database and record events to Kafka topics.
 
@@ -1726,7 +1726,7 @@ The following configuration properties are _required_ unless a default value is 
 
 |[[postgresql-property-plugin-name]]<<postgresql-property-plugin-name, `plugin.name`>>
 |`decoderbufs`
-|The name of the Postgres link:#postgresql-output-plugin[logical decoding plugin] installed on the server.
+|The name of the Postgres {link-prefix}:{link-postgresql-connector}#postgresql-output-plugin[logical decoding plugin] installed on the server.
 ifdef::product[]
 The only supported value is `pgoutput`.
 endif::product[]
@@ -1809,7 +1809,7 @@ Only alphanumeric characters and underscores should be used.
 
 |[[postgresql-property-time-precision-mode]]<<postgresql-property-time-precision-mode, `time.precision.mode`>>
 |`adaptive`
-| Time, date, and timestamps can be represented with different kinds of precision, including: `adaptive` (the default) captures the time and timestamp values exactly as in the database using either millisecond, microsecond, or nanosecond precision values based on the database column's type; `adaptive_time_microseconds` captures the date, datetime and timestamp values exactly as in the database using either millisecond, microsecond, or nanosecond precision values based on the database column's type, with the exception of TIME type fields, which are always captured as microseconds; or `connect` always represents time and timestamp values using Kafka Connect's built-in representations for Time, Date, and Timestamp, which uses millisecond precision regardless of the database columns' precision. See link:#postgresql-temporal-values[temporal values].
+| Time, date, and timestamps can be represented with different kinds of precision, including: `adaptive` (the default) captures the time and timestamp values exactly as in the database using either millisecond, microsecond, or nanosecond precision values based on the database column's type; `adaptive_time_microseconds` captures the date, datetime and timestamp values exactly as in the database using either millisecond, microsecond, or nanosecond precision values based on the database column's type, with the exception of TIME type fields, which are always captured as microseconds; or `connect` always represents time and timestamp values using Kafka Connect's built-in representations for Time, Date, and Timestamp, which uses millisecond precision regardless of the database columns' precision. See {link-prefix}:{link-postgresql-connector}#postgresql-temporal-values[temporal values].
 
 |[[postgresql-property-decimal-handling-mode]]<<postgresql-property-decimal-handling-mode, `decimal.handling.mode`>>
 |`precise`
@@ -1913,7 +1913,7 @@ The following _advanced_ configuration properties have good defaults that will w
 |`initial`
 |Specifies the criteria for running a snapshot upon startup of the connector. The default is *initial*, and specifies the connector can run a snapshot only when no offsets have been recorded for the logical server name. The *always* option specifies that the connector run a snapshot each time on startup. The *never* option specifies that the connect should never use snapshots and that upon first startup with a logical server name the connector should read from either from where it last left off (last LSN position) or start from the beginning from the point of the view of the logical replication slot. The *initial_only* option specifies that the connector should only take an initial snapshot and then stop, without processing any subsequent changes. The *exported* option specifies that the database snapshot will be based on the point in time when the replication slot was created and is an excellent way to perform the snapshot in a lock-free way.
 ifdef::community[]
-Finally, if set to *custom* then the user must also set `snapshot.custom.class` which is a custom implementation of the `io.debezium.connector.postgresql.spi.Snapshotter` interface. See link:#postgresql-snapshots[snapshots].
+Finally, if set to *custom* then the user must also set `snapshot.custom.class` which is a custom implementation of the `io.debezium.connector.postgresql.spi.Snapshotter` interface. See {link-prefix}:{link-postgresql-connector}#postgresql-snapshots[snapshots].
 
 |[[postgresql-property-snapshot-custom-class]]<<postgresql-property-snapshot-custom-class, `snapshot.custom.class`>>
 |
@@ -1922,7 +1922,7 @@ endif::community[]
 
 |[[postgresql-property-snapshot-lock-timeout-ms]]<<postgresql-property-snapshot-lock-timeout-ms, `snapshot.lock.timeout.ms`>>
 |`10000`
-|Positive integer value that specifies the maximum amount of time (in milliseconds) to wait to obtain table locks when performing a snapshot. If table locks cannot be acquired in this time interval, the snapshot will fail. See link:#postgresql-snapshots[snapshots]
+|Positive integer value that specifies the maximum amount of time (in milliseconds) to wait to obtain table locks when performing a snapshot. If table locks cannot be acquired in this time interval, the snapshot will fail. See {link-prefix}:{link-postgresql-connector}#postgresql-snapshots[snapshots]
 
 |[[postgresql-property-snapshot-select-statement-overrides]]<<postgresql-property-snapshot-select-statement-overrides, `snapshot.select.statement.overrides`>>
 |
@@ -2044,13 +2044,13 @@ See {link-prefix}:{link-avro-serialization}#avro-naming[Avro naming] for more de
 |`__debezium_unavailable_value`
 |Specify the constant that will be provided by {prodname} to indicate that the original value is a toasted value not provided by the database.
 If starts with `hex:` prefix it is expected that the rest of the string repesents hexadecimally encoded octets.
-See link:#postgresql-toasted-values[Toasted Values] for additional details.
+See {link-prefix}:{link-postgresql-connector}#postgresql-toasted-values[Toasted Values] for additional details.
 
 |[[postgresql-property-provide-transaction-metadata]]<<postgresql-property-provide-transaction-metadata, `provide.transaction.metadata` (Incubating)>>
 |`false`
 |When set to `true` Debezium generates events with transaction boundaries and enriches data events envelope with transaction metadata.
 
-See link:#postgresql-transaction-metadata[Transaction Metadata] for additional details.
+See {link-prefix}:{link-postgresql-connector}#postgresql-transaction-metadata[Transaction Metadata] for additional details.
 
 |=======================
 
@@ -2081,7 +2081,7 @@ The PostgreSQL connector stores externally the last processed offset (in the for
 
 As of `12`, PostgreSQL allows logical replication slots _only on primary servers_, which means that a PostgreSQL connector can only be pointed to the active primary of a database cluster.
 Also replication slots themselves are not propagated to replicas.
-If the primary node goes down, only after a new primary has been promoted (with the link:#postgresql-output-plugin[logical decoding plugin] installed) and a replication slot has been created there, the connector can be restarted and pointed to the new server.
+If the primary node goes down, only after a new primary has been promoted (with the {link-prefix}:{link-postgresql-connector}#postgresql-output-plugin[logical decoding plugin] installed) and a replication slot has been created there, the connector can be restarted and pointed to the new server.
 
 There are some really important caveats to failovers, and you should pause Debezium until you can verify that you have a replication slot intact which has not lost data.  After a failover, you will miss change events unless your administration of failovers includes a process to recreate the Debezium replication slot before the application is allowed to write to the *new* primary. You also may need to verify in a failover situation that Debezium was able to read all changes in the slot **before the old primary failed**.
 

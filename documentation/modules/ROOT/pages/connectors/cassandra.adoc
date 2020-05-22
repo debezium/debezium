@@ -25,7 +25,7 @@ Since Cassandra 3.0, a http://cassandra.apache.org/doc/3.11.3/operating/cdc.html
 
 The Cassandra connector resides on each Cassandra node and monitors the `cdc_raw` directory for change. It processes all local commit log segments as they are detected, produces a change event for every row-level insert, update, and delete operations in the commit log, publishes all change events for each table in a separate Kafka topic, and finally deletes the commit log from the `cdc_raw` directory. This last step is important because once CDC is enabled, Cassandra itself cannot purge the commit logs. If the `cdc_free_space_in_mb` fills up, writes to CDC-enabled tables will be rejected.
 
-The connector is tolerant of failures. As the connector reads commit logs and produces events, it records each commit log segment's filename and position along with each event. If the connector stops for any reason (including communication failures, network problems, or crashes), upon restart it simply continues reading the commit log where it last left off. This includes snapshots: if the snapshot was not completed when the connector is stopped, upon restart it will begin a new snapshot. We'll talk later about how the connector behaves link:#cassandra-when-things-go-wrong[when things go wrong].
+The connector is tolerant of failures. As the connector reads commit logs and produces events, it records each commit log segment's filename and position along with each event. If the connector stops for any reason (including communication failures, network problems, or crashes), upon restart it simply continues reading the commit log where it last left off. This includes snapshots: if the snapshot was not completed when the connector is stopped, upon restart it will begin a new snapshot. We'll talk later about how the connector behaves {link-prefix}:{link-cassandra-connector}#cassandra-when-things-go-wrong[when things go wrong].
 
 [NOTE]
 ====
@@ -176,7 +176,7 @@ When sending a message to a topic, the Kafka Connect schema for the key and the 
 [[cassandra-events]]
 === Events
 
-All data change events produced by the Cassandra connector have a key and a value, although the structure of the key and value depends on the table from which the change events originated (see link:#cassandra-topic-names[Topic Names]).
+All data change events produced by the Cassandra connector have a key and a value, although the structure of the key and value depends on the table from which the change events originated (see {link-prefix}:{link-cassandra-connector}#cassandra-topic-names[Topic Names]).
 
 [[cassandra-change-events-key]]
 ==== Change Event's Key
@@ -780,7 +780,7 @@ If a Cassandra table temporarily disables CDC and then re-enables it again after
 [[cassandra-deploying-a-connector]]
 == Deploying A Connector
 
-The Cassandra connector should be deployed each Cassandra node in a Cassandra cluster. The Cassandra connector Jar file takes in a cdc configuration (.properties) file. See link:#cassandra-example-configuration[see example configurations] for reference.
+The Cassandra connector should be deployed each Cassandra node in a Cassandra cluster. The Cassandra connector Jar file takes in a cdc configuration (.properties) file. See {link-prefix}:{link-cassandra-connector}#cassandra-example-configuration[see example configurations] for reference.
 
 [[cassandra-example-configuration]]
 === Example configuration
