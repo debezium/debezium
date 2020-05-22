@@ -259,7 +259,7 @@ This topic should be considered as an internal state of the connector and should
 If the application needs to track changes in the source database there is the public-facing schema change topic.
 The topic name is the same as the logical server name configured in connector configuration.
 
-Debezium emits a new message to this topic whenever a new table is streamed from or when the structure of the table is altered (link:#schema-evolution[schema evolution procedure must be followed]).
+Debezium emits a new message to this topic whenever a new table is streamed from or when the structure of the table is altered ({link-prefix}:{link-oracle-connector}#schema-evolution[schema evolution procedure must be followed]).
 The message contains a logical representation of the table schema.
 
 The example of the message is:
@@ -398,7 +398,7 @@ The schema change messages use as the key the name of the database to which the 
 [[events]]
 === Events
 
-All data change events produced by the Oracle connector have a key and a value, although the structure of the key and value depend on the table from which the change events originated (see link:#topic-names[Topic names]).
+All data change events produced by the Oracle connector have a key and a value, although the structure of the key and value depend on the table from which the change events originated (see {link-prefix}:{link-oracle-connector}#topic-names[Topic names]).
 
 [WARNING]
 ====
@@ -700,7 +700,7 @@ The `source` structure tells us information about Oracle's record of this change
 
 [NOTE]
 ====
-When the columns for a row's primary/unique key are updated, the value of the row's key has changed so Debezium will output _three_ events: a `DELETE` event and a link:#tombstone-events[tombstone event] with the old key for the row, followed by an `INSERT` event with the new key for the row.
+When the columns for a row's primary/unique key are updated, the value of the row's key has changed so Debezium will output _three_ events: a `DELETE` event and a {link-prefix}:{link-oracle-connector}#tombstone-events[tombstone event] with the old key for the row, followed by an `INSERT` event with the new key for the row.
 ====
 
 [[delete-events]]
@@ -1273,6 +1273,6 @@ See {link-prefix}:{link-avro-serialization}#avro-naming[Avro naming] for more de
 |`false`
 |When set to `true` Debezium generates events with transaction boundaries and enriches data events envelope with transaction metadata.
 
-See link:#transaction-metadata[Transaction Metadata] for additional details.
+See {link-prefix}:{link-oracle-connector}#transaction-metadata[Transaction Metadata] for additional details.
 
 |=======================
