@@ -1109,7 +1109,7 @@ Other data type mappings are described in the following sections.
 If present, a column's default value will be propagated to the corresponding field's Kafka Connect schema.
 Change messages will contain the field's default value
 (unless an explicit column value had been given), so there should rarely be the need to obtain the default value from the schema.
-Passing the default value helps though with satisfying the compatibility rules when xref:configuration/avro.adoc[using Avro] as serialization format together with the Confluent schema registry.
+Passing the default value helps though with satisfying the compatibility rules when {link-prefix}:{link-avro-serialization}[using Avro] as serialization format together with the Confluent schema registry.
 
 [[db2-temporal-values]]
 ==== Temporal values
@@ -1292,7 +1292,7 @@ Using the Db2 connector is straightforward. Here is an example of the configurat
 <5> The name of the Db2 user
 <6> The password for the Db2 user
 <7> The name of the database to capture changes from
-<8> The logical name of the Db2 instance/cluster, which forms a namespace and is used in all the names of the Kafka topics to which the connector writes, the Kafka Connect schema names, and the namespaces of the corresponding Avro schema when the xref:configuration/avro.adoc[Avro Connector] is used.
+<8> The logical name of the Db2 instance/cluster, which forms a namespace and is used in all the names of the Kafka topics to which the connector writes, the Kafka Connect schema names, and the namespaces of the corresponding Avro schema when the {link-prefix}:{link-avro-serialization}[Avro Connector] is used.
 <9> A list of all tables whose changes Debezium should capture
 <10> The list of Kafka brokers that this connector will use to write and recover DDL statements to the database history topic.
 <11> The name of the database history topic where the connector will write and recover DDL statements. This topic is for internal use only and should not be used by consumers.
@@ -1311,7 +1311,7 @@ The {prodname} Db2 connector has three metric types in addition to the built-in 
 * <<streaming-metrics, streaming metrics>>; for monitoring the connector when reading CDC table data
 * <<schema-history-metrics, schema history metrics>>; for monitoring the status of the connector's schema history
 
-Please refer to the xref:operations/monitoring.adoc[monitoring documentation] for details of how to expose these metrics via JMX.
+Please refer to the {link-prefix}:{link-debezium-monitoring}[monitoring documentation] for details of how to expose these metrics via JMX.
 
 [[db2-monitoring-snapshots]]
 [[db2-snapshot-metrics]]
@@ -1452,7 +1452,7 @@ Fully-qualified names for columns are of the form _schemaName_._tableName_._colu
 The schema parameters `pass:[_]pass:[_]debezium.source.column.type`, `pass:[_]pass:[_]debezium.source.column.length` and `pass:[_]pass:[_]debezium.source.column.scale` will be used to propagate the original type name and length (for variable-width types), respectively.
 Useful to properly size corresponding columns in sink databases.
 Fully-qualified data type names are of the form _schemaName_._tableName_._typeName_.
-See xref:data-types[] for the list of Db2-specific data type names.
+See {link-prefix}:{link-db2-connector}#db2-data-types[Db2 data types] for the list of Db2-specific data type names.
 
 |[[db2-property-message-key-columns]]<<db2-property-message-key-columns, `message.key.columns`>>
 |_empty string_

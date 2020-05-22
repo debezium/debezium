@@ -25,8 +25,8 @@ different modes exist for snapshotting, refer to the docs of the specific connec
 * *Masking:* the values from specific columns can be masked, e.g. for sensitive data
 * *Monitoring:* most connectors can be monitored using JMX
 * Different ready-to-use *message transformations*:
-e.g. for xref:configuration/topic-routing.adoc[message routing],
-extraction of new record state (xref:configuration/event-flattening.adoc[relational connectors], xref:configuration/mongodb-event-flattening.adoc[MongoDB])
-and xref:configuration/outbox-event-router.adoc[routing of events] from a transactional outbox table
+e.g. for {link-prefix}:{link-topic-routing}[message routing],
+extraction of new record state ({link-prefix}:{link-event-flattening}[relational connectors], {link-prefix}:{link-mongodb-event-flattening}[MongoDB])
+and {link-prefix}:{link-outbox-event-router}[routing of events] from a transactional outbox table
 
-Refer to the xref:connectors/index.adoc[connector documentation] for a list of all supported databases and detailed information about the features and configuration options of each connector.
+Refer to the {link-prefix}:{link-connectors}[connector documentation] for a list of all supported databases and detailed information about the features and configuration options of each connector.

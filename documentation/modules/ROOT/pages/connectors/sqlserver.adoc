@@ -1036,7 +1036,7 @@ If present, a column's default value is propagated to the corresponding field's 
 Change messages will contain the field's default value
 (unless an explicit column value had been given), so there should rarely be the need to obtain the default value from the schema.
 ifdef::community[]
-Passing the default value helps though with satisfying the compatibility rules when xref:configuration/avro.adoc[using Avro] as serialization format together with the Confluent schema registry.
+Passing the default value helps though with satisfying the compatibility rules when {link-prefix}:{link-avro-serialization}[using Avro] as serialization format together with the Confluent schema registry.
 endif::community[]
 
 [[sqlserver-temporal-values]]
@@ -1324,7 +1324,7 @@ The {prodname} SQL Server connector has three metric types in addition to the bu
 * <<streaming-metrics, streaming metrics>>; for monitoring the connector when reading CDC table data
 * <<schema-history-metrics, schema history metrics>>; for monitoring the status of the connector's schema history
 
-Please refer to the xref:operations/monitoring.adoc[monitoring documentation] for details of how to expose these metrics via JMX.
+Please refer to the {link-prefix}:{link-debezium-monitoring}[monitoring documentation] for details of how to expose these metrics via JMX.
 
 [[sqlserver-snapshot-metrics]]
 ==== Snapshot Metrics
@@ -1466,7 +1466,7 @@ Fully-qualified names for columns are of the form _schemaName_._tableName_._colu
 The schema parameters `pass:[_]pass:[_]debezium.source.column.type`, `pass:[_]pass:[_]debezium.source.column.length` and `pass:[_]pass:[_]debezium.source.column.scale` will be used to propagate the original type name and length (for variable-width types), respectively.
 Useful to properly size corresponding columns in sink databases.
 Fully-qualified data type names are of the form _schemaName_._tableName_._typeName_.
-See xref:sqlserver-data-types[] for the list of SQL Server-specific data type names.
+See {link-prefix}:{link-sqlserver-connector}#sqlserver-data-types[] for the list of SQL Server-specific data type names.
 
 |[[sqlserver-property-message-key-columns]]<<sqlserver-property-message-key-columns, `message.key.columns`>>
 |_empty string_

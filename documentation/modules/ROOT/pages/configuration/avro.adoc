@@ -18,7 +18,7 @@ in which case the same converters are used for all connectors deployed to that w
 Alternatively, they can be specified for an individual connector.
 Kafka Connect comes with a _JSON converter_ that serializes the message keys and values into JSON documents.
 The JSON converter can be configured to include or exclude the message schema using the (`key.converter.schemas.enable` and `value.converter.schemas.enable`) properties.
-Our xref:tutorial.adoc[tutorial] shows what the messages look like when both payload and schemas are included, but the schemas make the messages very verbose.
+Our {link-prefix}:{link-tutorial}[tutorial] shows what the messages look like when both payload and schemas are included, but the schemas make the messages very verbose.
 If you want your messages serialized with JSON, consider setting these properties to `false` to exclude the verbose schema information.
 
 Alternatively, you can serialize the message keys and values using https://avro.apache.org/[Apache Avro].

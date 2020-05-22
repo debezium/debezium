@@ -14,7 +14,7 @@ toc::[]
 
 [NOTE]
 ====
-This single message transformation (SMT) is supported for only the SQL database connectors. For the MongoDB connector, see the xref:configuration/mongodb-event-flattening.adoc[documentation for the MongoDB equivalent to this SMT].
+This single message transformation (SMT) is supported for only the SQL database connectors. For the MongoDB connector, see the {link-prefix}:{link-mongodb-event-flattening}[documentation for the MongoDB equivalent to this SMT].
 ====
 endif::community[]
 
