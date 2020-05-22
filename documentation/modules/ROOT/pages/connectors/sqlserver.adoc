@@ -1563,7 +1563,7 @@ The connector will read the table contents in multiple batches of this size. Def
 
 |[[sqlserver-property-snapshot-lock-timeout-ms]]<<sqlserver-property-snapshot-lock-timeout-ms, `snapshot.lock.timeout.ms`>>
 |`10000`
-|An integer value that specifies the maximum amount of time (in milliseconds) to wait to obtain table locks when performing a snapshot. If table locks cannot be acquired in this time interval, the snapshot will fail (also see link:#snapshots-sqlserver[snapshots]). +
+|An integer value that specifies the maximum amount of time (in milliseconds) to wait to obtain table locks when performing a snapshot. If table locks cannot be acquired in this time interval, the snapshot will fail (also see {link-prefix}:{link-sqlserver-connector}#sqlserver-snapshots[snapshots]). +
 When set to `0` the connector will fail immediately when it cannot obtain the lock. Value `-1` indicates infinite waiting.
 
 |[[sqlserver-property-snapshot-select-statement-overrides]]<<sqlserver-property-snapshot-select-statement-overrides, `snapshot.select.statement.overrides`>>
