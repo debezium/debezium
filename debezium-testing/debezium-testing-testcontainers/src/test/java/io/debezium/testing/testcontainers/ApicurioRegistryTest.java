@@ -42,18 +42,20 @@ import org.testcontainers.shaded.com.google.common.collect.ImmutableMap;
 import com.jayway.jsonpath.JsonPath;
 
 /**
- * An integration test veryfing the Apicurio registry is interoperable with Debezium
+ * An integration test verifying the Apicurio registry is interoperable with Debezium
  *
  * @author Jiri Pechanec
- *
  */
 public class ApicurioRegistryTest {
+
+    private static final String DEBEZIUM_VERSION = "1.1.1.Final";
+    private static final String APICURIO_VERSION = "1.1.2.Final";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ApicurioRegistryTest.class);
 
     private static Network network = Network.newNetwork();
 
-    private static GenericContainer apicurioContainer = new GenericContainer("apicurio/apicurio-registry-mem:1.1.2.Final")
+    private static GenericContainer<?> apicurioContainer = new GenericContainer<>("apicurio/apicurio-registry-mem:" + APICURIO_VERSION)
             .withNetwork(network)
             .withExposedPorts(8080)
             .waitingFor(new LogMessageWaitStrategy().withRegEx(".*apicurio-registry-app.*started in.*"));
@@ -67,9 +69,9 @@ public class ApicurioRegistryTest {
 
     public static ImageFromDockerfile apicurioDebeziumImage = new ImageFromDockerfile()
             .withDockerfileFromBuilder(builder -> builder
-                    .from("debezium/connect:1.1.1.Final")
+                    .from("debezium/connect:" + DEBEZIUM_VERSION)
                     .env("KAFKA_CONNECT_DEBEZIUM_DIR", "$KAFKA_CONNECT_PLUGINS_DIR/debezium-connector-postgres")
-                    .env("APICURIO_VERSION", "1.1.2.Final")
+                    .env("APICURIO_VERSION", APICURIO_VERSION)
                     .run("cd $KAFKA_CONNECT_DEBEZIUM_DIR && curl https://repo1.maven.org/maven2/io/apicurio/apicurio-registry-distro-connect-converter/$APICURIO_VERSION/apicurio-registry-distro-connect-converter-$APICURIO_VERSION-converter.tar.gz | tar xzv")
                     .build());
 
@@ -150,8 +152,8 @@ public class ApicurioRegistryTest {
             List<ConsumerRecord<byte[], byte[]>> changeEvents = drain(consumer, 1);
 
             // Verify magic byte of Avro messages
-            assertThat(((byte[]) changeEvents.get(0).key())[0]).isZero();
-            assertThat(((byte[]) changeEvents.get(0).value())[0]).isZero();
+            assertThat(changeEvents.get(0).key()[0]).isZero();
+            assertThat(changeEvents.get(0).value()[0]).isZero();
 
             consumer.unsubscribe();
         }
@@ -198,7 +200,7 @@ public class ApicurioRegistryTest {
 
     private ConnectorConfiguration getConfiguration(int id, String converter, String... options) {
         final String host = apicurioContainer.getContainerInfo().getConfig().getHostName();
-        final int port = (Integer) apicurioContainer.getExposedPorts().get(0);
+        final int port = apicurioContainer.getExposedPorts().get(0);
         final String apicurioUrl = "http://" + host + ":" + port;
 
         // host, database, user etc. are obtained from the container
