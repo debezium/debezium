@@ -37,8 +37,8 @@ import io.debezium.relational.Tables.TableFilter;
  */
 public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorConfig {
 
-    private static final String TABLE_BLACKLIST_NAME = "table.blacklist";
-    private static final String TABLE_WHITELIST_NAME = "table.whitelist";
+    protected static final String TABLE_BLACKLIST_NAME = "table.blacklist";
+    protected static final String TABLE_WHITELIST_NAME = "table.whitelist";
     private static final Pattern MSG_KEY_COLUMNS_PATTERN = Pattern.compile("^(([^:]+):([^:;\\s]+))+[^;]$");
     public static final long DEFAULT_SNAPSHOT_LOCK_TIMEOUT_MILLIS = TimeUnit.SECONDS.toMillis(10);
 
