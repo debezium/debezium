@@ -23,6 +23,7 @@ public class ConfigProperties {
     public static final String OCP_PROJECT_DBZ = stringProperty("test.ocp.project.debezium");
     public static final String OCP_PROJECT_MYSQL = System.getProperty("test.ocp.project.mysql", "debezium-mysql");
     public static final String OCP_PROJECT_POSTGRESQL = System.getProperty("test.ocp.project.postgresql", "debezium-postgresql");
+    public static final String OCP_PROJECT_SQLSERVER = System.getProperty("test.ocp.project.sqlserber", "debezium-sqlserver");
     public static final Optional<String> OCP_PULL_SECRET_PATHS = stringOptionalProperty("test.ocp.pull.secret.paths");
 
     public static final boolean STRIMZI_OPERATOR_CONNECTORS = booleanProperty("test.strimzi.operator.connectors");
@@ -41,6 +42,14 @@ public class ConfigProperties {
     public static final String DATABASE_POSTGRESQL_DBZ_PASSWORD = System.getProperty("test.database.postgresql.dbz.password", "debezium");
     public static final String DATABASE_POSTGRESQL_DBZ_DBNAME = System.getProperty("test.database.postgresql.dbname", "debezium");
     public static final Optional<String> DATABASE_POSTGRESQL_HOST = stringOptionalProperty("test.database.postgresql.host");
+
+    public static final int DATABASE_SQLSERVER_PORT = Integer.parseInt(System.getProperty("test.database.sqlserver.port", "1433"));
+    public static final String DATABASE_SQLSERVER_USERNAME = System.getProperty("test.database.sqlserver.username", "sa");
+    public static final String DATABASE_SQLSERVER_SA_PASSWORD = System.getProperty("test.database.sqlserver.password", "Debezium1$");
+    public static final String DATABASE_SQLSERVER_DBZ_USERNAME = System.getProperty("test.database.sqlserver.dbz.username", DATABASE_SQLSERVER_USERNAME);
+    public static final String DATABASE_SQLSERVER_DBZ_PASSWORD = System.getProperty("test.database.sqlserver.dbz.password", DATABASE_SQLSERVER_SA_PASSWORD);
+    public static final String DATABASE_SQLSERVER_DBZ_DBNAME = System.getProperty("test.database.sqlserver.dbname", "testDB");
+    public static final Optional<String> DATABASE_SQLSERVER_HOST = stringOptionalProperty("test.database.sqlserver.host");
 
     private static boolean booleanProperty(String key) {
         String value = System.getProperty(key);

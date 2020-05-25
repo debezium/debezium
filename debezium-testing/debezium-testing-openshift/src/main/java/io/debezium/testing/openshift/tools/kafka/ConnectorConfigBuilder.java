@@ -57,7 +57,11 @@ public class ConnectorConfigBuilder {
         Map<String, Object> crConfig = new HashMap<>(config);
 
         KafkaConnectorBuilder connectorBuilder = new KafkaConnectorBuilder();
-        return connectorBuilder.withNewSpec()
+        return connectorBuilder
+                .withNewMetadata()
+                .withLabels(new HashMap<>())
+                .endMetadata()
+                .withNewSpec()
                 .withClassName((String) crConfig.remove("connector.class"))
                 .withTasksMax((Integer) crConfig.remove("task.max"))
                 .withConfig(crConfig)

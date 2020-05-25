@@ -24,6 +24,7 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.serialization.StringDeserializer;
+import org.awaitility.core.ThrowingRunnable;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.slf4j.Logger;
@@ -116,11 +117,22 @@ public abstract class ConnectorTestBase {
 
     protected void assertTopicsExist(String... names) {
         try (Consumer<String, String> consumer = new KafkaConsumer<>(KAFKA_CONSUMER_PROPS)) {
-            await().atMost(1, TimeUnit.MINUTES).untilAsserted(() -> {
+            await().atMost(2, TimeUnit.MINUTES).untilAsserted(() -> {
                 Set<String> topics = consumer.listTopics().keySet();
                 assertThat(topics).contains(names);
             });
         }
+    }
+
+    protected void awaitAssert(long timeout, TimeUnit unit, ThrowingRunnable assertion) {
+        await()
+                .pollDelay(2, TimeUnit.SECONDS)
+                .atMost(timeout, unit)
+                .untilAsserted(assertion);
+    }
+
+    protected void awaitAssert(ThrowingRunnable assertion) {
+        awaitAssert(1, TimeUnit.MINUTES, assertion);
     }
 
     protected void assertRecordsCount(String topic, int count) {

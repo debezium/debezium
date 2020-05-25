@@ -48,4 +48,20 @@ public class ConnectorFactories {
                 .put("slot.name", "debezium")
                 .put("plugin.name", "pgoutput");
     }
+
+    public ConnectorConfigBuilder sqlserver() {
+        ConnectorConfigBuilder cb = new ConnectorConfigBuilder();
+        String dbHost = DATABASE_POSTGRESQL_HOST.orElse("sqlserver." + ConfigProperties.OCP_PROJECT_SQLSERVER + ".svc.cluster.local");
+        return cb
+                .put("connector.class", "io.debezium.connector.sqlserver.SqlServerConnector")
+                .put("task.max", 1)
+                .put("database.hostname", dbHost)
+                .put("database.port", ConfigProperties.DATABASE_SQLSERVER_PORT)
+                .put("database.user", ConfigProperties.DATABASE_SQLSERVER_DBZ_USERNAME)
+                .put("database.password", ConfigProperties.DATABASE_SQLSERVER_DBZ_PASSWORD)
+                .put("database.dbname", ConfigProperties.DATABASE_SQLSERVER_DBZ_DBNAME)
+                .put("database.server.name", "sqlserverdb") // this should be overwritten with unique name
+                .put("database.history.kafka.bootstrap.servers", "debezium-kafka-cluster-kafka-bootstrap." + ConfigProperties.OCP_PROJECT_DBZ + ".svc.cluster.local:9092")
+                .put("database.history.kafka.topic", "schema-changes.inventory");
+    }
 }

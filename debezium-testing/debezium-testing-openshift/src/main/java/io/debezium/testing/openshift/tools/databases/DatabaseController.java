@@ -28,13 +28,13 @@ import io.fabric8.openshift.client.OpenShiftClient;
 public class DatabaseController {
     private static final Logger LOGGER = LoggerFactory.getLogger(DatabaseController.class);
 
-    private final OpenShiftClient ocp;
-    private final String project;
-    private final String dbType;
-    private final OpenShiftUtils ocpUtils;
-    private Deployment deployment;
-    private String name;
-    private List<Service> services;
+    protected final OpenShiftClient ocp;
+    protected final String project;
+    protected final String dbType;
+    protected final OpenShiftUtils ocpUtils;
+    protected Deployment deployment;
+    protected String name;
+    protected List<Service> services;
 
     public DatabaseController(Deployment deployment, List<Service> services, String dbType, OpenShiftClient ocp) {
         this.deployment = deployment;
@@ -55,15 +55,18 @@ public class DatabaseController {
         LoadBalancerIngress ingress = svc.getStatus().getLoadBalancer().getIngress().get(0);
         String hostname = ingress.getHostname();
         Integer port = svc.getSpec().getPorts().stream().filter(p -> p.getName().equals("db")).findAny().get().getPort();
+        return constructDatabaseUrl(hostname, port);
+    }
 
+    protected String constructDatabaseUrl(String hostname, int port) {
         return "jdbc:" + dbType + "://" + hostname + ":" + port + "/";
     }
 
-    public void executeStatement(String database, String username, String password, String sql) throws SQLException {
+    public void executeStatement(String database, String username, String password, String command) throws SQLException {
         try (Connection con = DriverManager.getConnection(getDatabaseUrl(), username, password)) {
             con.setCatalog(database);
             Statement stmt = con.createStatement();
-            stmt.execute(sql);
+            stmt.execute(command);
         }
     }
 
@@ -73,8 +76,13 @@ public class DatabaseController {
         deployment = ocp.apps().deployments()
                 .inNamespace(project)
                 .withName(name)
-                .waitUntilCondition(this::deploymentAvailableCondition, 30, TimeUnit.SECONDS);
+                .waitUntilCondition(this::deploymentAvailableCondition, 1, TimeUnit.MINUTES);
         LOGGER.info("Deployment '" + name + "' is available");
+        initialize();
+    }
+
+    public void initialize() {
+        // no-op
     }
 
     private boolean deploymentAvailableCondition(Deployment d) {

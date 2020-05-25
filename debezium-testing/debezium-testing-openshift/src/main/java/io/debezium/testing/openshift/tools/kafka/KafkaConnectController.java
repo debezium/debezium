@@ -159,7 +159,7 @@ public class KafkaConnectController {
         Service service = ocp.services().inNamespace(project).withName(nameSvc).get();
 
         metricsRoute = ocpUtils
-                .createRoute(project, name, nameSvc, "prometheus", service.getMetadata().getLabels());
+                .createRoute(project, name, nameSvc, "tcp-prometheus", service.getMetadata().getLabels());
         httpUtils.awaitApi(getMetricsURL());
 
         return metricsRoute;
@@ -309,6 +309,15 @@ public class KafkaConnectController {
      */
     public void waitForPostgreSqlSnapshot(String connectorName) throws IOException {
         waitForSnapshot(connectorName, "debezium_postgres_connector_metrics_snapshotcompleted");
+    }
+
+    /**
+     * Waits until snapshot phase of given SQL Server connector completes
+     * @param connectorName connector name
+     * @throws IOException on metric request error
+     */
+    public void waitForSqlServerSnapshot(String connectorName) throws IOException {
+        waitForSnapshot(connectorName, "debezium_sql_server_connector_metrics_snapshotcompleted");
     }
 
     /**
