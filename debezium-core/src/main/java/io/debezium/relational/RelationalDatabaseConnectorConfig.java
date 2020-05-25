@@ -122,6 +122,14 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
         }
     }
 
+    public static final Field SSH_HOSTNAME = Field.create("database.ssh.host", "Hostname of the ssh jumpserver");
+    public static final Field SSH_PASSPHRASE = Field.create("database.ssh.pass", "Passphrase of the ssh jumpserver");
+    public static final Field SSH_USER = Field.create("database.ssh.user", "Username of the ssh jumpserver");
+    public static final Field SSH_PORT = Field.create("database.ssh.port", "Port of the ssh jumpserver");
+    public static final Field SSH_PRIVATE_KEY = Field.create("database.ssh.pem", "Private key of the ssh jumpserver");
+    public static final Field SSH_PUBLIC_KEY = Field.create("database.ssh.pub", "Public key of the ssh jumpserver");
+    public static final Field SSH_KEY_FILE = Field.create("database.ssh.keyfile", "Private key file path of the ssh jumpserver");
+
     public static final Field SERVER_NAME = Field.create(DATABASE_CONFIG_PREFIX + "server.name")
             .withDisplayName("Namespace")
             .withType(Type.STRING)

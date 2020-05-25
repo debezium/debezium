@@ -34,6 +34,10 @@ import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.jcraft.jsch.JSch;
+import com.jcraft.jsch.JSchException;
+import com.jcraft.jsch.Session;
+
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.config.Configuration;
@@ -102,6 +106,46 @@ public class JdbcConnection implements AutoCloseable {
          * @throws SQLException if there is an error connecting to the database or executing the statements
          */
         void apply(Statement statement) throws SQLException;
+    }
+
+    public static Properties configureSsh(Properties props) {
+        try {
+            if (props.containsKey(JdbcConfiguration.SSH_HOSTNAME.name())) {
+                JSch jsch = new JSch();
+
+                if (props.containsKey(JdbcConfiguration.SSH_PRIVATE_KEY.name())) {
+                    jsch.addIdentity(
+                            props.getProperty(JdbcConfiguration.HOSTNAME.name()),
+                            props.getProperty(JdbcConfiguration.SSH_PRIVATE_KEY.name()).getBytes(),
+                            props.getProperty(JdbcConfiguration.SSH_PUBLIC_KEY.name(), "").getBytes(),
+                            props.getProperty(JdbcConfiguration.SSH_PASSPHRASE.name(), "").getBytes());
+                }
+                else if (props.containsKey(JdbcConfiguration.SSH_KEY_FILE.name())) {
+                    jsch.addIdentity(
+                            props.getProperty(JdbcConfiguration.SSH_KEY_FILE.name()),
+                            props.getProperty(JdbcConfiguration.SSH_PASSPHRASE.name()));
+                }
+
+                Session session = jsch.getSession(props.getProperty(JdbcConfiguration.SSH_USER.name()), props.getProperty(JdbcConfiguration.SSH_HOSTNAME.name()),
+                        Integer.parseInt(props.getProperty(JdbcConfiguration.SSH_PORT.name(), "22")));
+
+                Properties jschConfig = new Properties();
+                jschConfig.put("StrictHostKeyChecking", "no");
+                session.setConfig(jschConfig);
+
+                session.connect();
+
+                int forwardedPort = session.setPortForwardingL(0, props.getProperty(JdbcConfiguration.HOSTNAME.name()),
+                        Integer.parseInt(props.getProperty(JdbcConfiguration.PORT.name())));
+
+                props.setProperty(JdbcConfiguration.HOSTNAME.name(), "localhost");
+                props.setProperty(JdbcConfiguration.PORT.name(), Integer.toString(forwardedPort));
+            }
+        }
+        catch (JSchException e) {
+            LOGGER.error("Error in JSch connection", e);
+        }
+        return props;
     }
 
     /**
@@ -205,6 +249,10 @@ public class JdbcConnection implements AutoCloseable {
         if (props.containsKey(JdbcConfiguration.PASSWORD.name())) {
             filtered.put(JdbcConfiguration.PASSWORD.name(), "***");
         }
+
+        if (props.containsKey(JdbcConfiguration.SSH_PRIVATE_KEY.name())) {
+            filtered.put(JdbcConfiguration.SSH_PRIVATE_KEY.name(), "***");
+        }
         return filtered;
     }
 
@@ -291,7 +339,8 @@ public class JdbcConnection implements AutoCloseable {
      */
     protected JdbcConnection(Configuration config, ConnectionFactory connectionFactory, Operations initialOperations,
                              Consumer<Configuration.Builder> adapter) {
-        this.config = adapter == null ? config : config.edit().apply(adapter).build();
+        Configuration adaptedConfig = adapter == null ? config : config.edit().apply(adapter).build();
+        this.config = Configuration.from(configureSsh(adaptedConfig.asProperties()));
         this.factory = connectionFactory;
         this.initialOps = initialOperations;
         this.conn = null;
@@ -963,6 +1012,24 @@ public class JdbcConnection implements AutoCloseable {
         Properties props = config.asProperties();
         return findAndReplace(urlPattern, props, JdbcConfiguration.DATABASE, JdbcConfiguration.HOSTNAME, JdbcConfiguration.PORT,
                 JdbcConfiguration.USER, JdbcConfiguration.PASSWORD);
+    }
+
+    /**
+     * Returns the username for this connection
+     *
+     * @return a {@code String}, never {@code null}
+     */
+    public String port() {
+        return config.getString(JdbcConfiguration.PORT);
+    }
+
+    /**
+     * Returns the username for this connection
+     *
+     * @return a {@code String}, never {@code null}
+     */
+    public String hostname() {
+        return config.getString(JdbcConfiguration.HOSTNAME);
     }
 
     /**

@@ -67,6 +67,11 @@
             <artifactId>js-scriptengine</artifactId>
             <optional>true</optional>
         </dependency>
+        <dependency>
+            <groupId>com.jcraft</groupId>
+            <artifactId>jsch</artifactId>
+        </dependency>
+
 
         <!-- Testing -->
         <dependency>

@@ -47,6 +47,7 @@ public class MySqlJdbcContext implements AutoCloseable {
 
     protected final Logger logger = LoggerFactory.getLogger(getClass());
     protected final Configuration config;
+    protected final Configuration tunneledConfig;
     protected final JdbcConnection jdbc;
     private final Map<String, String> originalSystemProperties = new HashMap<>();
 
@@ -81,6 +82,8 @@ public class MySqlJdbcContext implements AutoCloseable {
         String driverClassName = jdbcConfig.getString(MySqlConnectorConfig.JDBC_DRIVER);
         this.jdbc = new JdbcConnection(jdbcConfig,
                 JdbcConnection.patternBasedFactory(MYSQL_CONNECTION_URL, driverClassName, getClass().getClassLoader()));
+
+        this.tunneledConfig = this.config().edit().with("database.hostname", this.jdbc.hostname()).with("database.port", this.jdbc.port()).build();
     }
 
     public Configuration config() {
@@ -104,11 +107,11 @@ public class MySqlJdbcContext implements AutoCloseable {
     }
 
     public String hostname() {
-        return config.getString(MySqlConnectorConfig.HOSTNAME);
+        return tunneledConfig.getString(MySqlConnectorConfig.HOSTNAME);
     }
 
     public int port() {
-        return config.getInteger(MySqlConnectorConfig.PORT);
+        return tunneledConfig.getInteger(MySqlConnectorConfig.PORT);
     }
 
     public SecureConnectionMode sslMode() {

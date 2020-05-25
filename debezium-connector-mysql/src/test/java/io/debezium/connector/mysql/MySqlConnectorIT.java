@@ -321,13 +321,23 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // which may be the same as the "master" ...
         config = Configuration.create()
                 .with(MySqlConnectorConfig.HOSTNAME, System.getProperty("database.replica.hostname", "localhost"))
+                // .with(MySqlConnectorConfig.HOSTNAME,
+                // System.getProperty("database.hostname", "oryan-debezium-mysql-source.cqvgyp3n1jvu.us-east-2.rds.amazonaws.com"))
                 .with(MySqlConnectorConfig.PORT, System.getProperty("database.replica.port", "3306"))
                 .with(MySqlConnectorConfig.USER, "snapper")
+                // .with(MySqlConnectorConfig.USER, System.getProperty("database.user", "admin"))
                 .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
+                // .with(MySqlConnectorConfig.PASSWORD, System.getProperty("database.password", "oror13254"))
                 .with(MySqlConnectorConfig.SERVER_ID, 18765)
                 .with(MySqlConnectorConfig.SERVER_NAME, DATABASE.getServerName())
                 .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
                 .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
+
+                // .with(MySqlConnectorConfig.SSH_HOSTNAME, System.getProperty("database.ssh.host", "52.15.128.12"))
+                // .with(MySqlConnectorConfig.SSH_USER, System.getProperty("database.ssh.user", "ec2-user"))
+                // .with(MySqlConnectorConfig.SSH_PRIVATE_KEY, System.getProperty("database.ssh.pem", ""))
+                // .with(MySqlConnectorConfig.SSH_KEY_FILE, "~/.ssh/RiveryKeyPairDev.pem")
+
                 .with(MySqlConnectorConfig.DATABASE_WHITELIST, DATABASE.getDatabaseName())
                 .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
