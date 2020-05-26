@@ -1,3 +1,4 @@
+[id="avro-serialization"]
 = Avro Serialization
 
 :toc:

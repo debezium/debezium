@@ -1,3 +1,4 @@
+[id="debezium-connector-for-db2"]
 = Debezium Connector for Db2 
 
 :toc:

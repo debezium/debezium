@@ -1,3 +1,4 @@
+[id="exporting-cloud-events"]
 = Exporting CloudEvents
 
 :toc:

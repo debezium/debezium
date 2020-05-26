@@ -1,3 +1,4 @@
+[id="logical-decoding-output-plugin-installation-for-postgresql"]
 = Logical Decoding Output Plug-in Installation for PostgreSQL
 
 :toc:

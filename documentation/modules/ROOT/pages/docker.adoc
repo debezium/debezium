@@ -1,3 +1,4 @@
+[id="using-docker-with-debezium"]
 = Using Docker with Debezium
 
 :linkattrs:

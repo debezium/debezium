@@ -1,3 +1,4 @@
+[id="debezium-connector-for-sql-server"]
 = {prodname} Connector for SQL Server
 
 ifdef::community[]

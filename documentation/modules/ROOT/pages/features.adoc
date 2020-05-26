@@ -1,3 +1,4 @@
+[id="debezium-features"]
 = Debezium Features
 
 :linkattrs:

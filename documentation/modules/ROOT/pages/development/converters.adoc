@@ -1,3 +1,4 @@
+[id="custom-converters"]
 = Custom Converters
 
 :source-highlighter: highlight.js
