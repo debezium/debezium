@@ -2,7 +2,7 @@
 // Metadata created by nebel
 //
 // UserStory: As a Developer, I want to set up the MySQL server, so that I can more efficiently deploy the CDC MySQL connector.
-:context: cdc
+:context: debezium
 [id="setup-the-mysql-server"]
 = Setting up MySQL server
 
