@@ -1,3 +1,4 @@
+[id="debezium-connector-for-oracle"]
 = Debezium Connector for Oracle
 
 :toc:

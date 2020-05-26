@@ -1,3 +1,4 @@
+[id="message-filtering"]
 = Message Filtering
 
 :toc:

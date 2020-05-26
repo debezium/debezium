@@ -1,3 +1,4 @@
+[id="tutorial"]
 = Tutorial
 
 :toc:

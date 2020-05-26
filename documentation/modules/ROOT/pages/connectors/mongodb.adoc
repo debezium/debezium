@@ -1,3 +1,4 @@
+[id="debezium-connector-for-mongodb"]
 = {prodname} Connector for MongoDB
 
 ifdef::community[]

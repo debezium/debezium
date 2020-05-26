@@ -1,3 +1,4 @@
+[id="outbox-quarkus-extension"]
 = Outbox Quarkus Extension
 
 :toc:
