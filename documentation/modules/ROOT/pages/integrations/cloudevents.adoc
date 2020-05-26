@@ -112,7 +112,7 @@ Alternatively, Avro can be used as content type for the `data` attribute:
 <2> URI of the schema to which the Avro data adheres
 <3> The `data` attribute, base64-encoded Avro binary data
 
-Finally, it's also possible to use Avro for the entire envelope as well as the `data` attribute.
+Finally, it is also possible to use Avro for the entire envelope as well as the `data` attribute.
 
 [[cloud-events-converter-configuration-options]]
 === Configuration Options

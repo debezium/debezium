@@ -45,7 +45,7 @@ You can install them into any Kafka distribution and use them with Kafka Connect
 [NOTE]
 ====
 The Apicurio project also provides a JSON converter that can be used with the Apicurio registry.
-This combines the advantage of less verbose messages (as messages don't contain the schema information themselves, but only a schema id)
+This combines the advantage of less verbose messages (as messages do not contain the schema information themselves, but only a schema id)
 with human-readable JSON.
 ====
 
