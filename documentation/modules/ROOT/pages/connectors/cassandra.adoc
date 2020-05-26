@@ -1,5 +1,5 @@
 [id="debezium-connector-for-cassandra"]
-= Debezium Connector for Cassandra
+= {prodname} Connector for Cassandra
 
 :toc:
 :toc-placement: macro
@@ -30,7 +30,7 @@ The connector is tolerant of failures. As the connector reads commit logs and pr
 
 [NOTE]
 ====
-Cassandra is different from the other Debezium connectors since it is not implemented on top of the Kafka Connect framework. Instead it is a single JVM process that is intended to reside on each Cassandra node and publishes events to Kafka via a Kafka producer.
+Cassandra is different from the other {prodname} connectors since it is not implemented on top of the Kafka Connect framework. Instead it is a single JVM process that is intended to reside on each Cassandra node and publishes events to Kafka via a Kafka producer.
 ====
 
 [WARNING]
@@ -49,7 +49,7 @@ The following features are currently not supported by the Cassandra connector. C
 [[setting-up-cassandra]]
 == Setting Up Cassandra
 
-Before the Debezium Cassandra connector can be used to monitor the changes in a Cassandra cluster, CDC must be enabled on the node level and table level.
+Before the {prodname} Cassandra connector can be used to monitor the changes in a Cassandra cluster, CDC must be enabled on the node level and table level.
 
 [[enabling-cdc-on-node]]
 === Enabling CDC on Node
@@ -91,7 +91,7 @@ ALTER TABLE foo WITH cdc=true;
 [[how-the-cassandra-connector-works]]
 == How the Cassandra Connector Works
 
-This section goes into detail about how the Cassandra connector performs snapshots, transforms commit log events into Debezium change events, handles commit log life cycle, records events into Kafka, manages schema evolution, and behaves when things go wrong.
+This section goes into detail about how the Cassandra connector performs snapshots, transforms commit log events into {prodname} change events, handles commit log life cycle, records events into Kafka, manages schema evolution, and behaves when things go wrong.
 
 
 [[cassandra-snapshots]]
@@ -121,7 +121,7 @@ The Cassandra connector will typically spend the vast majority of its time readi
 
 Commit logs' binary data are deserialized with Cassandra's CommitLogReader and CommitLogReadHandler. Each deserialized object is called a `mutation` in Cassandra. A `mutation` contains one or more change events.
 
-As the Cassandra connector reads the commit log, it transform the log events into Debezium _create_, _update_, or _delete_ events that include the position in the commit log where the event was found. The Cassandra connector encode these change events with Kafka Connect converters and publish them to the appropriate Kafka topics.
+As the Cassandra connector reads the commit log, it transform the log events into {prodname} _create_, _update_, or _delete_ events that include the position in the commit log where the event was found. The Cassandra connector encode these change events with Kafka Connect converters and publish them to the appropriate Kafka topics.
 
 [[limitations-of-commit-logs]]
 === Limitations of Commit Logs
@@ -241,7 +241,7 @@ The value of the change event message is a bit more complicated. Every change ev
 
 * `op` is a mandatory field that contains a string value describing the type of operation. Values for the Cassandra connector are `i` for insert, `u` for update, and `d` for delete.
 * `after` is an optional field that if present contains the state of the row _after_ the event occurred. The structure will be described by the `cassandra-cluster-1.inventory.customers.Value` Kafka Connect schema, which represent the cluster, keyspace, and table the event is referring to.
-* `source` is a mandatory field that contains a structure describing the source metadata for the event, which in the case of Cassandra contains several fields: the Debezium version, the connector name, the Cassandra cluster name, the name of the commit log file where the event was recorded, the position in that commit log file where the event appeared, whether this event was part of a snapshot, name of the affected keyspace and table, and the maximum timestamp of the partition update in microseconds.
+* `source` is a mandatory field that contains a structure describing the source metadata for the event, which in the case of Cassandra contains several fields: the {prodname} version, the connector name, the Cassandra cluster name, the name of the commit log file where the event was recorded, the position in that commit log file where the event appeared, whether this event was part of a snapshot, name of the affected keyspace and table, and the maximum timestamp of the partition update in microseconds.
 * `ts_ms` is optional and if present contains the time (using the system clock in the JVM running the Cassandra connector) at which the connector processed the event.
 
 [NOTE]

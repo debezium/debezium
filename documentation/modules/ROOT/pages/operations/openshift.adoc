@@ -1,5 +1,5 @@
 [id="deploying-debezium-on-openshift"]
-= Deploying Debezium on OpenShift
+= Deploying {prodname} on OpenShift
 
 :linkattrs:
 :icons: font
@@ -8,17 +8,17 @@
 
 toc::[]
 
-The following describes how to set up the Debezium connectors for change data capture on Red Hat's https://www.openshift.com/[OpenShift] container platform.
+The following describes how to set up the {prodname} connectors for change data capture on Red Hat's https://www.openshift.com/[OpenShift] container platform.
 
 These instructions have been tested using the https://github.com/minishift/minishift[Minishift tool]
 -- allowing you to run a single node OpenShift instance locally on your machine.
 
 You can find a complete example of this set-up using Minishift in our https://github.com/debezium/debezium-examples/tree/master/openshift[examples repository].
 
-And if you want to get started even quicker, try out the https://learn.openshift.com/middleware/debezium-getting-started/[Debezium online learning scenario].
-It starts an OpenShift cluster just for you, allowing you to take your first steps with Debezium in your browser just within a few minutes.
+And if you want to get started even quicker, try out the https://learn.openshift.com/middleware/debezium-getting-started/[{prodname} online learning scenario].
+It starts an OpenShift cluster just for you, allowing you to take your first steps with {prodname} in your browser just within a few minutes.
 
-== Debezium Deployment
+== {prodname} Deployment
 
 For setting up Kafka and Kafka Connect on OpenShift, a set of images provided by the https://strimzi.io/[Strimzi] project can be used, which offers "Kafka as a Service".
 It consists of enterprise grade configuration files and images that bring Kafka to OpenShift.
@@ -36,7 +36,7 @@ oc login -u system:admin
 oc create -f install/cluster-operator && oc create -f examples/templates/cluster-operator
 ----
 
-Next we will deploy a Kafka broker cluster and a Kafka Connect cluster and then create a Kafka Connect image with the Debezium connectors installed:
+Next we will deploy a Kafka broker cluster and a Kafka Connect cluster and then create a Kafka Connect image with the {prodname} connectors installed:
 
 [source,shell,subs="attributes",options="nowrap"]
 ----
@@ -76,7 +76,7 @@ image::/images/openshift_pods.png[width=771,align="center"]
 
 == Verifying the Deployment
 
-Next we are going to verify whether the deployment is correct by emulating the xref:tutorial.adoc[Debezium Tutorial] in the OpenShift environment.
+Next we are going to verify whether the deployment is correct by emulating the xref:tutorial.adoc[{prodname} Tutorial] in the OpenShift environment.
 
 First we need to start a MySQL server instance containing some example tables:
 
@@ -101,7 +101,7 @@ mysql-1-deploy                   1/1       Running     0          4s
 ...
 ----
 
-Then we are going to register the Debezium MySQL connector to run against the deployed MySQL instance:
+Then we are going to register the {prodname} MySQL connector to run against the deployed MySQL instance:
 
 [source%nowrap,bash]
 ----
@@ -227,5 +227,5 @@ oc exec -it $(oc get pods -o custom-columns=NAME:.metadata.name --no-headers -l 
 
 You should now see additional change messages in the consumer started before.
 
-If you got any questions or requests related to running Debezium on OpenShift,
-please let us know via our https://groups.google.com/forum/#!forum/debezium[user group] or in the Debezium https://gitter.im/debezium/dev[developer's chat].
+If you got any questions or requests related to running {prodname} on OpenShift,
+please let us know via our https://groups.google.com/forum/#!forum/debezium[user group] or in the {prodname} https://gitter.im/debezium/dev[developer's chat].

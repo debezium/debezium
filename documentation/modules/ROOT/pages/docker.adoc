@@ -1,10 +1,10 @@
 [id="using-docker-with-debezium"]
-= Using Docker with Debezium
+= Using Docker with {prodname}
 
 :linkattrs:
 :icons: font
 
-Debezium uses http://docker.com/[Docker] in many ways, including within our tutorials, to run databases we test against, and to run the tools that build our website. There are lots of good summaries and tutorials you can follow to learn more about Docker, but we wanted to capture some tips and techniques for getting the most out of Docker when it comes to Debezium.
+{prodname} uses http://docker.com/[Docker] in many ways, including within our tutorials, to run databases we test against, and to run the tools that build our website. There are lots of good summaries and tutorials you can follow to learn more about Docker, but we wanted to capture some tips and techniques for getting the most out of Docker when it comes to {prodname}.
 
 [[linux]]
 == Docker on Linux, Windows, and OS X

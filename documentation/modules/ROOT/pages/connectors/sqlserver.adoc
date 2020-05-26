@@ -116,7 +116,7 @@ Few pre-requisities are necessary to be fulfilled
 SQL Server does not support CDC directly on replicas.
 * The configuration option `database.applicationIntent` must be set to `ReadOnly`.
 This is required by SQL Server.
-When Debezium detects this configuration option then it will:
+When {prodname} detects this configuration option then it will:
 
 ** set `snapshot.isolation.mode` to `snapshot` as this is the only one transaction isolation mode supported by raed-only replicas
 ** commit the (read-only) transaction in every execution of the streaming query loop, as this is necessary to get the latest view on CDC data
@@ -186,7 +186,7 @@ This topic should be considered as an internal state of the connector and should
 If the application needs to track changes in the source database there is the public-facing schema change topic.
 The topic name is the same as the logical server name configured in connector configuration.
 
-Debezium emits a new message to this topic whenever a new table is streamed from or when the structure of the table is altered ({link-prefix}:{link-sqlserver-connector}#sqlserver-schema-evolution[schema evolution procedure must be followed]).
+{prodname} emits a new message to this topic whenever a new table is streamed from or when the structure of the table is altered ({link-prefix}:{link-sqlserver-connector}#sqlserver-schema-evolution[schema evolution procedure must be followed]).
 The message contains a logical representation of the table schema.
 
 The example of the message is:
@@ -739,10 +739,10 @@ This feature is under active development right now (incubating),
 so the structure of transaction events or other details may still change as development progresses.
 ====
 
-Debezium can generate events that represents tranaction metadata boundaries and enrich data messages.
+{prodname} can generate events that represents tranaction metadata boundaries and enrich data messages.
 
 ==== Transaction boundaries
-Debezium generates events for every transaction start and end.
+{prodname} generates events for every transaction start and end.
 Every event contains
 
 * `status` - `BEGIN` or `END`
@@ -877,7 +877,7 @@ If your application does not tolerate such a transition period we recommend to f
 
 ==== Example
 ifdef::community[]
-Let's deploy the SQL Server based https://github.com/debezium/debezium-examples/tree/master/tutorial#using-sql-server[Debezium tutorial] to demonstrate the hot schema update.
+Let's deploy the SQL Server based https://github.com/debezium/debezium-examples/tree/master/tutorial#using-sql-server[{prodname} tutorial] to demonstrate the hot schema update.
 endif::community[]
 
 In this example, a column `phone_number` is added to the `customers` table.
@@ -1183,7 +1183,7 @@ The `connect.decimal.precision` schema parameter contains an integer representin
 == Deploying the SQL Server connector
 
 ifdef::community[]
-If you've already installed https://zookeeper.apache.org[Zookeeper], http://kafka.apache.org/[Kafka], and {link-kafka-docs}.html#connect[Kafka Connect], then using Debezium's SQL Server` connector is easy.
+If you've already installed https://zookeeper.apache.org[Zookeeper], http://kafka.apache.org/[Kafka], and {link-kafka-docs}.html#connect[Kafka Connect], then using {prodname}'s SQL Server` connector is easy.
 Simply download the https://repo1.maven.org/maven2/io/debezium/debezium-connector-sqlserver/{debezium-version}/debezium-connector-sqlserver-{debezium-version}-plugin.tar.gz[connector's plugin archive], extract the JARs into your Kafka Connect environment, and add the directory with the JARs to {link-kafka-docs}/#connectconfigs[Kafka Connect's plugin.path].
 Restart your Kafka Connect process to pick up the new JARs.
 endif::community[]
@@ -1221,8 +1221,8 @@ For more information on the deployment process, and deploying connectors with AM
 endif::product[]
 
 ifdef::community[]
-If immutable containers are your thing, then check out https://hub.docker.com/r/debezium/[Debezium's Docker images] for Zookeeper, Kafka and Kafka Connect with the SQL Server connector already pre-installed and ready to go.
-You can even link:/docs/openshift/[run Debezium on OpenShift].
+If immutable containers are your thing, then check out https://hub.docker.com/r/debezium/[{prodname}'s Docker images] for Zookeeper, Kafka and Kafka Connect with the SQL Server connector already pre-installed and ready to go.
+You can even link:/docs/openshift/[run {prodname} on OpenShift].
 endif::community[]
 
 [[sqlserver-example-configuration]]
@@ -1514,7 +1514,7 @@ For `read_uncommitted` there are no data consistency guarantees at all (some dat
 |_commit_
 |String representing the criteria of the attached timestamp within the source record (ts_ms).
 `commit` will set the source timestamp to the instant where the record was committed in the database (default and current behavior).
-`processing` will set the source timestamp to the instant where the record was processed by Debezium. This option could be used when either we want to set the top level `ts_ms` value here or when we want to skip the query to extract the timestamp of that LSN.
+`processing` will set the source timestamp to the instant where the record was processed by {prodname}. This option could be used when either we want to set the top level `ts_ms` value here or when we want to skip the query to extract the timestamp of that LSN.
 
 |[[sqlserver-property-event-processing-failure-handling-mode]]<<sqlserver-property-event-processing-failure-handling-mode, `event.processing{zwsp}.failure.handling.mode`>>
 |`fail`
@@ -1576,7 +1576,7 @@ This property contains a comma-separated list of fully-qualified tables _(SCHEMA
 ifdef::community[]
 |[[sqlserver-property-source-struct-version]]<<sqlserver-property-source-struct-version, `source.struct.version`>>
 |v2
-|Schema version for the `source` block in CDC events; Debezium 0.10 introduced a few breaking +
+|Schema version for the `source` block in CDC events; {prodname} 0.10 introduced a few breaking +
 changes to the structure of the `source` block in order to unify the exposed structure across
 all the connectors. +
 By setting this option to `v1` the structure used in earlier versions can be produced.
@@ -1594,13 +1594,13 @@ endif::community[]
 |
 | Timezone of the server.
 
-This is used to define the timezone of the transaction timestamp (ts_ms) retrieved from the server (which is actually not zoned). Default value is unset. Should only be specified when running on SQL Server 2014 or older and using different timezones for the database server and the JVM running the Debezium connector. +
-When unset, default behavior is to use the timezone of the VM running the Debezium connector. In this case, when running on on SQL Server 2014 or older and using different timezones on server and the connector, incorrect ts_ms values may be produced. +
+This is used to define the timezone of the transaction timestamp (ts_ms) retrieved from the server (which is actually not zoned). Default value is unset. Should only be specified when running on SQL Server 2014 or older and using different timezones for the database server and the JVM running the {prodname} connector. +
+When unset, default behavior is to use the timezone of the VM running the {prodname} connector. In this case, when running on on SQL Server 2014 or older and using different timezones on server and the connector, incorrect ts_ms values may be produced. +
 Possible values include "Z", "UTC", offset values like "+02:00", short zone ids like "CET", and long zone ids like "Europe/Paris".
 
 |[[sqlserver-property-provide-transaction-metadata]]<<sqlserver-property-provide-transaction-metadata, `provide.transaction.metadata` (Incubating)>>
 |`false`
-|When set to `true` Debezium generates events with transaction boundaries and enriches data events envelope with transaction metadata.
+|When set to `true` {prodname} generates events with transaction boundaries and enriches data events envelope with transaction metadata.
 
 See {link-prefix}:{link-sqlserver-connector}#sqlserver-transaction-metadata[Transaction Metadata] for additional details.
 

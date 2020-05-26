@@ -1,5 +1,5 @@
 [id="debezium-engine"]
-= Debezium Engine
+= {prodname} Engine
 
 :source-highlighter: highlight.js
 :toc:
@@ -9,20 +9,20 @@
 
 toc::[]
 
-Debezium connectors are normally operated by deploying them to a Kafka Connect service, and configuring one or more connectors to monitor upstream databases and produce data change events for all changes that they see in the upstream databases.
+{prodname} connectors are normally operated by deploying them to a Kafka Connect service, and configuring one or more connectors to monitor upstream databases and produce data change events for all changes that they see in the upstream databases.
 Those data change events are written to Kafka, where they can be independently consumed by many different applications.
 Kafka Connect provides excellent fault tolerance and scalability, since it runs as a distributed service and ensures that all registered and configured connectors are always running.
 For example, even if one of the Kafka Connect endpoints in a cluster goes down, the remaining Kafka Connect endpoints will restart any connectors that were previously running on the now-terminated endpoint, minimizing downtime and eliminating administrative activities.
 
 Not every application needs this level of fault tolerance and reliability, and they may not want to rely upon an external cluster of Kafka brokers and Kafka Connect services.
-Instead, some applications would prefer to *embed* Debezium connectors directly within the application space.
+Instead, some applications would prefer to *embed* {prodname} connectors directly within the application space.
 They still want the same data change events, but prefer to have the connectors send them directly to the application rather than persist them inside Kafka.
 
-This `debezium-api` module defines a small API that allows an application to easily configure and run Debezium connectors using Debezium Engine.
+This `debezium-api` module defines a small API that allows an application to easily configure and run {prodname} connectors using {prodname} Engine.
 
 == Dependencies
 
-To use Debezium Engine module, add the `debezium-api` module to your application's dependencies.
+To use {prodname} Engine module, add the `debezium-api` module to your application's dependencies.
 There is one out-of-the-box implementation of this API in `debezium-embedded` module which should be added to the dependencies too.
 For Maven, this entails adding the following to your application's POM:
 
@@ -40,9 +40,9 @@ For Maven, this entails adding the following to your application's POM:
 </dependency>
 ----
 
-where `${version.debezium}` is either the version of Debezium you're using or a Maven property whose value contains the Debezium version string.
+where `${version.debezium}` is either the version of {prodname} you're using or a Maven property whose value contains the {prodname} version string.
 
-Likewise, add dependencies for each of the Debezium connectors that your application will use.
+Likewise, add dependencies for each of the {prodname} connectors that your application will use.
 For example, the following can be added to your application's Maven POM file so your application can use the MySQL connector:
 
 [source,xml]
@@ -71,7 +71,7 @@ Other connectors are used in a similar manner, except with connector-specific co
 == In the Code
 
 Your application needs to set up an embedded engine for each connector instance you want to run.
-The `io.debezium.engine.DebeziumEngine<R>` class serves as an easy-to-use wrapper around any Debezium connector and completely manages the connector's lifecycle.
+The `io.debezium.engine.DebeziumEngine<R>` class serves as an easy-to-use wrapper around any {prodname} connector and completely manages the connector's lifecycle.
 You create the `DebeziumEngine` instance using its builder API,
 providing the following things:
 
@@ -135,7 +135,7 @@ Let's look into this code in more detail, starting with the first few lines that
 
 This creates a new standard `Properties` object to set several fields required by the engine regardless of which connector is being used.
 The first is a name for the engine that will be used within the source records produced by the connector and its internal state, so use something meaningful in your application.
-The `connector.class` field defines the name of the class that extends the Kafka Connect `org.apache.kafka.connect.source.SourceConnector` abstract class; in this example, we specify Debezium's `MySqlConnector` class.
+The `connector.class` field defines the name of the class that extends the Kafka Connect `org.apache.kafka.connect.source.SourceConnector` abstract class; in this example, we specify {prodname}'s `MySqlConnector` class.
 
 When a Kafka Connect connector runs, it reads information from the source and periodically records "offsets" that define how much of that information it has processed. Should the connector be restarted, it will use the last recorded offset to know where in the source information it should resume reading.
 Since connectors don't know or care *how* the offsets are stored, it is up to the engine to provide a way to store and recover these offsets.
@@ -436,4 +436,4 @@ If the `offset.flush.interval.ms` property is set higher, then the application m
 However, this dramatically increases the overhead and decreases the throughput of the connectors.)
 
 The bottom line is that when using embedded connectors, applications will receive each source record exactly once during normal operation (including restart after a graceful shutdown), but do need to be tolerant of receiving duplicate events immediately following a restart after a crash or improper shutdown.
-If applications need more rigorous exactly-once behavior, then they should use the full Debezium platform that can provide exactly-once guarantees (even after crashes and restarts).
+If applications need more rigorous exactly-once behavior, then they should use the full {prodname} platform that can provide exactly-once guarantees (even after crashes and restarts).

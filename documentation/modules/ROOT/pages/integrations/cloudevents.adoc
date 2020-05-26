@@ -26,13 +26,13 @@ It defines:
 
 By means of a specific Kafka Connect message converter
 (`io.debezium.converters.CloudEventsConverter`),
-Debezium optionally emits change events that adhere to the CloudEvents specification.
+{prodname} optionally emits change events that adhere to the CloudEvents specification.
 Currently, the structured mode of mapping CloudEvents is supported, using JSON and/or Avro as the envelope and the data format.
-Support for the binary mode of mapping CloudEvents will be added in a future version of Debezium.
+Support for the binary mode of mapping CloudEvents will be added in a future version of {prodname}.
 
 == Event Format
 
-The following example shows a CloudEvents event of the Debezium Postgres connector, using JSON as envelope and data format:
+The following example shows a CloudEvents event of the {prodname} Postgres connector, using JSON as envelope and data format:
 
 [source,json,indent=0]
 ----
@@ -74,8 +74,8 @@ The following example shows a CloudEvents event of the Debezium Postgres connect
 <5> Time of the change in the source database
 <6> Describes the content type of the `data` attribute; JSON in this case
 <7> Operation type identifier (one of (r)ead, (c)reate, (u)pdate or (d)elete)
-<8> All the `source` attributes known from Debezium data change events are mapped to CloudEvents extension attributes, using the "iodebezium" prefix for the attribute name
-<9> All the `transaction` attributes known from Debezium data change events (when enabled in connector) are mapped to CloudEvents extension attributes, using the "iodebeziumtx" prefix for the attribute name
+<8> All the `source` attributes known from {prodname} data change events are mapped to CloudEvents extension attributes, using the "iodebezium" prefix for the attribute name
+<9> All the `transaction` attributes known from {prodname} data change events (when enabled in connector) are mapped to CloudEvents extension attributes, using the "iodebeziumtx" prefix for the attribute name
 <10> The actual data change itself; depending on the kind of change and the type of connector, may contain the `before`, `after` and/or `patch` fields
 
 Alternatively, Avro can be used as content type for the `data` attribute:
