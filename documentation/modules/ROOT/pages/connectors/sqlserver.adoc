@@ -43,7 +43,7 @@ The connector then produces a _change event_ for every row-level insert, update,
 The client applications read the Kafka topics that correspond to the database tables they're interested in following, and react to every row-level event it sees in those topics.
 
 The database operator normally enables _CDC_ in the mid-life of a database an/or table.
-This means that the connector won't have the complete history of all changes that have been made to the database.
+This means that the connector does not have the complete history of all changes that have been made to the database.
 Therefore, when the SQL Server connector first connects to a particular SQL Server database, it starts by performing a _consistent snapshot_ of each of the database schemas.
 After the connector completes the snapshot, it continues streaming changes from the exact point at which the snapshot was made.
 This way, we start with a consistent view of all of the data, yet continue reading without having lost any of the changes made while the snapshot was taking place.
@@ -160,7 +160,7 @@ This ensures that the changes are replayed by {prodname} in the same order as we
 
 After a restart, the connector will resume from the offset (commit and change LSNs) where it left off before.
 
-The connector is able to detect whether the CDC is enabled or disabled for whitelisted source table during the runtime and modify its behaviour.
+The connector is able to detect whether the CDC is enabled or disabled for whitelisted source table during the runtime and modify its behavior.
 
 [[sqlserver-topic-names]]
 === Topic names
@@ -382,10 +382,10 @@ every change event for the `customers` table while it has this definition will f
 }
 ----
 
-The `schema` portion of the key contains a Kafka Connect schema describing what is in the key portion, and in our case that means that the `payload` value is not optional, is a structure defined by a schema named `server1.dbo.customers.Key`, and has one required field named `id` of type `int32`.
-If we look at the value of the key's `payload` field, we'll see that it is indeed a structure (which in JSON is just an object) with a single `id` field, whose value is `1004`.
+The `schema` portion of the key contains a Kafka Connect schema describing what is in the key portion. In this case, it means that the `payload` value is not optional, is a structure defined by a schema named `server1.dbo.customers.Key`, and has one required field named `id` of type `int32`.
+If you look at the value of the key's `payload` field, you can see that it is indeed a structure (which in JSON is just an object) with a single `id` field, whose value is `1004`.
 
-Therefore, we interpret this key as describing the row in the `dbo.customers` table (output from the connector named `server1`) whose `id` primary key column had a value of `1004`.
+Therefore, you can interpret this key as describing the row in the `dbo.customers` table (output from the connector named `server1`) whose `id` primary key column had a value of `1004`.
 
 ifdef::community[]
 [NOTE]
@@ -409,7 +409,7 @@ The payload section of every change event value produced by the SQL Server conne
 * `before` is an optional field that if present contains the state of the row _before_ the event occurred. The structure is described by the `server1.dbo.customers.Value` Kafka Connect schema, which the `server1` connector uses for all rows in the `dbo.customers` table.
 
 * `after` is an optional field that if present contains the state of the row _after_ the event occurred. The structure is described by the same `server1.dbo.customers.Value` Kafka Connect schema used in `before`.
-* `source` is a mandatory field that contains a structure describing the source metadata for the event, which in the case of SQL Server contains these fields: the {prodname} version, the connector name, whether the event is part of an ongoing snapshot or not, the commit LSN (not while snapshotting), the LSN of the change, database, schema and table where the change happened, and a timestamp representing the point in time when the record was changed in the source database (during snapshotting, it'll be the point in time of snapshotting).
+* `source` is a mandatory field that contains a structure describing the source metadata for the event, which in the case of SQL Server contains these fields: the {prodname} version, the connector name, whether the event is part of an ongoing snapshot or not, the commit LSN (not while snapshotting), the LSN of the change, database, schema and table where the change happened, and a timestamp representing the point in time when the record was changed in the source database (during snapshotting, this is the point in time of snapshotting).
 +
 Also a field `event_serial_no` is present during streaming.
 This is used to differentiate among events that have the same commit and change LSN.
@@ -676,8 +676,8 @@ When the columns for a row's primary/unique key are updated, the value of the ro
 [[sqlserver-delete-events]]
 ===== Delete events
 
-So far we've seen samples of _create_ and _update_ events.
-Now, let's look at the value of a _delete_ event for the same table. Once again, the `schema` portion of the value is exactly the same as with the _create_ and _update_ events:
+So far, you have seen samples of _create_ and _update_ events.
+The following sample shows the value of a _delete_ event for the same table. Once again, the `schema` portion of the value is exactly the same as with the _create_ and _update_ events:
 
 [source,json,indent=0,subs="attributes"]
 ----
@@ -1183,13 +1183,13 @@ The `connect.decimal.precision` schema parameter contains an integer representin
 == Deploying the SQL Server connector
 
 ifdef::community[]
-If you've already installed https://zookeeper.apache.org[Zookeeper], http://kafka.apache.org/[Kafka], and {link-kafka-docs}.html#connect[Kafka Connect], then using {prodname}'s SQL Server` connector is easy.
-Simply download the https://repo1.maven.org/maven2/io/debezium/debezium-connector-sqlserver/{debezium-version}/debezium-connector-sqlserver-{debezium-version}-plugin.tar.gz[connector's plugin archive], extract the JARs into your Kafka Connect environment, and add the directory with the JARs to {link-kafka-docs}/#connectconfigs[Kafka Connect's plugin.path].
+If you have already installed https://zookeeper.apache.org[Zookeeper], http://kafka.apache.org/[Kafka], and {link-kafka-docs}.html#connect[Kafka Connect], then using {prodname}'s SQL Server` connector is easy.
+Simply download the https://repo1.maven.org/maven2/io/debezium/debezium-connector-sqlserver/{debezium-version}/debezium-connector-sqlserver-{debezium-version}-plugin.tar.gz[connector's plug-in archive], extract the JARs into your Kafka Connect environment, and add the directory with the JARs to {link-kafka-docs}/#connectconfigs[Kafka Connect's `plugin.path`].
 Restart your Kafka Connect process to pick up the new JARs.
 endif::community[]
 
 ifdef::product[]
-Installing the SQL Server connector is a simple process whereby you only need to download the JAR, extract it to your Kafka Connect environment, and ensure the plugin's parent directory is specified in your Kafka Connect environment.
+Installing the SQL Server connector is a simple process whereby you only need to download the JAR, extract it to your Kafka Connect environment, and ensure the plug-in's parent directory is specified in your Kafka Connect environment.
 
 .Prerequisites
 
@@ -1200,7 +1200,7 @@ Installing the SQL Server connector is a simple process whereby you only need to
 
 . Download the {prodname} link:https://access.redhat.com/jbossnetwork/restricted/listSoftware.html?product=red.hat.integration&downloadType=distributions[SQL Server connector].
 . Extract the files into your Kafka Connect environment.
-. Add the plugin's parent directory to your Kafka Connect plugin path:
+. Add the plug-in's parent directory to your Kafka Connect `plugin.path`:
 +
 [source]
 ----

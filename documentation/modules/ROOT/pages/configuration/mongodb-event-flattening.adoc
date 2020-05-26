@@ -42,7 +42,7 @@ E.g. the general message structure for a insert event looks like this:
 More details about the message structure are provided in {link-prefix}:{link-mongodb-connector}[the documentation] of the MongoDB connector.
 
 While this structure is a good fit to represent changes to MongoDB's schemaless collections,
-it's not understood by existing sink connectors as for instance the Confluent JDBC sink connector.
+it is not understood by existing sink connectors such as the Confluent JDBC sink connector.
 
 Therefore {prodname} provides a {link-kafka-docs}/#connect_transforms[a single message transformation] (SMT)
 which converts the `after`/`patch` information from the MongoDB CDC events into a structure suitable for consumption by existing sink connectors.
@@ -206,7 +206,7 @@ Note that other mongo operations might cause an `$unset` internally, `$rename` i
 
 === Determine original operation
 
-When a message is flattened the final result won't show whether it was an insert, update or first read (Deletions can be detected via tombstones or rewrites, see {link-prefix}:{link-mongodb-event-flattening}#mongodb-extract-new-record-state-configuration-options[Configuration options]).
+When a message is flattened the final result does not show whether it was an insert, update or first read. (Deletions can be detected via tombstones or rewrites, see {link-prefix}:{link-mongodb-event-flattening}#mongodb-extract-new-record-state-configuration-options[Configuration options].)
 
 To solve this problem {prodname} offers an option to propagate the original operation via a header added to the message.
 To enable this feature the option `operation.header` must be set to `true`.

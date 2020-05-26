@@ -142,7 +142,7 @@ To use the RPM in question just issue the standard Fedora installation command:
 ----
 $ sudo dnf -y install postgres-decoderbufs
 ----
-The rest of the configuration is same as described below for `wal2json` plugin.
+The rest of the configuration is same as described below for `wal2json` plug-in.
 
 [[postgresql-server-configuration]]
 === PostgreSQL Server Configuration

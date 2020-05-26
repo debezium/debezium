@@ -131,7 +131,7 @@ or `connect` always represents time and timestamp values using Kafka Connect's b
 
 |[[connector-property-bigint-unsigned-handling-mode]]<<connector-property-bigint-unsigned-handling-mode, `bigint.unsigned.handling.mode`>>
 |`long`
-| Specifies how BIGINT UNSIGNED columns should be represented in change events, including: `precise` uses `java.math.BigDecimal` to represent values, which are encoded in the change events using a binary representation and Kafka Connect's `org.apache.kafka.connect.data.Decimal` type; `long` (the default) represents values using Java's `long`, which may not offer the precision but will be far easier to use in consumers. `long` is usually the preferable setting. Only when working with values larger than 2^63, the `precise` setting should be used as those values can't be conveyed using `long`.
+| Specifies how BIGINT UNSIGNED columns should be represented in change events, including: `precise` uses `java.math.BigDecimal` to represent values, which are encoded in the change events using a binary representation and Kafka Connect's `org.apache.kafka.connect.data.Decimal` type; `long` (the default) represents values using Java's `long`, which may not offer the precision but will be far easier to use in consumers. `long` is usually the preferable setting. Only when working with values larger than 2^63, the `precise` setting should be used as those values cannot be conveyed using `long`.
 
 |[[connector-property-include-schema-changes]]<<connector-property-include-schema-changes, `include.schema.changes`>>
 |`true`
@@ -275,7 +275,7 @@ _Note:_ This feature should be considered an incubating one. We need a feedback 
 
 `extended` In some cases where clients are submitting operations that MySQL excludes from REPEATABLE READ semantics, it may be desirable to block all writes for the entire duration of the snapshot. For these such cases, use this option. +
 
-`none` Will prevent the connector from acquiring any table locks during the snapshot process. This value can be used with all snapshot modes but it is safe to use if and _only_ if no schema changes are happening while the snapshot is taken. Note that for tables defined with MyISAM engine, the tables would still be locked despite this property being set as MyISAM acquires a table lock. This behaviour is unlike InnoDB engine which acquires row level locks.
+`none` Will prevent the connector from acquiring any table locks during the snapshot process. This value can be used with all snapshot modes but it is safe to use if and _only_ if no schema changes are happening while the snapshot is taken. Note that for tables defined with MyISAM engine, the tables would still be locked despite this property being set as MyISAM acquires a table lock. This behavior is unlike InnoDB engine which acquires row level locks.
 
 |[[connector-property-snapshot-select-statement-overrides]]<<connector-property-snapshot-select-statement-overrides, `snapshot.select.statement.overrides`>>
 |

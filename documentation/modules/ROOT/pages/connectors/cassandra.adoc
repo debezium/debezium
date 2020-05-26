@@ -172,7 +172,7 @@ DDLs are not recorded in commit logs. When the schema of a table change, this ch
 
 When sending a message to a topic, the Kafka Connect schema for the key and the value will be automatically registered in the Confluent Schema Registry under the subject t-key and t-value, respectively, if the compatibility test passes. Although it is possible to replay a history of all table schemas via the Schema Registry, only the latest schema of each table is used to generate CDC events.
 
-**TODO**: look into if it's possible to leverage schema history to rebuild schema that exist at the specific position in the commit log, rather than the current schema, when restarting the connector. I don't think it's possible right now, because writes to Cassandra node are not received in order.
+**TODO**: look into whether it is possible to leverage schema history to rebuild schema that exist at the specific position in the commit log, rather than the current schema, when restarting the connector. I don't think it is possible right now, because writes to Cassandra node are not received in order.
 
 [[cassandra-events]]
 === Events
@@ -622,7 +622,7 @@ When we compare this to the value in the _insert_ and _update_ event, we see a c
 * The `source` field structure has the same fields as before, but the values are different since this event is from a different position in the commit log.
 * The `ts_ms` shows the timestamp milliseconds which the connector processed this event.
 
-**TODO**: given TTL is not currently support, would it be better to remove delete_ts? would it also be okay to derive whether a field is set or not by looking at the each column to see if it's null?
+**TODO**: given TTL is not currently support, would it be better to remove delete_ts? would it also be okay to derive whether a field is set or not by looking at the each column to see if it is null?
 
 **TODO**: discuss tombstone events in Cassandra connector
 
@@ -996,7 +996,7 @@ refreshing the cached Cassandra table schemas.
 
 |[[cassandra-property-tombstones-on-delete]]<<cassandra-property-tombstones-on-delete, `tombstones.on.delete`>>
 |`false`
-|Whether deletion events should have a subsequent tombstone event (true) or not (false). It's important to note that in Cassandra, two events with the same key may be updating different columns of a given table. So this could potentially result in records being lost during compaction if they haven't been consumed by the consumer yet. In other words, do NOT set this to true if you have kafka compaction turned on.
+|Whether deletion events should have a subsequent tombstone event (true) or not (false). It's important to note that in Cassandra, two events with the same key may be updating different columns of a given table. So this could potentially result in records being lost during compaction if they have not been consumed by the consumer yet. In other words, do NOT set this to true if you have Kafka compaction turned on.
 
 |[[cassandra-property-field-blacklist]]<<cassandra-property-field-blacklist, `field.blacklist`>>
 |

@@ -24,7 +24,7 @@ It is supported though to capture tables newly added while the connector is runn
 
 {prodname} ingests change events from Oracle using the https://docs.oracle.com/database/121/XSTRM/xstrm_intro.htm#XSTRM72647[XStream API].
 In order to use this API and hence this connector, you need to have a license for the GoldenGate product
-(though it's not required that GoldenGate itself is installed).
+(though it is not required that GoldenGate itself is installed).
 We are currently exploring alternatives to using XStream for a future {prodname} release, e.g. based on LogMiner and/or alternative solutions.
 Please track the {jira-url}/browse/DBZ-137[DBZ-137] JIRA issue and join the discussion if you are aware of potential other ways for ingesting change events from Oracle.
 
@@ -229,9 +229,9 @@ ensuring that it does not miss any updates that occurred while the snapshot was 
 If the connector stops again for any reason, upon restart it will simply continue streaming changes from where it previously left off.
 
 A second snapshotting mode is *schema_only*.
-In this case step 6 from the snapshotting routine described above won't be applied.
-I.e. the connector will still capture the structure of the relevant tables, but it won't create any `READ` events representing the complete dataset at the point of connector start-up.
-This can be useful if you're only interested in any data changes from now onwards but not the complete current state of all records.
+In this case, step 6 from the snapshotting routine described above is not applied.
+In other words, the connector still captures the structure of the relevant tables, but it does not create any `READ` events representing the complete dataset at the point of connector start-up.
+This can be useful if you are interested in data changes only from now onwards but not the complete current state of all records.
 
 [[oracle-reading-the-log]]
 === Reading the Redo Log
@@ -457,9 +457,9 @@ every change event for the `customers` table while it has this definition will f
 ----
 
 The `schema` portion of the key contains a Kafka Connect schema describing what is in the key portion, and in our case that means that the `payload` value is not optional, is a structure defined by a schema named `server1.DEBEZIUM.CUSTOMERS.Key`, and has one required field named `id` of type `int32`.
-If we look at the value of the key's `payload` field, we'll see that it is indeed a structure (which in JSON is just an object) with a single `id` field, whose value is `1004`.
+If you look at the value of the key's `payload` field, you can see that it is indeed a structure (which in JSON is just an object) with a single `id` field, whose value is `1004`.
 
-Therefore, we interpret this key as describing the row in the `inventory.customers` table (output from the connector named `server1`) whose `id` primary key column had a value of `1004`.
+Therefore, you can interpret this key as describing the row in the `inventory.customers` table (output from the connector named `server1`) whose `id` primary key column had a value of `1004`.
 
 ////
 [NOTE]
@@ -488,7 +488,7 @@ Whether or not this field and its elements are available is highly dependent on 
 ====
 
 * `after` is an optional field that if present contains the state of the row _after_ the event occurred. The structure is described by the same `server1.INVENTORY.CUSTOMERS.Value` Kafka Connect schema used in `before`.
-* `source` is a mandatory field that contains a structure describing the source metadata for the event, which in the case of Oracle contains these fields: the {prodname} version, the connector name, whether the event is part of an ongoing snapshot or not, the transaction id (not while snapshotting), the SCN of the change, and a timestamp representing the point in time when the record was changed in the source database (during snapshotting, it'll be the point in time of snapshotting)
+* `source` is a mandatory field that contains a structure describing the source metadata for the event, which in the case of Oracle contains these fields: the {prodname} version, the connector name, whether the event is part of an ongoing snapshot or not, the transaction id (not while snapshotting), the SCN of the change, and a timestamp representing the point in time when the record was changed in the source database (during snapshotting, this is the point in time of snapshotting)
 * `ts_ms` is optional and if present contains the time (using the system clock in the JVM running the Kafka Connect task) at which the connector processed the event.
 
 And of course, the _schema_ portion of the event message's value contains a schema that describes this envelope structure and the nested fields within it.
