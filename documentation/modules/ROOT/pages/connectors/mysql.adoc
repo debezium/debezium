@@ -3,7 +3,7 @@
 :linkattrs:
 :icons: font
 :source-highlighter: highlight.js
-:context: cdc
+:context: debezium
 
 [id="debezium-connector-for-mysql"]
 = {prodname} Connector for MySQL
