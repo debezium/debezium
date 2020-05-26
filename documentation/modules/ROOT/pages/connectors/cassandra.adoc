@@ -1,3 +1,4 @@
+[id="debezium-connector-for-cassandra"]
 = Debezium Connector for Cassandra
 
 :toc:

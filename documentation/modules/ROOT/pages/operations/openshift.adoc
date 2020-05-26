@@ -1,3 +1,4 @@
+[id="deploying-debezium-on-openshift"]
 = Deploying Debezium on OpenShift
 
 :linkattrs:

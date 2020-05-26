@@ -1,3 +1,4 @@
+[id="installing-debezium"]
 = Installing Debezium
 
 :toc:
