@@ -342,7 +342,7 @@ Pub/Sub exposes a set of REST APIs and provides a (not-only) Java SDK that is us
 
 |[[pubsub-ordering]]<<pubsub-ordering, `debezium.sink.pubsub.ordering.enabled`>>
 |`true`
-|Pub/Sub can optionally use a message key to guarantee the delivery of the messages in the same order as were sent for messages with the same order key.
+|Pub/Sub can optionally use a message key to guarantee the delivery of the messages in the https://googleapis.dev/java/google-api-grpc/latest/com/google/pubsub/v1/PubsubMessage.Builder.html#setOrderingKey-java.lang.String-[same order] as were sent for messages with the same order key.
 This feature can be disabled.
 
 |[[pubsub-null-key]]<<pubsub-null-key, `debezium.sink.pubsub.null.key`>>
