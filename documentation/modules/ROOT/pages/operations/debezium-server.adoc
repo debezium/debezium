@@ -178,8 +178,8 @@ __  ____  __  _____   ___  __ ____  ______
 
 The source configuration uses the same configuration properties that are described on the specific connector documentation pages (just with `debezium.source` prefix), together with few more specific ones, necessary for running outside of Kafka Connect:
 
-[cols="35%a,10%a,55%a",options="header"]
-|=======================
+[cols="35%a,10%a,55%a"]
+|===
 |Property
 |Default
 |Description
@@ -196,7 +196,7 @@ The source configuration uses the same configuration properties that are describ
 |
 |Defines how frequently the offsets are flushed into the file.
 
-|=======================
+|===
 
 [id="debezium-format-configuration-options"]
 === Format configuration
@@ -204,8 +204,8 @@ The source configuration uses the same configuration properties that are describ
 The message output format can be configured for both key and value separately.
 By default the output is in JSON format but an arbitrary implementation of Kafka Connect's `Converter` can be used.
 
-[cols="35%a,10%a,55%a",options="header"]
-|=======================
+[cols="35%a,10%a,55%a"]
+|===
 |Property
 |Default
 |Description
@@ -226,7 +226,7 @@ By default the output is in JSON format but an arbitrary implementation of Kafka
 |
 |Configuration properties passed to the value converter.
 
-|=======================
+|===
 
 [id="debezium-transformations-configuration-options"]
 === Transformation configuration
@@ -235,8 +235,8 @@ Before the messages are delivered to the sink, they can run through a sequence o
 The server supports https://cwiki.apache.org/confluence/display/KAFKA/KIP-66%3A+Single+Message+Transforms+for+Kafka+Connect[single message transformations] defined by Kafka Connect.
 The configuration will need to contain the list of transformations, implementation class for each transformation and configuration options for each of the transformations.
 
-[cols="35%a,10%a,55%a",options="header"]
-|=======================
+[cols="35%a,10%a,55%a"]
+|===
 |Property
 |Default
 |Description
@@ -256,7 +256,7 @@ The configuration will need to contain the list of transformations, implementati
 |
 |Configuration properties passed to the transformation with name `<name>`.
 
-|=======================
+|===
 
 
 === Sink configuration
@@ -272,8 +272,8 @@ The sink is selected by configuration property `debezium.sink.type`.
 Amazon Kinesis is an implementation of data streaming system with support for stream sharding and other techniques for high scalability.
 Kinesis exposes a set of REST APIs and provides a (not-only) Java SDK that is used to implement the sink.
 
-[cols="35%a,10%a,55%a",options="header"]
-|=======================
+[cols="35%a,10%a,55%a"]
+|===
 |Property
 |Default
 |Description
@@ -294,7 +294,7 @@ Kinesis exposes a set of REST APIs and provides a (not-only) Java SDK that is us
 |`default`
 |Kinesis does not support the notion of messages without key. So this string will be used as message key for messages from tables without primary key.
 
-|=======================
+|===
 
 
 ==== Injection points
@@ -302,8 +302,8 @@ Kinesis exposes a set of REST APIs and provides a (not-only) Java SDK that is us
 The Kinesis sink behaviour can be modified by a custom logic providing alternative implementations for specific functionalities.
 When the alternative implementations are not available then the default ones are used.
 
-[cols="35%a,10%a,55%a",options="header"]
-|=======================
+[cols="35%a,10%a,55%a"]
+|===
 |Interface
 |CDI classifier
 |Description
@@ -316,7 +316,7 @@ When the alternative implementations are not available then the default ones are
 |
 |Custom implementation maps the planned destination (topic) name into a physical Kinesis stream name. By default the same name is used.
 
-|=======================
+|===
 
 
 == Extensions

@@ -357,8 +357,8 @@ DebeziumEngine<RecordChangeEvent<SourceRecord>> engine = DebeziumEngine.create(C
 
 The following configuration properties are _required_ unless a default value is available (for the sake of text formatting the package names of Java classes are replaced with `<...>`).
 
-[cols="35%a,10%a,55%a",options="header"]
-|=======================
+[cols="35%a,10%a,55%a"]
+|===
 |Property
 |Default
 |Description
@@ -417,7 +417,7 @@ The default is a periodic commity policy based upon time intervals.
 |`internal.value.converter`
 |`<...>.JsonConverter`
 |The Converter class that should be used to serialize and deserialize value data for offsets. The default is JSON converter.
-|=======================
+|===
 
 == Handling Failures
 

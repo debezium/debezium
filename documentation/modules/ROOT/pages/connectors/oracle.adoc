@@ -850,8 +850,8 @@ Please file a {jira-url}/browse/DBZ[JIRA issue] for any specific types you are m
 [[oracle-character-values]]
 ==== Character Values
 
-[cols="20%a,15%a,30%a,35%a",options="header"]
-|=======================
+[cols="20%a,15%a,30%a,35%a"]
+|===
 |Oracle Data Type
 |Literal type (schema type)
 |Semantic type (schema name)
@@ -882,13 +882,13 @@ Please file a {jira-url}/browse/DBZ[JIRA issue] for any specific types you are m
 |n/a
 |
 
-|=======================
+|===
 
 [[oracle-numeric-values]]
 ==== Numeric Values
 
-[cols="20%a,15%a,30%a,35%a",options="header"]
-|=======================
+[cols="20%a,15%a,30%a,35%a"]
+|===
 |Oracle Data Type
 |Literal type (schema type)
 |Semantic type (schema name)
@@ -956,7 +956,7 @@ If P - S >= 19, the column will be mapped to `BYTES` (`org.apache.kafka.connect{
 |`io.debezium.data.VariableScaleDecimal`
 |Contains a structure with two fields: `scale` of type `INT32` that contains the scale of the transferred value and `value` of type `BYTES` containing the original value in an unscaled form.
 
-|=======================
+|===
 
 [[oracle-decimal-values]]
 ==== Decimal Values
@@ -969,8 +969,8 @@ The last option for `decimal.handling.mode` configuration property is `string`. 
 [[oracle-temporal-values]]
 ==== Temporal Values
 
-[cols="20%a,15%a,30%a,35%a",options="header"]
-|=======================
+[cols="20%a,15%a,30%a,35%a"]
+|===
 |Oracle Data Type
 |Literal type (schema type)
 |Semantic type (schema name)
@@ -1006,7 +1006,7 @@ The last option for `decimal.handling.mode` configuration property is `string`. 
 |`io.debezium.time.MicroDuration`
 |The number of micro seconds for a time interval using the `365.25 / 12.0` formula for days per month average
 
-|=======================
+|===
 
 [[oracle-deploying-a-connector]]
 == Deploying a Connector
@@ -1090,8 +1090,8 @@ include::{partialsdir}/modules/cdc-all-connectors/r_connector-monitoring-schema-
 
 The following configuration properties are _required_ unless a default value is available.
 
-[cols="35%a,10%a,55%a",options="header"]
-|=======================
+[cols="35%a,10%a,55%a"]
+|===
 |Property
 |Default
 |Description
@@ -1275,4 +1275,4 @@ See {link-prefix}:{link-avro-serialization}#avro-naming[Avro naming] for more de
 
 See {link-prefix}:{link-oracle-connector}#oracle-transaction-metadata[Transaction Metadata] for additional details.
 
-|=======================
+|===
