@@ -1,5 +1,5 @@
 = Debezium Event Deserialization
-include::../_attributes.adoc[]
+
 :toc:
 :toc-placement: macro
 :linkattrs:

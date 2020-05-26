@@ -1,5 +1,5 @@
 = Debezium Connector for Db2 
-include::../_attributes.adoc[]
+
 :toc:
 :toc-placement: macro
 :linkattrs:

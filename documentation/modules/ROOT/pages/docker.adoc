@@ -1,5 +1,5 @@
 = Using Docker with Debezium
-include::_attributes.adoc[]
+
 :linkattrs:
 :icons: font
 
@@ -129,4 +129,3 @@ Start the machine if needed, but it if is already running then the error almost 
 ----
 
 This should resolve the error so that you can run the Docker command.
-

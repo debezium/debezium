@@ -1,5 +1,5 @@
 = Debezium Connector for Oracle
-include::../_attributes.adoc[]
+
 :toc:
 :toc-placement: macro
 :linkattrs:

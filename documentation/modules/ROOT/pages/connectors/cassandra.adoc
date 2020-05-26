@@ -1,5 +1,5 @@
 = Debezium Connector for Cassandra
-include::../_attributes.adoc[]
+
 :toc:
 :toc-placement: macro
 :linkattrs:
