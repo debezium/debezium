@@ -2,7 +2,7 @@
 = {prodname} Connector for PostgreSQL
 
 ifdef::community[]
-include::../_attributes.adoc[]
+
 :toc:
 :toc-placement: macro
 :linkattrs:

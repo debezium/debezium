@@ -1,5 +1,5 @@
 = Content-Based Routing
-include::../_attributes.adoc[]
+
 :toc:
 :toc-placement: macro
 :linkattrs:

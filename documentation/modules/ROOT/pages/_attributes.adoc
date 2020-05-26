@@ -1,8 +1,0 @@
-// set attributes usually set by Antora
-ifndef::site-gen-antora[]
-:moduledir: ..
-:attachmentsdir: {moduledir}/assets/attachments
-:examplesdir: {moduledir}/examples
-:imagesdir: {moduledir}/assets/images
-:partialsdir: {moduledir}/pages/_partials
-endif::[]
