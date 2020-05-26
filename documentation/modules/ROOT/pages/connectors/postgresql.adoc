@@ -1685,7 +1685,7 @@ The {prodname} PostgreSQL connector has two metric types in addition to the buil
 * <<snapshot-metrics, snapshot metrics>>; for monitoring the connector when performing snapshots
 * <<streaming-metrics, streaming metrics>>; for monitoring the connector when processing change events via logical decoding
 
-Please refer to the {link-prefix}:{link-debzium-monitoring}#monitoring-debezium[monitoring documentation] for details of how to expose these metrics via JMX.
+Please refer to the {link-prefix}:{link-debezium-monitoring}#monitoring-debezium[monitoring documentation] for details of how to expose these metrics via JMX.
 
 [[postgresql-snapshot-metrics]]
 ==== Snapshot Metrics
