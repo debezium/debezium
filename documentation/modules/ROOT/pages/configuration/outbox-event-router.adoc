@@ -1,5 +1,5 @@
 = Outbox Event Router
-include::../_attributes.adoc[]
+
 :toc:
 :toc-placement: macro
 :linkattrs:

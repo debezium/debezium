@@ -1,5 +1,5 @@
 = Debezium Features
-include::_attributes.adoc[]
+
 :linkattrs:
 :icons: font
 

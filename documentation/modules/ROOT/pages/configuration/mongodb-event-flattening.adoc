@@ -1,5 +1,5 @@
 = MongoDB New Document State Extraction
-include::../_attributes.adoc[]
+
 :toc:
 :toc-placement: macro
 :linkattrs:

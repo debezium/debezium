@@ -1,5 +1,5 @@
 = Integration Testing with Testcontainers
-include::../_attributes.adoc[]
+
 :toc:
 :toc-placement: macro
 :linkattrs:

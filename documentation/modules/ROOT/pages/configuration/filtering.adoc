@@ -1,5 +1,5 @@
 = Message Filtering
-include::../_attributes.adoc[]
+
 :toc:
 :toc-placement: macro
 :linkattrs:

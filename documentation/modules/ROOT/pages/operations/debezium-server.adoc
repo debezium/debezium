@@ -1,5 +1,5 @@
 = Debezium Server
-include::../_attributes.adoc[]
+
 :linkattrs:
 :icons: font
 :toc:

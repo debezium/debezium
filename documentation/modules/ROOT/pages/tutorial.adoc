@@ -1,5 +1,5 @@
 = Tutorial
-include::_attributes.adoc[]
+
 :toc:
 :toc-placement: macro
 :sectanchors:

@@ -1,7 +1,7 @@
 = {prodname} Connector for SQL Server
 
 ifdef::community[]
-include::../_attributes.adoc[]
+
 :toc:
 :toc-placement: macro
 :linkattrs:
