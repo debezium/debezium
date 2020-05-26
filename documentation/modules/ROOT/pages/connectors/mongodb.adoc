@@ -537,10 +537,10 @@ This feature is under active development right now (incubating),
 so the structure of transaction events or other details may still change as development progresses.
 ====
 
-Debezium can generate events that represents tranaction metadata boundaries and enrich data messages.
+{prodname} can generate events that represents tranaction metadata boundaries and enrich data messages.
 
 ==== Transaction boundaries
-Debezium generates events for every transaction start and end.
+{prodname} generates events for every transaction start and end.
 Every event contains
 
 * `status` - `BEGIN` or `END`
@@ -611,7 +611,7 @@ An example of messages looks like
 == Deploying the MongoDB connector
 
 ifdef::community[]
-If you've already installed https://zookeeper.apache.org[Zookeeper], http://kafka.apache.org/[Kafka], and {link-kafka-docs}.html#connect[Kafka Connect], then using Debezium's MongoDB connector is easy.
+If you've already installed https://zookeeper.apache.org[Zookeeper], http://kafka.apache.org/[Kafka], and {link-kafka-docs}.html#connect[Kafka Connect], then using {prodname}'s MongoDB connector is easy.
 Simply download the
 ifeval::['{page-version}' == 'master']
 {link-mongodb-plugin-snapshot}[connector's plugin archive],
@@ -656,8 +656,8 @@ For more information on the deployment process, and deploying connectors with AM
 endif::product[]
 
 ifdef::community[]
-If immutable containers are your thing, then check out https://hub.docker.com/r/debezium/[Debezium's Docker images] for Zookeeper, Kafka, and Kafka Connect with the MongoDB connector already pre-installed and ready to go.
-Our xref:tutorial.adoc[tutorial] even walks you through using these images, and this is a great way to learn what Debezium is all about. You can even link:/blog/2016/05/31/Debezium-on-Kubernetes/[run Debezium on Kubernetes and OpenShift].
+If immutable containers are your thing, then check out https://hub.docker.com/r/debezium/[{prodname}'s Docker images] for Zookeeper, Kafka, and Kafka Connect with the MongoDB connector already pre-installed and ready to go.
+Our xref:tutorial.adoc[tutorial] even walks you through using these images, and this is a great way to learn what {prodname} is all about. You can even link:/blog/2016/05/31/Debezium-on-Kubernetes/[run {prodname} on Kubernetes and OpenShift].
 endif::community[]
 
 [[mongodb-example-configuration]]
@@ -916,7 +916,7 @@ The following _advanced_ configuration properties have good defaults that will w
 ifdef::community[]
 |[[mongodb-property-source-struct-version]]<<mongodb-property-source-struct-version, `source.struct.version`>>
 |v2
-|Schema version for the `source` block in CDC events. Debezium 0.10 introduced a few breaking +
+|Schema version for the `source` block in CDC events. {prodname} 0.10 introduced a few breaking +
 changes to the structure of the `source` block in order to unify the exposed structure across
 all the connectors. +
 By setting this option to `v1` the structure used in earlier versions can be produced.

@@ -24,7 +24,7 @@ This is a very powerful mechanism but has two drawbacks:
 * It is necessary to compile the transformation upfront and deploy it to Kafka Connect.
 * Every change needs code recompilation and redeployment, leading to inflexible operations.
 
-To solve this problem, Debezium comes with the Content-Based Router SMT.
+To solve this problem, {prodname} comes with the Content-Based Router SMT.
 This SMT allows the operator to write an expression that is evaluated for each event and according to the result, it is either kept in the original topic or re-routed to another one.
 The current implementation supports any scripting language which integrates with https://jcp.org/en/jsr/detail?id=223[JSR 223] (Scripting for the Java(TM) Platform).
 
@@ -44,12 +44,12 @@ In this example, we are using `Groovy` as the expression language, and we're re-
 
 [IMPORTANT]
 ====
-Debezium does not come with the language implementations in its installation packages.
+{prodname} does not come with the language implementations in its installation packages.
 It is the user's responsibility to provide an implementation, such as link:https://groovy-lang.org/[Groovy 3] or link:https://github.com/graalvm/graaljs[GraalVM JavaScript], on the classpath.
 Bootstrapping is done exclusively via the JSR 223 API currently, so the engine's support for this API must be provided as well.
 ====
 
-Debezium binds four variables into the evaluation context:
+{prodname} binds four variables into the evaluation context:
 
 * `key` - a key of the message
 * `value` - a value of the message

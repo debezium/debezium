@@ -1,5 +1,5 @@
 [id="debezium-server"]
-= Debezium Server
+= {prodname} Server
 
 :linkattrs:
 :icons: font
@@ -13,24 +13,24 @@ toc::[]
 This feature is currently in incubating state, i.e. exact semantics, configuration options etc. may change in future revisions, based on the feedback we receive.
 
 Please let us know if you encounter any problems while using this feature.
-Also please reach out if you have requirements for specific sinks to be supported by Debezium Server (Apache Pulsar, NATS, etc.) or even would be interested in contributing the required implementation.
+Also please reach out if you have requirements for specific sinks to be supported by {prodname} Server (Apache Pulsar, NATS, etc.) or even would be interested in contributing the required implementation.
 ====
 
-Debezium provides a ready-to-use application that streams change events from a source database to messaging infrastructure like Amazon Kinesis or Google Pub/Sub (planned).
-For streaming change events to Apache Kafka, it is recommended to deploy the Debezium connectors via Kafka Connect.
+{prodname} provides a ready-to-use application that streams change events from a source database to messaging infrastructure like Amazon Kinesis or Google Pub/Sub (planned).
+For streaming change events to Apache Kafka, it is recommended to deploy the {prodname} connectors via Kafka Connect.
 
 == Installation
 
 To install the server download and unpack the server distribution archive:
 
 ifeval::['{page-version}' == 'master']
-* {link-server-snapshot}[Debezium Server distribution]
+* {link-server-snapshot}[{prodname} Server distribution]
 
-NOTE: The above links refers to the nightly snapshot build of the Debezium master branch.
+NOTE: The above links refers to the nightly snapshot build of the {prodname} master branch.
 If you are looking for a non-snapshot version, please select the appropriate version of this documentation in the menu to the right.
 endif::[]
 ifeval::['{page-version}' != 'master']
-* https://repo1.maven.org/maven2/io/debezium/debezium-server/{debezium-version}/debezium-server-{debezium-version}-distribution.tar.gz[Debezium Server distribution]
+* https://repo1.maven.org/maven2/io/debezium/debezium-server/{debezium-version}/debezium-server-{debezium-version}-distribution.tar.gz[{prodname} Server distribution]
 endif::[]
 
 A directory named `debezium-server` will be created with these contents:
@@ -54,13 +54,13 @@ The server is started using `run.sh` script, dependencies are stored in the `lib
 
 == Configuration
 
-Debezium Server uses https://github.com/eclipse/microprofile-config[MicroProfile Configuration] for configuration.
+{prodname} Server uses https://github.com/eclipse/microprofile-config[MicroProfile Configuration] for configuration.
 This means that the application can be configured from disparate sources like configuration files, environment variables, system properties etc.
 
 The main configuration file is _conf/application.properties_.
 There are multiple sections configured:
 
-* `debezium.source` is for source connector configuration; each instance of Debezium Server runs exactly one connector
+* `debezium.source` is for source connector configuration; each instance of {prodname} Server runs exactly one connector
 * `debezium.sink` is for the sink system configuration
 * `debezium.format` is for the output serialization format configuration
 * `debezium.transforms` is for the configuration of message transformations
@@ -321,7 +321,7 @@ When the alternative implementations are not available then the default ones are
 
 == Extensions
 
-Debezium Server uses the https://quarkus.io/[Quarkus framework] and relies on dependency injection to enable developer to extend its behaviour.
+{prodname} Server uses the https://quarkus.io/[Quarkus framework] and relies on dependency injection to enable developer to extend its behaviour.
 Note that only the JVM mode of Quarkus is supported, but not native execution via GraalVM.
 The server can be extended in two ways by providing a custom logic:
 
