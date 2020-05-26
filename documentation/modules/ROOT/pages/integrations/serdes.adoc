@@ -94,8 +94,8 @@ The deserializer behaviour is driven by the `from.field` configuration option an
 [[serdes-configuration_options]]
 === Configuration options
 
-[cols="35%a,10%a,55%a",options="header"]
-|=======================
+[cols="35%a,10%a,55%a"]
+|===
 |Property
 |Default
 |Description
@@ -109,4 +109,4 @@ The deserializer behaviour is driven by the `from.field` configuration option an
 |`unknown.properties.ignored`
 |`false`
 |Determines when an unknown property is encountered whether it should be silently ignored or if a runtime exception should be thrown.
-|=======================
+|===

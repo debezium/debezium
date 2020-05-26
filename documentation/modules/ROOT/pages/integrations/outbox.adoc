@@ -126,8 +126,8 @@ The extension works out-of-the-box with a default configuration, but this config
 
 === Build time configuration options
 
-[cols="65%a,>12%a,>23%",options="header"]
-|=======================
+[cols="65%a,>12%a,>23%"]
+|===
 |Configuration property
 |Type
 |Default
@@ -235,7 +235,7 @@ e.g. `com.company.TheAttributeConverter`
 |string
 |
 
-|=======================
+|===
 
 [NOTE]
 ====
@@ -245,8 +245,8 @@ When not using the default values, be sure that the SMT configuration matches.
 
 === Runtime configuration options
 
-[cols="65%a,>15%a,>20%",options="header"]
-|=======================
+[cols="65%a,>15%a,>20%"]
+|===
 |Configuration property
 |Type
 |Default
@@ -259,4 +259,4 @@ This is used as a way to keep the table's underlying storage from growing over t
 |boolean
 |true
 
-|=======================
+|===

@@ -93,8 +93,8 @@ value.op == 'u' && value.before.id == 2
 
 [[filter-configuration-options]]
 == Configuration options
-[cols="35%a,10%a,55%a",options="header"]
-|=======================
+[cols="35%a,10%a,55%a"]
+|===
 |Property
 |Default
 |Description
@@ -115,4 +115,4 @@ value.op == 'u' && value.before.id == 2
 |`keep`
 |Prescribes how the transformation should handle `null` (tombstone) messages. The options are: `keep` (the default) to pass the message through, `drop` to remove the messages completely or `evaluate` to run the message through the condition expression.
 
-|=======================
+|===

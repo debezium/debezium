@@ -119,8 +119,8 @@ Finally, it's also possible to use Avro for the entire envelope as well as the `
 
 The following configuration options exist when usi
 
-[cols="35%a,10%a,55%a",options="header"]
-|=======================
+[cols="35%a,10%a,55%a"]
+|===
 |Property
 |Default
 |Description
@@ -145,7 +145,7 @@ can be `json` or `avro`, if `serializer.type` is `json` or `avro`.
 |`avro. \...`
 |N/A
 |Any configuration options to be passed through to the underlying converter when using Avro (the "avro." prefix will be removed)
-|=======================
+|===
 
 The following shows an example configuration for using JSON as envelope format
 (the default, so `value.converter.serializer.type` could also be omitted) and Avro as data content type:
