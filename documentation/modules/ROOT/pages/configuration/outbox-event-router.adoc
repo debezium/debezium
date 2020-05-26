@@ -83,8 +83,8 @@ This result was achieved with the {link-prefix}:{link-outbox-event-router}#outbo
 
 [[outbox-event-router-configuration-options]]
 === Configuration options
-[cols="30%a,10%a,10%a,50%a",options="header"]
-|=======================
+[cols="30%a,10%a,10%a,50%a"]
+|===
 |Property
 |Default
 |Group
@@ -149,7 +149,7 @@ This result was achieved with the {link-prefix}:{link-outbox-event-router}#outbo
 |`warn`
 |{prodname}
 |While {prodname} is monitoring the table, it's not expecting to see 'update' row events, in case it happens, this transform can log it as warning, error or stop the process. Options are `warn`, `error` and `fatal`
-|=======================
+|===
 
 === Default table columns
 
@@ -168,8 +168,8 @@ payload       | jsonb                  |
 
 After observing all those pieces we can see what the default configuration does:
 
-[cols="30%a,70%a",options="header"]
-|=======================
+[cols="30%a,70%a"]
+|===
 |Table Column
 |Effect
 
@@ -184,7 +184,7 @@ After observing all those pieces we can see what the default configuration does:
 
 |`payload`
 |The JSON representation of the event itself, becomes either part of the message as `payload` or if other metadata including `eventType` are delivered as headers then the payload becomes the message itself without an encapsulation in an envelope
-|=======================
+|===
 
 
 === Basic configuration

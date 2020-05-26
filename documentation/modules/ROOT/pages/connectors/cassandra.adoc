@@ -633,8 +633,8 @@ As described above, the Cassandra connector represents the changes to rows with 
 
 The following table describes how the connector maps each of the Cassandra data types to an Kafka Connect data type.
 
-[cols="30%a, 30%a, 40%a",options="header"]
-|=======================
+[cols="30%a, 30%a, 40%a"]
+|===
 |Cassandra Data Type
 |Literal Type (Schema Type)
 |Semantic Type (Schema Name)
@@ -743,7 +743,7 @@ The following table describes how the connector maps each of the Cassandra data 
 |`int64`
 |`io.debezium.time.NanoDuration` (an approximate representation of the duration value in nano-seconds)
 
-|=======================
+|===
 
 **TODO**: add logical types
 
@@ -824,8 +824,8 @@ Cassandra connector has built-in support for JMX metrics. The Cassandra driver a
 [[cassandra-snapshot-metrics]]
 ==== Snapshot Metrics
 
-[cols="30%a,10%a,60%a",options="header"]
-|=======================
+[cols="30%a,10%a,60%a"]
+|===
 |Attribute Name
 |Type
 |Description
@@ -857,13 +857,13 @@ Cassandra connector has built-in support for JMX metrics. The Cassandra driver a
 |`rows-scanned`
 |`Map<String, Long>`
 |Map containing the number of rows scanned for each table in the snapshot. Tables are incrementally added to the Map during processing. Updates every 10,000 rows scanned and upon completing a table.
-|=======================
+|===
 
 [[cassandra-commitlog-metrics]]
 ==== Commitlog Metrics
 
-[cols="30%a,10%a,60%a",options="header"]
-|=======================
+[cols="30%a,10%a,60%a"]
+|===
 |Attribute Name
 |Type
 |Description
@@ -884,14 +884,14 @@ Cassandra connector has built-in support for JMX metrics. The Cassandra driver a
 |`long`
 |The number of unrecoverable errors while processing commit logs.
 
-|=======================
+|===
 
 
 [[cassandra-connector-properties]]
 === Connector properties
 
-[cols="35%a,10%a,55%a",options="header"]
-|=======================
+[cols="35%a,10%a,55%a"]
+|===
 |Property
 |Default
 |Description
@@ -1007,7 +1007,7 @@ refreshing the cached Cassandra table schemas.
 |Whether field names will be sanitized to adhere to Avro naming requirements.
 See {link-prefix}:{link-avro-serialization}#avro-naming[Avro naming] for more details.
 
-|=======================
+|===
 
 The connector also supports pass-through configuration properties that are used when creating the Kafka producer. Specifically, all connector configuration properties that begin with the `kafka.producer.` prefix are used (without the prefix) when creating the Kafka producer that writes events to Kafka.
 
