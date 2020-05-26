@@ -1,13 +1,13 @@
 [id="debezium-features"]
-= Debezium Features
+= {prodname} Features
 
 :linkattrs:
 :icons: font
 
-Debezium is a set of source connectors for Apache Kafka Connect,
+{prodname} is a set of source connectors for Apache Kafka Connect,
 ingesting changes from different databases using change data capture (CDC).
 Unlike other approaches such as polling or dual writes,
-log-based CDC as implemented by Debezium:
+log-based CDC as implemented by {prodname}:
 
 * makes sure that *all data changes are captured*
 * produces change events with a *very low delay* (e.g. ms range for MySQL or Postgres) while avoiding increased CPU usage of frequent polling
@@ -18,7 +18,7 @@ log-based CDC as implemented by Debezium:
 To learn more about the advantages of log-based CDC,
 refer to link:/blog/2018/07/19/advantages-of-log-based-change-data-capture/[this blog post].
 
-The actual change data capture feature of Debezium is amended with a range of related capabilities and options:
+The actual change data capture feature of {prodname} is amended with a range of related capabilities and options:
 
 * *Snapshots:* optionally, an initial snapshot of a database's current state can be taken if a connector gets started up and not all logs still exist (typically the case when the database has been running for some time and has discarded any transaction logs not needed any longer for transaction recovery or replication);
 different modes exist for snapshotting, refer to the docs of the specific connector you're using to learn more

@@ -1,5 +1,5 @@
 [id="debezium-connector-for-oracle"]
-= Debezium Connector for Oracle
+= {prodname} Connector for Oracle
 
 :toc:
 :toc-placement: macro
@@ -13,7 +13,7 @@ toc::[]
 This connector is currently in incubating state, i.e. exact semantics, configuration options etc. may change in future revisions, based on the feedback we receive. Please let us know if you encounter any problems.
 ====
 
-Debezium's Oracle Connector can monitor and record all of the row-level changes in the databases on an Oracle server.
+{prodname}'s Oracle Connector can monitor and record all of the row-level changes in the databases on an Oracle server.
 Most notably, the connector does not yet support changes to the structure of captured tables (e.g. `ALTER TABLE...`) after the initial snapshot has been completed
 (see {jira-url}/browse/DBZ-718[DBZ-718]).
 It is supported though to capture tables newly added while the connector is running
@@ -22,16 +22,16 @@ It is supported though to capture tables newly added while the connector is runn
 [[oracle-overview]]
 == Overview
 
-Debezium ingests change events from Oracle using the https://docs.oracle.com/database/121/XSTRM/xstrm_intro.htm#XSTRM72647[XStream API].
+{prodname} ingests change events from Oracle using the https://docs.oracle.com/database/121/XSTRM/xstrm_intro.htm#XSTRM72647[XStream API].
 In order to use this API and hence this connector, you need to have a license for the GoldenGate product
 (though it's not required that GoldenGate itself is installed).
-We are currently exploring alternatives to using XStream for a future Debezium release, e.g. based on LogMiner and/or alternative solutions.
+We are currently exploring alternatives to using XStream for a future {prodname} release, e.g. based on LogMiner and/or alternative solutions.
 Please track the {jira-url}/browse/DBZ-137[DBZ-137] JIRA issue and join the discussion if you are aware of potential other ways for ingesting change events from Oracle.
 
 [[setting-up-oracle]]
 == Setting up Oracle
 
-The following steps need to be performed in order to prepare the database so the Debezium connector can be used.
+The following steps need to be performed in order to prepare the database so the {prodname} connector can be used.
 This assumes the multi-tenancy configuration (with a container database and at least one pluggable database);
 if you're not using this model, adjust the steps accordingly.
 
@@ -111,7 +111,7 @@ END;
 exit;
 ----
 
-Create XStream user (used by the Debezium connector to connect to the XStream outbound server):
+Create XStream user (used by the {prodname} connector to connect to the XStream outbound server):
 
 [source,indent=0]
 ----
@@ -188,7 +188,7 @@ exit;
 ----
 
 Note that a given outbound server must not be used by multiple connector instances at the same time.
-If you wish to set up multiple instances of the Debezium Oracle connector, a specific XStreamOutbound server is needed for each of them.
+If you wish to set up multiple instances of the {prodname} Oracle connector, a specific XStreamOutbound server is needed for each of them.
 
 === Supported Configurations
 
@@ -208,7 +208,7 @@ tbd.
 === Snapshots
 
 Most Oracle servers are configured to not retain the complete history of the database in the redo logs,
-so the Debezium Oracle connector would be unable to see the entire history of the database by simply reading the logs.
+so the {prodname} Oracle connector would be unable to see the entire history of the database by simply reading the logs.
 So, by default (snapshotting mode *initial*) the connector will upon first startup perform an initial _consistent snapshot_ of the database
 (meaning the structure and data within any tables to be captured as per the connector's filter configuration).
 
@@ -259,7 +259,7 @@ This topic should be considered as an internal state of the connector and should
 If the application needs to track changes in the source database there is the public-facing schema change topic.
 The topic name is the same as the logical server name configured in connector configuration.
 
-Debezium emits a new message to this topic whenever a new table is streamed from or when the structure of the table is altered ({link-prefix}:{link-oracle-connector}#oracle-schema-evolution[schema evolution procedure must be followed]).
+{prodname} emits a new message to this topic whenever a new table is streamed from or when the structure of the table is altered ({link-prefix}:{link-oracle-connector}#oracle-schema-evolution[schema evolution procedure must be followed]).
 The message contains a logical representation of the table schema.
 
 The example of the message is:
@@ -402,7 +402,7 @@ All data change events produced by the Oracle connector have a key and a value, 
 
 [WARNING]
 ====
-The Debezium Oracle connector ensures that all Kafka Connect _schema names_ are http://avro.apache.org/docs/current/spec.html#names[valid Avro schema names].
+The {prodname} Oracle connector ensures that all Kafka Connect _schema names_ are http://avro.apache.org/docs/current/spec.html#names[valid Avro schema names].
 This means that the logical server name must start with Latin letters or an underscore (e.g., [a-z,A-Z,\_]),
 and the remaining characters in the logical server name and all characters in the schema and table names must be Latin letters, digits, or an underscore (e.g., [a-z,A-Z,0-9,\_]).
 If not, then all invalid characters will automatically be replaced with an underscore character.
@@ -410,7 +410,7 @@ If not, then all invalid characters will automatically be replaced with an under
 This can lead to unexpected conflicts when the logical server name, schema names, and table names contain other characters, and the only distinguishing characters between table full names are invalid and thus replaced with underscores.
 ====
 
-Debezium and Kafka Connect are designed around _continuous streams of event messages_, and the structure of these events may change over time.
+{prodname} and Kafka Connect are designed around _continuous streams of event messages_, and the structure of these events may change over time.
 This could be difficult for consumers to deal with, so to make it easy Kafka Connect makes each event self-contained.
 Every message key and value has two parts: a _schema_ and _payload_.
 The schema describes the structure of the payload, while the payload contains the actual data.
@@ -488,7 +488,7 @@ Whether or not this field and its elements are available is highly dependent on 
 ====
 
 * `after` is an optional field that if present contains the state of the row _after_ the event occurred. The structure is described by the same `server1.INVENTORY.CUSTOMERS.Value` Kafka Connect schema used in `before`.
-* `source` is a mandatory field that contains a structure describing the source metadata for the event, which in the case of Oracle contains these fields: the Debezium version, the connector name, whether the event is part of an ongoing snapshot or not, the transaction id (not while snapshotting), the SCN of the change, and a timestamp representing the point in time when the record was changed in the source database (during snapshotting, it'll be the point in time of snapshotting)
+* `source` is a mandatory field that contains a structure describing the source metadata for the event, which in the case of Oracle contains these fields: the {prodname} version, the connector name, whether the event is part of an ongoing snapshot or not, the transaction id (not while snapshotting), the SCN of the change, and a timestamp representing the point in time when the record was changed in the source database (during snapshotting, it'll be the point in time of snapshotting)
 * `ts_ms` is optional and if present contains the time (using the system clock in the JVM running the Kafka Connect task) at which the connector processed the event.
 
 And of course, the _schema_ portion of the event message's value contains a schema that describes this envelope structure and the nested fields within it.
@@ -693,14 +693,14 @@ When we compare this to the value in the _insert_ event, we see a couple of diff
 * The `before` field now has the state of the row with the values before the database commit
 * The `after` field now has the updated state of the row, and here was can see that the `EMAIL` value is now `anne@example.com`.
 * The `source` field structure has the same fields as before, but the values are different since this event is from a different position in the redo log.
-* The `ts_ms` shows the timestamp that Debezium processed this event.
+* The `ts_ms` shows the timestamp that {prodname} processed this event.
 
 There are several things we can learn by just looking at this `payload` section. We can compare the `before` and `after` structures to determine what actually changed in this row because of the commit.
 The `source` structure tells us information about Oracle's record of this change (providing traceability), but more importantly this has information we can compare to other events in this and other topics to know whether this event occurred before, after, or as part of the same Oracle commit as other events.
 
 [NOTE]
 ====
-When the columns for a row's primary/unique key are updated, the value of the row's key has changed so Debezium will output _three_ events: a `DELETE` event and a {link-prefix}:{link-oracle-connector}#oracle-tombstone-events[tombstone event] with the old key for the row, followed by an `INSERT` event with the new key for the row.
+When the columns for a row's primary/unique key are updated, the value of the row's key has changed so {prodname} will output _three_ events: a `DELETE` event and a {link-prefix}:{link-oracle-connector}#oracle-tombstone-events[tombstone event] with the old key for the row, followed by an `INSERT` event with the new key for the row.
 ====
 
 [[oracle-delete-events]]
@@ -741,7 +741,7 @@ If we look at the `payload` portion, we see a number of differences compared wit
 * The `before` field now has the state of the row that was deleted with the database commit.
 * The `after` field is null, signifying that the row no longer exists
 * The `source` field structure has many of the same values as before, except the `ts_ms`, `scn` and `txId` fields have changed
-* The `ts_ms` shows the timestamp that Debezium processed this event.
+* The `ts_ms` shows the timestamp that {prodname} processed this event.
 
 This event gives a consumer all kinds of information that it can use to process the removal of this row.
 
@@ -752,7 +752,7 @@ This allows Kafka to reclaim storage space while ensuring the topic contains a c
 [[oracle-tombstone-events]]
 When a row is deleted, the _delete_ event value listed above still works with log compaction, since Kafka can still remove all earlier messages with that same key.
 But only if the message value is `null` will Kafka know that it can remove _all messages_ with that same key.
-To make this possible, Debezium's Oracle connector always follows the _delete_ event with a special _tombstone_ event that has the same key but `null` value.
+To make this possible, {prodname}'s Oracle connector always follows the _delete_ event with a special _tombstone_ event that has the same key but `null` value.
 
 [[oracle-transaction-metadata]]
 === Transaction Metadata
@@ -763,10 +763,10 @@ This feature is under active development right now (incubating),
 so the structure of transaction events or other details may still change as development progresses.
 ====
 
-Debezium can generate events that represents tranaction metadata boundaries and enrich data messages.
+{prodname} can generate events that represents tranaction metadata boundaries and enrich data messages.
 
 ==== Transaction boundaries
-Debezium generates events for every transaction start and end.
+{prodname} generates events for every transaction start and end.
 Every event contains
 
 * `status` - `BEGIN` or `END`
@@ -836,7 +836,7 @@ An example of messages looks like
 [[oracle-data-types]]
 === Data Types
 
-As described above, the Debezium Oracle connector represents the changes to rows with events that are structured like the table in which the row exist.
+As described above, the {prodname} Oracle connector represents the changes to rows with events that are structured like the table in which the row exist.
 The event contains a field for each column value, and how that value is represented in the event depends on the Oracle data type of the column.
 This section describes this mapping from Oracle's data types to a _literal type_ and _semantic type_ within the events' fields.
 
@@ -1011,7 +1011,7 @@ The last option for `decimal.handling.mode` configuration property is `string`. 
 [[oracle-deploying-a-connector]]
 == Deploying a Connector
 
-Due to licensing requirements, the Debezium Oracle Connector does not ship with the Oracle JDBC driver and the XStream API JAR.
+Due to licensing requirements, the {prodname} Oracle Connector does not ship with the Oracle JDBC driver and the XStream API JAR.
 You can obtain them for free by downloading the http://www.oracle.com/technetwork/topics/linuxx86-64soft-092277.html[Oracle Instant Client].
 
 Extract the archive into a directory, e.g. _/path/to/instant_client/.
@@ -1026,7 +1026,7 @@ LD_LIBRARY_PATH=/path/to/instant_client/
 [[oracle-example-configuration]]
 === Example Configuration
 
-The following shows an example JSON request for registering an instance of the Debezium Oracle connector:
+The following shows an example JSON request for registering an instance of the {prodname} Oracle connector:
 
 [source,json,indent=0]
 ----
@@ -1271,7 +1271,7 @@ See {link-prefix}:{link-avro-serialization}#avro-naming[Avro naming] for more de
 
 |[[oracle-property-provide-transaction-metadata]]<<oracle-property-provide-transaction-metadata, `provide.transaction.metadata` (Incubating)>>
 |`false`
-|When set to `true` Debezium generates events with transaction boundaries and enriches data events envelope with transaction metadata.
+|When set to `true` {prodname} generates events with transaction boundaries and enriches data events envelope with transaction metadata.
 
 See {link-prefix}:{link-oracle-connector}#oracle-transaction-metadata[Transaction Metadata] for additional details.
 
