@@ -14,7 +14,7 @@ There are several ways to install and use {prodname} connectors, so we've docume
 == Installing a {prodname} Connector
 
 If you've already installed https://zookeeper.apache.org[Zookeeper], https://kafka.apache.org/[Kafka], and {link-kafka-docs}.html#connect[Kafka Connect], then using one of {prodname}'s connectors is easy.
-Simply download one or more connector plugin archives (see below), extract their files into your Kafka Connect environment, and add the parent directory of the extracted plugin(s) to Kafka Connect's plugin path.
+Simply download one or more connector plug-in archives (see below), extract their files into your Kafka Connect environment, and add the parent directory of the extracted plug-in(s) to Kafka Connect's plugin path.
 If not the case yet, specify the plugin path in your worker configuration (e.g. _connect-distributed.properties_) using the {link-kafka-docs}/#connectconfigs[plugin.path] configuration property.
 As an example, let's assume you have downloaded the {prodname} MySQL connector archive and extracted its contents to _/kafka/connect/debezium-connector-mysql_.
 Then you'd specify the following in the worker config:
@@ -26,7 +26,7 @@ plugin.path=/kafka/connect
 
 Restart your Kafka Connect process to pick up the new JARs.
 
-The connector plugins are available from Maven:
+The connector plug-ins are available from Maven:
 
 ifeval::['{page-version}' == 'master']
 * {link-mysql-plugin-snapshot}[MySQL Connector plugin archive]

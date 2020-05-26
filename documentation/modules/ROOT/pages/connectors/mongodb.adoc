@@ -257,7 +257,7 @@ Every change event for the `customers` collection will feature the same key stru
   }
 ----
 
-The `schema` portion of the key contains a Kafka Connect schema describing what is in the payload portion, and in our case that means that the `payload` value is not optional, is a structure defined by a schema named `fulfillment.inventory.customers.Key`, and has one required field named `id` of type `string`. If we look at the value of the key's `payload` field, we'll see that it is indeed a structure (which in JSON is just an object) with a single `id` field, whose value is a string containing the integer `1004`.
+The `schema` portion of the key contains a Kafka Connect schema describing what is in the payload portion. In this case, it means that the `payload` value is not optional, is a structure defined by a schema named `fulfillment.inventory.customers.Key`, and has one required field named `id` of type `string`. If you look at the value of the key's `payload` field, you can see that it is indeed a structure (which in JSON is just an object) with a single `id` field, whose value is a string containing the integer `1004`.
 
 This example used a document with an integer identifier, but any valid MongoDB document identifier (including documents) will work. The value of the `id` field in the payload will simply be a string representing a MongoDB extended JSON serialization (strict mode) of the original document's `_id` field. Find below a few examples showing how `_id` fields of
 different types will get encoded as the event key's payload:
@@ -477,13 +477,13 @@ All examples in this document were obtained from MongoDB 3.4 and might differ if
 
 [NOTE]
 ====
-Update events in MongoDB's oplog don't have the _before_ or _after_ states of the changed document, so there's no way for the connector to provide this information.
+Update events in MongoDB's oplog do not have the _before_ or _after_ states of the changed document, so there's no way for the connector to provide this information.
 However, because _create_ or _read_ events _do_ contain the starting state, downstream consumers of the stream can actually fully-reconstruct the state by keeping the latest state for each document and applying each event to that state. {prodname} connector's are not able to keep such state, so it is not able to do this.
 ====
 
-So far we've seen samples of _create_/_read_ and _update_ events. Now, let's look at the value of a _delete_ event for the same collection.
-The value of an _delete_ event on this collection will also have the exact same _schema_, and its payload is structured the same but will hold different values.
-In particular, a delete event will not have an `after` value or a `patch` value:
+So far, you have seen samples of _create_/_read_ and _update_ events. The following sample shows the value of a _delete_ event for the same collection.
+The value of a _delete_ event on this collection has the exact same _schema_, and its payload is structured the same but it holds different values.
+In particular, a delete event does not have an `after` value nor a `patch` value:
 
 [source,json,indent=0,subs="attributes"]
 ----
@@ -611,20 +611,20 @@ An example of messages looks like
 == Deploying the MongoDB connector
 
 ifdef::community[]
-If you've already installed https://zookeeper.apache.org[Zookeeper], http://kafka.apache.org/[Kafka], and {link-kafka-docs}.html#connect[Kafka Connect], then using {prodname}'s MongoDB connector is easy.
+If you have already installed https://zookeeper.apache.org[Zookeeper], http://kafka.apache.org/[Kafka], and {link-kafka-docs}.html#connect[Kafka Connect], then using {prodname}'s MongoDB connector is easy.
 Simply download the
 ifeval::['{page-version}' == 'master']
-{link-mongodb-plugin-snapshot}[connector's plugin archive],
+{link-mongodb-plugin-snapshot}[connector's plug-in archive],
 endif::[]
 ifeval::['{page-version}' != 'master']
-https://repo1.maven.org/maven2/io/debezium/debezium-connector-mongodb/{debezium-version}/debezium-connector-mongodb-{debezium-version}-plugin.tar.gz[connector's plugin archive],
+https://repo1.maven.org/maven2/io/debezium/debezium-connector-mongodb/{debezium-version}/debezium-connector-mongodb-{debezium-version}-plugin.tar.gz[connector's plug-in archive],
 endif::[]
-extract the JARs into your Kafka Connect environment, and add the directory with the JARs to Kafka Connect's plugin path using the {link-kafka-docs}/#connectconfigs[plugin.path] configuration property.
+extract the JARs into your Kafka Connect environment, and add the directory with the JARs to Kafka Connect's `plugin.path` by using the {link-kafka-docs}/#connectconfigs[plugin.path] configuration property.
 Restart your Kafka Connect process to pick up the new JARs.
 endif::community[]
 
 ifdef::product[]
-Installing the MongoDB connector is a simple process whereby you only need to download the JAR, extract it to your Kafka Connect environment, and ensure the plugin's parent directory is specified in your Kafka Connect environment.
+Installing the MongoDB connector is a simple process whereby you only need to download the JAR, extract it to your Kafka Connect environment, and ensure the plug-in's parent directory is specified in your Kafka Connect environment.
 
 .Prerequisites
 
@@ -635,7 +635,7 @@ Installing the MongoDB connector is a simple process whereby you only need to do
 
 . Download the {prodname} link:https://access.redhat.com/jbossnetwork/restricted/listSoftware.html?product=red.hat.integration&downloadType=distributions[MongoDB connector].
 . Extract the files into your Kafka Connect environment.
-. Add the plugin's parent directory to your Kafka Connect plugin path:
+. Add the plug-in's parent directory to your Kafka Connect `plugin.path`:
 +
 [source]
 ----
@@ -1029,7 +1029,7 @@ Because there is a chance that some events may be duplicated during a recovery f
 
 === Kafka becomes unavailable
 
-As the connector generates change events, the Kafka Connect framework records those events in Kafka using the Kafka producer API. Kafka Connect will also periodically record the latest offset that appears in those change events, at a frequency you've specified in the Kafka Connect worker configuration. If the Kafka brokers become unavailable, the Kafka Connect worker process running the connectors will simply repeatedly attempt to reconnect to the Kafka brokers. In other words, the connector tasks will simply pause until a connection can be reestablished, at which point the connectors will resume exactly where they left off.
+As the connector generates change events, the Kafka Connect framework records those events in Kafka using the Kafka producer API. Kafka Connect will also periodically record the latest offset that appears in those change events, at a frequency that you have specified in the Kafka Connect worker configuration. If the Kafka brokers become unavailable, the Kafka Connect worker process running the connectors will simply repeatedly attempt to reconnect to the Kafka brokers. In other words, the connector tasks will simply pause until a connection can be reestablished, at which point the connectors will resume exactly where they left off.
 
 === Connector is stopped for a duration
 
@@ -1047,6 +1047,6 @@ In this case, when the connector configured with _initial_ snapshot mode (the de
 
 === MongoDB loses writes
 
-It is possible for MongoDB to lose commits in specific failure situations. For example, if the primary applies a change and records it in its oplog before it then crashes unexpectedly, the secondary nodes may not have had a chance to read those changes from the primary's oplog before the primary crashed. If one such secondary is then elected as primary, it's oplog is missing the last changes that the old primary had recorded and no longer has those changes.
+It is possible for MongoDB to lose commits in specific failure situations. For example, if the primary applies a change and records it in its oplog before it then crashes unexpectedly, the secondary nodes may not have had a chance to read those changes from the primary's oplog before the primary crashed. If one such secondary is then elected as primary, its oplog is missing the last changes that the old primary had recorded and no longer has those changes.
 
 In these cases where MongoDB loses changes recorded in a primary's oplog, it is possible that the MongoDB connector may or may not capture these lost changes. At this time, there is no way to prevent this side effect of MongoDB.

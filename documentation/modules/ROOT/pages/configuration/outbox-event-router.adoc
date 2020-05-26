@@ -103,7 +103,7 @@ This result was achieved with the {link-prefix}:{link-outbox-event-router}#outbo
 |[[outbox-event-router-property-table-field-event-timestamp]]<<outbox-event-router-property-table-field-event-timestamp, `table.field.event.timestamp`>>
 |
 |Table
-|Optionally you can override the Kafka message timestamp with a value from a chosen field, otherwise it'll be the {prodname} event processed timestamp.
+|Optionally you can override the Kafka message timestamp with a value from a chosen field, otherwise it is the {prodname} event processed timestamp.
 
 |[[outbox-event-router-property-table-field-event-payload]]<<outbox-event-router-property-table-field-event-payload, `table.field.event.payload`>>
 |`payload`
@@ -123,7 +123,7 @@ This result was achieved with the {link-prefix}:{link-outbox-event-router}#outbo
 |[[outbox-event-router-property-table-field-event-schema-version]]<<outbox-event-router-property-table-field-event-schema-version, `table.field.event.schema.version`>>
 |
 |Table, Schema
-|When set, it'll be used as schema version as in the https://kafka.apache.org/20/javadoc/org/apache/kafka/connect/data/ConnectSchema.html#version--[Kafka Connect Schema] javadoc
+|When set, it is used as schema version as in the https://kafka.apache.org/20/javadoc/org/apache/kafka/connect/data/ConnectSchema.html#version--[Kafka Connect Schema] javadoc
 
 |[[outbox-event-router-property-route-by-field]]<<outbox-event-router-property-route-by-field, `route.by.field`>>
 |`aggregatetype`
@@ -148,7 +148,7 @@ This result was achieved with the {link-prefix}:{link-outbox-event-router}#outbo
 |[[outbox-event-router-property-debezium-op-invalid-behavior]]<<outbox-event-router-property-debezium-op-invalid-behavior, `debezium.op.invalid.behavior`>>
 |`warn`
 |{prodname}
-|While {prodname} is monitoring the table, it's not expecting to see 'update' row events, in case it happens, this transform can log it as warning, error or stop the process. Options are `warn`, `error` and `fatal`
+|While {prodname} is monitoring the table, it is not expecting to see 'update' row events, in case it happens, this transform can log it as warning, error or stop the process. Options are `warn`, `error` and `fatal`
 |===
 
 === Default table columns
@@ -198,7 +198,7 @@ transforms.outbox.type=io.debezium.transforms.outbox.EventRouter
 === Using Avro as the payload format
 
 The outbox routing SMT supports arbitrary payload formats, as the payload column value is passed on transparently.
-As an alternative to working with JSON as shown above it's therefore also possible to use Avro.
+As an alternative to working with JSON as shown above it is therefore also possible to use Avro.
 This can be beneficial for the purposes of message format governance and making sure outbox event schemas evolve in a backwards-compatible way.
 
 How a source application produces Avro messages as an outbox event payload is out of the scope of this documentation.

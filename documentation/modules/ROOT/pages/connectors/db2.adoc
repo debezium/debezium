@@ -40,7 +40,7 @@ The connector has been tested with Db2/Linux 11.5.0.0, but our expectation is th
 
 The database administrator must put the tables to be monitored into capture mode.
 For convenience and for automating testing we have written a User Defined Function (UDF) in C that can be compiled and then used to control the ASN agent, create the ASN schemas/tables and add/remove tables to capture.
-These utilities are described in debezium-connector-db2/src/test/docker/db2-cdc-docker/
+These utilities are described in `debezium-connector-db2/src/test/docker/db2-cdc-docker/`
 but these are only for convenience and manually performing the same commands using
 _db2_ control commands would have the same effect.
 
@@ -49,7 +49,7 @@ The connector then produces a _change event_ for every row-level insert, update,
 The client applications read the Kafka topics that correspond to the database tables they're interested in following, and react to every row-level event it sees in those topics.
 
 The database administrator normally enables _CDC_ in the middle of the life of a table.
-This means that the connector won't have the complete history of all changes that have been made to the table.
+This means that the connector does not have the complete history of all changes that have been made to the table.
 Therefore, when the Db2 connector first connects to a particular Db2 database, it starts by performing a _consistent snapshot_ of each of the whitelisted tables.
 After the connector completes the snapshot, it continues streaming changes from the exact point at which the snapshot was made for tables in capture mode.
 This way, we start with a consistent view of all of the data, yet continue reading without having lost any of the changes made while the snapshot was taking place.
@@ -264,7 +264,7 @@ This assures that the changes are replayed by {prodname} in the same order as we
 
 After a restart, the connector will resume from the offset (commit and change LSNs) where it left off before.
 
-The connector is able to detect whether the CDC is enabled or disabled for whitelisted source table during the runtime and modify its behaviour.
+The connector is able to detect whether the CDC is enabled or disabled for whitelisted source table during the runtime and modify its behavior.
 
 [[db2-topic-names]]
 === Topic names
@@ -490,10 +490,10 @@ Every change event for the `customers` table while it has this definition will f
 }
 ----
 
-The `schema` portion of the key contains a Kafka Connect schema describing what is in the key portion, and in our case that means that the `payload` value is not optional, is a structure defined by a schema named `mydatabase.MYSCHEMA.CUSTOMERS.Key`, and has one required field named `id` of type `int32`.
-If we look at the value of the key's `payload` field, we'll see that it is indeed a structure (which in JSON is just an object) with a single `id` field, whose value is `1004`.
+The `schema` portion of the key contains a Kafka Connect schema describing what is in the key portion. In this case, it means that the `payload` value is not optional, is a structure defined by a schema named `mydatabase.MYSCHEMA.CUSTOMERS.Key`, and has one required field named `id` of type `int32`.
+If you look at the value of the key's `payload` field, you can see that it is indeed a structure (which in JSON is just an object) with a single `id` field, whose value is `1004`.
 
-Therefore, we interpret this key as describing the row in the `MYSCHEMA.CUSTOMERS` table (output from the connector reading from database `mydatabase`) whose `id` primary key column had a value of `1004`.
+Therefore, you can interpret this key as describing the row in the `MYSCHEMA.CUSTOMERS` table (output from the connector reading from database `mydatabase`) whose `id` primary key column had a value of `1004`.
 
 ////
 [NOTE]
@@ -1243,8 +1243,8 @@ The `connect.decimal.precision` schema parameter contains an integer representin
 == Deploying a connector
 
 If you've already installed https://zookeeper.apache.org[Zookeeper], http://kafka.apache.org/[Kafka], and {link-kafka-docs}.html#connect[Kafka Connect], then using {prodname}'s Db2` connector is easy.
-First download the https://repo1.maven.org/maven2/io/debezium/debezium-connector-db2/{debezium-version}/debezium-connector-db2-{debezium-version}-plugin.tar.gz[connector's plugin archive],
-extract it, and add the contained directory to Kafka Connect's plugin path using the {link-kafka-docs}/#connectconfigs[plugin.path] configuration property.
+First download the https://repo1.maven.org/maven2/io/debezium/debezium-connector-db2/{debezium-version}/debezium-connector-db2-{debezium-version}-plugin.tar.gz[connector's plug-in archive],
+extract it, and add the contained directory to Kafka Connect's `plugin.path` by using the {link-kafka-docs}/#connectconfigs[`plugin.path`] configuration property.
 
 In addition, due to licensing reasons you need to separately obtain the https://www.ibm.com/support/pages/db2-jdbc-driver-versions-and-downloads[JDBC driver for Db2].
 Add the JDBC driver JAR to the directory with the {prodname} Db2 connector JARs.
