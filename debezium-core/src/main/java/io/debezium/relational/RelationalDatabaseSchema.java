@@ -13,7 +13,6 @@ import org.apache.kafka.connect.data.Schema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.config.CommonConnectorConfig;
 import io.debezium.data.Envelope;
 import io.debezium.relational.Key.KeyMapper;
 import io.debezium.relational.Tables.ColumnNameFilter;
@@ -42,7 +41,7 @@ public abstract class RelationalDatabaseSchema implements DatabaseSchema<TableId
     private final SchemasByTableId schemasByTableId;
     private final Tables tables;
 
-    protected RelationalDatabaseSchema(CommonConnectorConfig config, TopicSelector<TableId> topicSelector,
+    protected RelationalDatabaseSchema(RelationalDatabaseConnectorConfig config, TopicSelector<TableId> topicSelector,
                                        TableFilter tableFilter, ColumnNameFilter columnFilter, TableSchemaBuilder schemaBuilder,
                                        boolean tableIdCaseInsensitive, KeyMapper customKeysMapper) {
 
@@ -50,7 +49,7 @@ public abstract class RelationalDatabaseSchema implements DatabaseSchema<TableId
         this.schemaBuilder = schemaBuilder;
         this.tableFilter = tableFilter;
         this.columnFilter = columnFilter;
-        this.columnMappers = ColumnMappers.create(config.getConfig());
+        this.columnMappers = ColumnMappers.create(config);
         this.customKeysMapper = customKeysMapper;
 
         this.schemaPrefix = getSchemaPrefix(config.getLogicalName());

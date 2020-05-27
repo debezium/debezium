@@ -13,6 +13,7 @@ import java.util.stream.Collectors;
 
 import io.debezium.annotation.Immutable;
 import io.debezium.function.Predicates;
+import io.debezium.relational.Selectors.TableIdToStringMapper;
 
 /**
  * An immutable definition of a table's key. By default, the key will be
@@ -94,9 +95,10 @@ public class Key {
          * ex: inventory.customers:pk1,pk2;(.*).purchaseorders:pk3,pk4
          *
          * @param fullyQualifiedColumnNames a list of regex
+         * @param tableIdMapper mapper of tableIds to a String
          * @return a new {@code CustomKeyMapper} or null if fullyQualifiedColumnNames is invalid.
          */
-        public static KeyMapper getInstance(String fullyQualifiedColumnNames) {
+        public static KeyMapper getInstance(String fullyQualifiedColumnNames, TableIdToStringMapper tableIdMapper) {
             if (fullyQualifiedColumnNames == null) {
                 return null;
             }
@@ -122,7 +124,11 @@ public class Key {
                         .stream()
                         .filter(c -> {
                             final TableId tableId = table.id();
-                            return delegate.test(new ColumnId(tableId.catalog(), tableId.schema(), tableId.table(), c.name()));
+                            if (tableIdMapper == null) {
+                                return delegate.test(new ColumnId(tableId.catalog(), tableId.schema(), tableId.table(), c.name()));
+                            }
+                            return delegate.test(new ColumnId(tableId.catalog(), tableId.schema(), tableId.table(), c.name()))
+                                    || delegate.test(new ColumnId(new TableId(tableId.catalog(), tableId.schema(), tableId.table(), tableIdMapper), c.name()));
                         })
                         .collect(Collectors.toList());
                 return candidates.isEmpty() ? table.primaryKeyColumns() : candidates;

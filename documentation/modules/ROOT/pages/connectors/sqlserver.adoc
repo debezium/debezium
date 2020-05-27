@@ -1430,6 +1430,25 @@ Each identifier is of the form _schemaName_._tableName_. May not be used with `t
 Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_.
 Note that primary key columns are always included in the event's key, also if blacklisted from the value.
 
+<<<<<<< HEAD
+=======
+|[[sqlserver-property-column-mask-hash]]<<sqlserver-property-column-mask-hash, `column.mask.hash._hashAlgorithm_.with.salt._salt_`>>
+|_n/a_
+|An optional comma-separated list of regular expressions that match the fully-qualified names of character-based columns whose values should be pseudonyms in the change event message values with a field value consisting of the hashed value using the algorithm `_hashAlgorithm_` and salt `_salt_`.
+Based on the used hash function referential integrity is kept while data is pseudonymized. Supported hash functions are described in the {link-java7-standard-names}[MessageDigest section] of the Java Cryptography Architecture Standard Algorithm Name Documentation.
+The hash is automatically shortened to the length of the column.
+
+Multiple properties with different lengths can be used in a single configuration, although in each the length must be a positive integer or zero. Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_.
+
+Example:
+
+    column.mask.hash.SHA-256.with.salt.CzQMA0cB5K = dbo.orders.customerName, dbo.shipment.customerName
+
+where `CzQMA0cB5K` is a randomly selected salt.
+
+Note: Depending on the `_hashAlgorithm_` used, the `_salt_` selected and the actual data set, the resulting masked data set may not be completely anonymized.
+
+>>>>>>> 8e7f3d14c... DBZ-1312 Omit constatnt db name in column and key mappers
 |[[sqlserver-property-time-precision-mode]]<<sqlserver-property-time-precision-mode, `time.precision.mode`>>
 |`adaptive`
 | Time, date, and timestamps can be represented with different kinds of precision, including: `adaptive` (the default) captures the time and timestamp values exactly as in the database using either millisecond, microsecond, or nanosecond precision values based on the database column's type; or `connect` always represents time and timestamp values using Kafka Connect's built-in representations for Time, Date, and Timestamp, which uses millisecond precision regardless of the database columns' precision. See {link-prefix}:{link-sqlserver-connector}#sqlserver-temporal-values[temporal values].
@@ -1442,11 +1461,11 @@ Emitting the tombstone event (the default behavior) allows Kafka to completely d
 
 |[[sqlserver-property-column-truncate-to-length-chars]]<<sqlserver-property-column-truncate-to-length-chars, `column.truncate.to._length_.chars`>>
 |_n/a_
-|An optional comma-separated list of regular expressions that match the fully-qualified names of character-based columns whose values should be truncated in the change event message values if the field values are longer than the specified number of characters. Multiple properties with different lengths can be used in a single configuration, although in each the length must be a positive integer. Fully-qualified names for columns are of the form _databaseName_._schemaName_._tableName_._columnName_.
+|An optional comma-separated list of regular expressions that match the fully-qualified names of character-based columns whose values should be truncated in the change event message values if the field values are longer than the specified number of characters. Multiple properties with different lengths can be used in a single configuration, although in each the length must be a positive integer. Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_.
 
 |[[sqlserver-property-column-mask-with-length-chars]]<<sqlserver-property-column-mask-with-length-chars, `column.mask.with._length_.chars`>>
 |_n/a_
-|An optional comma-separated list of regular expressions that match the fully-qualified names of character-based columns whose values should be replaced in the change event message values with a field value consisting of the specified number of asterisk (`*`) characters. Multiple properties with different lengths can be used in a single configuration, although in each the length must be a positive integer or zero. Fully-qualified names for columns are of the form _databaseName_._schemaName_._tableName_._columnName_.
+|An optional comma-separated list of regular expressions that match the fully-qualified names of character-based columns whose values should be replaced in the change event message values with a field value consisting of the specified number of asterisk (`*`) characters. Multiple properties with different lengths can be used in a single configuration, although in each the length must be a positive integer or zero. Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_.
 
 |[[sqlserver-property-column-propagate-source-type]]<<sqlserver-property-column-propagate-source-type, `column.propagate.source.type`>>
 |_n/a_
@@ -1467,7 +1486,7 @@ See {link-prefix}:{link-sqlserver-connector}#sqlserver-data-types[] for the list
 |_empty string_
 | A semi-colon list of regular expressions that match fully-qualified tables and columns to map a primary key. +
 Each item (regular expression) must match the fully-qualified `<fully-qualified table>:<a comma-separated list of columns>` representing the custom key. +
-Fully-qualified tables could be defined as _databaseName_._schemaName_._tableName_.
+Fully-qualified tables could be defined as _schemaName_._tableName_.
 |===
 
 The following _advanced_ configuration properties have good defaults that will work in most situations and therefore rarely need to be specified in the connector's configuration.
