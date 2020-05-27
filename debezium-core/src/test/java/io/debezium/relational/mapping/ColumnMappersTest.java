@@ -13,8 +13,12 @@ import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.relational.Column;
+import io.debezium.relational.RelationalDatabaseConnectorConfig;
+import io.debezium.relational.Selectors.TableIdToStringMapper;
 import io.debezium.relational.TableId;
+import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.ValueConverter;
 import io.debezium.util.Strings;
 
@@ -31,6 +35,29 @@ public class ColumnMappersTest {
     private ValueConverter converter;
     private String fullyQualifiedNames;
 
+    private static class TestRelationalDatabaseConfig extends RelationalDatabaseConnectorConfig {
+
+        protected TestRelationalDatabaseConfig(Configuration config, String logicalName, TableFilter systemTablesFilter,
+                                               TableIdToStringMapper tableIdMapper, int defaultSnapshotFetchSize) {
+            super(config, logicalName, systemTablesFilter, tableIdMapper, defaultSnapshotFetchSize);
+        }
+
+        @Override
+        public String getContextName() {
+            return null;
+        }
+
+        @Override
+        public String getConnectorName() {
+            return null;
+        }
+
+        @Override
+        protected SourceInfoStructMaker<?> getSourceInfoStructMaker(Version version) {
+            return null;
+        }
+    }
+
     @Before
     public void beforeEach() {
         column = Column.editor().name("firstName").jdbcType(Types.VARCHAR).type("VARCHAR").position(1).create();
@@ -46,7 +73,7 @@ public class ColumnMappersTest {
                 .with("column.truncate.to.10.chars", fullyQualifiedNames)
                 .build();
 
-        mappers = ColumnMappers.create(config);
+        mappers = ColumnMappers.create(new TestRelationalDatabaseConfig(config, "test", null, null, 0));
         converter = mappers.mappingConverterFor(tableId, column2);
         assertThat(converter).isNull();
     }
@@ -57,7 +84,8 @@ public class ColumnMappersTest {
                 .with("column.truncate.to.10.chars", fullyQualifiedNames.toUpperCase())
                 .build();
 
-        mappers = ColumnMappers.create(config);
+        mappers = ColumnMappers.create(new TestRelationalDatabaseConfig(config, "test", null, null, 0));
+
         converter = mappers.mappingConverterFor(tableId, column);
         assertThat(converter).isNotNull();
         assertThat(converter.convert("12345678901234567890").toString()).isEqualTo("1234567890");
@@ -79,7 +107,7 @@ public class ColumnMappersTest {
                 .with("column.mask.with.10.chars", fullyQualifiedNames)
                 .build();
 
-        mappers = ColumnMappers.create(config); // exact case
+        mappers = ColumnMappers.create(new TestRelationalDatabaseConfig(config, "test", null, null, 0)); // exact case
         converter = mappers.mappingConverterFor(tableId, column);
         assertThat(converter).isNotNull();
         assertThat(converter.convert("12345678901234567890")).isEqualTo(maskValue);
