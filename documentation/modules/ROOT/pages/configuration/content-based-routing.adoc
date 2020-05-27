@@ -89,7 +89,7 @@ value.op == 'u' ? 'updates' : null
 
 [[content-based-router-configuration-options]]
 == Configuration options
-[cols="35%a,10%a,55%a"]
+[cols="30%a,25%a,45%a"]
 |===
 |Property
 |Default

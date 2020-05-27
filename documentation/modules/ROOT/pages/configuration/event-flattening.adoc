@@ -239,7 +239,7 @@ endif::product[]
 
 The following table describes the options that you can specify for the `ExtractNewRecordState` SMT. 
 
-[cols="35%a,10%a,55%a"]
+[cols="30%a,25%a,45%a"]
 |===
 |Property
 |Default

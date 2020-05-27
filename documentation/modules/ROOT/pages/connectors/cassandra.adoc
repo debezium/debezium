@@ -890,7 +890,7 @@ Cassandra connector has built-in support for JMX metrics. The Cassandra driver a
 [[cassandra-connector-properties]]
 === Connector properties
 
-[cols="35%a,10%a,55%a"]
+[cols="30%a,25%a,45%a"]
 |===
 |Property
 |Default

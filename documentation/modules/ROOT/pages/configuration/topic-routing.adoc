@@ -163,7 +163,7 @@ ifdef::product[]
 == Options for configuring `ByLogicalTableRouter` transformation
 endif::product[]
 
-[cols="35%a,10%a,55%a"]
+[cols="30%a,25%a,45%a"]
 |===
 |Property
 |Default
