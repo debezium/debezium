@@ -101,12 +101,12 @@ The deserializer behaviour is driven by the `from.field` configuration option an
 |Description
 
 [id="serdes-from-field"]
-|`from.field`
+|{link-prefix}:{link-serdes}#serdes-from-field[`from.field`]
 |`N/A`
 |Empty if a message with full envelope should be deserialized, `before`/`after` if only data values before or after the change are required.
 
 [id="serdes-unknown-properties-ignored"]
-|`unknown.properties.ignored`
+|{link-prefix}:{link-serdes}#serdes-unknown-properties-ignored[`unknown.properties.ignored`]
 |`false`
 |Determines when an unknown property is encountered whether it should be silently ignored or if a runtime exception should be thrown.
 |===
