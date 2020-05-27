@@ -126,23 +126,23 @@ The following configuration options exist when usi
 |Description
 
 [id="cloud-events-converter-serializer-type"]
-|`serializer.type`
+|{link-prefix}:{link-cloud-events}#cloud-events-converter-serializer-type[`serializer.type`]
 |`json`
 |The encoding type to use for the CloudEvents envelope structure; one of `json` or `avro`.
 
 [id="cloud-events-converter-data-serializer-type"]
-|`data.serializer.type`
+|{link-prefix}:{link-cloud-events}#cloud-events-converter-data-serializer-type[`data.serializer.type`]
 |`json`
 |The encoding type to use for the `data` attribute; can be `json` if `serializer.type` is `avro`;
 can be `json` or `avro`, if `serializer.type` is `json` or `avro`.
 
 [id="cloud-events-converter-json"]
-|`json. \...`
+|{link-prefix}:{link-cloud-events}#cloud-events-converter-json[`json. \...`]
 |N/A
 |Any configuration options to be passed through to the underlying converter when using JSON (the "json." prefix will be removed)
 
 [id="cloud-events-converter-avro"]
-|`avro. \...`
+|{link-prefix}:{link-cloud-events}#cloud-events-converter-avro[`avro. \...`]
 |N/A
 |Any configuration options to be passed through to the underlying converter when using Avro (the "avro." prefix will be removed)
 |===

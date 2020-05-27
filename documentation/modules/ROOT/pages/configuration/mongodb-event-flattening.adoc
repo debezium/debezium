@@ -182,7 +182,7 @@ This option allows you to convert a hierarchical document into a flat structure 
 
 === MongoDB `$unset` handling
 
-MongoDB allows you to make `$unset` operations which allows you to remove a certain field from a Document, and since the collections are schemaless it becomes hard to find a way to tell the consumers/sinkers which a field is now missing, the approach debezium uses is to set the desired to remove field to null value.
+MongoDB allows `$unset` operations that remove a certain field from a document. Because the collections are schemaless, it becomes hard to inform consumers/sinkers about the field that is now missing. The approach that {prodname} uses is to set the field being removed to a null value.
 
 Given the operation
 [source,json,indent=0]
@@ -202,7 +202,7 @@ The final encoding will look like
 }
 ----
 
-Note that other mongo operations might cause an `$unset` internally, `$rename` is one example.
+Note that other MongoDB operations might cause an `$unset` internally, `$rename` is one example.
 
 === Determine original operation
 
