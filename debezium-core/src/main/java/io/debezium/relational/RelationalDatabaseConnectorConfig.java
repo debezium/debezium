@@ -265,13 +265,15 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     private final RelationalTableFilters tableFilters;
     private final TemporalPrecisionMode temporalPrecisionMode;
     private final KeyMapper keyMapper;
+    private final TableIdToStringMapper tableIdMapper;
 
     protected RelationalDatabaseConnectorConfig(Configuration config, String logicalName, TableFilter systemTablesFilter,
                                                 TableIdToStringMapper tableIdMapper, int defaultSnapshotFetchSize) {
         super(config, logicalName, defaultSnapshotFetchSize);
 
         this.temporalPrecisionMode = TemporalPrecisionMode.parse(config.getString(TIME_PRECISION_MODE));
-        this.keyMapper = CustomKeyMapper.getInstance(config.getString(MSG_KEY_COLUMNS));
+        this.keyMapper = CustomKeyMapper.getInstance(config.getString(MSG_KEY_COLUMNS), tableIdMapper);
+        this.tableIdMapper = tableIdMapper;
 
         if (systemTablesFilter != null && tableIdMapper != null) {
             this.tableFilters = new RelationalTableFilters(config, systemTablesFilter, tableIdMapper);
@@ -310,6 +312,10 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
 
     public Duration snapshotLockTimeout() {
         return Duration.ofMillis(getConfig().getLong(SNAPSHOT_LOCK_TIMEOUT_MS));
+    }
+
+    public TableIdToStringMapper getTableIdMapper() {
+        return tableIdMapper;
     }
 
     private static int validateTableBlacklist(Configuration config, Field field, ValidationOutput problems) {

@@ -6,6 +6,7 @@
 package io.debezium.relational;
 
 import io.debezium.annotation.Immutable;
+import io.debezium.relational.Selectors.TableIdToStringMapper;
 import io.debezium.schema.DataCollectionId;
 
 /**
@@ -81,13 +82,27 @@ public final class TableId implements DataCollectionId, Comparable<TableId> {
      * @param schemaName the name of the database schema that contains the table; may be null if the JDBC driver does not
      *            show a schema for this table
      * @param tableName the name of the table; may not be null
+     * @param tableIdMapper the customization of fully quailified table name
      */
-    public TableId(String catalogName, String schemaName, String tableName) {
+    public TableId(String catalogName, String schemaName, String tableName, TableIdToStringMapper tableIdMapper) {
         this.catalogName = catalogName;
         this.schemaName = schemaName;
         this.tableName = tableName;
         assert this.tableName != null;
-        this.id = tableId(this.catalogName, this.schemaName, this.tableName);
+        this.id = tableIdMapper == null ? tableId(this.catalogName, this.schemaName, this.tableName) : tableIdMapper.toString(this);
+    }
+
+    /**
+     * Create a new table identifier.
+     *
+     * @param catalogName the name of the database catalog that contains the table; may be null if the JDBC driver does not
+     *            show a schema for this table
+     * @param schemaName the name of the database schema that contains the table; may be null if the JDBC driver does not
+     *            show a schema for this table
+     * @param tableName the name of the table; may not be null
+     */
+    public TableId(String catalogName, String schemaName, String tableName) {
+        this(catalogName, schemaName, tableName, null);
     }
 
     /**
