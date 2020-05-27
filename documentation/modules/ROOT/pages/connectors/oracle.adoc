@@ -1225,14 +1225,14 @@ Fully-qualified tables could be defined as _pdbName_._schemaName_._tableName_.
 |An optional comma-separated list of regular expressions that match the fully-qualified names of columns whose original type and length should be added as a parameter to the corresponding field schemas in the emitted change messages.
 The schema parameters `pass:[_]pass:[_]debezium.source.column.type`, `pass:[_]pass:[_]debezium.source.column.length` and `pass:[_]pass:[_]debezium.source.column.scale` will be used to propagate the original type name and length (for variable-width types), respectively.
 Useful to properly size corresponding columns in sink databases.
-Fully-qualified names for columns are of the form _databaseName_._tableName_._columnName_, or _databaseName_._schemaName_._tableName_._columnName_.
+Fully-qualified names for columns are of the form _tableName_._columnName_, or _schemaName_._tableName_._columnName_.
 
 |[[oracle-property-datatype-propagate-source-type]]<<oracle-property-datatype-propagate-source-type, `datatype.propagate.source.type`>>
 |_n/a_
 |An optional comma-separated list of regular expressions that match the database-specific data type name of columns whose original type and length should be added as a parameter to the corresponding field schemas in the emitted change messages.
 The schema parameters `pass:[_]pass:[_]debezium.source.column.type`, `pass:[_]pass:[_]debezium.source.column.length` and `pass:[_]pass:[_]debezium.source.column.scale` will be used to propagate the original type name and length (for variable-width types), respectively.
 Useful to properly size corresponding columns in sink databases.
-Fully-qualified data type names are of the form _databaseName_._tableName_._typeName_, or _databaseName_._schemaName_._tableName_._typeName_.
+Fully-qualified data type names are of the form _tableName_._typeName_, or _schemaName_._tableName_._typeName_.
 See the {link-prefix}:{link-oracle-connector}#oracle-data-types[list of Oracle-specific data type names].
 
 |[[oracle-property-heartbeat-interval-ms]]<<oracle-property-heartbeat-interval-ms, `heartbeat.interval.ms`>>

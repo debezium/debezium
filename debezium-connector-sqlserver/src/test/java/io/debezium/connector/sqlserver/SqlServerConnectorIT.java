@@ -1400,6 +1400,198 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         stopConnector();
     }
 
+    @Test
+    @FixFor("DBZ-1312")
+    public void useShortTableNamesForColumnMapper() throws Exception {
+        final int RECORDS_PER_TABLE = 5;
+        final int TABLES = 2;
+        final int ID_START = 10;
+        final Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .with("column.mask.with.4.chars", "dbo.tablea.cola")
+                .build();
+
+        start(SqlServerConnector.class, config);
+        assertConnectorIsRunning();
+
+        // Wait for snapshot completion
+        consumeRecordsByTopic(1);
+
+        for (int i = 0; i < RECORDS_PER_TABLE; i++) {
+            final int id = ID_START + i;
+            connection.execute(
+                    "INSERT INTO tablea VALUES(" + id + ", 'a')");
+            connection.execute(
+                    "INSERT INTO tableb VALUES(" + id + ", 'b')");
+        }
+
+        final SourceRecords records = consumeRecordsByTopic(RECORDS_PER_TABLE * TABLES);
+        final List<SourceRecord> tableA = records.recordsForTopic("server1.dbo.tablea");
+        final List<SourceRecord> tableB = records.recordsForTopic("server1.dbo.tableb");
+        Assertions.assertThat(tableA).hasSize(RECORDS_PER_TABLE);
+        Assertions.assertThat(tableB).hasSize(RECORDS_PER_TABLE);
+        for (int i = 0; i < RECORDS_PER_TABLE; i++) {
+            final SourceRecord recordA = tableA.get(i);
+            final SourceRecord recordB = tableB.get(i);
+            final List<SchemaAndValueField> expectedRowB = Arrays.asList(
+                    new SchemaAndValueField("id", Schema.INT32_SCHEMA, i + ID_START),
+                    new SchemaAndValueField("colb", Schema.OPTIONAL_STRING_SCHEMA, "b"));
+
+            final Struct valueA = (Struct) recordA.value();
+            Assertions.assertThat(valueA.getStruct("after").getString("cola")).isEqualTo("****");
+
+            final Struct valueB = (Struct) recordB.value();
+            assertRecord((Struct) valueB.get("after"), expectedRowB);
+            assertNull(valueB.get("before"));
+        }
+
+        stopConnector();
+    }
+
+    @Test
+    @FixFor("DBZ-1312")
+    public void useLongTableNamesForColumnMapper() throws Exception {
+        final int RECORDS_PER_TABLE = 5;
+        final int TABLES = 2;
+        final int ID_START = 10;
+        final Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .with("column.mask.with.4.chars", "testDB.dbo.tablea.cola")
+                .build();
+
+        start(SqlServerConnector.class, config);
+        assertConnectorIsRunning();
+
+        // Wait for snapshot completion
+        consumeRecordsByTopic(1);
+
+        for (int i = 0; i < RECORDS_PER_TABLE; i++) {
+            final int id = ID_START + i;
+            connection.execute(
+                    "INSERT INTO tablea VALUES(" + id + ", 'a')");
+            connection.execute(
+                    "INSERT INTO tableb VALUES(" + id + ", 'b')");
+        }
+
+        final SourceRecords records = consumeRecordsByTopic(RECORDS_PER_TABLE * TABLES);
+        final List<SourceRecord> tableA = records.recordsForTopic("server1.dbo.tablea");
+        final List<SourceRecord> tableB = records.recordsForTopic("server1.dbo.tableb");
+        Assertions.assertThat(tableA).hasSize(RECORDS_PER_TABLE);
+        Assertions.assertThat(tableB).hasSize(RECORDS_PER_TABLE);
+        for (int i = 0; i < RECORDS_PER_TABLE; i++) {
+            final SourceRecord recordA = tableA.get(i);
+            final SourceRecord recordB = tableB.get(i);
+            final List<SchemaAndValueField> expectedRowB = Arrays.asList(
+                    new SchemaAndValueField("id", Schema.INT32_SCHEMA, i + ID_START),
+                    new SchemaAndValueField("colb", Schema.OPTIONAL_STRING_SCHEMA, "b"));
+
+            final Struct valueA = (Struct) recordA.value();
+            Assertions.assertThat(valueA.getStruct("after").getString("cola")).isEqualTo("****");
+
+            final Struct valueB = (Struct) recordB.value();
+            assertRecord((Struct) valueB.get("after"), expectedRowB);
+            assertNull(valueB.get("before"));
+        }
+
+        stopConnector();
+    }
+
+    @Test
+    @FixFor("DBZ-1312")
+    public void useLongTableNamesForKeyMapper() throws Exception {
+        final int RECORDS_PER_TABLE = 5;
+        final int TABLES = 2;
+        final int ID_START = 10;
+        final Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .with(SqlServerConnectorConfig.MSG_KEY_COLUMNS, "testDB.dbo.tablea:cola")
+                .build();
+
+        start(SqlServerConnector.class, config);
+        assertConnectorIsRunning();
+
+        // Wait for snapshot completion
+        consumeRecordsByTopic(1);
+
+        for (int i = 0; i < RECORDS_PER_TABLE; i++) {
+            final int id = ID_START + i;
+            connection.execute(
+                    "INSERT INTO tablea VALUES(" + id + ", 'a')");
+            connection.execute(
+                    "INSERT INTO tableb VALUES(" + id + ", 'b')");
+        }
+
+        final SourceRecords records = consumeRecordsByTopic(RECORDS_PER_TABLE * TABLES);
+        final List<SourceRecord> tableA = records.recordsForTopic("server1.dbo.tablea");
+        final List<SourceRecord> tableB = records.recordsForTopic("server1.dbo.tableb");
+        Assertions.assertThat(tableA).hasSize(RECORDS_PER_TABLE);
+        Assertions.assertThat(tableB).hasSize(RECORDS_PER_TABLE);
+        for (int i = 0; i < RECORDS_PER_TABLE; i++) {
+            final SourceRecord recordA = tableA.get(i);
+            final SourceRecord recordB = tableB.get(i);
+            final List<SchemaAndValueField> expectedRowB = Arrays.asList(
+                    new SchemaAndValueField("id", Schema.INT32_SCHEMA, i + ID_START),
+                    new SchemaAndValueField("colb", Schema.OPTIONAL_STRING_SCHEMA, "b"));
+
+            final Struct keyA = (Struct) recordA.key();
+            Assertions.assertThat(keyA.getString("cola")).isEqualTo("a");
+
+            final Struct valueB = (Struct) recordB.value();
+            assertRecord((Struct) valueB.get("after"), expectedRowB);
+            assertNull(valueB.get("before"));
+        }
+
+        stopConnector();
+    }
+
+    @Test
+    @FixFor("DBZ-1312")
+    public void useShortTableNamesForKeyMapper() throws Exception {
+        final int RECORDS_PER_TABLE = 5;
+        final int TABLES = 2;
+        final int ID_START = 10;
+        final Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .with(SqlServerConnectorConfig.MSG_KEY_COLUMNS, "dbo.tablea:cola")
+                .build();
+
+        start(SqlServerConnector.class, config);
+        assertConnectorIsRunning();
+
+        // Wait for snapshot completion
+        consumeRecordsByTopic(1);
+
+        for (int i = 0; i < RECORDS_PER_TABLE; i++) {
+            final int id = ID_START + i;
+            connection.execute(
+                    "INSERT INTO tablea VALUES(" + id + ", 'a')");
+            connection.execute(
+                    "INSERT INTO tableb VALUES(" + id + ", 'b')");
+        }
+
+        final SourceRecords records = consumeRecordsByTopic(RECORDS_PER_TABLE * TABLES);
+        final List<SourceRecord> tableA = records.recordsForTopic("server1.dbo.tablea");
+        final List<SourceRecord> tableB = records.recordsForTopic("server1.dbo.tableb");
+        Assertions.assertThat(tableA).hasSize(RECORDS_PER_TABLE);
+        Assertions.assertThat(tableB).hasSize(RECORDS_PER_TABLE);
+        for (int i = 0; i < RECORDS_PER_TABLE; i++) {
+            final SourceRecord recordA = tableA.get(i);
+            final SourceRecord recordB = tableB.get(i);
+            final List<SchemaAndValueField> expectedRowB = Arrays.asList(
+                    new SchemaAndValueField("id", Schema.INT32_SCHEMA, i + ID_START),
+                    new SchemaAndValueField("colb", Schema.OPTIONAL_STRING_SCHEMA, "b"));
+
+            final Struct keyA = (Struct) recordA.key();
+            Assertions.assertThat(keyA.getString("cola")).isEqualTo("a");
+
+            final Struct valueB = (Struct) recordB.value();
+            assertRecord((Struct) valueB.get("after"), expectedRowB);
+            assertNull(valueB.get("before"));
+        }
+
+        stopConnector();
+    }
+
     private void assertRecord(Struct record, List<SchemaAndValueField> expected) {
         expected.forEach(schemaAndValueField -> schemaAndValueField.assertFor(record));
     }
