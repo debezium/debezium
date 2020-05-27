@@ -1706,7 +1706,7 @@ include::{partialsdir}/modules/cdc-all-connectors/r_connector-monitoring-streami
 
 The following configuration properties are _required_ unless a default value is available.
 
-[cols="35%a,10%a,55%a"]
+[cols="30%a,25%a,45%a"]
 |===
 |Property
 |Default
@@ -1903,7 +1903,7 @@ Fully-qualified tables could be defined as _schemaName_._tableName_.
 
 The following _advanced_ configuration properties have good defaults that will work in most situations and therefore rarely need to be specified in the connector's configuration.
 
-[cols="35%a,10%a,55%a"]
+[cols="30%a,25%a,45%a"]
 |===
 |Property
 |Default
