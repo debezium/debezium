@@ -119,7 +119,7 @@ Finally, it is also possible to use Avro for the entire envelope as well as the 
 
 The following configuration options exist when usi
 
-[cols="35%a,10%a,55%a"]
+[cols="30%a,25%a,45%a"]
 |===
 |Property
 |Default
