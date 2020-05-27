@@ -82,7 +82,7 @@
         <antlr.version>4.7.2</antlr.version>
 
         <!-- Quarkus -->
-        <quarkus.version>1.4.1.Final</quarkus.version>
+        <quarkus.version>1.5.0.Final</quarkus.version>
 
         <!-- HTTP client -->
         <version.okhttp>4.2.2</version.okhttp>
