@@ -2,7 +2,7 @@
 // Metadata created by nebel
 //
 // UserStory: As an Evaluator or Developer, I want to gain a general understanding of how the CDC's MySQL connector functions so that I can better use the application.
-:context: cdc
+:context: debezium
 [id="overview-of-how-the-mysql-connector-works"]
 = Overview of how the MySQL connector works
 

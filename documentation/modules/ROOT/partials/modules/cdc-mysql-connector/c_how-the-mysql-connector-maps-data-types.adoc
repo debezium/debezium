@@ -292,9 +292,9 @@ When the table is created during streaming then it uses proper `BOOLEAN` mapping
 During snapshot {prodname} executes `SHOW CREATE TABLE` to obtain table definition which returns `TINYINT(1)` for both `BOOLEAN` and `TINYINT(1)` columns.
 
 {prodname} then has no way how to obtain the original type mapping and will map to `TINYINT(1)`.
-ifndef::cdc-product[]
+ifdef::community[]
 The operator can configure the out-of-the-box {link-prefix}:{link-custom-converters}[custom converter] `TinyIntOneToBooleanConverter` that would either map all `TINYINT(1)` columns to `BOOLEAN` or if `selector` parameter is set then a subset of columns could be enumerated using comma-separated regular expressions.
-endif::cdc-product[]
+endif::community[]
 
 An example configuration is
 

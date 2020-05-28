@@ -4,7 +4,7 @@
 [id="configure-the-mysql-connector_{context}"]
 = Configuring the MySQL connector
 
-ifndef::cdc-product[]
+ifdef::community[]
 Typically, you configure the {prodname} MySQL connector in a `.json` file using the configuration properties available for the connector.
 
 .Prerequisites
@@ -18,7 +18,7 @@ Typically, you configure the {prodname} MySQL connector in a `.json` file using 
 TIP: For a complete list of configuration properties, see xref:mysql-connector-configuration-properties_{context}[MySQL connector configuration properties].
 
 .MySQL connector example configuration
-=========
+
 [source,json]
 ----
 {
@@ -38,7 +38,6 @@ TIP: For a complete list of configuration properties, see xref:mysql-connector-c
   }
 }
 ----
-=========
 
 == Example configuration properties explained
 
@@ -55,8 +54,8 @@ TIP: For a complete list of configuration properties, see xref:mysql-connector-c
 . The name of the database history topic.
 . The flag that specifies if the connector should generate on the schema change topic named `fulfillment` events with DDL changes that can be used by consumers.
 
-endif::[]
-ifdef::cdc-product[]
+endif::community[]
+ifdef::product[]
 
 Typically, you configure the {prodname} MySQL connector in a `.yaml` file using the configuration properties available for the connector.
 
@@ -72,7 +71,7 @@ Typically, you configure the {prodname} MySQL connector in a `.yaml` file using 
 TIP: For a complete list of configuration properties, see xref:mysql-connector-configuration-properties_{context}[MySQL connector configuration properties].
 
 .MySQL connector example configuration
-=========
+
 [source,yaml,options="nowrap"]
 ----
   apiVersion: kafka.strimzi.io/v1alpha1
@@ -112,6 +111,5 @@ This name will be used as the prefix for all Kafka topics.
 <7> The connector will store the history of the database schemas in Kafka using this broker (the same broker to which you are sending events) and topic name.
 Upon restart, the connector will recover the schemas of the database that existed at the point in time in the `binlog` when the connector should begin reading.
 ----
-=========
 
-endif::[]
+endif::product[]

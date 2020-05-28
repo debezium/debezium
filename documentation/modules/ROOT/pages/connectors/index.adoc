@@ -1,6 +1,6 @@
 = Connectors
-include::../_attributes.adoc[]
-Debezium's goal is to build up a library of connectors that capture changes from a variety of DBMSes and produce events with very similar structures, making it far easier for your applications to consume and respond to the events regardless of where the changes originated.
+
+{prodname}'s goal is to build up a library of connectors that capture changes from a variety of DBMSes and produce events with very similar structures, making it far easier for your applications to consume and respond to the events regardless of where the changes originated.
 
 We currently have the following connectors:
 

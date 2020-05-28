@@ -1,5 +1,6 @@
+[id="logical-decoding-output-plugin-installation-for-postgresql"]
 = Logical Decoding Output Plug-in Installation for PostgreSQL
-include::_attributes.adoc[]
+
 :toc:
 :toc-placement: macro
 :linkattrs:
@@ -16,11 +17,11 @@ The installation and the tests are performed at the following environment/config
 * https://github.com/eulerto/wal2json[wal2json]
 * https://www.centos.org/[CentOS 7]
 
-Similar steps need to be taken for other Postgres and OS versions and the Decoderbufs logical decoding plug-in which also is supported by Debezium.
+Similar steps need to be taken for other Postgres and OS versions and the Decoderbufs logical decoding plug-in which also is supported by {prodname}.
 
 [NOTE]
 ====
-As of Debezium 0.10, the connector supports PostgreSQL 10+ logical replication streaming using _pgoutput_.
+As of {prodname} 0.10, the connector supports PostgreSQL 10+ logical replication streaming using _pgoutput_.
 This means that a logical decoding output plug-in is no longer necessary and changes can be emitted directly from the replication stream by the connector.
 ====
 
@@ -39,7 +40,7 @@ of a replication slot desires. Plug-ins are written in C, compiled, and installe
 and they use a number of PostgreSQL specific APIs, as described by the
 https://www.postgresql.org/docs/9.6/static/logicaldecoding-output-plugin.html[PostgreSQL documentation].
 
-Debezium’s PostgreSQL connector works with one of Debezium’s supported logical decoding plug-ins,
+{prodname}’s PostgreSQL connector works with one of {prodname}’s supported logical decoding plug-ins,
 
 * https://github.com/debezium/postgres-decoderbufs/blob/master/README.md[protobuf] or
 * https://github.com/eulerto/wal2json/blob/master/README.md[wal2json]
@@ -48,13 +49,13 @@ to encode the changes in either https://github.com/google/protobuf[Protobuf] for
 
 [TIP]
 ====
-For simplicity, Debezium also provides a Docker image based on a vanilla https://github.com/debezium/docker-images/tree/master/postgres/9.6[PostgreSQL server image]
+For simplicity, {prodname} also provides a Docker image based on a vanilla https://github.com/debezium/docker-images/tree/master/postgres/9.6[PostgreSQL server image]
 on top of which it compiles and installs the plug-ins.
 ====
 
 [WARNING]
 ====
-The Debezium logical decoding plug-ins have only been installed and tested on _Linux_ machines. For Windows and other platforms it may
+The {prodname} logical decoding plug-ins have only been installed and tested on _Linux_ machines. For Windows and other platforms it may
 require different installation steps
 ====
 
@@ -82,7 +83,7 @@ More information about the logical decoding and output plug-ins can be found at:
 At the current installation example, the https://github.com/eulerto/wal2json[wal2json] output plug-in for logical decoding is used.
 The wal2json output plug-in produces a JSON object per transaction. All of the new/old tuples are available in the JSON object.
 The plug-in *compilation and installation* is performed by executing the related commands extracted from the
-https://github.com/debezium/docker-images/blob/master/postgres/9.6/Dockerfile[Debezium docker image file].
+https://github.com/debezium/docker-images/blob/master/postgres/9.6/Dockerfile[{prodname} docker image file].
 
 Before executing the commands, make sure that the user has the privileges to write the `wal2json` library at the PostgreSQL `_lib_`
 directory (at the test environment, the directory is: `/usr/pgsql-9.6/lib/`).
@@ -134,14 +135,14 @@ gcc -Wall -Wmissing-prototypes -Wpointer-arith -Wdeclaration-after-statement -We
 
 [[fedora-rpm]]
 === Installation on Fedora 30+
-Debezium provides https://apps.fedoraproject.org/packages/postgres-decoderbufs[RPM package] for Fedora operating system too.
-The package is updated always after a final Debezium release is done.
+{prodname} provides https://apps.fedoraproject.org/packages/postgres-decoderbufs[RPM package] for Fedora operating system too.
+The package is updated always after a final {prodname} release is done.
 To use the RPM in question just issue the standard Fedora installation command:
 [source,bash]
 ----
 $ sudo dnf -y install postgres-decoderbufs
 ----
-The rest of the configuration is same as described below for `wal2json` plugin.
+The rest of the configuration is same as described below for `wal2json` plug-in.
 
 [[postgresql-server-configuration]]
 === PostgreSQL Server Configuration
@@ -177,7 +178,7 @@ and https://github.com/eulerto/wal2json/blob/master/Makefile[wal2json] Makefiles
 <3> tells the server that it should use a maximum of `4` separate processes for processing WAL changes
 <4> tells the server that it should allow a maximum of `4` replication slots to be created for streaming WAL changes
 
-Debezium uses PostgreSQL's logical decoding, which uses replication slots.  Replication slots are guaranteed to retain all WAL required for Debezium even during Debezium outages. It is important for this reason to closely monitor replication slots to avoid too much disk consumption and other conditions that can happen such as catalog bloat if a Debezium slot stays unused for too long. For more information please see the official Postgres docs on https://www.postgresql.org/docs/current/warm-standby.html#STREAMING-REPLICATION-SLOTS[this subject].
+{prodname} uses PostgreSQL's logical decoding, which uses replication slots.  Replication slots are guaranteed to retain all WAL required for {prodname} even during {prodname} outages. It is important for this reason to closely monitor replication slots to avoid too much disk consumption and other conditions that can happen such as catalog bloat if a {prodname} slot stays unused for too long. For more information please see the official Postgres docs on https://www.postgresql.org/docs/current/warm-standby.html#STREAMING-REPLICATION-SLOTS[this subject].
 
 [TIP]
 ====
@@ -206,7 +207,7 @@ Superusers have by default both of the above roles.
 Add the following lines at the end of the `pg_hba.conf` PostgreSQL configuration file, so as to configure the
 https://www.postgresql.org/docs/9.6/static/auth-pg-hba-conf.html[client authentication] for the database replication.
 The PostgreSQL server should allow replication to take place between the server machine and the host on which the
-Debezium PostgreSQL connector is running.
+{prodname} PostgreSQL connector is running.
 
 Note that the authentication refers to the database superuser `postgres`. You may change this accordingly,
 if some other user with `REPLICATION` and `LOGIN` permissions has been created.
@@ -256,7 +257,7 @@ Test that the `wal2json` is working properly by obtaining the `test_table` chang
 https://www.postgresql.org/docs/9.6/static/app-pgrecvlogical.html[pg_recvlogical] PostgreSQL client application
 that controls PostgreSQL logical decoding streams.
 
-Before starting make sure that you have logged in as a user with database replication permissions, as configured at a link:#setting_replication_permissions[previous step].
+Before starting make sure that you have logged in as a user with database replication permissions, as configured at a {link-prefix}:{link-postgresql-plugins}#setting_replication_permissions[previous step].
 Otherwise, the slot creation and streaming fails with the following error message:
 [source,bash]
 ----
@@ -361,7 +362,7 @@ Upon the `INSERT`, `UPDATE` and `DELETE` events, the `wal2json` plug-in outputs 
 
 [TIP]
 ====
-Note that the link:#replica-identity[REPLICA IDENTITY] of the table `test_table` is set to `DEFAULT`.
+Note that the {link-prefix}:{link-postgresql-plugins}#replica-identity[REPLICA IDENTITY] of the table `test_table` is set to `DEFAULT`.
 ====
 
 When the test is finished, the slot `test_slot` for the database `test` can be removed by the following command:
@@ -401,7 +402,7 @@ Replica Identity: FULL
 ----
 
 Here is the output of `wal2json` plug-in on `UPDATE` event and `REPLICA IDENTITY` set to `FULL`.
-Compare with the link:#update-table-change-event[respective output] when `REPLICA IDENTITY` is set to `DEFAULT`.
+Compare with the {link-prefix}:{link-postgresql-plugins}#update-table-change-event[respective output] when `REPLICA IDENTITY` is set to `DEFAULT`.
 
 ._Output for `UPDATE`_
 [source,json]

@@ -1,5 +1,5 @@
 = [DEPRECATED] Embedding Debezium Connectors
-include::../_attributes.adoc[]
+
 :source-highlighter: highlight.js
 :toc:
 :toc-placement: macro

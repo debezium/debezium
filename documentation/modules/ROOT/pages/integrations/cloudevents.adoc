@@ -1,5 +1,6 @@
+[id="exporting-cloud-events"]
 = Exporting CloudEvents
-include::../_attributes.adoc[]
+
 :toc:
 :toc-placement: macro
 :linkattrs:
@@ -25,13 +26,13 @@ It defines:
 
 By means of a specific Kafka Connect message converter
 (`io.debezium.converters.CloudEventsConverter`),
-Debezium optionally emits change events that adhere to the CloudEvents specification.
+{prodname} optionally emits change events that adhere to the CloudEvents specification.
 Currently, the structured mode of mapping CloudEvents is supported, using JSON and/or Avro as the envelope and the data format.
-Support for the binary mode of mapping CloudEvents will be added in a future version of Debezium.
+Support for the binary mode of mapping CloudEvents will be added in a future version of {prodname}.
 
 == Event Format
 
-The following example shows a CloudEvents event of the Debezium Postgres connector, using JSON as envelope and data format:
+The following example shows a CloudEvents event of the {prodname} Postgres connector, using JSON as envelope and data format:
 
 [source,json,indent=0]
 ----
@@ -73,8 +74,8 @@ The following example shows a CloudEvents event of the Debezium Postgres connect
 <5> Time of the change in the source database
 <6> Describes the content type of the `data` attribute; JSON in this case
 <7> Operation type identifier (one of (r)ead, (c)reate, (u)pdate or (d)elete)
-<8> All the `source` attributes known from Debezium data change events are mapped to CloudEvents extension attributes, using the "iodebezium" prefix for the attribute name
-<9> All the `transaction` attributes known from Debezium data change events (when enabled in connector) are mapped to CloudEvents extension attributes, using the "iodebeziumtx" prefix for the attribute name
+<8> All the `source` attributes known from {prodname} data change events are mapped to CloudEvents extension attributes, using the "iodebezium" prefix for the attribute name
+<9> All the `transaction` attributes known from {prodname} data change events (when enabled in connector) are mapped to CloudEvents extension attributes, using the "iodebeziumtx" prefix for the attribute name
 <10> The actual data change itself; depending on the kind of change and the type of connector, may contain the `before`, `after` and/or `patch` fields
 
 Alternatively, Avro can be used as content type for the `data` attribute:
@@ -111,36 +112,40 @@ Alternatively, Avro can be used as content type for the `data` attribute:
 <2> URI of the schema to which the Avro data adheres
 <3> The `data` attribute, base64-encoded Avro binary data
 
-Finally, it's also possible to use Avro for the entire envelope as well as the `data` attribute.
+Finally, it is also possible to use Avro for the entire envelope as well as the `data` attribute.
 
-[[configuration_options]]
+[[cloud-events-converter-configuration-options]]
 === Configuration Options
 
 The following configuration options exist when usi
 
-[cols="35%a,10%a,55%a",options="header"]
-|=======================
+[cols="30%a,25%a,45%a"]
+|===
 |Property
 |Default
 |Description
 
-|`serializer.type`
+[id="cloud-events-converter-serializer-type"]
+|{link-prefix}:{link-cloud-events}#cloud-events-converter-serializer-type[`serializer.type`]
 |`json`
 |The encoding type to use for the CloudEvents envelope structure; one of `json` or `avro`.
 
-|`data.serializer.type`
+[id="cloud-events-converter-data-serializer-type"]
+|{link-prefix}:{link-cloud-events}#cloud-events-converter-data-serializer-type[`data.serializer.type`]
 |`json`
 |The encoding type to use for the `data` attribute; can be `json` if `serializer.type` is `avro`;
 can be `json` or `avro`, if `serializer.type` is `json` or `avro`.
 
-|`json. \...`
+[id="cloud-events-converter-json"]
+|{link-prefix}:{link-cloud-events}#cloud-events-converter-json[`json. \...`]
 |N/A
 |Any configuration options to be passed through to the underlying converter when using JSON (the "json." prefix will be removed)
 
-|`avro. \...`
+[id="cloud-events-converter-avro"]
+|{link-prefix}:{link-cloud-events}#cloud-events-converter-avro[`avro. \...`]
 |N/A
 |Any configuration options to be passed through to the underlying converter when using Avro (the "avro." prefix will be removed)
-|=======================
+|===
 
 The following shows an example configuration for using JSON as envelope format
 (the default, so `value.converter.serializer.type` could also be omitted) and Avro as data content type:

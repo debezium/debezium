@@ -2,7 +2,7 @@
 // Metadata created by nebel
 //
 // UserStory: As a Developer, I want to deploy the CDC MySQL connector, so my applications can capture row-level changes from my databases as streams.
-:context: cdc
+:context: debezium
 [id="deploy-the-mysql-connector"]
 = Deploying the MySQL connector
 

@@ -8,7 +8,7 @@
 
 After starting ZooKeeper, you can start Kafka in a new container.
 
-ifdef::cdc-product[]
+ifdef::product[]
 [NOTE]
 ====
 {prodname} {debezium-version} requires Kafka Connect {debezium-kafka-version}.
@@ -16,14 +16,14 @@ Therefore, this procedure uses {debezium-kafka-version} of the Kafka broker.
 For more information about compatibility between different versions of Kafka Connect and Kafka broker,
 see the {link-kafka-docs}.html[Kafka documentation].
 ====
-endif::cdc-product[]
-ifndef::cdc-product[]
+endif::product[]
+ifdef::community[]
 [NOTE]
 ====
 {prodname} {debezium-version} has been tested against multiple versions of Kafka Connect.
 Please refer to the https://debezium.io/releases[Debezium Test Matrix] to determine compatibility between {prodname} and Kafka Connect.
 ====
-endif::cdc-product[]
+endif::community[]
 
 .Procedure
 

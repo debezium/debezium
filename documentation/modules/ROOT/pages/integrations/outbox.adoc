@@ -1,5 +1,6 @@
+[id="outbox-quarkus-extension"]
 = Outbox Quarkus Extension
-include::../_attributes.adoc[]
+
 :toc:
 :toc-placement: macro
 :linkattrs:
@@ -15,18 +16,18 @@ This feature is currently in incubating state, i.e. exact semantics, configurati
 
 == Overview
 
-This extension is inspired by the xref::configuration/outbox-event-router.adoc[Outbox Event Router] single message transformation (SMT).
-As discussed in the blog post link:/blog/2019/02/19/reliable-microservices-data-exchange-with-the-outbox-pattern/[Reliable Microservices Data Exchange with the Outbox Pattern], microservices often need to exchange information with one another and an excellent way to deal with that is using the Outbox pattern combined with Debezium's Outbox Event Router SMT.
+This extension is inspired by the {link-prefix}:{link-outbox-event-router}[Outbox Event Router] single message transformation (SMT).
+As discussed in the blog post link:/blog/2019/02/19/reliable-microservices-data-exchange-with-the-outbox-pattern/[Reliable Microservices Data Exchange with the Outbox Pattern], microservices often need to exchange information with one another and an excellent way to deal with that is using the Outbox pattern combined with {prodname}'s Outbox Event Router SMT.
 
 The following image shows the overall architecture of this pattern:
 
 image:outbox_pattern.png[Outbox Pattern]
 
-The Outbox extension's goal is to provide a https://quarkus.io/[Quarkus] application with a reusable, highly configurable component that facilitates the use of the Outbox pattern paired with Debezium's CDC connector pipeline to reliably and asynchronously share data with any consumer of said data.
+The Outbox extension's goal is to provide a https://quarkus.io/[Quarkus] application with a reusable, highly configurable component that facilitates the use of the Outbox pattern paired with {prodname}'s CDC connector pipeline to reliably and asynchronously share data with any consumer of said data.
 
 == Getting Started
 
-In order to start using the Debezium Outbox Quarkus extension, the extension needs to be added as a part of the Quarkus application as follows:
+In order to start using the {prodname} Outbox Quarkus extension, the extension needs to be added as a part of the Quarkus application as follows:
 [source,xml,subs="verbatim,attributes"]
 ----
 <dependency>
@@ -114,7 +115,7 @@ public class OrderService {
 ----
 
 When the application code fires the event by calling `Event#fire()`, the Outbox extension will be notified that the event occurred and persists the contents of the event into an outbox event table within the scope of the current transaction.
-The Debezium CDC connector in conjunction with the Outbox Event Router will be monitoring this table and will be responsible for relaying that data using CDC events.
+The {prodname} CDC connector in conjunction with the Outbox Event Router will be monitoring this table and will be responsible for relaying that data using CDC events.
 
 To see a full end-to-end demo, the https://github.com/debezium/debezium-examples/tree/master/outbox[Outbox] example illustrates two Quarkus microservice applications using the outbox pattern to share data between them when orders are placed or cancelled.
 
@@ -125,8 +126,8 @@ The extension works out-of-the-box with a default configuration, but this config
 
 === Build time configuration options
 
-[cols="65%a,>12%a,>23%",options="header"]
-|=======================
+[cols="65%a,>12%a,>23%"]
+|===
 |Configuration property
 |Type
 |Default
@@ -234,7 +235,7 @@ e.g. `com.company.TheAttributeConverter`
 |string
 |
 
-|=======================
+|===
 
 [NOTE]
 ====
@@ -244,8 +245,8 @@ When not using the default values, be sure that the SMT configuration matches.
 
 === Runtime configuration options
 
-[cols="65%a,>15%a,>20%",options="header"]
-|=======================
+[cols="65%a,>15%a,>20%"]
+|===
 |Configuration property
 |Type
 |Default
@@ -253,9 +254,9 @@ When not using the default values, be sure that the SMT configuration matches.
 |`quarkus.debezium-outbox.remove-after-insert`::
 Whether the outbox entry is removed after having been inserted. +
 +
-_The removal of the entry does not impact the Debezium connector from being able to emit CDC events.
+_The removal of the entry does not impact the {prodname} connector from being able to emit CDC events.
 This is used as a way to keep the table's underlying storage from growing over time._
 |boolean
 |true
 
-|=======================
+|===

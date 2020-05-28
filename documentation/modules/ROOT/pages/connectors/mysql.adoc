@@ -1,11 +1,11 @@
-include::../_attributes.adoc[]
 :toc:
 :toc-placement: macro
 :linkattrs:
 :icons: font
 :source-highlighter: highlight.js
-:context: cdc
+:context: debezium
 
+[id="debezium-connector-for-mysql"]
 = {prodname} Connector for MySQL
 
 MySQL has a binary log (binlog) that records all operations in the order in which they are committed to the database. This includes changes to table schemas and the data within tables. MySQL uses the binlog for replication and recovery.

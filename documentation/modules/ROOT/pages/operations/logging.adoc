@@ -1,5 +1,6 @@
+[id="debezium-logging"]
 = {prodname} logging
-include::../_attributes.adoc[]
+
 :linkattrs:
 :icons: font
 :source-highlighter: highlight.js

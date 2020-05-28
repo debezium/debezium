@@ -1,9 +1,10 @@
-= Using Docker with Debezium
-include::_attributes.adoc[]
+[id="using-docker-with-debezium"]
+= Using Docker with {prodname}
+
 :linkattrs:
 :icons: font
 
-Debezium uses http://docker.com/[Docker] in many ways, including within our tutorials, to run databases we test against, and to run the tools that build our website. There are lots of good summaries and tutorials you can follow to learn more about Docker, but we wanted to capture some tips and techniques for getting the most out of Docker when it comes to Debezium.
+{prodname} uses http://docker.com/[Docker] in many ways, including within our tutorials, to run databases we test against, and to run the tools that build our website. There are lots of good summaries and tutorials you can follow to learn more about Docker, but we wanted to capture some tips and techniques for getting the most out of Docker when it comes to {prodname}.
 
 [[linux]]
 == Docker on Linux, Windows, and OS X
@@ -15,7 +16,7 @@ If you're using these installations, there is no need to read the rest of the do
 [[docker-toolbox]]
 == Docker Toolbox on Windows and OS X
 
-The older approach for running Docker on Windows and OS X is more complicated, and it requires using https://www.docker.com/toolbox[Docker Toolbox] and its https://docs.docker.com/machine/get-started/[Docker Machine] to run the Docker host in a _virtual machine_. Make sure you follow the instructions to install or upgrade Docker Toolbox. Docker Machine supports running multiple virtual machines, but from this point on we'll assume that you're going to run the virtual machine named "default".
+The older approach for running Docker on Windows and OS X is more complicated, and it requires using https://www.docker.com/toolbox[Docker Toolbox] and its https://docs.docker.com/machine/get-started/[Docker Machine] to run the Docker host in a _virtual machine_. Make sure you follow the instructions to install or upgrade Docker Toolbox. Docker Machine supports running multiple virtual machines, but from this point on it is assumed that you are going to run the virtual machine named "default".
 
 The rest of this document explains how to use Docker Machine.
 
@@ -114,7 +115,7 @@ If you're using Docker Machine, you may sometimes get the following error when r
 
     Cannot connect to the Docker daemon. Is the docker daemon running on this host?
 
-This means that the commands running in your terminal can't communicate with the Docker virtual machine (i.e., the Docker daemon), either because it is not running or because the required environment variables in the terminal are not set properly. So first, verify that your Docker machine is indeed running:
+This means that the commands running in your terminal cannot communicate with the Docker virtual machine (i.e., the Docker daemon), either because it is not running or because the required environment variables in the terminal are not set properly. So first, verify that your Docker machine is indeed running:
 
 [source,bash,indent=0]
 ----
@@ -129,4 +130,3 @@ Start the machine if needed, but it if is already running then the error almost 
 ----
 
 This should resolve the error so that you can run the Docker command.
-

@@ -2,7 +2,7 @@
 // Metadata created by nebel
 //
 // UserStory: As a Developer, I want to troubleshoot any common issues that may arise with the CDC MySQL connector, so that I can continue development.
-:context: cdc
+:context: debezium
 [id="connector-common-issues"]
 = MySQL connector common issues
 

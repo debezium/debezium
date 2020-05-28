@@ -1,5 +1,6 @@
-= Debezium Connector for Db2 
-include::../_attributes.adoc[]
+[id="debezium-connector-for-db2"]
+= {prodname} Connector for Db2
+
 :toc:
 :toc-placement: macro
 :linkattrs:
@@ -14,8 +15,8 @@ toc::[]
 This connector is currently in incubating state, i.e. exact semantics, configuration options etc. may change in future revisions, based on the feedback we receive. Please let us know if you encounter any problems.
 ====
 
-Debezium's Db2 Connector can monitor and record the row-level changes in the tables of a Db2 database.
-This connector is strongly inspired by the Debezium implementation of SQL server, using a
+{prodname}'s Db2 Connector can monitor and record the row-level changes in the tables of a Db2 database.
+This connector is strongly inspired by the {prodname} implementation of SQL server, using a
 SQL based polling model of tables put into "capture mode". This uses the ASN libraries that come as a standard part of Db2 LUW and can be added (with an additional license) to Db2 zOS.
 
 The first time it connects to a Db2 database, it reads a consistent snapshot of all of the tables that are whitelisted (or not blacklisted depending on the mode of operation).
@@ -24,7 +25,7 @@ Note that by default all tables in the database are snapshoted, NOT just those t
 When that snapshot is complete, the connector continuously streams the changes that were committed to the Db2 database for all whitelisted tables in capture mode. This generates corresponding insert, update and delete events.
 All of the events for each table are recorded in a separate Kafka topic, where they can be easily consumed by applications and services.
 
-[[overview]]
+[[db2-overview]]
 == Overview
 
 The functionality of the connector is based upon the https://www.ibm.com/support/pages/q-replication-and-sql-replication-product-documentation-pdf-format-version-101-linux-unix-and-windows[ASN Capture/Apply agents] 
@@ -39,7 +40,7 @@ The connector has been tested with Db2/Linux 11.5.0.0, but our expectation is th
 
 The database administrator must put the tables to be monitored into capture mode.
 For convenience and for automating testing we have written a User Defined Function (UDF) in C that can be compiled and then used to control the ASN agent, create the ASN schemas/tables and add/remove tables to capture.
-These utilities are described in debezium-connector-db2/src/test/docker/db2-cdc-docker/
+These utilities are described in `debezium-connector-db2/src/test/docker/db2-cdc-docker/`
 but these are only for convenience and manually performing the same commands using
 _db2_ control commands would have the same effect.
 
@@ -48,7 +49,7 @@ The connector then produces a _change event_ for every row-level insert, update,
 The client applications read the Kafka topics that correspond to the database tables they're interested in following, and react to every row-level event it sees in those topics.
 
 The database administrator normally enables _CDC_ in the middle of the life of a table.
-This means that the connector won't have the complete history of all changes that have been made to the table.
+This means that the connector does not have the complete history of all changes that have been made to the table.
 Therefore, when the Db2 connector first connects to a particular Db2 database, it starts by performing a _consistent snapshot_ of each of the whitelisted tables.
 After the connector completes the snapshot, it continues streaming changes from the exact point at which the snapshot was made for tables in capture mode.
 This way, we start with a consistent view of all of the data, yet continue reading without having lost any of the changes made while the snapshot was taking place.
@@ -58,7 +59,7 @@ As the connector reads changes and produces events, it records the position in t
 If the connector stops for any reason (including communication failures, network problems, or crashes), upon restart it simply continues reading the _CDC_ tables where it last left off.
 This includes snapshots: if the snapshot was not completed when the connector is stopped, upon restart it will begin a new snapshot. Care needs to be taken with mixing multiple snapshot in the same topic as delete operations may be missed.
 
-[[setting-up-Db2]]
+[[setting-up-db2]]
 == Setting up Db2 
 
 Before using the Db2 connector to monitor the changes committed on the Db2 database, first enable _CDC_ on a monitored database.
@@ -228,11 +229,11 @@ VALUES ASNCDC.ASNCDCSERVICES('reinit','asncdc');
 
 == How the Db2 connector works
 
-[[snapshots]]
+[[db2-snapshots]]
 === Snapshots
 
 Db2 ASN is not designed to store the complete history of database changes.
-It is thus necessary that Debezium establishes the baseline of current table content and streams it to Kafka.
+It is thus necessary that {prodname} establishes the baseline of current table content and streams it to Kafka.
 This is achieved via a process called snapshotting.
 
 By default (snapshotting mode *initial*) the connector will upon the first startup perform an initial _consistent snapshot_ of the table.
@@ -257,15 +258,15 @@ Then the connector identifies a change table for each of the source tables and e
 
 1. For each change table read all changes that were created between last stored maximum LSN and current maximum LSN
 2. Order the read changes incrementally according to commit LSN and change LSN.
-This assures that the changes are replayed by Debezium in the same order as were made to the database.
+This assures that the changes are replayed by {prodname} in the same order as were made to the database.
 3. Pass commit and change LSNs as offsets to Kafka Connect.
 4. Store the maximum LSN and repeat the loop.
 
 After a restart, the connector will resume from the offset (commit and change LSNs) where it left off before.
 
-The connector is able to detect whether the CDC is enabled or disabled for whitelisted source table during the runtime and modify its behaviour.
+The connector is able to detect whether the CDC is enabled or disabled for whitelisted source table during the runtime and modify its behavior.
 
-[[topic-names]]
+[[db2-topic-names]]
 === Topic names
 
 The Db2 connector writes events for all insert, update, and delete operations on a single table to a single Kafka topic. The name of the Kafka topics always takes the form _databaseName_._schemaName_._tableName_, where _databaseName_ is the logical name of the connector as specified with the `database.server.name` configuration property, _schemaName_ is the name of the schema where the operation occurred, and _tableName_ is the name of the database table on which the operation occurred.
@@ -282,11 +283,11 @@ For example, consider a Db2 installation with an `mydatabase` database that cont
 
 === Events
 
-All data change events produced by the Db2 connector have a key and a value, although the structure of the key and value depend on the table from which the change events originated (see link:#topic-names[Topic names]).
+All data change events produced by the Db2 connector have a key and a value, although the structure of the key and value depend on the table from which the change events originated (see {link-prefix}:{link-db2-connector}#db2-topic-names[Topic names]).
 
 [WARNING]
 ====
-The Debezium Db2 connector ensures that all Kafka Connect _schema names_ are http://avro.apache.org/docs/current/spec.html#names[valid Avro schema names].
+The {prodname} Db2 connector ensures that all Kafka Connect _schema names_ are http://avro.apache.org/docs/current/spec.html#names[valid Avro schema names].
 This means that the logical server name must start with Latin letters or an underscore (e.g., [a-z,A-Z,\_]),
 and the remaining characters in the logical server name and all characters in the schema and table names must be Latin letters, digits, or an underscore (e.g., [a-z,A-Z,0-9,\_]).
 If not, then all invalid characters will automatically be replaced with an underscore character.
@@ -295,12 +296,12 @@ This can lead to unexpected conflicts when the database name, schema names, and 
 In addition, note that databases, schemas and tables  can be case sensitive in Db2 meaning that different tables maybe mapped to the same Kafka topic.
 ====
 
-Debezium and Kafka Connect are designed around _continuous streams of event messages_, and the structure of these events may change over time.
+{prodname} and Kafka Connect are designed around _continuous streams of event messages_, and the structure of these events may change over time.
 This could be difficult for consumers to deal with, so to make it easy Kafka Connect makes each event self-contained.
 Every message key and value has two parts: a _schema_ and _payload_.
 The schema describes the structure of the payload, while the payload contains the actual data.
 
-[[change-event-keys]]
+[[db2-change-event-keys]]
 ==== Change Event Keys
 
 For a given table, the change event's key will have a structure that contains a field for each column in the primary key (or unique key constraint) of the table at the time the event was created.
@@ -341,10 +342,10 @@ Every change event for the `customers` table while it has this definition will f
 }
 ----
 
-The `schema` portion of the key contains a Kafka Connect schema describing what is in the key portion, and in our case that means that the `payload` value is not optional, is a structure defined by a schema named `mydatabase.MYSCHEMA.CUSTOMERS.Key`, and has one required field named `id` of type `int32`.
-If we look at the value of the key's `payload` field, we'll see that it is indeed a structure (which in JSON is just an object) with a single `id` field, whose value is `1004`.
+The `schema` portion of the key contains a Kafka Connect schema describing what is in the key portion. In this case, it means that the `payload` value is not optional, is a structure defined by a schema named `mydatabase.MYSCHEMA.CUSTOMERS.Key`, and has one required field named `id` of type `int32`.
+If you look at the value of the key's `payload` field, you can see that it is indeed a structure (which in JSON is just an object) with a single `id` field, whose value is `1004`.
 
-Therefore, we interpret this key as describing the row in the `MYSCHEMA.CUSTOMERS` table (output from the connector reading from database `mydatabase`) whose `id` primary key column had a value of `1004`.
+Therefore, you can interpret this key as describing the row in the `MYSCHEMA.CUSTOMERS` table (output from the connector reading from database `mydatabase`) whose `id` primary key column had a value of `1004`.
 
 ////
 [NOTE]
@@ -358,7 +359,7 @@ If the table does not have a primary or unique key, then the change event's key 
 ====
 ////
 
-[[change-event-values]]
+[[db2-change-event-values]]
 ==== Change Event Values
 
 Like the message key, the value of a change event message has a _schema_ section and _payload_ section.
@@ -369,13 +370,13 @@ The payload section of every change event value produced by the Db2 connector ha
 `mydatabase` uses for all rows in the `MYSCHEMA.CUSTOMERS` table.
 
 * `after` is an optional field that if present contains the state of the row _after_ the event occurred. The structure is described by the same `mydatabase.MYSCHEMA.CUSTOMERS.Value` Kafka Connect schema used in `before`.
-* `source` is a mandatory field that contains a structure describing the source metadata for the event, which in the case of Db2 contains these fields: the Debezium version, the connector name, whether the event is part of an ongoing snapshot or not, the commit LSN (not while snapshotting), the LSN of the change, database, schema and table where the change happened, and a timestamp representing the point in time when the record was read from the the source database by the connector. 
+* `source` is a mandatory field that contains a structure describing the source metadata for the event, which in the case of Db2 contains these fields: the {prodname} version, the connector name, whether the event is part of an ongoing snapshot or not, the commit LSN (not while snapshotting), the LSN of the change, database, schema and table where the change happened, and a timestamp representing the point in time when the record was read from the the source database by the connector.
 
 * `ts_ms` is optional and if present contains the time (using the system clock in the JVM running the Kafka Connect task) at which the connector processed the event.
 
 And of course, the _schema_ portion of the event message's value contains a schema that describes this envelope structure and the nested fields within it.
 
-[[create-events]]
+[[db2-create-events]]
 ===== Create events
 
 Let's look at what a _create_ event value might look like for our `customers` table:
@@ -558,7 +559,7 @@ This is true, because the JSON representation must include the _schema_ and the 
 It is possible and even recommended to use the link:/docs/faq/#avro-converter[Avro Converter] to dramatically decrease the size of the actual messages written to the Kafka topics.
 ====
 
-[[update-events]]
+[[db2-update-events]]
 ===== Update events
 The value of an _update_ change event on this table will actually have the exact same _schema_, and its payload will be structured the same but will hold different values.
 Here's an example:
@@ -604,17 +605,17 @@ When we compare this to the value in the _insert_ event, we see a couple of diff
 * The `before` field now has the state of the row with the values before the database commit
 * The `after` field now has the updated state of the row, and here was can see that the `email` value is now `noreply@example.org`.
 * The `source` field structure has the same fields as before, but the values are different since this event is from a different position in the transaction log.
-* The `ts_ms` shows the timestamp that Debezium processed this event.
+* The `ts_ms` shows the timestamp that {prodname} processed this event.
 
 There are several things we can learn by just looking at this `payload` section. We can compare the `before` and `after` structures to determine what actually changed in this row because of the commit.
 The `source` structure tells us information about Db2's record of this change (providing traceability), but more importantly this has information we can compare to other events in this and other topics to know whether this event occurred before, after, or as part of the same Db2 commit as other events.
 
 [NOTE]
 ====
-When the columns for a row's primary/unique key are updated, the value of the row's key has changed so Debezium will output _three_ events: a `DELETE` event and a link:#tombstone-events[tombstone event] with the old key for the row, followed by an `INSERT` event with the new key for the row.
+When the columns for a row's primary/unique key are updated, the value of the row's key has changed so {prodname} will output _three_ events: a `DELETE` event and a {link-prefix}:{link-db2-connector}#db2-tombstone-events[tombstone event] with the old key for the row, followed by an `INSERT` event with the new key for the row.
 ====
 
-[[delete-events]]
+[[db2-delete-events]]
 ===== Delete events
 
 So far we've seen samples of _create_ and _update_ events.
@@ -657,7 +658,7 @@ If we look at the `payload` portion, we see a number of differences compared wit
 * The `before` field now has the state of the row that was deleted with the database commit.
 * The `after` field is null, signifying that the row no longer exists
 * The `source` field structure has many of the same values as before, except the `ts_ms`, `commit_lsn` and `change_lsn` fields have changed
-* The `ts_ms` shows the timestamp that Debezium processed this event.
+* The `ts_ms` shows the timestamp that {prodname} processed this event.
 
 This event gives a consumer all kinds of information that it can use to process the removal of this row.
 
@@ -665,12 +666,12 @@ The Db2 connector's events are designed to work with https://cwiki.apache.org/co
 which allows for the removal of some older messages as long as at least the most recent message for every key is kept.
 This allows Kafka to reclaim storage space while ensuring the topic contains a complete dataset and can be used for reloading key-based state.
 
-[[tombstone-events]]
+[[db2-tombstone-events]]
 When a row is deleted, the _delete_ event value listed above still works with log compaction, since Kafka can still remove all earlier messages with that same key.
 But only if the message value is `null` will Kafka know that it can remove _all messages_ with that same key.
-To make this possible, Debezium's Db2 connector always follows the _delete_ event with a special _tombstone_ event that has the same key but `null` value.
+To make this possible, {prodname}'s Db2 connector always follows the _delete_ event with a special _tombstone_ event that has the same key but `null` value.
 
-[[transaction-metadata]]
+[[db2-transaction-metadata]]
 === Transaction Metadata
 
 [NOTE]
@@ -679,10 +680,10 @@ This feature is under active development right now (incubating),
 so the structure of transaction events or other details may still change as development progresses.
 ====
 
-Debezium can generate events that represents tranaction metadata boundaries and enrich data messages.
+{prodname} can generate events that represents tranaction metadata boundaries and enrich data messages.
 
 ==== Transaction boundaries
-Debezium generates events for every transaction start and end.
+{prodname} generates events for every transaction start and end.
 Every event contains
 
 * `status` - `BEGIN` or `END`
@@ -749,21 +750,21 @@ An example of messages looks like
 }
 ----
 
-[[schema-evolution]]
+[[db2-schema-evolution]]
 === Database schema evolution
 
-Debezium is able to capture schema changes over time.
-Due to the way CDC is implemented in Db2, it is necessary to work in co-operation with a database administrator in order to ensure the Debezium connector continues to produce data change events when the schema is updated.
+{prodname} is able to capture schema changes over time.
+Due to the way CDC is implemented in Db2, it is necessary to work in co-operation with a database administrator in order to ensure the {prodname} connector continues to produce data change events when the schema is updated.
 
-As was already mentioned before, Debezium uses Db2's change data capture functionality.
+As was already mentioned before, {prodname} uses Db2's change data capture functionality.
 This means that Db2 creates a capture table that contains all changes executed on the source table.
 Unfortunately, the capture table is static and needs to be updated when the source table structure changes.
-This update is not done by the Debezium connector itself but must be executed by an administrator with elevated privileges.
+This update is not done by the {prodname} connector itself but must be executed by an administrator with elevated privileges.
 
 There are generally two procedures how to execute the schema change:
 
-* cold - this is executed when Debezium is stopped
-* hot - executed while Debezium is running
+* cold - this is executed when {prodname} is stopped
+* hot - executed while {prodname} is running
 
 Both approaches have their own advantages and disadvantages.
 
@@ -778,8 +779,8 @@ It is thus recommended to execute all DDLs in a single batch so the procedure is
 Not all schema changes are supported when CDC is enabled for a source table.
 We note here some of the likely effects:
 
-- If a column name is changed then the old column will continue to be used by the ASN capture service and therefore the new name will not appear in Debezium.
-If Debezium is restarted then the new name will appear.
+- If a column name is changed then the old column will continue to be used by the ASN capture service and therefore the new name will not appear in {prodname}.
+If {prodname} is restarted then the new name will appear.
 - To Be Completed
 
 It is recommend that if the structure of a source change is changed, that we:
@@ -796,15 +797,15 @@ This is the safest procedure but might not be feasible for applications with hig
 The administrator should follow this sequence of steps:
 
 1. Suspend the application that generates the database records
-2. Wait for Debezium to stream all unstreamed changes
-3. Stop Debezium connector
+2. Wait for {prodname} to stream all unstreamed changes
+3. Stop {prodname} connector
 4. Apply all changes to the source table schema
 5. Mark the tables as INACTIVE on the ASN register table and reinit the ASN capture service (see the UDFs)
 6. Remove the old structure table from ASN
 7. Add the new structure table to ASN
 8. Mark the tables as ACTIVE on the ASN register table and reinit the ASN capture service (see the UDFs)
 9. Resume the application
-10. Start Debezium connector
+10. Start {prodname} connector
 
 
 ==== Hot schema update
@@ -838,7 +839,7 @@ Now we consider an non-incremental change to the source, e.g. adding a new colum
 
 To Be Done
 
-[[data-types]]
+[[db2-data-types]]
 === Data types
 
 A summary of Db2's data types are described in https://www.ibm.com/support/knowledgecenter/en/SSEPGG_11.5.0/com.ibm.db2.luw.sql.ref.doc/doc/r0008483.html[Data Types].
@@ -851,7 +852,7 @@ Here, the _literal type_ describes how the value is literally represented using 
 The _semantic type_ describes how the Kafka Connect schema captures the _meaning_ of the field using the name of the Kafka Connect schema for the field.
 
 [cols="20%a,15%a,30%a,35%a"]
-|=======================
+|===
 |Db2 Data Type |Literal type (schema type) |Semantic type (schema name) |Notes
 
 |`BOOLEAN`
@@ -954,22 +955,22 @@ The _semantic type_ describes how the Kafka Connect schema captures the _meaning
 |`STRING`
 |`io.debezium.data.Xml`
 |Contains the string representation of a XML document
-|=======================
+|===
 
 Other data type mappings are described in the following sections.
 
 If present, a column's default value will be propagated to the corresponding field's Kafka Connect schema.
 Change messages will contain the field's default value
 (unless an explicit column value had been given), so there should rarely be the need to obtain the default value from the schema.
-Passing the default value helps though with satisfying the compatibility rules when xref:configuration/avro.adoc[using Avro] as serialization format together with the Confluent schema registry.
+Passing the default value helps though with satisfying the compatibility rules when {link-prefix}:{link-avro-serialization}[using Avro] as serialization format together with the Confluent schema registry.
 
-[[temporal-values]]
+[[db2-temporal-values]]
 ==== Temporal values
 
 Other than Db2's `DATETIMEOFFSET` data type (which contain time zone information), the other temporal types depend on the value of the `time.precision.mode` configuration property.  When the `time.precision.mode` configuration property is set to `adaptive` (the default), then the connector will determine the literal type and semantic type for the temporal types based on the column's data type definition so that events _exactly_ represent the values in the database:
 
 [cols="20%a,15%a,30%a,35%a"]
-|=======================
+|===
 |Db2 Data Type |Literal type (schema type) |Semantic type (schema name) |Notes
 
 |`DATE`
@@ -1016,12 +1017,12 @@ Other than Db2's `DATETIMEOFFSET` data type (which contain time zone information
 |`INT64`
 |`io.debezium.time.NanoTimestamp`
 | Represents the number of nanoseconds past epoch, and does not include timezone information.
-|=======================
+|===
 
 When the `time.precision.mode` configuration property is set to `connect`, then the connector will use the predefined Kafka Connect logical types. This may be useful when consumers only know about the built-in Kafka Connect logical types and are unable to handle variable-precision time values. On the other hand, since Db2 supports tenth of microsecond precision, the events generated by a connector with the `connect` time precision mode will *result in a loss of precision* when the database column has a _fractional second precision_ value greater than 3:
 
 [cols="20%a,15%a,30%a,35%a"]
-|=======================
+|===
 |Db2 Data Type |Literal type (schema type) |Semantic type (schema name) |Notes
 
 |`DATE`
@@ -1048,21 +1049,21 @@ When the `time.precision.mode` configuration property is set to `connect`, then 
 |`INT64`
 |`org.apache.kafka.connect.data.Timestamp`
 | Represents the number of milliseconds since epoch, and does not include timezone information. Db2 allows `P` to be in the range 0-7 to store up to tenth of microsecond precision, though this mode results in a loss of precision when `P` > 3.
-|=======================
+|===
 
-[[timestamp-values]]
+[[db2-timestamp-values]]
 ===== Timestamp values
 
 The `DATETIME`, `SMALLDATETIME` and `DATETIME2` types represent a timestamp without time zone information.
 Such columns are converted into an equivalent Kafka Connect value based on UTC.
 So for instance the `DATETIME2` value "2018-06-20 15:13:16.945104" will be represented by a `io.debezium.time.MicroTimestamp` with the value "1529507596945104".
 
-Note that the timezone of the JVM running Kafka Connect and Debezium does not affect this conversion.
+Note that the timezone of the JVM running Kafka Connect and {prodname} does not affect this conversion.
 
 ==== Decimal values
 
 [cols="15%a,15%a,35%a,35%a"]
-|=======================
+|===
 |Db2 Data Type |Literal type (schema type) |Semantic type (schema name) |Notes
 
 |`NUMERIC[(P[,S])]`
@@ -1088,33 +1089,33 @@ The `connect.decimal.precision` schema parameter contains an integer representin
 |`org.apache.kafka.connect.data.Decimal`
 |The `scale` schema parameter contains an integer representing how many digits the decimal point was shifted.
 The `connect.decimal.precision` schema parameter contains an integer representing the precision of the given decimal value.
-|=======================
+|===
 
-[[deploying-a-connector]]
+[[db2-deploying-a-connector]]
 == Deploying a connector
 
-If you've already installed https://zookeeper.apache.org[Zookeeper], http://kafka.apache.org/[Kafka], and {link-kafka-docs}.html#connect[Kafka Connect], then using Debezium's Db2` connector is easy.
-First download the https://repo1.maven.org/maven2/io/debezium/debezium-connector-db2/{debezium-version}/debezium-connector-db2-{debezium-version}-plugin.tar.gz[connector's plugin archive],
-extract it, and add the contained directory to Kafka Connect's plugin path using the {link-kafka-docs}/#connectconfigs[plugin.path] configuration property.
+If you've already installed https://zookeeper.apache.org[Zookeeper], http://kafka.apache.org/[Kafka], and {link-kafka-docs}.html#connect[Kafka Connect], then using {prodname}'s Db2` connector is easy.
+First download the https://repo1.maven.org/maven2/io/debezium/debezium-connector-db2/{debezium-version}/debezium-connector-db2-{debezium-version}-plugin.tar.gz[connector's plug-in archive],
+extract it, and add the contained directory to Kafka Connect's `plugin.path` by using the {link-kafka-docs}/#connectconfigs[`plugin.path`] configuration property.
 
 In addition, due to licensing reasons you need to separately obtain the https://www.ibm.com/support/pages/db2-jdbc-driver-versions-and-downloads[JDBC driver for Db2].
-Add the JDBC driver JAR to the directory with the Debezium Db2 connector JARs.
+Add the JDBC driver JAR to the directory with the {prodname} Db2 connector JARs.
 Restart your Kafka Connect process to pick up the new connector.
 
-If immutable containers are your thing, then check out https://hub.docker.com/r/debezium/[Debezium's Container images] for Zookeeper, Kafka and Kafka Connect with the Db2 connector already pre-installed and ready to go.
-You can even link:/docs/openshift/[run Debezium on OpenShift].
+If immutable containers are your thing, then check out https://hub.docker.com/r/debezium/[{prodname}'s Container images] for Zookeeper, Kafka and Kafka Connect with the Db2 connector already pre-installed and ready to go.
+You can even link:/docs/openshift/[run {prodname} on OpenShift].
 
 To use the connector to produce change events for a particular Db2 database or cluster:
 
-. enable the link:#setting-up-Db2[CDC on Db2] to publish the _CDC_ events in the database
-. create a link:#example-configuration[configuration file for the Db2 Connector] and use the {link-kafka-docs}/#connect_rest[Kafka Connect REST API] to add that connector to your Kafka Connect cluster.
+. enable the {link-prefix}:{link-db2-connector}#setting-up-db2[CDC on Db2] to publish the _CDC_ events in the database
+. create a {link-prefix}:{link-db2-connector}#db2-example-configuration[configuration file for the Db2 Connector] and use the {link-kafka-docs}/#connect_rest[Kafka Connect REST API] to add that connector to your Kafka Connect cluster.
 
 When the connector starts, it will grab a consistent snapshot of the schemas in your Db2 database and start streaming changes, producing events for every inserted, updated, and deleted row.
 You can also choose to produce events for a subset of the schemas and tables.
 Optionally ignore, mask, or truncate columns that are sensitive, too large, or not needed.
 
-[[example]]
-[[example-configuration]]
+[[db2-example]]
+[[db2-example-configuration]]
 === Example configuration
 
 Using the Db2 connector is straightforward. Here is an example of the configuration for a connector instance that monitors a Db2 server at port 50000 on 192.168.99.100, which we logically name `fullfillment`:
@@ -1144,29 +1145,35 @@ Using the Db2 connector is straightforward. Here is an example of the configurat
 <5> The name of the Db2 user
 <6> The password for the Db2 user
 <7> The name of the database to capture changes from
-<8> The logical name of the Db2 instance/cluster, which forms a namespace and is used in all the names of the Kafka topics to which the connector writes, the Kafka Connect schema names, and the namespaces of the corresponding Avro schema when the xref:configuration/avro.adoc[Avro Connector] is used.
-<9> A list of all tables whose changes Debezium should capture
+<8> The logical name of the Db2 instance/cluster, which forms a namespace and is used in all the names of the Kafka topics to which the connector writes, the Kafka Connect schema names, and the namespaces of the corresponding Avro schema when the {link-prefix}:{link-avro-serialization}[Avro Connector] is used.
+<9> A list of all tables whose changes {prodname} should capture
 <10> The list of Kafka brokers that this connector will use to write and recover DDL statements to the database history topic.
 <11> The name of the database history topic where the connector will write and recover DDL statements. This topic is for internal use only and should not be used by consumers.
 
-See the link:#connector-properties[complete list of connector properties] that can be specified in these configurations.
+See the {link-prefix}:{link-db2-connector}#db2-connector-properties[complete list of connector properties] that can be specified in these configurations.
 
 This configuration can be sent via POST to a running Kafka Connect service, which will then record the configuration and start up the one connector task that will connect to the Db2 database, read the transaction log, and record events to Kafka topics.
 
 
-[[monitoring]]
+[[db2-monitoring]]
 === Monitoring
 
-Kafka, Zookeeper, and Kafka Connect all have xref:operations/monitoring.adoc[built-in support] for JMX metrics. The Db2 connector also publishes a number of metrics about the connector's activities that can be monitored through JMX. The connector has two types of metrics. Snapshot metrics help you monitor the snapshot activity and are available when the connector is performing a snapshot. Streaming metrics help you monitor the progress and activity while the connector reads CDC table data.
+The {prodname} Db2 connector has three metric types in addition to the built-in support for JMX metrics that Zookeeper, Kafka, and Kafka Connect have.
 
-[[monitoring-snapshots]]
-[[snapshot-metrics]]
+* <<snapshot-metrics, snapshot metrics>>; for monitoring the connector when performing snapshots
+* <<streaming-metrics, streaming metrics>>; for monitoring the connector when reading CDC table data
+* <<schema-history-metrics, schema history metrics>>; for monitoring the status of the connector's schema history
+
+Please refer to the {link-prefix}:{link-debezium-monitoring}[monitoring documentation] for details of how to expose these metrics via JMX.
+
+[[db2-monitoring-snapshots]]
+[[db2-snapshot-metrics]]
 ==== Snapshot Metrics
 
-===== *MBean: debezium.db2:type=connector-metrics,context=snapshot,server=_<database.server.name>_*
+The *MBean* is `debezium.db2:type=connector-metrics,context=snapshot,server=_<database.server.name>_`.
 
-[cols="30%a,10%a,60%a"]
-|=======================
+[cols="30%a,25%a,45%a"]
+|===
 |Attribute Name |Type |Description
 
 |`LastEvent`
@@ -1224,17 +1231,16 @@ Kafka, Zookeeper, and Kafka Connect all have xref:operations/monitoring.adoc[bui
 |`RowsScanned`
 |`Map<String, Long>`
 |Map containing the number of rows scanned for each table in the snapshot. Tables are incrementally added to the Map during processing. Updates every 10,000 rows scanned and upon completing a table.
-|=======================
+|===
 
-
-[[monitoring-streaming]]
-[[streaming-metrics]]
+[[db2-monitoring-streaming]]
+[[db2-streaming-metrics]]
 ==== Streaming Metrics
 
-===== *MBean: debezium.db2:type=connector-metrics,context=streaming,server=_<database.server.name>_*
+The *MBean* is `debezium.db2:type=connector-metrics,context=streaming,server=_<database.server.name>_`.
 
-[cols="30%a,10%a,60%a"]
-|=======================
+[cols="30%a,25%a,45%a"]
+|===
 |Attribute Name |Type |Description
 
 |`LastEvent`
@@ -1284,16 +1290,16 @@ Kafka, Zookeeper, and Kafka Connect all have xref:operations/monitoring.adoc[bui
 |`LastTransactionId`
 |`string`
 |Transaction identifier of the last processed transaction.
-|=======================
+|===
 
-[[monitoring-schema-history]]
-[[schema-history-metrics]]
+[[db2-monitoring-schema-history]]
+[[db2-schema-history-metrics]]
 ==== Schema History Metrics
 
-===== *MBean: debezium.db2:type=connector-metrics,context=schema-history,server=_<database.server.name>_*
+The *MBean* is `debezium.db2:type=connector-metrics,context=schema-history,server=_<database.server.name>_`.
 
-[cols="30%a,10%a,60%a"]
-|=======================
+[cols="30%a,25%a,45%a"]
+|===
 |Attribute Name |Type |Description
 
 |`Status`
@@ -1327,129 +1333,127 @@ Kafka, Zookeeper, and Kafka Connect all have xref:operations/monitoring.adoc[bui
 |`LastAppliedChange`
 |`string`
 |The string representation of the last applied change.
-|=======================
+|===
 
-
-
-[[connector-properties]]
+[[db2-connector-properties]]
 === Connector properties
 
 The following configuration properties are _required_ unless a default value is available.
 
-[cols="35%a,10%a,55%a"]
-|=======================
+[cols="30%a,25%a,45%a"]
+|===
 |Property |Default |Description
 
-|`name`
+|[[db2-property-name]]<<db2-property-name, `name`>>
 |
 |Unique name for the connector. Attempting to register again with the same name will fail. (This property is required by all Kafka Connect connectors.)
 
-|`connector.class`
+|[[db2-property-connector-class]]<<db2-property-connector-class, `connector.class`>>
 |
 |The name of the Java class for the connector. Always use a value of `io.debezium.connector.db2.Db2Connector` for the Db2 connector.
 
-|`tasks.max`
+|[[db2-property-tasks-max]]<<db2-property-tasks-max, `tasks.max`>>
 |`1`
 |The maximum number of tasks that should be created for this connector. The Db2 connector always uses a single task and therefore does not use this value, so the default is always acceptable.
 
-|`database.hostname`
+|[[db2-property-database-hostname]]<<db2-property-database-hostname, `database.hostname`>>
 |
 |IP address or hostname of the Db2 database server.
 
-|`database.port`
+|[[db2-property-database-port]]<<db2-property-database-port, `database.port`>>
 |`50000`
 |Integer port number of the Db2 database server.
 
-|`database.user`
+|[[db2-property-database-user]]<<db2-property-database-user, `database.user`>>
 |
 |Username to use when connecting to the Db2 database server.
 
-|`database.password`
+|[[db2-property-database-password]]<<db2-property-database-password, `database.password`>>
 |
 |Password to use when connecting to the Db2 database server.
 
-|`database.dbname`
+|[[db2-property-database-dbname]]<<db2-property-database-dbname, `database.dbname`>>
 |
 |The name of the Db2 database from which to stream the changes
 
-|`database.server.name`
+|[[db2-property-database-server-name]]<<db2-property-database-server-name, `database.server.name`>>
 |
 |Logical name that identifies and provides a namespace for the particular Db2 database server being monitored. The logical name should be unique across all other connectors, since it is used as a prefix for all Kafka topic names emanating from this connector.
 Only alphanumeric characters and underscores should be used.
 
-|`database.history.kafka.topic`
+|[[db2-property-database-history-kafka-topic]]<<db2-property-database-history-kafka-topic, `database.history.kafka.topic`>>
 |
 |The full name of the Kafka topic where the connector will store the database schema history.
 
-|`database.history{zwsp}.kafka.bootstrap.servers`
+|[[db2-property-database-history-kafka-bootstrap-servers]]<<db2-property-database-history-kafka-bootstrap-servers, `database.history{zwsp}.kafka.bootstrap.servers`>>
 |
 |A list of host/port pairs that the connector will use for establishing an initial connection to the Kafka cluster. This connection will be used for retrieving database schema history previously stored by the connector, and for writing each DDL statement read from the source database. This should point to the same Kafka cluster used by the Kafka Connect process.
 
-|`table.whitelist`
+|[[db2-property-table-whitelist]]<<db2-property-table-whitelist, `table.whitelist`>>
 |
 |An optional comma-separated list of regular expressions that match fully-qualified table identifiers for tables to be monitored; any table not included in the whitelist will be excluded from monitoring. Each identifier is of the form _schemaName_._tableName_. By default the connector will monitor every non-system table in each monitored schema. May not be used with `table.blacklist`.
 
-|`table.blacklist`
+|[[db2-property-table-blacklist]]<<db2-property-table-blacklist, `table.blacklist`>>
 |
 |An optional comma-separated list of regular expressions that match fully-qualified table identifiers for tables to be excluded from monitoring; any table not included in the blacklist will be monitored. Each identifier is of the form _schemaName_._tableName_. May not be used with `table.whitelist`.
 
-|`column.blacklist`
+|[[db2-property-column-blacklist]]<<db2-property-column-blacklist, `column.blacklist`>>
 |_empty string_
 |An optional comma-separated list of regular expressions that match the fully-qualified names of columns that should be excluded from change event message values.
 Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_.
 Note that primary key columns are always included in the event's key, also if blacklisted from the value.
 
-|`time.precision.mode`
+|[[db2-property-time-precision-mode]]<<connector-property-time-precision-mode, `time.precision.mode`>>
 |`adaptive`
-| Time, date, and timestamps can be represented with different kinds of precision, including: `adaptive` (the default) captures the time and timestamp values exactly as in the database using either millisecond, microsecond, or nanosecond precision values based on the database column's type; or `connect` always represents time and timestamp values using Kafka Connect's built-in representations for Time, Date, and Timestamp, which uses millisecond precision regardless of the database columns' precision. See link:#temporal-values[temporal values].
+| Time, date, and timestamps can be represented with different kinds of precision, including: `adaptive` (the default) captures the time and timestamp values exactly as in the database using either millisecond, microsecond, or nanosecond precision values based on the database column's type; or `connect` always represents time and timestamp values using Kafka Connect's built-in representations for Time, Date, and Timestamp, which uses millisecond precision regardless of the database columns' precision. See {link-prefix}:{link-db2-connector}#db2-temporal-values[temporal values].
 
-|`tombstones.on.delete`
+|[[db2-property-tombstones-on-delete]]<<db2-property-tombstones-on-delete, `tombstones.on.delete`>>
 |`true`
 | Controls whether a tombstone event should be generated after a delete event. +
 When `true` the delete operations are represented by a delete event and a subsequent tombstone event. When `false` only a delete event is sent. +
 Emitting the tombstone event (the default behavior) allows Kafka to completely delete all events pertaining to the given key once the source record got deleted.
 
-|`column.truncate.to._length_.chars`
+|[[db2-property-column-truncate-to-length-chars]]<<db2-property-column-truncate-to-length-chars, `column.truncate.to._length_.chars`>>
 |_n/a_
-|An optional comma-separated list of regular expressions that match the fully-qualified names of character-based columns whose values should be truncated in the change event message values if the field values are longer than the specified number of characters. Multiple properties with different lengths can be used in a single configuration, although in each the length must be a positive integer. Fully-qualified names for columns are of the form _databaseName_._tableName_._columnName_, or _databaseName_._schemaName_._tableName_._columnName_.
+|An optional comma-separated list of regular expressions that match the fully-qualified names of character-based columns whose values should be truncated in the change event message values if the field values are longer than the specified number of characters. Multiple properties with different lengths can be used in a single configuration, although in each the length must be a positive integer. Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_.
 
-|`column.mask.with._length_.chars`
+|[[db2-property-column-mask-with-length-chars]]<<db2-property-column-mask-with-length-chars, `column.mask.with._length_.chars`>>
 |_n/a_
-|An optional comma-separated list of regular expressions that match the fully-qualified names of character-based columns whose values should be replaced in the change event message values with a field value consisting of the specified number of asterisk (`*`) characters. Multiple properties with different lengths can be used in a single configuration, although in each the length must be a positive integer or zero. Fully-qualified names for columns are of the form _databaseName_._tableName_._columnName_, or _databaseName_._schemaName_._tableName_._columnName_.
+|An optional comma-separated list of regular expressions that match the fully-qualified names of character-based columns whose values should be replaced in the change event message values with a field value consisting of the specified number of asterisk (`*`) characters. Multiple properties with different lengths can be used in a single configuration, although in each the length must be a positive integer or zero. Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_.
 
-|`column.propagate.source.type`
+|[[db2-property-column-propagate-source-type]]<<db2-property-column-propagate-source-type, `column.propagate.source.type`>>
 |_n/a_
 |An optional comma-separated list of regular expressions that match the fully-qualified names of columns whose original type and length should be added as a parameter to the corresponding field schemas in the emitted change messages.
 The schema parameters `pass:[_]pass:[_]debezium.source.column.type`, `pass:[_]pass:[_]debezium.source.column.length` and `pass:[_]pass:[_]debezium.source.column.scale` will be used to propagate the original type name and length (for variable-width types), respectively.
 Useful to properly size corresponding columns in sink databases.
 Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_.
 
-|`datatype.propagate.source.type`
+|[[db2-property-datatype-propagate-source-type]]<<db2-property-datatype-propagate-source-type, `datatype.propagate.source.type`>>
 |_n/a_
 |An optional comma-separated list of regular expressions that match the database-specific data type name of columns whose original type and length should be added as a parameter to the corresponding field schemas in the emitted change messages.
 The schema parameters `pass:[_]pass:[_]debezium.source.column.type`, `pass:[_]pass:[_]debezium.source.column.length` and `pass:[_]pass:[_]debezium.source.column.scale` will be used to propagate the original type name and length (for variable-width types), respectively.
 Useful to properly size corresponding columns in sink databases.
 Fully-qualified data type names are of the form _schemaName_._tableName_._typeName_.
-See xref:data-types[] for the list of Db2-specific data type names.
+See {link-prefix}:{link-db2-connector}#db2-data-types[Db2 data types] for the list of Db2-specific data type names.
 
-|`message.key.columns`
+|[[db2-property-message-key-columns]]<<db2-property-message-key-columns, `message.key.columns`>>
 |_empty string_
 | A semi-colon list of regular expressions that match fully-qualified tables and columns to map a primary key. +
 Each item (regular expression) must match the fully-qualified `<fully-qualified table>:<a comma-separated list of columns>` representing the custom key. +
-Fully-qualified tables could be defined as `DB_NAME.TABLE_NAME` or `SCHEMA_NAME.TABLE_NAME`, depending on the specific connector.
-|=======================
+Fully-qualified tables could be defined as _schemaName_._tableName_.
+|===
 
 The following _advanced_ configuration properties have good defaults that will work in most situations and therefore rarely need to be specified in the connector's configuration.
 
-[cols="35%a,10%a,55%a"]
-|=======================
+[cols="30%a,25%a,45%a"]
+|===
 |Property |Default |Description
 
-|`snapshot.mode`
+|[[db2-property-snapshot-mode]]<<db2-property-snapshot-mode, `snapshot.mode`>>
 |_initial_
 |A mode for taking an initial snapshot of the structure and optionally data of captured tables. Supported values are _initial_ (will take a snapshot of structure and data of captured tables; useful if topics should be populated with a complete representation of the data from the captured tables) and _schema_only_ (will take a snapshot of the structure of captured tables only; useful if only changes happening from now onwards should be propagated to topics). Once the snapshot is complete, the connector will continue reading change events from the database's redo logs.
 
-|`snapshot.isolation.mode`
+|[[db2-property-snapshot-isolation-mode]]<<db2-property-snapshot-isolation-mode, `snapshot.isolation.mode`>>
 |_repeatable_read_
 |Mode to control which transaction isolation level is used and how long the connector locks the monitored tables.
 There are four possible values: `read_uncommitted`, `read_committed`, `repeatable_read`, and `exclusive` (
@@ -1466,26 +1470,26 @@ twice - once in initial snapshot and once in streaming phase. Nonetheless, that 
 data mirroring.
 For `read_uncommitted` there are no data consistency guarantees at all (some data might be lost or corrupted).
 
-|`event.processing{zwsp}.failure.handling.mode`
+|[[db2-property-event-processing-failure-handling-mode]]<<db2-property-event-processing-failure-handling-mode, `event.processing{zwsp}.failure.handling.mode`>>
 |`fail`
 | Specifies how the connector should react to exceptions during processing of events.
 `fail` will propagate the exception (indicating the offset of the problematic event), causing the connector to stop. +
 `warn` will cause the problematic event to be skipped and the offset of the problematic event to be logged. +
 `skip` will cause the problematic event to be skipped.
 
-|`poll.interval.ms`
+|[[db2-property-poll-interval-ms]]<<db2-property-poll-interval-ms, `poll.interval.ms`>>
 |`1000`
 |Positive integer value that specifies the number of milliseconds the connector should wait during each iteration for new change events to appear. Defaults to 1000 milliseconds, or 1 second.
 
-|`max.queue.size`
+|[[db2-property-max-queue-size]]<<db2-property-max-queue-size, `max.queue.size`>>
 |`8192`
 |Positive integer value that specifies the maximum size of the blocking queue into which change events read from the database log are placed before they are written to Kafka. This queue can provide backpressure to the CDC table reader when, for example, writes to Kafka are slower or if Kafka is not available. Events that appear in the queue are not included in the offsets periodically recorded by this connector. Defaults to 8192, and should always be larger than the maximum batch size specified in the `max.batch.size` property.
 
-|`max.batch.size`
+|[[db2-property-max-batch-size]]<<db2-property-max-batch-size, `max.batch.size`>>
 |`2048`
 |Positive integer value that specifies the maximum size of each batch of events that should be processed during each iteration of this connector. Defaults to 2048.
 
-|`heartbeat.interval.ms`
+|[[db2-property-heartbeat-interval-ms]]<<db2-property-heartbeat-interval-ms, `heartbeat.interval.ms`>>
 |`0`
 |Controls how frequently heartbeat messages are sent. +
 This property contains an interval in milli-seconds that defines how frequently the connector sends messages into a heartbeat topic.
@@ -1497,43 +1501,43 @@ This may result in more change events to be re-sent after a connector restart.
 Set this parameter to `0` to not send heartbeat messages at all. +
 Disabled by default.
 
-|`heartbeat.topics.prefix`
+|[[db2-property-heartbeat-topics-prefix]]<<db2-property-heartbeat-topics-prefix, `heartbeat.topics.prefix`>>
 |`__debezium-heartbeat`
 |Controls the naming of the topic to which heartbeat messages are sent. +
 The topic is named according to the pattern `<heartbeat.topics.prefix>.<server.name>`.
 
-|`snapshot.delay.ms`
+|[[db2-property-snapshot-delay-ms]]<<db2-property-snapshot-delay-ms, `snapshot.delay.ms`>>
 |
 |An interval in milli-seconds that the connector should wait before taking a snapshot after starting up; +
 Can be used to avoid snapshot interruptions when starting multiple connectors in a cluster, which may cause re-balancing of connectors.
 
-|`snapshot.fetch.size`
+|[[db2-property-snapshot-fetch-size]]<<db2-property-snapshot-fetch-size, `snapshot.fetch.size`>>
 |`2000`
 |Specifies the maximum number of rows that should be read in one go from each table while taking a snapshot.
 The connector will read the table contents in multiple batches of this size. Defaults to 2000.
 
-|`snapshot.lock.timeout.ms`
+|[[db2-property-snapshot-lock-timeout-ms]]<<db2-property-snapshot-lock-timeout-ms, `snapshot.lock.timeout.ms`>>
 |`10000`
-|An integer value that specifies the maximum amount of time (in milliseconds) to wait to obtain table locks when performing a snapshot. If table locks cannot be acquired in this time interval, the snapshot will fail (also see link:#snapshots[snapshots]). +
+|An integer value that specifies the maximum amount of time (in milliseconds) to wait to obtain table locks when performing a snapshot. If table locks cannot be acquired in this time interval, the snapshot will fail (also see {link-prefix}:{link-db2-connector}#db2-snapshots[snapshots]). +
 When set to `0` the connector will fail immediately when it cannot obtain the lock. Value `-1` indicates infinite waiting.
 
-|`snapshot.select.statement.overrides`
+|[[db2-property-snapshot-select-statement-overrides]]<<db2-property-snapshot-select-statement-overrides, `snapshot.select.statement.overrides`>>
 |
 |Controls which rows from tables will be included in snapshot. +
 This property contains a comma-separated list of fully-qualified tables _(SCHEMA_NAME.TABLE_NAME)_. Select statements for the individual tables are specified in further configuration properties, one for each table, identified by the id `snapshot.select.statement.overrides.[SCHEMA_NAME].[TABLE_NAME]`. The value of those properties is the SELECT statement to use when retrieving data from the specific table during snapshotting. _A possible use case for large append-only tables is setting a specific point where to start (resume) snapshotting, in case a previous snapshotting was interrupted._ +
 *Note*: This setting has impact on snapshots only. Events captured during log reading are not affected by it.
 
-|`sanitize.field.names`
+|[[db2-property-sanitize-field-names]]<<db2-property-sanitize-field-names, `sanitize.field.names`>>
 |`true` when connector configuration explicitly specifies the `key.converter` or `value.converter` parameters to use Avro, otherwise defaults to `false`.
 |Whether field names will be sanitized to adhere to Avro naming requirements.
 See {link-prefix}:{link-avro-serialization}#avro-naming[Avro naming] for more details.
 
-|`provide.transaction.metadata` (Incubating)
+|[[db2-property-provide-transaction-metadata]]<<db2-property-provide-transaction-metadata, `provide.transaction.metadata` (Incubating)>>
 |`false`
-|When set to `true` Debezium generates events with transaction boundaries and enriches data events envelope with transaction metadata.
+|When set to `true` {prodname} generates events with transaction boundaries and enriches data events envelope with transaction metadata.
 
-See link:#transaction-metadata[Transaction Metadata] for additional details.
-|=======================
+See {link-prefix}:{link-db2-connector}#db2-transaction-metadata[Transaction Metadata] for additional details.
+|===
 
 The connector also supports _pass-through_ configuration properties that are used when creating the Kafka producer and consumer. Specifically, all connector configuration properties that begin with the `database.history.producer.` prefix are used (without the prefix) when creating the Kafka producer that writes to the database history, and all those that begin with the prefix `database.history.consumer.` are used (without the prefix) when creating the Kafka consumer that reads the database history upon connector startup.
 

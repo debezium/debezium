@@ -7,7 +7,7 @@ In this case, the _create_ events capture new customers being added to the datab
 
 .Procedure
 
-ifndef::cdc-product[]
+ifdef::community[]
 . Open a new terminal, and use it to start the `watch-topic` utility to watch the `dbserver1.inventory.customers` topic from the beginning of the topic.
 +
 --
@@ -52,9 +52,9 @@ Contents of topic dbserver1.inventory.customers:
 This utility keeps watching the topic, so any new events will automatically appear as long as the utility is running.
 ====
 --
-endif::cdc-product[]
+endif::community[]
 
-ifdef::cdc-product[]
+ifdef::product[]
 . Open a new terminal and use `kafka-console-consumer` to consume the `dbserver1.inventory.customers` topic from the beginning of the topic.
 +
 --
@@ -78,7 +78,7 @@ The key corresponds to the row’s primary key,
 and the value shows the details of the row
 (the fields that the row contains, the value of each field, and the type of operation that was performed on the row).
 --
-endif::cdc-product[]
+endif::product[]
 
 . For the last event, review the details of the _key_.
 +
@@ -334,14 +334,14 @@ However, the Kafka topic containing all of the events for a single table might h
 The JSON converter includes the key and value schemas in every message,
 so it does produce very verbose events.
 // The following condition can be removed when the downstream supports Avro.
-ifndef::cdc-product[]
+ifdef::community[]
 Alternatively, you can use xref:configuration/avro.adoc[Apache Avro] as a serialization format, which results in far smaller event messages.
 This is because it transforms each Kafka Connect schema into an Avro schema and stores the Avro schemas in a separate Schema Registry service.
 Thus, when the Avro converter serializes an event message,
 it places only a unique identifier for the schema along with an Avro-encoded binary representation of the value.
 As a result, the serialized messages that are transferred over the wire and stored in Kafka are far smaller than what you have seen here.
 In fact, the Avro Converter is able to use Avro schema evolution techniques to maintain the history of each schema in the Schema Registry.
-endif::cdc-product[]
+endif::community[]
 ====
 --
 

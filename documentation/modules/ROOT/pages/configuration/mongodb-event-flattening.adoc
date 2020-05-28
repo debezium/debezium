@@ -1,5 +1,6 @@
+[id="mongodb-new-document-state-extraction"]
 = MongoDB New Document State Extraction
-include::../_attributes.adoc[]
+
 :toc:
 :toc-placement: macro
 :linkattrs:
@@ -17,10 +18,10 @@ Please see below for a descriptions of known limitations of this transformation.
 [NOTE]
 ====
 This SMT is supported only for the MongoDB connector.
-See xref:configuration/event-flattening.adoc[here] for the relational database equivalent to this SMT.
+See {link-prefix}:{link-event-flattening}[Extracting source record `after` state from {prodname} change events] for the relational database equivalent to this SMT.
 ====
 
-The Debezium MongoDB connector generates the data in a form of a complex message structure.
+The {prodname} MongoDB connector generates the data in a form of a complex message structure.
 The message consists of two parts:
 
 * operation and metadata
@@ -38,12 +39,12 @@ E.g. the general message structure for a insert event looks like this:
 }
 ----
 
-More details about the message structure are provided in xref:connectors/mongodb.adoc[the documentation] of the MongoDB connector.
+More details about the message structure are provided in {link-prefix}:{link-mongodb-connector}[the documentation] of the MongoDB connector.
 
 While this structure is a good fit to represent changes to MongoDB's schemaless collections,
-it's not understood by existing sink connectors as for instance the Confluent JDBC sink connector.
+it is not understood by existing sink connectors such as the Confluent JDBC sink connector.
 
-Therefore Debezium provides a {link-kafka-docs}/#connect_transforms[a single message transformation] (SMT)
+Therefore {prodname} provides a {link-kafka-docs}/#connect_transforms[a single message transformation] (SMT)
 which converts the `after`/`patch` information from the MongoDB CDC events into a structure suitable for consumption by existing sink connectors.
 To do so, the SMT parses the JSON strings and reconstructs properly typed Kafka Connect
 (comprising the correct message payload and schema) records from that,
@@ -181,7 +182,7 @@ This option allows you to convert a hierarchical document into a flat structure 
 
 === MongoDB `$unset` handling
 
-MongoDB allows you to make `$unset` operations which allows you to remove a certain field from a Document, and since the collections are schemaless it becomes hard to find a way to tell the consumers/sinkers which a field is now missing, the approach debezium uses is to set the desired to remove field to null value.
+MongoDB allows `$unset` operations that remove a certain field from a document. Because the collections are schemaless, it becomes hard to inform consumers/sinkers about the field that is now missing. The approach that {prodname} uses is to set the field being removed to a null value.
 
 Given the operation
 [source,json,indent=0]
@@ -201,13 +202,13 @@ The final encoding will look like
 }
 ----
 
-Note that other mongo operations might cause an `$unset` internally, `$rename` is one example.
+Note that other MongoDB operations might cause an `$unset` internally, `$rename` is one example.
 
 === Determine original operation
 
-When a message is flattened the final result won't show whether it was an insert, update or first read (Deletions can be detected via tombstones or rewrites, see link:#configuration_options[Configuration options]).
+When a message is flattened the final result does not show whether it was an insert, update or first read. (Deletions can be detected via tombstones or rewrites, see {link-prefix}:{link-mongodb-event-flattening}#mongodb-extract-new-record-state-configuration-options[Configuration options].)
 
-To solve this problem Debezium offers an option to propagate the original operation via a header added to the message.
+To solve this problem {prodname} offers an option to propagate the original operation via a header added to the message.
 To enable this feature the option `operation.header` must be set to `true`.
 
 [source]
@@ -217,13 +218,13 @@ transforms.unwrap.type=io.debezium.connector.mongodb.transforms.ExtractNewDocume
 transforms.unwrap.operation.header=true
 ----
 
-The possible values are the ones from the `op` field of xref:connectors/mongodb.adoc#mongodb-change-events-value[MongoDB connector change events].
+The possible values are the ones from the `op` field of {link-prefix}:{link-mongodb-connector}#mongodb-change-events-value[MongoDB connector change events].
 
 === Adding source metadata fields
 
 The SMT can optionally add metadata fields from the original change event's `source` structure to the final flattened record (prefixed with "__").
 This functionality can be used to add things like the collection from the change event, or connector-specific fields like the replica set name.
-For more information on what's available in the source structure see xref:connectors/mongodb.adoc[the documentation] for the MongoDB connector.
+For more information on what's available in the source structure see {link-prefix}:{link-mongodb-connector}[the documentation] for the MongoDB connector.
 
 For example, the configuration
 
@@ -244,61 +245,61 @@ to the final flattened record.
 For `DELETE` events, this option is only supported when the `delete.handling.mode` option is set to "rewrite".
 
 
-[[configuration_options]]
+[[mongodb-extract-new-record-state-configuration-options]]
 == Configuration options
-[cols="35%a,10%a,55%a"]
+[cols="30%a,25%a,45%a"]
 |===
 |Property |Default |Description
 
-|[[configuration-option-array-encoding]]<<configuration-option-array-encoding, `array.encoding`>>
+|[[mongodb-extract-new-record-state-array-encoding]]<<mongodb-extract-new-record-state-array-encoding, `array.encoding`>>
 |`array`
 |The SMT converts MongoDB arrays into arrays as defined by Apache Connect (or Apache Avro) schema.
 
-|[[configuration-option-flatten-struct]]<<configuration-option-flatten-struct, `flatten.struct`>>
+|[[mongodb-extract-new-record-state-flatten-struct]]<<mongodb-extract-new-record-state-flatten-struct, `flatten.struct`>>
 |`false`
 |The SMT flattens structs by concatenating the fields into plain properties, using a configurable delimiter.
 
-|[[configuration-option-flatten-struct-delimiter]]<<configuration-option-flatten-struct-delimiter, `flatten.struct.delimiter`>>
+|[[mongodb-extract-new-record-state-flatten-struct-delimiter]]<<mongodb-extract-new-record-state-flatten-struct-delimiter, `flatten.struct.delimiter`>>
 |`_`
 |Delimiter to concat between field names from the input record when generating field names for the output record. Only applies when `flatten.struct` is set to `true`
 
-ifndef::cdc-product[]
-|[[configuration-option-operation-header]]<<configuration-option-operation-header, `operation.header`>>
+ifdef::community[]
+|[[mongodb-extract-new-record-state-operation-header]]<<mongodb-extract-new-record-state-operation-header, `operation.header`>>
 |`false`
-|The SMT adds the xref:connectors/mongodb.adoc#mongodb-change-events-value[event operation] as a message header. +
-This is deprecated as of Debezium 1.2, please use <<configuration-option-add-headers, `add.headers`>> and <<configuration-option-add-fields, `add.fields`>> instead.
-endif::[]
+|The SMT adds the {link-prefix}:{link-mongodb-connector}#mongodb-change-events-value[event operation] as a message header. +
+This is deprecated as of {prodname} 1.2, please use <<mongodb-extract-new-record-state-add-headers, `add.headers`>> and <<mongodb-extract-new-record-state-add-fields, `add.fields`>> instead.
+endif::community[]
 
-|[[configuration-option-drop-tombstones]]<<configuration-option-drop-tombstones, `drop.tombstones`>>
+|[[mongodb-extract-new-record-state-drop-tombstones]]<<mongodb-extract-new-record-state-drop-tombstones, `drop.tombstones`>>
 |`true`
-|The SMT removes the tombstone generated by Debezium from the stream.
+|The SMT removes the tombstone generated by {prodname} from the stream.
 
-|[[configuration-option-delete-handling-mode]]<<configuration-option-delete-handling-mode, `delete.handling.mode`>>
+|[[mongodb-extract-new-record-state-delete-handling-mode]]<<mongodb-extract-new-record-state-delete-handling-mode, `delete.handling.mode`>>
 |`drop`
 |The SMT can `drop`, `rewrite` or pass delete records (`none`). The `rewrite` mode will add a `__deleted` field set to `true` or `false` depending on the represented operation.
 
-ifndef::cdc-product[]
-|[[configuration-option-add-source-fields]]<<configuration-option-add-source-fields, `add.source.fields`>> +
+ifdef::community[]
+|[[mongodb-extract-new-record-state-add-source-fields]]<<mongodb-extract-new-record-state-add-source-fields, `add.source.fields`>> +
 |
 |Fields from the change event's `source` structure to add as metadata (prefixed with "__") to the flattened record. +
-This is deprecated as of Debezium 1.2, please use <<configuration-option-add-headers, `add.headers`>> and <<configuration-option-add-fields, `add.fields`>> instead.
-endif::[]
+This is deprecated as of {prodname} 1.2, please use <<mongodb-extract-new-record-state-add-headers, `add.headers`>> and <<mongodb-extract-new-record-state-add-fields, `add.fields`>> instead.
+endif::community[]
 
-|[[configuration-option-add-headers]]<<configuration-option-add-headers, `add.headers`>>
+|[[mongodb-extract-new-record-state-add-headers]]<<mongodb-extract-new-record-state-add-headers, `add.headers`>>
 |
 |Specify a list of metadata fields to add to header of the flattened message.
 In case of duplicate field names (e.g. "ts_ms" exists twice), the struct should be specified to get the correct field (e.g. "source.ts_ms").
 The fields will be prefixed with "__" or "__<struct>__", depending on the specification of the struct.
 Please use a comma separated list without spaces.
 
-|[[configuration-option-add-fields]]<<configuration-option-add-fields, `add.fields`>>
+|[[mongodb-extract-new-record-state-add-fields]]<<mongodb-extract-new-record-state-add-fields, `add.fields`>>
 |
 |Specify a list of metadata fields to add to the flattened message.
 In case of duplicate field names (e.g. "ts_ms" exists twice), the struct should be specified to get the correct field (e.g. "source.ts_ms").
 The fields will be prefixed with "__" or "__<struct>__", depending on the specification of the struct.
 Please use a comma separated list without spaces.
 
-|[[configuration-option-sanitize-field-names]]<<configuration-option-sanitize-field-names, `sanitize.field.names`>>
+|[[mongodb-extract-new-record-state-sanitize-field-names]]<<mongodb-extract-new-record-state-sanitize-field-names, `sanitize.field.names`>>
 |`false`
 |Whether field names will be sanitized to adhere to Avro naming requirements.
 See {link-prefix}:{link-avro-serialization}#avro-naming[Avro naming] for more details.

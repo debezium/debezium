@@ -1,5 +1,6 @@
+[id="custom-converters"]
 = Custom Converters
-include::../_attributes.adoc[]
+
 :source-highlighter: highlight.js
 :toc:
 :toc-placement: macro
@@ -15,18 +16,18 @@ This feature is currently in incubating state, i.e. exact semantics, configurati
 
 == Datatype Conversion
 
-The Debezium connectors map database column types to corresponding Kafka Connect schema types and convert the column values accordingly.
+The {prodname} connectors map database column types to corresponding Kafka Connect schema types and convert the column values accordingly.
 The specific column type mappings are documented for each of the connectors and represent a reasonable default behavior for most of the time.
 It is still possible that an application requires a specific handling of a certain column type or specific column due to downstream system requirements.
 For instance you might want to export temporal column values as a formatted string instead of milli-seconds since epoch.
 
-For this purpose Debezium provides an extension point that allows users to inject their own converters based on their business requirements.
+For this purpose {prodname} provides an extension point that allows users to inject their own converters based on their business requirements.
 The converters are written in Java and are enabled and configured via connector properties.
 
 During connector startup, all configured converters are instantiated and placed in an registry.
 While the connector-internal schema representation is built, every converter is invoked for every column/field of every table/collection and it can register itself to become responsible for the conversion of the given column or ield.
 
-Whenever a new change is processed by Debezium, the converter is invoked to execute the actual conversion for the registered columns or fields.
+Whenever a new change is processed by {prodname}, the converter is invoked to execute the actual conversion for the registered columns or fields.
 
 == Implementing Converters
 
@@ -52,7 +53,7 @@ public interface CustomConverter<S, F extends ConvertedField> {
 ----
 
 The method `configure()` is used to pass converter configuration options into the converter after its instantiation, so it can modify its runtime behaviour for each specific instance.
-The method `converterFor()` is invoked by Debezium and the converter is required to call `registration` in case of taking responsibility for the conversion.
+The method `converterFor()` is invoked by {prodname} and the converter is required to call `registration` in case of taking responsibility for the conversion.
 The registration provides the target schema definition and the actual conversion code.
 Schemas are currently represented using Kafka Connect's `SchemaBuilder` API.
 In the future, an independent schema definition API will be added.
@@ -103,11 +104,11 @@ To compile the code it is necessary to provide dependencies to the `debezium-api
 </dependency>
 ----
 
-where `${version.debezium}` and `${version.kafka}` are the versions of Debezium and Apache Kafka, respectively.
+where `${version.debezium}` and `${version.kafka}` are the versions of {prodname} and Apache Kafka, respectively.
 
 == Configuring and Using Converters
 
-After the converter is developed it has to be deployed in a JAR file side-by-side with the Debezium connector JARs.
+After the converter is developed it has to be deployed in a JAR file side-by-side with the {prodname} connector JARs.
 To enable the converter for a given connector instance it is necessary to provide the connector options like this:
 
 ----
