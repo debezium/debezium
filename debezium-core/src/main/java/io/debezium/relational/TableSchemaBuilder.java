@@ -319,15 +319,23 @@ public class TableSchemaBuilder {
         for (int i = 0; i < columns.size(); i++) {
             Column column = columns.get(i);
 
-            ValueConverter converter = createValueConverterFor(tableId, column, schema.field(column.name()));
-            converter = wrapInMappingConverterIfNeeded(mappers, tableId, column, converter);
-
-            if (converter == null) {
+            ValueConverter converter = null;
+            Field field = schema.field(column.name());
+            if (field == null) {
                 LOGGER.warn(
-                        "No converter found for column {}.{} of type {}. The column will not be part of change events for that table.",
+                        "No schema field found for column {}.{} of type {}. The column will not be part of change events for that table.",
                         tableId, column.name(), column.typeName());
             }
+            else {
+                converter = createValueConverterFor(tableId, column, field);
+                converter = wrapInMappingConverterIfNeeded(mappers, tableId, column, converter);
 
+                if (converter == null) {
+                    LOGGER.warn(
+                            "No converter found for column {}.{} of type {}. The column will not be part of change events for that table.",
+                            tableId, column.name(), column.typeName());
+                }
+            }
             // may be null if no converter found
             converters[i] = converter;
         }
