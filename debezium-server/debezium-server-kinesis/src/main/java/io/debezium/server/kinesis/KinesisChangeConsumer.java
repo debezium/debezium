@@ -20,7 +20,6 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.DebeziumException;
 import io.debezium.engine.ChangeEvent;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.engine.DebeziumEngine.RecordCommitter;
@@ -89,28 +88,6 @@ public class KinesisChangeConsumer extends BaseChangeConsumer implements Debeziu
         }
     }
 
-    private byte[] getByte(Object object) {
-        if (object instanceof byte[]) {
-            return (byte[]) object;
-        }
-        else if (object instanceof String) {
-            return ((String) object).getBytes();
-        }
-        throw new DebeziumException(unsupportedTypeMessage(object));
-    }
-
-    private String getString(Object object) {
-        if (object instanceof String) {
-            return (String) object;
-        }
-        throw new DebeziumException(unsupportedTypeMessage(object));
-    }
-
-    public String unsupportedTypeMessage(Object object) {
-        final String type = (object == null) ? "null" : object.getClass().getName();
-        return "Unexpected data type '" + type + "'";
-    }
-
     @Override
     public void handleBatch(List<ChangeEvent<Object, Object>> records, RecordCommitter<ChangeEvent<Object, Object>> committer)
             throws InterruptedException {
@@ -119,7 +96,7 @@ public class KinesisChangeConsumer extends BaseChangeConsumer implements Debeziu
             final PutRecordRequest putRecord = PutRecordRequest.builder()
                     .partitionKey((record.key() != null) ? getString(record.key()) : nullKey)
                     .streamName(streamNameMapper.map(record.destination()))
-                    .data(SdkBytes.fromByteArray(getByte(record.value())))
+                    .data(SdkBytes.fromByteArray(getBytes(record.value())))
                     .build();
             client.putRecord(putRecord);
             committer.markProcessed(record);
