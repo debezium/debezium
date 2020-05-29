@@ -102,7 +102,7 @@ a| A *mandatory* field that describes the source metadata for the event includin
 * the MySQL server ID (if available)
 * timestamp
 
-NOTE: If the xref:enable-query-log-events-for-cdc_{context}[binlog_rows_query_log_events] option is enabled and the connector has the `include.query` option enabled, a `query` field is displayed which contains the original SQL statement that generated the event.
+NOTE: If the {link-prefix}:{link-mysql-connector}#enable-query-log-events-for-cdc_{context}[binlog_rows_query_log_events] option is enabled and the connector has the `include.query` option enabled, a `query` field is displayed which contains the original SQL statement that generated the event.
 
 |6
 |`ts_ms`

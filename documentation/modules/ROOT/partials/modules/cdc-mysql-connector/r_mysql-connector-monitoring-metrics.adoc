@@ -89,7 +89,7 @@ The *MBean* is `debezium.mysql:type=connector-metrics,context=snapshot,server=<d
 
 The *MBean* is `debezium.mysql:type=connector-metrics,context=binlog,server=<database.server.name>`.
 
-NOTE: The transaction-related attributes are only available if binlog event buffering is enabled. See xref:mysql-connector-configuration-properties_{context}[binlog.buffer.size] in the advanced connector configuration properties for more details.
+NOTE: The transaction-related attributes are only available if binlog event buffering is enabled. See {link-prefix}:{link-mysql-connector}#mysql-connector-configuration-properties_{context}[binlog.buffer.size] in the advanced connector configuration properties for more details.
 
 [cols="3,2,5"]
 |===

@@ -10,8 +10,8 @@ MySQL includes both _row-level changes_ and _DDL statements_ in its binlog which
 
 NOTE: The connector records all DDL statements along with their position in the binlog in a separate database history so that when the connector restarts (_after a possible crash or graceful shutdown_), it continues reading the binlog from that specific point in time.
 
-TIP: See xref:the-mysql-connector-and-kafka-topics_{context}[The MySQL connector and Kafka topics] for more on topic naming conventions.
+TIP: See {link-prefix}:{link-mysql-connector}#the-mysql-connector-and-kafka-topics_{context}[The MySQL connector and Kafka topics] for more on topic naming conventions.
 
 .Additional resources
 
-* If you do not use the _database history topic_ described here, check out the xref:how-the-mysql-connector-handles-schema-change-topics_{context}[schema change topics].
+* If you do not use the _database history topic_ described here, check out the {link-prefix}:{link-mysql-connector}#how-the-mysql-connector-handles-schema-change-topics_{context}[schema change topics].

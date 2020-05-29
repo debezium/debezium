@@ -148,7 +148,7 @@ NOTE: In link:https://www.iso.org/iso-8601-date-and-time-format.html[ISO 8601] f
 
 Excluding the `TIMESTAMP` data type, MySQL temporal types depend on the value of the `time.precision.mode` configuration property.
 
-TIP: See xref:mysql-connector-configuration-properties_{context}[MySQL connector configuration properties] for more details.
+TIP: See {link-prefix}:{link-mysql-connector}#mysql-connector-configuration-properties_{context}[MySQL connector configuration properties] for more details.
 
 Temporal values without timezones are converted from UTC to milliseconds or microseconds (`DATETIME`) or to the configured database timezone (`TIMESTAMP`).
 
@@ -224,7 +224,7 @@ NOTE: Represents the number of milliseconds since epoch, and does not include ti
 
 Decimals are handled via the `decimal.handling.mode` property.
 
-TIP: See xref:mysql-connector-configuration-properties_{context}[MySQL connector configuration properties] for more details.
+TIP: See {link-prefix}:{link-mysql-connector}#mysql-connector-configuration-properties_{context}[MySQL connector configuration properties] for more details.
 
 decimal.handling.mode=precise::
 +
