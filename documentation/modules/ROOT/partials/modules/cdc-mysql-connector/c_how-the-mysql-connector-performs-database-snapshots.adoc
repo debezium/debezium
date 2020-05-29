@@ -7,7 +7,7 @@
 
 When your {prodname} MySQL connector is first started, it performs an initial _consistent snapshot_ of your database. The following flow describes how this snapshot is completed.
 
-NOTE: This is the default snapshot mode which is set as `initial` in the `snapshot.mode` property. For other snapshots modes, please check out the xref:mysql-connector-configuration-properties_{context}[MySQL connector configuration properties].
+NOTE: This is the default snapshot mode which is set as `initial` in the `snapshot.mode` property. For other snapshots modes, please check out the {link-prefix}:{link-mysql-connector}#mysql-connector-configuration-properties_{context}[MySQL connector configuration properties].
 
 ifeval::["{isImageReady}" == "true"]
 image:debezium-architecture.png[Debezium Architecture]
@@ -57,7 +57,7 @@ a| Records the completed snapshot in the connector offsets.
 
 If the connector fails, stops, or is rebalanced while making the _initial snapshot_, the connector creates a new snapshot once restarted. Once that _intial snapshot_ is completed, the {prodname} MySQL connector restarts from the same position in the binlog so it does not miss any updates.
 
-NOTE: If the connector stops for long enough, MySQL could purge old binlog files and the connector's position would be lost. If the position is lost, the connector reverts to the _initial snapshot_ for its starting position. For more tips on troubleshooting the {prodname} MySQL connector, see xref:connector-common-issues[MySQL connector common issues].
+NOTE: If the connector stops for long enough, MySQL could purge old binlog files and the connector's position would be lost. If the position is lost, the connector reverts to the _initial snapshot_ for its starting position. For more tips on troubleshooting the {prodname} MySQL connector, see {link-prefix}:{link-mysql-connector}#connector-common-issues[MySQL connector common issues].
 
 == What if Global Read Locks are not allowed?
 [[no-global-read-lock-mysql-connect_{context}]]

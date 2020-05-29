@@ -176,4 +176,4 @@ What if a client submits DDL statements to _multiple databases_?::
 
 .Additional resources
 
-* If you do not use the _schema change topics_ detailed here, check out the xref:how-the-mysql-connector-uses-database-schemas_{context}[database history topic].
+* If you do not use the _schema change topics_ detailed here, check out the {link-prefix}:{link-mysql-connector}#how-the-mysql-connector-uses-database-schemas_{context}[database history topic].

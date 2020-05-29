@@ -1682,8 +1682,8 @@ This configuration can be sent via POST to a running Kafka Connect service, whic
 
 The {prodname} PostgreSQL connector has two metric types in addition to the built-in support for JMX metrics that Zookeeper, Kafka, and Kafka Connect have.
 
-* <<snapshot-metrics, snapshot metrics>>; for monitoring the connector when performing snapshots
-* <<streaming-metrics, streaming metrics>>; for monitoring the connector when processing change events via logical decoding
+* <<postgresql-snapshot-metrics, snapshot metrics>>; for monitoring the connector when performing snapshots
+* <<postgresql-streaming-metrics, streaming metrics>>; for monitoring the connector when processing change events via logical decoding
 
 Please refer to the {link-prefix}:{link-debezium-monitoring}#monitoring-debezium[monitoring documentation] for details of how to expose these metrics via JMX.
 
@@ -1813,15 +1813,15 @@ Only alphanumeric characters and underscores should be used.
 
 |[[postgresql-property-decimal-handling-mode]]<<postgresql-property-decimal-handling-mode, `decimal.handling.mode`>>
 |`precise`
-| Specifies how the connector should handle values for `DECIMAL` and `NUMERIC` columns: `precise` (the default) represents them precisely using `java.math.BigDecimal` values represented in change events in a binary form; or `double` represents them using `double` values, which may result in a loss of precision but will be far easier to use. `string` option encodes values as formatted string which is easy to consume but a semantic information about the real type is lost. See <<decimal-values>>.
+| Specifies how the connector should handle values for `DECIMAL` and `NUMERIC` columns: `precise` (the default) represents them precisely using `java.math.BigDecimal` values represented in change events in a binary form; or `double` represents them using `double` values, which may result in a loss of precision but will be far easier to use. `string` option encodes values as formatted string which is easy to consume but a semantic information about the real type is lost. See <<postgresql-decimal-values>>.
 
 |[[postgresql-property-hstore-handling-mode]]<<postgresql-property-hstore-handling-mode, `hstore.handling.mode`>>
 |`map`
-| Specifies how the connector should handle values for `hstore` columns: `map` (the default) represents using `MAP`; or `json` represents them using `json string`.`json` option encodes values as formatted string such as `{"key" : "val"}`. See <<hstore-values>>.
+| Specifies how the connector should handle values for `hstore` columns: `map` (the default) represents using `MAP`; or `json` represents them using `json string`.`json` option encodes values as formatted string such as `{"key" : "val"}`. See <<postgresql-hstore-values>>.
 
 |[[postgresql-property-interval-handling-mode]]<<postgresql-property-interval-handling-mode, `interval.handling.mode`>>
 |`numeric`
-| Specifies how the connector should handle values for `interval` columns: `numeric` (the default) represents interval using approximate number of microseconds; `string` represents them exactly, using the string pattern representation `P<years>Y<months>M<days>DT<hours>H<minutes>M<seconds>S`, e.g. `P1Y2M3DT4H5M6.78S`. See <<data-types>>.
+| Specifies how the connector should handle values for `interval` columns: `numeric` (the default) represents interval using approximate number of microseconds; `string` represents them exactly, using the string pattern representation `P<years>Y<months>M<days>DT<hours>H<minutes>M<seconds>S`, e.g. `P1Y2M3DT4H5M6.78S`. See <<postgresql-data-types>>.
 
 |[[postgresql-property-database-sslmode]]<<postgresql-property-database-sslmode, `database.sslmode`>>
 |`disable`
