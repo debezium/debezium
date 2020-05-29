@@ -1,4 +1,4 @@
-// Metadata created by nebel
+{link-prefix}:{link-mysql-connector}#// Metadata created by nebel
 //
 
 [id="mysql-connector-configuration-properties_{context}"]
@@ -12,80 +12,80 @@ TIP: The {prodname} MySQL connector supports _pass-through_ configuration when c
 |===
 |Property |Default |Description
 
-|[[connector-property-name]]<<connector-property-name, `name`>>
+|[[mysql-property-name]]<<mysql-property-name, `name`>>
 |
 |Unique name for the connector. Attempting to register again with the same name will fail. (This property is required by all Kafka Connect connectors.)
 
-|[[connector-property-connector-class]]<<connector-property-connector-class, `connector.class`>>
+|[[mysql-property-connector-class]]<<mysql-property-connector-class, `connector.class`>>
 |
 |The name of the Java class for the connector. Always use a value of `io.debezium{zwsp}.connector.mysql.MySqlConnector` for the MySQL connector.
 
-|[[connector-property-tasks-max]]<<connector-property-tasks-max, `tasks.max`>>
+|[[mysql-property-tasks-max]]<<mysql-property-tasks-max, `tasks.max`>>
 |`1`
 |The maximum number of tasks that should be created for this connector. The MySQL connector always uses a single task and therefore does not use this value, so the default is always acceptable.
 
-|[[connector-property-database-hostname]]<<connector-property-database-hostname, `database.hostname`>>
+|[[mysql-property-database-hostname]]<<mysql-property-database-hostname, `database.hostname`>>
 |
 |IP address or hostname of the MySQL database server.
 
-|[[connector-property-database-port]]<<connector-property-database-port, `database.port`>>
+|[[mysql-property-database-port]]<<mysql-property-database-port, `database.port`>>
 |`3306`
 |Integer port number of the MySQL database server.
 
-|[[connector-property-database-user]]<<connector-property-database-user, `database.user`>>
+|[[mysql-property-database-user]]<<mysql-property-database-user, `database.user`>>
 |
 |Name of the MySQL database to use when connecting to the MySQL database server.
 
-|[[connector-property-database-password]]<<connector-property-database-password, `database.password`>>
+|[[mysql-property-database-password]]<<mysql-property-database-password, `database.password`>>
 |
 |Password to use when connecting to the MySQL database server.
 
-|[[connector-property-database-server-name]]<<connector-property-database-server-name, `database.server.name`>>
+|[[mysql-property-database-server-name]]<<mysql-property-database-server-name, `database.server.name`>>
 |
 |Logical name that identifies and provides a namespace for the particular MySQL database server/cluster being monitored. The logical name should be unique across all other connectors, since it is used as a prefix for all Kafka topic names emanating from this connector.
 Only alphanumeric characters and underscores should be used.
 
-|[[connector-property-database-server-id]]<<connector-property-database-server-id, `database.server.id`>>
+|[[mysql-property-database-server-id]]<<mysql-property-database-server-id, `database.server.id`>>
 |_random_
 |A numeric ID of this database client, which must be unique across all currently-running database processes in the MySQL cluster. This connector joins the MySQL database cluster as another server (with this unique ID) so it can read the binlog. By default, a random number is generated between 5400 and 6400, though we recommend setting an explicit value.
 
-|[[connector-property-database-history-kafka-topic]]<<connector-property-database-history-kafka-topic, `database.history.kafka.topic`>>
+|[[mysql-property-database-history-kafka-topic]]<<mysql-property-database-history-kafka-topic, `database.history.kafka.topic`>>
 |
 |The full name of the Kafka topic where the connector will store the database schema history.
 
-|[[connector-property-database-history-kafka-bootstrap-servers]]<<connector-property-database-history-kafka-bootstrap-servers, `database.history{zwsp}.kafka.bootstrap.servers`>>
+|[[mysql-property-database-history-kafka-bootstrap-servers]]<<mysql-property-database-history-kafka-bootstrap-servers, `database.history{zwsp}.kafka.bootstrap.servers`>>
 |
 |A list of host/port pairs that the connector will use for establishing an initial connection to the Kafka cluster. This connection will be used for retrieving database schema history previously stored by the connector, and for writing each DDL statement read from the source database. This should point to the same Kafka cluster used by the Kafka Connect process.
 
-|[[connector-property-database-whitelist]]<<connector-property-database-whitelist, `database.whitelist`>>
+|[[mysql-property-database-whitelist]]<<mysql-property-database-whitelist, `database.whitelist`>>
 |_empty string_
 |An optional comma-separated list of regular expressions that match database names to be monitored; any database name not included in the whitelist will be excluded from monitoring. By default all databases will be monitored. May not be used with `database.blacklist`.
 
-|[[connector-property-database-blacklist]]<<connector-property-database-blacklist, `database.blacklist`>>
+|[[mysql-property-database-blacklist]]<<mysql-property-database-blacklist, `database.blacklist`>>
 |_empty string_
 |An optional comma-separated list of regular expressions that match database names to be excluded from monitoring; any database name not included in the blacklist will be monitored. May not be used with `database.whitelist`.
 
-|[[connector-property-table-whitelist]]<<connector-property-table-whitelist, `table.whitelist`>>
+|[[mysql-property-table-whitelist]]<<mysql-property-table-whitelist, `table.whitelist`>>
 |_empty string_
 |An optional comma-separated list of regular expressions that match fully-qualified table identifiers for tables to be monitored; any table not included in the whitelist will be excluded from monitoring. Each identifier is of the form _databaseName_._tableName_. By default the connector will monitor every non-system table in each monitored database. May not be used with `table.blacklist`.
 
-|[[connector-property-table-blacklist]]<<connector-property-table-blacklist, `table.blacklist`>>
+|[[mysql-property-table-blacklist]]<<mysql-property-table-blacklist, `table.blacklist`>>
 |_empty string_
 |An optional comma-separated list of regular expressions that match fully-qualified table identifiers for tables to be excluded from monitoring; any table not included in the blacklist will be monitored. Each identifier is of the form _databaseName_._tableName_. May not be used with `table.whitelist`.
 
-|[[connector-property-column-blacklist]]<<connector-property-column-blacklist, `column.blacklist`>>
+|[[mysql-property-column-blacklist]]<<mysql-property-column-blacklist, `column.blacklist`>>
 |_empty string_
 |An optional comma-separated list of regular expressions that match the fully-qualified names of columns that should be excluded from change event message values. Fully-qualified names for columns are of the form _databaseName_._tableName_._columnName_, or _databaseName_._schemaName_._tableName_._columnName_.
 
-|[[connector-property-column-truncate-to-length-chars]]<<connector-property-column-truncate-to-length-chars, `column.truncate.to._length_.chars`>>
+|[[mysql-property-column-truncate-to-length-chars]]<<mysql-property-column-truncate-to-length-chars, `column.truncate.to._length_.chars`>>
 |_n/a_
 |An optional comma-separated list of regular expressions that match the fully-qualified names of character-based columns whose values should be truncated in the change event message values if the field values are longer than the specified number of characters. Multiple properties with different lengths can be used in a single configuration, although in each the length must be a positive integer. Fully-qualified names for columns are of the form _databaseName_._tableName_._columnName_.
 
-|[[connector-property-column-mask-with-length-chars]]<<connector-property-column-mask-with-length-chars, `column.mask.with._length_.chars`>>
+|[[mysql-property-column-mask-with-length-chars]]<<mysql-property-column-mask-with-length-chars, `column.mask.with._length_.chars`>>
 |_n/a_
 |An optional comma-separated list of regular expressions that match the fully-qualified names of character-based columns whose values should be replaced in the change event message values with a field value consisting of the specified number of asterisk (`*`) characters. Multiple properties with different lengths can be used in a single configuration, although in each the length must be a positive integer or zero. Fully-qualified names for columns are of the form _databaseName_._tableName_._columnName_.
 
-|[[connector-property-column-mask-hash]]<<connector-property-column-mask-hash, `column.mask.hash._hashAlgorithm_.with.salt._salt_`>>
+|[[mysql-property-column-mask-hash]]<<mysql-property-column-mask-hash, `column.mask.hash._hashAlgorithm_.with.salt._salt_`>>
 |_n/a_
 |An optional comma-separated list of regular expressions that match the fully-qualified names of character-based columns whose values should be pseudonyms in the change event message values with a field value consisting of the hashed value using the algorithm `_hashAlgorithm_` and salt `_salt_`.
 Based on the used hash function referential integrity is kept while data is pseudonymized. Supported hash functions are described in the {link-java7-standard-names}[MessageDigest section] of the Java Cryptography Architecture Standard Algorithm Name Documentation.
@@ -101,22 +101,22 @@ where `CzQMA0cB5K` is a randomly selected salt.
 
 Note: Depending on the `_hashAlgorithm_` used, the `_salt_` selected and the actual data set, the resulting masked data set may not be completely anonymized.
 
-|[[connector-property-column-propagate-source-type]]<<connector-property-column-propagate-source-type, `column.propagate.source.type`>>
+|[[mysql-property-column-propagate-source-type]]<<mysql-property-column-propagate-source-type, `column.propagate.source.type`>>
 |_n/a_
 |An optional comma-separated list of regular expressions that match the fully-qualified names of columns whose original type and length should be added as a parameter to the corresponding field schemas in the emitted change messages.
 The schema parameters `pass:[_]pass:[_]{prodname}.source.column.type`, `pass:[_]pass:[_]{prodname}.source.column.length` and `pass:[_]{prodname}.source.column.scale` will be used to propagate the original type name and length (for variable-width types), respectively.
 Useful to properly size corresponding columns in sink databases.
 Fully-qualified names for columns are of the form _databaseName_._tableName_._columnName_, or _databaseName_._schemaName_._tableName_._columnName_.
 
-|[[connector-property-datatype-propagate-source-type]]<<connector-property-datatype-propagate-source-type, `datatype.propagate.source.type`>>
+|[[mysql-property-datatype-propagate-source-type]]<<mysql-property-datatype-propagate-source-type, `datatype.propagate.source.type`>>
 |_n/a_
 |An optional comma-separated list of regular expressions that match the database-specific data type name of columns whose original type and length should be added as a parameter to the corresponding field schemas in the emitted change messages.
 The schema parameters `pass:[_]pass:[_]debezium.source.column.type`, `pass:[_]pass:[_]debezium.source.column.length` and `pass:[_]pass:[_]debezium.source.column.scale` will be used to propagate the original type name and length (for variable-width types), respectively.
 Useful to properly size corresponding columns in sink databases.
 Fully-qualified data type names are of the form _databaseName_._tableName_._typeName_, or _databaseName_._schemaName_._tableName_._typeName_.
-See xref:how-the-mysql-connector-maps-data-types_{context}[] for the list of MySQL-specific data type names.
+See {link-prefix}:{link-mysql-connector}#how-the-mysql-connector-maps-data-types_{context}[] for the list of MySQL-specific data type names.
 
-|[[connector-property-time-precision-mode]]<<connector-property-time-precision-mode, `time.precision.mode`>>
+|[[mysql-property-time-precision-mode]]<<mysql-property-time-precision-mode, `time.precision.mode`>>
 |`adaptive_time{zwsp}_microseconds`
 | Time, date, and timestamps can be represented with different kinds of precision, including: `adaptive_time_microseconds` (the default) captures the date, datetime and timestamp values exactly as in the database using either millisecond, microsecond, or nanosecond precision values based on the database column's type, with the exception of TIME type fields, which are always captured as microseconds;
 ifdef::community[]
@@ -125,77 +125,77 @@ ifdef::community[]
 endif::community[]
 or `connect` always represents time and timestamp values using Kafka Connect's built-in representations for Time, Date, and Timestamp, which uses millisecond precision regardless of the database columns' precision.
 
-|[[connector-property-decimal-handling-mode]]<<connector-property-decimal-handling-mode, `decimal.handling.mode`>>
+|[[mysql-property-decimal-handling-mode]]<<mysql-property-decimal-handling-mode, `decimal.handling.mode`>>
 |`precise`
 | Specifies how the connector should handle values for `DECIMAL` and `NUMERIC` columns: `precise` (the default) represents them precisely using `java.math.BigDecimal` values represented in change events in a binary form; or `double` represents them using `double` values, which may result in a loss of precision but will be far easier to use. `string` option encodes values as formatted string which is easy to consume but a semantic information about the real type is lost.
 
-|[[connector-property-bigint-unsigned-handling-mode]]<<connector-property-bigint-unsigned-handling-mode, `bigint.unsigned.handling.mode`>>
+|[[mysql-property-bigint-unsigned-handling-mode]]<<mysql-property-bigint-unsigned-handling-mode, `bigint.unsigned.handling.mode`>>
 |`long`
 | Specifies how BIGINT UNSIGNED columns should be represented in change events, including: `precise` uses `java.math.BigDecimal` to represent values, which are encoded in the change events using a binary representation and Kafka Connect's `org.apache.kafka.connect.data.Decimal` type; `long` (the default) represents values using Java's `long`, which may not offer the precision but will be far easier to use in consumers. `long` is usually the preferable setting. Only when working with values larger than 2^63, the `precise` setting should be used as those values cannot be conveyed using `long`.
 
-|[[connector-property-include-schema-changes]]<<connector-property-include-schema-changes, `include.schema.changes`>>
+|[[mysql-property-include-schema-changes]]<<mysql-property-include-schema-changes, `include.schema.changes`>>
 |`true`
 |Boolean value that specifies whether the connector should publish changes in the database schema to a Kafka topic with the same name as the database server ID. Each schema change will be recorded using a key that contains the database name and whose value includes the DDL statement(s). This is independent of how the connector internally records database history. The default is `true`.
 
-|[[connector-property-include-query]]<<connector-property-include-query, `include.query`>>
+|[[mysql-property-include-query]]<<mysql-property-include-query, `include.query`>>
 |`false`
 |Boolean value that specifies whether the connector should include the original SQL query that generated the change event. +
 Note: This option requires MySQL be configured with the binlog_rows_query_log_events option set to ON. Query will not be present for events generated from the snapshot process. +
 WARNING: Enabling this option may expose tables or fields explicitly blacklisted or masked by including the original SQL statement in the change event. For this reason this option is defaulted to 'false'.
 
-|[[connector-property-event-processing-failure-handling-mode]]<<connector-property-event-processing-failure-handling-mode, `event.processing{zwsp}.failure.handling.mode`>>
+|[[mysql-property-event-processing-failure-handling-mode]]<<mysql-property-event-processing-failure-handling-mode, `event.processing{zwsp}.failure.handling.mode`>>
 |`fail`
 | Specifies how the connector should react to exceptions during deserialization of binlog events.
 `fail` will propagate the exception (indicating the problematic event and its binlog offset), causing the connector to stop. +
 `warn` will cause the problematic event to be skipped and the problematic event and its binlog offset to be logged. +
 `skip` will cause problematic event will be skipped.
 
-|[[connector-property-inconsistent-schema-handling-mode]]<<connector-property-inconsistent-schema-handling-mode, `inconsistent.schema.handling.mode`>>
+|[[mysql-property-inconsistent-schema-handling-mode]]<<mysql-property-inconsistent-schema-handling-mode, `inconsistent.schema.handling.mode`>>
 |`fail`
 | Specifies how the connector should react to binlog events that relate to tables that are not present in internal schema representation (i.e. internal representation is not consistent with database)
 `fail` will throw an exception (indicating the problematic event and its binlog offset), causing the connector to stop. +
 `warn` will cause the problematic event to be skipped and the problematic event and its binlog offset to be logged. +
 `skip` will cause the problematic event to be skipped.
 
-|[[connector-property-max-queue-size]]<<connector-property-max-queue-size, `max.queue.size`>>
+|[[mysql-property-max-queue-size]]<<mysql-property-max-queue-size, `max.queue.size`>>
 |`8192`
 |Positive integer value that specifies the maximum size of the blocking queue into which change events read from the database log are placed before they are written to Kafka. This queue can provide backpressure to the binlog reader when, for example, writes to Kafka are slower or if Kafka is not available. Events that appear in the queue are not included in the offsets periodically recorded by this connector. Defaults to 8192, and should always be larger than the maximum batch size specified in the `max.batch.size` property.
 
-|[[connector-property-max-batch-size]]<<connector-property-max-batch-size, `max.batch.size`>>
+|[[mysql-property-max-batch-size]]<<mysql-property-max-batch-size, `max.batch.size`>>
 |`2048`
 |Positive integer value that specifies the maximum size of each batch of events that should be processed during each iteration of this connector. Defaults to 2048.
 
-|[[connector-property-poll-interval-ms]]<<connector-property-poll-interval-ms, `poll.interval.ms`>>
+|[[mysql-property-poll-interval-ms]]<<mysql-property-poll-interval-ms, `poll.interval.ms`>>
 |`1000`
 |Positive integer value that specifies the number of milliseconds the connector should wait during each iteration for new change events to appear. Defaults to 1000 milliseconds, or 1 second.
 
-|[[connector-property-connect-timeout-ms]]<<connector-property-connect-timeout-ms, `connect.timeout.ms`>>
+|[[mysql-property-connect-timeout-ms]]<<mysql-property-connect-timeout-ms, `connect.timeout.ms`>>
 |`30000`
 |A positive integer value that specifies the maximum time in milliseconds this connector should wait after trying to connect to the MySQL database server before timing out. Defaults to 30 seconds.
 
-|[[connector-property-gtid-source-includes]]<<connector-property-gtid-source-includes, `gtid.source.includes`>>
+|[[mysql-property-gtid-source-includes]]<<mysql-property-gtid-source-includes, `gtid.source.includes`>>
 |
 |A comma-separated list of regular expressions that match source UUIDs in the GTID set used to find the binlog position in the MySQL server. Only the GTID ranges that have sources matching one of these include patterns will be used. May not be used with `gtid.source.excludes`.
 
-|[[connector-property-gtid-source-excludes]]<<connector-property-gtid-source-excludes, `gtid.source.excludes`>>
+|[[mysql-property-gtid-source-excludes]]<<mysql-property-gtid-source-excludes, `gtid.source.excludes`>>
 |
 |A comma-separated list of regular expressions that match source UUIDs in the GTID set used to find the binlog position in the MySQL server. Only the GTID ranges that have sources matching none of these exclude patterns will be used. May not be used with `gtid.source.includes`.
 
 ifdef::community[]
 // Do not include deprecated content in downstream doc
-|[[connector-property-gtid-new-channel-position]]<<connector-property-gtid-new-channel-position, `gtid.new.channel.position`>> +
+|[[mysql-property-gtid-new-channel-position]]<<mysql-property-gtid-new-channel-position, `gtid.new.channel.position`>> +
 _deprecated and scheduled for removal_
 |`earliest`
 | When set to `latest`, when the connector sees a new GTID channel, it will start consuming from the last executed transaction in that GTID channel. If set to `earliest` (default), the connector starts reading that channel from the first available (not purged) GTID position. `earliest` is useful when you have a active-passive MySQL setup where {prodname} is connected to master, in this case during failover the slave with new UUID (and GTID channel) starts receiving writes before {prodname} is connected. These writes would be lost when using `latest`.
 endif::community[]
 
-|[[connector-property-tombstones-on-delete]]<<connector-property-tombstones-on-delete, `tombstones.on.delete`>>
+|[[mysql-property-tombstones-on-delete]]<<mysql-property-tombstones-on-delete, `tombstones.on.delete`>>
 |`true`
 | Controls whether a tombstone event should be generated after a delete event. +
 When `true` the delete operations are represented by a delete event and a subsequent tombstone event. When `false` only a delete event is sent. +
 Emitting the tombstone event (the default behavior) allows Kafka to completely delete all events pertaining to the given key once the source record got deleted.
 
-|[[connector-property-message-key-columns]]<<connector-property-message-key-columns, `message.key.columns`>>
+|[[mysql-property-message-key-columns]]<<mysql-property-message-key-columns, `message.key.columns`>>
 |_empty string_
 | A semi-colon list of regular expressions that match fully-qualified tables and columns to map a primary key. +
 Each item (regular expression) must match the `<fully-qualified table>:<a comma-separated list of columns>` representing the custom key. +
@@ -210,35 +210,35 @@ Fully-qualified tables could be defined as _databaseName_._tableName_.
 |===
 |Property |Default |Description
 
-|[[connector-property-connect-keep-alive]]<<connector-property-connect-keep-alive, `connect.keep.alive`>>
+|[[mysql-property-connect-keep-alive]]<<mysql-property-connect-keep-alive, `connect.keep.alive`>>
 |`true`
 |A boolean value that specifies whether a separate thread should be used to ensure the connection to the MySQL server/cluster is kept alive.
 
-|[[connector-property-table-ignore-builtin]]<<connector-property-table-ignore-builtin, `table.ignore.builtin`>>
+|[[mysql-property-table-ignore-builtin]]<<mysql-property-table-ignore-builtin, `table.ignore.builtin`>>
 |`true`
 |Boolean value that specifies whether built-in system tables should be ignored. This applies regardless of the table whitelist or blacklists. By default system tables are excluded from monitoring, and no events are generated when changes are made to any of the system tables.
 
-|[[connector-property-database-history-kafka-recovery-poll-interval-ms]]<<connector-property-database-history-kafka-recovery-poll-interval-ms, `database.history.kafka.recovery.poll.interval.ms`>>
+|[[mysql-property-database-history-kafka-recovery-poll-interval-ms]]<<mysql-property-database-history-kafka-recovery-poll-interval-ms, `database.history.kafka.recovery.poll.interval.ms`>>
 |`100`
 |An integer value that specifies the maximum number of milliseconds the connector should wait during startup/recovery while polling for persisted data. The default is 100ms.
 
-|[[connector-property-database-history-kafka-recovery-attempts]]<<connector-property-database-history-kafka-recovery-attempts, `database.history.kafka.recovery.attempts`>>
+|[[mysql-property-database-history-kafka-recovery-attempts]]<<mysql-property-database-history-kafka-recovery-attempts, `database.history.kafka.recovery.attempts`>>
 |`4`
 |The maximum number of times that the connector should attempt to read persisted history data before the connector recovery fails with an error. The maximum amount of time to wait after receiving no data is `recovery.attempts` x `recovery.poll.interval.ms`.
 
-|[[connector-property-database-history-skip-unparseable-ddl]]<<connector-property-database-history-skip-unparseable-ddl, `database.history.skip.unparseable.ddl`>>
+|[[mysql-property-database-history-skip-unparseable-ddl]]<<mysql-property-database-history-skip-unparseable-ddl, `database.history.skip.unparseable.ddl`>>
 |`false`
 |Boolean value that specifies if connector should ignore malformed or unknown database statements or stop processing and let operator to fix the issue.
 The safe default is `false`.
 Skipping should be used only with care as it can lead to data loss or mangling when binlog is processed.
 
-|[[connector-property-database-history-store-only-monitored-tables-ddl]]<<connector-property-database-history-store-only-monitored-tables-ddl, `database.history.store.only.monitored.tables.ddl`>>
+|[[mysql-property-database-history-store-only-monitored-tables-ddl]]<<mysql-property-database-history-store-only-monitored-tables-ddl, `database.history.store.only.monitored.tables.ddl`>>
 |`false`
 |Boolean value that specifies if connector should should record all DDL statements or (when `true`) only those that are relevant to tables that are monitored by {prodname} (via filter configuration).
 The safe default is `false`.
 This feature should be used only with care as the missing data might be necessary when the filters are changed.
 
-|[[connector-property-database-ssl-mode]]<<connector-property-database-ssl-mode, `database.ssl.mode`>>
+|[[mysql-property-database-ssl-mode]]<<mysql-property-database-ssl-mode, `database.ssl.mode`>>
 |`disabled`
 |Specifies whether to use an encrypted connection.  The default is `disabled`, and specifies to use an unencrypted connection.
 
@@ -250,7 +250,7 @@ The `verify_ca` option behaves like `required` but additionally it verifies the 
 
 The `verify_identity` option behaves like `verify_ca` but additionally verifies that the server certificate matches the host of the remote connection.
 
-|[[connector-property-binlog-buffer-size]]<<connector-property-binlog-buffer-size, `binlog.buffer.size`>>
+|[[mysql-property-binlog-buffer-size]]<<mysql-property-binlog-buffer-size, `binlog.buffer.size`>>
 |0
 |The size of a look-ahead buffer used by the binlog reader. +
 Under specific conditions it is possible that MySQL binlog contains uncommitted data finished by a `ROLLBACK` statement.
@@ -261,13 +261,13 @@ If the size of transaction is larger than the buffer then {prodname} needs to re
 Disabled by default. +
 _Note:_ This feature should be considered an incubating one. We need a feedback from customers but it is expected that it is not completely polished.
 
-|[[connector-property-snapshot-mode]]<<connector-property-snapshot-mode, `snapshot.mode`>>
+|[[mysql-property-snapshot-mode]]<<mysql-property-snapshot-mode, `snapshot.mode`>>
 |`initial`
 |Specifies the criteria for running a snapshot upon startup of the connector. The default is `initial`, and specifies the connector can run a snapshot only when no offsets have been recorded for the logical server name. The `when_needed` option specifies that the connector run a snapshot upon startup whenever it deems it necessary (when no offsets are available, or when a previously recorded offset specifies a binlog location or GTID that is not available in the server). The `never` option specifies that the connect should never use snapshots and that upon first startup with a logical server name the connector should read from the beginning of the binlog; this should be used with care, as it is only valid when the binlog is guaranteed to contain the entire history of the database. If you don't need the topics to contain a consistent snapshot of the data but only need them to have the changes since the connector was started, you can use the `schema_only` option, where the connector only snapshots the schemas (not the data).
 
 `schema_only_recovery` is a recovery option for an existing connector to recover a corrupted or lost database history topic, or to periodically "clean up" a database history topic (which requires infinite retention) that may be growing unexpectedly.
 
-|[[connector-property-snapshot-locking-mode]]<<connector-property-snapshot-locking-mode, `snapshot.locking.mode`>>
+|[[mysql-property-snapshot-locking-mode]]<<mysql-property-snapshot-locking-mode, `snapshot.locking.mode`>>
 |`minimal`
 |Controls if and how long the connector holds onto the global MySQL read lock (preventing any updates to the database) while it is performing a snapshot.  There are three possible values `minimal`, `extended`, and `none`. +
 
@@ -277,50 +277,50 @@ _Note:_ This feature should be considered an incubating one. We need a feedback 
 
 `none` Will prevent the connector from acquiring any table locks during the snapshot process. This value can be used with all snapshot modes but it is safe to use if and _only_ if no schema changes are happening while the snapshot is taken. Note that for tables defined with MyISAM engine, the tables would still be locked despite this property being set as MyISAM acquires a table lock. This behavior is unlike InnoDB engine which acquires row level locks.
 
-|[[connector-property-snapshot-select-statement-overrides]]<<connector-property-snapshot-select-statement-overrides, `snapshot.select.statement.overrides`>>
+|[[mysql-property-snapshot-select-statement-overrides]]<<mysql-property-snapshot-select-statement-overrides, `snapshot.select.statement.overrides`>>
 |
 |Controls which rows from tables will be included in snapshot. +
 This property contains a comma-separated list of fully-qualified tables _(DB_NAME.TABLE_NAME)_. Select statements for the individual tables are specified in further configuration properties, one for each table, identified by the id `snapshot.select.statement.overrides.[DB_NAME].[TABLE_NAME]`. The value of those properties is the SELECT statement to use when retrieving data from the specific table during snapshotting. _A possible use case for large append-only tables is setting a specific point where to start (resume) snapshotting, in case a previous snapshotting was interrupted._ +
 *Note*: This setting has impact on snapshots only. Events captured from binlog are not affected by it at all.
 
-|[[connector-property-min-row-count-to-stream-results]]<<connector-property-min-row-count-to-stream-results, `min.row.count.to.stream.results`>>
+|[[mysql-property-min-row-count-to-stream-results]]<<mysql-property-min-row-count-to-stream-results, `min.row.count.to.stream.results`>>
 |`1000`
 |During a snapshot operation, the connector will query each included table to produce a read event for all rows in that table. This parameter determines whether the MySQL connection will pull all results for a table into memory (which is fast but requires large amounts of memory), or whether the results will instead be streamed (can be slower, but will work for very large tables). The value specifies the minimum number of rows a table must contain before the connector will stream results, and defaults to 1,000. Set this parameter to '0' to skip all table size checks and always stream all results during a snapshot.
 
-|[[connector-property-heartbeat-interval-ms]]<<connector-property-heartbeat-interval-ms, `heartbeat.interval.ms`>>
+|[[mysql-property-heartbeat-interval-ms]]<<mysql-property-heartbeat-interval-ms, `heartbeat.interval.ms`>>
 |`0`
 |Controls how frequently the heartbeat messages are sent. +
 This property contains an interval in milli-seconds that defines how frequently the connector sends heartbeat messages into a heartbeat topic.
 Set this parameter to `0` to not send heartbeat messages at all. +
 Disabled by default.
 
-|[[connector-property-heartbeat-topics-prefix]]<<connector-property-heartbeat-topics-prefix, `heartbeat.topics.prefix`>>
+|[[mysql-property-heartbeat-topics-prefix]]<<mysql-property-heartbeat-topics-prefix, `heartbeat.topics.prefix`>>
 |`__debezium-heartbeat`
 |Controls the naming of the topic to which heartbeat messages are sent. +
 The topic is named according to the pattern `<heartbeat.topics.prefix>.<server.name>`.
 
-|[[connector-property-database-initial-statements]]<<connector-property-database-initial-statements, `database.initial.statements`>>
+|[[mysql-property-database-initial-statements]]<<mysql-property-database-initial-statements, `database.initial.statements`>>
 |
 |A semicolon separated list of SQL statements to be executed when a JDBC connection (not the transaction log reading connection) to the database is established.
 Use doubled semicolon (';;') to use a semicolon as a character and not as a delimiter. +
 _Note: The connector may establish JDBC connections at its own discretion, so this should typically be used for configuration of session parameters only, but not for executing DML statements._
 
-|[[connector-property-snapshot-delay-ms]]<<connector-property-snapshot-delay-ms, `snapshot.delay.ms`>>
+|[[mysql-property-snapshot-delay-ms]]<<mysql-property-snapshot-delay-ms, `snapshot.delay.ms`>>
 |
 |An interval in milli-seconds that the connector should wait before taking a snapshot after starting up; +
 Can be used to avoid snapshot interruptions when starting multiple connectors in a cluster, which may cause re-balancing of connectors.
 
-|[[connector-property-snapshot-fetch-size]]<<connector-property-snapshot-fetch-size, `snapshot.fetch.size`>>
+|[[mysql-property-snapshot-fetch-size]]<<mysql-property-snapshot-fetch-size, `snapshot.fetch.size`>>
 |
 |Specifies the maximum number of rows that should be read in one go from each table while taking a snapshot.
 The connector will read the table contents in multiple batches of this size.
 
-|[[connector-property-snapshot-lock-timeout-ms]]<<connector-property-snapshot-lock-timeout-ms, `snapshot.lock.timeout.ms`>>
+|[[mysql-property-snapshot-lock-timeout-ms]]<<mysql-property-snapshot-lock-timeout-ms, `snapshot.lock.timeout.ms`>>
 |`10000`
 |Positive integer value that specifies the maximum amount of time (in milliseconds) to wait to obtain table locks when performing a snapshot.
-If table locks cannot be acquired in this time interval, the snapshot will fail. See xref:how-the-mysql-connector-performs-database-snapshots_{context}[How the MySQL connector performs database snapshots].
+If table locks cannot be acquired in this time interval, the snapshot will fail. See {link-prefix}:{link-mysql-connector}#how-the-mysql-connector-performs-database-snapshots_{context}[How the MySQL connector performs database snapshots].
 
-|[[connector-property-enable-time-adjuster]]<<connector-property-enable-time-adjuster, `enable.time.adjuster`>>
+|[[mysql-property-enable-time-adjuster]]<<mysql-property-enable-time-adjuster, `enable.time.adjuster`>>
 |
 |MySQL allows user to insert year value as either 2-digit or 4-digit.
 In case of two digits the value is automatically mapped to 1970 - 2069 range.
@@ -329,7 +329,7 @@ Set to `true` (the default) when {prodname} should do the conversion. +
 Set to `false` when conversion is fully delegated to the database.
 
 ifdef::community[]
-|[[connector-property-source-struct-version]]<<connector-property-source-struct-version, `source.struct.version`>>
+|[[mysql-property-source-struct-version]]<<mysql-property-source-struct-version, `source.struct.version`>>
 |v2
 |Schema version for the `source` block in {prodname} events; {prodname} 0.10 introduced a few breaking +
 changes to the structure of the `source` block in order to unify the exposed structure across
@@ -338,11 +338,11 @@ By setting this option to `v1` the structure used in earlier versions can be pro
 Note that this setting is not recommended and is planned for removal in a future {prodname} version.
 endif::community[]
 
-|[[connector-property-sanitize-field-names]]<<connector-property-sanitize-field-names, `sanitize.field.names`>>
+|[[mysql-property-sanitize-field-names]]<<mysql-property-sanitize-field-names, `sanitize.field.names`>>
 |`true` when connector configuration explicitly specifies the `key.converter` or `value.converter` parameters to use Avro, otherwise defaults to `false`.
 |Whether field names will be sanitized to adhere to Avro naming requirements.
 
-|[[connector-property-skipped-operations]]<<connector-property-skipped-operations, `skipped.operations`>>
+|[[mysql-property-skipped-operations]]<<mysql-property-skipped-operations, `skipped.operations`>>
 |
 | comma-separated list of oplog operations that will be skipped during streaming.
 The operations include: `c` for inserts, `u` for updates, and `d` for deletes.

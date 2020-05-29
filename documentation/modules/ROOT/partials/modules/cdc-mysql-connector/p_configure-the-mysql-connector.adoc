@@ -8,14 +8,14 @@ ifdef::community[]
 Typically, you configure the {prodname} MySQL connector in a `.json` file using the configuration properties available for the connector.
 
 .Prerequisites
-* You should have completed the xref:install-the-mysql-connector_{context}[installation process] for the connector.
+* You should have completed the {link-prefix}:{link-mysql-connector}#install-the-mysql-connector_{context}[installation process] for the connector.
 
 .Procedure
 
 . Set the `"name"` of the connector in the `.json` file.
 . Set the configuration properties that you require for your {prodname} MySQL connector.
 
-TIP: For a complete list of configuration properties, see xref:mysql-connector-configuration-properties_{context}[MySQL connector configuration properties].
+TIP: For a complete list of configuration properties, see {link-prefix}:{link-mysql-connector}#mysql-connector-configuration-properties_{context}[MySQL connector configuration properties].
 
 .MySQL connector example configuration
 
@@ -60,7 +60,7 @@ ifdef::product[]
 Typically, you configure the {prodname} MySQL connector in a `.yaml` file using the configuration properties available for the connector.
 
 .Prerequisites
-* You should have completed the xref:install-the-mysql-connector_{context}[installation process] for the connector.
+* You should have completed the {link-prefix}:{link-mysql-connector}#install-the-mysql-connector_{context}[installation process] for the connector.
 
 .Procedure
 
@@ -68,7 +68,7 @@ Typically, you configure the {prodname} MySQL connector in a `.yaml` file using 
 
 . Set the configuration properties that you require for your {prodname} MySQL connector.
 
-TIP: For a complete list of configuration properties, see xref:mysql-connector-configuration-properties_{context}[MySQL connector configuration properties].
+TIP: For a complete list of configuration properties, see {link-prefix}:{link-mysql-connector}#mysql-connector-configuration-properties_{context}[MySQL connector configuration properties].
 
 .MySQL connector example configuration
 
@@ -110,6 +110,5 @@ This name will be used as the prefix for all Kafka topics.
 <6> Only changes in the `inventory` database will be detected.
 <7> The connector will store the history of the database schemas in Kafka using this broker (the same broker to which you are sending events) and topic name.
 Upon restart, the connector will recover the schemas of the database that existed at the point in time in the `binlog` when the connector should begin reading.
-----
 
 endif::product[]
