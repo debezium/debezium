@@ -8,7 +8,7 @@
     </parent>
     <modelVersion>4.0.0</modelVersion>
     <artifactId>debezium-server-pubsub</artifactId>
-    <name>Debezium Standalone Quarkus Server Google Cloud Pub/Sub Sender</name>
+    <name>Debezium Server Google Cloud Pub/Sub Sink Adapter</name>
     <packaging>jar</packaging>
 
     <properties>

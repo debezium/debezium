@@ -8,7 +8,7 @@
     </parent>
     <modelVersion>4.0.0</modelVersion>
     <artifactId>debezium-server-core</artifactId>
-    <name>Debezium Standalone Quarkus Server Core</name>
+    <name>Debezium Server Core</name>
     <packaging>jar</packaging>
 
     <dependencies>
