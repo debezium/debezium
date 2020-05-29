@@ -8,7 +8,7 @@
     </parent>
     <modelVersion>4.0.0</modelVersion>
     <artifactId>debezium-server-kinesis</artifactId>
-    <name>Debezium Standalone Quarkus Server Amazon Kinesis Sender</name>
+    <name>Debezium Server Amazon Kinesis Sink Adapter</name>
     <packaging>jar</packaging>
 
     <properties>
