@@ -1321,9 +1321,9 @@ This configuration can be sent via POST to a running Kafka Connect service, whic
 
 The {prodname} SQL Server connector has three metric types in addition to the built-in support for JMX metrics that Zookeeper, Kafka, and Kafka Connect have.
 
-* <<snapshot-metrics, snapshot metrics>>; for monitoring the connector when performing snapshots
-* <<streaming-metrics, streaming metrics>>; for monitoring the connector when reading CDC table data
-* <<schema-history-metrics, schema history metrics>>; for monitoring the status of the connector's schema history
+* <<sqlserver-snapshot-metrics, snapshot metrics>>; for monitoring the connector when performing snapshots
+* <<sqlserver-streaming-metrics, streaming metrics>>; for monitoring the connector when reading CDC table data
+* <<sqlserver-schema-history-metrics, schema history metrics>>; for monitoring the status of the connector's schema history
 
 Please refer to the {link-prefix}:{link-debezium-monitoring}[monitoring documentation] for details of how to expose these metrics via JMX.
 
