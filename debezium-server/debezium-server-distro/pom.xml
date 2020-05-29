@@ -15,6 +15,13 @@
         <assembly.descriptor>server-distribution</assembly.descriptor>
     </properties>
 
+    <dependencies>
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-server-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
     <build>
         <plugins>
             <plugin>
