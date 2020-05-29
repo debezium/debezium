@@ -5,12 +5,18 @@
  */
 package io.debezium.server;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import javax.annotation.PostConstruct;
 import javax.enterprise.inject.Instance;
 import javax.inject.Inject;
 
+import org.eclipse.microprofile.config.Config;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import io.debezium.DebeziumException;
 
 /**
  * Basic services provided to all change consumers.
@@ -33,5 +39,40 @@ public class BaseChangeConsumer {
             streamNameMapper = customStreamNameMapper.get();
         }
         LOGGER.info("Using '{}' stream name mapper", streamNameMapper);
+    }
+
+    protected Map<String, Object> getConfigSubset(Config config, String prefix) {
+        final Map<String, Object> ret = new HashMap<>();
+
+        for (String propName : config.getPropertyNames()) {
+            if (propName.startsWith(prefix)) {
+                final String newPropName = propName.substring(prefix.length());
+                ret.put(newPropName, config.getValue(propName, String.class));
+            }
+        }
+
+        return ret;
+    }
+
+    protected byte[] getBytes(Object object) {
+        if (object instanceof byte[]) {
+            return (byte[]) object;
+        }
+        else if (object instanceof String) {
+            return ((String) object).getBytes();
+        }
+        throw new DebeziumException(unsupportedTypeMessage(object));
+    }
+
+    protected String getString(Object object) {
+        if (object instanceof String) {
+            return (String) object;
+        }
+        throw new DebeziumException(unsupportedTypeMessage(object));
+    }
+
+    protected String unsupportedTypeMessage(Object object) {
+        final String type = (object == null) ? "null" : object.getClass().getName();
+        return "Unexpected data type '" + type + "'";
     }
 }

@@ -71,6 +71,10 @@
                     <groupId>io.debezium</groupId>
                     <artifactId>debezium-server-pubsub</artifactId>
                 </dependency>
+                <dependency>
+                    <groupId>io.debezium</groupId>
+                    <artifactId>debezium-server-pulsar</artifactId>
+                </dependency>
             </dependencies>
             <build>
                 <plugins>
