@@ -318,7 +318,7 @@ When the alternative implementations are not available then the default ones are
 |Custom implementation maps the planned destination (topic) name into a physical Kinesis stream name.
 By default the same name is used.
 
-|=======================
+|===
 
 
 ==== Google Cloud Pub/Sub
@@ -326,8 +326,8 @@ By default the same name is used.
 Google Cloud Pub/Sub is an implementation of messaging/eventing system designed for scalable batch and stream processing applications.
 Pub/Sub exposes a set of REST APIs and provides a (not-only) Java SDK that is used to implement the sink.
 
-[cols="35%a,10%a,55%a",options="header"]
-|=======================
+[cols="35%a,10%a,55%a"]
+|===
 |Property
 |Default
 |Description
@@ -350,7 +350,7 @@ This feature can be disabled.
 |Tables without primary key sends messages with `null` key.
 This is not supported by Pub/Sub so a surrogate key must be used.
 
-|=======================
+|===
 
 
 ==== Injection points
@@ -358,8 +358,8 @@ This is not supported by Pub/Sub so a surrogate key must be used.
 The Pub/Sub sink behaviour can be modified by a custom logic providing alternative implementations for specific functionalities.
 When the alternative implementations are not available then the default ones are used.
 
-[cols="35%a,10%a,55%a",options="header"]
-|=======================
+[cols="35%a,10%a,55%a"]
+|===
 |Interface
 |CDI classifier
 |Description
