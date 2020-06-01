@@ -459,23 +459,19 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
              */
             @Override
             public void handleBatch(List<SourceRecord> records, DebeziumEngine.RecordCommitter<SourceRecord> committer) throws InterruptedException {
-                try {
-                    for (SourceRecord record : records) {
-                        try {
-                            consumer.accept(record);
-                            committer.markProcessed(record);
-                        }
-                        catch (StopConnectorException | StopEngineException ex) {
-                            // ensure that we mark the record as finished
-                            // in this case
-                            committer.markProcessed(record);
-                            throw ex;
-                        }
+                for (SourceRecord record : records) {
+                    try {
+                        consumer.accept(record);
+                        committer.markProcessed(record);
+                    }
+                    catch (StopConnectorException | StopEngineException ex) {
+                        // ensure that we mark the record as finished
+                        // in this case
+                        committer.markProcessed(record);
+                        throw ex;
                     }
                 }
-                finally {
-                    committer.markBatchFinished();
-                }
+                committer.markBatchFinished();
             }
         };
     }
