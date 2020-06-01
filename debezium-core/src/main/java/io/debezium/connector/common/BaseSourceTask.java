@@ -195,6 +195,7 @@ public abstract class BaseSourceTask extends SourceTask {
             catch (InterruptedException e) {
                 Thread.interrupted();
                 LOGGER.error("Interrupted while stopping coordinator", e);
+                doStop();
                 throw new ConnectException("Interrupted while stopping coordinator, failing the task");
             }
 
