@@ -55,6 +55,8 @@ pipeline {
                     env.OCP_PROJECT_DEBEZIUM = "debezium-${BUILD_NUMBER}"
                     env.OCP_PROJECT_MYSQL = "debezium-${BUILD_NUMBER}-mysql"
                     env.OCP_PROJECT_POSTGRESQL = "debezium-${BUILD_NUMBER}-postgresql"
+                    env.OCP_PROJECT_SQLSERVER = "debezium-${BUILD_NUMBER}-sqlserver"
+                    env.OCP_PROJECT_MONGO = "debezium-${BUILD_NUMBER}-mongo"
                 }
                 withCredentials([
                         usernamePassword(credentialsId: "${OCP_CREDENTIALS}", usernameVariable: 'OCP_USERNAME', passwordVariable: 'OCP_PASSWORD'),
@@ -67,13 +69,17 @@ pipeline {
                     oc new-project ${OCP_PROJECT_DEBEZIUM}
                     oc new-project ${OCP_PROJECT_MYSQL}
                     oc new-project ${OCP_PROJECT_POSTGRESQL}
+                    oc new-project ${OCP_PROJECT_SQLSERVER}
                     '''
                     sh '''
                     set -x
-                    
-                    
                     sed -i "s/namespace: .*/namespace: ${OCP_PROJECT_DEBEZIUM}/" strimzi/install/cluster-operator/*RoleBinding*.yaml
                     oc apply -f ${STRZ_RESOURCES} -n ${OCP_PROJECT_DEBEZIUM}
+                    '''
+                    sh '''
+                    set -x
+                    oc adm policy add-scc-to-user anyuid system:serviceaccount:${OCP_PROJECT_SQLSERVER}:default
+                    oc adm policy add-scc-to-user anyuid system:serviceaccount:${OCP_PROJECT_MONGO}:default
                     '''
                     sh '''
                     set -x

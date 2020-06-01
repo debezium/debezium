@@ -13,8 +13,10 @@
   <name>Debezium OpenShift integration test-suite</name>
 
   <properties>
-    <version.fabric8.client>4.6.4</version.fabric8.client>
-    <version.strimzi>0.16.2</version.strimzi>
+    <version.fabric8.client>4.10.1</version.fabric8.client>
+    <version.commons.codec>1.14</version.commons.codec>
+    <version.commons.compress>1.20</version.commons.compress>
+    <version.strimzi>0.18.0</version.strimzi>
     <version.junit5>5.5.1</version.junit5>
     <version.junit5.pioneer>0.5.1</version.junit5.pioneer>
     <version.assertj>3.11.1</version.assertj>
@@ -27,6 +29,7 @@
     <ocp.project.debezium>debezium</ocp.project.debezium>
     <ocp.project.mysql>debezium-mysql</ocp.project.mysql>
     <ocp.project.postgresql>debezium-postgresql</ocp.project.postgresql>
+    <ocp.project.mongo>debezium-mongo</ocp.project.mongo>
 
     <!--Strimzi configuration-->
     <strimzi.operator.connectors>true</strimzi.operator.connectors>
@@ -39,13 +42,31 @@
     <database.mysql.dbz.password>dbz</database.mysql.dbz.password>
     <database.mysql.root.password>debezium</database.mysql.root.password>
 
-    <!--MySQL configuration-->
+    <!--PostgreSQL configuration-->
     <database.postgresql.port>5432</database.postgresql.port>
     <database.postgresql.username>debezium</database.postgresql.username>
     <database.postgresql.password>debezium</database.postgresql.password>
     <database.postgresql.dbz.username>debezium</database.postgresql.dbz.username>
     <database.postgresql.dbz.password>debezium</database.postgresql.dbz.password>
     <database.postgresql.dbname>debezium</database.postgresql.dbname>
+
+    <!--SqlServer configuration-->
+    <database.sqlserver.port>5432</database.sqlserver.port>
+    <database.sqlserver.username>sa</database.sqlserver.username>
+    <database.sqlserver.password>Debezium1$</database.sqlserver.password>
+    <database.sqlserver.dbz.username>sa</database.sqlserver.dbz.username>
+    <database.sqlserver.dbz.password>Debezium$1</database.sqlserver.dbz.password>
+    <database.sqlserver.dbname>TestDB</database.sqlserver.dbname>
+
+    <!--MongoDB configuration-->
+    <database.mongo.port>27017</database.mongo.port>
+    <database.mongo.username>admin</database.mongo.username>
+    <database.mongo.password>admin</database.mongo.password>
+    <database.mongo.dbz.username>debezium</database.mongo.dbz.username>
+    <database.mongo.dbz.password>dbz</database.mongo.dbz.password>
+    <database.mongo.dbz.dbname>inventory</database.mongo.dbz.dbname>
+    <database.mongo.dbz.login.dbname>admin</database.mongo.dbz.login.dbname>
+
   </properties>
 
   <dependencyManagement>
@@ -65,6 +86,19 @@
       <groupId>io.fabric8</groupId>
       <artifactId>openshift-client</artifactId>
       <version>${version.fabric8.client}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>commons-codec</groupId>
+      <artifactId>commons-codec</artifactId>
+      <version>${version.commons.codec}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-compress</artifactId>
+      <version>${version.commons.compress}</version>
+      <optional>true</optional>
     </dependency>
 
     <dependency>
@@ -163,6 +197,16 @@
     <dependency>
       <groupId>org.postgresql</groupId>
       <artifactId>postgresql</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>com.microsoft.sqlserver</groupId>
+      <artifactId>mssql-jdbc</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.mongodb</groupId>
+      <artifactId>mongodb-driver</artifactId>
     </dependency>
   </dependencies>
 
@@ -277,6 +321,7 @@
                 <test.ocp.project.debezium>${ocp.project.debezium}</test.ocp.project.debezium>
                 <test.ocp.project.mysql>${ocp.project.mysql}</test.ocp.project.mysql>
                 <test.ocp.project.postgresql>${ocp.project.postgresql}</test.ocp.project.postgresql>
+                <test.ocp.project.mongo>${ocp.project.mongo}</test.ocp.project.mongo>
                 <test.strimzi.operator.connectors>${strimzi.operator.connectors}</test.strimzi.operator.connectors>
 
                 <test.database.mysql.host>${database.mysql.host}</test.database.mysql.host>
@@ -293,6 +338,15 @@
                 <test.database.postgresql.dbz.username>${database.postgresql.dbz.username}</test.database.postgresql.dbz.username>
                 <test.database.postgresql.dbz.password>${database.postgresql.dbz.password}</test.database.postgresql.dbz.password>
                 <test.database.postgresql.dbname>${database.postgresql.dbname}</test.database.postgresql.dbname>
+
+                <test.database.mongo.host>${database.mongo.host}</test.database.mongo.host>
+                <test.database.mongo.port>${database.mongo.port}</test.database.mongo.port>
+                <test.database.mongo.username>${database.mongo.username}</test.database.mongo.username>
+                <test.database.mongo.password>${database.mongo.password}</test.database.mongo.password>
+                <test.database.mongo.dbz.username>${database.mongo.dbz.username}</test.database.mongo.dbz.username>
+                <test.database.mongo.dbz.password>${database.mongo.dbz.password}</test.database.mongo.dbz.password>
+                <test.database.mongo.dbz.dbname>${database.mongo.dbz.dbname}</test.database.mongo.dbz.dbname>
+                <test.database.mongo.dbz.login.dbname>${database.mongo.dbz.login.dbname}</test.database.mongo.dbz.login.dbname>
               </systemPropertyVariables>
             </configuration>
             <executions>
