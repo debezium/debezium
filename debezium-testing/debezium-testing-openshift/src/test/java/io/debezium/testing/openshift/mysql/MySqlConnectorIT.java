@@ -25,8 +25,9 @@ import org.junit.jupiter.api.TestMethodOrder;
 import io.debezium.testing.openshift.ConnectorTestBase;
 import io.debezium.testing.openshift.resources.ConfigProperties;
 import io.debezium.testing.openshift.resources.ConnectorFactories;
-import io.debezium.testing.openshift.tools.databases.DatabaseController;
-import io.debezium.testing.openshift.tools.databases.MySqlDeployer;
+import io.debezium.testing.openshift.tools.databases.SqlDatabaseClient;
+import io.debezium.testing.openshift.tools.databases.SqlDatabaseController;
+import io.debezium.testing.openshift.tools.databases.mysql.MySqlDeployer;
 import io.debezium.testing.openshift.tools.kafka.ConnectorConfigBuilder;
 
 import okhttp3.OkHttpClient;
@@ -48,7 +49,7 @@ public class MySqlConnectorIT extends ConnectorTestBase {
     public static final String CONNECTOR_NAME = "inventory-connector-mysql";
 
     private static MySqlDeployer dbDeployer;
-    private static DatabaseController dbController;
+    private static SqlDatabaseController dbController;
     private static OkHttpClient httpClient = new OkHttpClient();
     private static ConnectorFactories connectorFactories = new ConnectorFactories();
     private static ConnectorConfigBuilder connectorConfig;
@@ -74,6 +75,12 @@ public class MySqlConnectorIT extends ConnectorTestBase {
     public static void tearDownDatabase() throws IOException, InterruptedException {
         kafkaConnectController.undeployConnector(connectorName);
         dbController.reload();
+    }
+
+    private void insertCustomer(String firstName, String lastName, String email) throws SQLException {
+        SqlDatabaseClient client = dbController.getDatabaseClient(DATABASE_MYSQL_USERNAME, DATABASE_MYSQL_PASSWORD);
+        String sql = "INSERT INTO customers VALUES  (default, '" + firstName + "', '" + lastName + "', '" + email + "')";
+        client.execute("inventory", sql);
     }
 
     @Test
@@ -106,37 +113,31 @@ public class MySqlConnectorIT extends ConnectorTestBase {
     @Order(3)
     public void shouldSnapshotChanges() throws IOException {
         kafkaConnectController.waitForMySqlSnapshot(connectorName);
-        assertRecordsCount(connectorName + ".inventory.customers", 4);
+        awaitAssert(() -> assertRecordsCount(connectorName + ".inventory.customers", 4));
     }
 
     @Test
     @Order(4)
     public void shouldStreamChanges() throws SQLException {
-        String sql = "INSERT INTO customers VALUES  (default, 'Tom', 'Tester', 'tom@test.com')";
-        dbController.executeStatement("inventory", DATABASE_MYSQL_USERNAME, DATABASE_MYSQL_PASSWORD, sql);
-        assertRecordsCount(connectorName + ".inventory.customers", 5);
-        assertRecordsContain(connectorName + ".inventory.customers", "tom@test.com");
+        insertCustomer("Tom", "Tester", "tom@test.com");
+        awaitAssert(() -> assertRecordsCount(connectorName + ".inventory.customers", 5));
+        awaitAssert(() -> assertRecordsContain(connectorName + ".inventory.customers", "tom@test.com"));
     }
 
     @Test
     @Order(5)
     public void shouldBeDown() throws SQLException, IOException {
         kafkaConnectController.undeployConnector(connectorName);
-        String sql = "INSERT INTO customers VALUES  (default, 'Jerry', 'Tester', 'jerry@test.com')";
-        dbController.executeStatement("inventory", DATABASE_MYSQL_USERNAME, DATABASE_MYSQL_PASSWORD, sql);
-        assertRecordsCount(connectorName + ".inventory.customers", 5);
-
+        insertCustomer("Jerry", "Tester", "jerry@test.com");
+        awaitAssert(() -> assertRecordsCount(connectorName + ".inventory.customers", 5));
     }
 
     @Test
     @Order(6)
     public void shouldResumeStreamingAfterRedeployment() throws IOException, InterruptedException {
         kafkaConnectController.deployConnector(connectorName, connectorConfig);
-        await()
-                .atMost(30, TimeUnit.SECONDS)
-                .pollInterval(5, TimeUnit.SECONDS)
-                .untilAsserted(() -> assertRecordsCount(connectorName + ".inventory.customers", 6));
-        assertRecordsContain(connectorName + ".inventory.customers", "jerry@test.com");
+        awaitAssert(() -> assertRecordsCount(connectorName + ".inventory.customers", 6));
+        awaitAssert(() -> assertRecordsContain(connectorName + ".inventory.customers", "jerry@test.com"));
     }
 
     @Test
@@ -144,9 +145,8 @@ public class MySqlConnectorIT extends ConnectorTestBase {
     public void shouldBeDownAfterCrash() throws SQLException {
         operatorController.disable();
         kafkaConnectController.destroy();
-        String sql = "INSERT INTO customers VALUES  (default, 'Nibbles', 'Tester', 'nibbles@test.com')";
-        dbController.executeStatement("inventory", DATABASE_MYSQL_USERNAME, DATABASE_MYSQL_PASSWORD, sql);
-        assertRecordsCount(connectorName + ".inventory.customers", 6);
+        insertCustomer("Nibbles", "Tester", "nibbles@test.com");
+        awaitAssert(() -> assertRecordsCount(connectorName + ".inventory.customers", 6));
     }
 
     @Test
@@ -154,11 +154,8 @@ public class MySqlConnectorIT extends ConnectorTestBase {
     public void shouldResumeStreamingAfterCrash() throws InterruptedException {
         operatorController.enable();
         kafkaConnectController.waitForConnectCluster();
-        await()
-                .atMost(30, TimeUnit.SECONDS)
-                .pollInterval(5, TimeUnit.SECONDS)
-                .untilAsserted(() -> assertMinimalRecordsCount(connectorName + ".inventory.customers", 7));
-        assertRecordsContain(connectorName + ".inventory.customers", "nibbles@test.com");
+        awaitAssert(() -> assertMinimalRecordsCount(connectorName + ".inventory.customers", 7));
+        awaitAssert(() -> assertRecordsContain(connectorName + ".inventory.customers", "nibbles@test.com"));
     }
 
 }
