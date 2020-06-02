@@ -2041,7 +2041,7 @@ constant
 dataType
     : typeName=(
       CHAR | VARCHAR | TINYTEXT | TEXT | MEDIUMTEXT | LONGTEXT
-       | NCHAR | NVARCHAR
+       | NCHAR | NVARCHAR | CHARACTER
       ) 
       lengthOneDimension? BINARY? 
       ((CHARACTER SET | CHARSET) charsetName)?

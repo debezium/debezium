@@ -99,6 +99,7 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
 
         dataTypeResolverBuilder.registerDataTypes(MySqlParser.StringDataTypeContext.class.getCanonicalName(), Arrays.asList(
                 new DataTypeEntry(Types.CHAR, MySqlParser.CHAR),
+                new DataTypeEntry(Types.CHAR, MySqlParser.CHARACTER),
                 new DataTypeEntry(Types.VARCHAR, MySqlParser.VARCHAR),
                 new DataTypeEntry(Types.VARCHAR, MySqlParser.TINYTEXT),
                 new DataTypeEntry(Types.VARCHAR, MySqlParser.TEXT),
