@@ -12,6 +12,7 @@ if (
 }
 
 SOURCES_DIR='src'
+SOURCES_DIR_INCUBATOR='src-incubator'
 TARGET_DIR="${ARTIFACT_DIR}/${PRODUCT_VERSION}"
 REMOTE_TARGET = [
     'name': 'stage',
@@ -29,16 +30,23 @@ node('Slave') {
                 for CONNECTOR in \${CONNECTORS}; do
                     curl -OLs "\${SOURCE_MAVEN_REPO}/debezium-connector-\$CONNECTOR/${BUILD_VERSION}/debezium-connector-\$CONNECTOR-${BUILD_VERSION}-plugin.zip"
                 done
+                for CONNECTOR in \${CONNECTORS_INCUBATOR}; do
+                    curl -OLs "\${SOURCE_MAVEN_REPO}/debezium-connector-\$CONNECTOR/${BUILD_VERSION_INCUBATOR}/debezium-connector-\$CONNECTOR-${BUILD_VERSION_INCUBATOR}-plugin.zip"
+                done
             """
         }
     }
     stage ('Download and repackage sources') {
         withCredentials([string(credentialsId: SOURCE_MAVEN_REPO, variable: 'SOURCE_MAVEN_REPO')]) {
             sh """
-                mkdir "${SOURCES_DIR}"
+                mkdir "${SOURCES_DIR}" "${SOURCES_DIR_INCUBATOR}"
+                curl -Lv "\${SOURCE_MAVEN_REPO}/debezium-incubator-parent/${BUILD_VERSION_INCUBATOR}/debezium-incubator-parent-${BUILD_VERSION_INCUBATOR}-project-sources.tar.gz" | tar xz --strip-components=1 -C "${SOURCES_DIR_INCUBATOR}"
+                for CONNECTOR in \${CONNECTORS_INCUBATOR}; do
+                    cp -r "${SOURCES_DIR_INCUBATOR}"/debezium-connector-\${CONNECTOR} "${SOURCES_DIR}"
+                done
                 curl -Lv "\${SOURCE_MAVEN_REPO}/debezium-parent/${BUILD_VERSION}/debezium-parent-${BUILD_VERSION}-project-sources.tar.gz" | tar xz --strip-components=1 -C "${SOURCES_DIR}"
                 (cd "${SOURCES_DIR}" && zip -r "../debezium-${BUILD_VERSION}-src.zip" *)
-                rm -rf "${SOURCES_DIR}"
+                rm -rf "${SOURCES_DIR}" "${SOURCES_DIR_INCUBATOR}"
                 ls -al
             """
         }
