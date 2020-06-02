@@ -54,7 +54,7 @@ public abstract class DatabaseController<C extends DatabaseClient<?, ?>> {
         Integer port = svc.getSpec().getPorts().stream().filter(p -> p.getName().equals("db")).findAny().get().getPort();
         return constructDatabaseUrl(hostname, port);
     }
-    
+
     public void reload() throws InterruptedException {
         LOGGER.info("Recreating all pods of '" + name + "' deployment in namespace '" + project + "'");
         ocp.pods().inNamespace(project).withLabel("deployment", name).delete();
