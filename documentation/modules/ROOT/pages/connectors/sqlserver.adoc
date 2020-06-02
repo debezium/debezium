@@ -725,12 +725,6 @@ To make this possible, the SQL Server connector always follows the _delete_ even
 [[sqlserver-transaction-metadata]]
 === Transaction Metadata
 
-[NOTE]
-====
-This feature is under active development right now (incubating),
-so the structure of transaction events or other details may still change as development progresses.
-====
-
 {prodname} can generate events that represents tranaction metadata boundaries and enrich data messages.
 
 ==== Transaction boundaries
