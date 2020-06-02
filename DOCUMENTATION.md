@@ -11,9 +11,6 @@ The Debezium documentation in [documentation](https://github.com/debezium/debezi
     - [Navigation Pane](#navigation-pane)
     - [Antora Configuration](#antora-configuration)
     - [Attributes](#attributes)
-- [What to change _after_ releasing new version](#what-to-change-_after_-releasing-new-version)
-    - [Attributes](#attributes-1)
-    - [Antora YAML](#antora-yaml)
 - [Contributing to the Documentation](#contributing-to-the-documentation)
     - [Using AsciiDoc attributes](#using-asciidoc-attributes)
     - [Cross references](#cross-references)
@@ -40,7 +37,7 @@ The Antora framework is opinionated about its directory structure, which is why 
 
 ### Component descriptors
 
-The Antora documentation system uses a concept called component descriptors.  Debezium makes use of a single component descriptor called `ROOT` since we want to document all features in a single section.  In the future if we find documenting connectors or certain features separately from others, we can look at using multiple component desecriptor layouts, however for now we use the `ROOT` descriptor for this purpose.
+The Antora documentation system uses a concept called component descriptors.  Debezium makes use of a single component descriptor called `ROOT` since we want to document all features in a single section.  In the future if we find documenting connectors or certain features separately from others, we can look at using multiple component descriptor layouts, however for now we use the `ROOT` descriptor for this purpose.
 
 ### Page content
 
@@ -70,7 +67,7 @@ As an example, if you want to link to a file called `example.adoc` within the sa
 
 ### Navigation Pane
 
-The Antora documentation layout uses a navigational pane on the left-side of the UI.  This navigation pane is driven by content found in the `nav.adoc` located inside the compoennt descriptor's top-level directory.  This file must be **manually** maintained when a new topic is to be present in the left navigation layout.  You can see our current navigation pane layout [here](https://wwww.github.com/debezium/tree/master/documentation/modules/ROOT/nav.adoc).
+The Antora documentation layout uses a navigational pane on the left-side of the UI.  This navigation pane is driven by content found in the `nav.adoc` located inside the component descriptor's top-level directory.  This file must be **manually** maintained when a new topic is to be present in the left navigation layout.  You can see our current navigation pane layout [here](https://wwww.github.com/debezium/tree/master/documentation/modules/ROOT/nav.adoc).
 
 ### Antora Configuration
 
