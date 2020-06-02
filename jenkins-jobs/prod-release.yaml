@@ -14,6 +14,9 @@
           name: BUILD_VERSION
           description: "Maven artifact id of the product binaries"
       - string:
+          name: BUILD_VERSION_INCUBATOR
+          description: "Maven artifact id of the product binaries in incubator"
+      - string:
           name: PRODUCT_VERSION
           description: "Product version"
       - string:
@@ -27,6 +30,10 @@
           name: CONNECTORS
           description: "The list of released connectors"
           default: "mysql postgres mongodb sqlserver"
+      - string:
+          name: CONNECTORS_INCUBATOR
+          description: "The list of released incubating connectors"
+          default: "db2"
       - bool:
           name: STAGE_FILES
           description: "When checked the uploaded artifacts are staged"
