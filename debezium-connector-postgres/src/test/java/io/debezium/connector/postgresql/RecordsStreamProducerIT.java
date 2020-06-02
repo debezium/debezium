@@ -1562,7 +1562,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                         "INSERT INTO test_table (text) VALUES ('mydata');");
 
         // Expecting 1 data change
-        Awaitility.await().atMost(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS).until(() -> {
+        Awaitility.await().atMost(TestHelper.waitTimeForRecords() * 10, TimeUnit.SECONDS).until(() -> {
             final SourceRecord record = consumeRecord();
             return record != null && Envelope.isEnvelopeSchema(record.valueSchema());
         });
@@ -1574,7 +1574,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
         // Expecting changes for the empty DDL change
         final Set<Long> lsns = new HashSet<>();
-        Awaitility.await().atMost(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS).until(() -> {
+        Awaitility.await().atMost(TestHelper.waitTimeForRecords() * 10, TimeUnit.SECONDS).until(() -> {
             final SourceRecord record = consumeRecord();
             Assertions.assertThat(record.valueSchema().name()).endsWith(".Heartbeat");
             lsns.add((Long) record.sourceOffset().get("lsn"));
