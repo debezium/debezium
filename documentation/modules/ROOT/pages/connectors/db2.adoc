@@ -822,12 +822,6 @@ To make this possible, {prodname}'s Db2 connector always follows the _delete_ ev
 [[db2-transaction-metadata]]
 === Transaction Metadata
 
-[NOTE]
-====
-This feature is under active development right now (incubating),
-so the structure of transaction events or other details may still change as development progresses.
-====
-
 {prodname} can generate events that represents tranaction metadata boundaries and enrich data messages.
 
 ==== Transaction boundaries
