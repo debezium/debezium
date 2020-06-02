@@ -7,6 +7,7 @@ package io.debezium.connector.sqlserver;
 
 import java.sql.SQLException;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -103,7 +104,9 @@ public class SchemaHistoryTopicIT extends AbstractConnectorTest {
         Assertions.assertThat(tableChanges).hasSize(1);
         Assertions.assertThat(tableChanges.get(0).get("type")).isEqualTo("CREATE");
 
-        records = consumeRecordsByTopic(RECORDS_PER_TABLE * TABLES);
+        waitForAvailableRecords(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS);
+
+        records = consumeRecordsByTopic(RECORDS_PER_TABLE * TABLES, 24);
         Assertions.assertThat(records.recordsForTopic("server1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
         Assertions.assertThat(records.recordsForTopic("server1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
         records.recordsForTopic("server1.dbo.tableb").forEach(record -> {
