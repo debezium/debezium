@@ -110,7 +110,7 @@ SQL Server does not support CDC directly on replicas.
 This is required by SQL Server.
 When {prodname} detects this configuration option then it will:
 
-** set `snapshot.isolation.mode` to `snapshot` as this is the only one transaction isolation mode supported by raed-only replicas
+** set `snapshot.isolation.mode` to `snapshot` as this is the only one transaction isolation mode supported by read-only replicas
 ** commit the (read-only) transaction in every execution of the streaming query loop, as this is necessary to get the latest view on CDC data
 endif::community[]
 
