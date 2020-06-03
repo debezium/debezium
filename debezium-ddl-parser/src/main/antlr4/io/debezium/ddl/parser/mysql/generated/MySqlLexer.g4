@@ -36,7 +36,7 @@ SPACE:                               [ \t\r\n]+    -> channel(HIDDEN);
 SPEC_MYSQL_COMMENT:                  '/*!' .+? '*/' -> channel(MYSQLCOMMENT);
 COMMENT_INPUT:                       '/*' .*? '*/' -> channel(HIDDEN);
 LINE_COMMENT:                        (
-                                       ('-- ' | '#') ~[\r\n]* ('\r'? '\n' | EOF)
+                                       ('-- ' | '#') ~[\r\n]* ('\r'? '\n' | EOF) 
                                        | '--' ('\r'? '\n' | EOF) 
                                      ) -> channel(HIDDEN);
 
@@ -192,7 +192,6 @@ SQL_SMALL_RESULT:                    'SQL_SMALL_RESULT';
 SSL:                                 'SSL';
 STACKED:                             'STACKED';
 STARTING:                            'STARTING';
-STORED:                              'STORED';
 STRAIGHT_JOIN:                       'STRAIGHT_JOIN';
 TABLE:                               'TABLE';
 TERMINATED:                          'TERMINATED';
@@ -211,7 +210,6 @@ USAGE:                               'USAGE';
 USE:                                 'USE';
 USING:                               'USING';
 VALUES:                              'VALUES';
-VIRTUAL:                             'VIRTUAL';
 WHEN:                                'WHEN';
 WHERE:                               'WHERE';
 WHILE:                               'WHILE';
@@ -235,7 +233,6 @@ PRECISION:                           'PRECISION';
 FLOAT:                               'FLOAT';
 DECIMAL:                             'DECIMAL';
 DEC:                                 'DEC';
-FIXED:                               'FIXED';
 NUMERIC:                             'NUMERIC';
 DATE:                                'DATE';
 TIME:                                'TIME';
@@ -269,7 +266,7 @@ DAY_MINUTE:                          'DAY_MINUTE';
 DAY_SECOND:                          'DAY_SECOND';
 HOUR_MINUTE:                         'HOUR_MINUTE';
 HOUR_SECOND:                         'HOUR_SECOND';
-MINUTE_SECOND:                       'MINUTE_SECOND';
+MINUTE_SECOND:                       'MINUTE_SECOND'; 
 SECOND_MICROSECOND:                  'SECOND_MICROSECOND';
 MINUTE_MICROSECOND:                  'MINUTE_MICROSECOND';
 HOUR_MICROSECOND:                    'HOUR_MICROSECOND';
@@ -416,6 +413,7 @@ FIELDS:                              'FIELDS';
 FILE_BLOCK_SIZE:                     'FILE_BLOCK_SIZE';
 FILTER:                              'FILTER';
 FIRST:                               'FIRST';
+FIXED:                               'FIXED';
 FLUSH:                               'FLUSH';
 FOLLOWS:                             'FOLLOWS';
 FOUND:                               'FOUND';
@@ -598,6 +596,7 @@ STATS_SAMPLE_PAGES:                  'STATS_SAMPLE_PAGES';
 STATUS:                              'STATUS';
 STOP:                                'STOP';
 STORAGE:                             'STORAGE';
+STORED:                              'STORED';
 STRING:                              'STRING';
 SUBCLASS_ORIGIN:                     'SUBCLASS_ORIGIN';
 SUBJECT:                             'SUBJECT';
@@ -630,6 +629,7 @@ VALIDATION:                          'VALIDATION';
 VALUE:                               'VALUE';
 VARIABLES:                           'VARIABLES';
 VIEW:                                'VIEW';
+VIRTUAL:                             'VIRTUAL';
 VISIBLE:                             'VISIBLE';
 WAIT:                                'WAIT';
 WARNINGS:                            'WARNINGS';
@@ -674,6 +674,7 @@ SHUTDOWN:                            'SHUTDOWN';
 SUPER:                               'SUPER';
 PRIVILEGES:                          'PRIVILEGES';
 SESSION_VARIABLES_ADMIN:             QUOTE_SYMB? 'SESSION_VARIABLES_ADMIN' QUOTE_SYMB?;
+
 
 // Charsets
 
@@ -1134,7 +1135,7 @@ FILESIZE_LITERAL:                    DEC_DIGIT+ ('K'|'M'|'G'|'T');
 
 
 START_NATIONAL_STRING_LITERAL:       'N' SQUOTA_STRING;
-STRING_LITERAL:                      SQUOTA_STRING | DQUOTA_STRING | BQUOTA_STRING;
+STRING_LITERAL:                      DQUOTA_STRING | SQUOTA_STRING | BQUOTA_STRING;
 DECIMAL_LITERAL:                     DEC_DIGIT+;
 HEXADECIMAL_LITERAL:                 'X' '\'' (HEX_DIGIT HEX_DIGIT)+ '\''
                                      | '0X' HEX_DIGIT+;
@@ -1164,37 +1165,37 @@ ID:                                  ID_LITERAL;
 // DOUBLE_QUOTE_ID:                  '"' ~'"'+ '"';
 REVERSE_QUOTE_ID:                    '`' ~'`'+ '`';
 STRING_USER_NAME:                    (
-                                       SQUOTA_STRING | DQUOTA_STRING
+                                       SQUOTA_STRING | DQUOTA_STRING 
                                        | BQUOTA_STRING | ID_LITERAL
-                                     ) '@'
+                                     ) '@' 
                                      (
-                                       SQUOTA_STRING | DQUOTA_STRING
+                                       SQUOTA_STRING | DQUOTA_STRING 
                                        | BQUOTA_STRING | ID_LITERAL
                                      );
 LOCAL_ID:                            '@'
                                 (
-                                  [A-Z0-9._$]+
+                                  [A-Z0-9._$]+ 
                                   | SQUOTA_STRING
                                   | DQUOTA_STRING
                                   | BQUOTA_STRING
                                 );
-GLOBAL_ID:                           '@' '@'
+GLOBAL_ID:                           '@' '@' 
                                 (
-                                  [A-Z0-9._$]+
+                                  [A-Z0-9._$]+ 
                                   | BQUOTA_STRING
                                 );
 
 
 // Fragments for Literal primitives
 
-fragment CHARSET_NAME:               ARMSCII8 | ASCII | BIG5 | BINARY | CP1250
-                                     | CP1251 | CP1256 | CP1257 | CP850
-                                     | CP852 | CP866 | CP932 | DEC8 | EUCJPMS
-                                     | EUCKR | GB2312 | GBK | GEOSTD8 | GREEK
-                                     | HEBREW | HP8 | KEYBCS2 | KOI8R | KOI8U
-                                     | LATIN1 | LATIN2 | LATIN5 | LATIN7
-                                     | MACCE | MACROMAN | SJIS | SWE7 | TIS620
-                                     | UCS2 | UJIS | UTF16 | UTF16LE | UTF32
+fragment CHARSET_NAME:               ARMSCII8 | ASCII | BIG5 | BINARY | CP1250 
+                                     | CP1251 | CP1256 | CP1257 | CP850 
+                                     | CP852 | CP866 | CP932 | DEC8 | EUCJPMS 
+                                     | EUCKR | GB2312 | GBK | GEOSTD8 | GREEK 
+                                     | HEBREW | HP8 | KEYBCS2 | KOI8R | KOI8U 
+                                     | LATIN1 | LATIN2 | LATIN5 | LATIN7 
+                                     | MACCE | MACROMAN | SJIS | SWE7 | TIS620 
+                                     | UCS2 | UJIS | UTF16 | UTF16LE | UTF32 
                                      | UTF8 | UTF8MB3 | UTF8MB4;
 
 fragment EXPONENT_NUM_PART:          'E' [-+]? DEC_DIGIT+;
