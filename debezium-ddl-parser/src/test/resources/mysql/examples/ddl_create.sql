@@ -129,6 +129,21 @@ END WHILE;
 END
 #end
 #begin
+-- Create trigger 5
+CREATE TRIGGER `rtl_trigger_before_update`
+BEFORE UPDATE
+ON all_student_educator FOR EACH ROW
+BEGIN
+    IF NEW.student_words_read_total is not null AND NEW.student_words_read_total >= 3 AND NEW.badge_3_words_read_flag = 0 THEN
+        SET
+        NEW.badge_flag = 1,
+        NEW.badge_student_total = NEW.badge_student_total + 1,
+        NEW.badge_datetime = now();
+        INSERT IGNORE INTO user_platform_badge (platform_badge_id, user_id) VALUES (3, NEW.student_id);
+    END IF;
+END
+#end
+#begin
 -- Create view
 create or replace view my_view1 as select 1 union select 2 limit 0,5;
 create algorithm = merge view my_view2(col1, col2) as select * from t2 with check option;
