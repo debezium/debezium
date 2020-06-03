@@ -43,6 +43,7 @@ CREATE TABLE hstore_table (pk serial, hs hstore, PRIMARY KEY(pk));
 CREATE TABLE hstore_table_mul (pk serial, hs hstore, hsarr hstore[], PRIMARY KEY(pk));
 CREATE TABLE hstore_table_with_null (pk serial, hs hstore, PRIMARY KEY(pk));
 CREATE TABLE hstore_table_with_special (pk serial, hs hstore, PRIMARY KEY(pk));
+CREATE TABLE circle_table (pk serial, ccircle circle, PRIMARY KEY(pk));
 
 CREATE TABLE not_null_table (pk serial,
     val numeric(20,8), created_at timestamp not null, created_at_tz timestamptz not null, ctime time not null,

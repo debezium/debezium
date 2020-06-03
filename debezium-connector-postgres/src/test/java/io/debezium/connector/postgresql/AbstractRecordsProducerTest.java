@@ -17,6 +17,7 @@ import static org.junit.Assert.fail;
 
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -116,6 +117,7 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
             "VALUES (E'\\\\001\\\\002\\\\003'::bytea, '0'::bit(1), '11'::bit(2), '00'::bit(2), '000000110000001000000001'::bit(24)," +
             "'1000000000000000000000000000000000000000000000000000000000000000'::bit(64))";
     protected static final String INSERT_BYTEA_BINMODE_STMT = "INSERT INTO bytea_binmode_table (ba) VALUES (E'\\\\001\\\\002\\\\003'::bytea)";
+    protected static final String INSERT_CIRCLE_STMT = "INSERT INTO circle_table (ccircle) VALUES ('((10, 20),10)'::circle)";
     protected static final String INSERT_GEOM_TYPES_STMT = "INSERT INTO geom_table(p) VALUES ('(1,1)'::point)";
     protected static final String INSERT_TEXT_TYPES_STMT = "INSERT INTO text_table(j, jb, x, u) " +
             "VALUES ('{\"bar\": \"baz\"}'::json, '{\"bar\": \"baz\"}'::jsonb, " +
@@ -410,6 +412,18 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
 
     protected List<SchemaAndValueField> schemaAndValueForByteaBase64() {
         return Arrays.asList(new SchemaAndValueField("ba", Schema.OPTIONAL_STRING_SCHEMA, "AQID"));
+    }
+
+    protected List<SchemaAndValueField> schemaAndValueForUnknownColumnBytes() {
+        return Arrays.asList(new SchemaAndValueField("ccircle", Schema.OPTIONAL_BYTES_SCHEMA, ByteBuffer.wrap("<(10.0,20.0),10.0>".getBytes(StandardCharsets.UTF_8))));
+    }
+
+    protected List<SchemaAndValueField> schemaAndValueForUnknownColumnBase64() {
+        return Arrays.asList(new SchemaAndValueField("ccircle", Schema.OPTIONAL_STRING_SCHEMA, "PCgxMC4wLDIwLjApLDEwLjA+"));
+    }
+
+    protected List<SchemaAndValueField> schemaAndValueForUnknownColumnHex() {
+        return Arrays.asList(new SchemaAndValueField("ccircle", Schema.OPTIONAL_STRING_SCHEMA, "3c2831302e302c32302e30292c31302e303e"));
     }
 
     protected List<SchemaAndValueField> schemasAndValuesForStringTypesWithSourceColumnTypeInfo() {
