@@ -96,6 +96,8 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
         }
 
         try {
+            connection.setAutoCommit(false);
+
             if (hasStartLsnStoredInContext) {
                 // start streaming from the last recorded position in the offset
                 final Long lsn = offsetContext.lastCompletelyProcessedLsn() != null ? offsetContext.lastCompletelyProcessedLsn() : offsetContext.lsn();

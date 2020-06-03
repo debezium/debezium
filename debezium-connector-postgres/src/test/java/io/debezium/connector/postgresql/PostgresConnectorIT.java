@@ -831,6 +831,43 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
+    @FixFor("DBZ-2118")
+    public void shouldCloseTxAfterTypeQuery() throws Exception {
+        String setupStmt = SETUP_TABLES_STMT;
+
+        TestHelper.execute(setupStmt);
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL.getValue())
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
+                .with(PostgresConnectorConfig.SCHEMA_WHITELIST, "s1")
+                .with(PostgresConnectorConfig.TABLE_WHITELIST, "s1.b");
+
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+        waitForSnapshotToBeCompleted();
+
+        TestHelper.execute("CREATE TABLE s1.b (pk SERIAL, aa isbn, PRIMARY KEY(pk));", "INSERT INTO s1.b (aa) VALUES ('978-0-393-04002-9')");
+        SourceRecords actualRecords = consumeRecordsByTopic(1);
+
+        List<SourceRecord> records = actualRecords.recordsForTopic(topicName("s1.b"));
+        assertThat(records.size()).isEqualTo(1);
+
+        SourceRecord record = records.get(0);
+        VerifyRecord.isValidInsert(record, PK_FIELD, 1);
+
+        try (final PostgresConnection connection = TestHelper.create()) {
+            try {
+                Awaitility.await()
+                        .atMost(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS)
+                        .until(() -> getActiveTransactions(connection).size() == 1);
+            }
+            catch (ConditionTimeoutException e) {
+            }
+            assertThat(getActiveTransactions(connection)).hasSize(1);
+        }
+    }
+
+    @Test
     @FixFor("DBZ-878")
     public void shouldReplaceInvalidTopicNameCharacters() throws Exception {
         String setupStmt = SETUP_TABLES_STMT +
@@ -1151,6 +1188,18 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
                         fail("No replication slot info available");
                     }
                     return null;
+                });
+    }
+
+    private List<String> getActiveTransactions(PostgresConnection connection) throws SQLException {
+        return connection.queryAndMap(
+                "SELECT query FROM pg_stat_activity WHERE backend_xmin IS NOT NULL ORDER BY age(backend_xmin) DESC;",
+                rs -> {
+                    final List<String> ret = new ArrayList<>();
+                    while (rs.next()) {
+                        ret.add(rs.getString(1));
+                    }
+                    return ret;
                 });
     }
 
