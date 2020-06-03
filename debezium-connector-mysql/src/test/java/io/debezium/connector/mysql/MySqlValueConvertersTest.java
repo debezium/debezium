@@ -77,7 +77,7 @@ public class MySqlValueConvertersTest {
         MySqlValueConverters converters = new MySqlValueConverters(JdbcValueConverters.DecimalMode.DOUBLE,
                 TemporalPrecisionMode.CONNECT,
                 JdbcValueConverters.BigIntUnsignedMode.LONG,
-                BinaryHandlingMode.RAW);
+                BinaryHandlingMode.BYTES);
 
         DdlParser parser = new MySqlAntlrDdlParser();
         Tables tables = new Tables();

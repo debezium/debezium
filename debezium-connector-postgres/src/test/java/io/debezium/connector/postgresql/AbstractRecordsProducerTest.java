@@ -400,7 +400,7 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
                 new SchemaAndValueField("ct", Schema.OPTIONAL_STRING_SCHEMA, "Hello World"));
     }
 
-    protected List<SchemaAndValueField> schemaAndValueForByteaRaw() {
+    protected List<SchemaAndValueField> schemaAndValueForByteaBytes() {
         return Arrays.asList(new SchemaAndValueField("ba", Schema.OPTIONAL_BYTES_SCHEMA, ByteBuffer.wrap(new byte[]{ 1, 2, 3 })));
     }
 

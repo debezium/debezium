@@ -44,7 +44,7 @@ public class MySqlDefaultValueTest {
         converters = new MySqlValueConverters(JdbcValueConverters.DecimalMode.DOUBLE,
                 TemporalPrecisionMode.CONNECT,
                 JdbcValueConverters.BigIntUnsignedMode.LONG,
-                BinaryHandlingMode.RAW);
+                BinaryHandlingMode.BYTES);
         parser = new MySqlAntlrDdlParser(converters);
         tables = new Tables();
     }
@@ -178,7 +178,7 @@ public class MySqlDefaultValueTest {
         final MySqlValueConverters converters = new MySqlValueConverters(JdbcValueConverters.DecimalMode.DOUBLE,
                 TemporalPrecisionMode.CONNECT,
                 JdbcValueConverters.BigIntUnsignedMode.PRECISE,
-                BinaryHandlingMode.RAW);
+                BinaryHandlingMode.BYTES);
         final AbstractDdlParser parser = new MySqlAntlrDdlParser(converters);
         String sql = "CREATE TABLE UNSIGNED_BIGINT_TABLE (\n" +
                 "  A BIGINT UNSIGNED NULL DEFAULT 0,\n" +
@@ -329,7 +329,7 @@ public class MySqlDefaultValueTest {
         final MySqlValueConverters converters = new MySqlValueConverters(JdbcValueConverters.DecimalMode.PRECISE,
                 TemporalPrecisionMode.CONNECT,
                 JdbcValueConverters.BigIntUnsignedMode.LONG,
-                BinaryHandlingMode.RAW);
+                BinaryHandlingMode.BYTES);
         final AbstractDdlParser parser = new MySqlAntlrDdlParser(converters);
         String sql = "CREATE TABLE NUMERIC_DECIMAL_TABLE (\n" +
                 "  A NUMERIC NOT NULL DEFAULT 1.23,\n" +
