@@ -14,7 +14,6 @@ import java.math.BigDecimal;
 import java.nio.charset.Charset;
 import java.sql.SQLException;
 import java.sql.Timestamp;
-import java.time.Duration;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.OffsetTime;
@@ -32,7 +31,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Decimal;
@@ -119,9 +117,6 @@ public class PostgresValueConverter extends JdbcValueConverters {
             .appendPattern("[XXX][XX][X]")
             .toFormatter();
 
-    private static final Duration ONE_DAY = Duration.ofDays(1);
-    private static final long NANO_SECONDS_PER_DAY = TimeUnit.DAYS.toNanos(1);
-
     /**
      * {@code true} if fields of data type not know should be handle as opaque binary;
      * {@code false} if they should be omitted
@@ -200,7 +195,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.NUMERIC:
                 return numericSchema(column);
             case PgOid.BYTEA:
-                return SchemaBuilder.bytes();
+                return binaryMode.getSchema();
             case PgOid.INT2_ARRAY:
                 return SchemaBuilder.array(SchemaBuilder.OPTIONAL_INT16_SCHEMA);
             case PgOid.INT4_ARRAY:
@@ -313,7 +308,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
 
                 final SchemaBuilder jdbcSchemaBuilder = super.schemaBuilder(column);
                 if (jdbcSchemaBuilder == null) {
-                    return includeUnknownDatatypes ? SchemaBuilder.bytes() : null;
+                    return includeUnknownDatatypes ? binaryMode.getSchema() : null;
                 }
                 else {
                     return jdbcSchemaBuilder;
