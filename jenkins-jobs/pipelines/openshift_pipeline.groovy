@@ -70,6 +70,7 @@ pipeline {
                     oc new-project ${OCP_PROJECT_MYSQL}
                     oc new-project ${OCP_PROJECT_POSTGRESQL}
                     oc new-project ${OCP_PROJECT_SQLSERVER}
+                    oc new-project ${OCP_PROJECT_MONGO}
                     '''
                     sh '''
                     set -x
