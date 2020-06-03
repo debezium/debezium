@@ -1905,11 +1905,10 @@ _filtered_ - If no publication exists, the connector will create a new publicati
 current filter configuration (see table/database whitelist/blacklist properties). If the publication already exists,
 it will be used. i.e `CREATE PUBLICATION <publication_name> FOR TABLE <tbl1, tbl2, etc>`
 |[[connector-property-binary-handling-mode]]<<connector-property-binary-handling-mode, `binary.handling.mode`>>
-|raw
-|Specifies how binary (`bytea`) columns should be represented in change events, including: `raw` represents binary data as native Java binary type (default), `base64` represents binary data as base64-encoded, `hex` represents binary data as hex-encoded (base16)
+|bytes
+|Specifies how binary (`bytea`) columns should be represented in change events, including: `bytes` represents binary data as byte array (default), `base64` represents binary data as base64-encoded String, `hex` represents binary data as hex-encoded (base16) String
 
 |===
-
 
 The following _advanced_ configuration properties have good defaults that will work in most situations and therefore rarely need to be specified in the connector's configuration.
 

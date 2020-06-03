@@ -202,8 +202,8 @@ Each item (regular expression) must match the `<fully-qualified table>:<a comma-
 Fully-qualified tables could be defined as _databaseName_._tableName_.
 
 |[[connector-property-binary-handling-mode]]<<connector-property-binary-handling-mode, `binary.handling.mode`>>
-|raw
-|Specifies how binary (`blob`, `binary`, `varbinary`, etc.) columns should be represented in change events, including: `raw` represents binary data as native Java binary type (default), `base64` represents binary data as base64-encoded, `hex` represents binary data as hex-encoded (base16)
+|bytes
+|Specifies how binary (`blob`, `binary`, `varbinary`, etc.) columns should be represented in change events, including: `bytes` represents binary data as byte array (default), `base64` represents binary data as base64-encoded String, `hex` represents binary data as hex-encoded (base16) String
 
 |===
 

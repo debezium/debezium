@@ -132,7 +132,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
         this.decimalMode = decimalMode != null ? decimalMode : DecimalMode.PRECISE;
         this.adjuster = adjuster;
         this.bigIntUnsignedMode = bigIntUnsignedMode != null ? bigIntUnsignedMode : BigIntUnsignedMode.PRECISE;
-        this.binaryMode = binaryMode != null ? binaryMode : BinaryHandlingMode.RAW;
+        this.binaryMode = binaryMode != null ? binaryMode : BinaryHandlingMode.BYTES;
 
         this.fallbackTimestampWithTimeZone = ZonedTimestamp.toIsoString(
                 OffsetDateTime.of(LocalDate.ofEpochDay(0), LocalTime.MIDNIGHT, defaultOffset),
@@ -710,7 +710,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @return the converted value, or null if the conversion could not be made and the column allows nulls
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
-    protected Object convertBinary(Column column, Field fieldDefn, Object data) {
+    protected Object convertBinaryToBytes(Column column, Field fieldDefn, Object data) {
         return convertValue(column, fieldDefn, data, BYTE_ZERO, (r) -> {
             Object dataMut = data;
             if (dataMut instanceof char[]) {
@@ -736,9 +736,9 @@ public class JdbcValueConverters implements ValueConverterProvider {
                 return convertBinaryToBase64(column, fieldDefn, data);
             case HEX:
                 return convertBinaryToHex(column, fieldDefn, data);
-            case RAW:
+            case BYTES:
             default:
-                return convertBinary(column, fieldDefn, data);
+                return convertBinaryToBytes(column, fieldDefn, data);
         }
     }
 
@@ -823,7 +823,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @param fieldDefn the field definition in the Kafka Connect schema; never null
      * @return the converted value, or null if the conversion could not be made and the column allows nulls
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
-     * @see #convertBinary(Column, Field, Object)
+     * @see #convertBinaryToBytes(Column, Field, Object)
      */
     protected byte[] unexpectedBinary(Object value, Field fieldDefn) {
         logger.warn("Unexpected JDBC BINARY value for field {} with schema {}: class={}, value={}", fieldDefn.name(),

@@ -1095,12 +1095,12 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
     @Test
     @FixFor("DBZ-1814")
-    public void shouldReceiveByteaRawString() throws Exception {
+    public void shouldReceiveByteaBytes() throws Exception {
         TestHelper.executeDDL("postgres_create_tables.ddl");
 
-        startConnector(config -> config.with(PostgresConnectorConfig.BINARY_HANDLING_MODE, PostgresConnectorConfig.BinaryHandlingMode.RAW));
+        startConnector(config -> config.with(PostgresConnectorConfig.BINARY_HANDLING_MODE, PostgresConnectorConfig.BinaryHandlingMode.BYTES));
 
-        assertInsert(INSERT_BYTEA_BINMODE_STMT, 1, schemaAndValueForByteaRaw());
+        assertInsert(INSERT_BYTEA_BINMODE_STMT, 1, schemaAndValueForByteaBytes());
     }
 
     @Test

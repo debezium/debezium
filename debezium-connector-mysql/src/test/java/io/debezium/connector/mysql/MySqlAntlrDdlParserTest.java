@@ -2563,7 +2563,7 @@ public class MySqlAntlrDdlParserTest {
                             JdbcValueConverters.DecimalMode.DOUBLE,
                             TemporalPrecisionMode.ADAPTIVE_TIME_MICROSECONDS,
                             JdbcValueConverters.BigIntUnsignedMode.PRECISE,
-                            BinaryHandlingMode.RAW),
+                            BinaryHandlingMode.BYTES),
                     tableFilter);
             this.ddlChanges = changesListener;
         }
