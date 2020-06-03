@@ -956,6 +956,16 @@ public class PostgresValueConverter extends JdbcValueConverters {
         return super.convertBinaryToBytes(column, fieldDefn, (data instanceof PGobject) ? ((PGobject) data).getValue() : data);
     }
 
+    @Override
+    protected Object convertBinaryToBase64(Column column, Field fieldDefn, Object data) {
+        return super.convertBinaryToBase64(column, fieldDefn, (data instanceof PGobject) ? ((PGobject) data).getValue() : data);
+    }
+
+    @Override
+    protected Object convertBinaryToHex(Column column, Field fieldDefn, Object data) {
+        return super.convertBinaryToHex(column, fieldDefn, (data instanceof PGobject) ? ((PGobject) data).getValue() : data);
+    }
+
     /**
      * Replaces toasted value with a placeholder
      *

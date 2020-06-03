@@ -35,6 +35,7 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 
+import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
 import io.debezium.data.Bits;
@@ -977,6 +978,62 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
 
         final Map<String, List<SchemaAndValueField>> expectedValueByTopicName = Collect.hashMapOf("public.bytea_binmode_table", schemaAndValueForByteaHex());
+
+        consumer.process(record -> assertReadRecord(record, expectedValueByTopicName));
+    }
+
+    @Test
+    @FixFor("DBZ-1814")
+    public void shouldGenerateSnapshotForUnknownColumnAsBytes() throws Exception {
+        TestHelper.dropAllSchemas();
+        TestHelper.executeDDL("postgres_create_tables.ddl");
+        TestHelper.execute(INSERT_CIRCLE_STMT);
+
+        buildNoStreamProducer(TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true));
+
+        TestConsumer consumer = testConsumer(1, "public");
+        consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
+
+        final Map<String, List<SchemaAndValueField>> expectedValueByTopicName = Collect.hashMapOf("public.circle_table", schemaAndValueForUnknownColumnBytes());
+
+        consumer.process(record -> assertReadRecord(record, expectedValueByTopicName));
+    }
+
+    @Test
+    @FixFor("DBZ-1814")
+    public void shouldGenerateSnapshotForUnknownColumnAsBase64() throws Exception {
+        TestHelper.dropAllSchemas();
+        TestHelper.executeDDL("postgres_create_tables.ddl");
+        TestHelper.execute(INSERT_CIRCLE_STMT);
+
+        buildNoStreamProducer(TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
+                .with(PostgresConnectorConfig.BINARY_HANDLING_MODE, BinaryHandlingMode.BASE64));
+
+        TestConsumer consumer = testConsumer(1, "public");
+        consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
+
+        final Map<String, List<SchemaAndValueField>> expectedValueByTopicName = Collect.hashMapOf("public.circle_table", schemaAndValueForUnknownColumnBase64());
+
+        consumer.process(record -> assertReadRecord(record, expectedValueByTopicName));
+    }
+
+    @Test
+    @FixFor("DBZ-1814")
+    public void shouldGenerateSnapshotForUnknownColumnAsHex() throws Exception {
+        TestHelper.dropAllSchemas();
+        TestHelper.executeDDL("postgres_create_tables.ddl");
+        TestHelper.execute(INSERT_CIRCLE_STMT);
+
+        buildNoStreamProducer(TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
+                .with(PostgresConnectorConfig.BINARY_HANDLING_MODE, BinaryHandlingMode.HEX));
+
+        TestConsumer consumer = testConsumer(1, "public");
+        consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
+
+        final Map<String, List<SchemaAndValueField>> expectedValueByTopicName = Collect.hashMapOf("public.circle_table", schemaAndValueForUnknownColumnHex());
 
         consumer.process(record -> assertReadRecord(record, expectedValueByTopicName));
     }

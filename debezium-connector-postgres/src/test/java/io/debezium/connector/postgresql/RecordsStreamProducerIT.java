@@ -52,6 +52,7 @@ import org.junit.Test;
 import org.junit.rules.TestRule;
 
 import io.debezium.config.CommonConnectorConfig;
+import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.IntervalHandlingMode;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SchemaRefreshMode;
@@ -1121,6 +1122,38 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         startConnector(config -> config.with(PostgresConnectorConfig.BINARY_HANDLING_MODE, PostgresConnectorConfig.BinaryHandlingMode.HEX));
 
         assertInsert(INSERT_BYTEA_BINMODE_STMT, 1, schemaAndValueForByteaHex());
+    }
+
+    @Test
+    @FixFor("DBZ-1814")
+    public void shouldReceiveUnknownTypeAsBytes() throws Exception {
+        TestHelper.executeDDL("postgres_create_tables.ddl");
+
+        startConnector(config -> config.with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true));
+
+        assertInsert(INSERT_CIRCLE_STMT, 1, schemaAndValueForUnknownColumnBytes());
+    }
+
+    @Test
+    @FixFor("DBZ-1814")
+    public void shouldReceiveUnknownTypeAsBase64() throws Exception {
+        TestHelper.executeDDL("postgres_create_tables.ddl");
+
+        startConnector(config -> config.with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
+                .with(PostgresConnectorConfig.BINARY_HANDLING_MODE, BinaryHandlingMode.BASE64));
+
+        assertInsert(INSERT_CIRCLE_STMT, 1, schemaAndValueForUnknownColumnBase64());
+    }
+
+    @Test
+    @FixFor("DBZ-1814")
+    public void shouldReceiveUnknownTypeAsHex() throws Exception {
+        TestHelper.executeDDL("postgres_create_tables.ddl");
+
+        startConnector(config -> config.with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
+                .with(PostgresConnectorConfig.BINARY_HANDLING_MODE, BinaryHandlingMode.HEX));
+
+        assertInsert(INSERT_CIRCLE_STMT, 1, schemaAndValueForUnknownColumnHex());
     }
 
     @Test
