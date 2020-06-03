@@ -124,7 +124,7 @@ public class MySqlBinaryModeIT extends AbstractConnectorTest {
 
         SourceRecord topicSourceRecord = topicSourceRecords.get(0);
         Struct kafkaDataStructure = (Struct) ((Struct) topicSourceRecord.value()).get("after");
-        ByteBuffer expectedValue = ByteBuffer.wrap("010203".getBytes());
+        String expectedValue = "010203";
         assertEquals(expectedValue, kafkaDataStructure.get("blob_col"));
         assertEquals(expectedValue, kafkaDataStructure.get("tinyblob_col"));
         assertEquals(expectedValue, kafkaDataStructure.get("mediumblob_col"));
@@ -164,7 +164,7 @@ public class MySqlBinaryModeIT extends AbstractConnectorTest {
 
         SourceRecord topicSourceRecord = topicSourceRecords.get(0);
         Struct kafkaDataStructure = (Struct) ((Struct) topicSourceRecord.value()).get("after");
-        ByteBuffer expectedValue = ByteBuffer.wrap("AQID".getBytes());
+        String expectedValue = "AQID";
         assertEquals(expectedValue, kafkaDataStructure.get("blob_col"));
         assertEquals(expectedValue, kafkaDataStructure.get("tinyblob_col"));
         assertEquals(expectedValue, kafkaDataStructure.get("mediumblob_col"));
