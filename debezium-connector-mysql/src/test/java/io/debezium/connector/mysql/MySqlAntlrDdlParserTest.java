@@ -108,7 +108,7 @@ public class MySqlAntlrDdlParserTest {
 
     @Test
     @FixFor("DBZ-2061")
-    public void shouldUpdateSchemaForChangeDefaultValue() {
+    public void shouldUpdateSchemaForChangedDefaultValue() {
         String ddl = "CREATE TABLE mytable (id INT PRIMARY KEY, val1 INT);"
                 + "ALTER TABLE mytable ADD COLUMN last_val INT DEFAULT 5;";
         parser.parse(ddl, tables);
