@@ -268,6 +268,9 @@ public class AlterTableParserListener extends MySqlParserBaseListener {
                     defaultValueListener = new DefaultValueParserListener(defaultValueColumnEditor, parser.getConverters(), column.isOptional(), true);
                     listeners.add(defaultValueListener);
                 }
+                else if (ctx.DROP() != null) {
+                    defaultValueColumnEditor.unsetDefaultValue();
+                }
             }
         }, tableEditor);
         super.enterAlterByChangeDefault(ctx);
