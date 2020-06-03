@@ -120,7 +120,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
      * @param temporalPrecisionMode temporal precision mode based on {@link io.debezium.jdbc.TemporalPrecisionMode}
      * @param bigIntUnsignedMode how {@code BIGINT UNSIGNED} values should be treated; may be null if
      *            {@link io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode#PRECISE} is to be used
-     * @param binaryMode TODO
+     * @param binaryMode how binary columns should be represented
      */
     public MySqlValueConverters(DecimalMode decimalMode, TemporalPrecisionMode temporalPrecisionMode, BigIntUnsignedMode bigIntUnsignedMode,
                                 BinaryHandlingMode binaryMode) {
@@ -140,7 +140,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
      * @param bigIntUnsignedMode how {@code BIGINT UNSIGNED} values should be treated; may be null if
      *            {@link io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode#PRECISE} is to be used
      * @param adjuster a temporal adjuster to make a database specific time modification before conversion
-     * @param binaryMode TODO
+     * @param binaryMode how binary columns should be represented
      */
     public MySqlValueConverters(DecimalMode decimalMode, TemporalPrecisionMode temporalPrecisionMode, ZoneOffset defaultOffset, BigIntUnsignedMode bigIntUnsignedMode,
                                 TemporalAdjuster adjuster, BinaryHandlingMode binaryMode) {
@@ -158,7 +158,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
      * @param bigIntUnsignedMode how {@code BIGINT UNSIGNED} values should be treated; may be null if
      *            {@link io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode#PRECISE} is to be used
      * @param adjuster a temporal adjuster to make a database specific time modification before conversion
-     * @param binaryMode TODO
+     * @param binaryMode how binary columns should be represented
      */
     public MySqlValueConverters(DecimalMode decimalMode, TemporalPrecisionMode temporalPrecisionMode, BigIntUnsignedMode bigIntUnsignedMode, TemporalAdjuster adjuster,
                                 BinaryHandlingMode binaryMode) {
@@ -613,13 +613,13 @@ public class MySqlValueConverters extends JdbcValueConverters {
     }
 
     @Override
-    protected ByteBuffer convertByteArray(Column column, byte[] data) {
+    protected ByteBuffer toByteBuffer(Column column, byte[] data) {
         // DBZ-254 right-pad fixed-length binary column values with 0x00 (zero byte)
         if (column.jdbcType() == Types.BINARY && data.length < column.length()) {
             data = Arrays.copyOf(data, column.length());
         }
 
-        return super.convertByteArray(column, data);
+        return super.toByteBuffer(column, data);
     }
 
     /**

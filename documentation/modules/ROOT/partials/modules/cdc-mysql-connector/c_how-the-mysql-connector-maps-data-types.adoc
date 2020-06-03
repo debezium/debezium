@@ -75,40 +75,52 @@ a| _n/a_
 a| _n/a_
 
 |`BINARY(M)]`
-|`BYTES`
+|`BYTES` or `STRING`
 a| _n/a_
+
+Either the raw bytes (the default), a base64-encoded String, or a hex-encoded String, based on the {link-prefix}:{link-mysql-connector}#connector-property-binary-handling-mode[binary handling mode] setting
 
 |`VARBINARY(M)]`
-|`BYTES`
+|`BYTES` or `STRING`
 a| _n/a_
 
+Either the raw bytes (the default), a base64-encoded String, or a hex-encoded String, based on the {link-prefix}:{link-mysql-connector}#connector-property-binary-handling-mode[binary handling mode] setting
+
 |`TINYBLOB`
-|`BYTES`
+|`BYTES` or `STRING`
 a| _n/a_
+
+Either the raw bytes (the default), a base64-encoded String, or a hex-encoded String, based on the {link-prefix}:{link-mysql-connector}#connector-property-binary-handling-mode[binary handling mode] setting
 
 |`TINYTEXT`
 |`STRING`
 a| _n/a_
 
 |`BLOB`
-|`BYTES`
+|`BYTES` or `STRING`
 a| _n/a_
+
+Either the raw bytes (the default), a base64-encoded String, or a hex-encoded String, based on the {link-prefix}:{link-mysql-connector}#connector-property-binary-handling-mode[binary handling mode] setting
 
 |`TEXT`
 |`STRING`
 a| _n/a_
 
 |`MEDIUMBLOB`
-|`BYTES`
+|`BYTES` or `STRING`
 a| _n/a_
+
+Either the raw bytes (the default), a base64-encoded String, or a hex-encoded String, based on the {link-prefix}:{link-mysql-connector}#connector-property-binary-handling-mode[binary handling mode] setting
 
 |`MEDIUMTEXT`
 |`STRING`
 a| _n/a_
 
 |`LONGBLOB`
-|`BYTES`
+|`BYTES` or `STRING`
 a| _n/a_
+
+Either the raw bytes (the default), a base64-encoded String, or a hex-encoded String, based on the {link-prefix}:{link-mysql-connector}#connector-property-binary-handling-mode[binary handling mode] setting
 
 |`LONGTEXT`
 |`STRING`

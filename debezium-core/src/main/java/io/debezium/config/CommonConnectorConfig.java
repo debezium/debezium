@@ -12,6 +12,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.common.config.ConfigDef.Importance;
@@ -165,27 +166,33 @@ public abstract class CommonConnectorConfig {
         /**
          * Represent binary values as byte array
          */
-        BYTES("bytes"),
+        BYTES("bytes", () -> SchemaBuilder.bytes()),
 
         /**
          * Represent binary values as base64-encoded string
          */
-        BASE64("base64"),
+        BASE64("base64", () -> SchemaBuilder.string()),
 
         /**
          * Represents binary values as hex-encoded (base16) string
          */
-        HEX("hex");
+        HEX("hex", () -> SchemaBuilder.string());
 
         private final String value;
+        private final Supplier<SchemaBuilder> schema;
 
-        BinaryHandlingMode(String value) {
+        BinaryHandlingMode(String value, Supplier<SchemaBuilder> schema) {
             this.value = value;
+            this.schema = schema;
         }
 
         @Override
         public String getValue() {
             return value;
+        }
+
+        public SchemaBuilder getSchema() {
+            return schema.get();
         }
 
         /**

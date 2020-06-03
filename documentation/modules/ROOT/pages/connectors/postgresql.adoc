@@ -1113,15 +1113,15 @@ The _semantic type_ describes how the Kafka Connect schema captures the _meaning
 |The approximate number of microseconds for a time interval using the `365.25 / 12.0` formula for days per month average
 
 |`INTERVAL [P]`
-|`String`
+|`STRING`
 |`io.debezium.time.Interval` +
 (when `interval.handling.mode` is set to `string`)
 |The string representation of the interval value that follows pattern `P<years>Y<months>M<days>DT<hours>H<minutes>M<seconds>S`, e.g. `P1Y2M3DT4H5M6.78S`
 
 |`BYTEA`
-|`BYTES`
+|`BYTES` or `STRING`
 |n/a
-|
+|Either the raw bytes (the default), a base64-encoded String, or a hex-encoded String, based on the {link-prefix}:{link-postgresql-connector}#connector-property-binary-handling-mode[binary handling mode] setting
 
 |`JSON`, `JSONB`
 |`STRING`
