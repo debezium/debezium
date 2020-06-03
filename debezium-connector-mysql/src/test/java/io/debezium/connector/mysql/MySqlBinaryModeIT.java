@@ -62,7 +62,7 @@ public class MySqlBinaryModeIT extends AbstractConnectorTest {
         // Use the DB configuration to define the connector's configuration ...
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NEVER)
-                .with(MySqlConnectorConfig.BINARY_HANDLING_MODE, BinaryHandlingMode.RAW)
+                .with(MySqlConnectorConfig.BINARY_HANDLING_MODE, BinaryHandlingMode.BYTES)
                 .build();
 
         // Start the connector ...

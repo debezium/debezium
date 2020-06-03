@@ -163,17 +163,17 @@ public abstract class CommonConnectorConfig {
     public enum BinaryHandlingMode implements EnumeratedValue {
 
         /**
-         * Represents Binary value as java
+         * Represent binary values as byte array
          */
-        RAW("raw"),
+        BYTES("bytes"),
 
         /**
-         * Represents Binary value as base64
+         * Represent binary values as base64-encoded string
          */
         BASE64("base64"),
 
         /**
-         * Represents Binary value as hex (base16)
+         * Represents binary values as hex-encoded (base16) string
          */
         HEX("hex");
 
@@ -340,13 +340,13 @@ public abstract class CommonConnectorConfig {
 
     public static final Field BINARY_HANDLING_MODE = Field.create("binary.handling.mode")
             .withDisplayName("Binary Handling")
-            .withEnum(BinaryHandlingMode.class, BinaryHandlingMode.RAW)
+            .withEnum(BinaryHandlingMode.class, BinaryHandlingMode.BYTES)
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.LOW)
             .withDescription("Specify how binary (blob, binary, etc.) columns should be represented in change events, including:"
-                    + "'raw' represents binary data as native Java binary type (default)"
-                    + "'base64' represents binary data as base64-encoded"
-                    + "'hex' represents binary data as hex-encoded (base16)");
+                    + "'bytes' represents binary data as byte array (default)"
+                    + "'base64' represents binary data as base64-encoded string"
+                    + "'hex' represents binary data as hex-encoded (base16) string");
 
     protected static final ConfigDefinition CONFIG_DEFINITION = ConfigDefinition.editor()
             .connector(
