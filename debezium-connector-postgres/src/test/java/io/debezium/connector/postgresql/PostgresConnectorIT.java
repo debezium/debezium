@@ -41,7 +41,6 @@ import org.fest.assertions.Assertions;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
-import org.junit.ComparisonFailure;
 import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
@@ -66,6 +65,7 @@ import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.embedded.EmbeddedEngine;
+import io.debezium.engine.DebeziumEngine;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.junit.EqualityCheck;
@@ -1684,22 +1684,12 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         TestHelper.execute(INSERT_STMT);
         assertRecordsAfterInsert(2, 2, 2);
 
-        final long recordsCount = 10;
-        final int batchSize = 100;
-
-        batchInsertRecords(recordsCount, batchSize);
-        CompletableFuture.runAsync(() -> consumeRecords(recordsCount))
-                .exceptionally(throwable -> {
-                    throw new RuntimeException(throwable);
-                }).get();
-
         stopConnector(value -> {
-            assertTrue(
-                    logInterceptor.containsMessage(
-                            "Creating Publication with statement 'CREATE PUBLICATION cdc FOR TABLE \"public\".\"numeric_table\", \"public\".\"text_table\", \"s1\".\"a\", \"s2\".\"a\";'")
-                            &&
-                            logInterceptor.containsMessage("Creating new publication 'cdc' for plugin 'PGOUTPUT'"));
+            assertTrue(logInterceptor.containsMessage(
+                    "Creating Publication with statement 'CREATE PUBLICATION cdc FOR TABLE \"public\".\"numeric_table\", \"public\".\"text_table\", \"s1\".\"a\", \"s2\".\"a\";'"));
+            assertTrue(logInterceptor.containsMessage("Creating new publication 'cdc' for plugin 'PGOUTPUT'"));
         });
+
         assertTrue(TestHelper.publicationExists("cdc"));
     }
 
@@ -1714,13 +1704,11 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
                 .with(PostgresConnectorConfig.SLOT_NAME, "cdc")
                 .with(PostgresConnectorConfig.PUBLICATION_AUTOCREATE_MODE, PostgresConnectorConfig.AutoCreateMode.DISABLED.getValue());
 
-        EmbeddedEngine.CompletionCallback cb = new EmbeddedEngine.CompletionCallback() {
-            @Override
-            public void handle(boolean success, String message, Throwable error) {
-                assertEquals(error.getClass(), ConnectException.class);
-                assertEquals(error.getMessage(), "Publication autocreation is disabled, please create one and restart the connector.");
-            }
+        DebeziumEngine.CompletionCallback cb = (boolean success, String message, Throwable error) -> {
+            assertEquals(error.getClass(), ConnectException.class);
+            assertEquals(error.getMessage(), "Publication autocreation is disabled, please create one and restart the connector.");
         };
+
         start(PostgresConnector.class, configBuilder.build(), cb);
         waitForAvailableRecords(100, TimeUnit.MILLISECONDS);
         stopConnector();
@@ -1732,9 +1720,6 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
     @FixFor("DBZ-1813")
     @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Publication configuration only valid for PGOUTPUT decoder")
     public void shouldProduceMessagesOnlyForConfiguredTables() throws Exception {
-        final long recordsCount = 10;
-        final int batchSize = 100;
-
         TestHelper.dropAllSchemas();
         TestHelper.dropPublication("cdc");
         TestHelper.executeDDL("postgres_create_tables.ddl");
@@ -1742,34 +1727,27 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
 
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.PUBLICATION_NAME, "cdc")
-                .with(PostgresConnectorConfig.TABLE_WHITELIST, "public.text_table")
+                .with(PostgresConnectorConfig.TABLE_WHITELIST, "s2.a")
                 .with(PostgresConnectorConfig.PUBLICATION_AUTOCREATE_MODE, PostgresConnectorConfig.AutoCreateMode.FILTERED.getValue());
 
         start(PostgresConnector.class, configBuilder.build());
         assertConnectorIsRunning();
-        waitForAvailableRecords(100, TimeUnit.MILLISECONDS);
+        waitForSnapshotToBeCompleted();
 
-        // insert records to a watched table
-        batchInsertRecords(recordsCount, batchSize);
-        CompletableFuture.runAsync(() -> consumeRecords(recordsCount))
-                .exceptionally(throwable -> {
-                    throw new RuntimeException(throwable);
-                }).get();
+        // snapshot record
+        consumeRecordsByTopic(1);
 
-        // assert that inserts on unwatched tables are not emitted.
-        try {
-            // check the records from the snapshot
-            assertRecordsFromSnapshot(2, 1, 1);
+        TestHelper.execute(INSERT_STMT);
+        SourceRecords actualRecords = consumeRecordsByTopic(1);
+        assertThat(actualRecords.topics()).hasSize(1);
 
-            // insert 2 new records
-            TestHelper.execute(INSERT_STMT);
-            assertRecordsAfterInsert(2, 2, 2);
+        // there should be no record for s1.a
+        List<SourceRecord> s1recs = actualRecords.recordsForTopic(topicName("s1.a"));
+        List<SourceRecord> s2recs = actualRecords.recordsForTopic(topicName("s2.a"));
+        assertThat(s1recs).isNull();
+        assertThat(s2recs).hasSize(1);
 
-            fail("Insert events should be ignored");
-        }
-        catch (ComparisonFailure e) {
-            assertThat(e).hasMessage("expected:<[2]> but was:<[0]>");
-        }
+        VerifyRecord.isValidInsert(s2recs.get(0), PK_FIELD, 2);
 
         stopConnector();
     }
