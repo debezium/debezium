@@ -8,13 +8,16 @@ package io.debezium.transforms.outbox;
 import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
 import static org.fest.assertions.Assertions.assertThat;
 
+import io.debezium.connector.AbstractSourceInfo;
+import io.debezium.data.Envelope;
+import io.debezium.data.VerifyRecord;
+import io.debezium.doc.FixFor;
+import io.debezium.time.Timestamp;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
-
 import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.Schema.Type;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
@@ -25,12 +28,6 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
-
-import io.debezium.connector.AbstractSourceInfo;
-import io.debezium.data.Envelope;
-import io.debezium.data.VerifyRecord;
-import io.debezium.doc.FixFor;
-import io.debezium.time.Timestamp;
 
 /**
  * Unit tests for {@link EventRouter}
@@ -655,6 +652,34 @@ public class EventRouterTest {
     }
 
     @Test
+    public void canSetBinaryMessageKey() {
+        final byte[] eventType = "a UserCreated".getBytes(StandardCharsets.UTF_8);
+        final EventRouter<SourceRecord> router = new EventRouter<>();
+        final Map<String, String> config = new HashMap<>();
+        // This is not a good example of message key, this is just for test
+        config.put(EventRouterConfigDefinition.FIELD_EVENT_KEY.name(), "type");
+        router.configure(config);
+
+        final SourceRecord eventRecord = createEventRecord(
+                "da8d6de6-3b77-45ff-8f44-57db55a7a06c",
+                SchemaBuilder.bytes(),
+                eventType,
+                SchemaBuilder.string(),
+                "Some other payload id",
+                "User",
+                SchemaBuilder.string(),
+                "{}",
+                new HashMap<>(),
+                new HashMap<>());
+
+        final SourceRecord eventRouted = router.apply(eventRecord);
+
+        assertThat(eventRouted).isNotNull();
+        assertThat(eventRouted.keySchema().type()).isEqualTo(Schema.Type.BYTES);
+        assertThat(eventRouted.key()).isEqualTo(eventType);
+    }
+
+    @Test
     public void canPassBinaryKey() {
         final byte[] key = "a binary key".getBytes(StandardCharsets.UTF_8);
         canPassKeyByType(SchemaBuilder.bytes(), key);
@@ -673,6 +698,7 @@ public class EventRouterTest {
 
         final SourceRecord eventRecord = createEventRecord(
                 "da8d6de6-3b77-45ff-8f44-57db55a7a06c",
+                SchemaBuilder.string(),
                 "UserCreated",
                 keyType,
                 key,
@@ -698,6 +724,7 @@ public class EventRouterTest {
 
         final SourceRecord eventRecord = createEventRecord(
                 "da8d6de6-3b77-45ff-8f44-57db55a7a06c",
+                SchemaBuilder.string(),
                 "UserCreated",
                 SchemaBuilder.string(),
                 key,
@@ -845,6 +872,7 @@ public class EventRouterTest {
                                            Map<String, Object> extraValues) {
         return createEventRecord(
                 eventId,
+                SchemaBuilder.string(),
                 eventType,
                 SchemaBuilder.string(),
                 payloadId,
@@ -857,7 +885,8 @@ public class EventRouterTest {
 
     private SourceRecord createEventRecord(
                                            String eventId,
-                                           String eventType,
+                                           SchemaBuilder eventTypeSchemaType,
+                                           Object eventType,
                                            SchemaBuilder payloadIdSchemaType,
                                            Object payloadId,
                                            String payloadType,
@@ -869,7 +898,7 @@ public class EventRouterTest {
                 .field("id", SchemaBuilder.string())
                 .field("aggregatetype", SchemaBuilder.string())
                 .field("aggregateid", payloadIdSchemaType)
-                .field("type", SchemaBuilder.string())
+                .field("type", eventTypeSchemaType)
                 .field("payload", payloadSchemaType)
                 .field("is_deleted", SchemaBuilder.bool().optional());
 
