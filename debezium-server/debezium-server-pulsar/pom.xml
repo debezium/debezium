@@ -136,7 +136,7 @@
                                     <color>yellow</color>
                                 </log>
                                 <wait>
-                                    <time>30000</time> <!-- 30 seconds max -->
+                                    <time>90000</time> <!-- 90 seconds max -->
                                     <log>(?s)org.apache.pulsar.broker.PulsarService - messaging service is ready</log>
                                 </wait>
                             </run>
