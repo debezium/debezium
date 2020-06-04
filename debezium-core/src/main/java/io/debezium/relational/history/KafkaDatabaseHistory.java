@@ -137,7 +137,8 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
             .withType(Type.STRING)
             .withWidth(Width.LONG)
             .withImportance(Importance.HIGH)
-            .withDescription("The class of the Debezium database connector");
+            .withDescription("The class of the Debezium database connector")
+            .withNoValidation();
 
     // Required for unified thread creation
     public static final Field INTERNAL_CONNECTOR_ID = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "connector.id")
@@ -145,7 +146,8 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
             .withType(Type.STRING)
             .withWidth(Width.SHORT)
             .withImportance(Importance.HIGH)
-            .withDescription("The unique identifier of the Debezium connector");
+            .withDescription("The unique identifier of the Debezium connector")
+            .withNoValidation();
 
     public static Field.Set ALL_FIELDS = Field.setOf(TOPIC, BOOTSTRAP_SERVERS, DatabaseHistory.NAME,
             RECOVERY_POLL_INTERVAL_MS, RECOVERY_POLL_ATTEMPTS, INTERNAL_CONNECTOR_CLASS, INTERNAL_CONNECTOR_ID);
