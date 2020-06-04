@@ -12,6 +12,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.Duration;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -66,11 +67,21 @@ public class PostgresConnection extends JdbcConnection {
      * Creates a Postgres connection using the supplied configuration.
      *
      * @param config {@link Configuration} instance, may not be null.
+     * @param provideTypeRegistry {@code true} if type registry should be created
+     */
+    public PostgresConnection(Configuration config, boolean provideTypeRegistry) {
+        super(config, FACTORY, PostgresConnection::validateServerVersion, PostgresConnection::defaultSettings);
+        this.typeRegistry = provideTypeRegistry ? new TypeRegistry(this) : null;
+        databaseCharset = determineDatabaseCharset();
+    }
+
+    /**
+     * Creates a Postgres connection using the supplied configuration.
+     *
+     * @param config {@link Configuration} instance, may not be null.
      */
     public PostgresConnection(Configuration config) {
-        super(config, FACTORY, PostgresConnection::validateServerVersion, PostgresConnection::defaultSettings);
-        this.typeRegistry = new TypeRegistry(this);
-        databaseCharset = determineDatabaseCharset();
+        this(config, false);
     }
 
     /**
@@ -483,6 +494,7 @@ public class PostgresConnection extends JdbcConnection {
     }
 
     public TypeRegistry getTypeRegistry() {
+        Objects.requireNonNull(typeRegistry, "Connection does not provide type registry");
         return typeRegistry;
     }
 }

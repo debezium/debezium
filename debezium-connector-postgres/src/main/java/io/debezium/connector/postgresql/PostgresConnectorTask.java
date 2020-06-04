@@ -67,7 +67,7 @@ public class PostgresConnectorTask extends BaseSourceTask {
             throw new ConnectException("Unable to load snapshotter, if using custom snapshot mode, double check your settings");
         }
 
-        jdbcConnection = new PostgresConnection(connectorConfig.jdbcConfig());
+        jdbcConnection = new PostgresConnection(connectorConfig.jdbcConfig(), true);
         heartbeatConnection = new PostgresConnection(connectorConfig.jdbcConfig());
         final TypeRegistry typeRegistry = jdbcConnection.getTypeRegistry();
         final Charset databaseCharset = jdbcConnection.getDatabaseCharset();

@@ -109,6 +109,15 @@ public final class TestHelper {
     }
 
     /**
+     * Obtain a DB connection providing type registry.
+     *
+     * @return the PostgresConnection instance; never null
+     */
+    public static PostgresConnection createWithTypeRegistry() {
+        return new PostgresConnection(defaultJdbcConfig(), true);
+    }
+
+    /**
      * Obtain a DB connection with a custom application name.
      *
      * @param appName the name of the application used for PostgreSQL diagnostics
@@ -173,7 +182,7 @@ public final class TestHelper {
     }
 
     public static TypeRegistry getTypeRegistry() {
-        try (final PostgresConnection connection = new PostgresConnection(defaultJdbcConfig())) {
+        try (final PostgresConnection connection = new PostgresConnection(defaultJdbcConfig(), true)) {
             return connection.getTypeRegistry();
         }
     }
