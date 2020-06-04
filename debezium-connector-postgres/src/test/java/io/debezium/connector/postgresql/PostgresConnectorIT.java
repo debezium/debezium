@@ -635,6 +635,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE);
         start(PostgresConnector.class, configBuilder.build());
         assertConnectorIsRunning();
+        waitForSnapshotToBeCompleted();
 
         // check the records from the snapshot
         assertRecordsFromSnapshot(2, 1, 1);
@@ -649,6 +650,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         // start the connector back up and check that a new snapshot has been performed
         start(PostgresConnector.class, configBuilder.with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE).build());
         assertConnectorIsRunning();
+        waitForSnapshotToBeCompleted();
 
         assertRecordsFromSnapshot(4, 1, 2, 1, 2);
 
