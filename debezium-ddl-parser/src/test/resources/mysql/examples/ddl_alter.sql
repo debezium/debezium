@@ -2,10 +2,12 @@
 -- Alter Table
 alter table ship_class add column ship_spec varchar(150) first, add somecol int after start_build, algorithm=instant;
 alter table t3 add column (c2 decimal(10, 2) comment 'comment`' null, c3 enum('abc', 'cba', 'aaa')), add index t3_i1 using btree (c2) comment 'some index';
+alter table t3 add column (c4 decimal(10, 2) comment 'comment`' null, add index t3_i2 using btree (c4) comment 'some index';
 alter table t2 add constraint t2_pk_constraint primary key (1c), alter column `_` set default 1;
 alter table ship_class change column somecol col_for_del tinyint first;
 alter table ship_class drop col_for_del;
 alter table t3 drop index t3_i1;
+alter table t3 drop index if exists t3_i2;
 alter table childtable drop index fk_idParent_parentTable;
 alter table t2 drop primary key;
 alter table t3 rename to table3column;
