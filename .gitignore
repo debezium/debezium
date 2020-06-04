@@ -27,3 +27,4 @@ phantomjsdriver.log
 generated-sources/
 
 /state/
+bin/
