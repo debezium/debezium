@@ -43,7 +43,10 @@ public class ChangeEventSourceCoordinator {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ChangeEventSourceCoordinator.class);
 
-    private static final Duration SHUTDOWN_WAIT_TIMEOUT = Duration.ofSeconds(90);
+    /**
+     * Waiting period for the polling loop to finish. Will be applied twice, once gracefully, once forcefully.
+     */
+    public static final Duration SHUTDOWN_WAIT_TIMEOUT = Duration.ofSeconds(90);
 
     private final OffsetContext previousOffset;
     private final ErrorHandler errorHandler;

@@ -54,6 +54,7 @@ import io.debezium.config.Field;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.engine.StopEngineException;
 import io.debezium.engine.spi.OffsetCommitPolicy;
+import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.util.Clock;
 import io.debezium.util.VariableLatch;
 
@@ -203,7 +204,13 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
             OFFSET_FLUSH_INTERVAL_MS, OFFSET_COMMIT_TIMEOUT_MS,
             INTERNAL_KEY_CONVERTER_CLASS, INTERNAL_VALUE_CONVERTER_CLASS);
 
-    private static final Duration WAIT_FOR_COMPLETION_BEFORE_INTERRUPT_DEFAULT = Duration.ofSeconds(2);
+    /**
+     * How long we wait before forcefully stopping the connector thread when
+     * shutting down. Must be longer than
+     * {@link ChangeEventSourceCoordinator#SHUTDOWN_WAIT_TIMEOUT} * 2.
+     */
+    private static final Duration WAIT_FOR_COMPLETION_BEFORE_INTERRUPT_DEFAULT = Duration.ofMinutes(5);
+
     private static final String WAIT_FOR_COMPLETION_BEFORE_INTERRUPT_PROP = "debezium.embedded.shutdown.pause.before.interrupt.ms";
 
     public static final class BuilderImpl implements Builder {
@@ -966,15 +973,16 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
      * @see #await(long, TimeUnit)
      */
     public boolean stop() {
-        LOGGER.debug("Stopping the embedded engine");
+        LOGGER.info("Stopping the embedded engine");
         // Signal that the run() method should stop ...
         Thread thread = this.runningThread.getAndSet(null);
         if (thread != null) {
             try {
-                latch.await(
-                        Long.valueOf(
-                                System.getProperty(WAIT_FOR_COMPLETION_BEFORE_INTERRUPT_PROP, Long.toString(WAIT_FOR_COMPLETION_BEFORE_INTERRUPT_DEFAULT.toMillis()))),
-                        TimeUnit.MILLISECONDS);
+                // Making sure the event source coordinator has enough time to shut down before forcefully stopping it
+                Duration timeout = Duration.ofMillis(Long
+                        .valueOf(System.getProperty(WAIT_FOR_COMPLETION_BEFORE_INTERRUPT_PROP, Long.toString(WAIT_FOR_COMPLETION_BEFORE_INTERRUPT_DEFAULT.toMillis()))));
+                LOGGER.info("Waiting for {} for connector to stop", timeout);
+                latch.await(timeout.toMillis(), TimeUnit.MILLISECONDS);
             }
             catch (InterruptedException e) {
             }
