@@ -672,7 +672,7 @@ dropEvent
     ;
 
 dropIndex
-    : DROP INDEX intimeAction=(ONLINE | OFFLINE)?
+    : DROP INDEX ifExists? intimeAction=(ONLINE | OFFLINE)?
       uid ON tableName
       (
         ALGORITHM '='? algType=(DEFAULT | INPLACE | COPY)
