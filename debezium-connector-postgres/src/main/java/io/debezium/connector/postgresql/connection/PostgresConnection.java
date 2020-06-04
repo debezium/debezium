@@ -286,25 +286,39 @@ public class PostgresConnection extends JdbcConnection {
      * @return {@code true} if the slot was dropped, {@code false} otherwise
      */
     public boolean dropReplicationSlot(String slotName) {
-        try {
-            execute("select pg_drop_replication_slot('" + slotName + "')");
-            return true;
+        final int ATTEMPTS = 3;
+        for (int i = 0; i < ATTEMPTS; i++) {
+            try {
+                execute("select pg_drop_replication_slot('" + slotName + "')");
+                return true;
+            }
+            catch (SQLException e) {
+                // slot is active
+                if (PSQLState.OBJECT_IN_USE.getState().equals(e.getSQLState())) {
+                    if (i < ATTEMPTS - 1) {
+                        LOGGER.debug("Cannot drop replication slot '{}' because it's still in use", slotName);
+                    }
+                    else {
+                        LOGGER.warn("Cannot drop replication slot '{}' because it's still in use", slotName);
+                        return false;
+                    }
+                }
+                else if (PSQLState.UNDEFINED_OBJECT.getState().equals(e.getSQLState())) {
+                    LOGGER.debug("Replication slot {} has already been dropped", slotName);
+                    return false;
+                }
+                else {
+                    LOGGER.error("Unexpected error while attempting to drop replication slot", e);
+                    return false;
+                }
+            }
+            try {
+                Metronome.parker(Duration.ofSeconds(1), Clock.system()).pause();
+            }
+            catch (InterruptedException e) {
+            }
         }
-        catch (SQLException e) {
-            // slot is active
-            if (PSQLState.OBJECT_IN_USE.getState().equals(e.getSQLState())) {
-                LOGGER.warn("Cannot drop replication slot '{}' because it's still in use", slotName);
-                return false;
-            }
-            else if (PSQLState.UNDEFINED_OBJECT.getState().equals(e.getSQLState())) {
-                LOGGER.debug("Replication slot {} has already been dropped", slotName);
-                return false;
-            }
-            else {
-                LOGGER.error("Unexpected error while attempting to drop replication slot", e);
-            }
-            return false;
-        }
+        return false;
     }
 
     /**
