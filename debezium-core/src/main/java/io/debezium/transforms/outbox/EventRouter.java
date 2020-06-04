@@ -113,6 +113,7 @@ public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R
         Object eventId = eventStruct.get(fieldEventId);
         Object payload = eventStruct.get(fieldPayload);
         Object payloadId = eventStruct.get(fieldPayloadId);
+        final Field fallbackPayloadIdField = eventValueSchema.field(fieldPayloadId);
 
         final Field eventIdField = eventValueSchema.field(fieldEventId);
         if (eventIdField == null) {
@@ -166,7 +167,7 @@ public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R
         R newRecord = r.newRecord(
                 eventStruct.getString(routeByField),
                 null,
-                Schema.STRING_SCHEMA,
+                defineRecordKeySchema(eventValueSchema, fallbackPayloadIdField),
                 defineRecordKey(eventStruct, payloadId),
                 updatedSchema,
                 updatedValue,
@@ -212,6 +213,19 @@ public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R
             default:
                 throw new ConnectException(String.format("Unsupported field type %s for event timestamp", schemaName));
         }
+    }
+
+    private Schema defineRecordKeySchema(Schema eventStruct, Field fallbackKeyField) {
+        Field eventKeySchema = null;
+        if (fieldEventKey != null) {
+            eventKeySchema = eventStruct.field(fieldEventKey);
+        }
+
+        if (eventKeySchema != null) {
+            return eventKeySchema.schema();
+        }
+
+        return (fallbackKeyField != null) ? fallbackKeyField.schema() : Schema.STRING_SCHEMA;
     }
 
     private Object defineRecordKey(Struct eventStruct, Object fallbackKey) {
