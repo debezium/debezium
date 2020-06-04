@@ -840,7 +840,8 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL.getValue())
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
                 .with(PostgresConnectorConfig.SCHEMA_WHITELIST, "s1")
-                .with(PostgresConnectorConfig.TABLE_WHITELIST, "s1.b");
+                .with(PostgresConnectorConfig.TABLE_WHITELIST, "s1.b")
+                .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true);
 
         start(PostgresConnector.class, configBuilder.build());
         assertConnectorIsRunning();
@@ -854,6 +855,8 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
 
         SourceRecord record = records.get(0);
         VerifyRecord.isValidInsert(record, PK_FIELD, 1);
+        final String isbn = new String(((Struct) record.value()).getStruct("after").getBytes("aa"));
+        Assertions.assertThat(isbn).isEqualTo("0-393-04002-X");
 
         try (final PostgresConnection connection = TestHelper.create()) {
             try {
@@ -865,6 +868,8 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
             }
             assertThat(getActiveTransactions(connection)).hasSize(1);
         }
+        stopConnector();
+        assertConnectorNotRunning();
     }
 
     @Test

@@ -17,6 +17,7 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
@@ -68,6 +69,12 @@ public class PostgresConnectorTask extends BaseSourceTask {
         }
 
         jdbcConnection = new PostgresConnection(connectorConfig.jdbcConfig(), true);
+        try {
+            jdbcConnection.setAutoCommit(false);
+        }
+        catch (SQLException e) {
+            throw new DebeziumException(e);
+        }
         heartbeatConnection = new PostgresConnection(connectorConfig.jdbcConfig());
         final TypeRegistry typeRegistry = jdbcConnection.getTypeRegistry();
         final Charset databaseCharset = jdbcConnection.getDatabaseCharset();
@@ -121,6 +128,13 @@ public class PostgresConnectorTask extends BaseSourceTask {
                 else {
                     slotCreatedInfo = null;
                 }
+            }
+
+            try {
+                jdbcConnection.commit();
+            }
+            catch (SQLException e) {
+                throw new DebeziumException(e);
             }
 
             queue = new ChangeEventQueue.Builder<DataChangeEvent>()

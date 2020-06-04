@@ -405,9 +405,6 @@ public class TypeRegistry {
             while (rs.next()) {
                 PostgresType result = createTypeBuilderFromResultSet(connection, rs, typeInfo, sqlTypeMapper).build();
                 addType(result);
-                if (!connection.getAutoCommit()) {
-                    connection.commit();
-                }
                 return result;
             }
         }
