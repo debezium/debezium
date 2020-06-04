@@ -63,6 +63,7 @@ import io.debezium.data.VerifyRecord;
 import io.debezium.embedded.EmbeddedEngine.CompletionCallback;
 import io.debezium.embedded.EmbeddedEngine.ConnectorCallback;
 import io.debezium.embedded.EmbeddedEngine.EmbeddedConfig;
+import io.debezium.engine.DebeziumEngine;
 import io.debezium.function.BooleanConsumer;
 import io.debezium.junit.SkipTestRule;
 import io.debezium.junit.TestLogger;
@@ -250,7 +251,7 @@ public abstract class AbstractConnectorTest implements Testing {
      *            stops running after completing successfully or due to an error; may be null
      */
     protected void start(Class<? extends SourceConnector> connectorClass, Configuration connectorConfig,
-                         CompletionCallback callback) {
+                         DebeziumEngine.CompletionCallback callback) {
         start(connectorClass, connectorConfig, callback, null);
     }
 
@@ -265,7 +266,7 @@ public abstract class AbstractConnectorTest implements Testing {
      *            stops running after completing successfully or due to an error; may be null
      */
     protected void start(Class<? extends SourceConnector> connectorClass, Configuration connectorConfig,
-                         CompletionCallback callback, Predicate<SourceRecord> isStopRecord) {
+                         DebeziumEngine.CompletionCallback callback, Predicate<SourceRecord> isStopRecord) {
         Configuration config = Configuration.copy(connectorConfig)
                 .with(EmbeddedEngine.ENGINE_NAME, "testing-connector")
                 .with(EmbeddedEngine.CONNECTOR_CLASS, connectorClass.getName())

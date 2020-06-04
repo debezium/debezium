@@ -24,9 +24,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.postgresql.core.BaseConnection;
@@ -162,7 +160,6 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                                         stmt.execute(createPublicationStmt);
                                     }
                                     catch (Exception e) {
-                                        LOGGER.error("Unable to create publication for {}", publicationName);
                                         throw new ConnectException(String.format("Unable to create filtered publication %s for %s", publicationName, tableFilterString),
                                                 e);
                                     }
@@ -186,13 +183,6 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
             streamParams.put("proto_version", 1);
             streamParams.put("publication_names", publicationName);
         }
-    }
-
-    private Stream<TableId> toTableIds(Set<TableId> tableIds, Pattern pattern) {
-        return tableIds
-                .stream()
-                .filter(tid -> pattern.asPredicate().test(tid.toString()))
-                .sorted();
     }
 
     private Set<TableId> determineCapturedTables() throws Exception {
@@ -644,6 +634,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
             return this;
         }
 
+        @Override
         public Builder withTableFilter(RelationalTableFilters tableFilter) {
             assert tableFilter != null;
             this.tableFilter = tableFilter;
