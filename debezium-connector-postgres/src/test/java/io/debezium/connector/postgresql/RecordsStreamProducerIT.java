@@ -18,6 +18,8 @@ import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 
 import java.math.BigDecimal;
+import java.sql.Connection;
+import java.sql.Statement;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -65,7 +67,6 @@ import io.debezium.connector.postgresql.spi.SlotState;
 import io.debezium.data.Bits;
 import io.debezium.data.Enum;
 import io.debezium.data.Envelope;
-import io.debezium.data.SchemaAndValueField;
 import io.debezium.data.SpecialValueDecimal;
 import io.debezium.data.VariableScaleDecimal;
 import io.debezium.data.VerifyRecord;
@@ -2060,6 +2061,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
+    @FixFor("DBZ-2045")
     public void shouldUpdateSchemaWhenEnumOptionsChange() throws Exception {
         TestHelper.execute("CREATE TYPE test_type AS ENUM ('V1');");
         TestHelper.execute("CREATE TABLE enum_table (pk SERIAL, value test_type NOT NULL, PRIMARY KEY (pk));");
