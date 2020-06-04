@@ -96,8 +96,6 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
         }
 
         try {
-            connection.setAutoCommit(false);
-
             if (hasStartLsnStoredInContext) {
                 // start streaming from the last recorded position in the offset
                 final Long lsn = offsetContext.lastCompletelyProcessedLsn() != null ? offsetContext.lastCompletelyProcessedLsn() : offsetContext.lsn();
@@ -193,6 +191,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                         pauseNoMessage.sleepWhen(true);
                     }
                 }
+                connection.commit();
             }
         }
         catch (Throwable e) {
@@ -211,6 +210,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                 // replicationStream.close();
                 // close the connection - this should also disconnect the current stream even if it's blocking
                 try {
+                    connection.commit();
                     replicationConnection.close();
                 }
                 catch (Exception e) {
