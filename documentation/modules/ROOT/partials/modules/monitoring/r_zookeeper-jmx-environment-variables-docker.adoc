@@ -14,6 +14,7 @@ The value is used to specify the following JVM parameters:
 The IP address or resolvable host name of the Docker host,
 which JMX uses to construct a URL sent to the JMX client.
 A value of `localhost` or `127.0.0.1` will not work.
+Typically, `0.0.0.0` can be used.
 The value is used to specify the JVM parameter `-Djava.rmi.server.hostname=$JMXHOST`.
 
 `JMXAUTH`::
