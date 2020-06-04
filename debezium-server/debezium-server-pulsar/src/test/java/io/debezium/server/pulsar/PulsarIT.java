@@ -31,7 +31,7 @@ import io.debezium.util.Testing;
 import io.quarkus.test.junit.QuarkusTest;
 
 /**
- * Integration test that verifies basic reading from PostgreSQL database and writing to a Google Cloud PubSub stream.
+ * Integration test that verifies basic reading from PostgreSQL database and writing to an Apache Pulsar topic.
  *
  * @author Jiri Pechanec
  */
