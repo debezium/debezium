@@ -16,7 +16,9 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.config.ConfigValue;
 import org.apache.kafka.common.serialization.StringSerializer;
+import org.fest.assertions.Assertions;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -329,5 +331,22 @@ public class KafkaDatabaseHistoryTest {
         history.record(source, position, "db1", ddl);
         assertTrue(history.exists());
         assertTrue(history.storageExists());
+    }
+
+    @Test
+    @FixFor("DBZ-2144")
+    public void shouldValidateMandatoryValues() {
+        Configuration config = Configuration.create()
+                .build();
+
+        final Map<String, ConfigValue> issues = config.validate(KafkaDatabaseHistory.ALL_FIELDS);
+        Assertions.assertThat(issues.keySet()).isEqualTo(Collect.unmodifiableSet(
+                "database.history.name",
+                "database.history.connector.class",
+                "database.history.kafka.topic",
+                "database.history.kafka.bootstrap.servers",
+                "database.history.kafka.recovery.poll.interval.ms",
+                "database.history.connector.id",
+                "database.history.kafka.recovery.attempts"));
     }
 }
