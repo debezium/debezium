@@ -66,6 +66,7 @@ import io.debezium.connector.postgresql.spi.SlotState;
 import io.debezium.data.Bits;
 import io.debezium.data.Enum;
 import io.debezium.data.Envelope;
+import io.debezium.data.SchemaAndValueField;
 import io.debezium.data.SpecialValueDecimal;
 import io.debezium.data.VariableScaleDecimal;
 import io.debezium.data.VerifyRecord;
@@ -2465,7 +2466,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                         "INSERT INTO test_heartbeat_table (text) VALUES ('test_heartbeat');"));
 
         // Expecting 1 data change
-        Awaitility.await().atMost(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS).until(() -> {
+        Awaitility.await().atMost(TestHelper.waitTimeForRecords() * 10, TimeUnit.SECONDS).until(() -> {
             final SourceRecord record = consumeRecord();
             return record != null && Envelope.isEnvelopeSchema(record.valueSchema());
         });
