@@ -65,6 +65,10 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
+    <properties>
+        <!-- Enable API checks in this module -->
+        <revapi.skip>false</revapi.skip>
+    </properties>
     <build>
         <resources>
             <!-- Apply the properties set in the POM to the resource files -->
