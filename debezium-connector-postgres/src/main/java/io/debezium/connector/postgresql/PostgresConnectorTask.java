@@ -17,6 +17,7 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
@@ -115,7 +116,11 @@ public class PostgresConnectorTask extends BaseSourceTask {
                         slotCreatedInfo = replicationConnection.createReplicationSlot().orElse(null);
                     }
                     catch (SQLException ex) {
-                        throw new ConnectException(ex);
+                        String message = "Creation of replication slot failed";
+                        if (ex.getMessage().contains("already exists")) {
+                            message += "; when setting up multiple connectors for the same database host, please make sure to use a distinct replication slot name for each.";
+                        }
+                        throw new DebeziumException(message, ex);
                     }
                 }
                 else {
