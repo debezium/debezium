@@ -36,6 +36,7 @@ import org.postgresql.util.PSQLException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig;
 import io.debezium.connector.postgresql.PostgresSchema;
@@ -302,7 +303,11 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
             return createReplicationStream(lsn, skipFirstFlushRecord);
         }
         catch (Exception e) {
-            throw new ConnectException("Failed to start replication stream at " + lsn, e);
+            String message = "Failed to start replication stream at " + lsn;
+            if (e.getMessage().matches(".*replication slot .* is active.*")) {
+                message += "; when setting up multiple connectors for the same database host, please make sure to use a distinct replication slot name for each.";
+            }
+            throw new DebeziumException(message, e);
         }
     }
 
