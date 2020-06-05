@@ -2188,7 +2188,7 @@ functionCall
 specificFunction
     : (
       CURRENT_DATE | CURRENT_TIME | CURRENT_TIMESTAMP
-      | CURRENT_USER | LOCALTIME
+      | CURRENT_USER | LOCALTIME | UTC_TIMESTAMP
       )                                                             #simpleFunctionCall
     | CONVERT '(' expression separator=',' convertedDataType ')'    #dataTypeFunctionCall
     | CONVERT '(' expression USING charsetName ')'                  #dataTypeFunctionCall
