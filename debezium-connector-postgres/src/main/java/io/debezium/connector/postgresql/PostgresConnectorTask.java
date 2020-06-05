@@ -68,6 +68,8 @@ public class PostgresConnectorTask extends BaseSourceTask {
             throw new ConnectException("Unable to load snapshotter, if using custom snapshot mode, double check your settings");
         }
 
+        // Global JDBC connection used both for snapshotting and streaming.
+        // Must be able to resolve datatypes.
         jdbcConnection = new PostgresConnection(connectorConfig.jdbcConfig(), true);
         try {
             jdbcConnection.setAutoCommit(false);

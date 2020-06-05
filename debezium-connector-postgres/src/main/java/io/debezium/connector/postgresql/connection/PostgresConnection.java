@@ -65,6 +65,8 @@ public class PostgresConnection extends JdbcConnection {
 
     /**
      * Creates a Postgres connection using the supplied configuration.
+     * If necessary this connection is able to resolve data type mappings.
+     * Usually only one such connection per connector is needed.
      *
      * @param config {@link Configuration} instance, may not be null.
      * @param provideTypeRegistry {@code true} if type registry should be created
@@ -77,6 +79,7 @@ public class PostgresConnection extends JdbcConnection {
 
     /**
      * Creates a Postgres connection using the supplied configuration.
+     * The connector is the regular one without datatype resolution capabilities.
      *
      * @param config {@link Configuration} instance, may not be null.
      */
