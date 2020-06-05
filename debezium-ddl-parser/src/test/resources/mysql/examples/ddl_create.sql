@@ -173,3 +173,12 @@ RETURN
             SUBSTR(_uuid, 20, 4),
             SUBSTR(_uuid, 25) ))
 #end
+#begin
+-- Use UTC_TIMESTAMP without parenthesis
+CREATE FUNCTION myfunc(a INT) RETURNS INT
+BEGIN
+    DECLARE result INT;
+    SET result = UTC_TIMESTAMP;
+    RETURN result;
+END;
+#end
