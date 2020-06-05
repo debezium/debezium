@@ -8,15 +8,11 @@ package io.debezium.transforms.outbox;
 import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
 import static org.fest.assertions.Assertions.assertThat;
 
-import io.debezium.connector.AbstractSourceInfo;
-import io.debezium.data.Envelope;
-import io.debezium.data.VerifyRecord;
-import io.debezium.doc.FixFor;
-import io.debezium.time.Timestamp;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
+
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
@@ -28,6 +24,12 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
+
+import io.debezium.connector.AbstractSourceInfo;
+import io.debezium.data.Envelope;
+import io.debezium.data.VerifyRecord;
+import io.debezium.doc.FixFor;
+import io.debezium.time.Timestamp;
 
 /**
  * Unit tests for {@link EventRouter}
@@ -692,6 +694,7 @@ public class EventRouterTest {
     }
 
     @Test
+    @FixFor("DBZ-2152")
     public void canPassStringKey() {
         // canSetDefaultMessageKey() duplicates this logic, as the current test assumes the key will be a String
         final EventRouter<SourceRecord> router = new EventRouter<>();
@@ -706,6 +709,7 @@ public class EventRouterTest {
     }
 
     @Test
+    @FixFor("DBZ-2152")
     public void canSetBinaryMessageKey() {
         final byte[] eventType = "a UserCreated".getBytes(StandardCharsets.UTF_8);
         final EventRouter<SourceRecord> router = new EventRouter<>();
@@ -734,12 +738,14 @@ public class EventRouterTest {
     }
 
     @Test
+    @FixFor("DBZ-2152")
     public void canPassBinaryKey() {
         final byte[] key = "a binary key".getBytes(StandardCharsets.UTF_8);
         canPassKeyByType(SchemaBuilder.bytes(), key);
     }
 
     @Test
+    @FixFor("DBZ-2152")
     public void canPassIntKey() {
         final int key = 54321;
         canPassKeyByType(SchemaBuilder.int32(), key);
@@ -769,6 +775,7 @@ public class EventRouterTest {
     }
 
     @Test
+    @FixFor("DBZ-2152")
     public void canPassBinaryMessage() {
         final byte[] value = "a binary message".getBytes(StandardCharsets.UTF_8);
         final String key = "a key";
