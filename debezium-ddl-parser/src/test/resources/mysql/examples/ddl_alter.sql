@@ -7,7 +7,7 @@ alter table t2 add constraint t2_pk_constraint primary key (1c), alter column `_
 alter table ship_class change column somecol col_for_del tinyint first;
 alter table ship_class drop col_for_del;
 alter table t3 drop index t3_i1;
-alter table t3 drop index t3_i2 if exists;
+alter table t3 drop index if exists t3_i2;
 alter table childtable drop index fk_idParent_parentTable;
 alter table t2 drop primary key;
 alter table t3 rename to table3column;
