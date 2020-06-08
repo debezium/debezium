@@ -110,11 +110,13 @@ public class DatabaseHistoryMetrics extends Metrics implements DatabaseHistoryLi
     public void recoveryStarted() {
         status = DatabaseHistoryStatus.RECOVERING;
         recoveryStartTime = Instant.now();
+        LOGGER.info("Started database history recovery");
     }
 
     @Override
     public void recoveryStopped() {
         status = DatabaseHistoryStatus.RUNNING;
+        LOGGER.info("Finished database history recovery of {} changes in {} ms", changesRecovered.get(), Duration.between(Instant.now(), recoveryStartTime).toMillis());
     }
 
     @Override
