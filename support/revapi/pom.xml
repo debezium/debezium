@@ -1,0 +1,40 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+   <parent>
+      <groupId>org.jboss</groupId>
+      <artifactId>jboss-parent</artifactId>
+      <version>35</version>
+      <!-- same as parent POM -->
+   </parent>
+
+   <modelVersion>4.0.0</modelVersion>
+   <groupId>io.debezium</groupId>
+   <artifactId>debezium-revapi</artifactId>
+   <version>1.2.0-SNAPSHOT</version>
+   <name>Debezium Revapi Rules</name>
+   <description>Contains the configuration of the Revapi API checker and the list of the API changes in the Debezium APIs.</description>
+
+    <properties>
+        <!-- Instruct the build to use only UTF-8 encoding for source code -->
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+        <version.jar.plugin>3.0.2</version.jar.plugin>
+        <version.compiler.plugin>3.8.1</version.compiler.plugin>
+    </properties>
+ 
+    <build>
+        <plugins>
+            <!-- 
+            This is not deployed into a Maven repository. It is merely installed into the local Maven repository
+            during a local build.
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-deploy-plugin</artifactId>
+                <configuration>
+                    <skip>true</skip>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>
