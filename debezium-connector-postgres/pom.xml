@@ -241,7 +241,7 @@
                             <filter>
                                 <packages>
                                     <include>
-                                        <item>io.debezium.connector.posgresql.spi</item>
+                                        <item>io.debezium.connector.postgresql.spi</item>
                                     </include>
                                 </packages>
                             </filter>
