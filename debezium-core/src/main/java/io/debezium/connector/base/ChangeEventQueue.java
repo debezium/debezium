@@ -145,7 +145,7 @@ public class ChangeEventQueue<T> implements ChangeEventQueueMetrics {
         try {
             LOGGER.debug("polling records...");
             List<T> records = new ArrayList<>();
-            final Timer timeout = Threads.timer(Clock.SYSTEM, Temporals.max(pollInterval, ConfigurationDefaults.RETURN_CONTROL_INTERVAL));
+            final Timer timeout = Threads.timer(Clock.SYSTEM, Temporals.min(pollInterval, ConfigurationDefaults.RETURN_CONTROL_INTERVAL));
             while (!timeout.expired() && queue.drainTo(records, maxBatchSize) == 0) {
                 throwProducerExceptionIfPresent();
 
