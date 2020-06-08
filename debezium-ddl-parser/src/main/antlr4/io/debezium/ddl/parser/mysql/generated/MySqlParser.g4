@@ -621,7 +621,7 @@ alterSpecification
       uid columnDefinition (FIRST | AFTER uid)?                     #alterByModifyColumn
     | DROP COLUMN? uid RESTRICT?                                    #alterByDropColumn
     | DROP PRIMARY KEY                                              #alterByDropPrimaryKey
-    | DROP indexFormat=(INDEX | KEY) uid                            #alterByDropIndex
+    | DROP indexFormat=(INDEX | KEY) ifExists? uid                  #alterByDropIndex
     | RENAME indexFormat=(INDEX | KEY) uid TO uid                   #alterByRenameIndex
     | DROP FOREIGN KEY uid                                          #alterByDropForeignKey
     | DISABLE KEYS                                                  #alterByDisableKeys
