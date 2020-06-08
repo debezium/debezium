@@ -136,6 +136,8 @@ pipeline {
                     -Dtest.ocp.project.debezium="${OCP_PROJECT_DEBEZIUM}" \\
                     -Dtest.ocp.project.mysql="${OCP_PROJECT_MYSQL}"  \\
                     -Dtest.ocp.project.postgresql="${OCP_PROJECT_POSTGRESQL}" \\
+                    -Dtest.ocp.project.sqlserver="${OCP_PROJECT_SQLSERVER}"  \\
+                    -Dtest.ocp.project.mongo="${OCP_PROJECT_MONGO}" \\
                     -Dimage.fullname="${DBZ_CONNECT_IMAGE}" \\
                     -Dtest.ocp.pull.secret.paths="${SECRET_PATH}"
                     '''
