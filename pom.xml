@@ -167,6 +167,7 @@
     <modules>
         <module>support/checkstyle</module>
         <module>support/ide-configs</module>
+        <module>support/revapi</module>
         <module>debezium-api</module>
         <module>debezium-ddl-parser</module>
         <module>debezium-assembly-descriptors</module>
@@ -658,6 +659,18 @@
                     <groupId>org.revapi</groupId>
                     <artifactId>revapi-maven-plugin</artifactId>
                     <version>${version.revapi.plugin}</version>
+                    <dependencies>
+                        <dependency>
+                            <groupId>io.debezium</groupId>
+                            <artifactId>debezium-revapi</artifactId>
+                            <version>${project.version}</version>
+                        </dependency>
+                        <dependency>
+                            <groupId>org.revapi</groupId>
+                            <artifactId>revapi-java</artifactId>
+                            <version>${version.revapi-java.plugin}</version>
+                        </dependency>
+                    </dependencies>
                 </plugin>
                 <plugin>
                     <groupId>org.codehaus.mojo</groupId>
@@ -866,44 +879,26 @@
             <plugin>
                 <groupId>org.revapi</groupId>
                 <artifactId>revapi-maven-plugin</artifactId>
-                <dependencies>
-                    <dependency>
-                        <groupId>org.revapi</groupId>
-                        <artifactId>revapi-java</artifactId>
-                        <version>${version.revapi-java.plugin}</version>
-                    </dependency>
-                </dependencies>
                 <configuration>
                     <failOnMissingConfigurationFiles>false</failOnMissingConfigurationFiles>
                     <!-- Consider changes from the latest .Final version, not from the latest non-snapshot. -->
                     <versionFormat>\d+\.\d+\.\d+\.Final</versionFormat>
                     <ignoreSuggestionsFormat>xml</ignoreSuggestionsFormat>
-                    <analysisConfiguration>
-                        <revapi.semver.ignore>
-                            <!-- Automatically ignore changes that are OK according to the semver rules. -->
-                            <enabled>true</enabled>
-                        </revapi.semver.ignore>
-                        <revapi.java.filter.annotated>
-                            <exclude>
-                                <!-- Don't break on changes in the incubating API. -->
-                                <item>@io.debezium.common.annotation.Incubating</item>
-                            </exclude>
-                        </revapi.java.filter.annotated>
-                    </analysisConfiguration>
                     <analysisConfigurationFiles>
                         <configurationFile>
-                            <!--
-                                Each API checked module can have a file detailing the intentional API changes
-                                in the form of a configuration for Revapi.
-                            -->
-                            <path>${basedir}/src/chore/intentional-api-changes.xml</path>
+                            <!-- common API checking configuration -->
+                            <resource>revapi/revapi-configuration.xml</resource>
+                        </configurationFile>
+                        <configurationFile>
+                            <!-- API changes recorded in the support/revapi module -->
+                            <resource>revapi/debezium-api-changes.xml</resource>
                             <roots>
                                 <!--
-                                    The XML file has "<revapi-configuration>" root node, underneath which
+                                    The XML file has "<analysisConfiguration>" root node, underneath which
                                     there are nodes named after each version.
                                     This way we only need a single file for all releases of Debezium.
                                 -->
-                                <root>revapi-configuration/version-${parsedVersion.majorVersion}.${parsedVersion.minorVersion}.${parsedVersion.incrementalVersion}</root>
+                                <root>analysisConfiguration/version-${parsedVersion.majorVersion}.${parsedVersion.minorVersion}.${parsedVersion.incrementalVersion}</root>
                             </roots>
                         </configurationFile>
                     </analysisConfigurationFiles>
