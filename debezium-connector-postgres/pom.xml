@@ -31,6 +31,9 @@
         <docker.initimage>ln -fs /usr/share/zoneinfo/US/Samoa /etc/localtime &amp;&amp; echo timezone=US/Samoa &gt;&gt; ${postgres.config.file}</docker.initimage>
 
         <protobuf.output.directory>${project.basedir}/generated-sources</protobuf.output.directory>
+
+        <!-- We're tracking the API changes of the SPI. -->
+        <revapi.skip>false</revapi.skip>
     </properties>
 
     <dependencies>
@@ -227,6 +230,23 @@
                         <plugin.name>${decoder.plugin.name}</plugin.name>
                         <skipLongRunningTests>${skipLongRunningTests}</skipLongRunningTests>
                     </systemPropertyVariables>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.revapi</groupId>
+                <artifactId>revapi-maven-plugin</artifactId>
+                <configuration>
+                    <analysisConfiguration combine.children="append">
+                        <revapi.java>
+                            <filter>
+                                <packages>
+                                    <include>
+                                        <item>io.debezium.connector.posgresql.spi</item>
+                                    </include>
+                                </packages>
+                            </filter>
+                        </revapi.java>
+                    </analysisConfiguration>
                 </configuration>
             </plugin>
         </plugins>
