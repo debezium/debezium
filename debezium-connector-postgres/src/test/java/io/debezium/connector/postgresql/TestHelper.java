@@ -6,6 +6,7 @@
 
 package io.debezium.connector.postgresql;
 
+import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.assertNotNull;
 
 import java.net.URL;
@@ -16,12 +17,14 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import org.awaitility.Awaitility;
-import org.junit.Assert;
+import org.awaitility.core.ConditionTimeoutException;
 import org.postgresql.jdbc.PgConnection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -317,16 +320,32 @@ public final class TestHelper {
         }
     }
 
-    protected static void noTransactionActive() throws SQLException {
+    protected static void assertNoOpenTransactions() throws SQLException {
         try (PostgresConnection connection = TestHelper.create()) {
             connection.setAutoCommit(true);
-            int connectionPID = ((PgConnection) connection.connection()).getBackendPID();
-            String connectionStateQuery = "SELECT state FROM pg_stat_activity WHERE pid <> " + connectionPID;
-            connection.query(connectionStateQuery, rs -> {
-                while (rs.next()) {
-                    Assert.assertNotEquals(rs.getString(1), "idle in transaction");
-                }
-            });
+
+            try {
+                Awaitility.await()
+                        .atMost(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS)
+                        .until(() -> getOpenIdleTransactions(connection).size() == 0);
+            }
+            catch (ConditionTimeoutException e) {
+            }
+            assertThat(getOpenIdleTransactions(connection)).hasSize(0);
         }
     }
+
+    private static List<String> getOpenIdleTransactions(PostgresConnection connection) throws SQLException {
+        int connectionPID = ((PgConnection) connection.connection()).getBackendPID();
+        return connection.queryAndMap(
+                "SELECT state FROM pg_stat_activity WHERE state like 'idle in transaction' AND pid <> " + connectionPID,
+                rs -> {
+                    final List<String> ret = new ArrayList<>();
+                    while (rs.next()) {
+                        ret.add(rs.getString(1));
+                    }
+                    return ret;
+                });
+    }
+
 }
