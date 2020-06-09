@@ -1,0 +1,2 @@
+{ "_id" : 1, "data" : "hello, 1", "op" : "foo" }
+{ "_id" : 3, "data" : "hello, 3", "op" : "bar" }

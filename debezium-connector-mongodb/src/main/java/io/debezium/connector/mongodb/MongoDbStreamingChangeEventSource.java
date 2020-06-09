@@ -357,7 +357,8 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                             new MongoDbChangeRecordEmitter(
                                     oplogContext.getOffset(),
                                     clock,
-                                    event));
+                                    event,
+                                    false));
                 }
                 catch (Exception e) {
                     errorHandler.setProducerThrowable(e);

@@ -906,6 +906,56 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         });
     }
 
+    @Test
+    @FixFor("DBZ-2116")
+    public void shouldSnapshotDocumentContainingFieldNamedOp() throws Exception {
+        // Use the DB configuration to define the connector's configuration ...
+        config = TestHelper.getConfiguration().edit()
+                .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
+                .with(MongoDbConnectorConfig.COLLECTION_WHITELIST, "dbit.*")
+                .with(MongoDbConnectorConfig.LOGICAL_NAME, "mongo")
+                .build();
+
+        // Set up the replication context for connections ...
+        context = new MongoDbTaskContext(config);
+
+        // Cleanup database
+        TestHelper.cleanDatabase(primary(), "dbit");
+
+        // Before starting the connector, add data to the databases ...
+        storeDocuments("dbit", "fieldnamedop", "fieldnamedop.json");
+
+        // Start the connector ...
+        start(MongoDbConnector.class, config);
+
+        // ---------------------------------------------------------------------------------------------------------------
+        // Consume all of the events due to startup and initialization of the database
+        // ---------------------------------------------------------------------------------------------------------------
+        SourceRecords records = consumeRecordsByTopic(2);
+        assertThat(records.recordsForTopic("mongo.dbit.fieldnamedop").size()).isEqualTo(2);
+        assertThat(records.topics().size()).isEqualTo(1);
+        AtomicBoolean foundLast = new AtomicBoolean(false);
+        records.forEach(record -> {
+            // Check that all records are valid, and can be serialized and deserialized ...
+            validate(record);
+            verifyFromInitialSync(record, foundLast);
+            verifyReadOperation(record);
+        });
+        assertThat(foundLast.get()).isTrue();
+
+        SourceRecord record = records.recordsForTopic("mongo.dbit.fieldnamedop").get(0);
+        assertThat(((Struct) record.value()).get("op")).isEqualTo("r");
+
+        Document after = Document.parse((String) ((Struct) record.value()).get("after"));
+        assertThat(after.get("op")).isEqualTo("foo");
+
+        record = records.recordsForTopic("mongo.dbit.fieldnamedop").get(1);
+        assertThat(((Struct) record.value()).get("op")).isEqualTo("r");
+
+        after = Document.parse((String) ((Struct) record.value()).get("after"));
+        assertThat(after.get("op")).isEqualTo("bar");
+    }
+
     protected void verifyNotFromInitialSync(SourceRecord record) {
         assertThat(record.sourceOffset().containsKey(SourceInfo.INITIAL_SYNC)).isFalse();
         Struct value = (Struct) record.value();

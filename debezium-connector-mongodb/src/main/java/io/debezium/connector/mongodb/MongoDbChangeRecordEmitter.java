@@ -28,6 +28,11 @@ public class MongoDbChangeRecordEmitter extends AbstractChangeRecordEmitter<Mong
 
     private final Document oplogEvent;
 
+    /**
+     * Whether this event originates from a snapshot.
+     */
+    private final boolean isSnapshot;
+
     @ThreadSafe
     private static final Map<String, Operation> OPERATION_LITERALS;
 
@@ -41,14 +46,15 @@ public class MongoDbChangeRecordEmitter extends AbstractChangeRecordEmitter<Mong
         OPERATION_LITERALS = Collections.unmodifiableMap(literals);
     }
 
-    public MongoDbChangeRecordEmitter(OffsetContext offsetContext, Clock clock, Document oplogEvent) {
+    public MongoDbChangeRecordEmitter(OffsetContext offsetContext, Clock clock, Document oplogEvent, boolean isSnapshot) {
         super(offsetContext, clock);
         this.oplogEvent = oplogEvent;
+        this.isSnapshot = isSnapshot;
     }
 
     @Override
     protected Operation getOperation() {
-        if (oplogEvent.getString("op") == null) {
+        if (isSnapshot || oplogEvent.getString("op") == null) {
             return Operation.READ;
         }
         return OPERATION_LITERALS.get(oplogEvent.getString("op"));
