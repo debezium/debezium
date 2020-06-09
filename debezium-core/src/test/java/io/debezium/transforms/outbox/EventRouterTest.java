@@ -799,9 +799,8 @@ public class EventRouterTest {
         assertThat(eventRouted).isNotNull();
         assertThat(eventRouted.keySchema().type()).isEqualTo(Schema.Type.STRING);
         assertThat(eventRouted.key()).isEqualTo(key);
-        assertThat(eventRouted.valueSchema().type()).isEqualTo(Schema.Type.STRUCT);
-        Struct valuePassed = (Struct) eventRouted.value();
-        assertThat(valuePassed.get("payload")).isEqualTo(value);
+        assertThat(eventRouted.valueSchema().type()).isEqualTo(Schema.Type.BYTES);
+        assertThat(eventRouted.value()).isEqualTo(value);
     }
 
     @Test
