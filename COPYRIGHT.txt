@@ -57,6 +57,7 @@ Dennis Persson
 Duncan Sands
 Echo Xu
 Eero Koplimets
+Emmanuel Brard
 Emrul Islam
 Eric S. Kreiseir
 Ewen Cheslack-Postava
