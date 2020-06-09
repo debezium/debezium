@@ -78,10 +78,6 @@ public class SqlServerConnection extends JdbcConnection {
     private final SourceTimestampMode sourceTimestampMode;
     private final Clock clock;
 
-    public static interface ResultSetExtractor<T> {
-        T apply(ResultSet rs) throws SQLException;
-    }
-
     private final BoundedConcurrentHashMap<Lsn, Instant> lsnToInstantCache;
     private final SqlServerDefaultValueConverter defaultValueConverter;
 
@@ -283,18 +279,6 @@ public class SqlServerConnection extends JdbcConnection {
 
     private String cdcNameForTable(TableId tableId) {
         return tableId.schema() + '_' + tableId.table();
-    }
-
-    public <T> ResultSetMapper<T> singleResultMapper(ResultSetExtractor<T> extractor, String error) throws SQLException {
-        return (rs) -> {
-            if (rs.next()) {
-                final T ret = extractor.apply(rs);
-                if (!rs.next()) {
-                    return ret;
-                }
-            }
-            throw new IllegalStateException(error);
-        };
     }
 
     public static class CdcEnabledTable {

@@ -24,6 +24,7 @@ import org.junit.Test;
 import io.debezium.config.Configuration;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
 import io.debezium.connector.sqlserver.util.TestHelper;
+import io.debezium.doc.FixFor;
 import io.debezium.document.Array;
 import io.debezium.document.Document;
 import io.debezium.document.DocumentReader;
@@ -774,6 +775,7 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
     }
 
     @Test
+    @FixFor("DBZ-1491")
     public void alterDefaultValue() throws Exception {
         connection.execute("CREATE TABLE table_dv (id int primary key, colb varchar(30))");
         connection.execute("ALTER TABLE dbo.table_dv ADD CONSTRAINT DV_colb DEFAULT ('default_value') FOR colb");
