@@ -5,14 +5,12 @@
  */
 package io.debezium.connector.mysql;
 
-import java.lang.reflect.Field;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import com.github.shyiko.mysql.binlog.BinaryLogClient;
-import com.github.shyiko.mysql.binlog.event.EventHeader;
 import com.github.shyiko.mysql.binlog.jmx.BinaryLogClientStatistics;
 
 import io.debezium.connector.base.ChangeEventQueueMetrics;
@@ -33,7 +31,7 @@ class BinlogReaderMetrics extends PipelineMetrics implements BinlogReaderMetrics
     private final AtomicLong numberOfNotWellFormedTransactions = new AtomicLong();
     private final AtomicLong numberOfLargeTransactions = new AtomicLong();
     private final AtomicBoolean isGtidModeEnabled = new AtomicBoolean(false);
-    private final AtomicLong secondsBehindMaster = new AtomicLong();
+    private final AtomicLong milliSecondsBehindMaster = new AtomicLong();
     private final AtomicReference<String> lastTransactionId = new AtomicReference<>();
 
     public BinlogReaderMetrics(BinaryLogClient client, MySqlTaskContext taskContext, String name, ChangeEventQueueMetrics changeEventQueueMetrics) {
@@ -41,7 +39,7 @@ class BinlogReaderMetrics extends PipelineMetrics implements BinlogReaderMetrics
         this.client = client;
         this.stats = new BinaryLogClientStatistics(client);
         this.schema = taskContext.dbSchema();
-        this.secondsBehindMaster.set(-1);
+        this.milliSecondsBehindMaster.set(-1);
     }
 
     @Override
@@ -149,6 +147,10 @@ class BinlogReaderMetrics extends PipelineMetrics implements BinlogReaderMetrics
         isGtidModeEnabled.set(enabled);
     }
 
+    public void setMilliSecondsBehindSource(long value) {
+        milliSecondsBehindMaster.set(value);
+    }
+
     @Override
     public String[] getMonitoredTables() {
         return schema.monitoredTablesAsStringArray();
@@ -156,37 +158,7 @@ class BinlogReaderMetrics extends PipelineMetrics implements BinlogReaderMetrics
 
     @Override
     public long getMilliSecondsBehindSource() {
-        // This value can be obtained from the shyiko library but currently suffers from
-        // synchronisation issue, which is why this re-implements the logic of getSecondsBehindMaster
-        // while avoiding to return "distorted" values.
-
-        try {
-            Field fieldLastEventHeader = this.stats.getClass().getDeclaredField("lastEventHeader");
-            fieldLastEventHeader.setAccessible(true);
-            AtomicReference<EventHeader> eventHeader = (AtomicReference<EventHeader>) fieldLastEventHeader.get(this.stats.getClass());
-
-            Field fieldTimestampOfLastEvent = this.stats.getClass().getDeclaredField("timestampOfLastEvent");
-            fieldTimestampOfLastEvent.setAccessible(true);
-            AtomicLong timestamp = (AtomicLong) fieldTimestampOfLastEvent.get(this.stats.getClass());
-
-            long timestampOfLastEvent = timestamp.get();
-            long timestampOfEvent;
-
-            if (eventHeader.get() != null) {
-                timestampOfEvent = eventHeader.get().getTimestamp();
-            }
-            else {
-                timestampOfEvent = 0;
-            }
-
-            if (timestampOfLastEvent != 0 && timestampOfEvent != 0) {
-                secondsBehindMaster.set(timestampOfLastEvent - timestampOfEvent);
-            }
-        }
-        catch (NoSuchFieldException | IllegalAccessException ignored) {
-        }
-
-        return secondsBehindMaster.get();
+        return milliSecondsBehindMaster.get();
     }
 
     @Override
