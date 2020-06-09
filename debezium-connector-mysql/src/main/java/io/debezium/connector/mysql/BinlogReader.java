@@ -224,6 +224,7 @@ public class BinlogReader extends AbstractReader {
                 : (new EventBuffer(context.bufferSizeForBinlogReader(), this))::add);
 
         client.registerLifecycleListener(new ReaderThreadLifecycleListener());
+        client.registerEventListener(this::onEvent);
         if (logger.isDebugEnabled()) {
             client.registerEventListener(this::logEvent);
         }
@@ -492,6 +493,31 @@ public class BinlogReader extends AbstractReader {
 
     protected void logEvent(Event event) {
         logger.trace("Received event: {}", event);
+    }
+
+    protected void onEvent(Event event) {
+        long ts = 0;
+
+        if (event.getHeader().getEventType() == EventType.HEARTBEAT) {
+            // HEARTBEAT events have no timestamp but are fired only when
+            // there is no traffic on the connection which means we are caught-up
+            // https://dev.mysql.com/doc/internals/en/heartbeat-event.html
+            metrics.setMilliSecondsBehindSource(ts);
+            return;
+        }
+
+        // MySQL has seconds resolution but mysql-binlog-connector-java returns
+        // a value in milliseconds
+        long eventTs = event.getHeader().getTimestamp();
+
+        if (eventTs == 0) {
+            logger.trace("Received unexpected event with 0 timestamp: {}", event);
+            return;
+        }
+
+        ts = clock.currentTimeInMillis() - eventTs;
+        logger.trace("Current milliseconds behind source: {} ms", ts);
+        metrics.setMilliSecondsBehindSource(ts);
     }
 
     protected void ignoreEvent(Event event) {
