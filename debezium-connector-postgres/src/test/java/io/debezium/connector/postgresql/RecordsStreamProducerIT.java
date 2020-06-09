@@ -66,7 +66,6 @@ import io.debezium.connector.postgresql.spi.SlotState;
 import io.debezium.data.Bits;
 import io.debezium.data.Enum;
 import io.debezium.data.Envelope;
-import io.debezium.data.SchemaAndValueField;
 import io.debezium.data.SpecialValueDecimal;
 import io.debezium.data.VariableScaleDecimal;
 import io.debezium.data.VerifyRecord;
@@ -1318,7 +1317,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
             assertEquals(Arrays.asList("pk", "text", "not_toast"), tbl.retrieveColumnNames());
         });
 
-        TestHelper.noTransactionActive();
+        TestHelper.assertNoOpenTransactions();
     }
 
     @Test

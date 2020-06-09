@@ -858,16 +858,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         final String isbn = new String(((Struct) record.value()).getStruct("after").getBytes("aa"));
         Assertions.assertThat(isbn).isEqualTo("0-393-04002-X");
 
-        try (final PostgresConnection connection = TestHelper.create()) {
-            try {
-                Awaitility.await()
-                        .atMost(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS)
-                        .until(() -> getActiveTransactions(connection).size() == 1);
-            }
-            catch (ConditionTimeoutException e) {
-            }
-            assertThat(getActiveTransactions(connection)).hasSize(1);
-        }
+        TestHelper.assertNoOpenTransactions();
         stopConnector();
         assertConnectorNotRunning();
     }
@@ -1193,18 +1184,6 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
                         fail("No replication slot info available");
                     }
                     return null;
-                });
-    }
-
-    private List<String> getActiveTransactions(PostgresConnection connection) throws SQLException {
-        return connection.queryAndMap(
-                "SELECT query FROM pg_stat_activity WHERE backend_xmin IS NOT NULL ORDER BY age(backend_xmin) DESC;",
-                rs -> {
-                    final List<String> ret = new ArrayList<>();
-                    while (rs.next()) {
-                        ret.add(rs.getString(1));
-                    }
-                    return ret;
                 });
     }
 

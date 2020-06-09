@@ -283,7 +283,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
 
         waitForStreamingToStart();
 
-        TestHelper.noTransactionActive();
+        TestHelper.assertNoOpenTransactions();
 
         stopConnector();
     }
