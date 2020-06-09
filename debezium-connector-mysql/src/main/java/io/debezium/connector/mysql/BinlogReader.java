@@ -511,8 +511,6 @@ public class BinlogReader extends AbstractReader {
         long eventTs = event.getHeader().getTimestamp();
 
         if (eventTs == 0) {
-            // A zero-valued timestamp can also happen if case of ROTATE events
-            // in which case we keep the previous value
             logger.trace("Received unexpected event with 0 timestamp: {}", event);
             return;
         }
