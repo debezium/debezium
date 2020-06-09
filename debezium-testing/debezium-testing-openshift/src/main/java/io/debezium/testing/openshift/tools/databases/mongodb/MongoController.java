@@ -68,13 +68,14 @@ public class MongoController extends DatabaseController<MongoDatabaseClient> {
 
     public void initialize() throws InterruptedException {
         Pod pod = ocp.pods().inNamespace(project).withLabel("deployment", name).list().getItems().get(0);
+        String svcName = deployment.getMetadata().getName();
         CountDownLatch latch = new CountDownLatch(1);
         try (ExecWatch exec = ocp.pods().inNamespace(project).withName(pod.getMetadata().getName())
                 .inContainer("mongo")
                 .writingOutput(System.out) // CHECKSTYLE IGNORE RegexpSinglelineJava FOR NEXT 2 LINES
                 .writingError(System.err)
                 .usingListener(new MongoInitListener(latch))
-                .exec("bash", "-c", DB_INIT_SCRIPT_PATH_CONTAINER)) {
+                .exec("bash", "-c", DB_INIT_SCRIPT_PATH_CONTAINER + " -h " + svcName + "." + project + ".svc.cluster.local")) {
             LOGGER.info("Waiting until database is initialized");
             latch.await(1, TimeUnit.MINUTES);
         }
