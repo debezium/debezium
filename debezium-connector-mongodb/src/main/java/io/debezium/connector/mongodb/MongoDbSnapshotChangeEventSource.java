@@ -202,10 +202,12 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
         return new MongoDbSnapshottingTask(replicaSetSnapshots);
     }
 
+    @Override
     protected SnapshotContext prepare(ChangeEventSourceContext sourceContext) throws Exception {
         return new MongoDbSnapshotContext();
     }
 
+    @Override
     protected void complete(SnapshotContext snapshotContext) {
     }
 
@@ -482,7 +484,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
         final ReplicaSetOffsetContext replicaSetOffsetContext = offsetContext.getReplicaSetOffsetContext(replicaSet);
         replicaSetOffsetContext.readEvent(collectionId, getClock().currentTime());
 
-        return new MongoDbChangeRecordEmitter(replicaSetOffsetContext, getClock(), document);
+        return new MongoDbChangeRecordEmitter(replicaSetOffsetContext, getClock(), document, true);
     }
 
     protected Clock getClock() {
