@@ -38,6 +38,8 @@ import io.debezium.annotation.NotThreadSafe;
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
+import io.debezium.jdbc.JdbcConnection.ResultSetExtractor;
+import io.debezium.jdbc.JdbcConnection.ResultSetMapper;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.TableId;
@@ -102,6 +104,14 @@ public class JdbcConnection implements AutoCloseable {
          * @throws SQLException if there is an error connecting to the database or executing the statements
          */
         void apply(Statement statement) throws SQLException;
+    }
+
+    /**
+     * Extracts a data of resultset..
+     */
+    @FunctionalInterface
+    public static interface ResultSetExtractor<T> {
+        T apply(ResultSet rs) throws SQLException;
     }
 
     /**
@@ -1213,4 +1223,29 @@ public class JdbcConnection implements AutoCloseable {
         return jdbcNullable == ResultSetMetaData.columnNullable || jdbcNullable == ResultSetMetaData.columnNullableUnknown;
     }
 
+    public <T> ResultSetMapper<T> singleResultMapper(ResultSetExtractor<T> extractor, String error) throws SQLException {
+        return (rs) -> {
+            if (rs.next()) {
+                final T ret = extractor.apply(rs);
+                if (!rs.next()) {
+                    return ret;
+                }
+            }
+            throw new IllegalStateException(error);
+        };
+    }
+
+    public static <T> T querySingleValue(Connection connection, String queryString, StatementPreparer preparer, ResultSetExtractor<T> extractor) throws SQLException {
+        final PreparedStatement preparedStatement = connection.prepareStatement(queryString);
+        preparer.accept(preparedStatement);
+        try (ResultSet resultSet = preparedStatement.executeQuery()) {
+            if (resultSet.next()) {
+                final T result = extractor.apply(resultSet);
+                if (!resultSet.next()) {
+                    return result;
+                }
+            }
+            throw new IllegalStateException("Exactly one result expected.");
+        }
+    }
 }
