@@ -267,7 +267,7 @@ public abstract class AbstractReader implements Reader {
 
         logger.trace("Polling for next batch of records");
         List<SourceRecord> batch = new ArrayList<>(maxBatchSize);
-        final Timer timeout = Threads.timer(Clock.SYSTEM, Temporals.max(pollInterval, ConfigurationDefaults.RETURN_CONTROL_INTERVAL));
+        final Timer timeout = Threads.timer(Clock.SYSTEM, Temporals.min(pollInterval, ConfigurationDefaults.RETURN_CONTROL_INTERVAL));
         while (running.get() && (records.drainTo(batch, maxBatchSize) == 0) && !success.get()) {
             // No records are available even though the snapshot has not yet completed, so sleep for a bit ...
             metronome.pause();
