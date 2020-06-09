@@ -116,7 +116,7 @@ public class DatabaseHistoryMetrics extends Metrics implements DatabaseHistoryLi
     @Override
     public void recoveryStopped() {
         status = DatabaseHistoryStatus.RUNNING;
-        LOGGER.info("Finished database history recovery of {} changes in {} ms", changesRecovered.get(), Duration.between(Instant.now(), recoveryStartTime).toMillis());
+        LOGGER.info("Finished database history recovery of {} change(s) in {} ms", changesRecovered.get(), Duration.between(recoveryStartTime, Instant.now()).toMillis());
     }
 
     @Override
