@@ -25,6 +25,7 @@ artiship
 Ashhar Hasan
 Attila Szucs
 Aykut Farsak
+Balázs Németh
 Barry LaFond
 Bartosz Miedlar
 Ben Hardesty
