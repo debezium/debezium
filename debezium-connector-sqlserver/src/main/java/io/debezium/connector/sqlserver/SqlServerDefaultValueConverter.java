@@ -8,9 +8,8 @@ package io.debezium.connector.sqlserver;
 
 import java.math.BigDecimal;
 import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -21,8 +20,8 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.connector.sqlserver.SqlServerConnection.ResultSetExtractor;
-import io.debezium.jdbc.JdbcConnection.StatementPreparer;
+import io.debezium.annotation.ThreadSafe;
+import io.debezium.jdbc.JdbcConnection;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.ValueConverter;
@@ -33,6 +32,7 @@ import microsoft.sql.DateTimeOffset;
 /**
  * Parses and converts column default values.
  */
+@ThreadSafe
 class SqlServerDefaultValueConverter {
 
     private static Logger LOGGER = LoggerFactory.getLogger(SqlServerDefaultValueConverter.class);
@@ -68,7 +68,7 @@ class SqlServerDefaultValueConverter {
     SqlServerDefaultValueConverter(ConnectionProvider connectionProvider, SqlServerValueConverters valueConverters) {
         this.connectionProvider = connectionProvider;
         this.valueConverters = valueConverters;
-        this.defaultValueMappers = createDefaultValueMappers();
+        this.defaultValueMappers = Collections.unmodifiableMap(createDefaultValueMappers());
     }
 
     Optional<Object> parseDefaultValue(ColumnEditor columnEditor, String defaultValue) {
@@ -131,27 +131,29 @@ class SqlServerDefaultValueConverter {
         // Date and time
         result.put("date", v -> { // Sample value: ('2019-02-03')
             String rawValue = v.substring(2, v.length() - 2);
-            return querySingleValue("SELECT PARSE(? AS date)", st -> st.setString(1, rawValue), rs -> rs.getDate(1));
+            return JdbcConnection.querySingleValue(connectionProvider.get(), "SELECT PARSE(? AS date)", st -> st.setString(1, rawValue), rs -> rs.getDate(1));
         });
         result.put("datetime", v -> { // Sample value: ('2019-01-01 00:00:00.000')
             String rawValue = v.substring(2, v.length() - 2);
-            return querySingleValue("SELECT PARSE(? AS datetime)", st -> st.setString(1, rawValue), rs -> rs.getTimestamp(1));
+            return JdbcConnection.querySingleValue(connectionProvider.get(), "SELECT PARSE(? AS datetime)", st -> st.setString(1, rawValue), rs -> rs.getTimestamp(1));
         });
         result.put("datetime2", v -> { // Sample value: ('2019-01-01 00:00:00.1234567')
             String rawValue = v.substring(2, v.length() - 2);
-            return querySingleValue("SELECT PARSE(? AS datetime2)", st -> st.setString(1, rawValue), rs -> rs.getTimestamp(1));
+            return JdbcConnection.querySingleValue(connectionProvider.get(), "SELECT PARSE(? AS datetime2)", st -> st.setString(1, rawValue), rs -> rs.getTimestamp(1));
         });
         result.put("datetimeoffset", v -> { // Sample value: ('2019-01-01 00:00:00.1234567+02:00')
             String rawValue = v.substring(2, v.length() - 2);
-            return querySingleValue("SELECT PARSE(? AS datetimeoffset)", st -> st.setString(1, rawValue), rs -> (DateTimeOffset) rs.getObject(1));
+            return JdbcConnection.querySingleValue(connectionProvider.get(), "SELECT PARSE(? AS datetimeoffset)", st -> st.setString(1, rawValue),
+                    rs -> (DateTimeOffset) rs.getObject(1));
         });
         result.put("smalldatetime", v -> { // Sample value: ('2019-01-01 00:00:00')
             String rawValue = v.substring(2, v.length() - 2);
-            return querySingleValue("SELECT PARSE(? AS smalldatetime)", st -> st.setString(1, rawValue), rs -> rs.getTimestamp(1));
+            return JdbcConnection.querySingleValue(connectionProvider.get(), "SELECT PARSE(? AS smalldatetime)", st -> st.setString(1, rawValue),
+                    rs -> rs.getTimestamp(1));
         });
         result.put("time", v -> { // Sample value: ('2019-01-01 00:00:00')
             String rawValue = v.substring(2, v.length() - 2);
-            return querySingleValue("SELECT PARSE(? AS time)", st -> st.setString(1, rawValue), rs -> rs.getTime(1));
+            return JdbcConnection.querySingleValue(connectionProvider.get(), "SELECT PARSE(? AS time)", st -> st.setString(1, rawValue), rs -> rs.getTime(1));
         });
 
         // Character strings
@@ -172,19 +174,4 @@ class SqlServerDefaultValueConverter {
         // Other data types, such as cursor, xml or uniqueidentifier, have been omitted.
         return result;
     }
-
-    private <T> T querySingleValue(String queryString, StatementPreparer preparer, ResultSetExtractor<T> extractor) throws SQLException {
-        PreparedStatement preparedStatement = connectionProvider.get().prepareStatement(queryString);
-        preparer.accept(preparedStatement);
-        try (ResultSet resultSet = preparedStatement.executeQuery()) {
-            if (resultSet.next()) {
-                final T result = extractor.apply(resultSet);
-                if (!resultSet.next()) {
-                    return result;
-                }
-            }
-            throw new IllegalStateException("Exactly one result expected.");
-        }
-    }
-
 }
