@@ -2,6 +2,79 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 1.2.0.CR1
+June 10th, 2020 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12345858)
+
+### New features since 1.2.0.Beta2
+
+* Restrict the set of tables with a publication when using pgoutput [DBZ-1813](https://issues.jboss.org/browse/DBZ-1813)
+* Support configuring different encodings for binary source data [DBZ-1814](https://issues.jboss.org/browse/DBZ-1814)
+* Add API for not registering metrics MBean into the platform MBean server [DBZ-2089](https://issues.jboss.org/browse/DBZ-2089)
+* Unable to handle UDT data [DBZ-2091](https://issues.jboss.org/browse/DBZ-2091)
+* Improve SQL Server reconnect during shutdown and connection resets [DBZ-2106](https://issues.jboss.org/browse/DBZ-2106)
+* OpenShift tests for SQL Server connector before GA [DBZ-2113](https://issues.jboss.org/browse/DBZ-2113)
+* OpenShift tests for MongoDB Connector before GA [DBZ-2114](https://issues.jboss.org/browse/DBZ-2114)
+* Log begin/end of schema recovery on INFO level [DBZ-2149](https://issues.jboss.org/browse/DBZ-2149)
+* Allow outbox EventRouter to pass non-String based Keys [DBZ-2152](https://issues.jboss.org/browse/DBZ-2152)
+* Introduce API  checks [DBZ-2159](https://issues.jboss.org/browse/DBZ-2159)
+* Bump mysql binlog version  [DBZ-2160](https://issues.jboss.org/browse/DBZ-2160)
+* Postgresql - Allow for include.unknown.datatypes to return string instead of hash [DBZ-1266](https://issues.jboss.org/browse/DBZ-1266)
+* Consider Apicurio registry [DBZ-1639](https://issues.jboss.org/browse/DBZ-1639)
+* Debezium Server should support Google Cloud PubSub [DBZ-2092](https://issues.jboss.org/browse/DBZ-2092)
+* Sink adapter for Apache Pulsar [DBZ-2112](https://issues.jboss.org/browse/DBZ-2112)
+
+
+### Breaking changes since 1.2.0.Beta2
+
+* Change table.whitelist/table.blacklist format [DBZ-1312](https://issues.jboss.org/browse/DBZ-1312)
+
+
+### Fixes since 1.2.0.Beta2
+
+* Transaction opened by Debezium is left idle and never committed [DBZ-2118](https://issues.jboss.org/browse/DBZ-2118)
+* Don't call markBatchFinished() in finally block [DBZ-2124](https://issues.jboss.org/browse/DBZ-2124)
+* kafka SSL passwords need to be added to the Sensitive Properties list [DBZ-2125](https://issues.jboss.org/browse/DBZ-2125)
+* Intermittent test failure on CI - SQL Server [DBZ-2126](https://issues.jboss.org/browse/DBZ-2126)
+* CREATE TABLE query is giving parsing exception [DBZ-2130](https://issues.jboss.org/browse/DBZ-2130)
+* Misc. Javadoc and docs fixes [DBZ-2136](https://issues.jboss.org/browse/DBZ-2136)
+* Avro schema doesn't change if a column default value is dropped [DBZ-2140](https://issues.jboss.org/browse/DBZ-2140)
+* Multiple SETs not supported in trigger [DBZ-2142](https://issues.jboss.org/browse/DBZ-2142)
+* Don't validate internal database.history.connector.* config parameters [DBZ-2144](https://issues.jboss.org/browse/DBZ-2144)
+* ANTLR parser doesn't handle MariaDB syntax drop index IF EXISTS as part of alter table DDL [DBZ-2151](https://issues.jboss.org/browse/DBZ-2151)
+* Casting as INT causes a ParsingError [DBZ-2153](https://issues.jboss.org/browse/DBZ-2153)
+* Calling function UTC_TIMESTAMP without parenthesis causes a parsing error [DBZ-2154](https://issues.jboss.org/browse/DBZ-2154)
+* Could not find or load main class io.debezium.server.Main [DBZ-2170](https://issues.jboss.org/browse/DBZ-2170)
+* MongoDB connector snapshot NPE in case of document field named "op" [DBZ-2116](https://issues.jboss.org/browse/DBZ-2116)
+
+
+### Other changes since 1.2.0.Beta2
+
+* Adding tests and doc updates around column masking and truncating [DBZ-775](https://issues.jboss.org/browse/DBZ-775)
+* Refactor/use common configuration parameters [DBZ-1657](https://issues.jboss.org/browse/DBZ-1657)
+* Develop sizing recommendations, load tests etc. [DBZ-1662](https://issues.jboss.org/browse/DBZ-1662)
+* Add performance test for SMTs like filters [DBZ-1929](https://issues.jboss.org/browse/DBZ-1929)
+* Add banner to older doc versions about them being outdated [DBZ-1951](https://issues.jboss.org/browse/DBZ-1951)
+* SMT Documentation [DBZ-2021](https://issues.jboss.org/browse/DBZ-2021)
+* Instable integration test with Testcontainers [DBZ-2033](https://issues.jboss.org/browse/DBZ-2033)
+* Add test for schema history topic for Oracle connector [DBZ-2056](https://issues.jboss.org/browse/DBZ-2056)
+* Random test failures [DBZ-2060](https://issues.jboss.org/browse/DBZ-2060)
+* Set up CI jobs for JDK 14/15 [DBZ-2065](https://issues.jboss.org/browse/DBZ-2065)
+* Introduce Any type for server to seamlessly integrate with Debezium API [DBZ-2104](https://issues.jboss.org/browse/DBZ-2104)
+* Update AsciiDoc markup in doc files for downstream reuse [DBZ-2105](https://issues.jboss.org/browse/DBZ-2105)
+* Upgrade to Quarkus 1.5.0.Final [DBZ-2119](https://issues.jboss.org/browse/DBZ-2119)
+* Additional AsciiDoc markup updates needed in doc files for downstream reuse [DBZ-2129](https://issues.jboss.org/browse/DBZ-2129)
+* Refactor & Extend OpenShift test-suite tooling to prepare for MongoDB and SQL Server [DBZ-2132](https://issues.jboss.org/browse/DBZ-2132)
+* OpenShift tests are failing  when waiting for Connect metrics to be exposed [DBZ-2135](https://issues.jboss.org/browse/DBZ-2135)
+* Support incubator build in product release jobs [DBZ-2137](https://issues.jboss.org/browse/DBZ-2137)
+* Rebase MySQL grammar on the latest upstream version [DBZ-2143](https://issues.jboss.org/browse/DBZ-2143)
+* Await coordinator shutdown in embedded engine [DBZ-2150](https://issues.jboss.org/browse/DBZ-2150)
+* More meaningful exception in case of replication slot conflict [DBZ-2156](https://issues.jboss.org/browse/DBZ-2156)
+* Intermittent test failure on CI - Postgres [DBZ-2157](https://issues.jboss.org/browse/DBZ-2157)
+* OpenShift pipeline uses incorrect projects for Mongo and Sql Server deployment [DBZ-2164](https://issues.jboss.org/browse/DBZ-2164)
+* Incorrect polling timeout in AbstractReader [DBZ-2169](https://issues.jboss.org/browse/DBZ-2169)
+
+
+
 ## 1.2.0.Beta2
 May 19th, 2020 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12345708)
 
