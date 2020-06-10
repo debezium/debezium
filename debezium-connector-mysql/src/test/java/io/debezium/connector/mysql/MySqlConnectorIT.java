@@ -2033,6 +2033,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
 
         start(MySqlConnector.class, config);
         assertConnectorIsRunning();
+        waitForSnapshotToBeCompleted("mysql", DATABASE.getServerName());
 
         consumeRecordsByTopic(12);
         waitForAvailableRecords(100, TimeUnit.MILLISECONDS);
