@@ -42,7 +42,7 @@ public class Db2ValueConverters extends JdbcValueConverters {
      *            date/time value will be represented either as Connect datatypes or Debezium specific datatypes
      */
     public Db2ValueConverters(DecimalMode decimalMode, TemporalPrecisionMode temporalPrecisionMode) {
-        super(decimalMode, temporalPrecisionMode, ZoneOffset.UTC, null, null);
+        super(decimalMode, temporalPrecisionMode, ZoneOffset.UTC, null, null, null);
     }
 
     @Override

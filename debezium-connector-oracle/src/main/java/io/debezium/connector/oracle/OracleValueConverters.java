@@ -49,7 +49,7 @@ public class OracleValueConverters extends JdbcValueConverters {
     private final OracleConnection connection;
 
     public OracleValueConverters(OracleConnectorConfig config, OracleConnection connection) {
-        super(config.getDecimalMode(), TemporalPrecisionMode.ADAPTIVE, ZoneOffset.UTC, null, null);
+        super(config.getDecimalMode(), TemporalPrecisionMode.ADAPTIVE, ZoneOffset.UTC, null, null, null);
         this.connection = connection;
     }
 
