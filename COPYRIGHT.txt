@@ -45,6 +45,7 @@ Cliff Wheadon
 Collin Van Dyck
 Cyril Scetbon
 Daan Roosen
+Dave Cumberland
 David Chen
 David Feinblum
 David Jerome
@@ -56,7 +57,9 @@ Dennis Campagna
 Dennis Persson
 Duncan Sands
 Echo Xu
+Ed Laur
 Eero Koplimets
+Elan Hasson
 Emmanuel Brard
 Emrul Islam
 Eric S. Kreiseir
