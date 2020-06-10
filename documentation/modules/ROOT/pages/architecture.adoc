@@ -10,7 +10,7 @@ Kafka Connect is a framework and runtime for implementing and operating
 
 The following image shows the architecture of a CDC pipeline based on {prodname}:
 
-image:debezium-architecture.png[{prodname} Architecture]
+image::debezium-architecture.png[{prodname} Architecture]
 
 Kafka Connect is operated as a separate service besides the Kafka broker itself.
 The {prodname} connectors for MySQL and Postgres are deployed to capture the changes out of these two databases.

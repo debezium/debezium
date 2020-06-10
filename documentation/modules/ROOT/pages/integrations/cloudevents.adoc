@@ -1,3 +1,7 @@
+// Category: cdc-using
+// Type: assembly
+// ModuleID: emitting-change-event-records-in-cloudevents-format
+// Title: Emitting change event records in CloudEvents format
 [id="exporting-cloud-events"]
 = Exporting CloudEvents
 
@@ -9,32 +13,40 @@
 
 toc::[]
 
+link:https://cloudevents.io/[CloudEvents] is a specification for describing event data in a common way. Its aim is to provide interoperability across services, platforms and systems. {prodname} enables you to configure a MongoDB, MySQL, PostgreSQL, or SQL Server connector to emit change event records that conform to the CloudEvents specification. 
+
 ifdef::community[]
 [NOTE]
 ====
-Support for CloudEvents currently is in incubating state, i.e. exact semantics, configuration options etc. may change in future revisions, based on the feedback we receive.
-Please let us know or your specific requirements or if you encounter any problems while using this feature.
+Support for CloudEvents is in an incubating state. This means that exact semantics, configuration options, and other details may change in future revisions based on feedback.
+Please let us know your specific requirements or if you encounter any problems while using this feature.
 ====
 endif::community[]
 
-https://cloudevents.io/[CloudEvents] is a "specification for describing event data in a common way",
-aiming at providing "interoperability across services, platforms and systems".
-It defines:
+ifdef::product[]
+[IMPORTANT]
+====
+Emitting change event records in CloudEvents format is a Technology Preview feature. Technology Preview features are not supported with Red Hat production service-level agreements (SLAs) and might not be functionally complete; therefore, Red Hat does not recommend implementing any Technology Preview features in production environments. This Technology Preview feature provides early access to upcoming product innovations, enabling you to test functionality and provide feedback during the development process. For more information about support scope, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
+====
+endif::product[]
 
-* a set of standardized event attributes
-* rules for defining custom attributes
-* encoding rules for mapping event formats to serialized representations such as JSON or Avro
-* protocol bindings for transport layers such as Apache Kafka, HTTP or AMQP
+The CloudEvents specification defines: 
 
-By means of a specific Kafka Connect message converter
-(`io.debezium.converters.CloudEventsConverter`),
-{prodname} optionally emits change events that adhere to the CloudEvents specification.
-Currently, the structured mode of mapping CloudEvents is supported, using JSON and/or Avro as the envelope and the data format.
-Support for the binary mode of mapping CloudEvents will be added in a future version of {prodname}.
+* A set of standardized event attributes
+* Rules for defining custom attributes
+* Encoding rules for mapping event formats to serialized representations such as JSON or Avro
+* Protocol bindings for transport layers such as Apache Kafka, HTTP or AMQP
 
-== Event Format
+To configure a {prodname} connector to emit change event records that conform to the CloudEvents specification, {prodname} provides the `io.debezium.converters.CloudEventsConverter`, which is a Kafka Connect message converter. 
 
-The following example shows a CloudEvents event of the {prodname} Postgres connector, using JSON as envelope and data format:
+Currently, only structured mapping mode is supported. The CloudEvents change event envelope can be JSON or Avro and each envelope type supports JSON or Avro as the `data` format. It is expected that a future {prodname} release will support binary mapping mode. 
+
+// Type: concept
+// ModuleID: example-change-event-records-in-cloudevents-format
+// Title: Example change event records in CloudEvents format
+== Example event format
+
+The following example shows what a CloudEvents change event record emitted by a PostgreSQL connector looks like. In this example, the PostgreSQL connector is configured to use JSON as the CloudEvents format envelope and also as the `data` format.  
 
 [source,json,indent=0]
 ----
@@ -69,18 +81,18 @@ The following example shows a CloudEvents event of the {prodname} Postgres conne
   }
 }
 ----
-<1> Unique id of the change event, based on the connector's logical name ("test_server") and connector-specific attributes identifying the event
-<2> Source of the event, i.e. the logical name of the database
-<3> The CloudEvents specification versions
-<4> The type of change event
-<5> Time of the change in the source database
-<6> Describes the content type of the `data` attribute; JSON in this case
-<7> Operation type identifier (one of (r)ead, (c)reate, (u)pdate or (d)elete)
-<8> All the `source` attributes known from {prodname} data change events are mapped to CloudEvents extension attributes, using the "iodebezium" prefix for the attribute name
-<9> All the `transaction` attributes known from {prodname} data change events (when enabled in connector) are mapped to CloudEvents extension attributes, using the "iodebeziumtx" prefix for the attribute name
-<10> The actual data change itself; depending on the kind of change and the type of connector, may contain the `before`, `after` and/or `patch` fields
+<1> Unique ID that the connector generates for the change event based on the change event's content. 
+<2> The source of the event, which is the logical name of the database as specified by the `database.server.name` property in the connector's configuration. 
+<3> The CloudEvents specification version. 
+<4> Connector type that generated the change event. The format of this field is `io.debezium._CONNECTOR_TYPE_.datachangeevent`. The value of `_CONNECTOR_TYPE_` is `mongodb`, `mysql`, `postgresql`, or `sqlserver`.
+<5> Time of the change in the source database.
+<6> Describes the content type of the `data` attribute, which is JSON in this example. The only alternative is Avro. 
+<7> An operation identifier. Possible values are `r` for read, `c` for create, `u` for update, or `d` for delete. 
+<8> All `source` attributes that are known from {prodname} change events are mapped to CloudEvents extension attributes by using the `iodebezium` prefix for the attribute name.
+<9> When enabled in the connector, each `transaction` attribute that is known from {prodname} change events is mapped to a CloudEvents extension attribute by using the `iodebeziumtx` prefix for the attribute name.
+<10> The actual data change itself. Depending on the operation and the connector, the data might contain `before`, `after` and/or `patch` fields.
 
-Alternatively, Avro can be used as content type for the `data` attribute:
+The following example also shows what a CloudEvents change event record emitted by a PostgreSQL connector looks like. In this example, the PostgreSQL connector is again configured to use JSON as the CloudEvents format envelope, but this time the connector is configured to use Avro for the `data` format. 
 
 [source,json,indent=0]
 ----
@@ -110,47 +122,23 @@ Alternatively, Avro can be used as content type for the `data` attribute:
   "data" : "AAAAAAEAAgICAg=="                        <3>
 }
 ----
-<1> Designates the `data` attribute to be of type Avro binary data
-<2> URI of the schema to which the Avro data adheres
-<3> The `data` attribute, base64-encoded Avro binary data
+<1> Indicates that the `data` attribute contains Avro binary data.
+<2> URI of the schema to which the Avro data adheres.
+<3> The `data` attribute contains base64-encoded Avro binary data.
 
-Finally, it is also possible to use Avro for the entire envelope as well as the `data` attribute.
+It is also possible to use Avro for the envelope as well as the `data` attribute.
 
-[[cloud-events-converter-configuration-options]]
-=== Configuration Options
+// Type: concept
+// ModuleID: example-of-configuring-cloudevents-converter
+// Title: Example of configuring `CloudEventsConverter`
+== Example configuration
 
-The following configuration options exist when usi
+Configure `io.debezium.converters.CloudEventsConverter` in your {prodname} connector configuration. Following is an example of configuring `CloudEventConverter` to emit change event records that:
 
-[cols="30%a,25%a,45%a"]
-|===
-|Property
-|Default
-|Description
+* Use JSON as the envelope
+* Contain Avro data that adheres to the schema at http://schema-registry:8081 
 
-[id="cloud-events-converter-serializer-type"]
-|{link-prefix}:{link-cloud-events}#cloud-events-converter-serializer-type[`serializer.type`]
-|`json`
-|The encoding type to use for the CloudEvents envelope structure; one of `json` or `avro`.
-
-[id="cloud-events-converter-data-serializer-type"]
-|{link-prefix}:{link-cloud-events}#cloud-events-converter-data-serializer-type[`data.serializer.type`]
-|`json`
-|The encoding type to use for the `data` attribute; can be `json` if `serializer.type` is `avro`;
-can be `json` or `avro`, if `serializer.type` is `json` or `avro`.
-
-[id="cloud-events-converter-json"]
-|{link-prefix}:{link-cloud-events}#cloud-events-converter-json[`json. \...`]
-|N/A
-|Any configuration options to be passed through to the underlying converter when using JSON (the "json." prefix will be removed)
-
-[id="cloud-events-converter-avro"]
-|{link-prefix}:{link-cloud-events}#cloud-events-converter-avro[`avro. \...`]
-|N/A
-|Any configuration options to be passed through to the underlying converter when using Avro (the "avro." prefix will be removed)
-|===
-
-The following shows an example configuration for using JSON as envelope format
-(the default, so `value.converter.serializer.type` could also be omitted) and Avro as data content type:
+In this example, you could omit the specification of `serializer.type` because `json` is the default. 
 
 [source,json,indent=0]
 ----
@@ -162,5 +150,41 @@ The following shows an example configuration for using JSON as envelope format
 ...
 ----
 
-Note this converter is solely meant to be used as a converter for Kafka record __values__;
-it can be used together with any other converter for serializing record __keys__, e.g. the String, Long, JSON or Avro converters.
+`CloudEventsConverter` converts Kafka record values. In the same connector configuration, you can specify `key.converter` if you want to operate on record keys, for example you might specify `StringConverter`, `LongConverter`, `JsonConverter`, or `AvroConverter`.
+
+// Type: reference
+// ModuleID: cloudeventsconverter-configuration-properties
+// Title: `CloudEventsConverter` configuration properties
+[[cloud-events-converter-configuration-options]]
+== Configuration properties
+
+When you configure a {prodname} connector to use the CloudEvent converter you can specify the following properties. 
+
+
+[cols="30%a,25%a,45%a"]
+|===
+|Property
+|Default
+|Description
+
+[id="cloud-events-converter-serializer-type"]
+|{link-prefix}:{link-cloud-events}#cloud-events-converter-serializer-type[`serializer.type`]
+|`json`
+|The encoding type to use for the CloudEvents envelope structure. The value can be `json` or `avro`.
+
+[id="cloud-events-converter-data-serializer-type"]
+|{link-prefix}:{link-cloud-events}#cloud-events-converter-data-serializer-type[`data.serializer.type`]
+|`json`
+|The encoding type to use for the `data` attribute. The value can be `json` or `avro`.
+
+[id="cloud-events-converter-json"]
+|{link-prefix}:{link-cloud-events}#cloud-events-converter-json[`json. \...`]
+|N/A
+|Any configuration properties to be passed through to the underlying converter when using JSON. The `json.` prefix is removed. 
+
+[id="cloud-events-converter-avro"]
+|{link-prefix}:{link-cloud-events}#cloud-events-converter-avro[`avro. \...`]
+|N/A
+|Any configuration properties to be passed through to the underlying converter when using Avro. The `avro.` prefix is removed. For example, for Avro `data`, you would specify the `avro.schema.registry.url` property. 
+
+|===
