@@ -7,12 +7,16 @@
 package io.debezium.connector.postgresql;
 
 import static io.debezium.connector.postgresql.TestHelper.PK_FIELD;
+import static io.debezium.connector.postgresql.TestHelper.TYPE_LENGTH_PARAMETER_KEY;
+import static io.debezium.connector.postgresql.TestHelper.TYPE_NAME_PARAMETER_KEY;
+import static io.debezium.connector.postgresql.TestHelper.TYPE_SCALE_PARAMETER_KEY;
 import static io.debezium.connector.postgresql.TestHelper.topicName;
 import static io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIs.DecoderPluginName.PGOUTPUT;
 import static io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIsNot.DecoderPluginName.WAL2JSON;
 import static junit.framework.TestCase.assertEquals;
 import static junit.framework.TestCase.assertTrue;
 import static org.fest.assertions.Assertions.assertThat;
+import static org.fest.assertions.MapAssert.entry;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
@@ -38,6 +42,7 @@ import java.util.stream.StreamSupport;
 
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.kafka.connect.data.Decimal;
+import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
@@ -46,6 +51,7 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.storage.MemoryOffsetBackingStore;
 import org.awaitility.Awaitility;
 import org.fest.assertions.Assertions;
+import org.fest.assertions.MapAssert;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -2483,6 +2489,50 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
             numOfHeartbeatActions = connection.queryAndMap(slotQuery, slotQueryMapper);
         }
         assertTrue(numOfHeartbeatActions > 0);
+    }
+
+    @Test
+    @FixFor({"DBZ-1916", "DBZ-1830"})
+    public void shouldPropagateSourceTypeByDatatype() throws Exception {
+        TestHelper.execute("DROP TABLE IF EXISTS test_table;");
+        TestHelper.execute("CREATE TABLE test_table (id SERIAL, c1 INT, c2 INT, c3a NUMERIC(5,2), c3b VARCHAR(128), f1 float(10), f2 decimal(8,4), primary key (id));");
+
+        startConnector(config -> config
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
+                .with("datatype.propagate.source.type", ".+\\.NUMERIC,.+\\.VARCHAR,.+\\.FLOAT4"), false);
+
+        waitForStreamingToStart();
+
+        consumer = testConsumer(1);
+        executeAndWait("INSERT INTO test_table (id,c1,c2,c3a,c3b,f1,f2) values (1, 123, 456, 789.01, 'test', 1.228, 234.56);");
+
+        final SourceRecord record = assertRecordInserted("public.test_table", "id", 1);
+        final Field before = record.valueSchema().field("before");
+
+        // no type info requested as per given data types
+        assertThat(before.schema().field("id").schema().parameters()).isNull();
+        assertThat(before.schema().field("c1").schema().parameters()).isNull();
+        assertThat(before.schema().field("c2").schema().parameters()).isNull();
+
+        assertThat(before.schema().field("c3a").schema().parameters()).includes(
+                entry(TYPE_NAME_PARAMETER_KEY, "NUMERIC"),
+                entry(TYPE_LENGTH_PARAMETER_KEY, "5"),
+                entry(TYPE_SCALE_PARAMETER_KEY, "2"));
+
+        // variable width, name and length info
+        assertThat(before.schema().field("c3b").schema().parameters()).includes(
+                entry(TYPE_NAME_PARAMETER_KEY, "VARCHAR"),
+                entry(TYPE_LENGTH_PARAMETER_KEY, "128"));
+
+        assertThat(before.schema().field("f2").schema().parameters()).includes(
+                entry(TYPE_NAME_PARAMETER_KEY, "NUMERIC"),
+                entry(TYPE_LENGTH_PARAMETER_KEY, "8"),
+                entry(TYPE_SCALE_PARAMETER_KEY, "4"));
+
+        assertThat(before.schema().field("f1").schema().parameters()).includes(
+                entry(TYPE_NAME_PARAMETER_KEY, "FLOAT4"),
+                entry(TYPE_LENGTH_PARAMETER_KEY, "8"),
+                entry(TYPE_SCALE_PARAMETER_KEY, "8"));
     }
 
     private void assertHeartBeatRecordInserted() {

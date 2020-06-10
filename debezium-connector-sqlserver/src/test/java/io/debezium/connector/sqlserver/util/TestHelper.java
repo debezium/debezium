@@ -60,6 +60,21 @@ public class TestHelper {
     private static final String DISABLE_TABLE_CDC = "EXEC sys.sp_cdc_disable_table @source_schema = N'dbo', @source_name = N'#', @capture_instance = 'all'";
     private static final String CDC_WRAPPERS_DML;
 
+    /**
+     * Key for schema parameter used to store a source column's type name.
+     */
+    public static final String TYPE_NAME_PARAMETER_KEY = "__debezium.source.column.type";
+
+    /**
+     * Key for schema parameter used to store a source column's type length.
+     */
+    public static final String TYPE_LENGTH_PARAMETER_KEY = "__debezium.source.column.length";
+
+    /**
+     * Key for schema parameter used to store a source column's type scale.
+     */
+    public static final String TYPE_SCALE_PARAMETER_KEY = "__debezium.source.column.scale";
+
     static {
         try {
             ClassLoader classLoader = TestHelper.class.getClassLoader();
