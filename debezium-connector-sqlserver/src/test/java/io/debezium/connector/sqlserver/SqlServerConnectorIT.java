@@ -5,7 +5,11 @@
  */
 package io.debezium.connector.sqlserver;
 
+import static io.debezium.connector.sqlserver.util.TestHelper.TYPE_LENGTH_PARAMETER_KEY;
+import static io.debezium.connector.sqlserver.util.TestHelper.TYPE_NAME_PARAMETER_KEY;
+import static io.debezium.connector.sqlserver.util.TestHelper.TYPE_SCALE_PARAMETER_KEY;
 import static org.fest.assertions.Assertions.assertThat;
+import static org.fest.assertions.MapAssert.entry;
 import static org.junit.Assert.assertNull;
 
 import java.io.IOException;
@@ -21,6 +25,7 @@ import java.util.TimeZone;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
@@ -1588,6 +1593,54 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
             assertRecord((Struct) valueB.get("after"), expectedRowB);
             assertNull(valueB.get("before"));
         }
+
+        stopConnector();
+    }
+
+    @Test
+    @FixFor({"DBZ-1916", "DBZ-1830"})
+    public void shouldPropagateSourceTypeByDatatype() throws Exception {
+        connection.execute("CREATE TABLE dt_table (id int, c1 int, c2 int, c3a numeric(5,2), c3b varchar(128), f1 float(10), f2 decimal(8,4) primary key(id))");
+        TestHelper.enableTableCdc(connection, "dt_table");
+
+        final Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                .with(SqlServerConnectorConfig.TABLE_WHITELIST, "dbo.dt_table")
+                .with("datatype.propagate.source.type", ".+\\.NUMERIC,.+\\.VARCHAR,.+\\.REAL,.+\\.DECIMAL")
+                .build();
+
+        start(SqlServerConnector.class, config);
+        assertConnectorIsRunning();
+        waitForSnapshotToBeCompleted("sql_server", "server1");
+        connection.execute("INSERT INTO dt_table (id,c1,c2,c3a,c3b,f1,f2) values (1, 123, 456, 789.01, 'test', 1.228, 234.56)");
+
+        SourceRecords records = consumeRecordsByTopic(1);
+        List<SourceRecord> recordsForTopic = records.recordsForTopic("server1.dbo.dt_table");
+
+        final SourceRecord record = recordsForTopic.get(0);
+        final Field before = record.valueSchema().field("before");
+
+        assertThat(before.schema().field("id").schema().parameters()).isNull();
+        assertThat(before.schema().field("c1").schema().parameters()).isNull();
+        assertThat(before.schema().field("c2").schema().parameters()).isNull();
+
+        assertThat(before.schema().field("c3a").schema().parameters()).includes(
+                entry(TYPE_NAME_PARAMETER_KEY, "NUMERIC"),
+                entry(TYPE_LENGTH_PARAMETER_KEY, "5"),
+                entry(TYPE_SCALE_PARAMETER_KEY, "2"));
+
+        assertThat(before.schema().field("c3b").schema().parameters()).includes(
+                entry(TYPE_NAME_PARAMETER_KEY, "VARCHAR"),
+                entry(TYPE_LENGTH_PARAMETER_KEY, "128"));
+
+        assertThat(before.schema().field("f2").schema().parameters()).includes(
+                entry(TYPE_NAME_PARAMETER_KEY, "DECIMAL"),
+                entry(TYPE_LENGTH_PARAMETER_KEY, "8"),
+                entry(TYPE_SCALE_PARAMETER_KEY, "4"));
+
+        assertThat(before.schema().field("f1").schema().parameters()).includes(
+                entry(TYPE_NAME_PARAMETER_KEY, "REAL"),
+                entry(TYPE_LENGTH_PARAMETER_KEY, "24"));
 
         stopConnector();
     }
