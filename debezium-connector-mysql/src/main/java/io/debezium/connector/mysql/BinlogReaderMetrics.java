@@ -31,7 +31,6 @@ class BinlogReaderMetrics extends PipelineMetrics implements BinlogReaderMetrics
     private final AtomicLong numberOfNotWellFormedTransactions = new AtomicLong();
     private final AtomicLong numberOfLargeTransactions = new AtomicLong();
     private final AtomicBoolean isGtidModeEnabled = new AtomicBoolean(false);
-    private final AtomicLong milliSecondsBehindMaster = new AtomicLong();
     private final AtomicReference<String> lastTransactionId = new AtomicReference<>();
 
     public BinlogReaderMetrics(BinaryLogClient client, MySqlTaskContext taskContext, String name, ChangeEventQueueMetrics changeEventQueueMetrics) {
@@ -39,7 +38,6 @@ class BinlogReaderMetrics extends PipelineMetrics implements BinlogReaderMetrics
         this.client = client;
         this.stats = new BinaryLogClientStatistics(client);
         this.schema = taskContext.dbSchema();
-        this.milliSecondsBehindMaster.set(-1);
     }
 
     @Override
@@ -147,10 +145,6 @@ class BinlogReaderMetrics extends PipelineMetrics implements BinlogReaderMetrics
         isGtidModeEnabled.set(enabled);
     }
 
-    public void setMilliSecondsBehindSource(long value) {
-        milliSecondsBehindMaster.set(value);
-    }
-
     @Override
     public String[] getMonitoredTables() {
         return schema.monitoredTablesAsStringArray();
@@ -158,7 +152,7 @@ class BinlogReaderMetrics extends PipelineMetrics implements BinlogReaderMetrics
 
     @Override
     public long getMilliSecondsBehindSource() {
-        return milliSecondsBehindMaster.get();
+        return this.stats.getSecondsBehindMaster() * 1000;
     }
 
     @Override
