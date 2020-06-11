@@ -76,7 +76,8 @@ public class JsonMapDbBatchRecordWriter implements BatchRecordWriter, AutoClosea
             map_data.put(destination, eventValue);
             // dont change if its new batch
             map_batchid.putIfAbsent(destination, 0);
-        } else {
+        }
+        else {
             map_data.put(destination, map_data.get(destination) + IOUtils.LINE_SEPARATOR + eventValue);
         }
         if (StringUtils.countMatches(map_data.get(destination), IOUtils.LINE_SEPARATOR) >= MAX_ROWS) {

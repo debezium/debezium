@@ -44,7 +44,8 @@ public class S3BatchChangeConsumer extends AbstractS3ChangeConsumer {
             }
             batchWriter.uploadBatch();
             committer.markBatchFinished();
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             StringWriter sw = new StringWriter();
             e.printStackTrace(new PrintWriter(sw));
             LOGGER.error(sw.toString());

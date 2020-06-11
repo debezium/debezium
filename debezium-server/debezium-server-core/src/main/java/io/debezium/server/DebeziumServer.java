@@ -5,28 +5,6 @@
  */
 package io.debezium.server;
 
-import java.util.Optional;
-import java.util.Properties;
-import java.util.Set;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
-
-import javax.annotation.PostConstruct;
-import javax.enterprise.context.ApplicationScoped;
-import javax.enterprise.context.spi.CreationalContext;
-import javax.enterprise.event.Observes;
-import javax.enterprise.inject.spi.Bean;
-import javax.enterprise.inject.spi.BeanManager;
-import javax.inject.Inject;
-
-import org.eclipse.microprofile.config.Config;
-import org.eclipse.microprofile.config.ConfigProvider;
-import org.eclipse.microprofile.health.Liveness;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import io.debezium.DebeziumException;
 import io.debezium.engine.ChangeEvent;
 import io.debezium.engine.DebeziumEngine;
@@ -35,6 +13,26 @@ import io.debezium.engine.format.Avro;
 import io.debezium.engine.format.Json;
 import io.quarkus.runtime.ShutdownEvent;
 import io.quarkus.runtime.Startup;
+import org.eclipse.microprofile.config.Config;
+import org.eclipse.microprofile.config.ConfigProvider;
+import org.eclipse.microprofile.health.Liveness;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.annotation.PostConstruct;
+import javax.enterprise.context.ApplicationScoped;
+import javax.enterprise.context.spi.CreationalContext;
+import javax.enterprise.event.Observes;
+import javax.enterprise.inject.spi.Bean;
+import javax.enterprise.inject.spi.BeanManager;
+import javax.inject.Inject;
+import java.util.Optional;
+import java.util.Properties;
+import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 /**
  * <p>The entry point of the Quarkus-based standalone server. The server is configured via Quarkus/Microprofile Configuration sources
@@ -70,7 +68,7 @@ public class DebeziumServer {
     private static final String FORMAT_JSON = Json.class.getSimpleName().toLowerCase();
     private static final String FORMAT_AVRO = Avro.class.getSimpleName().toLowerCase();
 
-    private ExecutorService executor = Executors.newSingleThreadExecutor();
+    private final ExecutorService executor = Executors.newSingleThreadExecutor();
 
     @Inject
     BeanManager beanManager;
@@ -111,10 +109,12 @@ public class DebeziumServer {
         final Class<Any> valueFormat = (Class<Any>) getFormat(config, PROP_VALUE_FORMAT);
         final Properties props = new Properties();
         configToProperties(config, props, PROP_SOURCE_PREFIX, "");
+        configToProperties(config, props, PROP_FORMAT_PREFIX, "");
+        configToProperties(config, props, PROP_FORMAT_PREFIX, "");
         configToProperties(config, props, PROP_FORMAT_PREFIX, "key.converter.");
         configToProperties(config, props, PROP_FORMAT_PREFIX, "value.converter.");
-        configToProperties(config, props, PROP_KEY_FORMAT_PREFIX, "key.converter.");
-        configToProperties(config, props, PROP_VALUE_FORMAT_PREFIX, "value.converter.");
+        configToProperties(config, props, PROP_KEY_FORMAT_PREFIX, "");
+        configToProperties(config, props, PROP_VALUE_FORMAT_PREFIX, "");
         final Optional<String> transforms = config.getOptionalValue(PROP_TRANSFORMS, String.class);
         if (transforms.isPresent()) {
             props.setProperty("transforms", transforms.get());
@@ -137,6 +137,8 @@ public class DebeziumServer {
     private void configToProperties(Config config, Properties props, String oldPrefix, String newPrefix) {
         for (String name : config.getPropertyNames()) {
             if (name.startsWith(oldPrefix)) {
+                LOGGER.error("adding param name={} new={}", name, newPrefix + name.substring(oldPrefix.length()));
+                LOGGER.error("removing={} adding={}", oldPrefix, newPrefix);
                 props.setProperty(newPrefix + name.substring(oldPrefix.length()), config.getValue(name, String.class));
             }
         }

@@ -51,7 +51,8 @@ public class TestS3 {
             if (container != null) {
                 container.stop();
             }
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             // ignored
         }
     }

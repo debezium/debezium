@@ -86,7 +86,8 @@ public abstract class AbstractS3ChangeConsumer extends BaseChangeConsumer implem
         AwsCredentialsProvider credProvider;
         if (useInstanceProfile) {
             credProvider = InstanceProfileCredentialsProvider.create();
-        } else {
+        }
+        else {
             credProvider = ProfileCredentialsProvider.create(credentialsProfile);
         }
 
@@ -105,7 +106,8 @@ public abstract class AbstractS3ChangeConsumer extends BaseChangeConsumer implem
     void close() {
         try {
             s3client.close();
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             LOGGER.warn("Exception while closing S3 client: ", e);
         }
     }
