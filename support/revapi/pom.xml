@@ -10,7 +10,7 @@
    <modelVersion>4.0.0</modelVersion>
    <groupId>io.debezium</groupId>
    <artifactId>debezium-revapi</artifactId>
-   <version>1.2.0.CR1</version>
+   <version>1.2.0-SNAPSHOT</version>
    <name>Debezium Revapi Rules</name>
    <description>Contains the configuration of the Revapi API checker and the list of the API changes in the Debezium APIs.</description>
 
@@ -37,8 +37,4 @@
             </plugin>
         </plugins>
     </build>
-
-  <scm>
-    <tag>v1.2.0.CR1</tag>
-  </scm>
 </project>
