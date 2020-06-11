@@ -23,7 +23,7 @@ import java.util.List;
 /**
  * Implementation of the consumer that delivers the messages into Amazon S3 destination.
  *
- * @author Jiri Pechanec
+ * @author Ismail Simsek
  */
 @Named("s3batch")
 @Dependent

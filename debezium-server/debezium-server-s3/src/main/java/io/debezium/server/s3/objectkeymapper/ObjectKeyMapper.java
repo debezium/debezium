@@ -8,9 +8,9 @@ package io.debezium.server.s3.objectkeymapper;
 import java.time.LocalDateTime;
 
 /**
- * Transforms the name of the record destination to the Kinesis stream name.
+ * Transforms the name of the record destination to the S3 onject key.
  *
- * @author Jiri Pechanec
+ * @author Ismail Simsek
  */
 
 public interface ObjectKeyMapper {

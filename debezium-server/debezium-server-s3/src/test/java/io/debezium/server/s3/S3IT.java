@@ -29,9 +29,9 @@ import java.net.URISyntaxException;
 import java.time.Duration;
 
 /**
- * Integration test that verifies basic reading from PostgreSQL database and writing to Kinesis stream.
+ * Integration test that verifies basic reading from PostgreSQL database and writing to s3.
  *
- * @author Jiri Pechanec
+ * @author Ismail Simsek
  */
 @QuarkusTest
 public class S3IT {

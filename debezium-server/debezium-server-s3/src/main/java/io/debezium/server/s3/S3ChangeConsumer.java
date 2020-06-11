@@ -11,7 +11,7 @@ import javax.inject.Named;
 /**
  * Implementation of the consumer that delivers the messages into Amazon S3 destination.
  *
- * @author Jiri Pechanec
+ * @author Ismail Simsek
  */
 @Named("s3")
 @Dependent

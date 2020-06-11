@@ -41,7 +41,7 @@ import java.util.UUID;
 /**
  * Implementation of the consumer that delivers the messages into Amazon S3 destination.
  *
- * @author Jiri Pechanec
+ * @author Ismail Simsek
  */
 @Dependent
 public abstract class AbstractS3ChangeConsumer extends BaseChangeConsumer implements DebeziumEngine.ChangeConsumer<ChangeEvent<Object, Object>> {
