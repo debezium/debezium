@@ -13,46 +13,18 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.testing.openshift.tools.databases.DatabaseController;
+import io.debezium.testing.openshift.tools.databases.DatabaseInitListener;
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
-import io.fabric8.kubernetes.client.dsl.ExecListener;
 import io.fabric8.kubernetes.client.dsl.ExecWatch;
 import io.fabric8.openshift.client.OpenShiftClient;
-
-import okhttp3.Response;
 
 /**
  *
  * @author Jakub Cechacek
  */
 public class MongoController extends DatabaseController<MongoDatabaseClient> {
-    private static class MongoInitListener implements ExecListener {
-
-        private CountDownLatch latch;
-
-        public MongoInitListener(CountDownLatch latch) {
-            this.latch = latch;
-        }
-
-        @Override
-        public void onOpen(Response response) {
-            LOGGER.info("Initializing MongoDB database");
-        }
-
-        @Override
-        public void onFailure(Throwable t, Response response) {
-            LOGGER.error("Error initializing MongoDB database");
-            LOGGER.error(response.message());
-            latch.countDown();
-        }
-
-        @Override
-        public void onClose(int code, String reason) {
-            LOGGER.info("MongoDb init executor close: [" + code + "] " + reason);
-            latch.countDown();
-        }
-    }
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MongoController.class);
     private static final String DB_INIT_SCRIPT_PATH_CONTAINER = "/usr/local/bin/init-inventory.sh";
@@ -74,7 +46,7 @@ public class MongoController extends DatabaseController<MongoDatabaseClient> {
                 .inContainer("mongo")
                 .writingOutput(System.out) // CHECKSTYLE IGNORE RegexpSinglelineJava FOR NEXT 2 LINES
                 .writingError(System.err)
-                .usingListener(new MongoInitListener(latch))
+                .usingListener(new DatabaseInitListener("mongo", latch))
                 .exec("bash", "-c", DB_INIT_SCRIPT_PATH_CONTAINER + " -h " + svcName + "." + project + ".svc.cluster.local")) {
             LOGGER.info("Waiting until database is initialized");
             latch.await(1, TimeUnit.MINUTES);
