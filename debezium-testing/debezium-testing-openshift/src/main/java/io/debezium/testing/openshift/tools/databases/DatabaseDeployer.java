@@ -71,11 +71,11 @@ public abstract class DatabaseDeployer<T extends DatabaseDeployer, C extends Dat
         LOGGER.info("Deploying database");
         Deployment dep = ocp.apps().deployments().inNamespace(project).createOrReplace(deployment);
 
+        ocpUtils.waitForPods(project, dep.getMetadata().getLabels());
+
         List<Service> svcs = services.stream()
                 .map(s -> ocp.services().inNamespace(project).createOrReplace(s))
                 .collect(Collectors.toList());
-
-        ocpUtils.waitForPods(project, dep.getMetadata().getLabels());
         LOGGER.info("Database deployed successfully");
 
         this.deployment = dep;

@@ -5,6 +5,10 @@
  */
 package io.debezium.testing.openshift.tools.databases.mongodb;
 
+import static org.awaitility.Awaitility.await;
+
+import java.util.concurrent.TimeUnit;
+
 import org.bson.Document;
 
 import com.mongodb.ConnectionString;
@@ -36,7 +40,7 @@ public class MongoDatabaseClient implements DatabaseClient<MongoClient, RuntimeE
         this.authSource = authSource;
     }
 
-    public void execute(Commands<MongoClient, RuntimeException> commands) throws RuntimeException {
+    private boolean doExecute(Commands<MongoClient, RuntimeException> commands) throws RuntimeException {
         MongoCredential credential = MongoCredential.createCredential(username, authSource, password.toCharArray());
         ConnectionString connString = new ConnectionString(url);
 
@@ -48,6 +52,15 @@ public class MongoDatabaseClient implements DatabaseClient<MongoClient, RuntimeE
 
         MongoClient client = MongoClients.create(settings);
         commands.execute(client);
+        return true;
+    }
+
+    public void execute(Commands<MongoClient, RuntimeException> commands) throws RuntimeException {
+        await()
+                .atMost(2, TimeUnit.MINUTES)
+                .pollInterval(5, TimeUnit.SECONDS)
+                .ignoreExceptions()
+                .until(() -> doExecute(commands));
     }
 
     public void execute(String database, Commands<MongoDatabase, RuntimeException> commands) {
