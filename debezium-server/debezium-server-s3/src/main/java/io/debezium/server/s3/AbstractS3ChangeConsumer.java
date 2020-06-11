@@ -115,7 +115,7 @@ public abstract class AbstractS3ChangeConsumer extends BaseChangeConsumer implem
             throws InterruptedException {
         LocalDateTime batchTime = LocalDateTime.now();
         for (ChangeEvent<Object, Object> record : records) {
-
+            LOGGER.error(record.value().toString());
             final PutObjectRequest putRecord = PutObjectRequest.builder()
                     .bucket(bucket)
                     .key(objectKeyMapper.map(record.destination(), batchTime, UUID.randomUUID().toString()))

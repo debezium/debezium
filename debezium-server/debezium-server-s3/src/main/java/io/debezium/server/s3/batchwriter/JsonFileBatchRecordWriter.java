@@ -31,10 +31,10 @@ import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class JsonBatchRecordWriter implements BatchRecordWriter, AutoCloseable {
+public class JsonFileBatchRecordWriter implements BatchRecordWriter, AutoCloseable {
     static final ConcurrentHashMap<String, BatchFile> files = new ConcurrentHashMap<>();
     static final File TEMPDIR = Files.createTempDir();
-    private static final Logger LOGGER = LoggerFactory.getLogger(JsonBatchRecordWriter.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(JsonFileBatchRecordWriter.class);
     private static final LocalDateTime batchTime = LocalDateTime.now();
     @ConfigProperty(name = "debezium.sink.s3.s3batch.maxeventsperbatch")
     private static int MAX_ROWS;
@@ -42,7 +42,7 @@ public class JsonBatchRecordWriter implements BatchRecordWriter, AutoCloseable {
     private final String bucket;
     private final ObjectKeyMapper mapper;
 
-    public JsonBatchRecordWriter(ObjectKeyMapper mapper, S3Client s3Client, String bucket) {
+    public JsonFileBatchRecordWriter(ObjectKeyMapper mapper, S3Client s3Client, String bucket) {
         this.s3Client = s3Client;
         this.bucket = bucket;
         this.mapper = mapper;

@@ -40,7 +40,6 @@ public class JsonMapDbBatchRecordWriter implements BatchRecordWriter, AutoClosea
     private static final Logger LOGGER = LoggerFactory.getLogger(JsonMapDbBatchRecordWriter.class);
     private static final LocalDateTime batchTime = LocalDateTime.now();
 
-
     @ConfigProperty(name = "debezium.sink.s3.s3batch.maxeventsperbatch")
     private static int MAX_ROWS;
     private final S3Client s3Client;

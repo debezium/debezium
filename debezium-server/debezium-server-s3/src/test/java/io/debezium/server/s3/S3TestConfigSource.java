@@ -29,13 +29,12 @@ public class S3TestConfigSource extends TestConfigSource {
         s3Test.put("debezium.sink.s3.credentials.useinstancecred", "false");
         s3Test.put("debezium.sink.s3.s3batch.maxeventsperbatch", "2");
         //
-        s3Test.put("debezium.format.value.schemas.enable", "true");
-        s3Test.put("debezium.format.value", "json");
-        // s3Test.put("debezium.format.value.converter", "io.debezium.converters.CloudEventsConverter");
-        // s3Test.put("debezium.format.value.converter.class", "io.debezium.converters.CloudEventsConverter");
-        // s3Test.put("debezium.format.value.converter.serializer.type" , "json");
-        // s3Test.put("debezium.format.value.converter.data.serializer.type" , "json");
-        // "value.converter.avro.schema.registry.url"= "http://schema-registry:8081"
+        //s3Test.put("debezium.format.value.schemas.enable", "true");
+        //s3Test.put("debezium.format.value.converter", "io.debezium.converters.CloudEventsConverter");
+        s3Test.put("value.converter", "io.debezium.converters.CloudEventsConverter");
+        //s3Test.put("debezium.format.value.converter.data.serializer.type" , "json");
+        s3Test.put("value.converter.data.serializer.type", "json");
+
         // s3Test.put("debezium.format.key", "avro");
         // s3Test.put("debezium.format.key.converter", "io.confluent.connect.avro.AvroConverter");
         /*
