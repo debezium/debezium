@@ -26,7 +26,7 @@ public class SqlDatabaseController extends DatabaseController<SqlDatabaseClient>
     }
 
     @Override
-    public void initialize() {
+    public void initialize() throws InterruptedException {
         // no-op
     }
 

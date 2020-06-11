@@ -9,42 +9,25 @@ import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.testing.openshift.tools.databases.DatabaseInitListener;
 import io.debezium.testing.openshift.tools.databases.SqlDatabaseController;
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
-import io.fabric8.kubernetes.client.dsl.ExecListener;
 import io.fabric8.kubernetes.client.dsl.ExecWatch;
 import io.fabric8.openshift.client.OpenShiftClient;
-
-import okhttp3.Response;
 
 /**
  *
  * @author Jakub Cechacek
  */
 public class SqlServerController extends SqlDatabaseController {
-    private static class SqlServerInitListener implements ExecListener {
-        @Override
-        public void onOpen(Response response) {
-            LOGGER.info("Initializing Sqlserver database");
-        }
-
-        @Override
-        public void onFailure(Throwable t, Response response) {
-            LOGGER.error("Error initializing Sqlserver database");
-            LOGGER.error(response.message());
-        }
-
-        @Override
-        public void onClose(int code, String reason) {
-            LOGGER.info("Sqlserver init executor close: [" + code + "] " + reason);
-        }
-    }
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SqlServerController.class);
     private static final String DB_INIT_SCRIPT_PATH = "/database-resources/sqlserver/inventory.sql";
@@ -67,18 +50,21 @@ public class SqlServerController extends SqlDatabaseController {
         return "jdbc:" + dbType + "://" + hostname + ":" + port;
     }
 
-    public void initialize() {
+    public void initialize() throws InterruptedException {
         Pod pod = ocp.pods().inNamespace(project).withLabel("deployment", name).list().getItems().get(0);
         ocp.pods().inNamespace(project).withName(pod.getMetadata().getName())
                 .file(DB_INIT_SCRIPT_PATH_CONTAINER)
                 .upload(initScript);
 
+        CountDownLatch latch = new CountDownLatch(1);
         try (ExecWatch exec = ocp.pods().inNamespace(project).withName(pod.getMetadata().getName())
                 .inContainer("sqlserver")
                 .writingOutput(System.out) // CHECKSTYLE IGNORE RegexpSinglelineJava FOR NEXT 2 LINES
                 .writingError(System.err)
-                .usingListener(new SqlServerInitListener())
+                .usingListener(new DatabaseInitListener("sqlserver", latch))
                 .exec("/opt/mssql-tools/bin/sqlcmd", "-U", "sa", "-P", "Debezium1$", "-i", "/opt/inventory.sql")) { // TODO: hard-coded password
+            LOGGER.info("Waiting until database is initialized");
+            latch.await(1, TimeUnit.MINUTES);
         }
     }
 }

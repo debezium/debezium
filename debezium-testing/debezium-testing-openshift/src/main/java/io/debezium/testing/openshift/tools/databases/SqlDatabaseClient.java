@@ -5,10 +5,13 @@
  */
 package io.debezium.testing.openshift.tools.databases;
 
+import static org.awaitility.Awaitility.await;
+
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,10 +34,19 @@ public class SqlDatabaseClient implements DatabaseClient<Connection, SQLExceptio
         this.password = password;
     }
 
-    public void execute(Commands<Connection, SQLException> commands) throws SQLException {
+    private boolean doExecute(Commands<Connection, SQLException> commands) throws SQLException {
         try (Connection con = DriverManager.getConnection(url, username, password)) {
             commands.execute(con);
         }
+        return true;
+    }
+
+    public void execute(Commands<Connection, SQLException> commands) throws SQLException {
+        await()
+                .atMost(2, TimeUnit.MINUTES)
+                .pollInterval(5, TimeUnit.SECONDS)
+                .ignoreExceptions()
+                .until(() -> doExecute(commands));
     }
 
     public void execute(String database, Commands<Connection, SQLException> commands) throws SQLException {
