@@ -6,10 +6,10 @@
 
 package io.debezium.server.s3.objectkeymapper;
 
-import org.apache.commons.lang3.StringUtils;
-
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+
+import org.apache.commons.lang3.StringUtils;
 
 public class TimeBasedDailyObjectKeyMapper extends DefaultObjectKeyMapper {
 
