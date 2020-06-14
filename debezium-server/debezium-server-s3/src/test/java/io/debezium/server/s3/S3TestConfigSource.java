@@ -5,13 +5,12 @@
  */
 package io.debezium.server.s3;
 
-import java.util.HashMap;
-import java.util.Map;
-
-import org.apache.kafka.connect.runtime.standalone.StandaloneConfig;
-
 import io.debezium.server.TestConfigSource;
 import io.debezium.server.TestDatabase;
+import org.apache.kafka.connect.runtime.standalone.StandaloneConfig;
+
+import java.util.HashMap;
+import java.util.Map;
 
 public class S3TestConfigSource extends TestConfigSource {
 

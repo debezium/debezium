@@ -5,24 +5,6 @@
  */
 package io.debezium.server.s3;
 
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.UUID;
-
-import javax.annotation.PostConstruct;
-import javax.annotation.PreDestroy;
-import javax.enterprise.context.Dependent;
-import javax.enterprise.inject.Instance;
-import javax.inject.Inject;
-
-import org.apache.commons.lang3.StringUtils;
-import org.eclipse.microprofile.config.ConfigProvider;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import io.debezium.engine.ChangeEvent;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.engine.DebeziumEngine.RecordCommitter;
@@ -31,7 +13,11 @@ import io.debezium.server.BaseChangeConsumer;
 import io.debezium.server.CustomConsumerBuilder;
 import io.debezium.server.s3.objectkeymapper.DefaultObjectKeyMapper;
 import io.debezium.server.s3.objectkeymapper.ObjectKeyMapper;
-
+import org.apache.commons.lang3.StringUtils;
+import org.eclipse.microprofile.config.ConfigProvider;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.InstanceProfileCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.ProfileCredentialsProvider;
@@ -40,6 +26,17 @@ import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.S3ClientBuilder;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+
+import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
+import javax.enterprise.context.Dependent;
+import javax.enterprise.inject.Instance;
+import javax.inject.Inject;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.UUID;
 
 /**
  * Implementation of the consumer that delivers the messages into Amazon S3 destination.

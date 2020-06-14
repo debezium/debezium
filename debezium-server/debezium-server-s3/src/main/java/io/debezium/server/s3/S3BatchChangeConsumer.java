@@ -5,30 +5,23 @@
  */
 package io.debezium.server.s3;
 
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.io.StringWriter;
-import java.net.URISyntaxException;
-import java.util.List;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-
-import javax.annotation.PostConstruct;
-import javax.annotation.PreDestroy;
-import javax.enterprise.context.Dependent;
-import javax.inject.Named;
-
-import org.eclipse.microprofile.config.ConfigProvider;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import io.debezium.engine.ChangeEvent;
 import io.debezium.engine.DebeziumEngine.RecordCommitter;
 import io.debezium.server.s3.batchwriter.BatchRecordWriter;
 import io.debezium.server.s3.batchwriter.JsonMapDbBatchRecordWriter;
 import io.debezium.server.s3.objectkeymapper.ObjectKeyMapper;
 import io.debezium.server.s3.objectkeymapper.TimeBasedDailyObjectKeyMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
+import javax.enterprise.context.Dependent;
+import javax.inject.Named;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.net.URISyntaxException;
+import java.util.List;
 
 /**
  * Implementation of the consumer that delivers the messages into Amazon S3 destination.

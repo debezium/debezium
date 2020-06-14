@@ -5,22 +5,6 @@
  */
 package io.debezium.server.s3;
 
-import java.net.URISyntaxException;
-import java.time.Duration;
-import java.util.List;
-import java.util.Timer;
-import java.util.concurrent.TimeUnit;
-
-import javax.enterprise.event.Observes;
-import javax.inject.Inject;
-
-import org.awaitility.Awaitility;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.fest.assertions.Assertions;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Test;
-
 import io.debezium.server.DebeziumServer;
 import io.debezium.server.TestDatabase;
 import io.debezium.server.events.ConnectorCompletedEvent;
@@ -29,7 +13,12 @@ import io.debezium.server.s3.batchwriter.JsonMapDbBatchRecordWriter;
 import io.debezium.server.s3.objectkeymapper.TimeBasedDailyObjectKeyMapper;
 import io.debezium.util.Testing;
 import io.quarkus.test.junit.QuarkusTest;
-
+import org.awaitility.Awaitility;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.fest.assertions.Assertions;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 import software.amazon.awssdk.auth.credentials.ProfileCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -37,6 +26,12 @@ import software.amazon.awssdk.services.s3.model.CreateBucketRequest;
 import software.amazon.awssdk.services.s3.model.ListObjectsRequest;
 import software.amazon.awssdk.services.s3.model.ListObjectsResponse;
 import software.amazon.awssdk.services.s3.model.S3Object;
+
+import javax.enterprise.event.Observes;
+import javax.inject.Inject;
+import java.net.URISyntaxException;
+import java.time.Duration;
+import java.util.List;
 
 /**
  * Integration test that verifies basic reading from PostgreSQL database and writing to s3 destination.

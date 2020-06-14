@@ -5,15 +5,13 @@
  */
 package io.debezium.server.s3;
 
-import java.time.Duration;
-
+import io.debezium.util.Testing;
 import org.testcontainers.containers.FixedHostPortGenericContainer;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.HttpWaitStrategy;
-
-import io.debezium.util.Testing;
-
 import software.amazon.awssdk.auth.credentials.ProfileCredentialsProvider;
+
+import java.time.Duration;
 
 public class TestS3Server {
 
