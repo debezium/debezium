@@ -28,7 +28,8 @@ public class S3TestConfigSource extends TestConfigSource {
         s3Test.put("debezium.sink.s3.objectkey.prefix", "debezium-server-");
         s3Test.put("debezium.sink.s3.credentials.profile", "default");
         s3Test.put("debezium.sink.s3.credentials.useinstancecred", "false");
-        s3Test.put("debezium.sink.s3.s3batch.maxeventsperbatch", "2");
+        s3Test.put("debezium.sink.s3.batch.row.limit", "2");
+        s3Test.put("debezium.sink.s3.batch.time.limit", "5");
         //
         // s3Test.put("debezium.format.value.schemas.enable", "true");
         // s3Test.put("debezium.format.value.converter", "io.debezium.converters.CloudEventsConverter");
@@ -56,7 +57,7 @@ public class S3TestConfigSource extends TestConfigSource {
         s3Test.put("debezium.source.database.dbname", TestDatabase.POSTGRES_DBNAME);
         s3Test.put("debezium.source.database.server.name", "testc");
         s3Test.put("debezium.source.schema.whitelist", "inventory");
-        s3Test.put("debezium.source.table.whitelist", "inventory.customers");
+        s3Test.put("debezium.source.table.whitelist", "inventory.customers,inventory.orders");
 
         config = s3Test;
     }

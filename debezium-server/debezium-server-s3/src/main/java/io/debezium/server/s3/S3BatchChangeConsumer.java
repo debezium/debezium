@@ -5,13 +5,21 @@
  */
 package io.debezium.server.s3;
 
+import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.net.URISyntaxException;
 import java.util.List;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
+import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
 import javax.enterprise.context.Dependent;
 import javax.inject.Named;
 
+import org.eclipse.microprofile.config.ConfigProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,18 +41,33 @@ public class S3BatchChangeConsumer extends AbstractS3ChangeConsumer {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(S3BatchChangeConsumer.class);
     private final ObjectKeyMapper objectKeyMapper = new TimeBasedDailyObjectKeyMapper();
+    BatchRecordWriter batchWriter;
+
+    @PostConstruct
+    void connect() throws URISyntaxException {
+        super.connect();
+        batchWriter = new JsonMapDbBatchRecordWriter(objectKeyMapper, s3client, bucket);
+    }
+
+    @PreDestroy
+    void close() {
+        try {
+            batchWriter.close();
+        }
+        catch (Exception e) {
+            LOGGER.warn("Exception while closing batchWriter:{} ", e.getMessage());
+        }
+        super.close();
+    }
 
     @Override
     public void handleBatch(List<ChangeEvent<Object, Object>> records, RecordCommitter<ChangeEvent<Object, Object>> committer)
             throws InterruptedException {
         try {
-            BatchRecordWriter batchWriter = new JsonMapDbBatchRecordWriter(objectKeyMapper, s3client, bucket);
             for (ChangeEvent<Object, Object> record : records) {
-                // print(record);
-                batchWriter.append(record.destination(), getString(record));
+                batchWriter.append(record.destination(), getString(record.value()));
                 committer.markProcessed(record);
             }
-            batchWriter.uploadBatch();
             committer.markBatchFinished();
         }
         catch (Exception e) {

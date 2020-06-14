@@ -41,7 +41,7 @@ public class S3IT {
 
     private static final int MESSAGE_COUNT = 4;
     protected static S3Client s3client = null;
-    protected static TestS3 s3server = new TestS3();
+    protected static TestS3Server s3server = new TestS3Server();
     protected static TestDatabase db;
     @Inject
     DebeziumServer server;
@@ -88,7 +88,7 @@ public class S3IT {
         s3client = S3Client.builder()
                 .region(Region.of(S3TestConfigSource.S3_REGION))
                 .credentialsProvider(pcred)
-                .endpointOverride(new java.net.URI("http://localhost:" + TestS3.MINIO_DEFAULT_PORT_MAP))
+                .endpointOverride(new java.net.URI("http://localhost:" + TestS3Server.MINIO_DEFAULT_PORT_MAP))
                 .build();
 
         s3client.createBucket(CreateBucketRequest.builder().bucket(S3TestConfigSource.S3_BUCKET).build());

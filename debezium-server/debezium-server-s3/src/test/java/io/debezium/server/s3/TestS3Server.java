@@ -15,7 +15,7 @@ import io.debezium.util.Testing;
 
 import software.amazon.awssdk.auth.credentials.ProfileCredentialsProvider;
 
-public class TestS3 {
+public class TestS3Server {
 
     static final int MINIO_DEFAULT_PORT = 9000;
     static final int MINIO_DEFAULT_PORT_MAP = 9001;

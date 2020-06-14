@@ -8,6 +8,8 @@ package io.debezium.server.s3;
 import java.net.URISyntaxException;
 import java.time.Duration;
 import java.util.List;
+import java.util.Timer;
+import java.util.concurrent.TimeUnit;
 
 import javax.enterprise.event.Observes;
 import javax.inject.Inject;
@@ -16,6 +18,7 @@ import org.awaitility.Awaitility;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.fest.assertions.Assertions;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import io.debezium.server.DebeziumServer;
@@ -45,7 +48,7 @@ public class S3BatchIT {
 
     private static final int MESSAGE_COUNT = 2;
     protected static S3Client s3client = null;
-    protected static TestS3 s3server = new TestS3();
+    protected static TestS3Server s3server = new TestS3Server();
     protected static TestDatabase db = new TestDatabase();
 
     @Inject
@@ -73,7 +76,6 @@ public class S3BatchIT {
         if (!sinkType.equals("s3batch")) {
             return;
         }
-
         db = new TestDatabase();
         db.start();
     }
@@ -93,21 +95,27 @@ public class S3BatchIT {
         return res.contents();
     }
 
-    @Test
-    public void testS3Batch() throws Exception {
-        Testing.Print.enable();
-        Assertions.assertThat(sinkType.equals("s3batch"));
+    @BeforeAll
+    static void setUpS3() throws URISyntaxException {
         s3server.start();
-
         ProfileCredentialsProvider pcred = ProfileCredentialsProvider.create("default");
         s3client = S3Client.builder()
                 .region(Region.of(S3TestConfigSource.S3_REGION))
                 .credentialsProvider(pcred)
-                .endpointOverride(new java.net.URI("http://localhost:" + TestS3.MINIO_DEFAULT_PORT_MAP))
+                .endpointOverride(new java.net.URI("http://localhost:" + TestS3Server.MINIO_DEFAULT_PORT_MAP))
                 .build();
-
         s3client.createBucket(CreateBucketRequest.builder().bucket(S3TestConfigSource.S3_BUCKET).build());
         Assertions.assertThat(s3client.listBuckets().toString().contains(S3TestConfigSource.S3_BUCKET));
+    }
+
+    @Test
+    public void testS3Batch() throws Exception {
+        Testing.Print.enable();
+        Assertions.assertThat(sinkType.equals("s3batch"));
+
+        Awaitility.await().atMost(Duration.ofSeconds(S3TestConfigSource.waitForSeconds())).until(() -> {
+            return s3client.listBuckets().toString().contains(S3TestConfigSource.S3_BUCKET);
+        });
 
         Awaitility.await().atMost(Duration.ofSeconds(S3TestConfigSource.waitForSeconds())).until(() -> {
             List<S3Object> objects = getObjectList();
@@ -119,13 +127,14 @@ public class S3BatchIT {
         bw.append("table1", "row2");
         bw.append("table1", "row3");
         bw.append("table1", "row5");
-        bw.uploadBatch();
+        bw.close();
 
         Awaitility.await().atMost(Duration.ofSeconds(S3TestConfigSource.waitForSeconds())).until(() -> {
             List<S3Object> objects = getObjectList();
             // we expect to see 2 batch files {0,1}
             for (S3Object o : objects) {
                 if (o.key().contains("table1") && o.key().contains("-1.json")) {
+                    Testing.print(objects.toString());
                     return true;
                 }
             }
