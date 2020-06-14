@@ -69,7 +69,7 @@ public class JsonMapDbBatchRecordWriter implements BatchRecordWriter, AutoClosea
 
     private void setupTimer() {
         final int timerBatchLimit = ConfigProvider.getConfig().getOptionalValue("debezium.sink.s3.batch.time.limit", Integer.class).orElse(3600);
-        LOGGER.info("Set Batch limit to {} Second",timerBatchLimit);
+        LOGGER.info("Set Batch limit to {} Second", timerBatchLimit);
         Runnable timerTask = () -> {
             LOGGER.debug("Timer is up uploading batch data!");
             try {
@@ -79,7 +79,7 @@ public class JsonMapDbBatchRecordWriter implements BatchRecordWriter, AutoClosea
                 LOGGER.error("Timer based batch upload failed data will be uploaded with next batch!");
             }
         };
-        timerExecutor.scheduleWithFixedDelay(timerTask, timerBatchLimit,timerBatchLimit, TimeUnit.SECONDS);
+        timerExecutor.scheduleWithFixedDelay(timerTask, timerBatchLimit, timerBatchLimit, TimeUnit.SECONDS);
     }
 
     @Override
@@ -104,6 +104,7 @@ public class JsonMapDbBatchRecordWriter implements BatchRecordWriter, AutoClosea
         final String data = map_data.get(destination);
         String s3File = objectKeyMapper.map(destination, batchTime, batchId);
         LOGGER.debug("Uploading s3File destination:{} key:{}", destination, s3File);
+        LOGGER.error("{}", data);
         final PutObjectRequest putRecord = PutObjectRequest.builder()
                 .bucket(bucket)
                 .key(s3File)
@@ -144,7 +145,7 @@ public class JsonMapDbBatchRecordWriter implements BatchRecordWriter, AutoClosea
         batchTime = LocalDateTime.now();
     }
 
-    private void closeDb(){
+    private void closeDb() {
         if (!cdcDb.isClosed()) {
             this.uploadBatch();
             if (map_data.isEmpty()) {
@@ -158,13 +159,14 @@ public class JsonMapDbBatchRecordWriter implements BatchRecordWriter, AutoClosea
         }
     }
 
-    private void stopTimer(){
+    private void stopTimer() {
         timerExecutor.shutdown();
         try {
             if (!timerExecutor.awaitTermination(5, TimeUnit.SECONDS)) {
                 timerExecutor.shutdownNow();
             }
-        } catch (InterruptedException e) {
+        }
+        catch (InterruptedException e) {
             timerExecutor.shutdownNow();
         }
     }
