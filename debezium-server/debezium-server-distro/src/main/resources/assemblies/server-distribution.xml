@@ -17,9 +17,6 @@
           <useTransitiveFiltering>true</useTransitiveFiltering>
           <excludes>
             <exclude>org.apache.kafka:kafka-tools:*</exclude>
-            <exclude>com.github.luben:zstd-jni:*</exclude>
-            <exclude>org.lz4:lz4-java:*</exclude>
-            <exclude>org.xerial.snappy:snappy-java:*</exclude>
             <exclude>javax.ws.rs:javax.ws.rs-api:*</exclude>
             <exclude>org.apache.kafka:connect-file:*</exclude>
             <exclude>org.glassfish.jersey.*:*:*</exclude>
