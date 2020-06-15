@@ -197,6 +197,19 @@ The source configuration uses the same configuration properties that are describ
 |
 |Defines how frequently the offsets are flushed into the file.
 
+|[[debezium-source-database-history-class]]<<debezium-source-database-history-class, `debezium.source.database.history`>>
+|`io.debezium.relational.history.KafkaDatabaseHistory`
+|Some of the connectors (e.g MySQL, SQL Server, Db2, Oracle) monitors the database schema evolution over the time and stores the data in database history.
+This is by default based on Kafka.
+There are also other options available
+
+* `io.debezium.relational.history.FileDatabaseHistory` for non-Kafka deployments
+* `io.debezium.relational.history.MemoryDatabaseHistory` volatile store for test environments
+
+|[[debezium-source-database-history-file-filename]]<<debezium-source-database-history-file-filename, `debezium.source.database.history.file.filename`>>
+|
+|The name and location of the file to which `FileDatabaseHistory` persists its data.
+
 |===
 
 [id="debezium-format-configuration-options"]
@@ -256,6 +269,27 @@ The configuration will need to contain the list of transformations, implementati
 |`debezium.transformations.<name>.*`
 |
 |Configuration properties passed to the transformation with name `<name>`.
+
+|===
+
+
+[id="debezium-additional-configuration-options"]
+=== Addtional configuration
+
+Debezium Server runs on top Quarkus framework.
+All configuration options exposed by Quarkus are available in Debezium Server too.
+The most frequent used are:
+
+[cols="35%a,10%a,55%a"]
+|===
+|Property
+|Default
+|Description
+
+[id="debezium-transformations-name-class"]
+|`quarkus.http.port`
+|8080
+|The port on which Debezim exposes Microprofile Health endpoint and other exposed status information.
 
 |===
 
