@@ -1444,6 +1444,8 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         SourceRecords records = consumeRecordsByTopic(INITIAL_EVENT_COUNT); // 6 DDL changes
         assertThat(records.recordsForTopic(DATABASE.topicForTable("orders")).size()).isEqualTo(5);
 
+        waitForStreamingRunning(DATABASE.getServerName());
+
         try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());) {
             try (JdbcConnection connection = db.connect()) {
                 final Connection jdbc = connection.connection();
