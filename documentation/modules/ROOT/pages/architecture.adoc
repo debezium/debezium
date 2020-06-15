@@ -34,7 +34,7 @@ The {prodname} server is a read-to-use application that streams change events fr
 
 The following image shows the architecture of a CDC pipeline using the {prodname} server:
 
-image:debezium-server-architecture.png[{prodname} Architecture]
+image::debezium-server-architecture.png[{prodname} Architecture]
 
 The {prodname} server is configured to use one of the {prodname} source connectors to capture changes from the source database.
 By default, the changes from one capture table in the source database are emitted as change records and consumed by one of a variety of sink messaging infrastructures like Amazon Kinesis, Google Cloud Pub/Sub, or Apache Pulsar.
