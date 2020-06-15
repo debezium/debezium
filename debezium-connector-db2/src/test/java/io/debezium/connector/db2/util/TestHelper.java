@@ -44,6 +44,21 @@ public class TestHelper {
     public static final String TEST_DATABASE = "testdb";
     public static final int WAIT_FOR_CDC = 3 * 1000;
 
+    /**
+     * Key for schema parameter used to store a source column's type name.
+     */
+    public static final String TYPE_NAME_PARAMETER_KEY = "__debezium.source.column.type";
+
+    /**
+     * Key for schema parameter used to store a source column's type length.
+     */
+    public static final String TYPE_LENGTH_PARAMETER_KEY = "__debezium.source.column.length";
+
+    /**
+     * Key for schema parameter used to store a source column's type scale.
+     */
+    public static final String TYPE_SCALE_PARAMETER_KEY = "__debezium.source.column.scale";
+
     private static final String STATEMENTS_PLACEHOLDER = "#";
 
     private static final String ENABLE_DB_CDC = "VALUES ASNCDC.ASNCDCSERVICES('start','asncdc')";

@@ -5,7 +5,11 @@
  */
 package io.debezium.connector.db2;
 
+import static io.debezium.connector.db2.util.TestHelper.TYPE_LENGTH_PARAMETER_KEY;
+import static io.debezium.connector.db2.util.TestHelper.TYPE_NAME_PARAMETER_KEY;
+import static io.debezium.connector.db2.util.TestHelper.TYPE_SCALE_PARAMETER_KEY;
 import static org.fest.assertions.Assertions.assertThat;
+import static org.fest.assertions.MapAssert.entry;
 import static org.junit.Assert.assertNull;
 
 import java.sql.SQLException;
@@ -14,6 +18,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -50,11 +55,13 @@ public class Db2ConnectorIT extends AbstractConnectorTest {
                 "CREATE TABLE tableb (id int not null, colb varchar(30), primary key (id))",
                 "CREATE TABLE masked_hashed_column_table (id int not null, name varchar(255), name2 varchar(255), name3 varchar(20), primary key (id))",
                 "CREATE TABLE truncated_column_table (id int not null, name varchar(20), primary key (id))",
+                "CREATE TABLE dt_table (id int not null, c1 int, c2 int, c3a numeric(5,2), c3b varchar(128), f1 float(10), f2 decimal(8,4), primary key(id))",
                 "INSERT INTO tablea VALUES(1, 'a')");
         TestHelper.enableTableCdc(connection, "TABLEA");
         TestHelper.enableTableCdc(connection, "TABLEB");
         TestHelper.enableTableCdc(connection, "MASKED_HASHED_COLUMN_TABLE");
         TestHelper.enableTableCdc(connection, "TRUNCATED_COLUMN_TABLE");
+        TestHelper.enableTableCdc(connection, "DT_TABLE");
         initializeConnectorTestFramework();
         Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
         Testing.Print.enable();
@@ -64,11 +71,12 @@ public class Db2ConnectorIT extends AbstractConnectorTest {
     public void after() throws SQLException {
         if (connection != null) {
             TestHelper.disableDbCdc(connection);
+            TestHelper.disableTableCdc(connection, "DT_TABLE");
             TestHelper.disableTableCdc(connection, "TRUNCATED_COLUMN_TABLE");
             TestHelper.disableTableCdc(connection, "MASKED_HASHED_COLUMN_TABLE");
             TestHelper.disableTableCdc(connection, "TABLEB");
             TestHelper.disableTableCdc(connection, "TABLEA");
-            connection.execute("DROP TABLE tablea", "DROP TABLE tableb", "DROP TABLE masked_hashed_column_table", "DROP TABLE truncated_column_table");
+            connection.execute("DROP TABLE tablea", "DROP TABLE tableb", "DROP TABLE masked_hashed_column_table", "DROP TABLE truncated_column_table", "DROP TABLE dt_table");
             connection.execute("DELETE FROM ASNCDC.IBMSNAP_REGISTER");
             connection.execute("DELETE FROM ASNCDC.IBMQREP_COLVERSION");
             connection.execute("DELETE FROM ASNCDC.IBMQREP_TABVERSION");
@@ -785,6 +793,59 @@ public class Db2ConnectorIT extends AbstractConnectorTest {
         assertThat(key.get("COLA")).isNotNull();
 
         stopConnector();
+    }
+
+    @Test
+    @FixFor({"DBZ-1916", "DBZ-1830"})
+    public void shouldPropagateSourceTypeByDatatype() throws Exception {
+        final Configuration config = TestHelper.defaultConfig()
+                .with(Db2ConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                .with("datatype.propagate.source.type", ".+\\.NUMERIC,.+\\.VARCHAR,.+\\.DECIMAL,.+\\.REAL")
+                .build();
+
+        start(Db2Connector.class, config);
+
+        // Wait for snapshot completion
+        consumeRecordsByTopic(1);
+
+        // Wait for snapshot completion
+        consumeRecordsByTopic(1);
+
+        TestHelper.enableDbCdc(connection);
+        connection.execute("UPDATE ASNCDC.IBMSNAP_REGISTER SET STATE = 'A' WHERE SOURCE_OWNER = 'DB2INST1'");
+        TestHelper.refreshAndWait(connection);
+
+        connection.setAutoCommit(false);
+        connection.execute("INSERT INTO dt_table (id,c1,c2,c3a,c3b,f1,f2) values (1,123,456,789.01,'test',1.228,234.56)");
+
+        final SourceRecords records = consumeRecordsByTopic(1);
+
+        List<SourceRecord> recordsForTopic = records.recordsForTopic("testdb.DB2INST1.DT_TABLE");
+        assertThat(recordsForTopic).hasSize(1);
+
+        final Field before = recordsForTopic.get(0).valueSchema().field("before");
+
+        assertThat(before.schema().field("ID").schema().parameters()).isNull();
+        assertThat(before.schema().field("C1").schema().parameters()).isNull();
+        assertThat(before.schema().field("C2").schema().parameters()).isNull();
+
+        assertThat(before.schema().field("C3A").schema().parameters()).includes(
+                entry(TYPE_NAME_PARAMETER_KEY, "DECIMAL"),
+                entry(TYPE_LENGTH_PARAMETER_KEY, "5"),
+                entry(TYPE_SCALE_PARAMETER_KEY, "2"));
+
+        assertThat(before.schema().field("C3B").schema().parameters()).includes(
+                entry(TYPE_NAME_PARAMETER_KEY, "VARCHAR"),
+                entry(TYPE_LENGTH_PARAMETER_KEY, "128"));
+
+        assertThat(before.schema().field("F2").schema().parameters()).includes(
+                entry(TYPE_NAME_PARAMETER_KEY, "DECIMAL"),
+                entry(TYPE_LENGTH_PARAMETER_KEY, "8"),
+                entry(TYPE_SCALE_PARAMETER_KEY, "4"));
+
+        assertThat(before.schema().field("F1").schema().parameters()).includes(
+                entry(TYPE_NAME_PARAMETER_KEY, "REAL"),
+                entry(TYPE_LENGTH_PARAMETER_KEY, "24"));
     }
 
     private void assertRecord(Struct record, List<SchemaAndValueField> expected) {

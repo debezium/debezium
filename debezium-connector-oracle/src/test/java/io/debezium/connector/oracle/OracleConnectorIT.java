@@ -5,8 +5,12 @@
  */
 package io.debezium.connector.oracle;
 
+import static io.debezium.connector.oracle.util.TestHelper.TYPE_LENGTH_PARAMETER_KEY;
+import static io.debezium.connector.oracle.util.TestHelper.TYPE_NAME_PARAMETER_KEY;
+import static io.debezium.connector.oracle.util.TestHelper.TYPE_SCALE_PARAMETER_KEY;
 import static junit.framework.TestCase.assertEquals;
 import static org.fest.assertions.Assertions.assertThat;
+import static org.fest.assertions.MapAssert.entry;
 
 import java.math.BigDecimal;
 import java.sql.SQLException;
@@ -16,6 +20,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.AfterClass;
@@ -52,6 +57,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         TestHelper.dropTable(connection, "debezium.customer");
         TestHelper.dropTable(connection, "debezium.masked_hashed_column_table");
         TestHelper.dropTable(connection, "debezium.truncated_column_table");
+        TestHelper.dropTable(connection, "debezium.dt_table");
 
         String ddl = "create table debezium.customer (" +
                 "  id numeric(9,0) not null, " +
@@ -86,6 +92,21 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         connection.execute(ddl3);
         connection.execute("GRANT SELECT ON debezium.truncated_column_table to  " + TestHelper.CONNECTOR_USER);
         connection.execute("ALTER TABLE debezium.truncated_column_table ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
+
+        String ddl4 = "create table dt_table (" +
+                "  id numeric(9,0) not null, " +
+                "  c1 int, " +
+                "  c2 int, " +
+                "  c3a numeric(5,2), " +
+                "  c3b varchar(128), " +
+                "  f1 float(10), " +
+                "  f2 decimal(8,4), " +
+                "  primary key (id)" +
+                ")";
+
+        connection.execute(ddl4);
+        connection.execute("GRANT SELECT ON debezium.dt_table to  " + TestHelper.CONNECTOR_USER);
+        connection.execute("ALTER TABLE debezium.dt_table ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
     }
 
     @AfterClass
@@ -100,6 +121,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         connection.execute("delete from debezium.customer");
         connection.execute("delete from debezium.masked_hashed_column_table");
         connection.execute("delete from debezium.truncated_column_table");
+        connection.execute("delete from debezium.dt_table");
         setConsumeTimeout(TestHelper.defaultMessageConsumerPollTimeout(), TimeUnit.SECONDS);
         initializeConnectorTestFramework();
         Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
@@ -711,6 +733,63 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         assertThat(key.get("NAME")).isNotNull();
 
         stopConnector();
+    }
+
+    @Test
+    @FixFor({"DBZ-1916", "DBZ-1830"})
+    public void shouldPropagateSourceTypeByDatatype() throws Exception {
+        final Configuration config = TestHelper.defaultConfig()
+                .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                .with("datatype.propagate.source.type", ".+\\.NUMBER,.+\\.VARCHAR2,.+\\.FLOAT")
+                .build();
+
+        start(OracleConnector.class, config);
+        assertConnectorIsRunning();
+
+        waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+        connection.execute("INSERT INTO debezium.dt_table (id,c1,c2,c3a,c3b,f1,f2) values (1,123,456,789.01,'test',1.228,234.56)");
+        connection.execute("COMMIT");
+
+        final SourceRecords records = consumeRecordsByTopic(1);
+
+        List<SourceRecord> recordsForTopic = records.recordsForTopic("server1.DEBEZIUM.DT_TABLE");
+        assertThat(recordsForTopic).hasSize(1);
+
+        final Field before = recordsForTopic.get(0).valueSchema().field("before");
+
+        assertThat(before.schema().field("ID").schema().parameters()).includes(
+                entry(TYPE_NAME_PARAMETER_KEY, "NUMBER"),
+                entry(TYPE_LENGTH_PARAMETER_KEY, "9"),
+                entry(TYPE_SCALE_PARAMETER_KEY, "0"));
+
+        assertThat(before.schema().field("C1").schema().parameters()).includes(
+                entry(TYPE_NAME_PARAMETER_KEY, "NUMBER"),
+                entry(TYPE_LENGTH_PARAMETER_KEY, "38"),
+                entry(TYPE_SCALE_PARAMETER_KEY, "0"));
+
+        assertThat(before.schema().field("C2").schema().parameters()).includes(
+                entry(TYPE_NAME_PARAMETER_KEY, "NUMBER"),
+                entry(TYPE_LENGTH_PARAMETER_KEY, "38"),
+                entry(TYPE_SCALE_PARAMETER_KEY, "0"));
+
+        assertThat(before.schema().field("C3A").schema().parameters()).includes(
+                entry(TYPE_NAME_PARAMETER_KEY, "NUMBER"),
+                entry(TYPE_LENGTH_PARAMETER_KEY, "5"),
+                entry(TYPE_SCALE_PARAMETER_KEY, "2"));
+
+        assertThat(before.schema().field("C3B").schema().parameters()).includes(
+                entry(TYPE_NAME_PARAMETER_KEY, "VARCHAR2"),
+                entry(TYPE_LENGTH_PARAMETER_KEY, "128"));
+
+        assertThat(before.schema().field("F2").schema().parameters()).includes(
+                entry(TYPE_NAME_PARAMETER_KEY, "NUMBER"),
+                entry(TYPE_LENGTH_PARAMETER_KEY, "8"),
+                entry(TYPE_SCALE_PARAMETER_KEY, "4"));
+
+        assertThat(before.schema().field("F1").schema().parameters()).includes(
+                entry(TYPE_NAME_PARAMETER_KEY, "FLOAT"),
+                entry(TYPE_LENGTH_PARAMETER_KEY, "10"));
     }
 
     private void verifyHeartbeatRecord(SourceRecord heartbeat) {

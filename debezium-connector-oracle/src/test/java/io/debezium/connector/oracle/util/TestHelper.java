@@ -32,6 +32,21 @@ public class TestHelper {
 
     public static final String SERVER_NAME = "server1";
 
+    /**
+     * Key for schema parameter used to store a source column's type name.
+     */
+    public static final String TYPE_NAME_PARAMETER_KEY = "__debezium.source.column.type";
+
+    /**
+     * Key for schema parameter used to store a source column's type length.
+     */
+    public static final String TYPE_LENGTH_PARAMETER_KEY = "__debezium.source.column.length";
+
+    /**
+     * Key for schema parameter used to store a source column's type scale.
+     */
+    public static final String TYPE_SCALE_PARAMETER_KEY = "__debezium.source.column.scale";
+
     private static JdbcConfiguration defaultJdbcConfig() {
         return JdbcConfiguration.copy(Configuration.fromSystemProperties("database."))
                 .withDefault(JdbcConfiguration.HOSTNAME, "localhost")
