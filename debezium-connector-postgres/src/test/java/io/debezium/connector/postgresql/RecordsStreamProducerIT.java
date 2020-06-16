@@ -51,7 +51,6 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.storage.MemoryOffsetBackingStore;
 import org.awaitility.Awaitility;
 import org.fest.assertions.Assertions;
-import org.fest.assertions.MapAssert;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -2492,7 +2491,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
-    @FixFor({"DBZ-1916", "DBZ-1830"})
+    @FixFor({ "DBZ-1916", "DBZ-1830" })
     public void shouldPropagateSourceTypeByDatatype() throws Exception {
         TestHelper.execute("DROP TABLE IF EXISTS test_table;");
         TestHelper.execute("CREATE TABLE test_table (id SERIAL, c1 INT, c2 INT, c3a NUMERIC(5,2), c3b VARCHAR(128), f1 float(10), f2 decimal(8,4), primary key (id));");
