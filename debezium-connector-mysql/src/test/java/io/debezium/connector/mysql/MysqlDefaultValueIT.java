@@ -458,8 +458,8 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
                 .build();
         start(MySqlConnector.class, config);
 
-        // Testing.Print.enable();
-
+        Testing.Print.enable();
+        waitForSnapshotToBeCompleted("mysql", DATABASE.getServerName());
         consumeRecordsByTopic(EVENT_COUNT);
         try (final Connection conn = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName()).connection()) {
             conn.createStatement().execute("CREATE TABLE int_boolean_table (" +
