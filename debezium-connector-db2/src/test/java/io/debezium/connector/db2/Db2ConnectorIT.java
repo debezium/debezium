@@ -76,7 +76,8 @@ public class Db2ConnectorIT extends AbstractConnectorTest {
             TestHelper.disableTableCdc(connection, "MASKED_HASHED_COLUMN_TABLE");
             TestHelper.disableTableCdc(connection, "TABLEB");
             TestHelper.disableTableCdc(connection, "TABLEA");
-            connection.execute("DROP TABLE tablea", "DROP TABLE tableb", "DROP TABLE masked_hashed_column_table", "DROP TABLE truncated_column_table", "DROP TABLE dt_table");
+            connection.execute("DROP TABLE tablea", "DROP TABLE tableb", "DROP TABLE masked_hashed_column_table", "DROP TABLE truncated_column_table",
+                    "DROP TABLE dt_table");
             connection.execute("DELETE FROM ASNCDC.IBMSNAP_REGISTER");
             connection.execute("DELETE FROM ASNCDC.IBMQREP_COLVERSION");
             connection.execute("DELETE FROM ASNCDC.IBMQREP_TABVERSION");
@@ -796,7 +797,7 @@ public class Db2ConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
-    @FixFor({"DBZ-1916", "DBZ-1830"})
+    @FixFor({ "DBZ-1916", "DBZ-1830" })
     public void shouldPropagateSourceTypeByDatatype() throws Exception {
         final Configuration config = TestHelper.defaultConfig()
                 .with(Db2ConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
