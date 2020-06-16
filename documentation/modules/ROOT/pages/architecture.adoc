@@ -1,7 +1,6 @@
 [id="debezium-architecture"]
 = {prodname} Architecture
 
-
 Most commonly, {prodname} is deployed via Apache {link-kafka-docs}/#connect[Kafka Connect].
 Kafka Connect is a framework and runtime for implementing and operating
 
@@ -27,21 +26,21 @@ Depending on the chosen sink connector, it may be needed to apply {prodname}'s {
 which will only propagate the "after" structure from {prodname}'s event envelope to the sink connector.
 
 ifdef::community[]
-== {prodname} server
+== {prodname} Server
 
-Another way to deploy {prodname} is using the xref:operations/debezium-server.adoc[standalone server].
-The {prodname} server is a read-to-use application that streams change events from the source database to a variety of messaging infrastructures.
+Another way to deploy {prodname} is using the xref:operations/debezium-server.adoc[{prodname} server].
+The {prodname} server is a configurable, read-to-use application that streams change events from a source database to a variety of messaging infrastructures.
 
 The following image shows the architecture of a CDC pipeline using the {prodname} server:
 
 image::debezium-server-architecture.png[{prodname} Architecture]
 
 The {prodname} server is configured to use one of the {prodname} source connectors to capture changes from the source database.
-By default, the changes from one capture table in the source database are emitted as change records and consumed by one of a variety of sink messaging infrastructures like Amazon Kinesis, Google Cloud Pub/Sub, or Apache Pulsar.
+Change events can be serialized to different formats like JSON or Apache Avro and then will be sent to one of a variety of messaging infrastructures like Amazon Kinesis, Google Cloud Pub/Sub, or Apache Pulsar.
 
 == Embedded Engine
 
-An alternative way for using the {prodname} connectors is the xref:operations/embedded.adoc[embedded engine].
+Yet an alternative way for using the {prodname} connectors is the xref:operations/embedded.adoc[embedded engine].
 In this case, {prodname} will not be run via Kafka Connect, but as a library embedded into your custom Java applications.
 This can be useful for either consuming change events within your application itself,
 without the needed for deploying complete Kafka and Kafka Connect clusters,
