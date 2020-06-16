@@ -28,8 +28,6 @@ with open(csvfile) as csvfile:
 
 xmin=0
 xmax=len(id)
-#xmin=20000    #0
-#xmax=2100    #max(id)
 ymin=0
 
 
@@ -37,7 +35,6 @@ ymin=0
 x = []
 y = []
 
-#for idx, e in enumerate(db):
 for i in range(xmin,xmax):
     y.append((kafka[i] - db[i]) / 1000)
     x.append(id[i])
@@ -77,10 +74,8 @@ plt.xlabel('entires')
 plt.ylabel('delta ')
 plt.title('')
 plt.legend()
-#plt.yscale('log')
 axes = plt.gca()
 axes.set_xlim([xmin,xmax])
-#axes.set_ylim([ymin,ymax])
 axes.set_ylim([ymin,40])
 
 print('db2 in ')
@@ -107,11 +102,8 @@ plt.xlabel('entires')
 plt.ylabel('delta ')
 plt.title('')
 plt.legend()
-#plt.yscale('log')
 axes = plt.gca()
 axes.set_xlim([xmin,xmax])
-#axes.set_ylim([ymin,ymax])
-#axes.set_ylim([ymin,10000])
 
 print('kafka in')
 print('min :',min(y))
@@ -121,5 +113,3 @@ print('std :',std(y))
 
 
 plt.savefig(Plotfilename)
-
-
