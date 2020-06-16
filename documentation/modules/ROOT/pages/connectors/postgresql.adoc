@@ -2056,7 +2056,7 @@ See {link-prefix}:{link-avro-serialization}#avro-naming[Avro naming] for more de
 If starts with `hex:` prefix it is expected that the rest of the string repesents hexadecimally encoded octets.
 See {link-prefix}:{link-postgresql-connector}#postgresql-toasted-values[Toasted Values] for additional details.
 
-|[[postgresql-property-provide-transaction-metadata]]<<postgresql-property-provide-transaction-metadata, `provide.transaction.metadata` (Incubating)>>
+|[[postgresql-property-provide-transaction-metadata]]<<postgresql-property-provide-transaction-metadata, `provide.transaction.metadata`>>
 |`false`
 |When set to `true` {prodname} generates events with transaction boundaries and enriches data events envelope with transaction metadata.
 

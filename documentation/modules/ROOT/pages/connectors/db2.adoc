@@ -1545,7 +1545,7 @@ This property contains a comma-separated list of fully-qualified tables _(SCHEMA
 |Whether field names will be sanitized to adhere to Avro naming requirements.
 See {link-prefix}:{link-avro-serialization}#avro-naming[Avro naming] for more details.
 
-|[[db2-property-provide-transaction-metadata]]<<db2-property-provide-transaction-metadata, `provide.transaction.metadata` (Incubating)>>
+|[[db2-property-provide-transaction-metadata]]<<db2-property-provide-transaction-metadata, `provide.transaction.metadata`>>
 |`false`
 |When set to `true` {prodname} generates events with transaction boundaries and enriches data events envelope with transaction metadata.
 
