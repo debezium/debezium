@@ -60,7 +60,7 @@ If you have an existing up and running Debezium environment, you can do the benc
 ``` CREATE TABLE TPC.TEST ( USERNAME VARCHAR(32) NOT NULL, NAME VARCHAR(64), BLOOD_GROUP CHAR(3), RESIDENCE VARCHAR(200), COMPANY VARCHAR(128), ADDRESS VARCHAR(200), BIRTHDATE DATE, SEX CHAR(1), JOB VARCHAR(128), SSN CHAR(11), MAIL VARCHAR(128), ID INTEGER NOT NULL AUTO_INCREMENT, T0 TIMESTAMP  DEFAULT CURRENT_TIMESTAMP ) ``` 
 
 - Whitelist the TPC.TEST table in your Debezium connector config JSON
-```  "database.whitelist" : "TPC.TEST"   ```
+```  "table.whitelist" : "TPC.TEST"   ```
 
 - Enable the table for CDC on the database
     - SQL for db2    
@@ -104,37 +104,28 @@ yum -y install git
 ### Run a self-contained TPC set up for DB2 with Docker compose
 
 ```
-cd /home/<user name>
+export DEBEZIUM_VERSION=1.2
+export DEBEZIUM_DB2_VOLUME=$HOME/dockerdata
+export DEBEZIUM_TPC_VOLUME=$HOME/tpcdata
+
+mkdir $DEBEZIUM_DB2_VOLUME
+mkdir $DEBEZIUM_TPC_VOLUME
+chmod 777 $DEBEZIUM_TPC_VOLUME
+
+cd $HOME
 git clone https://github.com/debezium/debezium-examples
-mkdir /home/<user name>/dockerdata
-export DEBEZIUM_VERSION=1.1
-export DEBEZIUM_DB2_VOLUME=/home/<user name>/dockerdata
-git clone https://github.com/debezium/debezium-examples
-mkdir tpcdata
-chmod 777 /home/<user name>/tpcdata
-export DEBEZIUM_TPC_VOLUME=/home/<user name>/tpcdata
 git clone https://github.com/debezium/debezium
+
 cd debezium/debezium-e2e-benchmark
 # if you like do do it with an other db, adapt the docker-compose file to your prefered database and update the tpc-config.json file for appropriate database ( SQL)
 docker-compose -f docker-compose-db2-tpc.yaml up --build
-```
-
-### Kafka change to enable topic deletion
-
-```
-docker exec -it debeziumtpc_kafka_1 /bin/bash
-cd /kafka
-echo 'delete.topic.enable=true' >> /kafka/config/server.properties 
-exit
-docker stop debeziumtpc_kafka_1
-docker start debeziumtpc_kafka_1
 ```
 
 # Run test and plots
 
 Once everything is set up, to actually run the tests:
 ```
-docker exec -it debeziumtpc_tpc_1 /bin/bash
+docker-compose -f docker-compose-db2-tpc.yaml exec tpc bash
 python3 tpc-run-test.py 
 python3 runplots.py 
 ```

@@ -20,7 +20,7 @@ import shlex
 
 DEBEZIUM_TPC_VOLUME = '/home/tpc/tpcdata'
 
-with open('config.json') as f:
+with open('tpc-config.json') as f:
     tpcconfig = json.load(f)
 
 for x in range(len(tpcconfig['tpc']['commit.intervals'])):

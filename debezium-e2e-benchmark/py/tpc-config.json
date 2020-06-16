@@ -54,12 +54,14 @@
         "postgresql": {
             "jdbcdriver": "org.postgresql.Driver",
             "jar": "postgresql.jar",
-            "tpctable": "",
+            "tpctable": "CREATE TABLE INVENTORY.TEST ( USERNAME VARCHAR(32) NOT NULL, NAME VARCHAR(64), BLOOD_GROUP CHAR(3), RESIDENCE VARCHAR(200), COMPANY VARCHAR(128), ADDRESS VARCHAR(200), BIRTHDATE DATE, SEX CHAR(1), JOB VARCHAR(128), SSN CHAR(11), MAIL VARCHAR(128), ID INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY, T0 TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP )",
             "initsql": [],
-            "enablecdctablesql": []
+            "enablecdctablesql": [],
+	    "table": "inventory.test",
+	    "lowercase": "true"
         }
     },
     "sql": {
-        "insert": "INSERT INTO TPC.TEST (USERNAME, NAME, BLOOD_GROUP ,RESIDENCE, COMPANY, ADDRESS, SEX) VALUES ( 'USERNAMEDAT', 'NAME', 'AB+', 'WELCOME TO EARTH', 'WORK TO WORK GMBH', 'HELP WORKING', 'M' )"
+        "insert": "INSERT INTO INVENTORY.TEST (USERNAME, NAME, BLOOD_GROUP ,RESIDENCE, COMPANY, ADDRESS, SEX) VALUES ( 'USERNAMEDAT', 'NAME', 'AB+', 'WELCOME TO EARTH', 'WORK TO WORK GMBH', 'HELP WORKING', 'M' )"
     }
 }
