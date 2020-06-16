@@ -74,7 +74,7 @@ TIP: For a complete list of configuration properties, see {link-prefix}:{link-my
 
 [source,yaml,options="nowrap"]
 ----
-  apiVersion: kafka.strimzi.io/v1alpha1
+  apiVersion: kafka.strimzi.io/v1beta1
   kind: KafkaConnector
   metadata:
     name: inventory-connector  // <1>
