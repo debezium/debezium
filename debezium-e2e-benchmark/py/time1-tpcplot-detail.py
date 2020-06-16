@@ -34,8 +34,6 @@ with open(csvfile) as csvfile:
 
         
 xmin=0
-xmax=len(id)
-#xmin=19000    #0
 xmax=firstenrties    #max(id)
 ymin=0
 
@@ -50,9 +48,7 @@ del kafka[xmax:len(id)]
 x = []
 y = []
 
-#for idx, e in enumerate(db):
 for i in range(xmin,xmax):
-    #x.append((kafka2[i]-db2[i]) / 1000)
     x.append((kafka[i]) / 1000)
     y.append(id[i])
 plt.scatter(x,y,s=0.01,c='lightblue')
@@ -61,14 +57,10 @@ plt.scatter(x,y,s=0.01,c='lightblue')
 x = []
 y = []
 for i in range(xmin,xmax):
-    #x.append((kafka2[i]-db2[i]) / 1000)
     x.append((db[i]) / 1000)
     y.append(id[i])    
 
 axes = plt.gca()
-#axes.set_xlim([0,150000])
-#axes.set_ylim([0,100000])
-#axes.set_xlim([0,max(y)])
 axes.set_ylim([0,firstenrties])
 plt.xlabel('millisecond')
 plt.ylabel('entries ')
@@ -80,5 +72,3 @@ plt.scatter(x,y,s=0.01,c='red')
 
 
 plt.savefig(Plotfilename)
-
-
