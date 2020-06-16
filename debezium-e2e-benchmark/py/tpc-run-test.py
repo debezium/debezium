@@ -16,7 +16,9 @@ import threading
 import jpype
 
 
-tpchomedir = "/home/tpc"
+tpchomedir = '/home/tpc'
+table = ''
+lowercase = 'false'
 
 
 def initsql(conn, config, tpcconfig):
@@ -66,9 +68,9 @@ def enablecdctablesql(conn, config, tpcconfig):
     return 0
 
 
-def topicexport(bootstrapserver, count, commitinterval):
+def topicexport(bootstrapserver, topicname, count, commitinterval):
     global tpchomedir
-    consumer = KafkaConsumer('db2server.TPC.TEST',
+    consumer = KafkaConsumer(topicname,
                              bootstrap_servers=bootstrapserver,
                              auto_offset_reset='smallest',
                              enable_auto_commit=True,
@@ -85,8 +87,13 @@ def topicexport(bootstrapserver, count, commitinterval):
                                              message.value))
 
         d = json.loads(message.value)
-        file.write(str(message.timestamp) + "000;" + str(d['payload']['after']['T0']) +
-                   ";" + d['payload']['op'] + ";" + str(i) + ";" + str(d['payload']['after']['ID']) + "\n")
+        idf = 'ID'
+        t0f = 'T0'
+        if lowercase:
+            idf = 'id'
+            t0f = 't0'
+        file.write(str(message.timestamp) + "000;" + str(d['payload']['after'][t0f]) +
+                   ";" + d['payload']['op'] + ";" + str(i) + ";" + str(d['payload']['after'][idf]) + "\n")
         i = i + 1
         print(i)
         print(count)
@@ -95,9 +102,8 @@ def topicexport(bootstrapserver, count, commitinterval):
     file.close()
 
 
-def getjdbcconnection(config, tpcconfig):
+def getjdbcconnection(config, tpcconfig, connectiontype):
     global tpchomedir
-    connectiontype = config['config']['connector.class'].split('.')[3]
     jdbctype = 'jdbc:' + connectiontype + '://'
     if connectiontype == 'oracle':
         jdbctype = 'jdbc:oracle:thin:@'
@@ -112,23 +118,35 @@ def getjdbcconnection(config, tpcconfig):
 
 
 def main(argv):
-    with open('../register.json') as f:
+    with open('register.json') as f:
         config = json.load(f)
     with open('tpc-config.json') as f:
         tpcconfig = json.load(f)
 
+    if (len(argv) > 0):
+        bootstrapserver = argv[0]
     print(config['config']['connector.class'])
     print(config['name'])
     config['name'] = 'tpc-connector'
     print(config['name'])
-    config['config']['database.whitelist'] = 'TPC.TEST'
 
     config['config']['database.history.kafka.topic'] = 'tpc-test'
 
     databasetype = config['config']['connector.class']
-    print(databasetype.split('.')[3])
+    connectiontype = config['config']['connector.class'].split('.')[3]
     print(databasetype)
-    conn = getjdbcconnection(config, tpcconfig)
+    print(connectiontype)
+
+    table = tpcconfig['jdbc'][connectiontype].get('table')
+    if table == None:
+        table = 'TPC.TEST'
+    config['config']['table.whitelist'] = table
+
+    lowercase = tpcconfig['jdbc'][connectiontype].get('lowercase')
+    if lowercase == None:
+        lowercase = False
+
+    conn = getjdbcconnection(config, tpcconfig, connectiontype)
 
     initsql(conn, config, tpcconfig)
     createTPCTable(conn, config, tpcconfig)
@@ -150,41 +168,41 @@ def main(argv):
         'http://' + tpcconfig['debezium.connect.server'] + '/connectors/tpc-connector',  verify=False)
     print(resp.content)
     print(resp.status_code)
-    # retvalue = json.loads(resp.content)
-    # print(retvalue)
     if (resp.status_code == 404):
         print('tpc-connector not exists')
     else:
         print('tpc-connector deleted')
         pass
 
-    dockerbootstrapserver = config['config']['database.history.kafka.bootstrap.servers']
-    bootstrapserver = config['config']['database.history.kafka.bootstrap.servers'].split(
-        ",")
+    databaseservername = config['config']['database.server.name']
+    topicname = databaseservername + '.' + table
+    historybootstrapserver = config['config'].get('database.history.kafka.bootstrap.servers')
+    if historybootstrapserver != None:
+        bootstrapserver = historybootstrapserver.split(",")
+
     # check integrated test ( all in one docker)
-    if dockerbootstrapserver == 'kafka:9092':
+    if bootstrapserver == 'kafka:9092':
 
         print(bootstrapserver)
         kafkaadmin = KafkaAdminClient(bootstrap_servers=bootstrapserver)
 
         try:
             kafkaadmin.delete_topics(
-                [config['config']['database.server.name'] + '.TPC.TEST'], 30)
+                [topicname], 30)
         except:
-            print(config['config']['database.server.name'] +
-                  '.TPC.TEST TOPIC not exists')
+            print(topicname + ' TOPIC not exists')
         else:
-            print(config['config']['database.server.name'] +
-                  '.TPC.TEST TOPIC deleted')
-        try:
-            kafkaadmin.delete_topics(
-                [config['config']['database.history.kafka.topic']], 30)
-        except:
-            print(config['config']['database.history.kafka.topic'] +
-                  ' TOPIC not exists')
-        else:
-            print(config['config']
-                  ['database.history.kafka.topic'] + ' TOPIC deleted')
+            print(topicname + ' TOPIC deleted')
+        if historybootstrapserver != None:
+            try:
+                kafkaadmin.delete_topics(
+                    [config['config']['database.history.kafka.topic']], 30)
+            except:
+                print(config['config']['database.history.kafka.topic'] +
+                      ' TOPIC not exists')
+            else:
+                print(config['config']
+                      ['database.history.kafka.topic'] + ' TOPIC deleted')
 
         # start tpc connector
         print('start tpc connector')
@@ -214,11 +232,10 @@ def main(argv):
             if ((y % (tpcconfig['tpc']['commit.intervals'][x])) == (tpcconfig['tpc']['commit.intervals'][x] - 1)):
                 conn.commit()
         conn.commit()
-        topicexport(bootstrapserver, int(
+        topicexport(bootstrapserver, topicname, int(
             tpcconfig['tpc']['count']), tpcconfig['tpc']['commit.intervals'][x])
 
-        kafkaadmin.delete_topics(
-            [config['config']['database.server.name'] + '.TPC.TEST'], 30)
+        kafkaadmin.delete_topics([topicname], 30)
         print('Wait 30 second for TOPIC clean up')
         time.sleep(30)
 
