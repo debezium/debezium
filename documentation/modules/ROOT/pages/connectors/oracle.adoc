@@ -1263,7 +1263,7 @@ The connector will read the table contents in multiple batches of this size. Def
 |Whether field names will be sanitized to adhere to Avro naming requirements.
 See {link-prefix}:{link-avro-serialization}#avro-naming[Avro naming] for more details.
 
-|[[oracle-property-provide-transaction-metadata]]<<oracle-property-provide-transaction-metadata, `provide.transaction.metadata` (Incubating)>>
+|[[oracle-property-provide-transaction-metadata]]<<oracle-property-provide-transaction-metadata, `provide.transaction.metadata`>>
 |`false`
 |When set to `true` {prodname} generates events with transaction boundaries and enriches data events envelope with transaction metadata.
 

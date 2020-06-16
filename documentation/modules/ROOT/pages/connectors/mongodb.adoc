@@ -939,6 +939,13 @@ endif::community[]
 | comma-separated list of oplog operations that will be skipped during streaming.
 The operations include: `i` for inserts, `u` for updates, and `d` for deletes.
 By default, no operations are skipped.
+
+|[[mongodb-property-provide-transaction-metadata]]<<mongodb-property-provide-transaction-metadata, `provide.transaction.metadata`>>
+|`false`
+|When set to `true` {prodname} generates events with transaction boundaries and enriches data events envelope with transaction metadata.
+
+See {link-prefix}:{link-mongodb-connector}#mongodb-transaction-metadata[Transaction Metadata] for additional details.
+
 |===
 
 [[mongodb-fault-tolerance]]
