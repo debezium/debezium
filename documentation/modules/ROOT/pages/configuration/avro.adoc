@@ -64,9 +64,9 @@ Since the Avro schemas are stored in this registry, each message need only inclu
 This makes each message even smaller. For an I/O bound system like Kafka, this means more total throughput of the producers and consumers.
 
 * Avro _Serdes_ (serializers and deserializers) for Kafka producers and consumers.
-Any Kafka consumer applications that you write to consume change event records can use the Avro Serdes to deserialize the change event records.
+Any Kafka consumer applications that you write to consume change event records can use Avro Serdes to deserialize the change event records.
 
-You can install the Apicurio Registry components into any Kafka distribution and use them with Kafka Connect.
+To use the Apicurio registry with {prodname},  you must add Apicurio Registry converters and their dependencies to the Kafka Connect container image that you are using for running {prodname}.
 
 [NOTE]
 ====
@@ -88,10 +88,10 @@ ifdef::community[]
 * Deploy an link:https://github.com/Apicurio/apicurio-registry[Apicurio API/Schema Registry] instance.
 endif::community[]
 ifdef::product[]
-* Deploy an link:{LinkNewInstallationGuideToBeNamed}[Apicurio API/Schema Registry] instance. 
+* Deploy an link:{LinkServiceRegistryGetStart}[Apicurio API/Schema Registry] instance by following the instructions in {NameServiceRegistryGetStart}.
 endif::product[]
-* Install the Avro converter from link:https://repo1.maven.org/maven2/io/apicurio/apicurio-registry-distro-connect-converter/{apicurio-version}/apicurio-registry-distro-connect-converter-{apicurio-version}-converter.tar.gz[the installation package] into Kafka's _libs_ directory or directly into a plug-in directory
-* Configure Kafka Connect instance with the following property settings: 
+* Install the Avro converter from link:https://repo1.maven.org/maven2/io/apicurio/apicurio-registry-distro-connect-converter/{apicurio-version}/apicurio-registry-distro-connect-converter-{apicurio-version}-converter.tar.gz[the installation package] into Kafka Connect's _libs_ directory or directly into a plug-in directory
+* Configure a Kafka Connect instance with the following property settings: 
 +
 [source,options="nowrap"]
 ----
@@ -112,12 +112,22 @@ Internally, Kafka Connect always uses JSON key/value converters for storing conf
 
 To implement Avro serialization of message keys and values, you must build a {prodname} image in which {prodname} uses the Avro converter.  
 
-[source,subs="+attributes"]
+.Procedure
+
+. Deploy an Apicurio Registry instance. 
++
+ifdef::community[]
+The following example uses a non-production in-memory instance:
++
+[source]
 ----
 docker run -it --rm --name apicurio \
     -p 8080:8080 apicurio/apicurio-registry-mem:{apicurio-version}
 ----
+endif::community[]
+ifdef::product[]
 
+endif::product[]
 . Build a {prodname} image with the Avro converter from this link:https://github.com/debezium/debezium-examples/blob/master/tutorial/debezium-with-apicurio/Dockerfile[Dockerfile]:
 +
 [source]
