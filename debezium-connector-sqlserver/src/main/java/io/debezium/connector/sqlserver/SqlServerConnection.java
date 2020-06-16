@@ -190,7 +190,7 @@ public class SqlServerConnection extends JdbcConnection {
         prepareQuery(queries, preparers, consumer);
     }
 
-    private Lsn getFromLsn(ChangeTable changeTable, Lsn intervalFromLsn) throws SQLException {
+    private Lsn getFromLsn(SqlServerChangeTable changeTable, Lsn intervalFromLsn) throws SQLException {
         Lsn fromLsn = changeTable.getStartLsn().compareTo(intervalFromLsn) > 0 ? changeTable.getStartLsn() : intervalFromLsn;
         return fromLsn.getBinary() != null ? fromLsn : getMinLsn(changeTable.getCaptureInstance());
     }
