@@ -1584,7 +1584,7 @@ This is used to define the timezone of the transaction timestamp (ts_ms) retriev
 When unset, default behavior is to use the timezone of the VM running the {prodname} connector. In this case, when running on on SQL Server 2014 or older and using different timezones on server and the connector, incorrect ts_ms values may be produced. +
 Possible values include "Z", "UTC", offset values like "+02:00", short zone ids like "CET", and long zone ids like "Europe/Paris".
 
-|[[sqlserver-property-provide-transaction-metadata]]<<sqlserver-property-provide-transaction-metadata, `provide.transaction.metadata` (Incubating)>>
+|[[sqlserver-property-provide-transaction-metadata]]<<sqlserver-property-provide-transaction-metadata, `provide.transaction.metadata`>>
 |`false`
 |When set to `true` {prodname} generates events with transaction boundaries and enriches data events envelope with transaction metadata.
 
