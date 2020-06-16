@@ -1,42 +1,48 @@
+// Category: cdc-using
+// Type: concept
+// ModuleID: description-of-debezium-architecture
+// Title: Description of Debezium architecture
 [id="debezium-architecture"]
 = {prodname} Architecture
 
-Most commonly, {prodname} is deployed via Apache {link-kafka-docs}/#connect[Kafka Connect].
-Kafka Connect is a framework and runtime for implementing and operating
+Most commonly, you deploy {prodname} by means of Apache {link-kafka-docs}/#connect[Kafka Connect].
+Kafka Connect is a framework and runtime for implementing and operating:
 
-* source connectors such as {prodname}, which ingest data into Kafka and
-* sink connectors, which propagate data from Kafka topics into other systems.
+* Source connectors such as {prodname} that send records into Kafka
+* Sink connectors that propagate records from Kafka topics to other systems
 
-The following image shows the architecture of a CDC pipeline based on {prodname}:
+The following image shows the architecture of a change data capture pipeline based on {prodname}:
 
 image::debezium-architecture.png[{prodname} Architecture]
 
-Kafka Connect is operated as a separate service besides the Kafka broker itself.
-The {prodname} connectors for MySQL and Postgres are deployed to capture the changes out of these two databases.
-For this purpose, the two connectors establish a connection to the two source databases
-using a client library for accessing the binlog in case of MySQL and reading from a logical replication stream in case of Postgres.
+As shown in the image, the {prodname} connectors for MySQL and PostgresSQL are deployed to capture changes to these two types of databases. Each {prodname} connector establishes a connection to its source database:
 
-By default, the changes from one capture table are written to a corresponding Kafka topic.
-If needed, the topic name can be adjusted with help of {prodname}'s {link-prefix}:{link-topic-routing}[topic routing SMT],
-e.g. to use topic names that deviate from the captured tables names or to stream changes from multiple tables into a single topic.
+* The MySQL connector uses a client library for accessing the `binlog`.
+* The PostgreSQL connector reads from a logical replication stream.
 
-Once the change events are in Apache Kafka, different connectors from the Kafka Connect eco-system can be used
-to stream the changes to other systems and databases such as Elasticsearch, data warehouses and analytics systems or caches such as Infinispan.
-Depending on the chosen sink connector, it may be needed to apply {prodname}'s {link-prefix}:{link-event-flattening}[new record state extraction] SMT,
-which will only propagate the "after" structure from {prodname}'s event envelope to the sink connector.
+Kafka Connect operates as a separate service besides the Kafka broker.
+
+By default, changes from one database table are written to a Kafka topic whose name corresponds to the table name.
+If needed, you can adjust the destination topic name by configuring {prodname}'s {link-prefix}:{link-topic-routing}[topic routing transformation]. For example, you can: 
+
+* Route records to a topic whose name is different from the table's name
+* Stream change event records for multiple tables into a single topic
+
+After change event records are in Apache Kafka, different connectors in the Kafka Connect eco-system can stream the records to other systems and databases such as Elasticsearch, data warehouses and analytics systems, or caches such as Infinispan.
+Depending on the chosen sink connector, you might need to configure {prodname}'s {link-prefix}:{link-event-flattening}[new record state extraction] transformation. This Kafka Connect SMT propagates the `after` structure from {prodname}'s change event to the sink connector. This is in place of the verbose change event record that is propagated by default. 
 
 ifdef::community[]
 == {prodname} Server
 
 Another way to deploy {prodname} is using the xref:operations/debezium-server.adoc[{prodname} server].
-The {prodname} server is a configurable, read-to-use application that streams change events from a source database to a variety of messaging infrastructures.
+The {prodname} server is a configurable, ready-to-use application that streams change events from a source database to a variety of messaging infrastructures.
 
-The following image shows the architecture of a CDC pipeline using the {prodname} server:
+The following image shows the architecture of a change data capture pipeline that uses the {prodname} server:
 
 image::debezium-server-architecture.png[{prodname} Architecture]
 
 The {prodname} server is configured to use one of the {prodname} source connectors to capture changes from the source database.
-Change events can be serialized to different formats like JSON or Apache Avro and then will be sent to one of a variety of messaging infrastructures like Amazon Kinesis, Google Cloud Pub/Sub, or Apache Pulsar.
+Change events can be serialized to different formats like JSON or Apache Avro and then will be sent to one of a variety of messaging infrastructures such as Amazon Kinesis, Google Cloud Pub/Sub, or Apache Pulsar.
 
 == Embedded Engine
 
