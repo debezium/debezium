@@ -15,7 +15,7 @@ asciidoc:
     modules: '../../modules'
     mysql-version: '8.0'
     strimzi-version: '0.13.0'
-    apicurio-version: '1.1.2.Final'
+    apicurio-version: '1.2.2.Final'
     community: true
     link-avro-serialization: 'configuration/avro.adoc'
     link-cassandra-connector: 'connectors/cassandra.adoc'
