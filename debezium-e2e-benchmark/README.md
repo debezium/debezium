@@ -5,7 +5,10 @@ One column is a timestamp stating when data is inserted into the table.
 The test compares this time with the time of the corresponding timestamp of the Kafka message in the topic. 
 The script creates in the `tpcdata` directory the resulting data in a CSV file and some diagrams in PNG format.
 
-<img src="./images/tpc_100000_1.png" width="20%"><img src="./images/tpc_100000_1-t.png" width="20%"><img src="./images/tpc_100000_1-t-d.png" width="20%"><img src="./images/tpc_100000_1-h.png" width="20%">
+![](images/tpc_100000_1.png)
+![](images/tpc_100000_1-t.png)
+![](images/tpc_100000_1-t-d.png)
+![](images/tpc_100000_1-h.png)
 
 All the SQL statements required to run the tests are specified in the [tpc-config.json](py/tpc-config.json) file. 
 The number of commits run and the commit interval of the data is controlled in this part:
@@ -30,7 +33,7 @@ It need the driver information form "connector.class" in the register.json only
     "jdbc": {
         "db2": {
             "jdbcdriver": "com.ibm.db2.jcc.DB2Driver",
-            "jar" : "jcc-11.5.0.0.jar",
+            "jar" : "jcc.jar",
             ....
 
 An additional parameter is needed for a test run in a self-contained environment.
@@ -56,7 +59,7 @@ If you have an existing up and running Debezium environment, you can do the benc
     - SQL create table for MySQL   
 ``` CREATE TABLE TPC.TEST ( USERNAME VARCHAR(32) NOT NULL, NAME VARCHAR(64), BLOOD_GROUP CHAR(3), RESIDENCE VARCHAR(200), COMPANY VARCHAR(128), ADDRESS VARCHAR(200), BIRTHDATE DATE, SEX CHAR(1), JOB VARCHAR(128), SSN CHAR(11), MAIL VARCHAR(128), ID INTEGER NOT NULL AUTO_INCREMENT, T0 TIMESTAMP  DEFAULT CURRENT_TIMESTAMP ) ``` 
 
-- Whitelist the TPC.TEST table in your Denbezium connector config JSON
+- Whitelist the TPC.TEST table in your Debezium connector config JSON
 ```  "database.whitelist" : "TPC.TEST"   ```
 
 - Enable the table for CDC on the database
@@ -66,16 +69,16 @@ If you have an existing up and running Debezium environment, you can do the benc
         - ``` VALUES ASNCDC.ASNCDCSERVICES('reinit','asncdc') ```
         - ``` VALUES ASNCDC.ASNCDCSERVICES('status','asncdc') ``` 
     - SQL for SQLServer    
-``` for detail see debezium-sqlserver-connector ```
+        - for details see [SQL Server Connector](https://debezium.io/documentation/reference/connectors/sqlserver.html)
     - SQL for MySQL   
-```  for detail see debezium-mysql-connector ```
+        - for details see [MySQL Connector](https://debezium.io/documentation/reference/connectors/mysql.html)
 
 - Login into the docker container
 ``` docker exec -it benchmark /bin/bash ```
-- Copy the Debezium connector configuration JSON in the home directory as /home/tpc/register.json
+- Copy the Debezium connector configuration JSON in the home directory as `$HOME/register.json`
 - Go to the directory where the Python code is
-``` cd /home/tpc/py ```
-- Edit the tpc-config.json to add the correct debezium.connect.server FQDN:port 
+``` cd $HOME/py ```
+- Edit the `tpc-config.json` to add the correct debezium.connect.server FQDN:port
 - Now run the tests 
 ``` python3 tpc-run-tes.py ```
 - Create plots

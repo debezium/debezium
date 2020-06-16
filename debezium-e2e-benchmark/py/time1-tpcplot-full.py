@@ -33,8 +33,6 @@ with open(csvfile) as csvfile:
         
 xmin=0
 xmax=len(id)
-#xmin=19000    #0
-##xmax=9000    #max(id)
 ymin=0
 
 del db[0:xmin]
@@ -48,9 +46,7 @@ del kafka[xmax:len(id)]
 x = []
 y = []
 
-#for idx, e in enumerate(db):
 for i in range(xmin,xmax):
-    #x.append((kafka2[i]-db2[i]) / 1000)
     x.append((kafka[i]) / 1000)
     y.append(id[i])
 plt.scatter(x,y,s=0.01,c='lightblue')
@@ -59,7 +55,6 @@ plt.scatter(x,y,s=0.01,c='lightblue')
 x = []
 y = []
 for i in range(xmin,xmax):
-    #x.append((kafka2[i]-db2[i]) / 1000)
     x.append((db[i]) / 1000)
     y.append(id[i])    
 
@@ -76,5 +71,3 @@ plt.scatter(x,y,s=0.01,c='red')
 
 
 plt.savefig(Plotfilename)
-
-
