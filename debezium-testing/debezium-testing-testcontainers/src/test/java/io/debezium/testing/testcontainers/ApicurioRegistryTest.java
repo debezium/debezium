@@ -48,8 +48,8 @@ import com.jayway.jsonpath.JsonPath;
  */
 public class ApicurioRegistryTest {
 
-    private static final String DEBEZIUM_VERSION = "1.1.1.Final";
-    private static final String APICURIO_VERSION = "1.1.2.Final";
+    private static final String DEBEZIUM_VERSION = "1.2.0.CR1";
+    private static final String APICURIO_VERSION = "1.2.2.Final";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ApicurioRegistryTest.class);
 
@@ -141,11 +141,7 @@ public class ApicurioRegistryTest {
             statement.execute("insert into todo.Todo values (1, 'Be Awesome')");
 
             debeziumContainer.registerConnector("my-connector-avro", getConfiguration(
-                    2, "io.apicurio.registry.utils.converter.AvroConverter",
-                    "key.converter.apicurio.registry.converter.serializer", "io.apicurio.registry.utils.serde.AvroKafkaSerializer",
-                    "key.converter.apicurio.registry.converter.deserializer", "io.apicurio.registry.utils.serde.AvroKafkaDeserializer",
-                    "value.converter.apicurio.registry.converter.serializer", "io.apicurio.registry.utils.serde.AvroKafkaSerializer",
-                    "value.converter.apicurio.registry.converter.deserializer", "io.apicurio.registry.utils.serde.AvroKafkaDeserializer"));
+                    2, "io.apicurio.registry.utils.converter.AvroConverter"));
 
             consumer.subscribe(Arrays.asList("dbserver2.todo.todo"));
 
@@ -201,7 +197,7 @@ public class ApicurioRegistryTest {
     private ConnectorConfiguration getConfiguration(int id, String converter, String... options) {
         final String host = apicurioContainer.getContainerInfo().getConfig().getHostName();
         final int port = apicurioContainer.getExposedPorts().get(0);
-        final String apicurioUrl = "http://" + host + ":" + port;
+        final String apicurioUrl = "http://" + host + ":" + port + "/api";
 
         // host, database, user etc. are obtained from the container
         final ConnectorConfiguration config = ConnectorConfiguration.forJdbcContainer(postgresContainer)
