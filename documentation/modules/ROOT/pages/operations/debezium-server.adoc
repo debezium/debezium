@@ -467,3 +467,5 @@ See the https://github.com/debezium/debezium/blob/master/debezium-server/src/mai
 
 Some of the sinks exposes dependency injections points that enable users to provide its own bean that would modify the behaviour of the sink.
 Typical examples are fine tuning of the target client setup, the destination naming etc.
+
+See an example of a custom https://github.com/debezium/debezium-examples/tree/master/debezium-server-name-mapper[topic naming policy] implementation for further details.
