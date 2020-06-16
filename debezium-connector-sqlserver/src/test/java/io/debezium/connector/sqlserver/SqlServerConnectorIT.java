@@ -1598,7 +1598,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
-    @FixFor({"DBZ-1916", "DBZ-1830"})
+    @FixFor({ "DBZ-1916", "DBZ-1830" })
     public void shouldPropagateSourceTypeByDatatype() throws Exception {
         connection.execute("CREATE TABLE dt_table (id int, c1 int, c2 int, c3a numeric(5,2), c3b varchar(128), f1 float(10), f2 decimal(8,4) primary key(id))");
         TestHelper.enableTableCdc(connection, "dt_table");
