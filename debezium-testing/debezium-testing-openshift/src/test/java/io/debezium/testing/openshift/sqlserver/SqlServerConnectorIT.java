@@ -5,15 +5,13 @@
  */
 package io.debezium.testing.openshift.sqlserver;
 
-import static io.debezium.testing.openshift.resources.ConfigProperties.DATABASE_SQLSERVER_DBZ_DBNAME;
-import static io.debezium.testing.openshift.resources.ConfigProperties.DATABASE_SQLSERVER_DBZ_PASSWORD;
-import static io.debezium.testing.openshift.resources.ConfigProperties.DATABASE_SQLSERVER_DBZ_USERNAME;
+import static io.debezium.testing.openshift.tools.ConfigProperties.DATABASE_SQLSERVER_DBZ_DBNAME;
+import static io.debezium.testing.openshift.tools.ConfigProperties.DATABASE_SQLSERVER_DBZ_PASSWORD;
+import static io.debezium.testing.openshift.tools.ConfigProperties.DATABASE_SQLSERVER_DBZ_USERNAME;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.awaitility.Awaitility.await;
 
 import java.io.IOException;
 import java.sql.SQLException;
-import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -24,8 +22,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 
 import io.debezium.testing.openshift.ConnectorTestBase;
-import io.debezium.testing.openshift.resources.ConfigProperties;
 import io.debezium.testing.openshift.resources.ConnectorFactories;
+import io.debezium.testing.openshift.tools.ConfigProperties;
 import io.debezium.testing.openshift.tools.databases.SqlDatabaseClient;
 import io.debezium.testing.openshift.tools.databases.sqlserver.SqlServerController;
 import io.debezium.testing.openshift.tools.databases.sqlserver.SqlServerDeployer;
@@ -93,8 +91,7 @@ public class SqlServerConnectorIT extends ConnectorTestBase {
         Request r = new Request.Builder()
                 .url(kafkaConnectController.getApiURL().resolve("/connectors"))
                 .build();
-
-        await().atMost(1, TimeUnit.MINUTES).untilAsserted(() -> {
+        awaitAssert(() -> {
             try (Response res = httpClient.newCall(r).execute()) {
                 assertThat(res.body().string()).contains(connectorName);
             }

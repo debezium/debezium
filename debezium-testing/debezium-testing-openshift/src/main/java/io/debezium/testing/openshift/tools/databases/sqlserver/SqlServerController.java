@@ -15,6 +15,7 @@ import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.testing.openshift.tools.WaitConditions;
 import io.debezium.testing.openshift.tools.databases.DatabaseInitListener;
 import io.debezium.testing.openshift.tools.databases.SqlDatabaseController;
 import io.fabric8.kubernetes.api.model.Pod;
@@ -64,7 +65,7 @@ public class SqlServerController extends SqlDatabaseController {
                 .usingListener(new DatabaseInitListener("sqlserver", latch))
                 .exec("/opt/mssql-tools/bin/sqlcmd", "-U", "sa", "-P", "Debezium1$", "-i", "/opt/inventory.sql")) { // TODO: hard-coded password
             LOGGER.info("Waiting until database is initialized");
-            latch.await(1, TimeUnit.MINUTES);
+            latch.await(WaitConditions.scaled(1), TimeUnit.MINUTES);
         }
     }
 }

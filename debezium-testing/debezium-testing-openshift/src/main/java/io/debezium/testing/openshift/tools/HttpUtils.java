@@ -5,6 +5,7 @@
  */
 package io.debezium.testing.openshift.tools;
 
+import static io.debezium.testing.openshift.tools.WaitConditions.scaled;
 import static org.awaitility.Awaitility.await;
 
 import java.io.IOException;
@@ -38,7 +39,7 @@ public class HttpUtils {
     public void awaitApi(HttpUrl url) {
         LOGGER.info("Waiting for API at " + url);
         await()
-                .atMost(1, TimeUnit.MINUTES)
+                .atMost(scaled(1), TimeUnit.MINUTES)
                 .ignoreException(IOException.class)
                 .until(() -> pingApi(url));
     }

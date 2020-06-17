@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.testing.openshift.resources;
+package io.debezium.testing.openshift.tools;
 
 import java.util.Optional;
 
@@ -16,6 +16,8 @@ import org.slf4j.LoggerFactory;
  */
 public class ConfigProperties {
     private static final Logger LOGGER = LoggerFactory.getLogger(ConfigProperties.class);
+
+    public static final long WAIT_SCALE_FACTOR = longProperty("test.wait.scale", 1);
 
     public static final String OCP_URL = stringProperty("test.ocp.url");
     public static final String OCP_USERNAME = stringProperty("test.ocp.username");
@@ -72,6 +74,11 @@ public class ConfigProperties {
     private static Optional<String> stringOptionalProperty(String key) {
         String value = System.getProperty(key);
         return Optional.ofNullable((value == null || value.isEmpty()) ? null : value);
+    }
+
+    private static long longProperty(String key, long defaultValue) {
+        String value = System.getProperty(key);
+        return (value == null || value.isEmpty()) ? defaultValue : Long.parseLong(value);
     }
 
     private static String stringProperty(String key) {

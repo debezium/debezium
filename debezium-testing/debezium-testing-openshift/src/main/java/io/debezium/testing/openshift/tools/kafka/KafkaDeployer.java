@@ -5,6 +5,7 @@
  */
 package io.debezium.testing.openshift.tools.kafka;
 
+import static io.debezium.testing.openshift.tools.WaitConditions.scaled;
 import static java.util.concurrent.TimeUnit.MINUTES;
 
 import org.slf4j.Logger;
@@ -102,11 +103,11 @@ public class KafkaDeployer {
     }
 
     public Kafka waitForKafkaCluster(String name) throws InterruptedException {
-        return kafkaOperation().withName(name).waitUntilCondition(WaitConditions::kafkaReadyCondition, 5, MINUTES);
+        return kafkaOperation().withName(name).waitUntilCondition(WaitConditions::kafkaReadyCondition, scaled(5), MINUTES);
     }
 
     public KafkaConnect waitForConnectCluster(String name) throws InterruptedException {
-        return kafkaConnectOperation().withName(name).waitUntilCondition(WaitConditions::kafkaReadyCondition, 5, MINUTES);
+        return kafkaConnectOperation().withName(name).waitUntilCondition(WaitConditions::kafkaReadyCondition, scaled(5), MINUTES);
     }
 
     /**

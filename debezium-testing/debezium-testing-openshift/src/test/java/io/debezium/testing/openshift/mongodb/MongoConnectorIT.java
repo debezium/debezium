@@ -5,15 +5,13 @@
  */
 package io.debezium.testing.openshift.mongodb;
 
-import static io.debezium.testing.openshift.resources.ConfigProperties.DATABASE_MONGO_DBZ_DBNAME;
-import static io.debezium.testing.openshift.resources.ConfigProperties.DATABASE_MONGO_DBZ_LOGIN_DBNAME;
-import static io.debezium.testing.openshift.resources.ConfigProperties.DATABASE_MONGO_DBZ_PASSWORD;
-import static io.debezium.testing.openshift.resources.ConfigProperties.DATABASE_MONGO_DBZ_USERNAME;
+import static io.debezium.testing.openshift.tools.ConfigProperties.DATABASE_MONGO_DBZ_DBNAME;
+import static io.debezium.testing.openshift.tools.ConfigProperties.DATABASE_MONGO_DBZ_LOGIN_DBNAME;
+import static io.debezium.testing.openshift.tools.ConfigProperties.DATABASE_MONGO_DBZ_PASSWORD;
+import static io.debezium.testing.openshift.tools.ConfigProperties.DATABASE_MONGO_DBZ_USERNAME;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.awaitility.Awaitility.await;
 
 import java.io.IOException;
-import java.util.concurrent.TimeUnit;
 
 import org.bson.Document;
 import org.junit.jupiter.api.AfterAll;
@@ -25,8 +23,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 
 import io.debezium.testing.openshift.ConnectorTestBase;
-import io.debezium.testing.openshift.resources.ConfigProperties;
 import io.debezium.testing.openshift.resources.ConnectorFactories;
+import io.debezium.testing.openshift.tools.ConfigProperties;
 import io.debezium.testing.openshift.tools.databases.mongodb.MongoController;
 import io.debezium.testing.openshift.tools.databases.mongodb.MongoDatabaseClient;
 import io.debezium.testing.openshift.tools.databases.mongodb.MongoDeployer;
@@ -99,8 +97,7 @@ public class MongoConnectorIT extends ConnectorTestBase {
         Request r = new Request.Builder()
                 .url(kafkaConnectController.getApiURL().resolve("/connectors"))
                 .build();
-
-        await().atMost(1, TimeUnit.MINUTES).untilAsserted(() -> {
+        awaitAssert(() -> {
             try (Response res = httpClient.newCall(r).execute()) {
                 assertThat(res.body().string()).contains(connectorName);
             }

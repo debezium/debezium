@@ -5,10 +5,11 @@
  */
 package io.debezium.testing.openshift.resources;
 
-import static io.debezium.testing.openshift.resources.ConfigProperties.DATABASE_MONGO_HOST;
-import static io.debezium.testing.openshift.resources.ConfigProperties.DATABASE_MYSQL_HOST;
-import static io.debezium.testing.openshift.resources.ConfigProperties.DATABASE_POSTGRESQL_HOST;
+import static io.debezium.testing.openshift.tools.ConfigProperties.DATABASE_MONGO_HOST;
+import static io.debezium.testing.openshift.tools.ConfigProperties.DATABASE_MYSQL_HOST;
+import static io.debezium.testing.openshift.tools.ConfigProperties.DATABASE_POSTGRESQL_HOST;
 
+import io.debezium.testing.openshift.tools.ConfigProperties;
 import io.debezium.testing.openshift.tools.kafka.ConnectorConfigBuilder;
 
 /**

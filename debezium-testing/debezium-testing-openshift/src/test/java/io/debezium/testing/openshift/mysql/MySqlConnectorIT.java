@@ -5,14 +5,12 @@
  */
 package io.debezium.testing.openshift.mysql;
 
-import static io.debezium.testing.openshift.resources.ConfigProperties.DATABASE_MYSQL_PASSWORD;
-import static io.debezium.testing.openshift.resources.ConfigProperties.DATABASE_MYSQL_USERNAME;
+import static io.debezium.testing.openshift.tools.ConfigProperties.DATABASE_MYSQL_PASSWORD;
+import static io.debezium.testing.openshift.tools.ConfigProperties.DATABASE_MYSQL_USERNAME;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.awaitility.Awaitility.await;
 
 import java.io.IOException;
 import java.sql.SQLException;
-import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -23,8 +21,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 
 import io.debezium.testing.openshift.ConnectorTestBase;
-import io.debezium.testing.openshift.resources.ConfigProperties;
 import io.debezium.testing.openshift.resources.ConnectorFactories;
+import io.debezium.testing.openshift.tools.ConfigProperties;
 import io.debezium.testing.openshift.tools.databases.SqlDatabaseClient;
 import io.debezium.testing.openshift.tools.databases.SqlDatabaseController;
 import io.debezium.testing.openshift.tools.databases.mysql.MySqlDeployer;
@@ -90,7 +88,7 @@ public class MySqlConnectorIT extends ConnectorTestBase {
                 .url(kafkaConnectController.getApiURL().resolve("/connectors"))
                 .build();
 
-        await().atMost(1, TimeUnit.MINUTES).untilAsserted(() -> {
+        awaitAssert(() -> {
             try (Response res = httpClient.newCall(r).execute()) {
                 assertThat(res.body().string()).contains(connectorName);
             }
