@@ -22,7 +22,7 @@
         <module>debezium-server-kinesis</module>
         <module>debezium-server-pubsub</module>
         <module>debezium-server-pulsar</module>
-        <module>debezium-server-distro</module>
+        <module>debezium-server-dist</module>
     </modules>
 
     <dependencyManagement>
