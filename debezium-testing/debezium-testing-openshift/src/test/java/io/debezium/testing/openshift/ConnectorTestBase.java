@@ -5,6 +5,7 @@
  */
 package io.debezium.testing.openshift;
 
+import static io.debezium.testing.openshift.tools.WaitConditions.scaled;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
@@ -30,7 +31,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.testing.openshift.resources.ConfigProperties;
+import io.debezium.testing.openshift.tools.ConfigProperties;
 import io.debezium.testing.openshift.tools.kafka.KafkaConnectController;
 import io.debezium.testing.openshift.tools.kafka.KafkaController;
 import io.debezium.testing.openshift.tools.kafka.KafkaDeployer;
@@ -117,7 +118,7 @@ public abstract class ConnectorTestBase {
 
     protected void assertTopicsExist(String... names) {
         try (Consumer<String, String> consumer = new KafkaConsumer<>(KAFKA_CONSUMER_PROPS)) {
-            await().atMost(2, TimeUnit.MINUTES).untilAsserted(() -> {
+            await().atMost(scaled(2), TimeUnit.MINUTES).untilAsserted(() -> {
                 Set<String> topics = consumer.listTopics().keySet();
                 assertThat(topics).contains(names);
             });
@@ -132,7 +133,7 @@ public abstract class ConnectorTestBase {
     }
 
     protected void awaitAssert(ThrowingRunnable assertion) {
-        awaitAssert(1, TimeUnit.MINUTES, assertion);
+        awaitAssert(scaled(1), TimeUnit.MINUTES, assertion);
     }
 
     protected void assertRecordsCount(String topic, int count) {

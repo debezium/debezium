@@ -5,6 +5,7 @@
  */
 package io.debezium.testing.openshift.tools.kafka;
 
+import static io.debezium.testing.openshift.tools.WaitConditions.scaled;
 import static io.strimzi.api.kafka.Crds.kafkaConnectOperation;
 import static java.util.concurrent.TimeUnit.MINUTES;
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -288,7 +289,7 @@ public class KafkaConnectController {
     public void waitForSnapshot(String connectorName, String metricName) throws IOException {
         List<String> metrics = getConnectMetrics();
         await()
-                .atMost(5, TimeUnit.MINUTES)
+                .atMost(scaled(5), TimeUnit.MINUTES)
                 .pollInterval(10, TimeUnit.SECONDS)
                 .until(() -> metrics.stream().anyMatch(s -> s.contains(metricName) && s.contains(connectorName)));
     }

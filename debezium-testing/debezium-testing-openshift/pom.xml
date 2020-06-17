@@ -314,6 +314,7 @@
               <enableAssertions>true</enableAssertions>
               <trimStackTrace>false</trimStackTrace>
               <systemPropertyVariables>
+                <test.wait.scale>1</test.wait.scale>
                 <test.ocp.url>${ocp.url}</test.ocp.url>
                 <test.ocp.username>${ocp.username}</test.ocp.username>
                 <test.ocp.password>${ocp.password}</test.ocp.password>
