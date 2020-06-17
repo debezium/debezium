@@ -476,11 +476,8 @@ public class SqlServerConnection extends JdbcConnection {
     }
 
     @Override
-    protected void setDefaultValue(ColumnEditor columnEditor, String defaultValue) {
-        if (defaultValue != null) {
-            defaultValueConverter
-                    .parseDefaultValue(columnEditor, defaultValue)
-                    .ifPresent(columnEditor::defaultValue);
-        }
+    protected Optional<Object> getDefaultValue(Column column, String defaultValue) {
+        return defaultValueConverter
+                .parseDefaultValue(column, defaultValue);
     }
 }
