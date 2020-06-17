@@ -127,7 +127,7 @@ This can lead to problems during serialization if the column name does not also 
 
 == Confluent Schema Registry
 
-There is an alternative https://github.com/confluentinc/schema-registry[schema registry] implementation developed by Confluent.
+There is an alternative https://github.com/confluentinc/schema-registry[schema registry] implementation provided by Confluent.
 
 The configuration is slightly different.
 Here are the properties that should be used:
