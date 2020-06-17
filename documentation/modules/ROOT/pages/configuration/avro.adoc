@@ -62,14 +62,10 @@ A system that wants to use Avro serialization needs to complete two steps:
 [source]
 ----
 key.converter=io.apicurio.registry.utils.converter.AvroConverter
-key.converter.apicurio.registry.url=http://apicurio:8080
-key.converter.apicurio.registry.converter.serializer=io.apicurio.registry.utils.serde.AvroKafkaSerializer
-key.converter.apicurio.registry.converter.deserializer=io.apicurio.registry.utils.serde.AvroKafkaDeserializer
+key.converter.apicurio.registry.url=http://apicurio:8080/api
 key.converter.apicurio.registry.global-id=io.apicurio.registry.utils.serde.strategy.AutoRegisterIdStrategy
 value.converter=io.apicurio.registry.utils.converter.AvroConverter
-value.converter.apicurio.registry.url=http://apicurio:8080
-value.converter.apicurio.registry.converter.serializer=io.apicurio.registry.utils.serde.AvroKafkaSerializer
-value.converter.apicurio.registry.converter.deserializer=io.apicurio.registry.utils.serde.AvroKafkaDeserializer
+value.converter.apicurio.registry.url=http://apicurio:8080/api
 value.converter.apicurio.registry.global-id=io.apicurio.registry.utils.serde.strategy.AutoRegisterIdStrategy
 ----
 
@@ -79,7 +75,7 @@ Note that Kafka Connect internally always uses the JSON key/value converters for
 
 Deploy an Apicurio Registry instance (this example uses a non-production in-memory instance):
 
-[source]
+[source,subs="+attributes"]
 ----
 docker run -it --rm --name apicurio \
     -p 8080:8080 apicurio/apicurio-registry-mem:{apicurio-version}
@@ -110,13 +106,9 @@ docker run -it --rm --name connect \
     -e VALUE_CONVERTER=io.confluent.connect.avro.AvroConverter \
     -e CONNECT_KEY_CONVERTER=io.apicurio.registry.utils.converter.AvroConverter \
     -e CONNECT_KEY_CONVERTER_APICURIO.REGISTRY_URL=http://apicurio:8080 \
-    -e CONNECT_KEY_CONVERTER_APICURIO.REGISTRY_CONVERTER.SERIALIZER=io.apicurio.registry.utils.serde.AvroKafkaSerializer \
-    -e CONNECT_KEY_CONVERTER_APICURIO.REGISTRY_CONVERTER.DESERIALIZER=io.apicurio.registry.utils.serde.AvroKafkaDeserializer \
     -e CONNECT_KEY_CONVERTER_APICURIO.REGISTRY_GLOBAL-ID=io.apicurio.registry.utils.serde.strategy.AutoRegisterIdStrategy \
     -e CONNECT_VALUE_CONVERTER=io.apicurio.registry.utils.converter.AvroConverter \
     -e CONNECT_VALUE_CONVERTER_APICURIO_REGISTRY_URL=http://apicurio:8080 \
-    -e CONNECT_VALUE_CONVERTER_APICURIO_REGISTRY_CONVERTER_SERIALIZER=io.apicurio.registry.utils.serde.AvroKafkaSerializer \
-    -e CONNECT_VALUE_CONVERTER_APICURIO_REGISTRY_CONVERTER_DESERIALIZER=io.apicurio.registry.utils.serde.AvroKafkaDeserializer \
     -e CONNECT_VALUE_CONVERTER_APICURIO_REGISTRY_GLOBAL-ID=io.apicurio.registry.utils.serde.strategy.AutoRegisterIdStrategy \
     -p 8083:8083 debezium/connect-apicurio:{debezium-docker-label}
 ----
@@ -135,7 +127,7 @@ This can lead to problems during serialization if the column name does not also 
 
 == Confluent Schema Registry
 
-There is an alternative https://github.com/confluentinc/schema-registry[schema registry] implementation developed by Confluent.
+There is an alternative https://github.com/confluentinc/schema-registry[schema registry] implementation provided by Confluent.
 
 The configuration is slightly different.
 Here are the properties that should be used:
