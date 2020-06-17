@@ -17,6 +17,16 @@ alter table table1 add primary key (id);
 alter table table1 add primary key table_pk (id);
 alter table table1 add primary key `table_pk` (id);
 alter table table1 add primary key `table_pk` (`id`);
+alter table add_test add column if not exists col1 varchar(255);
+alter table add_test add column if not exists col4 varchar(255);
+alter table add_test add index if not exists ix_add_test_col1 using btree (col1) comment 'test index';
+alter table add_test add index if not exists ix_add_test_col4 using btree (col4) comment 'test index';
+alter table add_test change column if exists col8 col9 tinyint;
+alter table add_test change column if exists col3 col5 tinyint;
+alter table add_test modify column if exists col9 tinyint;
+alter table add_test modify column if exists col5 varchar(255);
+alter table add_test drop column if exists col99;
+alter table add_test drop column if exists col5;
 #end
 #begin
 -- Alter database

@@ -30,6 +30,7 @@ create table table_with_visible_index (id int, data varchar(50), UNIQUE INDEX `d
 create table table_with_index (id int, data varchar(50), UNIQUE INDEX `data_UNIQUE` (`data` ASC));
 create table transactional_table(name varchar(255), class_id int, id int) transactional=1;
 create table transactional(name varchar(255), class_id int, id int);
+create table add_test(col1 varchar(255), col2 int, col3 int);
 #end
 #begin
 -- Rename table
@@ -77,6 +78,7 @@ do begin update test.t2 set 1c = 1c + 1; end; -- //
 create index index1 on t1(col1) comment 'test index' comment 'some test' using btree;
 create unique index index2 using btree on t2(1c desc, `_` asc);
 create index index3 using hash on antlr_tokens(token(30) asc);
+create index ix_add_test_col1 on add_test(col1) comment 'test index' using btree;
 #end
 #begin
 -- Create logfile group
