@@ -31,7 +31,7 @@ NOTE: The above links refers to the nightly snapshot build of the {prodname} mas
 If you are looking for a non-snapshot version, please select the appropriate version of this documentation in the menu to the right.
 endif::[]
 ifeval::['{page-version}' != 'master']
-* https://repo1.maven.org/maven2/io/debezium/debezium-server/{debezium-version}/debezium-server-{debezium-version}-distribution.tar.gz[{prodname} Server distribution]
+* https://repo1.maven.org/maven2/io/debezium/debezium-server-distro/{debezium-version}/debezium-server-distro-{debezium-version}-distribution.tar.gz[{prodname} Server distribution]
 endif::[]
 
 A directory named `debezium-server` will be created with these contents:
