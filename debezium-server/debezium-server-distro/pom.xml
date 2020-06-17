@@ -93,8 +93,8 @@
                                 <goals>
                                     <goal>single</goal>
                                 </goals>
-                                <configuration>
-                                    <finalName>${project.parent.artifactId}-${project.version}</finalName>
+				<configuration>
+                                    <appendAssemblyId>false</appendAssemblyId>
                                     <attach>true</attach>  <!-- we want attach & deploy these to Maven -->
                                     <descriptors>
                                         <descriptor>src/main/resources/assemblies/${assembly.descriptor}.xml</descriptor>
