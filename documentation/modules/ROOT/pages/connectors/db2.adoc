@@ -16,8 +16,11 @@ This connector is currently in incubating state, i.e. exact semantics, configura
 ====
 
 {prodname}'s Db2 Connector can monitor and record the row-level changes in the tables of a Db2 database.
-This connector is strongly inspired by the {prodname} implementation of SQL server, using a
-SQL based polling model of tables put into "capture mode". This uses the ASN libraries that come as a standard part of Db2 LUW and can be added (with an additional license) to Db2 zOS.
+This connector is strongly inspired by the {prodname} implementation of SQL Server, using a
+SQL based polling model of tables put into "capture mode". This uses the ASN libraries that come as a standard part of Db2 LUW and can be added to Db2 zOS.
+
+In order to use ASN and hence this connector, you need to have a license for the IBM InfoSphere Data Replication (IIDR) product.
+It is not required that IIDR itself is installed.
 
 The first time it connects to a Db2 database, it reads a consistent snapshot of all of the tables that are whitelisted (or not blacklisted depending on the mode of operation).
 Note that by default all tables in the database are snapshoted, NOT just those that are in capture mode.
@@ -30,9 +33,6 @@ All of the events for each table are recorded in a separate Kafka topic, where t
 
 The functionality of the connector is based upon the https://www.ibm.com/support/pages/q-replication-and-sql-replication-product-documentation-pdf-format-version-101-linux-unix-and-windows[ASN Capture/Apply agents] 
 that enable SQL Replication within DB2.
-
-In order to use ASN and hence this connector, you need to have a license for the IBM InfoSphere Data Replication (IIDR) product.
-It is not required that IIDR itself is installed.
 
 The capture agent generates ASN tables for all tables in CDC mode, these ASN tables can be queried via a SQL interface in order to read change events.
 Using this mechanism a Db2 ASN capture agent monitors all databases and tables that the user is interested in and stores the changes into specifically created ASN tables.
