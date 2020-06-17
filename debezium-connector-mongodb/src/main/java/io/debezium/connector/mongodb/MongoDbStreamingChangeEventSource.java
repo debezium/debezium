@@ -304,8 +304,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                 return true;
             }
             try {
-                final Long operationId = event.getLong(SourceInfo.OPERATION_ID);
-                dispatcher.dispatchTransactionStartedEvent(Long.toString(operationId), oplogContext.getOffset());
+                dispatcher.dispatchTransactionStartedEvent(getTransactionId(event), oplogContext.getOffset());
                 for (Document change : txChanges) {
                     final boolean r = handleOplogEvent(primaryAddress, change, event, ++txOrder, oplogContext, context);
                     if (!r) {
@@ -400,6 +399,15 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         });
 
         return new MongoDbOffsetContext(new SourceInfo(connectorConfig), new TransactionContext(), positions);
+    }
+
+    private static String getTransactionId(Document event) {
+        final Long operationId = event.getLong(SourceInfo.OPERATION_ID);
+        if (operationId != null && operationId != 0L) {
+            return Long.toString(operationId);
+        }
+
+        return MongoUtil.getOplogSessionTransactionId(event);
     }
 
     /**

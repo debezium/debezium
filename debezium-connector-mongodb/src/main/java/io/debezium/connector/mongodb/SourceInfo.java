@@ -75,11 +75,12 @@ public final class SourceInfo extends BaseSourceInfo {
     public static final String ORDER = "ord";
     public static final String OPERATION_ID = "h";
     public static final String TX_ORD = "tord";
+    public static final String SESSION_TXN_ID = "stxnid";
     public static final String INITIAL_SYNC = "initsync";
     public static final String COLLECTION = "collection";
 
     private static final BsonTimestamp INITIAL_TIMESTAMP = new BsonTimestamp();
-    private static final Position INITIAL_POSITION = new Position(INITIAL_TIMESTAMP, null, 0);
+    private static final Position INITIAL_POSITION = new Position(INITIAL_TIMESTAMP, null, 0, null);
 
     private final ConcurrentMap<String, Map<String, String>> sourcePartitionsByReplicaSetName = new ConcurrentHashMap<>();
     private final ConcurrentMap<String, Position> positionsByReplicaSetName = new ConcurrentHashMap<>();
@@ -99,15 +100,17 @@ public final class SourceInfo extends BaseSourceInfo {
         private final Long opId;
         private final BsonTimestamp ts;
         private final long txOrder;
+        private final String sessionTxnId;
 
-        public Position(int ts, int order, Long opId, long txOrder) {
-            this(new BsonTimestamp(ts, order), opId, txOrder);
+        public Position(int ts, int order, Long opId, long txOrder, String sessionTxnId) {
+            this(new BsonTimestamp(ts, order), opId, txOrder, sessionTxnId);
         }
 
-        public Position(BsonTimestamp ts, Long opId, long txOrder) {
+        public Position(BsonTimestamp ts, Long opId, long txOrder, String sessionTxnId) {
             this.ts = ts;
             this.opId = opId;
             this.txOrder = txOrder;
+            this.sessionTxnId = sessionTxnId;
             assert this.ts != null;
         }
 
@@ -125,6 +128,10 @@ public final class SourceInfo extends BaseSourceInfo {
 
         public Long getOperationId() {
             return this.opId;
+        }
+
+        public String getSessionTxnId() {
+            return sessionTxnId;
         }
 
         public OptionalLong getTxOrder() {
@@ -210,11 +217,13 @@ public final class SourceInfo extends BaseSourceInfo {
             return Collect.hashMapOf(TIMESTAMP, Integer.valueOf(existing.getTime()),
                     ORDER, Integer.valueOf(existing.getInc()),
                     OPERATION_ID, existing.getOperationId(),
+                    SESSION_TXN_ID, existing.getSessionTxnId(),
                     INITIAL_SYNC, true);
         }
         Map<String, Object> offset = Collect.hashMapOf(TIMESTAMP, Integer.valueOf(existing.getTime()),
                 ORDER, Integer.valueOf(existing.getInc()),
-                OPERATION_ID, existing.getOperationId());
+                OPERATION_ID, existing.getOperationId(),
+                SESSION_TXN_ID, existing.getSessionTxnId());
 
         existing.getTxOrder().ifPresent(txOrder -> offset.put(TX_ORD, txOrder));
 
@@ -251,7 +260,8 @@ public final class SourceInfo extends BaseSourceInfo {
         if (oplogEvent != null) {
             BsonTimestamp ts = extractEventTimestamp(masterEvent);
             Long opId = masterEvent.getLong("h");
-            position = new Position(ts, opId, orderInTx);
+            String sessionTxnId = extractSessionTxnId(masterEvent);
+            position = new Position(ts, opId, orderInTx, sessionTxnId);
             namespace = oplogEvent.getString("ns");
         }
         positionsByReplicaSetName.put(replicaSetName, position);
@@ -280,6 +290,27 @@ public final class SourceInfo extends BaseSourceInfo {
      */
     protected static BsonTimestamp extractEventTimestamp(Document oplogEvent) {
         return oplogEvent != null ? oplogEvent.get("ts", BsonTimestamp.class) : null;
+    }
+
+    /**
+     * Utility to extract the {@link String unique transaction id} value from the event.
+     *
+     * @param oplogEvent the event
+     * @return the session transaction id or null
+     */
+    protected static String extractSessionTxnId(Document oplogEvent) {
+        // In MongoDB prior to 4.2, the h field is populated.
+        // For backward compatibility if h is not present or contains a zero value, then proeeed to extract
+        // the session transaction unique identifier value.
+        Long opId = oplogEvent.getLong("h");
+        if (opId == null || opId == 0L) {
+            // For MongoDB 4.2+, the h field no longer has a non-zero value.
+            // In this case, the lsid and the associated txnNumber fields must be extracted and combined to
+            // represent a unique identifier for the individual operation. Therefore, the return value will
+            // carry the same semantics as h did for MongoDB platforms prior to 4.2.
+            return MongoUtil.getOplogSessionTransactionId(oplogEvent);
+        }
+        return null;
     }
 
     private void onEvent(String replicaSetName, CollectionId collectionId, Position position) {
@@ -324,7 +355,8 @@ public final class SourceInfo extends BaseSourceInfo {
         int order = intOffsetValue(sourceOffset, ORDER);
         long operationId = longOffsetValue(sourceOffset, OPERATION_ID);
         long txOrder = longOffsetValue(sourceOffset, TX_ORD);
-        positionsByReplicaSetName.put(replicaSetName, new Position(time, order, operationId, txOrder));
+        String sessionTxnId = stringOffsetValue(sourceOffset, SESSION_TXN_ID);
+        positionsByReplicaSetName.put(replicaSetName, new Position(time, order, operationId, txOrder, sessionTxnId));
         return true;
     }
 
@@ -408,6 +440,14 @@ public final class SourceInfo extends BaseSourceInfo {
         catch (NumberFormatException e) {
             throw new ConnectException("Source offset '" + key + "' parameter value " + obj + " could not be converted to a long");
         }
+    }
+
+    private static String stringOffsetValue(Map<String, ?> values, String key) {
+        Object obj = values.get(key);
+        if (obj == null) {
+            return null;
+        }
+        return (String) obj;
     }
 
     private static boolean booleanOffsetValue(Map<String, ?> values, String key) {
