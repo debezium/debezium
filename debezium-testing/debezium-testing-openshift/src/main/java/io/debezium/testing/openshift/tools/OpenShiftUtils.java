@@ -5,6 +5,7 @@
  */
 package io.debezium.testing.openshift.tools;
 
+import static io.debezium.testing.openshift.tools.WaitConditions.scaled;
 import static org.awaitility.Awaitility.await;
 
 import java.util.ArrayList;
@@ -160,7 +161,7 @@ public class OpenShiftUtils {
      */
     public PodList podsWithLabels(String project, Map<String, String> labels) {
         Supplier<PodList> podListSupplier = () -> client.pods().inNamespace(project).withLabels(labels).list();
-        await().atMost(5, TimeUnit.MINUTES).until(() -> podListSupplier.get().getItems().size() > 0);
+        await().atMost(scaled(5), TimeUnit.MINUTES).until(() -> podListSupplier.get().getItems().size() > 0);
         PodList pods = podListSupplier.get();
 
         if (pods.getItems().isEmpty()) {
@@ -183,7 +184,7 @@ public class OpenShiftUtils {
 
         for (Pod p : pods.getItems()) {
             try {
-                client.resource(p).waitUntilReady(5, TimeUnit.MINUTES);
+                client.resource(p).waitUntilReady(scaled(5), TimeUnit.MINUTES);
             }
             catch (InterruptedException e) {
                 throw new IllegalStateException("Error when waiting for pod " + p.getMetadata().getName() + " to get ready", e);

@@ -5,6 +5,8 @@
  */
 package io.debezium.testing.openshift.tools.databases.mongodb;
 
+import static io.debezium.testing.openshift.tools.WaitConditions.scaled;
+
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -49,7 +51,7 @@ public class MongoController extends DatabaseController<MongoDatabaseClient> {
                 .usingListener(new DatabaseInitListener("mongo", latch))
                 .exec("bash", "-c", DB_INIT_SCRIPT_PATH_CONTAINER + " -h " + svcName + "." + project + ".svc.cluster.local")) {
             LOGGER.info("Waiting until database is initialized");
-            latch.await(1, TimeUnit.MINUTES);
+            latch.await(scaled(1), TimeUnit.MINUTES);
         }
     }
 

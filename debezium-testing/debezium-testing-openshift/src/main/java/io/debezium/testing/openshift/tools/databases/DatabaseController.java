@@ -5,6 +5,8 @@
  */
 package io.debezium.testing.openshift.tools.databases;
 
+import static io.debezium.testing.openshift.tools.WaitConditions.scaled;
+
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -61,7 +63,7 @@ public abstract class DatabaseController<C extends DatabaseClient<?, ?>> {
         deployment = ocp.apps().deployments()
                 .inNamespace(project)
                 .withName(name)
-                .waitUntilCondition(WaitConditions::deploymentAvailableCondition, 1, TimeUnit.MINUTES);
+                .waitUntilCondition(WaitConditions::deploymentAvailableCondition, scaled(1), TimeUnit.MINUTES);
         LOGGER.info("Deployment '" + name + "' is available");
         initialize();
     }

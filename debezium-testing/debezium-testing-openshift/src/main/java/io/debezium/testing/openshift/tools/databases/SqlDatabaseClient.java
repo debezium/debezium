@@ -5,6 +5,7 @@
  */
 package io.debezium.testing.openshift.tools.databases;
 
+import static io.debezium.testing.openshift.tools.WaitConditions.scaled;
 import static org.awaitility.Awaitility.await;
 
 import java.sql.Connection;
@@ -43,7 +44,7 @@ public class SqlDatabaseClient implements DatabaseClient<Connection, SQLExceptio
 
     public void execute(Commands<Connection, SQLException> commands) throws SQLException {
         await()
-                .atMost(2, TimeUnit.MINUTES)
+                .atMost(scaled(2), TimeUnit.MINUTES)
                 .pollInterval(5, TimeUnit.SECONDS)
                 .ignoreExceptions()
                 .until(() -> doExecute(commands));

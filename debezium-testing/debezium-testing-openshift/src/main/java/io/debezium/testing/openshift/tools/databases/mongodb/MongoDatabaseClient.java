@@ -5,6 +5,7 @@
  */
 package io.debezium.testing.openshift.tools.databases.mongodb;
 
+import static io.debezium.testing.openshift.tools.WaitConditions.scaled;
 import static org.awaitility.Awaitility.await;
 
 import java.util.concurrent.TimeUnit;
@@ -57,7 +58,7 @@ public class MongoDatabaseClient implements DatabaseClient<MongoClient, RuntimeE
 
     public void execute(Commands<MongoClient, RuntimeException> commands) throws RuntimeException {
         await()
-                .atMost(2, TimeUnit.MINUTES)
+                .atMost(scaled(2), TimeUnit.MINUTES)
                 .pollInterval(5, TimeUnit.SECONDS)
                 .ignoreExceptions()
                 .until(() -> doExecute(commands));

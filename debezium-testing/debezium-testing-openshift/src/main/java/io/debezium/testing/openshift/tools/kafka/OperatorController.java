@@ -5,6 +5,7 @@
  */
 package io.debezium.testing.openshift.tools.kafka;
 
+import static io.debezium.testing.openshift.tools.WaitConditions.scaled;
 import static java.util.concurrent.TimeUnit.MINUTES;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.awaitility.Awaitility.await;
@@ -52,7 +53,7 @@ public class OperatorController {
         setNumberOfReplicas(0);
         operator = ocp.apps().deployments().inNamespace(project).withName(name).createOrReplace(operator);
         await()
-                .atMost(30, SECONDS)
+                .atMost(scaled(30), SECONDS)
                 .pollDelay(5, SECONDS)
                 .pollInterval(3, SECONDS)
                 .until(() -> ocp.pods().inNamespace(project).withLabel("strimzi.io/kind", "cluster-operator").list().getItems().isEmpty());
@@ -146,7 +147,7 @@ public class OperatorController {
     }
 
     private Deployment waitForAvailable() throws InterruptedException {
-        return ocp.apps().deployments().inNamespace(project).withName(name).waitUntilCondition(WaitConditions::deploymentAvailableCondition, 5, MINUTES);
+        return ocp.apps().deployments().inNamespace(project).withName(name).waitUntilCondition(WaitConditions::deploymentAvailableCondition, scaled(5), MINUTES);
     }
 
 }

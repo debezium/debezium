@@ -46,4 +46,8 @@ public class WaitConditions {
         Stream<DeploymentCondition> conditions = status.getConditions().stream();
         return conditions.anyMatch(c -> c.getType().equalsIgnoreCase("Available") && c.getStatus().equalsIgnoreCase("True"));
     }
+
+    public static long scaled(long amount) {
+        return ConfigProperties.WAIT_SCALE_FACTOR * amount;
+    }
 }
