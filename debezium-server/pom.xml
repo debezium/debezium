@@ -22,7 +22,7 @@
         <module>debezium-server-kinesis</module>
         <module>debezium-server-pubsub</module>
         <module>debezium-server-pulsar</module>
-        <module>debezium-server-distro</module>
+        <module>debezium-server-dist</module>
         <module>debezium-server-s3</module>
     </modules>
 
@@ -55,11 +55,6 @@
             <dependency>
                 <groupId>io.debezium</groupId>
                 <artifactId>debezium-server-pulsar</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.debezium</groupId>
-                <artifactId>debezium-server-s3</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
