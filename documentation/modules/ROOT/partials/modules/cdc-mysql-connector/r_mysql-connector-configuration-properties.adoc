@@ -208,7 +208,7 @@ Fully-qualified tables could be defined as _databaseName_._tableName_.
 |===
 
 [[advanced-mysql-connector-properties]]
-== Advanced MySQL connector properties
+== {link-prefix}:{link-mysql-connector-advanced-properties}#advanced-mysql-connector-properties[Advanced MySQL connector properties]
 
 [cols="3,2,5"]
 |===
@@ -352,6 +352,9 @@ endif::community[]
 The operations include: `c` for inserts, `u` for updates, and `d` for deletes.
 By default, no operations are skipped.
 |===
+
+[id="mysql-connector-pass-through-properties"]
+== {link-prefix}:{link-mysql-connector-pass-through-properties}#mysql-connector-pass-through-properties[Pass-through configuration properties]
 
 The MySQL connector also supports pass-through configuration properties that are used when creating the Kafka producer and consumer. Specifically, all connector configuration properties that begin with the `database.history.producer.` prefix are used (without the prefix) when creating the Kafka producer that writes to the database history. All properties that begin with the prefix `database.history.consumer.` are used (without the prefix) when creating the Kafka consumer that reads the database history upon connector start-up.
 
