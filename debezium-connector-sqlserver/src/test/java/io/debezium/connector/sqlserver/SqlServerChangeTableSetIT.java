@@ -753,6 +753,7 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
     }
 
     @Test
+    @FixFor("DBZ-1491")
     public void addDefaultValue() throws Exception {
         final Configuration config = TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)

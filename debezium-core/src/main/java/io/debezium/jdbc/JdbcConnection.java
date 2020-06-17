@@ -38,8 +38,6 @@ import io.debezium.annotation.NotThreadSafe;
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
-import io.debezium.jdbc.JdbcConnection.ResultSetExtractor;
-import io.debezium.jdbc.JdbcConnection.ResultSetMapper;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.TableId;
@@ -1123,15 +1121,19 @@ public class JdbcConnection implements AutoCloseable {
 
             column.nativeType(resolveNativeType(column.typeName()));
             column.jdbcType(resolveJdbcType(columnMetadata.getInt(5), column.nativeType()));
-            setDefaultValue(column, columnMetadata.getString(13));
+            final String defaultValue = columnMetadata.getString(13);
+            if (defaultValue != null) {
+                getDefaultValue(column.create(), defaultValue).ifPresent(column::defaultValue);
+            }
             return Optional.of(column);
         }
 
         return Optional.empty();
     }
 
-    protected void setDefaultValue(ColumnEditor columnEditor, String defaultValue) {
+    protected Optional<Object> getDefaultValue(Column column, String defaultValue) {
         // nothing to do by default; overwrite in database specific implementation
+        return Optional.empty();
     }
 
     protected List<String> readPrimaryKeyNames(DatabaseMetaData metadata, TableId id) throws SQLException {
