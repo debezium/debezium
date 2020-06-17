@@ -150,7 +150,12 @@
                                 <wait>
                                     <time>90000</time> <!-- 90 seconds max -->
                                     <log>(?s)org.apache.pulsar.broker.PulsarService - messaging service is ready</log>
-                                </wait>
+			        </wait>
+			        <volumes>
+                                    <bind>
+					    <volume>docker/conf:/pulsar/conf</volume>
+                                    </bind>
+                                </volumes>
                             </run>
                         </image>
                     </images>
