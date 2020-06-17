@@ -25,6 +25,7 @@ public class MongoDbSourceInfoStructMaker extends AbstractSourceInfoStructMaker<
                 .field(SourceInfo.ORDER, Schema.INT32_SCHEMA)
                 .field(SourceInfo.OPERATION_ID, Schema.OPTIONAL_INT64_SCHEMA)
                 .field(SourceInfo.TX_ORD, Schema.OPTIONAL_INT64_SCHEMA)
+                .field(SourceInfo.SESSION_TXN_ID, Schema.OPTIONAL_STRING_SCHEMA)
                 .build();
     }
 
@@ -39,7 +40,8 @@ public class MongoDbSourceInfoStructMaker extends AbstractSourceInfoStructMaker<
                 .put(SourceInfo.REPLICA_SET_NAME, sourceInfo.replicaSetName())
                 .put(SourceInfo.COLLECTION, sourceInfo.collectionId().name())
                 .put(SourceInfo.ORDER, sourceInfo.position().getInc())
-                .put(SourceInfo.OPERATION_ID, sourceInfo.position().getOperationId());
+                .put(SourceInfo.OPERATION_ID, sourceInfo.position().getOperationId())
+                .put(SourceInfo.SESSION_TXN_ID, sourceInfo.position().getSessionTxnId());
 
         sourceInfo.transactionPosition().ifPresent(transactionPosition -> struct.put(SourceInfo.TX_ORD, transactionPosition));
 
