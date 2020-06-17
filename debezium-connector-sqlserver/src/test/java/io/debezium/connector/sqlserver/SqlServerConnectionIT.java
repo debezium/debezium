@@ -106,7 +106,7 @@ public class SqlServerConnectionIT {
     }
 
     @Test
-    @FixFor("DBZ-1015")
+    @FixFor("DBZ-1491")
     public void shouldProperlyGetDefaultColumnValues() throws Exception {
         try (SqlServerConnection connection = TestHelper.adminConnection()) {
             connection.connect();

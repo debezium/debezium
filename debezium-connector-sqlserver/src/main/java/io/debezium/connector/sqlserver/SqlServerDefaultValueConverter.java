@@ -23,7 +23,6 @@ import org.slf4j.LoggerFactory;
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.relational.Column;
-import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.ValueConverter;
 import io.debezium.util.HexConverter;
 
@@ -71,8 +70,8 @@ class SqlServerDefaultValueConverter {
         this.defaultValueMappers = Collections.unmodifiableMap(createDefaultValueMappers());
     }
 
-    Optional<Object> parseDefaultValue(ColumnEditor columnEditor, String defaultValue) {
-        final String dataType = columnEditor.typeName();
+    Optional<Object> parseDefaultValue(Column column, String defaultValue) {
+        final String dataType = column.typeName();
         final DefaultValueMapper mapper = defaultValueMappers.get(dataType);
         if (mapper == null) {
             LOGGER.warn("Mapper for type '{}' not found.", dataType);
@@ -81,7 +80,7 @@ class SqlServerDefaultValueConverter {
 
         try {
             Object rawDefaultValue = mapper.parse(defaultValue);
-            Object convertedDefaultValue = convertDefaultValue(rawDefaultValue, columnEditor);
+            Object convertedDefaultValue = convertDefaultValue(rawDefaultValue, column);
             return Optional.of(convertedDefaultValue);
         }
         catch (Exception e) {
@@ -90,9 +89,7 @@ class SqlServerDefaultValueConverter {
         }
     }
 
-    private Object convertDefaultValue(Object defaultValue, ColumnEditor columnEditor) {
-        final Column column = columnEditor.create();
-
+    private Object convertDefaultValue(Object defaultValue, Column column) {
         // if converters is not null and the default value is not null, we need to convert default value
         if (valueConverters != null && defaultValue != null) {
             final SchemaBuilder schemaBuilder = valueConverters.schemaBuilder(column);
@@ -103,8 +100,8 @@ class SqlServerDefaultValueConverter {
             // In order to get the valueConverter for this column, we have to create a field;
             // The index value -1 in the field will never used when converting default value;
             // So we can set any number here;
-            final Field field = new Field(columnEditor.name(), -1, schema);
-            final ValueConverter valueConverter = valueConverters.converter(columnEditor.create(), field);
+            final Field field = new Field(column.name(), -1, schema);
+            final ValueConverter valueConverter = valueConverters.converter(column, field);
             return valueConverter.convert(defaultValue);
         }
         return defaultValue;
