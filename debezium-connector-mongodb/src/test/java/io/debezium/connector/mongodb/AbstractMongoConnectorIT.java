@@ -168,16 +168,21 @@ public abstract class AbstractMongoConnectorIT extends AbstractConnectorTest {
             final MongoCollection<Document> collection = db.getCollection(collectionName);
 
             final ClientSession session = mongo.startSession();
-            session.startTransaction();
+            try {
+                session.startTransaction();
 
-            final InsertOneOptions insertOptions = new InsertOneOptions().bypassDocumentValidation(true);
-            for (Document document : documents) {
-                assertThat(document).isNotNull();
-                assertThat(document.size()).isGreaterThan(0);
-                collection.insertOne(session, document, insertOptions);
+                final InsertOneOptions insertOptions = new InsertOneOptions().bypassDocumentValidation(true);
+                for (Document document : documents) {
+                    assertThat(document).isNotNull();
+                    assertThat(document.size()).isGreaterThan(0);
+                    collection.insertOne(session, document, insertOptions);
+                }
+
+                session.commitTransaction();
             }
-
-            session.commitTransaction();
+            finally {
+                session.close();
+            }
         });
     }
 
