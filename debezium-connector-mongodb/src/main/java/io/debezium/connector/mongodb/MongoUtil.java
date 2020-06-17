@@ -228,10 +228,9 @@ public class MongoUtil {
      * @return the session transaction id from the oplog event
      */
     public static String getOplogSessionTransactionId(Document oplogEvent) {
-        if (!(oplogEvent.containsKey("lsid") && oplogEvent.containsKey("txnNumber"))) {
-            throw new DebeziumException("Oplog event does not contain lsid and txnNumber fields");
+        if (!oplogEvent.containsKey("txnNumber")) {
+            return null;
         }
-
         final String lsid = oplogEvent.get("lsid", Document.class).get("id", UUID.class).toString();
         final Long txnNumber = oplogEvent.getLong("txnNumber");
         return lsid + ":" + txnNumber;
