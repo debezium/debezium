@@ -5,8 +5,15 @@
 [id="debezium-architecture"]
 = {prodname} Architecture
 
+ifdef::community[]
 Most commonly, you deploy {prodname} by means of Apache {link-kafka-docs}/#connect[Kafka Connect].
 Kafka Connect is a framework and runtime for implementing and operating:
+endif::community[]
+
+ifdef::product[]
+You deploy {prodname} by means of Apache {link-kafka-docs}/#connect[Kafka Connect].
+Kafka Connect is a framework and runtime for implementing and operating:
+endif::product[]
 
 * Source connectors such as {prodname} that send records into Kafka
 * Sink connectors that propagate records from Kafka topics to other systems
