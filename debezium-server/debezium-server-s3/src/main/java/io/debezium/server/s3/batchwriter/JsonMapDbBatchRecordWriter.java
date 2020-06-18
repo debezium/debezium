@@ -6,8 +6,13 @@
 
 package io.debezium.server.s3.batchwriter;
 
-import com.google.common.io.Files;
-import io.debezium.server.s3.objectkeymapper.ObjectKeyMapper;
+import java.io.File;
+import java.time.LocalDateTime;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.config.ConfigProvider;
@@ -16,16 +21,14 @@ import org.mapdb.DBMaker;
 import org.mapdb.Serializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.google.common.io.Files;
+
+import io.debezium.server.s3.objectkeymapper.ObjectKeyMapper;
+
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
-
-import java.io.File;
-import java.time.LocalDateTime;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 
 public class JsonMapDbBatchRecordWriter implements BatchRecordWriter, AutoCloseable {
 

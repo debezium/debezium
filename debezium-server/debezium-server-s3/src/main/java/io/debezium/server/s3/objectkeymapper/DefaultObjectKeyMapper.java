@@ -6,10 +6,11 @@
 
 package io.debezium.server.s3.objectkeymapper;
 
-import io.debezium.engine.format.Json;
+import java.time.LocalDateTime;
+
 import org.eclipse.microprofile.config.ConfigProvider;
 
-import java.time.LocalDateTime;
+import io.debezium.engine.format.Json;
 
 public class DefaultObjectKeyMapper implements ObjectKeyMapper {
     final String objectKeyPrefix = ConfigProvider.getConfig().getValue("debezium.sink.s3.objectkey.prefix", String.class);
