@@ -1,12 +1,9 @@
-{link-prefix}:{link-mysql-connector}#// Metadata created by nebel
-//
-
 [id="mysql-connector-configuration-properties_{context}"]
 = MySQL connector configuration properties
 
 The configuration properties listed here are *required* to run the {prodname} MySQL connector. There are also <<advanced-mysql-connector-properties, advanced MySQL connector properties>> whose default value rarely needs to be changed and therefore, they do not need to be specified in the connector configuration.
 
-TIP: The {prodname} MySQL connector supports _pass-through_ configuration when creating the Kafka producer and consumer. See link:{link-kafka-docs}.html[the Kafka documentation] for more details on _pass-through_ properties.
+TIP: The {prodname} MySQL connector supports _pass-through_ configuration when creating the Kafka producer and consumer. See {link-prefix}:{link-mysql-connector}#mysql-connector-pass-through-properties[information about pass-through properties] at the end of this section, and also see link:{link-kafka-docs}.html[the Kafka documentation] for more details about _pass-through_ properties.
 
 [cols="3,2,5"]
 |===
@@ -210,6 +207,8 @@ Fully-qualified tables could be defined as _databaseName_._tableName_.
 [[advanced-mysql-connector-properties]]
 == Advanced MySQL connector properties
 
+The following table describes {link-prefix}:{link-mysql-connector}#advanced-mysql-connector-properties[advanced MySQL connector properties].
+
 [cols="3,2,5"]
 |===
 |Property |Default |Description
@@ -352,3 +351,30 @@ endif::community[]
 The operations include: `c` for inserts, `u` for updates, and `d` for deletes.
 By default, no operations are skipped.
 |===
+
+[id="mysql-connector-pass-through-properties"]
+== Pass-through configuration properties
+
+The MySQL connector also supports {link-prefix}:{link-mysql-connector}#mysql-connector-pass-through-properties[pass-through configuration properties] that are used when creating the Kafka producer and consumer. Specifically, all connector configuration properties that begin with the `database.history.producer.` prefix are used (without the prefix) when creating the Kafka producer that writes to the database history. All properties that begin with the prefix `database.history.consumer.` are used (without the prefix) when creating the Kafka consumer that reads the database history upon connector start-up.
+
+For example, the following connector configuration properties can be used to secure connections to the Kafka broker:
+
+----
+database.history.producer.security.protocol=SSL
+database.history.producer.ssl.keystore.location=/var/private/ssl/kafka.server.keystore.jks
+database.history.producer.ssl.keystore.password=test1234
+database.history.producer.ssl.truststore.location=/var/private/ssl/kafka.server.truststore.jks
+database.history.producer.ssl.truststore.password=test1234
+database.history.producer.ssl.key.password=test1234
+database.history.consumer.security.protocol=SSL
+database.history.consumer.ssl.keystore.location=/var/private/ssl/kafka.server.keystore.jks
+database.history.consumer.ssl.keystore.password=test1234
+database.history.consumer.ssl.truststore.location=/var/private/ssl/kafka.server.truststore.jks
+database.history.consumer.ssl.truststore.password=test1234
+database.history.consumer.ssl.key.password=test1234
+----
+
+[id="mysql-connector-pass-through-properties-for-database-drivers"]
+== Pass-through properties for database drivers
+
+In addition to the pass-through properties for the Kafka producer and consumer, there are {link-prefix}:{link-mysql-connector}#mysql-connector-pass-through-properties-for-database-drivers[pass-through properties for database drivers]. These properties have the `database.` prefix. For example, `database.tinyInt1isBit=false` is passed to the JDBC URL.
