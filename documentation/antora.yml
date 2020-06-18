@@ -17,6 +17,8 @@ asciidoc:
     strimzi-version: '0.13.0'
     apicurio-version: '1.2.2.Final'
     community: true
+    registry: 'Apicurio Registry'
+    registry-name-full: Apicurio API and Schema Registry
     link-avro-serialization: 'configuration/avro.adoc'
     link-cassandra-connector: 'connectors/cassandra.adoc'
     link-cloud-events: 'integrations/cloudevents.adoc'
