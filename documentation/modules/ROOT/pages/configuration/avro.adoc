@@ -4,7 +4,7 @@
 // Title: Configuring {prodname} connectors to use Avro serialization
 [id="avro-serialization"]
 = Avro Serialization
-
+:community:
 :toc:
 :toc-placement: macro
 :linkattrs:
@@ -22,11 +22,11 @@ You can specify converters in several ways:
 In this case, the same converters are used for all connectors that are deployed to that worker's cluster.
 
 * For an individual connector. 
-+
+
 Kafka Connect comes with a _JSON converter_ that serializes message keys and values into JSON documents. You can configure the JSON converter to include or exclude the message schema by specifying the `key.converter.schemas.enable` and `value.converter.schemas.enable` properties. The {prodname} {link-prefix}:{link-tutorial}[tutorial] shows what the messages look like when both payload and schemas are included. 
-+
+
 Including schemas causes the messages to  be very verbose. If you want your messages serialized with JSON, consider setting these properties to `false` to exclude the verbose schema information.
-+
+
 Alternatively, you can serialize the message keys and values by using link:https://avro.apache.org/[Apache Avro].
 The Avro binary format is compact and efficient, and Avro schemas make it possible to ensure that the messages have the correct structure. Avro's schema evolution mechanism makes it possible to evolve the schemas over time, which is essential for {prodname} connectors that dynamically generate the message schemas to match the structure of the database tables. Over time, the change events captured by {prodname} connectors and written by Kafka Connect into a topic may have different versions of the same schema. Avro serialization makes it easier for consumers to adapt to the changing schema.
 
@@ -359,4 +359,4 @@ Note that some details around Kafka Connect converters have slightly changed sin
 For a complete example of using Avro as the message format for {prodname} data change events,
 please see the https://github.com/debezium/debezium-examples/tree/master/tutorial#using-mysql-and-the-avro-message-format[MySQL and the Avro message format] tutorial example.
 
-endif::[community]
+endif::community[]
