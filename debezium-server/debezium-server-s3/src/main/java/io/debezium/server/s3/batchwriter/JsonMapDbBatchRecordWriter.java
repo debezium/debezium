@@ -107,7 +107,6 @@ public class JsonMapDbBatchRecordWriter implements BatchRecordWriter, AutoClosea
         final String data = map_data.get(destination);
         String s3File = objectKeyMapper.map(destination, batchTime, batchId);
         LOGGER.debug("Uploading s3File destination:{} key:{}", destination, s3File);
-        LOGGER.error("{}", data);
         final PutObjectRequest putRecord = PutObjectRequest.builder()
                 .bucket(bucket)
                 .key(s3File)
@@ -131,15 +130,15 @@ public class JsonMapDbBatchRecordWriter implements BatchRecordWriter, AutoClosea
             cdcDb.commit();
         }
         this.setBatchTime();
-        if (!map_data.isEmpty()) {
-            LOGGER.warn("Non Processed Batch Data Found batchTime:{}!", batchTime.toString());
-            LOGGER.warn("destination: {}!", map_data.keySet().toString());
-        }
+        //if (!map_data.isEmpty()) {
+        //    LOGGER.error("Non Processed Batch Data Found batchTime:{} destination: {}!!", batchTime.toString(), map_data.keySet().toString());
+        //}
     }
 
     @Override
     public void close() {
         stopTimer();
+        this.uploadBatch();
         closeDb();
         TEMPDIR.delete();
     }
@@ -150,13 +149,16 @@ public class JsonMapDbBatchRecordWriter implements BatchRecordWriter, AutoClosea
 
     private void closeDb() {
         if (!cdcDb.isClosed()) {
-            this.uploadBatch();
-            if (map_data.isEmpty()) {
+            // upload data second time
+            if (!map_data.isEmpty()) {
+                this.uploadBatch();
+            }
+            if (!map_data.isEmpty()) {
+                LOGGER.error("Non Processed Batch Data Found!");
+            }
+            else
                 LOGGER.info("All Batch Data Successfully Processed.");
-            }
-            else {
-                LOGGER.warn("Non Processed Batch Data Found!");
-            }
+
             LOGGER.info("Closing S3 Batch Consumer({})", this.getClass().getName());
             cdcDb.close();
         }
@@ -170,6 +172,7 @@ public class JsonMapDbBatchRecordWriter implements BatchRecordWriter, AutoClosea
             }
         }
         catch (InterruptedException e) {
+            LOGGER.error("Timer Shutingdown Failed {}",e.getMessage());
             timerExecutor.shutdownNow();
         }
     }

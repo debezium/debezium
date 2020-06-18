@@ -109,7 +109,7 @@ public abstract class AbstractS3ChangeConsumer extends BaseChangeConsumer implem
             s3client.close();
         }
         catch (Exception e) {
-            LOGGER.warn("Exception while closing S3 client: ", e);
+            LOGGER.error("Exception while closing S3 client: ", e);
         }
     }
 
