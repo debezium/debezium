@@ -50,10 +50,11 @@ public abstract class AbstractS3ChangeConsumer extends BaseChangeConsumer implem
     private static final String PROP_REGION_NAME = PROP_PREFIX + "region";
     private static final String PROP_BUCKET_NAME = PROP_PREFIX + "bucket.name";
     final String valueFormat = ConfigProvider.getConfig().getOptionalValue("debezium.format.value", String.class).orElse(Json.class.getSimpleName().toLowerCase());
-    @ConfigProperty(name = PROP_PREFIX + "credentials.profile", defaultValue = "default")
-    String credentialsProfile;
-    @ConfigProperty(name = "debezium.sink.s3.endpointoverride", defaultValue = "false")
-    String endpointOverride;
+
+    String credentialsProfile = ConfigProvider.getConfig().getOptionalValue(PROP_PREFIX + "credentials.profile", String.class).orElse("default");
+    String endpointOverride = ConfigProvider.getConfig().getOptionalValue("debezium.sink.s3.endpointoverride", String.class).orElse("false");
+    Boolean useInstanceProfile = ConfigProvider.getConfig().getOptionalValue("debezium.sink.s3.credentials.useinstancecred", Boolean.class).orElse(false);
+
     @Inject
     @CustomConsumerBuilder
     Instance<S3Client> customClient;
@@ -64,9 +65,6 @@ public abstract class AbstractS3ChangeConsumer extends BaseChangeConsumer implem
     S3Client s3client = null;
     @ConfigProperty(name = PROP_REGION_NAME)
     String region;
-
-    @ConfigProperty(name = "debezium.sink.s3.credentials.useinstancecred", defaultValue = "false")
-    Boolean useInstanceProfile;
 
     private ObjectKeyMapper objectKeyMapper = new DefaultObjectKeyMapper();
 
