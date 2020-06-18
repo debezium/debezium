@@ -158,7 +158,7 @@ NOTE: In link:https://www.iso.org/iso-8601-date-and-time-format.html[ISO 8601] f
 
 == Temporal values
 
-Excluding the `TIMESTAMP` data type, MySQL temporal types depend on the value of the `time.precision.mode` configuration property.
+Excluding the `TIMESTAMP` data type, MySQL temporal types depend on the value of the `time.precision.mode` configuration property. For `TIMESTAMP` columns whose default value is specified as `CURRENT_TIMESTAMP` or `NOW`, the value `1970-01-01 00:00:00` is used as the default value in the Kafka Connect schema. 
 
 TIP: See {link-prefix}:{link-mysql-connector}#mysql-connector-configuration-properties_{context}[MySQL connector configuration properties] for more details.
 
