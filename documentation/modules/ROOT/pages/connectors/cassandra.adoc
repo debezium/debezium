@@ -30,14 +30,14 @@ The connector is tolerant of failures. As the connector reads commit logs and pr
 
 [NOTE]
 ====
-Cassandra is different from the other {prodname} connectors since it is not implemented on top of the Kafka Connect framework. Instead it is a single JVM process that is intended to reside on each Cassandra node and publishes events to Kafka via a Kafka producer.
+Cassandra is different from the other debezium connectors since it is not implemented on top of the Kafka Connect framework. Instead it is a single JVM process that is intended to reside on each Cassandra node and publishes events to Kafka via a Kafka producer.
 ====
 
 [WARNING]
 ====
 The following features are currently not supported by the Cassandra connector. Changes resulted from any of these features are ignored:
 
-* TTLs
+* TTL on collection-type columns
 * Range deletes
 * Static columns
 * Triggers
