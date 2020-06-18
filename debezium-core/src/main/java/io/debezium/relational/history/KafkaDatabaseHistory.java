@@ -11,6 +11,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
@@ -20,6 +21,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.Config;
 import org.apache.kafka.clients.admin.DescribeTopicsResult;
 import org.apache.kafka.clients.admin.NewTopic;
@@ -378,7 +380,12 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
             return;
         }
         checkTopicSettingsExecutor.execute(() -> {
-            try (AdminClient admin = AdminClient.create(this.producerConfig.asProperties())) {
+            // DBZ-2228 Avoiding id conflict with client used on the main thread
+            String clientId = this.producerConfig.getString(AdminClientConfig.CLIENT_ID_CONFIG) + "-topic-check";
+            Properties clientConfig = this.producerConfig.asProperties();
+            clientConfig.put(AdminClientConfig.CLIENT_ID_CONFIG, clientId);
+
+            try (AdminClient admin = AdminClient.create(clientConfig)) {
 
                 Set<ConfigResource> resources = Collections.singleton(new ConfigResource(ConfigResource.Type.TOPIC, topicName));
                 final Map<ConfigResource, Config> configs = admin.describeConfigs(resources).all().get(
