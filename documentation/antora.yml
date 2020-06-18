@@ -29,7 +29,6 @@ asciidoc:
     link-mongodb-connector: 'connectors/mongodb.adoc'
     link-mongodb-event-flattening: 'configuration/mongodb-event-flattening.adoc' 
     link-mysql-connector: 'connectors/mysql.adoc'
-    link-mysql-connector-properties: 'connectors/mysql.adoc'
     link-oracle-connector: 'connectors/oracle.adoc'
     link-outbox-event-router: 'configuration/outbox-event-router.adoc'
     link-prefix: 'xref'
