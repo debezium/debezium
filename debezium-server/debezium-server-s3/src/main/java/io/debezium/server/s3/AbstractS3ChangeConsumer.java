@@ -85,6 +85,7 @@ public abstract class AbstractS3ChangeConsumer extends BaseChangeConsumer implem
 
         AwsCredentialsProvider credProvider;
         if (useInstanceProfile) {
+            LOGGER.info("Using Instance Profile Credentials For S3");
             credProvider = InstanceProfileCredentialsProvider.create();
         }
         else {
