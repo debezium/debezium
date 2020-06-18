@@ -2,6 +2,51 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 1.2.0.CR2
+June 18th, 2020 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12346173)
+
+### New features since 1.2.0.CR1
+
+* DB2 connector documentation ambiguous regarding licensing [DBZ-1835](https://issues.jboss.org/browse/DBZ-1835)
+* Optimize SQLServer connector query [DBZ-2120](https://issues.jboss.org/browse/DBZ-2120)
+* Documentation for implementing StreamNameMapper [DBZ-2163](https://issues.jboss.org/browse/DBZ-2163)
+* Update architecture page [DBZ-2096](https://issues.jboss.org/browse/DBZ-2096)
+
+
+### Breaking changes since 1.2.0.CR1
+
+* Debezium server distro has been moved [DBZ-2212](https://issues.jboss.org/browse/DBZ-2212)
+
+
+### Fixes since 1.2.0.CR1
+
+* Encountered error when snapshotting collection type column [DBZ-2117](https://issues.jboss.org/browse/DBZ-2117)
+* Missing dependencies for Debezium Server Pulsar sink [DBZ-2201](https://issues.jboss.org/browse/DBZ-2201)
+* Intermittent test failure -- Multiple admin clients with same id [DBZ-2228](https://issues.jboss.org/browse/DBZ-2228)
+* Adapt to changed TX representation in oplog in Mongo 4.2 [DBZ-2216](https://issues.jboss.org/browse/DBZ-2216)
+
+
+### Other changes since 1.2.0.CR1
+
+* Tests Asserting No Open Transactions Failing [DBZ-2176](https://issues.jboss.org/browse/DBZ-2176)
+* General test harness for End-2-End Benchmarking [DBZ-1812](https://issues.jboss.org/browse/DBZ-1812)
+* Add tests for datatype.propagate.source.type for all connectors [DBZ-1916](https://issues.jboss.org/browse/DBZ-1916)
+* Productize CloudEvents support [DBZ-2019](https://issues.jboss.org/browse/DBZ-2019)
+* [Doc] Add Debezium Architecture to downstream documentation [DBZ-2029](https://issues.jboss.org/browse/DBZ-2029)
+* Transaction metadata documentation [DBZ-2069](https://issues.jboss.org/browse/DBZ-2069)
+* Inconsistent test failures [DBZ-2177](https://issues.jboss.org/browse/DBZ-2177)
+* Add Jandex plugin to Debezium Server connectors [DBZ-2192](https://issues.jboss.org/browse/DBZ-2192)
+* Ability to scale wait times in OCP test-suite [DBZ-2194](https://issues.jboss.org/browse/DBZ-2194)
+* CI doesn't delete mongo and sql server projects on successful runs [DBZ-2195](https://issues.jboss.org/browse/DBZ-2195)
+* Document database history and web server port for Debezium Server [DBZ-2198](https://issues.jboss.org/browse/DBZ-2198)
+* Do not throw IndexOutOfBoundsException when no task configuration is available [DBZ-2199](https://issues.jboss.org/browse/DBZ-2199)
+* Upgrade Apicurio to 1.2.2.Final [DBZ-2206](https://issues.jboss.org/browse/DBZ-2206)
+* Intermitent test failures [DBZ-2207](https://issues.jboss.org/browse/DBZ-2207)
+* Increase Pulsar Server timeouts [DBZ-2210](https://issues.jboss.org/browse/DBZ-2210)
+* Drop distribution from Debezium Server artifact name [DBZ-2214](https://issues.jboss.org/browse/DBZ-2214)
+
+
+
 ## 1.2.0.CR1
 June 10th, 2020 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12345858)
 
