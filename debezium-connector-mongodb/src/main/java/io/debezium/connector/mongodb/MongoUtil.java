@@ -23,7 +23,6 @@ import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.MongoIterable;
 
-import io.debezium.DebeziumException;
 import io.debezium.function.BlockingConsumer;
 import io.debezium.util.Strings;
 
