@@ -13,7 +13,6 @@ import io.debezium.server.BaseChangeConsumer;
 import io.debezium.server.CustomConsumerBuilder;
 import io.debezium.server.s3.objectkeymapper.DefaultObjectKeyMapper;
 import io.debezium.server.s3.objectkeymapper.ObjectKeyMapper;
-import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.config.ConfigProvider;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
@@ -53,7 +52,7 @@ public abstract class AbstractS3ChangeConsumer extends BaseChangeConsumer implem
     final String valueFormat = ConfigProvider.getConfig().getOptionalValue("debezium.format.value", String.class).orElse(Json.class.getSimpleName().toLowerCase());
     @ConfigProperty(name = PROP_PREFIX + "credentials.profile", defaultValue = "default")
     String credentialsProfile;
-    @ConfigProperty(name = "debezium.sink.s3.endpointoverride", defaultValue = "")
+    @ConfigProperty(name = "debezium.sink.s3.endpointoverride", defaultValue = "false")
     String endpointOverride;
     @Inject
     @CustomConsumerBuilder
@@ -96,7 +95,7 @@ public abstract class AbstractS3ChangeConsumer extends BaseChangeConsumer implem
                 .region(Region.of(region))
                 .credentialsProvider(credProvider);
         // used for testing, using minio
-        if (!StringUtils.isEmpty(endpointOverride)) {
+        if (!endpointOverride.trim().toLowerCase().equals("false")) {
             clientBuilder.endpointOverride(new URI(endpointOverride));
         }
         s3client = clientBuilder.build();
