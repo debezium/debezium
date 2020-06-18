@@ -126,6 +126,7 @@
         <version.failsafe.plugin>${version.surefire.plugin}</version.failsafe.plugin>
         <version.checkstyle>8.32</version.checkstyle>
         <version.revapi.plugin>0.11.5</version.revapi.plugin>
+        <version.jandex>1.0.8</version.jandex>
         <version.revapi-java.plugin>0.21.0</version.revapi-java.plugin>
         <version.build-helper.plugin>1.9.1</version.build-helper.plugin>
 
@@ -654,6 +655,11 @@
                         <skip>${format.skip}</skip>
                         <removeUnused>true</removeUnused>
                     </configuration>
+                </plugin>
+               <plugin>
+                    <groupId>org.jboss.jandex</groupId>
+                    <artifactId>jandex-maven-plugin</artifactId>
+                    <version>${version.jandex}</version>
                 </plugin>
                 <plugin>
                     <groupId>org.revapi</groupId>
