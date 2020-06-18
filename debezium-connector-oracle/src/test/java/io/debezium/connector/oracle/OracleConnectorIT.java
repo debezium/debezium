@@ -736,7 +736,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
-    @FixFor({"DBZ-1916", "DBZ-1830"})
+    @FixFor({ "DBZ-1916", "DBZ-1830" })
     public void shouldPropagateSourceTypeByDatatype() throws Exception {
         final Configuration config = TestHelper.defaultConfig()
                 .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
