@@ -596,8 +596,8 @@ alterSpecification
         '('
           uid columnDefinition ( ',' uid columnDefinition)*
         ')'                                                         #alterByAddColumns
-    | ADD indexFormat=(INDEX | KEY) ifNotExists? uid? indexType?     #ifExists MariaDB specific
-      indexColumnNames indexOption*                                 #alterByAddIndex
+    | ADD indexFormat=(INDEX | KEY) ifNotExists? uid? indexType?
+      indexColumnNames indexOption*                                 #alterByAddIndexifExistsMariaDBspecific
     | ADD (CONSTRAINT name=uid?)? PRIMARY KEY index=uid?
       indexType? indexColumnNames indexOption*                      #alterByAddPrimaryKey
     | ADD (CONSTRAINT name=uid?)? UNIQUE
@@ -606,20 +606,20 @@ alterSpecification
     | ADD keyType=(FULLTEXT | SPATIAL)
       indexFormat=(INDEX | KEY)? uid?
       indexColumnNames indexOption*                                 #alterByAddSpecialIndex
-    | ADD (CONSTRAINT name=uid?)? FOREIGN KEY ifNotExists?           #ifExists MariaDB specific
-      indexName=uid? indexColumnNames referenceDefinition           #alterByAddForeignKey
+    | ADD (CONSTRAINT name=uid?)? FOREIGN KEY ifNotExists?
+      indexName=uid? indexColumnNames referenceDefinition           #alterByAddForeignKeyifExistsMariaDBspecific
     | ADD (CONSTRAINT name=uid?)? CHECK '(' expression ')'          #alterByAddCheckTableConstraint
     | ALGORITHM '='? algType=(DEFAULT | INSTANT | INPLACE | COPY)   #alterBySetAlgorithm
     | ALTER COLUMN? uid
       (SET DEFAULT defaultValue | DROP DEFAULT)                     #alterByChangeDefault
-    | CHANGE COLUMN? ifExists? oldColumn=uid                         #ifExists MariaDB specific
+    | CHANGE COLUMN? ifExists? oldColumn=uid
       newColumn=uid columnDefinition
-      (FIRST | AFTER afterColumn=uid)?                              #alterByChangeColumn
+      (FIRST | AFTER afterColumn=uid)?                              #alterByChangeColumnifExistsMariaDBspecific
     | RENAME COLUMN oldColumn=uid TO newColumn=uid                  #alterByRenameColumn
     | LOCK '='? lockType=(DEFAULT | NONE | SHARED | EXCLUSIVE)      #alterByLock
-    | MODIFY COLUMN? ifExists?                                       #ifExists MariaDB specific
-      uid columnDefinition (FIRST | AFTER uid)?                     #alterByModifyColumn
-    | DROP COLUMN? ifExists? uid RESTRICT?                          #alterByDropColumn, ifExists MariaDB specific
+    | MODIFY COLUMN? ifExists?
+      uid columnDefinition (FIRST | AFTER uid)?                     #alterByModifyColumnifExistsMariaDBspecific
+    | DROP COLUMN? ifExists? uid RESTRICT?                          #alterByDropColumnifExistsMariaDBspecific
     | DROP PRIMARY KEY                                              #alterByDropPrimaryKey
     | DROP indexFormat=(INDEX | KEY) ifExists? uid                  #alterByDropIndex
     | RENAME indexFormat=(INDEX | KEY) uid TO uid                   #alterByRenameIndex
