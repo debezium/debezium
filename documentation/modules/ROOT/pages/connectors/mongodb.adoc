@@ -539,14 +539,14 @@ An example of messages looks like
 ----
 {
   "status": "BEGIN",
-  "id": "00000025:00000d08:0025",
+  "id": "1462833718356672513",
   "event_count": null,
   "data_collections": null
 }
 
 {
   "status": "END",
-  "id": "00000025:00000d08:0025",
+  "id": "1462833718356672513",
   "event_count": 2,
   "data_collections": [
     {
@@ -586,7 +586,7 @@ An example of messages looks like
   "op": "c",
   "ts_ms": "1580390884335",
   "transaction": {
-    "id": "00000025:00000d08:0025",
+    "id": "1462833718356672513",
     "total_order": "1",
     "data_collection_order": "1"
   }
