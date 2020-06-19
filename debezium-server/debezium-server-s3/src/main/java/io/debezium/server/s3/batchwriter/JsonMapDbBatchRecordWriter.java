@@ -36,15 +36,15 @@ public class JsonMapDbBatchRecordWriter implements BatchRecordWriter, AutoClosea
     protected final File TEMPDIR = Files.createTempDir();
     private static final Logger LOGGER = LoggerFactory.getLogger(JsonMapDbBatchRecordWriter.class);
     private LocalDateTime batchTime = LocalDateTime.now();
-    final int batchLimit = ConfigProvider.getConfig().getOptionalValue("debezium.sink.s3.batch.row.limit", Integer.class).orElse(500);
+    final Integer batchLimit = ConfigProvider.getConfig().getOptionalValue("debezium.sink.s3.batch.row.limit", Integer.class).orElse(500);
 
     private final S3Client s3Client;
     private final String bucket;
     private final ObjectKeyMapper objectKeyMapper;
-    DB cdcDb;
-    ConcurrentMap<String, String> map_data;
-    ConcurrentMap<String, Integer> map_batchid;
-    ScheduledExecutorService timerExecutor = Executors.newSingleThreadScheduledExecutor();
+    final DB cdcDb;
+    final ConcurrentMap<String, String> map_data;
+    final ConcurrentMap<String, Integer> map_batchid;
+    final ScheduledExecutorService timerExecutor = Executors.newSingleThreadScheduledExecutor();
 
     public JsonMapDbBatchRecordWriter(ObjectKeyMapper mapper, S3Client s3Client, String bucket) {
         this.s3Client = s3Client;
@@ -73,7 +73,7 @@ public class JsonMapDbBatchRecordWriter implements BatchRecordWriter, AutoClosea
     }
 
     private void setupTimer() {
-        final int timerBatchLimit = ConfigProvider.getConfig().getOptionalValue("debezium.sink.s3.batch.time.limit", Integer.class).orElse(3600);
+        final Integer timerBatchLimit = ConfigProvider.getConfig().getOptionalValue("debezium.sink.s3.batch.time.limit", Integer.class).orElse(3600);
         LOGGER.info("Set Batch Time limit to {} Second", timerBatchLimit);
         Runnable timerTask = () -> {
             LOGGER.debug("Timer is up uploading batch data!");
@@ -95,9 +95,9 @@ public class JsonMapDbBatchRecordWriter implements BatchRecordWriter, AutoClosea
             map_batchid.putIfAbsent(destination, 0);
             return;
         }
-        else {
-            map_data.put(destination, map_data.get(destination) + IOUtils.LINE_SEPARATOR + eventValue);
-        }
+
+        map_data.put(destination, map_data.get(destination) + IOUtils.LINE_SEPARATOR + eventValue);
+
         if (StringUtils.countMatches(map_data.get(destination), IOUtils.LINE_SEPARATOR) >= batchLimit) {
             LOGGER.debug("Batch Limit reached Uploading Data, destination:{} batchId:{}", destination, map_batchid.get(destination));
             this.uploadBatchFile(destination);

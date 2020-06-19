@@ -41,14 +41,14 @@ public class S3IT {
 
     private static final int MESSAGE_COUNT = 4;
     protected static S3Client s3client = null;
-    protected static TestS3Server s3server = new TestS3Server();
+    protected static final TestS3Server s3server = new TestS3Server();
     protected static TestDatabase db;
     @Inject
     DebeziumServer server;
     @ConfigProperty(name = "debezium.sink.type")
     String sinkType;
 
-    {
+    static {
         Testing.Files.delete(S3TestConfigSource.OFFSET_STORE_PATH);
         Testing.Files.createTestingFile(S3TestConfigSource.OFFSET_STORE_PATH);
     }

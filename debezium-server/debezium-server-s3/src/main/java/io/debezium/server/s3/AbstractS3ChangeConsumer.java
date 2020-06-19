@@ -54,9 +54,9 @@ public abstract class AbstractS3ChangeConsumer extends BaseChangeConsumer implem
     private static final String PROP_BUCKET_NAME = PROP_PREFIX + "bucket.name";
     final String valueFormat = ConfigProvider.getConfig().getOptionalValue("debezium.format.value", String.class).orElse(Json.class.getSimpleName().toLowerCase());
 
-    String credentialsProfile = ConfigProvider.getConfig().getOptionalValue(PROP_PREFIX + "credentials.profile", String.class).orElse("default");
-    String endpointOverride = ConfigProvider.getConfig().getOptionalValue("debezium.sink.s3.endpointoverride", String.class).orElse("false");
-    Boolean useInstanceProfile = ConfigProvider.getConfig().getOptionalValue("debezium.sink.s3.credentials.useinstancecred", Boolean.class).orElse(false);
+    final String credentialsProfile = ConfigProvider.getConfig().getOptionalValue(PROP_PREFIX + "credentials.profile", String.class).orElse("default");
+    final String endpointOverride = ConfigProvider.getConfig().getOptionalValue("debezium.sink.s3.endpointoverride", String.class).orElse("false");
+    final Boolean useInstanceProfile = ConfigProvider.getConfig().getOptionalValue("debezium.sink.s3.credentials.useinstancecred", Boolean.class).orElse(false);
 
     @Inject
     @CustomConsumerBuilder

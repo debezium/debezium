@@ -46,7 +46,7 @@ public class S3BatchIT {
 
     private static final int MESSAGE_COUNT = 2;
     protected static S3Client s3client = null;
-    protected static TestS3Server s3server = new TestS3Server();
+    protected static final TestS3Server s3server = new TestS3Server();
     protected static TestDatabase db = new TestDatabase();
 
     @Inject
@@ -54,7 +54,7 @@ public class S3BatchIT {
     @ConfigProperty(name = "debezium.sink.type")
     String sinkType;
 
-    {
+    static {
         Testing.Debug.enable();
         Testing.Files.delete(S3TestConfigSource.OFFSET_STORE_PATH);
         Testing.Files.createTestingFile(S3TestConfigSource.OFFSET_STORE_PATH);
@@ -111,9 +111,7 @@ public class S3BatchIT {
         Testing.Print.enable();
         Assertions.assertThat(sinkType.equals("s3batch"));
 
-        Awaitility.await().atMost(Duration.ofSeconds(S3TestConfigSource.waitForSeconds())).until(() -> {
-            return s3client.listBuckets().toString().contains(S3TestConfigSource.S3_BUCKET);
-        });
+        Awaitility.await().atMost(Duration.ofSeconds(S3TestConfigSource.waitForSeconds())).until(() -> s3client.listBuckets().toString().contains(S3TestConfigSource.S3_BUCKET));
 
         Awaitility.await().atMost(Duration.ofSeconds(S3TestConfigSource.waitForSeconds())).until(() -> {
             List<S3Object> objects = getObjectList();

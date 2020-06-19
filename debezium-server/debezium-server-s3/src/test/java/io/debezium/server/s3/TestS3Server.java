@@ -23,11 +23,11 @@ public class TestS3Server {
     static final String DEFAULT_TAG = "edge";
     static final String DEFAULT_STORAGE_DIRECTORY = "/data";
     static final String HEALTH_ENDPOINT = "/minio/health/ready";
-    static String MINIO_ACCESS_KEY;
-    static String MINIO_SECRET_KEY;
+    static final String MINIO_ACCESS_KEY;
+    static final String MINIO_SECRET_KEY;
     private GenericContainer container = null;
 
-    {
+    static {
         ProfileCredentialsProvider pcred = ProfileCredentialsProvider.create("default");
         MINIO_ACCESS_KEY = pcred.resolveCredentials().accessKeyId();
         MINIO_SECRET_KEY = pcred.resolveCredentials().secretAccessKey();
