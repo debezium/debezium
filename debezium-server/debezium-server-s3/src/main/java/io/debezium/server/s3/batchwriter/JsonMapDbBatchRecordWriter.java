@@ -8,6 +8,7 @@ package io.debezium.server.s3.batchwriter;
 
 import java.io.File;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -66,13 +67,14 @@ public class JsonMapDbBatchRecordWriter implements BatchRecordWriter, AutoClosea
                 .createOrOpen();
 
         LOGGER.info("Starting S3 Batch Consumer({})", this.getClass().getName());
+        LOGGER.info("Set Batch Row limit to {} Rows", batchLimit);
         LOGGER.debug("Local Cache (MapDb) Location:{}", TEMPDIR.toPath().resolve("debeziumevents.db").toAbsolutePath().toString());
         setupTimer();
     }
 
     private void setupTimer() {
         final int timerBatchLimit = ConfigProvider.getConfig().getOptionalValue("debezium.sink.s3.batch.time.limit", Integer.class).orElse(3600);
-        LOGGER.info("Set Batch limit to {} Second", timerBatchLimit);
+        LOGGER.info("Set Batch Time limit to {} Second", timerBatchLimit);
         Runnable timerTask = () -> {
             LOGGER.debug("Timer is up uploading batch data!");
             try {
@@ -91,6 +93,7 @@ public class JsonMapDbBatchRecordWriter implements BatchRecordWriter, AutoClosea
         if (!map_data.containsKey(destination)) {
             map_data.put(destination, eventValue);
             map_batchid.putIfAbsent(destination, 0);
+            return;
         }
         else {
             map_data.put(destination, map_data.get(destination) + IOUtils.LINE_SEPARATOR + eventValue);
@@ -130,9 +133,10 @@ public class JsonMapDbBatchRecordWriter implements BatchRecordWriter, AutoClosea
             cdcDb.commit();
         }
         this.setBatchTime();
-        //if (!map_data.isEmpty()) {
-        //    LOGGER.error("Non Processed Batch Data Found batchTime:{} destination: {}!!", batchTime.toString(), map_data.keySet().toString());
-        //}
+        LOGGER.info("Uploaded Batch and started new batch Time:{}", this.batchTime.toEpochSecond(ZoneOffset.UTC));
+        // if (!map_data.isEmpty()) {
+        // LOGGER.error("Non Processed Batch Data Found batchTime:{} destination: {}!!", batchTime.toString(), map_data.keySet().toString());
+        // }
     }
 
     @Override
@@ -156,8 +160,9 @@ public class JsonMapDbBatchRecordWriter implements BatchRecordWriter, AutoClosea
             if (!map_data.isEmpty()) {
                 LOGGER.error("Non Processed Batch Data Found!");
             }
-            else
+            else {
                 LOGGER.info("All Batch Data Successfully Processed.");
+            }
 
             LOGGER.info("Closing S3 Batch Consumer({})", this.getClass().getName());
             cdcDb.close();
@@ -172,7 +177,7 @@ public class JsonMapDbBatchRecordWriter implements BatchRecordWriter, AutoClosea
             }
         }
         catch (InterruptedException e) {
-            LOGGER.error("Timer Shutingdown Failed {}",e.getMessage());
+            LOGGER.error("Timer Shutingdown Failed {}", e.getMessage());
             timerExecutor.shutdownNow();
         }
     }
