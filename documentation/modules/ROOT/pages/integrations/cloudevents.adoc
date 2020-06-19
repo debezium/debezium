@@ -41,6 +41,17 @@ To configure a {prodname} connector to emit change event records that conform to
 
 Currently, only structured mapping mode is supported. The CloudEvents change event envelope can be JSON or Avro and each envelope type supports JSON or Avro as the `data` format. It is expected that a future {prodname} release will support binary mapping mode. 
 
+For information about using Avro, see: 
+
+* {link-prefix}:{link-avro-serialization}#avro-serialization[Avro serialization] 
+
+ifdef::community[]
+* link:https://github.com/Apicurio/apicurio-registry[Apicurio Registry]
+endif::community[]
+ifdef::product[]
+* link:{LinkServiceRegistryGetStart}[{NameServiceRegistryGetStart}]
+endif::product[]
+
 // Type: concept
 // ModuleID: example-change-event-records-in-cloudevents-format
 // Title: Example change event records in CloudEvents format
@@ -48,7 +59,7 @@ Currently, only structured mapping mode is supported. The CloudEvents change eve
 
 The following example shows what a CloudEvents change event record emitted by a PostgreSQL connector looks like. In this example, the PostgreSQL connector is configured to use JSON as the CloudEvents format envelope and also as the `data` format.  
 
-[source,json,indent=0]
+[source,json,indent=0,subs="attributes"]
 ----
 {
   "id" : "name:test_server;lsn:29274832;txId:565",   <1>
@@ -58,7 +69,7 @@ The following example shows what a CloudEvents change event record emitted by a 
   "time" : "2020-01-13T13:55:39.738Z",               <5>
   "datacontenttype" : "application/json",            <6>
   "iodebeziumop" : "r",                              <7>
-  "iodebeziumversion" : "1.1.0-SNAPSHOT",            <8>
+  "iodebeziumversion" : "{debezium-version}",        <8>
   "iodebeziumconnector" : "postgresql",
   "iodebeziumname" : "test_server",
   "iodebeziumtsms" : "1578923739738",
@@ -94,7 +105,7 @@ The following example shows what a CloudEvents change event record emitted by a 
 
 The following example also shows what a CloudEvents change event record emitted by a PostgreSQL connector looks like. In this example, the PostgreSQL connector is again configured to use JSON as the CloudEvents format envelope, but this time the connector is configured to use Avro for the `data` format. 
 
-[source,json,indent=0]
+[source,json,indent=0,subs="attributes"]
 ----
 {
   "id" : "name:test_server;lsn:33227720;txId:578",
@@ -105,7 +116,7 @@ The following example also shows what a CloudEvents change event record emitted 
   "datacontenttype" : "application/avro",            <1>
   "dataschema" : "http://my-registry/schemas/ids/1", <2>
   "iodebeziumop" : "r",
-  "iodebeziumversion" : "1.1.0-SNAPSHOT",
+  "iodebeziumversion" : "{debezium-version}",
   "iodebeziumconnector" : "postgresql",
   "iodebeziumname" : "test_server",
   "iodebeziumtsms" : "1578924258597",
@@ -133,10 +144,10 @@ It is also possible to use Avro for the envelope as well as the `data` attribute
 // Title: Example of configuring `CloudEventsConverter`
 == Example configuration
 
-Configure `io.debezium.converters.CloudEventsConverter` in your {prodname} connector configuration. Following is an example of configuring `CloudEventConverter` to emit change event records that:
+Configure `io.debezium.converters.CloudEventsConverter` in your {prodname} connector configuration. Following is an example of configuring `CloudEventsConverter` to emit change event records that:
 
 * Use JSON as the envelope
-* Contain Avro data that adheres to the schema at http://schema-registry:8081 
+* Use the schema registry at \http://schema-registry:8081 to serialize the `data` attribute as binary Avro data
 
 In this example, you could omit the specification of `serializer.type` because `json` is the default. 
 
