@@ -183,7 +183,7 @@ ifdef::product[]
 .. Create a custom image for Kafka Connect. See link:{LinkCDCInstallOpenShift}[NameCDCInstallOpenShift] for an example of how to do this. Start with the `Dockerfile` in that example. Then add the {registry} converters to the connector directories. 
 endif::product[]
 
-. Run the newly built Kafka Connect image, configuring it so it uses the Avro converter (or configure specific converters to do so):
+. Run the newly built Kafka Connect image, configuring it so it uses the Avro converter (or configure specific connectors to run the Avro converter):
 +
 ifdef::community[]
 [source,subs="attributes"]
