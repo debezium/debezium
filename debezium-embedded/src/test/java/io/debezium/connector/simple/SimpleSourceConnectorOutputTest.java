@@ -47,6 +47,8 @@ public class SimpleSourceConnectorOutputTest extends ConnectorOutputTest {
      */
     @Test
     public void shouldGenerateExpected() throws Exception {
+        // The test connector is blocking so we need to execute interrupt faster
+        System.setProperty("debezium.embedded.shutdown.pause.before.interrupt.ms", "5000");
         int numBatches = 1;
         int numRecordsPerBatch = 10;
         // Testing.Debug.enable();
@@ -83,6 +85,7 @@ public class SimpleSourceConnectorOutputTest extends ConnectorOutputTest {
         // Run the connector again (with fresh offsets) to read the expected results ...
         cleanOffsetStorage();
         runConnector("gen-expected", dir);
+        System.clearProperty("debezium.embedded.shutdown.pause.before.interrupt.ms");
     }
 
     /**
