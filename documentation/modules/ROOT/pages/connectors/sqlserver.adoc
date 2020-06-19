@@ -166,6 +166,7 @@ For example, consider a SQL Server installation with an `inventory` database tha
 * `fulfillment.dbo.customers`
 * `fulfillment.dbo.orders`
 
+ifdef::community[]
 === Schema change topic
 
 [WARNING]
@@ -313,6 +314,7 @@ The schema change messages use as the key the name of the database to which the 
   }
 }
 ----
+endif::community[]
 
 === Events
 
