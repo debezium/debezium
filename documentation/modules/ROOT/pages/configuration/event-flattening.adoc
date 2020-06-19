@@ -167,9 +167,9 @@ transforms.unwrap.delete.handling.mode=rewrite
 transforms.unwrap.add.fields=table,lsn
 ----
 
-`drop-tombstones=false`:: Keeps tombstone records for `DELETE` operations in the event stream. 
+`drop.tombstones=false`:: Keeps tombstone records for `DELETE` operations in the event stream. 
 
-`delete-handling-mode=rewrite`:: For `DELETE` operations, edits the Kafka record by flattening the `value` field that was in the change event. The `value` field directly contains the key/value pairs that were in the `before` field. The SMT adds `__deleted` and sets it to `true`, for example:   
+`delete.handling.mode=rewrite`:: For `DELETE` operations, edits the Kafka record by flattening the `value` field that was in the change event. The `value` field directly contains the key/value pairs that were in the `before` field. The SMT adds `__deleted` and sets it to `true`, for example:   
 +
 ----
 "value": {
