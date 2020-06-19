@@ -139,7 +139,7 @@ public abstract class ConnectorTestBase {
     protected void assertRecordsCount(String topic, int count) {
         try (Consumer<String, String> consumer = new KafkaConsumer<>(KAFKA_CONSUMER_PROPS)) {
             consumer.subscribe(Collections.singleton(topic));
-            ConsumerRecords<String, String> records = consumer.poll(Duration.of(10, ChronoUnit.SECONDS));
+            ConsumerRecords<String, String> records = consumer.poll(Duration.of(10, ChronoUnit.SECONDS).toMillis());
             consumer.seekToBeginning(consumer.assignment());
             assertThat(records.count()).withFailMessage("Expecting topic '%s' to have <%d> messages but it had <%d>.", topic, count, records.count()).isEqualTo(count);
         }
@@ -148,7 +148,7 @@ public abstract class ConnectorTestBase {
     protected void assertMinimalRecordsCount(String topic, int count) {
         try (Consumer<String, String> consumer = new KafkaConsumer<>(KAFKA_CONSUMER_PROPS)) {
             consumer.subscribe(Collections.singleton(topic));
-            ConsumerRecords<String, String> records = consumer.poll(Duration.of(10, ChronoUnit.SECONDS));
+            ConsumerRecords<String, String> records = consumer.poll(Duration.of(10, ChronoUnit.SECONDS).toMillis());
             consumer.seekToBeginning(consumer.assignment());
             assertThat(
                     records.count()).withFailMessage("Expecting topic '%s' to have  at least <%d> messages but it had <%d>.", topic, count, records.count())
@@ -160,7 +160,7 @@ public abstract class ConnectorTestBase {
         try (Consumer<String, String> consumer = new KafkaConsumer<>(KAFKA_CONSUMER_PROPS)) {
             consumer.subscribe(Collections.singleton(topic));
             consumer.seekToBeginning(consumer.assignment());
-            ConsumerRecords<String, String> records = consumer.poll(Duration.of(10, ChronoUnit.SECONDS));
+            ConsumerRecords<String, String> records = consumer.poll(Duration.of(10, ChronoUnit.SECONDS).toMillis());
             long matchingCount = StreamSupport.stream(records.records(topic).spliterator(), false).filter(r -> r.value().contains(content)).count();
             assertThat(matchingCount).withFailMessage("Topic '%s' doesn't have message containing <%s>.", topic, content).isGreaterThan(0);
 
