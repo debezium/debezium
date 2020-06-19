@@ -144,7 +144,7 @@ public class DebeziumContainerTest {
         List<ConsumerRecord<String, String>> allRecords = new ArrayList<>();
 
         Unreliables.retryUntilTrue(10, TimeUnit.SECONDS, () -> {
-            consumer.poll(Duration.ofMillis(50))
+            consumer.poll(Duration.ofMillis(50).toMillis())
                     .iterator()
                     .forEachRemaining(allRecords::add);
 
