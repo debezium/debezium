@@ -154,7 +154,7 @@ This deploys the latest development version of the {registry} operator from the 
 The in-memory deployment is not suitable for production. Use the Apache Kafka persistence option for production. For more information, see {LinkServiceRegistryGetStart}[NameServiceRegistryGetStart].
 endif::product[]
 
-. Build a {prodname} container image that implements the Avro converter:
+. Build a {prodname} container image that contains the Avro converter:
 +
 ifdef::community[]
 .. Copy link:https://github.com/debezium/debezium-examples/blob/master/tutorial/debezium-with-apicurio/Dockerfile[`Dockerfile`] to a convenient location. This file has the following content: 
