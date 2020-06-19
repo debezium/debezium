@@ -111,7 +111,8 @@ public class S3BatchIT {
         Testing.Print.enable();
         Assertions.assertThat(sinkType.equals("s3batch"));
 
-        Awaitility.await().atMost(Duration.ofSeconds(S3TestConfigSource.waitForSeconds())).until(() -> s3client.listBuckets().toString().contains(S3TestConfigSource.S3_BUCKET));
+        Awaitility.await().atMost(Duration.ofSeconds(S3TestConfigSource.waitForSeconds()))
+                .until(() -> s3client.listBuckets().toString().contains(S3TestConfigSource.S3_BUCKET));
 
         Awaitility.await().atMost(Duration.ofSeconds(S3TestConfigSource.waitForSeconds())).until(() -> {
             List<S3Object> objects = getObjectList();

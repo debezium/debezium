@@ -16,9 +16,9 @@ public class TimeBasedDailyObjectKeyMapper extends DefaultObjectKeyMapper {
 
     @Override
     public String map(String destination, LocalDateTime batchTime, String recordId) {
-        Objects.requireNonNull(destination,"destination Cannot be Null");
-        Objects.requireNonNull(batchTime,"batchTime Cannot be Null");
-        Objects.requireNonNull(recordId,"recordId Cannot be Null");
+        Objects.requireNonNull(destination, "destination Cannot be Null");
+        Objects.requireNonNull(batchTime, "batchTime Cannot be Null");
+        Objects.requireNonNull(recordId, "recordId Cannot be Null");
         String fname = batchTime.toEpochSecond(ZoneOffset.UTC) + recordId + "." + valueFormat;
         String partiton = "year=" + batchTime.getYear() + "/month=" + StringUtils.leftPad(batchTime.getMonthValue() + "", 2, '0') + "/day="
                 + StringUtils.leftPad(batchTime.getDayOfMonth() + "", 2, '0');
@@ -26,9 +26,9 @@ public class TimeBasedDailyObjectKeyMapper extends DefaultObjectKeyMapper {
     }
 
     public String map(String destination, LocalDateTime batchTime, Integer batchId) {
-        Objects.requireNonNull(destination,"destination Cannot be Null");
-        Objects.requireNonNull(batchTime,"batchTime Cannot be Null");
-        Objects.requireNonNull(batchId,"batchId Cannot be Null");
+        Objects.requireNonNull(destination, "destination Cannot be Null");
+        Objects.requireNonNull(batchTime, "batchTime Cannot be Null");
+        Objects.requireNonNull(batchId, "batchId Cannot be Null");
         String fname = batchTime.toEpochSecond(ZoneOffset.UTC) + "-" + batchId + "." + valueFormat;
         String partiton = "year=" + batchTime.getYear() + "/month=" + StringUtils.leftPad(batchTime.getMonthValue() + "", 2, '0') + "/day="
                 + StringUtils.leftPad(batchTime.getDayOfMonth() + "", 2, '0');
