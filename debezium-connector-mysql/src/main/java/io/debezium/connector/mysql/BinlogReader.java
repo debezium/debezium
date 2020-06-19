@@ -17,10 +17,13 @@ import java.security.NoSuchAlgorithmException;
 import java.security.UnrecoverableKeyException;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.BitSet;
+import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -73,6 +76,7 @@ import io.debezium.heartbeat.Heartbeat;
 import io.debezium.relational.TableId;
 import io.debezium.util.Clock;
 import io.debezium.util.ElapsedTimeStrategy;
+import io.debezium.util.Metronome;
 import io.debezium.util.Strings;
 import io.debezium.util.Threads;
 
@@ -86,6 +90,7 @@ public class BinlogReader extends AbstractReader {
 
     private static final long INITIAL_POLL_PERIOD_IN_MILLIS = TimeUnit.SECONDS.toMillis(5);
     private static final long MAX_POLL_PERIOD_IN_MILLIS = TimeUnit.HOURS.toMillis(1);
+    private static final String KEEPALIVE_THREAD_NAME = "blc-keepalive";
 
     private final boolean recordSchemaChangesInSourceRecords;
     private final RecordMakers recordMakers;
@@ -111,6 +116,7 @@ public class BinlogReader extends AbstractReader {
     private Heartbeat heartbeat;
     private MySqlJdbcContext connectionContext;
     private final float heartbeatIntervalFactor = 0.8f;
+    private final Set<Thread> binaryLogClientThreads = Collections.synchronizedSet(new HashSet<>(2));
 
     public static class BinlogPosition {
         final String filename;
@@ -203,7 +209,8 @@ public class BinlogReader extends AbstractReader {
         // Set up the log reader ...
         client = new BinaryLogClient(connectionContext.hostname(), connectionContext.port(), connectionContext.username(), connectionContext.password());
         // BinaryLogClient will overwrite thread names later
-        client.setThreadFactory(Threads.threadFactory(MySqlConnector.class, context.getConnectorConfig().getLogicalName(), "binlog-client", false, false));
+        client.setThreadFactory(
+                Threads.threadFactory(MySqlConnector.class, context.getConnectorConfig().getLogicalName(), "binlog-client", false, false, binaryLogClientThreads::add));
         client.setServerId(serverId);
         client.setSSLMode(sslModeFor(connectionContext.sslMode()));
         if (connectionContext.sslModeEnabled()) {
@@ -398,6 +405,24 @@ public class BinlogReader extends AbstractReader {
             try {
                 logger.debug("Attempting to establish binlog reader connection with timeout of {} ms", timeout);
                 client.connect(timeout);
+                // Need to wait for keepalive thread to be running, otherwise it can be left orphaned
+                // The problem is with timing. When the close is called too early after connect then
+                // the keepalive thread is not terminated
+                if (client.isKeepAlive()) {
+                    logger.info("Waiting for keepalive thread to start");
+                    final Metronome metronome = Metronome.parker(Duration.ofMillis(100), clock);
+                    int waitAttempts = 50;
+                    boolean keepAliveThreadRunning = false;
+                    while (!keepAliveThreadRunning && waitAttempts-- > 0) {
+                        for (Thread t : binaryLogClientThreads) {
+                            if (t.getName().startsWith(KEEPALIVE_THREAD_NAME) && t.isAlive()) {
+                                logger.info("Keepalive thread is running");
+                                keepAliveThreadRunning = true;
+                            }
+                        }
+                        metronome.pause();
+                    }
+                }
             }
             catch (TimeoutException e) {
                 // If the client thread is interrupted *before* the client could connect, the client throws a timeout exception

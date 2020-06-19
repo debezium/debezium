@@ -142,6 +142,7 @@ public abstract class AbstractConnectorTest implements Testing {
             logger.info("Stopping the connector");
             // Try to stop the connector ...
             if (engine != null && engine.isRunning()) {
+                logger.info("Stopping the engine");
                 engine.stop();
                 try {
                     // Oracle connector needs longer time to complete shutdown
@@ -153,6 +154,7 @@ public abstract class AbstractConnectorTest implements Testing {
                 }
             }
             if (executor != null) {
+                logger.info("Interrupting the engine");
                 List<Runnable> neverRunTasks = executor.shutdownNow();
                 assertThat(neverRunTasks).isEmpty();
                 try {
@@ -166,6 +168,7 @@ public abstract class AbstractConnectorTest implements Testing {
                 }
             }
             if (engine != null && engine.isRunning()) {
+                logger.info("Waiting for engine to stop");
                 try {
                     while (!engine.await(60, TimeUnit.SECONDS)) {
                         // Wait for connector to stop completely ...
