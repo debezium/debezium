@@ -159,12 +159,12 @@ endif::product[]
 ifdef::community[]
 .. Copy link:https://github.com/debezium/debezium-examples/blob/master/tutorial/debezium-with-apicurio/Dockerfile[`Dockerfile`] to a convenient location. This file has the following content: 
 +
-[listing,options="nowrap"]
+[listing,subs="attributes",options="nowrap"]
 ----
 ARG DEBEZIUM_VERSION
 FROM debezium/connect:$DEBEZIUM_VERSION
 ENV KAFKA_CONNECT_DEBEZIUM_DIR=$KAFKA_CONNECT_PLUGINS_DIR/debezium-connector-mysql
-ENV APICURIO_VERSION=1.1.2.Final
+ENV APICURIO_VERSION={apicurio-version}
 
 RUN cd $KAFKA_CONNECT_DEBEZIUM_DIR &&\
     curl https://repo1.maven.org/maven2/io/apicurio/apicurio-registry-distro-connect-converter/$APICURIO_VERSION/apicurio-registry-distro-connect-converter-$APICURIO_VERSION-converter.tar.gz | tar xzv
