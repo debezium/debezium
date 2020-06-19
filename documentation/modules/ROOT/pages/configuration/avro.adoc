@@ -110,7 +110,7 @@ value.converter.apicurio.registry.url=http://apicurio:8080/api
 value.converter.apicurio.registry.global-id=io.apicurio.registry.utils.serde.strategy.AutoRegisterIdStrategy
 ----
 +
-Alternatively, you can also configure specific connectors to use the Avro converter.
+Alternatively, you can configure specific connectors to use the Avro converter.
 
 Internally, Kafka Connect always uses JSON key/value converters for storing configuration and offsets.
 
