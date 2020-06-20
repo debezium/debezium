@@ -140,8 +140,10 @@ public class JsonMapDbBatchRecordWriter implements BatchRecordWriter, AutoClosea
     @Override
     public void close() {
         stopTimer();
-        this.uploadBatch();
-        closeDb();
+        if (!cdcDb.isClosed()) {
+            this.uploadBatch();
+            closeDb();
+        }
         TEMPDIR.delete();
     }
 

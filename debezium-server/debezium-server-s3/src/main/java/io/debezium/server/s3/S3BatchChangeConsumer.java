@@ -31,7 +31,6 @@ import io.debezium.server.BaseChangeConsumer;
 import io.debezium.server.CustomConsumerBuilder;
 import io.debezium.server.s3.batchwriter.BatchRecordWriter;
 import io.debezium.server.s3.batchwriter.JsonMapDbBatchRecordWriter;
-import io.debezium.server.s3.objectkeymapper.DefaultObjectKeyMapper;
 import io.debezium.server.s3.objectkeymapper.ObjectKeyMapper;
 import io.debezium.server.s3.objectkeymapper.TimeBasedDailyObjectKeyMapper;
 
@@ -81,7 +80,7 @@ public class S3BatchChangeConsumer extends BaseChangeConsumer implements Debeziu
             objectKeyMapper = customObjectKeyMapper.get();
         }
         else {
-            objectKeyMapper = new DefaultObjectKeyMapper();
+            objectKeyMapper = new TimeBasedDailyObjectKeyMapper();
         }
         LOGGER.info("Using '{}' stream name mapper", objectKeyMapper);
         if (customClient.isResolvable()) {
