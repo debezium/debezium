@@ -68,7 +68,7 @@ public class JsonMapDbBatchRecordWriter implements BatchRecordWriter, AutoClosea
 
         LOGGER.info("Starting S3 Batch Consumer({})", this.getClass().getName());
         LOGGER.info("Set Batch Row limit to {} Rows", batchLimit);
-        LOGGER.debug("Local Cache (MapDb) Location:{}", TEMPDIR.toPath().resolve("debeziumevents.db").toAbsolutePath().toString());
+        LOGGER.info("Local Cache (MapDb) Location:{}", TEMPDIR.toPath().resolve("debeziumevents.db").toAbsolutePath().toString());
         setupTimer();
     }
 

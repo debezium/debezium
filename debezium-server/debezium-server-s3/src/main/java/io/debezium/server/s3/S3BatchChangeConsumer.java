@@ -35,13 +35,13 @@ import io.debezium.server.s3.objectkeymapper.TimeBasedDailyObjectKeyMapper;
 public class S3BatchChangeConsumer extends AbstractS3ChangeConsumer {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(S3BatchChangeConsumer.class);
-    private final ObjectKeyMapper objectKeyMapper = new TimeBasedDailyObjectKeyMapper();
+    // private final ObjectKeyMapper objectKeyMapper = new TimeBasedDailyObjectKeyMapper();
     BatchRecordWriter batchWriter;
 
     @PostConstruct
     void connect() throws URISyntaxException {
         super.connect();
-        batchWriter = new JsonMapDbBatchRecordWriter(objectKeyMapper, s3client, bucket);
+        batchWriter = new JsonMapDbBatchRecordWriter(new TimeBasedDailyObjectKeyMapper(), s3client, bucket);
     }
 
     @PreDestroy
