@@ -24,7 +24,7 @@ ifdef::product[]
 endif::product[]
 
 A {prodname} data change event has a complex structure that provides a wealth of information. Kafka records that convey {prodname} change events contain all of this information. 
-However, parts of a Kafka ecosystem expect Kafka records that provide a flat structure of field names and values. 
+However, parts of a Kafka ecosystem might expect Kafka records that provide a flat structure of field names and values. 
 To provide this kind of record, {prodname} provides the `ExtractNewRecordState` single message transformation (SMT). Configure this transformation when consumers need Kafka records that have a format that is simpler than Kafka records that contain {prodname} change events. 
 
 The `ExtractNewRecordState` transformation is a 
@@ -146,7 +146,7 @@ ifdef::product[]
 == Configuration of `ExtractNewRecordState` transformation
 endif::product[]
 
-Configure the {prodname} `ExtractNewRecordState` SMT in a Kafka Connect source or sink connector. Add the SMT configuration details to your connector's configuration. To obtain the default behavior, in a `.properties` file, you would specify something like the following: 
+Configure the {prodname} `ExtractNewRecordState` SMT in a Kafka Connect source or sink connector by adding the SMT configuration details to your connector's configuration. To obtain the default behavior, in a `.properties` file, you would specify something like the following: 
 
 [source]
 ----
@@ -171,6 +171,7 @@ transforms.unwrap.add.fields=table,lsn
 
 `delete.handling.mode=rewrite`:: For `DELETE` operations, edits the Kafka record by flattening the `value` field that was in the change event. The `value` field directly contains the key/value pairs that were in the `before` field. The SMT adds `__deleted` and sets it to `true`, for example:   
 +
+[source,json,indent=0]
 ----
 "value": {
   "pk": 2,
@@ -215,8 +216,16 @@ transforms.unwrap.delete.handling.mode=rewrite
 
 With that configuration, a simplified Kafka record would contain something like the following: 
 
+[source,json,indent=0]
 ----
-{ "__op" : "c", __table": "MY_TABLE", "__lsn": "123456789", "__source_ts_ms" : "123456789", ...}
+{ 
+ ...
+	"__op" : "c", 
+	"__table": "MY_TABLE", 
+	"__lsn": "123456789", 
+	"__source_ts_ms" : "123456789", 
+ ...
+}
 ----
 
 Also, simplified Kafka records would have a `__db` header. 
