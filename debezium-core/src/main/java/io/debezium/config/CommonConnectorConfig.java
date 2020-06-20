@@ -48,7 +48,7 @@ public abstract class CommonConnectorConfig {
 
         private final String value;
 
-        private Version(String value) {
+        Version(String value) {
             this.value = value;
         }
 
@@ -95,7 +95,7 @@ public abstract class CommonConnectorConfig {
     /**
      * The set of predefined modes for dealing with failures during event processing.
      */
-    public static enum EventProcessingFailureHandlingMode implements EnumeratedValue {
+    public enum EventProcessingFailureHandlingMode implements EnumeratedValue {
 
         /**
          * Problematic events will be skipped.
@@ -121,7 +121,7 @@ public abstract class CommonConnectorConfig {
 
         private final String value;
 
-        private EventProcessingFailureHandlingMode(String value) {
+        EventProcessingFailureHandlingMode(String value) {
             this.value = value;
         }
 
@@ -166,17 +166,17 @@ public abstract class CommonConnectorConfig {
         /**
          * Represent binary values as byte array
          */
-        BYTES("bytes", () -> SchemaBuilder.bytes()),
+        BYTES("bytes", SchemaBuilder::bytes),
 
         /**
          * Represent binary values as base64-encoded string
          */
-        BASE64("base64", () -> SchemaBuilder.string()),
+        BASE64("base64", SchemaBuilder::string),
 
         /**
          * Represents binary values as hex-encoded (base16) string
          */
-        HEX("hex", () -> SchemaBuilder.string());
+        HEX("hex", SchemaBuilder::string);
 
         private final String value;
         private final Supplier<SchemaBuilder> schema;
