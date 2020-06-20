@@ -64,10 +64,10 @@ public class S3ChangeConsumer extends BaseChangeConsumer implements DebeziumEngi
     Instance<S3Client> customClient;
     @Inject
     Instance<ObjectKeyMapper> customObjectKeyMapper;
-    @ConfigProperty(name = PROP_BUCKET_NAME)
+    @ConfigProperty(name = PROP_BUCKET_NAME, defaultValue = "My-S3-Bucket")
     String bucket;
     S3Client s3client;
-    @ConfigProperty(name = PROP_REGION_NAME)
+    @ConfigProperty(name = PROP_REGION_NAME, defaultValue = "eu-central-1")
     String region;
 
     private ObjectKeyMapper objectKeyMapper;

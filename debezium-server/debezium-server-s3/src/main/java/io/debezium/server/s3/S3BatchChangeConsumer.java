@@ -65,10 +65,10 @@ public class S3BatchChangeConsumer extends BaseChangeConsumer implements Debeziu
     Instance<S3Client> customClient;
     @Inject
     Instance<ObjectKeyMapper> customObjectKeyMapper;
-    @ConfigProperty(name = PROP_BUCKET_NAME)
+    @ConfigProperty(name = PROP_BUCKET_NAME, defaultValue = "My-S3-Bucket")
     String bucket;
     S3Client s3client;
-    @ConfigProperty(name = PROP_REGION_NAME)
+    @ConfigProperty(name = PROP_REGION_NAME, defaultValue = "eu-central-1")
     String region;
     // private final ObjectKeyMapper objectKeyMapper = new TimeBasedDailyObjectKeyMapper();
     BatchRecordWriter batchWriter;
