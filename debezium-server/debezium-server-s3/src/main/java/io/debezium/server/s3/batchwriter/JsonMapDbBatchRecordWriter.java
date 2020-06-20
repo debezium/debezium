@@ -55,7 +55,7 @@ public class JsonMapDbBatchRecordWriter implements BatchRecordWriter, AutoClosea
         this.cdcDb = DBMaker
                 .fileDB(TEMPDIR.toPath().resolve("debeziumevents.db").toFile())
                 .fileMmapEnable()
-                .transactionEnable()
+                // .transactionEnable()
                 .closeOnJvmShutdown()
                 .fileDeleteAfterClose()
                 .make();
@@ -93,6 +93,7 @@ public class JsonMapDbBatchRecordWriter implements BatchRecordWriter, AutoClosea
         if (!map_data.containsKey(destination)) {
             map_data.put(destination, eventValue);
             map_batchid.putIfAbsent(destination, 0);
+            cdcDb.commit();
             return;
         }
 
@@ -120,7 +121,7 @@ public class JsonMapDbBatchRecordWriter implements BatchRecordWriter, AutoClosea
         // start new batch
         map_data.remove(destination);
         cdcDb.commit();
-        LOGGER.debug("Upload Succeded! destination:{} key:{}", destination, s3File);
+        LOGGER.debug("Upload Succeeded! destination:{} key:{}", destination, s3File);
 
     }
 
@@ -128,9 +129,6 @@ public class JsonMapDbBatchRecordWriter implements BatchRecordWriter, AutoClosea
     public void uploadBatch() {
         for (String k : map_data.keySet()) {
             uploadBatchFile(k);
-            map_data.remove(k);
-            map_batchid.remove(k);
-            cdcDb.commit();
         }
         this.setBatchTime();
         LOGGER.info("Uploaded Batch and started new batch Time:{}", this.batchTime.toEpochSecond(ZoneOffset.UTC));

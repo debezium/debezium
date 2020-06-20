@@ -79,10 +79,6 @@
                     <groupId>io.debezium</groupId>
                     <artifactId>debezium-server-pulsar</artifactId>
                 </dependency>
-                <dependency>
-                    <groupId>io.debezium</groupId>
-                    <artifactId>debezium-server-s3</artifactId>
-                </dependency>
             </dependencies>
             <build>
                 <plugins>
