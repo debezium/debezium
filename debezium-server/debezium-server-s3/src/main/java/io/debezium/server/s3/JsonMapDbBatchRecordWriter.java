@@ -53,7 +53,7 @@ public class JsonMapDbBatchRecordWriter implements BatchRecordWriter, AutoClosea
         this.cdcDb = DBMaker
                 .fileDB(TEMPDIR.toPath().resolve("debeziumevents.db").toFile())
                 .fileMmapEnable()
-                // .transactionEnable()
+                .transactionEnable()
                 .closeOnJvmShutdown()
                 .fileDeleteAfterClose()
                 .make();
