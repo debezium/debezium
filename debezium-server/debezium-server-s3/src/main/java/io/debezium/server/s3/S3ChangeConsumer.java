@@ -28,8 +28,6 @@ import io.debezium.engine.DebeziumEngine;
 import io.debezium.engine.format.Json;
 import io.debezium.server.BaseChangeConsumer;
 import io.debezium.server.CustomConsumerBuilder;
-import io.debezium.server.s3.objectkeymapper.DefaultObjectKeyMapper;
-import io.debezium.server.s3.objectkeymapper.ObjectKeyMapper;
 
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.InstanceProfileCredentialsProvider;

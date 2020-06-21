@@ -4,7 +4,7 @@
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
 
-package io.debezium.server.s3.batchwriter;
+package io.debezium.server.s3;
 
 import java.io.File;
 import java.time.LocalDateTime;
@@ -24,8 +24,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.io.Files;
-
-import io.debezium.server.s3.objectkeymapper.ObjectKeyMapper;
 
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;

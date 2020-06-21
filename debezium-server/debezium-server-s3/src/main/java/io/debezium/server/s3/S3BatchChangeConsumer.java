@@ -29,10 +29,6 @@ import io.debezium.engine.DebeziumEngine.RecordCommitter;
 import io.debezium.engine.format.Json;
 import io.debezium.server.BaseChangeConsumer;
 import io.debezium.server.CustomConsumerBuilder;
-import io.debezium.server.s3.batchwriter.BatchRecordWriter;
-import io.debezium.server.s3.batchwriter.JsonMapDbBatchRecordWriter;
-import io.debezium.server.s3.objectkeymapper.ObjectKeyMapper;
-import io.debezium.server.s3.objectkeymapper.TimeBasedDailyObjectKeyMapper;
 
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.InstanceProfileCredentialsProvider;
@@ -64,6 +60,7 @@ public class S3BatchChangeConsumer extends BaseChangeConsumer implements Debeziu
     Instance<S3Client> customClient;
     @Inject
     Instance<ObjectKeyMapper> customObjectKeyMapper;
+
     @ConfigProperty(name = PROP_BUCKET_NAME, defaultValue = "My-S3-Bucket")
     String bucket;
     S3Client s3client;
@@ -71,18 +68,16 @@ public class S3BatchChangeConsumer extends BaseChangeConsumer implements Debeziu
     String region;
     // private final ObjectKeyMapper objectKeyMapper = new TimeBasedDailyObjectKeyMapper();
     BatchRecordWriter batchWriter;
+    ObjectKeyMapper objectKeyMapper = new TimeBasedDailyObjectKeyMapper();
 
     @PostConstruct
     void connect() throws URISyntaxException {
 
-        ObjectKeyMapper objectKeyMapper;
         if (customObjectKeyMapper.isResolvable()) {
             objectKeyMapper = customObjectKeyMapper.get();
         }
-        else {
-            objectKeyMapper = new TimeBasedDailyObjectKeyMapper();
-        }
-        LOGGER.info("Using '{}' stream name mapper", objectKeyMapper);
+        LOGGER.info("Using '{}' object name mapper", objectKeyMapper);
+
         if (customClient.isResolvable()) {
             s3client = customClient.get();
             LOGGER.info("Obtained custom configured S3Client '{}'", s3client);
@@ -107,7 +102,7 @@ public class S3BatchChangeConsumer extends BaseChangeConsumer implements Debeziu
         }
         s3client = clientBuilder.build();
         LOGGER.info("Using default S3Client '{}'", s3client);
-        batchWriter = new JsonMapDbBatchRecordWriter(new TimeBasedDailyObjectKeyMapper(), s3client, bucket);
+        batchWriter = new JsonMapDbBatchRecordWriter(objectKeyMapper, s3client, bucket);
     }
 
     @PreDestroy

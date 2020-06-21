@@ -23,8 +23,6 @@ import io.debezium.server.DebeziumServer;
 import io.debezium.server.TestDatabase;
 import io.debezium.server.events.ConnectorCompletedEvent;
 import io.debezium.server.events.ConnectorStartedEvent;
-import io.debezium.server.s3.batchwriter.JsonMapDbBatchRecordWriter;
-import io.debezium.server.s3.objectkeymapper.TimeBasedDailyObjectKeyMapper;
 import io.debezium.util.Testing;
 import io.quarkus.test.junit.QuarkusTest;
 
