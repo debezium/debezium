@@ -93,8 +93,8 @@ public class S3IT {
 
         s3client.createBucket(CreateBucketRequest.builder().bucket(S3TestConfigSource.S3_BUCKET).build());
         Assertions.assertThat(s3client.listBuckets().toString().contains(S3TestConfigSource.S3_BUCKET));
-        s3client.createBucket(CreateBucketRequest.builder().bucket("testing-s3-slient").build());
-        Assertions.assertThat(s3client.listBuckets().toString().contains("testing-s3-slient"));
+        s3client.createBucket(CreateBucketRequest.builder().bucket("testing-s3-client").build());
+        Assertions.assertThat(s3client.listBuckets().toString().contains("testing-s3-client"));
 
         Awaitility.await().atMost(Duration.ofSeconds(S3TestConfigSource.waitForSeconds())).until(() -> {
 

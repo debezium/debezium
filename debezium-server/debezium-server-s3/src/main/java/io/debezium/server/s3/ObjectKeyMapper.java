@@ -8,7 +8,7 @@ package io.debezium.server.s3;
 import java.time.LocalDateTime;
 
 /**
- * Transforms the name of the record destination to the S3 onject key.
+ * Transforms the name of the record destination to the S3 object key.
  *
  * @author Ismail Simsek
  */

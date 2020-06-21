@@ -35,6 +35,7 @@ public class JsonMapDbBatchRecordWriter implements BatchRecordWriter, AutoClosea
     private static final Logger LOGGER = LoggerFactory.getLogger(JsonMapDbBatchRecordWriter.class);
     private LocalDateTime batchTime = LocalDateTime.now();
     final Integer batchLimit = ConfigProvider.getConfig().getOptionalValue("debezium.sink.s3.batch.row.limit", Integer.class).orElse(500);
+    final String tags = ConfigProvider.getConfig().getOptionalValue("debezium.sink.s3.object.tags", String.class).orElse("");
 
     private final S3Client s3Client;
     private final String bucket;
@@ -112,6 +113,7 @@ public class JsonMapDbBatchRecordWriter implements BatchRecordWriter, AutoClosea
         final PutObjectRequest putRecord = PutObjectRequest.builder()
                 .bucket(bucket)
                 .key(s3File)
+                .tagging(tags)
                 .build();
         s3Client.putObject(putRecord, RequestBody.fromString(data));
         // increment batch id
@@ -175,7 +177,7 @@ public class JsonMapDbBatchRecordWriter implements BatchRecordWriter, AutoClosea
             }
         }
         catch (InterruptedException e) {
-            LOGGER.error("Timer Shutingdown Failed {}", e.getMessage());
+            LOGGER.error("Timer Shutting Down Failed {}", e.getMessage());
             timerExecutor.shutdownNow();
         }
     }

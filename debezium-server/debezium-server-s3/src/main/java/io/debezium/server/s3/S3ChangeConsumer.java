@@ -56,6 +56,7 @@ public class S3ChangeConsumer extends BaseChangeConsumer implements DebeziumEngi
     final String credentialsProfile = ConfigProvider.getConfig().getOptionalValue(PROP_PREFIX + "credentials.profile", String.class).orElse("default");
     final String endpointOverride = ConfigProvider.getConfig().getOptionalValue("debezium.sink.s3.endpointoverride", String.class).orElse("false");
     final Boolean useInstanceProfile = ConfigProvider.getConfig().getOptionalValue("debezium.sink.s3.credentials.useinstancecred", Boolean.class).orElse(false);
+    final String tags = ConfigProvider.getConfig().getOptionalValue("debezium.sink.s3.object.tags", String.class).orElse("");
 
     @Inject
     @CustomConsumerBuilder
@@ -68,15 +69,12 @@ public class S3ChangeConsumer extends BaseChangeConsumer implements DebeziumEngi
     @ConfigProperty(name = PROP_REGION_NAME, defaultValue = "eu-central-1")
     String region;
 
-    private ObjectKeyMapper objectKeyMapper;
+    private ObjectKeyMapper objectKeyMapper = new TimeBasedDailyObjectKeyMapper();
 
     @PostConstruct
     void connect() throws URISyntaxException {
         if (customObjectKeyMapper.isResolvable()) {
             objectKeyMapper = customObjectKeyMapper.get();
-        }
-        else {
-            objectKeyMapper = new DefaultObjectKeyMapper();
         }
         LOGGER.info("Using '{}' stream name mapper", objectKeyMapper);
         if (customClient.isResolvable()) {
@@ -123,6 +121,7 @@ public class S3ChangeConsumer extends BaseChangeConsumer implements DebeziumEngi
             final PutObjectRequest putRecord = PutObjectRequest.builder()
                     .bucket(bucket)
                     .key(objectKeyMapper.map(record.destination(), batchTime, UUID.randomUUID().toString()))
+                    .tagging(tags)
                     .build();
             s3client.putObject(putRecord, RequestBody.fromBytes(getBytes(record.value())));
             committer.markProcessed(record);
