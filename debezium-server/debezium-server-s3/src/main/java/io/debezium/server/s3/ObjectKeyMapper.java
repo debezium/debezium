@@ -15,7 +15,7 @@ import java.time.LocalDateTime;
 
 public interface ObjectKeyMapper {
 
-    String map(String destination, LocalDateTime batchTime, int batchId);
+    String map(String destination, LocalDateTime batchTime, Integer batchId);
 
     String map(String destination, LocalDateTime batchTime, String recordId);
 }

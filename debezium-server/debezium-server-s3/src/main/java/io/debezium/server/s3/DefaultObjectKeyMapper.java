@@ -23,7 +23,7 @@ public class DefaultObjectKeyMapper implements ObjectKeyMapper {
     }
 
     @Override
-    public String map(String destination, LocalDateTime batchTime, int batchId) {
+    public String map(String destination, LocalDateTime batchTime, Integer batchId) {
         String fname = batchTime.toString() + "-" + batchId + "." + valueFormat;
         return objectKeyPrefix + destination + "/" + fname;
     }

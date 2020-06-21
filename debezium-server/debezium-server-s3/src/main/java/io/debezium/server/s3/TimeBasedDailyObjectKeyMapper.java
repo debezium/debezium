@@ -25,6 +25,7 @@ public class TimeBasedDailyObjectKeyMapper extends DefaultObjectKeyMapper {
         return objectKeyPrefix + destination + "/" + partiton + "/" + fname;
     }
 
+    @Override
     public String map(String destination, LocalDateTime batchTime, Integer batchId) {
         Objects.requireNonNull(destination, "destination Cannot be Null");
         Objects.requireNonNull(batchTime, "batchTime Cannot be Null");
