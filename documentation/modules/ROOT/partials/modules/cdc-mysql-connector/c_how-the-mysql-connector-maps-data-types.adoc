@@ -25,7 +25,7 @@ a| _n/a_
 
 |`BIT(>1)`
 |`BYTES`
-a| io.debezium.data.Bits
+a|`io.debezium.data.Bits`
 
 NOTE: The `length` schema parameter contains an integer that represents the number of bits. The `byte[]` contains the bits in _little-endian_ form and is sized to contain the specified number of bits.
 
@@ -128,29 +128,29 @@ a| _n/a_
 
 |`JSON`
 |`STRING`
-a| io.debezium.data.Json
+a|`io.debezium.data.Json`
 
 NOTE: Contains the string representation of a `JSON` document, array, or scalar.
 
 |`ENUM`
 |`STRING`
-a| io.debezium.data.Enum
+a|`io.debezium.data.Enum`
 
 NOTE: The `allowed` schema parameter contains the comma-separated list of allowed values.
 
 |`SET`
 |`STRING`
-a| io.debezium.data.EnumSet
+a|`io.debezium.data.EnumSet`
 
 NOTE: The `allowed` schema parameter contains the comma-separated list of allowed values.
 
 |`YEAR[(2\|4)]`
 |`INT32`
-| io.debezium.time.Year
+| `io.debezium.time.Year`
 
 |`TIMESTAMP[(M)]`
 |`STRING`
-a| io.debezium.time.ZonedTimestamp
+a|`io.debezium.time.ZonedTimestamp`
 
 NOTE: In link:https://www.iso.org/iso-8601-date-and-time-format.html[ISO 8601] format with microsecond precision. MySQL allows `M` to be in the range of `0-6`.
 
@@ -160,17 +160,22 @@ NOTE: In link:https://www.iso.org/iso-8601-date-and-time-format.html[ISO 8601] f
 
 Excluding the `TIMESTAMP` data type, MySQL temporal types depend on the value of the `time.precision.mode` configuration property. For `TIMESTAMP` columns whose default value is specified as `CURRENT_TIMESTAMP` or `NOW`, the value `1970-01-01 00:00:00` is used as the default value in the Kafka Connect schema. 
 
-TIP: See {link-prefix}:{link-mysql-connector}#mysql-connector-configuration-properties_{context}[MySQL connector configuration properties] for more details.
+MySQL allows zero-values for `DATE, `DATETIME`, and `TIMESTAMP` columns because zero-values are sometimes preferred over null values. The MySQL connector represents zero-values as null values when the column definition allows null values, or as the epoch day when the column does not allow null values.
 
-Temporal values without timezones are converted from UTC to milliseconds or microseconds (`DATETIME`) or to the configured database timezone (`TIMESTAMP`).
+.Temporal values without time zones
+The `DATETIME` type represents a local date and time such as "2018-01-13 09:48:27". As you can see, there is no time zone information. Such columns are converted into epoch milli-seconds or micro-seconds based on the column’s precision by using UTC. The `TIMESTAMP` type represents a timestamp without time zone information and is converted by MySQL from the server (or session’s) current time zone into UTC when writing and vice versa when reading back the value. For example:
 
 * `DATETIME` with a value of `2018-06-20 06:37:03` becomes `1529476623000`.
 * `TIMESTAMP` with a value of `2018-06-20 06:37:03` becomes `2018-06-20T13:37:03Z`.
 
-NOTE: MySQL allows zero-values for ``DATE``, ``DATETIME``, and ``TIMESTAMP`` columns, which are sometimes preferred over null values. However, the MySQL connector represents them as null values when the column definition allows nulls, or as the epoch day when the column does not allow nulls.
+Such columns are converted into an equivalent `io.debezium.time.ZonedTimestamp` in UTC based on the server (or session’s) current time zone. The time zone will be queried from the server by default. If this fails, it must be specified explicitly by the `database.serverTimezone` connector configuration property. For example, if the database’s time zone (either globally or configured for the connector by means of the `database.serverTimezone property`) is "America/Los_Angeles", the TIMESTAMP value "2018-06-20 06:37:03" is represented by a `ZonedTimestamp` with the value "2018-06-20T13:37:03Z".
+
+Note that the time zone of the JVM running Kafka Connect and Debezium does not affect these conversions.
+
+More details about properties related to termporal values are in the documentation for {link-prefix}:{link-mysql-connector}#mysql-connector-configuration-properties_{context}[MySQL connector configuration properties].
 
 time.precision.mode=adaptive_time_microseconds(default)::
-    The MySQL connector determins the literal type and semantic type based on the column's data type definition so that events represent exactly the values in the database; all time fields are in microseconds.
+    The MySQL connector determines the literal type and semantic type based on the column's data type definition so that events represent exactly the values in the database. All time fields are in microseconds. Only positive `TIME` field values in the range of `00:00:00.000000` to `23:59:59.999999` can be captured correctly.
 +
 [cols="2,2,6"]
 |===
@@ -178,33 +183,33 @@ time.precision.mode=adaptive_time_microseconds(default)::
 
 |`DATE`
 |`INT32`
-a| io.debezium.time.Date
+a|`io.debezium.time.Date`
 
 NOTE: Represents the number of days since epoch.
 
 |`TIME[(M)]`
 |`INT64`
-a| io.debezium.time.MicroTime
+a|`io.debezium.time.MicroTime`
 
-NOTE: Represents the time value in microseconds and does not include timezone information. MySQL allows `M` to be in the range of `0-6`.
+NOTE: Represents the time value in microseconds and does not include time zone information. MySQL allows `M` to be in the range of `0-6`.
 
 |`DATETIME, DATETIME(0), DATETIME(1), DATETIME(2), DATETIME(3)`
 |`INT64`
-a| io.debezium.time.Timestamp
+a|`io.debezium.time.Timestamp`
 
-NOTE: Represents the number of milliseconds past epoch and does not include timezone information.
+NOTE: Represents the number of milliseconds past epoch and does not include time zone information.
 
 |`DATETIME(4), DATETIME(5), DATETIME(6)`
 |`INT64`
-a| io.debezium.time.MicroTimestamp
+a|`io.debezium.time.MicroTimestamp`
 
-NOTE: Represents the number of microseconds past epoch and does not include timezone information.
+NOTE: Represents the number of microseconds past epoch and does not include time zone information.
 
 |===
 +
 
 time.precision.mode=connect::
-    The MySQL connector uses the predefined Kafka Connect logical types. This approach is less precise than the default approach and the events could be less precise if the database column has a _fractional second precision_ value of greater than `3`.
+    The MySQL connector uses the predefined Kafka Connect logical types. This approach is less precise than the default approach and the events could be less precise if the database column has a _fractional second precision_ value of greater than `3`. Only values in the range of `00:00:00.000` to `23:59:59.999` can be handled. Set `time.precision.mode=connect` only if you can ensure that the `TIME` values in your tables never exceed the supported ranges. The `connect` setting is expected to be removed in a future version of {prodname}.
 +
 [cols="2,2,6"]
 |===
@@ -212,25 +217,24 @@ time.precision.mode=connect::
 
 |`DATE`
 |`INT32`
-a| org.apache.kafka.connect.data.Date
+a|`org.apache.kafka.connect.data.Date`
 
 NOTE: Represents the number of days since epoch.
 
 |`TIME[(M)]`
 |`INT64`
-a| org.apache.kafka.connect.data.Time
+a|`org.apache.kafka.connect.data.Time`
 
-NOTE: Represents the time value in microseconds since midnight and does not include timezone information.
+NOTE: Represents the time value in microseconds since midnight and does not include time zone information.
 
 |`DATETIME[(M)]`
 |`INT64`
-a| org.apache.kafka.connect.data.Timestamp
+a|`org.apache.kafka.connect.data.Timestamp`
 
-NOTE: Represents the number of milliseconds since epoch, and does not include timezone information.
+NOTE: Represents the number of milliseconds since epoch, and does not include time zone information.
 
 |===
 +
-
 
 == Decimal values
 
@@ -246,13 +250,13 @@ decimal.handling.mode=precise::
 
 |`NUMERIC[(M[,D])]`
 |`BYTES`
-a| org.apache.kafka.connect.data.Decimal
+a|`org.apache.kafka.connect.data.Decimal`
 
 NOTE: The `scale` schema parameter contains an integer that represents how many digits the decimal point shifted.
 
 |`DECIMAL[(M[,D])]`
 |`BYTES`
-a| org.apache.kafka.connect.data.Decimal
+a|`org.apache.kafka.connect.data.Decimal`
 
 NOTE: The `scale` schema parameter contains an integer that represents how many digits the decimal point shifted.
 
@@ -327,7 +331,7 @@ Currently, the {prodname} MySQL connector supports the following spatial data ty
 
 |`GEOMETRY, LINESTRING, POLYGON, MULTIPOINT, MULTILINESTRING, MULTIPOLYGON, GEOMETRYCOLLECTION`
 |`STRUCT`
-a| io.debezium.data.geometry.Geometry
+a|`io.debezium.data.geometry.Geometry`
 
 NOTE: Contains a structure with two fields:
 
