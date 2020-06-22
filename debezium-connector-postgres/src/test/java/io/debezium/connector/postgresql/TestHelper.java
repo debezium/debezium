@@ -326,7 +326,7 @@ public final class TestHelper {
 
             try {
                 Awaitility.await()
-                        .atMost(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS)
+                        .atMost(TestHelper.waitTimeForRecords() * 5, TimeUnit.SECONDS)
                         .until(() -> getOpenIdleTransactions(connection).size() == 0);
             }
             catch (ConditionTimeoutException e) {
