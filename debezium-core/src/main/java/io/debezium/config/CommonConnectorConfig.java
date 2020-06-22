@@ -230,6 +230,9 @@ public abstract class CommonConnectorConfig {
         }
     }
 
+    private static String CONFLUENT_AVRO_CONVERTER = "io.confluent.connect.avro.AvroConverter";
+    private static String APICURIO_AVRO_CONVERTER = "io.apicurio.registry.utils.converter.AvroConverter";
+
     public static final int DEFAULT_MAX_QUEUE_SIZE = 8192;
     public static final int DEFAULT_MAX_BATCH_SIZE = 2048;
     public static final long DEFAULT_POLL_INTERVAL_MILLIS = 500;
@@ -548,10 +551,11 @@ public abstract class CommonConnectorConfig {
     }
 
     private static boolean isUsingAvroConverter(Configuration config) {
-        final String avroConverter = "io.confluent.connect.avro.AvroConverter";
         final String keyConverter = config.getString("key.converter");
         final String valueConverter = config.getString("value.converter");
-        return avroConverter.equals(keyConverter) || avroConverter.equals(valueConverter);
+
+        return CONFLUENT_AVRO_CONVERTER.equals(keyConverter) || CONFLUENT_AVRO_CONVERTER.equals(valueConverter)
+                || APICURIO_AVRO_CONVERTER.equals(keyConverter) || APICURIO_AVRO_CONVERTER.equals(valueConverter);
     }
 
     protected static int validateServerNameIsDifferentFromHistoryTopicName(Configuration config, Field field, ValidationOutput problems) {
