@@ -112,7 +112,7 @@ ifdef::product[]
 == Behavior of {prodname} `ExtractNewRecordState` transformation
 endif::product[]
 
-link:https://github.com/debezium/debezium/blob/master/debezium-core/src/main/java/io/debezium/transforms/ExtractNewRecordState.java[The `ExtractNewRecordState` SMT] extracts the `after` field from a {prodname} change event in a Kafka record. The SMT replaces the original change event with only its `after` field to create a simple Kafka record. 
+The `ExtractNewRecordState` SMT extracts the `after` field from a {prodname} change event in a Kafka record. The SMT replaces the original change event with only its `after` field to create a simple Kafka record. 
 
 You can configure the `ExtractNewRecordState` SMT for a {prodname} connector or for a sink connector that consumes messages emitted by a {prodname} connector. The advantage of configuring `ExtractNewRecordState` for a sink connector is that records stored in Apache Kafka contain whole {prodname} change events. The decision to apply the SMT to a source or sink connector depends on your particular use case. 
 
