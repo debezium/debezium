@@ -153,7 +153,8 @@ Try to avoid task reassignment and reconfiguration while the connector is perfor
 === Streaming changes
 
 Once the connector task for a replica set has an offset, it uses the offset to determine the position in the oplog where it should start streaming changes.
-The task will then connect to the replica set's primary node and start streaming changes from that position, processing all of the create, insert, and delete operations and converting them into {prodname} {link-prefix}:{link-mongodb-connector}#mongodb-events[change events]. Each change event includes the position in the oplog where the operation was found, and the connector periodically records this as its most recent offset. (The interval at which the offset is recorded is governed by the `offset.flush.interval.ms` {link-kafka-docs}/#connectconfigs[Kafka Connect worker configuration property].)
+The task will then connect to the replica set's primary node and start streaming changes from that position, processing all of the create, insert, and delete operations and converting them into {prodname} {link-prefix}:{link-mongodb-connector}#mongodb-events[change events]. Each change event includes the position in the oplog where the operation was found, and the connector periodically records this as its most recent offset. The interval at which the offset is recorded is governed by link:https://kafka.apache.org/documentation/#offset.flush.interval.ms[`offset.flush.interval.ms`], which is a Kafka Connect worker configuration property. 
+
 
 When the connector is stopped gracefully, the last offset processed is recorded so that, upon restart, the connector will continue exactly where it left off.
 If the connector's tasks terminate unexpectedly, however, then the tasks may have processed and generated events after it last records the offset but before the last offset is recorded; upon restart, the connector begins at the last _recorded_ offset, possibly generating some the same events that were previously generated just prior to the crash.
@@ -163,9 +164,9 @@ If the connector's tasks terminate unexpectedly, however, then the tasks may hav
 When everything is operating nominally, Kafka consumers will actually see every message *_exactly once_*. However, when things go wrong Kafka can only guarantee consumers will see every message *_at least once_*. Therefore, your consumers need to anticipate seeing messages more than once.
 ====
 
-As mentioned above, the connector tasks always use the replica set's primary node to stream changes from the oplog, ensuring that the connector sees the most up-to-date operations as possible and can capture the changes with lower latency than if secondaries were to be used instead. When the replica set elects a new primary, the connector will immediately stops streaming changes, connect to the new primary, and starts streaming changes from the new primary node at the same position. Likewise, if connector experiences any problems communicating with the replica set members, it will try to reconnect (using exponential backoff so as to not overwhelm the replica set) and once connected continue streaming changes from where it last left off. In this way the connector is able to dynamically adjust to changes in replica set membership and to automatically handle communication failures.
+As mentioned above, the connector tasks always use the replica set's primary node to stream changes from the oplog, ensuring that the connector sees the most up-to-date operations as possible and can capture the changes with lower latency than if secondaries were to be used instead. When the replica set elects a new primary, the connector immediately stops streaming changes, connects to the new primary, and starts streaming changes from the new primary node at the same position. Likewise, if the connector experiences any problems communicating with the replica set members, it trys to reconnect, by using exponential backoff so as to not overwhelm the replica set, and once connected it continues streaming changes from where it last left off. In this way, the connector is able to dynamically adjust to changes in replica set membership and automatically handle communication failures.
 
-The bottom line is that the MongoDB connector will continue running under most situations, though communication problems may cause the connector to wait until the problems are resolved.
+To summarize, the MongoDB connector continues running in most situations. Communication problems might cause the connector to wait until the problems are resolved.
 
 [[mongodb-topic-names]]
 === Topics names
@@ -191,11 +192,11 @@ If not, then you must use Kafka administration tools to create the topics before
 === Partitions
 
 The MongoDB connector does not make any explicit determination of the topic partitions for events.
-Instead, it allows Kafka to determine the partition based upon the key.
+Instead, it allows Kafka to determine the partition based on the key.
 You can change Kafka's partitioning logic by defining in the Kafka Connect worker configuration the name of the `Partitioner` implementation.
 
-Be aware that Kafka only maintains total order for events written to a single topic _partition_.
-Partitioning the events by key does mean that all events with the same key will always go to the same partition, ensuring that all events for a specific document are always totally ordered.
+Kafka maintains total order only for events written to a single topic partition.
+Partitioning the events by key does mean that all events with the same key always go to the same partition. This ensures that all events for a specific document are always totally ordered.
 
 [[mongodb-events]]
 === Events
@@ -510,14 +511,13 @@ When we compare this to the value in the other events, we see a couple of differ
 * The `source` field structure has the same fields as before, but the values are different since this event is from a different position in the oplog
 * The `ts_ms` shows the timestamp that {prodname} processed this event
 
-The MongoDB connector actually provides one other kind of event. Each _delete_ event is followed by a _tombstone_ event that has the same key but a `null` value, giving Kafka enough information to know that its https://cwiki.apache.org/confluence/display/KAFKA/Log+Compaction[Kafka log compaction] mechanism can remove _all_ messages with that key.
+The MongoDB connector provides one other kind of event. Each _delete_ event is followed by a _tombstone_ event that has the same key as the _delete_ event but a `null` value. This provides Kafka with the information needed to run its link:https://kafka.apache.org/documentation/#compaction[log compaction] mechanism to remove _all_ messages with that key.
 
 [NOTE]
 ====
-All MongoDB connector events are designed to work with https://cwiki.apache.org/confluence/display/KAFKA/Log+Compaction[Kafka log compaction], which allows for the removal of older messages as long as at least the most recent message for every key is kept. This is how Kafka can reclaim storage space while ensuring the topic contains a complete dataset and can be used for reloading key-based state.
+All MongoDB connector events are designed to work with link:https://kafka.apache.org/documentation/#compaction[Kafka log compaction], which allows for the removal of older messages as long as at least the most recent message for every key is kept. This is how Kafka can reclaim storage space while ensuring that the topic contains a complete dataset and can be used for reloading key-based state.
 
-All MongoDB connector events for a uniquely identified document will have exactly the same key, signaling to Kafka that only the latest event be kept.
-And, a tombstone event informs Kafka that _all_ messages with that same key can be removed.
+All MongoDB connector events for a uniquely identified document have exactly the same key, signaling to Kafka that only the latest event be kept. A tombstone event informs Kafka that _all_ messages with that same key can be removed.
 ====
 
 [[mongodb-transaction-metadata]]
@@ -526,7 +526,7 @@ And, a tombstone event informs Kafka that _all_ messages with that same key can 
 {prodname} can generate events that represents tranaction metadata boundaries and enrich data messages.
 
 ==== Transaction boundaries
-{prodname} generates events for every transaction start and end.
+{prodname} generates events for every transaction `BEGIN` and `END`.
 Every event contains
 
 * `status` - `BEGIN` or `END`
@@ -534,7 +534,8 @@ Every event contains
 * `event_count` (for `END` events) - total number of events emmitted by the transaction
 * `data_collections` (for `END` events) - an array of pairs of `data_collection` and `event_count` that provides number of events emitted by changes originating from given data collection
 
-An example of messages looks like
+Following is an example of what a message looks like:
+
 [source,json,indent=0,subs="attributes"]
 ----
 {
@@ -564,14 +565,15 @@ An example of messages looks like
 The transaction events are written to the topic named `<database.server.name>.transaction`.
 
 ==== Data events enrichment
-When transaction metadata are enabled then data message `Envelope` is enriched with a new field `transaction`.
-This field provide information about every event in form of composite of fields
+When transaction metadata is enabled the data message `Envelope` is enriched with a new `transaction` field.
+This field provides information about every event in the form of a composite of fields:
 
 * `id` - string representation of unique transaction identifier
-* `total_order` - the absolute position the event amongst all events generated by the transaction
-* `data_collection_order` - the per-data collection position of the event amongst all events emitted by the transaction
+* `total_order` - the absolute position of the event among all events generated by the transaction
+* `data_collection_order` - the per-data collection position of the event among all events that were emitted by the transaction
 
-An example of messages looks like
+Following is an example of what a message looks like: 
+
 [source,json,indent=0,subs="attributes"]
 ----
 {
