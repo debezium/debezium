@@ -224,7 +224,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         // Verify that multiple subsequent transactions are used in streaming phase with read-only intent
         try (final SqlServerConnection admin = TestHelper.adminConnection()) {
             final Set<Long> txIds = new HashSet<>();
-            Awaitility.await().atMost(5, TimeUnit.SECONDS).pollInterval(100, TimeUnit.MILLISECONDS).until(() -> {
+            Awaitility.await().atMost(TestHelper.waitTimeForRecords() * 5, TimeUnit.SECONDS).pollInterval(100, TimeUnit.MILLISECONDS).until(() -> {
                 admin.query(
                         "SELECT (SELECT transaction_id FROM sys.dm_tran_session_transactions AS t WHERE s.session_id=t.session_id) FROM sys.dm_exec_sessions AS s WHERE program_name='"
                                 + appId + "'",
