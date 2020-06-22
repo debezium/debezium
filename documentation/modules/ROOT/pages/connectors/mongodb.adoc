@@ -203,11 +203,6 @@ Partitioning the events by key does mean that all events with the same key alway
 
 All data change events produced by the MongoDB connector have a key and a value.
 
-[NOTE]
-====
-Starting with Kafka 0.10, Kafka can optionally record with the message key and value the {link-kafka-docs}.html#upgrade_10_performance_impact[_timestamp_] at which the message was created (recorded by the producer) or written to the log by Kafka.
-====
-
 {prodname} and Kafka Connect are designed around _continuous streams of event messages_, and the structure of these events could potentially change over time if the source of those events changed in structure or if the connector is improved or changed.
 This could be difficult for consumers to deal with, so to make it very easy Kafka Connect makes each event self-contained. Every message key and value has two parts: a _schema_ and _payload_. The schema describes the structure of the payload, while the payload contains the actual data.
 
@@ -1031,7 +1026,7 @@ As the connector generates change events, the Kafka Connect framework records th
 If the connector is gracefully stopped, the replica sets can continue to be used and any new changes are recorded in MongoDB's oplog.
 When the connector is restarted, it will resume streaming changes for each replica set where it last left off, recording change events for all of the changes that were made while the connector was stopped. If the connector is stopped long enough such that MongoDB purges from its oplog some operations that the connector has not read, then upon startup the connector will perform a snapshot.
 
-A properly configured Kafka cluster is capable of https://engineering.linkedin.com/kafka/benchmarking-apache-kafka-2-million-writes-second-three-cheap-machines[massive throughput].
+A properly configured Kafka cluster is capable of massive throughput.
 Kafka Connect is written with Kafka best practices, and given enough resources will also be able to handle very large numbers of database change events. Because of this, when a connector has been restarted after a while, it is very likely to catch up with the database, though how quickly will depend upon the capabilities and performance of Kafka and the volume of changes being made to the data in MongoDB.
 
 [NOTE]
