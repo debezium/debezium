@@ -124,14 +124,13 @@ public class BinlogReaderIT {
 
     protected long filterAtLeast(final int minNumber, final long timeout, final TimeUnit unit) throws InterruptedException {
         final BinlogReaderMetrics metrics = reader.getMetrics();
-        final long initialFilterCount = metrics.getNumberOfEventsFiltered();
-        final long targetNumber = initialFilterCount + minNumber;
+        final long targetNumber = minNumber;
         long startTime = System.currentTimeMillis();
         while (metrics.getNumberOfEventsFiltered() < targetNumber && (System.currentTimeMillis() - startTime) < unit.toMillis(timeout)) {
             // Ignore the records polled.
             reader.poll();
         }
-        return reader.getMetrics().getNumberOfEventsFiltered() - initialFilterCount;
+        return reader.getMetrics().getNumberOfEventsFiltered();
     }
 
     protected Configuration.Builder simpleConfig() {
