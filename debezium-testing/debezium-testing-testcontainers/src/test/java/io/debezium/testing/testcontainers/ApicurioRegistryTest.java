@@ -14,6 +14,7 @@ import java.sql.Statement;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -48,7 +49,8 @@ import com.jayway.jsonpath.JsonPath;
  */
 public class ApicurioRegistryTest {
 
-    private static final String DEBEZIUM_VERSION = "1.2.0.CR1";
+    // TODO: revert to upstream version
+    private static final String DEBEZIUM_VERSION = "1.2";
     private static final String APICURIO_VERSION = "1.2.2.Final";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ApicurioRegistryTest.class);
@@ -69,7 +71,7 @@ public class ApicurioRegistryTest {
 
     public static ImageFromDockerfile apicurioDebeziumImage = new ImageFromDockerfile()
             .withDockerfileFromBuilder(builder -> builder
-                    .from("debezium/connect:" + DEBEZIUM_VERSION)
+                    .from("gunnarmorling/debezium-connect:" + DEBEZIUM_VERSION)
                     .env("KAFKA_CONNECT_DEBEZIUM_DIR", "$KAFKA_CONNECT_PLUGINS_DIR/debezium-connector-postgres")
                     .env("APICURIO_VERSION", APICURIO_VERSION)
                     .run("cd $KAFKA_CONNECT_DEBEZIUM_DIR && curl https://repo1.maven.org/maven2/io/apicurio/apicurio-registry-distro-connect-converter/$APICURIO_VERSION/apicurio-registry-distro-connect-converter-$APICURIO_VERSION-converter.tar.gz | tar xzv")
@@ -150,6 +152,53 @@ public class ApicurioRegistryTest {
             // Verify magic byte of Avro messages
             assertThat(changeEvents.get(0).key()[0]).isZero();
             assertThat(changeEvents.get(0).value()[0]).isZero();
+
+            consumer.unsubscribe();
+        }
+    }
+
+    @Test
+    public void shouldConvertToCloudEventWithDataAsAvro() throws Exception {
+        try (Connection connection = getConnection(postgresContainer);
+                Statement statement = connection.createStatement();
+                KafkaConsumer<String, String> consumer = getConsumerString(kafkaContainer)) {
+
+            statement.execute("drop schema if exists todo cascade");
+            statement.execute("create schema todo");
+            statement.execute("create table todo.Todo (id int8 not null, title varchar(255), primary key (id))");
+            statement.execute("alter table todo.Todo replica identity full");
+            statement.execute("insert into todo.Todo values (3, 'Be Awesome')");
+
+            final String host = apicurioContainer.getContainerInfo().getConfig().getHostName();
+            final int port = apicurioContainer.getExposedPorts().get(0);
+            final String apicurioUrl = "http://" + host + ":" + port + "/api";
+            String id = "3";
+
+            // host, database, user etc. are obtained from the container
+            final ConnectorConfiguration config = ConnectorConfiguration.forJdbcContainer(postgresContainer)
+                    .with("database.server.name", "dbserver" + id)
+                    .with("slot.name", "debezium_" + id)
+                    .with("key.converter", "org.apache.kafka.connect.json.JsonConverter")
+                    .with("value.converter", "io.debezium.converters.CloudEventsConverter")
+                    .with("value.converter.data.serializer.type", "avro")
+                    .with("value.converter.avro.apicurio.registry.url", apicurioUrl)
+                    .with("value.converter.avro.apicurio.registry.global-id", "io.apicurio.registry.utils.serde.strategy.AutoRegisterIdStrategy");
+
+            debeziumContainer.registerConnector("my-connector-cloudevents-avro", config);
+
+            consumer.subscribe(Arrays.asList("dbserver3.todo.todo"));
+
+            List<ConsumerRecord<String, String>> changeEvents = drain(consumer, 1);
+
+            assertThat(JsonPath.<Integer> read(changeEvents.get(0).key(), "$.payload.id")).isEqualTo(3);
+            assertThat(JsonPath.<String> read(changeEvents.get(0).value(), "$.iodebeziumop")).isEqualTo("r");
+            assertThat(JsonPath.<String> read(changeEvents.get(0).value(), "$.iodebeziumname")).isEqualTo("dbserver3");
+            assertThat(JsonPath.<String> read(changeEvents.get(0).value(), "$.datacontenttype")).isEqualTo("application/avro");
+            assertThat(JsonPath.<String> read(changeEvents.get(0).value(), "$.iodebeziumtable")).isEqualTo("todo");
+
+            // Verify magic byte of Avro messages
+            byte[] decodedBytes = Base64.getDecoder().decode(JsonPath.<String> read(changeEvents.get(0).value(), "$.data"));
+            assertThat(decodedBytes[0]).isZero();
 
             consumer.unsubscribe();
         }

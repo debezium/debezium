@@ -75,8 +75,11 @@ public class CloudEventsConverter implements Converter {
     /**
      * Instantiated reflectively to avoid hard dependency to Avro converter.
      */
-    private static final String AVRO_CONVERTER_CLASS = "io.confluent.connect.avro.AvroConverter";
-    private static final String SCHEMA_REGISTRY_URL_CONFIG = "schema.registry.url";
+    private static final String CONFLUENT_AVRO_CONVERTER_CLASS = "io.confluent.connect.avro.AvroConverter";
+    private static final String CONFLUENT_SCHEMA_REGISTRY_URL_CONFIG = "schema.registry.url";
+
+    private static String APICURIO_AVRO_CONVERTER_CLASS = "io.apicurio.registry.utils.converter.AvroConverter";
+    private static final String APICURIO_SCHEMA_REGISTRY_URL_CONFIG = "apicurio.registry.url";
 
     /**
      * Suffix appended to schema names of data schema in case of Avro/Avro, to keep
@@ -153,13 +156,22 @@ public class CloudEventsConverter implements Converter {
         if (usingAvro) {
             Configuration avroConfig = Configuration.from(configs).subset("avro", true);
 
-            schemaRegistryUrls = avroConfig.getStrings(SCHEMA_REGISTRY_URL_CONFIG, ",");
+            boolean useApicurio = true;
+            if (avroConfig.hasKey(APICURIO_SCHEMA_REGISTRY_URL_CONFIG)) {
+                schemaRegistryUrls = avroConfig.getStrings(APICURIO_SCHEMA_REGISTRY_URL_CONFIG, ",");
+            }
+            else if (avroConfig.hasKey(CONFLUENT_SCHEMA_REGISTRY_URL_CONFIG)) {
+                schemaRegistryUrls = avroConfig.getStrings(CONFLUENT_SCHEMA_REGISTRY_URL_CONFIG, ",");
+                useApicurio = false;
+            }
+
             if (schemaRegistryUrls == null || schemaRegistryUrls.isEmpty()) {
-                throw new DataException("Need URL(s) for schema registry instances for CloudEvents");
+                throw new DataException("Need URL(s) for schema registry instances for CloudEvents when using Apache Avro");
             }
 
             if (avroConverter == null) {
-                avroConverter = Instantiator.getInstance(AVRO_CONVERTER_CLASS, null, null);
+                avroConverter = Instantiator.getInstance(useApicurio ? APICURIO_AVRO_CONVERTER_CLASS : CONFLUENT_AVRO_CONVERTER_CLASS, null, null);
+                LOGGER.info("Using Avro converter {}", avroConverter.getClass().getName());
                 avroConverter.configure(avroConfig.asMap(), false);
             }
         }
