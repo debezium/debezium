@@ -49,7 +49,8 @@ This includes snapshots: if the snapshot was not completed when the connector is
 == Setting up SQL Server
 
 Before using the SQL Server connector to monitor the changes committed on SQL Server, first enable _CDC_ on a monitored database.
-Please bear in mind that _CDC_ cannot be enabled for `master` database.
+Please bear in mind that _CDC_ cannot be enabled for the `master` database.
+
 [source,sql]
 ----
 -- ====
@@ -61,7 +62,8 @@ EXEC sys.sp_cdc_enable_db
 GO
 ----
 
-Then enable _CDC_ for each table that you plan to monitor
+Then enable _CDC_ for each table that you plan to monitor.
+
 [source,sql]
 ----
 -- ====
@@ -95,14 +97,14 @@ If the result is empty then please make sure that the user has privileges to acc
 === SQL Server on Azure
 
 The SQL Server plug-in has not been tested with SQL Server on Azure.
-We welcome any feedback from a user to try the plug-in with database in managed environment.
+We welcome any feedback from a user to try the plug-in with database in managed environments.
 
 ifdef::community[]
 [[sqlserver-always-on-replica]]
 === SQL Server Always On
 
 The SQL Server plug-in can capture changes from an Always On read-only replica.
-Few pre-requisities are necessary to be fulfilled
+A few pre-requisities are necessary to be fulfilled:
 
 * Change data capture is configured and enabled on the master node.
 SQL Server does not support CDC directly on replicas.
@@ -152,7 +154,7 @@ This ensures that the changes are replayed by {prodname} in the same order as we
 
 After a restart, the connector will resume from the offset (commit and change LSNs) where it left off before.
 
-The connector is able to detect whether the CDC is enabled or disabled for whitelisted source table during the runtime and modify its behavior.
+The connector is able to detect whether CDC is enabled or disabled for whitelisted source tables and adjust its behavior.
 
 [[sqlserver-topic-names]]
 === Topic names
