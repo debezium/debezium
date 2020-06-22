@@ -28,7 +28,6 @@ All of the events for each table are recorded in a separate Kafka topic, where t
 
 The functionality of the connector is based upon https://docs.microsoft.com/en-us/sql/relational-databases/track-changes/about-change-data-capture-sql-server?view=sql-server-2017[change data capture] feature provided by SQL Server Standard (https://blogs.msdn.microsoft.com/sqlreleaseservices/sql-server-2016-service-pack-1-sp1-released/[since SQL Server 2016 SP1]) or Enterprise edition.
 Using this mechanism a SQL Server capture process monitors all databases and tables the user is interested in and stores the changes into specifically created _CDC_ tables that have stored procedure facade.
-The connector has been tested with SQL Server 2017, but community members have reportedly used it successfully with earlier versions up to 2014, too (as long as the CDC feature is provided).
 
 The database operator must https://docs.microsoft.com/en-us/sql/relational-databases/track-changes/enable-and-disable-change-data-capture-sql-server?view=sql-server-2017[enable] _CDC_ for the table(s) that should be captured by the connector.
 The connector then produces a _change event_ for every row-level insert, update, and delete operation that was published via the _CDC API_, recording all the change events for each table in a separate Kafka topic.
@@ -1199,7 +1198,7 @@ Installing the SQL Server connector is a simple process whereby you only need to
 plugin.path=/kafka/connect
 ----
 
-NOTE: The above example assumes you have extracted the {prodname} SQL Server connector to the `/kafka/connect/{prodname}-connector-sqlserver` path.
+NOTE: The above example assumes you have extracted the {prodname} SQL Server connector to the `/kafka/connect/debezium-connector-sqlserver` path.
 
 [start=4]
 . Restart your Kafka Connect process. This ensures the new JARs are picked up.
