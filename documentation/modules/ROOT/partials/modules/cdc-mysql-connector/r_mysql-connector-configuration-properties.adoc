@@ -111,7 +111,7 @@ Fully-qualified names for columns are of the form _databaseName_._tableName_._co
 The schema parameters `pass:[_]pass:[_]debezium.source.column.type`, `pass:[_]pass:[_]debezium.source.column.length` and `pass:[_]pass:[_]debezium.source.column.scale` will be used to propagate the original type name and length (for variable-width types), respectively.
 Useful to properly size corresponding columns in sink databases.
 Fully-qualified data type names are of the form _databaseName_._tableName_._typeName_, or _databaseName_._schemaName_._tableName_._typeName_.
-See {link-prefix}:{link-mysql-connector}#how-the-mysql-connector-maps-data-types_{context}[] for the list of MySQL-specific data type names.
+See {link-prefix}:{link-mysql-connector}#how-the-mysql-connector-maps-data-types_{context}[how the MySQL connector maps data types] for the list of MySQL-specific data type names.
 
 |[[mysql-property-time-precision-mode]]<<mysql-property-time-precision-mode, `time.precision.mode`>>
 |`adaptive_time{zwsp}_microseconds`
