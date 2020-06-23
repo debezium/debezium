@@ -36,6 +36,7 @@ The following topics provide details:
 * xref:use-case-for-routing-records-to-topics-that-you-specify[]
 * xref:example-of-routing-records-for-multiple-tables-to-one-topic[]
 * xref:ensuring-unique-keys-across-records-routed-to-the-same-topic[]
+* xref:options-for-configuring-bylogicaltablerouter-transformation[]
 endif::product[]
 
 ifdef::community[]
