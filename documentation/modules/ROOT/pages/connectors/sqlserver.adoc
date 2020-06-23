@@ -1179,7 +1179,7 @@ Please refer to the {link-prefix}:{link-debezium-monitoring}[monitoring document
 
 The *MBean* is `debezium.sql_server:type=connector-metrics,context=snapshot,server=_<database.server.name>_`.
 
-[cols="30%a,10%a,60%a",options="header"]
+[cols="45%a,25%a,30%s"]
 |===
 |Attribute Name
 |Type
@@ -1248,7 +1248,7 @@ The *MBean* is `debezium.sql_server:type=connector-metrics,context=snapshot,serv
 
 The *MBean* is `debezium.sql_server:type=connector-metrics,context=streaming,server=_<database.server.name>_`.
 
-[cols="30%a,10%a,60%a",options="header"]
+[cols="45%a,25%a,30%s"]
 |===
 |Attribute Name
 |Type
@@ -1309,7 +1309,7 @@ The *MBean* is `debezium.sql_server:type=connector-metrics,context=streaming,ser
 
 The *MBean* is `debezium.sql_server:type=connector-metrics,context=schema-history,server=_<database.server.name>_`.
 
-[cols="30%a,10%a,60%a",options="header"]
+[cols="45%a,25%a,30%s"]
 |===
 |Attribute Name
 |Type

@@ -720,7 +720,7 @@ Please refer to the {link-prefix}:{link-debezium-monitoring}#monitoring-debezium
 
 The *MBean* is `debezium.mongodb:type=connector-metrics,context=snapshot,server=_<mongodb.name>_`.
 
-[cols="30%a,10%a,60%a",options="header"]
+[cols="45%a,25%a,30%s"]
 |===
 |Attribute Name
 |Type
@@ -800,7 +800,7 @@ The {prodname} MongoDB connector also provides the following custom snapshot met
 
 The *MBean* is `debezium.sql_server:type=connector-metrics,context=streaming,server=_<mongodb.name>_`.
 
-[cols="30%a,10%a,60%a",options="header"]
+[cols="45%a,25%a,30%s"]
 |===
 |Attribute Name
 |Type
