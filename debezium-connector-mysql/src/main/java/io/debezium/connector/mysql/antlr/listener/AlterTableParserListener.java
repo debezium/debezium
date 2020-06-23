@@ -10,6 +10,7 @@ import static io.debezium.antlr.AntlrDdlParser.getText;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.antlr.v4.runtime.tree.ParseTreeListener;
 import org.slf4j.Logger;
@@ -265,7 +266,8 @@ public class AlterTableParserListener extends MySqlParserBaseListener {
             if (column != null) {
                 defaultValueColumnEditor = column.edit();
                 if (ctx.SET() != null) {
-                    defaultValueListener = new DefaultValueParserListener(defaultValueColumnEditor, parser.getConverters(), column.isOptional(), true);
+                    defaultValueListener = new DefaultValueParserListener(defaultValueColumnEditor, parser.getConverters(),
+                            new AtomicReference<Boolean>(column.isOptional()), true);
                     listeners.add(defaultValueListener);
                 }
                 else if (ctx.DROP() != null) {

@@ -777,4 +777,36 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
         customerTypeSchema = record.valueSchema().fields().get(1).schema().fields().get(1).schema();
         assertThat(customerTypeSchema.defaultValue()).isNull();
     }
+
+    @Test
+    @FixFor("DBZ-2267")
+    public void alterDateAndTimeTest() throws Exception {
+        config = DATABASE.defaultConfig()
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL)
+                .with(MySqlConnectorConfig.TABLE_WHITELIST, DATABASE.qualifiedTableName("ALTER_DATE_TIME"))
+                .with(DatabaseHistory.STORE_ONLY_MONITORED_TABLES_DDL, true)
+                .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+                .build();
+        start(MySqlConnector.class, config);
+
+        waitForSnapshotToBeCompleted("mysql", DATABASE.getServerName());
+        Testing.Print.enable();
+
+        // Connect to the DB and issue our insert statement to test.
+        try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName())) {
+            try (JdbcConnection connection = db.connect()) {
+                connection.execute("create table ALTER_DATE_TIME (ID int primary key);");
+                connection.execute("alter table ALTER_DATE_TIME add column CREATED timestamp not null default current_timestamp");
+                connection.execute("insert into ALTER_DATE_TIME values(1000, default);");
+            }
+        }
+
+        final SourceRecords records = consumeRecordsByTopic(1);
+        final SourceRecord record = records.allRecordsInOrder().get(0);
+
+        validate(record);
+
+        final Schema columnSchema = record.valueSchema().fields().get(1).schema().fields().get(1).schema();
+        assertThat(columnSchema.defaultValue()).isEqualTo("1970-01-01T00:00:00Z");
+    }
 }

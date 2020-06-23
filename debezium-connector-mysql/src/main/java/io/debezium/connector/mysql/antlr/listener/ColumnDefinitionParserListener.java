@@ -8,6 +8,7 @@ package io.debezium.connector.mysql.antlr.listener;
 
 import java.sql.Types;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 import org.antlr.v4.runtime.tree.ParseTreeListener;
@@ -34,7 +35,7 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
     private final TableEditor tableEditor;
     private ColumnEditor columnEditor;
     private boolean uniqueColumn;
-    private Boolean optionalColumn;
+    private AtomicReference<Boolean> optionalColumn = new AtomicReference<>();
     private DefaultValueParserListener defaultValueListener;
 
     private final List<ParseTreeListener> listeners;
@@ -77,7 +78,7 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
     @Override
     public void enterColumnDefinition(MySqlParser.ColumnDefinitionContext ctx) {
         uniqueColumn = false;
-        optionalColumn = null;
+        optionalColumn = new AtomicReference<>();
         resolveColumnDataType(ctx.dataType());
         parser.runIfNotNull(() -> {
             defaultValueListener = new DefaultValueParserListener(columnEditor, parser.getConverters(), optionalColumn, convertDefault);
@@ -88,8 +89,8 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
 
     @Override
     public void exitColumnDefinition(MySqlParser.ColumnDefinitionContext ctx) {
-        if (optionalColumn != null) {
-            columnEditor.optional(optionalColumn.booleanValue());
+        if (optionalColumn.get() != null) {
+            columnEditor.optional(optionalColumn.get().booleanValue());
         }
         if (uniqueColumn && !tableEditor.hasPrimaryKey()) {
             // take the first unique constrain if no primary key is set
@@ -112,7 +113,7 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
     public void enterPrimaryKeyColumnConstraint(MySqlParser.PrimaryKeyColumnConstraintContext ctx) {
         // this rule will be parsed only if no primary key is set in a table
         // otherwise the statement can't be executed due to multiple primary key error
-        optionalColumn = Boolean.FALSE;
+        optionalColumn.set(Boolean.FALSE);
         tableEditor.addColumn(columnEditor.create());
         tableEditor.setPrimaryKeyNames(columnEditor.name());
         super.enterPrimaryKeyColumnConstraint(ctx);
@@ -120,7 +121,7 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
 
     @Override
     public void enterNullNotnull(MySqlParser.NullNotnullContext ctx) {
-        optionalColumn = Boolean.valueOf(ctx.NOT() == null);
+        optionalColumn.set(Boolean.valueOf(ctx.NOT() == null));
         super.enterNullNotnull(ctx);
     }
 
@@ -256,8 +257,8 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
     }
 
     private void serialColumn() {
-        if (optionalColumn == null) {
-            optionalColumn = Boolean.FALSE;
+        if (optionalColumn.get() == null) {
+            optionalColumn.set(Boolean.FALSE);
         }
         uniqueColumn = true;
         columnEditor.autoIncremented(true);
