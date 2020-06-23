@@ -1675,7 +1675,7 @@ Please refer to the {link-prefix}:{link-debezium-monitoring}#monitoring-debezium
 
 The *MBean* is `debezium.postgres:type=connector-metrics,context=snapshot,server=_<database.server.name>_`.
 
-[cols="30%a,10%a,60%a",options="header"]
+[cols="45%a,25%a,30%s"]
 |===
 |Attribute Name
 |Type
@@ -1744,7 +1744,7 @@ The *MBean* is `debezium.postgres:type=connector-metrics,context=snapshot,server
 
 The *MBean* is `debezium.postgres:type=connector-metrics,context=streaming,server=_<database.server.name>_`.
 
-[cols="30%a,10%a,60%a",options="header"]
+[cols="45%a,25%a,30%s"]
 |===
 |Attribute Name
 |Type
