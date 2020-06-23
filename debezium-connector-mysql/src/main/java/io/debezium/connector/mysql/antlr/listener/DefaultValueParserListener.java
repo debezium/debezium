@@ -6,6 +6,8 @@
 
 package io.debezium.connector.mysql.antlr.listener;
 
+import java.util.concurrent.atomic.AtomicReference;
+
 import io.debezium.connector.mysql.MySqlDefaultValueConverter;
 import io.debezium.connector.mysql.MySqlValueConverters;
 import io.debezium.ddl.parser.mysql.generated.MySqlParser.CurrentTimestampContext;
@@ -21,7 +23,7 @@ import io.debezium.relational.ColumnEditor;
 public class DefaultValueParserListener extends MySqlParserBaseListener {
 
     private final ColumnEditor columnEditor;
-    private final Boolean optionalColumn;
+    private final AtomicReference<Boolean> optionalColumn;
 
     private final MySqlDefaultValueConverter defaultValueConverter;
 
@@ -34,7 +36,7 @@ public class DefaultValueParserListener extends MySqlParserBaseListener {
     private final boolean convertDefault;
 
     public DefaultValueParserListener(ColumnEditor columnEditor, MySqlValueConverters converters,
-                                      Boolean optionalColumn, boolean convertDefault) {
+                                      AtomicReference<Boolean> optionalColumn, boolean convertDefault) {
         this.columnEditor = columnEditor;
         this.defaultValueConverter = new MySqlDefaultValueConverter(converters);
         this.optionalColumn = optionalColumn;
@@ -86,8 +88,8 @@ public class DefaultValueParserListener extends MySqlParserBaseListener {
     }
 
     private void convertDefaultValueToSchemaType(ColumnEditor columnEditor) {
-        if (optionalColumn != null) {
-            columnEditor.optional(optionalColumn.booleanValue());
+        if (optionalColumn.get() != null) {
+            columnEditor.optional(optionalColumn.get().booleanValue());
         }
 
         defaultValueConverter.setColumnDefaultValue(columnEditor);
