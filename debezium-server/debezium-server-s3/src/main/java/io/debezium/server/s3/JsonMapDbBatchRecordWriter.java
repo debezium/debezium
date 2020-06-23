@@ -127,11 +127,13 @@ public class JsonMapDbBatchRecordWriter implements BatchRecordWriter, AutoClosea
 
     @Override
     public void uploadBatch() {
+        int numBatchFiles = 0;
         for (String k : map_data.keySet()) {
             uploadBatchFile(k);
+            numBatchFiles++;
         }
         this.setBatchTime();
-        LOGGER.info("Uploaded Batch and started new batch Time:{}", this.batchTime.toEpochSecond(ZoneOffset.UTC));
+        LOGGER.info("Uploaded {} Batch Files, started new batch Batch Time:{}", numBatchFiles, this.batchTime.toEpochSecond(ZoneOffset.UTC));
         // if (!map_data.isEmpty()) {
         // LOGGER.error("Non Processed Batch Data Found batchTime:{} destination: {}!!", batchTime.toString(), map_data.keySet().toString());
         // }

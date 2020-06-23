@@ -37,16 +37,12 @@ public class S3TestConfigSource extends TestConfigSource {
         // s3Test.put("debezium.format.value.converter.data.serializer.type" , "json");
         s3Test.put("value.converter.data.serializer.type", "json");
 
-        // s3Test.put("debezium.format.key", "avro");
-        // s3Test.put("debezium.format.key.converter", "io.confluent.connect.avro.AvroConverter");
-        /*
-         * s3Test.put("debezium.format.key", "avro");
-         * s3Test.put("debezium.format.key.converter", "io.confluent.connect.avro.AvroConverter");
-         * s3Test.put("debezium.format.value", "avro");
-         * s3Test.put("debezium.format.value.converter", "io.confluent.connect.avro.AvroConverter");
-         * s3Test.put("debezium.format.key.schema.registry.url", "http://localhost:8081");
-         * s3Test.put("debezium.format.value.schema.registry.url", "http://localhost:8081");
-         */
+        s3Test.put("debezium.transforms","unwrap");
+        s3Test.put("debezium.transforms.unwrap.type","io.debezium.transforms.ExtractNewRecordState");
+        s3Test.put("debezium.transforms.unwrap.add.fields","op,table,lsn,source.ts_ms");
+        s3Test.put("debezium.transforms.unwrap.add.headers","db");
+        s3Test.put("debezium.transforms.unwrap.delete.handling.mode","rewrite");
+
         s3Test.put("debezium.source.connector.class", "io.debezium.connector.postgresql.PostgresConnector");
         s3Test.put("debezium.source." + StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
         s3Test.put("debezium.source.offset.flush.interval.ms", "0");
