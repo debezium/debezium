@@ -108,8 +108,13 @@ public class SchemaHistoryTopicIT extends AbstractConnectorTest {
 
         records = consumeRecordsByTopic(RECORDS_PER_TABLE * TABLES, 24);
         Assertions.assertThat(records.recordsForTopic("server1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
-        Assertions.assertThat(records.recordsForTopic("server1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
-        records.recordsForTopic("server1.dbo.tableb").forEach(record -> {
+        final List<SourceRecord> tablebRecords = records.recordsForTopic("server1.dbo.tableb");
+        // Additional schema change record was emitted
+        if (tablebRecords.size() == RECORDS_PER_TABLE - 1) {
+            tablebRecords.add(consumeRecord());
+        }
+        Assertions.assertThat(tablebRecords).hasSize(RECORDS_PER_TABLE);
+        tablebRecords.forEach(record -> {
             assertSchemaMatchesStruct(
                     (Struct) ((Struct) record.value()).get("after"),
                     SchemaBuilder.struct()
