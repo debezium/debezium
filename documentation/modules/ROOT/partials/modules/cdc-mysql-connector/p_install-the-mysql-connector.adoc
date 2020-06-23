@@ -31,7 +31,7 @@ endif::community[]
 plugin.path=/kafka/connect
 ----
 
-NOTE: The above example assumes you have extracted the {prodname} MySQL connector to the `/kafka/connect/{prodname}-connector-mysql` path.
+NOTE: The above example assumes you have extracted the {prodname} MySQL connector to the `/kafka/connect/debezium-connector-mysql` path.
 
 [start=4]
 . Restart your Kafka Connect process. This ensures the new JARs are picked up.
