@@ -259,10 +259,11 @@ When the blog post is available, use the [Debezium Twitter account](https://twit
 
 There are few manual steps to be completed before the execution:
 
+* Verify the Maven Central [status](https://status.maven.org/) is green
 * Update [the changelog](#update-the-changelog)
 * Update [configuration](#reconfigure-docker-hub-builds) for Docker Hub builds
 
-To perform release automatically invoke a [Jenkins job](http://ci.hibernate.org/view/Debezium/job/debezium-release/). Two parameters are requested:
+To perform a release automatically, invoke the Jenkins job on the release infrastructure. Two parameters are requested:
 
 * `RELEASE_VERSION` - a version to be released in format x.y.z
 * `DEVELOPMENT_VERSION` - next development version in format x.y.z-SNAPSHOT
