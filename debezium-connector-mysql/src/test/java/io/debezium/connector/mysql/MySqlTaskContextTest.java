@@ -9,6 +9,7 @@ import static org.fest.assertions.Assertions.assertThat;
 
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.Properties;
 import java.util.function.Predicate;
 
 import org.junit.After;
@@ -117,6 +118,20 @@ public class MySqlTaskContextTest {
         assertThat("" + context.snapshotMode().getValue()).isEqualTo(SnapshotMode.WHEN_NEEDED.getValue());
         assertThat(context.isSnapshotAllowedWhenNeeded()).isEqualTo(true);
         assertThat(context.isSnapshotNeverAllowed()).isEqualTo(false);
+    }
+
+    @Test
+    public void shouldFilterInternalDmlStatements() throws Exception {
+        // Load from a properties file to eliminate risk of improper escaping in Java literals
+        Properties props = new Properties();
+        props.load(Testing.Files.readResourceAsStream("dml-filter.properties"));
+        config = simpleConfig().with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.WHEN_NEEDED)
+                .with("internal.database.history.ddl.filter", props.get("internal.database.history.ddl.filter"))
+                .build();
+        context = new MySqlTaskContext(config, new Filters.Builder(config).build(), false, null);
+
+        assertThat(context.ddlFilter().test("INSERT INTO mysql.rds_sysinfo(name, value) values ('innodb_txn_key','Sat Jun 13 06:26:02 UTC 2020')")).isTrue();
+        assertThat(context.ddlFilter().test("INSERT INTO mysql.rds_monitor(name, value) values ('innodb_txn_key','Sat Jun 13 06:26:02 UTC 2020')")).isTrue();
     }
 
     @Test
