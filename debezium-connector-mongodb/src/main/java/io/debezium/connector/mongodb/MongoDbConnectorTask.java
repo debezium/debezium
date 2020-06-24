@@ -88,7 +88,7 @@ public final class MongoDbConnectorTask extends BaseSourceTask {
                     .loggingContextSupplier(() -> taskContext.configureLoggingContext(CONTEXT_NAME))
                     .build();
 
-            errorHandler = new ErrorHandler(MongoDbConnector.class, connectorConfig.getLogicalName(), queue);
+            errorHandler = new MongoDbErrorHandler(connectorConfig.getLogicalName(), queue);
 
             final MongoDbEventMetadataProvider metadataProvider = new MongoDbEventMetadataProvider();
 
