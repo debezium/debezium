@@ -6,11 +6,11 @@ nav:
 
 asciidoc:
   attributes:
-    debezium-version: '1.2.0.CR2'
-    debezium-dev-version: '1.2'
+    debezium-version: '1.2.0.Final'
+    debezium-dev-version: '1.3'
     debezium-kafka-version: '2.5.0'
-    debezium-docker-label: '1.1'
-    install-version: '1.1'
+    debezium-docker-label: '1.2'
+    install-version: '1.2'
     assemblies: '../assemblies'
     modules: '../../modules'
     mysql-version: '8.0'

@@ -2,6 +2,39 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 1.2.0.Final
+June 24th, 2020 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12345052)
+
+### New features since 1.2.0.CR2
+
+None
+
+### Breaking changes since 1.2.0.CR2
+
+None
+
+
+### Fixes since 1.2.0.CR2
+
+* Test failure due to superfluous schema change event emitted on connector start [DBZ-2211](https://issues.jboss.org/browse/DBZ-2211)
+* Intermittent test failures on CI [DBZ-2232](https://issues.jboss.org/browse/DBZ-2232)
+* Test SimpleSourceConnectorOutputTest.shouldGenerateExpected blocked [DBZ-2241](https://issues.jboss.org/browse/DBZ-2241)
+* CloudEventsConverter should use Apicurio converter for Avro [DBZ-2250](https://issues.jboss.org/browse/DBZ-2250)
+* Default value is not properly set for non-optional columns [DBZ-2267](https://issues.jboss.org/browse/DBZ-2267)
+
+
+### Other changes since 1.2.0.CR2
+
+* Diff MySQL connector 0.10 and latest docs [DBZ-1997](https://issues.jboss.org/browse/DBZ-1997)
+* Remove redundant property in antora.yml [DBZ-2223](https://issues.jboss.org/browse/DBZ-2223)
+* Binary log client is not cleanly stopped in testsuite [DBZ-2221](https://issues.jboss.org/browse/DBZ-2221)
+* Intermittent test failure on CI - Postgres [DBZ-2230](https://issues.jboss.org/browse/DBZ-2230)
+* Build failure with Kafka 1.x [DBZ-2240](https://issues.jboss.org/browse/DBZ-2240)
+* Intermittent test failure on CI - SqlServerConnectorIT#readOnlyApplicationIntent() [DBZ-2261](https://issues.jboss.org/browse/DBZ-2261)
+* Test failure BinlogReaderIT#shouldFilterAllRecordsBasedOnDatabaseWhitelistFilter() [DBZ-2262](https://issues.jboss.org/browse/DBZ-2262)
+
+
+
 ## 1.2.0.CR2
 June 18th, 2020 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12346173)
 
