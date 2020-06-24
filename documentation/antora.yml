@@ -40,6 +40,7 @@ asciidoc:
     link-sqlserver-connector: 'connectors/sqlserver.adoc'
     link-topic-routing: 'configuration/topic-routing.adoc'
     link-tutorial: 'tutorial.adoc'
+    name-tutorial: 'Debezium Tutorial'
     link-mysql-plugin-snapshot: 'https://oss.sonatype.org/service/local/artifact/maven/redirect?r=snapshots&g=io.debezium&a=debezium-connector-mysql&v=LATEST&c=plugin&e=tar.gz'
     link-postgres-plugin-snapshot: 'https://oss.sonatype.org/service/local/artifact/maven/redirect?r=snapshots&g=io.debezium&a=debezium-connector-postgres&v=LATEST&c=plugin&e=tar.gz'
     link-mongodb-plugin-snapshot: 'https://oss.sonatype.org/service/local/artifact/maven/redirect?r=snapshots&g=io.debezium&a=debezium-connector-mongodb&v=LATEST&c=plugin&e=tar.gz'

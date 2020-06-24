@@ -69,7 +69,7 @@ endif::community[]
 
 The following example shows what a CloudEvents change event record emitted by a PostgreSQL connector looks like. In this example, the PostgreSQL connector is configured to use JSON as the CloudEvents format envelope and also as the `data` format.  
 
-[source,json,indent=0,subs="attributes"]
+[source,json,indent=0,subs="+attributes"]
 ----
 {
   "id" : "name:test_server;lsn:29274832;txId:565",   <1>
@@ -122,7 +122,7 @@ endif::product[]
 ifdef::community[]
 The following example also shows what a CloudEvents change event record emitted by a PostgreSQL connector looks like. In this example, the PostgreSQL connector is again configured to use JSON as the CloudEvents format envelope, but this time the connector is configured to use Avro for the `data` format. 
 
-[source,json,indent=0,subs="attributes"]
+[source,json,indent=0,subs="+attributes"]
 ----
 {
   "id" : "name:test_server;lsn:33227720;txId:578",
