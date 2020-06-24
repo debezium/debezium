@@ -77,6 +77,15 @@ In case of `Groovy`, the value fields can be accessed in a property-like way:
 value.op == 'u' && value.before.id == 2
 ----
 
+[TIP]
+----
+MongoDB connector sends `after` and `patch` field  not as structures but serialized JSON documents.
+When you are using the SMT with the MongoDB connector then you should either first apply `ExtractNewDocumentState` SMT to unwind the field or use a JSON parser in the expression.
+
+In case of Groovy it means adding `groovy-json` artifact on the classpath and write the expression like `(new groovy.json.JsonSlurper()).parseText(value.after).last_name == 'Kretchmar'`.
+
+----
+
 Other languages, such as JavaScript, will typically require to  call the `Struct#get()` method:
 
 [source,javascript]

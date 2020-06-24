@@ -79,6 +79,17 @@ public class RouterTest {
     }
 
     @Test
+    public void shouldRouteMongoDbFormat() {
+        try (final ContentBasedRouter<SourceRecord> transform = new ContentBasedRouter<>()) {
+            final Map<String, String> props = new HashMap<>();
+            props.put(EXPRESSION, "value == null ? 'nulls' : ((new groovy.json.JsonSlurper()).parseText(value.after).last_name == 'Kretchmar' ? 'kretchmar' : null)");
+            props.put(LANGUAGE, "jsr223.groovy");
+            transform.configure(props);
+            assertThat(transform.apply(createMongoDbRecord()).topic()).isEqualTo("kretchmar");
+        }
+    }
+
+    @Test
     @FixFor("DBZ-2024")
     public void shouldApplyTopicRegex() {
         try (final ContentBasedRouter<SourceRecord> transform = new ContentBasedRouter<>()) {
@@ -150,6 +161,27 @@ public class RouterTest {
         source.put("lsn", 1234);
         source.put("version", "version!");
         final Struct payload = deleteEnvelope.delete(before, source, Instant.now());
+        return new SourceRecord(new HashMap<>(), new HashMap<>(), "original", envelope.schema(), payload);
+    }
+
+    private SourceRecord createMongoDbRecord() {
+        final Schema insertSourceSchema = SchemaBuilder.struct()
+                .field("lsn", SchemaBuilder.int32())
+                .field("version", SchemaBuilder.string())
+                .build();
+
+        final Envelope insertEnvelope = Envelope.defineSchema()
+                .withName("dummy.Envelope")
+                .withRecord(Schema.STRING_SCHEMA)
+                .withSource(insertSourceSchema)
+                .build();
+
+        final Struct source = new Struct(insertSourceSchema);
+
+        source.put("lsn", 1234);
+        source.put("version", "version!");
+        final Struct payload = insertEnvelope.create(
+                "{\"_id\": {\"$numberLong\": \"1004\"},\"first_name\": \"Anne\",\"last_name\": \"Kretchmar\",\"email\": \"annek@noanswer.org\"}", source, Instant.now());
         return new SourceRecord(new HashMap<>(), new HashMap<>(), "original", envelope.schema(), payload);
     }
 
