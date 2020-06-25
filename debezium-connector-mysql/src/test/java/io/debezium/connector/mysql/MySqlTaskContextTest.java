@@ -121,17 +121,22 @@ public class MySqlTaskContextTest {
     }
 
     @Test
-    public void shouldFilterInternalDmlStatements() throws Exception {
-        // Load from a properties file to eliminate risk of improper escaping in Java literals
-        Properties props = new Properties();
-        props.load(Testing.Files.readResourceAsStream("dml-filter.properties"));
-        config = simpleConfig().with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.WHEN_NEEDED)
-                .with("internal.database.history.ddl.filter", props.get("internal.database.history.ddl.filter"))
-                .build();
+    public void shouldFilterInternalDmlStatementsUsingDefaultFilter() throws Exception {
+        config = simpleConfig().build();
         context = new MySqlTaskContext(config, new Filters.Builder(config).build(), false, null);
 
+        assertThat(context.ddlFilter().test("INSERT INTO mysql.rds_heartbeat2(name) values ('innodb_txn_key') ON DUPLICATE KEY UPDATE value = 'v'")).isTrue();
         assertThat(context.ddlFilter().test("INSERT INTO mysql.rds_sysinfo(name, value) values ('innodb_txn_key','Sat Jun 13 06:26:02 UTC 2020')")).isTrue();
         assertThat(context.ddlFilter().test("INSERT INTO mysql.rds_monitor(name, value) values ('innodb_txn_key','Sat Jun 13 06:26:02 UTC 2020')")).isTrue();
+        assertThat(context.ddlFilter().test("INSERT INTO mysql.rds_monitor(name) values ('innodb_txn_key') ON DUPLICATE KEY UPDATE value = 'v'")).isTrue();
+        assertThat(context.ddlFilter().test("DELETE FROM mysql.rds_sysinfo")).isTrue();
+        assertThat(context.ddlFilter().test("DELETE FROM mysql.rds_monitor;")).isTrue();
+        assertThat(context.ddlFilter().test("FLUSH RELAY LOGS;")).isTrue();
+        assertThat(context.ddlFilter().test("SAVEPOINT x")).isTrue();
+        // Missing 'ON DUPLICATE ...' clause
+        assertThat(context.ddlFilter().test("INSERT INTO mysql.rds_heartbeat2(name) values ('innodb_txn_key')")).isFalse();
+        // No space after 'SAVEPOINT'
+        assertThat(context.ddlFilter().test("SAVEPOINT;")).isFalse();
     }
 
     @Test
