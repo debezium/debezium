@@ -9,7 +9,6 @@ import static org.fest.assertions.Assertions.assertThat;
 
 import java.nio.file.Path;
 import java.util.Arrays;
-import java.util.Properties;
 import java.util.function.Predicate;
 
 import org.junit.After;
