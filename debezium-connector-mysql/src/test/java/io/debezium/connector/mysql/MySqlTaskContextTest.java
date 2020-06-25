@@ -120,6 +120,25 @@ public class MySqlTaskContextTest {
     }
 
     @Test
+    public void shouldFilterInternalDmlStatementsUsingDefaultFilter() throws Exception {
+        config = simpleConfig().build();
+        context = new MySqlTaskContext(config, new Filters.Builder(config).build(), false, null);
+
+        assertThat(context.ddlFilter().test("INSERT INTO mysql.rds_heartbeat2(name) values ('innodb_txn_key') ON DUPLICATE KEY UPDATE value = 'v'")).isTrue();
+        assertThat(context.ddlFilter().test("INSERT INTO mysql.rds_sysinfo(name, value) values ('innodb_txn_key','Sat Jun 13 06:26:02 UTC 2020')")).isTrue();
+        assertThat(context.ddlFilter().test("INSERT INTO mysql.rds_monitor(name, value) values ('innodb_txn_key','Sat Jun 13 06:26:02 UTC 2020')")).isTrue();
+        assertThat(context.ddlFilter().test("INSERT INTO mysql.rds_monitor(name) values ('innodb_txn_key') ON DUPLICATE KEY UPDATE value = 'v'")).isTrue();
+        assertThat(context.ddlFilter().test("DELETE FROM mysql.rds_sysinfo")).isTrue();
+        assertThat(context.ddlFilter().test("DELETE FROM mysql.rds_monitor;")).isTrue();
+        assertThat(context.ddlFilter().test("FLUSH RELAY LOGS;")).isTrue();
+        assertThat(context.ddlFilter().test("SAVEPOINT x")).isTrue();
+        // Missing 'ON DUPLICATE ...' clause
+        assertThat(context.ddlFilter().test("INSERT INTO mysql.rds_heartbeat2(name) values ('innodb_txn_key')")).isFalse();
+        // No space after 'SAVEPOINT'
+        assertThat(context.ddlFilter().test("SAVEPOINT;")).isFalse();
+    }
+
+    @Test
     public void shouldUseGtidSetIncludes() throws Exception {
         config = simpleConfig().with(MySqlConnectorConfig.GTID_SOURCE_INCLUDES, "a,b,c,d.*")
                 .build();

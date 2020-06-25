@@ -64,6 +64,8 @@ public interface DatabaseHistory {
                             "INSERT INTO mysql.rds_heartbeat2\\(.*\\) values \\(.*\\) ON DUPLICATE KEY UPDATE value = .*," +
                             "DELETE FROM mysql.rds_sysinfo.*," +
                             "INSERT INTO mysql.rds_sysinfo\\(.*\\) values \\(.*\\)," +
+                            "INSERT INTO mysql.rds_monitor\\(.*\\) values \\(.*\\) ON DUPLICATE KEY UPDATE value = .*," +
+                            "INSERT INTO mysql.rds_monitor\\(.*\\) values \\(.*\\)," +
                             "DELETE FROM mysql.rds_monitor.*," +
                             "FLUSH RELAY LOGS.*," +
                             "flush relay logs.*," +
