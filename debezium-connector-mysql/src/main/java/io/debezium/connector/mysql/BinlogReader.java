@@ -20,14 +20,13 @@ import java.security.cert.X509Certificate;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.BitSet;
-import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
@@ -116,7 +115,7 @@ public class BinlogReader extends AbstractReader {
     private Heartbeat heartbeat;
     private MySqlJdbcContext connectionContext;
     private final float heartbeatIntervalFactor = 0.8f;
-    private final Set<Thread> binaryLogClientThreads = Collections.synchronizedSet(new HashSet<>(2));
+    private final Map<String, Thread> binaryLogClientThreads = new ConcurrentHashMap<>(4);
 
     public static class BinlogPosition {
         final String filename;
@@ -210,7 +209,8 @@ public class BinlogReader extends AbstractReader {
         client = new BinaryLogClient(connectionContext.hostname(), connectionContext.port(), connectionContext.username(), connectionContext.password());
         // BinaryLogClient will overwrite thread names later
         client.setThreadFactory(
-                Threads.threadFactory(MySqlConnector.class, context.getConnectorConfig().getLogicalName(), "binlog-client", false, false, binaryLogClientThreads::add));
+                Threads.threadFactory(MySqlConnector.class, context.getConnectorConfig().getLogicalName(), "binlog-client", false, false,
+                        x -> binaryLogClientThreads.put(x.getName(), x)));
         client.setServerId(serverId);
         client.setSSLMode(sslModeFor(connectionContext.sslMode()));
         if (connectionContext.sslModeEnabled()) {
@@ -414,7 +414,7 @@ public class BinlogReader extends AbstractReader {
                     int waitAttempts = 50;
                     boolean keepAliveThreadRunning = false;
                     while (!keepAliveThreadRunning && waitAttempts-- > 0) {
-                        for (Thread t : binaryLogClientThreads) {
+                        for (Thread t : binaryLogClientThreads.values()) {
                             if (t.getName().startsWith(KEEPALIVE_THREAD_NAME) && t.isAlive()) {
                                 logger.info("Keepalive thread is running");
                                 keepAliveThreadRunning = true;
