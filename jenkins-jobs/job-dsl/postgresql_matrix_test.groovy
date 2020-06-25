@@ -72,7 +72,7 @@ else
 fi
                                
 # Run maven build
-mvn clean install -U -s $HOME/.m2/settings-snapshots.xml -pl debezium-connector-mysql -am -fae \
+mvn clean install -U -s $HOME/.m2/settings-snapshots.xml -pl debezium-connector-postgres -am -fae \
     -Dmaven.test.failure.ignore=true \
     -Dpostgres.port=55432 \
     -Dversion.postgres.server=$POSTGRES_VERSION \
