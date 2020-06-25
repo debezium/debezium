@@ -62,7 +62,7 @@
         <version.zookeeper>3.5.7</version.zookeeper>
         <version.jackson>2.10.0</version.jackson>
         <version.org.slf4j>1.7.28</version.org.slf4j>
-        <version.log4j>1.2.17</version.log4j>
+        <version.log4j>2.13.3</version.log4j>
         <!-- check new release version at https://github.com/confluentinc/schema-registry/releases -->
         <version.confluent.platform>5.5.0</version.confluent.platform>
 
@@ -295,6 +295,12 @@
                 <groupId>org.apache.zookeeper</groupId>
                 <artifactId>zookeeper</artifactId>
                 <version>${version.zookeeper}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>log4j</groupId>
+                        <artifactId>log4j</artifactId>
+                    </exclusion>
+                </exclusions>
             </dependency>
             <dependency>
                 <groupId>org.apache.kafka</groupId>
@@ -375,10 +381,16 @@
                 <groupId>org.slf4j</groupId>
                 <artifactId>slf4j-log4j12</artifactId>
                 <version>${version.org.slf4j}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>log4j</groupId>
+                        <artifactId>log4j</artifactId>
+                    </exclusion>
+                </exclusions>
             </dependency>
             <dependency>
-                <groupId>log4j</groupId>
-                <artifactId>log4j</artifactId>
+                <groupId>org.apache.logging.log4j</groupId>
+                <artifactId>log4j-1.2-api</artifactId>
                 <version>${version.log4j}</version>
             </dependency>
 
@@ -793,7 +805,13 @@
                                 <requireMavenVersion>
                                     <version>3.0.5</version>
                                 </requireMavenVersion>
+                                <bannedDependencies>
+                                    <excludes>
+                                        <exclude>log4j:log4j</exclude>
+                                    </excludes>
+                                </bannedDependencies>
                             </rules>
+                            <fail>true</fail>
                         </configuration>
                     </execution>
                 </executions>
