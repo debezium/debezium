@@ -12,6 +12,7 @@ import org.awaitility.Awaitility;
 import org.fest.assertions.Assertions;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 
 import io.debezium.config.CommonConnectorConfig.EventProcessingFailureHandlingMode;
@@ -30,6 +31,9 @@ import io.debezium.util.Testing;
  * @author Jiri Pechanec
  */
 public class EventProcessingFailureHandlingIT extends AbstractConnectorTest {
+
+    @Rule
+    public LogInterceptor logInterceptor = new LogInterceptor();
 
     private SqlServerConnection connection;
 
@@ -64,7 +68,6 @@ public class EventProcessingFailureHandlingIT extends AbstractConnectorTest {
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
                 .with(SqlServerConnectorConfig.EVENT_PROCESSING_FAILURE_HANDLING_MODE, EventProcessingFailureHandlingMode.WARN)
                 .build();
-        final LogInterceptor logInterceptor = new LogInterceptor();
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
@@ -122,7 +125,6 @@ public class EventProcessingFailureHandlingIT extends AbstractConnectorTest {
         final Configuration config = TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
                 .build();
-        final LogInterceptor logInterceptor = new LogInterceptor();
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();

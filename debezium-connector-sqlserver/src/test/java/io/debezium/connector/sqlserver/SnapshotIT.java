@@ -24,6 +24,7 @@ import org.fest.assertions.MapAssert;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 
 import io.debezium.config.CommonConnectorConfig.Version;
@@ -51,6 +52,9 @@ public class SnapshotIT extends AbstractConnectorTest {
 
     private static final int INITIAL_RECORDS_PER_TABLE = 500;
     private static final int STREAMING_RECORDS_PER_TABLE = 500;
+
+    @Rule
+    public LogInterceptor logInterceptor = new LogInterceptor();
 
     private SqlServerConnection connection;
 
@@ -161,7 +165,6 @@ public class SnapshotIT extends AbstractConnectorTest {
     @Test
     @FixFor("DBZ-1280")
     public void testDeadlockDetection() throws Exception {
-        final LogInterceptor logInterceptor = new LogInterceptor();
         final Configuration config = TestHelper.defaultConfig()
                 .with(RelationalDatabaseConnectorConfig.SNAPSHOT_LOCK_TIMEOUT_MS, 1_000)
                 .build();

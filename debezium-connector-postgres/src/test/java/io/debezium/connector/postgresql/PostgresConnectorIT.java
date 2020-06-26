@@ -102,6 +102,9 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
     @Rule
     public final TestRule skipName = new SkipTestDependingOnDecoderPluginNameRule();
 
+    @Rule
+    public LogInterceptor logInterceptor = new LogInterceptor();
+
     @BeforeClass
     public static void beforeClass() throws SQLException {
         TestHelper.dropAllSchemas();
@@ -1121,9 +1124,6 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
     @Test
     @FixFor("DBZ-1437")
     public void shouldPeformSnapshotOnceForInitialOnlySnapshotMode() throws Exception {
-        // This captures all logged messages, allowing us to verify log message was written.
-        final LogInterceptor logInterceptor = new LogInterceptor();
-
         TestHelper.dropDefaultReplicationSlot();
 
         TestHelper.execute(SETUP_TABLES_STMT);
@@ -1259,9 +1259,6 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
     @Test
     @FixFor("DBZ-1242")
     public void testEmptySchemaWarningAfterApplyingFilters() throws Exception {
-        // This captures all logged messages, allowing us to verify log message was written.
-        final LogInterceptor logInterceptor = new LogInterceptor();
-
         TestHelper.dropAllSchemas();
         TestHelper.executeDDL("postgres_create_tables.ddl");
 
@@ -1279,9 +1276,6 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
     @Test
     @FixFor("DBZ-1242")
     public void testNoEmptySchemaWarningAfterApplyingFilters() throws Exception {
-        // This captures all logged messages, allowing us to verify log message was written.
-        final LogInterceptor logInterceptor = new LogInterceptor();
-
         TestHelper.dropAllSchemas();
         TestHelper.executeDDL("postgres_create_tables.ddl");
 
@@ -1299,9 +1293,6 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
     @FixFor("DBZ-1436")
     @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Publication configuration only valid for PGOUTPUT decoder")
     public void testCustomPublicationNameUsed() throws Exception {
-        // This captures all logged messages, allowing us to verify log message was written.
-        final LogInterceptor logInterceptor = new LogInterceptor();
-
         TestHelper.dropAllSchemas();
         TestHelper.dropPublication("cdc");
         TestHelper.executeDDL("postgres_create_tables.ddl");
@@ -1349,8 +1340,6 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
     @Test
     @FixFor("DBZ-1519")
     public void shouldNotIssueWarningForNoMonitoredTablesAfterApplyingFilters() throws Exception {
-        final LogInterceptor logInterceptor = new LogInterceptor();
-
         TestHelper.execute(SETUP_TABLES_STMT);
         TestHelper.execute(INSERT_STMT);
         Configuration config = TestHelper.defaultConfig().with(PostgresConnectorConfig.SCHEMA_WHITELIST, "s2").build();
@@ -1397,8 +1386,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         stopConnector();
         TestHelper.dropPublication();
 
-        // Create log interceptor and restart the connector, should observe publication gets re-created
-        final LogInterceptor interceptor = new LogInterceptor();
+        // restart the connector, should observe publication gets re-created
         start(PostgresConnector.class, config);
         waitForStreamingRunning();
 
@@ -1407,7 +1395,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
 
         // Stop Connector and check log messages
         stopConnector(value -> {
-            assertThat(interceptor.containsMessage("Creating new publication 'dbz_publication' for plugin 'PGOUTPUT'")).isTrue();
+            assertThat(logInterceptor.containsMessage("Creating new publication 'dbz_publication' for plugin 'PGOUTPUT'")).isTrue();
         });
     }
 
@@ -1669,9 +1657,6 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
     @FixFor("DBZ-1813")
     @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Publication configuration only valid for PGOUTPUT decoder")
     public void shouldConfigureSubscriptionsForAllTablesByDefault() throws Exception {
-        // This captures all logged messages, allowing us to verify log message was written.
-        final LogInterceptor logInterceptor = new LogInterceptor();
-
         TestHelper.dropAllSchemas();
         TestHelper.dropPublication("cdc");
         TestHelper.executeDDL("postgres_create_tables.ddl");
@@ -1693,9 +1678,6 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
     @FixFor("DBZ-1813")
     @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Publication configuration only valid for PGOUTPUT decoder")
     public void shouldConfigureSubscriptionsFromTableFilters() throws Exception {
-        // This captures all logged messages, allowing us to verify log message was written.
-        final LogInterceptor logInterceptor = new LogInterceptor();
-
         TestHelper.dropAllSchemas();
         TestHelper.dropPublication("cdc");
         TestHelper.executeDDL("postgres_create_tables.ddl");

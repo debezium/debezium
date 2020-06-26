@@ -16,6 +16,7 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.bson.Document;
 import org.bson.types.ObjectId;
+import org.junit.Rule;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
@@ -31,6 +32,9 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
     private static final String SERVER_NAME = "serverX";
     private static final String PATCH = "patch";
     private static final String ID = "_id";
+
+    @Rule
+    public LogInterceptor logInterceptor = new LogInterceptor();
 
     @Test
     public void shouldNotRenameMissingFieldsForReadEvent() throws Exception {
@@ -1436,7 +1440,6 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
 
         dropAndInsertDocuments(database, collection, document);
 
-        logInterceptor = new LogInterceptor();
         start(MongoDbConnector.class, config);
 
         SourceRecords sourceRecords = consumeRecordsByTopic(1);
@@ -1457,7 +1460,6 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
 
         insertDocuments(database, collection, document);
 
-        logInterceptor = new LogInterceptor();
         start(MongoDbConnector.class, config);
 
         SourceRecords sourceRecords = consumeRecordsByTopic(1);
@@ -1486,7 +1488,7 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
 
     private void assertDocumentContainsFieldError(String fieldName) {
         stopConnector(value -> {
-            final String message = "IllegalArgumentException: Document already contains field : " + fieldName;
+            final String message = "Document already contains field : " + fieldName;
             assertThat(logInterceptor.containsStacktraceElement(message)).isTrue();
         });
     }
@@ -1499,7 +1501,6 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
 
         dropAndInsertDocuments(DATABASE_NAME, COLLECTION_NAME, snapshot);
 
-        logInterceptor = new LogInterceptor();
         start(MongoDbConnector.class, config);
 
         SourceRecords sourceRecords = consumeRecordsByTopic(1);
@@ -1515,7 +1516,6 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
 
         TestHelper.cleanDatabase(primary(), DATABASE_NAME);
 
-        logInterceptor = new LogInterceptor();
         start(MongoDbConnector.class, config);
 
         insertDocuments(DATABASE_NAME, COLLECTION_NAME, document);
@@ -1540,7 +1540,6 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
         config = getConfiguration(renamesList, DATABASE_NAME, COLLECTION_NAME);
         context = new MongoDbTaskContext(config);
 
-        logInterceptor = new LogInterceptor();
         start(MongoDbConnector.class, config);
         waitForStreamingRunning("mongodb", SERVER_NAME);
 

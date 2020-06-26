@@ -31,6 +31,7 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.fest.assertions.Assertions;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 
 import io.debezium.config.CommonConnectorConfig;
@@ -70,6 +71,9 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
     private static final int PRODUCTS_TABLE_EVENT_COUNT = 9;
     private static final int ORDERS_TABLE_EVENT_COUNT = 5;
     private static final int INITIAL_EVENT_COUNT = PRODUCTS_TABLE_EVENT_COUNT + 9 + 4 + ORDERS_TABLE_EVENT_COUNT + 6;
+
+    @Rule
+    public LogInterceptor logInterceptor = new LogInterceptor();
 
     private Configuration config;
 
@@ -1990,8 +1994,6 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
     @Test
     @FixFor("DBZ-1242")
     public void testEmptySchemaLogWarningWithDatabaseWhitelist() throws Exception {
-        final LogInterceptor logInterceptor = new LogInterceptor();
-
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                 .with(MySqlConnectorConfig.DATABASE_WHITELIST, "my_database")
@@ -2008,8 +2010,6 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
     @Test
     @FixFor("DBZ-1242")
     public void testNoEmptySchemaLogWarningWithDatabaseWhitelist() throws Exception {
-        final LogInterceptor logInterceptor = new LogInterceptor();
-
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                 .build();
@@ -2025,9 +2025,6 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
     @Test
     @FixFor("DBZ-1242")
     public void testEmptySchemaWarningWithTableWhitelist() throws Exception {
-        // This captures all logged messages, allowing us to verify log message was written.
-        final LogInterceptor logInterceptor = new LogInterceptor();
-
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL)
                 .with(MySqlConnectorConfig.TABLE_WHITELIST, DATABASE.qualifiedTableName("my_products"))
@@ -2046,9 +2043,6 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
     @Test
     @FixFor("DBZ-1242")
     public void testNoEmptySchemaWarningWithTableWhitelist() throws Exception {
-        // This captures all logged messages, allowing us to verify log message was written.
-        final LogInterceptor logInterceptor = new LogInterceptor();
-
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL)
                 .build();

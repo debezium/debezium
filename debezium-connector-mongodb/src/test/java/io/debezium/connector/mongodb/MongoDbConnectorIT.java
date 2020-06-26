@@ -36,6 +36,7 @@ import org.bson.types.Decimal128;
 import org.bson.types.ObjectId;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 
 import com.mongodb.DBRef;
@@ -68,6 +69,9 @@ import io.debezium.util.Testing;
  *
  */
 public class MongoDbConnectorIT extends AbstractConnectorTest {
+
+    @Rule
+    public LogInterceptor logInterceptor = new LogInterceptor();
 
     private Configuration config;
     private MongoDbTaskContext context;
@@ -608,9 +612,6 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
     @Test
     @FixFor("DBZ-865 and DBZ-1242")
     public void shouldConsumeEventsFromCollectionWithReplacedTopicName() throws InterruptedException, IOException {
-        // This captures all logged messages, allowing us to verify log message was written.
-        final LogInterceptor logInterceptor = new LogInterceptor();
-
         // Use the DB configuration to define the connector's configuration ...
         config = TestHelper.getConfiguration().edit()
                 .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
@@ -662,9 +663,6 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
     @Test
     @FixFor("DBZ-1242")
     public void testEmptySchemaWarningAfterApplyingCollectionFilters() throws Exception {
-        // This captures all logged messages, allowing us to verify log message was written.
-        final LogInterceptor logInterceptor = new LogInterceptor();
-
         // Use the DB configuration to define the connector's configuration...
         config = TestHelper.getConfiguration().edit()
                 .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)

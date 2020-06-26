@@ -12,6 +12,7 @@ import java.sql.SQLException;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
@@ -31,6 +32,9 @@ public class MySqlSchemaMigrationIT extends AbstractConnectorTest {
             .withDbHistoryPath(DB_HISTORY_PATH);
 
     private Configuration config;
+
+    @Rule
+    public LogInterceptor logInterceptor = new LogInterceptor();
 
     @Before
     public void beforeEach() {
@@ -143,9 +147,6 @@ public class MySqlSchemaMigrationIT extends AbstractConnectorTest {
 
     @Test
     public void shouldWarnOnInvalidMigrateTable() throws SQLException, InterruptedException {
-        // Use the DB configuration to define the connector's configuration ...
-        final LogInterceptor logInterceptor = new LogInterceptor();
-
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL)
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)

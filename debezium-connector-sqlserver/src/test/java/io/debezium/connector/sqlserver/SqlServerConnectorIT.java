@@ -34,6 +34,7 @@ import org.awaitility.Awaitility;
 import org.fest.assertions.Assertions;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
@@ -64,6 +65,9 @@ import io.debezium.util.Testing;
 public class SqlServerConnectorIT extends AbstractConnectorTest {
 
     private SqlServerConnection connection;
+
+    @Rule
+    public LogInterceptor logInterceptor = new LogInterceptor();
 
     @Before
     public void before() throws SQLException {
@@ -1203,9 +1207,6 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
     @Test
     @FixFor("DBZ-1242")
     public void testEmptySchemaWarningAfterApplyingFilters() throws Exception {
-        // This captures all logged messages, allowing us to verify log message was written.
-        final LogInterceptor logInterceptor = new LogInterceptor();
-
         Configuration config = TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                 .with(SqlServerConnectorConfig.TABLE_WHITELIST, "my_products")
@@ -1221,9 +1222,6 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
     @Test
     @FixFor("DBZ-1242")
     public void testNoEmptySchemaWarningAfterApplyingFilters() throws Exception {
-        // This captures all logged messages, allowing us to verify log message was written.
-        final LogInterceptor logInterceptor = new LogInterceptor();
-
         Configuration config = TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                 .build();
@@ -1367,7 +1365,6 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
 
         Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
 
-        final LogInterceptor logInterceptor = new LogInterceptor();
         start(SqlServerConnector.class, config);
         assertConnectorNotRunning();
         assertThat(logInterceptor.containsStacktraceElement(
