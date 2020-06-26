@@ -1,4 +1,4 @@
-name: Sanity Check of PR
+name: Commit message format check
 on: [pull_request]
 
 jobs:
