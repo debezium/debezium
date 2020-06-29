@@ -117,18 +117,18 @@ Internally, Kafka Connect always uses JSON key/value converters for storing conf
 // ModuleID: deploying-connectors-that-use-avro-in-debezium-containers
 == Deploying with {prodname} containers
 
-In your environment, you might want to use a provided {prodname} container to deploy {prodname} connectors that use Avro serializaion. Follow the procedure here to do that. In this procedure, you build a custom Kafka Connect container image for {prodname}, which uses the Avro converter. 
+In your environment, you might want to use a provided {prodname} container to deploy {prodname} connectors that use Avro serializaion. Follow the procedure here to do that. In this procedure, you build a custom Kafka Connect container image for {prodname}, and you configure the {prodname} connector to use the Avro converter. 
 
 .Prerequisites
 
-* You have the required permissions on a Kafka cluster.
-* You downloaded the {prodname} connector plug-in that you want to deploy with Avro serialization.
+* You have the cluster administrator access to an OpenShift cluster.
+* You downloaded the {prodname} connector plug-in(s) that you want to deploy with Avro serialization.
 
 .Procedure
 
+ifdef::community[]
 . Deploy an instance of {registry}. 
 +
-ifdef::community[]
 The following example uses a non-production, in-memory, {registry}  instance:
 +
 [source,subs="attributes+"]
@@ -136,15 +136,9 @@ The following example uses a non-production, in-memory, {registry}  instance:
 docker run -it --rm --name apicurio \
     -p 8080:8080 apicurio/apicurio-registry-mem:{apicurio-version}
 ----
-endif::community[]
-ifdef::product[]
-Follow the instructions in 
-{LinkServiceRegistryGetStart}#installing-registry-operatorhub[NameServiceRegistryGetStart, Installing Service Registry from the OpenShift OperatorHub].
-endif::product[]
 
 . Build a {prodname} container image that contains the Avro converter:
 +
-ifdef::community[]
 .. Copy link:https://github.com/debezium/debezium-examples/blob/master/tutorial/debezium-with-apicurio/Dockerfile[`Dockerfile`] to a convenient location. This file has the following content: 
 +
 [listing,subs="attributes",options="nowrap"]
@@ -164,16 +158,9 @@ RUN cd $KAFKA_CONNECT_DEBEZIUM_DIR &&\
 ----
 docker build --build-arg DEBEZIUM_VERSION={debezium-docker-label} -t debezium/connect-apicurio:{debezium-docker-label} .
 ----
-endif::community[]
-ifdef::product[]
-.. Download the link:https://access.redhat.com/jbossnetwork/restricted/listSoftware.html?product=red.hat.integration&downloadType=distributions[{registry} Kafka Connect] zip file. 
-.. Extract the content into the directory that contains the {prodname} connector that you are configuring to use Avro serialization. 
-.. Create a custom image for Kafka Connect. See link:{LinkCDCInstallOpenShift}[{NameCDCInstallOpenShift}, Creating a container image from the Kafka Connect base image] for an example of how to do this. Start with the `Dockerfile` in that example. Then add the {registry} converters to the connector directories. 
-endif::product[]
 
 . Run the newly built Kafka Connect image, configuring it so it uses the Avro converter:
 +
-ifdef::community[]
 [source,subs="attributes+"]
 ----
 docker run -it --rm --name connect \
@@ -195,72 +182,164 @@ docker run -it --rm --name connect \
     -p 8083:8083 debezium/connect-apicurio:{debezium-docker-label}
 ----
 endif::community[]
+
 ifdef::product[]
-
-.. Follow the steps in the link:{LinkCDCGettingStarted}#deploying-kafka-connect[example of deploying Kafka Connect] in {NameCDCGettingStarted}.
-.. Open the `examples/kafka-connect/kafka-connect-s2i-single-node-kafka.yaml` file that you used to deploy Kafka Connect.
+. Deploy an instance of {registry}. See link:{LinkServiceRegistryGetStart}#installing-registry-operatorhub[{NameServiceRegistryGetStart}, Installing Service Registry from the OpenShift OperatorHub], which provides instructions for: 
 +
-Before you can create the connector instance,
-you must first enable connector resources in the `KafkaConnectS2I` Custom Resource (CR).
+* Installing AMQ Streams
+* Setting up AMQ Streams storage
+* Installing {registry}
 
-.. In the `metadata.annotations` section, enable Kafka Connect to use connector resources.
+. Extract the {prodname} connector archive(s) to create a directory structure for the connector plug-in(s). If you downloaded and extracted the archive for each {prodname} connector, the structure looks like this: 
 +
-.kafka-connect-s2i-single-node-kafka.yaml
+[subs=+macros]
+----
+pass:quotes[*tree ./my-plugins/*]
+./my-plugins/
+├── debezium-connector-mongodb
+ |   ├── ...
+├── debezium-connector-mysql
+│   ├── ...
+├── debezium-connector-postgres
+│   ├── ...
+└── debezium-connector-sqlserver
+    ├── ...
+----
+
+. Add the Avro converter to the directory that contains the {prodname} connector that you want to configure to use Avro serialization: 
+
+.. Download the link:{DebeziumDownload}[{registry} Kafka Connect] zip file. 
+.. Extract the archive into the desired {prodname} connector directory. 
+
++
+To configure more than one type of {prodname} connector to use Avro serialization, extract the archive into the directory for each relevant connector type. While this duplicates the files, it removes the possibility of conflicting dependencies. 
+
+. Create and publish a custom image for running {prodname} connectors that are configured to use the Avro converter: 
+
+.. Create a new `Dockerfile` by using `{DockerKafkaConnect}` as the base image. In the following example, you would replace _my-plugins_ with the name of your plug-ins directory:
++
+[subs=+macros]
+----
+FROM registry.redhat.io/amq7/amq-streams-kafka-25:1.5.0
+USER root:root
+pass:quotes[COPY _./my-plugins/_ /opt/kafka/plugins/]
+USER 1001
+----
++
+Before Kafka Connect starts running the connector, Kafka Connect loads any third-party plug-ins that are in the `/opt/kafka/plugins` directory. 
+
+.. Build the docker container image. For example, if you saved the docker file that you created in the previous step as `debezium-container-with-avro`, then you would run the following command: 
++
+`docker build -t debezium-container-with-avro:latest`
+
+.. Push your custom image to your container registry, for example: 
++
+`docker push debezium-container-with-avro:latest`
+
+.. Point to the new container image. Do one of the following: 
++
+* Edit the `KafkaConnect.spec.image` property of the `KafkaConnect` custom resource. If set, this property overrides the `STRIMZI_DEFAULT_KAFKA_CONNECT_IMAGE` variable in the Cluster Operator. For example: 
++
+[source,yaml,subs=attributes+]
+----
+apiVersion: {KafkaConnectApiVersion}
+kind: KafkaConnect
+metadata:
+  name: my-connect-cluster
+spec:
+  #...
+  image: debezium-container-with-avro
+----
++
+* In the `install/cluster-operator/050-Deployment-strimzi-cluster-operator.yaml` file, edit the `STRIMZI_DEFAULT_KAFKA_CONNECT_IMAGE` variable to point to the new container image and reinstall the Cluster Operator. If you edit this file you will need to apply it to your OpenShift cluster.
+
+. Deploy each {prodname} connector that is configured to use the Avro converter. For each {prodname} connector:  
+
+.. Create a {prodname} connector instance. The following `inventory-connector.yaml` file example creates a `KafkaConnector` custom resource that defines a MySQL connector instance that is configured to use the Avro converter:
++
 [source,yaml,options="nowrap"]
 ----
 apiVersion: kafka.strimzi.io/v1beta1
-kind: KafkaConnectS2I
+kind: KafkaConnector
 metadata:
-  name: my-connect-cluster
-  annotations:
-    strimzi.io/use-connector-resources: "true"
+  name: inventory-connector  
+  labels:
+    strimzi.io/cluster: my-connect-cluster
 spec:
-   ...
-----
-
-.. Apply the updated `kafka-connect-s2i-single-node-kafka.yaml` file to update the `KafkaConnectS2I` CR:
-+
-`oc apply -f kafka-connect-s2i-single-node-kafka.yaml`
-
-.. In the Kafka Connect CR that defines the connector, add the properties that are required by the Avro converter. The CR looks like this:
-+
-.inventory-connector.yaml
-[source,yaml,options="nowrap"]
-----
-  apiVersion: kafka.strimzi.io/v1beta1
-  kind: KafkaConnector
-  metadata:
-    name: inventory-connector  
-    labels:
-      strimzi.io/cluster: my-connect-cluster
-  spec:
-    class: io.debezium.connector.mysql.MySqlConnector
-    tasksMax: 1  
-    config:  
-      database.hostname: mysql  
-      database.port: 3306
-      database.user: debezium
-      database.password: dbz
-      database.server.id: 184054  
-      database.server.name: dbserver1  
-      database.whitelist: inventory  
-      database.history.kafka.bootstrap.servers: my-cluster-kafka-bootstrap:9092  
-      database.history.kafka.topic: schema-changes.inventory  
-      key.converter: io.apicurio.registry.utils.converter.AvroConverter
-      key.converter.apicurio.registry.url: http://apicurio:8080/api
-      key.converter.apicurio.registry.global-id: io.apicurio.registry.utils.serde.strategy.AutoRegisterIdStrategy
-      value.converter: io.apicurio.registry.utils.converter.AvroConverter
-      value.converter.apicurio.registry.url: http://apicurio:8080/api
-      value.converter.apicurio.registry.global-id: io.apicurio.registry.utils.serde.strategy.AutoRegisterIdStrategy
+  class: io.debezium.connector.mysql.MySqlConnector
+  tasksMax: 1  
+  config:  
+    database.hostname: mysql  
+    database.port: 3306
+    database.user: debezium
+    database.password: dbz
+    database.server.id: 184054  
+    database.server.name: dbserver1  
+    database.whitelist: inventory  
+    database.history.kafka.bootstrap.servers: my-cluster-kafka-bootstrap:9092
+    database.history.kafka.topic: schema-changes.inventory  
+    key.converter: io.apicurio.registry.utils.converter.AvroConverter
+    key.converter.apicurio.registry.url: http://apicurio:8080/api
+    key.converter.apicurio.registry.global-id: io.apicurio.registry.utils.serde.strategy.AutoRegisterIdStrategy
+    value.converter: io.apicurio.registry.utils.converter.AvroConverter
+    value.converter.apicurio.registry.url: http://apicurio:8080/api
+    value.converter.apicurio.registry.global-id: io.apicurio.registry.utils.serde.strategy.AutoRegisterIdStrategy
 ----
    
-.. Apply the connector instance:
+.. Apply the connector instance, for example: 
 +
-`$ oc apply -f inventory-connector.yaml`
+`oc apply -f inventory-connector.yaml`
 +
 This registers `inventory-connector` and the connector starts to run against the `inventory` database.
 
-.. To verify that the connector was created and has started to monitor the database, follow the steps at the end of the example procedure in link:{LinkCDCGettingStarted}#creating-connector-monitor-inventory-database[NameCDCGettingStarted].
+. Verify that the connector was created and has started to monitor the specified database. You can verify the connector instance by watching the Kafka Connect log output as, for example, `inventory-connector` starts.
+
+.. Display the Kafka Connect log output:
++
+[source,shell,options="nowrap"]
+----
+oc logs $(oc get pods -o name -l strimzi.io/name=my-connect-cluster-connect)
+----
+
+.. Review the log output to verify that the initial snapshot has been executed. You should see something like the following lines: 
++
+[source,shell,options="nowrap"]
+----
+...
+2020-02-21 17:57:30,801 INFO Starting snapshot for jdbc:mysql://mysql:3306/?useInformationSchema=true&nullCatalogMeansCurrent=false&useSSL=false&useUnicode=true&characterEncoding=UTF-8&characterSetResults=UTF-8&zeroDateTimeBehavior=CONVERT_TO_NULL&connectTimeout=30000 with user 'debezium' with locking mode 'minimal' (io.debezium.connector.mysql.SnapshotReader) [debezium-mysqlconnector-dbserver1-snapshot]
+2020-02-21 17:57:30,805 INFO Snapshot is using user 'debezium' with these MySQL grants: (io.debezium.connector.mysql.SnapshotReader) [debezium-mysqlconnector-dbserver1-snapshot]
+...
+----
++
+Taking the snapshot involves a number of steps:
++
+[source,shell,options="nowrap"]
+----
+...
+2020-02-21 17:57:30,822 INFO Step 0: disabling autocommit, enabling repeatable read transactions, and setting lock wait timeout to 10 (io.debezium.connector.mysql.SnapshotReader) [debezium-mysqlconnector-dbserver1-snapshot]
+2020-02-21 17:57:30,836 INFO Step 1: flush and obtain global read lock to prevent writes to database (io.debezium.connector.mysql.SnapshotReader) [debezium-mysqlconnector-dbserver1-snapshot]
+2020-02-21 17:57:30,839 INFO Step 2: start transaction with consistent snapshot (io.debezium.connector.mysql.SnapshotReader) [debezium-mysqlconnector-dbserver1-snapshot]
+2020-02-21 17:57:30,840 INFO Step 3: read binlog position of MySQL master (io.debezium.connector.mysql.SnapshotReader) [debezium-mysqlconnector-dbserver1-snapshot]
+2020-02-21 17:57:30,843 INFO 	 using binlog 'mysql-bin.000003' at position '154' and gtid '' (io.debezium.connector.mysql.SnapshotReader) [debezium-mysqlconnector-dbserver1-snapshot]
+...
+2020-02-21 17:57:34,423 INFO Step 9: committing transaction (io.debezium.connector.mysql.SnapshotReader) [debezium-mysqlconnector-dbserver1-snapshot]
+2020-02-21 17:57:34,424 INFO Completed snapshot in 00:00:03.632 (io.debezium.connector.mysql.SnapshotReader) [debezium-mysqlconnector-dbserver1-snapshot]
+...
+----
++
+After completing the snapshot, {prodname} begins watching, for example, the `inventory` database's `binlog` for change events:
++
+[source,shell,options="nowrap"]
+----
+...
+2020-02-21 17:57:35,584 INFO Transitioning from the snapshot reader to the binlog reader (io.debezium.connector.mysql.ChainedReader) [task-thread-inventory-connector-0]
+2020-02-21 17:57:35,613 INFO Creating thread debezium-mysqlconnector-dbserver1-binlog-client (io.debezium.util.Threads) [task-thread-inventory-connector-0]
+2020-02-21 17:57:35,630 INFO Creating thread debezium-mysqlconnector-dbserver1-binlog-client (io.debezium.util.Threads) [blc-mysql:3306]
+Feb 21, 2020 5:57:35 PM com.github.shyiko.mysql.binlog.BinaryLogClient connect
+INFO: Connected to mysql:3306 at mysql-bin.000003/154 (sid:184054, cid:5)
+2020-02-21 17:57:35,775 INFO Connected to MySQL binlog at mysql:3306, starting at binlog file 'mysql-bin.000003', pos=154, skipping 0 events plus 0 rows (io.debezium.connector.mysql.BinlogReader) [blc-mysql:3306]
+...
+----
 endif::product[]
 
 // Type: concept
