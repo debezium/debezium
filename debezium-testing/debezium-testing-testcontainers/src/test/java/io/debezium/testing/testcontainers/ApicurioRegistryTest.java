@@ -49,8 +49,7 @@ import com.jayway.jsonpath.JsonPath;
  */
 public class ApicurioRegistryTest {
 
-    // TODO: revert to upstream version
-    private static final String DEBEZIUM_VERSION = "1.2";
+    private static final String DEBEZIUM_VERSION = "1.2.0.Final";
     private static final String APICURIO_VERSION = "1.2.2.Final";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ApicurioRegistryTest.class);
@@ -71,7 +70,7 @@ public class ApicurioRegistryTest {
 
     public static ImageFromDockerfile apicurioDebeziumImage = new ImageFromDockerfile()
             .withDockerfileFromBuilder(builder -> builder
-                    .from("gunnarmorling/debezium-connect:" + DEBEZIUM_VERSION)
+                    .from("debezium/connect:" + DEBEZIUM_VERSION)
                     .env("KAFKA_CONNECT_DEBEZIUM_DIR", "$KAFKA_CONNECT_PLUGINS_DIR/debezium-connector-postgres")
                     .env("APICURIO_VERSION", APICURIO_VERSION)
                     .run("cd $KAFKA_CONNECT_DEBEZIUM_DIR && curl https://repo1.maven.org/maven2/io/apicurio/apicurio-registry-distro-connect-converter/$APICURIO_VERSION/apicurio-registry-distro-connect-converter-$APICURIO_VERSION-converter.tar.gz | tar xzv")
