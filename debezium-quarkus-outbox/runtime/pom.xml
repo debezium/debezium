@@ -27,7 +27,7 @@
         <!-- Needed primarily for @Incubating annotation -->
         <dependency>
             <groupId>io.debezium</groupId>
-            <artifactId>debezium-core</artifactId>
+            <artifactId>debezium-api</artifactId>
         </dependency>
 
         <dependency>
