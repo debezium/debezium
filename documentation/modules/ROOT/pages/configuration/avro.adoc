@@ -141,7 +141,7 @@ docker run -it --rm --name apicurio \
 +
 .. Copy link:https://github.com/debezium/debezium-examples/blob/master/tutorial/debezium-with-apicurio/Dockerfile[`Dockerfile`] to a convenient location. This file has the following content: 
 +
-[listing,subs="attributes",options="nowrap"]
+[listing,subs="attributes+",options="nowrap"]
 ----
 ARG DEBEZIUM_VERSION
 FROM debezium/connect:$DEBEZIUM_VERSION
@@ -197,7 +197,7 @@ ifdef::product[]
 pass:quotes[*tree ./my-plugins/*]
 ./my-plugins/
 ├── debezium-connector-mongodb
- |   ├── ...
+|   ├── ...
 ├── debezium-connector-mysql
 │   ├── ...
 ├── debezium-connector-postgres
@@ -208,7 +208,7 @@ pass:quotes[*tree ./my-plugins/*]
 
 . Add the Avro converter to the directory that contains the {prodname} connector that you want to configure to use Avro serialization: 
 
-.. Download the link:{DebeziumDownload}[{registry} Kafka Connect] zip file. 
+.. Go to the link:{DebeziumDownload} and download the {registry} Kafka Connect zip file. 
 .. Extract the archive into the desired {prodname} connector directory. 
 
 +
@@ -292,7 +292,7 @@ spec:
 +
 This registers `inventory-connector` and the connector starts to run against the `inventory` database.
 
-. Verify that the connector was created and has started to monitor the specified database. You can verify the connector instance by watching the Kafka Connect log output as, for example, `inventory-connector` starts.
+. Verify that the connector was created and has started to track changes in the specified database. You can verify the connector instance by watching the Kafka Connect log output as, for example, `inventory-connector` starts.
 
 .. Display the Kafka Connect log output:
 +
@@ -327,7 +327,7 @@ Taking the snapshot involves a number of steps:
 ...
 ----
 +
-After completing the snapshot, {prodname} begins watching, for example, the `inventory` database's `binlog` for change events:
+After completing the snapshot, {prodname} begins tracking changes in, for example, the `inventory` database's `binlog` for change events:
 +
 [source,shell,options="nowrap"]
 ----
@@ -387,7 +387,7 @@ docker run -it --rm --name schema-registry \
 
 . Run a Kafka Connect image configured to use Avro:
 +
-[source,subs="attributes"]
+[source,subs="attributes+"]
 ----
 docker run -it --rm --name connect \
     --link zookeeper:zookeeper \
@@ -406,7 +406,7 @@ docker run -it --rm --name connect \
 
 . Run a console consumer that reads new Avro messages from the `db.myschema.mytable` topic and decodes to JSON:
 +
-[source,subs="attributes"]
+[source,subs="attributes+"]
 ----
 docker run -it --rm --name avro-consumer \
     --link zookeeper:zookeeper \
