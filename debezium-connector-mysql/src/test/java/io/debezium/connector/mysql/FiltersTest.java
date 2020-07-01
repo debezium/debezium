@@ -301,6 +301,13 @@ public class FiltersTest {
         assertSystemDatabasesExcluded();
     }
 
+    @Test
+    public void shouldNotAllowIgnoreTable() {
+        filters = build.includeBuiltInTables().createFilters();
+        assertIgnoredTableExcluded("mysql.rds_configuration");
+        assertNonIgnoredTableIncluded("mysql.table1");
+    }
+
     protected void assertDatabaseIncluded(String databaseName) {
         assertThat(filters.databaseFilter().test(databaseName)).isTrue();
     }
@@ -337,6 +344,16 @@ public class FiltersTest {
     protected void assertTableExcluded(String fullyQualifiedTableName) {
         TableId id = TableId.parse(fullyQualifiedTableName);
         assertThat(filters.tableFilter().test(id)).isFalse();
+    }
+
+    protected void assertIgnoredTableExcluded(String fullyQualifiedTableName) {
+        TableId id = TableId.parse(fullyQualifiedTableName);
+        assertThat(filters.ignoredTableFilter().test(id)).isTrue();
+    }
+
+    protected void assertNonIgnoredTableIncluded(String fullyQualifiedTableName) {
+        TableId id = TableId.parse(fullyQualifiedTableName);
+        assertThat(filters.ignoredTableFilter().test(id)).isFalse();
     }
 
 }
