@@ -919,8 +919,6 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
             KafkaDatabaseHistory.TOPIC,
             KafkaDatabaseHistory.RECOVERY_POLL_ATTEMPTS,
             KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS,
-            KafkaDatabaseHistory.INTERNAL_CONNECTOR_CLASS,
-            KafkaDatabaseHistory.INTERNAL_CONNECTOR_ID,
             DatabaseHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS,
             DatabaseHistory.STORE_ONLY_MONITORED_TABLES_DDL,
             DatabaseHistory.DDL_FILTER);
