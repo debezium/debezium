@@ -866,8 +866,9 @@ public class SnapshotReader extends AbstractReader {
         });
     }
 
-    private boolean shouldRecordTableSchema(final MySqlSchema schema, final Filters filters, TableId id) {
-        return !schema.isStoreOnlyMonitoredTablesDdl() || filters.tableFilter().test(id);
+    private boolean shouldRecordTableSchema(final MySqlSchema schema, final Filters filters, TableId id) throws SQLException {
+        return (!schema.isStoreOnlyMonitoredTablesDdl() || filters.tableFilter().test(id)) &&
+                !filters.ignoredTableFilter().test(id);
     }
 
     protected void readBinlogPosition(int step, SourceInfo source, JdbcConnection mysql, AtomicReference<String> sql) throws SQLException {

@@ -30,6 +30,18 @@ public class Filters {
 
     protected static final Set<String> BUILT_IN_DB_NAMES = Collect.unmodifiableSet("mysql", "performance_schema", "sys", "information_schema");
 
+    /**
+     * A list of tables that always ignored. Useful for ignoring "phantom" tables 
+     * occasionally exposed by services such as Amazon RDS Aurora. See DBZ-1939.
+     */
+    protected static final Set<String> IGNORED_TABLE_NAMES = Collect.unmodifiableSet(
+            "mysql.rds_configuration",
+            "mysql.rds_global_status_history",
+            "mysql.rds_global_status_history_old",
+            "mysql.rds_history",
+            "mysql.rds_replication_status",
+            "mysql.rds_sysinfo");
+
     protected static boolean isBuiltInDatabase(String databaseName) {
         if (databaseName == null) {
             return false;
@@ -49,6 +61,10 @@ public class Filters {
         return !isBuiltInTable(id);
     }
 
+    protected static boolean isIgnoredTable(TableId id) {
+        return IGNORED_TABLE_NAMES.contains(id.catalog() + "." + id.table());
+    }
+
     protected static List<TableId> withoutBuiltIns(Collection<TableId> tableIds) {
         return tableIds.stream().filter(Filters::isNotBuiltInTable).collect(Collectors.toList());
     }
@@ -62,17 +78,20 @@ public class Filters {
     private final Predicate<String> isBuiltInDb;
     private final Predicate<TableId> isBuiltInTable;
     private final ColumnNameFilter columnFilter;
+    private final Predicate<TableId> isIgnoredTable;
 
     private Filters(Predicate<String> dbFilter,
                     Predicate<TableId> tableFilter,
                     Predicate<String> isBuiltInDb,
                     Predicate<TableId> isBuiltInTable,
+                    Predicate<TableId> isIgnoredTable,
                     ColumnNameFilter columnFilter) {
         this.dbFilter = dbFilter;
         this.tableFilter = tableFilter;
         this.isBuiltInDb = isBuiltInDb;
         this.isBuiltInTable = isBuiltInTable;
         this.columnFilter = columnFilter;
+        this.isIgnoredTable = isIgnoredTable;
     }
 
     public Predicate<String> databaseFilter() {
@@ -85,6 +104,10 @@ public class Filters {
 
     public Predicate<TableId> builtInTableFilter() {
         return isBuiltInTable;
+    }
+
+    public Predicate<TableId> ignoredTableFilter() {
+        return isIgnoredTable;
     }
 
     public Predicate<String> builtInDatabaseFilter() {
@@ -101,6 +124,7 @@ public class Filters {
         private Predicate<TableId> tableFilter;
         private Predicate<String> isBuiltInDb = Filters::isBuiltInDatabase;
         private Predicate<TableId> isBuiltInTable = Filters::isBuiltInTable;
+        private Predicate<TableId> isIgnoredTable = Filters::isIgnoredTable;
         private ColumnNameFilter columnFilter;
         private final Configuration config;
 
@@ -172,6 +196,7 @@ public class Filters {
             this.isBuiltInDb = filters.isBuiltInDb;
             this.isBuiltInTable = filters.isBuiltInTable;
             this.columnFilter = filters.columnFilter;
+            this.isIgnoredTable = filters.isIgnoredTable;
             return this;
         }
 
@@ -237,6 +262,7 @@ public class Filters {
                     this.tableFilter,
                     this.isBuiltInDb,
                     this.isBuiltInTable,
+                    this.isIgnoredTable,
                     this.columnFilter);
         }
     }
