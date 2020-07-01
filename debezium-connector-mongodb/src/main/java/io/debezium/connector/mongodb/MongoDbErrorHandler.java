@@ -22,7 +22,15 @@ public class MongoDbErrorHandler extends ErrorHandler {
     @Override
     protected boolean isRetriable(Throwable throwable) {
         if (throwable instanceof org.apache.kafka.connect.errors.ConnectException) {
-            return true;
+            Throwable cause = throwable.getCause();
+            while ((cause != null) && (cause != throwable)) {
+                if (cause instanceof com.mongodb.MongoSocketException) {
+                    return true;
+                }
+                else {
+                    cause = cause.getCause();
+                }
+            }
         }
 
         return false;
