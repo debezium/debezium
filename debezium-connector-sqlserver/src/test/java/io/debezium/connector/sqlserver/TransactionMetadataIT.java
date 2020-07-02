@@ -8,13 +8,18 @@ package io.debezium.connector.sqlserver;
 import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.assertNull;
 
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.awaitility.Awaitility;
 import org.fest.assertions.Assertions;
 import org.junit.After;
 import org.junit.Before;
@@ -142,6 +147,38 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
             consumeRecordsByTopic(1);
             stopConnector();
             connection.execute("INSERT INTO tablea VALUES(-1, '-a')");
+
+            Awaitility.await().atMost(30, TimeUnit.SECONDS).until(() -> {
+                if (!connection.getMaxLsn().isAvailable()) {
+                    return false;
+                }
+
+                for (SqlServerChangeTable ct : connection.listOfChangeTables()) {
+                    final String tableName = ct.getChangeTableId().table();
+                    if (tableName.endsWith("dbo_" + connection.getNameOfChangeTable("tablea"))) {
+                        try {
+                            final Lsn minLsn = connection.getMinLsn(tableName);
+                            final Lsn maxLsn = connection.getMaxLsn();
+                            final AtomicReference<Boolean> found = new AtomicReference<>(false);
+                            SqlServerChangeTable[] tables = Collections.singletonList(ct).toArray(new SqlServerChangeTable[]{});
+                            connection.getChangesForTables(tables, minLsn, maxLsn, resultsets -> {
+                                final ResultSet rs = resultsets[0];
+                                while (rs.next()) {
+                                    if (rs.getInt("id") == -1) {
+                                        found.set(true);
+                                        break;
+                                    }
+                                }
+                            });
+                            return found.get();
+                        }
+                        catch (Exception e) {
+                            org.junit.Assert.fail("Failed to fetch changes for tablea: " + e.getMessage());
+                        }
+                    }
+                }
+                return false;
+            });
         }
 
         start(SqlServerConnector.class, config, record -> {
