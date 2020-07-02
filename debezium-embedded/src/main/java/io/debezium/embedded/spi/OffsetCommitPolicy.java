@@ -6,6 +6,7 @@
 package io.debezium.embedded.spi;
 
 import java.time.Duration;
+import java.util.Properties;
 
 import org.apache.kafka.connect.storage.OffsetBackingStore;
 
@@ -44,6 +45,10 @@ public interface OffsetCommitPolicy extends io.debezium.engine.spi.OffsetCommitP
 
         public PeriodicCommitOffsetPolicy(Configuration config) {
             minimumTime = Duration.ofMillis(config.getLong(EmbeddedEngine.OFFSET_FLUSH_INTERVAL_MS));
+        }
+
+        public PeriodicCommitOffsetPolicy(Properties properties) {
+            this(Configuration.from(properties));
         }
 
         @Override

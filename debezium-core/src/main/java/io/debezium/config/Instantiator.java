@@ -6,6 +6,7 @@
 package io.debezium.config;
 
 import java.lang.reflect.InvocationTargetException;
+import java.util.Properties;
 import java.util.function.Supplier;
 
 /**
@@ -22,16 +23,33 @@ public class Instantiator {
      *
      * @return The newly created instance or {@code null} if no class name was given
      */
-    @SuppressWarnings("unchecked")
     public static <T> T getInstance(String className, Supplier<ClassLoader> classloaderSupplier,
                                     Configuration configuration) {
+        return getInstanceWithProvidedConstructorType(className, classloaderSupplier, Configuration.class, configuration);
+    }
+
+    /**
+     * Instantiates the specified class either using the no-args constructor or the
+     * constructor with a single parameter of type {@link Properties}, if a
+     * properties object is passed.
+     *
+     * @return The newly created instance or {@code null} if no class name was given
+     */
+    public static <T> T getInstanceWithProperties(String className, Supplier<ClassLoader> classloaderSupplier,
+                                                  Properties prop) {
+        return getInstanceWithProvidedConstructorType(className, classloaderSupplier, Properties.class, prop);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T, C> T getInstanceWithProvidedConstructorType(String className, Supplier<ClassLoader> classloaderSupplier, Class<C> constructorType,
+                                                                   C constructorValue) {
         if (className != null) {
             ClassLoader classloader = classloaderSupplier != null ? classloaderSupplier.get()
                     : Configuration.class.getClassLoader();
             try {
                 Class<? extends T> clazz = (Class<? extends T>) classloader.loadClass(className);
-                return configuration == null ? clazz.getDeclaredConstructor().newInstance()
-                        : clazz.getConstructor(Configuration.class).newInstance(configuration);
+                return constructorValue == null ? clazz.getDeclaredConstructor().newInstance()
+                        : clazz.getConstructor(constructorType).newInstance(constructorValue);
             }
             catch (ClassNotFoundException e) {
                 throw new IllegalArgumentException("Unable to find class " + className, e);
