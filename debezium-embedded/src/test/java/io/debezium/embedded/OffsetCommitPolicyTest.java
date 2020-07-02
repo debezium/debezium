@@ -8,6 +8,7 @@ package io.debezium.embedded;
 import static org.fest.assertions.Assertions.assertThat;
 
 import java.time.Duration;
+import java.util.Properties;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.junit.Test;
@@ -31,6 +32,16 @@ public class OffsetCommitPolicyTest {
     public void shouldCommitPeriodically() {
         // 10 hours
         OffsetCommitPolicy policy = OffsetCommitPolicy.periodic(Configuration.create().with(EmbeddedEngine.OFFSET_FLUSH_INTERVAL_MS, 10 * 60 * 60 * 1000).build());
+        assertThat(policy.performCommit(0, Duration.ofNanos(0))).isFalse();
+        assertThat(policy.performCommit(10000, Duration.ofHours(9))).isFalse();
+        assertThat(policy.performCommit(0, Duration.ofHours(10))).isTrue();
+    }
+
+    @Test
+    public void shouldCommitPeriodicallyWithProperties() {
+        // 10 hours
+        final Properties props = Configuration.create().with(EmbeddedEngine.OFFSET_FLUSH_INTERVAL_MS, 10 * 60 * 60 * 1000).build().asProperties();
+        OffsetCommitPolicy policy = new OffsetCommitPolicy.PeriodicCommitOffsetPolicy(props);
         assertThat(policy.performCommit(0, Duration.ofNanos(0))).isFalse();
         assertThat(policy.performCommit(10000, Duration.ofHours(9))).isFalse();
         assertThat(policy.performCommit(0, Duration.ofHours(10))).isTrue();
