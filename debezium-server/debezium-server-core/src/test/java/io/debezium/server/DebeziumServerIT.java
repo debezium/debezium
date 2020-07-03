@@ -64,9 +64,10 @@ public class DebeziumServerIT {
     public void testPostgres() throws Exception {
         Testing.Print.enable();
         final TestConsumer testConsumer = (TestConsumer) server.getConsumer();
-        Awaitility.await().atMost(Duration.ofSeconds(TestConfigSource.waitForSeconds())).until(() -> (testConsumer.getValues().size() >= MESSAGE_COUNT));
+        Awaitility.await().atMost(Duration.ofSeconds(TestConfigSource.waitForSeconds()))
+                .until(() -> (testConsumer.getValues().size() >= MESSAGE_COUNT));
         Assertions.assertThat(testConsumer.getValues().size()).isEqualTo(MESSAGE_COUNT);
-        Assertions.assertThat(((String) testConsumer.getValues().get(MESSAGE_COUNT - 1)))
-                .contains("\"after\":{\"id\":1004,\"first_name\":\"Anne\",\"last_name\":\"Kretchmar\",\"email\":\"annek@noanswer.org\"}");
+        Assertions.assertThat(((String) testConsumer.getValues().get(MESSAGE_COUNT - 1))).contains(
+                "\"after\":{\"id\":1004,\"first_name\":\"Anne\",\"last_name\":\"Kretchmar\",\"email\":\"annek@noanswer.org\"}");
     }
 }

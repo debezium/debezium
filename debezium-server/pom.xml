@@ -15,6 +15,7 @@
         <version.kinesis>2.13.13</version.kinesis>
         <version.pubsub>5.1.0</version.pubsub>
         <version.pulsar>2.5.2</version.pulsar>
+        <version.eventhubs>5.1.1</version.eventhubs>
     </properties>
 
     <modules>
@@ -22,6 +23,7 @@
         <module>debezium-server-kinesis</module>
         <module>debezium-server-pubsub</module>
         <module>debezium-server-pulsar</module>
+        <module>debezium-server-eventhubs</module>
         <module>debezium-server-dist</module>
     </modules>
 
@@ -81,8 +83,13 @@
                 <artifactId>pulsar-client</artifactId>
                 <version>${version.pulsar}</version>
             </dependency>
+            <dependency>
+                <groupId>com.azure</groupId>
+                <artifactId>azure-messaging-eventhubs</artifactId>
+                <version>${version.eventhubs}</version>
+            </dependency>
         </dependencies>
-      </dependencyManagement>
+    </dependencyManagement>
 
     <dependencies>
         <!-- Quarkus extensions -->
