@@ -466,8 +466,12 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                 final long lastReceiveLsn = stream.getLastReceiveLSN().asLong();
                 LOGGER.trace("Streaming requested from LSN {}, received LSN {}", startingLsn, lastReceiveLsn);
 
-                if (read == null || messageDecoder.shouldMessageBeSkipped(read, lastReceiveLsn, startingLsn, skipFirstFlushRecord)) {
+                if (read == null) {
                     return false;
+                }
+
+                if (messageDecoder.shouldMessageBeSkipped(read, lastReceiveLsn, startingLsn, skipFirstFlushRecord)) {
+                    return true;
                 }
 
                 deserializeMessages(read, processor);
