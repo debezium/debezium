@@ -177,17 +177,16 @@ public class MySqlSchemaTest {
     @Test
     public void shouldAllowDecimalPrecision() {
         mysql = build
-                .with(DatabaseHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, true)
+                .with(DatabaseHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, false)
                 .storeDatabaseHistoryInFile(TEST_FILE_PATH)
                 .serverName(SERVER_NAME)
                 .createSchemas();
         mysql.start();
         source.setBinlogStartPoint("binlog-001", 400);
-        mysql.applyDdl(source, "db1", "SET " + MySqlSystemVariables.CHARSET_NAME_SERVER + "=utf8mb4", this::printStatements);
-
         mysql.applyDdl(source, "db1", readFile("ddl/mysql-decimal-issue.ddl"), this::printStatements);
 
-
+        assertTableIncluded("connector_test.business_order");
+        assertTableIncluded("connector_test.business_order_detail");
         assertHistoryRecorded();
     }
 
