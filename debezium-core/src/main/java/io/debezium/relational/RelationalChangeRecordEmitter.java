@@ -67,6 +67,7 @@ public abstract class RelationalChangeRecordEmitter extends AbstractChangeRecord
         Struct envelope = tableSchema.getEnvelopeSchema().create(newValue, getOffset().getSourceInfo(), getClock().currentTimeAsInstant());
 
         if (skipEmptyMessages() && (newColumnValues == null || newColumnValues.length == 0)) {
+            // This case is also hit on UPDATE / DELETE when there's no primary key defined
             logger.warn("no new values found for table '{}' from create message at '{}'; skipping record", tableSchema, getOffset().getSourceInfo());
             return;
         }
