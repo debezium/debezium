@@ -269,6 +269,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
             columnOptionality = getTableColumnOptionalityFromDatabase(databaseMetadata, schemaName, tableName);
             primaryKeyColumns = getTablePrimaryKeyColumnNamesFromDatabase(databaseMetadata, schemaName, tableName);
             if (primaryKeyColumns == null || primaryKeyColumns.isEmpty()) {
+                LOGGER.warn("Primary keys are not defined for table '{}', defaulting to unique indices", tableName);
                 primaryKeyColumns = new HashSet<>(connection.readTableUniqueIndices(databaseMetadata, new TableId(null, schemaName, tableName)));
             }
         }
