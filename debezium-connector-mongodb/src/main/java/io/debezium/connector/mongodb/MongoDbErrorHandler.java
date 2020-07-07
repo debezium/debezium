@@ -26,8 +26,7 @@ public class MongoDbErrorHandler extends ErrorHandler {
             while ((cause != null) && (cause != throwable)) {
                 if (cause instanceof com.mongodb.MongoSocketException) {
                     return true;
-                }
-                else {
+                } else {
                     cause = cause.getCause();
                 }
             }
