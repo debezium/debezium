@@ -41,6 +41,7 @@ import io.debezium.junit.EqualityCheck;
 import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.junit.SkipWhenKafkaVersion;
 import io.debezium.junit.SkipWhenKafkaVersion.KafkaVersion;
+import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.time.MicroTimestamp;
 import io.debezium.time.Timestamp;
@@ -525,7 +526,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
     public void numericAndDecimalToDoubleTest() throws InterruptedException {
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL)
-                .with(MySqlConnectorConfig.DECIMAL_HANDLING_MODE, JdbcValueConverters.DecimalMode.DOUBLE)
+                .with(MySqlConnectorConfig.DECIMAL_HANDLING_MODE, RelationalDatabaseConnectorConfig.DecimalHandlingMode.DOUBLE)
                 .build();
         start(MySqlConnector.class, config);
 
@@ -549,7 +550,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
     public void numericAndDecimalToDecimalTest() throws InterruptedException {
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL)
-                .with(MySqlConnectorConfig.DECIMAL_HANDLING_MODE, JdbcValueConverters.DecimalMode.PRECISE)
+                .with(MySqlConnectorConfig.DECIMAL_HANDLING_MODE, RelationalDatabaseConnectorConfig.DecimalHandlingMode.PRECISE)
                 .build();
         start(MySqlConnector.class, config);
 
