@@ -933,6 +933,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 .build();
         // Start the connector ...
         start(MySqlConnector.class, config);
+        waitForStreamingRunning("mysql", DATABASE.getServerName(), "binlog");
 
         // ---------------------------------------------------------------------------------------------------------------
         // Consume all of the events due to startup and initialization of the database
