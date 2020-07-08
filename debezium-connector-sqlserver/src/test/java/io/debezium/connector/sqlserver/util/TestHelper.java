@@ -329,6 +329,33 @@ public class TestHelper {
         }
     }
 
+    public static void waitForStreamingRunning() throws InterruptedException {
+        int waitForSeconds = 60;
+        final MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
+        final Metronome metronome = Metronome.sleeper(Duration.ofSeconds(1), Clock.system());
+
+        while (true) {
+            if (waitForSeconds-- <= 0) {
+                Assert.fail("Streaming has not started on time");
+            }
+            try {
+                final boolean connected = (boolean) mbeanServer.getAttribute(
+                        new ObjectName("debezium.sql_server:type=connector-metrics,context=streaming,server=server1"),
+                        "Connected");
+                if (connected) {
+                    break;
+                }
+            }
+            catch (InstanceNotFoundException e) {
+                // Metrics has not started yet
+            }
+            catch (Exception e) {
+                throw new IllegalArgumentException(e);
+            }
+            metronome.pause();
+        }
+    }
+
     public static int waitTimeForRecords() {
         return Integer.parseInt(System.getProperty(TEST_PROPERTY_PREFIX + "records.waittime", "5"));
     }
