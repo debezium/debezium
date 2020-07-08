@@ -1025,6 +1025,14 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
             coll.drop();
             db1.createCollection(collectionName);
             final ClientSession session = mongo.startSession();
+
+            MongoDatabase admin = mongo.getDatabase("admin");
+            if (admin != null) {
+                int timeout = Integer.parseInt(System.getProperty("mongo.transaction.lock.request.timeout.ms", "1000"));
+                Testing.debug("Setting MongoDB transaction lock request timeout as '" + timeout + "ms'");
+                admin.runCommand(session, new Document().append("setParameter", 1).append("maxTransactionLockRequestTimeoutMillis", timeout));
+            }
+
             session.startTransaction();
             storeDocuments(session, coll, pathOnClasspath);
             session.commitTransaction();
