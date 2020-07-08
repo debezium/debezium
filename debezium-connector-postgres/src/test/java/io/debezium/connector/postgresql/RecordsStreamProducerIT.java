@@ -1560,6 +1560,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         // the low heartbeat interval should make sure that a heartbeat message is emitted after each change record
         // received from Postgres
         startConnector(config -> config.with(Heartbeat.HEARTBEAT_INTERVAL, "100"));
+        waitForStreamingToStart();
 
         TestHelper.execute(
                 "DROP TABLE IF EXISTS test_table;" +
