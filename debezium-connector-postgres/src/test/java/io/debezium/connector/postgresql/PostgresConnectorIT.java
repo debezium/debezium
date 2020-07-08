@@ -1625,6 +1625,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
 
         start(PostgresConnector.class, configBuilder.build());
         assertConnectorIsRunning();
+        waitForSnapshotToBeCompleted();
 
         SourceRecords snapshotRecords = consumeRecordsByTopic(2);
         List<SourceRecord> snapshot = snapshotRecords.allRecordsInOrder();
@@ -1636,6 +1637,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         }
 
         // insert some more records and test streaming
+        waitForStreamingRunning();
         TestHelper.execute(INSERT_STMT);
 
         Testing.Print.enable();
