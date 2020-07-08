@@ -90,8 +90,9 @@
 
         <!-- The command line args passed to each mongod service -->
         <mongo.data.replicaset.name>rs0</mongo.data.replicaset.name>
+        <mongo.data.transaction.lock.request.timeout.ms>1000</mongo.data.transaction.lock.request.timeout.ms>
         <mongo.cfg.replicaset.name>cfg</mongo.cfg.replicaset.name>
-        <mongo.data.runOptions>--replSet ${mongo.data.replicaset.name} --oplogSize=2 --enableMajorityReadConcern</mongo.data.runOptions>
+        <mongo.data.runOptions>--replSet ${mongo.data.replicaset.name} --oplogSize=2 --enableMajorityReadConcern --setParameter maxTransactionLockRequestTimeoutMillis=${mongo.data.transaction.lock.request.timeout.ms}</mongo.data.runOptions>
         <mongo.cfg.runOptions>--configsvr --replSet ${mongo.cfg.replicaset.name} --oplogSize=2 --enableMajorityReadConcern</mongo.cfg.runOptions>
         <mongo.router.runOptions>mongos --configdb ${mongo.cfg.replicaset.name}/config:27019</mongo.router.runOptions>
         <!-- 
