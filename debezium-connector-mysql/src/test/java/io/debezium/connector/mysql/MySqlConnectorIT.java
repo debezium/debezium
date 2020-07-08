@@ -1489,6 +1489,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
 
         // Start the connector ...
         start(MySqlConnector.class, config);
+        waitForStreamingRunning(DATABASE.getServerName());
 
         // Flush all existing records not related to the test.
         consumeRecords(PRODUCTS_TABLE_EVENT_COUNT, null);
