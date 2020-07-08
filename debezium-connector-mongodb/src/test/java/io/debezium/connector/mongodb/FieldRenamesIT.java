@@ -1501,9 +1501,7 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
 
         logInterceptor = new LogInterceptor();
         start(MongoDbConnector.class, config);
-
-        SourceRecords sourceRecords = consumeRecordsByTopic(1);
-        assertThat(sourceRecords.allRecordsInOrder().size()).isEqualTo(0);
+        waitForStreamingRunning("mongodb", SERVER_NAME);
 
         assertNoRecordsToConsume();
         assertDocumentContainsFieldError(fieldName);
@@ -1517,11 +1515,9 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
 
         logInterceptor = new LogInterceptor();
         start(MongoDbConnector.class, config);
+        waitForStreamingRunning("mongodb", SERVER_NAME);
 
         insertDocuments(DATABASE_NAME, COLLECTION_NAME, document);
-
-        SourceRecords sourceRecords = consumeRecordsByTopic(1);
-        assertThat(sourceRecords.allRecordsInOrder().size()).isEqualTo(0);
 
         assertNoRecordsToConsume();
         assertDocumentContainsFieldError(fieldName);
@@ -1546,9 +1542,6 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
 
         final Document document = new Document().append(unset ? "$unset" : "$set", update);
         updateDocument(DATABASE_NAME, COLLECTION_NAME, getFilterFromId(snapshot.getObjectId(ID)), document);
-
-        SourceRecords sourceRecords = consumeRecordsByTopic(1);
-        assertThat(sourceRecords.allRecordsInOrder().size()).isEqualTo(0);
 
         assertNoRecordsToConsume();
         assertDocumentContainsFieldError(fieldName);
