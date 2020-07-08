@@ -15,11 +15,11 @@ import java.util.concurrent.TimeUnit;
 
 import javax.management.InstanceNotFoundException;
 import javax.management.MBeanServer;
+import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
 
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionTimeoutException;
-import org.junit.Assert;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,7 +32,6 @@ import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.history.FileDatabaseHistory;
 import io.debezium.util.Clock;
 import io.debezium.util.IoUtil;
-import io.debezium.util.Metronome;
 import io.debezium.util.Testing;
 
 /**
@@ -303,57 +302,44 @@ public class TestHelper {
         connection.execute(disableCdcForTableStmt);
     }
 
-    public static void waitForSnapshotToBeCompleted() throws InterruptedException {
-        int waitForSeconds = 60;
+    public static void waitForSnapshotToBeCompleted() {
         final MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
-        final Metronome metronome = Metronome.sleeper(Duration.ofSeconds(1), Clock.system());
-
-        while (true) {
-            if (waitForSeconds-- <= 0) {
-                Assert.fail("Snapshot was not completed on time");
-            }
-            try {
-                final boolean completed = (boolean) mbeanServer.getAttribute(new ObjectName("debezium.sql_server:type=connector-metrics,context=snapshot,server=server1"),
-                        "SnapshotCompleted");
-                if (completed) {
-                    break;
+        try {
+            Awaitility.await("Snapshot not completed").atMost(Duration.ofSeconds(60)).until(() -> {
+                try {
+                    return (boolean) mbeanServer.getAttribute(getObjectName("snapshot", "server1"), "SnapshotCompleted");
                 }
-            }
-            catch (InstanceNotFoundException e) {
-                // Metrics has not started yet
-            }
-            catch (Exception e) {
-                throw new IllegalStateException(e);
-            }
-            metronome.pause();
+                catch (InstanceNotFoundException e) {
+                    // Metrics has not started yet
+                    return false;
+                }
+            });
+        }
+        catch (ConditionTimeoutException e) {
+            throw new IllegalArgumentException("Snapshot did not complete", e);
         }
     }
 
-    public static void waitForStreamingRunning() throws InterruptedException {
-        int waitForSeconds = 60;
+    public static void waitForStreamingStarted() {
         final MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
-        final Metronome metronome = Metronome.sleeper(Duration.ofSeconds(1), Clock.system());
-
-        while (true) {
-            if (waitForSeconds-- <= 0) {
-                Assert.fail("Streaming has not started on time");
-            }
-            try {
-                final boolean connected = (boolean) mbeanServer.getAttribute(
-                        new ObjectName("debezium.sql_server:type=connector-metrics,context=streaming,server=server1"),
-                        "Connected");
-                if (connected) {
-                    break;
+        try {
+            Awaitility.await("Streaming never started").atMost(Duration.ofSeconds(60)).until(() -> {
+                try {
+                    return (boolean) mbeanServer.getAttribute(getObjectName("streaming", "server1"), "Connected");
                 }
-            }
-            catch (InstanceNotFoundException e) {
-                // Metrics has not started yet
-            }
-            catch (Exception e) {
-                throw new IllegalArgumentException(e);
-            }
-            metronome.pause();
+                catch (InstanceNotFoundException e) {
+                    // Metrics has not started yet
+                    return false;
+                }
+            });
         }
+        catch (ConditionTimeoutException e) {
+            throw new IllegalArgumentException("Streaming did not start", e);
+        }
+    }
+
+    private static ObjectName getObjectName(String context, String serverName) throws MalformedObjectNameException {
+        return new ObjectName("debezium.sql_server:type=connector-metrics,context=" + context + ",server=" + serverName);
     }
 
     public static int waitTimeForRecords() {
