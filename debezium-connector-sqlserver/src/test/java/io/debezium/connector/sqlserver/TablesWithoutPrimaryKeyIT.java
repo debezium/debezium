@@ -112,6 +112,10 @@ public class TablesWithoutPrimaryKeyIT extends AbstractConnectorTest {
         connection.execute("INSERT INTO t2 VALUES (2,20);");
         connection.execute("INSERT INTO t3 VALUES (3,30);");
 
+        TestHelper.waitForCdcRecord(connection, "t1", rs -> rs.getInt("pk") == 1);
+        TestHelper.waitForCdcRecord(connection, "t2", rs -> rs.getInt("pk") == 2);
+        TestHelper.waitForCdcRecord(connection, "t3", rs -> rs.getInt("pk") == 3);
+
         final int expectedRecordsCount = 1 + 1 + 1;
 
         final SourceRecords records = consumeRecordsByTopic(expectedRecordsCount, 24);
