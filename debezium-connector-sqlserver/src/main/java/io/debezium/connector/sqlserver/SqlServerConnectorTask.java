@@ -67,10 +67,10 @@ public class SqlServerConnectorTask extends BaseSourceTask {
 
     @Override
     public void start(Configuration config) {
-        if (!state.compareAndSet(State.STOPPED, State.RUNNING)) {
+        /*if (!state.compareAndSet(State.STOPPED, State.RUNNING)) {
             LOGGER.info("Connector has already been started");
             return;
-        }
+        }*/
 
         final SqlServerConnectorConfig connectorConfig = new SqlServerConnectorConfig(config);
         final TopicSelector<TableId> topicSelector = SqlServerTopicSelector.defaultSelector(connectorConfig);
@@ -84,8 +84,11 @@ public class SqlServerConnectorTask extends BaseSourceTask {
 
         final Configuration jdbcConfig = config.filter(x -> !(x.startsWith(DatabaseHistory.CONFIGURATION_FIELD_PREFIX_STRING) || x.equals(HistorizedRelationalDatabaseConnectorConfig.DATABASE_HISTORY.name())))
                 .subset("database.", true);
-        dataConnection = new SqlServerConnection(jdbcConfig);
-        metadataConnection = new SqlServerConnection(jdbcConfig);
+        Configuration dataConfig = jdbcConfig.edit()
+                .with("database.connection.autocommit", false)
+                .build();
+        dataConnection = new SqlServerConnection(dataConfig, ()->getClass().getClassLoader());
+        metadataConnection = new SqlServerConnection(jdbcConfig, ()->getClass().getClassLoader());
         try {
             dataConnection.setAutoCommit(false);
         }
@@ -184,10 +187,10 @@ public class SqlServerConnectorTask extends BaseSourceTask {
     }
 
     private void cleanupResources() {
-        if (!state.compareAndSet(State.RUNNING, State.STOPPED)) {
+        /*if (!state.compareAndSet(State.RUNNING, State.STOPPED)) {
             LOGGER.info("Connector has already been stopped");
             return;
-        }
+        }*/
 
         try {
             if (coordinator != null) {

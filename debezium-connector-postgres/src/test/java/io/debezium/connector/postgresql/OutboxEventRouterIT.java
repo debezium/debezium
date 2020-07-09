@@ -138,43 +138,6 @@ public class OutboxEventRouterIT extends AbstractConnectorTest {
     }
 
     @Test
-    public void shouldSendEventTypeAsHeader() throws Exception {
-        startConnectorWithInitialSnapshotRecord();
-
-        TestHelper.execute(createEventInsert(
-                UUID.fromString("59a42efd-b015-44a9-9dde-cb36d9002425"),
-                "UserCreated",
-                "User",
-                "10711fa5",
-                "{\"email\": \"gh@mefi.in\"}",
-                ""
-        ));
-
-        final Map<String, String> config = new HashMap<>();
-        config.put(
-                "table.fields.additional.placement",
-                "type:header:eventType"
-        );
-        outboxEventRouter.configure(config);
-
-        SourceRecords actualRecords = consumeRecordsByTopic(1);
-        assertThat(actualRecords.topics().size()).isEqualTo(1);
-
-        SourceRecord newEventRecord = actualRecords.recordsForTopic(topicName("outboxsmtit.outbox")).get(0);
-        SourceRecord routedEvent = outboxEventRouter.apply(newEventRecord);
-
-        assertThat(routedEvent).isNotNull();
-        assertThat(routedEvent.topic()).isEqualTo("outbox.event.user");
-
-        Object value = routedEvent.value();
-        assertThat(routedEvent.headers().lastWithName("eventType").value()).isEqualTo("UserCreated");
-        assertThat(value).isInstanceOf(String.class);
-        JsonNode payload = (new ObjectMapper()).readTree((String) value);
-        assertThat(payload.get("email").getTextValue()).isEqualTo("gh@mefi.in");
-
-    }
-
-    @Test
     public void shouldRespectJsonFormatAsString() throws Exception {
         startConnectorWithInitialSnapshotRecord();
 
@@ -239,8 +202,8 @@ public class OutboxEventRouterIT extends AbstractConnectorTest {
         // Validate metadata
         Schema expectedSchema = SchemaBuilder.struct()
                 .version(1)
-                .field("payload", Json.builder().optional().build())
                 .field("eventType", Schema.STRING_SCHEMA)
+                .field("payload", Json.builder().optional().build())
                 .field("eventVersion", Schema.INT32_SCHEMA)
                 .field("aggregateType", Schema.STRING_SCHEMA)
                 .field("someBoolType", Schema.BOOLEAN_SCHEMA)

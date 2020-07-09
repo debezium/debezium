@@ -41,7 +41,7 @@ public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R
 
     private static final Logger LOGGER = LoggerFactory.getLogger(EventRouter.class);
 
-    public static final String ENVELOPE_EVENT_TYPE = "eventType";
+    private static final String ENVELOPE_EVENT_TYPE = "eventType";
     private static final String ENVELOPE_PAYLOAD = "payload";
     private static final String RECORD_ENVELOPE_SCHEMA_NAME_SUFFIX = ".Envelope";
 
@@ -51,6 +51,7 @@ public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R
 
     private String fieldEventId;
     private String fieldEventKey;
+    private String fieldEventType;
     private String fieldEventTimestamp;
     private String fieldPayload;
     private String fieldPayloadId;
@@ -63,8 +64,6 @@ public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R
 
     private Schema defaultValueSchema;
     private final Map<Integer, Schema> versionedValueSchema = new HashMap<>();
-
-    private boolean onlyHeadersInOutputMessage = false;
 
     @Override
     public R apply(R r) {
@@ -101,31 +100,31 @@ public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R
         final R afterRecord = afterExtractor.apply(r);
         Struct eventStruct = requireStruct(afterRecord.value(), "Read Outbox Event");
         Schema eventValueSchema = afterRecord.valueSchema();
-        Schema payloadSchema = eventValueSchema.field(fieldPayload).schema();
 
         Long timestamp = fieldEventTimestamp == null
                 ? debeziumEventValue.getInt64("ts_ms")
                 : eventStruct.getInt64(fieldEventTimestamp);
 
         Object eventId = eventStruct.get(fieldEventId);
+        Object eventType = eventStruct.get(fieldEventType);
         Object payload = eventStruct.get(fieldPayload);
         Object payloadId = eventStruct.get(fieldPayloadId);
 
         Headers headers = r.headers();
         headers.add("id", eventId, eventValueSchema.field(fieldEventId).schema());
 
-        final Schema structValueSchema = onlyHeadersInOutputMessage ? null :
-            (fieldSchemaVersion == null)
+        Schema valueSchema = (fieldSchemaVersion == null)
                 ? getValueSchema(eventValueSchema)
                 : getValueSchema(eventValueSchema, eventStruct.getInt32(fieldSchemaVersion));
 
-        final Struct structValue = onlyHeadersInOutputMessage ? null :
-            new Struct(structValueSchema).put(ENVELOPE_PAYLOAD, payload);
+        Struct value = new Struct(valueSchema)
+                .put(ENVELOPE_EVENT_TYPE, eventType)
+                .put(ENVELOPE_PAYLOAD, payload);
 
         additionalFields.forEach((additionalField -> {
             switch (additionalField.getPlacement()) {
                 case ENVELOPE:
-                    structValue.put(
+                    value.put(
                             additionalField.getAlias(),
                             eventStruct.get(additionalField.getField())
                     );
@@ -140,23 +139,17 @@ public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R
             }
         }));
 
-
         boolean isDeleteEvent = payload == null || payload.toString().trim().isEmpty();
 
-        Object updatedValue;
+        Struct updatedValue;
         Schema updatedSchema;
-
         if (isDeleteEvent && routeTombstoneOnEmptyPayload) {
             updatedValue = null;
             updatedSchema = null;
         }
-        else if (onlyHeadersInOutputMessage) {
-            updatedValue = payload;
-            updatedSchema = payloadSchema;
-        }
         else {
-            updatedValue = structValue;
-            updatedSchema = structValueSchema;
+            updatedValue = value;
+            updatedSchema = valueSchema;
         }
 
         R newRecord = r.newRecord(
@@ -218,6 +211,7 @@ public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R
 
         fieldEventId = config.getString(EventRouterConfigDefinition.FIELD_EVENT_ID);
         fieldEventKey = config.getString(EventRouterConfigDefinition.FIELD_EVENT_KEY);
+        fieldEventType = config.getString(EventRouterConfigDefinition.FIELD_EVENT_TYPE);
         fieldEventTimestamp = config.getString(EventRouterConfigDefinition.FIELD_EVENT_TIMESTAMP);
         fieldPayload = config.getString(EventRouterConfigDefinition.FIELD_PAYLOAD);
         fieldPayloadId = config.getString(EventRouterConfigDefinition.FIELD_PAYLOAD_ID);
@@ -237,7 +231,6 @@ public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R
         afterExtractor.configure(afterExtractorConfig);
 
         additionalFields = parseAdditionalFieldsConfig(config);
-        onlyHeadersInOutputMessage = !additionalFields.stream().anyMatch(field -> field.getPlacement() == EventRouterConfigDefinition.AdditionalFieldPlacement.ENVELOPE);
     }
 
     private Schema getValueSchema(Schema debeziumEventSchema) {
@@ -262,8 +255,9 @@ public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R
     private SchemaBuilder getSchemaBuilder(Schema debeziumEventSchema) {
         SchemaBuilder schemaBuilder = SchemaBuilder.struct();
 
-        // Add payload field
+        // Add default fields
         schemaBuilder
+                .field(ENVELOPE_EVENT_TYPE, debeziumEventSchema.field(fieldEventType).schema())
                 .field(ENVELOPE_PAYLOAD, debeziumEventSchema.field(fieldPayload).schema());
 
         // Add additional fields while keeping the schema inherited from Debezium based on the table column type

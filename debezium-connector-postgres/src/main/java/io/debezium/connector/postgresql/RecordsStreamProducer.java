@@ -69,7 +69,7 @@ public class RecordsStreamProducer extends RecordsProducer {
     private ReplicationConnection replicationConnection;
     private final AtomicReference<ReplicationStream> replicationStream;
     private final AtomicBoolean cleanupExecuted = new AtomicBoolean();
-    private final PostgresConnection metadataConnection;
+    private PgConnection typeResolverConnection = null;
     private Long lastCompletelyProcessedLsn;
 
     /**
@@ -108,7 +108,6 @@ public class RecordsStreamProducer extends RecordsProducer {
         heartbeat = Heartbeat.create(taskContext.config().getConfig(), taskContext.topicSelector().getHeartbeatTopic(),
                 taskContext.config().getLogicalName());
         pauseNoMessage = Metronome.sleeper(taskContext.getConfig().getPollInterval(), Clock.SYSTEM);
-        metadataConnection = taskContext.createConnection();
     }
 
     // this maybe should only be used for testing?
@@ -147,7 +146,7 @@ public class RecordsStreamProducer extends RecordsProducer {
             // so we need to start a background thread that just responds to keep alive
             replicationStream.get().startKeepAlive(Threads.newSingleThreadExecutor(PostgresConnector.class, taskContext.config().getLogicalName(), CONTEXT_NAME + "-keep-alive"));
             // refresh the schema so we have a latest view of the DB tables
-            taskContext.refreshSchema(metadataConnection, true);
+            taskContext.refreshSchema(true);
             taskContext.schema().assureNonEmptySchema();
 
             this.lastCompletelyProcessedLsn = sourceInfo.lsn();
@@ -274,8 +273,8 @@ public class RecordsStreamProducer extends RecordsProducer {
         }
         finally {
             try {
-                if (metadataConnection != null) {
-                    metadataConnection.close();
+                if (typeResolverConnection != null) {
+                    typeResolverConnection.close();
                 }
             }
             catch(Exception e) {
@@ -311,7 +310,7 @@ public class RecordsStreamProducer extends RecordsProducer {
         // update the source info with the coordinates for this message
         Instant commitTime = message.getCommitTime();
         long txId = message.getTransactionId();
-        sourceInfo.update(lsn, commitTime, txId, tableId, taskContext.getSlotXmin(metadataConnection));
+        sourceInfo.update(lsn, commitTime, txId, tableId, taskContext.getSlotXmin());
         if (logger.isDebugEnabled()) {
             logger.debug("received new message at position {}\n{}", ReplicationConnection.format(lsn), message);
         }
@@ -497,13 +496,15 @@ public class RecordsStreamProducer extends RecordsProducer {
 
         // check if we need to refresh our local schema due to DB schema changes for this table
         if (refreshSchemaIfChanged && schemaChanged(columns, table, metadataInMessage)) {
-            // Refresh the schema so we get information about primary keys
-            schema().refresh(metadataConnection, tableId, taskContext.config().skipRefreshSchemaOnMissingToastableData());
-            // Update the schema with metadata coming from decoder message
-            if (metadataInMessage) {
-                schema().refresh(tableFromFromMessage(columns, schema().tableFor(tableId)));
+            try (final PostgresConnection connection = taskContext.createConnection()) {
+                // Refresh the schema so we get information about primary keys
+                schema().refresh(connection, tableId, taskContext.config().skipRefreshSchemaOnMissingToastableData());
+                // Update the schema with metadata coming from decoder message
+                if (metadataInMessage) {
+                    schema().refresh(tableFromFromMessage(columns, schema().tableFor(tableId)));
+                }
+                table = schema().tableFor(tableId);
             }
-            table = schema().tableFor(tableId);
         }
 
         // based on the schema columns, create the values on the same position as the columns
@@ -642,7 +643,9 @@ public class RecordsStreamProducer extends RecordsProducer {
         }
         // we don't have a schema registered for this table, even though the filters would allow it...
         // which means that is a newly created table; so refresh our schema to get the definition for this table
-        schema.refresh(metadataConnection, tableId, taskContext.config().skipRefreshSchemaOnMissingToastableData());
+        try (final PostgresConnection connection = taskContext.createConnection()) {
+            schema.refresh(connection, tableId, taskContext.config().skipRefreshSchemaOnMissingToastableData());
+        }
         tableSchema = schema.schemaFor(tableId);
         if (tableSchema == null) {
             logger.warn("cannot load schema for table '{}'", tableId);
@@ -654,7 +657,10 @@ public class RecordsStreamProducer extends RecordsProducer {
     }
 
     private synchronized PgConnection typeResolverConnection() throws SQLException {
-        return (PgConnection) metadataConnection.connection();
+        if (typeResolverConnection == null) {
+            typeResolverConnection = (PgConnection) taskContext.createConnection().connection();
+        }
+        return typeResolverConnection;
     }
 
     private Table tableFromFromMessage(List<ReplicationMessage.Column> columns, Table table) {

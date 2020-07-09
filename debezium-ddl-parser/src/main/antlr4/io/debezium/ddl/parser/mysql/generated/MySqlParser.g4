@@ -1888,9 +1888,12 @@ engineName
     : ARCHIVE | BLACKHOLE | CSV | FEDERATED | INNODB | MEMORY 
     | MRG_MYISAM | MYISAM | NDB | NDBCLUSTER | PERFORMANCE_SCHEMA
     | TOKUDB
-    | ID
+    | customEngineName
     | STRING_LITERAL | REVERSE_QUOTE_ID
     ;
+
+customEngineName
+    : ID;
 
 uuidSet
     : decimalLiteral '-' decimalLiteral '-' decimalLiteral

@@ -225,6 +225,15 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
                     + "When '" + SnapshotIsolationMode.SNAPSHOT.getValue() + "' is specified, connector runs the initial snapshot in SNAPSHOT isolation level, which guarantees snapshot consistency. In addition, neither table nor row-level locks are held. "
                     + "In '" + SnapshotIsolationMode.READ_UNCOMMITTED.getValue() + "' mode neither table nor row-level locks are acquired, but connector does not guarantee snapshot consistency.");
 
+    public static final Field SNAPSHOT_SKIP_LOCKS = Field.create("snapshot.skip.locks")
+            .withDisplayName("Should schema be locked as we build the schema snapshot?")
+            .withType(Type.BOOLEAN)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(false)
+            .withValidation(Field::isBoolean)
+            .withDescription("If true, locks all tables to be captured as we build the schema snapshot. This will prevent from any concurrent schema changes being applied to them.");
+
     /**
      * The set of {@link Field}s defined as part of this configuration.
      */
@@ -243,6 +252,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
             CommonConnectorConfig.MAX_QUEUE_SIZE,
             CommonConnectorConfig.SNAPSHOT_DELAY_MS,
             CommonConnectorConfig.SNAPSHOT_FETCH_SIZE,
+            SNAPSHOT_SKIP_LOCKS,
             Heartbeat.HEARTBEAT_INTERVAL, Heartbeat.HEARTBEAT_TOPICS_PREFIX,
             CommonConnectorConfig.SOURCE_STRUCT_MAKER_VERSION
     );
@@ -263,7 +273,8 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
                 CommonConnectorConfig.SOURCE_STRUCT_MAKER_VERSION
         );
         Field.group(config, "Connector", CommonConnectorConfig.POLL_INTERVAL_MS, CommonConnectorConfig.MAX_BATCH_SIZE,
-                CommonConnectorConfig.MAX_QUEUE_SIZE, CommonConnectorConfig.SNAPSHOT_DELAY_MS, CommonConnectorConfig.SNAPSHOT_FETCH_SIZE);
+                CommonConnectorConfig.MAX_QUEUE_SIZE, CommonConnectorConfig.SNAPSHOT_DELAY_MS, CommonConnectorConfig.SNAPSHOT_FETCH_SIZE,
+                SNAPSHOT_SKIP_LOCKS);
 
         return config;
     }
@@ -345,5 +356,12 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     @Override
     public String getContextName() {
         return Module.contextName();
+    }
+
+    /**
+     * @return true if lock to be obtained before building the snapshot schema
+     */
+    public boolean skipSnapshotLock() {
+        return getConfig().getBoolean(SNAPSHOT_SKIP_LOCKS);
     }
 }

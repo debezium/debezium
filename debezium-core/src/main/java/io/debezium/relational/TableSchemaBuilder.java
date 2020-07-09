@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
@@ -225,16 +226,19 @@ public class TableSchemaBuilder {
     protected Function<Object[], Struct> createValueGenerator(Schema schema, TableId tableId, List<Column> columns,
             ColumnNameFilter filter, ColumnMappers mappers) {
         if (schema != null) {
-            int[] recordIndexes = indexesForColumns(columns);
-            Field[] fields = fieldsForColumns(schema, columns);
-            int numFields = recordIndexes.length;
-            ValueConverter[] converters = convertersForColumns(schema, tableId, columns, filter, mappers);
+            List<Column> columnsThatShouldBeAdded = columns.stream()
+                    .filter(column -> filter == null || filter.matches(tableId.catalog(), tableId.schema(), tableId.table(), column.name()))
+                    .collect(Collectors.toList());
+            int[] recordIndexes = indexesForColumns(columnsThatShouldBeAdded);
+            Field[] fields = fieldsForColumns(schema, columnsThatShouldBeAdded);
+            int numFields = columnsThatShouldBeAdded.size();
+            ValueConverter[] converters = convertersForColumns(schema, tableId, columnsThatShouldBeAdded, filter, mappers);
             return (row) -> {
                 Struct result = new Struct(schema);
                 for (int i = 0; i != numFields; ++i) {
-                    validateIncomingRowToInternalMetadata(recordIndexes, fields, converters, row, i);
-                    Object value = row[recordIndexes[i]];
-
+                    //validateIncomingRowToInternalMetadata(recordIndexes, fields, converters, row, i);
+                    //Object value = row[recordIndexes[i]];
+                    Object value = row[i];
                     ValueConverter converter = converters[i];
 
                     if (converter != null) {
@@ -303,10 +307,6 @@ public class TableSchemaBuilder {
 
         for (int i = 0; i < columns.size(); i++) {
             Column column = columns.get(i);
-
-            if (filter != null && !filter.matches(tableId.catalog(), tableId.schema(), tableId.table(), column.name())) {
-                continue;
-            }
 
             ValueConverter converter = createValueConverterFor(column, schema.field(column.name()));
             converter = wrapInMappingConverterIfNeeded(mappers, tableId, column, converter);

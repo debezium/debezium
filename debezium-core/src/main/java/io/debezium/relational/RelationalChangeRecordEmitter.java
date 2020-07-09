@@ -5,8 +5,10 @@
  */
 package io.debezium.relational;
 
+import java.time.Instant;
 import java.util.Objects;
 
+import io.debezium.data.Envelope;
 import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.data.Envelope.Operation;
@@ -63,7 +65,8 @@ public abstract class RelationalChangeRecordEmitter implements ChangeRecordEmitt
         Object[] newColumnValues = getNewColumnValues();
         Object newKey = tableSchema.keyFromColumnData(newColumnValues);
         Struct newValue = tableSchema.valueFromColumnData(newColumnValues);
-        Struct envelope = tableSchema.getEnvelopeSchema().create(newValue, offsetContext.getSourceInfo(), clock.currentTimeInMillis());
+        long timestamp = getTimestampFrom(offsetContext);
+        Struct envelope = tableSchema.getEnvelopeSchema().create(newValue, offsetContext.getSourceInfo(), timestamp);
 
         receiver.changeRecord(tableSchema, Operation.CREATE, newKey, envelope, offsetContext);
     }
@@ -73,7 +76,8 @@ public abstract class RelationalChangeRecordEmitter implements ChangeRecordEmitt
         Object[] newColumnValues = getNewColumnValues();
         Object newKey = tableSchema.keyFromColumnData(newColumnValues);
         Struct newValue = tableSchema.valueFromColumnData(newColumnValues);
-        Struct envelope = tableSchema.getEnvelopeSchema().read(newValue, offsetContext.getSourceInfo(), clock.currentTimeInMillis());
+        long timestamp = getTimestampFrom(offsetContext);
+        Struct envelope = tableSchema.getEnvelopeSchema().read(newValue, offsetContext.getSourceInfo(), timestamp);
 
         receiver.changeRecord(tableSchema, Operation.READ, newKey, envelope, offsetContext);
     }
@@ -88,18 +92,18 @@ public abstract class RelationalChangeRecordEmitter implements ChangeRecordEmitt
 
         Struct newValue = tableSchema.valueFromColumnData(newColumnValues);
         Struct oldValue = tableSchema.valueFromColumnData(oldColumnValues);
-
+        long timestamp = getTimestampFrom(offsetContext);
         // regular update
         if (Objects.equals(oldKey, newKey)) {
-            Struct envelope = tableSchema.getEnvelopeSchema().update(oldValue, newValue, offsetContext.getSourceInfo(), clock.currentTimeInMillis());
+            Struct envelope = tableSchema.getEnvelopeSchema().update(oldValue, newValue, offsetContext.getSourceInfo(), timestamp);
             receiver.changeRecord(tableSchema, Operation.UPDATE, newKey, envelope, offsetContext);
         }
         // PK update -> emit as delete and re-insert with new key
         else {
-            Struct envelope = tableSchema.getEnvelopeSchema().delete(oldValue, offsetContext.getSourceInfo(), clock.currentTimeInMillis());
+            Struct envelope = tableSchema.getEnvelopeSchema().delete(oldValue, offsetContext.getSourceInfo(), timestamp);
             receiver.changeRecord(tableSchema, Operation.DELETE, oldKey, envelope, offsetContext);
 
-            envelope = tableSchema.getEnvelopeSchema().create(newValue, offsetContext.getSourceInfo(), clock.currentTimeInMillis());
+            envelope = tableSchema.getEnvelopeSchema().create(newValue, offsetContext.getSourceInfo(), timestamp);
             receiver.changeRecord(tableSchema, Operation.CREATE, newKey, envelope, offsetContext);
         }
     }
@@ -108,8 +112,8 @@ public abstract class RelationalChangeRecordEmitter implements ChangeRecordEmitt
         Object[] oldColumnValues = getOldColumnValues();
         Object oldKey = tableSchema.keyFromColumnData(oldColumnValues);
         Struct oldValue = tableSchema.valueFromColumnData(oldColumnValues);
-
-        Struct envelope = tableSchema.getEnvelopeSchema().delete(oldValue, offsetContext.getSourceInfo(), clock.currentTimeInMillis());
+        long timestamp = getTimestampFrom(offsetContext);
+        Struct envelope = tableSchema.getEnvelopeSchema().delete(oldValue, offsetContext.getSourceInfo(), timestamp);
         receiver.changeRecord(tableSchema, Operation.DELETE, oldKey, envelope, offsetContext);
     }
 
@@ -127,4 +131,16 @@ public abstract class RelationalChangeRecordEmitter implements ChangeRecordEmitt
      * Returns the new row state in case of a CREATE or READ.
      */
     protected abstract Object[] getNewColumnValues();
+
+    protected long getTimestampFrom(OffsetContext offsetContext){
+        long timestamp = clock.currentTimeInMillis();
+        Object timeObj = offsetContext.getSourceInfo().get(Envelope.FieldName.TIMESTAMP);
+        if (timeObj != null && timeObj instanceof  Long) {
+            timestamp = (Long) timeObj;
+        } else if (timeObj != null && timeObj instanceof  Instant){
+            Instant instant = (Instant) offsetContext.getSourceInfo().get(Envelope.FieldName.TIMESTAMP);
+            timestamp = instant.toEpochMilli();
+        }
+        return timestamp;
+    }
 }
