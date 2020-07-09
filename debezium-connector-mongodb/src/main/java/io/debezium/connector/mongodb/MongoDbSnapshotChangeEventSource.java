@@ -500,7 +500,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
         private final List<ReplicaSet> replicaSetsToSnapshot;
 
         public MongoDbSnapshottingTask(List<ReplicaSet> replicaSetsToSnapshot) {
-            super(false, !replicaSetsToSnapshot.isEmpty());
+            super(false, !replicaSetsToSnapshot.isEmpty(), false);
             this.replicaSetsToSnapshot = replicaSetsToSnapshot;
         }
 

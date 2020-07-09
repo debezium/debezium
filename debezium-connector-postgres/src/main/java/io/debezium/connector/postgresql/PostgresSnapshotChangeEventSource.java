@@ -71,7 +71,7 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
             snapshotSchema = false;
         }
 
-        return new SnapshottingTask(snapshotSchema, snapshotData);
+        return new SnapshottingTask(snapshotSchema, snapshotData, false);
     }
 
     @Override

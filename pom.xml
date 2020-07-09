@@ -74,7 +74,8 @@
         <version.mongo.server>3.6</version.mongo.server>
         <version.mongo.driver>3.12.3</version.mongo.driver>
         <version.sqlserver.driver>7.2.2.jre8</version.sqlserver.driver>
-
+        <!-- todo: DBZ-137 this should likely be moved to incubator repository? -->
+		<version.oracle.driver>12.2.0.1</version.oracle.driver>
         <!-- Connectors -->
         <version.com.google.protobuf>3.8.0</version.com.google.protobuf>
 

@@ -150,10 +150,12 @@ public abstract class AbstractSnapshotChangeEventSource implements SnapshotChang
 
         private final boolean snapshotSchema;
         private final boolean snapshotData;
+        private final boolean skipSnapshotLocking;
 
-        public SnapshottingTask(boolean snapshotSchema, boolean snapshotData) {
+        public SnapshottingTask(boolean snapshotSchema, boolean snapshotData, boolean skipSnapshotLocking) {
             this.snapshotSchema = snapshotSchema;
             this.snapshotData = snapshotData;
+            this.skipSnapshotLocking = skipSnapshotLocking;
         }
 
         /**
@@ -180,9 +182,16 @@ public abstract class AbstractSnapshotChangeEventSource implements SnapshotChang
             return !snapshotSchema() && !snapshotData();
         }
 
+        /**
+         * @return true if locking to be skipped before building the snapshot schema
+         */
+        public boolean skipSnapshotLocking() {
+            return skipSnapshotLocking;
+        }
+
         @Override
         public String toString() {
-            return "SnapshottingTask [snapshotSchema=" + snapshotSchema + ", snapshotData=" + snapshotData + "]";
+            return "SnapshottingTask [snapshotSchema=" + snapshotSchema + ", snapshotData=" + snapshotData + ", skipSnapshotLocking=" + skipSnapshotLocking + "]";
         }
     }
 }

@@ -5,6 +5,7 @@
  */
 package io.debezium.relational;
 
+import java.time.Instant;
 import java.util.Objects;
 
 import org.apache.kafka.connect.data.Struct;
@@ -12,6 +13,7 @@ import org.apache.kafka.connect.header.ConnectHeaders;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.data.Envelope;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.pipeline.AbstractChangeRecordEmitter;
 import io.debezium.pipeline.spi.ChangeRecordEmitter;
@@ -64,7 +66,8 @@ public abstract class RelationalChangeRecordEmitter extends AbstractChangeRecord
         Object[] newColumnValues = getNewColumnValues();
         Object newKey = tableSchema.keyFromColumnData(newColumnValues);
         Struct newValue = tableSchema.valueFromColumnData(newColumnValues);
-        Struct envelope = tableSchema.getEnvelopeSchema().create(newValue, getOffset().getSourceInfo(), getClock().currentTimeAsInstant());
+        Instant instant = getInstantFrom(getOffset());
+        Struct envelope = tableSchema.getEnvelopeSchema().create(newValue, getOffset().getSourceInfo(), instant);
 
         if (skipEmptyMessages() && (newColumnValues == null || newColumnValues.length == 0)) {
             // This case can be hit on UPDATE / DELETE when there's no primary key defined while using certain decoders
@@ -80,7 +83,8 @@ public abstract class RelationalChangeRecordEmitter extends AbstractChangeRecord
         Object[] newColumnValues = getNewColumnValues();
         Object newKey = tableSchema.keyFromColumnData(newColumnValues);
         Struct newValue = tableSchema.valueFromColumnData(newColumnValues);
-        Struct envelope = tableSchema.getEnvelopeSchema().read(newValue, getOffset().getSourceInfo(), getClock().currentTimeAsInstant());
+        Instant instant = getInstantFrom(getOffset());
+        Struct envelope = tableSchema.getEnvelopeSchema().read(newValue, getOffset().getSourceInfo(), instant);
 
         receiver.changeRecord(tableSchema, Operation.READ, newKey, envelope, getOffset(), null);
     }
@@ -96,6 +100,7 @@ public abstract class RelationalChangeRecordEmitter extends AbstractChangeRecord
 
         Struct newValue = tableSchema.valueFromColumnData(newColumnValues);
         Struct oldValue = tableSchema.valueFromColumnData(oldColumnValues);
+        Instant instant = getInstantFrom(getOffset());
 
         if (skipEmptyMessages() && (newColumnValues == null || newColumnValues.length == 0)) {
             logger.warn("no new values found for table '{}' from update message at '{}'; skipping record", tableSchema, getOffset().getSourceInfo());
@@ -104,7 +109,7 @@ public abstract class RelationalChangeRecordEmitter extends AbstractChangeRecord
         // some configurations does not provide old values in case of updates
         // in this case we handle all updates as regular ones
         if (oldKey == null || Objects.equals(oldKey, newKey)) {
-            Struct envelope = tableSchema.getEnvelopeSchema().update(oldValue, newValue, getOffset().getSourceInfo(), getClock().currentTimeAsInstant());
+            Struct envelope = tableSchema.getEnvelopeSchema().update(oldValue, newValue, getOffset().getSourceInfo(), instant);
             receiver.changeRecord(tableSchema, Operation.UPDATE, newKey, envelope, getOffset(), null);
         }
         // PK update -> emit as delete and re-insert with new key
@@ -112,13 +117,13 @@ public abstract class RelationalChangeRecordEmitter extends AbstractChangeRecord
             ConnectHeaders headers = new ConnectHeaders();
             headers.add(PK_UPDATE_NEWKEY_FIELD, newKey, tableSchema.keySchema());
 
-            Struct envelope = tableSchema.getEnvelopeSchema().delete(oldValue, getOffset().getSourceInfo(), getClock().currentTimeAsInstant());
+            Struct envelope = tableSchema.getEnvelopeSchema().delete(oldValue, getOffset().getSourceInfo(), instant);
             receiver.changeRecord(tableSchema, Operation.DELETE, oldKey, envelope, getOffset(), headers);
 
             headers = new ConnectHeaders();
             headers.add(PK_UPDATE_OLDKEY_FIELD, oldKey, tableSchema.keySchema());
 
-            envelope = tableSchema.getEnvelopeSchema().create(newValue, getOffset().getSourceInfo(), getClock().currentTimeAsInstant());
+            envelope = tableSchema.getEnvelopeSchema().create(newValue, getOffset().getSourceInfo(), instant);
             receiver.changeRecord(tableSchema, Operation.CREATE, newKey, envelope, getOffset(), headers);
         }
     }
@@ -134,7 +139,8 @@ public abstract class RelationalChangeRecordEmitter extends AbstractChangeRecord
             return;
         }
 
-        Struct envelope = tableSchema.getEnvelopeSchema().delete(oldValue, getOffset().getSourceInfo(), getClock().currentTimeAsInstant());
+        Instant instant = getInstantFrom(getOffset());
+        Struct envelope = tableSchema.getEnvelopeSchema().delete(oldValue, getOffset().getSourceInfo(), instant);
         receiver.changeRecord(tableSchema, Operation.DELETE, oldKey, envelope, getOffset(), null);
     }
 
@@ -161,5 +167,17 @@ public abstract class RelationalChangeRecordEmitter extends AbstractChangeRecord
      */
     protected boolean skipEmptyMessages() {
         return false;
+    }
+
+    protected Instant getInstantFrom(OffsetContext offsetContext) {
+        Instant result = getClock().currentTimeAsInstant();
+        Object timeObj = offsetContext.getSourceInfo().get(Envelope.FieldName.TIMESTAMP);
+        if (timeObj != null && timeObj instanceof Long) {
+            result = Instant.ofEpochMilli((Long) timeObj);
+        }
+        else if (timeObj != null && timeObj instanceof Instant) {
+            result = (Instant) timeObj;
+        }
+        return result;
     }
 }
