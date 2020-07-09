@@ -92,7 +92,7 @@ ifdef::product[]
 endif::product[]
 
 ifdef::community[]
-. Install the Avro converter from link:https://repo1.maven.org/maven2/io/apicurio/apicurio-registry-distro-connect-converter/{apicurio-version}/apicurio-registry-distro-connect-converter-{apicurio-version}-converter.tar.gz[the installation package] into Kafka Connect's _libs_ directory or directly into a plug-in directory.
+. Install the Avro converter from link:https://repo1.maven.org/maven2/io/apicurio/apicurio-registry-distro-connect-converter/{apicurio-version}/apicurio-registry-distro-connect-converter-{apicurio-version}-converter.tar.gz[the installation package] into a plug-in directory. This is not needed when using the link:https://hub.docker.com/r/debezium/connect[Debezium Connect container image], see details in <<deploying-with-debezium-containers>>.
 endif::community[]
 ifdef::product[]
 . Install the Avro converter by downloading the {prodname} link:https://access.redhat.com/jbossnetwork/restricted/listSoftware.html?product=red.hat.integration&downloadType=distributions[Service Registry Kafka Connect] zip file and extracting it into the {prodname} connector's directory.
@@ -104,10 +104,10 @@ endif::product[]
 ----
 key.converter=io.apicurio.registry.utils.converter.AvroConverter
 key.converter.apicurio.registry.url=http://apicurio:8080/api
-key.converter.apicurio.registry.global-id=io.apicurio.registry.utils.serde.strategy.AutoRegisterIdStrategy
+key.converter.apicurio.registry.global-id=io.apicurio.registry.utils.serde.strategy.GetOrCreateIdStrategy
 value.converter=io.apicurio.registry.utils.converter.AvroConverter
 value.converter.apicurio.registry.url=http://apicurio:8080/api
-value.converter.apicurio.registry.global-id=io.apicurio.registry.utils.serde.strategy.AutoRegisterIdStrategy
+value.converter.apicurio.registry.global-id=io.apicurio.registry.utils.serde.strategy.GetOrCreateIdStrategy
 ----
 
 Internally, Kafka Connect always uses JSON key/value converters for storing configuration and offsets.
@@ -115,13 +115,18 @@ Internally, Kafka Connect always uses JSON key/value converters for storing conf
 // Type: procedure
 // Title: Deploying connectors that use Avro in {prodname} containers
 // ModuleID: deploying-connectors-that-use-avro-in-debezium-containers
+[id="deploying-with-debezium-containers"]
 == Deploying with {prodname} containers
-
-In your environment, you might want to use a provided {prodname} container to deploy {prodname} connectors that use Avro serializaion. Follow the procedure here to do that. In this procedure, you build a custom Kafka Connect container image for {prodname}, and you configure the {prodname} connector to use the Avro converter. 
+ifdef::community[]
+In your environment, you might want to use a provided {prodname} container image to deploy {prodname} connectors that use Avro serialization. Follow the procedure here to do that. In this procedure, you enable Apicurio converters on the {prodname} Kafka Connect container image, and configure the {prodname} connector to use the Avro converter.
+endif::community[]
+ifdef::product[]
+In your environment, you might want to use a provided {prodname} container to deploy {prodname} connectors that use Avro serialization. Follow the procedure here to do that. In this procedure, you build a custom Kafka Connect container image for {prodname}, and you configure the {prodname} connector to use the Avro converter.
+endif::product[]
 
 .Prerequisites
 
-* You have the cluster administrator access to an OpenShift cluster.
+* You have Docker installed and sufficient rights to create and manage containers.
 * You downloaded the {prodname} connector plug-in(s) that you want to deploy with Avro serialization.
 
 .Procedure
@@ -137,29 +142,7 @@ docker run -it --rm --name apicurio \
     -p 8080:8080 apicurio/apicurio-registry-mem:{apicurio-version}
 ----
 
-. Build a {prodname} container image that contains the Avro converter:
-+
-.. Copy link:https://github.com/debezium/debezium-examples/blob/master/tutorial/debezium-with-apicurio/Dockerfile[`Dockerfile`] to a convenient location. This file has the following content: 
-+
-[listing,subs="attributes+",options="nowrap"]
-----
-ARG DEBEZIUM_VERSION
-FROM debezium/connect:$DEBEZIUM_VERSION
-ENV KAFKA_CONNECT_DEBEZIUM_DIR=$KAFKA_CONNECT_PLUGINS_DIR/debezium-connector-mysql
-ENV APICURIO_VERSION={apicurio-version}
-
-RUN cd $KAFKA_CONNECT_DEBEZIUM_DIR &&\
-    curl https://repo1.maven.org/maven2/io/apicurio/apicurio-registry-distro-connect-converter/$APICURIO_VERSION/apicurio-registry-distro-connect-converter-$APICURIO_VERSION-converter.tar.gz | tar xzv
-----
-
-.. Run the following command: 
-+
-[source,subs="attributes+"]
-----
-docker build --build-arg DEBEZIUM_VERSION={debezium-docker-label} -t debezium/connect-apicurio:{debezium-docker-label} .
-----
-
-. Run the newly built Kafka Connect image, configuring it so it uses the Avro converter:
+. Run the {prodname} container image for Kafka Connect, configuring it to provide the Avro converter by enabling Apicurio via `ENABLE_APICURIO_CONVERTERS=true` environment variable:
 +
 [source,subs="attributes+"]
 ----
@@ -168,6 +151,7 @@ docker run -it --rm --name connect \
     --link kafka:kafka \
     --link mysql:mysql \
     --link apicurio:apicurio \
+    -e ENABLE_APICURIO_CONVERTERS=true \
     -e GROUP_ID=1 \
     -e CONFIG_STORAGE_TOPIC=my_connect_configs \
     -e OFFSET_STORAGE_TOPIC=my_connect_offsets \
@@ -175,11 +159,11 @@ docker run -it --rm --name connect \
     -e VALUE_CONVERTER=io.apicurio.registry.utils.converter.AvroConverter \
     -e CONNECT_KEY_CONVERTER=io.apicurio.registry.utils.converter.AvroConverter \
     -e CONNECT_KEY_CONVERTER_APICURIO.REGISTRY_URL=http://apicurio:8080 \
-    -e CONNECT_KEY_CONVERTER_APICURIO.REGISTRY_GLOBAL-ID=io.apicurio.registry.utils.serde.strategy.AutoRegisterIdStrategy \
+    -e CONNECT_KEY_CONVERTER_APICURIO.REGISTRY_GLOBAL-ID=io.apicurio.registry.utils.serde.strategy.GetOrCreateIdStrategy \
     -e CONNECT_VALUE_CONVERTER=io.apicurio.registry.utils.converter.AvroConverter \
     -e CONNECT_VALUE_CONVERTER_APICURIO_REGISTRY_URL=http://apicurio:8080 \
-    -e CONNECT_VALUE_CONVERTER_APICURIO_REGISTRY_GLOBAL-ID=io.apicurio.registry.utils.serde.strategy.AutoRegisterIdStrategy \
-    -p 8083:8083 debezium/connect-apicurio:{debezium-docker-label}
+    -e CONNECT_VALUE_CONVERTER_APICURIO_REGISTRY_GLOBAL-ID=io.apicurio.registry.utils.serde.strategy.GetOrCreateIdStrategy \
+    -p 8083:8083 debezium/connect:{debezium-docker-label}
 ----
 endif::community[]
 
@@ -190,7 +174,7 @@ ifdef::product[]
 * Setting up AMQ Streams storage
 * Installing {registry}
 
-. Extract the {prodname} connector archive(s) to create a directory structure for the connector plug-in(s). If you downloaded and extracted the archive for each {prodname} connector, the structure looks like this: 
+. Extract the {prodname} connector archive(s) to create a directory structure for the connector plug-in(s). If you downloaded and extracted the archive for each {prodname} connector, the structure looks like this:
 +
 [subs=+macros]
 ----
@@ -206,15 +190,15 @@ pass:quotes[*tree ./my-plugins/*]
     ├── ...
 ----
 
-. Add the Avro converter to the directory that contains the {prodname} connector that you want to configure to use Avro serialization: 
+. Add the Avro converter to the directory that contains the {prodname} connector that you want to configure to use Avro serialization:
 
-.. Go to the link:{DebeziumDownload} and download the {registry} Kafka Connect zip file. 
-.. Extract the archive into the desired {prodname} connector directory. 
+.. Go to the link:{DebeziumDownload} and download the {registry} Kafka Connect zip file.
+.. Extract the archive into the desired {prodname} connector directory.
 
 +
-To configure more than one type of {prodname} connector to use Avro serialization, extract the archive into the directory for each relevant connector type. While this duplicates the files, it removes the possibility of conflicting dependencies. 
+To configure more than one type of {prodname} connector to use Avro serialization, extract the archive into the directory for each relevant connector type. While this duplicates the files, it removes the possibility of conflicting dependencies.
 
-. Create and publish a custom image for running {prodname} connectors that are configured to use the Avro converter: 
+. Create and publish a custom image for running {prodname} connectors that are configured to use the Avro converter:
 
 .. Create a new `Dockerfile` by using `{DockerKafkaConnect}` as the base image. In the following example, you would replace _my-plugins_ with the name of your plug-ins directory:
 +
@@ -226,19 +210,19 @@ pass:quotes[COPY _./my-plugins/_ /opt/kafka/plugins/]
 USER 1001
 ----
 +
-Before Kafka Connect starts running the connector, Kafka Connect loads any third-party plug-ins that are in the `/opt/kafka/plugins` directory. 
+Before Kafka Connect starts running the connector, Kafka Connect loads any third-party plug-ins that are in the `/opt/kafka/plugins` directory.
 
-.. Build the docker container image. For example, if you saved the docker file that you created in the previous step as `debezium-container-with-avro`, then you would run the following command: 
+.. Build the docker container image. For example, if you saved the docker file that you created in the previous step as `debezium-container-with-avro`, then you would run the following command:
 +
 `docker build -t debezium-container-with-avro:latest`
 
-.. Push your custom image to your container registry, for example: 
+.. Push your custom image to your container registry, for example:
 +
 `docker push debezium-container-with-avro:latest`
 
-.. Point to the new container image. Do one of the following: 
+.. Point to the new container image. Do one of the following:
 +
-* Edit the `KafkaConnect.spec.image` property of the `KafkaConnect` custom resource. If set, this property overrides the `STRIMZI_DEFAULT_KAFKA_CONNECT_IMAGE` variable in the Cluster Operator. For example: 
+* Edit the `KafkaConnect.spec.image` property of the `KafkaConnect` custom resource. If set, this property overrides the `STRIMZI_DEFAULT_KAFKA_CONNECT_IMAGE` variable in the Cluster Operator. For example:
 +
 [source,yaml,subs=attributes+]
 ----
@@ -280,10 +264,10 @@ spec:
     database.history.kafka.topic: schema-changes.inventory  
     key.converter: io.apicurio.registry.utils.converter.AvroConverter
     key.converter.apicurio.registry.url: http://apicurio:8080/api
-    key.converter.apicurio.registry.global-id: io.apicurio.registry.utils.serde.strategy.AutoRegisterIdStrategy
+    key.converter.apicurio.registry.global-id: io.apicurio.registry.utils.serde.strategy.GetOrCreateIdStrategy
     value.converter: io.apicurio.registry.utils.converter.AvroConverter
     value.converter.apicurio.registry.url: http://apicurio:8080/api
-    value.converter.apicurio.registry.global-id: io.apicurio.registry.utils.serde.strategy.AutoRegisterIdStrategy
+    value.converter.apicurio.registry.global-id: io.apicurio.registry.utils.serde.strategy.GetOrCreateIdStrategy
 ----
    
 .. Apply the connector instance, for example: 
@@ -341,21 +325,6 @@ INFO: Connected to mysql:3306 at mysql-bin.000003/154 (sid:184054, cid:5)
 ...
 ----
 endif::product[]
-
-// Type: concept
-// Title: About Avro name requirements
-// ModuleID: about-avro-name-requirements
-[[avro-naming]]
-== Naming
-
-As stated in the Avro link:https://avro.apache.org/docs/current/spec.html#names[documentation], names must adhere to the following rules:
-
-* Start with `[A-Za-z_]`
-* Subsequently contains only `[A-Za-z0-9_]` characters
-
-{prodname} uses the column's name as the basis for the corresponding Avro field.
-This can lead to problems during serialization if the column name does not also adhere to the Avro naming rules.
-Each {prodname} connector provides a configuration property, `sanitize.field.names` that you can set to `true` if you have columns that do not adhere to Avro rules for names. Setting `sanitize.field.names` to `true` allows serialization of non-conformant fields without having to actually modify your schema.
 
 ifdef::community[]
 [id="confluent-schema-registry"]
@@ -420,8 +389,26 @@ docker run -it --rm --name avro-consumer \
       --formatter io.confluent.kafka.formatter.AvroMessageFormatter \
       --property schema.registry.url=http://schema-registry:8081 \
       --topic db.myschema.mytable
-----
 
+----
+endif::community[]
+
+// Type: concept
+// Title: About Avro name requirements
+// ModuleID: about-avro-name-requirements
+[[avro-naming]]
+== Naming
+
+As stated in the Avro link:https://avro.apache.org/docs/current/spec.html#names[documentation], names must adhere to the following rules:
+
+* Start with `[A-Za-z_]`
+* Subsequently contains only `[A-Za-z0-9_]` characters
+
+{prodname} uses the column's name as the basis for the corresponding Avro field.
+This can lead to problems during serialization if the column name does not also adhere to the Avro naming rules.
+Each {prodname} connector provides a configuration property, `sanitize.field.names` that you can set to `true` if you have columns that do not adhere to Avro rules for names. Setting `sanitize.field.names` to `true` allows serialization of non-conformant fields without having to actually modify your schema.
+
+ifdef::community[]
 == Getting More Information
 
 link:/blog/2016/09/19/Serializing-Debezium-events-with-Avro/[This post] from the {prodname} blog
