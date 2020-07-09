@@ -74,6 +74,12 @@ Then the Oracle connector can be built like so:
 
     $ mvn clean install -pl debezium-connector-oracle -am -Poracle -Dinstantclient.dir=/path/to/instant-client-dir
 
+#### Oracle Log Miner
+
+If the connector is to be built and tested using the Oracle Log Miner implementation, it can be built like so:
+
+    $ mvn clean install -pl debezium-connector-oracle -am -Poracle,logminer -Dinstantclient.dir=/home/to/instant-client-dir
+
 #### For Oracle 11g
 
 To run Debezium Oracle connector with Oracle 11g, add these additional parameters. If running with Oracle 12c+, leave these parameters to default.

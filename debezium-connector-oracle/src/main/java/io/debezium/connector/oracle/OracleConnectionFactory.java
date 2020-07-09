@@ -22,7 +22,9 @@ public class OracleConnectionFactory implements ConnectionFactory {
         String user = config.getUser();
         String password = config.getPassword();
 
-        return DriverManager.getConnection(
-                "jdbc:oracle:oci:@" + hostName + ":" + port + "/" + database, user, password);
+        String driverType = config.getString(OracleConnectorConfig.DRIVER_TYPE);
+        final String url = "jdbc:oracle:" + driverType + ":@" + hostName + ":" + port + "/" + database;
+
+        return DriverManager.getConnection(url, user, password);
     }
 }

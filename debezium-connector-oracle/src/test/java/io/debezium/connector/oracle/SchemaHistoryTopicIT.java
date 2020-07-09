@@ -47,11 +47,11 @@ public class SchemaHistoryTopicIT extends AbstractConnectorTest {
                 "CREATE TABLE debezium.tableb (id numeric(9,0) not null, colb varchar2(30), primary key(id))",
                 "CREATE TABLE debezium.tablec (id numeric(9,0) not null, colc varchar2(30), primary key(id))");
 
-        connection.execute("GRANT SELECT ON debezium.tablea to  " + TestHelper.CONNECTOR_USER);
+        connection.execute("GRANT SELECT ON debezium.tablea to  " + TestHelper.getConnectorUserName());
         connection.execute("ALTER TABLE debezium.tablea ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
-        connection.execute("GRANT SELECT ON debezium.tableb to  " + TestHelper.CONNECTOR_USER);
+        connection.execute("GRANT SELECT ON debezium.tableb to  " + TestHelper.getConnectorUserName());
         connection.execute("ALTER TABLE debezium.tableb ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
-        connection.execute("GRANT SELECT ON debezium.tablec to  " + TestHelper.CONNECTOR_USER);
+        connection.execute("GRANT SELECT ON debezium.tablec to  " + TestHelper.getConnectorUserName());
         connection.execute("ALTER TABLE debezium.tablec ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
 
         initializeConnectorTestFramework();

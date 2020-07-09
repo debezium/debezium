@@ -17,10 +17,14 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestRule;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.OracleConnectorConfig.SnapshotMode;
+import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
+import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIs;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.VerifyRecord;
 import io.debezium.embedded.AbstractConnectorTest;
@@ -35,6 +39,9 @@ import io.debezium.util.Testing;
 public class TransactionMetadataIT extends AbstractConnectorTest {
 
     private static OracleConnection connection;
+
+    @Rule
+    public TestRule skipRule = new SkipTestDependingOnAdapterNameRule();
 
     @BeforeClass
     public static void beforeClass() throws SQLException {
@@ -51,7 +58,7 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
                 ")";
 
         connection.execute(ddl);
-        connection.execute("GRANT SELECT ON debezium.customer to  " + TestHelper.CONNECTOR_USER);
+        connection.execute("GRANT SELECT ON debezium.customer to  " + TestHelper.getConnectorUserName());
         connection.execute("ALTER TABLE debezium.customer ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
     }
 
@@ -71,6 +78,7 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
     }
 
     @Test
+    @SkipWhenAdapterNameIs(value = SkipWhenAdapterNameIs.AdapterName.LOGMINER, reason = "End transaction is not emitted")
     public void transactionMetadata() throws Exception {
         Configuration config = TestHelper.defaultConfig()
                 .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.CUSTOMER")

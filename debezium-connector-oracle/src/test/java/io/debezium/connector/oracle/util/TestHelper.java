@@ -26,6 +26,7 @@ public class TestHelper {
     public static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-connect.txt").toAbsolutePath();
 
     public static final String CONNECTOR_USER = "c##xstrm";
+    public static final String CONNECTOR_USER_LOGMINER = "c##dbzuser";
 
     public static final String CONNECTOR_NAME = "oracle";
 
@@ -46,13 +47,36 @@ public class TestHelper {
      */
     public static final String TYPE_SCALE_PARAMETER_KEY = "__debezium.source.column.scale";
 
+    // todo: unify logminer and xstream user accounts
+    public static final String CONNECTOR_USER_PASS = "xs";
+    public static final String CONNECTOR_USER_PASS_LOGMINER = "dbz";
+    public static final String HOST = "localhost";
+    public static final String SCHEMA_USER = "debezium";
+    public static final String SCHEMA_PASS = "dbz";
+    public static final String DATABASE = "ORCLPDB1";
+    public static final String DATABASE_CDB = "ORCLCDB";
+
+    public static String getConnectorUserName() {
+        if (TestHelper.adapter().equals(OracleConnectorConfig.ConnectorAdapter.LOG_MINER)) {
+            return CONNECTOR_USER_LOGMINER;
+        }
+        return CONNECTOR_USER;
+    }
+
+    public static String getConnectorUserPassword() {
+        if (TestHelper.adapter().equals(OracleConnectorConfig.ConnectorAdapter.LOG_MINER)) {
+            return CONNECTOR_USER_PASS_LOGMINER;
+        }
+        return CONNECTOR_USER_PASS;
+    }
+
     private static JdbcConfiguration defaultJdbcConfig() {
         return JdbcConfiguration.copy(Configuration.fromSystemProperties("database."))
-                .withDefault(JdbcConfiguration.HOSTNAME, "localhost")
+                .withDefault(JdbcConfiguration.HOSTNAME, HOST)
                 .withDefault(JdbcConfiguration.PORT, 1521)
-                .withDefault(JdbcConfiguration.USER, CONNECTOR_USER)
-                .withDefault(JdbcConfiguration.PASSWORD, "xs")
-                .withDefault(JdbcConfiguration.DATABASE, "ORCLCDB")
+                .withDefault(JdbcConfiguration.USER, getConnectorUserName())
+                .withDefault(JdbcConfiguration.PASSWORD, getConnectorUserPassword())
+                .withDefault(JdbcConfiguration.DATABASE, DATABASE_CDB)
                 .build();
     }
 
@@ -71,6 +95,7 @@ public class TestHelper {
                 .with(OracleConnectorConfig.PDB_NAME, "ORCLPDB1")
                 .with(OracleConnectorConfig.XSTREAM_SERVER_NAME, "dbzxout")
                 .with(OracleConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
+                .with(OracleConnectorConfig.SCHEMA_NAME, SCHEMA_USER)
                 .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
                 .with(OracleConnectorConfig.INCLUDE_SCHEMA_CHANGES, false);
     }
@@ -79,7 +104,7 @@ public class TestHelper {
         Configuration config = defaultConfig().build();
         Configuration jdbcConfig = config.subset("database.", true);
 
-        OracleConnection jdbcConnection = new OracleConnection(jdbcConfig, new OracleConnectionFactory());
+        OracleConnection jdbcConnection = new OracleConnection(jdbcConfig, new OracleConnectionFactory(), TestHelper.class::getClassLoader);
 
         String pdbName = new OracleConnectorConfig(config).getPdbName();
 
@@ -91,15 +116,28 @@ public class TestHelper {
     }
 
     /**
+     * Database level connection.
+     * this is PDB level connector with LogMiner adapter
+     * @return OracleConnection
+     */
+    public static OracleConnection logMinerPdbConnection() {
+        Configuration jdbcConfig = testJdbcConfig().edit()
+                .with(OracleConnectorConfig.CONNECTOR_ADAPTER, "LogMiner")
+                .with(OracleConnectorConfig.DRIVER_TYPE, "thin")
+                .build();
+        return new OracleConnection(jdbcConfig, new OracleConnectionFactory(), TestHelper.class::getClassLoader);
+    }
+
+    /**
      * Returns a JDBC configuration for the test data schema and user (NOT the XStream user).
      */
     private static JdbcConfiguration testJdbcConfig() {
         return JdbcConfiguration.copy(Configuration.fromSystemProperties("database."))
-                .withDefault(JdbcConfiguration.HOSTNAME, "localhost")
+                .withDefault(JdbcConfiguration.HOSTNAME, HOST)
                 .withDefault(JdbcConfiguration.PORT, 1521)
-                .withDefault(JdbcConfiguration.USER, "debezium")
-                .withDefault(JdbcConfiguration.PASSWORD, "dbz")
-                .withDefault(JdbcConfiguration.DATABASE, "ORCLPDB1")
+                .withDefault(JdbcConfiguration.USER, SCHEMA_USER)
+                .withDefault(JdbcConfiguration.PASSWORD, SCHEMA_PASS)
+                .withDefault(JdbcConfiguration.DATABASE, DATABASE)
                 .build();
     }
 
@@ -108,11 +146,11 @@ public class TestHelper {
      */
     private static JdbcConfiguration adminJdbcConfig() {
         return JdbcConfiguration.copy(Configuration.fromSystemProperties("database.admin."))
-                .withDefault(JdbcConfiguration.HOSTNAME, "localhost")
+                .withDefault(JdbcConfiguration.HOSTNAME, HOST)
                 .withDefault(JdbcConfiguration.PORT, 1521)
                 .withDefault(JdbcConfiguration.USER, "sys as sysdba")
                 .withDefault(JdbcConfiguration.PASSWORD, "top_secret")
-                .withDefault(JdbcConfiguration.DATABASE, "ORCLPDB1")
+                .withDefault(JdbcConfiguration.DATABASE, DATABASE)
                 .build();
     }
 
@@ -140,7 +178,7 @@ public class TestHelper {
         Configuration config = testConfig().build();
         Configuration jdbcConfig = config.subset("database.", true);
 
-        OracleConnection jdbcConnection = new OracleConnection(jdbcConfig, new OracleConnectionFactory());
+        OracleConnection jdbcConnection = new OracleConnection(jdbcConfig, new OracleConnectionFactory(), TestHelper.class::getClassLoader);
         try {
             jdbcConnection.setAutoCommit(false);
         }
@@ -161,7 +199,7 @@ public class TestHelper {
         Configuration config = adminConfig().build();
         Configuration jdbcConfig = config.subset("database.", true);
 
-        OracleConnection jdbcConnection = new OracleConnection(jdbcConfig, new OracleConnectionFactory());
+        OracleConnection jdbcConnection = new OracleConnection(jdbcConfig, new OracleConnectionFactory(), TestHelper.class::getClassLoader);
         try {
             jdbcConnection.setAutoCommit(false);
         }
@@ -191,5 +229,10 @@ public class TestHelper {
 
     public static int defaultMessageConsumerPollTimeout() {
         return 120;
+    }
+
+    public static OracleConnectorConfig.ConnectorAdapter adapter() {
+        final String s = System.getProperty(OracleConnectorConfig.CONNECTOR_ADAPTER.name());
+        return (s == null || s.length() == 0) ? OracleConnectorConfig.ConnectorAdapter.XSTREAM : OracleConnectorConfig.ConnectorAdapter.parse(s);
     }
 }

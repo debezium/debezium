@@ -23,6 +23,7 @@ public class OracleSourceInfoStructMaker extends AbstractSourceInfoStructMaker<S
                 .field(SourceInfo.TABLE_NAME_KEY, Schema.STRING_SCHEMA)
                 .field(SourceInfo.TXID_KEY, Schema.OPTIONAL_STRING_SCHEMA)
                 .field(SourceInfo.SCN_KEY, Schema.OPTIONAL_INT64_SCHEMA)
+                .field(SourceInfo.COMMIT_SCN_KEY, Schema.OPTIONAL_INT64_SCHEMA)
                 .field(SourceInfo.LCR_POSITION_KEY, Schema.OPTIONAL_STRING_SCHEMA)
                 .build();
     }
@@ -42,6 +43,9 @@ public class OracleSourceInfoStructMaker extends AbstractSourceInfoStructMaker<S
 
         if (sourceInfo.getLcrPosition() != null) {
             ret.put(SourceInfo.LCR_POSITION_KEY, sourceInfo.getLcrPosition().toString());
+        }
+        if (sourceInfo.getCommitScn() != null) {
+            ret.put(SourceInfo.COMMIT_SCN_KEY, sourceInfo.getCommitScn());
         }
         return ret;
     }

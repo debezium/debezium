@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.oracle;
 
+import java.util.function.Predicate;
+
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
@@ -17,12 +19,17 @@ import io.debezium.config.Field;
 import io.debezium.config.Field.ValidationOutput;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SourceInfoStructMaker;
+import io.debezium.connector.oracle.xstream.LcrPosition;
+import io.debezium.connector.oracle.xstream.OracleVersion;
 import io.debezium.document.Document;
+import io.debezium.function.Predicates;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.JdbcConfiguration;
+import io.debezium.relational.ColumnId;
 import io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
+import io.debezium.relational.Tables;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.history.HistoryRecordComparator;
 import io.debezium.relational.history.KafkaDatabaseHistory;
@@ -90,6 +97,13 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withDescription("Name of the pluggable database when working with a multi-tenant set-up. "
                     + "The CDB name must be given via " + DATABASE_NAME.name() + " in this case.");
 
+    public static final Field SCHEMA_NAME = Field.create(DATABASE_CONFIG_PREFIX + "schema")
+            .withDisplayName("Schema name")
+            .withType(Type.STRING)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.HIGH)
+            .withDescription("Name of the connection user to the database ");
+
     public static final Field XSTREAM_SERVER_NAME = Field.create(DATABASE_CONFIG_PREFIX + "out.server.name")
             .withDisplayName("XStream out server name")
             .withType(Type.STRING)
@@ -125,6 +139,55 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     public static final Field SERVER_NAME = RelationalDatabaseConnectorConfig.SERVER_NAME
             .withValidation(CommonConnectorConfig::validateServerNameIsDifferentFromHistoryTopicName);
 
+    public static final Field CONNECTOR_ADAPTER = Field.create(DATABASE_CONFIG_PREFIX + "connection.adapter")
+            .withDisplayName("Connector adapter")
+            .withEnum(ConnectorAdapter.class, ConnectorAdapter.XSTREAM)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.HIGH)
+            .withDescription("There are two adapters: XStream and LogMiner.");
+
+    public static final Field SNAPSHOT_SKIP_LOCKS = Field.create("snapshot.skip.locks")
+            .withDisplayName("Should schema be locked as we build the schema snapshot?")
+            .withType(Type.BOOLEAN)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(false)
+            .withValidation(Field::isBoolean)
+            .withDescription(
+                    "If true, locks all tables to be captured as we build the schema snapshot. This will prevent from any concurrent schema changes being applied to them.");
+
+    public static final Field LOG_MINING_STRATEGY = Field.create("log.mining.strategy")
+            .withDisplayName("Log Mining Strategy")
+            .withEnum(LogMiningStrategy.class, LogMiningStrategy.CATALOG_IN_REDO)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.HIGH)
+            .withDescription("There are strategies: Online catalog with faster mining but no captured DDL. Another - with data dictionary loaded into REDO LOG files");
+
+    // this option could be true up to Oracle 18c version. Starting from Oracle 19c this option cannot be true todo should we do it?
+    public static final Field CONTINUOUS_MINE = Field.create("log.mining.continuous.mine")
+            .withDisplayName("Should log mining session configured with CONTINUOUS_MINE setting?")
+            .withType(Type.BOOLEAN)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(false)
+            .withValidation(Field::isBoolean)
+            .withDescription("If true, CONTINUOUS_MINE option will be added to the log mining session. This will manage log files switches seamlessly.");
+
+    public static final Field SNAPSHOT_ENHANCEMENT_TOKEN = Field.create("snapshot.enhance.predicate.scn")
+            .withDisplayName("A string to replace on snapshot predicate enhancement")
+            .withType(Type.STRING)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.HIGH)
+            .withDescription("A token to replace on snapshot predicate template");
+
+    public static final Field DRIVER_TYPE = Field.create("database.driver.type")
+            .withDisplayName("oci for xStream or thin for LogMiner")
+            .withType(Type.STRING)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.HIGH)
+            .withDefault("oci")
+            .withDescription("A token to use in connection factories");
+
     /**
      * The set of {@link Field}s defined as part of this configuration.
      */
@@ -149,11 +212,18 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             CommonConnectorConfig.MAX_BATCH_SIZE,
             CommonConnectorConfig.MAX_QUEUE_SIZE,
             CommonConnectorConfig.SNAPSHOT_DELAY_MS,
+            CommonConnectorConfig.SNAPSHOT_FETCH_SIZE,
             CommonConnectorConfig.PROVIDE_TRANSACTION_METADATA,
             Heartbeat.HEARTBEAT_INTERVAL,
             Heartbeat.HEARTBEAT_TOPICS_PREFIX,
             TABLENAME_CASE_INSENSITIVE,
             ORACLE_VERSION,
+            SNAPSHOT_SKIP_LOCKS,
+            SCHEMA_NAME,
+            CONNECTOR_ADAPTER,
+            LOG_MINING_STRATEGY,
+            SNAPSHOT_ENHANCEMENT_TOKEN,
+            DRIVER_TYPE,
             CommonConnectorConfig.EVENT_PROCESSING_FAILURE_HANDLING_MODE);
 
     private final String databaseName;
@@ -163,23 +233,46 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
     private final boolean tablenameCaseInsensitive;
     private final OracleVersion oracleVersion;
+    private final String schemaName;
+    private final Tables.ColumnNameFilter columnFilter;
 
     public OracleConnectorConfig(Configuration config) {
         super(OracleConnector.class, config, config.getString(SERVER_NAME), new SystemTablesPredicate(), x -> x.schema() + "." + x.table(), true);
 
-        this.databaseName = config.getString(DATABASE_NAME);
-        this.pdbName = config.getString(PDB_NAME);
+        this.databaseName = setUpperCase(config.getString(DATABASE_NAME));
+        this.pdbName = setUpperCase(config.getString(PDB_NAME));
         this.xoutServerName = config.getString(XSTREAM_SERVER_NAME);
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE));
         this.tablenameCaseInsensitive = config.getBoolean(TABLENAME_CASE_INSENSITIVE);
         this.oracleVersion = OracleVersion.parse(config.getString(ORACLE_VERSION));
+        this.schemaName = setUpperCase(config.getString(SCHEMA_NAME));
+        String blacklistedColumns = setUpperCase(config.getString(RelationalDatabaseConnectorConfig.COLUMN_BLACKLIST));
+        this.columnFilter = getColumnNameFilter(blacklistedColumns);
+    }
+
+    private String setUpperCase(String property) {
+        property = property == null ? null : property.toUpperCase();
+        return property;
+    }
+
+    protected Tables.ColumnNameFilter getColumnNameFilter(String excludedColumnPatterns) {
+        return new Tables.ColumnNameFilter() {
+
+            Predicate<ColumnId> delegate = Predicates.excludes(excludedColumnPatterns, ColumnId::toString);
+
+            @Override
+            public boolean matches(String catalogName, String schemaName, String tableName, String columnName) {
+                // ignore database name and schema name, we are supposed to capture from one database and one schema
+                return delegate.test(new ColumnId(new TableId(null, null, tableName), columnName));
+            }
+        };
     }
 
     public static ConfigDef configDef() {
         ConfigDef config = new ConfigDef();
 
         Field.group(config, "Oracle", HOSTNAME, PORT, USER, PASSWORD, SERVER_NAME, DATABASE_NAME, PDB_NAME,
-                XSTREAM_SERVER_NAME, SNAPSHOT_MODE);
+                XSTREAM_SERVER_NAME, SNAPSHOT_MODE, CONNECTOR_ADAPTER, LOG_MINING_STRATEGY);
         Field.group(config, "History Storage", KafkaDatabaseHistory.BOOTSTRAP_SERVERS,
                 KafkaDatabaseHistory.TOPIC, KafkaDatabaseHistory.RECOVERY_POLL_ATTEMPTS,
                 KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS, HistorizedRelationalDatabaseConnectorConfig.DATABASE_HISTORY);
@@ -188,12 +281,14 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                 RelationalDatabaseConnectorConfig.TABLE_BLACKLIST,
                 RelationalDatabaseConnectorConfig.TABLE_EXCLUDE_LIST,
                 RelationalDatabaseConnectorConfig.MSG_KEY_COLUMNS,
+                RelationalDatabaseConnectorConfig.COLUMN_BLACKLIST,
                 RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN,
                 CommonConnectorConfig.PROVIDE_TRANSACTION_METADATA,
                 Heartbeat.HEARTBEAT_INTERVAL, Heartbeat.HEARTBEAT_TOPICS_PREFIX,
                 CommonConnectorConfig.EVENT_PROCESSING_FAILURE_HANDLING_MODE);
         Field.group(config, "Connector", CommonConnectorConfig.POLL_INTERVAL_MS, CommonConnectorConfig.MAX_BATCH_SIZE,
-                CommonConnectorConfig.MAX_QUEUE_SIZE, CommonConnectorConfig.SNAPSHOT_DELAY_MS);
+                CommonConnectorConfig.MAX_QUEUE_SIZE, CommonConnectorConfig.SNAPSHOT_DELAY_MS, CommonConnectorConfig.SNAPSHOT_FETCH_SIZE,
+                SNAPSHOT_SKIP_LOCKS, SNAPSHOT_ENHANCEMENT_TOKEN, DRIVER_TYPE);
 
         return config;
     }
@@ -222,19 +317,36 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         return oracleVersion;
     }
 
+    public String getSchemaName() {
+        return schemaName;
+    }
+
+    public Tables.ColumnNameFilter getColumnFilter() {
+        return columnFilter;
+    }
+
     @Override
     protected HistoryRecordComparator getHistoryRecordComparator() {
         return new HistoryRecordComparator() {
             @Override
             protected boolean isPositionAtOrBefore(Document recorded, Document desired) {
-                final LcrPosition recordedPosition = LcrPosition.valueOf(recorded.getString(SourceInfo.LCR_POSITION_KEY));
-                final LcrPosition desiredPosition = LcrPosition.valueOf(desired.getString(SourceInfo.LCR_POSITION_KEY));
-                final Long recordedScn = recordedPosition != null ? recordedPosition.getScn() : recorded.getLong(SourceInfo.SCN_KEY);
-                final Long desiredScn = desiredPosition != null ? desiredPosition.getScn() : desired.getLong(SourceInfo.SCN_KEY);
+                Long recordedScn;
+                Long desiredScn;
+                if (getAdapter() == OracleConnectorConfig.ConnectorAdapter.XSTREAM) {
+                    final LcrPosition recordedPosition = LcrPosition.valueOf(recorded.getString(SourceInfo.LCR_POSITION_KEY));
+                    final LcrPosition desiredPosition = LcrPosition.valueOf(desired.getString(SourceInfo.LCR_POSITION_KEY));
+                    recordedScn = recordedPosition != null ? recordedPosition.getScn() : recorded.getLong(SourceInfo.SCN_KEY);
+                    desiredScn = desiredPosition != null ? desiredPosition.getScn() : desired.getLong(SourceInfo.SCN_KEY);
+                    return (recordedPosition != null && desiredPosition != null)
+                            ? recordedPosition.compareTo(desiredPosition) < 1
+                            : recordedScn.compareTo(desiredScn) < 1;
+                }
+                else {
+                    recordedScn = recorded.getLong(SourceInfo.SCN_KEY);
+                    desiredScn = desired.getLong(SourceInfo.SCN_KEY);
+                    return recordedScn.compareTo(desiredScn) < 1;
+                }
 
-                return (recordedPosition != null && desiredPosition != null)
-                        ? recordedPosition.compareTo(desiredPosition) < 1
-                        : recordedScn.compareTo(desiredScn) < 1;
             }
         };
     }
@@ -375,6 +487,117 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         }
     }
 
+    public enum ConnectorAdapter implements EnumeratedValue {
+
+        /**
+         * This is based on XStream API.
+         */
+        XSTREAM("XStream"),
+
+        /**
+         * This is based on LogMiner utility.
+         */
+        LOG_MINER("LogMiner");
+
+        private final String value;
+
+        ConnectorAdapter(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static ConnectorAdapter parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+            for (ConnectorAdapter adapter : ConnectorAdapter.values()) {
+                if (adapter.getValue().equalsIgnoreCase(value)) {
+                    return adapter;
+                }
+            }
+            return null;
+        }
+
+        public static ConnectorAdapter parse(String value, String defaultValue) {
+            ConnectorAdapter mode = parse(value);
+
+            if (mode == null && defaultValue != null) {
+                mode = parse(defaultValue);
+            }
+
+            return mode;
+        }
+    }
+
+    public enum LogMiningStrategy implements EnumeratedValue {
+
+        /**
+         * This strategy uses Log Miner with data dictionary in online catalog.
+         * This option will not capture DDL , but acts fast on REDO LOG switch events
+         * This option does not use CONTINUOUS_MINE option
+         */
+        ONLINE_CATALOG("online_catalog"),
+
+        /**
+         * This strategy uses Log Miner with data dictionary in REDO LOG files.
+         * This option will capture DDL, but will develop some lag on REDO LOG switch event and will eventually catch up
+         * This option does not use CONTINUOUS_MINE option
+         * This is default value
+         */
+        CATALOG_IN_REDO("redo_log_catalog");
+
+        private final String value;
+
+        LogMiningStrategy(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static LogMiningStrategy parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+            for (LogMiningStrategy adapter : LogMiningStrategy.values()) {
+                if (adapter.getValue().equalsIgnoreCase(value)) {
+                    return adapter;
+                }
+            }
+            return null;
+        }
+
+        public static LogMiningStrategy parse(String value, String defaultValue) {
+            LogMiningStrategy mode = parse(value);
+
+            if (mode == null && defaultValue != null) {
+                mode = parse(defaultValue);
+            }
+
+            return mode;
+        }
+    }
+
     /**
      * A {@link TableFilter} that excludes all Oracle system tables.
      *
@@ -413,6 +636,38 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     @Override
     public String getContextName() {
         return Module.contextName();
+    }
+
+    /**
+     * @return true if lock to be obtained before building the schema
+     */
+    public boolean skipSnapshotLock() {
+        return getConfig().getBoolean(SNAPSHOT_SKIP_LOCKS);
+    }
+
+    /**
+     * @return connection adapter
+     */
+    public ConnectorAdapter getAdapter() {
+        return ConnectorAdapter.parse(getConfig().getString(CONNECTOR_ADAPTER));
+    }
+
+    /**
+     * @return Log Mining strategy
+     */
+    public LogMiningStrategy getLogMiningStrategy() {
+        return LogMiningStrategy.parse(getConfig().getString(LOG_MINING_STRATEGY));
+    }
+
+    /**
+     * @return String token to replace
+     */
+    public String getTokenToReplaceInSnapshotPredicate() {
+        return getConfig().getString(SNAPSHOT_ENHANCEMENT_TOKEN);
+    }
+
+    public boolean isContinuousMining() {
+        return getConfig().getBoolean(CONTINUOUS_MINE);
     }
 
     /**

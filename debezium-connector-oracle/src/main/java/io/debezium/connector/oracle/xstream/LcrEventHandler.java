@@ -3,11 +3,12 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.connector.oracle;
+package io.debezium.connector.oracle.xstream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.connector.oracle.OracleOffsetContext;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.relational.RelationalDatabaseSchema;
@@ -28,7 +29,7 @@ import oracle.streams.XStreamLCRCallbackHandler;
  */
 class LcrEventHandler implements XStreamLCRCallbackHandler {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(OracleStreamingChangeEventSource.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(XstreamStreamingChangeEventSource.class);
 
     private final ErrorHandler errorHandler;
     private final EventDispatcher<TableId> dispatcher;
@@ -114,7 +115,7 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
 
         dispatcher.dispatchSchemaChangeEvent(
                 tableId,
-                new OracleSchemaChangeEventEmitter(offsetContext, tableId, ddlLcr));
+                new XStreamSchemaChangeEventEmitter(offsetContext, tableId, ddlLcr));
     }
 
     private TableId getTableId(LCR lcr) {

@@ -3,11 +3,11 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.connector.oracle;
+package io.debezium.connector.oracle.xstream;
 
+import io.debezium.connector.oracle.BaseChangeRecordEmitter;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.pipeline.spi.OffsetContext;
-import io.debezium.relational.RelationalChangeRecordEmitter;
 import io.debezium.relational.Table;
 import io.debezium.util.Clock;
 
@@ -19,16 +19,13 @@ import oracle.streams.RowLCR;
  *
  * @author Gunnar Morling
  */
-public class XStreamChangeRecordEmitter extends RelationalChangeRecordEmitter {
+public class XStreamChangeRecordEmitter extends BaseChangeRecordEmitter<ColumnValue> {
 
     private final RowLCR lcr;
-    private final Table table;
 
     public XStreamChangeRecordEmitter(OffsetContext offset, RowLCR lcr, Table table, Clock clock) {
-        super(offset, clock);
-
+        super(offset, table, clock);
         this.lcr = lcr;
-        this.table = table;
     }
 
     @Override
@@ -55,14 +52,13 @@ public class XStreamChangeRecordEmitter extends RelationalChangeRecordEmitter {
         return getColumnValues(lcr.getNewValues());
     }
 
-    private Object[] getColumnValues(ColumnValue[] columnValues) {
-        Object[] values = new Object[table.columns().size()];
+    @Override
+    protected String getColumnName(ColumnValue columnValue) {
+        return columnValue.getColumnName();
+    }
 
-        for (ColumnValue columnValue : columnValues) {
-            int index = table.columnWithName(columnValue.getColumnName()).position() - 1;
-            values[index] = columnValue.getColumnData();
-        }
-
-        return values;
+    @Override
+    protected Object getColumnData(ColumnValue columnValue) {
+        return columnValue.getColumnData();
     }
 }

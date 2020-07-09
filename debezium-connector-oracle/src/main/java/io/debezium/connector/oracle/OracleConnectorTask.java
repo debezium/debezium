@@ -51,11 +51,15 @@ public class OracleConnectorTask extends BaseSourceTask {
         SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create(LOGGER);
 
         Configuration jdbcConfig = config.subset("database.", true);
-        jdbcConnection = new OracleConnection(jdbcConfig, new OracleConnectionFactory());
+        jdbcConnection = new OracleConnection(jdbcConfig, new OracleConnectionFactory(), () -> getClass().getClassLoader());
         this.schema = new OracleDatabaseSchema(connectorConfig, schemaNameAdjuster, topicSelector, jdbcConnection);
         this.schema.initializeStorage();
 
-        OffsetContext previousOffset = getPreviousOffset(new OracleOffsetContext.Loader(connectorConfig));
+        String adapterString = config.getString("connection.adapter");
+        adapterString = adapterString == null ? config.getString(OracleConnectorConfig.CONNECTOR_ADAPTER) : adapterString;
+        OracleConnectorConfig.ConnectorAdapter adapter = OracleConnectorConfig.ConnectorAdapter.parse(adapterString);
+        OffsetContext previousOffset = getPreviousOffset(new OracleOffsetContext.Loader(connectorConfig, adapter));
+
         if (previousOffset != null) {
             schema.recover(previousOffset);
         }
@@ -91,7 +95,7 @@ public class OracleConnectorTask extends BaseSourceTask {
                 errorHandler,
                 OracleConnector.class,
                 connectorConfig,
-                new OracleChangeEventSourceFactory(connectorConfig, jdbcConnection, errorHandler, dispatcher, clock, schema),
+                new OracleChangeEventSourceFactory(connectorConfig, jdbcConnection, errorHandler, dispatcher, clock, schema, jdbcConfig, taskContext),
                 new DefaultChangeEventSourceMetricsFactory(),
                 dispatcher,
                 schema);

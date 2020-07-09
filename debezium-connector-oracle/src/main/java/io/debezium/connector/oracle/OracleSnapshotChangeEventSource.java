@@ -10,6 +10,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Savepoint;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -17,6 +20,7 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.connector.oracle.logminer.LogMinerHelper;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
@@ -54,6 +58,7 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
     protected SnapshottingTask getSnapshottingTask(OffsetContext previousOffset) {
         boolean snapshotSchema = true;
         boolean snapshotData = true;
+        boolean skipSnapsotLock = false;
 
         // found a previous offset and the earlier snapshot has completed
         if (previousOffset != null && !previousOffset.isSnapshotRunning()) {
@@ -62,9 +67,10 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
         }
         else {
             snapshotData = connectorConfig.getSnapshotMode().includeData();
+            skipSnapsotLock = connectorConfig.skipSnapshotLock();
         }
 
-        return new SnapshottingTask(snapshotSchema, snapshotData);
+        return new SnapshottingTask(snapshotSchema, snapshotData, skipSnapsotLock);
     }
 
     @Override
@@ -79,7 +85,9 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
 
     @Override
     protected Set<TableId> getAllTableIds(RelationalSnapshotContext ctx) throws Exception {
-        return jdbcConnection.readTableNames(ctx.catalogName, null, null, new String[]{ "TABLE" });
+        return jdbcConnection.getAllTableIds(ctx.catalogName, connectorConfig.getSchemaName(), false);
+        // this very slow approach(commented out), it took 30 minutes on an instance with 600 tables
+        // return jdbcConnection.readTableNames(ctx.catalogName, null, null, new String[] {"TABLE"} );
     }
 
     @Override
@@ -126,6 +134,10 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
     }
 
     private long getCurrentScn(SnapshotContext ctx) throws SQLException {
+        if (connectorConfig.getAdapter().equals(OracleConnectorConfig.ConnectorAdapter.LOG_MINER)) {
+            return LogMinerHelper.getCurrentScn(jdbcConnection.connection());
+        }
+
         try (Statement statement = jdbcConnection.connection().createStatement();
                 ResultSet rs = statement.executeQuery("select CURRENT_SCN from V$DATABASE")) {
 
@@ -195,6 +207,19 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
                 throw new InterruptedException("Interrupted while reading structure of schema " + schema);
             }
 
+            // todo: DBZ-137 the new readSchemaForCapturedTables seems to cause failures.
+            // For now, reverted to the default readSchema implementation as the intended goal
+            // with the new implementation was to be faster, not change behavior.
+            // if (connectorConfig.getAdapter().equals(OracleConnectorConfig.ConnectorAdapter.LOG_MINER)) {
+            // jdbcConnection.readSchemaForCapturedTables(
+            // snapshotContext.tables,
+            // snapshotContext.catalogName,
+            // schema,
+            // connectorConfig.getColumnFilter(),
+            // false,
+            // snapshotContext.capturedTables);
+            // }
+            // else {
             jdbcConnection.readSchema(
                     snapshotContext.tables,
                     snapshotContext.catalogName,
@@ -202,7 +227,20 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
                     connectorConfig.getTableFilters().dataCollectionFilter(),
                     null,
                     false);
+            // }
         }
+    }
+
+    @Override
+    protected String enhanceOverriddenSelect(RelationalSnapshotContext snapshotContext, String overriddenSelect, TableId tableId) {
+        String columnString = buildSelectColumns(connectorConfig.getConfig().getString(connectorConfig.COLUMN_BLACKLIST), snapshotContext.tables.forTable(tableId));
+        overriddenSelect = overriddenSelect.replaceFirst("\\*", columnString);
+        long snapshotOffset = (Long) snapshotContext.offset.getOffset().get("scn");
+        String token = connectorConfig.getTokenToReplaceInSnapshotPredicate();
+        if (token != null) {
+            return overriddenSelect.replaceAll(token, " AS OF SCN " + snapshotOffset);
+        }
+        return overriddenSelect;
     }
 
     @Override
@@ -231,9 +269,42 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
     }
 
     @Override
-    protected Optional<String> getSnapshotSelect(SnapshotContext snapshotContext, TableId tableId) {
+    protected Optional<String> getSnapshotSelect(RelationalSnapshotContext snapshotContext, TableId tableId) {
+        String columnString = buildSelectColumns(connectorConfig.getConfig().getString(connectorConfig.COLUMN_BLACKLIST), snapshotContext.tables.forTable(tableId));
+
         long snapshotOffset = (Long) snapshotContext.offset.getOffset().get("scn");
         return Optional.of("SELECT * FROM " + quote(tableId) + " AS OF SCN " + snapshotOffset);
+    }
+
+    /**
+     * This is to build "whitelisted" column list
+     * @param blackListColumnStr comma separated columns blacklist
+     * @param table the table
+     * @return column list for select
+     */
+    public static String buildSelectColumns(String blackListColumnStr, Table table) {
+        String columnsToSelect = "*";
+        if (blackListColumnStr != null && blackListColumnStr.trim().length() > 0
+                && blackListColumnStr.toUpperCase().contains(table.id().table())) {
+            String allTableColumns = table.retrieveColumnNames().stream()
+                    .map(columnName -> {
+                        StringBuilder sb = new StringBuilder();
+                        if (!columnName.contains(table.id().table())) {
+                            sb.append(table.id().table()).append(".").append(columnName);
+                        }
+                        else {
+                            sb.append(columnName);
+                        }
+                        return sb.toString();
+                    }).collect(Collectors.joining(","));
+            // todo this is an unnecessary code, fix unit test, then remove it
+            String catalog = table.id().catalog();
+            List<String> blackList = new ArrayList<>(Arrays.asList(blackListColumnStr.trim().toUpperCase().replaceAll(catalog + ".", "").split(",")));
+            List<String> allColumns = new ArrayList<>(Arrays.asList(allTableColumns.toUpperCase().split(",")));
+            allColumns.removeAll(blackList);
+            columnsToSelect = String.join(",", allColumns);
+        }
+        return columnsToSelect;
     }
 
     @Override

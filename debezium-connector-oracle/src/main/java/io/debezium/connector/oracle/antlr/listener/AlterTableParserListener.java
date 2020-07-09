@@ -6,6 +6,8 @@
 package io.debezium.connector.oracle.antlr.listener;
 
 import static io.debezium.antlr.AntlrDdlParser.getText;
+import static io.debezium.connector.oracle.antlr.listener.ParserUtils.getColumnName;
+import static io.debezium.connector.oracle.antlr.listener.ParserUtils.getTableName;
 
 import java.util.ArrayList;
 import java.util.List;

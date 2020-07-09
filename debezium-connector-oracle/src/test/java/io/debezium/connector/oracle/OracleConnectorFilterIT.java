@@ -7,7 +7,12 @@ package io.debezium.connector.oracle;
 
 import static org.fest.assertions.Assertions.assertThat;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -16,10 +21,15 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestRule;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.OracleConnectorConfig.SnapshotMode;
+import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
+import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIs;
+import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.VerifyRecord;
 import io.debezium.embedded.AbstractConnectorTest;
@@ -34,6 +44,9 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
 
     private static OracleConnection connection;
     private static OracleConnection adminConnection;
+
+    @Rule
+    public TestRule skipRule = new SkipTestDependingOnAdapterNameRule();
 
     @BeforeClass
     public static void beforeClass() throws SQLException {
@@ -71,8 +84,8 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
                 "CREATE TABLE debezium2.table2 (id NUMERIC(9,0) NOT NULL, name VARCHAR2(1000), PRIMARY KEY (id))",
                 "CREATE TABLE debezium2.nopk (id NUMERIC(9,0) NOT NULL)",
                 "GRANT ALL PRIVILEGES ON debezium2.table2 TO debezium",
-                "GRANT SELECT ON debezium2.table2 TO " + TestHelper.CONNECTOR_USER,
-                "GRANT SELECT ON debezium2.nopk TO " + TestHelper.CONNECTOR_USER,
+                "GRANT SELECT ON debezium2.table2 TO " + TestHelper.getConnectorUserName(),
+                "GRANT SELECT ON debezium2.nopk TO " + TestHelper.getConnectorUserName(),
                 "ALTER TABLE debezium2.table2 ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
         String ddl = "CREATE TABLE debezium.table1 (" +
                 "  id NUMERIC(9,0) NOT NULL, " +
@@ -81,7 +94,7 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
                 ")";
 
         connection.execute(ddl);
-        connection.execute("GRANT SELECT ON debezium.table1 TO " + TestHelper.CONNECTOR_USER);
+        connection.execute("GRANT SELECT ON debezium.table1 TO " + TestHelper.getConnectorUserName());
         connection.execute("ALTER TABLE debezium.table1 ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
 
         ddl = "CREATE TABLE debezium.table2 (" +
@@ -91,7 +104,7 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
                 ")";
 
         connection.execute(ddl);
-        connection.execute("GRANT SELECT ON debezium.table2 TO  " + TestHelper.CONNECTOR_USER);
+        connection.execute("GRANT SELECT ON debezium.table2 TO  " + TestHelper.getConnectorUserName());
         connection.execute("ALTER TABLE debezium.table2 ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
 
         initializeConnectorTestFramework();
@@ -99,10 +112,11 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
     }
 
     @Test
+    @SkipWhenAdapterNameIs(value = SkipWhenAdapterNameIs.AdapterName.LOGMINER, reason = "Log Miner does not support DDL during streaming")
     public void shouldApplyTableWhitelistConfiguration() throws Exception {
         Configuration config = TestHelper.defaultConfig()
                 .with(
-                        OracleConnectorConfig.TABLE_WHITELIST,
+                        RelationalDatabaseConnectorConfig.TABLE_WHITELIST,
                         "DEBEZIUM2\\.TABLE2,DEBEZIUM\\.TABLE1,DEBEZIUM\\.TABLE3")
                 .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_SCHEMA_ONLY)
                 .build();
@@ -111,6 +125,7 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
         assertConnectorIsRunning();
 
         waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+        waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
         connection.execute("INSERT INTO debezium.table1 VALUES (1, 'Text-1')");
         connection.execute("INSERT INTO debezium.table2 VALUES (2, 'Text-2')");
@@ -151,6 +166,7 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
     }
 
     @Test
+    @SkipWhenAdapterNameIs(value = SkipWhenAdapterNameIs.AdapterName.LOGMINER, reason = "Log Miner does not support DDL during streaming")
     public void shouldApplyTableIncludeListConfiguration() throws Exception {
         Configuration config = TestHelper.defaultConfig()
                 .with(
@@ -163,6 +179,7 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
         assertConnectorIsRunning();
 
         waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+        waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
         connection.execute("INSERT INTO debezium.table1 VALUES (1, 'Text-1')");
         connection.execute("INSERT INTO debezium.table2 VALUES (2, 'Text-2')");
@@ -175,8 +192,8 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
                 ")";
 
         connection.execute(ddl);
-        connection.execute("GRANT SELECT ON debezium.table3 TO c##xstrm");
-
+        connection.execute("GRANT SELECT ON debezium.table3 TO " + TestHelper.getConnectorUserName());
+        connection.execute("ALTER TABLE debezium.table3 ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
         connection.execute("INSERT INTO debezium.table3 VALUES (3, 'Text-3')");
         connection.execute("COMMIT");
 
@@ -203,6 +220,7 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
     }
 
     @Test
+    @SkipWhenAdapterNameIs(value = SkipWhenAdapterNameIs.AdapterName.LOGMINER, reason = "Log Miner does not support DDL during streaming")
     public void shouldApplyTableBlacklistConfiguration() throws Exception {
         Configuration config = TestHelper.defaultConfig()
                 .with(
@@ -215,6 +233,7 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
         assertConnectorIsRunning();
 
         waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+        waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
         connection.execute("INSERT INTO debezium.table1 VALUES (1, 'Text-1')");
         connection.execute("INSERT INTO debezium.table2 VALUES (2, 'Text-2')");
@@ -227,7 +246,7 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
                 ")";
 
         connection.execute(ddl);
-        connection.execute("GRANT SELECT ON debezium.table3 TO  " + TestHelper.CONNECTOR_USER);
+        connection.execute("GRANT SELECT ON debezium.table3 TO  " + TestHelper.getConnectorUserName());
 
         connection.execute("INSERT INTO debezium.table3 VALUES (3, 'Text-3')");
         connection.execute("COMMIT");
@@ -255,6 +274,7 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
     }
 
     @Test
+    @SkipWhenAdapterNameIs(value = SkipWhenAdapterNameIs.AdapterName.LOGMINER, reason = "Log Miner does not support DDL during streaming")
     public void shouldApplyTableExcludeListConfiguration() throws Exception {
         Configuration config = TestHelper.defaultConfig()
                 .with(
@@ -267,6 +287,7 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
         assertConnectorIsRunning();
 
         waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+        waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
         connection.execute("INSERT INTO debezium.table1 VALUES (1, 'Text-1')");
         connection.execute("INSERT INTO debezium.table2 VALUES (2, 'Text-2')");
@@ -279,7 +300,7 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
                 ")";
 
         connection.execute(ddl);
-        connection.execute("GRANT SELECT ON debezium.table3 TO  " + TestHelper.CONNECTOR_USER);
+        connection.execute("GRANT SELECT ON debezium.table3 TO  " + TestHelper.getConnectorUserName());
 
         connection.execute("INSERT INTO debezium.table3 VALUES (3, 'Text-3')");
         connection.execute("COMMIT");
@@ -304,5 +325,22 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
         after = (Struct) ((Struct) testTableRecords.get(0).value()).get("after");
         assertThat(after.get("ID")).isEqualTo(3);
         assertThat(after.get("NAME")).isEqualTo("Text-3");
+    }
+
+    @Test
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER)
+    public void shouldTakeTimeDifference() throws Exception {
+        Testing.Print.enable();
+        String stmt = "select current_timestamp from dual";
+        try (Connection conn = connection.connection(true);
+                PreparedStatement ps = conn.prepareStatement(stmt);
+                ResultSet rs = ps.executeQuery()) {
+            rs.next();
+            java.sql.Timestamp ts = rs.getTimestamp(1);
+            Instant fromDb = ts.toInstant();
+            Instant now = Instant.now();
+            long diff = Duration.between(fromDb, now).toMillis();
+            Testing.print("diff: " + diff);
+        }
     }
 }

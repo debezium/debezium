@@ -5,6 +5,9 @@
  */
 package io.debezium.connector.oracle.antlr.listener;
 
+import static io.debezium.connector.oracle.antlr.listener.ParserUtils.getColumnName;
+import static io.debezium.connector.oracle.antlr.listener.ParserUtils.getTableName;
+
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -49,19 +52,21 @@ public class CreateTableParserListener extends BaseParserListener {
     public void exitCreate_table(PlSqlParser.Create_tableContext ctx) {
         Table table = getTable();
         assert table != null;
+
         parser.runIfNotNull(() -> {
             listeners.remove(columnDefinitionParserListener);
             columnDefinitionParserListener = null;
             parser.databaseTables().overwriteTable(table);
             // parser.signalCreateTable(tableEditor.tableId(), ctx); todo ?
         }, tableEditor, table);
+
         super.exitCreate_table(ctx);
     }
 
     @Override
     public void enterColumn_definition(PlSqlParser.Column_definitionContext ctx) {
         parser.runIfNotNull(() -> {
-            String columnName = getColumnName(ctx.column_name());
+            String columnName = ParserUtils.stripeQuotes(getColumnName(ctx.column_name()));
             ColumnEditor columnEditor = Column.editor().name(columnName);
             if (columnDefinitionParserListener == null) {
                 columnDefinitionParserListener = new ColumnDefinitionParserListener(tableEditor, columnEditor, parser.dataTypeResolver());
@@ -87,7 +92,7 @@ public class CreateTableParserListener extends BaseParserListener {
     public void exitOut_of_line_constraint(PlSqlParser.Out_of_line_constraintContext ctx) {
         if (ctx.PRIMARY() != null) {
             List<String> pkColumnNames = ctx.column_name().stream()
-                    .map(this::getColumnName)
+                    .map(ParserUtils::getColumnName)
                     .collect(Collectors.toList());
 
             tableEditor.setPrimaryKeyNames(pkColumnNames);

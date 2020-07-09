@@ -3,13 +3,17 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.connector.oracle;
+package io.debezium.connector.oracle.xstream;
 
 import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.connector.oracle.OracleConnectorConfig;
+import io.debezium.connector.oracle.OracleDatabaseSchema;
+import io.debezium.connector.oracle.OracleOffsetContext;
+import io.debezium.connector.oracle.SourceInfo;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
@@ -29,9 +33,9 @@ import oracle.streams.XStreamUtility;
  *
  * @author Gunnar Morling
  */
-public class OracleStreamingChangeEventSource implements StreamingChangeEventSource {
+public class XstreamStreamingChangeEventSource implements StreamingChangeEventSource {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(OracleStreamingChangeEventSource.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(XstreamStreamingChangeEventSource.class);
 
     private final JdbcConnection jdbcConnection;
     private final EventDispatcher<TableId> dispatcher;
@@ -44,8 +48,8 @@ public class OracleStreamingChangeEventSource implements StreamingChangeEventSou
     private final boolean tablenameCaseInsensitive;
     private final int posVersion;
 
-    public OracleStreamingChangeEventSource(OracleConnectorConfig connectorConfig, OracleOffsetContext offsetContext, JdbcConnection jdbcConnection,
-                                            EventDispatcher<TableId> dispatcher, ErrorHandler errorHandler, Clock clock, OracleDatabaseSchema schema) {
+    public XstreamStreamingChangeEventSource(OracleConnectorConfig connectorConfig, OracleOffsetContext offsetContext, JdbcConnection jdbcConnection,
+                                             EventDispatcher<TableId> dispatcher, ErrorHandler errorHandler, Clock clock, OracleDatabaseSchema schema) {
         this.jdbcConnection = jdbcConnection;
         this.dispatcher = dispatcher;
         this.errorHandler = errorHandler;

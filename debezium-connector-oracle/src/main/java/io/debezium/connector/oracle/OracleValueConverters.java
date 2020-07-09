@@ -18,6 +18,7 @@ import java.util.regex.Pattern;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.SchemaBuilder;
 
+import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
 import io.debezium.data.SpecialValueDecimal;
 import io.debezium.data.VariableScaleDecimal;
 import io.debezium.jdbc.JdbcValueConverters;
@@ -25,6 +26,7 @@ import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.Column;
 import io.debezium.relational.ValueConverter;
+import io.debezium.time.Date;
 import io.debezium.time.MicroDuration;
 import io.debezium.time.ZonedTimestamp;
 import io.debezium.util.NumberConversions;
@@ -33,7 +35,9 @@ import io.debezium.util.Strings;
 import oracle.jdbc.OracleTypes;
 import oracle.sql.BINARY_DOUBLE;
 import oracle.sql.BINARY_FLOAT;
+import oracle.sql.BLOB;
 import oracle.sql.CHAR;
+import oracle.sql.CLOB;
 import oracle.sql.DATE;
 import oracle.sql.INTERVALDS;
 import oracle.sql.INTERVALYM;
@@ -78,8 +82,13 @@ public class OracleValueConverters extends JdbcValueConverters {
             case OracleTypes.INTERVALYM:
             case OracleTypes.INTERVALDS:
                 return MicroDuration.builder();
-            default:
-                return super.schemaBuilder(column);
+            case Types.STRUCT:
+                return SchemaBuilder.string();
+            default: {
+                SchemaBuilder builder = super.schemaBuilder(column);
+                logger.info("JdbcValueConverters returned '{}' for column '{}'", builder.getClass().getName(), column.name());
+                return builder;
+            }
         }
     }
 
@@ -92,12 +101,17 @@ public class OracleValueConverters extends JdbcValueConverters {
             if (scale <= 0) {
                 int width = column.length() - scale;
 
+                if (scale == 0 && column.length() == 1) {
+                    return SchemaBuilder.bool();
+                }
                 if (width < 3) {
                     return SchemaBuilder.int8();
                 }
                 else if (width < 5) {
                     return SchemaBuilder.int16();
                 }
+                // todo: DBZ-137 this was changed and caused issues with datatype tests, reverted for now.
+                // else if (width < 10 || (width == 10 && scale == 0)) {
                 else if (width < 10) {
                     return SchemaBuilder.int32();
                 }
@@ -128,7 +142,11 @@ public class OracleValueConverters extends JdbcValueConverters {
             case Types.VARCHAR:
             case Types.NCHAR:
             case Types.NVARCHAR:
+            case Types.STRUCT:
+            case Types.CLOB:
                 return data -> convertString(column, fieldDefn, data);
+            case Types.BLOB:
+                return data -> convertBinary(column, fieldDefn, data, binaryMode);
             case OracleTypes.BINARY_FLOAT:
                 return data -> convertFloat(column, fieldDefn, data);
             case OracleTypes.BINARY_DOUBLE:
@@ -136,6 +154,8 @@ public class OracleValueConverters extends JdbcValueConverters {
             case Types.NUMERIC:
                 return getNumericConverter(column, fieldDefn);
             case Types.FLOAT:
+                // todo: DBZ-137 is there a reason why floats need to be converted to doubles rather than var-scales?
+                // return data -> convertDouble(column, fieldDefn, data);
                 return data -> convertVariableScale(column, fieldDefn, data);
             case OracleTypes.TIMESTAMPTZ:
             case OracleTypes.TIMESTAMPLTZ:
@@ -149,11 +169,23 @@ public class OracleValueConverters extends JdbcValueConverters {
         return super.converter(column, fieldDefn);
     }
 
+    private Object getFloatConverter(Column column, Field fieldDefn, Object data) {
+        if (data instanceof BigDecimal) {
+            return ((BigDecimal) data).floatValue();
+        }
+        return convertVariableScale(column, fieldDefn, data);
+    }
+
     private ValueConverter getNumericConverter(Column column, Field fieldDefn) {
         if (column.scale().isPresent()) {
             Integer scale = column.scale().get();
 
             if (scale <= 0) {
+                // Boolean represtented as Number(1,0)
+                if (scale == 0 && column.length() == 1) {
+                    return data -> convertBoolean(column, fieldDefn, data);
+                }
+
                 int width = column.length() - scale;
 
                 if (width < 3) {
@@ -162,6 +194,8 @@ public class OracleValueConverters extends JdbcValueConverters {
                 else if (width < 5) {
                     return data -> convertNumericAsSmallInt(column, fieldDefn, data);
                 }
+                // todo: DBZ-137 this was changed and caused issues with datatype tests, reverted for now.
+                // else if (width < 10 || (width == 10 && scale == 0)) {
                 else if (width < 10) {
                     return data -> convertNumericAsInteger(column, fieldDefn, data);
                 }
@@ -183,8 +217,19 @@ public class OracleValueConverters extends JdbcValueConverters {
         if (data instanceof CHAR) {
             return ((CHAR) data).stringValue();
         }
+        if (data instanceof CLOB) {
+            return ((CLOB) data).toString();
+        }
 
         return super.convertString(column, fieldDefn, data);
+    }
+
+    @Override
+    protected Object convertBinary(Column column, Field fieldDefn, Object data, BinaryHandlingMode mode) {
+        if (data instanceof BLOB) {
+            return ((BLOB) data).getBytes();
+        }
+        return super.convertBinary(column, fieldDefn, data, mode);
     }
 
     @Override
@@ -312,6 +357,24 @@ public class OracleValueConverters extends JdbcValueConverters {
         return super.convertBigInt(column, fieldDefn, data);
     }
 
+    /**
+     * Converts a value object for an expected JDBC type of {@link Types#BOOLEAN}.
+     *
+     * @param column    the column definition describing the {@code data} value; never null
+     * @param fieldDefn the field definition; never null
+     * @param data      the data object to be converted into a {@link Date Kafka Connect date} type; never null
+     * @return the converted value, or null if the conversion could not be made and the column allows nulls
+     * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
+     */
+    @Override
+    protected Object convertBoolean(Column column, Field fieldDefn, Object data) {
+
+        if (data instanceof BigDecimal) {
+            return ((BigDecimal) data).byteValue() == 0 ? Boolean.FALSE : Boolean.TRUE;
+        }
+        return super.convertBoolean(column, fieldDefn, data);
+    }
+
     @Override
     protected Object convertTinyInt(Column column, Field fieldDefn, Object data) {
         return convertValue(column, fieldDefn, data, BYTE_FALSE, (r) -> {
@@ -379,6 +442,9 @@ public class OracleValueConverters extends JdbcValueConverters {
 
     @Override
     protected Object convertTimestampToEpochMicros(Column column, Field fieldDefn, Object data) {
+        if (data instanceof Long) {
+            return data;
+        }
         return super.convertTimestampToEpochMicros(column, fieldDefn, fromOracleTimeClasses(column, data));
     }
 

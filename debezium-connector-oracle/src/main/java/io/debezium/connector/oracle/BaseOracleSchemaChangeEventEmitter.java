@@ -18,25 +18,31 @@ import io.debezium.relational.Tables;
 import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.schema.SchemaChangeEvent.SchemaChangeEventType;
 
-import oracle.streams.DDLLCR;
-
 /**
  * {@link SchemaChangeEventEmitter} implementation based on Oracle.
  *
  * @author Gunnar Morling
  */
-public class OracleSchemaChangeEventEmitter implements SchemaChangeEventEmitter {
+public class BaseOracleSchemaChangeEventEmitter implements SchemaChangeEventEmitter {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(OracleSchemaChangeEventEmitter.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(BaseOracleSchemaChangeEventEmitter.class);
 
     private final OracleOffsetContext offsetContext;
     private final TableId tableId;
-    private final DDLLCR ddlLcr;
+    private String sourceDatabaseName;
+    private String objectOwner;
+    private String ddlText;
+    private String commandType;
 
-    public OracleSchemaChangeEventEmitter(OracleOffsetContext offsetContext, TableId tableId, DDLLCR ddlLcr) {
+    public BaseOracleSchemaChangeEventEmitter(OracleOffsetContext offsetContext, TableId tableId,
+                                              String sourceDatabaseName, String objectOwner, String ddlText,
+                                              String commandType) {
         this.offsetContext = offsetContext;
         this.tableId = tableId;
-        this.ddlLcr = ddlLcr;
+        this.sourceDatabaseName = sourceDatabaseName;
+        this.objectOwner = objectOwner;
+        this.ddlText = ddlText;
+        this.commandType = commandType;
     }
 
     @Override
@@ -49,13 +55,13 @@ public class OracleSchemaChangeEventEmitter implements SchemaChangeEventEmitter 
         Tables tables = new Tables();
 
         OracleDdlParser parser = new OracleDdlParser();
-        parser.setCurrentDatabase(ddlLcr.getSourceDatabaseName());
-        parser.setCurrentSchema(ddlLcr.getObjectOwner());
-        parser.parse(ddlLcr.getDDLText(), tables);
+        parser.setCurrentDatabase(sourceDatabaseName);
+        parser.setCurrentSchema(objectOwner);
+        parser.parse(ddlText, tables);
 
         Set<TableId> changedTableIds = tables.drainChanges();
         if (changedTableIds.isEmpty()) {
-            throw new IllegalArgumentException("Couldn't parse DDL statement " + ddlLcr.getDDLText());
+            throw new IllegalArgumentException("Couldn't parse DDL statement " + ddlText);
         }
 
         Table table = tables.forTable(tableId);
@@ -64,16 +70,16 @@ public class OracleSchemaChangeEventEmitter implements SchemaChangeEventEmitter 
                 offsetContext.getPartition(),
                 offsetContext.getOffset(),
                 offsetContext.getSourceInfo(),
-                ddlLcr.getSourceDatabaseName(),
-                ddlLcr.getObjectOwner(),
-                ddlLcr.getDDLText(),
+                sourceDatabaseName,
+                objectOwner,
+                ddlText,
                 table,
                 eventType,
                 false));
     }
 
     private SchemaChangeEventType getSchemaChangeEventType() {
-        switch (ddlLcr.getCommandType()) {
+        switch (commandType) {
             case "CREATE TABLE":
                 return SchemaChangeEventType.CREATE;
             case "ALTER TABLE":
@@ -83,7 +89,7 @@ public class OracleSchemaChangeEventEmitter implements SchemaChangeEventEmitter 
                 LOGGER.warn("DROP TABLE not yet implemented");
                 break;
             default:
-                LOGGER.debug("Ignoring DDL event of type {}", ddlLcr.getCommandType());
+                LOGGER.debug("Ignoring DDL event of type {}", commandType);
         }
 
         return null;

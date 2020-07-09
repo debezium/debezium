@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.connector.oracle;
+package io.debezium.connector.oracle.xstream;
 
 import java.sql.SQLException;
 import java.util.Arrays;
@@ -49,7 +49,7 @@ public class LcrPosition implements Comparable<LcrPosition> {
         return new LcrPosition(Strings.hexStringToByteArray(rawPosition));
     }
 
-    byte[] getRawPosition() {
+    public byte[] getRawPosition() {
         return rawPosition;
     }
 
@@ -77,10 +77,7 @@ public class LcrPosition implements Comparable<LcrPosition> {
             return false;
         }
         LcrPosition other = (LcrPosition) obj;
-        if (!Arrays.equals(rawPosition, other.rawPosition)) {
-            return false;
-        }
-        return true;
+        return Arrays.equals(rawPosition, other.rawPosition);
     }
 
     @Override

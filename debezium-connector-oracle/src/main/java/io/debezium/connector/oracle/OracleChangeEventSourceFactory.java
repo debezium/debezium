@@ -5,6 +5,9 @@
  */
 package io.debezium.connector.oracle;
 
+import io.debezium.config.Configuration;
+import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSource;
+import io.debezium.connector.oracle.xstream.XstreamStreamingChangeEventSource;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.ChangeEventSourceFactory;
@@ -23,15 +26,20 @@ public class OracleChangeEventSourceFactory implements ChangeEventSourceFactory 
     private final EventDispatcher<TableId> dispatcher;
     private final Clock clock;
     private final OracleDatabaseSchema schema;
+    private final Configuration config;
+    private final OracleTaskContext taskContext;
 
     public OracleChangeEventSourceFactory(OracleConnectorConfig configuration, OracleConnection jdbcConnection,
-                                          ErrorHandler errorHandler, EventDispatcher<TableId> dispatcher, Clock clock, OracleDatabaseSchema schema) {
+                                          ErrorHandler errorHandler, EventDispatcher<TableId> dispatcher, Clock clock, OracleDatabaseSchema schema,
+                                          Configuration config, OracleTaskContext taskContext) {
         this.configuration = configuration;
         this.jdbcConnection = jdbcConnection;
         this.errorHandler = errorHandler;
         this.dispatcher = dispatcher;
         this.clock = clock;
         this.schema = schema;
+        this.config = config;
+        this.taskContext = taskContext;
     }
 
     @Override
@@ -42,13 +50,25 @@ public class OracleChangeEventSourceFactory implements ChangeEventSourceFactory 
 
     @Override
     public StreamingChangeEventSource getStreamingChangeEventSource(OffsetContext offsetContext) {
-        return new OracleStreamingChangeEventSource(
+        OracleConnectorConfig.ConnectorAdapter adapter = configuration.getAdapter();
+        if (adapter == OracleConnectorConfig.ConnectorAdapter.XSTREAM) {
+            return new XstreamStreamingChangeEventSource(
+                    configuration,
+                    (OracleOffsetContext) offsetContext,
+                    jdbcConnection,
+                    dispatcher,
+                    errorHandler,
+                    clock,
+                    schema);
+        }
+        return new LogMinerStreamingChangeEventSource(
                 configuration,
                 (OracleOffsetContext) offsetContext,
                 jdbcConnection,
                 dispatcher,
                 errorHandler,
                 clock,
-                schema);
+                schema,
+                taskContext);
     }
 }

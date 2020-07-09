@@ -57,11 +57,19 @@ public class ColumnDefinitionParserListener extends BaseParserListener {
 
     // todo use dataTypeResolver instead
     private void resolveColumnDataType(PlSqlParser.Column_definitionContext ctx) {
-        PlSqlParser.Precision_partContext precisionPart = ctx.datatype().precision_part();
-
         columnEditor.name(getColumnName(ctx.column_name()));
 
-        if (ctx.datatype().native_datatype_element() != null) {
+        PlSqlParser.Precision_partContext precisionPart = null;
+        if (ctx.datatype() != null) {
+            precisionPart = ctx.datatype().precision_part();
+        }
+
+        if (ctx.datatype() == null) {
+            if (ctx.type_name() != null && "\"MDSYS\".\"SDO_GEOMETRY\"".equalsIgnoreCase(ctx.type_name().getText())) {
+                columnEditor.jdbcType(Types.STRUCT).type("MDSYS.SDO_GEOMETRY");
+            }
+        }
+        else if (ctx.datatype().native_datatype_element() != null) {
             if (ctx.datatype().native_datatype_element().INT() != null
                     || ctx.datatype().native_datatype_element().INTEGER() != null
                     || ctx.datatype().native_datatype_element().SMALLINT() != null
