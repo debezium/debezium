@@ -187,8 +187,10 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         assertConnectorIsRunning();
 
         // Wait for snapshot completion
+        TestHelper.waitForSnapshotToBeCompleted();
         consumeRecordsByTopic(1);
 
+        TestHelper.waitForStreamingStarted();
         for (int i = 0; i < RECORDS_PER_TABLE; i++) {
             final int id = ID_START + i;
             connection.execute(
@@ -197,7 +199,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
                     "INSERT INTO tableb VALUES(" + id + ", 'b')");
         }
 
-        final SourceRecords records = consumeRecordsByTopic(RECORDS_PER_TABLE * TABLES);
+        final SourceRecords records = consumeRecordsByTopic(RECORDS_PER_TABLE * TABLES, 24);
         final List<SourceRecord> tableA = records.recordsForTopic("server1.dbo.tablea");
         final List<SourceRecord> tableB = records.recordsForTopic("server1.dbo.tableb");
         Assertions.assertThat(tableA).hasSize(RECORDS_PER_TABLE);
