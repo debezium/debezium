@@ -318,6 +318,16 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
                     + "In '" + SnapshotIsolationMode.READ_UNCOMMITTED.getValue()
                     + "' mode neither table nor row-level locks are acquired, but connector does not guarantee snapshot consistency.");
 
+    public static final Field SNAPSHOT_SKIP_LOCKS = Field.create("snapshot.skip.locks")
+            .withDisplayName("Should schema be locked as we build the schema snapshot?")
+            .withType(Type.BOOLEAN)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(false)
+            .withValidation(Field::isBoolean)
+            .withDescription(
+                    "If true, locks all tables to be captured as we build the schema snapshot. This will prevent from any concurrent schema changes being applied to them.");
+
     private static final ConfigDefinition CONFIG_DEFINITION = HistorizedRelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .name("SQL Server")
             .type(
@@ -330,7 +340,8 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
             .connector(
                     SNAPSHOT_MODE,
                     SNAPSHOT_ISOLATION_MODE,
-                    SOURCE_TIMESTAMP_MODE)
+                    SOURCE_TIMESTAMP_MODE,
+                    SNAPSHOT_SKIP_LOCKS)
             .excluding(
                     SCHEMA_WHITELIST,
                     SCHEMA_INCLUDE_LIST,
@@ -450,5 +461,12 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     @Override
     public String getConnectorName() {
         return Module.name();
+    }
+
+    /**
+     * @return true if lock to be obtained before building the snapshot schema
+     */
+    public boolean skipSnapshotLock() {
+        return getConfig().getBoolean(SNAPSHOT_SKIP_LOCKS);
     }
 }

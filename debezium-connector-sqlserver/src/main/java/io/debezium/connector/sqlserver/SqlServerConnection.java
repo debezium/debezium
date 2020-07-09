@@ -19,6 +19,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
@@ -86,14 +87,36 @@ public class SqlServerConnection extends JdbcConnection {
      * Creates a new connection using the supplied configuration.
      *
      * @param config {@link Configuration} instance, may not be null.
+     * @param clock the clock
      * @param sourceTimestampMode strategy for populating {@code source.ts_ms}.
-     * @param config
-     *            {@link Configuration} instance, may not be null.
-     * @param valueConverters
-     *            {@link SqlServerValueConverters} instance
+     */
+    public SqlServerConnection(Configuration config, Clock clock, SourceTimestampMode sourceTimestampMode) {
+        this(config, clock, sourceTimestampMode, null);
+    }
+
+    /**
+     * Creates a new connection using the supplied configuration.
+     *
+     * @param config {@link Configuration} instance, may not be null.
+     * @param clock the clock
+     * @param sourceTimestampMode strategy for populating {@code source.ts_ms}.
+     * @param valueConverters {@link SqlServerValueConverters} instance
      */
     public SqlServerConnection(Configuration config, Clock clock, SourceTimestampMode sourceTimestampMode, SqlServerValueConverters valueConverters) {
-        super(config, FACTORY);
+        this(config, clock, sourceTimestampMode, null, null);
+    }
+
+    /**
+     * Creates a new connection using the supplied configuration.
+     *
+     * @param config {@link Configuration} instance, may not be null.
+     * @param clock the clock
+     * @param sourceTimestampMode strategy for populating {@code source.ts_ms}.
+     * @param valueConverters {@link SqlServerValueConverters} instance
+     * @param classLoaderSupplier class loader supplier
+     */
+    public SqlServerConnection(Configuration config, Clock clock, SourceTimestampMode sourceTimestampMode, SqlServerValueConverters valueConverters, Supplier<ClassLoader> classLoaderSupplier) {
+        super(config, FACTORY, classLoaderSupplier);
         lsnToInstantCache = new BoundedConcurrentHashMap<>(100);
         realDatabaseName = retrieveRealDatabaseName();
         boolean supportsAtTimeZone = supportsAtTimeZone();
@@ -185,6 +208,10 @@ public class SqlServerConnection extends JdbcConnection {
             final Lsn fromLsn = getFromLsn(changeTable, intervalFromLsn);
             LOGGER.trace("Getting changes for table {} in range[{}, {}]", changeTable, fromLsn, intervalToLsn);
             preparers[idx] = statement -> {
+                String fetchSizeStr = config().asProperties().getProperty("incremental.fetch.size");
+                if (fetchSizeStr != null && fetchSizeStr.trim().length() > 0) {
+                    statement.setFetchSize(Integer.parseInt(fetchSizeStr));
+                }
                 statement.setBytes(1, fromLsn.getBinary());
                 statement.setBytes(2, intervalToLsn.getBinary());
             };
