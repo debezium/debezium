@@ -14,7 +14,6 @@ import java.time.Duration;
 import java.util.Collections;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
 
 import javax.management.InstanceNotFoundException;
 import javax.management.MBeanServer;
@@ -33,6 +32,7 @@ import io.debezium.connector.sqlserver.SqlServerChangeTable;
 import io.debezium.connector.sqlserver.SqlServerConnection;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig;
 import io.debezium.jdbc.JdbcConfiguration;
+import io.debezium.jdbc.JdbcConnection;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.history.FileDatabaseHistory;
 import io.debezium.util.Clock;
@@ -366,7 +366,7 @@ public class TestHelper {
             Awaitility.await("Checking for expected record in CDC table for " + tableName)
                     .atMost(30, TimeUnit.SECONDS)
                     .pollDelay(Duration.ofSeconds(0))
-                    .pollInterval(Duration.ofSeconds(1)).until(() -> {
+                    .pollInterval(Duration.ofMillis(100)).until(() -> {
                         if (!connection.getMaxLsn().isAvailable()) {
                             return false;
                         }
@@ -377,18 +377,10 @@ public class TestHelper {
                                 try {
                                     final Lsn minLsn = connection.getMinLsn(ctTableName);
                                     final Lsn maxLsn = connection.getMaxLsn();
-                                    final AtomicReference<Boolean> found = new AtomicReference(false);
+                                    final CdcRecordFoundBlockingMultiResultSetConsumer consumer = new CdcRecordFoundBlockingMultiResultSetConsumer(handler);
                                     SqlServerChangeTable[] tables = Collections.singletonList(ct).toArray(new SqlServerChangeTable[]{});
-                                    connection.getChangesForTables(tables, minLsn, maxLsn, resultsets -> {
-                                        final ResultSet rs = resultsets[0];
-                                        while (rs.next()) {
-                                            if (handler.apply(rs)) {
-                                                found.set(true);
-                                                break;
-                                            }
-                                        }
-                                    });
-                                    return found.get();
+                                    connection.getChangesForTables(tables, minLsn, maxLsn, consumer);
+                                    return consumer.isFound();
                                 }
                                 catch (Exception e) {
                                     if (e.getMessage().contains("An insufficient number of arguments were supplied")) {
@@ -396,7 +388,7 @@ public class TestHelper {
                                         // In this case, we're going to ignore it.
                                         return false;
                                     }
-                                    org.junit.Assert.fail("Failed to fetch changes for " + tableName + ": " + e.getMessage());
+                                    throw new AssertionError("Failed to fetch changes for " + tableName, e);
                                 }
                             }
                         }
@@ -411,5 +403,35 @@ public class TestHelper {
     @FunctionalInterface
     public interface CdcRecordHandler {
         boolean apply(ResultSet rs) throws SQLException;
+    }
+
+    /**
+     * A multiple result-set consumer used internally by {@link #waitForCdcRecord(SqlServerConnection, String, CdcRecordHandler)}
+     * that allows returning whether the provided {@link CdcRecordHandler} detected the expected condition or not.
+     */
+    static class CdcRecordFoundBlockingMultiResultSetConsumer implements JdbcConnection.BlockingMultiResultSetConsumer {
+        private final CdcRecordHandler handler;
+        private boolean found;
+
+        public CdcRecordFoundBlockingMultiResultSetConsumer(CdcRecordHandler handler) {
+            this.handler = handler;
+        }
+
+        @Override
+        public void accept(ResultSet[] rs) throws SQLException, InterruptedException {
+            if (rs.length == 1) {
+                final ResultSet resultSet = rs[0];
+                while (resultSet.next()) {
+                    if (handler.apply(resultSet)) {
+                        this.found = true;
+                        break;
+                    }
+                }
+            }
+        }
+
+        public boolean isFound() {
+            return found;
+        }
     }
 }
