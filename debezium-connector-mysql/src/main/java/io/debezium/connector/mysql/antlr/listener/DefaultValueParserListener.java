@@ -34,6 +34,7 @@ public class DefaultValueParserListener extends MySqlParserBaseListener {
      * table level might have to be applied.
      */
     private final boolean convertDefault;
+    private boolean converted;
 
     public DefaultValueParserListener(ColumnEditor columnEditor, MySqlValueConverters converters,
                                       AtomicReference<Boolean> optionalColumn, boolean convertDefault) {
@@ -41,6 +42,7 @@ public class DefaultValueParserListener extends MySqlParserBaseListener {
         this.defaultValueConverter = new MySqlDefaultValueConverter(converters);
         this.optionalColumn = optionalColumn;
         this.convertDefault = convertDefault;
+        this.converted = false;
     }
 
     @Override
@@ -80,11 +82,18 @@ public class DefaultValueParserListener extends MySqlParserBaseListener {
                 }
             }
         }
-        // For CREATE TABLE are all column default values converted only after charset is known
-        if (convertDefault) {
-            convertDefaultValueToSchemaType(columnEditor);
-        }
+        convertDefaultValue(true);
         super.enterDefaultValue(ctx);
+    }
+
+    public void convertDefaultValue(boolean skipIfUnknownOptional) {
+        // For CREATE TABLE are all column default values converted only after charset is known.
+        if (convertDefault) {
+            if (!converted && (optionalColumn.get() != null || !skipIfUnknownOptional)) {
+                convertDefaultValueToSchemaType(columnEditor);
+                converted = true;
+            }
+        }
     }
 
     private void convertDefaultValueToSchemaType(ColumnEditor columnEditor) {
@@ -102,4 +111,5 @@ public class DefaultValueParserListener extends MySqlParserBaseListener {
     private String unquoteBinary(String stringLiteral) {
         return stringLiteral.substring(2, stringLiteral.length() - 1);
     }
+
 }
