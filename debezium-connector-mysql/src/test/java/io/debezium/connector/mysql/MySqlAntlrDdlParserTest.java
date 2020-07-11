@@ -13,8 +13,10 @@ import static org.junit.Assert.fail;
 import java.io.IOException;
 import java.io.InputStream;
 import java.sql.Types;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -40,6 +42,7 @@ import io.debezium.relational.ddl.DdlChanges;
 import io.debezium.relational.ddl.DdlParser;
 import io.debezium.relational.ddl.DdlParserListener.Event;
 import io.debezium.relational.ddl.SimpleDdlParserListener;
+import io.debezium.time.ZonedTimestamp;
 import io.debezium.util.IoUtil;
 import io.debezium.util.Testing;
 
@@ -2408,6 +2411,54 @@ public class MySqlAntlrDdlParserTest {
         assertThat(table.columnWithName("id").isOptional()).isEqualTo(false);
         assertThat(table.columnWithName("id").hasDefaultValue()).isEqualTo(true);
         assertThat(table.columnWithName("id").defaultValue()).isEqualTo(1);
+    }
+
+    @Test
+    @FixFor("DBZ-2330")
+    public void shouldNotNullPositionBeforeOrAfterDefaultValue() {
+        String ddl = "CREATE TABLE my_table (" +
+                "ts_col TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP," +
+                "ts_col2 TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL," +
+                "ts_col3 TIMESTAMP DEFAULT CURRENT_TIMESTAMP);";
+        parser.parse(ddl, tables);
+
+        Table table = tables.forTable(new TableId(null, null, "my_table"));
+        ZonedDateTime zdt = ZonedDateTime.ofInstant(Instant.EPOCH, ZoneOffset.UTC);
+        String isoEpoch = ZonedTimestamp.toIsoString(zdt, ZoneOffset.UTC, MySqlValueConverters::adjustTemporal);
+
+        assertThat(table.columnWithName("ts_col").isOptional()).isEqualTo(false);
+        assertThat(table.columnWithName("ts_col").hasDefaultValue()).isEqualTo(true);
+        assertThat(table.columnWithName("ts_col").defaultValue()).isEqualTo(isoEpoch);
+
+        assertThat(table.columnWithName("ts_col2").isOptional()).isEqualTo(false);
+        assertThat(table.columnWithName("ts_col2").hasDefaultValue()).isEqualTo(true);
+        assertThat(table.columnWithName("ts_col2").defaultValue()).isEqualTo(isoEpoch);
+
+        assertThat(table.columnWithName("ts_col3").isOptional()).isEqualTo(true);
+        assertThat(table.columnWithName("ts_col3").hasDefaultValue()).isEqualTo(true);
+        assertThat(table.columnWithName("ts_col3").defaultValue()).isNull();
+
+        final String alter1 = "ALTER TABLE my_table " +
+                " ADD ts_col4 TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL;";
+
+        parser.parse(alter1, tables);
+        table = tables.forTable(new TableId(null, null, "my_table"));
+
+        assertThat(table.columns().size()).isEqualTo(4);
+        assertThat(table.columnWithName("ts_col4").isOptional()).isEqualTo(false);
+        assertThat(table.columnWithName("ts_col4").hasDefaultValue()).isEqualTo(true);
+        assertThat(table.columnWithName("ts_col4").defaultValue()).isEqualTo(isoEpoch);
+
+        final String alter2 = "ALTER TABLE my_table " +
+                " ADD ts_col5 TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP";
+
+        parser.parse(alter2, tables);
+        table = tables.forTable(new TableId(null, null, "my_table"));
+
+        assertThat(table.columns().size()).isEqualTo(5);
+        assertThat(table.columnWithName("ts_col5").isOptional()).isEqualTo(false);
+        assertThat(table.columnWithName("ts_col5").hasDefaultValue()).isEqualTo(true);
+        assertThat(table.columnWithName("ts_col5").defaultValue()).isEqualTo(isoEpoch);
     }
 
     /**
