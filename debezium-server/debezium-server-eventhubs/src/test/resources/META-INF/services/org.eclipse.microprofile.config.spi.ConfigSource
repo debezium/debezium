@@ -1,1 +1,1 @@
-io.debezium.server.eventhubs.EventHubsConfigSource
+io.debezium.server.eventhubs.EventHubsTestConfigSource

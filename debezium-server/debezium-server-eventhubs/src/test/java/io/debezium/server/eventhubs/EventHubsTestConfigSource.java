@@ -13,16 +13,19 @@ import org.apache.kafka.connect.runtime.standalone.StandaloneConfig;
 import io.debezium.server.TestConfigSource;
 import io.debezium.server.TestDatabase;
 
-public class EventHubsConfigSource extends TestConfigSource {
+public class EventHubsTestConfigSource extends TestConfigSource {
 
-    static final String EVENTHUBS_CONNECTION_STRING = "Endpoint=sb://abhishgu-eventhub-2.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=5stp0UcR7z7vtnPrYV2LcFHVdhIJ2zSm3rlOOYB04Hg=;EntityPath=debezium";
+    static final String EVENTHUBS_CONNECTION_STRING_SYSTEM_PROPERTY_NAME = "eventhubs.connection.string";
+    static final String EVENTHUBS_NAME_SYSTEM_PROPERTY_NAME = "eventhubs.hub.name";
+    static final String CONNECTION_STRING_FORMAT = "%s;EntityPath=%s";
 
     final Map<String, String> eventHubsTest = new HashMap<>();
 
-    public EventHubsConfigSource() {
+    public EventHubsTestConfigSource() {
         // event hubs sink config
         eventHubsTest.put("debezium.sink.type", "eventhubs");
-        eventHubsTest.put("debezium.sink.eventhubs.connectionstring", EVENTHUBS_CONNECTION_STRING);
+        eventHubsTest.put("debezium.sink.eventhubs.connectionstring", getEventHubsConnectionString());
+        eventHubsTest.put("debezium.sink.eventhubs.hubname", getEventHubsName());
 
         // postgresql source config
 
@@ -41,5 +44,13 @@ public class EventHubsConfigSource extends TestConfigSource {
         eventHubsTest.put("debezium.source.table.whitelist", "inventory.customers");
 
         config = eventHubsTest;
+    }
+
+    public static String getEventHubsConnectionString() {
+        return System.getProperty(EVENTHUBS_CONNECTION_STRING_SYSTEM_PROPERTY_NAME);
+    }
+
+    public static String getEventHubsName() {
+        return System.getProperty(EVENTHUBS_NAME_SYSTEM_PROPERTY_NAME);
     }
 }
