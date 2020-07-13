@@ -24,7 +24,9 @@ import com.azure.messaging.eventhubs.EventData;
 import com.azure.messaging.eventhubs.EventDataBatch;
 import com.azure.messaging.eventhubs.EventHubClientBuilder;
 import com.azure.messaging.eventhubs.EventHubProducerClient;
+import com.azure.messaging.eventhubs.models.CreateBatchOptions;
 
+import io.debezium.DebeziumException;
 import io.debezium.engine.ChangeEvent;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.engine.DebeziumEngine.RecordCommitter;
@@ -32,7 +34,7 @@ import io.debezium.server.BaseChangeConsumer;
 import io.debezium.server.CustomConsumerBuilder;
 
 /**
- * This sink adapter delivers the messages into Azure Event Hubs.
+ * This sink adapter delivers change event messages to Azure Event Hubs
  *
  * @author Abhishek Gupta
  *
@@ -45,9 +47,23 @@ public class EventHubsChangeConsumer extends BaseChangeConsumer
     private static final Logger LOGGER = LoggerFactory.getLogger(EventHubsChangeConsumer.class);
 
     private static final String PROP_PREFIX = "debezium.sink.eventhubs.";
-    private static final String PROP_CONNECTIONSTRING_NAME = PROP_PREFIX + "connectionstring";
+    private static final String PROP_CONNECTION_STRING_NAME = PROP_PREFIX + "connectionstring";
+    private static final String PROP_EVENTHUB_NAME = PROP_PREFIX + "hubname";
+    private static final String PROP_PARTITION_ID = PROP_PREFIX + "partitionid";
+    private static final String PROP_PARTITION_KEY = PROP_PREFIX + "partitionkey";
+    // maximum size for the batch of events (bytes)
+    private static final String PROP_MAX_BATCH_SIZE = PROP_PREFIX + "maxbatchsize";
 
     private String connectionString;
+    private String eventHubName;
+    private String partitionID;
+    private String partitionKey;
+    private Integer maxBatchSize;
+
+    // connection string format -
+    // Endpoint=sb://<NAMESPACE>/;SharedAccessKeyName=<KEY_NAME>;SharedAccessKey=<ACCESS_KEY>;EntityPath=<HUB_NAME>
+    private static final String CONNECTION_STRING_FORMAT = "%s;EntityPath=%s";
+
     private EventHubProducerClient producer = null;
 
     @Inject
@@ -58,14 +74,29 @@ public class EventHubsChangeConsumer extends BaseChangeConsumer
     void connect() {
         if (customProducer.isResolvable()) {
             producer = customProducer.get();
-            LOGGER.info("Obtained custom configured Event Hubs client '{}'", customProducer);
+            LOGGER.info("Obtained custom configured Event Hubs client for namespace '{}'",
+                    customProducer.get().getFullyQualifiedNamespace());
             return;
         }
 
         final Config config = ConfigProvider.getConfig();
-        connectionString = config.getValue(PROP_CONNECTIONSTRING_NAME, String.class);
+        connectionString = config.getValue(PROP_CONNECTION_STRING_NAME, String.class);
+        eventHubName = config.getValue(PROP_EVENTHUB_NAME, String.class);
 
-        producer = new EventHubClientBuilder().connectionString(connectionString).buildProducerClient();
+        // optional config
+        partitionID = config.getOptionalValue(PROP_PARTITION_ID, String.class).orElse("");
+        partitionKey = config.getOptionalValue(PROP_PARTITION_KEY, String.class).orElse("");
+        maxBatchSize = config.getOptionalValue(PROP_MAX_BATCH_SIZE, Integer.class).orElse(0);
+
+        String finalConnectionString = String.format(CONNECTION_STRING_FORMAT, connectionString, eventHubName);
+
+        try {
+            producer = new EventHubClientBuilder().connectionString(finalConnectionString).buildProducerClient();
+        }
+        catch (Exception e) {
+            throw new DebeziumException(e);
+        }
+
         LOGGER.info("Using default Event Hubs client for namespace '{}'", producer.getFullyQualifiedNamespace());
     }
 
@@ -80,21 +111,27 @@ public class EventHubsChangeConsumer extends BaseChangeConsumer
         }
     }
 
-    /*
-     * TODOs (1) add producer options (CreateBatchOptions) via config - max size,
-     * partition id, partition key (2) handle DELETE events
-     */
-
     @Override
     public void handleBatch(List<ChangeEvent<Object, Object>> records,
                             RecordCommitter<ChangeEvent<Object, Object>> committer)
             throws InterruptedException {
-        LOGGER.info("Processing CDC events...");
+        LOGGER.trace("Processing change events...");
 
-        EventDataBatch batch = producer.createBatch();
+        CreateBatchOptions op = new CreateBatchOptions().setPartitionId(partitionID);
+        if (partitionKey != "") {
+            op.setPartitionKey(partitionKey);
+        }
+        if (maxBatchSize.intValue() != 0) {
+            op.setMaximumSizeInBytes(maxBatchSize);
+        }
+
+        EventDataBatch batch = producer.createBatch(op);
+
         for (ChangeEvent<Object, Object> record : records) {
-            LOGGER.info("Got record -- {}", (String) record.value());
-
+            LOGGER.trace("Received event '{}'", record);
+            if (null == record.value()) {
+                continue;
+            }
             EventData eventData = null;
 
             if (record.value() instanceof String) {
@@ -127,20 +164,23 @@ public class EventHubsChangeConsumer extends BaseChangeConsumer
 
             try {
                 producer.send(batch);
-                LOGGER.info("Sent record to Event Hubs...");
+                LOGGER.trace("Sent record to Event Hubs");
             }
             catch (Exception e) {
                 LOGGER.warn("Failed to send record to Event Hubs {}", e.getMessage());
                 // do not mark the record as processed it its not sent to Event Hubs
                 continue;
             }
-            committer.markProcessed(record);
-            LOGGER.info("Record marked processed");
+            try {
+                committer.markProcessed(record);
+                LOGGER.trace("Record marked processed");
+            }
+            catch (Exception e) {
+                LOGGER.warn("Failed to mark record as processed {}", e.getMessage());
+            }
         }
 
-        // TODO - check if this is required in addition to markProcessed for each
-        // record?
-        // committer.markBatchFinished();
-        // LOGGER.info("Batch marked finished");
+        committer.markBatchFinished();
+        LOGGER.info("Batch marked finished");
     }
 }

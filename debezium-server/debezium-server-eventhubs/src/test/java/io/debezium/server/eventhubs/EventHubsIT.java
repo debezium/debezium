@@ -15,6 +15,8 @@ import javax.inject.Inject;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.azure.core.util.IterableStream;
 import com.azure.messaging.eventhubs.EventHubClientBuilder;
@@ -39,15 +41,18 @@ import io.quarkus.test.junit.QuarkusTest;
 @QuarkusTest
 public class EventHubsIT {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(EventHubsChangeConsumer.class);
+
     private static final int MESSAGE_COUNT = 4;
     private static final String CONSUMER_GROUP = "$Default";
 
     protected static TestDatabase db = null;
     protected static EventHubProducerClient producer = null;
+    protected static EventHubConsumerClient consumer = null;
 
     {
-        Testing.Files.delete(EventHubsConfigSource.OFFSET_STORE_PATH);
-        Testing.Files.createTestingFile(EventHubsConfigSource.OFFSET_STORE_PATH);
+        Testing.Files.delete(EventHubsTestConfigSource.OFFSET_STORE_PATH);
+        Testing.Files.createTestingFile(EventHubsTestConfigSource.OFFSET_STORE_PATH);
     }
 
     @AfterAll
@@ -58,14 +63,19 @@ public class EventHubsIT {
         if (producer != null) {
             producer.close();
         }
+        if (consumer != null) {
+            consumer.close();
+        }
     }
 
     @Inject
     DebeziumServer server;
 
     void setupDependencies(@Observes ConnectorStartedEvent event) {
-        producer = new EventHubClientBuilder().connectionString(EventHubsConfigSource.EVENTHUBS_CONNECTION_STRING)
-                .buildProducerClient();
+        String finalConnectionString = String.format("%s;EntityPath=%s",
+                EventHubsTestConfigSource.getEventHubsConnectionString(), EventHubsTestConfigSource.getEventHubsName());
+
+        producer = new EventHubClientBuilder().connectionString(finalConnectionString).buildProducerClient();
         db = new TestDatabase();
         db.start();
     }
@@ -79,13 +89,16 @@ public class EventHubsIT {
     @Test
     public void testEventHubs() throws Exception {
         Testing.Print.enable();
-        EventHubConsumerClient consumer = new EventHubClientBuilder()
-                .connectionString(EventHubsConfigSource.EVENTHUBS_CONNECTION_STRING).consumerGroup(CONSUMER_GROUP)
+
+        String finalConnectionString = String.format("%s;EntityPath=%s",
+                EventHubsTestConfigSource.getEventHubsConnectionString(), EventHubsTestConfigSource.getEventHubsName());
+
+        consumer = new EventHubClientBuilder().connectionString(finalConnectionString).consumerGroup(CONSUMER_GROUP)
                 .buildConsumerClient();
 
         final List<PartitionEvent> expected = new ArrayList<>();
 
-        Awaitility.await().atMost(Duration.ofSeconds(EventHubsConfigSource.waitForSeconds())).until(() -> {
+        Awaitility.await().atMost(Duration.ofSeconds(EventHubsTestConfigSource.waitForSeconds())).until(() -> {
             IterableStream<PartitionEvent> events = consumer.receiveFromPartition("0", MESSAGE_COUNT,
                     EventPosition.latest());
 
