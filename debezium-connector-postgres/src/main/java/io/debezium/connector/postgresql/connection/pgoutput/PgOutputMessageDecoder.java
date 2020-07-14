@@ -102,6 +102,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
     }
 
     public PgOutputMessageDecoder(MessageDecoderConfig config) {
+        super(config);
         this.config = config;
     }
 

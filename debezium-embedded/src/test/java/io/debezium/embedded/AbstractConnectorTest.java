@@ -270,6 +270,24 @@ public abstract class AbstractConnectorTest implements Testing {
      */
     protected void start(Class<? extends SourceConnector> connectorClass, Configuration connectorConfig,
                          DebeziumEngine.CompletionCallback callback, Predicate<SourceRecord> isStopRecord) {
+        start(connectorClass, connectorConfig, callback, isStopRecord, x -> {
+        });
+    }
+
+    /**
+     * Start the connector using the supplied connector configuration.
+     *
+     * @param connectorClass the connector class; may not be null
+     * @param connectorConfig the configuration for the connector; may not be null
+     * @param isStopRecord the function that will be called to determine if the connector should be stopped before processing
+     *            this record; may be null if not needed
+     * @param callback the function that will be called when the engine fails to start the connector or when the connector
+     *            stops running after completing successfully or due to an error; may be null
+     * @param recordArrivedListener function invoked when a record arrives and is stored in the queue
+     */
+    protected void start(Class<? extends SourceConnector> connectorClass, Configuration connectorConfig,
+                         DebeziumEngine.CompletionCallback callback, Predicate<SourceRecord> isStopRecord,
+                         Consumer<SourceRecord> recordArrivedListener) {
         Configuration config = Configuration.copy(connectorConfig)
                 .with(EmbeddedEngine.ENGINE_NAME, "testing-connector")
                 .with(EmbeddedEngine.CONNECTOR_CLASS, connectorClass.getName())
@@ -317,6 +335,7 @@ public abstract class AbstractConnectorTest implements Testing {
                             return;
                         }
                     }
+                    recordArrivedListener.accept(record);
                 })
                 .using(this.getClass().getClassLoader())
                 .using(wrapperCallback)

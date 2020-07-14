@@ -18,11 +18,15 @@ public class MessageDecoderConfig {
     private final Configuration configuration;
     private final PostgresSchema schema;
     private final String publicationName;
+    private final boolean exportedSnapshot;
+    private final boolean doSnapshot;
 
-    public MessageDecoderConfig(Configuration configuration, PostgresSchema schema, String publicationName) {
+    public MessageDecoderConfig(Configuration configuration, PostgresSchema schema, String publicationName, boolean exportedSnapshot, boolean doSnapshot) {
         this.configuration = configuration;
         this.schema = schema;
         this.publicationName = publicationName;
+        this.exportedSnapshot = exportedSnapshot;
+        this.doSnapshot = doSnapshot;
     }
 
     public Configuration getConfiguration() {
@@ -35,5 +39,13 @@ public class MessageDecoderConfig {
 
     public String getPublicationName() {
         return publicationName;
+    }
+
+    public boolean exportedSnapshot() {
+        return exportedSnapshot;
+    }
+
+    public boolean doSnapshot() {
+        return doSnapshot;
     }
 }

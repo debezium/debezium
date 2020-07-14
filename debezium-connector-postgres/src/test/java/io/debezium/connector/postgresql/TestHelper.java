@@ -265,6 +265,18 @@ public final class TestHelper {
                         .build()));
     }
 
+    protected static void createDefaultReplicationSlot() {
+        try {
+            execute(String.format(
+                    "SELECT * FROM pg_create_logical_replication_slot('%s', '%s')",
+                    ReplicationConnection.Builder.DEFAULT_SLOT_NAME,
+                    decoderPlugin().getPostgresPluginName()));
+        }
+        catch (Exception e) {
+            LOGGER.debug("Error while dropping default replication slot", e);
+        }
+    }
+
     protected static void dropDefaultReplicationSlot() {
         try {
             execute("SELECT pg_drop_replication_slot('" + ReplicationConnection.Builder.DEFAULT_SLOT_NAME + "')");

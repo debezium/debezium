@@ -19,6 +19,7 @@ import com.google.protobuf.InvalidProtocolBufferException;
 
 import io.debezium.connector.postgresql.TypeRegistry;
 import io.debezium.connector.postgresql.connection.AbstractMessageDecoder;
+import io.debezium.connector.postgresql.connection.MessageDecoderConfig;
 import io.debezium.connector.postgresql.connection.ReplicationStream.ReplicationMessageProcessor;
 import io.debezium.connector.postgresql.proto.PgProto;
 import io.debezium.connector.postgresql.proto.PgProto.Op;
@@ -38,6 +39,10 @@ public class PgProtoMessageDecoder extends AbstractMessageDecoder {
     private static final Set<Op> SUPPORTED_OPS = Collect.unmodifiableSet(Op.INSERT, Op.UPDATE, Op.DELETE, Op.BEGIN, Op.COMMIT);
 
     private boolean warnedOnUnkownOp = false;
+
+    public PgProtoMessageDecoder(MessageDecoderConfig config) {
+        super(config);
+    }
 
     @Override
     public void processNotEmptyMessage(final ByteBuffer buffer, ReplicationMessageProcessor processor, TypeRegistry typeRegistry)
