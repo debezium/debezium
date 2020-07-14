@@ -272,6 +272,9 @@ MINUTE_MICROSECOND:                  'MINUTE_MICROSECOND';
 HOUR_MICROSECOND:                    'HOUR_MICROSECOND';
 DAY_MICROSECOND:                     'DAY_MICROSECOND';
 
+// JSON keywords
+JSON_VALID:                          'JSON_VALID';
+JSON_SCHEMA_VALID:                   'JSON_SCHEMA_VALID';
 
 // Group function Keywords
 
@@ -291,7 +294,6 @@ SUM:                                 'SUM';
 VAR_POP:                             'VAR_POP';
 VAR_SAMP:                            'VAR_SAMP';
 VARIANCE:                            'VARIANCE';
-
 
 // Common function Keywords
 
@@ -314,8 +316,6 @@ TRIM:                                'TRIM';
 UTC_DATE:                            'UTC_DATE';
 UTC_TIME:                            'UTC_TIME';
 UTC_TIMESTAMP:                       'UTC_TIMESTAMP';
-
-
 
 // Keywords, but can be ID
 // Common Keywords, but can be ID
