@@ -23,6 +23,15 @@ public abstract class AbstractMessageDecoder implements MessageDecoder {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractMessageDecoder.class);
 
+    private final boolean filterBasedOnLsn;
+
+    public AbstractMessageDecoder(MessageDecoderConfig config) {
+        // To provide seamless snapshot to streaming transition in exported mode it is necessary
+        // to not filter out events based on LSN number as the filtering is done on replication
+        // slot level
+        filterBasedOnLsn = !(config.exportedSnapshot() && config.doSnapshot());
+    }
+
     @Override
     public void processMessage(ByteBuffer buffer, ReplicationMessageProcessor processor, TypeRegistry typeRegistry) throws SQLException, InterruptedException {
         // if message is empty pass control right to ReplicationMessageProcessor to update WAL position info
@@ -42,8 +51,13 @@ public abstract class AbstractMessageDecoder implements MessageDecoder {
         // the lsn we started from is inclusive, so we need to avoid sending back the same message twice
         // but for the first record seen ever it is possible we received the same LSN as the one obtained from replication slot
         if (startLsn.compareTo(lastReceivedLsn) > 0 || (startLsn.equals(lastReceivedLsn) && skipFirstFlushRecord)) {
-            LOGGER.info("Streaming requested from LSN {} but received LSN {} that is same or smaller so skipping the message", startLsn, lastReceivedLsn);
-            return true;
+            if (filterBasedOnLsn) {
+                LOGGER.info("Streaming requested from LSN {} but received LSN {} that is same or smaller so skipping the message", startLsn, lastReceivedLsn);
+                return true;
+            }
+            else {
+                LOGGER.trace("Streaming requested from LSN {} but received LSN {} that is same or smaller so skipping the message", startLsn, lastReceivedLsn);
+            }
         }
         return false;
     }

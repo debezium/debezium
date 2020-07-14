@@ -88,6 +88,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
      * @param dropSlotOnClose           whether the replication slot should be dropped once the connection is closed
      * @param statusUpdateInterval      the interval at which the replication connection should periodically send status
      * @param exportSnapshot            whether the replication should export a snapshot when created
+     * @param exportSnapshot            whether the connector is doing snapshot
      * @param typeRegistry              registry with PostgreSQL types
      * @param streamParams              additional parameters to pass to the replication stream
      * @param schema                    the schema; must not be null
@@ -102,6 +103,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                                           PostgresConnectorConfig.LogicalDecoder plugin,
                                           boolean dropSlotOnClose,
                                           boolean exportSnapshot,
+                                          boolean doSnapshot,
                                           Duration statusUpdateInterval,
                                           TypeRegistry typeRegistry,
                                           Properties streamParams,
@@ -117,7 +119,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         this.dropSlotOnClose = dropSlotOnClose;
         this.statusUpdateInterval = statusUpdateInterval;
         this.exportSnapshot = exportSnapshot;
-        this.messageDecoder = plugin.messageDecoder(new MessageDecoderConfig(config, schema, publicationName));
+        this.messageDecoder = plugin.messageDecoder(new MessageDecoderConfig(config, schema, publicationName, exportSnapshot, doSnapshot));
         this.typeRegistry = typeRegistry;
         this.streamParams = streamParams;
         this.slotCreationInfo = null;
@@ -475,6 +477,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
 
             private void deserializeMessages(ByteBuffer buffer, ReplicationMessageProcessor processor) throws SQLException, InterruptedException {
                 lastReceivedLsn = stream.getLastReceiveLSN();
+                LOGGER.trace("Received message at LSN {}", lastReceivedLsn);
                 messageDecoder.processMessage(buffer, processor, typeRegistry);
             }
 
@@ -616,6 +619,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         private boolean dropSlotOnClose = DEFAULT_DROP_SLOT_ON_CLOSE;
         private Duration statusUpdateIntervalVal;
         private boolean exportSnapshot = DEFAULT_EXPORT_SNAPSHOT;
+        private boolean doSnapshot;
         private TypeRegistry typeRegistry;
         private PostgresSchema schema;
         private Properties slotStreamParams = new Properties();
@@ -697,10 +701,16 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         }
 
         @Override
+        public Builder doSnapshot(boolean doSnapshot) {
+            this.doSnapshot = doSnapshot;
+            return this;
+        }
+
+        @Override
         public ReplicationConnection build() {
             assert plugin != null : "Decoding plugin name is not set";
             return new PostgresReplicationConnection(config, slotName, publicationName, tableFilter, publicationAutocreateMode, plugin, dropSlotOnClose, exportSnapshot,
-                    statusUpdateIntervalVal, typeRegistry, slotStreamParams, schema);
+                    doSnapshot, statusUpdateIntervalVal, typeRegistry, slotStreamParams, schema);
         }
 
         @Override

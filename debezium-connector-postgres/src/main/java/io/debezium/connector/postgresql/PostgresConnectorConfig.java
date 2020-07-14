@@ -363,7 +363,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         DECODERBUFS("decoderbufs") {
             @Override
             public MessageDecoder messageDecoder(MessageDecoderConfig config) {
-                return new PgProtoMessageDecoder();
+                return new PgProtoMessageDecoder(config);
             }
 
             @Override
@@ -374,7 +374,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         WAL2JSON_STREAMING("wal2json_streaming") {
             @Override
             public MessageDecoder messageDecoder(MessageDecoderConfig config) {
-                return new StreamingWal2JsonMessageDecoder();
+                return new StreamingWal2JsonMessageDecoder(config);
             }
 
             @Override
@@ -395,7 +395,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         WAL2JSON_RDS_STREAMING("wal2json_rds_streaming") {
             @Override
             public MessageDecoder messageDecoder(MessageDecoderConfig config) {
-                return new StreamingWal2JsonMessageDecoder();
+                return new StreamingWal2JsonMessageDecoder(config);
             }
 
             @Override
@@ -421,7 +421,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         WAL2JSON("wal2json") {
             @Override
             public MessageDecoder messageDecoder(MessageDecoderConfig config) {
-                return new NonStreamingWal2JsonMessageDecoder();
+                return new NonStreamingWal2JsonMessageDecoder(config);
             }
 
             @Override
@@ -442,7 +442,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         WAL2JSON_RDS("wal2json_rds") {
             @Override
             public MessageDecoder messageDecoder(MessageDecoderConfig config) {
-                return new NonStreamingWal2JsonMessageDecoder();
+                return new NonStreamingWal2JsonMessageDecoder(config);
             }
 
             @Override

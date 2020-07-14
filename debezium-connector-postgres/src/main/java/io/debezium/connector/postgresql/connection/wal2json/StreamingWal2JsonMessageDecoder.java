@@ -18,6 +18,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.postgresql.TypeRegistry;
 import io.debezium.connector.postgresql.connection.AbstractMessageDecoder;
+import io.debezium.connector.postgresql.connection.MessageDecoderConfig;
 import io.debezium.connector.postgresql.connection.ReplicationMessage.NoopMessage;
 import io.debezium.connector.postgresql.connection.ReplicationMessage.Operation;
 import io.debezium.connector.postgresql.connection.ReplicationStream.ReplicationMessageProcessor;
@@ -107,6 +108,10 @@ public class StreamingWal2JsonMessageDecoder extends AbstractMessageDecoder {
     private long txId;
 
     private Instant commitTime;
+
+    public StreamingWal2JsonMessageDecoder(MessageDecoderConfig config) {
+        super(config);
+    }
 
     @Override
     public void processNotEmptyMessage(ByteBuffer buffer, ReplicationMessageProcessor processor, TypeRegistry typeRegistry) throws SQLException, InterruptedException {
