@@ -184,3 +184,32 @@ BEGIN
     RETURN result;
 END;
 #end
+#begin
+-- From MariaDB 10.4.3, the JSON_VALID function is automatically used as a CHECK constraint for the JSON data type alias in order to ensure that a valid json document is inserted.
+-- src: https://mariadb.com/kb/en/json_valid/
+CREATE TABLE `global_priv` (
+    `Host` CHAR(60) COLLATE utf8_bin NOT NULL DEFAULT '',
+    `User` CHAR(80) COLLATE utf8_bin NOT NULL DEFAULT '',
+    `Privilege` LONGTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL DEFAULT '{}' CHECK (json_valid(`Privilege`)),
+    PRIMARY KEY (`Host`,`User`)
+) ENGINE=Aria DEFAULT CHARSET=utf8 COLLATE=utf8_bin PAGE_CHECKSUM=1 TRANSACTIONAL=1 COMMENT='Users and global privileges';
+#end
+#begin
+-- https://dev.mysql.com/doc/refman/8.0/en/json-validation-functions.html#json-validation-functions-constraints
+CREATE TABLE geo (
+    coordinate JSON,
+    CHECK(
+        JSON_SCHEMA_VALID(
+           '{
+               "type":"object",
+               "properties":{
+                 "latitude":{"type":"number", "minimum":-90, "maximum":90},
+                 "longitude":{"type":"number", "minimum":-180, "maximum":180}
+               },
+               "required": ["latitude", "longitude"]
+           }',
+           coordinate
+        )
+    )
+);
+#end
