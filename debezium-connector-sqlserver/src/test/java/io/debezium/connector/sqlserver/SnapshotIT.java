@@ -202,6 +202,10 @@ public class SnapshotIT extends AbstractConnectorTest {
                     String.format("INSERT INTO table1 VALUES(%s, '%s', %s, '%s')", id, "name" + id, new BigDecimal(id + ".23"), "2018-07-18 13:28:56"));
         }
 
+        // Wait for last written CDC entry
+        final int lastId = INITIAL_RECORDS_PER_TABLE + (STREAMING_RECORDS_PER_TABLE - 1);
+        TestHelper.waitForCdcRecord(connection, "table1", rs -> rs.getInt("id") == lastId);
+
         final SourceRecords records = consumeRecordsByTopic(STREAMING_RECORDS_PER_TABLE);
         final List<SourceRecord> table1 = records.recordsForTopic("server1.dbo.table1");
 
