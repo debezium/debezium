@@ -940,7 +940,7 @@ Please pay attention to the tables without PK, any delete messages from such tab
 To be able to process messages from tables without PK set REPLICA IDENTITY to FULL level.
 ====
 
-The PostgreSQL connector's events are designed to work with https://cwiki.apache.org/confluence/display/KAFKA/Log+Compaction[Kafka log compaction], which allows for the removal of some older messages as long as at least the most recent message for every key is kept. This allows Kafka to reclaim storage space while ensuring the topic contains a complete dataset and can be used for reloading key-based state.
+The PostgreSQL connector's events are designed to work with link:https://kafka.apache.org/documentation/#compaction[Kafka log compaction], which allows for the removal of some older messages as long as at least the most recent message for every key is kept. This allows Kafka to reclaim storage space while ensuring the topic contains a complete dataset and can be used for reloading key-based state.
 
 [[postgresql-tombstone-events]]
 When a row is deleted, the _delete_ event value listed above still works with log compaction, since Kafka can still remove all earlier messages with that same key. But only if the message value is `null` will Kafka know that it can remove _all messages_ with that same key. To make this possible, the PostgreSQL connector always follows the _delete_ event with a special _tombstone_ event that has the same key but `null` value.
