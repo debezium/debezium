@@ -208,9 +208,8 @@ public interface ReplicationConnection extends AutoCloseable {
 
         /**
          * Whether or not the snapshot is executed
-         * @param doSnapshot true if a snapshot should is going to be executed, false if otherwise
+         * @param doSnapshot true if a snapshot is going to be executed, false if otherwise
          * @return this instance
-         * @see #DEFAULT_EXPORT_SNAPSHOT
          */
         Builder doSnapshot(final boolean doSnapshot);
 

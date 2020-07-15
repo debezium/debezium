@@ -88,7 +88,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
      * @param dropSlotOnClose           whether the replication slot should be dropped once the connection is closed
      * @param statusUpdateInterval      the interval at which the replication connection should periodically send status
      * @param exportSnapshot            whether the replication should export a snapshot when created
-     * @param exportSnapshot            whether the connector is doing snapshot
+     * @param doSnapshot                whether the connector is doing snapshot
      * @param typeRegistry              registry with PostgreSQL types
      * @param streamParams              additional parameters to pass to the replication stream
      * @param schema                    the schema; must not be null
