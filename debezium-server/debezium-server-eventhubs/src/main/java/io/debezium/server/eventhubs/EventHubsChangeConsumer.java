@@ -92,7 +92,8 @@ public class EventHubsChangeConsumer extends BaseChangeConsumer
 
         try {
             producer = new EventHubClientBuilder().connectionString(finalConnectionString).buildProducerClient();
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             throw new DebeziumException(e);
         }
 
@@ -104,14 +105,16 @@ public class EventHubsChangeConsumer extends BaseChangeConsumer
         try {
             producer.close();
             LOGGER.info("Closed Event Hubs producer client");
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             LOGGER.warn("Exception while closing Event Hubs producer: {}", e);
         }
     }
 
     @Override
     public void handleBatch(List<ChangeEvent<Object, Object>> records,
-            RecordCommitter<ChangeEvent<Object, Object>> committer) throws InterruptedException {
+                            RecordCommitter<ChangeEvent<Object, Object>> committer)
+            throws InterruptedException {
         LOGGER.trace("Event Hubs sink adapter processing change events");
 
         CreateBatchOptions op = new CreateBatchOptions().setPartitionId(partitionID);
@@ -134,18 +137,22 @@ public class EventHubsChangeConsumer extends BaseChangeConsumer
 
             if (record.value() instanceof String) {
                 eventData = new EventData((String) record.value());
-            } else if (record.value() instanceof byte[]) {
+            }
+            else if (record.value() instanceof byte[]) {
                 eventData = new EventData(getBytes(record.value()));
             }
             try {
                 if (!batch.tryAdd(eventData)) {
                     LOGGER.warn("Event data was too large to fit in the batch - {}", record);
                 }
-            } catch (IllegalArgumentException e) {
+            }
+            catch (IllegalArgumentException e) {
                 LOGGER.warn("Event data was null - {}", e.getMessage());
-            } catch (AmqpException e) {
+            }
+            catch (AmqpException e) {
                 LOGGER.warn("Event data is larger than the maximum size of the EventDataBatch - {}", e.getMessage());
-            } catch (Exception e) {
+            }
+            catch (Exception e) {
                 LOGGER.warn("Failed to add event data to batch - {}", e.getMessage());
             }
         }
@@ -153,7 +160,8 @@ public class EventHubsChangeConsumer extends BaseChangeConsumer
         try {
             producer.send(batch);
             LOGGER.trace("Sent record batch to Event Hubs");
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             LOGGER.warn("Failed to send record to Event Hubs {}", e.getMessage());
         }
 
@@ -162,7 +170,8 @@ public class EventHubsChangeConsumer extends BaseChangeConsumer
             try {
                 committer.markProcessed(record);
                 LOGGER.trace("Record marked processed");
-            } catch (Exception e) {
+            }
+            catch (Exception e) {
                 LOGGER.warn("Failed to mark record as processed {}", e.getMessage());
             }
         }
