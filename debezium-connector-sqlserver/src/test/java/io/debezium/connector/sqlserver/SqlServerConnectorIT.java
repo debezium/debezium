@@ -1146,6 +1146,10 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
                     "INSERT INTO tableb VALUES(" + id + ", 'b')");
         }
         connection.connection().commit();
+
+        TestHelper.waitForCdcRecord(connection, "tablea", rs -> rs.getInt("id") == (ID_START + RECORDS_PER_TABLE - 1));
+        TestHelper.waitForCdcRecord(connection, "tableb", rs -> rs.getInt("id") == (ID_START + RECORDS_PER_TABLE - 1));
+
         List<SourceRecord> records = consumeRecordsByTopic(RECORDS_PER_TABLE).allRecordsInOrder();
 
         assertThat(records).hasSize(RECORDS_PER_TABLE);
@@ -1194,6 +1198,9 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
                     "INSERT INTO tableb VALUES(" + id + ", 'b')");
             connection.connection().commit();
         }
+
+        TestHelper.waitForCdcRecord(connection, "tablea", rs -> rs.getInt("id") == (ID_RESTART + RECORDS_PER_TABLE - 1));
+        TestHelper.waitForCdcRecord(connection, "tableb", rs -> rs.getInt("id") == (ID_RESTART + RECORDS_PER_TABLE - 1));
 
         sourceRecords = consumeRecordsByTopic(RECORDS_PER_TABLE * TABLES);
         tableA = sourceRecords.recordsForTopic("server1.dbo.tablea");

@@ -22,6 +22,8 @@ import org.junit.Test;
 import io.debezium.config.Configuration;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.junit.EqualityCheck;
+import io.debezium.junit.SkipWhenKafkaVersion;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.util.Testing;
 
@@ -61,6 +63,7 @@ public class MySqlDecimalIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-730")
+    @SkipWhenKafkaVersion(value = SkipWhenKafkaVersion.KafkaVersion.KAFKA_1XX, check = EqualityCheck.EQUAL, description = "No compatible with Kafka 1.x")
     public void testPreciseDecimalHandlingMode() throws SQLException, InterruptedException {
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL)
