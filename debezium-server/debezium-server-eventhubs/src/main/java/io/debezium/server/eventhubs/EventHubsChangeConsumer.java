@@ -92,8 +92,7 @@ public class EventHubsChangeConsumer extends BaseChangeConsumer
 
         try {
             producer = new EventHubClientBuilder().connectionString(finalConnectionString).buildProducerClient();
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             throw new DebeziumException(e);
         }
 
@@ -105,17 +104,15 @@ public class EventHubsChangeConsumer extends BaseChangeConsumer
         try {
             producer.close();
             LOGGER.info("Closed Event Hubs producer client");
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             LOGGER.warn("Exception while closing Event Hubs producer: {}", e);
         }
     }
 
     @Override
     public void handleBatch(List<ChangeEvent<Object, Object>> records,
-                            RecordCommitter<ChangeEvent<Object, Object>> committer)
-            throws InterruptedException {
-        LOGGER.trace("Processing change events...");
+            RecordCommitter<ChangeEvent<Object, Object>> committer) throws InterruptedException {
+        LOGGER.trace("Event Hubs sink adapter processing change events");
 
         CreateBatchOptions op = new CreateBatchOptions().setPartitionId(partitionID);
         if (partitionKey != "") {
@@ -127,6 +124,7 @@ public class EventHubsChangeConsumer extends BaseChangeConsumer
 
         EventDataBatch batch = producer.createBatch(op);
 
+        // this loop just adds records to the batch
         for (ChangeEvent<Object, Object> record : records) {
             LOGGER.trace("Received event '{}'", record);
             if (null == record.value()) {
@@ -136,51 +134,40 @@ public class EventHubsChangeConsumer extends BaseChangeConsumer
 
             if (record.value() instanceof String) {
                 eventData = new EventData((String) record.value());
-            }
-            else if (record.value() instanceof byte[]) {
+            } else if (record.value() instanceof byte[]) {
                 eventData = new EventData(getBytes(record.value()));
             }
             try {
                 if (!batch.tryAdd(eventData)) {
-                    LOGGER.warn("event was too large to fit in the batch - {}", record);
-                    continue;
+                    LOGGER.warn("Event data was too large to fit in the batch - {}", record);
                 }
+            } catch (IllegalArgumentException e) {
+                LOGGER.warn("Event data was null - {}", e.getMessage());
+            } catch (AmqpException e) {
+                LOGGER.warn("Event data is larger than the maximum size of the EventDataBatch - {}", e.getMessage());
+            } catch (Exception e) {
+                LOGGER.warn("Failed to add event data to batch - {}", e.getMessage());
             }
-            catch (IllegalArgumentException e) {
-                LOGGER.warn("EventData was null - {}", e.getMessage());
-                continue;
-            }
-            catch (AmqpException e) {
-                LOGGER.warn("EventData is larger than the maximum size of the EventDataBatch - {}", e.getMessage());
-                continue;
-            }
-            catch (Exception e) {
-                LOGGER.warn("Failed to add EventData to batch {}", e.getMessage());
-                continue;
-            }
+        }
 
-            // Event Hubs producer only supports "batch"ed sends. Each record is sent as a
-            // separate batch which is then acknowledged/committed
+        try {
+            producer.send(batch);
+            LOGGER.trace("Sent record batch to Event Hubs");
+        } catch (Exception e) {
+            LOGGER.warn("Failed to send record to Event Hubs {}", e.getMessage());
+        }
 
-            try {
-                producer.send(batch);
-                LOGGER.trace("Sent record to Event Hubs");
-            }
-            catch (Exception e) {
-                LOGGER.warn("Failed to send record to Event Hubs {}", e.getMessage());
-                // do not mark the record as processed it its not sent to Event Hubs
-                continue;
-            }
+        // this loop commits each record
+        for (ChangeEvent<Object, Object> record : records) {
             try {
                 committer.markProcessed(record);
                 LOGGER.trace("Record marked processed");
-            }
-            catch (Exception e) {
+            } catch (Exception e) {
                 LOGGER.warn("Failed to mark record as processed {}", e.getMessage());
             }
         }
 
         committer.markBatchFinished();
-        LOGGER.info("Batch marked finished");
+        LOGGER.trace("Batch marked finished");
     }
 }
