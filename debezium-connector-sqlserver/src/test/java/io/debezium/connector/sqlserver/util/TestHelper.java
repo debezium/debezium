@@ -382,7 +382,7 @@ public class TestHelper {
     public static void waitForCdcRecord(SqlServerConnection connection, String tableName, CdcRecordHandler handler) {
         try {
             Awaitility.await("Checking for expected record in CDC table for " + tableName)
-                    .atMost(30, TimeUnit.SECONDS)
+                    .atMost(60, TimeUnit.SECONDS)
                     .pollDelay(Duration.ofSeconds(0))
                     .pollInterval(Duration.ofMillis(100)).until(() -> {
                         if (!connection.getMaxLsn().isAvailable()) {
