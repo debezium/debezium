@@ -112,6 +112,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         }
     }
 
+    @Override
     protected List<SchemaAndValueField> schemasAndValuesForCustomConverterTypes() {
         return Arrays.asList(new SchemaAndValueField("i",
                 SchemaBuilder.string().name("io.debezium.postgresql.type.Isbn").build(), "0-393-04002-X"));
@@ -408,7 +409,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         // then start the producer and validate all records are there
         buildNoStreamProducer(TestHelper.defaultConfig());
 
-        TestConsumer consumer = testConsumer(1 + 2 * 30); // Every record comes once from partitioned table and from partition
+        TestConsumer consumer = testConsumer(1 + 30);
         consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
 
         Set<Integer> ids = new HashSet<>();
@@ -434,7 +435,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
 
         // verify each topic contains exactly the number of input records
         assertEquals(1, topicCounts.get("test_server.public.first_table").intValue());
-        assertEquals(30, topicCounts.get("test_server.public.partitioned").intValue());
+        assertEquals(0, topicCounts.get("test_server.public.partitioned").intValue());
         assertEquals(10, topicCounts.get("test_server.public.partitioned_1_100").intValue());
         assertEquals(20, topicCounts.get("test_server.public.partitioned_101_200").intValue());
 
