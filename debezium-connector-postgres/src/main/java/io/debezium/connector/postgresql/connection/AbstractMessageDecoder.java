@@ -56,7 +56,7 @@ public abstract class AbstractMessageDecoder implements MessageDecoder {
                 return true;
             }
             else {
-                LOGGER.trace("Streaming requested from LSN {} but received LSN {} that is same or smaller so skipping the message", startLsn, lastReceivedLsn);
+                LOGGER.trace("Streaming requested from LSN {} but received LSN {} that is same or smaller", startLsn, lastReceivedLsn);
             }
         }
         return false;
