@@ -1147,7 +1147,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
                     pgConnection.commit();
                 }
                 catch (Exception e) {
-                    e.printStackTrace();
+                    throw new IllegalStateException(e);
                 }
                 inserted.set(true);
             }
@@ -1199,7 +1199,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
                     pgConnection.commit();
                 }
                 catch (Exception e) {
-                    e.printStackTrace();
+                    throw new IllegalStateException(e);
                 }
                 inserted.set(true);
             }
