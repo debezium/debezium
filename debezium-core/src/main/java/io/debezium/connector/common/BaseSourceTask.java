@@ -71,6 +71,8 @@ public abstract class BaseSourceTask extends SourceTask {
      */
     private volatile Map<String, ?> lastOffset;
 
+    private Duration retriableRestartWait;
+
     @Override
     public final void start(Map<String, String> props) {
         if (context == null) {
@@ -87,6 +89,9 @@ public abstract class BaseSourceTask extends SourceTask {
 
             this.props = props;
             Configuration config = Configuration.from(props);
+            retriableRestartWait = config.getDuration(CommonConnectorConfig.RETRIABLE_RESTART_WAIT, ChronoUnit.MILLIS);
+            // need to reset the delay or you only get one delayed restart
+            restartDelay = null;
             if (!config.validateAndRecord(getAllConfigurationFields(), LOGGER::error)) {
                 throw new ConnectException("Error configuring an instance of " + getClass().getSimpleName() + "; check the logs for details");
             }
@@ -181,7 +186,7 @@ public abstract class BaseSourceTask extends SourceTask {
             }
 
             if (restart) {
-                LOGGER.warn("Going to restart connector after 10 sec. after a retriable exception");
+                LOGGER.warn("Going to restart connector after {} sec. after a retriable exception", retriableRestartWait.getSeconds());
             }
             else {
                 LOGGER.info("Stopping down connector");
@@ -201,7 +206,7 @@ public abstract class BaseSourceTask extends SourceTask {
             doStop();
 
             if (restart && restartDelay == null) {
-                restartDelay = ElapsedTimeStrategy.constant(Clock.system(), 10_000);
+                restartDelay = ElapsedTimeStrategy.constant(Clock.system(), retriableRestartWait.toMillis());
                 restartDelay.hasElapsed();
             }
         }
