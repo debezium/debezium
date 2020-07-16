@@ -8,9 +8,7 @@
 
 toc::[]
 
-The following describes how to set up the {prodname} connectors for change data capture on Red Hat's https://www.openshift.com/[OpenShift] container platform.
-
-These instructions have been tested by using the https://github.com/minishift/minishift[Minishift tool], which allows you to run a single node OpenShift instance locally on your machine.
+This procedure is for setting up {prodname} connectors on Red Hat's https://www.openshift.com/[OpenShift] container platform. These instructions have been tested by using the https://github.com/minishift/minishift[Minishift tool], which allows you to run a single node OpenShift instance locally on your machine.
 
 A complete example of this set-up using Minishift is in the https://github.com/debezium/debezium-examples/tree/master/openshift[{prodname} examples repository].
 
@@ -19,10 +17,16 @@ It starts an OpenShift cluster just for you, which lets you start using {prodnam
 
 == {prodname} Deployment
 
-To set up Kafka and Kafka Connect on OpenShift, use the set of images that are provided by the https://strimzi.io/[Strimzi] project. These images offer "Kafka as a Service" by providing
-enterprise grade configuration files and images that bring Kafka to OpenShift.
+To set up Kafka and Kafka Connect on OpenShift, use the set of images that are provided by the https://strimzi.io/[Strimzi] project. These images offer "Kafka as a Service" by providing enterprise grade configuration files and images that bring Kafka to OpenShift.
 
-. Install the operators and templates for the Kafka broker and Kafka Connect into your OpenShift project:
+.Prerequisites
+
+* Minishift is installed.
+* The OpenShift command line interface (`oc`) is installed.
+
+.Procedure
+
+. In your OpenShift project, enter the following commands to install the operators and templates for the Kafka broker and Kafka Connect:
 +
 [source,shell,subs="attributes",options="nowrap"]
 ----
@@ -30,25 +34,25 @@ export STRIMZI_VERSION={strimzi-version}
 git clone -b $STRIMZI_VERSION https://github.com/strimzi/strimzi-kafka-operator
 cd strimzi-kafka-operator
 
-# We need to create security objects as part of installation so it is necessary to switch to admin user
+# Switch to an admin user to create security objects as part of installation:
 oc login -u system:admin
 oc create -f install/cluster-operator && oc create -f examples/templates/cluster-operator
 ----
 
 . Deploy a Kafka broker cluster and a Kafka Connect cluster and then create a Kafka Connect image with the {prodname} connectors installed:
-
++
 [source,shell,subs="attributes",options="nowrap"]
 ----
-# Deploy an ephemeral single instance Kafka broker
+# Deploy an ephemeral single instance Kafka broker:
 oc process strimzi-ephemeral -p CLUSTER_NAME=broker -p ZOOKEEPER_NODE_COUNT=1 -p KAFKA_NODE_COUNT=1 -p KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1 -p KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1 | oc apply -f -
 
-# Deploy a single instance of Kafka Connect with no plug-in installed
+# Deploy a single instance of Kafka Connect with no plug-in installed:
 oc process strimzi-connect-s2i -p CLUSTER_NAME=debezium -p KAFKA_CONNECT_BOOTSTRAP_SERVERS=broker-kafka-bootstrap:9092 -p KAFKA_CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR=1 -p KAFKA_CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR=1 -p KAFKA_CONNECT_STATUS_STORAGE_REPLICATION_FACTOR=1 -p KAFKA_CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE=false -p KAFKA_CONNECT_KEY_CONVERTER_SCHEMAS_ENABLE=false | oc apply -f -
 
 # Build a Debezium image
 export DEBEZIUM_VERSION={debezium-version}
 mkdir -p plugins && cd plugins && \
-for PLUGIN in {mongodb,mysql,postgres}; do \
+for PLUGIN in {mongodb,mysql,postgres,sqlserver}; do \
     curl http://central.maven.org/maven2/io/debezium/debezium-connector-$PLUGIN/$DEBEZIUM_VERSION/debezium-connector-$PLUGIN-$DEBEZIUM_VERSION-plugin.tar.gz | tar xz; \
 done && \
 oc start-build debezium-connect --from-dir=. --follow && \
