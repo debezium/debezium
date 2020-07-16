@@ -105,9 +105,11 @@ public class PostgresSchemaIT {
             assertTableSchema("public.cidr_network_address_table", "i", Schema.OPTIONAL_STRING_SCHEMA);
             assertTableSchema("public.macaddr_table", "m", Schema.OPTIONAL_STRING_SCHEMA);
             assertTableSchema("public.cash_table", "csh", Decimal.builder(2).optional().build());
-            assertTableSchema("public.bitbin_table", "ba, bol, bs, bv",
-                    Schema.OPTIONAL_BYTES_SCHEMA, Schema.OPTIONAL_BOOLEAN_SCHEMA, Bits.builder(2).optional().build(),
-                    Bits.builder(2).optional().build());
+            assertTableSchema("public.bitbin_table", "ba, bol, bol2, bs, bs7, bv, bvl, bvunlimited1, bvunlimited2",
+                    Schema.OPTIONAL_BYTES_SCHEMA, Schema.OPTIONAL_BOOLEAN_SCHEMA, Schema.OPTIONAL_BOOLEAN_SCHEMA,
+                    Bits.builder(2).optional().build(), Bits.builder(7).optional().build(),
+                    Bits.builder(2).optional().build(), Bits.builder(64).optional().build(),
+                    Bits.builder(Integer.MAX_VALUE).optional().build(), Bits.builder(Integer.MAX_VALUE).optional().build());
             assertTableSchema("public.time_table", "ts, tz, date, ti, ttz, it",
                     MicroTimestamp.builder().optional().build(), ZonedTimestamp.builder().optional().build(),
                     Date.builder().optional().build(), MicroTime.builder().optional().build(), ZonedTime.builder().optional().build(),

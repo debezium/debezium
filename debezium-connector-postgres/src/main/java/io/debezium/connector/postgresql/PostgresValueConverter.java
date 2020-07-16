@@ -676,7 +676,16 @@ public class PostgresValueConverter extends JdbcValueConverters {
                     bitset.set(len - i - 1);
                 }
             }
-            data = bitset;
+            /*
+             * Instead of passing the default field precision/length value (= number of bits) divided by 8 = number of bytes
+             * see {@link JdbcValueConverters#convertBits}, we re-calculate the length / number of bytes based on the actual
+             * content. For example if we have only 3 bits set (b'101') but the field type is BIT VARYING (33) instead of
+             * sending 5 bytes (b'10100000' plus 25 zero bits/4 zero bytes) we only pass one little-endian padded byte
+             * (b'10100000').
+             */
+            int numBits = bitset.length();
+            int bitBytes = numBits / Byte.SIZE + (numBits % Byte.SIZE == 0 ? 0 : 1);
+            return super.convertBits(column, fieldDefn, bitset, bitBytes);
         }
         return super.convertBits(column, fieldDefn, data, numBytes);
     }
