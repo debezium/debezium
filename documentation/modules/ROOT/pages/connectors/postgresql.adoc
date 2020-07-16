@@ -2070,6 +2070,10 @@ See {link-prefix}:{link-postgresql-connector}#postgresql-toasted-values[Toasted 
 
 See {link-prefix}:{link-postgresql-connector}#postgresql-transaction-metadata[Transaction Metadata] for additional details.
 
+|[[postgresql-property-retriable-restart-connector-wait-ms]]<<postgresql-property-retriable-restart-connector-wait-ms, `retriable.restart{zwsp}.connector.wait.ms`>> +
+|10000 (10 seconds)
+|The number of milli-seconds to wait before restarting a connector after a retriable error occurs.
+
 |===
 
 The connector also supports _pass-through_ configuration properties that are used when creating the Kafka producer and consumer.
