@@ -2,6 +2,61 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 1.2.1.Final
+July 16th, 2020 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12346704)
+
+### New features since 1.2.0.Final
+
+* Document content based routing and filtering for MongoDB [DBZ-2255](https://issues.jboss.org/browse/DBZ-2255)
+* Handle MariaDB syntax add column IF EXISTS as part of alter table DDL [DBZ-2219](https://issues.jboss.org/browse/DBZ-2219)
+* Add Apicurio converters to Connect container image [DBZ-2083](https://issues.jboss.org/browse/DBZ-2083)
+
+
+### Breaking changes since 1.2.0.Final
+
+None
+
+
+### Fixes since 1.2.0.Final
+
+* MongoDB connector is not resilient to Mongo connection errors [DBZ-2141](https://issues.jboss.org/browse/DBZ-2141)
+* MySQL connector should filter additional DML binlog entries for RDS by default [DBZ-2275](https://issues.jboss.org/browse/DBZ-2275)
+* Concurrent access to a thread map [DBZ-2278](https://issues.jboss.org/browse/DBZ-2278)
+* Postgres connector may skip events during snapshot-streaming transition [DBZ-2288](https://issues.jboss.org/browse/DBZ-2288)
+* MySQL connector emits false error while missing a required data [DBZ-2301](https://issues.jboss.org/browse/DBZ-2301)
+* io.debezium.engine.spi.OffsetCommitPolicy.PeriodicCommitOffsetPolicy can't be initiated due to NoSuchMethod error   [DBZ-2302](https://issues.jboss.org/browse/DBZ-2302)
+* Allow single dimension DECIMAL in CAST [DBZ-2305](https://issues.jboss.org/browse/DBZ-2305)
+* MySQL JSON functions are missing from the grammar [DBZ-2318](https://issues.jboss.org/browse/DBZ-2318)
+* Description in documentation metrics tables is bold and shouldn't be [DBZ-2326](https://issues.jboss.org/browse/DBZ-2326)
+* ALTER TABLE with `timestamp default CURRENT_TIMESTAMP not null` fails the task [DBZ-2330](https://issues.jboss.org/browse/DBZ-2330)
+
+
+### Other changes since 1.2.0.Final
+
+* Unstable tests in SQL Server connector [DBZ-2217](https://issues.jboss.org/browse/DBZ-2217)
+* Intermittent test failure on CI - SqlServerConnectorIT#verifyOffsets() [DBZ-2220](https://issues.jboss.org/browse/DBZ-2220)
+* Intermittent test failure on CI - MySQL [DBZ-2229](https://issues.jboss.org/browse/DBZ-2229)
+* Intermittent test failure on CI - SqlServerChangeTableSetIT#readHistoryAfterRestart() [DBZ-2231](https://issues.jboss.org/browse/DBZ-2231)
+* Failing test MySqlSourceTypeInSchemaIT.shouldPropagateSourceTypeAsSchemaParameter [DBZ-2238](https://issues.jboss.org/browse/DBZ-2238)
+* Intermittent test failure on CI - MySqlConnectorRegressionIT#shouldConsumeAllEventsFromDatabaseUsingBinlogAndNoSnapshot() [DBZ-2243](https://issues.jboss.org/browse/DBZ-2243)
+* Use upstream image in ApicurioRegistryTest [DBZ-2256](https://issues.jboss.org/browse/DBZ-2256)
+* Intermittent failure of MongoDbConnectorIT.shouldConsumeTransaction [DBZ-2264](https://issues.jboss.org/browse/DBZ-2264)
+* Intermittent test failure on CI - MySqlSourceTypeInSchemaIT#shouldPropagateSourceTypeByDatatype() [DBZ-2269](https://issues.jboss.org/browse/DBZ-2269)
+* Intermittent test failure on CI - MySqlConnectorIT#shouldNotParseQueryIfServerOptionDisabled [DBZ-2270](https://issues.jboss.org/browse/DBZ-2270)
+* Intermittent test failure on CI - RecordsStreamProducerIT#testEmptyChangesProducesHeartbeat [DBZ-2271](https://issues.jboss.org/browse/DBZ-2271)
+* Incorrect dependency from outbox to core module [DBZ-2276](https://issues.jboss.org/browse/DBZ-2276)
+* Slowness in FieldRenamesTest [DBZ-2286](https://issues.jboss.org/browse/DBZ-2286)
+* Create GitHub Action for verifying correct formatting [DBZ-2287](https://issues.jboss.org/browse/DBZ-2287)
+* Clarify expectations for replica identity and key-less tables [DBZ-2307](https://issues.jboss.org/browse/DBZ-2307)
+* Jenkins worker nodes must be logged in to Docker Hub [DBZ-2312](https://issues.jboss.org/browse/DBZ-2312)
+* Upgrade PostgreSQL driver to 4.2.14 [DBZ-2317](https://issues.jboss.org/browse/DBZ-2317)
+* Intermittent test failure on CI - PostgresConnectorIT#shouldOutputRecordsInCloudEventsFormat [DBZ-2319](https://issues.jboss.org/browse/DBZ-2319)
+* Intermittent test failure on CI - TablesWithoutPrimaryKeyIT#shouldProcessFromStreaming [DBZ-2324](https://issues.jboss.org/browse/DBZ-2324)
+* Intermittent test failure on CI - SqlServerConnectorIT#readOnlyApplicationIntent [DBZ-2325](https://issues.jboss.org/browse/DBZ-2325)
+* Intermittent test failure on CI - SnapshotIT#takeSnapshotWithOldStructAndStartStreaming [DBZ-2331](https://issues.jboss.org/browse/DBZ-2331)
+
+
+
 ## 1.2.0.Final
 June 24th, 2020 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12345052)
 
