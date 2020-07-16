@@ -1149,27 +1149,6 @@ public class JdbcValueConverters implements ValueConverterProvider {
                 Boolean value = (Boolean) data;
                 r.deliver(new byte[]{ value.booleanValue() ? (byte) 1 : (byte) 0 });
             }
-            else if (data instanceof Short) {
-                Short value = (Short) data;
-                ByteBuffer buffer = ByteBuffer.allocate(Short.BYTES);
-                buffer.order(ByteOrder.LITTLE_ENDIAN);
-                buffer.putShort(value.shortValue());
-                r.deliver(buffer.array());
-            }
-            else if (data instanceof Integer) {
-                Integer value = (Integer) data;
-                ByteBuffer buffer = ByteBuffer.allocate(Integer.BYTES);
-                buffer.order(ByteOrder.LITTLE_ENDIAN);
-                buffer.putInt(value.intValue());
-                r.deliver(buffer.array());
-            }
-            else if (data instanceof Long) {
-                Long value = (Long) data;
-                ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES);
-                buffer.order(ByteOrder.LITTLE_ENDIAN);
-                buffer.putLong(value.longValue());
-                r.deliver(buffer.array());
-            }
             else if (data instanceof byte[]) {
                 byte[] bytes = (byte[]) data;
                 if (bytes.length == 1) {
@@ -1201,9 +1180,6 @@ public class JdbcValueConverters implements ValueConverterProvider {
         if (data.length < numBytes) {
             byte[] padded = new byte[numBytes];
             System.arraycopy(data, 0, padded, 0, data.length);
-            for (int i = data.length; i != numBytes; ++i) {
-                padded[i] = 0;
-            }
             return padded;
         }
         return data;

@@ -1078,10 +1078,15 @@ The _semantic type_ describes how the Kafka Connect schema captures the _meaning
 |n/a
 |
 
-|`BIT( > 1)`, `BIT VARYING[(M)]`
+|`BIT( > 1)`
 |`BYTES`
 |`io.debezium.data.Bits`
-|The `length` schema parameter contains an integer representing the number of bits. The resulting `byte[]` will contain the bits in little-endian form and will be sized to contain at least the specified number of bits (e.g., `numBytes = n/8 + (n%8== 0 ? 0 : 1)` where `n` is the number of bits).
+|The `length` schema parameter contains an integer representing the number of bits. The resulting `byte[]` will contain the bits in little-endian form and will be sized to contain the specified number of bits (e.g., `numBytes = n/8 + (n % 8 == 0 ? 0 : 1)` where `n` is the number of bits).
+
+|`BIT VARYING[(M)]`
+|`BYTES`
+|`io.debezium.data.Bits`
+|The `length` schema parameter contains an integer representing the number of bits. The resulting `byte[]` will contain the bits in little-endian form and will be sized based on the content. The specified size (M) is stored in the length parameter of the io.debezium.data.Bits type.
 
 |`SMALLINT`, `SMALLSERIAL`
 |`INT16`
