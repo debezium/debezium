@@ -346,6 +346,12 @@ The fourth snapshot mode, *initial only*, will perform a database snapshot and t
 
 The fifth snapshot mode, *exported*, will perform a database snapshot based on the point in time when the replication slot was created.  This mode is an excellent way to perform a snapshot in a lock-free way.
 
+[WARNING]
+====
+It is strongly recommended to use *exported* mode as the *initial (only)* and *always* modes can lose few events while switching from snapshot to streaming mode when database is under heavy load.
+This is a known issue and the affected modes will be reworked to use *exported* mode under the hood (https://issues.redhat.com/browse/DBZ-2337[DBZ-2337]).
+====
+
 ifdef::community[]
 The final snapshot mode, *custom*, allows the user to inject their own implementation of the `io.debezium.connector.postgresql.spi.Snapshotter` interface via the `snapshot.custom.class` configuration property, with the class on the classpath of your Kafka Connect cluster (or included in the JAR if using the `EmbeddedEngine`). For more details, see the {link-prefix}:{link-postgresql-connector}#postgresql-custom-snapshot[Custom Snapshot] section.
 
