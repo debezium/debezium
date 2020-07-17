@@ -31,7 +31,7 @@ In order to start using the {prodname} Outbox Quarkus extension, the extension n
 [source,xml,subs="verbatim,attributes"]
 ----
 <dependency>
-  <groupId>io.debezium.quarkus</groupId>
+  <groupId>io.debezium</groupId>
   <artfiactId>debezium-quarkus-outbox</artfiactId>
   <version>{debezium-version}</version>
 </dependency>
