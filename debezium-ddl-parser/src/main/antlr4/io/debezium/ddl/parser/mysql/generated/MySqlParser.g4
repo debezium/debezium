@@ -2045,10 +2045,10 @@ constant
 //    Data Types
 
 dataType
-    : typeName=(
+    : (typeName=(
       CHAR | CHARACTER | VARCHAR | TINYTEXT | TEXT | MEDIUMTEXT | LONGTEXT
-       | NCHAR | NVARCHAR
-      )
+       | NCHAR | NVARCHAR | LONG
+      ) | typeName=LONG VARCHAR)                                    // LONG VARCHAR is the same as LONG
       lengthOneDimension? BINARY?
       ((CHARACTER SET | CHARSET) charsetName)?
       (COLLATE collationName)?                                      #stringDataType
@@ -2060,22 +2060,23 @@ dataType
       lengthOneDimension? BINARY?                                   #nationalVaryingStringDataType
     | typeName=(
         TINYINT | SMALLINT | MEDIUMINT | INT | INTEGER | BIGINT
+        | MIDDLEINT | INT1 | INT2 | INT3 | INT4 | INT8
       )
       lengthOneDimension? (SIGNED | UNSIGNED)? ZEROFILL?            #dimensionDataType
     | typeName=REAL
       lengthTwoDimension? (SIGNED | UNSIGNED)? ZEROFILL?            #dimensionDataType
     | typeName=DOUBLE PRECISION?
           lengthTwoDimension? (SIGNED | UNSIGNED)? ZEROFILL?            #dimensionDataType
-    | typeName=(DECIMAL | DEC | FIXED | NUMERIC | FLOAT)
+    | typeName=(DECIMAL | DEC | FIXED | NUMERIC | FLOAT | FLOAT4 | FLOAT8)
       lengthTwoOptionalDimension? (SIGNED | UNSIGNED)? ZEROFILL?    #dimensionDataType
     | typeName=(
         DATE | TINYBLOB | BLOB | MEDIUMBLOB | LONGBLOB
         | BOOL | BOOLEAN | SERIAL
       )                                                             #simpleDataType
-    | typeName=(
+    | (typeName=(
         BIT | TIME | TIMESTAMP | DATETIME | BINARY
         | VARBINARY | YEAR
-      )
+      ) | LONG typeName=VARBINARY)                                  // LONG VARBINARY is the same as VARBINARY
       lengthOneDimension?                                           #dimensionDataType
     | typeName=(ENUM | SET)
       collectionOptions BINARY?

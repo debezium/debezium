@@ -82,6 +82,37 @@ public class MySqlAntlrDdlParserTest {
     }
 
     @Test
+    @FixFor("DBZ-2365")
+    public void shouldParseOtherDbDatatypes() {
+        String ddl = "CREATE TABLE mytable (id INT PRIMARY KEY, mi MIDDLEINT, f4 FLOAT4, f8 FLOAT8, i1 INT1, i2 INT2, i3 INT, i4 INT4, i8 INT8, l LONG, lvc LONG VARCHAR, lvb LONG VARBINARY);";
+        parser.parse(ddl, tables);
+        assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
+        assertThat(tables.size()).isEqualTo(1);
+
+        Table table = tables.forTable(null, null, "mytable");
+        assertThat(table.columnWithName("id")).isNotNull();
+        assertThat(table.columnWithName("mi")).isNotNull();
+        assertThat(table.columnWithName("f4")).isNotNull();
+        assertThat(table.columnWithName("f8")).isNotNull();
+        assertThat(table.columnWithName("i1")).isNotNull();
+        assertThat(table.columnWithName("i2")).isNotNull();
+        assertThat(table.columnWithName("i3")).isNotNull();
+        assertThat(table.columnWithName("i4")).isNotNull();
+        assertThat(table.columnWithName("i8")).isNotNull();
+        assertThat(table.columnWithName("mi").jdbcType()).isEqualTo(Types.INTEGER);
+        assertThat(table.columnWithName("f4").jdbcType()).isEqualTo(Types.FLOAT);
+        assertThat(table.columnWithName("f8").jdbcType()).isEqualTo(Types.DOUBLE);
+        assertThat(table.columnWithName("i1").jdbcType()).isEqualTo(Types.SMALLINT);
+        assertThat(table.columnWithName("i2").jdbcType()).isEqualTo(Types.SMALLINT);
+        assertThat(table.columnWithName("i3").jdbcType()).isEqualTo(Types.INTEGER);
+        assertThat(table.columnWithName("i4").jdbcType()).isEqualTo(Types.INTEGER);
+        assertThat(table.columnWithName("i8").jdbcType()).isEqualTo(Types.BIGINT);
+        assertThat(table.columnWithName("l").jdbcType()).isEqualTo(Types.VARCHAR);
+        assertThat(table.columnWithName("lvc").jdbcType()).isEqualTo(Types.VARCHAR);
+        assertThat(table.columnWithName("lvb").jdbcType()).isEqualTo(Types.VARBINARY);
+    }
+
+    @Test
     @FixFor("DBZ-2140")
     public void shouldUpdateSchemaForRemovedDefaultValue() {
         String ddl = "CREATE TABLE mytable (id INT PRIMARY KEY, val1 INT);"
