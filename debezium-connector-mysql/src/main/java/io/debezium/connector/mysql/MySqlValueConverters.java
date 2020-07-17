@@ -200,17 +200,20 @@ public class MySqlValueConverters extends JdbcValueConverters {
             String commaSeperatedOptions = extractEnumAndSetOptionsAsString(column);
             return io.debezium.data.EnumSet.builder(commaSeperatedOptions);
         }
-        if (matches(typeName, "SMALLINT UNSIGNED") || matches(typeName, "SMALLINT UNSIGNED ZEROFILL")) {
+        if (matches(typeName, "SMALLINT UNSIGNED") || matches(typeName, "SMALLINT UNSIGNED ZEROFILL")
+                || matches(typeName, "INT2 UNSIGNED") || matches(typeName, "INT2 UNSIGNED ZEROFILL")) {
             // In order to capture unsigned SMALLINT 16-bit data source, INT32 will be required to safely capture all valid values
             // Source: https://kafka.apache.org/0102/javadoc/org/apache/kafka/connect/data/Schema.Type.html
             return SchemaBuilder.int32();
         }
-        if (matches(typeName, "INT UNSIGNED") || matches(typeName, "INT UNSIGNED ZEROFILL")) {
+        if (matches(typeName, "INT UNSIGNED") || matches(typeName, "INT UNSIGNED ZEROFILL")
+                || matches(typeName, "INT4 UNSIGNED") || matches(typeName, "INT4 UNSIGNED ZEROFILL")) {
             // In order to capture unsigned INT 32-bit data source, INT64 will be required to safely capture all valid values
             // Source: https://kafka.apache.org/0102/javadoc/org/apache/kafka/connect/data/Schema.Type.html
             return SchemaBuilder.int64();
         }
-        if (matches(typeName, "BIGINT UNSIGNED") || matches(typeName, "BIGINT UNSIGNED ZEROFILL")) {
+        if (matches(typeName, "BIGINT UNSIGNED") || matches(typeName, "BIGINT UNSIGNED ZEROFILL")
+                || matches(typeName, "INT8 UNSIGNED") || matches(typeName, "INT8 UNSIGNED ZEROFILL")) {
             switch (super.bigIntUnsignedMode) {
                 case LONG:
                     return SchemaBuilder.int64();
@@ -257,23 +260,29 @@ public class MySqlValueConverters extends JdbcValueConverters {
             List<String> options = extractEnumAndSetOptions(column);
             return (data) -> convertSetToString(options, column, fieldDefn, data);
         }
-        if (matches(typeName, "TINYINT UNSIGNED") || matches(typeName, "TINYINT UNSIGNED ZEROFILL")) {
+        if (matches(typeName, "TINYINT UNSIGNED") || matches(typeName, "TINYINT UNSIGNED ZEROFILL")
+                || matches(typeName, "INT1 UNSIGNED") || matches(typeName, "INT1 UNSIGNED ZEROFILL")) {
             // Convert TINYINT UNSIGNED internally from SIGNED to UNSIGNED based on the boundary settings
             return (data) -> convertUnsignedTinyint(column, fieldDefn, data);
         }
-        if (matches(typeName, "SMALLINT UNSIGNED") || matches(typeName, "SMALLINT UNSIGNED ZEROFILL")) {
+        if (matches(typeName, "SMALLINT UNSIGNED") || matches(typeName, "SMALLINT UNSIGNED ZEROFILL")
+                || matches(typeName, "INT2 UNSIGNED") || matches(typeName, "INT2 UNSIGNED ZEROFILL")) {
             // Convert SMALLINT UNSIGNED internally from SIGNED to UNSIGNED based on the boundary settings
             return (data) -> convertUnsignedSmallint(column, fieldDefn, data);
         }
-        if (matches(typeName, "MEDIUMINT UNSIGNED") || matches(typeName, "MEDIUMINT UNSIGNED ZEROFILL")) {
-            // Convert SMALLINT UNSIGNED internally from SIGNED to UNSIGNED based on the boundary settings
+        if (matches(typeName, "MEDIUMINT UNSIGNED") || matches(typeName, "MEDIUMINT UNSIGNED ZEROFILL")
+                || matches(typeName, "INT3 UNSIGNED") || matches(typeName, "INT3 UNSIGNED ZEROFILL")
+                || matches(typeName, "MIDDLEINT UNSIGNED") || matches(typeName, "MIDDLEINT UNSIGNED ZEROFILL")) {
+            // Convert MEDIUMINT UNSIGNED internally from SIGNED to UNSIGNED based on the boundary settings
             return (data) -> convertUnsignedMediumint(column, fieldDefn, data);
         }
-        if (matches(typeName, "INT UNSIGNED") || matches(typeName, "INT UNSIGNED ZEROFILL")) {
+        if (matches(typeName, "INT UNSIGNED") || matches(typeName, "INT UNSIGNED ZEROFILL")
+                || matches(typeName, "INT4 UNSIGNED") || matches(typeName, "INT4 UNSIGNED ZEROFILL")) {
             // Convert INT UNSIGNED internally from SIGNED to UNSIGNED based on the boundary settings
             return (data) -> convertUnsignedInt(column, fieldDefn, data);
         }
-        if (matches(typeName, "BIGINT UNSIGNED") || matches(typeName, "BIGINT UNSIGNED ZEROFILL")) {
+        if (matches(typeName, "BIGINT UNSIGNED") || matches(typeName, "BIGINT UNSIGNED ZEROFILL")
+                || matches(typeName, "INT8 UNSIGNED") || matches(typeName, "INT8 UNSIGNED ZEROFILL")) {
             switch (super.bigIntUnsignedMode) {
                 case LONG:
                     return (data) -> convertBigInt(column, fieldDefn, data);

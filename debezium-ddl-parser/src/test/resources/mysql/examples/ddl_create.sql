@@ -213,3 +213,18 @@ CREATE TABLE geo (
     )
 );
 #end
+#begin
+CREATE TABLE `tab1` (
+  f4 FLOAT4,
+  f8 FLOAT8,
+  i1 INT1,
+  i2 INT2,
+  i3 INT3,
+  i4 INT4,
+  i8 INT8,
+  lvb LONG VARBINARY,
+  lvc LONG VARCHAR,
+  l LONG,
+  mi MIDDLEINT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+#end
