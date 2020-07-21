@@ -103,7 +103,6 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
                 new DataTypeEntry(Types.VARCHAR, MySqlParser.TINYTEXT),
                 new DataTypeEntry(Types.VARCHAR, MySqlParser.TEXT),
                 new DataTypeEntry(Types.VARCHAR, MySqlParser.MEDIUMTEXT),
-                new DataTypeEntry(Types.VARCHAR, MySqlParser.LONG),
                 new DataTypeEntry(Types.VARCHAR, MySqlParser.LONGTEXT),
                 new DataTypeEntry(Types.NCHAR, MySqlParser.NCHAR),
                 new DataTypeEntry(Types.NVARCHAR, MySqlParser.NVARCHAR),
@@ -200,6 +199,12 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
                 new DataTypeEntry(Types.OTHER, MySqlParser.POLYGON),
                 new DataTypeEntry(Types.OTHER, MySqlParser.JSON),
                 new DataTypeEntry(Types.OTHER, MySqlParser.GEOMETRY)));
+        dataTypeResolverBuilder.registerDataTypes(MySqlParser.LongVarbinaryDataTypeContext.class.getCanonicalName(), Arrays.asList(
+                new DataTypeEntry(Types.BLOB, MySqlParser.LONG)
+                        .setSuffixTokens(MySqlParser.VARBINARY)));
+        dataTypeResolverBuilder.registerDataTypes(MySqlParser.LongVarcharDataTypeContext.class.getCanonicalName(), Arrays.asList(
+                new DataTypeEntry(Types.VARCHAR, MySqlParser.LONG)
+                        .setSuffixTokens(MySqlParser.VARCHAR)));
 
         return dataTypeResolverBuilder.build();
     }

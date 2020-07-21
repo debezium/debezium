@@ -144,6 +144,7 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
         DataType dataType = dataTypeResolver.resolveDataType(dataTypeContext);
 
         if (dataTypeContext instanceof MySqlParser.StringDataTypeContext) {
+            // Same as LongVarcharDataTypeContext but with dimension handling
             MySqlParser.StringDataTypeContext stringDataTypeContext = (MySqlParser.StringDataTypeContext) dataTypeContext;
 
             if (stringDataTypeContext.lengthOneDimension() != null) {
@@ -153,6 +154,14 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
 
             if (stringDataTypeContext.charsetName() != null) {
                 charsetName = stringDataTypeContext.charsetName().getText();
+            }
+        }
+        else if (dataTypeContext instanceof MySqlParser.LongVarcharDataTypeContext) {
+            // Same as StringDataTypeContext but without dimension handling
+            MySqlParser.LongVarcharDataTypeContext longVarcharTypeContext = (MySqlParser.LongVarcharDataTypeContext) dataTypeContext;
+
+            if (longVarcharTypeContext.charsetName() != null) {
+                charsetName = longVarcharTypeContext.charsetName().getText();
             }
         }
         else if (dataTypeContext instanceof MySqlParser.NationalStringDataTypeContext) {

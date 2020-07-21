@@ -6,6 +6,7 @@
 
 package io.debezium.antlr;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -49,6 +50,7 @@ public class DataTypeResolver {
         DataType dataType = null;
         // use priority according to number of matched tokens
         int selectedTypePriority = -1;
+
         for (DataTypeEntry dataTypeEntry : contextDataTypesMap.get(dataTypeContext.getClass().getCanonicalName())) {
             int dataTypePriority = dataTypeEntry.getDbmsDataTypeTokenIdentifiers().length;
             if (dataTypePriority > selectedTypePriority) {
@@ -193,6 +195,13 @@ public class DataTypeResolver {
             this.defaultLength = defaultLength;
             this.defaultScale = defaultScale;
             return this;
+        }
+
+        @Override
+        public String toString() {
+            return "DataTypeEntry [jdbcDataType=" + jdbcDataType + ", dbmsDataTypeTokenIdentifiers="
+                    + Arrays.toString(dbmsDataTypeTokenIdentifiers) + ", suffixTokens=" + Arrays.toString(suffixTokens)
+                    + ", defaultLength=" + defaultLength + ", defaultScale=" + defaultScale + "]";
         }
     }
 }
