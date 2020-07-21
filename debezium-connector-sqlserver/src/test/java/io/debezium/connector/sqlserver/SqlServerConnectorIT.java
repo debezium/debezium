@@ -606,6 +606,56 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
+    @FixFor("DBZ-2329")
+    public void updatePrimaryKeyTwiceWithRestartInMiddleOfTx() throws Exception {
+
+        final Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .with(SqlServerConnectorConfig.MAX_QUEUE_SIZE, 2)
+                .with(SqlServerConnectorConfig.MAX_BATCH_SIZE, 1)
+                .with(SqlServerConnectorConfig.TOMBSTONES_ON_DELETE, false)
+                .build();
+
+        // Testing.Print.enable();
+        // Wait for snapshot completion
+        start(SqlServerConnector.class, config, record -> {
+            final Struct envelope = (Struct) record.value();
+            boolean stop = envelope != null && "d".equals(envelope.get("op")) && (envelope.getStruct("before").getInt32("id") == 305);
+            return stop;
+        });
+        assertConnectorIsRunning();
+
+        consumeRecordsByTopic(1);
+
+        connection.setAutoCommit(false);
+
+        connection.execute("INSERT INTO tableb (id, colb) values (1,'1')");
+        connection.execute("INSERT INTO tableb (id, colb) values (2,'2')");
+        connection.execute("INSERT INTO tableb (id, colb) values (3,'3')");
+        connection.execute("INSERT INTO tableb (id, colb) values (4,'4')");
+        connection.execute("INSERT INTO tableb (id, colb) values (5,'5')");
+        consumeRecordsByTopic(5);
+
+        connection.execute("UPDATE tableb set id = colb + 300");
+        connection.execute("UPDATE tableb set id = colb + 300");
+
+        final SourceRecords records1 = consumeRecordsByTopic(14);
+
+        stopConnector();
+
+        start(SqlServerConnector.class, config);
+        assertConnectorIsRunning();
+        final SourceRecords records2 = consumeRecordsByTopic(6);
+
+        final List<SourceRecord> tableB = records1.recordsForTopic("server1.dbo.tableb");
+        tableB.addAll(records2.recordsForTopic("server1.dbo.tableb"));
+
+        Assertions.assertThat(tableB).hasSize(20);
+
+        stopConnector();
+    }
+
+    @Test
     public void streamChangesWhileStopped() throws Exception {
         final int RECORDS_PER_TABLE = 5;
         final int TABLES = 2;
