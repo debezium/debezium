@@ -16,6 +16,7 @@ import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.Queue;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -110,6 +111,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
             final TxLogPosition lastProcessedPositionOnStart = offsetContext.getChangePosition();
             final long lastProcessedEventSerialNoOnStart = offsetContext.getEventSerialNo();
             LOGGER.info("Last position recorded in offsets is {}[{}]", lastProcessedPositionOnStart, lastProcessedEventSerialNoOnStart);
+            final AtomicBoolean changesStoppedBeingMonotonic = new AtomicBoolean(false);
 
             TxLogPosition lastProcessedPosition = lastProcessedPositionOnStart;
 
@@ -191,15 +193,28 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                                 tableWithSmallestLsn.next();
                                 continue;
                             }
+
+                            if (tableWithSmallestLsn.isNewTransaction() && changesStoppedBeingMonotonic.get()) {
+                                LOGGER.info("Resetting changesStoppedBeingMonotonic as transaction changes");
+                                changesStoppedBeingMonotonic.set(false);
+                            }
+
+                            // After restart for changes that are not monotonic to avoid data loss
+                            if (tableWithSmallestLsn.isCurrentPositionSmallerThanPreviousPosition()) {
+                                LOGGER.info("Disabling skipping changes due to not monotonic order of changes");
+                                changesStoppedBeingMonotonic.set(true);
+                            }
+
                             // After restart for changes that were executed before the last committed offset
-                            if (tableWithSmallestLsn.getChangePosition().compareTo(lastProcessedPositionOnStart) < 0) {
+                            if (!changesStoppedBeingMonotonic.get() &&
+                                    tableWithSmallestLsn.getChangePosition().compareTo(lastProcessedPositionOnStart) < 0) {
                                 LOGGER.info("Skipping change {} as its position is smaller than the last recorded position {}", tableWithSmallestLsn,
                                         lastProcessedPositionOnStart);
                                 tableWithSmallestLsn.next();
                                 continue;
                             }
                             // After restart for change that was the last committed and operations in it before the last committed offset
-                            if (tableWithSmallestLsn.getChangePosition().compareTo(lastProcessedPositionOnStart) == 0
+                            if (!changesStoppedBeingMonotonic.get() && tableWithSmallestLsn.getChangePosition().compareTo(lastProcessedPositionOnStart) == 0
                                     && eventSerialNoInInitialTx <= lastProcessedEventSerialNoOnStart) {
                                 LOGGER.info("Skipping change {} as its order in the transaction {} is smaller than or equal to the last recorded operation {}[{}]",
                                         tableWithSmallestLsn, eventSerialNoInInitialTx, lastProcessedPositionOnStart, lastProcessedEventSerialNoOnStart);
@@ -379,6 +394,12 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
         protected TxLogPosition getNextChangePosition(ResultSet resultSet) throws SQLException {
             return isCompleted() ? TxLogPosition.NULL
                     : TxLogPosition.valueOf(Lsn.valueOf(resultSet.getBytes(COL_COMMIT_LSN)), Lsn.valueOf(resultSet.getBytes(COL_ROW_LSN)));
+        }
+
+        @Override
+        protected boolean isNewTransaction() throws SQLException {
+            return (getPreviousChangePosition() != null) &&
+                    getChangePosition().getCommitLsn().compareTo(getPreviousChangePosition().getCommitLsn()) > 0;
         }
     }
 }
