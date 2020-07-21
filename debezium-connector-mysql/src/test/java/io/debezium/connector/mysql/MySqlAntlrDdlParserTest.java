@@ -84,7 +84,7 @@ public class MySqlAntlrDdlParserTest {
     @Test
     @FixFor("DBZ-2365")
     public void shouldParseOtherDbDatatypes() {
-        String ddl = "CREATE TABLE mytable (id INT PRIMARY KEY, mi MIDDLEINT, f4 FLOAT4, f8 FLOAT8, i1 INT1, i2 INT2, i3 INT, i4 INT4, i8 INT8, l LONG, lvc LONG VARCHAR, lvb LONG VARBINARY);";
+        String ddl = "CREATE TABLE mytable (id INT PRIMARY KEY, mi MIDDLEINT, f4 FLOAT4, f8 FLOAT8, i1 INT1, i2 INT2, i3 INT, i4 INT4, i8 INT8, l LONG CHARSET LATIN2, lvc LONG VARCHAR, lvb LONG VARBINARY);";
         parser.parse(ddl, tables);
         assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
         assertThat(tables.size()).isEqualTo(1);
@@ -108,8 +108,9 @@ public class MySqlAntlrDdlParserTest {
         assertThat(table.columnWithName("i4").jdbcType()).isEqualTo(Types.INTEGER);
         assertThat(table.columnWithName("i8").jdbcType()).isEqualTo(Types.BIGINT);
         assertThat(table.columnWithName("l").jdbcType()).isEqualTo(Types.VARCHAR);
+        assertThat(table.columnWithName("l").charsetName()).isEqualTo("LATIN2");
         assertThat(table.columnWithName("lvc").jdbcType()).isEqualTo(Types.VARCHAR);
-        assertThat(table.columnWithName("lvb").jdbcType()).isEqualTo(Types.VARBINARY);
+        assertThat(table.columnWithName("lvb").jdbcType()).isEqualTo(Types.BLOB);
     }
 
     @Test
