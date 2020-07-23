@@ -369,6 +369,7 @@ node('Slave') {
             }
         }
         echo "MD5 sums calculated: ${sums}"
+        def serverSum = sh (script: "md5sum -b $LOCAL_MAVEN_REPO/io/debezium/debezium-server-dist/$RELEASE_VERSION/debezium-server-dist-${RELEASE_VERSION}.tar.gz | awk '{print \$1}'", returnStdout: true).trim()
         dir ("$IMAGES_DIR/connect/$IMAGE_TAG") {
             echo "Modifying main Dockerfile"
             modifyFile('Dockerfile') {
@@ -390,6 +391,14 @@ node('Slave') {
         dir ("$IMAGES_DIR/connect/snapshot") {
             modifyFile('Dockerfile') {
                 it.replaceFirst('DEBEZIUM_VERSION=\\S+', "DEBEZIUM_VERSION=$DEVELOPMENT_VERSION")
+            }
+        }
+        echo "Modifying Server Dockerfile"
+        dir ("$IMAGES_DIR/server/$IMAGE_TAG") {
+            modifyFile('Dockerfile') {
+                it
+                    .replaceFirst('DEBEZIUM_VERSION=\\S+', "DEBEZIUM_VERSION=$RELEASE_VERSION")
+                    .replaceFirst('SERVER_MD5=\\S+', "SERVER_MD5=$serverSum")
             }
         }
         dir ("$IMAGES_DIR") {
