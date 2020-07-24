@@ -129,7 +129,7 @@ public class EventHubsChangeConsumer extends BaseChangeConsumer
 
         // this loop just adds records to the batch
         for (ChangeEvent<Object, Object> record : records) {
-            LOGGER.trace("Received event '{}'", record);
+            LOGGER.trace("Received record '{}'", record.value());
             if (null == record.value()) {
                 continue;
             }
@@ -143,17 +143,20 @@ public class EventHubsChangeConsumer extends BaseChangeConsumer
             }
             try {
                 if (!batch.tryAdd(eventData)) {
-                    LOGGER.warn("Event data was too large to fit in the batch - {}", record);
+                    throw new DebeziumException("Event data was too large to fit in the batch");
                 }
             }
             catch (IllegalArgumentException e) {
-                LOGGER.warn("Event data was null - {}", e.getMessage());
+                // thrown by tryAdd if event data is null
+                throw new DebeziumException(e);
             }
             catch (AmqpException e) {
-                LOGGER.warn("Event data is larger than the maximum size of the EventDataBatch - {}", e.getMessage());
+                // tryAdd throws AmqpException if "eventData is larger than the maximum size of
+                // the EventDataBatch."
+                throw new DebeziumException("Event data was larger than the maximum size of the batch", e);
             }
             catch (Exception e) {
-                LOGGER.warn("Failed to add event data to batch - {}", e.getMessage());
+                throw new DebeziumException(e);
             }
         }
 
@@ -162,7 +165,7 @@ public class EventHubsChangeConsumer extends BaseChangeConsumer
             LOGGER.trace("Sent record batch to Event Hubs");
         }
         catch (Exception e) {
-            LOGGER.warn("Failed to send record to Event Hubs {}", e.getMessage());
+            throw new DebeziumException(e);
         }
 
         // this loop commits each record
@@ -172,7 +175,7 @@ public class EventHubsChangeConsumer extends BaseChangeConsumer
                 LOGGER.trace("Record marked processed");
             }
             catch (Exception e) {
-                LOGGER.warn("Failed to mark record as processed {}", e.getMessage());
+                throw new DebeziumException(e);
             }
         }
 
