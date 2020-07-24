@@ -41,7 +41,7 @@ import io.quarkus.test.junit.QuarkusTest;
 @QuarkusTest
 public class EventHubsIT {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(EventHubsChangeConsumer.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(EventHubsIT.class);
 
     private static final int MESSAGE_COUNT = 4;
     private static final String CONSUMER_GROUP = "$Default";
