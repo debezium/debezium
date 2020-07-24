@@ -25,6 +25,7 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.ChangeTableResultSet;
@@ -103,6 +104,11 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
 
     @Override
     public void execute(ChangeEventSourceContext context) throws InterruptedException {
+        if (connectorConfig.getSnapshotMode().equals(SnapshotMode.INITIAL_ONLY)) {
+            LOGGER.info("Streaming is not enabled in current configuration");
+            return;
+        }
+
         final Metronome metronome = Metronome.sleeper(pollInterval, clock);
         final Queue<SqlServerChangeTable> schemaChangeCheckpoints = new PriorityQueue<>((x, y) -> x.getStopLsn().compareTo(y.getStopLsn()));
         try {
