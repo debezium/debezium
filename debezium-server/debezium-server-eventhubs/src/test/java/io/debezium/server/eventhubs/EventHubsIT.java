@@ -5,6 +5,8 @@
  */
 package io.debezium.server.eventhubs;
 
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -105,5 +107,19 @@ public class EventHubsIT {
             events.forEach(event -> expected.add(event));
             return expected.size() >= MESSAGE_COUNT;
         });
+
+        // check whether the event data contains expected id i.e. 1001, 1002, 1003 and
+        // 1004
+        String eventBody = null;
+        String expectedID = null;
+        final String idPart = "\"id\":100";
+
+        // since all messages go to same partition, ordering will be maintained
+        // (assuming no errors)
+        for (int i = 0; i < MESSAGE_COUNT; i++) {
+            eventBody = expected.get(i).getData().getBodyAsString();
+            expectedID = idPart + String.valueOf(i + 1);
+            assertTrue(eventBody.contains(expectedID), expectedID + " not found in payload");
+        }
     }
 }
