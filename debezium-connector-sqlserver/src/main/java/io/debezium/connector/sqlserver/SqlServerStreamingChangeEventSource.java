@@ -396,7 +396,11 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                     : TxLogPosition.valueOf(Lsn.valueOf(resultSet.getBytes(COL_COMMIT_LSN)), Lsn.valueOf(resultSet.getBytes(COL_ROW_LSN)));
         }
 
-        @Override
+        /**
+         * Check whether TX in currentChangePosition is newer (higher) than TX in previousChangePosition
+         * @return true <=> TX in currentChangePosition > TX in previousChangePosition
+         * @throws SQLException
+         */
         protected boolean isNewTransaction() throws SQLException {
             return (getPreviousChangePosition() != null) &&
                     getChangePosition().getCommitLsn().compareTo(getPreviousChangePosition().getCommitLsn()) > 0;

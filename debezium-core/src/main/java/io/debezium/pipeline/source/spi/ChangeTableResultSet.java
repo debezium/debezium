@@ -110,11 +110,4 @@ public abstract class ChangeTableResultSet<C extends ChangeTable, T extends Comp
     protected abstract int getOperation(ResultSet resultSet) throws SQLException;
 
     protected abstract T getNextChangePosition(ResultSet resultSet) throws SQLException;
-
-    /**
-     * Check whether TX in currentChangePosition is newer (higher) than TX in previousChangePosition
-     * @return true <=> TX in currentChangePosition > TX in previousChangePosition
-     * @throws SQLException
-     */
-    protected abstract boolean isNewTransaction() throws SQLException;
 }
