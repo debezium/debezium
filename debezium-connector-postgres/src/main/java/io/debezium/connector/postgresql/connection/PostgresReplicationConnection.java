@@ -124,6 +124,14 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         this.streamParams = streamParams;
         this.slotCreationInfo = null;
         this.hasInitedSlot = false;
+        // Global JDBC connection used both for snapshotting and streaming.
+        // Must be able to resolve datatypes.
+        try {
+            this.setAutoCommit(false);
+        }
+        catch (SQLException e) {
+            throw new JdbcConnectionException(e);
+        }
     }
 
     private ServerInfo.ReplicationSlot getSlotInfo() throws SQLException, InterruptedException {
@@ -139,7 +147,10 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
             LOGGER.info("Initializing PgOutput logical decoder publication");
             try {
                 String selectPublication = String.format("SELECT COUNT(1) FROM pg_publication WHERE pubname = '%s'", publicationName);
-                try (Statement stmt = pgConnection().createStatement(); ResultSet rs = stmt.executeQuery(selectPublication)) {
+                try (
+                        PostgresConnection queryConnection = new PostgresConnection(originalConfig);
+                        Statement stmt = queryConnection.connection().createStatement();
+                        ResultSet rs = stmt.executeQuery(selectPublication)) {
                     if (rs.next()) {
                         Long count = rs.getLong(1);
                         if (count == 0L) {
@@ -176,6 +187,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                                     publicationName, plugin, database());
                         }
                     }
+                    queryConnection.commit();
                 }
             }
             catch (SQLException e) {

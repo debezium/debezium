@@ -71,12 +71,7 @@ public class PostgresConnectorTask extends BaseSourceTask {
         // Global JDBC connection used both for snapshotting and streaming.
         // Must be able to resolve datatypes.
         jdbcConnection = new PostgresConnection(connectorConfig.jdbcConfig(), true);
-        try {
-            jdbcConnection.setAutoCommit(false);
-        }
-        catch (SQLException e) {
-            throw new DebeziumException(e);
-        }
+
         heartbeatConnection = new PostgresConnection(connectorConfig.jdbcConfig());
         final TypeRegistry typeRegistry = jdbcConnection.getTypeRegistry();
         final Charset databaseCharset = jdbcConnection.getDatabaseCharset();
