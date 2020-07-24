@@ -8,12 +8,17 @@ package io.debezium.connector.cassandra.transforms.type.deserializer;
 import java.nio.ByteBuffer;
 
 import org.apache.cassandra.db.marshal.AbstractType;
+import org.apache.cassandra.db.rows.ComplexColumnData;
 import org.apache.kafka.connect.data.SchemaBuilder;
 
 public abstract class TypeDeserializer {
 
     public Object deserialize(AbstractType<?> abstractType, ByteBuffer bb) {
         return abstractType.getSerializer().deserialize(bb);
+    }
+
+    public Object deserialize(AbstractType<?> abstractType, ComplexColumnData ccd) {
+        return null;
     }
 
     public abstract SchemaBuilder getSchemaBuilder(AbstractType<?> abstractType);

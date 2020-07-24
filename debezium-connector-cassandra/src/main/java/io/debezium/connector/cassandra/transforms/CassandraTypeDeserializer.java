@@ -36,6 +36,7 @@ import org.apache.cassandra.db.marshal.TupleType;
 import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.cassandra.db.marshal.UUIDType;
 import org.apache.cassandra.db.marshal.UserType;
+import org.apache.cassandra.db.rows.ComplexColumnData;
 import org.apache.kafka.connect.data.SchemaBuilder;
 
 import com.datastax.driver.core.DataType;
@@ -126,6 +127,16 @@ public final class CassandraTypeDeserializer {
 
         TypeDeserializer typeDeserializer = TYPE_MAP.get(abstractType.getClass());
         return typeDeserializer.deserialize(abstractType, bb);
+    }
+
+    public static Object deserialize(AbstractType<?> abstractType, ComplexColumnData ccd) {
+        // Check if abstract type is reversed, if yes, use the base type for deserialization.
+        if (abstractType.isReversed()) {
+            abstractType = ((ReversedType) abstractType).baseType;
+        }
+
+        TypeDeserializer typeDeserializer = TYPE_MAP.get(abstractType.getClass());
+        return typeDeserializer.deserialize(abstractType, ccd);
     }
 
     /**

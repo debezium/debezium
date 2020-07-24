@@ -7,18 +7,24 @@ package io.debezium.connector.cassandra.transforms.type.deserializer;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.SetType;
+import org.apache.cassandra.db.rows.ComplexColumnData;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Values;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.cassandra.transforms.CassandraTypeDeserializer;
 
 public class SetTypeDeserializer extends TypeDeserializer {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(SetTypeDeserializer.class);
 
     @Override
     @SuppressWarnings("unchecked")
@@ -34,5 +40,18 @@ public class SetTypeDeserializer extends TypeDeserializer {
         AbstractType<?> elementsType = listType.getElementsType();
         Schema innerSchema = CassandraTypeDeserializer.getSchemaBuilder(elementsType).build();
         return SchemaBuilder.array(innerSchema).optional();
+    }
+
+    @Override
+    public Object deserialize(AbstractType<?> abstractType, ComplexColumnData ccd) {
+        List<ByteBuffer> bbList = ((SetType) abstractType).serializedValues(ccd.iterator());
+        AbstractType innerType = ((SetType) abstractType).getElementsType();
+        Set<Object> deserializedSet = new HashSet<>();
+        for (int i = 0; i < bbList.size(); i++) {
+            ByteBuffer bb = bbList.get(i);
+            deserializedSet.add(super.deserialize(innerType, bb));
+        }
+        List<Object> deserializedList = new ArrayList<>(deserializedSet);
+        return Values.convertToList(getSchemaBuilder(abstractType).build(), deserializedList);
     }
 }
