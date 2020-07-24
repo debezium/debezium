@@ -459,7 +459,7 @@ https://docs.microsoft.com/azure/event-hubs/event-hubs-about?WT.mc_id=debezium-d
 
 |[[connection-string]]<<connection-string, `debezium.sink.eventhubs.connectionstring`>>
 |
-|https://docs.microsoft.com/azure/event-hubs/event-hubs-get-connection-string?WT.mc_id=debezium-docs-abhishgu[Connection string] required to communicate with Event Hubs. The format is: `Endpoint=sb://<NAMESPACE>/;SharedAccessKeyName=<KEY_NAME>;SharedAccessKey=<ACCESS_KEY>;EntityPath=<HUB_NAME>`. Please note that you will need to append the name of the Event Hub using `EntityPath`). 
+|https://docs.microsoft.com/azure/event-hubs/event-hubs-get-connection-string?WT.mc_id=debezium-docs-abhishgu[Connection string] required to communicate with Event Hubs. The format is: `Endpoint=sb://<NAMESPACE>/;SharedAccessKeyName=<ACCESS_KEY_NAME>;SharedAccessKey=<ACCESS_KEY_VALUE>`
 
 |[[hub-name]]<<hub-name, `debezium.sink.eventhubs.hubname`>>
 |
