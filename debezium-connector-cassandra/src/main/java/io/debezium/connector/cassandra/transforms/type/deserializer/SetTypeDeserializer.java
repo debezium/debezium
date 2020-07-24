@@ -17,14 +17,10 @@ import org.apache.cassandra.db.rows.ComplexColumnData;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Values;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.cassandra.transforms.CassandraTypeDeserializer;
 
 public class SetTypeDeserializer extends TypeDeserializer {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(SetTypeDeserializer.class);
 
     @Override
     @SuppressWarnings("unchecked")
