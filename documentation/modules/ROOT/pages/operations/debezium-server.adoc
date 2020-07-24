@@ -441,6 +441,59 @@ The `topic` is set by Debezium.
 |Tables without primary key sends messages with `null` key.
 This is not supported by Pulsar so a surrogate key must be used.
 
+|===
+
+==== Azure Event Hubs
+
+https://docs.microsoft.com/azure/event-hubs/event-hubs-about?WT.mc_id=debezium-docs-abhishgu[Azure Event Hubs] is a big data streaming platform and event ingestion service that can receive and process millions of events per second. Data sent to an event hub can be transformed and stored by using any real-time analytics provider or batching/storage adapters.
+
+[cols="35%a,10%a,55%a",options="header"]
+|=======================
+|Property
+|Default
+|Description
+
+|[[eventhubs-type]]<<eventhubs-type, `debezium.sink.type`>>
+|
+|Must be set to `eventhubs`.
+
+|[[connection-string]]<<connection-string, `debezium.sink.eventhubs.connectionstring`>>
+|
+|https://docs.microsoft.com/azure/event-hubs/event-hubs-get-connection-string?WT.mc_id=debezium-docs-abhishgu[Connection string] required to communicate with Event Hubs. The format is: `Endpoint=sb://<NAMESPACE>/;SharedAccessKeyName=<KEY_NAME>;SharedAccessKey=<ACCESS_KEY>;EntityPath=<HUB_NAME>`. Please note that you will need to append the name of the Event Hub using `EntityPath`). 
+
+|[[hub-name]]<<hub-name, `debezium.sink.eventhubs.hubname`>>
+|
+|Name of the Event Hub
+
+|[[partition-id]]<<partition-id, `debezium.sink.eventhubs.partitionid`>>
+|
+|(Optional) The identifier of the Event Hub partition that the events will be sent to. Use this if you want all the change events received by Debezium to be sent to a specific partition in Event Hubs. Do not use if you have specified `debezium.sink.eventhubs.partitionkey`
+
+|[[partition-key]]<<partition-key, `debezium.sink.eventhubs.partitionkey`>>
+|
+|(Optional) The partition key will be used to hash the events. Use this if you want all the change events received by Debezium to be sent to a specific partition in Event Hubs. Do not use if you have specified `debezium.sink.eventhubs.partitionid`
+
+|[[max-batch-size]]<<max-batch-size, `debezium.sink.eventhubs.maxbatchsize`>>
+|
+|Sets the maximum size for the batch of events, in bytes.
+
+|===
+
+===== Injection points
+
+The default sink behaviour can be modified by a custom logic providing alternative implementations for specific functionalities.
+When the alternative implementations are not available then the default ones are used.
+
+[cols="35%a,10%a,55%a"]
+|===
+|Interface
+|CDI classifier
+|Description
+
+|[[eventhubs-ext-client]]<<eventhubs-ext-client, `com.azure.messaging.eventhubs.EventHubProducerClient`>>
+|`@CustomConsumerBuilder`
+|Custom configured instance of a `EventHubProducerClient` used to send messages.
+
 |=======================
 
 == Extensions
