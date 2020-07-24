@@ -30,6 +30,7 @@ import io.debezium.connector.postgresql.TypeRegistry;
 import io.debezium.connector.postgresql.spi.SlotState;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.jdbc.JdbcConnectionException;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.TableId;
@@ -75,6 +76,14 @@ public class PostgresConnection extends JdbcConnection {
         super(config, FACTORY, PostgresConnection::validateServerVersion, PostgresConnection::defaultSettings);
         this.typeRegistry = provideTypeRegistry ? new TypeRegistry(this) : null;
         databaseCharset = determineDatabaseCharset();
+        // Global JDBC connection used both for snapshotting and streaming.
+        // Must be able to resolve datatypes.
+        try {
+            this.setAutoCommit(false);
+        }
+        catch (SQLException e) {
+            throw new JdbcConnectionException(e);
+        }
     }
 
     /**
