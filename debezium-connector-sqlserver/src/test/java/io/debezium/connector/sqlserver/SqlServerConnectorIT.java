@@ -1784,6 +1784,27 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         stopConnector();
     }
 
+    @Test
+    @FixFor("DBZ-2379")
+    public void shouldNotStreamWhenUsingSnapshotModeInitialOnly() throws Exception {
+        final Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_ONLY)
+                .build();
+
+        final LogInterceptor logInterceptor = new LogInterceptor();
+        start(SqlServerConnector.class, config);
+        assertConnectorIsRunning();
+
+        // Wait for snapshot completion
+        consumeRecordsByTopic(1);
+
+        // should be no more records
+        assertNoRecordsToConsume();
+
+        final String message = "Streaming is not enabled in current configuration";
+        stopConnector(value -> assertThat(logInterceptor.containsMessage(message)).isTrue());
+    }
+
     private void assertRecord(Struct record, List<SchemaAndValueField> expected) {
         expected.forEach(schemaAndValueField -> schemaAndValueField.assertFor(record));
     }

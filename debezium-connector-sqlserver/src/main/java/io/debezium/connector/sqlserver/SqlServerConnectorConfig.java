@@ -59,6 +59,11 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
         INITIAL("initial", true),
 
         /**
+         * Perform a snapshot of data and schema upon initial startup of a connector but does not transition to streaming.
+         */
+        INITIAL_ONLY("initial_only", true),
+
+        /**
          * Perform a snapshot of the schema but no data upon initial startup of a connector.
          */
         SCHEMA_ONLY("schema_only", false);
