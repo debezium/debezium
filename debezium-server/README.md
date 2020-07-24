@@ -28,7 +28,7 @@ Create an [Event Hubs namespace](https://docs.microsoft.com/azure/event-hubs/eve
 
 ### Create an Event Hub
 
-Create an Event Hub (equivalent to a topic). Check the documentation for options on how do this using the [Azure Portal](https://docs.microsoft.com/azure/event-hubs/event-hubs-create?WT.mc_id=debezium-docs-abhishgu#create-an-event-hub), [Azure CLI](https://docs.microsoft.com/azure/event-hubs/event-hubs-quickstart-cli?WT.mc_id=debezium-docs-abhishgu#create-an-event-hub) etc.
+Create an Event Hub (equivalent to a topic) with `one` partition. Check the documentation for options on how do this using the [Azure Portal](https://docs.microsoft.com/azure/event-hubs/event-hubs-create?WT.mc_id=debezium-docs-abhishgu#create-an-event-hub), [Azure CLI](https://docs.microsoft.com/azure/event-hubs/event-hubs-quickstart-cli?WT.mc_id=debezium-docs-abhishgu#create-an-event-hub) etc. 
 
 ### Build the module
 
