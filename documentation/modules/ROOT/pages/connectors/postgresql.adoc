@@ -1897,9 +1897,9 @@ Only alphanumeric characters and underscores should be used.
 |
 |An optional comma-separated list of regular expressions that match fully-qualified table identifiers for tables to be excluded from monitoring; any table not included in the blacklist will be monitored. Each identifier is of the form _schemaName_._tableName_. May not be used with `table.whitelist`.
 
-|[[postgresql-property-column-whitelist]]<<postgresql-property-column-whitelist, `column.whitelist`>>
+|[[postgresql-property-column-blacklist]]<<postgresql-property-column-blacklist, `column.blacklist`>>
 |
-|An optional comma-separated list of regular expressions that match the fully-qualified names of columns that should be included in change event message values. Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_. May not be used with column.blacklist.
+|An optional comma-separated list of regular expressions that match the fully-qualified names of columns that should be excluded from change event message values. Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_.
 
 |[[postgresql-property-time-precision-mode]]<<postgresql-property-time-precision-mode, `time.precision.mode`>>
 |`adaptive`
