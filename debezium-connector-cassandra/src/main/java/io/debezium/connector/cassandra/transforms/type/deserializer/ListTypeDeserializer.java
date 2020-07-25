@@ -30,6 +30,6 @@ public class ListTypeDeserializer extends TypeDeserializer {
         ListType<?> listType = (ListType<?>) abstractType;
         AbstractType<?> elementsType = listType.getElementsType();
         Schema innerSchema = CassandraTypeDeserializer.getSchemaBuilder(elementsType).build();
-        return SchemaBuilder.array(innerSchema);
+        return SchemaBuilder.array(innerSchema).optional();
     }
 }

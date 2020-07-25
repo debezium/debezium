@@ -47,6 +47,6 @@ public class UserTypeDeserializer extends TypeDeserializer {
             Schema fieldSchema = CassandraTypeDeserializer.getSchemaBuilder(fieldTypes.get(i)).build();
             schemaBuilder.field(fieldIdentifiers.get(i).toString(), fieldSchema);
         }
-        return schemaBuilder;
+        return schemaBuilder.optional();
     }
 }

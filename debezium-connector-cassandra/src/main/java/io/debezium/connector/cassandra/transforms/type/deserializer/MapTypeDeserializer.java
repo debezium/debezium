@@ -32,6 +32,6 @@ public class MapTypeDeserializer extends TypeDeserializer {
         AbstractType<?> valuesType = mapType.getValuesType();
         Schema keySchema = CassandraTypeDeserializer.getSchemaBuilder(keysType).build();
         Schema valuesSchema = CassandraTypeDeserializer.getSchemaBuilder(valuesType).build();
-        return SchemaBuilder.map(keySchema, valuesSchema);
+        return SchemaBuilder.map(keySchema, valuesSchema).optional();
     }
 }

@@ -11,7 +11,6 @@ import com.datastax.driver.core.DataType;
 
 import io.debezium.data.Uuid;
 import io.debezium.time.Date;
-import io.debezium.time.MicroTimestamp;
 import io.debezium.time.NanoDuration;
 import io.debezium.time.Timestamp;
 
@@ -21,20 +20,19 @@ import io.debezium.time.Timestamp;
 public final class CassandraTypeKafkaSchemaBuilders {
 
     // native types
-    public static final SchemaBuilder STRING_TYPE = SchemaBuilder.string();
-    public static final SchemaBuilder BOOLEAN_TYPE = SchemaBuilder.bool();
-    public static final SchemaBuilder BYTES_TYPE = SchemaBuilder.bytes();
-    public static final SchemaBuilder BYTE_TYPE = SchemaBuilder.int8();
-    public static final SchemaBuilder SHORT_TYPE = SchemaBuilder.int16();
-    public static final SchemaBuilder INT_TYPE = SchemaBuilder.int32();
-    public static final SchemaBuilder LONG_TYPE = SchemaBuilder.int64();
-    public static final SchemaBuilder FLOAT_TYPE = SchemaBuilder.float32();
-    public static final SchemaBuilder DOUBLE_TYPE = SchemaBuilder.float64();
+    public static final SchemaBuilder STRING_TYPE = SchemaBuilder.string().optional();
+    public static final SchemaBuilder BOOLEAN_TYPE = SchemaBuilder.bool().optional();
+    public static final SchemaBuilder BYTES_TYPE = SchemaBuilder.bytes().optional();
+    public static final SchemaBuilder BYTE_TYPE = SchemaBuilder.int8().optional();
+    public static final SchemaBuilder SHORT_TYPE = SchemaBuilder.int16().optional();
+    public static final SchemaBuilder INT_TYPE = SchemaBuilder.int32().optional();
+    public static final SchemaBuilder LONG_TYPE = SchemaBuilder.int64().optional();
+    public static final SchemaBuilder FLOAT_TYPE = SchemaBuilder.float32().optional();
+    public static final SchemaBuilder DOUBLE_TYPE = SchemaBuilder.float64().optional();
 
     // logical types
-    public static final SchemaBuilder DATE_TYPE = Date.builder();
-    public static final SchemaBuilder TIMESTAMP_MILLI_TYPE = Timestamp.builder();
-    public static final SchemaBuilder TIMESTAMP_MICRO_TYPE = MicroTimestamp.builder();
-    public static final SchemaBuilder UUID_TYPE = Uuid.builder();
-    public static final SchemaBuilder DURATION_TYPE = NanoDuration.builder();
+    public static final SchemaBuilder DATE_TYPE = Date.builder().optional();
+    public static final SchemaBuilder TIMESTAMP_MILLI_TYPE = Timestamp.builder().optional();
+    public static final SchemaBuilder UUID_TYPE = Uuid.builder().optional();
+    public static final SchemaBuilder DURATION_TYPE = NanoDuration.builder().optional();
 }

@@ -53,7 +53,7 @@ public class TupleTypeDeserializer extends TypeDeserializer {
             schemaBuilder.field(createFieldNameForIndex(i), CassandraTypeDeserializer.getSchemaBuilder(innerType).build());
         }
 
-        return schemaBuilder;
+        return schemaBuilder.optional();
     }
 
     private String createTupleName(List<AbstractType<?>> innerTypes) {

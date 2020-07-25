@@ -8,7 +8,6 @@ package io.debezium.connector.cassandra;
 import java.util.Objects;
 
 import org.apache.cassandra.db.marshal.AbstractType;
-import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
@@ -23,6 +22,7 @@ import io.debezium.connector.cassandra.transforms.CassandraTypeDeserializer;
  * type of a column in a Cassandra table.
  */
 public class CellData implements KafkaRecord {
+
     /**
      * The type of a column in a Cassandra table
      */
@@ -69,35 +69,14 @@ public class CellData implements KafkaRecord {
     public Struct record(Schema schema) {
         Struct cellStruct = new Struct(schema)
                 .put(CELL_DELETION_TS_KEY, deletionTs)
-                .put(CELL_SET_KEY, true);
-
-        if (value instanceof Struct) {
-            Schema valueSchema = schema.field(CELL_VALUE_KEY).schema();
-            Struct clonedValue = cloneValue(valueSchema, (Struct) value);
-            cellStruct.put(CELL_VALUE_KEY, clonedValue);
-        }
-        else {
-            cellStruct.put(CELL_VALUE_KEY, value);
-        }
-
+                .put(CELL_SET_KEY, true)
+                .put(CELL_VALUE_KEY, value);
         return cellStruct;
-    }
-
-    // Encountered DataException("Struct schemas do not match.") when value is a Struct.
-    // The error is because the valueSchema is optional, but the schema of value formed during deserialization is not.
-    // This is a temporary workaround to fix this problem.
-    private Struct cloneValue(Schema valueSchema, Struct value) {
-        Struct clonedValue = new Struct(valueSchema);
-        for (Field field : valueSchema.fields()) {
-            String fieldName = field.name();
-            clonedValue.put(fieldName, value.get(fieldName));
-        }
-        return clonedValue;
     }
 
     static Schema cellSchema(ColumnMetadata cm, boolean optional) {
         AbstractType<?> convertedType = CassandraTypeConverter.convert(cm.getType());
-        Schema valueSchema = CassandraTypeDeserializer.getSchemaBuilder(convertedType).optional().build();
+        Schema valueSchema = CassandraTypeDeserializer.getSchemaBuilder(convertedType).build();
         if (valueSchema != null) {
             SchemaBuilder schemaBuilder = SchemaBuilder.struct().name(cm.getName())
                     .field(CELL_VALUE_KEY, valueSchema)
