@@ -40,8 +40,7 @@ public class ListTypeDeserializer extends TypeDeserializer {
         List<ByteBuffer> bbList = ((ListType) abstractType).serializedValues(ccd.iterator());
         AbstractType innerType = ((ListType) abstractType).getElementsType();
         List<Object> deserializedList = new ArrayList<>();
-        for (int i = 0; i < bbList.size(); i++) {
-            ByteBuffer bb = bbList.get(i);
+        for (ByteBuffer bb : bbList) {
             deserializedList.add(super.deserialize(innerType, bb));
         }
         return Values.convertToList(getSchemaBuilder(abstractType).build(), deserializedList);

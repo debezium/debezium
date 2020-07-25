@@ -43,8 +43,7 @@ public class SetTypeDeserializer extends TypeDeserializer {
         List<ByteBuffer> bbList = ((SetType) abstractType).serializedValues(ccd.iterator());
         AbstractType innerType = ((SetType) abstractType).getElementsType();
         Set<Object> deserializedSet = new HashSet<>();
-        for (int i = 0; i < bbList.size(); i++) {
-            ByteBuffer bb = bbList.get(i);
+        for (ByteBuffer bb : bbList) {
             deserializedSet.add(super.deserialize(innerType, bb));
         }
         List<Object> deserializedList = new ArrayList<>(deserializedSet);

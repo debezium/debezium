@@ -45,9 +45,8 @@ public class MapTypeDeserializer extends TypeDeserializer {
         Map<Object, Object> deserializedMap = new HashMap<>();
         int i = 0;
         while (i < bbList.size()) {
-            ByteBuffer kbb = bbList.get(i);
-            ByteBuffer vbb = bbList.get(i + 1);
-            i += 2;
+            ByteBuffer kbb = bbList.get(i++);
+            ByteBuffer vbb = bbList.get(i++);
             deserializedMap.put(super.deserialize(keyType, kbb), super.deserialize(valueType, vbb));
         }
         return Values.convertToMap(getSchemaBuilder(abstractType).build(), deserializedMap);
