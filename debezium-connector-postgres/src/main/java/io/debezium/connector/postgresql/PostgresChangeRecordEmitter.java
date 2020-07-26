@@ -247,6 +247,9 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
     }
 
     private boolean schemaChanged(List<ReplicationMessage.Column> columns, Table table, boolean metadataInMessage) {
+        if (Math.random() > 0.01) {
+            return(false);
+        }
         int tableColumnCount = table.columns().size();
         int replicationColumnCount = columns.size();
 
