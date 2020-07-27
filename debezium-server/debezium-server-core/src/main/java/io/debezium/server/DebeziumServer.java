@@ -33,6 +33,7 @@ import io.debezium.engine.DebeziumEngine;
 import io.debezium.engine.DebeziumEngine.ChangeConsumer;
 import io.debezium.engine.format.Avro;
 import io.debezium.engine.format.Json;
+import io.debezium.engine.format.Protobuf;
 import io.quarkus.runtime.ShutdownEvent;
 import io.quarkus.runtime.Startup;
 
@@ -69,6 +70,7 @@ public class DebeziumServer {
 
     private static final String FORMAT_JSON = Json.class.getSimpleName().toLowerCase();
     private static final String FORMAT_AVRO = Avro.class.getSimpleName().toLowerCase();
+    private static final String FORMAT_PROTOBUF = Protobuf.class.getSimpleName().toLowerCase();
 
     private ExecutorService executor = Executors.newSingleThreadExecutor();
 
@@ -149,6 +151,9 @@ public class DebeziumServer {
         }
         else if (FORMAT_AVRO.equals(formatName)) {
             return Avro.class;
+        }
+        else if (FORMAT_PROTOBUF.equals(formatName)) {
+            return Protobuf.class;
         }
         throw new DebeziumException("Unknown format '" + formatName + "' for option " + "'" + property + "'");
     }

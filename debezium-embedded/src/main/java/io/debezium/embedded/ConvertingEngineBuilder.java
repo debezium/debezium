@@ -28,6 +28,7 @@ import io.debezium.engine.format.ChangeEventFormat;
 import io.debezium.engine.format.CloudEvents;
 import io.debezium.engine.format.Json;
 import io.debezium.engine.format.KeyValueChangeEventFormat;
+import io.debezium.engine.format.Protobuf;
 import io.debezium.engine.format.SerializationFormat;
 import io.debezium.engine.spi.OffsetCommitPolicy;
 
@@ -193,6 +194,9 @@ public class ConvertingEngineBuilder<R> implements Builder<R> {
         }
         else if (isFormat(format, Avro.class)) {
             converterConfig = converterConfig.edit().withDefault(FIELD_CLASS, "io.confluent.connect.avro.AvroConverter").build();
+        }
+        else if (isFormat(format, Protobuf.class)) {
+            converterConfig = converterConfig.edit().withDefault(FIELD_CLASS, "io.confluent.connect.protobuf.ProtobufConverter").build();
         }
         else {
             throw new DebeziumException("Converter '" + format.getSimpleName() + "' is not supported");
