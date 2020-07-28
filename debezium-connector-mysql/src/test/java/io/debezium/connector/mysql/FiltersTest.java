@@ -302,7 +302,8 @@ public class FiltersTest {
     }
 
     @Test
-    public void shouldNotAllowIgnoreTable() {
+    @FixFor("DBZ-1939")
+    public void shouldNotAllowIgnoredTable() {
         filters = build.includeBuiltInTables().createFilters();
         assertIgnoredTableExcluded("mysql.rds_configuration");
         assertNonIgnoredTableIncluded("mysql.table1");
@@ -348,12 +349,13 @@ public class FiltersTest {
 
     protected void assertIgnoredTableExcluded(String fullyQualifiedTableName) {
         TableId id = TableId.parse(fullyQualifiedTableName);
+        assertThat(filters.tableFilter().test(id)).isFalse();
         assertThat(filters.ignoredTableFilter().test(id)).isTrue();
     }
 
     protected void assertNonIgnoredTableIncluded(String fullyQualifiedTableName) {
         TableId id = TableId.parse(fullyQualifiedTableName);
+        assertThat(filters.tableFilter().test(id)).isTrue();
         assertThat(filters.ignoredTableFilter().test(id)).isFalse();
     }
-
 }
