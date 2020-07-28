@@ -8,56 +8,56 @@
 
 toc::[]
 
-The following describes how to set up the {prodname} connectors for change data capture on Red Hat's https://www.openshift.com/[OpenShift] container platform.
+This procedure is for setting up {prodname} connectors on Red Hat's link:https://www.openshift.com/[OpenShift] container platform. These instructions have been tested with the two most recent releases of OpenShift. 
 
-These instructions have been tested using the https://github.com/minishift/minishift[Minishift tool]
--- allowing you to run a single node OpenShift instance locally on your machine.
-
-You can find a complete example of this set-up using Minishift in our https://github.com/debezium/debezium-examples/tree/master/openshift[examples repository].
-
-And if you want to get started even quicker, try out the https://learn.openshift.com/middleware/debezium-getting-started/[{prodname} online learning scenario].
-It starts an OpenShift cluster just for you, allowing you to take your first steps with {prodname} in your browser just within a few minutes.
+To get started more quickly, try the link:https://learn.openshift.com/middleware/debezium-getting-started/[{prodname} online learning scenario].
+It starts an OpenShift cluster just for you, which lets you start using {prodname} in your browser within a few minutes.
 
 == {prodname} Deployment
 
-For setting up Kafka and Kafka Connect on OpenShift, a set of images provided by the https://strimzi.io/[Strimzi] project can be used, which offers "Kafka as a Service".
-It consists of enterprise grade configuration files and images that bring Kafka to OpenShift.
+To set up Kafka and Kafka Connect on OpenShift, use the set of images that are provided by the link:https://strimzi.io/[Strimzi] project. These images offer "Kafka as a Service" by providing enterprise grade configuration files and images that bring Kafka to OpenShift.
 
-First, install the operators and templates for the Kafka broker and Kafka Connect into our OpenShift project:
+.Prerequisites
 
+* The OpenShift command line interface (`oc`) is installed.
+
+.Procedure
+
+. In your OpenShift project, enter the following commands to install the operators and templates for the Kafka broker and Kafka Connect:
++
 [source,shell,subs="attributes",options="nowrap"]
 ----
 export STRIMZI_VERSION={strimzi-version}
 git clone -b $STRIMZI_VERSION https://github.com/strimzi/strimzi-kafka-operator
 cd strimzi-kafka-operator
 
-# We need to create security objects as part of installation so it is necessary to switch to admin user
+# Switch to an admin user to create security objects as part of installation:
 oc login -u system:admin
 oc create -f install/cluster-operator && oc create -f examples/templates/cluster-operator
 ----
 
-Next, deploy a Kafka broker cluster and a Kafka Connect cluster and then create a Kafka Connect image with the {prodname} connectors installed:
-
+. Deploy a Kafka broker cluster and a Kafka Connect cluster and then create a Kafka Connect image with the {prodname} connectors installed:
++
 [source,shell,subs="attributes",options="nowrap"]
 ----
-# Deploy an ephemeral single instance Kafka broker
+# Deploy an ephemeral single instance Kafka broker:
 oc process strimzi-ephemeral -p CLUSTER_NAME=broker -p ZOOKEEPER_NODE_COUNT=1 -p KAFKA_NODE_COUNT=1 -p KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1 -p KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1 | oc apply -f -
 
-# Deploy a single instance of Kafka Connect with no plug-in installed
+# Deploy a single instance of Kafka Connect with no plug-in installed:
 oc process strimzi-connect-s2i -p CLUSTER_NAME=debezium -p KAFKA_CONNECT_BOOTSTRAP_SERVERS=broker-kafka-bootstrap:9092 -p KAFKA_CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR=1 -p KAFKA_CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR=1 -p KAFKA_CONNECT_STATUS_STORAGE_REPLICATION_FACTOR=1 -p KAFKA_CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE=false -p KAFKA_CONNECT_KEY_CONVERTER_SCHEMAS_ENABLE=false | oc apply -f -
 
 # Build a Debezium image
 export DEBEZIUM_VERSION={debezium-version}
 mkdir -p plugins && cd plugins && \
-for PLUGIN in {mongodb,mysql,postgres}; do \
+for PLUGIN in {mongodb,mysql,postgres,sqlserver}; do \
     curl http://central.maven.org/maven2/io/debezium/debezium-connector-$PLUGIN/$DEBEZIUM_VERSION/debezium-connector-$PLUGIN-$DEBEZIUM_VERSION-plugin.tar.gz | tar xz; \
 done && \
 oc start-build debezium-connect --from-dir=. --follow && \
 cd .. && rm -rf plugins
 ----
-
++
 After a while all parts should be up and running:
-
++
 [source%nowrap,bash]
 ----
 oc get pods
@@ -69,17 +69,17 @@ broker-zookeeper-0                         2/2       Running       0          5m
 debezium-connect-3-4sdjr                   1/1       Running       0          1m
 strimzi-cluster-operator-d77476b8f-rblqf   1/1       Running       0          5m
 ----
-
-Alternatively, you can go to the "Pods" view of your OpenShift Web Console (https://myhost:8443/console/project/myproject/browse/pods) to confirm all pods are up and running:
-
++
+Alternatively, go to the "Pods" view of your OpenShift Web Console (https://myhost:8443/console/project/myproject/browse/pods) to confirm that all pods are up and running:
++
 image::/images/openshift_pods.png[width=771,align="center"]
 
 == Verifying the Deployment
 
 Verify whether the deployment is correct by emulating the xref:tutorial.adoc[{prodname} Tutorial] in the OpenShift environment.
 
-Begin by starting a MySQL server instance that contains some example tables:
-
+. Start a MySQL server instance that contains some example tables:
++
 [source%nowrap,bash,subs="attributes"]
 ----
 # Deploy pre-populated MySQL instance
@@ -88,9 +88,9 @@ oc new-app --name=mysql debezium/example-mysql:{debezium-docker-label}
 # Configure credentials for the database
 oc set env dc/mysql MYSQL_ROOT_PASSWORD=debezium  MYSQL_USER=mysqluser MYSQL_PASSWORD=mysqlpw
 ----
-
++
 A new pod with MySQL server should be up and running:
-
++
 [source%nowrap,bash]
 ----
 oc get pods
@@ -101,8 +101,8 @@ mysql-1-deploy                   1/1       Running     0          4s
 ...
 ----
 
-Register the {prodname} MySQL connector to run against the deployed MySQL instance:
-
+. Register the {prodname} MySQL connector to run against the deployed MySQL instance:
++
 [source%nowrap,bash]
 ----
 oc exec -i -c kafka broker-kafka-0 -- curl -X POST \
@@ -128,16 +128,16 @@ oc exec -i -c kafka broker-kafka-0 -- curl -X POST \
 }
 EOF
 ----
-
++
 Kafka Connect's log file should contain messages regarding execution of the initial snapshot:
-
++
 [source%nowrap,bash]
 ----
 oc logs $(oc get pods -o name -l strimzi.io/name=debezium-connect)
 ----
 
-Now you can read change events for the `customers` table from the corresponding Kafka topic:
-
+. Read change events for the `customers` table from the corresponding Kafka topic:
++
 [source%nowrap,bash]
 ----
 oc exec -it broker-kafka-0 -- /opt/kafka/bin/kafka-console-consumer.sh \
@@ -146,9 +146,9 @@ oc exec -it broker-kafka-0 -- /opt/kafka/bin/kafka-console-consumer.sh \
     --property print.key=true \
     --topic dbserver1.inventory.customers
 ----
-
++
 You should see an output like the following (formatted for the sake of readability):
-
++
 [source%nowrap,json]
 ----
 # Message 1
@@ -215,8 +215,8 @@ You should see an output like the following (formatted for the sake of readabili
 ...
 ----
 
-Finally, the next example modifies some records in the `customers` table of the database:
-
+. Modify some records in the `customers` table of the database:
++
 [source%nowrap,bash]
 ----
 oc exec -it $(oc get pods -o custom-columns=NAME:.metadata.name --no-headers -l app=mysql) \
@@ -224,8 +224,8 @@ oc exec -it $(oc get pods -o custom-columns=NAME:.metadata.name --no-headers -l 
 
 # For example, run UPDATE customers SET email="sally.thomas@example.com" WHERE ID = 1001;
 ----
-
-You should now see additional change messages in the consumer started before.
++
+You should now see additional change messages in the consumer started previousl.
 
 If you have any questions or requests related to running {prodname} on OpenShift,
 let us know via our https://groups.google.com/forum/#!forum/debezium[user group] or in the {prodname} https://gitter.im/debezium/dev[developer's chat].
