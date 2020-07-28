@@ -5,12 +5,9 @@
  */
 package io.debezium.connector.mysql;
 
-import java.util.Collection;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
 
 import io.debezium.annotation.Immutable;
 import io.debezium.config.Configuration;
@@ -35,7 +32,7 @@ public class Filters {
      * tables occasionally exposed by services such as Amazon RDS Aurora. See
      * DBZ-1939.
      */
-    protected static final Set<String> IGNORED_TABLE_NAMES = Collect.unmodifiableSet(
+    private static final Set<String> IGNORED_TABLE_NAMES = Collect.unmodifiableSet(
             "mysql.rds_configuration",
             "mysql.rds_global_status_history",
             "mysql.rds_global_status_history_old",
@@ -50,28 +47,12 @@ public class Filters {
         return BUILT_IN_DB_NAMES.contains(databaseName.toLowerCase());
     }
 
-    protected static boolean isBuiltInTable(TableId id) {
+    private static boolean isBuiltInTable(TableId id) {
         return isBuiltInDatabase(id.catalog());
-    }
-
-    protected static boolean isNotBuiltInDatabase(String databaseName) {
-        return !isBuiltInDatabase(databaseName);
-    }
-
-    protected static boolean isNotBuiltInTable(TableId id) {
-        return !isBuiltInTable(id);
     }
 
     private static boolean isIgnoredTable(TableId id) {
         return IGNORED_TABLE_NAMES.contains(id.catalog() + "." + id.table());
-    }
-
-    protected static List<TableId> withoutBuiltIns(Collection<TableId> tableIds) {
-        return tableIds.stream().filter(Filters::isNotBuiltInTable).collect(Collectors.toList());
-    }
-
-    protected static List<String> withoutBuiltInDatabases(Collection<String> dbNames) {
-        return dbNames.stream().filter(Filters::isNotBuiltInDatabase).collect(Collectors.toList());
     }
 
     private final Predicate<String> dbFilter;
@@ -101,14 +82,6 @@ public class Filters {
 
     public Predicate<TableId> tableFilter() {
         return tableFilter;
-    }
-
-    public Predicate<TableId> builtInTableFilter() {
-        return isBuiltInTable;
-    }
-
-    public Predicate<String> builtInDatabaseFilter() {
-        return isBuiltInDb;
     }
 
     public Predicate<TableId> ignoredTableFilter() {
