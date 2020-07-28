@@ -8,12 +8,10 @@
 
 toc::[]
 
-This procedure is for setting up {prodname} connectors on Red Hat's https://www.openshift.com/[OpenShift] container platform. These instructions have been tested by using the https://github.com/minishift/minishift[Minishift tool], which allows you to run a single node OpenShift instance locally on your machine.
+This procedure is for setting up {prodname} connectors on Red Hat's link:https://www.openshift.com/[OpenShift] container platform. These instructions have been tested with the two most recent releases of OpenShift. 
 
-A complete example of this set-up using Minishift is in the https://github.com/debezium/debezium-examples/tree/master/openshift[{prodname} examples repository].
-
-To get started even more quickly, try out the https://learn.openshift.com/middleware/debezium-getting-started/[{prodname} online learning scenario].
-It starts an OpenShift cluster just for you, which lets you start using {prodname} in your browser in just a few minutes.
+To get started more quickly, try the link:https://learn.openshift.com/middleware/debezium-getting-started/[{prodname} online learning scenario].
+It starts an OpenShift cluster just for you, which lets you start using {prodname} in your browser within a few minutes.
 
 == {prodname} Deployment
 
@@ -21,7 +19,6 @@ To set up Kafka and Kafka Connect on OpenShift, use the set of images that are p
 
 .Prerequisites
 
-* Minishift is installed.
 * The OpenShift command line interface (`oc`) is installed.
 
 .Procedure
