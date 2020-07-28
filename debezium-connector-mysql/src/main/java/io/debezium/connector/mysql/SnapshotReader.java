@@ -872,7 +872,8 @@ public class SnapshotReader extends AbstractReader {
      * {@code false} otherwise.
      */
     private boolean shouldRecordTableSchema(MySqlSchema schema, Filters filters, TableId id) {
-        return (filters.tableFilter().test(id) || !schema.isStoreOnlyMonitoredTablesDdl());
+        return (filters.tableFilter().test(id) || !schema.isStoreOnlyMonitoredTablesDdl())
+                && !filters.ignoredTableFilter().test(id);
     }
 
     protected void readBinlogPosition(int step, SourceInfo source, JdbcConnection mysql, AtomicReference<String> sql) throws SQLException {

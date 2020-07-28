@@ -88,6 +88,10 @@ public class Filters {
         return columnFilter;
     }
 
+    public Predicate<TableId> ignoredTableFilter() {
+        return isIgnoredTable;
+    }
+
     public static class Builder {
 
         private Predicate<String> dbFilter;
