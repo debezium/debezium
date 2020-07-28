@@ -31,8 +31,9 @@ public class Filters {
     protected static final Set<String> BUILT_IN_DB_NAMES = Collect.unmodifiableSet("mysql", "performance_schema", "sys", "information_schema");
 
     /**
-     * A list of tables that always ignored. Useful for ignoring "phantom" tables 
-     * occasionally exposed by services such as Amazon RDS Aurora. See DBZ-1939.
+     * A list of tables that are always ignored. Useful for ignoring "phantom"
+     * tables occasionally exposed by services such as Amazon RDS Aurora. See
+     * DBZ-1939.
      */
     protected static final Set<String> IGNORED_TABLE_NAMES = Collect.unmodifiableSet(
             "mysql.rds_configuration",
@@ -61,7 +62,7 @@ public class Filters {
         return !isBuiltInTable(id);
     }
 
-    protected static boolean isIgnoredTable(TableId id) {
+    private static boolean isIgnoredTable(TableId id) {
         return IGNORED_TABLE_NAMES.contains(id.catalog() + "." + id.table());
     }
 
@@ -104,10 +105,6 @@ public class Filters {
 
     public Predicate<TableId> builtInTableFilter() {
         return isBuiltInTable;
-    }
-
-    public Predicate<TableId> ignoredTableFilter() {
-        return isIgnoredTable;
     }
 
     public Predicate<String> builtInDatabaseFilter() {
@@ -182,6 +179,8 @@ public class Filters {
                 this.tableFilter = tableFilter;
                 this.dbFilter = dbFilter;
             }
+
+            this.tableFilter = this.tableFilter.and(isIgnoredTable.negate());
         }
 
         /**

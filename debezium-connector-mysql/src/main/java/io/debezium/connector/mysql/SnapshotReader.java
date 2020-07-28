@@ -866,9 +866,13 @@ public class SnapshotReader extends AbstractReader {
         });
     }
 
-    private boolean shouldRecordTableSchema(final MySqlSchema schema, final Filters filters, TableId id) throws SQLException {
-        return (!schema.isStoreOnlyMonitoredTablesDdl() || filters.tableFilter().test(id)) &&
-                !filters.ignoredTableFilter().test(id);
+    /**
+     * Whether DDL for the given table should be recorded; {@code true} when the
+     * table matches the filter configuration or we capture _any_ table's DDL,
+     * {@code false} otherwise.
+     */
+    private boolean shouldRecordTableSchema(MySqlSchema schema, Filters filters, TableId id) {
+        return (filters.tableFilter().test(id) || !schema.isStoreOnlyMonitoredTablesDdl());
     }
 
     protected void readBinlogPosition(int step, SourceInfo source, JdbcConnection mysql, AtomicReference<String> sql) throws SQLException {
