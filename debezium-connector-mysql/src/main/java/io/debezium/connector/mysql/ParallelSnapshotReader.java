@@ -225,14 +225,17 @@ public class ParallelSnapshotReader implements Reader {
             // we assume if we ever end up near the end of the binlog, then we will remain there.
             if (!thisReaderNearEnd.get()) {
                 Long sourceRecordTimestamp = (Long) ourSourceRecord.sourceOffset().get(SourceInfo.TIMESTAMP_KEY);
-                Instant recordTimestamp = Instant.ofEpochSecond(sourceRecordTimestamp);
-                Instant now = Instant.now();
-                Duration durationToEnd = Duration.between(recordTimestamp, now);
+                // the timestamp will be null if we have not read any binlog events yet.
+                if (sourceRecordTimestamp != null) {
+                    Instant recordTimestamp = Instant.ofEpochSecond(sourceRecordTimestamp);
+                    Instant now = Instant.now();
+                    Duration durationToEnd = Duration.between(recordTimestamp, now);
 
-                if (durationToEnd.compareTo(minHaltingDuration) <= 0) {
-                    // we are within minHaltingDuration of the end
-                    LOGGER.debug("Parallel halting predicate: this reader near end");
-                    thisReaderNearEnd.set(true);
+                    if (durationToEnd.compareTo(minHaltingDuration) <= 0) {
+                        // we are within minHaltingDuration of the end
+                        LOGGER.debug("Parallel halting predicate: this reader near end");
+                        thisReaderNearEnd.set(true);
+                    }
                 }
             }
             // return false if both readers are near end, true otherwise.
