@@ -87,6 +87,7 @@ Here's an example of code that configures and runs an embedded {link-prefix}:{li
     // Define the configuration for the Debezium Engine with MySQL connector...
     final Properties props = config.asProperties();
     props.setProperty("name", "engine");
+    props.setProperty("connector.class", "io.debezium.connector.mysql.MySqlConnector");
     props.setProperty("offset.storage", "org.apache.kafka.connect.storage.FileOffsetBackingStore");
     props.setProperty("offset.storage.file.filename", "/tmp/offsets.dat");
     props.setProperty("offset.flush.interval.ms", "60000");
