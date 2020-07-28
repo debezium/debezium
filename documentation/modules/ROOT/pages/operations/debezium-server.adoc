@@ -226,7 +226,7 @@ By default the output is in JSON format but an arbitrary implementation of Kafka
 
 |[[debezium-format-key]]<<debezium-format-key, `debezium.format.key`>>
 |`json`
-|The name of the output format for key, one of `json`/`avro`.
+|The name of the output format for key, one of `json`/`avro`/`protobuf`.
 
 |[[debezium-format-key-props]]<<debezium-format-key-props, `debezium.format.key.*`>>
 |
@@ -234,7 +234,7 @@ By default the output is in JSON format but an arbitrary implementation of Kafka
 
 |[[debezium-format-value]]<<debezium-format-value, `debezium.format.value`>>
 |`json`
-|The name of the output format for value, one of `json`/`avro`.
+|The name of the output format for value, one of `json`/`avro`/`protobuf`.
 
 |[[debezium-format-value-props]]<<debezium-format-value-props, `debezium.format.value.*`>>
 |
