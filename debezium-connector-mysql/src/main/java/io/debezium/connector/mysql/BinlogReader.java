@@ -557,8 +557,12 @@ public class BinlogReader extends AbstractReader {
         // Update the source offset info. Note that the client returns the value in *milliseconds*, even though the binlog
         // contains only *seconds* precision ...
         EventHeader eventHeader = event.getHeader();
-        source.setBinlogTimestampSeconds(eventHeader.getTimestamp() / 1000L); // client returns milliseconds, but only second
-                                                                              // precision
+        if (!eventHeader.getEventType().equals(EventType.HEARTBEAT)) {
+            //HEARTBEAT events have no timestamp; only set the timestamp if the event is not a HEARTBEAT
+            source.setBinlogTimestampSeconds(eventHeader.getTimestamp() / 1000L); // client returns milliseconds,
+                                                                                  // but only second precision
+        }
+
         source.setBinlogServerId(eventHeader.getServerId());
         EventType eventType = eventHeader.getEventType();
         if (eventType == EventType.ROTATE) {
