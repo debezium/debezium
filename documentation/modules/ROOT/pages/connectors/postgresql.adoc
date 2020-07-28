@@ -592,7 +592,7 @@ Therefore, we interpret this key as describing the row in the `public.customers`
 
 [NOTE]
 ====
-Although the `column.blacklist` configuration property allow you to capture only a subset of table columns, all columns in a primary or unique key are always included in the event's key.
+Although the `column.blacklist` configuration property allows you to capture only a subset of table columns, all columns in a primary or unique key are always included in the event's key.
 ====
 
 [WARNING]
