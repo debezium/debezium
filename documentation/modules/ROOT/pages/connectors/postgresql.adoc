@@ -12,9 +12,12 @@ ifdef::community[]
 :source-highlighter: highlight.js
 
 toc::[]
-endif::community[]
 
+{prodname}'s PostgreSQL connector captures row-level changes in the schemas of a PostgreSQL database. PostgreSQL versions 9.6, 10, 11, and 12 are supported. 
+endif::community[]
+ifdef::product[]
 {prodname}'s PostgreSQL connector captures row-level changes in the schemas of a PostgreSQL database. PostgreSQL versions 10, 11, and 12 are supported. 
+endif::product[]
 
 The first time it connects to a PostgreSQL server or cluster, the connector takes a consistent snapshot of all schemas. After that snapshot is complete, the connector continuously captures row-level changes that insert, update, and delete database content and that were committed to a PostgreSQL database. The connector generates data change event records and streams them to Kafka topics. For each table, the default behavior is that the connector streams all generated events to a separate Kafka topic for that table. Applications and services consume data change event records from that topic. 
 
@@ -37,34 +40,31 @@ endif::product[]
 [[postgresql-overview]]
 == Overview
 
-PostgreSQL's link:https://www.postgresql.org/docs/current/static/logicaldecoding-explanation.html[_logical decoding_] feature was introduced in version 9.4. It is a mechanism that allows the extraction of the changes that were committed to the transaction log and the processing of these changes in a user-friendly manner with the help of an link:https://www.postgresql.org/docs/current/static/logicaldecoding-output-plugin.html[_output plug-in_]. You must install this output plug-in and configure a replication slot that uses the output plug-in before running the PostgreSQL server. This enables clients to consume the changes. 
+PostgreSQL's link:https://www.postgresql.org/docs/current/static/logicaldecoding-explanation.html[_logical decoding_] feature was introduced in version 9.4. It is a mechanism that allows the extraction of the changes that were committed to the transaction log and the processing of these changes in a user-friendly manner with the help of an link:https://www.postgresql.org/docs/current/static/logicaldecoding-output-plugin.html[_output plug-in_]. The output plug-in enables clients to consume the changes. 
 
-The PostgreSQL connector contains two main parts that work together to read and process server changes:
+The PostgreSQL connector contains two main parts that work together to read and process database changes:
 
-ifdef::product[]
-* A logical decoding output plug-in, which must be installed and configured in the PostgreSQL server.
-* Java code (the actual Kafka Connect connector), which reads the changes produced by the plug-in by using PostgreSQL's link:https://www.postgresql.org/docs/current/static/logicaldecoding-walsender.html[_streaming replication protocol_] and the PostgreSQL link:https://github.com/pgjdbc/pgjdbc[_JDBC driver_].
-endif::product[]
-
+[[postgresql-output-plugin]]
 ifdef::community[]
-* A logical decoding output plug-in, which must be installed and configured in the PostgreSQL server. The plug-in is one of these: 
-** link:https://github.com/debezium/postgres-decoderbufs[`decoderbufs`] - maintained by the {prodname} community, based on ProtoBuf.
-** link:https://github.com/eulerto/wal2json[`wal2json`] - maintained by the wal2json community, based on JSON.
-** `pgoutput`, which is the standard logical decoding plug-in in PostgreSQL 10+. It is maintained by the PostgreSQL community, and used by PostgreSQL itself for link:https://www.postgresql.org/docs/current/logical-replication-architecture.html[logical replication]. This plug-in is always present so no additional libraries need to be installed. The {prodname} connector interprets the raw replication event stream directly into change events.
-* Java code (the actual Kafka Connect connector) that reads the changes produced by the chosen plug-in. It uses PostgreSQL's link:https://www.postgresql.org/docs/current/static/logicaldecoding-walsender.html[_streaming replication protocol_], by means of the PostgreSQL link:https://github.com/pgjdbc/pgjdbc[_JDBC driver_]
+* A logical decoding output plug-in. You might need to install the output plug-in that you choose to use. You must configure a replication slot that uses your chosen output plug-in before running the PostgreSQL server. The plug-in can be one of the following: 
+** link:https://github.com/debezium/postgres-decoderbufs[`decoderbufs`] is based on Protobuf and maintained by the {prodname} community.
+** link:https://github.com/eulerto/wal2json[`wal2json`] is based on JSON and maintained by the wal2json community.
+** `pgoutput` is the standard logical decoding output plug-in in PostgreSQL 10+. It is maintained by the PostgreSQL community, and used by PostgreSQL itself for link:https://www.postgresql.org/docs/current/logical-replication-architecture.html[logical replication]. This plug-in is always present so no additional libraries need to be installed. The {prodname} connector interprets the raw replication event stream directly into change events.
+
+* Java code (the actual Kafka Connect connector) that reads the changes produced by the chosen logical decoding output plug-in. It uses PostgreSQL's link:https://www.postgresql.org/docs/current/static/logicaldecoding-walsender.html[_streaming replication protocol_], by means of the PostgreSQL link:https://github.com/pgjdbc/pgjdbc[_JDBC driver_]
 endif::community[]
 
-The connector produces a _change event_ for every row-level insert, update, and delete operation that was captured and sends change event records for each table in a separate Kafka topic. Your client applications read the Kafka topics that correspond to the database tables of interest, and can react to every row-level event they receive from those topics.
+ifdef::product[]
+* `pgoutput` is the standard logical decoding output plug-in in PostgreSQL 10+. This is the only supported logical decoding output plug-in in this {prodname} release. This plug-in is maintained by the PostgreSQL community, and used by PostgreSQL itself for link:https://www.postgresql.org/docs/current/logical-replication-architecture.html[logical replication]. This plug-in is always present so no additional libraries need to be installed. The {prodname} connector interprets the raw replication event stream directly into change events.
+
+* Java code (the actual Kafka Connect connector) that reads the changes produced by the logical decoding output plug-in by using PostgreSQL's link:https://www.postgresql.org/docs/current/static/logicaldecoding-walsender.html[_streaming replication protocol_] and the PostgreSQL link:https://github.com/pgjdbc/pgjdbc[_JDBC driver_].
+endif::product[]
+
+The connector produces a _change event_ for every row-level insert, update, and delete operation that was captured and sends change event records for each table in a separate Kafka topic. Client applications read the Kafka topics that correspond to the database tables of interest, and can react to every row-level event they receive from those topics.
 
 PostgreSQL normally purges write-ahead log (WAL) segments after some period of time. This means that the connector does not have the complete history of all changes that have been made to the database. Therefore, when the PostgreSQL connector first connects to a particular PostgreSQL database, it starts by performing a _consistent snapshot_ of each of the database schemas. After the connector completes the snapshot, it continues streaming changes from the exact point at which the snapshot was made. This way, the connector starts with a consistent view of all of the data, and does not omit any changes that were made while the snapshot was being taken.
 
-The connector is tolerant of failures. As the connector reads changes and produces events, it records the position in the WAL for each event. If the connector stops for any reason (including communication failures, network problems, or crashes), upon restart the connector continues reading the WAL where it last left off. This includes snapshots. If the connector stops during a snapshot, the connector begins a new snapshot when it restarts. 
-
-ifdef::product[]
-[[postgresql-output-plugin]]
-.Logical decoding output plug-in
-The `pgoutput` logical decoding plug-in, the only supported logical decoding plug-in in this {prodname} release, is the standard logical decoding plug-in in PostgreSQL 10+, it is maintained by the PostgreSQL community, and it is also used by PostgreSQL for link:https://www.postgresql.org/docs/current/logical-replication-architecture.html[logical replication]. The `pgoutput` plug-in is always present, meaning that no additional libraries must be installed. The connector directly interprets the raw replication event stream into change events records.
-endif::product[]
+The connector is tolerant of failures. As the connector reads changes and produces events, it records the WAL position for each event. If the connector stops for any reason (including communication failures, network problems, or crashes), upon restart the connector continues reading the WAL where it last left off. This includes snapshots. If the connector stops during a snapshot, the connector begins a new snapshot when it restarts. 
 
 [[postgresql-limitations]]
 [IMPORTANT]
@@ -161,7 +161,7 @@ ifdef::community[]
 [[postgresql-custom-snapshot]]
 === Custom snapshotter SPI
 
-For more advanced uses, you can provide an implementation of the `io.debezium.connector.postgresql.spi.Snapshotter` interface. This interaces allows control of most of the aspects of how the connector performs snapshots. This includes whether or not to take a snapshot, the options for opening the snapshot transaction, and whether to take locks. 
+For more advanced uses, you can provide an implementation of the `io.debezium.connector.postgresql.spi.Snapshotter` interface. This interface allows control of most of the aspects of how the connector performs snapshots. This includes whether or not to take a snapshot, the options for opening the snapshot transaction, and whether to take locks. 
 
 Following is the full API for the interface. All built-in snapshot modes implement this interface.
 
@@ -275,13 +275,10 @@ The PostgreSQL connector retrieves schema information as part of the events sent
 . Restart {prodname}.
 ====
 
-// Type: concept
-// ModuleID: postgresql-10-logical-decoding-support-pgoutput
 [[postgresql-pgoutput]]
 === PostgreSQL 10+ logical decoding support (`pgoutput`)
 
-As of PostgreSQL 10+, a new logical replication stream mode was introduced, called `pgoutput`. This logical replication stream mode is natively supported by PostgreSQL,
-which means that a {prodname} PostgreSQL connector can consume that replication stream
+As of PostgreSQL 10+, there is a logical replication stream mode, called `pgoutput` that is natively supported by PostgreSQL. This means that a {prodname} PostgreSQL connector can consume that replication stream
 without the need for additional plug-ins.
 This is particularly valuable for environments where installation of plug-ins is not supported or not allowed.
 
@@ -1075,7 +1072,7 @@ The following table describes how the connector maps basic PostgreSQL data types
 |`TSTZRANGE`
 |`STRING`
 |n/a
-|Contains the string representation of a timestamp range with the local system  time zone.
+|Contains the string representation of a timestamp range with the local system time zone.
 
 |`DATERANGE`
 |`STRING`
@@ -1340,13 +1337,13 @@ PostgreSQL supports user-defined types that are based on other underlying types.
 ====
 Capturing changes in columns that use PostgreSQL domain types requires special consideration. When a column is defined to contain a domain type that extends one of the default database types and the domain type defines a custom length or scale, the generated schema inherits that defined length or scale.
 
-When a column is defined to contain a domain type that extends another domain type that defines a custom length or scale, the generated schema does *not* inherit the defined length oe scale because of the PostgreSQL driver's column metadata implementation.
+When a column is defined to contain a domain type that extends another domain type that defines a custom length or scale, the generated schema does *not* inherit the defined length or scale because that information is not available in the PostgreSQL driver's column metadata.
 ====
 
 [id="postgresql-network-address-types"]
 === Network address types
 
-PostgreSQL haddata types that can store IPv4, IPv6, and MAC addresses. It is better to use these types instead of plain text types to store network addresses. Network address types offer input error checking and specialized operators and functions.
+PostgreSQL has data types that can store IPv4, IPv6, and MAC addresses. It is better to use these types instead of plain text types to store network addresses. Network address types offer input error checking and specialized operators and functions.
 
 .Mappings for network address types
 [cols="15%a,15%a,35%a,35%a",options="header"]
@@ -1523,7 +1520,7 @@ As of January 2019, the following PostgreSQL versions on RDS come with an up-to-
 * PostgreSQL 11: any version
 ====
 
-[[postgresql-output-plugin]]
+[[installing-postgresql-output-plugin]]
 === Installing the logical decoding output plug-in
 
 [TIP]
@@ -1850,7 +1847,7 @@ To start running a PostgreSQL connector, create a connector configuration file a
 
 * The {link-prefix}:{link-postgresql-connector}#postgresql-server-configuration[PostgreSQL server] is configured to support logical replication.
 
-* The {link-prefix}:{link-postgresql-connector}#postgresql-output-plugin[logical decoding plug-in] is installed.
+* The {link-prefix}:{link-postgresql-connector}#installing-postgresql-output-plugin[logical decoding plug-in] is installed.
 
 * The PostgreSQL connector is installed. 
 
@@ -2479,7 +2476,15 @@ The PostgreSQL connector externally stores the last processed offset in the form
 
 As of release 12, PostgreSQL allows logical replication slots _only on primary servers_. This means that you can point a {prodname} PostgreSQL connector to only the active primary server of a database cluster.
 Also, replication slots themselves are not propagated to replicas.
-If the primary server goes down, a new primary must be promoted. The new primary must have the {link-prefix}:{link-postgresql-connector}#postgresql-output-plugin[logical decoding plug-in] installed and a replication slot that is configured for use by the plug-in. Only then can you point the connector to the new server and restart the connector. 
+If the primary server goes down, a new primary must be promoted. 
+
+ifdef::community[]
+The new primary must have the {link-prefix}:{link-postgresql-connector}#installing-postgresql-output-plugin[logical decoding plug-in] installed and a replication slot that is configured for use by the plug-in and the database for which you want to capture changes. Only then can you point the connector to the new server and restart the connector. 
+endif::community[]
+
+ifdef::product[]
+The new primary must have a replication slot that is configured for use by the `pgoutput` plug-in and the database in which you want to capture changes. Only then can you point the connector to the new server and restart the connector. 
+endif::product[]
 
 There are important caveats when failovers occur and you should pause {prodname} until you can verify that you have an intact replication slot that has not lost data. After a failover: 
 
