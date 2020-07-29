@@ -15,6 +15,7 @@ import org.apache.cassandra.db.marshal.AsciiType;
 import org.apache.cassandra.db.marshal.BooleanType;
 import org.apache.cassandra.db.marshal.ByteType;
 import org.apache.cassandra.db.marshal.BytesType;
+import org.apache.cassandra.db.marshal.CollectionType;
 import org.apache.cassandra.db.marshal.CounterColumnType;
 import org.apache.cassandra.db.marshal.DecimalType;
 import org.apache.cassandra.db.marshal.DoubleType;
@@ -44,6 +45,7 @@ import com.datastax.driver.core.DataType;
 import io.debezium.annotation.Immutable;
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.connector.cassandra.transforms.type.deserializer.BasicTypeDeserializer;
+import io.debezium.connector.cassandra.transforms.type.deserializer.CollectionTypeDeserializer;
 import io.debezium.connector.cassandra.transforms.type.deserializer.DurationTypeDeserializer;
 import io.debezium.connector.cassandra.transforms.type.deserializer.InetAddressDeserializer;
 import io.debezium.connector.cassandra.transforms.type.deserializer.ListTypeDeserializer;
@@ -132,18 +134,13 @@ public final class CassandraTypeDeserializer {
     /**
      * Deserialize from cdc-log-sourced cassandra data.
      *
-     * @param abstractType the {@link AbstractType} of the collection column
+     * @param collectionType the {@link CollectionType} of the collection column
      * @param ccd the ComplexColumnData of the collection column to deserialize
      * @return the deserialized object.
      */
-    public static Object deserialize(AbstractType<?> abstractType, ComplexColumnData ccd) {
-        // Check if abstract type is reversed, if yes, use the base type for deserialization.
-        if (abstractType.isReversed()) {
-            abstractType = ((ReversedType) abstractType).baseType;
-        }
-
-        TypeDeserializer typeDeserializer = TYPE_MAP.get(abstractType.getClass());
-        return typeDeserializer.deserialize(abstractType, ccd);
+    public static Object deserialize(CollectionType<?> collectionType, ComplexColumnData ccd) {
+        TypeDeserializer typeDeserializer = TYPE_MAP.get(collectionType.getClass());
+        return ((CollectionTypeDeserializer) typeDeserializer).deserialize(collectionType, ccd);
     }
 
     /**

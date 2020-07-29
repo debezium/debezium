@@ -26,6 +26,7 @@ import org.apache.cassandra.db.Mutation;
 import org.apache.cassandra.db.commitlog.CommitLogDescriptor;
 import org.apache.cassandra.db.commitlog.CommitLogReadHandler;
 import org.apache.cassandra.db.marshal.AbstractType;
+import org.apache.cassandra.db.marshal.CollectionType;
 import org.apache.cassandra.db.partitions.PartitionUpdate;
 import org.apache.cassandra.db.rows.ComplexColumnData;
 import org.apache.cassandra.db.rows.Row;
@@ -423,13 +424,14 @@ public class CommitLogReadHandlerImpl implements CommitLogReadHandler {
                 try {
                     Object value;
                     Object deletionTs = null;
-                    if (cd.isComplex()) {
+                    AbstractType abstractType = cd.type;
+                    if (abstractType.isCollection()) {
                         ComplexColumnData ccd = row.getComplexColumnData(cd);
-                        value = CassandraTypeDeserializer.deserialize(cd.type, ccd);
+                        value = CassandraTypeDeserializer.deserialize((CollectionType) abstractType, ccd);
                     }
                     else {
                         org.apache.cassandra.db.rows.Cell cell = row.getCell(cd);
-                        value = cell.isTombstone() ? null : CassandraTypeDeserializer.deserialize(cd.type, cell.value());
+                        value = cell.isTombstone() ? null : CassandraTypeDeserializer.deserialize(abstractType, cell.value());
                         deletionTs = cell.isExpiring() ? TimeUnit.MICROSECONDS.convert(cell.localDeletionTime(), TimeUnit.SECONDS) : null;
                     }
                     String name = cd.name.toString();

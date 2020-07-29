@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Set;
 
 import org.apache.cassandra.db.marshal.AbstractType;
+import org.apache.cassandra.db.marshal.CollectionType;
 import org.apache.cassandra.db.marshal.SetType;
 import org.apache.cassandra.db.rows.ComplexColumnData;
 import org.apache.kafka.connect.data.Schema;
@@ -20,7 +21,7 @@ import org.apache.kafka.connect.data.Values;
 
 import io.debezium.connector.cassandra.transforms.CassandraTypeDeserializer;
 
-public class SetTypeDeserializer extends TypeDeserializer {
+public class SetTypeDeserializer extends CollectionTypeDeserializer {
 
     @Override
     @SuppressWarnings("unchecked")
@@ -39,14 +40,14 @@ public class SetTypeDeserializer extends TypeDeserializer {
     }
 
     @Override
-    public Object deserialize(AbstractType<?> abstractType, ComplexColumnData ccd) {
-        List<ByteBuffer> bbList = ((SetType) abstractType).serializedValues(ccd.iterator());
-        AbstractType innerType = ((SetType) abstractType).getElementsType();
+    public Object deserialize(CollectionType<?> collectionType, ComplexColumnData ccd) {
+        List<ByteBuffer> bbList = ((SetType) collectionType).serializedValues(ccd.iterator());
+        AbstractType innerType = ((SetType) collectionType).getElementsType();
         Set<Object> deserializedSet = new HashSet<>();
         for (ByteBuffer bb : bbList) {
             deserializedSet.add(super.deserialize(innerType, bb));
         }
         List<Object> deserializedList = new ArrayList<>(deserializedSet);
-        return Values.convertToList(getSchemaBuilder(abstractType).build(), deserializedList);
+        return Values.convertToList(getSchemaBuilder(collectionType).build(), deserializedList);
     }
 }
