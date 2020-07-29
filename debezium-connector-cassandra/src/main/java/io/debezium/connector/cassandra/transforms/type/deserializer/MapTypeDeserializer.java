@@ -11,7 +11,6 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.cassandra.db.marshal.AbstractType;
-import org.apache.cassandra.db.marshal.CollectionType;
 import org.apache.cassandra.db.marshal.MapType;
 import org.apache.cassandra.db.rows.ComplexColumnData;
 import org.apache.kafka.connect.data.Schema;
@@ -20,7 +19,7 @@ import org.apache.kafka.connect.data.Values;
 
 import io.debezium.connector.cassandra.transforms.CassandraTypeDeserializer;
 
-public class MapTypeDeserializer extends CollectionTypeDeserializer {
+public class MapTypeDeserializer extends CollectionTypeDeserializer<MapType<?, ?>> {
 
     @Override
     public Object deserialize(AbstractType<?> abstractType, ByteBuffer bb) {
@@ -39,10 +38,11 @@ public class MapTypeDeserializer extends CollectionTypeDeserializer {
     }
 
     @Override
-    public Object deserialize(CollectionType<?> collectionType, ComplexColumnData ccd) {
-        List<ByteBuffer> bbList = ((MapType) collectionType).serializedValues(ccd.iterator());
-        AbstractType keyType = ((MapType) collectionType).getKeysType();
-        AbstractType valueType = ((MapType) collectionType).getValuesType();
+    public Object deserialize(MapType<?, ?> collectionType, ComplexColumnData ccd) {
+        List<ByteBuffer> bbList = collectionType.serializedValues(ccd.iterator());
+        AbstractType<?> keyType = collectionType.getKeysType();
+        AbstractType<?> valueType = collectionType.getValuesType();
+
         Map<Object, Object> deserializedMap = new HashMap<>();
         int i = 0;
         while (i < bbList.size()) {
@@ -50,6 +50,7 @@ public class MapTypeDeserializer extends CollectionTypeDeserializer {
             ByteBuffer vbb = bbList.get(i++);
             deserializedMap.put(super.deserialize(keyType, kbb), super.deserialize(valueType, vbb));
         }
+
         return Values.convertToMap(getSchemaBuilder(collectionType).build(), deserializedMap);
     }
 }
