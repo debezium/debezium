@@ -96,7 +96,6 @@ Details are in the following topics:
 
 * xref:how-debezium-postgresql-connectors-perform-database-snapshots[]
 * xref:how-debezium-postgresql-connectors-stream-change-event-records[]
-* xref:postgresql-10-logical-decoding-support-pgoutput[]
 * xref:default-names-of-kafka-topics-that-receive-debezium-change-event-records[]
 * xref:metadata-in-debezium-change-event-records[]
 * xref:debezium-connector-generated-events-that-represent-transaction-boundaries[]
@@ -442,7 +441,7 @@ Details are in the following topics:
 
 * xref:about-keys-in-debezium-change-events[]
 * xref:about-values-in-debezium-change-events[]
-* xref:how-replica-identity-controls-data-that can-be-in-debezium-change-events[]
+* xref:how-replica-identity-controls-data-that-can-be-in-debezium-change-events[]
 * xref:about-debezium-change-events-for-operations-that-create-content[]
 * xref:about-debezium-change-events-for-operations-that-update-content[]
 * xref:about-debezium-change-events-for-primary-key-updates[]
@@ -2119,7 +2118,7 @@ If the publication already exists, either for all tables or configured with a su
 
 `double` represents values by using `double` values, which might result in a loss of precision but which is easier to use. 
 
-`string` encodes values as formatted strings, which are easy to consume but semantic information about the real type is lost. See <<postgresql-decimal-values>>.
+`string` encodes values as formatted strings, which are easy to consume but semantic information about the real type is lost. See {link-prefix}:{link-postgresql-connector}#postgresql-decimal-types[Decimal types].
 
 |[[postgresql-property-hstore-handling-mode]]<<postgresql-property-hstore-handling-mode, `hstore.handling.mode`>>
 |`map`
