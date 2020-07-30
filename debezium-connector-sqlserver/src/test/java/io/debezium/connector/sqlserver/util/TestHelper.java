@@ -405,6 +405,22 @@ public class TestHelper {
         }
     }
 
+    public static void waitForEnabledCdc(SqlServerConnection connection, String table) throws SQLException, InterruptedException {
+        Awaitility
+                .await("CDC " + table)
+                .atMost(1, TimeUnit.MINUTES)
+                .pollInterval(100, TimeUnit.MILLISECONDS)
+                .until(() -> TestHelper.isCdcEnabled(connection, table));
+    }
+
+    public static void waitForDisabledCdc(SqlServerConnection connection, String table) throws SQLException, InterruptedException {
+        Awaitility
+                .await("CDC " + table)
+                .atMost(1, TimeUnit.MINUTES)
+                .pollInterval(100, TimeUnit.MILLISECONDS)
+                .until(() -> !TestHelper.isCdcEnabled(connection, table));
+    }
+
     @FunctionalInterface
     public interface CdcRecordHandler {
         boolean apply(ResultSet rs) throws SQLException;

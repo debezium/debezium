@@ -765,8 +765,10 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
 
         connection.execute("ALTER TABLE dbo.tableb ADD DEFAULT ('default_value') FOR colb");
         TestHelper.enableTableCdc(connection, "tableb", "after_change");
+        TestHelper.waitForEnabledCdc(connection, "tableb");
 
         connection.execute("INSERT INTO tableb VALUES('1', 'some_value')");
+
         List<SourceRecord> records = consumeRecordsByTopic(1).recordsForTopic("server1.dbo.tableb");
         Assertions.assertThat(records).hasSize(1);
 

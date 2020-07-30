@@ -7,9 +7,7 @@
 package io.debezium.connector.sqlserver;
 
 import java.sql.SQLException;
-import java.util.concurrent.TimeUnit;
 
-import org.awaitility.Awaitility;
 import org.fest.assertions.Assertions;
 import org.junit.After;
 import org.junit.Before;
@@ -85,9 +83,9 @@ public class TablesWithoutPrimaryKeyIT extends AbstractConnectorTest {
                 "INSERT INTO init VALUES (1);");
         TestHelper.enableTableCdc(connection, "init");
 
-        waitForDisabledCdc(connection, "t1");
-        waitForDisabledCdc(connection, "t2");
-        waitForDisabledCdc(connection, "t3");
+        TestHelper.waitForDisabledCdc(connection, "t1");
+        TestHelper.waitForDisabledCdc(connection, "t2");
+        TestHelper.waitForDisabledCdc(connection, "t3");
 
         start(SqlServerConnector.class, TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
@@ -104,9 +102,9 @@ public class TablesWithoutPrimaryKeyIT extends AbstractConnectorTest {
         TestHelper.enableTableCdc(connection, "t2");
         TestHelper.enableTableCdc(connection, "t3");
 
-        waitForEnabledCdc(connection, "t1");
-        waitForEnabledCdc(connection, "t2");
-        waitForEnabledCdc(connection, "t3");
+        TestHelper.waitForEnabledCdc(connection, "t1");
+        TestHelper.waitForEnabledCdc(connection, "t2");
+        TestHelper.waitForEnabledCdc(connection, "t3");
 
         connection.execute("INSERT INTO t1 VALUES (1,10);");
         connection.execute("INSERT INTO t2 VALUES (2,20);");
@@ -124,21 +122,5 @@ public class TablesWithoutPrimaryKeyIT extends AbstractConnectorTest {
         Assertions.assertThat(records.recordsForTopic("server1.dbo.t2").get(0).keySchema().field("pk")).isNotNull();
         Assertions.assertThat(records.recordsForTopic("server1.dbo.t2").get(0).keySchema().fields()).hasSize(1);
         Assertions.assertThat(records.recordsForTopic("server1.dbo.t3").get(0).keySchema()).isNull();
-    }
-
-    private void waitForEnabledCdc(SqlServerConnection connection, String table) throws SQLException, InterruptedException {
-        Awaitility
-                .await("CDC " + table)
-                .atMost(1, TimeUnit.MINUTES)
-                .pollInterval(100, TimeUnit.MILLISECONDS)
-                .until(() -> TestHelper.isCdcEnabled(connection, table));
-    }
-
-    private void waitForDisabledCdc(SqlServerConnection connection, String table) throws SQLException, InterruptedException {
-        Awaitility
-                .await("CDC " + table)
-                .atMost(1, TimeUnit.MINUTES)
-                .pollInterval(100, TimeUnit.MILLISECONDS)
-                .until(() -> !TestHelper.isCdcEnabled(connection, table));
     }
 }
