@@ -76,4 +76,21 @@ public class ConnectorFactories {
                 .put("mongodb.password", ConfigProperties.DATABASE_MONGO_DBZ_PASSWORD)
                 .put("mongodb.name", "mongodb"); // this should be overwritten with unique name
     }
+
+    public ConnectorConfigBuilder db2() {
+        ConnectorConfigBuilder cb = new ConnectorConfigBuilder();
+        String dbHost = DATABASE_POSTGRESQL_HOST.orElse("db2." + ConfigProperties.OCP_PROJECT_DB2 + ".svc.cluster.local");
+        return cb
+                .put("connector.class", "io.debezium.connector.db2.Db2Connector")
+                .put("task.max", 1)
+                .put("database.hostname", dbHost)
+                .put("database.port", ConfigProperties.DATABASE_DB2_PORT)
+                .put("database.user", ConfigProperties.DATABASE_DB2_DBZ_USERNAME)
+                .put("database.password", ConfigProperties.DATABASE_DB2_DBZ_PASSWORD)
+                .put("database.dbname", ConfigProperties.DATABASE_DB2_DBZ_DBNAME)
+                .put("database.cdcschema", "ASNCDC")
+                .put("database.server.name", "db2db") // this should be overwritten with unique name
+                .put("database.history.kafka.bootstrap.servers", "debezium-kafka-cluster-kafka-bootstrap." + ConfigProperties.OCP_PROJECT_DBZ + ".svc.cluster.local:9092")
+                .put("database.history.kafka.topic", "schema-changes.inventory");
+    }
 }

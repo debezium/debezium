@@ -63,7 +63,7 @@ public abstract class DatabaseController<C extends DatabaseClient<?, ?>> {
         deployment = ocp.apps().deployments()
                 .inNamespace(project)
                 .withName(name)
-                .waitUntilCondition(WaitConditions::deploymentAvailableCondition, scaled(1), TimeUnit.MINUTES);
+                .waitUntilCondition(WaitConditions::deploymentAvailableCondition, scaled(5), TimeUnit.MINUTES);
         LOGGER.info("Deployment '" + name + "' is available");
         initialize();
     }
