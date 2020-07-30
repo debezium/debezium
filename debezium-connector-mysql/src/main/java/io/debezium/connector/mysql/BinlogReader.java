@@ -558,7 +558,7 @@ public class BinlogReader extends AbstractReader {
         // contains only *seconds* precision ...
         EventHeader eventHeader = event.getHeader();
         if (!eventHeader.getEventType().equals(EventType.HEARTBEAT)) {
-            //HEARTBEAT events have no timestamp; only set the timestamp if the event is not a HEARTBEAT
+            // HEARTBEAT events have no timestamp; only set the timestamp if the event is not a HEARTBEAT
             source.setBinlogTimestampSeconds(eventHeader.getTimestamp() / 1000L); // client returns milliseconds,
                                                                                   // but only second precision
         }
