@@ -27,6 +27,7 @@ public class ConfigProperties {
     public static final String OCP_PROJECT_POSTGRESQL = System.getProperty("test.ocp.project.postgresql", "debezium-postgresql");
     public static final String OCP_PROJECT_SQLSERVER = System.getProperty("test.ocp.project.sqlserver", "debezium-sqlserver");
     public static final String OCP_PROJECT_MONGO = System.getProperty("test.ocp.project.mongo", "debezium-mongo");
+    public static final String OCP_PROJECT_DB2 = System.getProperty("test.ocp.project.db2", "debezium-db2");
     public static final Optional<String> OCP_PULL_SECRET_PATHS = stringOptionalProperty("test.ocp.pull.secret.paths");
 
     public static final boolean STRIMZI_OPERATOR_CONNECTORS = booleanProperty("test.strimzi.operator.connectors");
@@ -62,6 +63,15 @@ public class ConfigProperties {
     public static final String DATABASE_MONGO_DBZ_DBNAME = System.getProperty("test.database.mongo.dbname", "inventory");
     public static final String DATABASE_MONGO_DBZ_LOGIN_DBNAME = System.getProperty("test.database.mongo.dbz.login.dbname", "admin");
     public static final Optional<String> DATABASE_MONGO_HOST = stringOptionalProperty("test.database.mongo.host");
+
+    public static final int DATABASE_DB2_PORT = Integer.parseInt(System.getProperty("test.database.db2.port", "50000"));
+    public static final String DATABASE_DB2_USERNAME = System.getProperty("test.database.db2.username", "db2inst1");
+    public static final String DATABASE_DB2_PASSWORD = System.getProperty("test.database.db2.password", "=Password!");
+    public static final String DATABASE_DB2_DBZ_USERNAME = System.getProperty("test.database.db2.dbz.username", DATABASE_DB2_USERNAME);
+    public static final String DATABASE_DB2_DBZ_PASSWORD = System.getProperty("test.database.db2.dbz.password", DATABASE_DB2_PASSWORD);
+    public static final String DATABASE_DB2_DBZ_DBNAME = System.getProperty("test.database.db2.dbname", "TESTDB");
+    public static final String DATABASE_DB2_CDC_SCHEMA = System.getProperty("test.database.db2.cdc.schema", "ASNCDC");
+    public static final Optional<String> DATABASE_DB2_HOST = stringOptionalProperty("test.database.sqlserver.host");
 
     private static boolean booleanProperty(String key) {
         String value = System.getProperty(key);

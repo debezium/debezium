@@ -277,6 +277,7 @@ public class KafkaConnectController {
     }
 
     public List<String> getConnectMetrics() throws IOException {
+        LOGGER.info("Retrieving connector metrics");
         OkHttpClient httpClient = new OkHttpClient();
         Request r = new Request.Builder().url(getMetricsURL()).get().build();
 
@@ -293,11 +294,11 @@ public class KafkaConnectController {
      * @throws IOException on metric request error
      */
     public void waitForSnapshot(String connectorName, String metricName) throws IOException {
-        List<String> metrics = getConnectMetrics();
+        LOGGER.info("Waiting for connector '" + connectorName + "' to finish snapshot");
         await()
                 .atMost(scaled(5), TimeUnit.MINUTES)
                 .pollInterval(10, TimeUnit.SECONDS)
-                .until(() -> metrics.stream().anyMatch(s -> s.contains(metricName) && s.contains(connectorName)));
+                .until(() -> getConnectMetrics().stream().anyMatch(s -> s.contains(metricName) && s.contains(connectorName)));
     }
 
     /**
@@ -306,7 +307,6 @@ public class KafkaConnectController {
      * @throws IOException on metric request error
      */
     public void waitForMySqlSnapshot(String connectorName) throws IOException {
-        LOGGER.info("Waiting for connector '" + connectorName + "' to finish snapshot");
         waitForSnapshot(connectorName, "debezium_mysql_connector_metrics_snapshotcompleted");
     }
 
@@ -335,6 +335,15 @@ public class KafkaConnectController {
      */
     public void waitForMongoSnapshot(String connectorName) throws IOException {
         waitForSnapshot(connectorName, "debezium_mongodb_connector_metrics_snapshotcompleted");
+    }
+
+    /**
+     * Waits until snapshot phase of given DB2 connector completes
+     * @param connectorName connector name
+     * @throws IOException on metric request error
+     */
+    public void waitForDB2Snapshot(String connectorName) throws IOException {
+        waitForSnapshot(connectorName, "debezium_db2_server_connector_metrics_snapshotcompleted");
     }
 
     /**

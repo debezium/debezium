@@ -20,6 +20,7 @@
     <version.junit5>5.5.1</version.junit5>
     <version.junit5.pioneer>0.5.1</version.junit5.pioneer>
     <version.assertj>3.11.1</version.assertj>
+    <version.db2.driver>11.5.4.0</version.db2.driver>
 
     <image.registry>quay.io</image.registry>
     <image.name>debezium/testing-openshift-connect:kafka-${version.kafka}-${project.version}</image.name>
@@ -67,6 +68,14 @@
     <database.mongo.dbz.dbname>inventory</database.mongo.dbz.dbname>
     <database.mongo.dbz.login.dbname>admin</database.mongo.dbz.login.dbname>
 
+    <!--DB2 configuration -->
+    <database.db2.port>50000</database.db2.port>
+    <database.db2.username>db2inst1</database.db2.username>
+    <database.db2.password>=Password!</database.db2.password>
+    <database.db2.dbz.username>${database.db2.username}</database.db2.dbz.username>
+    <database.db2.dbz.password>${database.db2.password}</database.db2.dbz.password>
+    <database.db2.dbname>TESTDB</database.db2.dbname>
+    <database.db2.cdc.schema>ASNCDC</database.db2.cdc.schema>
   </properties>
 
   <dependencyManagement>
@@ -208,6 +217,12 @@
       <groupId>org.mongodb</groupId>
       <artifactId>mongodb-driver</artifactId>
     </dependency>
+
+    <dependency>
+      <groupId>com.ibm.db2</groupId>
+      <artifactId>jcc</artifactId>
+      <version>${version.db2.driver}</version>
+    </dependency>
   </dependencies>
 
   <profiles>
@@ -218,6 +233,7 @@
         <image.push.skip>true</image.push.skip>
         <image.version.strimzi>latest</image.version.strimzi>
         <image.base.name>strimzi/kafka:${image.version.strimzi}-kafka-${version.kafka}</image.base.name>
+        <version.db2-connector>${project.version}</version.db2-connector>
       </properties>
 
       <dependencies>
@@ -249,6 +265,13 @@
           <type>zip</type>
           <version>${project.version}</version>
         </dependency>
+        <dependency>
+          <groupId>io.debezium</groupId>
+          <artifactId>debezium-connector-db2</artifactId>
+          <classifier>plugin</classifier>
+          <type>zip</type>
+          <version>${version.db2-connector}</version>
+        </dependency>
       </dependencies>
 
       <build>
@@ -275,6 +298,12 @@
                             <unpack>true</unpack>
                             <includes>
                               <include>io.debezium:debezium-connector-*:zip:plugin</include>
+                            </includes>
+                          </dependencySet>
+                          <dependencySet>
+                            <outputDirectory>debezium-connector-db2</outputDirectory>
+                            <includes>
+                              <include>com.ibm.db2:jcc:jar</include>
                             </includes>
                           </dependencySet>
                         </dependencySets>
@@ -348,6 +377,15 @@
                 <test.database.mongo.dbz.password>${database.mongo.dbz.password}</test.database.mongo.dbz.password>
                 <test.database.mongo.dbz.dbname>${database.mongo.dbz.dbname}</test.database.mongo.dbz.dbname>
                 <test.database.mongo.dbz.login.dbname>${database.mongo.dbz.login.dbname}</test.database.mongo.dbz.login.dbname>
+
+                <test.database.db2.host>${database.db2.host}</test.database.db2.host>
+                <test.database.db2.port>${database.db2.port}</test.database.db2.port>
+                <test.database.db2.username>${database.db2.username}</test.database.db2.username>
+                <test.database.db2.password>${database.db2.password}</test.database.db2.password>
+                <test.database.db2.dbz.username>${database.db2.dbz.username}</test.database.db2.dbz.username>
+                <test.database.db2.dbz.password>${database.db2.dbz.password}</test.database.db2.dbz.password>
+                <test.database.db2.dbname>${database.db2.dbname}</test.database.db2.dbname>
+                <test.database.db2.cdc.schema>${database.db2.cdc.schema}</test.database.db2.cdc.schema>
               </systemPropertyVariables>
             </configuration>
             <executions>

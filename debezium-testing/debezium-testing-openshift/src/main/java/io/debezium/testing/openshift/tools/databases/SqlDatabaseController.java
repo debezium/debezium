@@ -7,6 +7,9 @@ package io.debezium.testing.openshift.tools.databases;
 
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.openshift.client.OpenShiftClient;
@@ -16,6 +19,7 @@ import io.fabric8.openshift.client.OpenShiftClient;
  * @author Jakub Cechacek
  */
 public class SqlDatabaseController extends DatabaseController<SqlDatabaseClient> {
+    private static final Logger LOGGER = LoggerFactory.getLogger(SqlDatabaseController.class);
 
     public SqlDatabaseController(Deployment deployment, List<Service> services, String dbType, OpenShiftClient ocp) {
         super(deployment, services, dbType, ocp);
@@ -32,7 +36,10 @@ public class SqlDatabaseController extends DatabaseController<SqlDatabaseClient>
 
     @Override
     public SqlDatabaseClient getDatabaseClient(String username, String password) {
-        return new SqlDatabaseClient(getDatabaseUrl(), username, password);
+        String databaseUrl = getDatabaseUrl();
+        LOGGER.info("Creating SQL database client for '" + databaseUrl + "'");
+        LOGGER.info("Using credentials '" + username + "' / '" + password + "'");
+        return new SqlDatabaseClient(databaseUrl, username, password);
     }
 
 }

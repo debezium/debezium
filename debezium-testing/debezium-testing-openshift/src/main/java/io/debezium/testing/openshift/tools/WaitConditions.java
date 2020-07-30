@@ -7,6 +7,9 @@ package io.debezium.testing.openshift.tools;
 
 import java.util.stream.Stream;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.kubernetes.api.model.apps.DeploymentCondition;
 import io.fabric8.kubernetes.api.model.apps.DeploymentStatus;
@@ -18,6 +21,8 @@ import io.strimzi.api.kafka.model.status.Status;
  * @author Jakub Cechacek
  */
 public class WaitConditions {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(WaitConditions.class);
 
     /**
      * Wait condition for readiness of Strimzi resources
@@ -48,6 +53,8 @@ public class WaitConditions {
     }
 
     public static long scaled(long amount) {
-        return ConfigProperties.WAIT_SCALE_FACTOR * amount;
+        long scaled = ConfigProperties.WAIT_SCALE_FACTOR * amount;
+        LOGGER.debug("Waiting amount: " + scaled);
+        return scaled;
     }
 }

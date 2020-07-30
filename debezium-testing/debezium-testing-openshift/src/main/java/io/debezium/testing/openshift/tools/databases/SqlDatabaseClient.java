@@ -56,10 +56,20 @@ public class SqlDatabaseClient implements DatabaseClient<Connection, SQLExceptio
     }
 
     public void execute(String database, String command) throws SQLException {
-        LOGGER.info("Running SQL Command [%s]: %s", database, command);
+        LOGGER.info("Running SQL Command [" + database + "]: " + command);
         execute(database, con -> {
-            Statement stmt = con.createStatement();
-            stmt.execute(command);
+            try (Statement stmt = con.createStatement()) {
+                stmt.execute(command);
+            }
+        });
+    }
+
+    public void execute(String command) throws SQLException {
+        LOGGER.info("Running SQL Command: " + command);
+        execute(con -> {
+            try (Statement stmt = con.createStatement()) {
+                stmt.execute(command);
+            }
         });
     }
 }
