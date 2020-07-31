@@ -97,6 +97,9 @@ public class TablesWithoutPrimaryKeyIT extends AbstractConnectorTest {
 
         consumeRecordsByTopic(1);
 
+        TestHelper.waitForStreamingStarted();
+        TestHelper.waitForMaxLsnAvailable(connection);
+
         connection.execute(DDL_STATEMENTS);
 
         Testing.Print.enable();
