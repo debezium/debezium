@@ -118,8 +118,11 @@ Note that if your database is hosted by a service such as https://www.heroku.com
 If so, and if you're using PostgreSQL 10+, you can use the pgoutput decoder support to monitor your database.
 If that is not an option, you'll be unable to monitor your database with {prodname}.
 
+[[postgresql-in-the-cloud]]
+=== PostgreSQL in the Cloud
+
 [[postgresql-on-amazon-rds]]
-=== PostgreSQL on Amazon RDS
+==== PostgreSQL on Amazon RDS
 
 It is possible to monitor PostgreSQL database running in https://aws.amazon.com/rds/[Amazon RDS]. To get it running you must fulfill the following conditions
 
@@ -146,7 +149,7 @@ As of January 2019, the following Postgres versions on RDS come with an up-to-da
 ====
 
 [[postgresql-on-azure]]
-=== PostgreSQL on Azure
+==== PostgreSQL on Azure
 
 It is possible to use Debezium with (https://docs.microsoft.com/azure/postgresql/)[Azure Database for PostgreSQL] that has support for `wal2json` and `pgoutput` plugins, both of which are supported by Debezium as well.
 
