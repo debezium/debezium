@@ -445,7 +445,7 @@ This is not supported by Pulsar so a surrogate key must be used.
 
 ==== Azure Event Hubs
 
-https://docs.microsoft.com/azure/event-hubs/event-hubs-about?WT.mc_id=debezium-docs-abhishgu[Azure Event Hubs] is a big data streaming platform and event ingestion service that can receive and process millions of events per second. Data sent to an event hub can be transformed and stored by using any real-time analytics provider or batching/storage adapters.
+https://docs.microsoft.com/azure/event-hubs/event-hubs-about[Azure Event Hubs] is a big data streaming platform and event ingestion service that can receive and process millions of events per second. Data sent to an event hub can be transformed and stored by using any real-time analytics provider or batching/storage adapters.
 
 [cols="35%a,10%a,55%a",options="header"]
 |=======================
@@ -459,7 +459,7 @@ https://docs.microsoft.com/azure/event-hubs/event-hubs-about?WT.mc_id=debezium-d
 
 |[[connection-string]]<<connection-string, `debezium.sink.eventhubs.connectionstring`>>
 |
-|https://docs.microsoft.com/azure/event-hubs/event-hubs-get-connection-string?WT.mc_id=debezium-docs-abhishgu[Connection string] required to communicate with Event Hubs. The format is: `Endpoint=sb://<NAMESPACE>/;SharedAccessKeyName=<ACCESS_KEY_NAME>;SharedAccessKey=<ACCESS_KEY_VALUE>`
+|https://docs.microsoft.com/azure/event-hubs/event-hubs-get-connection-string[Connection string] required to communicate with Event Hubs. The format is: `Endpoint=sb://<NAMESPACE>/;SharedAccessKeyName=<ACCESS_KEY_NAME>;SharedAccessKey=<ACCESS_KEY_VALUE>`
 
 |[[hub-name]]<<hub-name, `debezium.sink.eventhubs.hubname`>>
 |
