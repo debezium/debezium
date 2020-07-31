@@ -229,7 +229,7 @@ Every change event for the `customers` collection will feature the same key stru
   {
     "schema": {
       "type": "struct",
-      "name": "fulfillment.inventory.customers.Key"
+      "name": "fulfillment.inventory.customers.Key",
       "optional": false,
       "fields": [
         {
