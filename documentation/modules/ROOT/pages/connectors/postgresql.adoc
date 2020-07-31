@@ -145,6 +145,27 @@ As of January 2019, the following Postgres versions on RDS come with an up-to-da
 * Postgres 11: any version
 ====
 
+[[postgresql-on-azure]]
+=== PostgreSQL on Azure
+
+It is possible to use Debezium with (https://docs.microsoft.com/azure/postgresql/?WT.mc_id=debezium-docs-abhishgu)[Azure Database for PostgreSQL] that supports `wal2json`, `pgoutput` and `test_decoding` output plugins.
+
+You need to ensure that Azure replication support is set to `logical`. You can use the (https://docs.microsoft.com/azure/postgresql/concepts-logical?WT.mc_id=debezium-docs-abhishgu#using-azure-cli)[Azure CLI] or the (https://docs.microsoft.com/azure/postgresql/concepts-logical?WT.mc_id=debezium-docs-abhishgu#using-azure-portal)[Azure Portal] to configure this.
+
+For example, if you were to choose the Azure CLI, here are the (https://docs.microsoft.com/cli/azure/postgres/server?view=azure-cli-latest&WT.mc_id=debezium-docs-abhishgu)[`az postgres server`] commands which you will need to execute:
+
+```
+az postgres server configuration set --resource-group mygroup --server-name myserver --name azure.replication_support --value logical
+
+az postgres server restart --resource-group mygroup --name myserver
+```
+
+[IMPORTANT]
+====
+If you're using the `pgoutput` plugin with `all_tables` value for the (https://debezium.io/documentation/reference/1.2/connectors/postgresql.html#postgresql-publication-autocreate-mode)[`publication.autocreate.mode`], please ensure that you create the publication up-front for the *specific* table(s) that you want to configure for change data capture. If the publication is not found, the connector will try to create one using `CREATE PUBLICATION <publication_name> FOR ALL TABLES;` which will fail due to lack of permissions. 
+====
+
+===
 
 [[postgresql-output-plugin]]
 === Installing the Logical Decoding Output Plug-in
