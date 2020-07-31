@@ -348,6 +348,19 @@ public class TestHelper {
         }
     }
 
+    public static void waitForMaxLsnAvailable(SqlServerConnection connection) throws Exception {
+        try {
+            Awaitility.await("Max LSN not available")
+                    .atMost(60, TimeUnit.SECONDS)
+                    .pollDelay(Duration.ofSeconds(0))
+                    .pollInterval(Duration.ofMillis(100))
+                    .until(() -> connection.getMaxLsn().isAvailable());
+        }
+        catch (ConditionTimeoutException e) {
+            throw new IllegalArgumentException("A max LSN was not available", e);
+        }
+    }
+
     private static ObjectName getObjectName(String context, String serverName) throws MalformedObjectNameException {
         return new ObjectName("debezium.sql_server:type=connector-metrics,context=" + context + ",server=" + serverName);
     }
@@ -379,6 +392,45 @@ public class TestHelper {
                         for (SqlServerChangeTable ct : connection.listOfChangeTables()) {
                             final String ctTableName = ct.getChangeTableId().table();
                             if (ctTableName.endsWith("dbo_" + connection.getNameOfChangeTable(tableName))) {
+                                try {
+                                    final Lsn minLsn = connection.getMinLsn(ctTableName);
+                                    final Lsn maxLsn = connection.getMaxLsn();
+                                    final CdcRecordFoundBlockingMultiResultSetConsumer consumer = new CdcRecordFoundBlockingMultiResultSetConsumer(handler);
+                                    SqlServerChangeTable[] tables = Collections.singletonList(ct).toArray(new SqlServerChangeTable[]{});
+                                    connection.getChangesForTables(tables, minLsn, maxLsn, consumer);
+                                    return consumer.isFound();
+                                }
+                                catch (Exception e) {
+                                    if (e.getMessage().contains("An insufficient number of arguments were supplied")) {
+                                        // This can happen if the request to get changes for tables happens too quickly.
+                                        // In this case, we're going to ignore it.
+                                        return false;
+                                    }
+                                    throw new AssertionError("Failed to fetch changes for " + tableName, e);
+                                }
+                            }
+                        }
+                        return false;
+                    });
+        }
+        catch (ConditionTimeoutException e) {
+            throw new IllegalStateException("Expected record never appeared in the CDC table", e);
+        }
+    }
+
+    public static void waitForCdcRecord(SqlServerConnection connection, String tableName, String captureInstanceName, CdcRecordHandler handler) {
+        try {
+            Awaitility.await("Checking for expected record in CDC table for " + tableName)
+                    .atMost(30, TimeUnit.SECONDS)
+                    .pollDelay(Duration.ofSeconds(0))
+                    .pollInterval(Duration.ofMillis(100)).until(() -> {
+                        if (!connection.getMaxLsn().isAvailable()) {
+                            return false;
+                        }
+
+                        for (SqlServerChangeTable ct : connection.listOfChangeTables()) {
+                            final String ctTableName = ct.getChangeTableId().table();
+                            if (ctTableName.endsWith(connection.getNameOfChangeTable(captureInstanceName))) {
                                 try {
                                     final Lsn minLsn = connection.getMinLsn(ctTableName);
                                     final Lsn maxLsn = connection.getMaxLsn();

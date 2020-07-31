@@ -763,14 +763,26 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
         assertConnectorIsRunning();
         TestHelper.waitForSnapshotToBeCompleted();
 
+        TestHelper.waitForStreamingStarted();
+        TestHelper.waitForMaxLsnAvailable(connection);
+
         connection.execute("ALTER TABLE dbo.tableb ADD DEFAULT ('default_value') FOR colb");
         TestHelper.enableTableCdc(connection, "tableb", "after_change");
 
         connection.execute("INSERT INTO tableb VALUES('1', 'some_value')");
+        TestHelper.waitForCdcRecord(connection, "tableb", "after_change", rs -> rs.getInt("id") == 1);
+
         List<SourceRecord> records = consumeRecordsByTopic(1).recordsForTopic("server1.dbo.tableb");
         Assertions.assertThat(records).hasSize(1);
+        System.out.println("Records: " + records);
+        System.out.println("Value Schema: " + records.get(0).valueSchema());
+        System.out.println("Fields: " + records.get(0).valueSchema().fields());
+        System.out.println("After Schema: " + records.get(0).valueSchema().field("after").schema());
+        System.out.println("After Columns: " + records.get(0).valueSchema().field("after").schema().fields());
 
         Schema colbSchema = records.get(0).valueSchema().field("after").schema().field("colb").schema();
+        System.out.println("ColumnB Schema: " + colbSchema);
+        System.out.println("ColumnB Schema Default Value: " + colbSchema.defaultValue());
         Assertions.assertThat(colbSchema.defaultValue()).isNotNull();
         Assertions.assertThat(colbSchema.defaultValue()).isEqualTo("default_value");
     }
