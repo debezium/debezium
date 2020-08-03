@@ -21,7 +21,7 @@
             <artifactId>debezium-ddl-parser</artifactId>
         </dependency>
         <dependency>
-            <groupId>com.github.shyiko</groupId>
+            <groupId>com.zendesk</groupId>
             <artifactId>mysql-binlog-connector-java</artifactId>
         </dependency>
         <dependency>
