@@ -1088,6 +1088,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
                 .with(MongoDbConnectorConfig.LOGICAL_NAME, "mongo")
                 .with(MongoDbConnectorConfig.MAX_FAILED_CONNECTIONS, 0)
                 .with(MongoDbConnectorConfig.SSL_ENABLED, true)
+                .with(MongoDbConnectorConfig.SERVER_SELECTION_TIMEOUT_MS, 2000)
                 .build();
 
         // Set up the replication context for connections ...
