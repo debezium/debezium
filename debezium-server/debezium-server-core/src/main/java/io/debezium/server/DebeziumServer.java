@@ -28,6 +28,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.engine.ChangeEvent;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.engine.DebeziumEngine.ChangeConsumer;
@@ -121,6 +122,10 @@ public class DebeziumServer {
         if (transforms.isPresent()) {
             props.setProperty("transforms", transforms.get());
             configToProperties(config, props, PROP_TRANSFORMS_PREFIX, "transforms.");
+        }
+        if ("pubsub".equals(name)) {
+            // DBZ-2277 explicitly disable tombstones when using Google PubSub as the sink
+            props.setProperty(CommonConnectorConfig.TOMBSTONES_ON_DELETE.name(), Boolean.FALSE.toString());
         }
         props.setProperty("name", name);
         LOGGER.debug("Configuration for DebeziumEngine: {}", props);
