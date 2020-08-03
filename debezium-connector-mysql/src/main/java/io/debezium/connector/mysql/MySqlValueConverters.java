@@ -411,7 +411,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
     private Object convertString(Object data) {
         if (data instanceof byte[]) {
             // Decode the binary representation using the given character encoding ...
-            return new String((byte[]) data, columnCharset);
+            return new String((byte[]) data, columnCharset); //TODO DBZ-SOMETHING FIX!
         }
         else if (data instanceof String) {
             return data;

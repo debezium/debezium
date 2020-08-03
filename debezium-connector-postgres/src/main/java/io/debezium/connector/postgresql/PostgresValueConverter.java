@@ -14,6 +14,7 @@ import java.io.UnsupportedEncodingException;
 import java.math.BigDecimal;
 import java.nio.ByteOrder;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.LocalDate;
@@ -511,7 +512,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
             value = new SpecialValueDecimal((BigDecimal) o);
         }
 
-        newDecimal = withScaleAdjustedIfNeeded(column, value.getDecimalValue().get());
+        newDecimal = withScaleAdjustedIfNeeded(column, value.getDecimalValue().get()); //TODO DBZ-SOMETHING FIX!
 
         if (isVariableScaleDecimal(column) && mode == DecimalMode.PRECISE) {
             newDecimal = newDecimal.stripTrailingZeros();
@@ -546,6 +547,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
         else if (data instanceof PGobject) {
             return data.toString();
         }
+        return null;
     }
 
     private Object convertLtreeArray(Column column, Field fieldDefn, Object data) {
@@ -698,7 +700,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
     }
 
     protected Object convertInterval(Column column, Field fieldDefn, Object data) {
-        return convertValue(column, fieldDefn, data, NumberConversions.LONG_FALSE, convertInterval(data));
+        return convertValue(column, fieldDefn, data, NumberConversions.LONG_FALSE, Optional.ofNullable(convertInterval(data)));
     }
 
     private Object convertInterval(Object data) {
@@ -757,19 +759,19 @@ public class PostgresValueConverter extends JdbcValueConverters {
             data = offsetTime.withOffsetSameInstant(ZoneOffset.UTC);
         }
 
-        return ConverterHelper.convertTimeWithZone(column, fieldDefn, configuration data);
+        return ConverterHelper.convertTimeWithZone(column, fieldDefn, configuration, data);
     }
 
     protected Object convertGeometry(Column column, Field fieldDefn, Object data) {
         final PostgisGeometry empty = PostgisGeometry.createEmpty();
-        return convertValue(column, fieldDefn, data, io.debezium.data.geometry.Geometry.createValue(fieldDefn.schema(), empty.getWkb(), empty.getSrid()), Optional.of(convertGeom(column, fieldDefn, data))));
+        return convertValue(column, fieldDefn, data, io.debezium.data.geometry.Geometry.createValue(fieldDefn.schema(), empty.getWkb(), empty.getSrid()), Optional.of(convertGeom(column, fieldDefn, data)));
     }
 
     private Object convertGeom(Column column, Field fieldDefn, Object data) {
         try {
             final Schema schema = fieldDefn.schema();
             if (data instanceof byte[]) {
-                PostgisGeometry geom = PostgisGeometry.fromHexEwkb(new String((byte[]) data, "ASCII"));
+                PostgisGeometry geom = PostgisGeometry.fromHexEwkb(new String((byte[]) data, StandardCharsets.US_ASCII));
                 return io.debezium.data.geometry.Geometry.createValue(schema, geom.getWkb(), geom.getSrid());
             }
             else if (data instanceof PGobject) {
@@ -782,7 +784,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 return io.debezium.data.geometry.Geometry.createValue(schema, geom.getWkb(), geom.getSrid());
             }
         }
-        catch (IllegalArgumentException | UnsupportedEncodingException e) {
+        catch (IllegalArgumentException e) {
             logger.warn("Error converting to a Geometry type", column);
         }
         return null;
