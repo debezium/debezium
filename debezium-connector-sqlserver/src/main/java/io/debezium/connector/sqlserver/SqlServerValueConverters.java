@@ -5,11 +5,13 @@
  */
 package io.debezium.connector.sqlserver;
 
+import java.nio.ByteOrder;
 import java.sql.Timestamp;
 import java.sql.Types;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 
+import io.debezium.jdbc.ConverterHelper;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.SchemaBuilder;
 
@@ -22,6 +24,9 @@ import io.debezium.time.ZonedTimestamp;
 
 import microsoft.sql.DateTimeOffset;
 
+import static io.debezium.jdbc.ConverterHelper.convertDecimal;
+import static io.debezium.jdbc.ConverterHelper.convertSmallInt;
+
 /**
  * Conversion of SQL Server specific datatypes.
  *
@@ -29,9 +34,6 @@ import microsoft.sql.DateTimeOffset;
  *
  */
 public class SqlServerValueConverters extends JdbcValueConverters {
-
-    public SqlServerValueConverters() {
-    }
 
     /**
      * Create a new instance that always uses UTC for the default time zone when
@@ -48,7 +50,7 @@ public class SqlServerValueConverters extends JdbcValueConverters {
      *            date/time value will be represented either as Connect datatypes or Debezium specific datatypes
      */
     public SqlServerValueConverters(DecimalMode decimalMode, TemporalPrecisionMode temporalPrecisionMode) {
-        super(decimalMode, temporalPrecisionMode, ZoneOffset.UTC, null, null, null);
+        super(decimalMode, temporalPrecisionMode, ZoneOffset.UTC, null, null, null, ByteOrder.LITTLE_ENDIAN, column -> column.scale().get());
     }
 
     @Override
@@ -62,7 +64,7 @@ public class SqlServerValueConverters extends JdbcValueConverters {
             // Floating point
             case microsoft.sql.Types.SMALLMONEY:
             case microsoft.sql.Types.MONEY:
-                return SpecialValueDecimal.builder(decimalMode, column.length(), column.scale().get());
+                return SpecialValueDecimal.builder(this.configuration.decimalMode, column.length(), column.scale().get());
             case microsoft.sql.Types.DATETIMEOFFSET:
                 return ZonedTimestamp.builder();
             default:
@@ -81,7 +83,7 @@ public class SqlServerValueConverters extends JdbcValueConverters {
             // Floating point
             case microsoft.sql.Types.SMALLMONEY:
             case microsoft.sql.Types.MONEY:
-                return (data) -> convertDecimal(column, fieldDefn, data);
+                return (data) -> convertDecimal(column, fieldDefn, data, this.configuration.decimalMode);
             case microsoft.sql.Types.DATETIMEOFFSET:
                 return (data) -> convertTimestampWithZone(column, fieldDefn, data);
 
@@ -91,24 +93,16 @@ public class SqlServerValueConverters extends JdbcValueConverters {
         }
     }
 
-    /**
-     * Time precision in SQL Server is defined in scale, the default one is 7
-     */
-    @Override
-    protected int getTimePrecision(Column column) {
-        return column.scale().get();
-    }
-
     protected Object convertTimestampWithZone(Column column, Field fieldDefn, Object data) {
         if (!(data instanceof DateTimeOffset)) {
-            return super.convertTimestampWithZone(column, fieldDefn, data);
+            return ConverterHelper.convertTimestampWithZone(column, fieldDefn, this.configuration, data);
         }
         final DateTimeOffset dto = (DateTimeOffset) data;
 
         // Timestamp is provided in UTC time
         final Timestamp utc = dto.getTimestamp();
         final ZoneOffset offset = ZoneOffset.ofTotalSeconds(dto.getMinutesOffset() * 60);
-        return super.convertTimestampWithZone(column, fieldDefn, LocalDateTime.ofEpochSecond(utc.getTime() / 1000, utc.getNanos(), offset).atOffset(offset));
+        return ConverterHelper.convertTimestampWithZone(column, fieldDefn, this.configuration, LocalDateTime.ofEpochSecond(utc.getTime() / 1000, utc.getNanos(), offset).atOffset(offset));
     }
 
 }

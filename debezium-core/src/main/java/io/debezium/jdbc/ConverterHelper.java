@@ -21,7 +21,6 @@ import java.sql.SQLXML;
 import java.sql.Types;
 import java.time.OffsetDateTime;
 import java.time.OffsetTime;
-import java.time.ZoneId;
 import java.time.temporal.TemporalAdjuster;
 import java.util.Base64;
 import java.util.BitSet;
@@ -30,9 +29,9 @@ import java.util.concurrent.TimeUnit;
 
 import static io.debezium.util.NumberConversions.*;
 
-public final class ConverterHelper {
+public class ConverterHelper {
 
-    static final Logger logger = LoggerFactory.getLogger(ConverterHelper.class.getName());
+    private static Logger logger = LoggerFactory.getLogger(ProxyConverter.class);
 
 
     public static ValueConverter convertBits(Column column, Field fieldDefn, ByteOrder byteOrderOfBitType) {
@@ -97,7 +96,7 @@ public final class ConverterHelper {
     }
 
 
-    public static byte[] toByteArray(char[] chars) {
+    static byte[] toByteArray(char[] chars) {
         CharBuffer charBuffer = CharBuffer.wrap(chars);
         ByteBuffer byteBuffer = StandardCharsets.UTF_8.encode(charBuffer);
         return byteBuffer.array();
@@ -113,13 +112,13 @@ public final class ConverterHelper {
      * can perform value adjustments based on the column definition, e.g. right-pad with 0x00 bytes in case of
      * fixed length BINARY in MySQL.
      */
-    static ByteBuffer toByteBuffer(byte[] data) {
+    public static ByteBuffer toByteBuffer(byte[] data) {
         // Kafka Connect would support raw byte arrays, too, but byte buffers are recommended
         return ByteBuffer.wrap(data);
     }
 
 
-    static ByteBuffer toByteBuffer(String string) {
+    public static ByteBuffer toByteBuffer(String string) {
         return ByteBuffer.wrap(string.getBytes(StandardCharsets.UTF_8));
     }
 
@@ -152,8 +151,8 @@ public final class ConverterHelper {
      * @return the converted value, or null if the conversion could not be made and the column allows nulls
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
-    public static Object convertTimeWithZone(Column column, Field fieldDefn, Object data, Object fallbackTimeWithTimeZone, ZoneId defaultOffset, TemporalAdjuster adjuster) {
-        return convertValue(column, fieldDefn, data, fallbackTimeWithTimeZone, Optional.ofNullable(ZonedTime.toIsoString(data, defaultOffset, adjuster)));
+    public static Object convertTimeWithZone(Column column, Field fieldDefn, JdbcValueConverters.ValueConverterConfiguration configuration, Object data) {
+        return convertValue(column, fieldDefn, data, configuration.fallbackTimeWithTimeZone, Optional.ofNullable(ZonedTime.toIsoString(data, configuration.defaultOffset, configuration.adjuster)));
     }
 
     /**
@@ -384,9 +383,9 @@ public final class ConverterHelper {
      * @return the converted value, or null if the conversion could not be made and the column allows nulls
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
-    public static Object convertTimestampWithZone(Column column, Field fieldDefn, Object data, Object fallbackTimestampWithTimeZone, ZoneId defaultOffset, TemporalAdjuster adjuster) {
-        return convertValue(column, fieldDefn, data, fallbackTimestampWithTimeZone,
-                Optional.ofNullable(ZonedTimestamp.toIsoString(data, defaultOffset, adjuster)));
+    public static Object convertTimestampWithZone(Column column, Field fieldDefn, JdbcValueConverters.ValueConverterConfiguration conf, Object data) {
+        return convertValue(column, fieldDefn, data, conf.fallbackTimestampWithTimeZone,
+                Optional.ofNullable(ZonedTimestamp.toIsoString(data, conf.defaultOffset, conf.adjuster)));
     }
 
     public static Object convertBinary(Column column, Field fieldDefn, Object data, CommonConnectorConfig.BinaryHandlingMode mode) {
@@ -632,7 +631,7 @@ public final class ConverterHelper {
             out = data;
         else if (data instanceof Number) 
             out = ((Number) data).doubleValue();
-        else if (data instanceof SpecialValueDecimal) 
+        else if (data instanceof SpecialValueDecimal)
             out = ((SpecialValueDecimal) data).toDouble();
         else if (data instanceof Boolean) 
             out = NumberConversions.getDouble((Boolean) data);
@@ -698,7 +697,7 @@ public final class ConverterHelper {
         return decimal;
     }
 
-    static Object toBigDecimal(Column column, Field fieldDefn, Object data) {
+    public static Object toBigDecimal(Column column, Field fieldDefn, Object data) {
         return convertValue(column, fieldDefn, data, BigDecimal.ZERO, numsToBigDecimal(data));
     }
 
@@ -880,7 +879,7 @@ public final class ConverterHelper {
      */
     public static Object convertBoolean(Column column, Field fieldDefn, Object data) {
         return convertValue(column, fieldDefn, data, false, Optional.ofNullable(valuesToBoolean(data)));
-        }
+    }
 
     private static Object valuesToBoolean(Object data) {
         if (data instanceof Boolean) {
@@ -898,4 +897,44 @@ public final class ConverterHelper {
         return null;
     }
 
+    public static Object convertDate(Column column, Field field, JdbcValueConverters.ValueConverterConfiguration conf, Object data) {
+        if (conf.adaptiveTimePrecisionMode || conf.adaptiveTimeMicrosecondsPrecisionMode) {
+            return convertDateToEpochDays(column, field, data, conf.adjuster);
+        }
+        return convertDateToEpochDaysAsDate(column, field, data, conf.adjuster);
+    }
+
+
+
+    public static Object convertTime(Column column, Field fieldDefn, JdbcValueConverters.ValueConverterConfiguration conf, Object data) {
+        if (conf.adaptiveTimeMicrosecondsPrecisionMode) {
+            return convertTimeToMicrosPastMidnight(column, fieldDefn, data, conf.supportsLargeTimeValues);
+        }
+        if (conf.adaptiveTimePrecisionMode) {
+            if (column.length() <= 3) {
+                return convertTimeToMillisPastMidnight(column, fieldDefn, data, conf.supportsLargeTimeValues);
+            }
+            if (column.length() <= 6) {
+                return convertTimeToMicrosPastMidnight(column, fieldDefn, data, conf.supportsLargeTimeValues);
+            }
+            return convertTimeToNanosPastMidnight(column, fieldDefn, data, conf.supportsLargeTimeValues);
+        }
+        // "connect" mode
+        else {
+            return convertTimeToMillisPastMidnightAsDate(column, fieldDefn, data, conf.supportsLargeTimeValues);
+        }
+    }
+
+    public static Object convertTimestamp(Column column, Field fieldDefn, JdbcValueConverters.ValueConverterConfiguration conf, Object data) {
+        if (conf.adaptiveTimePrecisionMode || conf.adaptiveTimeMicrosecondsPrecisionMode) {
+            if (conf.timeprecision.apply(column) <= 3) {
+                return convertTimestampToEpochMillis(column, fieldDefn, data, conf.adjuster);
+            }
+            if (conf.timeprecision.apply(column) <= 6) {
+                return convertTimestampToEpochMicros(column, fieldDefn, data, conf.adjuster);
+            }
+            return convertTimestampToEpochNanos(column, fieldDefn, data, conf.adjuster);
+        }
+        return convertTimestampToEpochMillisAsDate(column, fieldDefn, data, conf.adjuster);
+    }
 }
