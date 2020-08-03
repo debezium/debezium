@@ -234,18 +234,6 @@ public class Db2Connection extends JdbcConnection {
         return tableId.schema() + '_' + tableId.table();
     }
 
-    private <T> ResultSetMapper<T> singleResultMapper(ResultSetExtractor<T> extractor, String error) throws SQLException {
-        return (rs) -> {
-            if (rs.next()) {
-                final T ret = extractor.apply(rs);
-                if (!rs.next()) {
-                    return ret;
-                }
-            }
-            throw new IllegalStateException(error);
-        };
-    }
-
     public static class CdcEnabledTable {
         private final String tableId;
         private final String captureName;
