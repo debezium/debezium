@@ -20,6 +20,7 @@ To set up Kafka and Kafka Connect on OpenShift, use the set of images that are p
 .Prerequisites
 
 * The OpenShift command line interface (`oc`) is installed.
+* Docker is installed. 
 
 .Procedure
 
@@ -36,24 +37,42 @@ oc login -u system:admin
 oc create -f install/cluster-operator && oc create -f examples/templates/cluster-operator
 ----
 
-. Deploy a Kafka broker cluster and a Kafka Connect cluster and then create a Kafka Connect image with the {prodname} connectors installed:
+. Deploy a Kafka broker cluster:
 +
 [source,shell,subs="attributes",options="nowrap"]
 ----
 # Deploy an ephemeral single instance Kafka broker:
 oc process strimzi-ephemeral -p CLUSTER_NAME=broker -p ZOOKEEPER_NODE_COUNT=1 -p KAFKA_NODE_COUNT=1 -p KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1 -p KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1 | oc apply -f -
+----
 
-# Deploy a single instance of Kafka Connect with no plug-in installed:
-oc process strimzi-connect-s2i -p CLUSTER_NAME=debezium -p KAFKA_CONNECT_BOOTSTRAP_SERVERS=broker-kafka-bootstrap:9092 -p KAFKA_CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR=1 -p KAFKA_CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR=1 -p KAFKA_CONNECT_STATUS_STORAGE_REPLICATION_FACTOR=1 -p KAFKA_CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE=false -p KAFKA_CONNECT_KEY_CONVERTER_SCHEMAS_ENABLE=false | oc apply -f -
+. Create a Kafka Connect image with the {prodname} connectors installed:
 
-# Build a Debezium image
-export DEBEZIUM_VERSION={debezium-version}
-mkdir -p plugins && cd plugins && \
-for PLUGIN in {mongodb,mysql,postgres,sqlserver}; do \
-    curl http://central.maven.org/maven2/io/debezium/debezium-connector-$PLUGIN/$DEBEZIUM_VERSION/debezium-connector-$PLUGIN-$DEBEZIUM_VERSION-plugin.tar.gz | tar xz; \
-done && \
-oc start-build debezium-connect --from-dir=. --follow && \
-cd .. && rm -rf plugins
+.. Download and extract the archive for each {prodname} connector you want to run. For example: 
++
+[source,options="nowrap"]
+----
+curl https://repo1.maven.org/maven2/io/debezium/debezium-connector-mysql/1.1.0.Final/debezium-connector-mysql-1.1.0.Final-plugin.tar.gz tar xvz`
+----
+
+.. Create a `Dockerfile` that uses a Strimzi Kafka image as the base image. The following example creates a `plugins/debezium` directory, which would contain a directory for each {prodname} connector that you want to run. To run more than one {prodname} connector, insert a `COPY` line for each connector. 
++
+[subs=+macros]
+----
+FROM strimzi/kafka:0.19.0-kafka-2.5.0
+USER root:root
+RUN mkdir -p /opt/kafka/plugins/debezium
+COPY ./debezium-connector-mysql/ /opt/kafka/plugins/debezium/
+USER 1001
+----
++
+Before Kafka Connect starts running the connector, Kafka Connect loads any third-party plug-ins that are in the `/opt/kafka/plugins` directory.
+
+.. Build a Debezium image from your Dockerfile and push it to Docker Hub by executing the following commands. Replace `debezium-community` with the name of your Docker Hub organization. 
++
+----
+export DOCKER_ORG=debezium-community
+docker build . -t ${DOCKER_ORG}/connect-debezium
+docker push ${DOCKER_ORG}/connect-debezium
 ----
 +
 After a while all parts should be up and running:
