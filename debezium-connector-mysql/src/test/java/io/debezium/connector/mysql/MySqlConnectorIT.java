@@ -140,6 +140,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         assertNoConfigurationErrors(result, MySqlConnectorConfig.TABLE_EXCLUDE_LIST);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.COLUMN_BLACKLIST);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.COLUMN_EXCLUDE_LIST);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.COLUMN_INCLUDE_LIST);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.CONNECTION_TIMEOUT_MS);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.KEEP_ALIVE);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.KEEP_ALIVE_INTERVAL_MS);
@@ -196,6 +197,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         assertNoConfigurationErrors(result, MySqlConnectorConfig.TABLE_EXCLUDE_LIST);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.COLUMN_BLACKLIST);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.COLUMN_EXCLUDE_LIST);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.COLUMN_INCLUDE_LIST);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.CONNECTION_TIMEOUT_MS);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.KEEP_ALIVE);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.KEEP_ALIVE_INTERVAL_MS);
@@ -252,6 +254,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         assertNoConfigurationErrors(result, MySqlConnectorConfig.TABLE_EXCLUDE_LIST);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.COLUMN_BLACKLIST);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.COLUMN_EXCLUDE_LIST);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.COLUMN_INCLUDE_LIST);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.MSG_KEY_COLUMNS);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.CONNECTION_TIMEOUT_MS);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.KEEP_ALIVE);
@@ -1233,6 +1236,53 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
+    @FixFor("DBZ-1962")
+    public void shouldConsumeEventsWithIncludedColumns() throws SQLException, InterruptedException {
+        Testing.Files.delete(DB_HISTORY_PATH);
+
+        // Use the DB configuration to define the connector's configuration ...
+        config = RO_DATABASE.defaultConfig()
+                .with(MySqlConnectorConfig.COLUMN_INCLUDE_LIST, RO_DATABASE.qualifiedTableName("orders") + ".order_number")
+                .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+                .build();
+
+        // Start the connector ...
+        start(MySqlConnector.class, config);
+
+        // Consume the first records due to startup and initialization of the database ...
+        // Testing.Print.enable();
+        SourceRecords records = consumeRecordsByTopic(9 + 9 + 4 + 5 + 1);
+        assertThat(records.recordsForTopic(RO_DATABASE.topicForTable("orders")).size()).isEqualTo(5);
+        assertThat(records.topics().size()).isEqualTo(5);
+
+        // Check that all records are valid, can be serialized and deserialized ...
+        records.forEach(this::validate);
+
+        // More records may have been written (if this method were run after the others), but we don't care ...
+        stopConnector();
+
+        // Check that orders.order_number is present ...
+        records.recordsForTopic(RO_DATABASE.topicForTable("orders")).forEach(record -> {
+            print(record);
+            Struct value = ((Struct) record.value()).getStruct("after");
+            try {
+                value.get("order_number");
+            }
+            catch (DataException e) {
+                fail("The 'order_number' field was not found but should exist");
+            }
+
+            try {
+                value.get("order_date");
+                fail("The 'order_date' field was found but should be filtered");
+            }
+            catch (DataException e) {
+                // Expected, this field should be filtered by the whitelist
+            }
+        });
+    }
+
+    @Test
     public void shouldConsumeEventsWithMaskedAndBlacklistedColumns() throws SQLException, InterruptedException {
         Testing.Files.delete(DB_HISTORY_PATH);
 
@@ -1266,7 +1316,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
             print(record);
             Struct value = (Struct) record.value();
             try {
-                value.get("order_number");
+                value.getStruct("after").get("order_number");
                 fail("The 'order_number' field was found but should not exist");
             }
             catch (DataException e) {
