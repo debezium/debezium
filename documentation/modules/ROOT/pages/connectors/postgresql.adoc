@@ -323,7 +323,7 @@ In addition to a {link-prefix}:{link-postgresql-connector}#postgresql-events[_da
         "server": "fulfillment"
     },
     "sourceOffset": {
-        "lsn": "24023128",J
+        "lsn": "24023128",
         "txId": "555",
         "ts_ms": "1482918357011"
     },
@@ -2026,7 +2026,7 @@ If you are using a `wal2json` plug-in and transactions are very large, the JSON 
 
 endif::community[]
 ifdef::product[]
-The only supported value is `pgoutput`.
+The only supported value is `pgoutput`. You must explicitly set `plugin.name` to `pgoutput`.
 endif::product[]
 
 |[[postgresql-property-slot-name]]<<postgresql-property-slot-name, `slot.name`>>
