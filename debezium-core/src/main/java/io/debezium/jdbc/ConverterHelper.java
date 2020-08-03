@@ -31,7 +31,7 @@ import static io.debezium.util.NumberConversions.*;
 
 public class ConverterHelper {
 
-    private static Logger logger = LoggerFactory.getLogger(ProxyConverter.class);
+    private static final Logger logger = LoggerFactory.getLogger(ProxyConverter.class);
 
 
     public static ValueConverter convertBits(Column column, Field fieldDefn, ByteOrder byteOrderOfBitType) {
