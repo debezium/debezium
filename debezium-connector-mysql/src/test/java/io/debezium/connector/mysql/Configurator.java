@@ -71,6 +71,10 @@ import io.debezium.util.Testing;
         return with(MySqlConnectorConfig.TABLE_EXCLUDE_LIST, regexList);
     }
 
+    /* package local */ Configurator includeColumns(String regexList) {
+        return with(MySqlConnectorConfig.COLUMN_INCLUDE_LIST, regexList);
+    }
+
     /* package local */ Configurator excludeColumns(String regexList) {
         if (Math.random() >= 0.5) {
             Testing.debug("Using \"" + MySqlConnectorConfig.COLUMN_BLACKLIST.name() + "\" config property");
