@@ -16,6 +16,7 @@ import java.nio.ByteOrder;
 import java.nio.charset.Charset;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.sql.Types;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.OffsetTime;
@@ -35,6 +36,7 @@ import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.jdbc.ConverterHelper;
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Field;
@@ -337,7 +339,8 @@ public class PostgresValueConverter extends JdbcValueConverters {
         switch (oidValue) {
             case PgOid.BIT:
             case PgOid.VARBIT:
-                return ConverterHelper.convertBits(column, fieldDefn, configuration.byteOrder);
+            case Types.BIT:
+                return convertBits(column, fieldDefn, configuration.byteOrder);
             case PgOid.INTERVAL:
                 return data -> convertInterval(column, fieldDefn, data);
             case PgOid.TIME:
@@ -370,8 +373,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 return data -> convertMoney(column, fieldDefn, data);
             case PgOid.NUMERIC:
                 return (data) -> convertDecimal(column, fieldDefn, data, configuration.decimalMode);
-            case PgOid.BYTEA:
-                return data -> convertBinary(column, fieldDefn, data, configuration.binaryMode);
+
             case PgOid.INT2_ARRAY:
             case PgOid.INT4_ARRAY:
             case PgOid.INT8_ARRAY:
@@ -403,7 +405,13 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.TIMESTAMPTZ_ARRAY:
                 return createArrayConverter(column, fieldDefn);
 
-            // TODO DBZ-459 implement support for these array types; for now we just fall back to the default, i.e.
+            case PgOid.BYTEA:
+            case Types.BLOB:
+            case Types.BINARY:
+            case Types.VARBINARY:
+            case Types.LONGVARBINARY:
+                return data -> convertBinary(column, fieldDefn, configuration.binaryMode,  data, toastPlaceholderBinary);
+                // TODO DBZ-459 implement support for these array types; for now we just fall back to the default, i.e.
             // having no converter, so to be consistent with the schema definitions above
             case PgOid.BYTEA_ARRAY:
             case PgOid.OID_ARRAY:
@@ -449,7 +457,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
 
                 final ValueConverter jdbcConverter = super.converter(column, fieldDefn);
                 if (jdbcConverter == null) {
-                    return includeUnknownDatatypes ? data -> convertBinary(column, fieldDefn, data, configuration.binaryMode) : null;
+                    return includeUnknownDatatypes ? data -> convertBinary(column, fieldDefn, configuration.binaryMode, data, configuration.binaryMode) : null;
                 }
                 else {
                     return jdbcConverter;
@@ -926,6 +934,18 @@ public class PostgresValueConverter extends JdbcValueConverters {
 
 
 
+    public static Object convertBinary(Column column, Field fieldDefn, CommonConnectorConfig.BinaryHandlingMode mode, Object data, Object placeholder) {
+        switch (mode) {
+            case BASE64:
+                return convertBinaryToBase64(column, fieldDefn, data);
+            case HEX:
+                return convertBinaryToHex(column, fieldDefn, data);
+            case BYTES:
+            default:
+                return convertBinaryToBytes(column, fieldDefn, data, placeholder);
+        }
+    }
+
     // TODO go through these in stead of going through the regular methods, they no longer extend anything and will not be called
     /**
      * Extracts a value from a PGobject .
@@ -936,9 +956,9 @@ public class PostgresValueConverter extends JdbcValueConverters {
      * @return the converted value, or null if the conversion could not be made and the column allows nulls
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
-    protected Object convertBinaryToBytes(Column column, Field fieldDefn, Object data) {
+    static Object convertBinaryToBytes(Column column, Field fieldDefn, Object data, Object placeholder) {
         if (data == UnchangedToastedReplicationMessageColumn.UNCHANGED_TOAST_VALUE) {
-            return toastPlaceholderBinary;
+            return placeholder;
         }
         if (data instanceof PgArray) {
             data = ((PgArray) data).toString();
@@ -946,23 +966,33 @@ public class PostgresValueConverter extends JdbcValueConverters {
         return ConverterHelper.convertBinaryToBytes(column, fieldDefn, (data instanceof PGobject) ? ((PGobject) data).getValue() : data);
     }
 
-    protected Object convertBinaryToBase64(Column column, Field fieldDefn, Object data) {
+    static Object convertBinaryToBase64(Column column, Field fieldDefn, Object data) {
         return ConverterHelper.convertBinaryToBase64(column, fieldDefn, (data instanceof PGobject) ? ((PGobject) data).getValue() : data);
     }
 
-    protected Object convertBinaryToHex(Column column, Field fieldDefn, Object data) {
+    static Object convertBinaryToHex(Column column, Field fieldDefn, Object data) {
         return ConverterHelper.convertBinaryToHex(column, fieldDefn, (data instanceof PGobject) ? ((PGobject) data).getValue() : data);
     }
 
 
-    protected Object convertBit(Column column, Field fieldDefn, Object data) {
+
+    public static ValueConverter convertBits(Column column, Field fieldDefn, ByteOrder byteOrderOfBitType) {
+        if (column.length() > 1) {
+            int numBits = column.length();
+            int numBytes = numBits / Byte.SIZE + (numBits % Byte.SIZE == 0 ? 0 : 1);
+            return (data) -> convertBits(column, fieldDefn, data, numBytes, byteOrderOfBitType);
+        }
+        return (data) -> convertBit(column, fieldDefn, data);
+    }
+
+    static Object convertBit(Column column, Field fieldDefn, Object data) {
         if (data instanceof String) {
             data = Integer.valueOf((String) data, 2);
         }
         return ConverterHelper.convertBit(column, fieldDefn, data);
     }
 
-    protected Object convertBits(Column column, Field fieldDefn, Object data, int numBytes) {
+    static Object convertBits(Column column, Field fieldDefn, Object data, int numBytes, ByteOrder byteOrderOfBitType) {
         if (data instanceof PGobject) {
             // returned by the JDBC driver
             data = ((PGobject) data).getValue();
@@ -978,7 +1008,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
             }
             data = bitset;
         }
-        return ConverterHelper.convertBits(column, fieldDefn, data, numBytes, configuration.byteOrder);
+        return ConverterHelper.convertBits(column, fieldDefn, data, numBytes, byteOrderOfBitType);
     }
 
 
