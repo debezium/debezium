@@ -14,7 +14,7 @@ asciidoc:
     assemblies: '../assemblies'
     modules: '../../modules'
     mysql-version: '8.0'
-    strimzi-version: '0.13.0'
+    strimzi-version: '0.18.0'
     apicurio-version: '1.2.2.Final'
     community: true
     registry: 'Apicurio Registry'
