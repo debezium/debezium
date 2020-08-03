@@ -1,15 +1,6 @@
 package io.debezium.jdbc;
 
-import io.debezium.config.CommonConnectorConfig;
-import io.debezium.data.SpecialValueDecimal;
-import io.debezium.relational.Column;
-import io.debezium.relational.ValueConverter;
-import io.debezium.time.*;
-import io.debezium.util.HexConverter;
-import io.debezium.util.NumberConversions;
-import org.apache.kafka.connect.data.Field;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import static io.debezium.util.NumberConversions.*;
 
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
@@ -27,12 +18,21 @@ import java.util.BitSet;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
-import static io.debezium.util.NumberConversions.*;
+import org.apache.kafka.connect.data.Field;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import io.debezium.config.CommonConnectorConfig;
+import io.debezium.data.SpecialValueDecimal;
+import io.debezium.relational.Column;
+import io.debezium.relational.ValueConverter;
+import io.debezium.time.*;
+import io.debezium.util.HexConverter;
+import io.debezium.util.NumberConversions;
 
 public class ConverterHelper {
 
     private static final Logger logger = LoggerFactory.getLogger(ProxyConverter.class);
-
 
     public static ValueConverter convertBits(Column column, Field fieldDefn, ByteOrder byteOrderOfBitType) {
         if (column.length() > 1) {
@@ -42,8 +42,6 @@ public class ConverterHelper {
         }
         return (data) -> convertBit(column, fieldDefn, data);
     }
-
-
 
     /**
      * Converts the given value for the given column/field.
@@ -80,7 +78,6 @@ public class ConverterHelper {
         return convertedValue.orElseGet(() -> handleUnknownData(column, fieldDefn, data));
     }
 
-
     public static Object handleUnknownData(Column column, Field fieldDefn, Object data) {
         if (column.isOptional() || fieldDefn.schema().isOptional()) {
             Class<?> dataClass = data.getClass();
@@ -94,7 +91,6 @@ public class ConverterHelper {
         throw new IllegalArgumentException("Unexpected value for JDBC type " + column.jdbcType() + " and column " + column +
                 ": class=" + data.getClass()); // don't include value in case its sensitive
     }
-
 
     static byte[] toByteArray(char[] chars) {
         CharBuffer charBuffer = CharBuffer.wrap(chars);
@@ -117,7 +113,6 @@ public class ConverterHelper {
         return ByteBuffer.wrap(data);
     }
 
-
     public static ByteBuffer toByteBuffer(String string) {
         return ByteBuffer.wrap(string.getBytes(StandardCharsets.UTF_8));
     }
@@ -133,7 +128,6 @@ public class ConverterHelper {
         }
         return data;
     }
-
 
     /**
      * Converts a value object for an expected JDBC type of {@link Types#TIME_WITH_TIMEZONE}.
@@ -152,7 +146,8 @@ public class ConverterHelper {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     public static Object convertTimeWithZone(Column column, Field fieldDefn, JdbcValueConverters.ValueConverterConfiguration configuration, Object data) {
-        return convertValue(column, fieldDefn, data, configuration.fallbackTimeWithTimeZone, Optional.ofNullable(ZonedTime.toIsoString(data, configuration.defaultOffset, configuration.adjuster)));
+        return convertValue(column, fieldDefn, data, configuration.fallbackTimeWithTimeZone,
+                Optional.ofNullable(ZonedTime.toIsoString(data, configuration.defaultOffset, configuration.adjuster)));
     }
 
     /**
@@ -364,9 +359,8 @@ public class ConverterHelper {
             logger.warn("Unexpected JDBC DATE value for field {} with schema {}: class={}, value={}", fieldDefn.name(),
                     fieldDefn.schema(), data.getClass(), data);
         }
-        return null; //???
+        return null; // ???
     }
-
 
     /**
      * Converts a value object for an expected JDBC type of {@link Types#TIMESTAMP_WITH_TIMEZONE}.
@@ -442,7 +436,7 @@ public class ConverterHelper {
      */
     public static Object convertBinaryToBase64(Column column, Field fieldDefn, Object data) {
         return convertValue(column, fieldDefn, data, "", Optional.ofNullable((base64ToString(data, fieldDefn))));
-        }
+    }
 
     static Object base64ToString(Object data, Field fieldDefn) {
         Base64.Encoder base64Encoder = Base64.getEncoder();
@@ -478,16 +472,16 @@ public class ConverterHelper {
 
     static Optional<Object> binaryToHex(Field fieldDefn, Object data) {
         Object out;
-        if (data instanceof String) 
+        if (data instanceof String)
             out = HexConverter.convertToHexString(((String) data).getBytes(StandardCharsets.UTF_8));
-        else if (data instanceof char[]) 
+        else if (data instanceof char[])
             out = HexConverter.convertToHexString(toByteArray((char[]) data));
-        else if (data instanceof byte[]) 
+        else if (data instanceof byte[])
             out = HexConverter.convertToHexString((byte[]) data);
-        else out = unexpectedBinary(data, fieldDefn);
+        else
+            out = unexpectedBinary(data, fieldDefn);
         return Optional.ofNullable(out);
     }
-
 
     /**
      * Handle the unexpected value from a row with a column type of {@link Types#BLOB}, {@link Types#BINARY},
@@ -533,15 +527,16 @@ public class ConverterHelper {
 
     static Optional<Object> numsToShort(Object data) {
         Object out;
-        if (data instanceof Short) 
+        if (data instanceof Short)
             out = data;
-        else if (data instanceof Number) 
+        else if (data instanceof Number)
             out = ((Number) data).shortValue();
-        else if (data instanceof Boolean) 
+        else if (data instanceof Boolean)
             out = NumberConversions.getShort((Boolean) data);
-        else if (data instanceof String) 
+        else if (data instanceof String)
             out = Short.valueOf((String) data);
-        else out = null;
+        else
+            out = null;
         return Optional.ofNullable(out);
     }
 
@@ -555,20 +550,21 @@ public class ConverterHelper {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     public static Object convertInteger(Column column, Field fieldDefn, Object data) {
-        return convertValue(column, fieldDefn, data, 0, numsToInt(data) );
+        return convertValue(column, fieldDefn, data, 0, numsToInt(data));
     }
 
     static Optional<Object> numsToInt(Object data) {
         Object out;
-        if (data instanceof Integer) 
+        if (data instanceof Integer)
             out = data;
-        else if (data instanceof Number) 
+        else if (data instanceof Number)
             out = ((Number) data).intValue();
-        else if (data instanceof Boolean) 
+        else if (data instanceof Boolean)
             out = NumberConversions.getInteger((Boolean) data);
-        else if (data instanceof String) 
+        else if (data instanceof String)
             out = Integer.valueOf((String) data);
-        else out = null;
+        else
+            out = null;
         return Optional.ofNullable(out);
     }
 
@@ -587,15 +583,16 @@ public class ConverterHelper {
 
     static Optional<Object> numsToLong(Object data) {
         Object out;
-        if (data instanceof Long) 
+        if (data instanceof Long)
             out = data;
-        else if (data instanceof Number) 
+        else if (data instanceof Number)
             out = ((Number) data).longValue();
-        else if (data instanceof Boolean) 
+        else if (data instanceof Boolean)
             out = NumberConversions.getLong((Boolean) data);
-        else if (data instanceof String) 
+        else if (data instanceof String)
             out = Long.valueOf((String) data);
-        else out = null;
+        else
+            out = null;
         return Optional.ofNullable(out);
     }
 
@@ -627,15 +624,16 @@ public class ConverterHelper {
 
     static Optional<Object> numsToDouble(Object data) {
         Object out;
-        if (data instanceof Double) 
+        if (data instanceof Double)
             out = data;
-        else if (data instanceof Number) 
+        else if (data instanceof Number)
             out = ((Number) data).doubleValue();
         else if (data instanceof SpecialValueDecimal)
             out = ((SpecialValueDecimal) data).toDouble();
-        else if (data instanceof Boolean) 
+        else if (data instanceof Boolean)
             out = NumberConversions.getDouble((Boolean) data);
-        else out = null;
+        else
+            out = null;
         return Optional.ofNullable(out);
     }
 
@@ -654,13 +652,14 @@ public class ConverterHelper {
 
     static Optional<Object> numsToReal(Object data) {
         Object out;
-        if (data instanceof Float) 
+        if (data instanceof Float)
             out = data;
-        else if (data instanceof Number) 
+        else if (data instanceof Number)
             out = ((Number) data).floatValue();
-        else if (data instanceof Boolean) 
+        else if (data instanceof Boolean)
             out = NumberConversions.getFloat((Boolean) data);
-        else out = null;
+        else
+            out = null;
         return Optional.ofNullable(out);
     }
 
@@ -703,23 +702,24 @@ public class ConverterHelper {
 
     static Optional<Object> numsToBigDecimal(Object data) {
         Object out;
-        if (data instanceof BigDecimal) 
+        if (data instanceof BigDecimal)
             out = data;
-        else if (data instanceof Boolean) 
+        else if (data instanceof Boolean)
             out = NumberConversions.getBigDecimal((Boolean) data);
-        else if (data instanceof Short) 
+        else if (data instanceof Short)
             out = new BigDecimal(((Short) data).intValue());
-        else if (data instanceof Integer) 
+        else if (data instanceof Integer)
             out = new BigDecimal((Integer) data);
-        else if (data instanceof Long) 
+        else if (data instanceof Long)
             out = BigDecimal.valueOf((Long) data);
-        else if (data instanceof Float) 
+        else if (data instanceof Float)
             out = BigDecimal.valueOf(((Float) data).doubleValue());
-        else if (data instanceof Double) 
+        else if (data instanceof Double)
             out = BigDecimal.valueOf((Double) data);
-        else if (data instanceof String) 
+        else if (data instanceof String)
             out = new BigDecimal((String) data);
-        else out = null;
+        else
+            out = null;
         return Optional.ofNullable(out);
     }
 
@@ -741,7 +741,7 @@ public class ConverterHelper {
     private static Optional<Object> objectToString(Object data, Column column) {
         if (data instanceof SQLXML) {
             try {
-                return  Optional.ofNullable(((SQLXML) data).getString());
+                return Optional.ofNullable(((SQLXML) data).getString());
             }
             catch (SQLException e) {
                 throw new RuntimeException("Error processing data from " + column.jdbcType() + " and column " + column +
@@ -786,17 +786,18 @@ public class ConverterHelper {
 
     private static Optional<Object> bitValues(Object data) {
         Object out;
-        if (data instanceof Boolean) 
+        if (data instanceof Boolean)
             out = data;
-        else if (data instanceof Short) 
+        else if (data instanceof Short)
             out = ((Short) data).intValue() == 0 ? Boolean.FALSE : Boolean.TRUE;
-        else if (data instanceof Integer) 
+        else if (data instanceof Integer)
             out = (Integer) data == 0 ? Boolean.FALSE : Boolean.TRUE;
-        else if (data instanceof Long) 
+        else if (data instanceof Long)
             out = ((Long) data).intValue() == 0 ? Boolean.FALSE : Boolean.TRUE;
-        else if (data instanceof BitSet) 
+        else if (data instanceof BitSet)
             out = ((BitSet) data).get(0);
-        else out = null;
+        else
+            out = null;
         return Optional.ofNullable(out);
     }
 
@@ -817,7 +818,7 @@ public class ConverterHelper {
     static Object specialBitValues(Object data, int numBytes, ByteOrder byteOrderOfBitType) {
         if (data instanceof Boolean) {
             Boolean value = (Boolean) data;
-            return new byte[]{value ? (byte) 1 : (byte) 0 };
+            return new byte[]{ value ? (byte) 1 : (byte) 0 };
         }
         else if (data instanceof Short) {
             Short value = (Short) data;
@@ -867,7 +868,6 @@ public class ConverterHelper {
         return null;
     }
 
-
     /**
      * Converts a value object for an expected JDBC type of {@link Types#BOOLEAN}.
      *
@@ -903,8 +903,6 @@ public class ConverterHelper {
         }
         return convertDateToEpochDaysAsDate(column, field, data, conf.adjuster);
     }
-
-
 
     public static Object convertTime(Column column, Field fieldDefn, JdbcValueConverters.ValueConverterConfiguration conf, Object data) {
         if (conf.adaptiveTimeMicrosecondsPrecisionMode) {

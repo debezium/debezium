@@ -5,15 +5,12 @@
  */
 package io.debezium.jdbc;
 
-
 import java.nio.ByteOrder;
 import java.sql.Types;
 import java.time.*;
 import java.time.temporal.TemporalAdjuster;
 import java.util.function.Function;
 
-import io.debezium.time.ZonedTime;
-import io.debezium.time.ZonedTimestamp;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.slf4j.Logger;
@@ -24,6 +21,8 @@ import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
 import io.debezium.relational.Column;
 import io.debezium.relational.ValueConverter;
 import io.debezium.relational.ValueConverterProvider;
+import io.debezium.time.ZonedTime;
+import io.debezium.time.ZonedTimestamp;
 
 /**
  * A provider of {@link ValueConverter}s and {@link SchemaBuilder}s for various column types. This implementation is aware
@@ -54,7 +53,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
 
     final protected ValueConverterConfiguration configuration;
 
-    protected static class ValueConverterConfiguration {  //TODO DBZ-SOMETHING FIX! or work on making this an interface If necessary
+    protected static class ValueConverterConfiguration { // TODO DBZ-SOMETHING FIX! or work on making this an interface If necessary
         public final ZoneOffset defaultOffset;
 
         /**
@@ -76,6 +75,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
         public final boolean supportsLargeTimeValues;
 
         public final Function<Column, Integer> timeprecision;
+
         /**
          * Create a new instance, and specify the time zone offset that should be used only when converting values without timezone
          * information to values that require timezones. This default offset should not be needed when values are highly-correlated
@@ -93,7 +93,8 @@ public class JdbcValueConverters implements ValueConverterProvider {
          * @param binaryMode how binary columns should be represented
          */
         public ValueConverterConfiguration(DecimalMode decimalMode, TemporalPrecisionMode temporalPrecisionMode, ZoneOffset defaultOffset,
-                                   TemporalAdjuster adjuster, BigIntUnsignedMode bigIntUnsignedMode, BinaryHandlingMode binaryMode, ByteOrder byteOrder, Function<Column, Integer> timeprecision) {
+                                           TemporalAdjuster adjuster, BigIntUnsignedMode bigIntUnsignedMode, BinaryHandlingMode binaryMode, ByteOrder byteOrder,
+                                           Function<Column, Integer> timeprecision) {
             this.defaultOffset = defaultOffset != null ? defaultOffset : ZoneOffset.UTC;
             this.adaptiveTimePrecisionMode = temporalPrecisionMode.equals(TemporalPrecisionMode.ADAPTIVE);
             this.adaptiveTimeMicrosecondsPrecisionMode = temporalPrecisionMode.equals(TemporalPrecisionMode.ADAPTIVE_TIME_MICROSECONDS);
@@ -118,19 +119,20 @@ public class JdbcValueConverters implements ValueConverterProvider {
 
     protected final Logger logger = LoggerFactory.getLogger(getClass());
 
-
     /**
      * Create a new instance that always uses UTC for the default time zone when converting values without timezone information
      * to values that require timezones, and uses adapts time and timestamp values based upon the precision of the database
      * columns.
      */
     public JdbcValueConverters() {
-        this(null, TemporalPrecisionMode.ADAPTIVE, ZoneOffset.UTC, null, null, null, ByteOrder.LITTLE_ENDIAN, Column::length );
+        this(null, TemporalPrecisionMode.ADAPTIVE, ZoneOffset.UTC, null, null, null, ByteOrder.LITTLE_ENDIAN, Column::length);
     }
 
     public JdbcValueConverters(DecimalMode decimalMode, TemporalPrecisionMode temporalPrecisionMode, ZoneOffset defaultOffset,
-                                       TemporalAdjuster adjuster, BigIntUnsignedMode bigIntUnsignedMode, BinaryHandlingMode binaryMode, ByteOrder byteOrder, Function<Column, Integer> precision) {
-        this.configuration = new ValueConverterConfiguration(decimalMode, temporalPrecisionMode, defaultOffset, adjuster, bigIntUnsignedMode, binaryMode, byteOrder, precision );
+                               TemporalAdjuster adjuster, BigIntUnsignedMode bigIntUnsignedMode, BinaryHandlingMode binaryMode, ByteOrder byteOrder,
+                               Function<Column, Integer> precision) {
+        this.configuration = new ValueConverterConfiguration(decimalMode, temporalPrecisionMode, defaultOffset, adjuster, bigIntUnsignedMode, binaryMode, byteOrder,
+                precision);
     }
 
     @Override
