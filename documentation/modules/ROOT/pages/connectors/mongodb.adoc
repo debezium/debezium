@@ -947,6 +947,19 @@ See {link-prefix}:{link-mongodb-connector}#mongodb-transaction-metadata[Transact
 |10000 (10 seconds)
 |The number of milli-seconds to wait before restarting a connector after a retriable error occurs.
 
+|[[mongodb-property-mongodb-connect-timeout-ms]]<<mongodb-property-mongodb-connect-timeout-ms, `mongodb.connect.timeout.ms`>> +
+|10000 (10 seconds)
+|The number of milli-seconds the driver will wait before a new connection attempt is aborted.
+
+|[[mongodb-property-mongodb-socket-timeout-ms]]<<mongodb-property-mongodb-socket-timeout-ms, `mongodb.socket.timeout.ms`>> +
+|0
+|The number of milli-seconds before a send/receive on the socket can take before a timeout occurs.
+A value of `0` disables this behavior.
+
+|[[mongodb-property-mongodb-server-selection-timeout-ms]]<<mongodb-property-mongodb-server-selection-timeout-ms, `mongodb.server.selection.timeout.ms`>> +
+|30000 (30 seconds)
+|The number of milli-seconds the driver will wait to select a server before it times out and throws an error.
+
 |===
 
 [[mongodb-fault-tolerance]]

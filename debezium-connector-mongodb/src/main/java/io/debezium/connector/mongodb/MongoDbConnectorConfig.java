@@ -308,6 +308,30 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
                     + "'initial' (the default) to specify the connector should always perform an initial sync when required; "
                     + "'never' to specify the connector should never perform an initial sync ");
 
+    public static final Field CONNECT_TIMEOUT_MS = Field.create("mongodb.connect.timeout.ms")
+            .withDisplayName("Connect Timeout MS")
+            .withType(Type.INT)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(10000)
+            .withDescription("The connection timeout in milliseconds");
+
+    public static final Field SERVER_SELECTION_TIMEOUT_MS = Field.create("mongodb.server.selection.timeout.ms")
+            .withDisplayName("Server selection timeout MS")
+            .withType(Type.INT)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(30000)
+            .withDescription("The server selection timeout in milliseconds");
+
+    public static final Field SOCKET_TIMEOUT_MS = Field.create("mongodb.socket.timeout.ms")
+            .withDisplayName("Socket timeout MS")
+            .withType(Type.INT)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(0)
+            .withDescription("The socket timeout in milliseconds");
+
     protected static final Field TASK_ID = Field.create("mongodb.task.id")
             .withDescription("Internal use only")
             .withValidation(Field::isInteger)
@@ -323,6 +347,9 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
                     LOGICAL_NAME,
                     CONNECT_BACKOFF_INITIAL_DELAY_MS,
                     CONNECT_BACKOFF_MAX_DELAY_MS,
+                    CONNECT_TIMEOUT_MS,
+                    SOCKET_TIMEOUT_MS,
+                    SERVER_SELECTION_TIMEOUT_MS,
                     POLL_INTERVAL_SEC,
                     MAX_FAILED_CONNECTIONS,
                     AUTO_DISCOVER_MEMBERS,
