@@ -55,6 +55,7 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
 
         initializeConnectorTestFramework();
         Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
+        // Testing.Debug.enable();
     }
 
     @After
@@ -774,15 +775,15 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
 
         List<SourceRecord> records = consumeRecordsByTopic(1).recordsForTopic("server1.dbo.tableb");
         Assertions.assertThat(records).hasSize(1);
-        System.out.println("Records: " + records);
-        System.out.println("Value Schema: " + records.get(0).valueSchema());
-        System.out.println("Fields: " + records.get(0).valueSchema().fields());
-        System.out.println("After Schema: " + records.get(0).valueSchema().field("after").schema());
-        System.out.println("After Columns: " + records.get(0).valueSchema().field("after").schema().fields());
+        Testing.debug("Records: " + records);
+        Testing.debug("Value Schema: " + records.get(0).valueSchema());
+        Testing.debug("Fields: " + records.get(0).valueSchema().fields());
+        Testing.debug("After Schema: " + records.get(0).valueSchema().field("after").schema());
+        Testing.debug("After Columns: " + records.get(0).valueSchema().field("after").schema().fields());
 
         Schema colbSchema = records.get(0).valueSchema().field("after").schema().field("colb").schema();
-        System.out.println("ColumnB Schema: " + colbSchema);
-        System.out.println("ColumnB Schema Default Value: " + colbSchema.defaultValue());
+        Testing.debug("ColumnB Schema: " + colbSchema);
+        Testing.debug("ColumnB Schema Default Value: " + colbSchema.defaultValue());
         Assertions.assertThat(colbSchema.defaultValue()).isNotNull();
         Assertions.assertThat(colbSchema.defaultValue()).isEqualTo("default_value");
     }
