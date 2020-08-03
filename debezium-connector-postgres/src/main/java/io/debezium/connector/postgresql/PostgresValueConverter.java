@@ -41,7 +41,6 @@ import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.errors.ConnectException;
-import org.apache.kafka.connect.storage.ConverterType;
 import org.postgresql.geometric.PGpoint;
 import org.postgresql.jdbc.PgArray;
 import org.postgresql.util.HStoreConverter;
@@ -657,32 +656,6 @@ public class PostgresValueConverter extends JdbcValueConverters {
         }
     }
 
-    protected Object convertBit(Column column, Field fieldDefn, Object data) {
-        if (data instanceof String) {
-            data = Integer.valueOf((String) data, 2);
-        }
-        return ConverterHelper.convertBit(column, fieldDefn, data);
-    }
-
-    protected Object convertBits(Column column, Field fieldDefn, Object data, int numBytes) {
-        if (data instanceof PGobject) {
-            // returned by the JDBC driver
-            data = ((PGobject) data).getValue();
-        }
-        if (data instanceof String) {
-            String dataStr = (String) data;
-            BitSet bitset = new BitSet(dataStr.length());
-            int len = dataStr.length();
-            for (int i = len - 1; i >= 0; i--) {
-                if (dataStr.charAt(i) == '1') {
-                    bitset.set(len - i - 1);
-                }
-            }
-            data = bitset;
-        }
-        return ConverterHelper.convertBits(column, fieldDefn, data, numBytes, configuration.byteOrder);
-    }
-
     protected Object convertMoney(Column column, Field fieldDefn, Object data) {
         return convertValue(column, fieldDefn, data, BigDecimal.ZERO.setScale(2), Optional.ofNullable(convertMoney(data)));
     }
@@ -952,6 +925,8 @@ public class PostgresValueConverter extends JdbcValueConverters {
     }
 
 
+
+    // TODO go through these in stead of going through the regular methods, they no longer extend anything and will not be called
     /**
      * Extracts a value from a PGobject .
      *
@@ -978,6 +953,34 @@ public class PostgresValueConverter extends JdbcValueConverters {
     protected Object convertBinaryToHex(Column column, Field fieldDefn, Object data) {
         return ConverterHelper.convertBinaryToHex(column, fieldDefn, (data instanceof PGobject) ? ((PGobject) data).getValue() : data);
     }
+
+
+    protected Object convertBit(Column column, Field fieldDefn, Object data) {
+        if (data instanceof String) {
+            data = Integer.valueOf((String) data, 2);
+        }
+        return ConverterHelper.convertBit(column, fieldDefn, data);
+    }
+
+    protected Object convertBits(Column column, Field fieldDefn, Object data, int numBytes) {
+        if (data instanceof PGobject) {
+            // returned by the JDBC driver
+            data = ((PGobject) data).getValue();
+        }
+        if (data instanceof String) {
+            String dataStr = (String) data;
+            BitSet bitset = new BitSet(dataStr.length());
+            int len = dataStr.length();
+            for (int i = len - 1; i >= 0; i--) {
+                if (dataStr.charAt(i) == '1') {
+                    bitset.set(len - i - 1);
+                }
+            }
+            data = bitset;
+        }
+        return ConverterHelper.convertBits(column, fieldDefn, data, numBytes, configuration.byteOrder);
+    }
+
 
     /**
      * Replaces toasted value with a placeholder
