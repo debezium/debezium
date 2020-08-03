@@ -627,7 +627,7 @@ public class ConverterHelper {
         if (data instanceof Double)
             out = data;
         else if (data instanceof Number)
-            out = ((Number) data).doubleValue();
+            out = Double.valueOf(String.valueOf(data));
         else if (data instanceof SpecialValueDecimal)
             out = ((SpecialValueDecimal) data).toDouble();
         else if (data instanceof Boolean)
@@ -934,5 +934,15 @@ public class ConverterHelper {
             return convertTimestampToEpochNanos(column, fieldDefn, data, conf.adjuster);
         }
         return convertTimestampToEpochMillisAsDate(column, fieldDefn, data, conf.adjuster);
+    }
+
+
+
+    public static BigDecimal withScaleAdjustedIfNeeded(Column column, BigDecimal data) {
+        if (column.scale().isPresent() && column.scale().get() > data.scale()) {
+            data = data.setScale(column.scale().get());
+        }
+
+        return data;
     }
 }

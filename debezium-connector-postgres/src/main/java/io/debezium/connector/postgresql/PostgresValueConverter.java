@@ -546,6 +546,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
         else if (data instanceof PGobject) {
             return data.toString();
         }
+        return null;
     }
 
     private Object convertLtreeArray(Column column, Field fieldDefn, Object data) {
@@ -698,7 +699,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
     }
 
     protected Object convertInterval(Column column, Field fieldDefn, Object data) {
-        return convertValue(column, fieldDefn, data, NumberConversions.LONG_FALSE, convertInterval(data));
+        return convertValue(column, fieldDefn, data, NumberConversions.LONG_FALSE, Optional.ofNullable(convertInterval(data)));
     }
 
     private Object convertInterval(Object data) {
@@ -757,12 +758,12 @@ public class PostgresValueConverter extends JdbcValueConverters {
             data = offsetTime.withOffsetSameInstant(ZoneOffset.UTC);
         }
 
-        return ConverterHelper.convertTimeWithZone(column, fieldDefn, configuration data);
+        return ConverterHelper.convertTimeWithZone(column, fieldDefn, configuration, data);
     }
 
     protected Object convertGeometry(Column column, Field fieldDefn, Object data) {
         final PostgisGeometry empty = PostgisGeometry.createEmpty();
-        return convertValue(column, fieldDefn, data, io.debezium.data.geometry.Geometry.createValue(fieldDefn.schema(), empty.getWkb(), empty.getSrid()), Optional.of(convertGeom(column, fieldDefn, data))));
+        return convertValue(column, fieldDefn, data, io.debezium.data.geometry.Geometry.createValue(fieldDefn.schema(), empty.getWkb(), empty.getSrid()), Optional.of(convertGeom(column, fieldDefn, data)));
     }
 
     private Object convertGeom(Column column, Field fieldDefn, Object data) {
