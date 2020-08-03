@@ -54,7 +54,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
 
     final protected ValueConverterConfiguration configuration;
 
-    protected static class ValueConverterConfiguration {
+    protected static class ValueConverterConfiguration {  //TODO DBZ-SOMETHING FIX! or work on making this an interface If necessary
         public final ZoneOffset defaultOffset;
 
         /**
