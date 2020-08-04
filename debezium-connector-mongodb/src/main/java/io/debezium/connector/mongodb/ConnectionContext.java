@@ -142,8 +142,12 @@ public class ConnectionContext implements AutoCloseable {
         return config.getString(MongoDbConnectorConfig.HOSTS);
     }
 
-    public int pollPeriodInSeconds() {
-        return config.getInteger(MongoDbConnectorConfig.POLL_INTERVAL_SEC);
+    public Duration pollInterval() {
+        if (config.hasKey(MongoDbConnectorConfig.POLL_INTERVAL_SEC.name())) {
+            logger.warn("The option `mongodb.poll.interval.sec` is deprecated. Use `mongodb.poll.interval.ms` instead.");
+            return Duration.ofSeconds(config.getInteger(MongoDbConnectorConfig.POLL_INTERVAL_SEC));
+        }
+        return Duration.ofMillis(config.getLong(MongoDbConnectorConfig.MONGODB_POLL_INTERVAL_MS));
     }
 
     public int maxConnectionAttemptsForPrimary() {

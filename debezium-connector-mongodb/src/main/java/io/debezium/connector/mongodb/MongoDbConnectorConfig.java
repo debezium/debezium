@@ -141,6 +141,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withDefault(ReplicaSetDiscovery.ADMIN_DATABASE_NAME)
             .withDescription("Database containing user credentials.");
 
+    @Deprecated
     public static final Field POLL_INTERVAL_SEC = Field.create("mongodb.poll.interval.sec")
             .withDisplayName("Replica membership poll interval (sec)")
             .withType(Type.INT)
@@ -148,7 +149,17 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withImportance(Importance.MEDIUM)
             .withDefault(30)
             .withValidation(Field::isPositiveInteger)
-            .withDescription("Frequency in seconds to look for new, removed, or changed replica sets. Defaults to 30 seconds.");
+            .withDescription("(Deprecated, use mongodb.poll.interval.ms) Frequency in seconds to look for new, removed, " +
+                    "or changed replica sets. Defaults to 30 seconds.");
+
+    public static final Field MONGODB_POLL_INTERVAL_MS = Field.create("mongodb.poll.interval.ms")
+            .withDisplayName("Replica membership poll interval (ms)")
+            .withType(Type.LONG)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDefault(30000)
+            .withValidation(Field::isPositiveInteger)
+            .withDescription("Frequency in milliseconds to look for new, removed, or changed replica sets.  Defaults to 30000 milliseconds.");
 
     public static final Field SSL_ENABLED = Field.create("mongodb.ssl.enabled")
             .withDisplayName("Enable SSL connection to MongoDB")
@@ -351,6 +362,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
                     SOCKET_TIMEOUT_MS,
                     SERVER_SELECTION_TIMEOUT_MS,
                     POLL_INTERVAL_SEC,
+                    MONGODB_POLL_INTERVAL_MS,
                     MAX_FAILED_CONNECTIONS,
                     AUTO_DISCOVER_MEMBERS,
                     SSL_ENABLED,
