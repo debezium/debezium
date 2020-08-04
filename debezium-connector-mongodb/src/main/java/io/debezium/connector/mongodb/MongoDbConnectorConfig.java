@@ -157,7 +157,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withType(Type.LONG)
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
-            .withDefault(30000)
+            .withDefault(30000L)
             .withValidation(Field::isPositiveInteger)
             .withDescription("Frequency in milliseconds to look for new, removed, or changed replica sets.  Defaults to 30000 milliseconds.");
 
