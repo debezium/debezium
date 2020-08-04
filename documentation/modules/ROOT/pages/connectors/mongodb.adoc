@@ -947,6 +947,10 @@ See {link-prefix}:{link-mongodb-connector}#mongodb-transaction-metadata[Transact
 |10000 (10 seconds)
 |The number of milli-seconds to wait before restarting a connector after a retriable error occurs.
 
+|[[mongodb-property-mongodb-poll-interval-ms]]<<mongodb-property-mongodb-poll-interval-ms, `mongodb.poll.interval.ms`>> +
+|`30000`
+|The interval in which the connector polls for new, removed, or changed replica sets.
+
 |[[mongodb-property-mongodb-connect-timeout-ms]]<<mongodb-property-mongodb-connect-timeout-ms, `mongodb.connect.timeout.ms`>> +
 |10000 (10 seconds)
 |The number of milli-seconds the driver will wait before a new connection attempt is aborted.
