@@ -123,8 +123,7 @@ public class DebeziumServer {
             props.setProperty("transforms", transforms.get());
             configToProperties(config, props, PROP_TRANSFORMS_PREFIX, "transforms.");
         }
-        if ("pubsub".equals(name)) {
-            // DBZ-2277 explicitly disable tombstones when using Google PubSub as the sink
+        if (!consumer.supportsTombstoneEvents()) {
             props.setProperty(CommonConnectorConfig.TOMBSTONES_ON_DELETE.name(), Boolean.FALSE.toString());
         }
         props.setProperty("name", name);
