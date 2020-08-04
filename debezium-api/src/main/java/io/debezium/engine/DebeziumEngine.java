@@ -136,6 +136,15 @@ public interface DebeziumEngine<R> extends Runnable, Closeable {
          * @param committer the committer that indicates to the system that we are finished
          */
         void handleBatch(List<R> records, RecordCommitter<R> committer) throws InterruptedException;
+
+        /**
+         * Controls whether the change consumer supports processing of tombstone events.
+         *
+         * @return true if the change consumer supports tombstone events; otherwise false.  The default is true.
+         */
+        default boolean supportsTombstoneEvents() {
+            return true;
+        }
     }
 
     /**

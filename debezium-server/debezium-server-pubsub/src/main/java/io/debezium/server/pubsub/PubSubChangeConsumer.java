@@ -153,4 +153,9 @@ public class PubSubChangeConsumer extends BaseChangeConsumer implements Debezium
         LOGGER.trace("Sent messages with ids: {}", messageIds);
         committer.markBatchFinished();
     }
+
+    @Override
+    public boolean supportsTombstoneEvents() {
+        return false;
+    }
 }
