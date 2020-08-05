@@ -1,4 +1,4 @@
-// Category: cdc-using
+// Category: debezium-using
 // Type: assembly
 // ModuleID: emitting-change-event-records-in-cloudevents-format
 // Title: Emitting change event records in CloudEvents format

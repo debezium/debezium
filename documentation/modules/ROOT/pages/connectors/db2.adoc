@@ -1316,7 +1316,7 @@ Please refer to the {link-prefix}:{link-debezium-monitoring}[monitoring document
 
 The *MBean* is `debezium.db2:type=connector-metrics,context=snapshot,server=_<database.server.name>_`.
 
-include::{partialsdir}/modules/cdc-all-connectors/r_connector-monitoring-snapshot-metrics.adoc[leveloffset=+1]
+include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-snapshot-metrics.adoc[leveloffset=+1]
 
 [[db2-monitoring-streaming]]
 [[db2-streaming-metrics]]
@@ -1324,7 +1324,7 @@ include::{partialsdir}/modules/cdc-all-connectors/r_connector-monitoring-snapsho
 
 The *MBean* is `debezium.db2:type=connector-metrics,context=streaming,server=_<database.server.name>_`.
 
-include::{partialsdir}/modules/cdc-all-connectors/r_connector-monitoring-streaming-metrics.adoc[leveloffset=+1]
+include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-streaming-metrics.adoc[leveloffset=+1]
 
 [[db2-monitoring-schema-history]]
 [[db2-schema-history-metrics]]
@@ -1332,7 +1332,7 @@ include::{partialsdir}/modules/cdc-all-connectors/r_connector-monitoring-streami
 
 The *MBean* is `debezium.db2:type=connector-metrics,context=schema-history,server=_<database.server.name>_`.
 
-include::{partialsdir}/modules/cdc-all-connectors/r_connector-monitoring-schema-history-metrics.adoc[leveloffset=+1]
+include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-schema-history-metrics.adoc[leveloffset=+1]
 
 [[db2-connector-properties]]
 === Connector properties

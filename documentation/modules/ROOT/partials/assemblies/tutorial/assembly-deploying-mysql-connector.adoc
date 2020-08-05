@@ -21,10 +21,10 @@ you must:
 After the connector is registered,
 it will start monitoring the database server's `binlog` and it will generate change events for each row that changes.
 
-* xref:watching-connector-start-up[Watch the MySQL connector start up]
+* xref:watching-connector-start-up[Watch the MySQL connector start]
 +
 Reviewing the Kafka Connect log output as the connector starts helps you to better understand each task it must complete before it can start monitoring the `binlog`.
 
-include::{partialsdir}/modules/tutorial/p_registering-connector-monitor-inventory-database.adoc[leveloffset=+1]
+include::{partialsdir}/modules/tutorial/proc-registering-connector-monitor-inventory-database.adoc[leveloffset=+1]
 
-include::{partialsdir}/modules/tutorial/r_watching-connector-start-up.adoc[leveloffset=+1]
+include::{partialsdir}/modules/tutorial/ref-watching-connector-start-up.adoc[leveloffset=+1]

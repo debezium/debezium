@@ -1,0 +1,13 @@
+:context: debezium
+
+[id="enabling-jmx-local-installation"]
+= Enabling JMX in local installations
+
+With Zookeeper, Kafka, and Kafka Connect,
+you enable JMX by setting the appropriate environment variables when you start each service.
+
+include::{partialsdir}/modules/monitoring/ref-zookeeper-jmx-environment-variables.adoc[leveloffset=+1]
+
+include::{partialsdir}/modules/monitoring/ref-kafka-jmx-environment-variables.adoc[leveloffset=+1]
+
+include::{partialsdir}/modules/monitoring/ref-kafka-connect-jmx-environment-variables.adoc[leveloffset=+1]

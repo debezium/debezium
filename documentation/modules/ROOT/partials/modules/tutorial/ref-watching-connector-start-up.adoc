@@ -1,6 +1,6 @@
 
 [id="watching-connector-start-up"]
-= Watching the connector start up
+= Watching the connector start
 
 When you register a connector,
 it generates a large amount of log output in the Kafka Connect container.

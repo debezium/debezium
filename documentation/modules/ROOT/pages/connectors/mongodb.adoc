@@ -634,8 +634,8 @@ NOTE: The above example assumes you have extracted the {prodname} MongoDB connec
 
 For more information on the deployment process, and deploying connectors with AMQ Streams, refer to the {prodname} installation guides.
 
-* {LinkCDCInstallOpenShift}[{NameCDCInstallOpenShift}]
-* {LinkCDCInstallRHEL}[{NameCDCInstallRHEL}]
+* {LinkDebeziumInstallOpenShift}[{NameDebeziumInstallOpenShift}]
+* {LinkDebeziumInstallRHEL}[{NameDebeziumInstallRHEL}]
 endif::product[]
 
 ifdef::community[]
@@ -720,7 +720,7 @@ Please refer to the {link-prefix}:{link-debezium-monitoring}#monitoring-debezium
 
 The *MBean* is `debezium.mongodb:type=connector-metrics,context=snapshot,server=_<mongodb.name>_`.
 
-include::{partialsdir}/modules/cdc-all-connectors/r_connector-monitoring-snapshot-metrics.adoc[leveloffset=+1]
+include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-snapshot-metrics.adoc[leveloffset=+1]
 
 The {prodname} MongoDB connector also provides the following custom snapshot metrics:
 
@@ -739,7 +739,7 @@ The {prodname} MongoDB connector also provides the following custom snapshot met
 
 The *MBean* is `debezium.sql_server:type=connector-metrics,context=streaming,server=_<mongodb.name>_`.
 
-include::{partialsdir}/modules/cdc-all-connectors/r_connector-monitoring-streaming-metrics.adoc[leveloffset=+1]
+include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-streaming-metrics.adoc[leveloffset=+1]
 
 The {prodname} MongoDB connector also provides the following custom streaming metrics:
 
