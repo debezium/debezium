@@ -762,7 +762,7 @@ It is possible and even recommended that you use the Avro converter to dramatica
 [[postgresql-update-events]]
 === _update_ events
 
-The value of an _update_ event on the sample `customers` table has the same `schema` specification as the _create_ event example. An _update_ event`s payload has the same structure as a _create_ event for the same table. However, the _update_ event's payload contains different values, as shown in this example: 
+The value of an _update_ event on the sample `customers` table has the same `schema` specification as the _create_ event example. An _update_ event's payload has the same structure as a _create_ event for the same table. However, the _update_ event's payload contains different values, as shown in this example: 
 
 [source,json,indent=0,subs="attributes"]
 ----
@@ -944,7 +944,7 @@ The following table describes how the connector maps basic PostgreSQL data types
 |`BIT VARYING[(M)]`
 |`BYTES`
 |`io.debezium.data.Bits`
-|The `length` schema parameter contains an integer that represents the number of bits (2^31 - 1 in case no length is given for the column). The resulting `byte[]` contains the bits in little-endian form and is sized based on the content. The specified size `(M)`` is stored in the length parameter of the `io.debezium.data.Bits` type.
+|The `length` schema parameter contains an integer that represents the number of bits (2^31 - 1 in case no length is given for the column). The resulting `byte[]` contains the bits in little-endian form and is sized based on the content. The specified size `(M)` is stored in the length parameter of the `io.debezium.data.Bits` type.
 
 |`SMALLINT`, `SMALLSERIAL`
 |`INT16`
@@ -2237,7 +2237,7 @@ For example,
 
 `schemaA.table_a:regex_1;schemaB.table_b:regex_2;schemaC.table_c:regex_3`
 
-If `table_a` has a an `id` column, and `regex_1` is `^i` (matches any column that starts with `i`), the connector maps the value in `table_a`'s `id` column to a key field in change events that the connector sends to Kafka. 
+If `table_a` has a an `id` column, and `regex_1` is `^i` (matches any column that starts with `i`), the connector maps the value in ``table_a``'s `id` column to a key field in change events that the connector sends to Kafka. 
 
 |[[postgresql-publication-autocreate-mode]]<<postgresql-publication-autocreate-mode, `publication.autocreate.mode`>>
 |_all_tables_
