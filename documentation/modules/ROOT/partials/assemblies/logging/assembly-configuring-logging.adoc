@@ -14,6 +14,6 @@ For more information about using Log4j,
 search for tutorials to set up and use appenders to send log messages to specific destinations.
 ====
 
-include::{partialsdir}/modules/logging/p_changing-logging-level.adoc[leveloffset=+1]
+include::{partialsdir}/modules/logging/proc-changing-logging-level.adoc[leveloffset=+1]
 
-include::{partialsdir}/modules/logging/p_adding-mapped-diagnostic-contexts.adoc[leveloffset=+1]
+include::{partialsdir}/modules/logging/proc-adding-mapped-diagnostic-contexts.adoc[leveloffset=+1]

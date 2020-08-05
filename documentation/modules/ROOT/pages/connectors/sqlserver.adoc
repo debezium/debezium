@@ -1,4 +1,4 @@
-[id="debezium-connector-for-sql-server"]
+DebeziumInstall[id="debezium-connector-for-sql-server"]
 = {prodname} Connector for SQL Server
 
 ifdef::community[]
@@ -1207,8 +1207,8 @@ NOTE: The above example assumes you have extracted the {prodname} SQL Server con
 
 For more information on the deployment process, and deploying connectors with AMQ Streams, refer to the {prodname} installation guides.
 
-* {LinkCDCInstallOpenShift}[{NameCDCInstallOpenShift}]
-* {LinkCDCInstallRHEL}[{NameCDCInstallRHEL}]
+* {LinkDebeziumInstallOpenShift}[{NameDebeziumInstallOpenShift}]
+* {LinkDebeziumInstallRHEL}[{NameCDCInstallRHEL}]
 endif::product[]
 
 ifdef::community[]
@@ -1323,21 +1323,21 @@ Please refer to the {link-prefix}:{link-debezium-monitoring}[monitoring document
 
 The *MBean* is `debezium.sql_server:type=connector-metrics,context=snapshot,server=_<database.server.name>_`.
 
-include::{partialsdir}/modules/cdc-all-connectors/r_connector-monitoring-snapshot-metrics.adoc[leveloffset=+1]
+include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-snapshot-metrics.adoc[leveloffset=+1]
 
 [[sqlserver-streaming-metrics]]
 ==== Streaming Metrics
 
 The *MBean* is `debezium.sql_server:type=connector-metrics,context=streaming,server=_<database.server.name>_`.
 
-include::{partialsdir}/modules/cdc-all-connectors/r_connector-monitoring-streaming-metrics.adoc[leveloffset=+1]
+include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-streaming-metrics.adoc[leveloffset=+1]
 
 [[sqlserver-schema-history-metrics]]
 ==== Schema History Metrics
 
 The *MBean* is `debezium.sql_server:type=connector-metrics,context=schema-history,server=_<database.server.name>_`.
 
-include::{partialsdir}/modules/cdc-all-connectors/r_connector-monitoring-schema-history-metrics.adoc[leveloffset=+1]
+include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-schema-history-metrics.adoc[leveloffset=+1]
 
 [[sqlserver-connector-properties]]
 === Connector properties

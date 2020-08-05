@@ -10,8 +10,8 @@ Thus, {prodname}'s Docker images for Zookeeper, Kafka, and Kafka Connect use sev
 Most of the environment variables are the same for all of the images,
 but there are some minor differences.
 
-include::{partialsdir}/modules/monitoring/r_zookeeper-jmx-environment-variables-docker.adoc[leveloffset=+1]
+include::{partialsdir}/modules/monitoring/ref-zookeeper-jmx-environment-variables-docker.adoc[leveloffset=+1]
 
-include::{partialsdir}/modules/monitoring/r_kafka-jmx-environment-variables-docker.adoc[leveloffset=+1]
+include::{partialsdir}/modules/monitoring/ref-kafka-jmx-environment-variables-docker.adoc[leveloffset=+1]
 
-include::{partialsdir}/modules/monitoring/r_kafka-connect-jmx-environment-variables-docker.adoc[leveloffset=+1]
+include::{partialsdir}/modules/monitoring/ref-kafka-connect-jmx-environment-variables-docker.adoc[leveloffset=+1]
