@@ -21,6 +21,7 @@ Andrey Pustovetov
 Andy Teijelo
 Anton Kondratev
 Anton Martynov
+Arik Cohen
 Arkoprabho Chakraborti
 artiship
 Ashhar Hasan
@@ -33,6 +34,7 @@ Ben Hardesty
 Ben Williams
 Bin Li
 Bingqin Zhou
+Björn Häuser
 Braden Groom
 Braden Staudacher
 Brandon Brown
@@ -44,6 +46,7 @@ Chris Riccomini
 Christian Posta
 Cliff Wheadon
 Collin Van Dyck
+Cory Harper
 Cyril Scetbon
 Daan Roosen
 Dave Cumberland
@@ -105,6 +108,7 @@ John Graf
 John Martin
 John Psoroulas
 Jon Casstevens
+Jonas Lins
 Jordan Bragg
 Jork Zijlstra
 Jos Huiting
