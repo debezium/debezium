@@ -415,7 +415,7 @@ https://pulsar.apache.org/[Apache Pulsar] is high-performance, low-latency serve
 Pulsar exposes a REST APIs and a native endopint provides a (not-only) Java client that is used to implement the sink.
 
 [cols="35%a,10%a,55%a",options="header"]
-|=======================
+|===
 |Property
 |Default
 |Description
@@ -448,7 +448,7 @@ This is not supported by Pulsar so a surrogate key must be used.
 https://docs.microsoft.com/azure/event-hubs/event-hubs-about[Azure Event Hubs] is a big data streaming platform and event ingestion service that can receive and process millions of events per second. Data sent to an event hub can be transformed and stored by using any real-time analytics provider or batching/storage adapters.
 
 [cols="35%a,10%a,55%a",options="header"]
-|=======================
+|===
 |Property
 |Default
 |Description
@@ -494,7 +494,7 @@ When the alternative implementations are not available then the default ones are
 |`@CustomConsumerBuilder`
 |Custom configured instance of a `EventHubProducerClient` used to send messages.
 
-|=======================
+|===
 
 == Extensions
 
