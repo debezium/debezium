@@ -1,4 +1,4 @@
-DebeziumInstall[id="debezium-connector-for-sql-server"]
+[id="debezium-connector-for-sql-server"]
 = {prodname} Connector for SQL Server
 
 ifdef::community[]
@@ -1208,7 +1208,7 @@ NOTE: The above example assumes you have extracted the {prodname} SQL Server con
 For more information on the deployment process, and deploying connectors with AMQ Streams, refer to the {prodname} installation guides.
 
 * {LinkDebeziumInstallOpenShift}[{NameDebeziumInstallOpenShift}]
-* {LinkDebeziumInstallRHEL}[{NameCDCInstallRHEL}]
+* {LinkDebeziumInstallRHEL}[{NameDebeziumInstallRHEL}]
 endif::product[]
 
 ifdef::community[]
