@@ -1,4 +1,4 @@
-// Category: cdc-using
+// Category: debezium-using
 // Type: assembly
 
 ifdef::community[]

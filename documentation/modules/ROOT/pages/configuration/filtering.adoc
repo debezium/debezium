@@ -73,12 +73,12 @@ value.op == 'u' && value.before.id == 2
 ----
 
 [TIP]
-----
+====
 The {prodname} MongoDB connector emits the `after` and `patch` fields not as structures but as serialized JSON documents.
 This means that when you are using the SMT with the MongoDB connector you should either first apply {link-prefix}:{link-mongodb-event-flattening}[`ExtractNewDocumentState]) SMT to unwind the field or use a JSON parser in the expression.
 
 In case of Groovy it means adding `groovy-json` artifact on the classpath and write the expression like `(new groovy.json.JsonSlurper()).parseText(value.after).last_name == 'Kretchmar'`.
-----
+====
 
 Other languages, such as JavaScript, will typically require to  call the `Struct#get()` method:
 

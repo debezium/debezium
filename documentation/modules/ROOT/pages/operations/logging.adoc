@@ -20,10 +20,10 @@ This is often sufficient when the connector is operating normally,
 but may not be enough when the connector is behaving unexpectedly.
 In such cases, you can change the logging level so that the connector generates much more verbose log messages describing what the connector is doing and what it is not doing.
 
-include::{partialsdir}/modules/logging/c_logging-concepts.adoc[leveloffset=+1]
+include::{partialsdir}/modules/logging/con-logging-concepts.adoc[leveloffset=+1]
 
-include::{partialsdir}/modules/logging/c_understanding-default-logging-configuration.adoc[leveloffset=+1]
+include::{partialsdir}/modules/logging/con-understanding-default-logging-configuration.adoc[leveloffset=+1]
 
-include::{partialsdir}/assemblies/logging/as_configuring-logging.adoc[leveloffset=+1]
+include::{partialsdir}/assemblies/logging/assembly-configuring-logging.adoc[leveloffset=+1]
 
-include::{partialsdir}/modules/logging/p_configuring-log-level-docker.adoc[leveloffset=+1]
+include::{partialsdir}/modules/logging/proc-configuring-log-level-docker.adoc[leveloffset=+1]

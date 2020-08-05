@@ -1,4 +1,4 @@
-// Category: cdc-using
+// Category: debezium-using
 // Type: concept
 // ModuleID: description-of-debezium-architecture
 // Title: Description of Debezium architecture

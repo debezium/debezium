@@ -32,11 +32,11 @@
 
 |`Connected`
 |`boolean`
-|Flag that denotes whether the connector is currently connected to the database server.
+|`Flag that denotes whether the connector is currently connected to the database server.
 
 |`MilliSecondsBehindSource`
 |`long`
-|The number of milliseconds between the last change event's timestamp and the connector processing it.
+|`The number of milliseconds between the last change event's timestamp and the connector processing it.
 The values will incoporate any differences between the clocks on the machines where the database server and the connector are running.
 
 |`NumberOfCommittedTransactions`

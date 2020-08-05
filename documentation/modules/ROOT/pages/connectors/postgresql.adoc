@@ -1752,9 +1752,9 @@ To deploy a {prodname} PostgreSQL connector, install the {prodname} PostgreSQL c
 [id="steps-for-installing-debezium-postgresql-connectors"]
 === Steps for installing {prodname} PostgreSQL connectors
 
-To install the PostgreSQL connector, follow the procedures in {LinkCDCInstallOpenShift}[{NameCDCInstallOpenShift}]. The main steps are:
+To install the PostgreSQL connector, follow the procedures in {LinkDebeziumInstallOpenShift}[{NameDebeziumInstallOpenShift}]. The main steps are:
 
-. {LinkCDCUserGuide}#setting-up-postgresql-to-run-a-debezium-connector[Set up PostgreSQL to run a {prodname} connector].
+. {LinkDebeziumUserGuide}#setting-up-postgresql-to-run-a-debezium-connector[Set up PostgreSQL to run a {prodname} connector].
 
 . Use link:https://access.redhat.com/products/red-hat-amq#streams[Red Hat AMQ Streams] to set up Apache Kafka and Kafka Connect on OpenShift. AMQ Streams offers operators and images that bring Kafka to OpenShift. 
 
@@ -1945,7 +1945,7 @@ spec:
 +
 * In the `install/cluster-operator/050-Deployment-strimzi-cluster-operator.yaml` file, edit the `STRIMZI_DEFAULT_KAFKA_CONNECT_IMAGE` variable to point to the new container image and reinstall the Cluster Operator. If you edit this file you must apply it to your OpenShift cluster.
 
-. Create a `KafkaConnector` custom resource that defines your {prodname} PostgreSQL connector instance. See {LinkCDCUserGuide}#debezium-postgresql-connector-configuration-example[the connector configuration example].
+. Create a `KafkaConnector` custom resource that defines your {prodname} PostgreSQL connector instance. See {LinkDebeziumUserGuide}#debezium-postgresql-connector-configuration-example[the connector configuration example].
 
 . Apply the connector instance, for example: 
 +
@@ -1997,7 +1997,7 @@ The {prodname} PostgreSQL connector provides two types of metrics that are in ad
 
 The *MBean* is `debezium.postgres:type=connector-metrics,context=snapshot,server=_<database.server.name>_`.
 
-include::{partialsdir}/modules/cdc-all-connectors/r_connector-monitoring-snapshot-metrics.adoc[leveloffset=+1]
+include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-snapshot-metrics.adoc[leveloffset=+1]
 
 // Type: reference
 // ModuleID: monitoring-debezium-postgresql-connector-record-streaming
@@ -2007,7 +2007,7 @@ include::{partialsdir}/modules/cdc-all-connectors/r_connector-monitoring-snapsho
 
 The *MBean* is `debezium.postgres:type=connector-metrics,context=streaming,server=_<database.server.name>_`.
 
-include::{partialsdir}/modules/cdc-all-connectors/r_connector-monitoring-streaming-metrics.adoc[leveloffset=+1]
+include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-streaming-metrics.adoc[leveloffset=+1]
 
 // Type: reference
 // ModuleID: descriptions-of-debezium-postgresql-connector-configuration-properties
