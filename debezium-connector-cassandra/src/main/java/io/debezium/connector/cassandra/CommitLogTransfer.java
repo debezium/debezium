@@ -35,4 +35,9 @@ public interface CommitLogTransfer {
      * Transfer a commit log that has not been successfully processed.
      */
     void onErrorTransfer(File file);
+
+    /**
+     * Get all error commitLog files into cdc_raw directory for re-processing.
+     */
+    void getErrorCommitLogs();
 }

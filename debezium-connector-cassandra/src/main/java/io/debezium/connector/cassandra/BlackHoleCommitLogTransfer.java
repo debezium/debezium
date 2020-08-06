@@ -21,4 +21,7 @@ public class BlackHoleCommitLogTransfer implements CommitLogTransfer {
     public void onErrorTransfer(File file) {
         CommitLogUtil.deleteCommitLog(file);
     }
+
+    @Override
+    public void getErrorCommitLogs() {}
 }

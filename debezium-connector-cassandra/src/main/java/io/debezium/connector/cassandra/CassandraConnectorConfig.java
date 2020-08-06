@@ -178,6 +178,13 @@ public class CassandraConnectorConfig extends CommonConnectorConfig {
             .withType(Type.BOOLEAN).withDefault(DEFAULT_COMMIT_LOG_POST_PROCESSING_ENABLED);
 
     /**
+     * Determine if CommitLogProcessor should re-process error commitLogFiles.
+     */
+    public static final boolean DEFAULT_COMMIT_LOG_ERROR_REPROCESSING_ENABLED = false;
+    public static final Field COMMIT_LOG_ERROR_REPROCESSING_ENABLED = Field.create("commit.log.error.reprocessing.enabled")
+            .withType(Type.BOOLEAN).withDefault(DEFAULT_COMMIT_LOG_ERROR_REPROCESSING_ENABLED);
+
+    /**
      * The fully qualified {@link CommitLogTransfer} class used to transfer commit logs.
      * The default option will delete all commit log files after processing (successful or otherwise).
      * You can extend a custom implementation.
@@ -343,6 +350,10 @@ public class CassandraConnectorConfig extends CommonConnectorConfig {
 
     public boolean postProcessEnabled() {
         return this.getConfig().getBoolean(COMMIT_LOG_POST_PROCESSING_ENABLED);
+    }
+
+    public boolean errorCommitLogReprocessEnabled() {
+        return this.getConfig().getBoolean(COMMIT_LOG_ERROR_REPROCESSING_ENABLED);
     }
 
     public CommitLogTransfer getCommitLogTransfer() {

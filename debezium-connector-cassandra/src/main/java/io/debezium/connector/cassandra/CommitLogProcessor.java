@@ -40,6 +40,8 @@ public class CommitLogProcessor extends AbstractProcessor {
     private final boolean latestOnly;
     private final CommitLogProcessorMetrics metrics = new CommitLogProcessorMetrics();
     private boolean initial = true;
+    private final boolean errorCommitLogReprocessEnabled;
+    private final CommitLogTransfer commitLogTransfer;
 
     public CommitLogProcessor(CassandraConnectorContext context) throws IOException {
         super(NAME, 0);
@@ -63,6 +65,8 @@ public class CommitLogProcessor extends AbstractProcessor {
             }
         };
         latestOnly = context.getCassandraConnectorConfig().latestCommitLogOnly();
+        errorCommitLogReprocessEnabled = context.getCassandraConnectorConfig().errorCommitLogReprocessEnabled();
+        commitLogTransfer = context.getCassandraConnectorConfig().getCommitLogTransfer();
     }
 
     @Override
@@ -82,7 +86,9 @@ public class CommitLogProcessor extends AbstractProcessor {
             processLastModifiedCommitLog();
             throw new InterruptedException();
         }
-
+        if (errorCommitLogReprocessEnabled) {
+            commitLogTransfer.getErrorCommitLogs();
+        }
         if (initial) {
             LOGGER.info("Reading existing commit logs in {}", cdcDir);
             File[] commitLogFiles = CommitLogUtil.getCommitLogs(cdcDir);
@@ -115,7 +121,7 @@ public class CommitLogProcessor extends AbstractProcessor {
                 }
                 LOGGER.info("Successfully processed commit log {}", file.getName());
             }
-            catch (IOException e) {
+            catch (Exception e) {
                 if (!latestOnly) {
                     queue.enqueue(new EOFEvent(file, false));
                 }
