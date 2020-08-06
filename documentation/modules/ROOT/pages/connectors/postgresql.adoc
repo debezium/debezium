@@ -1016,7 +1016,7 @@ The following table describes how the connector maps basic PostgreSQL data types
 |`BYTEA`
 |`BYTES` or `STRING`
 |n/a
-|Either the raw bytes (the default), a base64-encoded string, or a hex-encoded string, based on the connector's {link-prefix}:{link-postgresql-connector}#connector-property-binary-handling-mode[binary handling mode] setting.
+|Either the raw bytes (the default), a base64-encoded string, or a hex-encoded string, based on the connector's {link-prefix}:{link-postgresql-connector}#postgresql-property-binary-handling-mode[binary handling mode] setting.
 
 |`JSON`, `JSONB`
 |`STRING`
@@ -1504,12 +1504,12 @@ ifdef::community[]
 [[postgresql-on-amazon-rds]]
 ==== PostgreSQL on Amazon RDS
 
-It is possible to monitor a PostgreSQL database that is running in link:https://aws.amazon.com/rds/[Amazon RDS]. To get it running, you must fulfill the following conditions:
+It is possible to capture changes in a PostgreSQL database that is running in link:https://aws.amazon.com/rds/[Amazon RDS]. To do this:
 
-* The instance parameter `rds.logical_replication` is set to `1`.
+* Set the instance parameter `rds.logical_replication` to `1`.
 * Verify that the `wal_level` parameter is set to `logical` by running the query `SHOW wal_level` as the database master user. This might not be the case in multi-zone replication setups.
-You cannot set this option manually. It is link:https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_WorkingWithParamGroups.html[automatically changed]) when the `rds.logical_replication` is set to `1`.
-If the `wal_level` is not `logical` after the change above, it is probably because the instance has to be restarted due to the parameter group change. This happens according to your maintenance window or can be done manually.
+You cannot set this option manually. It is link:https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_WorkingWithParamGroups.html[automatically changed] when the `rds.logical_replication` parameter is set to `1`.
+If the `wal_level` is not `logical` after the change above, it is probably because the instance has to be restarted due to the parameter group change. This happens according to your maintenance window or you can do it manually.
 * Set the  {prodname} `plugin.name` parameter to `wal2json`. You can skip this on PostgreSQL 10+ if you plan to use `pgoutput` logical replication stream support.
 * Use the database master account for replication as RDS currently does not support setting of `REPLICATION` privilege for another account.
 
@@ -1530,11 +1530,9 @@ As of January 2019, the following PostgreSQL versions on RDS come with an up-to-
 [[postgresql-on-azure]]
 ==== PostgreSQL on Azure
 
-It is possible to use Debezium with https://docs.microsoft.com/azure/postgresql/[Azure Database for PostgreSQL] that has support for `wal2json` and `pgoutput` plugins, both of which are supported by Debezium as well.
+It is possible to use {prodname} with link:https://docs.microsoft.com/azure/postgresql/[Azure Database for PostgreSQL], which has support for the `wal2json` and `pgoutput` plug-ins, both of which are supported by {prodname} as well.
 
-Set the Azure replication support to `logical`. You can use the https://docs.microsoft.com/en-us/azure/postgresql/concepts-logical#using-azure-cli[Azure CLI] or the https://docs.microsoft.com/en-us/azure/postgresql/concepts-logical#using-azure-portal[Azure Portal] to configure this.
-
-For example, if you were to choose the Azure CLI, here are the https://docs.microsoft.com/cli/azure/postgres/server?view=azure-cli-latest[`az postgres server`] commands which you will need to execute:
+Set the Azure replication support to `logical`. You can use the link:https://docs.microsoft.com/en-us/azure/postgresql/concepts-logical#using-azure-cli[Azure CLI] or the link:https://docs.microsoft.com/en-us/azure/postgresql/concepts-logical#using-azure-portal[Azure Portal] to configure this. For example, to use the Azure CLI, here are the link:https://docs.microsoft.com/cli/azure/postgres/server?view=azure-cli-latest[`az postgres server`] commands that you need to execute:
 
 ```
 az postgres server configuration set --resource-group mygroup --server-name myserver --name azure.replication_support --value logical
@@ -1544,7 +1542,7 @@ az postgres server restart --resource-group mygroup --name myserver
 
 [IMPORTANT]
 ====
-While using the `pgoutput` plugin, it is recommended that you configure `filtered` as the {link-prefix}:{link-postgresql-connector}#postgresql-publication-autocreate-mode[`publication.autocreate.mode`]. If you use `all_tables` (which is the default value for `publication.autocreate.mode`) and the publication is not found, the connector will try to create one using `CREATE PUBLICATION <publication_name> FOR ALL TABLES;` which will fail due to lack of permissions.
+While using the `pgoutput` plug-in, it is recommended that you configure `filtered` as the {link-prefix}:{link-postgresql-connector}#postgresql-publication-autocreate-mode[`publication.autocreate.mode`]. If you use `all_tables`, which is the default value for `publication.autocreate.mode`, and the publication is not found, the connector tries to create one by using `CREATE PUBLICATION <publication_name> FOR ALL TABLES;`, but this fails due to lack of permissions.
 ====
 
 [[installing-postgresql-output-plugin]]
@@ -1577,7 +1575,7 @@ The {prodname} logical decoding plug-ins have been installed and tested on only 
 ====
 
 [[postgresql-differences-between-plugins]]
-=== Differences between plug-ins
+=== Plug-in differences
 
 Plug-in behavior is not completely the same for all cases.
 These differences have been identified:
@@ -2272,7 +2270,7 @@ If `table_a` has a an `id` column, and `regex_1` is `^i` (matches any column tha
 
 `filtered` - If a publication exists, the connector uses it. If no publication exists, the connector creates a new publication for tables that match the current filter configuration as specified by the `database.blacklist`, `database.whitelist`, `table.blacklist`, and `table.whitelist` connector configuration properties. For example: `CREATE PUBLICATION <publication_name> FOR TABLE <tbl1, tbl2, etc>`.
 
-|[[connector-property-binary-handling-mode]]<<connector-property-binary-handling-mode, `binary.handling.mode`>>
+|[[postgresql-property-binary-handling-mode]]<<postgresql-property-binary-handling-mode, `binary.handling.mode`>>
 |bytes
 |Specifies how binary (`bytea`) columns should be represented in change events:
 
@@ -2358,7 +2356,7 @@ A possible use case for setting these properties is large, append-only tables. Y
 |`false`
 |Specifies connector behavior when the connector encounters a field whose data type is unknown. The default behavior is that the connector omits the field from the change event and logs a warning. 
 
-Set this property to `true` if you want the change event to contain an opaque binary representation of the field. This lets consumers decode the field. You can control the exact representation by setting the {link-prefix}:{link-postgresql-connector}#connector-property-binary-handling-mode[`binary handling mode`] property. 
+Set this property to `true` if you want the change event to contain an opaque binary representation of the field. This lets consumers decode the field. You can control the exact representation by setting the {link-prefix}:{link-postgresql-connector}#postgresql-property-binary-handling-mode[`binary handling mode`] property. 
 
 NOTE: Consumers risk backward compatibility issues when `include.unknown.datatypes` is set to `true`. Not only may the database-specific binary representation change between releases, but if the data type is eventually supported by {prodname}, the data type will be sent downstream in a logical type, which would require adjustments by consumers. In general, when encountering unsupported data types, create a feature request so that support can be added.
 
