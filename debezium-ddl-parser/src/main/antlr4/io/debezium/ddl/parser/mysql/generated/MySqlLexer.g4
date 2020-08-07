@@ -567,6 +567,7 @@ RESET:                               'RESET';
 RESUME:                              'RESUME';
 RETURNED_SQLSTATE:                   'RETURNED_SQLSTATE';
 RETURNS:                             'RETURNS';
+ROLE:                                'ROLE';
 ROLLBACK:                            'ROLLBACK';
 ROLLUP:                              'ROLLUP';
 ROTATE:                              'ROTATE';
@@ -683,6 +684,7 @@ SHUTDOWN:                            'SHUTDOWN';
 SUPER:                               'SUPER';
 PRIVILEGES:                          'PRIVILEGES';
 SESSION_VARIABLES_ADMIN:             QUOTE_SYMB? 'SESSION_VARIABLES_ADMIN' QUOTE_SYMB?;
+BACKUP_ADMIN:                        'BACKUP_ADMIN';
 
 
 // Charsets
