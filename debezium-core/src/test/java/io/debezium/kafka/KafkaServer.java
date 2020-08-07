@@ -20,6 +20,7 @@ import io.debezium.util.IoUtil;
 
 import kafka.admin.RackAwareMode;
 import kafka.log.Log;
+import kafka.metrics.KafkaMetricsReporter;
 import kafka.server.KafkaConfig;
 import kafka.zk.AdminZkClient;
 import scala.collection.JavaConverters;
@@ -216,7 +217,7 @@ public class KafkaServer {
         try {
             LOGGER.debug("Starting Kafka broker {} at {} with storage in {}", brokerId, getConnection(), logsDir.getAbsolutePath());
             server = new kafka.server.KafkaServer(new KafkaConfig(config), Time.SYSTEM, scala.Option.apply(null),
-                    new scala.collection.mutable.ArraySeq<>(0));
+                    new scala.collection.mutable.ArraySeq.ofRef<>(new KafkaMetricsReporter[0]));
             server.startup();
             LOGGER.info("Started Kafka server {} at {} with storage in {}", brokerId, getConnection(), logsDir.getAbsolutePath());
             adminZkClient = new AdminZkClient(server.zkClient());
