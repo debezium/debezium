@@ -990,7 +990,7 @@ The *MBean* is `debezium.oracle:type=connector-metrics,context=snapshot,server=_
 The *MBean* is `debezium.oracle:type=connector-metrics,context=streaming,server=_<database.server.name>_`.
 
 [cols="30%a,10%a,60%a",options="header"]
-|====
+|===
 |Attribute Name
 |Type
 |Description
