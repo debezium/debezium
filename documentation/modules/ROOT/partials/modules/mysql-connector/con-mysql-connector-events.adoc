@@ -3,15 +3,67 @@
 [id="mysql-connector-events_{context}"]
 = MySQL connector events
 
-All data change events produced by the {prodname} MySQL connector contain a key and a value. The change event key and the change event value each contain a _schema_ and a _payload_ where the schema describes the structure of the payload and the payload contains the data.
+The {prodname} MySQL connector generates a data change event for each row-level `INSERT`, `UPDATE`, and `DELETE` operation. Each event contains a key and a value. The structure of the key and the value depends on the table that was changed. 
 
-WARNING: The MySQL connector ensures that all Kafka Connect schema names adhere to the link:http://avro.apache.org/docs/current/spec.html#names[Avro schema name format]. This is important as any character that is not a latin letter or underscore is replaced by an underscore which can lead to unexpected conflicts in schema names when the logical server names, database names, and table names container other characters that are replaced with these underscores.
+{prodname} and Kafka Connect are designed around _continuous streams of event messages_. However, the structure of these events may change over time, which can be difficult for consumers to handle. To address this, each event contains the schema for its content, which makes each event self-contained. The following skeleton JSON shows the basic structure of a change event: 
 
-== Change event key
+[source,json,index=0]
+----
+{
+ "schema": { //<1>
+   ...
+  },
+ "payload": { //<2>
+   ...
+ },
+ "schema": { //<3> 
+   ...
+ },
+ "payload": { //<4>
+   ...
+ },
+}
+----
 
-For any given table, the change event's key has a structure that contains a field for each column in the `PRIMARY KEY` (or unique constraint) at the time the event was created. Let us look at an example table and then how the schema and payload would appear for the table.
+.Overview of change event basic content
+[cols="1,2,7",options="header"]
+|===
+|Item |Field name |Description
 
-.example table
+|1
+|`schema`
+|The first `schema` field is part of the event key. It specifies a Kafka Connect schema that describes what is in the event key's `payload` portion. In other words, the first `schema` field describes the structure of the primary key for the table that was changed.
+
+|2
+|`payload`
+|The first `payload` field is part of the event key. It has the structure described by the previous `schema` field and it contains the key for the row that was changed. 
+
+|3
+|`schema`
+|The second `schema` field is part of the event value. It specifies the Kafka Connect schema that describes what is in the event value's `payload` portion. In other words, the second `schema` describes the structure of the row that was changed. Typically, this schema contains nested schemas. 
+
+|4
+|`payload`
+|The second `payload` field is part of the event value. It has the structure described by the previous `schema` field and it contains the actual data for the row that was changed.
+
+|===
+
+By default, the connector streams change event records to topics with names that are the same as the event's originating table. See {link-prefix}:{link-mysql-connector}#the-mysql-connector-and-kafka-topics_{context}[MySQL connector and Kafka topics].
+
+[WARNING]
+====
+The MySQL connector ensures that all Kafka Connect schema names adhere to the link:http://avro.apache.org/docs/current/spec.html#names[Avro schema name format]. This means that the logical server name must start with a Latin letter or an underscore, that is, a-z, A-Z, or \_. Each remaining character in the logical server name and each character in the database and table names must be a Latin letter, a digit, or an underscore, that is, a-z, A-Z, 0-9, or \_. If there is an invalid character it is replaced with an underscore character.
+
+This can lead to unexpected conflicts if the logical server name, a database name, or a table name contains invalid characters, and the only characters that distinguish names from one another are invalid and thus replaced with underscores.
+====
+
+== Change event keys
+
+A change event's key contains the schema for the changed table's key and the changed row's actual key. Both the schema and its corresponding payload contain a field for each column in the changed table's `PRIMARY KEY` (or unique constraint) at the time the connector created the event.
+
+Consider the following `customers` table, which is followed by an example of a change event key for this table. 
+
+.Example table
 [source,sql]
 ----
 CREATE TABLE customers (
@@ -22,16 +74,17 @@ CREATE TABLE customers (
 ) AUTO_INCREMENT=1001;
 ----
 
-=====
-.example change event key
-[source,json]
+.Example change event key
+Every change event that captures a change to the `customers` table has the same event key schema. For as long as the `customers` table has the previous definition, every change event that captures a change to the `customers` table has the following key structure. In JSON, it looks like this:
+
+[source,json,index=0]
 ----
 {
  "schema": { <1>
     "type": "struct",
- "name": "mysql-server-1.inventory.customers.Key", <2>
- "optional": false, <3>
- "fields": [ <4>
+    "name": "mysql-server-1.inventory.customers.Key", <2>
+    "optional": false, <3>
+    "fields": [ <4>
       {
         "field": "id",
         "type": "int32",
@@ -44,77 +97,44 @@ CREATE TABLE customers (
   }
 }
 ----
-<1> The `schema` describes what is in the `payload`.
-<2> The `mysql-server-1.inventory.customers.Key` is the name of the schema which defines the structure where `mysql-server-1` is the connector name, `inventory` is the database, and `customers` is the table.
-<3> Denotes that the `payload` is not optional.
-<4> Specifies the type of fields expected in the `payload`.
-<5> The payload itself, which in this case only contains a single `id` field.
 
-This key describes the row in the `inventory.customers` table which is out from the connector entitled `mysql-server-1` whose `id` primary key column has a value of `1001`.
-=====
-
-== Change event value
-
-The change event value contains a schema and a payload section. There are three types of change event values which have an envelope structure. The fields in this structure are explained below and marked on each of the change event value examples.
-
-* <<Create change event value>>
-* <<Update change event value>>
-* <<Delete change event value>>
-
-[cols="1,2,7"]
+.Description of change event key
+[cols="1,2,7",options="header"]
 |===
 |Item |Field name |Description
 
 |1
-| `name`
-| `mysql-server-1.inventory.customers.Key` is the name of the schema which defines the structure where `mysql-server-1` is the connector name, `inventory` is the database and `customers` is the table
+|`schema`
+|The schema portion of the key specifies a Kafka Connect schema that describes what is in the key's `payload` portion. 
 
 |2
-|`op`
-a| A *mandatory* string that describes the type of operation.
+|`mysql-server-1.inventory.customers.Key`
+a|Name of the schema that defines the structure of the key's payload. This schema describes the structure of the primary key for the table that was changed. Key schema names have the format _connector-name_._database-name_._table-name_.`Key`. In this example: + 
 
-.values
-* `c` = create
-* `u` = update
-* `d` = delete
-* `r` = read (_initial snapshot_ only)
+* `mysql-server-1` is the name of the connector that generated this event. + 
+* `inventory` is the database that contains the table that was changed. +
+* `customers` is the table that was updated.
 
 |3
-|`before`
-| An optional field that specifies the state of the row before the event occurred.
+|`optional`
+|Indicates whether the event key must contain a value in its `payload` field. In this example, a value in the key's payload is required. A value in the key's payload field is optional when a table does not have a primary key.
 
 |4
-|`after`
-| An optional field that specifies the state of the row after the event occurred.
+|`fields` 
+|Specifies each field that is expected in the `payload`, including each field's name, type, and whether it is required.
 
 |5
-|`source`
-a| A *mandatory* field that describes the source metadata for the event including:
-
-* the {prodname} version
-* the connector name
-* the binlog name where the event was recorded
-* the binlog position
-* the row within the event
-* if the event was part of a snapshot
-* the name of the affected database and table
-* the id of the MySQL thread creating the event (non-snapshot only)
-* the MySQL server ID (if available)
-* timestamp
-
-NOTE: If the {link-prefix}:{link-mysql-connector}#enable-query-log-events-for-cdc_{context}[binlog_rows_query_log_events] option is enabled and the connector has the `include.query` option enabled, a `query` field is displayed which contains the original SQL statement that generated the event.
-
-|6
-|`ts_ms`
-a| An optional field that displays the time at which the connector processed the event.
-
-NOTE: The time is based on the system clock in the JVM running the Kafka Connect task.
+|`payload`
+|Contains the key for the row for which this change event was generated. In this example, the key, contains a single `id` field whose value is `1001`.
 
 |===
 
-Let us look at an example table and then how the schema and payload would appear for the table.
+== Change event values
 
-.example table
+The value in a change event is a bit more complicated than the key. Like the key, the value has a `schema` section and a `payload` section. The `schema` section contains the schema that describes the `Envelope` structure of the `payload` section, including its nested fields. Change events for operations that create, update or delete data all have a value payload with an envelope structure. 
+
+Consider the same sample table that was used to show an example of a change event key: 
+
 [source,sql]
 ----
 CREATE TABLE customers (
@@ -125,9 +145,16 @@ CREATE TABLE customers (
 ) AUTO_INCREMENT=1001;
 ----
 
-=== Create change event value
+The value portion of a change event for a change to this table is described for each event type: 
 
-This example shows a _create_ event for the `customers` table:
+* <<mysql-create-events,_create_ events>>
+* <<mysql-update-events,_update_ events>>
+* <<mysql-delete-events,_delete_ events>>
+
+[id="mysql-create-events"]
+=== _create_ events
+
+The following example shows the value portion of a change event that the connector generates for an operation that creates data in the `customers` table: 
 
 [source,json,options="nowrap",subs="+attributes"]
 ----
@@ -160,7 +187,7 @@ This example shows a _create_ event for the `customers` table:
           }
         ],
         "optional": true,
-        "name": "mysql-server-1.inventory.customers.Value",
+        "name": "mysql-server-1.inventory.customers.Value", // <2>
         "field": "before"
       },
       {
@@ -188,7 +215,7 @@ This example shows a _create_ event for the `customers` table:
           }
         ],
         "optional": true,
-        "name": "mysql-server-1.inventory.customers.Value",
+        "name": "mysql-server-1.inventory.customers.Value", // <2>
         "field": "after"
       },
       {
@@ -267,7 +294,7 @@ This example shows a _create_ event for the `customers` table:
           }
         ],
         "optional": false,
-        "name": "io.product.connector.mysql.Source",
+        "name": "io.product.connector.mysql.Source", // <2>
         "field": "source"
       },
       {
@@ -282,19 +309,19 @@ This example shows a _create_ event for the `customers` table:
       }
     ],
     "optional": false,
-    "name": "mysql-server-1.inventory.customers.Envelope"
+    "name": "mysql-server-1.inventory.customers.Envelope" // <2>
   },
-  "payload": { // <2>
-    "op": "c",
-    "ts_ms": 1465491411815,
-    "before": null,
-    "after": {
+  "payload": { // <3>
+    "op": "c", // <4>
+    "ts_ms": 1465491411815, // <5>
+    "before": null, // <6>
+    "after": { // <7>
       "id": 1004,
       "first_name": "Anne",
       "last_name": "Kretchmar",
       "email": "annek@noanswer.org"
     },
-    "source": {
+    "source": { // <8>
       "version": "{debezium-version}",
       "connector": "mysql",
       "name": "mysql-server-1",
@@ -313,28 +340,84 @@ This example shows a _create_ event for the `customers` table:
   }
 }
 ----
-<1> The `schema` portion of this event’s _value_ shows the schema for the envelope, the schema for the source structure (which is specific to the MySQL connector and reused across all events), and the table-specific schemas for the `before` and `after` fields.
+
+.Descriptions of _create_ event value fields
+[cols="1,2,7",options="header"]
+|===
+|Item |Field name |Description
+
+|1
+|`schema`
+|The value's schema, which describes the structure of the value's payload. A change event's value schema is the same in every change event that the connector generates for a particular table. 
+
+|2
+|`name`
+a|In the `schema` section, each `name` field specifies the schema for a field in the value's payload. In this example: 
+
+* `mysql-server-1.inventory.customers.Value` is the schema for the payload's `before` and `after` fields. This schema is specific to the `customers` table.
+
+* `io.product.connector.mysql.Source` is the schema for the payload's `source` field. This schema is specific to the MySQL connector. The connector uses it for all events that it generates. 
+
+* `mysql-server-1.inventory.customers.Envelope` is the schema for the overall structure of the payload, where `mysql-server-1` is the connector name, `inventory` is the database, and `customers` is the table.
+
 ifdef::community[]
-+
-[TIP]
-====
-The names of the schemas for the `before` and `after` fields are of the form `<logicalName>.<tableName>.Value`, and thus are entirely independent from all other schemas for all other tables. This means that when using the {link-prefix}:{link-avro-serialization}[Avro Converter], the resulting Avro schemas for each table in each logical source have their own evolution and history.
-====
+Names of schemas for `before` and `after` fields are of the form `_logicalName_._tableName_.Value`, which ensures that the schema name is unique in the database. This means that when using the {link-prefix}:{link-avro-serialization}[Avro converter], the resulting Avro schema for each table in each logical source has its own evolution and history.
 endif::community[]
 
-<2> The `payload` portion of this event’s _value_ shows the information in the event, namely that it is describing that the row was created (because `op=c`), and that the `after` field value contains the values of the new inserted row's `id`, `first_name`, `last_name`, and `email` columns.
+|3
+|`payload`
+|The value's actual data. This is the information that the change event is providing. 
+
 ifdef::community[]
-+
-[TIP]
-====
 It may appear that the JSON representations of the events are much larger than the rows they describe. This is because the JSON representation must include the schema and the payload portions of the message.
-However, by using the {link-prefix}:{link-avro-serialization}[Avro Converter], you can dramatically decrease the size of the actual messages written to the Kafka topics.
+However, by using the {link-prefix}:{link-avro-serialization}[Avro converter], you can significantly decrease the size of the messages that the connector streams to Kafka topics.
 ====
 endif::community[]
 
-=== Update change event value
+|4
+|`op`
+a| Mandatory string that describes the type of operation that caused the connector to generate the event. In this example, `c` indicates that the operation created a row. Valid values are: 
 
-The value of an _update_ change event on the `customers` table has the exact same schema as a _create_ event. The payload is structured the same, but holds different values. Here is an example (formatted for readability):
+* `c` = create
+* `u` = update
+* `d` = delete
+* `r` = read (applies to only snapshots)
+
+|5
+|`ts_ms`
+a| Optional field that displays the time at which the connector processed the event. The time is based on the system clock in the JVM running the Kafka Connect task.
+
+|6
+|`before`
+| An optional field that specifies the state of the row before the event occurred. When the `op` field is `c` for create, as it is in this example, the `before` field is `null` since this change event is for new content. 
+
+|7
+|`after`
+| An optional field that specifies the state of the row after the event occurred. In this example, the `after` field contains the values of the new row's `id`, `first_name`, `last_name`, and `email` columns.
+
+|8
+|`source`
+a| Mandatory field that describes the source metadata for the event. The `source` structure shows information about MySQL’s record of this change, which provides traceability. It also has information you can use to compare to other events in this and other topics to know whether this event occurred before, after, or as part of the same MySQL commit as other events. The source metadata includes: 
+
+* {prodname} version
+* Connector name
+* binlog name where the event was recorded
+* binlog position
+* Row within the event
+* If the event was part of a snapshot
+* Name of the database and table that contain the new row
+* ID of the MySQL thread that created the event (non-snapshot only)
+* MySQL server ID (if available)
+* Timestamp
+
+If the {link-prefix}:{link-mysql-connector}#enable-query-log-events-for-cdc_{context}[`binlog_rows_query_log_events`] MySQL configuration option is enabled and the connector configuration `include.query` property is enabled, the `source` field also provides the `query` field, which contains the original SQL statement that caused the change event.
+
+|===
+
+[id="mysql-update-events"]
+=== _update_ events
+
+The value of a change event for an update in the sample `customers` table has the same schema as a _create_ event for that table. Likewise, the event value's payload has the same structure. However, the event value payload contains different values in an _update_ event. Here is an example of a change event value in an event that the connector generates for an update in the `customers` table: 
 
 [source,json,options="nowrap",subs="+attributes"]
 ----
@@ -371,28 +454,66 @@ The value of an _update_ change event on the `customers` table has the exact sam
       "query": "UPDATE customers SET first_name='Anne Marie' WHERE id=1004"
     },
     "op": "u", // <4>
-    "ts_ms": 1465581029523 // <5>
+    "ts_ms": 1465581029523 
   }
 }
 ----
 
-Comparing this to the value in the _insert_ event, you can see a couple of differences in the `payload` section:
+.Descriptions of _update_ event value fields
+[cols="1,2,7",options="header"]
+|===
+|Item |Field name |Description
 
-<1> The `before` field now has the state of the row with the values before the database commit.
-<2> The `after` field now has the updated state of the row, and the `first_name` value is now `Anne Marie`. You can compare the `before` and `after` structures to determine what actually changed in this row because of the commit.
-<3> The `source` field structure has the same fields as before, but the values are different (this event is from a different position in the binlog). The `source` structure shows information about MySQL’s record of this change (providing traceability). It also has information you can use to compare to other events in this and other topics to know whether this event occurred before, after, or as part of the same MySQL commit as other events.
-<4> The `op` field value is now `u`, signifying that this row changed because of an update.
-<5> The `ts_ms` field shows the timestamp when {prodname} processed this event.
+|1
+|`before`
+|An optional field that specifies the state of the row before the event occurred. In an _update_ event value, the `before` field contains a field for each table column and the value that was in that column before the database commit. In this example, the `first_name` value is `Anne.`
+
+|2
+|`after`
+| An optional field that specifies the state of the row after the event occurred. You can compare the `before` and `after` structures to determine what the update to this row was. In the example, the `first_name` value is now `Anne Marie`. 
+
+|3
+|`source`
+a|Mandatory field that describes the source metadata for the event. The `source` field structure has the same fields as in a _create_ event, but some values are different, for example, the sample _update_ event is from a different position in the binlog. The source metadata includes: 
+
+* {prodname} version
+* Connector name
+* binlog name where the event was recorded
+* binlog position
+* Row within the event
+* If the event was part of a snapshot
+* Name of the database and table that contain the updated row
+* ID of the MySQL thread that created the event (non-snapshot only)
+* MySQL server ID (if available)
+* Timestamp
+
+If the {link-prefix}:{link-mysql-connector}#enable-query-log-events-for-cdc_{context}[`binlog_rows_query_log_events`] MySQL configuration option is enabled and the connector configuration `include.query` property is enabled, the `source` field also provides the `query` field, which contains the original SQL statement that caused the change event.
+
+|4
+|`op`
+a|Mandatory string that describes the type of operation. In an _update_ event value, the `op` field value is `u`, signifying that this row changed because of an update.
+
+|===
 
 [NOTE]
 ====
-When the columns for a row’s primary or unique key are updated, the value of the row’s key is changed and {prodname} outputs three events: a _DELETE_ event and tombstone event with the old key for the row, followed by an _INSERT_ event with the new key for the row.
+Updating the columns for a row's primary/unique key changes the value of the row's key. When a key changes, {prodname} outputs _three_ events: a `DELETE` event and a {link-prefix}:{link-mysql-connector}#mysql-tombstone-events[tombstone event] with the old key for the row, followed by an event with the new key for the row. Details are in the next section. 
 ====
 
-=== Delete change event value
+[id="mysql-primary-key-updates"]
+=== Primary key updates
 
-The value of a _delete_ change event on the `customers` table has the exact same schema as _create_ and _update_ events. The payload is structured the same, but holds different values. Here is an example (formatted for readability):
+An `UPDATE` operation that changes a row's primary key field(s) is known
+as a primary key change. For a primary key change, in place of sending an `UPDATE` event record, the connector sends a `DELETE` event record for the old key and a `CREATE` event record for the new (updated) key. These events have the usual structure and content, and in addition, each one has a message header related to the primary key change: 
 
+* The `DELETE` event record has `__debezium.newkey` as a message header. The value of this header is the new primary key for the updated row.
+
+* The `CREATE` event record has `__debezium.oldkey` as a message header. The value of this header is the previous (old) primary key that the updated row had.
+
+[id="mysql-delete-events"]
+=== _delete_ events
+
+The value in a _delete_ change event has the same `schema` portion as _create_ and _update_ events for the same table. The `payload` portion in a _delete_ event for the sample `customers` table looks like this:  
 
 [source,json,options="nowrap",subs="+attributes"]
 ----
@@ -428,28 +549,50 @@ The value of a _delete_ change event on the `customers` table has the exact same
 }
 ----
 
-Comparing the `payload` portion to the payloads in the _create_ and _update_ events, you can see some differences:
+.Descriptions of _delete_ event value fields
+[cols="1,2,7",options="header"]
+|===
+|Item |Field name |Description
 
-<1> The `before` field now has the state of the row that was deleted with the database commit.
-<2> The `after` field is `null`, signifying that the row no longer exists.
-<3> The `source` field structure has many of the same values as before, except the `ts_sec` and `pos` fields have changed (and the file might have changed in other scenarios).
-<4> The `op` field value is now `d`, signifying that this row was deleted.
-<5> The `ts_ms` shows the timestamp when {prodname} processed this event.
+|1
+|`before`
+|Optional field that specifies the state of the row before the event occurred. In a _delete_ event value, the `before` field contains the values that were in the row before it was deleted with the database commit.
 
-This event provides a consumer with the information that it needs to process the removal of this row. The old values are included because some consumers might require them in order to properly handle the removal.
+|2
+|`after`
+| Optional field that specifies the state of the row after the event occurred. In a _delete_ event value, the `after` field is `null`, signifying that the row no longer exists.
 
-The MySQL connector’s events are designed to work with link:{link-kafka-docs}#compaction[Kafka log compaction], which allows for the removal of some older messages as long as at least the most recent message for every key is kept. This allows Kafka to reclaim storage space while ensuring the topic contains a complete data set and can be used for reloading key-based state.
+|3
+|`source`
+a|Mandatory field that describes the source metadata for the event. In a _delete_ event value, the `source` field structure is the same as for _create_ and _update_ events for the same table. Many `source` field values are also the same. In a _delete_ event value, the `ts_ms` and `pos` field values, as well as other values, might have changed. But the `source` field in a _delete_ event value provides the same metadata: 
 
-When a row is deleted, the _delete_ event value listed above still works with log compaction, because Kafka can still remove all earlier messages with that same key. If the message value is `null`, Kafka knows that it can remove all messages with that same key. To make this possible, {prodname}’s MySQL connector always follows a _delete_ event with a special tombstone event that has the same key but a `null` value.
+* {prodname} version
+* Connector name
+* binlog name where the event was recorded
+* binlog position
+* Row within the event
+* If the event was part of a snapshot
+* Name of the database and table that contain the updated row
+* ID of the MySQL thread that created the event (non-snapshot only)
+* MySQL server ID (if available)
+* Timestamp
 
-== Primary Key Update Header
+If the {link-prefix}:{link-mysql-connector}#enable-query-log-events-for-cdc_{context}[`binlog_rows_query_log_events`] MySQL configuration option is enabled and the connector configuration `include.query` property is enabled, the `source` field also provides the `query` field, which contains the original SQL statement that caused the change event.
 
-When there is an update event that's changing the row's primary key field/s, also known
-as a primary key change, Debezium will in that case send a DELETE event for the old key
-and an INSERT event for the new (updated) key.
+|4
+|`op`
+a|Mandatory string that describes the type of operation. The `op` field value is `d`, signifying that this row was deleted.
 
-The DELETE event produces a Kafka message which has a message header `__debezium.newkey`
-and the value is the new primary key.
+|5
+|`ts_ms`
+a|Optional field that displays the time at which the connector processed the event. The time is based on the system clock in the JVM running the Kafka Connect task.
 
-The INSERT event produces a Kafka message which has a message header `__debezium.oldkey`
-and the value is the previous (old) primary key of the updated row.
+|===
+
+A _delete_ change event record provides a consumer with the information it needs to process the removal of this row. The old values are included because some consumers might require them in order to properly handle the removal.
+
+MySQL connector events are designed to work with link:https://kafka.apache.org/documentation/#compaction[Kafka log compaction]. Log compaction enables removal of some older messages as long as at least the most recent message for every key is kept. This lets Kafka reclaim storage space while ensuring that the topic contains a complete data set and can be used for reloading key-based state.
+
+[id="mysql-tombstone-events"]
+.Tombstone events
+When a row is deleted, the _delete_ event value still works with log compaction, because Kafka can remove all earlier messages that have that same key. However, for Kafka to remove all messages that have that same key, the message value must be `null`. To make this possible, {prodname}’s MySQL connector follows a _delete_ event with a special tombstone event that has the same key but a `null` value.
