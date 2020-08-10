@@ -11,7 +11,7 @@ import java.time.Instant;
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.connector.SnapshotRecord;
 import io.debezium.connector.common.BaseSourceInfo;
-import io.debezium.connector.postgresql.connection.ReplicationConnection;
+import io.debezium.connector.postgresql.connection.Lsn;
 import io.debezium.relational.TableId;
 
 /**
@@ -79,7 +79,7 @@ public final class SourceInfo extends BaseSourceInfo {
 
     private final String dbName;
 
-    private Long lsn;
+    private Lsn lsn;
     private Long txId;
     private Long xmin;
     private Instant timestamp;
@@ -103,7 +103,7 @@ public final class SourceInfo extends BaseSourceInfo {
      * @param xmin the xmin of the slot, may be null
      * @return this instance
      */
-    protected SourceInfo update(Long lsn, Instant commitTime, Long txId, TableId tableId, Long xmin) {
+    protected SourceInfo update(Lsn lsn, Instant commitTime, Long txId, TableId tableId, Long xmin) {
         this.lsn = lsn;
         if (commitTime != null) {
             this.timestamp = commitTime;
@@ -130,7 +130,7 @@ public final class SourceInfo extends BaseSourceInfo {
         return this;
     }
 
-    public Long lsn() {
+    public Lsn lsn() {
         return this.lsn;
     }
 
@@ -171,7 +171,7 @@ public final class SourceInfo extends BaseSourceInfo {
         sb.append("server='").append(serverName()).append('\'');
         sb.append("db='").append(dbName).append('\'');
         if (lsn != null) {
-            sb.append(", lsn=").append(ReplicationConnection.format(lsn));
+            sb.append(", lsn=").append(lsn);
         }
         if (txId != null) {
             sb.append(", txId=").append(txId);

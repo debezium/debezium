@@ -45,7 +45,7 @@ public class PostgresSourceInfoStructMaker extends AbstractSourceInfoStructMaker
             result.put(SourceInfo.TXID_KEY, sourceInfo.txId());
         }
         if (sourceInfo.lsn() != null) {
-            result.put(SourceInfo.LSN_KEY, sourceInfo.lsn());
+            result.put(SourceInfo.LSN_KEY, sourceInfo.lsn().asLong());
         }
         if (sourceInfo.xmin() != null) {
             result.put(SourceInfo.XMIN_KEY, sourceInfo.xmin());

@@ -63,7 +63,7 @@ public interface ReplicationStream extends AutoCloseable {
      *
      * @throws SQLException if anything goes wrong
      */
-    void flushLsn(long lsn) throws SQLException;
+    void flushLsn(Lsn lsn) throws SQLException;
 
     /**
      * Returns the value for the latest server received LSN during a read operation. The value is always updated once messages
@@ -72,14 +72,14 @@ public interface ReplicationStream extends AutoCloseable {
      *
      * @return a {@link Long} value, possibly null if this is called before anything has been read
      */
-    Long lastReceivedLsn();
+    Lsn lastReceivedLsn();
 
     /**
      * Returns the value for the LSN form which the streaming is executed.
      *
      * @return a {@link Long} value, possibly null if starting LSN is undefined
      */
-    Long startLsn();
+    Lsn startLsn();
 
     /**
      * Starts a background thread to ensure the slot is kept alive, useful for when temporarily

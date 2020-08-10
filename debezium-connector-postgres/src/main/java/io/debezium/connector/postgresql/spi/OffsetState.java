@@ -8,6 +8,7 @@ package io.debezium.connector.postgresql.spi;
 import java.time.Instant;
 
 import io.debezium.common.annotation.Incubating;
+import io.debezium.connector.postgresql.connection.Lsn;
 
 /**
  * A simple data container that represents the last seen offset
@@ -18,13 +19,13 @@ import io.debezium.common.annotation.Incubating;
  */
 @Incubating
 public class OffsetState {
-    private final Long lsn;
+    private final Lsn lsn;
     private final Long txId;
     private final Long xmin;
     private final Instant commitTs;
     private final boolean snapshotting;
 
-    public OffsetState(Long lsn, Long txId, Long xmin, Instant lastCommitTs, boolean isSnapshot) {
+    public OffsetState(Lsn lsn, Long txId, Long xmin, Instant lastCommitTs, boolean isSnapshot) {
         this.lsn = lsn;
         this.txId = txId;
         this.xmin = xmin;
@@ -35,7 +36,7 @@ public class OffsetState {
     /**
      * @return the last LSN seen by debezium
      */
-    public Long lastSeenLsn() {
+    public Lsn lastSeenLsn() {
         return lsn;
     }
 
