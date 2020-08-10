@@ -18,8 +18,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.SnapshotRecord;
+import io.debezium.connector.postgresql.connection.Lsn;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
-import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.connector.postgresql.spi.OffsetState;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.txmetadata.TransactionContext;
@@ -38,10 +38,10 @@ public class PostgresOffsetContext implements OffsetContext {
     private final SourceInfo sourceInfo;
     private final Map<String, String> partition;
     private boolean lastSnapshotRecord;
-    private Long lastCompletelyProcessedLsn;
+    private Lsn lastCompletelyProcessedLsn;
     private final TransactionContext transactionContext;
 
-    private PostgresOffsetContext(PostgresConnectorConfig connectorConfig, Long lsn, Long lastCompletelyProcessedLsn, Long txId, Instant time, boolean snapshot,
+    private PostgresOffsetContext(PostgresConnectorConfig connectorConfig, Lsn lsn, Lsn lastCompletelyProcessedLsn, Long txId, Instant time, boolean snapshot,
                                   boolean lastSnapshotRecord, TransactionContext transactionContext) {
         partition = Collections.singletonMap(SERVER_PARTITION_KEY, connectorConfig.getLogicalName());
         sourceInfo = new SourceInfo(connectorConfig);
@@ -75,7 +75,7 @@ public class PostgresOffsetContext implements OffsetContext {
             result.put(SourceInfo.TXID_KEY, sourceInfo.txId());
         }
         if (sourceInfo.lsn() != null) {
-            result.put(SourceInfo.LSN_KEY, sourceInfo.lsn());
+            result.put(SourceInfo.LSN_KEY, sourceInfo.lsn().asLong());
         }
         if (sourceInfo.xmin() != null) {
             result.put(SourceInfo.XMIN_KEY, sourceInfo.xmin());
@@ -85,7 +85,7 @@ public class PostgresOffsetContext implements OffsetContext {
             result.put(SourceInfo.LAST_SNAPSHOT_RECORD_KEY, lastSnapshotRecord);
         }
         if (lastCompletelyProcessedLsn != null) {
-            result.put(LAST_COMPLETELY_PROCESSED_LSN_KEY, lastCompletelyProcessedLsn);
+            result.put(LAST_COMPLETELY_PROCESSED_LSN_KEY, lastCompletelyProcessedLsn.asLong());
         }
         return sourceInfo.isSnapshot() ? result : transactionContext.store(result);
     }
@@ -125,7 +125,7 @@ public class PostgresOffsetContext implements OffsetContext {
         sourceInfo.update(timestamp, tableId);
     }
 
-    public void updateWalPosition(Long lsn, Long lastCompletelyProcessedLsn, Instant commitTime, Long txId, TableId tableId, Long xmin) {
+    public void updateWalPosition(Lsn lsn, Lsn lastCompletelyProcessedLsn, Instant commitTime, Long txId, TableId tableId, Long xmin) {
         this.lastCompletelyProcessedLsn = lastCompletelyProcessedLsn;
         sourceInfo.update(lsn, commitTime, txId, tableId, xmin);
     }
@@ -138,11 +138,11 @@ public class PostgresOffsetContext implements OffsetContext {
         return this.lastCompletelyProcessedLsn != null;
     }
 
-    Long lsn() {
+    Lsn lsn() {
         return sourceInfo.lsn();
     }
 
-    Long lastCompletelyProcessedLsn() {
+    Lsn lastCompletelyProcessedLsn() {
         return lastCompletelyProcessedLsn;
     }
 
@@ -171,8 +171,10 @@ public class PostgresOffsetContext implements OffsetContext {
         @SuppressWarnings("unchecked")
         @Override
         public OffsetContext load(Map<String, ?> offset) {
-            final Long lsn = readOptionalLong(offset, SourceInfo.LSN_KEY);
-            final Long lastCompletelyProcessedLsn = readOptionalLong(offset, LAST_COMPLETELY_PROCESSED_LSN_KEY);
+            final Long lsnAsLong = readOptionalLong(offset, SourceInfo.LSN_KEY);
+            final Lsn lsn = (lsnAsLong == null) ? null : Lsn.valueOf(lsnAsLong);
+            final Long lastCompletelyProcessedLsnAsLong = readOptionalLong(offset, LAST_COMPLETELY_PROCESSED_LSN_KEY);
+            final Lsn lastCompletelyProcessedLsn = (lastCompletelyProcessedLsnAsLong == null) ? null : Lsn.valueOf(lastCompletelyProcessedLsnAsLong);
             final Long txId = readOptionalLong(offset, SourceInfo.TXID_KEY);
 
             final Instant useconds = Conversions.toInstantFromMicros((Long) offset.get(SourceInfo.TIMESTAMP_USEC_KEY));
@@ -193,9 +195,9 @@ public class PostgresOffsetContext implements OffsetContext {
     public static PostgresOffsetContext initialContext(PostgresConnectorConfig connectorConfig, PostgresConnection jdbcConnection, Clock clock) {
         try {
             LOGGER.info("Creating initial offset context");
-            final long lsn = jdbcConnection.currentXLogLocation();
+            final Lsn lsn = Lsn.valueOf(jdbcConnection.currentXLogLocation());
             final long txId = jdbcConnection.currentTransactionId().longValue();
-            LOGGER.info("Read xlogStart at '{}' from transaction '{}'", ReplicationConnection.format(lsn), txId);
+            LOGGER.info("Read xlogStart at '{}' from transaction '{}'", lsn, txId);
             return new PostgresOffsetContext(
                     connectorConfig,
                     lsn,
