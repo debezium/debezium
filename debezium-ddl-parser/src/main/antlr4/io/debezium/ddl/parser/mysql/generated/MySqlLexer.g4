@@ -651,7 +651,6 @@ SHARE:                               'SHARE';
 SHARED:                              'SHARED';
 SIGNED:                              'SIGNED';
 SIMPLE:                              'SIMPLE';
-SKIP:                                'SKIP';
 SQL_TSI_DAY:                         'SQL_TSI_DAY';
 SQL_TSI_HOUR:                        'SQL_TSI_HOUR';
 SQL_TSI_MINUTE:                      'SQL_TSI_MINUTE';
