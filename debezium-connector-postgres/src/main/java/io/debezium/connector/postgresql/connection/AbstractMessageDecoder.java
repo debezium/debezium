@@ -47,7 +47,7 @@ public abstract class AbstractMessageDecoder implements MessageDecoder {
             throws SQLException, InterruptedException;
 
     @Override
-    public boolean shouldMessageBeSkipped(ByteBuffer buffer, Long lastReceivedLsn, Long startLsn, boolean skipFirstFlushRecord) {
+    public boolean shouldMessageBeSkipped(ByteBuffer buffer, Lsn lastReceivedLsn, Lsn startLsn, boolean skipFirstFlushRecord) {
         // the lsn we started from is inclusive, so we need to avoid sending back the same message twice
         // but for the first record seen ever it is possible we received the same LSN as the one obtained from replication slot
         if (startLsn.compareTo(lastReceivedLsn) > 0 || (startLsn.equals(lastReceivedLsn) && skipFirstFlushRecord)) {

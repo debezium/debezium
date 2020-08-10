@@ -10,7 +10,6 @@ import java.sql.SQLException;
 import java.time.Duration;
 import java.util.Optional;
 
-import org.postgresql.replication.LogSequenceNumber;
 import org.postgresql.replication.PGReplicationStream;
 
 import io.debezium.annotation.NotThreadSafe;
@@ -57,7 +56,7 @@ public interface ReplicationConnection extends AutoCloseable {
      * @see org.postgresql.replication.LogSequenceNumber
      * @throws SQLException if anything fails
      */
-    ReplicationStream startStreaming(Long offset) throws SQLException, InterruptedException;
+    ReplicationStream startStreaming(Lsn offset) throws SQLException, InterruptedException;
 
     /**
      * Creates a new replication slot with the given option and returns the result of the command, which
@@ -91,16 +90,6 @@ public interface ReplicationConnection extends AutoCloseable {
      */
     static Builder builder(Configuration jdbcConfig) {
         return new PostgresReplicationConnection.ReplicationConnectionBuilder(jdbcConfig);
-    }
-
-    /**
-     * Formats a LSN long value as a String value which can be used for outputting user-friendly LSN values.
-     *
-     * @param lsn the LSN value
-     * @return a String format of the value, never {@code null}
-     */
-    static String format(long lsn) {
-        return LogSequenceNumber.valueOf(lsn).asString();
     }
 
     /**

@@ -6,18 +6,19 @@
 package io.debezium.connector.postgresql.spi;
 
 import io.debezium.common.annotation.Incubating;
+import io.debezium.connector.postgresql.connection.Lsn;
 
 /**
  * A simple data container that holds the state of the current slot
  */
 @Incubating
 public class SlotState {
-    private final Long latestFlushedLsn;
-    private final Long restartLsn;
+    private final Lsn latestFlushedLsn;
+    private final Lsn restartLsn;
     private final Long catalogXmin;
     private final boolean active;
 
-    public SlotState(Long lastFlushLsn, Long restartLsn, Long catXmin, boolean active) {
+    public SlotState(Lsn lastFlushLsn, Lsn restartLsn, Long catXmin, boolean active) {
         this.active = active;
         this.latestFlushedLsn = lastFlushLsn;
         this.restartLsn = restartLsn;
@@ -27,14 +28,14 @@ public class SlotState {
     /**
      * @return the slot's `confirmed_flushed_lsn` value
      */
-    public Long slotLastFlushedLsn() {
+    public Lsn slotLastFlushedLsn() {
         return latestFlushedLsn;
     }
 
     /**
      * @return the slot's `restart_lsn` value
      */
-    public Long slotRestartLsn() {
+    public Lsn slotRestartLsn() {
         return restartLsn;
     }
 

@@ -33,6 +33,7 @@ import io.debezium.connector.postgresql.TypeRegistry;
 import io.debezium.connector.postgresql.UnchangedToastedReplicationMessageColumn;
 import io.debezium.connector.postgresql.connection.AbstractMessageDecoder;
 import io.debezium.connector.postgresql.connection.AbstractReplicationMessageColumn;
+import io.debezium.connector.postgresql.connection.Lsn;
 import io.debezium.connector.postgresql.connection.MessageDecoderConfig;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationMessage.Column;
@@ -107,7 +108,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
     }
 
     @Override
-    public boolean shouldMessageBeSkipped(ByteBuffer buffer, Long lastReceivedLsn, Long startLsn, boolean skipFirstFlushRecord) {
+    public boolean shouldMessageBeSkipped(ByteBuffer buffer, Lsn lastReceivedLsn, Lsn startLsn, boolean skipFirstFlushRecord) {
         // Cache position as we're going to peak at the first byte to determine message type
         // We need to reprocess all BEGIN/COMMIT messages regardless.
         int position = buffer.position();

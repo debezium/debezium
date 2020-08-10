@@ -69,5 +69,5 @@ public interface MessageDecoder {
      * @param skipFirstFlushRecord whether first flush record should be skipped
      * @return {@code true} if the incoming message should be skipped, {@code false} otherwise
      */
-    boolean shouldMessageBeSkipped(ByteBuffer buffer, Long lastReceivedLsn, Long startLsn, boolean skipFirstFlushRecord);
+    boolean shouldMessageBeSkipped(ByteBuffer buffer, Lsn lastReceivedLsn, Lsn startLsn, boolean skipFirstFlushRecord);
 }

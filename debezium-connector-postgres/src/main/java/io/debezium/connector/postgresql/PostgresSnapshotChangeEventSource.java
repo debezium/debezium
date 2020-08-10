@@ -17,8 +17,8 @@ import org.postgresql.util.PGmoney;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.connector.postgresql.connection.Lsn;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
-import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.connector.postgresql.spi.SlotCreationResult;
 import io.debezium.connector.postgresql.spi.Snapshotter;
 import io.debezium.data.SpecialValueDecimal;
@@ -121,9 +121,9 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
     @Override
     protected void determineSnapshotOffset(RelationalSnapshotContext ctx) throws Exception {
         PostgresOffsetContext offset = (PostgresOffsetContext) ctx.offset;
-        final long xlogStart = getTransactionStartLsn();
+        final Lsn xlogStart = getTransactionStartLsn();
         final long txId = jdbcConnection.currentTransactionId().longValue();
-        LOGGER.info("Read xlogStart at '{}' from transaction '{}'", ReplicationConnection.format(xlogStart), txId);
+        LOGGER.info("Read xlogStart at '{}' from transaction '{}'", xlogStart, txId);
         if (offset == null) {
             offset = PostgresOffsetContext.initialContext(connectorConfig, jdbcConnection, getClock());
             ctx.offset = offset;
@@ -133,7 +133,7 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
         offset.updateWalPosition(xlogStart, null, clock.currentTime(), txId, null, offset.xmin());
     }
 
-    private long getTransactionStartLsn() throws SQLException {
+    private Lsn getTransactionStartLsn() throws SQLException {
         if (snapshotter.exportSnapshot() && slotCreatedInfo != null) {
             // When performing an exported snapshot based on a newly created replication slot, the txLogStart position
             // should be based on the replication slot snapshot transaction point. This is crucial so that if any
@@ -141,7 +141,7 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
             // they'll be lost.
             return slotCreatedInfo.startLsn();
         }
-        return jdbcConnection.currentXLogLocation();
+        return Lsn.valueOf(jdbcConnection.currentXLogLocation());
     }
 
     @Override
