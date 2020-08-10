@@ -13,10 +13,10 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.postgresql.core.BaseConnection;
-import org.postgresql.replication.LogSequenceNumber;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.connector.postgresql.connection.Lsn;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.connector.postgresql.connection.ReplicationMessage.Operation;
@@ -67,7 +67,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
      * number of event received since last WAL growing warning issued).
      */
     private long numberOfEventsSinceLastEventSentOrWalGrowingWarning = 0;
-    private Long lastCompletelyProcessedLsn;
+    private Lsn lastCompletelyProcessedLsn;
 
     public PostgresStreamingChangeEventSource(PostgresConnectorConfig connectorConfig, Snapshotter snapshotter, PostgresOffsetContext offsetContext,
                                               PostgresConnection connection, EventDispatcher<TableId> dispatcher, ErrorHandler errorHandler, Clock clock,
@@ -98,9 +98,9 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
         try {
             if (hasStartLsnStoredInContext) {
                 // start streaming from the last recorded position in the offset
-                final Long lsn = offsetContext.lastCompletelyProcessedLsn() != null ? offsetContext.lastCompletelyProcessedLsn() : offsetContext.lsn();
+                final Lsn lsn = offsetContext.lastCompletelyProcessedLsn() != null ? offsetContext.lastCompletelyProcessedLsn() : offsetContext.lsn();
                 if (LOGGER.isDebugEnabled()) {
-                    LOGGER.debug("retrieved latest position from stored offset '{}'", ReplicationConnection.format(lsn));
+                    LOGGER.debug("retrieved latest position from stored offset '{}'", lsn);
                 }
                 replicationStream.compareAndSet(null, replicationConnection.startStreaming(lsn));
             }
@@ -123,7 +123,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
             while (context.isRunning()) {
 
                 boolean receivedMessage = stream.readPending(message -> {
-                    final Long lsn = stream.lastReceivedLsn();
+                    final Lsn lsn = stream.lastReceivedLsn();
 
                     if (message.isLastEventForLsn()) {
                         lastCompletelyProcessedLsn = lsn;
@@ -219,7 +219,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
         }
     }
 
-    private void skipMessage(final Long lsn) throws SQLException, InterruptedException {
+    private void skipMessage(final Lsn lsn) throws SQLException, InterruptedException {
         lastCompletelyProcessedLsn = lsn;
         offsetContext.updateWalPosition(lsn, lastCompletelyProcessedLsn, null, null, null, taskContext.getSlotXmin(connection));
         maybeWarnAboutGrowingWalBacklog(false);
@@ -266,11 +266,11 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
     public void commitOffset(Map<String, ?> offset) {
         try {
             ReplicationStream replicationStream = this.replicationStream.get();
-            final Long lsn = (Long) offset.get(PostgresOffsetContext.LAST_COMPLETELY_PROCESSED_LSN_KEY);
+            final Lsn lsn = Lsn.valueOf((Long) offset.get(PostgresOffsetContext.LAST_COMPLETELY_PROCESSED_LSN_KEY));
 
             if (replicationStream != null && lsn != null) {
                 if (LOGGER.isDebugEnabled()) {
-                    LOGGER.debug("Flushing LSN to server: {}", LogSequenceNumber.valueOf(lsn));
+                    LOGGER.debug("Flushing LSN to server: {}", lsn);
                 }
                 // tell the server the point up to which we've processed data, so it can be free to recycle WAL segments
                 replicationStream.flushLsn(lsn);

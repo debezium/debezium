@@ -144,11 +144,11 @@ public class ServerInfo {
         protected static final ReplicationSlot INVALID = new ReplicationSlot(false, null, null, null);
 
         private boolean active;
-        private Long latestFlushedLsn;
-        private Long restartLsn;
+        private Lsn latestFlushedLsn;
+        private Lsn restartLsn;
         private Long catalogXmin;
 
-        protected ReplicationSlot(boolean active, Long latestFlushedLsn, Long restartLsn, Long catalogXmin) {
+        protected ReplicationSlot(boolean active, Lsn latestFlushedLsn, Lsn restartLsn, Long catalogXmin) {
             this.active = active;
             this.latestFlushedLsn = latestFlushedLsn;
             this.restartLsn = restartLsn;
@@ -166,7 +166,7 @@ public class ServerInfo {
          * consumer has reported back to postgres.
          * @return the latestFlushedLsn
          */
-        protected Long latestFlushedLsn() {
+        protected Lsn latestFlushedLsn() {
             return latestFlushedLsn;
         }
 
@@ -179,7 +179,7 @@ public class ServerInfo {
          * independently
          * @return the restartLsn
          */
-        protected Long restartLsn() {
+        protected Lsn restartLsn() {
             return restartLsn;
         }
 

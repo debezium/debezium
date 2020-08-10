@@ -62,6 +62,7 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.IntervalHandlingMode;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SchemaRefreshMode;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
+import io.debezium.connector.postgresql.connection.Lsn;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection.Builder;
 import io.debezium.connector.postgresql.junit.SkipTestDependingOnDecoderPluginNameRule;
@@ -1235,9 +1236,9 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
             // check if client's lsn is not flushed yet
             SlotState slotState = postgresConnection.getReplicationSlotState(Builder.DEFAULT_SLOT_NAME, TestHelper.decoderPlugin().getPostgresPluginName());
-            long flushLsn = slotState.slotLastFlushedLsn();
+            final Lsn flushLsn = slotState.slotLastFlushedLsn();
             // serverLsn is the latest server lsn and is equal to insert statement lsn
-            long serverLsn = postgresConnection.currentXLogLocation();
+            final Lsn serverLsn = Lsn.valueOf(postgresConnection.currentXLogLocation());
             assertNotEquals("lsn should not be flushed until heartbeat is produced", serverLsn, flushLsn);
 
             TestHelper.execute(statement);
@@ -1254,8 +1255,8 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
             // check if flushed lsn is equal to or greater than server lsn
             SlotState slotStateAfterHeartbeat = postgresConnection.getReplicationSlotState(Builder.DEFAULT_SLOT_NAME, TestHelper.decoderPlugin().getPostgresPluginName());
-            long flushedLsn = slotStateAfterHeartbeat.slotLastFlushedLsn();
-            assertTrue("lsn should be flushed when heartbeat is produced", flushedLsn >= serverLsn);
+            final Lsn flushedLsn = slotStateAfterHeartbeat.slotLastFlushedLsn();
+            assertTrue("lsn should be flushed when heartbeat is produced", flushedLsn.compareTo(serverLsn) >= 0);
         }
     }
 

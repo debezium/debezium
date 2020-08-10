@@ -19,7 +19,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 import org.junit.Assert;
@@ -180,9 +180,9 @@ public class ReplicationConnectionIT {
     @Test
     public void shouldResumeFromLastReceivedLSN() throws Exception {
         String slotName = "test";
-        AtomicLong lastReceivedLSN = new AtomicLong(0);
-        startInsertStop(slotName, stream -> lastReceivedLSN.compareAndSet(0, stream.lastReceivedLsn()));
-        assertTrue(lastReceivedLSN.get() > 0);
+        AtomicReference<Lsn> lastReceivedLSN = new AtomicReference<>();
+        startInsertStop(slotName, stream -> lastReceivedLSN.compareAndSet(null, stream.lastReceivedLsn()));
+        assertTrue(lastReceivedLSN.get().isValid());
 
         // resume replication from the last received LSN and don't expect anything else
         try (ReplicationConnection connection = TestHelper.createForReplication(slotName, true)) {
@@ -198,7 +198,7 @@ public class ReplicationConnectionIT {
 
         // resume replication from the last received LSN and don't expect anything else
         try (ReplicationConnection connection = TestHelper.createForReplication(slotName, true)) {
-            ReplicationStream stream = connection.startStreaming(Long.MAX_VALUE);
+            ReplicationStream stream = connection.startStreaming(Lsn.valueOf(Long.MAX_VALUE));
             expectedMessagesFromStream(stream, 0);
             // this deletes 2 entries so each of them will have a message
             TestHelper.execute("DELETE FROM table_with_pk WHERE a < 3;");
