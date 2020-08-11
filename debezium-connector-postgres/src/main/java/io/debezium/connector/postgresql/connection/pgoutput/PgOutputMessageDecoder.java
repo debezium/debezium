@@ -41,6 +41,7 @@ import io.debezium.connector.postgresql.connection.ReplicationMessage.NoopMessag
 import io.debezium.connector.postgresql.connection.ReplicationMessage.Operation;
 import io.debezium.connector.postgresql.connection.ReplicationStream.ReplicationMessageProcessor;
 import io.debezium.connector.postgresql.connection.TransactionMessage;
+import io.debezium.connector.postgresql.connection.WalPositionLocator;
 import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
@@ -108,7 +109,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
     }
 
     @Override
-    public boolean shouldMessageBeSkipped(ByteBuffer buffer, Lsn lastReceivedLsn, Lsn startLsn, boolean skipFirstFlushRecord) {
+    public boolean shouldMessageBeSkipped(ByteBuffer buffer, Lsn lastReceivedLsn, Lsn startLsn, WalPositionLocator walPosition) {
         // Cache position as we're going to peak at the first byte to determine message type
         // We need to reprocess all BEGIN/COMMIT messages regardless.
         int position = buffer.position();
@@ -150,7 +151,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
                 default:
                     // INSERT/UPDATE/DELETE/TYPE/ORIGIN
                     // These should be excluded based on the normal behavior, delegating to default method
-                    return super.shouldMessageBeSkipped(buffer, lastReceivedLsn, startLsn, skipFirstFlushRecord);
+                    return super.shouldMessageBeSkipped(buffer, lastReceivedLsn, startLsn, walPosition);
             }
         }
         finally {

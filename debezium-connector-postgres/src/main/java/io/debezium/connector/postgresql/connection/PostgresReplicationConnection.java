@@ -258,7 +258,10 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
 
     // Temporary replication slots is a new feature of PostgreSQL 10
     private boolean useTemporarySlot() throws SQLException {
-        return dropSlotOnClose && pgConnection().haveMinimumServerVersion(ServerVersion.v10);
+        // Temporary replication slots cannot be used due to connection restart
+        // when finding WAL position
+        // return dropSlotOnClose && pgConnection().haveMinimumServerVersion(ServerVersion.v10);
+        return false;
     }
 
     /**
@@ -281,19 +284,17 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
      * @throws InterruptedException
      */
     @Override
-    public ReplicationStream startStreaming() throws SQLException, InterruptedException {
-        return startStreaming(null);
+    public ReplicationStream startStreaming(WalPositionLocator walPosition) throws SQLException, InterruptedException {
+        return startStreaming(null, walPosition);
     }
 
     @Override
-    public ReplicationStream startStreaming(Lsn offset) throws SQLException, InterruptedException {
-        boolean skipFirstFlushRecord = true;
+    public ReplicationStream startStreaming(Lsn offset, WalPositionLocator walPosition) throws SQLException, InterruptedException {
         initConnection();
 
         connect();
         if (offset == null || !offset.isValid()) {
             offset = defaultStartingPos;
-            skipFirstFlushRecord = false;
         }
         Lsn lsn = offset;
         if (LOGGER.isDebugEnabled()) {
@@ -301,7 +302,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         }
 
         try {
-            return createReplicationStream(lsn, skipFirstFlushRecord);
+            return createReplicationStream(lsn, walPosition);
         }
         catch (Exception e) {
             String message = "Failed to start replication stream at " + lsn;
@@ -386,7 +387,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         }
     }
 
-    private ReplicationStream createReplicationStream(final Lsn startLsn, boolean skipFirstFlushRecord) throws SQLException, InterruptedException {
+    private ReplicationStream createReplicationStream(final Lsn startLsn, WalPositionLocator walPosition) throws SQLException, InterruptedException {
         PGReplicationStream s;
 
         try {
@@ -452,7 +453,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                 ByteBuffer read = stream.read();
                 final Lsn lastReceiveLsn = Lsn.valueOf(stream.getLastReceiveLSN());
                 LOGGER.trace("Streaming requested from LSN {}, received LSN {}", startLsn, lastReceiveLsn);
-                if (messageDecoder.shouldMessageBeSkipped(read, lastReceiveLsn, startLsn, skipFirstFlushRecord)) {
+                if (messageDecoder.shouldMessageBeSkipped(read, lastReceiveLsn, startLsn, walPosition)) {
                     return;
                 }
                 deserializeMessages(read, processor);
@@ -468,7 +469,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                     return false;
                 }
 
-                if (messageDecoder.shouldMessageBeSkipped(read, lastReceiveLsn, startLsn, skipFirstFlushRecord)) {
+                if (messageDecoder.shouldMessageBeSkipped(read, lastReceiveLsn, startLsn, walPosition)) {
                     return true;
                 }
 
@@ -584,6 +585,10 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
 
     @Override
     public synchronized void close() {
+        close(true);
+    }
+
+    public synchronized void close(boolean dropSlot) {
         try {
             LOGGER.debug("Closing replication connection");
             super.close();
@@ -591,7 +596,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         catch (Throwable e) {
             LOGGER.error("Unexpected error while closing Postgres connection", e);
         }
-        if (dropSlotOnClose) {
+        if (dropSlotOnClose && dropSlot) {
             // we're dropping the replication slot via a regular - i.e. not a replication - connection
             try (PostgresConnection connection = new PostgresConnection(originalConfig)) {
                 connection.dropReplicationSlot(slotName);
@@ -600,6 +605,12 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                 LOGGER.error("Unexpected error while dropping replication slot", e);
             }
         }
+    }
+
+    @Override
+    public void reconnect() throws SQLException {
+        close(false);
+        connect();
     }
 
     protected static void defaultSettings(Configuration.Builder builder) {
