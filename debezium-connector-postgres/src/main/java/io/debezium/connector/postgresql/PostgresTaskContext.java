@@ -124,10 +124,6 @@ public class PostgresTaskContext extends CdcSourceTaskContext {
                 .build();
     }
 
-    protected PostgresConnection createConnection() {
-        return new PostgresConnection(config.jdbcConfig());
-    }
-
     PostgresConnectorConfig getConfig() {
         return config;
     }

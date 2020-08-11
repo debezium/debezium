@@ -26,11 +26,11 @@ public class DatabaseHeartbeatImpl extends HeartbeatImpl {
     public static final String HEARTBEAT_ACTION_QUERY_PROPERTY_NAME = "heartbeat.action.query";
 
     public static final Field HEARTBEAT_ACTION_QUERY = Field.create(HEARTBEAT_ACTION_QUERY_PROPERTY_NAME)
-            .withDisplayName("The query to execute with every heartbeat")
+            .withDisplayName("An optional query to execute with every heartbeat")
             .withType(ConfigDef.Type.STRING)
             .withWidth(ConfigDef.Width.MEDIUM)
             .withImportance(ConfigDef.Importance.LOW)
-            .withDescription("The query executed with every heartbeat. Defaults to an empty string.");
+            .withDescription("The query executed with every heartbeat.");
 
     private final String heartBeatActionQuery;
     private final JdbcConnection jdbcConnection;
