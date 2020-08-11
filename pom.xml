@@ -57,7 +57,7 @@
 
         <!-- Kafka and it's dependencies MUST reflect what the Kafka version uses -->
         <version.kafka>2.6.0</version.kafka>
-        <version.kafka.scala>2.13</version.kafka.scala>
+        <version.kafka.scala>2.12</version.kafka.scala>
         <version.curator>4.2.0</version.curator>
         <version.zookeeper>3.5.8</version.zookeeper>
         <version.jackson>2.10.2</version.jackson>
