@@ -670,7 +670,7 @@ Typically, you configure the {prodname} MongoDB connector in a `.json` file usin
 <1> The name of our connector when we register it with a Kafka Connect service.
 <2> The name of the MongoDB connector class.
 <3> The host addresses to use to connect to the MongoDB replica set.
-<4> The _logical name_ of the MongoDB replica set, which forms a namespace for generated events and is used in all the names of the Kafka topics to which the connector writes, the Kafka Connect schema names, and the namespaces of the corresponding Avro schema when the Avro Connector is used.
+<4> The _logical name_ of the MongoDB replica set, which forms a namespace for generated events and is used in all the names of the Kafka topics to which the connector writes, the Kafka Connect schema names, and the namespaces of the corresponding Avro schema when the Avro converter is used.
 <5> A list of regular expressions that match the collection namespaces (for example, <dbName>.<collectionName>) of all collections to be monitored. This is optional.
 
 endif::community[]
@@ -696,7 +696,7 @@ apiVersion: kafka.strimzi.io/v1beta1
 <1> The name of our connector when we register it with a Kafka Connect service.
 <2> The name of the MongoDB connector class.
 <3> The host addresses to use to connect to the MongoDB replica set.
-<4> The _logical name_ of the MongoDB replica set, which forms a namespace for generated events and is used in all the names of the Kafka topics to which the connector writes, the Kafka Connect schema names, and the namespaces of the corresponding Avro schema when the Avro Connector is used.
+<4> The _logical name_ of the MongoDB replica set, which forms a namespace for generated events and is used in all the names of the Kafka topics to which the connector writes, the Kafka Connect schema names, and the namespaces of the corresponding Avro schema when the Avro converter is used.
 <5> A list of regular expressions that match the collection namespaces (for example, <dbName>.<collectionName>) of all collections to be monitored. This is optional.
 
 endif::product[]
