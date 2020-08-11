@@ -66,8 +66,8 @@ public interface MessageDecoder {
      * @param buffer the replication stream buffer
      * @param lastReceivedLsn the last LSN reported by the replication stream
      * @param startLsn the starting LSN reported by the streaming producer
-     * @param skipFirstFlushRecord whether first flush record should be skipped
+     * @param walPosition wal position from which the streaming should resume
      * @return {@code true} if the incoming message should be skipped, {@code false} otherwise
      */
-    boolean shouldMessageBeSkipped(ByteBuffer buffer, Lsn lastReceivedLsn, Lsn startLsn, boolean skipFirstFlushRecord);
+    boolean shouldMessageBeSkipped(ByteBuffer buffer, Lsn lastReceivedLsn, Lsn startLsn, WalPositionLocator walPosition);
 }
