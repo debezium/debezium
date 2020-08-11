@@ -109,13 +109,15 @@ public class Filters {
          */
         public Builder(Configuration config) {
             this.config = config;
-            setFiltersFromStrings(config.getString(MySqlConnectorConfig.DATABASE_WHITELIST),
-                    config.getString(MySqlConnectorConfig.DATABASE_BLACKLIST),
-                    config.getString(MySqlConnectorConfig.TABLE_WHITELIST),
-                    config.getString(MySqlConnectorConfig.TABLE_BLACKLIST));
+            setFiltersFromStrings(
+                    config.getFallbackStringProperty(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, MySqlConnectorConfig.DATABASE_WHITELIST),
+                    config.getFallbackStringProperty(MySqlConnectorConfig.DATABASE_EXCLUDE_LIST, MySqlConnectorConfig.DATABASE_BLACKLIST),
+                    config.getFallbackStringProperty(MySqlConnectorConfig.TABLE_INCLUDE_LIST, MySqlConnectorConfig.TABLE_WHITELIST),
+                    config.getFallbackStringProperty(MySqlConnectorConfig.TABLE_EXCLUDE_LIST, MySqlConnectorConfig.TABLE_BLACKLIST));
 
             // Define the filter that excludes blacklisted columns, truncated columns, and masked columns ...
-            this.columnFilter = ColumnNameFilterFactory.createBlacklistFilter(config.getString(MySqlConnectorConfig.COLUMN_BLACKLIST));
+            this.columnFilter = ColumnNameFilterFactory
+                    .createExcludeListFilter(config.getFallbackStringProperty(MySqlConnectorConfig.COLUMN_EXCLUDE_LIST, MySqlConnectorConfig.COLUMN_BLACKLIST));
         }
 
         /**
@@ -125,26 +127,41 @@ public class Filters {
          * @return this
          */
         public Builder setFiltersFromOffsets(Map<String, ?> offsets) {
-            setFiltersFromStrings((String) offsets.get(SourceInfo.DATABASE_WHITELIST_KEY), (String) offsets.get(SourceInfo.DATABASE_BLACKLIST_KEY),
-                    (String) offsets.get(SourceInfo.TABLE_WHITELIST_KEY), (String) offsets.get(SourceInfo.TABLE_BLACKLIST_KEY));
+            String dbIncludeList = (String) offsets.get(SourceInfo.DATABASE_INCLUDE_LIST_KEY);
+            if (null == dbIncludeList) {
+                dbIncludeList = (String) offsets.get(SourceInfo.DATABASE_WHITELIST_KEY);
+            }
+            String dbExcludeList = (String) offsets.get(SourceInfo.DATABASE_EXCLUDE_LIST_KEY);
+            if (null == dbExcludeList) {
+                dbExcludeList = (String) offsets.get(SourceInfo.DATABASE_BLACKLIST_KEY);
+            }
+            String tableIncludeList = (String) offsets.get(SourceInfo.TABLE_INCLUDE_LIST_KEY);
+            if (null == tableIncludeList) {
+                tableIncludeList = (String) offsets.get(SourceInfo.TABLE_WHITELIST_KEY);
+            }
+            String tableExcludeList = (String) offsets.get(SourceInfo.TABLE_EXCLUDE_LIST_KEY);
+            if (null == tableExcludeList) {
+                tableExcludeList = (String) offsets.get(SourceInfo.TABLE_BLACKLIST_KEY);
+            }
+            setFiltersFromStrings(dbIncludeList, dbExcludeList, tableIncludeList, tableExcludeList);
             return this;
         }
 
-        private void setFiltersFromStrings(String dbWhitelist,
-                                           String dbBlacklist,
-                                           String tableWhitelist,
-                                           String tableBlacklist) {
+        private void setFiltersFromStrings(String dbIncludeList,
+                                           String dbExcludeList,
+                                           String tableIncludeList,
+                                           String tableExcludeList) {
             Predicate<String> dbFilter = Selectors.databaseSelector()
-                    .includeDatabases(dbWhitelist)
-                    .excludeDatabases(dbBlacklist)
+                    .includeDatabases(dbIncludeList)
+                    .excludeDatabases(dbExcludeList)
                     .build();
 
-            // Define the filter using the whitelists and blacklists for tables and database names ...
+            // Define the filter using the include and exclude lists for tables and database names ...
             Predicate<TableId> tableFilter = Selectors.tableSelector()
-                    .includeDatabases(dbWhitelist)
-                    .excludeDatabases(dbBlacklist)
-                    .includeTables(tableWhitelist)
-                    .excludeTables(tableBlacklist)
+                    .includeDatabases(dbIncludeList)
+                    .excludeDatabases(dbExcludeList)
+                    .includeTables(tableIncludeList)
+                    .excludeTables(tableExcludeList)
                     .build();
 
             // Ignore built-in databases and tables ...

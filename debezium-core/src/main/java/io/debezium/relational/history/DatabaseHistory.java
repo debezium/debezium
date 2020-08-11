@@ -46,7 +46,7 @@ public interface DatabaseHistory {
             .withDefault(false);
 
     public static final Field STORE_ONLY_MONITORED_TABLES_DDL = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "store.only.monitored.tables.ddl")
-            .withDisplayName("Store only DDL that modifies whitelisted/not-blacklisted tables")
+            .withDisplayName("Store only DDL that modifies tables that are captured based on include/exclude lists")
             .withType(Type.BOOLEAN)
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)

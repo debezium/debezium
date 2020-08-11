@@ -44,6 +44,28 @@ public class TablesWithoutPrimaryKeyIT extends AbstractRecordsProducerTest {
 
         start(PostgresConnector.class, TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_ONLY)
+                .with(PostgresConnectorConfig.SCHEMA_INCLUDE_LIST, "nopk")
+                .build());
+        assertConnectorIsRunning();
+
+        final int expectedRecordsCount = 1 + 1 + 1;
+
+        TestConsumer consumer = testConsumer(expectedRecordsCount, "nopk");
+        consumer.await(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS);
+        final Map<String, List<SourceRecord>> recordsByTopic = recordsByTopic(expectedRecordsCount, consumer);
+        Assertions.assertThat(recordsByTopic.get("test_server.nopk.t1").get(0).keySchema().field("pk")).isNotNull();
+        Assertions.assertThat(recordsByTopic.get("test_server.nopk.t1").get(0).keySchema().fields()).hasSize(1);
+        Assertions.assertThat(recordsByTopic.get("test_server.nopk.t2").get(0).keySchema().field("pk")).isNotNull();
+        Assertions.assertThat(recordsByTopic.get("test_server.nopk.t2").get(0).keySchema().fields()).hasSize(1);
+        Assertions.assertThat(recordsByTopic.get("test_server.nopk.t3").get(0).keySchema()).isNull();
+    }
+
+    @Test
+    public void shouldProcessFromSnapshotOld() throws Exception {
+        TestHelper.execute(STATEMENTS);
+
+        start(PostgresConnector.class, TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_ONLY)
                 .with(PostgresConnectorConfig.SCHEMA_WHITELIST, "nopk")
                 .build());
         assertConnectorIsRunning();
@@ -62,6 +84,29 @@ public class TablesWithoutPrimaryKeyIT extends AbstractRecordsProducerTest {
 
     @Test
     public void shouldProcessFromStreaming() throws Exception {
+        start(PostgresConnector.class, TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
+                .with(PostgresConnectorConfig.SCHEMA_INCLUDE_LIST, "nopk")
+                .build());
+        assertConnectorIsRunning();
+        waitForStreamingToStart();
+
+        TestHelper.execute(STATEMENTS);
+
+        final int expectedRecordsCount = 1 + 1 + 1;
+
+        TestConsumer consumer = testConsumer(expectedRecordsCount, "nopk");
+        consumer.await(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS);
+        final Map<String, List<SourceRecord>> recordsByTopic = recordsByTopic(expectedRecordsCount, consumer);
+        Assertions.assertThat(recordsByTopic.get("test_server.nopk.t1").get(0).keySchema().field("pk")).isNotNull();
+        Assertions.assertThat(recordsByTopic.get("test_server.nopk.t1").get(0).keySchema().fields()).hasSize(1);
+        Assertions.assertThat(recordsByTopic.get("test_server.nopk.t2").get(0).keySchema().field("pk")).isNotNull();
+        Assertions.assertThat(recordsByTopic.get("test_server.nopk.t2").get(0).keySchema().fields()).hasSize(1);
+        Assertions.assertThat(recordsByTopic.get("test_server.nopk.t3").get(0).keySchema()).isNull();
+    }
+
+    @Test
+    public void shouldProcessFromStreamingOld() throws Exception {
         start(PostgresConnector.class, TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
                 .with(PostgresConnectorConfig.SCHEMA_WHITELIST, "nopk")

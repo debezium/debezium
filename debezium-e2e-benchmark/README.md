@@ -59,8 +59,8 @@ If you have an existing up and running Debezium environment, you can do the benc
     - SQL create table for MySQL   
 ``` CREATE TABLE TPC.TEST ( USERNAME VARCHAR(32) NOT NULL, NAME VARCHAR(64), BLOOD_GROUP CHAR(3), RESIDENCE VARCHAR(200), COMPANY VARCHAR(128), ADDRESS VARCHAR(200), BIRTHDATE DATE, SEX CHAR(1), JOB VARCHAR(128), SSN CHAR(11), MAIL VARCHAR(128), ID INTEGER NOT NULL AUTO_INCREMENT, T0 TIMESTAMP  DEFAULT CURRENT_TIMESTAMP ) ``` 
 
-- Whitelist the TPC.TEST table in your Debezium connector config JSON
-```  "table.whitelist" : "TPC.TEST"   ```
+- Include the TPC.TEST table in your Debezium connector config JSON
+```  "table.include.list" : "TPC.TEST"   ```
 
 - Enable the table for CDC on the database
     - SQL for db2    

@@ -22,10 +22,10 @@ SQL based polling model of tables put into "capture mode". This uses the ASN lib
 In order to use ASN and hence this connector, you need to have a license for the IBM InfoSphere Data Replication (IIDR) product.
 It is not required that IIDR itself is installed.
 
-The first time it connects to a Db2 database, it reads a consistent snapshot of all of the tables that are whitelisted (or not blacklisted depending on the mode of operation).
+The first time it connects to a Db2 database, it reads a consistent snapshot of all of the tables that are included (or not excluded depending on the mode of operation).
 Note that by default all tables in the database are snapshoted, NOT just those that are in capture mode.
 
-When that snapshot is complete, the connector continuously streams the changes that were committed to the Db2 database for all whitelisted tables in capture mode. This generates corresponding insert, update and delete events.
+When that snapshot is complete, the connector continuously streams the changes that were committed to the Db2 database for all included tables in capture mode. This generates corresponding insert, update and delete events.
 All of the events for each table are recorded in a separate Kafka topic, where they can be easily consumed by applications and services.
 
 [[db2-overview]]
@@ -50,7 +50,7 @@ The client applications read the Kafka topics that correspond to the database ta
 
 The database administrator normally enables _CDC_ in the middle of the life of a table.
 This means that the connector does not have the complete history of all changes that have been made to the table.
-Therefore, when the Db2 connector first connects to a particular Db2 database, it starts by performing a _consistent snapshot_ of each of the whitelisted tables.
+Therefore, when the Db2 connector first connects to a particular Db2 database, it starts by performing a _consistent snapshot_ of each of the included tables.
 After the connector completes the snapshot, it continues streaming changes from the exact point at which the snapshot was made for tables in capture mode.
 This way, we start with a consistent view of all of the data, yet continue reading without having lost any of the changes made while the snapshot was taking place.
 
@@ -240,7 +240,7 @@ By default (snapshotting mode *initial*) the connector will upon the first start
 
 Each snapshot consists of the following steps:
 
-1. Determine the tables to be snapshoted from whitelist/blacklist
+1. Determine the tables to be snapshoted from include/exclude list
 2. Obtain a lock on each of the monitored tables to ensure that no structural changes can occur to any of the tables.
 The level of the lock is determined by `snapshot.isolation.mode` configuration option.
 3. Read the maximum LSN ("log sequence number") position in the server's transaction log.
@@ -264,7 +264,7 @@ This assures that the changes are replayed by {prodname} in the same order as we
 
 After a restart, the connector will resume from the offset (commit and change LSNs) where it left off before.
 
-The connector is able to detect whether the CDC is enabled or disabled for whitelisted source table during the runtime and modify its behavior.
+The connector is able to detect whether the CDC is enabled or disabled for included source table during the runtime and modify its behavior.
 
 [[db2-topic-names]]
 === Topic names

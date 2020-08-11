@@ -112,9 +112,13 @@ final class SourceInfo extends AbstractSourceInfo {
     public static final String THREAD_KEY = "thread";
     public static final String QUERY_KEY = "query";
     public static final String DATABASE_WHITELIST_KEY = "database_whitelist";
+    public static final String DATABASE_INCLUDE_LIST_KEY = "database_include_list";
     public static final String DATABASE_BLACKLIST_KEY = "database_blacklist";
+    public static final String DATABASE_EXCLUDE_LIST_KEY = "database_exclude_list";
     public static final String TABLE_WHITELIST_KEY = "table_whitelist";
+    public static final String TABLE_INCLUDE_LIST_KEY = "table_include_list";
     public static final String TABLE_BLACKLIST_KEY = "table_blacklist";
+    public static final String TABLE_EXCLUDE_LIST_KEY = "table_exclude_list";
     public static final String RESTART_PREFIX = "RESTART_";
 
     private String currentGtidSet;
@@ -136,10 +140,10 @@ final class SourceInfo extends AbstractSourceInfo {
     private boolean lastSnapshot = true;
     private boolean nextSnapshot = false;
     private String currentQuery = null;
-    private String databaseWhitelist;
-    private String databaseBlacklist;
-    private String tableWhitelist;
-    private String tableBlacklist;
+    private String databaseIncludeList;
+    private String databaseExcludeList;
+    private String tableIncludeList;
+    private String tableExcludeList;
     private Set<TableId> tableIds;
     private String databaseName;
 
@@ -275,10 +279,10 @@ final class SourceInfo extends AbstractSourceInfo {
             map.put(SNAPSHOT_KEY, true);
         }
         if (hasFilterInfo()) {
-            map.put(DATABASE_WHITELIST_KEY, databaseWhitelist);
-            map.put(DATABASE_BLACKLIST_KEY, databaseBlacklist);
-            map.put(TABLE_WHITELIST_KEY, tableWhitelist);
-            map.put(TABLE_BLACKLIST_KEY, tableBlacklist);
+            map.put(DATABASE_INCLUDE_LIST_KEY, databaseIncludeList);
+            map.put(DATABASE_EXCLUDE_LIST_KEY, databaseExcludeList);
+            map.put(TABLE_INCLUDE_LIST_KEY, tableIncludeList);
+            map.put(TABLE_EXCLUDE_LIST_KEY, tableExcludeList);
         }
         return map;
     }
@@ -434,10 +438,10 @@ final class SourceInfo extends AbstractSourceInfo {
      * @param config the configuration
      */
     public void setFilterDataFromConfig(Configuration config) {
-        this.databaseWhitelist = config.getString(MySqlConnectorConfig.DATABASE_WHITELIST);
-        this.databaseBlacklist = config.getString(MySqlConnectorConfig.DATABASE_BLACKLIST);
-        this.tableWhitelist = config.getString(MySqlConnectorConfig.TABLE_WHITELIST);
-        this.tableBlacklist = config.getString(MySqlConnectorConfig.TABLE_BLACKLIST);
+        this.databaseIncludeList = config.getFallbackStringProperty(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, MySqlConnectorConfig.DATABASE_WHITELIST);
+        this.databaseExcludeList = config.getFallbackStringProperty(MySqlConnectorConfig.DATABASE_EXCLUDE_LIST, MySqlConnectorConfig.DATABASE_BLACKLIST);
+        this.tableIncludeList = config.getFallbackStringProperty(MySqlConnectorConfig.TABLE_INCLUDE_LIST, MySqlConnectorConfig.TABLE_WHITELIST);
+        this.tableExcludeList = config.getFallbackStringProperty(MySqlConnectorConfig.TABLE_EXCLUDE_LIST, MySqlConnectorConfig.TABLE_BLACKLIST);
     }
 
     /**
@@ -461,24 +465,24 @@ final class SourceInfo extends AbstractSourceInfo {
          * 2. The initial snapshot occurred in a version of Debezium that did not store the filter information in the
          * offsets / the connector was not configured to store filter information.
          */
-        return databaseWhitelist != null || databaseBlacklist != null ||
-                tableWhitelist != null || tableBlacklist != null;
+        return databaseIncludeList != null || databaseExcludeList != null ||
+                tableIncludeList != null || tableExcludeList != null;
     }
 
-    public String getDatabaseWhitelist() {
-        return databaseWhitelist;
+    public String getDatabaseIncludeList() {
+        return databaseIncludeList;
     }
 
-    public String getDatabaseBlacklist() {
-        return databaseBlacklist;
+    public String getDatabaseExcludeList() {
+        return databaseExcludeList;
     }
 
-    public String getTableWhitelist() {
-        return tableWhitelist;
+    public String getTableIncludeList() {
+        return tableIncludeList;
     }
 
-    public String getTableBlacklist() {
-        return tableBlacklist;
+    public String getTableExcludeList() {
+        return tableExcludeList;
     }
 
     /**
@@ -501,19 +505,42 @@ final class SourceInfo extends AbstractSourceInfo {
             this.restartEventsToSkip = longOffsetValue(sourceOffset, EVENTS_TO_SKIP_OFFSET_KEY);
             nextSnapshot = booleanOffsetValue(sourceOffset, SNAPSHOT_KEY);
             lastSnapshot = nextSnapshot;
-            this.databaseWhitelist = (String) sourceOffset.get(DATABASE_WHITELIST_KEY);
-            this.databaseBlacklist = (String) sourceOffset.get(DATABASE_BLACKLIST_KEY);
-            this.tableWhitelist = (String) sourceOffset.get(TABLE_WHITELIST_KEY);
-            this.tableBlacklist = (String) sourceOffset.get(TABLE_BLACKLIST_KEY);
+            if (sourceOffset.containsKey(DATABASE_INCLUDE_LIST_KEY)) {
+                this.databaseIncludeList = (String) sourceOffset.get(DATABASE_INCLUDE_LIST_KEY);
+            }
+            else {
+                this.databaseIncludeList = (String) sourceOffset.get(DATABASE_WHITELIST_KEY);
+            }
+            if (sourceOffset.containsKey(DATABASE_EXCLUDE_LIST_KEY)) {
+                this.databaseExcludeList = (String) sourceOffset.get(DATABASE_EXCLUDE_LIST_KEY);
+            }
+            else {
+                this.databaseExcludeList = (String) sourceOffset.get(DATABASE_BLACKLIST_KEY);
+            }
+            if (sourceOffset.containsKey(TABLE_INCLUDE_LIST_KEY)) {
+                this.tableIncludeList = (String) sourceOffset.get(TABLE_INCLUDE_LIST_KEY);
+            }
+            else {
+                this.tableIncludeList = (String) sourceOffset.get(TABLE_WHITELIST_KEY);
+            }
+            if (sourceOffset.containsKey(TABLE_EXCLUDE_LIST_KEY)) {
+                this.tableExcludeList = (String) sourceOffset.get(TABLE_EXCLUDE_LIST_KEY);
+            }
+            else {
+                this.tableExcludeList = (String) sourceOffset.get(TABLE_BLACKLIST_KEY);
+            }
         }
     }
 
     public static boolean offsetsHaveFilterInfo(Map<String, ?> sourceOffset) {
-        return sourceOffset != null &&
-                sourceOffset.containsKey(DATABASE_BLACKLIST_KEY) ||
+        return sourceOffset != null && (sourceOffset.containsKey(DATABASE_BLACKLIST_KEY) ||
+                sourceOffset.containsKey(DATABASE_EXCLUDE_LIST_KEY) ||
                 sourceOffset.containsKey(DATABASE_WHITELIST_KEY) ||
+                sourceOffset.containsKey(DATABASE_INCLUDE_LIST_KEY) ||
                 sourceOffset.containsKey(TABLE_BLACKLIST_KEY) ||
-                sourceOffset.containsKey(TABLE_WHITELIST_KEY);
+                sourceOffset.containsKey(TABLE_EXCLUDE_LIST_KEY) ||
+                sourceOffset.containsKey(TABLE_WHITELIST_KEY) ||
+                sourceOffset.containsKey(TABLE_INCLUDE_LIST_KEY));
     }
 
     private long longOffsetValue(Map<String, ?> values, String key) {

@@ -63,7 +63,7 @@ public class TablesWithoutPrimaryKeyIT extends AbstractConnectorTest {
 
         start(SqlServerConnector.class, TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
-                .with(SqlServerConnectorConfig.TABLE_WHITELIST, "dbo.t[123]")
+                .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, "dbo.t[123]")
                 .build());
         assertConnectorIsRunning();
 

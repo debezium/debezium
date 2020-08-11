@@ -142,7 +142,7 @@ oc exec -i -c kafka broker-kafka-0 -- curl -X POST \
         "database.password": "dbz",
         "database.server.id": "184054",
         "database.server.name": "dbserver1",
-        "database.whitelist": "inventory",
+        "database.include.list": "inventory",
         "database.history.kafka.bootstrap.servers": "broker-kafka-bootstrap:9092",
         "database.history.kafka.topic": "schema-changes.inventory"
     }

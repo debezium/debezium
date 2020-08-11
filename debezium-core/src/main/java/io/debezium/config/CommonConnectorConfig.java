@@ -48,7 +48,7 @@ public abstract class CommonConnectorConfig {
 
         private final String value;
 
-        private Version(String value) {
+        Version(String value) {
             this.value = value;
         }
 
@@ -95,7 +95,7 @@ public abstract class CommonConnectorConfig {
     /**
      * The set of predefined modes for dealing with failures during event processing.
      */
-    public static enum EventProcessingFailureHandlingMode implements EnumeratedValue {
+    public enum EventProcessingFailureHandlingMode implements EnumeratedValue {
 
         /**
          * Problematic events will be skipped.
@@ -121,7 +121,7 @@ public abstract class CommonConnectorConfig {
 
         private final String value;
 
-        private EventProcessingFailureHandlingMode(String value) {
+        EventProcessingFailureHandlingMode(String value) {
             this.value = value;
         }
 
@@ -166,17 +166,17 @@ public abstract class CommonConnectorConfig {
         /**
          * Represent binary values as byte array
          */
-        BYTES("bytes", () -> SchemaBuilder.bytes()),
+        BYTES("bytes", SchemaBuilder::bytes),
 
         /**
          * Represent binary values as base64-encoded string
          */
-        BASE64("base64", () -> SchemaBuilder.string()),
+        BASE64("base64", SchemaBuilder::string),
 
         /**
          * Represents binary values as hex-encoded (base16) string
          */
-        HEX("hex", () -> SchemaBuilder.string());
+        HEX("hex", SchemaBuilder::string);
 
         private final String value;
         private final Supplier<SchemaBuilder> schema;
@@ -230,8 +230,8 @@ public abstract class CommonConnectorConfig {
         }
     }
 
-    private static String CONFLUENT_AVRO_CONVERTER = "io.confluent.connect.avro.AvroConverter";
-    private static String APICURIO_AVRO_CONVERTER = "io.apicurio.registry.utils.converter.AvroConverter";
+    private static final String CONFLUENT_AVRO_CONVERTER = "io.confluent.connect.avro.AvroConverter";
+    private static final String APICURIO_AVRO_CONVERTER = "io.apicurio.registry.utils.converter.AvroConverter";
 
     public static final int DEFAULT_MAX_QUEUE_SIZE = 8192;
     public static final int DEFAULT_MAX_BATCH_SIZE = 2048;
@@ -428,7 +428,9 @@ public abstract class CommonConnectorConfig {
     /**
      * Provides access to the "raw" config instance. In most cases, access via typed getters for individual properties
      * on the connector config class should be preferred.
+     * TODO this should be protected in the future to force proper facade methods based access / encapsulation
      */
+    @Deprecated
     public Configuration getConfig() {
         return config;
     }

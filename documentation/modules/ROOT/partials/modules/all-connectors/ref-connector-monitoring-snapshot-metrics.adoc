@@ -16,7 +16,7 @@
 
 |`NumberOfEventsFiltered`
 |`long`
-| The number of events that have been filtered by whitelist or blacklist filtering rules configured on the connector.
+| The number of events that have been filtered by include/exclude list filtering rules configured on the connector.
 
 |`MonitoredTables`
 |`string[]`

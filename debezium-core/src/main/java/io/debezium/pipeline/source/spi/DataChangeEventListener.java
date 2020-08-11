@@ -26,7 +26,7 @@ public interface DataChangeEventListener {
     void onEvent(DataCollectionId source, OffsetContext offset, Object key, Struct value) throws InterruptedException;
 
     /**
-     * Invoked for events pertaining to non-whitelisted tables.
+     * Invoked for events pertaining to non-captured tables.
      */
     void onFilteredEvent(String event);
 

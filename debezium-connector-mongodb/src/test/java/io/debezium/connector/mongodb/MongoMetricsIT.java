@@ -27,7 +27,7 @@ public class MongoMetricsIT extends AbstractMongoConnectorIT {
         this.config = TestHelper.getConfiguration()
                 .edit()
                 .with(MongoDbConnectorConfig.SNAPSHOT_MODE, MongoDbConnectorConfig.SnapshotMode.INITIAL)
-                .with(MongoDbConnectorConfig.COLLECTION_WHITELIST, "dbit.*")
+                .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
                 .build();
         this.context = new MongoDbTaskContext(config);
 
@@ -68,7 +68,7 @@ public class MongoMetricsIT extends AbstractMongoConnectorIT {
         this.config = TestHelper.getConfiguration()
                 .edit()
                 .with(MongoDbConnectorConfig.SNAPSHOT_MODE, MongoDbConnectorConfig.SnapshotMode.INITIAL)
-                .with(MongoDbConnectorConfig.COLLECTION_WHITELIST, "dbit.*")
+                .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
                 .build();
         this.context = new MongoDbTaskContext(config);
 
@@ -108,7 +108,7 @@ public class MongoMetricsIT extends AbstractMongoConnectorIT {
         this.config = TestHelper.getConfiguration()
                 .edit()
                 .with(MongoDbConnectorConfig.SNAPSHOT_MODE, MongoDbConnectorConfig.SnapshotMode.NEVER)
-                .with(MongoDbConnectorConfig.COLLECTION_WHITELIST, "dbit.*")
+                .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
                 .build();
         this.context = new MongoDbTaskContext(config);
 

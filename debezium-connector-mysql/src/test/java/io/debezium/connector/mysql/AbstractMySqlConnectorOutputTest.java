@@ -81,15 +81,15 @@ public class AbstractMySqlConnectorOutputTest extends ConnectorOutputTest {
             try {
                 GtidSet replicaGtidSet = null;
                 while (true) {
-                    Testing.debug("Checking replica's GTIDs and comparing to master's...");
+                    Testing.debug("Checking replica's GTIDs and comparing to primary's...");
                     replicaGtidSet = readAvailableGtidSet(replica);
                     // The replica will have extra sources, so check whether the replica has everything in the master ...
                     if (masterGtidSet.isContainedWithin(replicaGtidSet)) {
-                        Testing.debug("Replica's GTIDs are caught up to the master's.");
+                        Testing.debug("Replica's GTIDs are caught up to the primary's.");
                         sw.stop();
                         return;
                     }
-                    Testing.debug("Waiting for replica's GTIDs to catch up to master's...");
+                    Testing.debug("Waiting for replica's GTIDs to catch up to primary's...");
                     Thread.sleep(100);
                 }
             }
@@ -108,7 +108,7 @@ public class AbstractMySqlConnectorOutputTest extends ConnectorOutputTest {
                 // Timed out waiting for them to match ...
                 checker.interrupt();
             }
-            Testing.print("Waited a total of " + sw.durations().statistics().getTotalAsString() + " for the replica to catch up to the master.");
+            Testing.print("Waited a total of " + sw.durations().statistics().getTotalAsString() + " for the replica to catch up to the primary.");
         }
         catch (InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -136,7 +136,7 @@ public class AbstractMySqlConnectorOutputTest extends ConnectorOutputTest {
             // Now get the master GTID source ...
             String serverUuid = variables.get("server_uuid");
             if (serverUuid != null && !serverUuid.trim().isEmpty()) {
-                // We are using GTIDs, so look for the known GTID set that has the master and slave GTID sources ...
+                // We are using GTIDs, so look for the known GTID set that has the master and replica GTID sources ...
                 String availableServerGtidStr = context.knownGtidSet();
                 if (availableServerGtidStr != null && !availableServerGtidStr.trim().isEmpty()) {
                     GtidSet gtidSet = new GtidSet(availableServerGtidStr);

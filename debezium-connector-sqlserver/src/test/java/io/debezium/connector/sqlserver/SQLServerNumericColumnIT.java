@@ -79,7 +79,7 @@ public class SQLServerNumericColumnIT extends AbstractConnectorTest {
     public void decimalModeConfigString() throws Exception {
         final Configuration config = TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
-                .with(SqlServerConnectorConfig.TABLE_WHITELIST, "dbo.tablenuma")
+                .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, "dbo.tablenuma")
                 .with(SqlServerConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.STRING).build();
 
         start(SqlServerConnector.class, config);
@@ -111,7 +111,7 @@ public class SQLServerNumericColumnIT extends AbstractConnectorTest {
     public void decimalModeConfigDouble() throws Exception {
         final Configuration config = TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
-                .with(SqlServerConnectorConfig.TABLE_WHITELIST, "dbo.tablenumb")
+                .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, "dbo.tablenumb")
                 .with(SqlServerConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.DOUBLE).build();
 
         start(SqlServerConnector.class, config);
@@ -142,7 +142,7 @@ public class SQLServerNumericColumnIT extends AbstractConnectorTest {
     public void decimalModeConfigPrecise() throws Exception {
         final Configuration config = TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
-                .with(SqlServerConnectorConfig.TABLE_WHITELIST, "dbo.tablenumc")
+                .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, "dbo.tablenumc")
                 .with(SqlServerConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.PRECISE).build();
 
         start(SqlServerConnector.class, config);

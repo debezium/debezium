@@ -54,23 +54,27 @@ Only alphanumeric characters and underscores should be used.
 |
 |A list of host/port pairs that the connector will use for establishing an initial connection to the Kafka cluster. This connection will be used for retrieving database schema history previously stored by the connector, and for writing each DDL statement read from the source database. This should point to the same Kafka cluster used by the Kafka Connect process.
 
-|[[mysql-property-database-whitelist]]<<mysql-property-database-whitelist, `database.whitelist`>>
+|[[mysql-property-database-whitelist]]<<mysql-property-database-whitelist [[mysql-property-database-include-list]]<<mysql-property-database-include-list, `database.include.list`>>
 |_empty string_
-|An optional comma-separated list of regular expressions that match database names to be monitored; any database name not included in the whitelist will be excluded from monitoring. By default all databases will be monitored. May not be used with `database.blacklist`.
+|An optional comma-separated list of regular expressions that match database names to be monitored; any database name not included in `database.include.list` will be excluded from monitoring. By default all databases will be monitored.
+Must not be used with `database.exclude.list`.
 
-|[[mysql-property-database-blacklist]]<<mysql-property-database-blacklist, `database.blacklist`>>
+|[[mysql-property-database-blacklist]]<<mysql-property-database-blacklist[[mysql-property-database-exclude-list]]<<mysql-property-database-exclude-list, `database.exclude.list`>>
 |_empty string_
-|An optional comma-separated list of regular expressions that match database names to be excluded from monitoring; any database name not included in the blacklist will be monitored. May not be used with `database.whitelist`.
+|An optional comma-separated list of regular expressions that match database names to be excluded from monitoring; any database name not included in `database.exclude.list` will be monitored.
+Must not be used with `database.include.list`.
 
-|[[mysql-property-table-whitelist]]<<mysql-property-table-whitelist, `table.whitelist`>>
+|[[mysql-property-table-whitelist]]<<mysql-property-table-whitelist [[mysql-property-table-include-list]]<<mysql-property-table-include-list, `table.include.list`>>
 |_empty string_
-|An optional comma-separated list of regular expressions that match fully-qualified table identifiers for tables to be monitored; any table not included in the whitelist will be excluded from monitoring. Each identifier is of the form _databaseName_._tableName_. By default the connector will monitor every non-system table in each monitored database. May not be used with `table.blacklist`.
+|An optional comma-separated list of regular expressions that match fully-qualified table identifiers for tables to be monitored; any table not included in `table.include.list` will be excluded from monitoring. Each identifier is of the form _databaseName_._tableName_. By default the connector will monitor every non-system table in each monitored database.
+Must not be used with `table.exclude.list`.
 
-|[[mysql-property-table-blacklist]]<<mysql-property-table-blacklist, `table.blacklist`>>
+|[[mysql-property-table-blacklist]]<<mysql-property-table-blacklist [[mysql-property-table-exclude-list]]<<mysql-property-table-exclude-list , `table.exclude.list`>>
 |_empty string_
-|An optional comma-separated list of regular expressions that match fully-qualified table identifiers for tables to be excluded from monitoring; any table not included in the blacklist will be monitored. Each identifier is of the form _databaseName_._tableName_. May not be used with `table.whitelist`.
+|An optional comma-separated list of regular expressions that match fully-qualified table identifiers for tables to be excluded from monitoring; any table not included in `table.exclude.list` will be monitored. Each identifier is of the form _databaseName_._tableName_.
+Must not be used with `table.include.list`.
 
-|[[mysql-property-column-blacklist]]<<mysql-property-column-blacklist, `column.blacklist`>>
+|[[mysql-property-column-blacklist]]<<mysql-property-column-blacklist [[mysql-property-column-exclude-list]]<<mysql-property-column-exclude-list, `column.exclude.list`>>
 |_empty string_
 |An optional comma-separated list of regular expressions that match the fully-qualified names of columns that should be excluded from change event message values. Fully-qualified names for columns are of the form _databaseName_._tableName_._columnName_, or _databaseName_._schemaName_._tableName_._columnName_.
 
@@ -138,7 +142,7 @@ or `connect` always represents time and timestamp values using Kafka Connect's b
 |`false`
 |Boolean value that specifies whether the connector should include the original SQL query that generated the change event. +
 Note: This option requires MySQL be configured with the binlog_rows_query_log_events option set to ON. Query will not be present for events generated from the snapshot process. +
-WARNING: Enabling this option may expose tables or fields explicitly blacklisted or masked by including the original SQL statement in the change event. For this reason this option is defaulted to 'false'.
+WARNING: Enabling this option may expose tables or fields explicitly excluded or masked by including the original SQL statement in the change event. For this reason this option is defaulted to 'false'.
 
 |[[mysql-property-event-processing-failure-handling-mode]]<<mysql-property-event-processing-failure-handling-mode, `event.processing{zwsp}.failure.handling.mode`>>
 |`fail`
@@ -172,18 +176,20 @@ WARNING: Enabling this option may expose tables or fields explicitly blacklisted
 
 |[[mysql-property-gtid-source-includes]]<<mysql-property-gtid-source-includes, `gtid.source.includes`>>
 |
-|A comma-separated list of regular expressions that match source UUIDs in the GTID set used to find the binlog position in the MySQL server. Only the GTID ranges that have sources matching one of these include patterns will be used. May not be used with `gtid.source.excludes`.
+|A comma-separated list of regular expressions that match source UUIDs in the GTID set used to find the binlog position in the MySQL server. Only the GTID ranges that have sources matching one of these include patterns will be used.
+Must not be used with `gtid.source.excludes`.
 
 |[[mysql-property-gtid-source-excludes]]<<mysql-property-gtid-source-excludes, `gtid.source.excludes`>>
 |
-|A comma-separated list of regular expressions that match source UUIDs in the GTID set used to find the binlog position in the MySQL server. Only the GTID ranges that have sources matching none of these exclude patterns will be used. May not be used with `gtid.source.includes`.
+|A comma-separated list of regular expressions that match source UUIDs in the GTID set used to find the binlog position in the MySQL server. Only the GTID ranges that have sources matching none of these exclude patterns will be used.
+Must not be used with `gtid.source.includes`.
 
 ifdef::community[]
 // Do not include deprecated content in downstream doc
 |[[mysql-property-gtid-new-channel-position]]<<mysql-property-gtid-new-channel-position, `gtid.new.channel.position`>> +
 _deprecated and scheduled for removal_
 |`earliest`
-| When set to `latest`, when the connector sees a new GTID channel, it will start consuming from the last executed transaction in that GTID channel. If set to `earliest` (default), the connector starts reading that channel from the first available (not purged) GTID position. `earliest` is useful when you have a active-passive MySQL setup where {prodname} is connected to master, in this case during failover the slave with new UUID (and GTID channel) starts receiving writes before {prodname} is connected. These writes would be lost when using `latest`.
+| When set to `latest`, when the connector sees a new GTID channel, it will start consuming from the last executed transaction in that GTID channel. If set to `earliest` (default), the connector starts reading that channel from the first available (not purged) GTID position. `earliest` is useful when you have a active-passive MySQL setup where {prodname} is connected to the primary server, in this case during failover the replica with new UUID (and GTID channel) starts receiving writes before {prodname} is connected. These writes would be lost when using `latest`.
 endif::community[]
 
 |[[mysql-property-tombstones-on-delete]]<<mysql-property-tombstones-on-delete, `tombstones.on.delete`>>
@@ -219,7 +225,7 @@ The following table describes {link-prefix}:{link-mysql-connector}#advanced-mysq
 
 |[[mysql-property-table-ignore-builtin]]<<mysql-property-table-ignore-builtin, `table.ignore.builtin`>>
 |`true`
-|Boolean value that specifies whether built-in system tables should be ignored. This applies regardless of the table whitelist or blacklists. By default system tables are excluded from monitoring, and no events are generated when changes are made to any of the system tables.
+|Boolean value that specifies whether built-in system tables should be ignored. This applies regardless of the table include or exclude lists. By default system tables are excluded from monitoring, and no events are generated when changes are made to any of the system tables.
 
 |[[mysql-property-database-history-kafka-recovery-poll-interval-ms]]<<mysql-property-database-history-kafka-recovery-poll-interval-ms, `database.history.kafka.recovery.poll.interval.ms`>>
 |`100`

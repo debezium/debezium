@@ -13,6 +13,7 @@ import static org.junit.Assert.fail;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
@@ -225,7 +226,7 @@ public class SnapshotReaderIT {
 
     @Test
     public void shouldCreateSnapshotOfSingleDatabaseUsingReadEvents() throws Exception {
-        config = simpleConfig().with(MySqlConnectorConfig.DATABASE_WHITELIST, "connector_(.*)_" + DATABASE.getIdentifier()).build();
+        config = simpleConfig().with(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, "connector_(.*)_" + DATABASE.getIdentifier()).build();
         context = new MySqlTaskContext(config, new Filters.Builder(config).build());
         context.start();
         reader = new SnapshotReader("snapshot", context);
@@ -502,6 +503,34 @@ public class SnapshotReaderIT {
     }
 
     @Test
+    public void shouldSnapshotTablesInOrderSpecifiedInTableIncludeList() throws Exception {
+        config = simpleConfig()
+                .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST,
+                        "connector_test_ro_(.*).orders,connector_test_ro_(.*).Products,connector_test_ro_(.*).products_on_hand,connector_test_ro_(.*).dbz_342_timetest")
+                .build();
+        context = new MySqlTaskContext(config, new Filters.Builder(config).build());
+        context.start();
+        reader = new SnapshotReader("snapshot", context);
+        reader.uponCompletion(completed::countDown);
+        reader.generateInsertEvents();
+        // Start the snapshot ...
+        reader.start();
+        // Poll for records ...
+        List<SourceRecord> records;
+        LinkedHashSet<String> tablesInOrder = new LinkedHashSet<>();
+        LinkedHashSet<String> tablesInOrderExpected = getTableNamesInSpecifiedOrder("orders", "Products", "products_on_hand", "dbz_342_timetest");
+        while ((records = reader.poll()) != null) {
+            records.forEach(record -> {
+                VerifyRecord.isValid(record);
+                if (record.value() != null) {
+                    tablesInOrder.add(getTableNameFromSourceRecord.apply(record));
+                }
+            });
+        }
+        assertArrayEquals(tablesInOrder.toArray(), tablesInOrderExpected.toArray());
+    }
+
+    @Test
     public void shouldSnapshotTablesInOrderSpecifiedInTablesWhitelist() throws Exception {
         config = simpleConfig()
                 .with(MySqlConnectorConfig.TABLE_WHITELIST,
@@ -557,14 +586,10 @@ public class SnapshotReaderIT {
         assertArrayEquals(tablesInOrder.toArray(), tablesInOrderExpected.toArray());
     }
 
-    private Function<SourceRecord, String> getTableNameFromSourceRecord = sourceRecord -> ((Struct) sourceRecord.value()).getStruct("source").getString("table");
+    private final Function<SourceRecord, String> getTableNameFromSourceRecord = sourceRecord -> ((Struct) sourceRecord.value()).getStruct("source").getString("table");
 
     private LinkedHashSet<String> getTableNamesInSpecifiedOrder(String... tables) {
-        LinkedHashSet<String> tablesInOrderExpected = new LinkedHashSet<>();
-        for (String table : tables) {
-            tablesInOrderExpected.add(table);
-        }
-        return tablesInOrderExpected;
+        return new LinkedHashSet<>(Arrays.asList(tables));
     }
 
     @Test

@@ -1067,13 +1067,13 @@ public class JdbcConnection implements AutoCloseable {
                 String tableName = columnMetadata.getString(3);
                 TableId tableId = new TableId(catalogName, schemaName, tableName);
 
-                // exclude views and non-whitelisted tables
+                // exclude views and non-captured tables
                 if (viewIds.contains(tableId) ||
                         (tableFilter != null && !tableFilter.isIncluded(tableId))) {
                     continue;
                 }
 
-                // add all whitelisted columns
+                // add all included columns
                 readTableColumn(columnMetadata, tableId, columnFilter).ifPresent(column -> {
                     columnsByTable.computeIfAbsent(tableId, t -> new ArrayList<>())
                             .add(column.create());
@@ -1102,7 +1102,7 @@ public class JdbcConnection implements AutoCloseable {
 
     /**
      * Returns a {@link ColumnEditor} representing the current record of the given result set of column metadata, if
-     * included in the column whitelist.
+     * included in column.include.list.
      */
     protected Optional<ColumnEditor> readTableColumn(ResultSet columnMetadata, TableId tableId, ColumnNameFilter columnFilter) throws SQLException {
         final String columnName = columnMetadata.getString(4);

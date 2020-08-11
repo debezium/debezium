@@ -37,10 +37,17 @@ import io.debezium.relational.Tables.TableFilter;
  */
 public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorConfig {
 
+    protected static final String SCHEMA_INCLUDE_LIST_NAME = "schema.include.list";
+    protected static final String SCHEMA_EXCLUDE_LIST_NAME = "schema.exclude.list";
     protected static final String TABLE_BLACKLIST_NAME = "table.blacklist";
+    protected static final String TABLE_EXCLUDE_LIST_NAME = "table.exclude.list";
     protected static final String TABLE_WHITELIST_NAME = "table.whitelist";
+    protected static final String TABLE_INCLUDE_LIST_NAME = "table.include.list";
     private static final Pattern MSG_KEY_COLUMNS_PATTERN = Pattern.compile("^(([^:]+):([^:;\\s]+))+[^;]$");
     public static final long DEFAULT_SNAPSHOT_LOCK_TIMEOUT_MILLIS = TimeUnit.SECONDS.toMillis(10);
+    public static final String TABLE_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG = "\"table.include.list\" or \"table.whitelist\" is already specified";
+    public static final String COLUMN_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG = "\"column.include.list\" or \"column.whitelist\" is already specified";
+    public static final String SCHEMA_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG = "\"schema.include.list\" or \"schema.whitelist\" is already specified";
 
     /**
      * The set of predefined DecimalHandlingMode options or aliases.
@@ -66,7 +73,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
 
         private final String value;
 
-        private DecimalHandlingMode(String value) {
+        DecimalHandlingMode(String value) {
             this.value = value;
         }
 
@@ -136,11 +143,11 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     /**
      * A comma-separated list of regular expressions that match the fully-qualified names of tables to be monitored.
      * Fully-qualified names for tables are of the form {@code <databaseName>.<tableName>} or
-     * {@code <databaseName>.<schemaName>.<tableName>}. May not be used with {@link #TABLE_BLACKLIST}, and superseded by database
+     * {@code <databaseName>.<schemaName>.<tableName>}. Must not be used with {@link #TABLE_EXCLUDE_LIST}, and superseded by database
      * inclusions/exclusions.
      */
-    public static final Field TABLE_WHITELIST = Field.create(TABLE_WHITELIST_NAME)
-            .withDisplayName("Included tables")
+    public static final Field TABLE_INCLUDE_LIST = Field.create(TABLE_INCLUDE_LIST_NAME)
+            .withDisplayName("Include Tables")
             .withType(Type.LIST)
             .withWidth(Width.LONG)
             .withImportance(Importance.HIGH)
@@ -148,17 +155,46 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withDescription("The tables for which changes are to be captured");
 
     /**
+     * Old, backwards-compatible "whitelist" property.
+     */
+    @Deprecated
+    public static final Field TABLE_WHITELIST = Field.create(TABLE_WHITELIST_NAME)
+            .withDisplayName("Deprecated: Include Tables")
+            .withType(Type.LIST)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.LOW)
+            .withValidation(Field::isListOfRegex)
+            .withInvisibleRecommender()
+            .withDescription("The tables for which changes are to be captured (deprecated, use \"" + TABLE_INCLUDE_LIST.name() + "\" instead)");
+
+    /**
      * A comma-separated list of regular expressions that match the fully-qualified names of tables to be excluded from
      * monitoring. Fully-qualified names for tables are of the form {@code <databaseName>.<tableName>} or
-     * {@code <databaseName>.<schemaName>.<tableName>}. May not be used with {@link #TABLE_WHITELIST}.
+     * {@code <databaseName>.<schemaName>.<tableName>}. Must not be used with {@link #TABLE_INCLUDE_LIST}.
      */
-    public static final Field TABLE_BLACKLIST = Field.create(TABLE_BLACKLIST_NAME)
-            .withDisplayName("Excluded tables")
+    public static final Field TABLE_EXCLUDE_LIST = Field.create(TABLE_EXCLUDE_LIST_NAME)
+            .withDisplayName("Exclude Tables")
             .withType(Type.STRING)
             .withWidth(Width.LONG)
             .withImportance(Importance.MEDIUM)
-            .withValidation(Field::isListOfRegex, RelationalDatabaseConnectorConfig::validateTableBlacklist)
-            .withInvisibleRecommender();
+            .withValidation(Field::isListOfRegex, RelationalDatabaseConnectorConfig::validateTableExcludeList)
+            .withInvisibleRecommender()
+            .withDescription("A comma-separated list of regular expressions that match the fully-qualified names of tables to be excluded from monitoring");
+
+    /**
+     * Old, backwards-compatible "blacklist" property.
+     */
+    @Deprecated
+    public static final Field TABLE_BLACKLIST = Field.create(TABLE_BLACKLIST_NAME)
+            .withDisplayName("Deprecated: Exclude Tables")
+            .withType(Type.STRING)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.LOW)
+            .withValidation(Field::isListOfRegex, RelationalDatabaseConnectorConfig::validateTableExcludeList)
+            .withInvisibleRecommender()
+            .withDescription(
+                    "A comma-separated list of regular expressions that match the fully-qualified names of tables to be excluded from monitoring (deprecated, use \""
+                            + TABLE_EXCLUDE_LIST.name() + "\" instead)");
 
     public static final Field TABLE_IGNORE_BUILTIN = Field.create("table.ignore.builtin")
             .withDisplayName("Ignore system databases")
@@ -175,13 +211,26 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
      * For instance, they could be of the form {@code <databaseName>.<tableName>.<columnName>} or
      * {@code <schemaName>.<tableName>.<columnName>} or {@code <databaseName>.<schemaName>.<tableName>.<columnName>}.
      */
-    public static final Field COLUMN_BLACKLIST = Field.create("column.blacklist")
+    public static final Field COLUMN_EXCLUDE_LIST = Field.create("column.exclude.list")
             .withDisplayName("Exclude Columns")
             .withType(Type.STRING)
             .withWidth(Width.LONG)
             .withImportance(Importance.MEDIUM)
-            .withValidation(RelationalDatabaseConnectorConfig::validateColumnBlacklist)
+            .withValidation(RelationalDatabaseConnectorConfig::validateColumnExcludeList)
             .withDescription("Regular expressions matching columns to exclude from change events");
+
+    /**
+     * Old, backwards-compatible "blacklist" property.
+     */
+    @Deprecated
+    public static final Field COLUMN_BLACKLIST = Field.create("column.blacklist")
+            .withDisplayName("Deprecated: Exclude Columns")
+            .withType(Type.STRING)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.LOW)
+            .withValidation(RelationalDatabaseConnectorConfig::validateColumnExcludeList)
+            .withInvisibleRecommender()
+            .withDescription("Regular expressions matching columns to exclude from change events (deprecated, use \"" + COLUMN_EXCLUDE_LIST.name() + "\" instead)");
 
     /**
      * A comma-separated list of regular expressions that match fully-qualified names of columns to be excluded from monitoring
@@ -189,12 +238,24 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
      * For instance, they could be of the form {@code <databaseName>.<tableName>.<columnName>} or
      * {@code <schemaName>.<tableName>.<columnName>} or {@code <databaseName>.<schemaName>.<tableName>.<columnName>}.
      */
-    public static final Field COLUMN_WHITELIST = Field.create("column.whitelist")
+    public static final Field COLUMN_INCLUDE_LIST = Field.create("column.include.list")
             .withDisplayName("Include Columns")
             .withType(Type.STRING)
             .withWidth(Width.LONG)
             .withImportance(Importance.MEDIUM)
             .withDescription("Regular expressions matching columns to include in change events");
+
+    /**
+     * Old, backwards-compatible "whitelist" property.
+     */
+    @Deprecated
+    public static final Field COLUMN_WHITELIST = Field.create("column.whitelist")
+            .withDisplayName("Deprecated: Include Columns")
+            .withType(Type.STRING)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.LOW)
+            .withInvisibleRecommender()
+            .withDescription("Regular expressions matching columns to include in change events (deprecated, use \"" + COLUMN_INCLUDE_LIST.name() + "\" instead)");
 
     public static final Field MSG_KEY_COLUMNS = Field.create("message.key.columns")
             .withDisplayName("Columns PK mapping")
@@ -235,28 +296,54 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
 
     /**
      * A comma-separated list of regular expressions that match schema names to be monitored.
-     * May not be used with {@link #SCHEMA_BLACKLIST}.
+     * Must not be used with {@link #SCHEMA_EXCLUDE_LIST}.
      */
-    public static final Field SCHEMA_WHITELIST = Field.create("schema.whitelist")
-            .withDisplayName("Schemas")
+    public static final Field SCHEMA_INCLUDE_LIST = Field.create(SCHEMA_INCLUDE_LIST_NAME)
+            .withDisplayName("Include Schemas")
             .withType(Type.LIST)
             .withWidth(Width.LONG)
             .withImportance(Importance.HIGH)
-            .withDependents(TABLE_WHITELIST_NAME)
+            .withDependents(TABLE_INCLUDE_LIST_NAME, TABLE_WHITELIST_NAME)
             .withDescription("The schemas for which events should be captured");
 
     /**
-     * A comma-separated list of regular expressions that match schema names to be excluded from monitoring.
-     * May not be used with {@link #SCHEMA_WHITELIST}.
+     * Old, backwards-compatible "whitelist" property.
      */
-    public static final Field SCHEMA_BLACKLIST = Field.create("schema.blacklist")
+    @Deprecated
+    public static final Field SCHEMA_WHITELIST = Field.create("schema.whitelist")
+            .withDisplayName("Deprecated: Include Schemas")
+            .withType(Type.LIST)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.LOW)
+            .withDependents(TABLE_INCLUDE_LIST_NAME, TABLE_WHITELIST_NAME)
+            .withInvisibleRecommender()
+            .withDescription("The schemas for which events should be captured (deprecated, use \"" + SCHEMA_INCLUDE_LIST.name() + "\" instead)");
+
+    /**
+     * A comma-separated list of regular expressions that match schema names to be excluded from monitoring.
+     * Must not be used with {@link #SCHEMA_INCLUDE_LIST}.
+     */
+    public static final Field SCHEMA_EXCLUDE_LIST = Field.create(SCHEMA_EXCLUDE_LIST_NAME)
             .withDisplayName("Exclude Schemas")
             .withType(Type.STRING)
             .withWidth(Width.LONG)
             .withImportance(Importance.MEDIUM)
-            .withValidation(RelationalDatabaseConnectorConfig::validateSchemaBlacklist)
+            .withValidation(RelationalDatabaseConnectorConfig::validateSchemaExcludeList)
             .withInvisibleRecommender()
             .withDescription("The schemas for which events must not be captured");
+
+    /**
+     * Old, backwards-compatible "blacklist" property.
+     */
+    @Deprecated
+    public static final Field SCHEMA_BLACKLIST = Field.create("schema.blacklist")
+            .withDisplayName("Deprecated: Exclude Schemas")
+            .withType(Type.STRING)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.LOW)
+            .withValidation(RelationalDatabaseConnectorConfig::validateSchemaExcludeList)
+            .withInvisibleRecommender()
+            .withDescription("The schemas for which events must not be captured (deprecated, use \"" + SCHEMA_EXCLUDE_LIST.name() + "\" instead)");
 
     public static final Field TIME_PRECISION_MODE = Field.create("time.precision.mode")
             .withDisplayName("Time Precision")
@@ -317,12 +404,18 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
                     SNAPSHOT_LOCK_TIMEOUT_MS)
             .events(
                     COLUMN_WHITELIST,
+                    COLUMN_INCLUDE_LIST,
                     COLUMN_BLACKLIST,
+                    COLUMN_EXCLUDE_LIST,
                     TABLE_WHITELIST,
+                    TABLE_INCLUDE_LIST,
                     TABLE_BLACKLIST,
+                    TABLE_EXCLUDE_LIST,
                     TABLE_IGNORE_BUILTIN,
                     SCHEMA_WHITELIST,
+                    SCHEMA_INCLUDE_LIST,
                     SCHEMA_BLACKLIST,
+                    SCHEMA_EXCLUDE_LIST,
                     MSG_KEY_COLUMNS,
                     SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE,
                     MASK_COLUMN_WITH_HASH,
@@ -383,11 +476,36 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
         return Duration.ofMillis(getConfig().getLong(SNAPSHOT_LOCK_TIMEOUT_MS));
     }
 
-    private static int validateColumnBlacklist(Configuration config, Field field, Field.ValidationOutput problems) {
-        String whitelist = config.getString(COLUMN_WHITELIST);
-        String blacklist = config.getString(COLUMN_BLACKLIST);
-        if (whitelist != null && blacklist != null) {
-            problems.accept(COLUMN_BLACKLIST, blacklist, "Column whitelist is already specified");
+    public String schemaExcludeList() {
+        return getConfig().getFallbackStringProperty(SCHEMA_EXCLUDE_LIST, SCHEMA_BLACKLIST);
+    }
+
+    public String schemaIncludeList() {
+        return getConfig().getFallbackStringProperty(SCHEMA_INCLUDE_LIST, SCHEMA_WHITELIST);
+    }
+
+    public String tableExcludeList() {
+        return getConfig().getFallbackStringProperty(TABLE_EXCLUDE_LIST, TABLE_BLACKLIST);
+    }
+
+    public String tableIncludeList() {
+        return getConfig().getFallbackStringProperty(TABLE_INCLUDE_LIST, TABLE_WHITELIST);
+    }
+
+    public String columnExcludeList() {
+        return getConfig().getFallbackStringProperty(COLUMN_EXCLUDE_LIST, COLUMN_BLACKLIST);
+    }
+
+    public String columnIncludeList() {
+        return getConfig().getFallbackStringProperty(COLUMN_INCLUDE_LIST, COLUMN_WHITELIST);
+    }
+
+    private static int validateColumnExcludeList(Configuration config, Field field, Field.ValidationOutput problems) {
+        String includeList = Configuration.getFallbackStringProperty(config, COLUMN_INCLUDE_LIST, COLUMN_WHITELIST);
+        String excludeList = Configuration.getFallbackStringProperty(config, COLUMN_EXCLUDE_LIST, COLUMN_BLACKLIST);
+
+        if (includeList != null && excludeList != null) {
+            problems.accept(COLUMN_EXCLUDE_LIST, excludeList, COLUMN_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG);
             return 1;
         }
         return 0;
@@ -401,12 +519,12 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
         return tableIdMapper;
     }
 
-    private static int validateTableBlacklist(Configuration config, Field field, ValidationOutput problems) {
-        String whitelist = config.getString(TABLE_WHITELIST);
-        String blacklist = config.getString(TABLE_BLACKLIST);
+    private static int validateTableExcludeList(Configuration config, Field field, ValidationOutput problems) {
+        String includeList = Configuration.getFallbackStringProperty(config, TABLE_INCLUDE_LIST, TABLE_WHITELIST);
+        String excludeList = Configuration.getFallbackStringProperty(config, TABLE_EXCLUDE_LIST, TABLE_BLACKLIST);
 
-        if (whitelist != null && blacklist != null) {
-            problems.accept(TABLE_BLACKLIST, blacklist, "Table whitelist is already specified");
+        if (includeList != null && excludeList != null) {
+            problems.accept(TABLE_EXCLUDE_LIST, excludeList, TABLE_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG);
             return 1;
         }
 
@@ -434,11 +552,12 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
         return Collections.unmodifiableMap(snapshotSelectOverridesByTable);
     }
 
-    private static int validateSchemaBlacklist(Configuration config, Field field, Field.ValidationOutput problems) {
-        String whitelist = config.getString(SCHEMA_WHITELIST);
-        String blacklist = config.getString(SCHEMA_BLACKLIST);
-        if (whitelist != null && blacklist != null) {
-            problems.accept(SCHEMA_BLACKLIST, blacklist, "Schema whitelist is already specified");
+    private static int validateSchemaExcludeList(Configuration config, Field field, Field.ValidationOutput problems) {
+        String includeList = Configuration.getFallbackStringProperty(config, SCHEMA_INCLUDE_LIST, SCHEMA_WHITELIST);
+        String excludeList = Configuration.getFallbackStringProperty(config, SCHEMA_EXCLUDE_LIST, SCHEMA_BLACKLIST);
+
+        if (includeList != null && excludeList != null) {
+            problems.accept(SCHEMA_EXCLUDE_LIST, excludeList, SCHEMA_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG);
             return 1;
         }
         return 0;

@@ -72,7 +72,7 @@ public final class Tables {
          * @param fullyQualifiedColumnNames the comma-separated list of fully-qualified column names to exclude; may be null or
          * @return a column name filter; never null
          */
-        public static ColumnNameFilter createBlacklistFilter(String fullyQualifiedColumnNames) {
+        public static ColumnNameFilter createExcludeListFilter(String fullyQualifiedColumnNames) {
             Predicate<ColumnId> delegate = Predicates.excludes(fullyQualifiedColumnNames, ColumnId::toString);
             return (catalogName, schemaName, tableName, columnName) -> delegate.test(new ColumnId(new TableId(catalogName, schemaName, tableName), columnName));
         }
@@ -87,7 +87,7 @@ public final class Tables {
          * @param fullyQualifiedColumnNames the comma-separated list of fully-qualified column names to  include; may be null or
          * @return a column name filter; never null
          */
-        public static ColumnNameFilter createWhitelistFilter(String fullyQualifiedColumnNames) {
+        public static ColumnNameFilter createIncludeListFilter(String fullyQualifiedColumnNames) {
             Predicate<ColumnId> delegate = Predicates.includes(fullyQualifiedColumnNames, ColumnId::toString);
             return (catalogName, schemaName, tableName, columnName) -> delegate.test(new ColumnId(new TableId(catalogName, schemaName, tableName), columnName));
         }

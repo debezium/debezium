@@ -321,6 +321,46 @@ public class BinlogReaderIT {
         assertThat(reader.getMetrics().getNumberOfSkippedEvents()).isEqualTo(0);
     }
 
+    /**
+     * Setup a DATABASE_INCLUDE_LIST filter that filters all events.
+     * Verify all events are properly filtered.
+     * Verify numberOfFilteredEvents metric is incremented correctly.
+     */
+    @Test
+    @FixFor("DBZ-1206")
+    public void shouldFilterAllRecordsBasedOnDatabaseIncludeListFilter() throws Exception {
+        // Define configuration that will ignore all events from MySQL source.
+        config = simpleConfig()
+                .with(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, "db-does-not-exist")
+                .build();
+
+        final Filters filters = new Filters.Builder(config).build();
+        context = new MySqlTaskContext(config, filters);
+        context.start();
+        context.source().setBinlogStartPoint("", 0L); // start from beginning
+        context.initializeHistory();
+        reader = new BinlogReader("binlog", context, new AcceptAllPredicate());
+
+        // Start reading the binlog ...
+        reader.start();
+
+        // Lets wait for at least 35 events to be filtered.
+        final int expectedFilterCount = 35;
+        final long numberFiltered = filterAtLeast(expectedFilterCount, 20, TimeUnit.SECONDS);
+
+        // All events should have been filtered.
+        assertThat(numberFiltered).isGreaterThanOrEqualTo(expectedFilterCount);
+
+        // There should be no schema changes
+        assertThat(schemaChanges.recordCount()).isEqualTo(0);
+
+        // There should be no records
+        assertThat(store.collectionCount()).isEqualTo(0);
+
+        // There should be no skipped
+        assertThat(reader.getMetrics().getNumberOfSkippedEvents()).isEqualTo(0);
+    }
+
     @Test
     @FixFor("DBZ-183")
     public void shouldHandleTimestampTimezones() throws Exception {
@@ -330,8 +370,8 @@ public class BinlogReaderIT {
 
         String tableName = "dbz_85_fractest";
         config = simpleConfig().with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
-                .with(MySqlConnectorConfig.DATABASE_WHITELIST, REGRESSION_DATABASE.getDatabaseName())
-                .with(MySqlConnectorConfig.TABLE_WHITELIST, REGRESSION_DATABASE.qualifiedTableName(tableName))
+                .with(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, REGRESSION_DATABASE.getDatabaseName())
+                .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, REGRESSION_DATABASE.qualifiedTableName(tableName))
                 .build();
         Filters filters = new Filters.Builder(config).build();
         context = new MySqlTaskContext(config, filters);
@@ -373,8 +413,8 @@ public class BinlogReaderIT {
 
         String tableName = "dbz_342_timetest";
         config = simpleConfig().with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
-                .with(MySqlConnectorConfig.DATABASE_WHITELIST, REGRESSION_DATABASE.getDatabaseName())
-                .with(MySqlConnectorConfig.TABLE_WHITELIST, REGRESSION_DATABASE.qualifiedTableName(tableName))
+                .with(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, REGRESSION_DATABASE.getDatabaseName())
+                .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, REGRESSION_DATABASE.qualifiedTableName(tableName))
                 .build();
         Filters filters = new Filters.Builder(config).build();
         context = new MySqlTaskContext(config, filters);

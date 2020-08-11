@@ -393,7 +393,7 @@ public class SnapshotReader extends AbstractReader {
                             while (rs.next() && isRunning()) {
                                 TableId id = new TableId(dbName, null, rs.getString(1));
                                 final boolean shouldRecordTableSchema = shouldRecordTableSchema(schema, filters, id);
-                                // Apply only when the whitelist table list is not dynamically reconfigured
+                                // Apply only when the table include list is not dynamically reconfigured
                                 if ((createTableFilters == filters && shouldRecordTableSchema) || createTableFilters.tableFilter().test(id)) {
                                     createTablesMap.computeIfAbsent(dbName, k -> new ArrayList<>()).add(id);
                                 }
@@ -425,9 +425,11 @@ public class SnapshotReader extends AbstractReader {
                  * + and then sort the tableIds list based on the above list
                  * +
                  */
-                List<Pattern> tableWhitelistPattern = Strings.listOfRegex(context.config().getString(MySqlConnectorConfig.TABLE_WHITELIST), Pattern.CASE_INSENSITIVE);
+                List<Pattern> tableIncludeListPattern = Strings.listOfRegex(
+                        context.config().getFallbackStringProperty(MySqlConnectorConfig.TABLE_INCLUDE_LIST, MySqlConnectorConfig.TABLE_WHITELIST),
+                        Pattern.CASE_INSENSITIVE);
                 List<TableId> tableIdsSorted = new ArrayList<>();
-                tableWhitelistPattern.forEach(pattern -> {
+                tableIncludeListPattern.forEach(pattern -> {
                     List<TableId> tablesMatchedByPattern = capturedTableIds.stream().filter(t -> pattern.asPredicate().test(t.toString()))
                             .collect(Collectors.toList());
                     tablesMatchedByPattern.forEach(t -> {
@@ -888,7 +890,7 @@ public class SnapshotReader extends AbstractReader {
             source.startSnapshot();
         }
         else {
-            logger.info("Step {}: read binlog position of MySQL master", step);
+            logger.info("Step {}: read binlog position of MySQL primary server", step);
             String showMasterStmt = "SHOW MASTER STATUS";
             sql.set(showMasterStmt);
             mysql.query(sql.get(), rs -> {

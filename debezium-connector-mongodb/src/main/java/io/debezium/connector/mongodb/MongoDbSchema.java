@@ -113,7 +113,7 @@ public class MongoDbSchema implements DatabaseSchema<CollectionId> {
     @Override
     public void assureNonEmptySchema() {
         if (collections.isEmpty()) {
-            LOGGER.warn("After applying blacklist/whitelist filters there are no tables to monitor, please check your configuration");
+            LOGGER.warn(DatabaseSchema.NO_CAPTURED_DATA_COLLECTIONS_WARNING);
         }
     }
 

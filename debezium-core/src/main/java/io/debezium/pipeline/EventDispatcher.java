@@ -47,7 +47,7 @@ import io.debezium.util.SchemaNameAdjuster;
 
 /**
  * Central dispatcher for data change and schema change events. The former will be routed to the change event queue, the
- * latter will be routed to the {@link DatabaseSchema}. But based on the applying whitelist/blacklist configuration,
+ * latter will be routed to the {@link DatabaseSchema}. But based on the applying include/exclude list configuration,
  * events may be not be dispatched at all.
  * <p>
  * This router is also in charge of emitting heartbeat messages, exposing of metrics via JMX etc.

@@ -53,7 +53,7 @@ public class MySqlTimestampColumnIT extends AbstractConnectorTest {
     public void shouldAlterEnumColumnCharacterSet() throws Exception {
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NEVER)
-                .with(MySqlConnectorConfig.TABLE_WHITELIST, DATABASE.qualifiedTableName("t_user_black_list"))
+                .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("t_user_black_list"))
                 .build();
 
         start(MySqlConnector.class, config);
