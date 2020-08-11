@@ -372,10 +372,8 @@ endif::community[]
 |`payload`
 |The value's actual data. This is the information that the change event is providing. 
 
-ifdef::community[]
 It may appear that the JSON representations of the events are much larger than the rows they describe. This is because the JSON representation must include the schema and the payload portions of the message.
 However, by using the {link-prefix}:{link-avro-serialization}[Avro converter], you can significantly decrease the size of the messages that the connector streams to Kafka topics.
-endif::community[]
 
 |4
 |`op`
