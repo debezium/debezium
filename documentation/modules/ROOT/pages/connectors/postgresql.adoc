@@ -13,16 +13,16 @@ ifdef::community[]
 
 toc::[]
 
-{prodname}'s PostgreSQL connector captures row-level changes in the schemas of a PostgreSQL database. PostgreSQL versions 9.6, 10, 11, and 12 are supported.
+{prodname}'s PostgreSQL connector captures row-level changes in the schemas of a PostgreSQL database. PostgreSQL versions 9.6, 10, 11, and 12 are supported. 
 endif::community[]
 ifdef::product[]
-{prodname}'s PostgreSQL connector captures row-level changes in the schemas of a PostgreSQL database. PostgreSQL versions 10, 11, and 12 are supported.
+{prodname}'s PostgreSQL connector captures row-level changes in the schemas of a PostgreSQL database. PostgreSQL versions 10, 11, and 12 are supported. 
 endif::product[]
 
-The first time it connects to a PostgreSQL server or cluster, the connector takes a consistent snapshot of all schemas. After that snapshot is complete, the connector continuously captures row-level changes that insert, update, and delete database content and that were committed to a PostgreSQL database. The connector generates data change event records and streams them to Kafka topics. For each table, the default behavior is that the connector streams all generated events to a separate Kafka topic for that table. Applications and services consume data change event records from that topic.
+The first time it connects to a PostgreSQL server or cluster, the connector takes a consistent snapshot of all schemas. After that snapshot is complete, the connector continuously captures row-level changes that insert, update, and delete database content and that were committed to a PostgreSQL database. The connector generates data change event records and streams them to Kafka topics. For each table, the default behavior is that the connector streams all generated events to a separate Kafka topic for that table. Applications and services consume data change event records from that topic. 
 
 ifdef::product[]
-Information and procedures for using a {prodname} PostgreSQL connector is organized as follows:
+Information and procedures for using a {prodname} PostgreSQL connector is organized as follows: 
 
 * xref:overview-of-debezium-postgresql-connector[]
 * xref:how-debezium-postgresql-connectors-work[]
@@ -35,18 +35,18 @@ Information and procedures for using a {prodname} PostgreSQL connector is organi
 endif::product[]
 
 // Type: concept
-// Title: Overview of {prodname} PostgreSQL connector
+// Title: Overview of {prodname} PostgreSQL connector 
 // ModuleID: overview-of-debezium-postgresql-connector
 [[postgresql-overview]]
 == Overview
 
-PostgreSQL's link:https://www.postgresql.org/docs/current/static/logicaldecoding-explanation.html[_logical decoding_] feature was introduced in version 9.4. It is a mechanism that allows the extraction of the changes that were committed to the transaction log and the processing of these changes in a user-friendly manner with the help of an link:https://www.postgresql.org/docs/current/static/logicaldecoding-output-plugin.html[_output plug-in_]. The output plug-in enables clients to consume the changes.
+PostgreSQL's link:https://www.postgresql.org/docs/current/static/logicaldecoding-explanation.html[_logical decoding_] feature was introduced in version 9.4. It is a mechanism that allows the extraction of the changes that were committed to the transaction log and the processing of these changes in a user-friendly manner with the help of an link:https://www.postgresql.org/docs/current/static/logicaldecoding-output-plugin.html[_output plug-in_]. The output plug-in enables clients to consume the changes. 
 
 The PostgreSQL connector contains two main parts that work together to read and process database changes:
 
 [[postgresql-output-plugin]]
 ifdef::community[]
-* A logical decoding output plug-in. You might need to install the output plug-in that you choose to use. You must configure a replication slot that uses your chosen output plug-in before running the PostgreSQL server. The plug-in can be one of the following:
+* A logical decoding output plug-in. You might need to install the output plug-in that you choose to use. You must configure a replication slot that uses your chosen output plug-in before running the PostgreSQL server. The plug-in can be one of the following: 
 ** link:https://github.com/debezium/postgres-decoderbufs[`decoderbufs`] is based on Protobuf and maintained by the {prodname} community.
 ** link:https://github.com/eulerto/wal2json[`wal2json`] is based on JSON and maintained by the wal2json community.
 ** `pgoutput` is the standard logical decoding output plug-in in PostgreSQL 10+. It is maintained by the PostgreSQL community, and used by PostgreSQL itself for link:https://www.postgresql.org/docs/current/logical-replication-architecture.html[logical replication]. This plug-in is always present so no additional libraries need to be installed. The {prodname} connector interprets the raw replication event stream directly into change events.
@@ -64,7 +64,7 @@ The connector produces a _change event_ for every row-level insert, update, and 
 
 PostgreSQL normally purges write-ahead log (WAL) segments after some period of time. This means that the connector does not have the complete history of all changes that have been made to the database. Therefore, when the PostgreSQL connector first connects to a particular PostgreSQL database, it starts by performing a _consistent snapshot_ of each of the database schemas. After the connector completes the snapshot, it continues streaming changes from the exact point at which the snapshot was made. This way, the connector starts with a consistent view of all of the data, and does not omit any changes that were made while the snapshot was being taken.
 
-The connector is tolerant of failures. As the connector reads changes and produces events, it records the WAL position for each event. If the connector stops for any reason (including communication failures, network problems, or crashes), upon restart the connector continues reading the WAL where it last left off. This includes snapshots. If the connector stops during a snapshot, the connector begins a new snapshot when it restarts.
+The connector is tolerant of failures. As the connector reads changes and produces events, it records the WAL position for each event. If the connector stops for any reason (including communication failures, network problems, or crashes), upon restart the connector continues reading the WAL where it last left off. This includes snapshots. If the connector stops during a snapshot, the connector begins a new snapshot when it restarts. 
 
 [[postgresql-limitations]]
 [IMPORTANT]
@@ -72,9 +72,9 @@ The connector is tolerant of failures. As the connector reads changes and produc
 The connector relies on and reflects the PostgreSQL logical decoding feature, which has the following limitations:
 
 * Logical decoding does not support DDL changes. This means that the connector is unable to report DDL change events back to consumers.
-* Logical decoding replication slots are supported on only `primary` servers. When there is a cluster of PostgreSQL servers, the connector can run on only the active `primary` server. It cannot run on `hot` or `warm` standby replicas. If the `primary` server fails or is demoted, the connector stops. After the `primary` server has recovered, you can restart the connector. If a different PostgreSQL server has been promoted to `primary`, adjust the connector configuration before restarting the connector.
+* Logical decoding replication slots are supported on only `primary` servers. When there is a cluster of PostgreSQL servers, the connector can run on only the active `primary` server. It cannot run on `hot` or `warm` standby replicas. If the `primary` server fails or is demoted, the connector stops. After the `primary` server has recovered, you can restart the connector. If a different PostgreSQL server has been promoted to `primary`, adjust the connector configuration before restarting the connector. 
 
-{link-prefix}:{link-postgresql-connector}#postgresql-when-things-go-wrong[ Behavior when things go wrong] describes what the connector does when there is a problem.
+{link-prefix}:{link-postgresql-connector}#postgresql-when-things-go-wrong[ Behavior when things go wrong] describes what the connector does when there is a problem. 
 ====
 
 [IMPORTANT]
@@ -89,16 +89,16 @@ With a single byte character encoding, it is not possible to correctly process s
 [[how-the-postgresql-connector-works]]
 == How the connector works
 
-To optimally configure and run a {prodname} PostgreSQL connector, it is helpful to understand how the connector performs snapshots, streams change events, determines Kafka topic names, and uses metadata.
+To optimally configure and run a {prodname} PostgreSQL connector, it is helpful to understand how the connector performs snapshots, streams change events, determines Kafka topic names, and uses metadata. 
 
 ifdef::product[]
-Details are in the following topics:
+Details are in the following topics: 
 
 * xref:how-debezium-postgresql-connectors-perform-database-snapshots[]
 * xref:how-debezium-postgresql-connectors-stream-change-event-records[]
-* xref:default-names-of-kafka-topics-that-receive-debezium-change-event-records[]
-* xref:metadata-in-debezium-change-event-records[]
-* xref:debezium-connector-generated-events-that-represent-transaction-boundaries[]
+* xref:default-names-of-kafka-topics-that-receive-debezium-postgresql-change-event-records[]
+* xref:metadata-in-debezium-postgresql-change-event-records[]
+* xref:debezium-postgresql-connector-generated-events-that-represent-transaction-boundaries[]
 
 endif::product[]
 
@@ -108,10 +108,10 @@ endif::product[]
 [[postgresql-snapshots]]
 === Snapshots
 
-Most PostgreSQL servers are configured to not retain the complete history of the database in the WAL segments. This means that the PostgreSQL connector would be unable to see the entire history of the database by reading only the WAL. Consequently, the first time that the connector starts, it performs an initial _consistent snapshot_ of the database. The default behavior for performing a snapshot consists of the following steps. You can change this behavior by setting the {link-prefix}:{link-postgresql-connector}#postgresql-property-snapshot-mode[`snapshot.mode` connector configuration property] to a value other than `initial`.
+Most PostgreSQL servers are configured to not retain the complete history of the database in the WAL segments. This means that the PostgreSQL connector would be unable to see the entire history of the database by reading only the WAL. Consequently, the first time that the connector starts, it performs an initial _consistent snapshot_ of the database. The default behavior for performing a snapshot consists of the following steps. You can change this behavior by setting the {link-prefix}:{link-postgresql-connector}#postgresql-property-snapshot-mode[`snapshot.mode` connector configuration property] to a value other than `initial`. 
 
 . Start a transaction with a link:https://www.postgresql.org/docs/current/static/sql-set-transaction.html[SERIALIZABLE, READ ONLY, DEFERRABLE] isolation level to ensure that subsequent reads in this transaction are against a single consistent version of the data. Any changes to the data due to subsequent `INSERT`, `UPDATE`, and `DELETE` operations by other clients are not visible to this transaction.
-. Obtain an `ACCESS SHARE MODE` lock on each of the tables being tracked to ensure that no structural changes can occur to any of the tables while the snapshot is taking place. These locks do not prevent table `INSERT`, `UPDATE` and `DELETE` operations from taking place during the snapshot.
+. Obtain an `ACCESS SHARE MODE` lock on each of the tables being tracked to ensure that no structural changes can occur to any of the tables while the snapshot is taking place. These locks do not prevent table `INSERT`, `UPDATE` and `DELETE` operations from taking place during the snapshot. 
 +
 _This step is omitted when `snapshot.mode` is set to `exported`, which allows the connector to perform a lock-free snapshot_.
 . Read the current position in the server's transaction log.
@@ -135,8 +135,8 @@ This is a known issue and the affected snapshot modes will be reworked to use `e
 |Description
 
 |`always`
-|The connector always performs a snapshot when it starts. After the snapshot completes, the connector continues streaming changes from step 3 in the above sequence. This mode is useful in these situations: +
-
+|The connector always performs a snapshot when it starts. After the snapshot completes, the connector continues streaming changes from step 3 in the above sequence. This mode is useful in these situations: + 
+ 
 * It is known that some WAL segments have been deleted and are no longer available. +
 * After a cluster failure, a new primary has been promoted. The `always` snapshot mode ensures that the connector does not miss any changes that were made after the new primary had been promoted but before the connector was restarted on the new primary.
 
@@ -160,7 +160,7 @@ ifdef::community[]
 [[postgresql-custom-snapshot]]
 === Custom snapshotter SPI
 
-For more advanced uses, you can provide an implementation of the `io.debezium.connector.postgresql.spi.Snapshotter` interface. This interface allows control of most of the aspects of how the connector performs snapshots. This includes whether or not to take a snapshot, the options for opening the snapshot transaction, and whether to take locks.
+For more advanced uses, you can provide an implementation of the `io.debezium.connector.postgresql.spi.Snapshotter` interface. This interface allows control of most of the aspects of how the connector performs snapshots. This includes whether or not to take a snapshot, the options for opening the snapshot transaction, and whether to take locks. 
 
 Following is the full API for the interface. All built-in snapshot modes implement this interface.
 
@@ -256,15 +256,15 @@ The PostgreSQL connector typically spends the vast majority of its time streamin
 
 Whenever the server commits a transaction, a separate server process invokes a callback function from the {link-prefix}:{link-postgresql-connector}#postgresql-output-plugin[logical decoding plug-in]. This function processes the changes from the transaction, converts them to a specific format (Protobuf or JSON in the case of {prodname} plug-in) and writes them on an output stream, which can then be consumed by clients.
 
-The {prodname} PostgreSQL connector acts as a PostgreSQL client. When the connector receives changes it transforms the events into {prodname} _create_, _update_, or _delete_ events that include the LSN of the event. The PostgreSQL connector forwards these change events in records to the Kafka Connect framework, which is running in the same process. The Kafka Connect process asynchronously writes the change event records in the same order in which they were generated to the appropriate Kafka topic.
+The {prodname} PostgreSQL connector acts as a PostgreSQL client. When the connector receives changes it transforms the events into {prodname} _create_, _update_, or _delete_ events that include the LSN of the event. The PostgreSQL connector forwards these change events in records to the Kafka Connect framework, which is running in the same process. The Kafka Connect process asynchronously writes the change event records in the same order in which they were generated to the appropriate Kafka topic. 
 
 Periodically, Kafka Connect records the most recent _offset_ in another Kafka topic. The offset indicates source-specific position information that {prodname} includes with each event. For the PostgreSQL connector, the LSN recorded in each change event is the offset.
 
-When Kafka Connect gracefully shuts down, it stops the connectors, flushes all event records to Kafka, and records the last offset received from each connector. When Kafka Connect restarts, it reads the last recorded offset for each connector, and starts each connector at its last recorded offset. When the connector restarts, it sends a request to the PostgreSQL server to send the events starting just after that position.
+When Kafka Connect gracefully shuts down, it stops the connectors, flushes all event records to Kafka, and records the last offset received from each connector. When Kafka Connect restarts, it reads the last recorded offset for each connector, and starts each connector at its last recorded offset. When the connector restarts, it sends a request to the PostgreSQL server to send the events starting just after that position. 
 
 [NOTE]
 ====
-The PostgreSQL connector retrieves schema information as part of the events sent by the logical decoding plug-in. However, the connector does not retrieve information about which columns compose the primary key. The connector obtains this information from the JDBC metadata (side channel). If the primary key definition of a table changes (by adding, removing or renaming primary key columns), there is a tiny period of time when the primary key information from JDBC is not synchronized with the change event that the logical decoding plug-in generates. During this tiny period, a message could be created with an inconsistent key structure. To prevent this inconsistency, update primary key structures as follows:
+The PostgreSQL connector retrieves schema information as part of the events sent by the logical decoding plug-in. However, the connector does not retrieve information about which columns compose the primary key. The connector obtains this information from the JDBC metadata (side channel). If the primary key definition of a table changes (by adding, removing or renaming primary key columns), there is a tiny period of time when the primary key information from JDBC is not synchronized with the change event that the logical decoding plug-in generates. During this tiny period, a message could be created with an inconsistent key structure. To prevent this inconsistency, update primary key structures as follows: 
 
 . Put the database or an application into a read-only mode.
 . Let {prodname} process all remaining events.
@@ -284,12 +284,12 @@ This is particularly valuable for environments where installation of plug-ins is
 See {link-prefix}:{link-postgresql-connector}#setting-up-postgresql[Setting up PostgreSQL] for more details.
 
 // Type: concept
-// ModuleID: default-names-of-kafka-topics-that-receive-debezium-change-event-records
-// Title: Default names of Kafka topics that receive {prodname} change event records
+// ModuleID: default-names-of-kafka-topics-that-receive-debezium-postgresql-change-event-records
+// Title: Default names of Kafka topics that receive {prodname} PostgreSQL change event records
 [[postgresql-topic-names]]
 === Topics names
 
-The PostgreSQL connector writes events for all insert, update, and delete operations on a single table to a single Kafka topic. By default, the Kafka topic name is _serverName_._schemaName_._tableName_ where:
+The PostgreSQL connector writes events for all insert, update, and delete operations on a single table to a single Kafka topic. By default, the Kafka topic name is _serverName_._schemaName_._tableName_ where: 
 
 * _serverName_ is the logical name of the connector as specified with the `database.server.name` connector configuration property.
 * _schemaName_ is the name of the database schema where the operation occurred.
@@ -310,12 +310,12 @@ Now suppose that the tables are not part of a specific schema but were created i
 * `fulfillment.public.orders`
 
 // Type: concept
-// ModuleID: metadata-in-debezium-change-event-records
-// Title: Metadata in {prodname} change event records
+// ModuleID: metadata-in-debezium-postgresql-change-event-records
+// Title: Metadata in {prodname} PostgreSQL change event records
 [[postgresql-meta-information]]
 === Meta information
 
-In addition to a {link-prefix}:{link-postgresql-connector}#postgresql-events[_database change event_], each record produced by a PostgreSQL connector contains some metadata. Metadata includes where the event occurred on the server, the name of the source partition and the name of the Kafka topic and partition where the event should go, for example:
+In addition to a {link-prefix}:{link-postgresql-connector}#postgresql-events[_database change event_], each record produced by a PostgreSQL connector contains some metadata. Metadata includes where the event occurred on the server, the name of the source partition and the name of the Kafka topic and partition where the event should go, for example: 
 
 [source,json,indent=0]
 ----
@@ -330,29 +330,29 @@ In addition to a {link-prefix}:{link-postgresql-connector}#postgresql-events[_da
     "kafkaPartition": null
 ----
 
-* `sourcePartition` always defaults to the setting of the `database.server.name` connector configuration property.
+* `sourcePartition` always defaults to the setting of the `database.server.name` connector configuration property. 
 
 * `sourceOffset` contains information about the location of the server where the event occurred:
 
 ** `lsn` represents the PostgreSQL https://www.postgresql.org/docs/current/static/datatype-pg-lsn.html[Log Sequence Number] or `offset` in the transaction log.
 ** `txId` represents the identifier of the server transaction that caused the event.
-** `ts_ms` represents the server time at which the transaction was committed in the form of the number of microseconds since the epoch.
-* `kafkaPartition` with a setting of `null` means that the connector does not use a specific Kafka partition. The PostgreSQL connector uses only one Kafka Connect partition and it places the generated events into one Kafka partition.
+** `ts_ms` represents the server time at which the transaction was committed in the form of the number of microseconds since the epoch. 
+* `kafkaPartition` with a setting of `null` means that the connector does not use a specific Kafka partition. The PostgreSQL connector uses only one Kafka Connect partition and it places the generated events into one Kafka partition. 
 
 // Type: concept
-// ModuleID: debezium-connector-generated-events-that-represent-transaction-boundaries
-// Title: {prodname} connector-generated events that represent transaction boundaries
+// ModuleID: debezium-postgresql-connector-generated-events-that-represent-transaction-boundaries
+// Title: {prodname} PostgreSQL connector-generated events that represent transaction boundaries
 [[postgresql-transaction-metadata]]
 === Transaction metadata
 
-{prodname} can generate events that represent transaction boundaries and that enrich change data event messages. For every transaction `BEGIN` and `END`, {prodname} generates tan event that contains:
+{prodname} can generate events that represent transaction boundaries and that enrich data change event messages. For every transaction `BEGIN` and `END`, {prodname} generates an event that contains the following fields:
 
 * `status` - `BEGIN` or `END`
 * `id` - string representation of unique transaction identifier
 * `event_count` (for `END` events) - total number of events emitted by the transaction
 * `data_collections` (for `END` events) - an array of pairs of `data_collection` and `event_count` that provides the number of events emitted by changes originating from given data collection
 
-.Examples
+.Example
 
 [source,json,indent=0,subs="attributes"]
 ----
@@ -420,7 +420,11 @@ Following is an example of a message:
 [[postgresql-events]]
 == Data change events
 
-Each data change event produced by the PostgreSQL connector has a key and a value. The structure of the key and value depends on the table from which the change event originates. The default behavior is that the connector streams change event records to {link-prefix}:{link-postgresql-connector}#postgresql-topic-names[topic names] that are the same as the event's originating table.
+Each data change event produced by the {prodname} PostgreSQL connector contains a key and a value. The structure of the event key and event value depends on the table from which the change event originates.
+
+{prodname} and Kafka Connect are designed around _continuous streams of event messages_. However, the structure of these events may change over time, which can be difficult for consumers to handle. To make it easier, Kafka Connect makes each event self-contained. Each event key and each event value has two parts: a _schema_ and a _payload_. In each part, the schema describes the structure of its payload, while the payload contains the actual data.
+
+By default behavior is that the connector streams change event records to {link-prefix}:{link-postgresql-connector}#postgresql-topic-names[topics with names that are the same as the event's originating table].
 
 [NOTE]
 ====
@@ -429,36 +433,35 @@ Starting with Kafka 0.10, Kafka can optionally record the event key and value wi
 
 [WARNING]
 ====
-The PostgreSQL connector ensures that all Kafka Connect _schema names_ are http://avro.apache.org/docs/current/spec.html#names[valid Avro schema names]. This means that the logical server name must start with a Latin letter or an underscore, that is, a-z, A-Z, or \_. Each remaining character in the logical server name and each character in the schema and table names must be a Latin letter, a digit, or an underscore, that is, a-z, A-Z, 0-9, or \_. If there is an invalid character it is replaced with an underscore character.
+The PostgreSQL connector ensures that all Kafka Connect schema names adhere to the http://avro.apache.org/docs/current/spec.html#names[Avro schema name format]. This means that the logical server name must start with a Latin letter or an underscore, that is, a-z, A-Z, or \_. Each remaining character in the logical server name and each character in the schema and table names must be a Latin letter, a digit, or an underscore, that is, a-z, A-Z, 0-9, or \_. If there is an invalid character it is replaced with an underscore character.
 
-This can lead to unexpected conflicts if the logical server name, a schema name, or a table name contains invalid characters, and the only characters that  distinguish names from one another are invalid and thus replaced with underscores.
+This can lead to unexpected conflicts if the logical server name, a schema name, or a table name contains invalid characters, and the only characters that distinguish names from one another are invalid and thus replaced with underscores.
 ====
-
-{prodname} and Kafka Connect are designed around _continuous streams of event messages_. However, the structure of these events may change over time, which can be difficult for consumers to handle. To make it easier, Kafka Connect makes each event self-contained. Each message key and each message value has two parts: a _schema_ and a _payload_. The schema describes the structure of the payload, while the payload contains the actual data.
 
 ifdef::product[]
 Details are in the following topics:
 
-* xref:about-keys-in-debezium-change-events[]
-* xref:about-values-in-debezium-change-events[]
+* xref:about-keys-in-debezium-postgresql-change-events[]
+* xref:about-values-in-debezium-postgresql-change-events[]
 * xref:how-replica-identity-controls-data-that-can-be-in-debezium-change-events[]
-* xref:about-debezium-change-events-for-operations-that-create-content[]
-* xref:about-debezium-change-events-for-operations-that-update-content[]
-* xref:about-debezium-change-events-for-primary-key-updates[]
-* xref:about-debezium-change-events-for-operations-that-delete-content[]
+* xref:about-debezium-postgresql-change-events-for-operations-that-create-content[]
+* xref:about-debezium-postgresql-change-events-for-operations-that-update-content[]
+* xref:about-debezium-postgresql-change-events-for-primary-key-updates[]
+* xref:about-debezium-postgresql-change-events-for-operations-that-delete-content[]
 
 endif::product[]
 
 // Type: concept
-// ModuleID: about-keys-in-debezium-change-events
-// Title: About keys in {prodname} change events
+// ModuleID: about-keys-in-debezium-postgresql-change-events
+// Title: About keys in {prodname} PostgreSQL change events
 [[postgresql-change-events-key]]
 === Change event keys
 
-For a given table, the change event's key has a structure that contains a field for each column in the primary key of the table at the time the event was created. Alternatively, if the table has `REPLICA IDENTITY` set to `FULL` or `USING INDEX` there is a field for each unique key constraint.
+For a given table, the change event's key has a structure that contains a field for each column in the primary key of the table at the time the event was created. Alternatively, if the table has `REPLICA IDENTITY` set to `FULL` or `USING INDEX` there is a field for each unique key constraint. 
 
-Consider a `customers` table defined in the `public` database schema:
+Consider a `customers` table defined in the `public` database schema and the example of a change event key for that table.
 
+.Example table
 [source,sql,indent=0]
 ----
 CREATE TABLE customers (
@@ -470,16 +473,18 @@ CREATE TABLE customers (
 );
 ----
 
-If the `database.server.name` configuration property has the value `PostgreSQL_server`, every change event for the `customers` table while it has this definition has the same key structure, which in JSON looks like this:
+=====
+.Example change event key
+If the `database.server.name` connector configuration property has the value `PostgreSQL_server`, every change event for the `customers` table while it has this definition has the same key structure, which in JSON looks like this:
 
 [source,json,indent=0]
 ----
   {
-    "schema": {
+    "schema": { <1>
       "type": "struct",
-      "name": "PostgreSQL_server.public.customers.Key",
-      "optional": false,
-      "fields": [
+      "name": "PostgreSQL_server.public.customers.Key", <2>
+      "optional": false, <3>
+      "fields": [ <4>
             {
                 "name": "id",
                 "index": "0",
@@ -490,15 +495,19 @@ If the `database.server.name` configuration property has the value `PostgreSQL_s
             }
         ]
     },
-    "payload": {
+    "payload": { <5>
         "id": "1"
     },
   }
 ----
+<1> The `schema` portion of the key specifies a Kafka Connect schema that describes what is in the key's `payload` portion.
+<2> The `PostgreSQL_server.public.customers.Key` schema defines the structure of the key's payload.
+<3> The key's `payload` value is not optional.
+<4> Specifies the type of fields expected in the `payload`.
+<5> The payload itself, which in this case contains a single `id` field.
 
-The `schema` portion of the key contains a Kafka Connect schema that describes what is in the key's `payload` portion. In this case, it means that the `payload` value is not optional, is a structure defined by a schema named `PostgreSQL_server.public.customers.Key`, and has one required field named `id` of type `INT32`. If you look at the value of the key's `payload` field, you see that it is indeed a structure, which in JSON is just an object, with a single `id` field, whose value is `1`.
-
-This key describes output from the connector named `PostgreSQL_server`,  for the row in the `public.customers` table, whose primary key, the `id` column, had a value of `1`.
+This key describes output from the connector named `PostgreSQL_server`. The output is for the `public.customers` table row whose primary key, the `id` column, has a value of `1`.
+=====
 
 [NOTE]
 ====
@@ -511,12 +520,12 @@ If the table does not have a primary or unique key, then the change event's key 
 ====
 
 // Type: concept
-// ModuleID: about-values-in-debezium-change-events
-// Title: About values in {prodname} change events
+// ModuleID: about-values-in-debezium-postgresql-change-events
+// Title: About values in {prodname} PostgreSQL change events
 [[postgresql-change-events-value]]
 === Change event values
 
-The value in a change event record is a bit more complicated than the key. Like the key, the value has a `schema` section and a `payload` section. The `schema` section contains a schema that describes the `Envelope` structure of the `payload` section, including its nested fields. The `payload` section has the following nested fields:
+The value in a change event record is a bit more complicated than the key. Like the key, the value has a `schema` section and a `payload` section. The `schema` section contains the schema that describes the `Envelope` structure of the `payload` section, including its nested fields. The `payload` section has the following nested fields:
 
 * `before` is an optional field. If present, it contains the state of the row _before_ the event occurred. The structure of the `before` field is described by a Kafka Connect `Value` schema. For example, for each row operation in the `public.customers` table, the connector uses the `PostgreSQL_server.public.customers.Value` schema to provide the content of the `before` field.
 
@@ -527,7 +536,7 @@ Whether or not this field is available is dependent on the {link-prefix}:{link-p
 
 * `after` is an optional field. If present, it contains the state of the row _after_ the operation occurred. The structure is described by the same Kafka Connect `Value` schema that is used for the `before` field.
 
-* `source` is a mandatory field that contains a structure that describes the source metadata for the event. For PostgreSQL connectors, the metadata provides:
+* `source` is a mandatory field that contains a structure that describes the source metadata for the event. For PostgreSQL connectors, the metadata provides: 
 
 ** {prodname} version
 ** Connector name
@@ -535,17 +544,17 @@ Whether or not this field is available is dependent on the {link-prefix}:{link-p
 ** Whether this event is part of an ongoing snapshot
 ** {link-prefix}:{link-postgresql-connector}#postgresql-meta-information[Partition and offset metadata]
 
-* `op` is a mandatory field that contains a string value that describes the type of operation. Allowed values for the PostgreSQL connector are:
+* `op` is a mandatory field that contains a string value that describes the type of operation. Allowed values for the PostgreSQL connector are: 
 ** `c` for create or insert
 ** `u` for update
 ** `d` for delete
 ** `r` for read in the case of a snapshot
 
-* `ts_ms` is an optional field. If present, it contains the time at which the connector processed the event. This value reflects the system clock in the JVM running the Kafka Connect task.
+* `ts_ms` is an optional field. If present, it contains the time at which the connector processed the event. This value reflects the system clock in the JVM running the Kafka Connect task. 
 
 // Type: concept
-// ModuleID: how-replica-identity-controls-data-that-can-be-in-debezium-change-events
-// Title: How `REPLICA IDENTITY` controls data that can be in {prodname}change events
+// ModuleID: how-replica-identity-controls-data-that-can-be-in-debezium-postgresql-change-events
+// Title: How `REPLICA IDENTITY` controls data that can be in {prodname} PostgreSQL change events
 [[postgresql-replica-identity]]
 === Replica identity
 
@@ -555,14 +564,14 @@ There are 4 possible values for `REPLICA IDENTITY`:
 
 * `DEFAULT` - The default behavior is that `UPDATE` and `DELETE` events contain the previous values for the primary key columns of a table if that table has a primary key. For an `UPDATE` event, only the primary key columns with changed values are present.
 +
-If a table does not have a primary key, the connector does not emit `UPDATE` or `DELETE` events for that table. For a table without a primary key, the connector emits only _create_ events. Typically, a table without a primary key is used for appending messages to the end of the table, which means that `UPDATE` and `DELETE` events are not useful.
+If a table does not have a primary key, the connector does not emit `UPDATE` or `DELETE` events for that table. For a table without a primary key, the connector emits only _create_ events. Typically, a table without a primary key is used for appending messages to the end of the table, which means that `UPDATE` and `DELETE` events are not useful. 
 * `NOTHING` - Emitted events for `UPDATE` and `DELETE` operations do not contain any information about the previous value of any table column.
 * `FULL` - Emitted events for `UPDATE` and `DELETE` operations contain the previous values of all columns in the table.
 * `INDEX` _index-name_ - Emitted events for `UPDATE` and `DELETE` operations contain the previous values of the columns contained in the specified index. `UPDATE` events also contain the indexed columns with the updated values.
 
 // Type: concept
-// ModuleID: about-debezium-change-events-for-operations-that-create-content
-// Title: About {prodname} change events for operations that create content
+// ModuleID: about-debezium-postgresql-change-events-for-operations-that-create-content
+// Title: About {prodname} PostgreSQL change events for operations that create content
 [[postgresql-create-events]]
 === _create_ events
 
@@ -735,34 +744,34 @@ The following example shows a _create_ event value for the `customers` table:
 }
 ----
 
-In the `schema` portion of this event's value, you can see schemas for:
-
+In the `schema` portion of this event's value, you can see schemas for: 
+ 
 * `customers.Envelope`
 * The `source` structure, which is specific to the PostgreSQL connector and reused across all events.
-* The `before` and `after` fields, whose schemas are specific to the table.
+* The `before` and `after` fields, whose schemas are specific to the table. 
 +
 The names of the schemas for the `before` and `after` fields are of the form `_logicalName_._schemaName_._tableName_.Value`, and thus are entirely independent from all other schemas for all other tables. This means that when using the Avro converter, the resulting Avro schemas for _each table_ in each _logical source_ have their own evolution and history.
 
-In the `payload` portion of this event's value, you can see:
+In the `payload` portion of this event's value, you can see:  
 
-* The `before` field is null, which means that the event does not contain any previous row values.
+* The `before` field is null, which means that the event does not contain any previous row values. 
 * The `after` field contains values for the inserted row's `id`, `first_name`, `last_name`, and `email` columns.
 * The `source` field contains metadata.
-* The `op` field contains `c` to indicate that a row was created.
+* The `op` field contains `c` to indicate that a row was created. 
 
 [NOTE]
 ====
-JSON representations of events are much larger than the rows they describe. This is because the JSON representation must include the `schema` and the `payload` portions of the change event record.
+JSON representations of events are much larger than the rows they describe. This is because the JSON representation must include the `schema` and the `payload` portions of the change event record. 
 It is possible and even recommended that you use the Avro converter to dramatically decrease the size of the records written to the Kafka topics.
 ====
 
 // Type: concept
-// ModuleID: about-debezium-change-events-for-operations-that-update-content
-// Title: About {prodname} change events for operations that update content
+// ModuleID: about-debezium-postgresql-change-events-for-operations-that-update-content
+// Title: About {prodname} PostgreSQL change events for operations that update content
 [[postgresql-update-events]]
 === _update_ events
 
-The value of an _update_ event on the sample `customers` table has the same `schema` specification as the _create_ event example. An _update_ event's payload has the same structure as a _create_ event for the same table. However, the _update_ event's payload contains different values, as shown in this example:
+The value of an _update_ event on the sample `customers` table has the same `schema` specification as the _create_ event example. An _update_ event's payload has the same structure as a _create_ event for the same table. However, the _update_ event's payload contains different values, as shown in this example: 
 
 [source,json,indent=0,subs="attributes"]
 ----
@@ -797,7 +806,7 @@ The value of an _update_ event on the sample `customers` table has the same `sch
 }
 ----
 
-As compared with the payload section in the _create_ event, you can see the following differences in the payload section of the _update_ event:
+As compared with the payload section in the _create_ event, you can see the following differences in the payload section of the _update_ event:  
 
 * The `op` field value is `u` to indicate that the row changed because of an `UPDATE`.
 * The `before` field contains the values that were in the row before the database commit. In this example, only the primary key column, `id`, is present because the table's {link-prefix}:{link-postgresql-connector}#postgresql-replica-identity[`REPLICA IDENTITY`] setting is, by default, `DEFAULT`.
@@ -814,28 +823,28 @@ There are several things to learn by looking at this `payload` section. You can 
 
 [NOTE]
 ====
-Updating the columns for a row's primary/unique key changes the value of the row's key. When a key changes, {prodname} outputs _three_ events: a `DELETE` event and a {link-prefix}:{link-postgresql-connector}#postgresql-tombstone-events[tombstone event] with the old key for the row, followed by an event with the new key for the row. Details are in the next section.
+Updating the columns for a row's primary/unique key changes the value of the row's key. When a key changes, {prodname} outputs _three_ events: a `DELETE` event and a {link-prefix}:{link-postgresql-connector}#postgresql-tombstone-events[tombstone event] with the old key for the row, followed by an event with the new key for the row. Details are in the next section. 
 ====
 
 // Type: concept
-// ModuleID: about-debezium-change-events-for-primary-key-updates
-// Title: About {prodname} change events for primary key updates
+// ModuleID: about-debezium-postgresql-change-events-for-primary-key-updates
+// Title: About {prodname} PostgreSQL change events for primary key updates
 === Primary key updates
 
 An `UPDATE` operation that changes a row's primary key field(s) is known
-as a primary key change. For a primary key change, in place of sending an `UPDATE` event record, the connector sends a `DELETE` event record for the old key and a `CREATE` event record for the new (updated) key. These events have the usual structure and content, and in addition, each one has a message header related to the primary key change:
+as a primary key change. For a primary key change, in place of sending an `UPDATE` event record, the connector sends a `DELETE` event record for the old key and a `CREATE` event record for the new (updated) key. These events have the usual structure and content, and in addition, each one has a message header related to the primary key change: 
 
 * The `DELETE` event record has `__debezium.newkey` as a message header. The value of this header is the new primary key for the updated row.
 
 * The `CREATE` event record has `__debezium.oldkey` as a message header. The value of this header is the previous (old) primary key that the updated row had.
 
 // Type: concept
-// ModuleID: about-debezium-change-events-for-operations-that-delete-content
-// Title: About {prodname} change events for operations that delete content
+// ModuleID: about-debezium-postgresql-change-events-for-operations-that-delete-content
+// Title: About {prodname} PostgreSQL change events for operations that delete content
 [[postgresql-delete-events]]
 === _delete_ events
 
-The value in a _delete_ event has the same `schema` portion as _create_ and _update_ events for the same table. The `payload` portion in a _delete_ event for the sample `customers` table looks like this:
+The value in a _delete_ event has the same `schema` portion as _create_ and _update_ events for the same table. The `payload` portion in a _delete_ event for the sample `customers` table looks like this: 
 
 [source,json,indent=0,subs="attributes"]
 ----
@@ -865,7 +874,7 @@ The value in a _delete_ event has the same `schema` portion as _create_ and _upd
 }
 ----
 
-Compared with the _create_ or _update_ event payloads, the differences in a _delete_ event are:
+Compared with the _create_ or _update_ event payloads, the differences in a _delete_ event are: 
 
 * The `before` field has the state of the row that was deleted by the database commit. In this example, the `before` field contains only the primary key column because the table's {link-prefix}:{link-postgresql-connector}#postgresql-replica-identity[`REPLICA IDENTITY`] setting is `DEFAULT`.
 * The `after` field is null to indicate that the row no longer exists.
@@ -880,7 +889,7 @@ This event gives a consumer all kinds of information that it can use to process 
 For a consumer to be able to process a _delete_ event generated for a table that does not have a primary key, set the table's `REPLICA IDENTITY` to `FULL`. When a table does not have a primary key and the table's `REPLICA IDENTITY` is set to `DEFAULT` or `NOTHING`, a _delete_ event has no `before` field.
 ====
 
-PostgreSQL connector events are designed to work with link:https://kafka.apache.org/documentation/#compaction[Kafka log compaction]. Log compaction enables removal of some older messages as long as at least the most recent message for every key is kept. This lets Kafka reclaim storage space while ensuring that the topic contains a complete data set an can be used for reloading key-based state.
+PostgreSQL connector events are designed to work with link:https://kafka.apache.org/documentation/#compaction[Kafka log compaction]. Log compaction enables removal of some older messages as long as at least the most recent message for every key is kept. This lets Kafka reclaim storage space while ensuring that the topic contains a complete data set and can be used for reloading key-based state.
 
 [[postgresql-tombstone-events]]
 .Tombstone events
@@ -892,10 +901,10 @@ When a row is deleted, the _delete_ event value still works with log compaction,
 [[postgresql-data-types]]
 == Data type mappings
 
-The PostgreSQL connector represents changes to rows with events that are structured like the table in which the row exist. The event contains a field for each column value. How that value is represented in the event depends on the PostgreSQL data type of the column. This section describes these mappings.
+The PostgreSQL connector represents changes to rows with events that are structured like the table in which the row exists. The event contains a field for each column value. How that value is represented in the event depends on the PostgreSQL data type of the column. This section describes these mappings.
 
 ifdef::product[]
-Details are in the following sections:
+Details are in the following sections: 
 
 * xref:postgresql-basic-types[]
 * xref:postgresql-temporal-types[]
@@ -921,7 +930,7 @@ The following table describes how the connector maps basic PostgreSQL data types
 .Mappings for PostgreSQL basic data types
 [cols="20%a,15%a,30%a,35%a",options="header"]
 |===
-|PostgreSQL Data Type
+|PostgreSQL data type
 |Literal type (schema type)
 |Semantic type (schema name)
 |Notes
@@ -1093,20 +1102,20 @@ The following table describes how the connector maps basic PostgreSQL data types
 [id="postgresql-temporal-types"]
 === Temporal types
 
-Other than PostgreSQL's `TIMESTAMPTZ` and `TIMETZ` data types, which contain time zone information, how temporal types are mapped depends on the value of the `time.precision.mode` connector configuration property. The following sections describe these mappings:
+Other than PostgreSQL's `TIMESTAMPTZ` and `TIMETZ` data types, which contain time zone information, how temporal types are mapped depends on the value of the `time.precision.mode` connector configuration property. The following sections describe these mappings: 
 
-* xref:time-precision-mode-adaptive[`time.precision.mode=adaptive`]
-* xref:time-precision-mode-adaptive-time-microseconds[`time.precision.mode=adaptive_time_microseconds`]
-* xref:time-precision-mode-connect[`time.precision.mode=connect`]
+* xref:postgresql-time-precision-mode-adaptive[`time.precision.mode=adaptive`]
+* xref:postgresql-time-precision-mode-adaptive-time-microseconds[`time.precision.mode=adaptive_time_microseconds`]
+* xref:postgresql-time-precision-mode-connect[`time.precision.mode=connect`]
 
-[[time-precision-mode-adaptive]]
+[[postgresql-time-precision-mode-adaptive]]
 .`time.precision.mode=adaptive`
-When the `time.precision.mode` property is set to `adaptive`, the default, the connector determines the literal type and semantic type based on the column's data type definition. This ensures that events _exactly_ represent the values in the database.
+When the `time.precision.mode` property is set to `adaptive`, the default, the connector determines the literal type and semantic type based on the column's data type definition. This ensures that events _exactly_ represent the values in the database. 
 
 .Mappings when `time.precision.mode` is `adaptive`
 [cols="20%a,15%a,30%a,35%a",options="header"]
 |===
-|PostgreSQL Data Type
+|PostgreSQL data type
 |Literal type (schema type)
 |Semantic type (schema name)
 |Notes
@@ -1114,31 +1123,31 @@ When the `time.precision.mode` property is set to `adaptive`, the default, the c
 |`DATE`
 |`INT32`
 |`io.debezium.time.Date`
-| Represents the number of days since epoch.
+|Represents the number of days since the epoch.
 
 |`TIME(1)`, `TIME(2)`, `TIME(3)`
 |`INT32`
 |`io.debezium.time.Time`
-| Represents the number of milliseconds past midnight, and does not include timezone information.
+|Represents the number of milliseconds past midnight, and does not include timezone information.
 
 |`TIME(4)`, `TIME(5)`, `TIME(6)`
 |`INT64`
 |`io.debezium.time.MicroTime`
-| Represents the number of microseconds past midnight, and does not include timezone information.
+|Represents the number of microseconds past midnight, and does not include timezone information.
 
 |`TIMESTAMP(1)`, `TIMESTAMP(2)`, `TIMESTAMP(3)`
 |`INT64`
 |`io.debezium.time.Timestamp`
-| Represents the number of milliseconds since the epoch, and does not include timezone information.
+|Represents the number of milliseconds since the epoch, and does not include timezone information.
 
 |`TIMESTAMP(4)`, `TIMESTAMP(5)`, `TIMESTAMP(6)`, `TIMESTAMP`
 |`INT64`
 |`io.debezium.time.MicroTimestamp`
-| Represents the number of microseconds since the epoch, and does not include timezone information.
+|Represents the number of microseconds since the epoch, and does not include timezone information.
 
 |===
 
-[[time-precision-mode-adaptive-time-microseconds]]
+[[postgresql-time-precision-mode-adaptive-time-microseconds]]
 .`time.precision.mode=adaptive_time_microseconds`
 When the `time.precision.mode` configuration property is set to `adaptive_time_microseconds`, the connector determines the literal type and semantic type for temporal types based on the column's data type definition. This ensures that events _exactly_ represent the values in the database, except all `TIME` fields are captured as microseconds.
 
@@ -1153,26 +1162,26 @@ When the `time.precision.mode` configuration property is set to `adaptive_time_m
 |`DATE`
 |`INT32`
 |`io.debezium.time.Date`
-| Represents the number of days since epoch.
+|Represents the number of days since epoch.
 
 |`TIME([P])`
 |`INT64`
 |`io.debezium.time.MicroTime`
-| Represents the time value in microseconds and does not include timezone information. PostgreSQL allows precision `P` to be in the range 0-6 to store up to microsecond precision.
+|Represents the time value in microseconds and does not include timezone information. PostgreSQL allows precision `P` to be in the range 0-6 to store up to microsecond precision.
 
 |`TIMESTAMP(1)` , `TIMESTAMP(2)`, `TIMESTAMP(3)`
 |`INT64`
 |`io.debezium.time.Timestamp`
-| Represents the number of milliseconds past epoch, and does not include timezone information.
+|Represents the number of milliseconds past epoch, and does not include timezone information.
 
 |`TIMESTAMP(4)` , `TIMESTAMP(5)`, `TIMESTAMP(6)`, `TIMESTAMP`
 |`INT64`
 |`io.debezium.time.MicroTimestamp`
-| Represents the number of microseconds past epoch, and does not include timezone information.
+|Represents the number of microseconds past epoch, and does not include timezone information.
 
 |===
 
-[[time-precision-mode-connect]]
+[[postgresql-time-precision-mode-connect]]
 .`time.precision.mode=connect`
 When the `time.precision.mode` configuration property is set to `connect`, the connector uses Kafka Connect logical types. This may be useful when consumers know about only the built-in Kafka Connect logical types and are unable to handle variable-precision time values. However, since PostgreSQL supports microsecond precision, the events generated by a connector with the `connect` time precision mode *results in a loss of precision* when the database column has a _fractional second precision_ value that is greater than 3.
 
@@ -1187,17 +1196,17 @@ When the `time.precision.mode` configuration property is set to `connect`, the c
 |`DATE`
 |`INT32`
 |`org.apache.kafka.connect.data.Date`
-| Represents the number of days since epoch.
+|Represents the number of days since epoch.
 
 |`TIME([P])`
 |`INT64`
 |`org.apache.kafka.connect.data.Time`
-| Represents the number of milliseconds since midnight, and does not include timezone information. PostgreSQL allows `P` to be in the range 0-6 to store up to microsecond precision, though this mode results in a loss of precision when `P` > 3.
+|Represents the number of milliseconds since midnight, and does not include timezone information. PostgreSQL allows `P` to be in the range 0-6 to store up to microsecond precision, though this mode results in a loss of precision when `P` > 3.
 
 |`TIMESTAMP([P])`
 |`INT64`
 |`org.apache.kafka.connect.data.Timestamp`
-| Represents the number of milliseconds since epoch, and does not include timezone information. PostgreSQL allows `P` to be in the range 0-6 to store up to microsecond precision, though this mode results in a loss of precision when `P` > 3.
+|Represents the number of milliseconds since epoch, and does not include timezone information. PostgreSQL allows `P` to be in the range 0-6 to store up to microsecond precision, though this mode results in a loss of precision when `P` > 3.
 
 |===
 
@@ -1214,7 +1223,7 @@ Note that the timezone of the JVM running Kafka Connect and {prodname} does not 
 [id="postgresql-decimal-types"]
 === Decimal types
 
-The setting of the PostgreSQL connector configuration property, `decimal.handling.mode` determines how the connector maps decimal types.
+The setting of the PostgreSQL connector configuration property, `decimal.handling.mode` determines how the connector maps decimal types. 
 
 When the `decimal.handling.mode` property is set to `precise`, the connector uses the Kafka Connect `org.apache.kafka.connect.data.Decimal` logical type for all `DECIMAL` and `NUMERIC` columns. This is the default mode.
 
@@ -1283,7 +1292,7 @@ When the `decimal.handling.mode` property is set to `double`, the connector repr
 
 |===
 
-The last possible setting for the `decimal.handling.mode` configuration property is `string`. In this case, the connector represents `DECIMAL` and `NUMERIC` values as their formatted string representation, and encodes them as shown in the following table.
+The last possible setting for the `decimal.handling.mode` configuration property is `string`. In this case, the connector represents `DECIMAL` and `NUMERIC` values as their formatted string representation, and encodes them as shown in the following table. 
 
 .Mappings when `decimal.handling.mode` is `string`
 [cols="15%a,15%a,35%a,35%a",options="header"]
@@ -1310,7 +1319,7 @@ PostgreSQL supports `NaN` (not a number) as a special value to be stored in `DEC
 [id="postgresql-hstore-type"]
 === `HSTORE` type
 
-When the `hstore.handling.mode` connector configuration property is set to `json` (the default), the connector represents `HSTORE` values as string representations of JSON values and encodes them as shown in the following table. When the `hstore.handling.mode` property is set to `map`, the connector uses the `MAP` schema type for `HSTORE` values.
+When the `hstore.handling.mode` connector configuration property is set to `json` (the default), the connector represents `HSTORE` values as string representations of JSON values and encodes them as shown in the following table. When the `hstore.handling.mode` property is set to `map`, the connector uses the `MAP` schema type for `HSTORE` values. 
 
 .Mappings for `HSTORE` data type
 [cols="15%a,15%a,35%a,35%a",options="header"]
@@ -1424,17 +1433,17 @@ This impacts replication messages that are coming from the database. Values that
 There is no safe way for {prodname} to read the missing value out-of-bands directly from the database, as this would potentially lead to race conditions. Consequently, {prodname} follows these rules to handle toasted values:
 
 * Tables with `REPLICA IDENTITY FULL` - TOAST column values are part of the `before` and `after` fields in change events just like any other column.
-* Tables with `REPLICA IDENTITY DEFAULT` - When receiving an `UPDATE` event from the database, any unchanged TOAST column value that is not part of the replica identity is not contained in the event.
+* Tables with `REPLICA IDENTITY DEFAULT` - When receiving an `UPDATE` event from the database, any unchanged TOAST column value that is not part of the replica identity is not contained in the event. 
 Similarly, when receiving a `DELETE` event, no TOAST columns, if any, are  in the `before` field.
 As {prodname} cannot safely provide the column value in this case, the connector returns a placeholder value as defined by the connector configuration property, `toasted.value.placeholder`.
 
 ifdef::community[]
 [IMPORTANT]
 ====
-There is a problem related to Amazon RDS instances. The `wal2json` plug-in has evolved over the time and there were releases that provided out-of-band toasted values. Amazon supports different versions of the plug-in for different PostgreSQL versions. See https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/CHAP_PostgreSQL.html[Amazon's documentation] to obtain version to version mapping. For consistent toasted values handling:
+There is a problem related to Amazon RDS instances. The `wal2json` plug-in has evolved over the time and there were releases that provided out-of-band toasted values. Amazon supports different versions of the plug-in for different PostgreSQL versions. See https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/CHAP_PostgreSQL.html[Amazon's documentation] to obtain version to version mapping. For consistent toasted values handling: 
 
 * Use the `pgoutput` plug-in for PostgreSQL 10+ instances.
-* Set `include-unchanged-toast=0` for older versions of the `wal2json` plug-in by using the `slot.stream.params` configuration option.
+* Set `include-unchanged-toast=0` for older versions of the `wal2json` plug-in by using the `slot.stream.params` configuration option. 
 ====
 endif::community[]
 
@@ -1454,7 +1463,7 @@ endif::community[]
 ifdef::product[]
 This release of {prodname} supports only the native `pgoutput` logical replication stream. To set up PostgreSQL so that it uses the `pgoutput` plug-in, you must enable a replication slot, and configure a user with sufficient privileges to perform the replication.
 
-Details are in the following topics:
+Details are in the following topics: 
 
 * xref:configuring-a-replication-slot-for-the-debezium-pgoutput-plug-in[]
 * xref:setting-up-postgresql-permissions-required-by-debezium-connectors[]
@@ -1469,7 +1478,7 @@ ifdef::product[]
 // Title: Configuring a replication slot for the {prodname} `pgoutput` plug-in
 === Configuring replication slot
 
-PostgreSQL's logical decoding uses replication slots. To configure a replication slot, specify the following in the `postgresql.conf` file:
+PostgreSQL's logical decoding uses replication slots. To configure a replication slot, specify the following in the `postgresql.conf` file: 
 
 [source]
 ----
@@ -1478,7 +1487,7 @@ max_wal_senders=1
 max_replication_slots=1
 ----
 
-These settings instruct the PostgreSQL server as follows:
+These settings instruct the PostgreSQL server as follows: 
 
 * `wal_level` - Use logical decoding with the write-ahead log.
 * `max_wal_senders` - Use a maximum of one separate process for processing WAL changes.
@@ -1493,7 +1502,7 @@ For more information, see the link:https://www.postgresql.org/docs/current/warm-
 
 [NOTE]
 ====
-Familiarity with the mechanics and link:https://www.postgresql.org/docs/current/static/wal-configuration.html[configuration of the PostgreSQL write-ahead log] is helpful for using the {prodname} PostgreSQL connector.
+Familiarity with the mechanics and link:https://www.postgresql.org/docs/current/static/wal-configuration.html[configuration of the PostgreSQL write-ahead log] is helpful for using the {prodname} PostgreSQL connector. 
 ====
 endif::product[]
 
@@ -1516,7 +1525,7 @@ If the `wal_level` is not `logical` after the change above, it is probably becau
 [IMPORTANT]
 ====
 Ensure that you use the latest versions of PostgreSQL 9.6, 10 or 11 on Amazon RDS.
-Otherwise, older versions of the `wal2json` plug-in might be installed.
+Otherwise, older versions of the `wal2json` plug-in might be installed. 
 See https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/CHAP_PostgreSQL.html[the official documentation] for the exact `wal2json` versions installed on Amazon RDS.
 In the case of an older version, replication messages received from the database might not contain complete information about type constraints such as length or scale or `NULL`/`NOT NULL`. This might cause creation of messages with an inconsistent schema for a short period of time when there are changes to a column's definition.
 
@@ -1562,7 +1571,7 @@ This means that a logical decoding output plug-in is no longer necessary and cha
 As of PostgreSQL 9.4, the only way to read changes to the write-ahead-log is to install a logical decoding output plug-in. Plug-ins are written in C, compiled, and installed on the machine that runs the PostgreSQL server. Plug-ins use  a number of PostgreSQL specific APIs, as described by the link:https://www.postgresql.org/docs/current/static/logicaldecoding-output-plugin.html[PostgreSQL documentation].
 
 The PostgreSQL connector works with one of {prodname}'s supported logical decoding plug-ins to encode the changes in either link:https://github.com/google/protobuf[Protobuf format] or link:http://www.json.org/[JSON] format.
-See the documentation for your chosen plug-in to learn more about the plug-in's requirements, limitations, and how to compile it.
+See the documentation for your chosen plug-in to learn more about the plug-in's requirements, limitations, and how to compile it. 
 
 * link:https://github.com/debezium/postgres-decoderbufs/blob/master/README.md[`protobuf`]
 * link:https://github.com/eulerto/wal2json/blob/master/README.md[`wal2json`]
@@ -1595,7 +1604,7 @@ All up-to-date differences are tracked in a test suite link:https://github.com/d
 [[postgresql-server-configuration]]
 === Configuring the PostgreSQL server
 
-If you are using one of the supported {link-prefix}:{link-postgresql-connector}#postgresql-output-plugin[logical decoding plug-ins], that is, not `pgoutput`, and it has been installed, configure the PostgreSQL server as follows:
+If you are using one of the supported {link-prefix}:{link-postgresql-connector}#postgresql-output-plugin[logical decoding plug-ins], that is, not `pgoutput`, and it has been installed, configure the PostgreSQL server as follows:  
 
 . To load the plug-in at startup, add the following to the `postgresql.conf` file::
 +
@@ -1604,9 +1613,9 @@ If you are using one of the supported {link-prefix}:{link-postgresql-connector}#
 # MODULES
 shared_preload_libraries = 'decoderbufs,wal2json' // <1>
 ----
-<1> instructs the server to load the `decoderbufs` and `wal2json` logical decoding plug-ins at startup. The names of the plug-ins are set in the link:https://github.com/debezium/postgres-decoderbufs/blob/v0.3.0/Makefile[`Protobuf`] and link:https://github.com/eulerto/wal2json/blob/master/Makefile[`wal2json`] make files.
+<1> instructs the server to load the `decoderbufs` and `wal2json` logical decoding plug-ins at startup. The names of the plug-ins are set in the link:https://github.com/debezium/postgres-decoderbufs/blob/v0.3.0/Makefile[`Protobuf`] and link:https://github.com/eulerto/wal2json/blob/master/Makefile[`wal2json`] make files. 
 
-. To configure the replication slot regardless of the decoder being used, specify the following in the `postgresql.conf` file:
+. To configure the replication slot regardless of the decoder being used, specify the following in the `postgresql.conf` file: 
 +
 [source,properties]
 ----
@@ -1639,11 +1648,11 @@ endif::community[]
 [[postgresql-permissions]]
 === Setting up permissions
 
-Setting up a PostgreSQL server to run a {prodname} connector requires a database user who can perform replications. Replication can be performed only by a database user who has appropriate permissions and only for a configured number of hosts. Also, you must configure the PostgreSQL server to allow replication to take place between the server machine and the host on which the PostgreSQL connector is running.
+Setting up a PostgreSQL server to run a {prodname} connector requires a database user who can perform replications. Replication can be performed only by a database user who has appropriate permissions and only for a configured number of hosts. Also, you must configure the PostgreSQL server to allow replication to take place between the server machine and the host on which the PostgreSQL connector is running. 
 
 .Prerequisites
 
-* PostgreSQL administrative permissions.
+* PostgreSQL administrative permissions. 
 
 .Procedure
 
@@ -1659,7 +1668,7 @@ CREATE ROLE name REPLICATION LOGIN;
 By default, superusers have both of the above roles.
 ====
 
-. Configure the PostgreSQL server to allow replication to take place between the server machine and the host on which the PostgreSQL connector is running.
+. Configure the PostgreSQL server to allow replication to take place between the server machine and the host on which the PostgreSQL connector is running. 
 +
 .`pg_hba.conf` file example:
 [source]
@@ -1694,7 +1703,7 @@ endif::community[]
 In certain cases, it is possible for PostgreSQL disk space consumed by WAL files to spike or increase out of usual proportions.
 There are several possible reasons for this situation:
 
-* The LSN up to which the connector has received data is available in the `confirmed_flush_lsn` column of the server's `pg_replication_slots` view. Data that is older than this LSN is no longer available, and the database is responsible for reclaiming the disk space.
+* The LSN up to which the connector has received data is available in the `confirmed_flush_lsn` column of the server's `pg_replication_slots` view. Data that is older than this LSN is no longer available, and the database is responsible for reclaiming the disk space. 
 +
 Also in the `pg_replication_slots` view, the `restart_lsn` column contains the LSN of the oldest WAL that the connector might require. If the value for `confirmed_flush_lsn` is regularly increasing and the value of  `restart_lsn` lags then the database needs to reclaim the space.
 +
@@ -1732,13 +1741,13 @@ endif::community[]
 == Deployment
 
 ifdef::community[]
-With link:https://zookeeper.apache.org[Zookeeper], link:http://kafka.apache.org/[Kafka], and {link-kafka-docs}.html#connect[Kafka Connect] installed, the remaining tasks to deploy a {prodname} PostgreSQL connector are to download the link: https://repo1.maven.org/maven2/io/debezium/debezium-connector-postgres/{debezium-version}/debezium-connector-postgres-{debezium-version}-plugin.tar.gz[connector's plug-in archive], extract the JAR files into your Kafka Connect environment, and add the directory with the JAR files to {link-kafka-docs}/#connectconfigs[Kafka Connect's `plugin.path`]. You then need to restart your Kafka Connect process to pick up the new JAR files.
+With link:https://zookeeper.apache.org[Zookeeper], link:http://kafka.apache.org/[Kafka], and {link-kafka-docs}.html#connect[Kafka Connect] installed, the remaining tasks to deploy a {prodname} PostgreSQL connector are to download the link:https://repo1.maven.org/maven2/io/debezium/debezium-connector-postgres/{debezium-version}/debezium-connector-postgres-{debezium-version}-plugin.tar.gz[connector's plug-in archive], extract the JAR files into your Kafka Connect environment, and add the directory with the JAR files to {link-kafka-docs}/#connectconfigs[Kafka Connect's `plugin.path`]. You then need to restart your Kafka Connect process to pick up the new JAR files.
 
-If you need immutable containers, see link:https://hub.docker.com/r/debezium/[{prodname}'s Docker images] for Zookeeper, Kafka, PostgreSQL and Kafka Connect with the PostgreSQL connector already installed and ready to run. You can also link:/blog/2016/05/31/Debezium-on-Kubernetes/[run {prodname} on Kubernetes and OpenShift].
+If you need immutable containers, see link:https://hub.docker.com/r/debezium/[{prodname}'s Container images] for Zookeeper, Kafka, PostgreSQL and Kafka Connect with the PostgreSQL connector already installed and ready to run. You can also link:/blog/2016/05/31/Debezium-on-Kubernetes/[run {prodname} on Kubernetes and OpenShift].
 endif::community[]
 
 ifdef::product[]
-To deploy a {prodname} PostgreSQL connector, install the {prodname} PostgreSQL connector archive, configure the connector, and start the connector by adding its configuration to Kafka Connect. Details are in the following topics:
+To deploy a {prodname} PostgreSQL connector, install the {prodname} PostgreSQL connector archive, configure the connector, and start the connector by adding its configuration to Kafka Connect. Details are in the following topics: 
 
 * xref:steps-for-installing-debezium-postgresql-connectors[]
 * xref:debezium-postgresql-connector-configuration-example[]
@@ -1754,12 +1763,12 @@ To install the PostgreSQL connector, follow the procedures in {LinkDebeziumInsta
 
 . {LinkDebeziumUserGuide}#setting-up-postgresql-to-run-a-debezium-connector[Set up PostgreSQL to run a {prodname} connector].
 
-. Use link:https://access.redhat.com/products/red-hat-amq#streams[Red Hat AMQ Streams] to set up Apache Kafka and Kafka Connect on OpenShift. AMQ Streams offers operators and images that bring Kafka to OpenShift.
+. Use link:https://access.redhat.com/products/red-hat-amq#streams[Red Hat AMQ Streams] to set up Apache Kafka and Kafka Connect on OpenShift. AMQ Streams offers operators and images that bring Kafka to OpenShift. 
 
 . Download the {prodname} link:https://access.redhat.com/jbossnetwork/restricted/listSoftware.html?product=red.hat.integration&downloadType=distributions[PostgreSQL connector].
 
 . Extract the files into your Kafka Connect environment.
-. Add the plug-in's parent directory to your Kafka Connect `plugin.path`, for example:
+. Add the plug-in's parent directory to your Kafka Connect `plugin.path`, for example: 
 +
 [source]
 ----
@@ -1801,21 +1810,21 @@ You can choose to produce events for a subset of the schemas and tables. Optiona
   }
 }
 ----
-<1> The name of our connector when we register it with a Kafka Connect service.
+<1> The name of the connector when registered with a Kafka Connect service.
 <2> The name of this PostgreSQL connector class.
 <3> The address of the PostgreSQL server.
 <4> The port number of the PostgreSQL server.
 <5> The name of the PostgreSQL user that has the {link-prefix}:{link-postgresql-connector}#postgresql-permissions[required privileges].
 <6> The password for the PostgreSQL user that has the {link-prefix}:{link-postgresql-connector}#postgresql-permissions[required privileges].
 <7> The name of the PostgreSQL database to connect to
-<8> The logical name of the PostgreSQL server/cluster, which forms a namespace and is used in all the names of the Kafka topics to which the connector writes, the Kafka Connect schema names, and the namespaces of the corresponding Avro schema when the Avro Connector is used.
+<8> The logical name of the PostgreSQL server/cluster, which forms a namespace and is used in all the names of the Kafka topics to which the connector writes, the Kafka Connect schema names, and the namespaces of the corresponding Avro schema when the Avro converter is used.
 <9> A list of all tables hosted by this server that this connector will monitor. This is optional, and there are other properties for listing the schemas and tables to include or exclude from monitoring.
 
 endif::community[]
 
 ifdef::product[]
 
-Following is an example of the configuration for a PostgreSQL connector that connects to a PostgreSQL server on port 5432 at 192.168.99.100, whose logical name is `fullfillment`. Typically, you configure the {prodname} PostgreSQL connector in a `.yaml` file using the configuration properties available for the connector.
+Following is an example of the configuration for a PostgreSQL connector that connects to a PostgreSQL server on port 5432 at 192.168.99.100, whose logical name is `fullfillment`. Typically, you configure a {prodname} PostgreSQL connector in a `.yaml` file using the configuration properties available for the connector.
 
 You can choose to produce events for a subset of the schemas and tables. Optionally, ignore, mask, or truncate columns that are sensitive, too large, or not needed.
 
@@ -1862,11 +1871,11 @@ You can send this configuration with a `POST` command to a running Kafka Connect
 // Type: procedure
 // ModuleID: adding-debezium-postgresql-connector-configuration-to-kafka-connect
 // Title: Adding {prodname} PostgreSQL connector configuration to Kafka Connect
-[[adding-connector-configuration]]
+[[postgresql-adding-connector-configuration]]
 === Adding connector configuration
 
 ifdef::community[]
-To start running a PostgreSQL connector, create a connector configuration file and add it to your Kafka Connect cluster.
+To start running a PostgreSQL connector, create a connector configuration file and add it to your Kafka Connect cluster. 
 
 .Prerequisites
 
@@ -1874,27 +1883,27 @@ To start running a PostgreSQL connector, create a connector configuration file a
 
 * The {link-prefix}:{link-postgresql-connector}#installing-postgresql-output-plugin[logical decoding plug-in] is installed.
 
-* The PostgreSQL connector is installed.
+* The PostgreSQL connector is installed. 
 
 .Procedure
 
 . Create a configuration file for the PostgreSQL connector.
 
-. Use the link:{link-kafka-docs}/#connect_rest[Kafka Connect REST API] to add that connector configuration to your Kafka Connect cluster.
+. Use the link:{link-kafka-docs}/#connect_rest[Kafka Connect REST API] to add that connector configuration to your Kafka Connect cluster. 
 
 endif::community[]
 
 ifdef::product[]
-You can use a provided {prodname} container to deploy a {prodname} PostgreSQL connector. In this procedure, you build a custom Kafka Connect container image for {prodname}, configure the {prodname} connector as needed, and then add your connector configuration to your Kafka Connect environment.
+You can use a provided {prodname} container to deploy a {prodname} PostgreSQL connector. In this procedure, you build a custom Kafka Connect container image for {prodname}, configure the {prodname} connector as needed, and then add your connector configuration to your Kafka Connect environment. 
 
 .Prerequisites
 
 * You have Podman installed and sufficient rights to create and manage containers.
-* You installed the {prodname} PostgreSQL connector archive.
+* You installed the {prodname} PostgreSQL connector archive. 
 
 .Procedure
 
-. Extract the {prodname} PostgreSQL connector archive to create a directory structure for the connector plug-in, for example:
+. Extract the {prodname} PostgreSQL connector archive to create a directory structure for the connector plug-in, for example: 
 +
 [subs=+macros]
 ----
@@ -1928,12 +1937,12 @@ Before Kafka Connect starts running the connector, Kafka Connect loads any third
 
 .. Point to the new container image. Do one of the following:
 +
-* Edit the `KafkaConnect.spec.image` property of the `KafkaConnect` custom resource. If set, this property overrides the `STRIMZI_DEFAULT_KAFKA_CONNECT_IMAGE` variable in the Cluster Operator. For example:
+* Edit the `spec.image` property of the `KafkaConnector` custom resource. If set, this property overrides the `STRIMZI_DEFAULT_KAFKA_CONNECT_IMAGE` variable in the Cluster Operator. For example:
 +
 [source,yaml,subs=attributes+]
 ----
 apiVersion: {KafkaConnectApiVersion}
-kind: KafkaConnect
+kind: KafkaConnector
 metadata:
   name: my-connect-cluster
 spec:
@@ -1945,7 +1954,7 @@ spec:
 
 . Create a `KafkaConnector` custom resource that defines your {prodname} PostgreSQL connector instance. See {LinkDebeziumUserGuide}#debezium-postgresql-connector-configuration-example[the connector configuration example].
 
-. Apply the connector instance, for example:
+. Apply the connector instance, for example: 
 +
 `oc apply -f inventory-connector.yaml`
 +
@@ -1960,19 +1969,19 @@ This registers `inventory-connector` and the connector starts to run against the
 oc logs $(oc get pods -o name -l strimzi.io/name=my-connect-cluster-connect)
 ----
 
-.. Review the log output to verify that the initial snapshot has been executed. You should see something like the following lines:
+.. Review the log output to verify that the initial snapshot has been executed. You should see something like the following lines: 
 +
 [source,shell,options="nowrap"]
 ----
 ... INFO Starting snapshot for ...
-... INFO Snapshot is using user 'debezium' ...
+... INFO Snapshot is using user 'debezium' ... 
 ----
 
 endif::product[]
 
 .Results
 
-When the connector starts, it {link-prefix}:{link-postgresql-connector}#postgresql-snapshots[performs a consistent snapshot] of the PostgreSQL server databases that the connector is configured for. The connector then starts generating data change events for row-level operations and streaming change event records to Kafka topics.
+When the connector starts, it {link-prefix}:{link-postgresql-connector}#postgresql-snapshots[performs a consistent snapshot] of the PostgreSQL server databases that the connector is configured for. The connector then starts generating data change events for row-level operations and streaming change event records to Kafka topics. 
 
 // Type: assembly
 // ModuleID: monitoring-debezium-postgresql-connector-performance
@@ -1982,8 +1991,8 @@ When the connector starts, it {link-prefix}:{link-postgresql-connector}#postgres
 
 The {prodname} PostgreSQL connector provides two types of metrics that are in addition to the built-in support for JMX metrics that Zookeeper, Kafka, and Kafka Connect provide.
 
-* {link-prefix}:{link-postgresql-connector}#postgresql-snapshot-metrics[Snapshot metrics] provide information about connector operation while performing a snapshot.
-* {link-prefix}:{link-postgresql-connector}#postgresql-streaming-metrics[Streaming metrics] provide information about connector operation when the connector is capturing changes and streaming change event records.
+* {link-prefix}:{link-postgresql-connector}#postgresql-snapshot-metrics[Snapshot metrics] provide information about connector operation while performing a snapshot. 
+* {link-prefix}:{link-postgresql-connector}#postgresql-streaming-metrics[Streaming metrics] provide information about connector operation when the connector is capturing changes and streaming change event records. 
 
 {link-prefix}:{link-debezium-monitoring}#monitoring-debezium[{prodname} monitoring documentation] provides details for how to expose these metrics by using JMX.
 
@@ -2013,7 +2022,7 @@ include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-streaming
 [[postgresql-connector-properties]]
 === Connector configuration properties
 
-The {prodname} PostgreSQL connector has many configuration properties that you can use to achieve the right connector behavior for your application. Many properties have default values. Information about the properties is organized as follows:
+The {prodname} PostgreSQL connector has many configuration properties that you can use to achieve the right connector behavior for your application. Many properties have default values. Information about the properties is organized as follows: 
 
 * xref:postgresql-required-configuration-properties[Required configuration properties]
 * xref:postgresql-advanced-configuration-properties[Advanced configuration properties]
@@ -2057,15 +2066,15 @@ endif::product[]
 
 |[[postgresql-property-slot-name]]<<postgresql-property-slot-name, `slot.name`>>
 |`debezium`
-|The name of the PostgreSQL logical decoding slot that was created for streaming changes from a particular plug-in for a particular database/schema. The server uses this slot to stream events to the {prodname} connector that you are configuring.
+|The name of the PostgreSQL logical decoding slot that was created for streaming changes from a particular plug-in for a particular database/schema. The server uses this slot to stream events to the {prodname} connector that you are configuring. 
 
 Slot names must conform to link:https://www.postgresql.org/docs/current/static/warm-standby.html#STREAMING-REPLICATION-SLOTS-MANIPULATION[PostgreSQL replication slot naming rules], which state: _"Each replication slot has a name, which can contain lower-case letters, numbers, and the underscore character."_
 
 |[[postgresql-property-slot-drop-on-stop]]<<postgresql-property-slot-drop-on-stop, `slot.drop.on.stop`>>
 |`false`
-|Whether or not to delete the logical replication slot when the connector stops in a graceful, expected way. The default behavior is that the replication slot remains configured for the connector when the connector stops. When the connector restarts, having the same replication slot enables the connector to start processing where it left off.
+|Whether or not to delete the logical replication slot when the connector stops in a graceful, expected way. The default behavior is that the replication slot remains configured for the connector when the connector stops. When the connector restarts, having the same replication slot enables the connector to start processing where it left off. 
 
-Set to `true` in only testing or development environments. Dropping the slot allows the database to discard WAL segments. When the connector restarts it performs a new snapshot or it can continue from a persistent offset in the Kafka Connect offsets topic.
+Set to `true` in only testing or development environments. Dropping the slot allows the database to discard WAL segments. When the connector restarts it performs a new snapshot or it can continue from a persistent offset in the Kafka Connect offsets topic. 
 
 |[[postgresql-property-publication-name]]<<postgresql-property-publication-name, `publication.name`>>
 |`dbz_publication`
@@ -2128,9 +2137,9 @@ If the publication already exists, either for all tables or configured with a su
 
 |[[postgresql-property-time-precision-mode]]<<postgresql-property-time-precision-mode, `time.precision.mode`>>
 |`adaptive`
-| Time, date, and timestamps can be represented with different kinds of precision:
+| Time, date, and timestamps can be represented with different kinds of precision: 
 
-`adaptive` captures the time and timestamp values exactly as in the database using either millisecond, microsecond, or nanosecond precision values based on the database column's type.
+`adaptive` captures the time and timestamp values exactly as in the database using either millisecond, microsecond, or nanosecond precision values based on the database column's type. 
 
 `adaptive_time_microseconds` captures the date, datetime and timestamp values exactly as in the database using either millisecond, microsecond, or nanosecond precision values based on the database column's type. An exception is `TIME` type fields, which are always captured as microseconds.
 
@@ -2138,11 +2147,11 @@ If the publication already exists, either for all tables or configured with a su
 
 |[[postgresql-property-decimal-handling-mode]]<<postgresql-property-decimal-handling-mode, `decimal.handling.mode`>>
 |`precise`
-| Specifies how the connector should handle values for `DECIMAL` and `NUMERIC` columns:
+| Specifies how the connector should handle values for `DECIMAL` and `NUMERIC` columns: 
 
 `precise` represents values by using `java.math.BigDecimal` to represent values in binary form in change events.
 
-`double` represents values by using `double` values, which might result in a loss of precision but which is easier to use.
+`double` represents values by using `double` values, which might result in a loss of precision but which is easier to use. 
 
 `string` encodes values as formatted strings, which are easy to consume but semantic information about the real type is lost. See {link-prefix}:{link-postgresql-connector}#postgresql-decimal-types[Decimal types].
 
@@ -2164,13 +2173,13 @@ If the publication already exists, either for all tables or configured with a su
 
 |[[postgresql-property-database-sslmode]]<<postgresql-property-database-sslmode, `database.sslmode`>>
 |`disable`
-|Whether to use an encrypted connection to the PostgreSQL server. Options include:
+|Whether to use an encrypted connection to the PostgreSQL server. Options include: 
 
-`disable` uses an unencrypted connection.
+`disable` uses an unencrypted connection. 
 
-`require` uses a secure (encrypted) connection, and fails if one cannot be established.
+`require` uses a secure (encrypted) connection, and fails if one cannot be established. 
 
-`verify-ca` behaves like `require` but also verifies the server TLS certificate against the configured Certificate Authority (CA) certificates, or fails if no valid matching CA certificates are found.
+`verify-ca` behaves like `require` but also verifies the server TLS certificate against the configured Certificate Authority (CA) certificates, or fails if no valid matching CA certificates are found. 
 
 `verify-full` behaves like `verify-ca` but also verifies that the server certificate matches the host to which the connector is trying to connect. See link:https://www.postgresql.org/docs/current/static/libpq-connect.html[the PostgreSQL documentation] for more information.
 
@@ -2196,25 +2205,25 @@ If the publication already exists, either for all tables or configured with a su
 
 |[[postgresql-property-tombstones-on-delete]]<<postgresql-property-tombstones-on-delete, `tombstones.on.delete`>>
 |`true`
-| Controls whether a tombstone event should be generated after a _delete_ event.
+| Controls whether a tombstone event should be generated after a _delete_ event. 
 
-`true` - delete operations are represented by a delete event and a subsequent tombstone event.
+`true` - delete operations are represented by a delete event and a subsequent tombstone event. 
 
-`false` - only a delete event is sent.
+`false` - only a delete event is sent. 
 
 Emitting the tombstone event allows Kafka to completely delete all events that pertain to the given key after the source record is deleted.
 
 |[[postgresql-property-column-truncate-to-length-chars]]<<postgresql-property-column-truncate-to-length-chars, `column.truncate.to._length_.chars`>>
 |_n/a_
-|An optional, comma-separated list of regular expressions that match the fully-qualified names of character-based columns. Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_. In change event records, values in these columns are truncated if they are longer than the number of characters specified by _length_ in the property name. You can specify multiple properties with different lengths in a single configuration. Length must be a positive integer, for example, `column.truncate.to.20.chars`.
+|An optional, comma-separated list of regular expressions that match the fully-qualified names of character-based columns. Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_. In change event records, values in these columns are truncated if they are longer than the number of characters specified by _length_ in the property name. You can specify multiple properties with different lengths in a single configuration. Length must be a positive integer, for example, `column.truncate.to.20.chars`. 
 
 |[[postgresql-property-column-mask-with-length-chars]]<<postgresql-property-column-mask-with-length-chars, `column.mask.with._length_.chars`>>
 |_n/a_
-|An optional, comma-separated list of regular expressions that match the fully-qualified names of character-based columns. Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_. In change event values, the values in the specified table columns are replaced with _length_ number of asterisk (`*`) characters. You can specify multiple properties with different lengths in a single configuration. Length must be a positive integer or zero. When you specify zero, the connector replaces a value with an empty string.
+|An optional, comma-separated list of regular expressions that match the fully-qualified names of character-based columns. Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_. In change event values, the values in the specified table columns are replaced with _length_ number of asterisk (`*`) characters. You can specify multiple properties with different lengths in a single configuration. Length must be a positive integer or zero. When you specify zero, the connector replaces a value with an empty string.  
 
 |[[postgresql-property-column-mask-hash]]<<postgresql-property-column-mask-hash, `column.mask.hash._hashAlgorithm_.with.salt._salt_`>>
 |_n/a_
-|An optional, comma-separated list of regular expressions that match the fully-qualified names of character-based columns. Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_. In change event values, the values in the specified columns are replaced with pseudonyms.
+|An optional, comma-separated list of regular expressions that match the fully-qualified names of character-based columns. Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_. In change event values, the values in the specified columns are replaced with pseudonyms. 
 
 A pseudonym consists of the hashed value that results from applying the specifed _hashAlgorithm_ and _salt_. Based on the hash function that is used, referential integrity is kept while column values are replaced with pseudonyms. Supported hash functions are described in the {link-java7-standard-names}[MessageDigest section] of the Java Cryptography Architecture Standard Algorithm Name Documentation.
 
@@ -2236,11 +2245,11 @@ This property is useful for properly sizing corresponding columns in sink databa
 
 |[[postgresql-property-datatype-propagate-source-type]]<<postgresql-property-datatype-propagate-source-type, `datatype.propagate.source.type`>>
 |_n/a_
-|An optional, comma-separated list of regular expressions that match the database-specific data type name for some columns. Fully-qualified data type names are of the form _databaseName_._tableName_._typeName_, or _databaseName_._schemaName_._tableName_._typeName_.
+|An optional, comma-separated list of regular expressions that match the database-specific data type name for some columns. Fully-qualified data type names are of the form _databaseName_._tableName_._typeName_, or _databaseName_._schemaName_._tableName_._typeName_. 
 
-For these data types, the connector adds parameters to the corresponding field schemas in emitted change records. The added parameters specify the original type and length of the column:
+For these data types, the connector adds parameters to the corresponding field schemas in emitted change records. The added parameters specify the original type and length of the column: 
 
-`pass:[_]pass:[_]debezium.source.column.type` `pass:[_]pass:[_]debezium.source.column.length`  `pass:[_]pass:[_]debezium.source.column.scale`
+`pass:[_]pass:[_]debezium.source.column.type` `pass:[_]pass:[_]debezium.source.column.length`  `pass:[_]pass:[_]debezium.source.column.scale` 
 
 These parameters propagate a column's original type name and length, for variable-width types, respectively. This property is useful for properly sizing corresponding columns in sink databases.
 
@@ -2248,25 +2257,25 @@ See the {link-prefix}:{link-postgresql-connector}#postgresql-data-types[list of 
 
 |[[postgresql-property-message-key-columns]]<<postgresql-property-message-key-columns, `message.key.columns`>>
 |_empty string_
-|A semicolon separated list of tables with regular expressions that match table column names. The connector maps values in matching columns to key fields in change event records that it sends to Kafka topics. This is useful when a table does not have a primary key, or when you want to order change event records in a Kafka topic according to a field that is not a primary key.
+|A semicolon separated list of tables with regular expressions that match table column names. The connector maps values in matching columns to key fields in change event records that it sends to Kafka topics. This is useful when a table does not have a primary key, or when you want to order change event records in a Kafka topic according to a field that is not a primary key. 
 
-Separate entries with semicolons. Insert a colon between the fully-qualified table name and its regular expression. The format is:
+Separate entries with semicolons. Insert a colon between the fully-qualified table name and its regular expression. The format is: 
 
 _schema-name_._table-name_:_regexp_;...
 
-For example,
+For example, 
 
 `schemaA.table_a:regex_1;schemaB.table_b:regex_2;schemaC.table_c:regex_3`
 
-If `table_a` has a an `id` column, and `regex_1` is `^i` (matches any column that starts with `i`), the connector maps the value in ``table_a``'s `id` column to a key field in change events that the connector sends to Kafka.
+If `table_a` has a an `id` column, and `regex_1` is `^i` (matches any column that starts with `i`), the connector maps the value in ``table_a``'s `id` column to a key field in change events that the connector sends to Kafka. 
 
 |[[postgresql-publication-autocreate-mode]]<<postgresql-publication-autocreate-mode, `publication.autocreate.mode`>>
 |_all_tables_
-|Applies only when streaming changes by using link:https://www.postgresql.org/docs/current/sql-createpublication.html[the `pgoutput` plug-in]. The setting determines how creation of a link:https://www.postgresql.org/docs/current/logical-replication-publication.html[publication] should work. Possible settings are:
+|Applies only when streaming changes by using link:https://www.postgresql.org/docs/current/sql-createpublication.html[the `pgoutput` plug-in]. The setting determines how creation of a link:https://www.postgresql.org/docs/current/logical-replication-publication.html[publication] should work. Possible settings are:  
 
 `all_tables` - If a publication exists, the connector uses it. If a publication does not exist, the connector creates a publication for all tables in the database for which the connector is capturing changes. This requires that the database user who has permission to perform replications also has permission to create a publication. This is granted with `CREATE PUBLICATION <publication_name> FOR ALL TABLES;`.
 
-`disabled` - The connector does not attempt to create a publication. A database administrator or the user configured to perform replications must have created the publication before running the connector. If the connector cannot find the publication, the connector throws an exception and stops.
+`disabled` - The connector does not attempt to create a publication. A database administrator or the user configured to perform replications must have created the publication before running the connector. If the connector cannot find the publication, the connector throws an exception and stops. 
 
 `filtered` - If a publication exists, the connector uses it. If no publication exists, the connector creates a new publication for tables that match the current filter configuration as specified by the `database.blacklist`, `database.whitelist`, `table.blacklist`, and `table.whitelist` connector configuration properties. For example: `CREATE PUBLICATION <publication_name> FOR TABLE <tbl1, tbl2, etc>`.
 
@@ -2276,7 +2285,7 @@ If `table_a` has a an `id` column, and `regex_1` is `^i` (matches any column tha
 
 `bytes` represents binary data as  byte array.
 
-`base64` represents binary data as base64-encoded strings.
+`base64` represents binary data as base64-encoded strings. 
 
 `hex` represents binary data as hex-encoded (base16) strings.
 
@@ -2294,20 +2303,20 @@ The following _advanced_ configuration properties have defaults that work in mos
 
 |[[postgresql-property-snapshot-mode]]<<postgresql-property-snapshot-mode, `snapshot.mode`>>
 |`initial`
-|Specifies the criteria for performing a snapshot when the connector starts:
+|Specifies the criteria for performing a snapshot when the connector starts: 
 
-`initial` -  The connector performs a snapshot only when no offsets have been recorded for the logical server name.
+`initial` -  The connector performs a snapshot only when no offsets have been recorded for the logical server name. 
 
-`always` - The connector performs a snapshot each time the connector starts.
+`always` - The connector performs a snapshot each time the connector starts. 
 
 `never` - The connector never performs snapshots. When a connector is configured this way, its behavior when it starts is as follows. If there is a previously stored LSN in the Kafka offsets topic, the connector continues streaming changes from that position. If no LSN has been stored, the connector starts streaming changes from the point in time when the PostgreSQL logical replication slot was created on the server. The `never` snapshot mode is useful only when you know all data of interest is still reflected in the WAL.
 
-`initial_only` - The connector performs an initial snapshot and then stops, without processing any subsequent changes.
+`initial_only` - The connector performs an initial snapshot and then stops, without processing any subsequent changes. 
 
 `exported` -  The connector performs a snapshot based on the point in time when the replication slot was created. This is an excellent way to perform the snapshot in a lock-free way.
 
 ifdef::community[]
-`custom` - The connector performs a snapshot according to the setting for the `snapshot.custom.class` property, which is a custom implementation of the `io.debezium.connector.postgresql.spi.Snapshotter` interface.
+`custom` - The connector performs a snapshot according to the setting for the `snapshot.custom.class` property, which is a custom implementation of the `io.debezium.connector.postgresql.spi.Snapshotter` interface. 
 endif::community[]
 
 The{link-prefix}:{link-postgresql-connector}#snapshot-mode-settings[reference table for snapshot mode settings] has more details.
@@ -2320,23 +2329,23 @@ endif::community[]
 
 |[[postgresql-property-snapshot-lock-timeout-ms]]<<postgresql-property-snapshot-lock-timeout-ms, `snapshot.lock.timeout.ms`>>
 |`10000`
-|Positive integer value that specifies the maximum amount of time (in milliseconds) to wait to obtain table locks when performing a snapshot. If the connector cannot acquire table locks in this time interval, the snapshot fails. {link-prefix}:{link-postgresql-connector}#postgresql-snapshots[How the connector performs snapshots] provides details.
+|Positive integer value that specifies the maximum amount of time (in milliseconds) to wait to obtain table locks when performing a snapshot. If the connector cannot acquire table locks in this time interval, the snapshot fails. {link-prefix}:{link-postgresql-connector}#postgresql-snapshots[How the connector performs snapshots] provides details. 
 
 |[[postgresql-property-snapshot-select-statement-overrides]]<<postgresql-property-snapshot-select-statement-overrides, `snapshot.select.statement.overrides`>>
 |
-|Controls which table rows are included in snapshots. This property affects snapshots only. It does not affect events that are generated by the logical decoding plug-in. Specify a comma-separated list of fully-qualified table names in the form _databaseName.tableName_.
+|Controls which table rows are included in snapshots. This property affects snapshots only. It does not affect events that are generated by the logical decoding plug-in. Specify a comma-separated list of fully-qualified table names in the form _databaseName.tableName_. 
 
-For each table that you specify, also specify another configuration property: `snapshot.select.statement.overrides._DB_NAME_._TABLE_NAME_`, for example: `snapshot.select.statement.overrides.customers.orders`. Set this property to a `SELECT` statement that obtains only the rows that you want in the snapshot. When the connector performs a snapshot, it executes this `SELECT` statement to retrieve data from that table.
+For each table that you specify, also specify another configuration property: `snapshot.select.statement.overrides._DB_NAME_._TABLE_NAME_`, for example: `snapshot.select.statement.overrides.customers.orders`. Set this property to a `SELECT` statement that obtains only the rows that you want in the snapshot. When the connector performs a snapshot, it executes this `SELECT` statement to retrieve data from that table. 
 
 A possible use case for setting these properties is large, append-only tables. You can specify a `SELECT` statement that sets a specific point for where to start a snapshot, or where to resume a snapshot if a previous snapshot was interrupted.
 
 |[[postgresql-property-event-processing-failure-handling-mode]]<<postgresql-property-event-processing-failure-handling-mode, `event.processing.failure.handling.mode`>>
 |`fail`
-| Specifies how the connector should react to exceptions during processing of events:
+| Specifies how the connector should react to exceptions during processing of events: 
 
 `fail` propagates the exception, indicates the offset of the problematic event, and causes the connector to stop.
 
-`warn` logs the offset of the problematic event, skips that event, and continues processing.
+`warn` logs the offset of the problematic event, skips that event, and continues processing. 
 
 `skip` skips the problematic event and continues processing.
 
@@ -2346,7 +2355,7 @@ A possible use case for setting these properties is large, append-only tables. Y
 
 |[[postgresql-property-max-batch-size]]<<postgresql-property-max-batch-size, `max.batch.size`>>
 |`10240`
-|Positive integer value that specifies the maximum size of each batch of events that the connector processes.
+|Positive integer value that specifies the maximum size of each batch of events that the connector processes. 
 
 |[[postgresql-property-poll-interval-ms]]<<postgresql-property-poll-interval-ms, `poll.interval.ms`>>
 |`1000`
@@ -2354,27 +2363,27 @@ A possible use case for setting these properties is large, append-only tables. Y
 
 |[[postgresql-property-include-unknown-datatypes]]<<postgresql-property-include-unknown-datatypes, `include.unknown.datatypes`>>
 |`false`
-|Specifies connector behavior when the connector encounters a field whose data type is unknown. The default behavior is that the connector omits the field from the change event and logs a warning.
+|Specifies connector behavior when the connector encounters a field whose data type is unknown. The default behavior is that the connector omits the field from the change event and logs a warning. 
 
-Set this property to `true` if you want the change event to contain an opaque binary representation of the field. This lets consumers decode the field. You can control the exact representation by setting the {link-prefix}:{link-postgresql-connector}#postgresql-property-binary-handling-mode[`binary handling mode`] property.
+Set this property to `true` if you want the change event to contain an opaque binary representation of the field. This lets consumers decode the field. You can control the exact representation by setting the {link-prefix}:{link-postgresql-connector}#postgresql-property-binary-handling-mode[`binary handling mode`] property. 
 
 NOTE: Consumers risk backward compatibility issues when `include.unknown.datatypes` is set to `true`. Not only may the database-specific binary representation change between releases, but if the data type is eventually supported by {prodname}, the data type will be sent downstream in a logical type, which would require adjustments by consumers. In general, when encountering unsupported data types, create a feature request so that support can be added.
 
 |[[postgresql-property-database-initial-statements]]<<postgresql-property-database-initial-statements, `database.initial.statements`>>
 |
-|A semicolon separated list of SQL statements that the connector executes when it establishes a JDBC connection to the database. To use a semicolon as a character and not as a delimiter, specify two consecutive semicolons, `;;`.
+|A semicolon separated list of SQL statements that the connector executes when it establishes a JDBC connection to the database. To use a semicolon as a character and not as a delimiter, specify two consecutive semicolons, `;;`. 
 
 The connector may establish JDBC connections at its own discretion. Consequently, this property is useful for configuration of session parameters only, and not for executing DML statements.
 
-The connector does not execute these statements when it creates a connection for reading the transaction log.
+The connector does not execute these statements when it creates a connection for reading the transaction log. 
 
 |[[postgresql-property-heartbeat-interval-ms]]<<postgresql-property-heartbeat-interval-ms, `heartbeat.interval.ms`>>
 |`0`
-|Controls how frequently the connector sends heartbeat messages to a Kafka topic. The default behavior is that the connector does not send heartbeat messages.
+|Controls how frequently the connector sends heartbeat messages to a Kafka topic. The default behavior is that the connector does not send heartbeat messages. 
 
-Heartbeat messages are useful for monitoring whether the connector is receiving change events from the database. Heartbeat messages might help decrease the number of change events that need to be re-sent when a connector restarts. To send heartbeat messages, set this property to a positive integer, which indicates the number of milliseconds between heartbeat messages.
+Heartbeat messages are useful for monitoring whether the connector is receiving change events from the database. Heartbeat messages might help decrease the number of change events that need to be re-sent when a connector restarts. To send heartbeat messages, set this property to a positive integer, which indicates the number of milliseconds between heartbeat messages. 
 
-Heartbeat messages are needed when there are many updates in a database that is being tracked but only a tiny number of updates are related to the table(s) and schema(s) for which the connector is capturing changes. In this situation, the connector reads from the database transaction log as usual but rarely emits change records to Kafka. This means that no offset updates are committed to Kafka and the connector does not have an opportunity to send the latest retrieved LSN to the database. The database retains WAL files that contain events that have already been processed by the connector. Sending heartbeat messages enables the connector to send the latest retrieved LSN to the database, which allows the database to reclaim disk space being used by no longer needed WAL files.
+Heartbeat messages are needed when there are many updates in a database that is being tracked but only a tiny number of updates are related to the table(s) and schema(s) for which the connector is capturing changes. In this situation, the connector reads from the database transaction log as usual but rarely emits change records to Kafka. This means that no offset updates are committed to Kafka and the connector does not have an opportunity to send the latest retrieved LSN to the database. The database retains WAL files that contain events that have already been processed by the connector. Sending heartbeat messages enables the connector to send the latest retrieved LSN to the database, which allows the database to reclaim disk space being used by no longer needed WAL files. 
 
 |[[postgresql-property-heartbeat-topics-prefix]]<<postgresql-property-heartbeat-topics-prefix, `heartbeat.topics.prefix`>>
 |`__debezium-heartbeat`
@@ -2382,13 +2391,13 @@ Heartbeat messages are needed when there are many updates in a database that is 
 
 |[[postgresql-property-heartbeat-action-query]]<<postgresql-property-heartbeat-action-query, `heartbeat.action.query`>>
 |
-|Specifies a query that the connector executes on the source database when the connector sends a heartbeat message.
+|Specifies a query that the connector executes on the source database when the connector sends a heartbeat message. 
 
-This is useful for resolving the situation described in {link-prefix}:{link-postgresql-connector}#postgresql-wal-disk-space[WAL disk space consumption], where capturing changes from a low-traffic database on the same host as a high-traffic database prevents {prodname} from processing WAL records and thus acknowledging WAL positions with the database. To address this situation, create a heartbeat table in the low-traffic database, and set this property to a statement that inserts records into that table, for example:
+This is useful for resolving the situation described in {link-prefix}:{link-postgresql-connector}#postgresql-wal-disk-space[WAL disk space consumption], where capturing changes from a low-traffic database on the same host as a high-traffic database prevents {prodname} from processing WAL records and thus acknowledging WAL positions with the database. To address this situation, create a heartbeat table in the low-traffic database, and set this property to a statement that inserts records into that table, for example:  
 
 `INSERT INTO test_heartbeat_table (text) VALUES ('test_heartbeat')`
 
-This allows the connector to receive changes from the low-traffic database and acknowledge their LSNs, which prevents unbounded WAL growth on the database host.
+This allows the connector to receive changes from the low-traffic database and acknowledge their LSNs, which prevents unbounded WAL growth on the database host. 
 
 |[[postgresql-property-schema-refresh-mode]]<<postgresql-property-schema-refresh-mode, `schema.refresh.mode`>>
 |`columns_diff`
@@ -2403,11 +2412,11 @@ become outdated if TOASTable columns are dropped from the table.
 
 |[[postgresql-property-snapshot-delay-ms]]<<postgresql-property-snapshot-delay-ms, `snapshot.delay.ms`>>
 |
-|An interval in milliseconds that the connector should wait before performing a snapshot when the connector starts. If you are starting multiple connectors in a cluster, this property is useful for avoiding snapshot interruptions, which might cause re-balancing of connectors.
+|An interval in milliseconds that the connector should wait before performing a snapshot when the connector starts. If you are starting multiple connectors in a cluster, this property is useful for avoiding snapshot interruptions, which might cause re-balancing of connectors. 
 
 |[[postgresql-property-snapshot-fetch-size]]<<postgresql-property-snapshot-fetch-size, `snapshot.fetch.size`>>
 |`10240`
-|During a snapshot, the connector reads table content in batches of rows. This property specifies the maximum number of rows in a batch.
+|During a snapshot, the connector reads table content in batches of rows. This property specifies the maximum number of rows in a batch. 
 
 |[[postgresql-property-slot-stream-params]]<<postgresql-property-slot-stream-params, `slot.stream.params`>>
 |
@@ -2418,7 +2427,7 @@ If you are using the `wal2json` plug-in, this property is useful for enabling se
 endif::community[]
 
 |[[postgresql-property-sanitize-field-names]]<<postgresql-property-sanitize-field-names, `sanitize.field.names`>>
-|`true` if connector configuration sets the `key.converter` or `value.converter` property to the Avro converter.
+|`true` if connector configuration sets the `key.converter` or `value.converter` property to the Avro converter. 
 
 `false` if not.
 |Indicates whether field names are sanitized to adhere to {link-prefix}:{link-avro-serialization}#avro-naming[Avro naming requirements].
@@ -2454,7 +2463,7 @@ Be sure to consult the {link-kafka-docs}.html[Kafka documentation] for all of th
 [[postgresql-when-things-go-wrong]]
 == Behavior when things go wrong
 
-{prodname} is a distributed system that captures all changes in multiple upstream databases; it never misses or loses an event. When the system is operating normally or being managed carefully then {prodname} provides _exactly once_ delivery of every change event record.
+{prodname} is a distributed system that captures all changes in multiple upstream databases; it never misses or loses an event. When the system is operating normally or being managed carefully then {prodname} provides _exactly once_ delivery of every change event record. 
 
 If a fault does happen then the system does not lose any events. However, while it is recovering from the fault, it might repeat some change events. In these abnormal situations, {prodname}, like Kafka, provides _at least once_ delivery of change events.
 
@@ -2463,7 +2472,7 @@ The rest of this section describes how {prodname} handles various kinds of fault
 endif::community[]
 
 ifdef::product[]
-Details are in the following sections:
+Details are in the following sections: 
 
 * xref:postgresql-connector-configuration-and-startup-errors[]
 * xref:postgresql-becomes-unavailable[]
@@ -2479,7 +2488,7 @@ endif::product[]
 
 In the following situations, the connector fails when trying to start, reports an error/exception in the log, and stops running:
 
-* The connector's configuration is invalid.
+* The connector's configuration is invalid. 
 * The connector cannot successfully connect to PostgreSQL by using the specified connection parameters.
 * The connector is restarting from a previously-recorded position in the PostgreSQL WAL (by using the LSN) and PostgreSQL no longer has that history available.
 
@@ -2497,23 +2506,23 @@ The PostgreSQL connector externally stores the last processed offset in the form
 
 As of release 12, PostgreSQL allows logical replication slots _only on primary servers_. This means that you can point a {prodname} PostgreSQL connector to only the active primary server of a database cluster.
 Also, replication slots themselves are not propagated to replicas.
-If the primary server goes down, a new primary must be promoted.
+If the primary server goes down, a new primary must be promoted. 
 
 ifdef::community[]
-The new primary must have the {link-prefix}:{link-postgresql-connector}#installing-postgresql-output-plugin[logical decoding plug-in] installed and a replication slot that is configured for use by the plug-in and the database for which you want to capture changes. Only then can you point the connector to the new server and restart the connector.
+The new primary must have the {link-prefix}:{link-postgresql-connector}#installing-postgresql-output-plugin[logical decoding plug-in] installed and a replication slot that is configured for use by the plug-in and the database for which you want to capture changes. Only then can you point the connector to the new server and restart the connector. 
 endif::community[]
 
 ifdef::product[]
-The new primary must have a replication slot that is configured for use by the `pgoutput` plug-in and the database in which you want to capture changes. Only then can you point the connector to the new server and restart the connector.
+The new primary must have a replication slot that is configured for use by the `pgoutput` plug-in and the database in which you want to capture changes. Only then can you point the connector to the new server and restart the connector. 
 endif::product[]
 
-There are important caveats when failovers occur and you should pause {prodname} until you can verify that you have an intact replication slot that has not lost data. After a failover:
+There are important caveats when failovers occur and you should pause {prodname} until you can verify that you have an intact replication slot that has not lost data. After a failover: 
 
-* There must be a process that re-creates the {prodname} replication slot before allowing the application to write to the *new* primary. This is crucial. Without this process, your application can miss change events.
+* There must be a process that re-creates the {prodname} replication slot before allowing the application to write to the *new* primary. This is crucial. Without this process, your application can miss change events. 
 
 * You might need to verify that {prodname} was able to read all changes in the slot **before the old primary failed**.
 
-One reliable method of recovering and verifying whether any changes were lost is to recover a backup of the failed primary to the point immediately before it failed. While this can be administratively difficult, it allows you to inspect the replication slot for any unconsumed changes.
+One reliable method of recovering and verifying whether any changes were lost is to recover a backup of the failed primary to the point immediately before it failed. While this can be administratively difficult, it allows you to inspect the replication slot for any unconsumed changes. 
 
 ifdef::community[]
 
@@ -2537,7 +2546,7 @@ If the Kafka Connector process stops unexpectedly, any connector tasks it was ru
 
 Because there is a chance that some events might be duplicated during a recovery from failure, consumers should always anticipate some duplicate events. {prodname} changes are idempotent, so a sequence of events always results in the same state.
 
-In each change event record, {prodname} connectors insert source-specific information about the origin of the event, including the PostgreSQL server's time of the event, the ID of the server transaction, and the position in the write-ahead log where the transaction changes were written. Consumers can keep track of this information, especially the LSN, to determine whether an event is a duplicate.
+In each change event record, {prodname} connectors insert source-specific information about the origin of the event, including the PostgreSQL server's time of the event, the ID of the server transaction, and the position in the write-ahead log where the transaction changes were written. Consumers can keep track of this information, especially the LSN, to determine whether an event is a duplicate. 
 
 [id="postgresql-kafka-becomes-unavailable"]
 === Kafka becomes unavailable
