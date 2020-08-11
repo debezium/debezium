@@ -61,13 +61,13 @@ public class ReplicationConnectionIT {
     public void shouldCreateAndDropReplicationSlots() throws Exception {
         // create a replication connection which should be dropped once it's closed
         try (ReplicationConnection connection = TestHelper.createForReplication("test1", true)) {
-            ReplicationStream stream = connection.startStreaming();
+            ReplicationStream stream = connection.startStreaming(new WalPositionLocator());
             assertNull(stream.lastReceivedLsn());
             stream.close();
         }
         // create a replication connection which should be dropped once it's closed
         try (ReplicationConnection connection = TestHelper.createForReplication("test2", true)) {
-            ReplicationStream stream = connection.startStreaming();
+            ReplicationStream stream = connection.startStreaming(new WalPositionLocator());
             assertNull(stream.lastReceivedLsn());
             stream.close();
         }
@@ -77,9 +77,9 @@ public class ReplicationConnectionIT {
     public void shouldNotAllowMultipleReplicationSlotsOnTheSameDBSlotAndPlugin() throws Exception {
         // create a replication connection which should be dropped once it's closed
         try (ReplicationConnection conn1 = TestHelper.createForReplication("test1", true)) {
-            conn1.startStreaming();
+            conn1.startStreaming(new WalPositionLocator());
             try (ReplicationConnection conn2 = TestHelper.createForReplication("test1", false)) {
-                conn2.startStreaming();
+                conn2.startStreaming(new WalPositionLocator());
                 fail("Should not be able to create 2 replication connections on the same db, plugin and slot");
             }
         }
@@ -101,7 +101,7 @@ public class ReplicationConnectionIT {
         }
 
         try (ReplicationConnection conn1 = TestHelper.createForReplication("test1-", true)) {
-            conn1.startStreaming();
+            conn1.startStreaming(new WalPositionLocator());
             fail("Invalid slot name should fail");
         }
         catch (Exception e) {
@@ -125,7 +125,7 @@ public class ReplicationConnectionIT {
     public void shouldReceiveAndDecodeIndividualChanges() throws Exception {
         // create a replication connection which should be dropped once it's closed
         try (ReplicationConnection connection = TestHelper.createForReplication("test", true)) {
-            ReplicationStream stream = connection.startStreaming(); // this creates the replication slot
+            ReplicationStream stream = connection.startStreaming(new WalPositionLocator()); // this creates the replication slot
             int expectedMessages = DecoderDifferences.updatesWithoutPK(insertLargeTestData(), 1);
             expectedMessagesFromStream(stream, expectedMessages);
         }
@@ -140,7 +140,7 @@ public class ReplicationConnectionIT {
         // create a new replication connection with the same slot and check that without the LSN having been flushed,
         // we'll get back the same message again from before
         try (ReplicationConnection connection = TestHelper.createForReplication(slotName, true)) {
-            ReplicationStream stream = connection.startStreaming(); // this should receive the same message as before since we haven't flushed
+            ReplicationStream stream = connection.startStreaming(new WalPositionLocator()); // this should receive the same message as before since we haven't flushed
             expectedMessagesFromStream(stream, receivedMessagesCount);
         }
     }
@@ -154,7 +154,7 @@ public class ReplicationConnectionIT {
         // create a new replication connection with the same slot and check that we don't get back the same changes that we've
         // flushed
         try (ReplicationConnection connection = TestHelper.createForReplication(slotName, true)) {
-            ReplicationStream stream = connection.startStreaming();
+            ReplicationStream stream = connection.startStreaming(new WalPositionLocator());
             // even when flushing the last received location, the server will send back the last record after reconnecting, not sure why that is...
             expectedMessagesFromStream(stream, 0);
         }
@@ -172,7 +172,7 @@ public class ReplicationConnectionIT {
 
         // create a new replication connection with the same slot and check that we get the additional messages
         try (ReplicationConnection connection = TestHelper.createForReplication(slotName, true)) {
-            ReplicationStream stream = connection.startStreaming();
+            ReplicationStream stream = connection.startStreaming(new WalPositionLocator());
             expectedMessagesFromStream(stream, additionalMessages);
         }
     }
@@ -186,7 +186,7 @@ public class ReplicationConnectionIT {
 
         // resume replication from the last received LSN and don't expect anything else
         try (ReplicationConnection connection = TestHelper.createForReplication(slotName, true)) {
-            ReplicationStream stream = connection.startStreaming(lastReceivedLSN.get());
+            ReplicationStream stream = connection.startStreaming(lastReceivedLSN.get(), new WalPositionLocator());
             expectedMessagesFromStream(stream, 0);
         }
     }
@@ -198,7 +198,7 @@ public class ReplicationConnectionIT {
 
         // resume replication from the last received LSN and don't expect anything else
         try (ReplicationConnection connection = TestHelper.createForReplication(slotName, true)) {
-            ReplicationStream stream = connection.startStreaming(Lsn.valueOf(Long.MAX_VALUE));
+            ReplicationStream stream = connection.startStreaming(Lsn.valueOf(Long.MAX_VALUE), new WalPositionLocator());
             expectedMessagesFromStream(stream, 0);
             // this deletes 2 entries so each of them will have a message
             TestHelper.execute("DELETE FROM table_with_pk WHERE a < 3;");
@@ -210,7 +210,7 @@ public class ReplicationConnectionIT {
     @Test
     public void shouldReceiveOneMessagePerDMLOnTransactionCommit() throws Exception {
         try (ReplicationConnection connection = TestHelper.createForReplication("test", true)) {
-            ReplicationStream stream = connection.startStreaming();
+            ReplicationStream stream = connection.startStreaming(new WalPositionLocator());
             String statement = "DROP TABLE IF EXISTS table_with_pk;" +
                     "DROP TABLE IF EXISTS table_without_pk;" +
                     "CREATE TABLE table_with_pk (a SERIAL, b VARCHAR(30), c TIMESTAMP NOT NULL, PRIMARY KEY(a, c));" +
@@ -225,7 +225,7 @@ public class ReplicationConnectionIT {
     @Test
     public void shouldNotReceiveMessagesOnTransactionRollback() throws Exception {
         try (ReplicationConnection connection = TestHelper.createForReplication("test", true)) {
-            ReplicationStream stream = connection.startStreaming();
+            ReplicationStream stream = connection.startStreaming(new WalPositionLocator());
             String statement = "DROP TABLE IF EXISTS table_with_pk;" +
                     "CREATE TABLE table_with_pk (a SERIAL, b VARCHAR(30), c TIMESTAMP NOT NULL, PRIMARY KEY(a, c));" +
                     "INSERT INTO table_with_pk (b, c) VALUES('val1', now()); " +
@@ -238,7 +238,7 @@ public class ReplicationConnectionIT {
     @Test
     public void shouldGeneratesEventsForMultipleSchemas() throws Exception {
         try (ReplicationConnection connection = TestHelper.createForReplication("test", true)) {
-            ReplicationStream stream = connection.startStreaming();
+            ReplicationStream stream = connection.startStreaming(new WalPositionLocator());
             String statements = "CREATE SCHEMA schema1;" +
                     "CREATE SCHEMA schema2;" +
                     "DROP TABLE IF EXISTS schema1.table;" +
@@ -277,7 +277,7 @@ public class ReplicationConnectionIT {
                     "INSERT INTO t0 VALUES (8,2);";
             TestHelper.execute(statements);
 
-            try (ReplicationStream stream = connection.startStreaming()) {
+            try (ReplicationStream stream = connection.startStreaming(new WalPositionLocator())) {
                 expectedMessagesFromStream(stream, 8);
                 flushLsn(stream);
             }
@@ -292,7 +292,7 @@ public class ReplicationConnectionIT {
                         "INSERT INTO t0 VALUES (11,1);");
 
         try (ReplicationConnection connection = TestHelper.createForReplication("test", true)) {
-            try (ReplicationStream stream = connection.startStreaming()) {
+            try (ReplicationStream stream = connection.startStreaming(new WalPositionLocator())) {
                 expectedMessagesFromStream(stream, 3);
             }
         }
@@ -312,7 +312,7 @@ public class ReplicationConnectionIT {
         int expectedMessageCount;
         try (ReplicationConnection connection = TestHelper.createForReplication(slotName, false)) {
             try {
-                ReplicationStream stream = connection.startStreaming(); // this creates the replication slot
+                ReplicationStream stream = connection.startStreaming(new WalPositionLocator()); // this creates the replication slot
                 expectedMessageCount = insertSmallTestData();
                 expectedMessagesFromStream(stream, expectedMessageCount);
                 if (streamProcessor != null) {
