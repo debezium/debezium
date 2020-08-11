@@ -170,7 +170,7 @@ oc exec -it broker-kafka-0 -- /opt/kafka/bin/kafka-console-consumer.sh \
 +
 You should see an output like the following (formatted for the sake of readability):
 +
-[source%nowrap,json]
+[source%nowrap,json,subs="attributes"]
 ----
 # Message 1
 {
@@ -187,6 +187,8 @@ You should see an output like the following (formatted for the sake of readabili
         "email": "sally.thomas@acme.com"
     },
     "source": {
+        "version": "{debezium-version}",
+        "connector": "mysql",
         "name": "dbserver1",
         "server_id": 0,
         "ts_sec": 0,
@@ -218,6 +220,8 @@ You should see an output like the following (formatted for the sake of readabili
         "email": "gbailey@foobar.com"
     },
     "source": {
+        "version": "{debezium-version}",
+        "connector": "mysql",
         "name": "dbserver1",
         "server_id": 0,
         "ts_sec": 0,
