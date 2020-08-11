@@ -8,14 +8,14 @@
 
 toc::[]
 
-This procedure is for setting up {prodname} connectors on Red Hat's link:https://www.openshift.com/[OpenShift] container platform. These instructions have been tested with the two most recent releases of OpenShift. 
+This procedure is for setting up {prodname} connectors on Red Hat's link:https://www.openshift.com/[OpenShift] container platform. These instructions have been tested with the two most recent releases of OpenShift. These instructions should also work on any other Kubernetes distribution by using the `kubectl` command.
 
 To get started more quickly, try the link:https://learn.openshift.com/middleware/debezium-getting-started/[{prodname} online learning scenario].
 It starts an OpenShift cluster just for you, which lets you start using {prodname} in your browser within a few minutes.
 
 == {prodname} Deployment
 
-To set up Kafka and Kafka Connect on OpenShift, use the set of images that are provided by the link:https://strimzi.io/[Strimzi] project. These images offer "Kafka as a Service" by providing enterprise grade configuration files and images that bring Kafka to OpenShift.
+To set up Apache Kafka and Kafka Connect on OpenShift, use the set of images that are provided by the link:https://strimzi.io/[Strimzi] project. These images offer "Kafka as a Service" by providing enterprise grade configuration files and images that bring Kafka to Kubernetes and OpenShift, as well as Kubernetes operators for running Kafka there.
 
 .Prerequisites
 
@@ -36,6 +36,8 @@ cd strimzi-kafka-operator
 oc login -u system:admin
 oc create -f install/cluster-operator && oc create -f examples/templates/cluster-operator
 ----
++
+To learn more about setting up Apache Kafka with Strimzi on Kubernetes and OpenShift, see link:https://strimzi.io/docs/operators/latest/overview.html#kafka-components_str[Strimzi deployment of Kafka].
 
 . Deploy a Kafka broker cluster:
 +
@@ -49,16 +51,16 @@ oc process strimzi-ephemeral -p CLUSTER_NAME=broker -p ZOOKEEPER_NODE_COUNT=1 -p
 
 .. Download and extract the archive for each {prodname} connector you want to run. For example: 
 +
-[source,options="nowrap"]
+[source,subs="attributes",options="nowrap"]
 ----
-curl https://repo1.maven.org/maven2/io/debezium/debezium-connector-mysql/1.1.0.Final/debezium-connector-mysql-1.1.0.Final-plugin.tar.gz tar xvz`
+curl https://repo1.maven.org/maven2/io/debezium/debezium-connector-mysql/{debezium-version}/debezium-connector-mysql-{debezium-version}-plugin.tar.gz tar xvz`
 ----
 
 .. Create a `Dockerfile` that uses a Strimzi Kafka image as the base image. The following example creates a `plugins/debezium` directory, which would contain a directory for each {prodname} connector that you want to run. To run more than one {prodname} connector, insert a `COPY` line for each connector. 
 +
-[subs=+macros]
+[source,subs=+macros,subs="attributes"]
 ----
-FROM strimzi/kafka:0.19.0-kafka-2.5.0
+FROM strimzi/kafka:{strimzi-version}-kafka-2.5.0
 USER root:root
 RUN mkdir -p /opt/kafka/plugins/debezium
 COPY ./debezium-connector-mysql/ /opt/kafka/plugins/debezium/
@@ -67,7 +69,7 @@ USER 1001
 +
 Before Kafka Connect starts running the connector, Kafka Connect loads any third-party plug-ins that are in the `/opt/kafka/plugins` directory.
 
-.. Build a Debezium image from your Dockerfile and push it to Docker Hub by executing the following commands. Replace `debezium-community` with the name of your Docker Hub organization. 
+.. Build a Debezium image from your Dockerfile and push it to your preferred container registry, for example, `quay.io` or Docker Hub, by executing the following commands. Replace `debezium-community` with the name of your Docker Hub organization. 
 +
 ----
 export DOCKER_ORG=debezium-community
@@ -244,7 +246,7 @@ oc exec -it $(oc get pods -o custom-columns=NAME:.metadata.name --no-headers -l 
 # For example, run UPDATE customers SET email="sally.thomas@example.com" WHERE ID = 1001;
 ----
 +
-You should now see additional change messages in the consumer started previousl.
+You should now see additional change messages in the consumer started previously.
 
-If you have any questions or requests related to running {prodname} on OpenShift,
-let us know via our https://groups.google.com/forum/#!forum/debezium[user group] or in the {prodname} https://gitter.im/debezium/dev[developer's chat].
+If you have any questions or requests related to running {prodname} on Kubernetes or OpenShift,
+let us know in our https://groups.google.com/forum/#!forum/debezium[user group] or in the {prodname} https://gitter.im/debezium/dev[developer's chat].
