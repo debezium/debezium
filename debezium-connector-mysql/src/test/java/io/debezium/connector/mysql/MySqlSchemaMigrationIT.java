@@ -58,7 +58,7 @@ public class MySqlSchemaMigrationIT extends AbstractConnectorTest {
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL)
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
-                .with(MySqlConnectorConfig.TABLE_WHITELIST, DATABASE.qualifiedTableName("monitored") + "," + DATABASE.qualifiedTableName("_monitored_new"))
+                .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("monitored") + "," + DATABASE.qualifiedTableName("_monitored_new"))
                 .build();
 
         final MySQLConnection connection = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());
@@ -99,7 +99,7 @@ public class MySqlSchemaMigrationIT extends AbstractConnectorTest {
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL)
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
-                .with(MySqlConnectorConfig.TABLE_WHITELIST, DATABASE.qualifiedTableName("monitored"))
+                .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("monitored"))
                 .build();
 
         final MySQLConnection connection = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());
@@ -150,7 +150,7 @@ public class MySqlSchemaMigrationIT extends AbstractConnectorTest {
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL)
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
                 .with(DatabaseHistory.STORE_ONLY_MONITORED_TABLES_DDL, true)
-                .with(MySqlConnectorConfig.TABLE_WHITELIST, DATABASE.qualifiedTableName("monitored"))
+                .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("monitored"))
                 .build();
 
         final MySQLConnection connection = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());

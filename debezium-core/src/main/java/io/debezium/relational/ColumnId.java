@@ -30,22 +30,24 @@ public final class ColumnId implements Comparable<ColumnId> {
      * <p>
      * Qualified column names are comma-separated strings that are each {@link #parse(String) parsed} into {@link ColumnId} objects.
      *
-     * @param columnBlacklist the comma-separated string listing the qualified names of the columns to be explicitly disallowed;
+     * @param columnExcludeList the comma-separated string listing the qualified names of the columns to be explicitly disallowed;
      *            may be null
      * @return the predicate function; never null
      */
-    public static Map<TableId, Predicate<Column>> filter(String columnBlacklist) {
-        Set<ColumnId> columnExclusions = columnBlacklist == null ? null : Strings.setOf(columnBlacklist, ColumnId::parse);
+    public static Map<TableId, Predicate<Column>> filter(String columnExcludeList) {
+        Set<ColumnId> columnExclusions = columnExcludeList == null ? null : Strings.setOf(columnExcludeList, ColumnId::parse);
         Map<TableId, Set<String>> excludedColumnNamesByTable = new HashMap<>();
-        columnExclusions.forEach(columnId -> {
-            excludedColumnNamesByTable.compute(columnId.tableId(), (tableId, columns) -> {
-                if (columns == null) {
-                    columns = new HashSet<String>();
-                }
-                columns.add(columnId.columnName().toLowerCase());
-                return columns;
+        if (null != columnExclusions) {
+            columnExclusions.forEach(columnId -> {
+                excludedColumnNamesByTable.compute(columnId.tableId(), (tableId, columns) -> {
+                    if (columns == null) {
+                        columns = new HashSet<>();
+                    }
+                    columns.add(columnId.columnName().toLowerCase());
+                    return columns;
+                });
             });
-        });
+        }
         Map<TableId, Predicate<Column>> exclusionFilterByTable = new HashMap<>();
         excludedColumnNamesByTable.forEach((tableId, excludedColumnNames) -> {
             exclusionFilterByTable.put(tableId, (col) -> !excludedColumnNames.contains(col.name().toLowerCase()));

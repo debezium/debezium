@@ -93,7 +93,7 @@ public final class FieldSelector {
 
         /**
          * Builds the filter selector that returns the field filter for a given collection identifier, using the comma-separated
-         * list of fully-qualified field names (for details, see {@link MongoDbConnectorConfig#FIELD_BLACKLIST}) defining
+         * list of fully-qualified field names (for details, see {@link MongoDbConnectorConfig#FIELD_EXCLUDE_LIST}) defining
          * which fields (if any) should be excluded, and using the comma-separated list of fully-qualified field replacements
          * (for details, see {@link MongoDbConnectorConfig#FIELD_RENAMES}) defining which fields (if any) should be
          * renamed.

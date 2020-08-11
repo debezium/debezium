@@ -578,7 +578,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         // insert money
         TestHelper.execute(INSERT_NEGATIVE_CASH_TYPES_STMT);
 
-        buildNoStreamProducer(TestHelper.defaultConfig().with(PostgresConnectorConfig.TABLE_WHITELIST, "public.cash_table"));
+        buildNoStreamProducer(TestHelper.defaultConfig().with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.cash_table"));
 
         TestConsumer consumer = testConsumer(1, "public");
         consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
@@ -596,7 +596,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         // insert money
         TestHelper.execute(INSERT_NULL_CASH_TYPES_STMT);
 
-        buildNoStreamProducer(TestHelper.defaultConfig().with(PostgresConnectorConfig.TABLE_WHITELIST, "public.cash_table"));
+        buildNoStreamProducer(TestHelper.defaultConfig().with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.cash_table"));
 
         TestConsumer consumer = testConsumer(1, "public");
         consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
@@ -821,7 +821,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         buildNoStreamProducer(TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.DOUBLE)
                 .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
-                .with(PostgresConnectorConfig.TABLE_WHITELIST, "public.alias_table"));
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.alias_table"));
 
         final TestConsumer consumer = testConsumer(1, "public");
         consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
@@ -861,7 +861,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         // type, length, and scale values are resolved correctly when paired with Enum types.
         buildNoStreamProducer(TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
-                .with(PostgresConnectorConfig.TABLE_WHITELIST, "public.enum_table")
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.enum_table")
                 .with("column.propagate.source.type", "public.enum_table.value"));
 
         final TestConsumer consumer = testConsumer(1, "public");
@@ -888,7 +888,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         // type, length, and scale values are resolved correctly when paired with Enum types.
         buildNoStreamProducer(TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, false)
-                .with(PostgresConnectorConfig.TABLE_WHITELIST, "public.enum_array_table")
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.enum_array_table")
                 .with("column.propagate.source.type", "public.enum_array_table.value"));
 
         final TestConsumer consumer = testConsumer(1, "public");
@@ -921,7 +921,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
 
         buildNoStreamProducer(TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, false)
-                .with(PostgresConnectorConfig.TABLE_WHITELIST, "public.time_array_table"));
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.time_array_table"));
 
         final TestConsumer consumer = testConsumer(1, "public");
         consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);

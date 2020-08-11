@@ -88,7 +88,6 @@ public abstract class AbstractConnectorTest implements Testing {
     public TestRule skipTestRule = new SkipTestRule();
 
     protected static final Path OFFSET_STORE_PATH = Testing.Files.createTestingPath("file-connector-offsets.txt").toAbsolutePath();
-    protected static final String NO_MONITORED_TABLES_WARNING = "After applying blacklist/whitelist filters there are no tables to monitor, please check your configuration";
 
     private ExecutorService executor;
     protected EmbeddedEngine engine;
@@ -491,7 +490,6 @@ public abstract class AbstractConnectorTest implements Testing {
      * Try to consume and capture exactly the specified number of records from the connector.
      *
      * @param numRecords the number of records that should be consumed
-     * @param true if the record serialization should be tested
      * @return the collector into which the records were captured; never null
      * @throws InterruptedException if the thread was interrupted while waiting for a record to be returned
      */

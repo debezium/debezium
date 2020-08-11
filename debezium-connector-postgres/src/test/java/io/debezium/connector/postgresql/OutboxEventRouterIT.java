@@ -534,7 +534,7 @@ public class OutboxEventRouterIT extends AbstractConnectorTest {
         return TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, snapshotMode.getValue())
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
-                .with(PostgresConnectorConfig.SCHEMA_WHITELIST, "outboxsmtit")
-                .with(PostgresConnectorConfig.TABLE_WHITELIST, "outboxsmtit\\.outbox");
+                .with(PostgresConnectorConfig.SCHEMA_INCLUDE_LIST, "outboxsmtit")
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "outboxsmtit\\.outbox");
     }
 }

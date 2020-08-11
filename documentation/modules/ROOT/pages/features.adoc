@@ -22,7 +22,7 @@ The actual change data capture feature of {prodname} is amended with a range of 
 
 * *Snapshots:* optionally, an initial snapshot of a database's current state can be taken if a connector gets started up and not all logs still exist (typically the case when the database has been running for some time and has discarded any transaction logs not needed any longer for transaction recovery or replication);
 different modes exist for snapshotting, refer to the docs of the specific connector you're using to learn more
-* *Filters:* the set of captured schemas, tables and columns can be configured via whitelist/blacklist filters
+* *Filters:* the set of captured schemas, tables and columns can be configured via include/exclude list filters
 * *Masking:* the values from specific columns can be masked, e.g. for sensitive data
 * *Monitoring:* most connectors can be monitored using JMX
 * Different ready-to-use *message transformations*:

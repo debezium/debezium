@@ -26,9 +26,9 @@ import io.debezium.relational.Tables.TableFilter;
 public class Filters {
 
     protected static final List<String> SYSTEM_SCHEMAS = Arrays.asList("pg_catalog", "information_schema");
-    protected static final String SYSTEM_SCHEMA_BLACKLIST = String.join(",", SYSTEM_SCHEMAS);
+    protected static final String SYSTEM_SCHEMA_EXCLUDE_LIST = String.join(",", SYSTEM_SCHEMAS);
     protected static final Predicate<String> IS_SYSTEM_SCHEMA = SYSTEM_SCHEMAS::contains;
-    protected static final String TEMP_TABLE_BLACKLIST = ".*\\.pg_temp.*";
+    protected static final String TEMP_TABLE_EXCLUDE_LIST = ".*\\.pg_temp.*";
 
     private final TableFilter tableFilter;
     private final ColumnNameFilter columnFilter;
@@ -39,37 +39,37 @@ public class Filters {
     public Filters(PostgresConnectorConfig config) {
 
         // we always want to exclude PG system schemas as they are never part of logical decoding events
-        String schemaBlacklist = config.schemaBlacklist();
-        if (schemaBlacklist != null) {
-            schemaBlacklist = schemaBlacklist + "," + SYSTEM_SCHEMA_BLACKLIST;
+        String schemaExcludeList = config.schemaExcludeList();
+        if (schemaExcludeList != null) {
+            schemaExcludeList = schemaExcludeList + "," + SYSTEM_SCHEMA_EXCLUDE_LIST;
         }
         else {
-            schemaBlacklist = SYSTEM_SCHEMA_BLACKLIST;
+            schemaExcludeList = SYSTEM_SCHEMA_EXCLUDE_LIST;
         }
 
-        String tableBlacklist = config.tableBlacklist();
-        if (tableBlacklist != null) {
-            tableBlacklist = tableBlacklist + "," + TEMP_TABLE_BLACKLIST;
+        String tableExcludeList = config.tableExcludeList();
+        if (tableExcludeList != null) {
+            tableExcludeList = tableExcludeList + "," + TEMP_TABLE_EXCLUDE_LIST;
         }
         else {
-            tableBlacklist = TEMP_TABLE_BLACKLIST;
+            tableExcludeList = TEMP_TABLE_EXCLUDE_LIST;
         }
 
-        // Define the filter using the whitelists and blacklists for table names ...
+        // Define the filter using the include/exclude lists for table names ...
         this.tableFilter = TableFilter.fromPredicate(Selectors.tableSelector()
-                .includeTables(config.tableWhitelist())
-                .excludeTables(tableBlacklist)
-                .includeSchemas(config.schemaWhitelist())
-                .excludeSchemas(schemaBlacklist)
+                .includeTables(config.tableIncludeList())
+                .excludeTables(tableExcludeList)
+                .includeSchemas(config.schemaIncludeList())
+                .excludeSchemas(schemaExcludeList)
                 .build());
 
-        String columnWhitelist = config.columnWhitelist();
-        if (columnWhitelist != null) {
-            this.columnFilter = ColumnNameFilterFactory.createWhitelistFilter(config.columnWhitelist());
+        String columnIncludeList = config.columnIncludeList();
+        if (columnIncludeList != null) {
+            this.columnFilter = ColumnNameFilterFactory.createIncludeListFilter(config.columnIncludeList());
         }
         else {
-            // Define the filter that excludes blacklisted columns, truncated columns, and masked columns ...
-            this.columnFilter = ColumnNameFilterFactory.createBlacklistFilter(config.columnBlacklist());
+            // Define the filter that excludes columns on the exclude list, truncated columns, and masked columns ...
+            this.columnFilter = ColumnNameFilterFactory.createExcludeListFilter(config.columnExcludeList());
         }
     }
 

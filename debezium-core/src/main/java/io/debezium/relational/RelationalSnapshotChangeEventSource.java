@@ -167,9 +167,9 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
     }
 
     private Set<TableId> sort(Set<TableId> capturedTables) throws Exception {
-        String value = connectorConfig.getConfig().getString(RelationalDatabaseConnectorConfig.TABLE_WHITELIST);
-        if (value != null) {
-            return Strings.listOfRegex(value, Pattern.CASE_INSENSITIVE)
+        String tableIncludeList = connectorConfig.tableIncludeList();
+        if (tableIncludeList != null) {
+            return Strings.listOfRegex(tableIncludeList, Pattern.CASE_INSENSITIVE)
                     .stream()
                     .flatMap(pattern -> toTableIds(capturedTables, pattern))
                     .collect(Collectors.toCollection(LinkedHashSet::new));

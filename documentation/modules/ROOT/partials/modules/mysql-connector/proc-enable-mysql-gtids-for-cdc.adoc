@@ -4,7 +4,7 @@
 [id="enable-mysql-gtids-for-cdc_{context}"]
 = Enabling MySQL Global Transaction Identifiers for {prodname}
 
-Global transaction identifiers (GTIDs) uniquely identify transactions that occur on a server within a cluster. Though not required for the {prodname} MySQL connector, using GTIDs simplifies replication and allows you to more easily confirm if master and slave servers are consistent.
+Global transaction identifiers (GTIDs) uniquely identify transactions that occur on a server within a cluster. Though not required for the {prodname} MySQL connector, using GTIDs simplifies replication and allows you to more easily confirm if primary and replica servers are consistent.
 
 NOTE: GTIDs are only available from MySQL 5.6.5 and later. See the link:https://dev.mysql.com/doc/refman/{mysql-version}/en/replication-options-gtids.html#option_mysqld_gtid-mode[MySQL documentation] for more details.
 

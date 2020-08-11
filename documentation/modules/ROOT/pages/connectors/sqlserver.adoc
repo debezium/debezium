@@ -48,7 +48,7 @@ This includes snapshots: if the snapshot was not completed when the connector is
 == Setting up SQL Server
 
 Before using the SQL Server connector to monitor the changes committed on SQL Server, first enable _CDC_ on a monitored database.
-Please bear in mind that _CDC_ cannot be enabled for the `master` database.
+Please bear in mind that _CDC_ cannot be enabled for the `primary` database.
 
 [source,sql]
 ----
@@ -105,7 +105,7 @@ ifdef::community[]
 The SQL Server plug-in can capture changes from an Always On read-only replica.
 A few pre-requisities are necessary to be fulfilled:
 
-* Change data capture is configured and enabled on the master node.
+* Change data capture is configured and enabled on the primary node.
 SQL Server does not support CDC directly on replicas.
 * The configuration option `database.applicationIntent` must be set to `ReadOnly`.
 This is required by SQL Server.
@@ -153,7 +153,7 @@ This ensures that the changes are replayed by {prodname} in the same order as we
 
 After a restart, the connector will resume from the offset (commit and change LSNs) where it left off before.
 
-The connector is able to detect whether CDC is enabled or disabled for whitelisted source tables and adjust its behavior.
+The connector is able to detect whether CDC is enabled or disabled for included source tables and adjust its behavior.
 
 [[sqlserver-topic-names]]
 === Topic names
@@ -385,7 +385,7 @@ Therefore, you can interpret this key as describing the row in the `dbo.customer
 ifdef::community[]
 [NOTE]
 ====
-Although the `column.blacklist` configuration property allows you to remove columns from the event values, all columns in a primary or unique key are always included in the event's key.
+Although the `column.exclude.list` configuration property allows you to remove columns from the event values, all columns in a primary or unique key are always included in the event's key.
 ====
 
 [WARNING]
@@ -1244,7 +1244,7 @@ Typically, you configure the {prodname} SQL Server connector in a `.json` file u
     "database.password": "Password!", // <6>
     "database.dbname": "testDB", // <7>
     "database.server.name": "fullfillment", // <8>
-    "table.whitelist": "dbo.customers", // <9>
+    "table.include.list": "dbo.customers", // <9>
     "database.history.kafka.bootstrap.servers": "kafka:9092", // <10>
     "database.history.kafka.topic": "dbhistory.fullfillment" // <11>
   }
@@ -1284,7 +1284,7 @@ apiVersion: kafka.strimzi.io/v1beta1
       database.password: dbz  //<6>
       database.dbname: testDB  //<7>
       database.server.name: fullfullment //<8>
-      database.whitelist: dbo.customers   //<9>
+      database.include.list: dbo.customers   //<9>
       database.history.kafka.bootstrap.servers: my-cluster-kafka-bootstrap:9092  //<10> 
       database.history.kafka.topic: dbhistory.fullfillment  //<11>
 
@@ -1396,20 +1396,21 @@ Only alphanumeric characters and underscores should be used.
 |A list of host/port pairs that the connector will use for establishing an initial connection to the Kafka cluster.
 This connection is used for retrieving database schema history previously stored by the connector, and for writing each DDL statement read from the source database. This should point to the same Kafka cluster used by the Kafka Connect process.
 
-|[[sqlserver-property-table-whitelist]]<<sqlserver-property-table-whitelist, `table.whitelist`>>
+|[[sqlserver-property-table-whitelist]]<<sqlserver-property-table-whitelist [[sqlserver-property-table-include-list]]<<sqlserver-property-table-include-list , `table.include.list`>>
 |
-|An optional comma-separated list of regular expressions that match fully-qualified table identifiers for tables to be monitored; any table not included in the whitelist is excluded from monitoring. Each identifier is of the form _schemaName_._tableName_. By default the connector will monitor every non-system table in each monitored schema. May not be used with `table.blacklist`.
+|An optional comma-separated list of regular expressions that match fully-qualified table identifiers for tables to be monitored; any table not included in `table.include.list` is excluded from monitoring. Each identifier is of the form _schemaName_._tableName_. By default the connector will monitor every non-system table in each monitored schema.
+Must not be used with `table.exclude.list`.
 
-|[[sqlserver-property-table-blacklist]]<<sqlserver-property-table-blacklist, `table.blacklist`>>
+|[[sqlserver-property-table-blacklist]]<<sqlserver-property-table-blacklist [[sqlserver-property-table-exclude-list]]<<sqlserver-property-table-exclude-list, `table.exclude.list`>>
 |
-|An optional comma-separated list of regular expressions that match fully-qualified table identifiers for tables to be excluded from monitoring; any table not included in the blacklist is monitored.
-Each identifier is of the form _schemaName_._tableName_. May not be used with `table.whitelist`.
+|An optional comma-separated list of regular expressions that match fully-qualified table identifiers for tables to be excluded from monitoring; any table not included in `table.exclude.list` is monitored.
+Each identifier is of the form _schemaName_._tableName_. Must not be used with `table.include.list`.
 
-|[[sqlserver-property-column-blacklist]]<<sqlserver-property-column-blacklist, `column.blacklist`>>
+|[[sqlserver-property-column-blacklist]]<<sqlserver-property-column-blacklist [[sqlserver-property-column-exclude-list]]<<sqlserver-property-column-exclude-list , `column.exclude.list`>>
 |_empty string_
 |An optional comma-separated list of regular expressions that match the fully-qualified names of columns that should be excluded from change event message values.
 Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_.
-Note that primary key columns are always included in the event's key, also if blacklisted from the value.
+Note that primary key columns are always included in the event's key, also if excluded from the value.
 
 |[[sqlserver-property-column-mask-hash]]<<sqlserver-property-column-mask-hash, `column.mask.hash._hashAlgorithm_.with.salt._salt_`>>
 |_n/a_

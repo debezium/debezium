@@ -636,7 +636,7 @@ public class BinlogReader extends AbstractReader {
     }
 
     /**
-     * Handle the supplied event that is sent by a master to a slave to let the slave know that the master is still alive. Not
+     * Handle the supplied event that is sent by a primary to a replica to let the replica know that the primary is still alive. Not
      * written to a binary log.
      *
      * @param event the server stopped event to be processed; may not be null
@@ -646,8 +646,8 @@ public class BinlogReader extends AbstractReader {
     }
 
     /**
-     * Handle the supplied event that signals that an out of the ordinary event that occurred on the master. It notifies the slave
-     * that something happened on the master that might cause data to be in an inconsistent state.
+     * Handle the supplied event that signals that an out of the ordinary event that occurred on the master. It notifies the replica
+     * that something happened on the primary that might cause data to be in an inconsistent state.
      *
      * @param event the server stopped event to be processed; may not be null
      */

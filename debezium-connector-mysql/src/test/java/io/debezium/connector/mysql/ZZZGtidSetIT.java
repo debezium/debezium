@@ -96,7 +96,7 @@ public class ZZZGtidSetIT extends AbstractConnectorTest {
         config = ro_database.defaultConfig()
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
-                .with(MySqlConnectorConfig.TABLE_WHITELIST, ro_database.qualifiedTableName("customers"))
+                .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, ro_database.qualifiedTableName("customers"))
                 .build();
 
         // Start the connector ...
@@ -161,7 +161,7 @@ public class ZZZGtidSetIT extends AbstractConnectorTest {
         config = database.defaultConfig()
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.WHEN_NEEDED)
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
-                .with(MySqlConnectorConfig.TABLE_WHITELIST, database.qualifiedTableName("customers"))
+                .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, database.qualifiedTableName("customers"))
                 .build();
 
         // Start the connector ...

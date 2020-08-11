@@ -66,7 +66,7 @@ This is where all the _magic_ happens where we put tie together all the pieces o
 Remember this version should match the version of database parameters you cloned in the prior steps.
 3. Select the **Template** of interest, I typically picked **Free tier** because it's free ;)
 4. Provide your database with a **DB Instance Identifier**.
-5. Under **Credentials Settings**, manually assign a **Master Password** and confirm it.
+5. Under **Credentials Settings**, manually assign a **RDS Master Password** and confirm it.
 6. Under **Connectivity**, you'll want to set that it is _publicly accessible_.
 7. You should be able to leave the **VPC security group** to use an existing and it should be set to **default** or whatever you named it to.
 In the event you have multiple security groups and you created a new one, select the one of interest to assign.
@@ -91,8 +91,8 @@ When you run your JVM process you either need to provide these VM options manual
 ```
 database.dbname=postgres
 database.hostname=<your amazon instance endpoint>
-database.user=<name of master user, by default this is postgres>
-database.password=<your master password>
+database.user=<name of RDS master user, by default this is postgres>
+database.password=<your RDS master password>
 ```
 
 ## Viewing logs

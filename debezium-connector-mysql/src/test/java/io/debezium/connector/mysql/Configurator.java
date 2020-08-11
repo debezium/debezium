@@ -10,6 +10,7 @@ import java.nio.file.Path;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.relational.history.FileDatabaseHistory;
+import io.debezium.util.Testing;
 
 /**
  * A helper for easily building connector configurations for testing.
@@ -35,23 +36,48 @@ import io.debezium.relational.history.FileDatabaseHistory;
     }
 
     /* package local */ Configurator includeDatabases(String regexList) {
-        return with(MySqlConnectorConfig.DATABASE_WHITELIST, regexList);
+        if (Math.random() >= 0.5) {
+            Testing.debug("Using \"" + MySqlConnectorConfig.DATABASE_WHITELIST.name() + "\" config property");
+            return with(MySqlConnectorConfig.DATABASE_WHITELIST, regexList);
+        }
+        Testing.debug("Using \"" + MySqlConnectorConfig.DATABASE_INCLUDE_LIST.name() + "\" config property");
+        return with(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, regexList);
     }
 
     /* package local */ Configurator excludeDatabases(String regexList) {
-        return with(MySqlConnectorConfig.DATABASE_BLACKLIST, regexList);
+        if (Math.random() >= 0.5) {
+            Testing.debug("Using \"" + MySqlConnectorConfig.DATABASE_BLACKLIST.name() + "\" config property");
+            return with(MySqlConnectorConfig.DATABASE_BLACKLIST, regexList);
+        }
+        Testing.debug("Using \"" + MySqlConnectorConfig.DATABASE_EXCLUDE_LIST.name() + "\" config property");
+        return with(MySqlConnectorConfig.DATABASE_EXCLUDE_LIST, regexList);
     }
 
     /* package local */ Configurator includeTables(String regexList) {
-        return with(MySqlConnectorConfig.TABLE_WHITELIST, regexList);
+        if (Math.random() >= 0.5) {
+            Testing.debug("Using \"" + MySqlConnectorConfig.TABLE_WHITELIST.name() + "\" config property");
+            return with(MySqlConnectorConfig.TABLE_WHITELIST, regexList);
+        }
+        Testing.debug("Using \"" + MySqlConnectorConfig.TABLE_INCLUDE_LIST.name() + "\" config property");
+        return with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, regexList);
     }
 
     /* package local */ Configurator excludeTables(String regexList) {
-        return with(MySqlConnectorConfig.TABLE_BLACKLIST, regexList);
+        if (Math.random() >= 0.5) {
+            Testing.debug("Using \"" + MySqlConnectorConfig.TABLE_BLACKLIST.name() + "\" config property");
+            return with(MySqlConnectorConfig.TABLE_BLACKLIST, regexList);
+        }
+        Testing.debug("Using \"" + MySqlConnectorConfig.TABLE_EXCLUDE_LIST.name() + "\" config property");
+        return with(MySqlConnectorConfig.TABLE_EXCLUDE_LIST, regexList);
     }
 
     /* package local */ Configurator excludeColumns(String regexList) {
-        return with(MySqlConnectorConfig.COLUMN_BLACKLIST, regexList);
+        if (Math.random() >= 0.5) {
+            Testing.debug("Using \"" + MySqlConnectorConfig.COLUMN_BLACKLIST.name() + "\" config property");
+            return with(MySqlConnectorConfig.COLUMN_BLACKLIST, regexList);
+        }
+        Testing.debug("Using \"" + MySqlConnectorConfig.COLUMN_EXCLUDE_LIST.name() + "\" config property");
+        return with(MySqlConnectorConfig.COLUMN_EXCLUDE_LIST, regexList);
     }
 
     /* package local */ Configurator truncateColumns(int length, String fullyQualifiedTableNames) {

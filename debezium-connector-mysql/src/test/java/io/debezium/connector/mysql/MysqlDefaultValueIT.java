@@ -572,7 +572,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
     public void dateAndTimeTest() throws InterruptedException {
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL)
-                .with(MySqlConnectorConfig.TABLE_WHITELIST, DATABASE.qualifiedTableName("DATE_TIME_TABLE"))
+                .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("DATE_TIME_TABLE"))
                 .with(DatabaseHistory.STORE_ONLY_MONITORED_TABLES_DDL, true)
                 .build();
         start(MySqlConnector.class, config);
@@ -640,7 +640,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
     public void timeTypeWithConnectMode() throws Exception {
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL)
-                .with(MySqlConnectorConfig.TABLE_WHITELIST, DATABASE.qualifiedTableName("DATE_TIME_TABLE"))
+                .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("DATE_TIME_TABLE"))
                 .with(MySqlConnectorConfig.TIME_PRECISION_MODE, TemporalPrecisionMode.CONNECT)
                 .with(DatabaseHistory.STORE_ONLY_MONITORED_TABLES_DDL, true)
                 .build();
@@ -784,7 +784,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
     public void alterDateAndTimeTest() throws Exception {
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL)
-                .with(MySqlConnectorConfig.TABLE_WHITELIST, DATABASE.qualifiedTableName("ALTER_DATE_TIME"))
+                .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("ALTER_DATE_TIME"))
                 .with(DatabaseHistory.STORE_ONLY_MONITORED_TABLES_DDL, true)
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
                 .build();

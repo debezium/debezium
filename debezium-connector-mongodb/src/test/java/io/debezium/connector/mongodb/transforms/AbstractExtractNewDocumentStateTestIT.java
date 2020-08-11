@@ -51,7 +51,7 @@ public abstract class AbstractExtractNewDocumentStateTestIT extends AbstractConn
         // Use the DB configuration to define the connector's configuration ...
         Configuration config = TestHelper.getConfiguration().edit()
                 .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
-                .with(MongoDbConnectorConfig.COLLECTION_WHITELIST, DB_NAME + "." + this.getCollectionName())
+                .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, DB_NAME + "." + this.getCollectionName())
                 .with(MongoDbConnectorConfig.LOGICAL_NAME, SERVER_NAME)
                 .build();
 
@@ -97,7 +97,7 @@ public abstract class AbstractExtractNewDocumentStateTestIT extends AbstractConn
         // reconfigure and restart
         Configuration config = TestHelper.getConfiguration().edit()
                 .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
-                .with(MongoDbConnectorConfig.COLLECTION_WHITELIST, DB_NAME + "." + this.getCollectionName())
+                .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, DB_NAME + "." + this.getCollectionName())
                 .with(MongoDbConnectorConfig.LOGICAL_NAME, SERVER_NAME)
                 .with(MongoDbConnectorConfig.TOMBSTONES_ON_DELETE, false)
                 .build();

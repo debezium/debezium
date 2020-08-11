@@ -75,6 +75,7 @@ import io.debezium.junit.SkipWhenKafkaVersion;
 import io.debezium.junit.SkipWhenKafkaVersion.KafkaVersion;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
+import io.debezium.schema.DatabaseSchema;
 import io.debezium.util.Strings;
 import io.debezium.util.Testing;
 
@@ -177,11 +178,17 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         validateField(validatedConfig, PostgresConnectorConfig.SSL_CLIENT_KEY_PASSWORD, null);
         validateField(validatedConfig, PostgresConnectorConfig.SSL_ROOT_CERT, null);
         validateField(validatedConfig, PostgresConnectorConfig.SCHEMA_WHITELIST, null);
+        validateField(validatedConfig, PostgresConnectorConfig.SCHEMA_INCLUDE_LIST, null);
         validateField(validatedConfig, PostgresConnectorConfig.SCHEMA_BLACKLIST, null);
+        validateField(validatedConfig, PostgresConnectorConfig.SCHEMA_EXCLUDE_LIST, null);
         validateField(validatedConfig, PostgresConnectorConfig.TABLE_WHITELIST, null);
+        validateField(validatedConfig, PostgresConnectorConfig.TABLE_INCLUDE_LIST, null);
         validateField(validatedConfig, PostgresConnectorConfig.TABLE_BLACKLIST, null);
+        validateField(validatedConfig, PostgresConnectorConfig.TABLE_EXCLUDE_LIST, null);
         validateField(validatedConfig, PostgresConnectorConfig.COLUMN_BLACKLIST, null);
+        validateField(validatedConfig, PostgresConnectorConfig.COLUMN_EXCLUDE_LIST, null);
         validateField(validatedConfig, PostgresConnectorConfig.COLUMN_WHITELIST, null);
+        validateField(validatedConfig, PostgresConnectorConfig.COLUMN_INCLUDE_LIST, null);
         validateField(validatedConfig, PostgresConnectorConfig.MSG_KEY_COLUMNS, null);
         validateField(validatedConfig, PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL);
         validateField(validatedConfig, RelationalDatabaseConnectorConfig.SNAPSHOT_LOCK_TIMEOUT_MS,
@@ -331,6 +338,29 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL.getValue())
                 .with(PostgresConnectorConfig.MAX_QUEUE_SIZE, recordCount / 2)
                 .with(PostgresConnectorConfig.MAX_BATCH_SIZE, 10)
+                .with(PostgresConnectorConfig.SCHEMA_INCLUDE_LIST, "s1");
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+
+        waitForSnapshotToBeCompleted();
+        SourceRecords records = consumeRecordsByTopic(recordCount);
+        Assertions.assertThat(records.recordsForTopic("test_server.s1.a")).hasSize(recordCount);
+
+        stopConnector();
+    }
+
+    @Test
+    public void shouldConsumeMessagesFromSnapshotOld() throws Exception {
+        TestHelper.execute(SETUP_TABLES_STMT);
+        final int recordCount = 100;
+
+        for (int i = 0; i < recordCount - 1; i++) {
+            TestHelper.execute(INSERT_STMT);
+        }
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL.getValue())
+                .with(PostgresConnectorConfig.MAX_QUEUE_SIZE, recordCount / 2)
+                .with(PostgresConnectorConfig.MAX_BATCH_SIZE, 10)
                 .with(PostgresConnectorConfig.SCHEMA_WHITELIST, "s1");
         start(PostgresConnector.class, configBuilder.build());
         assertConnectorIsRunning();
@@ -351,7 +381,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         try {
             final PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
                     .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, Boolean.FALSE)
-                    .with(PostgresConnectorConfig.SCHEMA_WHITELIST, "changepk")
+                    .with(PostgresConnectorConfig.SCHEMA_INCLUDE_LIST, "changepk")
                     .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
                     .with(PostgresConnectorConfig.SLOT_NAME, slotName)
                     .build());
@@ -734,6 +764,46 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
+    public void shouldTakeExcludeListFiltersIntoAccount() throws Exception {
+        String setupStmt = SETUP_TABLES_STMT +
+                "CREATE TABLE s1.b (pk SERIAL, aa integer, bb integer, PRIMARY KEY(pk));" +
+                "ALTER TABLE s1.a ADD COLUMN bb integer;" +
+                "INSERT INTO s1.a (aa, bb) VALUES (2, 2);" +
+                "INSERT INTO s1.a (aa, bb) VALUES (3, 3);" +
+                "INSERT INTO s1.b (aa, bb) VALUES (4, 4);" +
+                "INSERT INTO s2.a (aa) VALUES (5);";
+        TestHelper.execute(setupStmt);
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL.getValue())
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
+                .with(PostgresConnectorConfig.SCHEMA_EXCLUDE_LIST, "s2")
+                .with(PostgresConnectorConfig.TABLE_EXCLUDE_LIST, ".+b")
+                .with(PostgresConnectorConfig.COLUMN_EXCLUDE_LIST, ".+bb");
+
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+
+        // check the records from the snapshot take the filters into account
+        SourceRecords actualRecords = consumeRecordsByTopic(4); // 3 records in s1.a and 1 in s1.b
+
+        assertThat(actualRecords.recordsForTopic(topicName("s2.a"))).isNullOrEmpty();
+        assertThat(actualRecords.recordsForTopic(topicName("s1.b"))).isNullOrEmpty();
+        List<SourceRecord> recordsForS1a = actualRecords.recordsForTopic(topicName("s1.a"));
+        assertThat(recordsForS1a.size()).isEqualTo(3);
+        AtomicInteger pkValue = new AtomicInteger(1);
+        recordsForS1a.forEach(record -> {
+            VerifyRecord.isValidRead(record, PK_FIELD, pkValue.getAndIncrement());
+            assertFieldAbsent(record, "bb");
+        });
+
+        // insert some more records and verify the filtering behavior
+        String insertStmt = "INSERT INTO s1.b (aa, bb) VALUES (6, 6);" +
+                "INSERT INTO s2.a (aa) VALUES (7);";
+        TestHelper.execute(insertStmt);
+        assertNoRecordsToConsume();
+    }
+
+    @Test
     public void shouldTakeBlacklistFiltersIntoAccount() throws Exception {
         String setupStmt = SETUP_TABLES_STMT +
                 "CREATE TABLE s1.b (pk SERIAL, aa integer, bb integer, PRIMARY KEY(pk));" +
@@ -785,7 +855,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
                 .with("column.mask.with.5.chars", ".+cc")
-                .with(PostgresConnectorConfig.COLUMN_WHITELIST, ".+aa,.+cc");
+                .with(PostgresConnectorConfig.COLUMN_INCLUDE_LIST, ".+aa,.+cc");
 
         start(PostgresConnector.class, configBuilder.build());
         assertConnectorIsRunning();
@@ -803,6 +873,36 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
     @Test
     @FixFor("DBZ-1546")
     public void shouldRemoveWhiteSpaceChars() throws Exception {
+        String setupStmt = SETUP_TABLES_STMT +
+                "CREATE TABLE s1.b (pk SERIAL, aa integer, PRIMARY KEY(pk));" +
+                "INSERT INTO s1.b (aa) VALUES (123);";
+
+        String tableWhitelistWithWhitespace = "s1.a, s1.b";
+
+        TestHelper.execute(setupStmt);
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL.getValue())
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
+                .with(PostgresConnectorConfig.SCHEMA_INCLUDE_LIST, "s1")
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, tableWhitelistWithWhitespace);
+
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+
+        SourceRecords actualRecords = consumeRecordsByTopic(2);
+
+        List<SourceRecord> records = actualRecords.recordsForTopic(topicName("s1.b"));
+        assertThat(records.size()).isEqualTo(1);
+
+        SourceRecord record = records.get(0);
+        VerifyRecord.isValidRead(record, PK_FIELD, 1);
+
+        String sourceTable = ((Struct) record.value()).getStruct("source").getString("table");
+        assertThat(sourceTable).isEqualTo("b");
+    }
+
+    @Test
+    public void shouldRemoveWhiteSpaceCharsOld() throws Exception {
         String setupStmt = SETUP_TABLES_STMT +
                 "CREATE TABLE s1.b (pk SERIAL, aa integer, PRIMARY KEY(pk));" +
                 "INSERT INTO s1.b (aa) VALUES (123);";
@@ -840,8 +940,8 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL.getValue())
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
-                .with(PostgresConnectorConfig.SCHEMA_WHITELIST, "s1")
-                .with(PostgresConnectorConfig.TABLE_WHITELIST, "s1.b")
+                .with(PostgresConnectorConfig.SCHEMA_INCLUDE_LIST, "s1")
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1.b")
                 .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true);
 
         start(PostgresConnector.class, configBuilder.build());
@@ -875,8 +975,8 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL.getValue())
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
-                .with(PostgresConnectorConfig.SCHEMA_WHITELIST, "s1")
-                .with(PostgresConnectorConfig.TABLE_WHITELIST, "s1\\.dbz_878_some\\|test@data");
+                .with(PostgresConnectorConfig.SCHEMA_INCLUDE_LIST, "s1")
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1\\.dbz_878_some\\|test@data");
 
         start(PostgresConnector.class, configBuilder.build());
         assertConnectorIsRunning();
@@ -902,7 +1002,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         Configuration config = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.getValue())
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
-                .with(PostgresConnectorConfig.TABLE_WHITELIST, "s1.a")
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1.a")
                 .with(Heartbeat.HEARTBEAT_INTERVAL, 10)
                 .build();
         start(PostgresConnector.class, config);
@@ -923,7 +1023,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         Configuration config = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.getValue())
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
-                .with(PostgresConnectorConfig.TABLE_WHITELIST, "s1.a")
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1.a")
                 .build();
         start(PostgresConnector.class, config);
         assertConnectorIsRunning();
@@ -966,7 +1066,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         Configuration config = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.getValue())
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
-                .with(PostgresConnectorConfig.TABLE_WHITELIST, "s1.a")
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1.a")
                 .with(Heartbeat.HEARTBEAT_INTERVAL, 1_000)
                 .build();
         start(PostgresConnector.class, config);
@@ -1372,13 +1472,13 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
 
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_ONLY.getValue())
-                .with(PostgresConnectorConfig.TABLE_WHITELIST, "my_products");
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "my_products");
 
         start(PostgresConnector.class, configBuilder.build());
         assertConnectorIsRunning();
         waitForAvailableRecords(10 * (TestHelper.waitTimeForRecords() * 5), TimeUnit.MILLISECONDS);
 
-        stopConnector(value -> assertThat(logInterceptor.containsWarnMessage(NO_MONITORED_TABLES_WARNING)).isTrue());
+        stopConnector(value -> assertThat(logInterceptor.containsWarnMessage(DatabaseSchema.NO_CAPTURED_DATA_COLLECTIONS_WARNING)).isTrue());
     }
 
     @Test
@@ -1397,7 +1497,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         assertConnectorIsRunning();
         waitForAvailableRecords(100, TimeUnit.MILLISECONDS);
 
-        stopConnector(value -> assertThat(logInterceptor.containsWarnMessage(NO_MONITORED_TABLES_WARNING)).isFalse());
+        stopConnector(value -> assertThat(logInterceptor.containsWarnMessage(DatabaseSchema.NO_CAPTURED_DATA_COLLECTIONS_WARNING)).isFalse());
     }
 
     @Test
@@ -1428,7 +1528,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         TestHelper.execute(SETUP_TABLES_STMT);
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL.getValue())
-                .with(PostgresConnectorConfig.SCHEMA_WHITELIST, "s1,s2")
+                .with(PostgresConnectorConfig.SCHEMA_INCLUDE_LIST, "s1,s2")
                 // rewrite key from table 'a': from {pk} to {pk, aa}
                 .with(PostgresConnectorConfig.MSG_KEY_COLUMNS, "(.*)1.a:pk,aa");
 
@@ -1458,19 +1558,19 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
 
         TestHelper.execute(SETUP_TABLES_STMT);
         TestHelper.execute(INSERT_STMT);
-        Configuration config = TestHelper.defaultConfig().with(PostgresConnectorConfig.SCHEMA_WHITELIST, "s2").build();
+        Configuration config = TestHelper.defaultConfig().with(PostgresConnectorConfig.SCHEMA_INCLUDE_LIST, "s2").build();
 
         // Start connector, verify that it does not log no monitored tables warning
         start(PostgresConnector.class, config);
         waitForSnapshotToBeCompleted();
         SourceRecords records = consumeRecordsByTopic(1);
-        assertThat(logInterceptor.containsMessage(NO_MONITORED_TABLES_WARNING)).isFalse();
+        assertThat(logInterceptor.containsMessage(DatabaseSchema.NO_CAPTURED_DATA_COLLECTIONS_WARNING)).isFalse();
         stopConnector();
 
         // Restart connector, verify it does not log no monitored tables warning
         start(PostgresConnector.class, config);
         waitForStreamingRunning();
-        assertThat(logInterceptor.containsMessage(NO_MONITORED_TABLES_WARNING)).isFalse();
+        assertThat(logInterceptor.containsMessage(DatabaseSchema.NO_CAPTURED_DATA_COLLECTIONS_WARNING)).isFalse();
 
         stopConnector();
     }
@@ -1810,7 +1910,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
 
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.PUBLICATION_NAME, "cdc")
-                .with(PostgresConnectorConfig.TABLE_WHITELIST, "public.numeric_table,public.text_table,s1.a,s2.a")
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.numeric_table,public.text_table,s1.a,s2.a")
                 .with(PostgresConnectorConfig.PUBLICATION_AUTOCREATE_MODE, PostgresConnectorConfig.AutoCreateMode.FILTERED.getValue());
 
         start(PostgresConnector.class, configBuilder.build());
@@ -1867,7 +1967,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
 
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.PUBLICATION_NAME, "cdc")
-                .with(PostgresConnectorConfig.TABLE_WHITELIST, "s2.a")
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s2.a")
                 .with(PostgresConnectorConfig.PUBLICATION_AUTOCREATE_MODE, PostgresConnectorConfig.AutoCreateMode.FILTERED.getValue());
 
         start(PostgresConnector.class, configBuilder.build());

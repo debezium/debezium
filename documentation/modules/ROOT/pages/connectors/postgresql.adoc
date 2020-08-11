@@ -502,7 +502,7 @@ This key describes output from the connector named `PostgreSQL_server`,  for the
 
 [NOTE]
 ====
-Although the `column.blacklist` and `column.whitelist` connector configuration properties allow you to capture only a subset of table columns, all columns in a primary or unique key are always included in the event's key.
+Although the `column.exclude.list` and `column.include.list` connector configuration properties allow you to capture only a subset of table columns, all columns in a primary or unique key are always included in the event's key.
 ====
 
 [WARNING]
@@ -1507,11 +1507,11 @@ ifdef::community[]
 It is possible to capture changes in a PostgreSQL database that is running in link:https://aws.amazon.com/rds/[Amazon RDS]. To do this:
 
 * Set the instance parameter `rds.logical_replication` to `1`.
-* Verify that the `wal_level` parameter is set to `logical` by running the query `SHOW wal_level` as the database master user. This might not be the case in multi-zone replication setups.
+* Verify that the `wal_level` parameter is set to `logical` by running the query `SHOW wal_level` as the database RDS master user. This might not be the case in multi-zone replication setups.
 You cannot set this option manually. It is link:https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_WorkingWithParamGroups.html[automatically changed] when the `rds.logical_replication` parameter is set to `1`.
 If the `wal_level` is not `logical` after the change above, it is probably because the instance has to be restarted due to the parameter group change. This happens according to your maintenance window or you can do it manually.
 * Set the  {prodname} `plugin.name` parameter to `wal2json`. You can skip this on PostgreSQL 10+ if you plan to use `pgoutput` logical replication stream support.
-* Use the database master account for replication as RDS currently does not support setting of `REPLICATION` privilege for another account.
+* Use the RDS master account for replication as RDS currently does not support setting of `REPLICATION` privilege for another account.
 
 [IMPORTANT]
 ====
@@ -1796,7 +1796,7 @@ You can choose to produce events for a subset of the schemas and tables. Optiona
     "database.password": "postgres", // <6>
     "database.dbname" : "postgres", // <7>
     "database.server.name": "fullfillment", // <8>
-    "table.whitelist": "public.inventory" // <9>
+    "table.include.list": "public.inventory" // <9>
 
   }
 }
@@ -1836,7 +1836,7 @@ apiVersion: kafka.strimzi.io/v1beta1
       database.password: dbz
       database.dbname: postgres  
       database.server.name: fullfillment   // <5>
-      database.whitelist: public.inventory   // <6>
+      database.include.list: public.inventory   // <6>
 ----
 <1> The name of the connector.
 <2> Only one task should operate at any one time.
@@ -2072,7 +2072,7 @@ Set to `true` in only testing or development environments. Dropping the slot all
 |The name of the PostgreSQL publication created for streaming changes when using `pgoutput`.
 
 This publication is created at start-up if it does not already exist and it includes _all tables_.
-{prodname} then applies its own whitelist/blacklist filtering, if configured, to limit the publication to change events for the specific tables of interest.
+{prodname} then applies its own include/exclude list filtering, if configured, to limit the publication to change events for the specific tables of interest.
 The connector user must have superuser permissions to create this publication,
 so it is usually preferable to create the publication before starting the connector for the first time.
 
@@ -2102,29 +2102,29 @@ If the publication already exists, either for all tables or configured with a su
 |
 |Logical name that identifies and provides a namespace for the particular PostgreSQL database server or cluster in which {prodname} is capturing changes. Only alphanumeric characters and underscores should be used in the database server logical name. The logical name should be unique across all other connectors, since it is used as a prefix for all Kafka topic names that receive records from this connector.
 
-|[[postgresql-property-schema-whitelist]]<<postgresql-property-schema-whitelist, `schema.whitelist`>>
+|[[postgresql-property-schema-whitelist]]<<postgresql-property-schema-whitelist [[postgresql-property-schema-inlcude-list]]<<postgresql-property-schema-include-list , `schema.include.list`>>
 |
-|An optional, comma-separated list of regular expressions that match names of schemas for which you *want* to capture changes. Any schema name not included in the whitelist is excluded from having its changes captured. By default, all non-system schemas have their changes captured. Do not also set the `schema.blacklist` property.
+|An optional, comma-separated list of regular expressions that match names of schemas for which you *want* to capture changes. Any schema name not included in `schema.include.list` is excluded from having its changes captured. By default, all non-system schemas have their changes captured. Do not also set the `schema.exclude.list` property.
 
-|[[postgresql-property-schema-blacklist]]<<postgresql-property-schema-blacklist, `schema.blacklist`>>
+|[[postgresql-property-schema-blacklist]]<<postgresql-property-schema-blacklist [[postgresql-property-schema-exclude-list]]<<postgresql-property-schema-exclude-list , `schema.exclude.list`>>
 |
-|An optional, comma-separated list of regular expressions that match names of schemas for which you *do not* want to capture changes. Any schema whose name is not included in the blacklist has its changes captured, with the exception of system schemas. Do not also set the `schema.whitelist` property.
+|An optional, comma-separated list of regular expressions that match names of schemas for which you *do not* want to capture changes. Any schema whose name is not included in `schema.exclude.list` has its changes captured, with the exception of system schemas. Do not also set the `schema.include.list` property.
 
-|[[postgresql-property-table-whitelist]]<<postgresql-property-table-whitelist, `table.whitelist`>>
+|[[postgresql-property-table-whitelist]]<<postgresql-property-table-whitelist [[postgresql-property-table-include-list]]<<postgresql-property-table-include-list, `table.include.list`>>
 |
-|An optional, comma-separated list of regular expressions that match fully-qualified table identifiers for tables whose changes you want to capture. Any table not included in the whitelist does not have its changes captured. Each identifier is of the form _schemaName_._tableName_. By default, the connector captures changes in every non-system table in each schema whose changes are being captured. Do not also set the `table.blacklist` property.
+|An optional, comma-separated list of regular expressions that match fully-qualified table identifiers for tables whose changes you want to capture. Any table not included in `table.include.list` does not have its changes captured. Each identifier is of the form _schemaName_._tableName_. By default, the connector captures changes in every non-system table in each schema whose changes are being captured. Do not also set the `table.exclude.list` property.
 
-|[[postgresql-property-table-blacklist]]<<postgresql-property-table-blacklist, `table.blacklist`>>
+|[[postgresql-property-table-blacklist]]<<postgresql-property-table-blacklist [[postgresql-property-table-exclude.list]]<<postgresql-property-table-exclude.list, `table.exclude.list`>>
 |
-|An optional, comma-separated list of regular expressions that match fully-qualified table identifiers for tables whose changes you *do not* want to capture. Any table not included in the blacklist has it changes captured. Each identifier is of the form _schemaName_._tableName_. Do not also set the `table.whitelist` property.
+|An optional, comma-separated list of regular expressions that match fully-qualified table identifiers for tables whose changes you *do not* want to capture. Any table not included in `table.exclude.list` has it changes captured. Each identifier is of the form _schemaName_._tableName_. Do not also set the `table.include.list` property.
 
-|[[postgresql-property-column-whitelist]]<<postgresql-property-column-whitelist, `column.whitelist`>>
+|[[postgresql-property-column-whitelist]]<<postgresql-property-column-whitelist [[postgresql-property-column-include-list]]<<postgresql-property-column-include-list , `column.include.list`>>
 |
-|An optional, comma-separated list of regular expressions that match the fully-qualified names of columns that should be included in change event record values. Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_. Do not also set the `column.blacklist` property.
+|An optional, comma-separated list of regular expressions that match the fully-qualified names of columns that should be included in change event record values. Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_. Do not also set the `column.exclude.list` property.
 
-|[[postgresql-property-column-blacklist]]<<postgresql-property-column-blacklist, `column.blacklist`>>
+|[[postgresql-property-column-blacklist]]<<postgresql-property-column-blacklist [[postgresql-property-column-exclude-list]]<<postgresql-property-column-exclude-list, `column.exclude.list`>>
 |
-|An optional, comma-separated list of regular expressions that match the fully-qualified names of columns that should be excluded from change event record values. Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_. Do not also set the `column.whitelist` property.
+|An optional, comma-separated list of regular expressions that match the fully-qualified names of columns that should be excluded from change event record values. Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_. Do not also set the `column.include.list` property.
 
 |[[postgresql-property-time-precision-mode]]<<postgresql-property-time-precision-mode, `time.precision.mode`>>
 |`adaptive`
@@ -2268,7 +2268,7 @@ If `table_a` has a an `id` column, and `regex_1` is `^i` (matches any column tha
 
 `disabled` - The connector does not attempt to create a publication. A database administrator or the user configured to perform replications must have created the publication before running the connector. If the connector cannot find the publication, the connector throws an exception and stops. 
 
-`filtered` - If a publication exists, the connector uses it. If no publication exists, the connector creates a new publication for tables that match the current filter configuration as specified by the `database.blacklist`, `database.whitelist`, `table.blacklist`, and `table.whitelist` connector configuration properties. For example: `CREATE PUBLICATION <publication_name> FOR TABLE <tbl1, tbl2, etc>`.
+`filtered` - If a publication exists, the connector uses it. If no publication exists, the connector creates a new publication for tables that match the current filter configuration as specified by the `database.exclude.list`, `database.include.list`, `table.exclude.list`, and `table.include.list` connector configuration properties. For example: `CREATE PUBLICATION <publication_name> FOR TABLE <tbl1, tbl2, etc>`.
 
 |[[postgresql-property-binary-handling-mode]]<<postgresql-property-binary-handling-mode, `binary.handling.mode`>>
 |bytes

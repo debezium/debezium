@@ -30,8 +30,8 @@ public class PulsarTestConfigSource extends TestConfigSource {
         pulsarTest.put("debezium.source.database.password", TestDatabase.POSTGRES_PASSWORD);
         pulsarTest.put("debezium.source.database.dbname", TestDatabase.POSTGRES_DBNAME);
         pulsarTest.put("debezium.source.database.server.name", "testc");
-        pulsarTest.put("debezium.source.schema.whitelist", "inventory");
-        pulsarTest.put("debezium.source.table.whitelist", "inventory.customers");
+        pulsarTest.put("debezium.source.schema.include.list", "inventory");
+        pulsarTest.put("debezium.source.table.include.list", "inventory.customers");
 
         config = pulsarTest;
     }

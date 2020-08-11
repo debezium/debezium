@@ -27,7 +27,7 @@ public class TransactionMetadataIT extends AbstractMongoConnectorIT {
     public void transactionMetadata() throws Exception {
         config = TestHelper.getConfiguration()
                 .edit()
-                .with(MongoDbConnectorConfig.COLLECTION_WHITELIST, "dbA.c1")
+                .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbA.c1")
                 .with(MongoDbConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                 .with(MongoDbConnectorConfig.PROVIDE_TRANSACTION_METADATA, true)
                 .build();

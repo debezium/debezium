@@ -40,8 +40,8 @@ public class EventHubsTestConfigSource extends TestConfigSource {
         eventHubsTest.put("debezium.source.database.password", TestDatabase.POSTGRES_PASSWORD);
         eventHubsTest.put("debezium.source.database.dbname", TestDatabase.POSTGRES_DBNAME);
         eventHubsTest.put("debezium.source.database.server.name", "testc");
-        eventHubsTest.put("debezium.source.schema.whitelist", "inventory");
-        eventHubsTest.put("debezium.source.table.whitelist", "inventory.customers");
+        eventHubsTest.put("debezium.source.schema.include.list", "inventory");
+        eventHubsTest.put("debezium.source.table.include.list", "inventory.customers");
 
         config = eventHubsTest;
     }

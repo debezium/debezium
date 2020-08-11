@@ -232,7 +232,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
      * acknowledged with the replication slot, causing any ever growing WAL backlog.
      * <p>
      * This situation typically occurs if there are changes on the database server,
-     * (e.g. in a blacklisted database), but none of them is in a whitelisted table.
+     * (e.g. in an excluded database), but none of them is in table.include.list.
      * To prevent this, heartbeats can be used, as they will allow us to commit
      * offsets also when not propagating any "real" change event.
      * <p>

@@ -126,7 +126,7 @@ Next, the connector reports the nine steps that make up the snapshot operation:
 2017-09-21 07:24:01,628 INFO   MySQL|dbserver1|snapshot  Step 0: disabling autocommit and enabling repeatable read transactions   [io.debezium.connector.mysql.SnapshotReader]
 2017-09-21 07:24:01,631 INFO   MySQL|dbserver1|snapshot  Step 1: start transaction with consistent snapshot   [io.debezium.connector.mysql.SnapshotReader]
 2017-09-21 07:24:01,634 INFO   MySQL|dbserver1|snapshot  Step 2: flush and obtain global read lock to prevent writes to database   [io.debezium.connector.mysql.SnapshotReader]
-2017-09-21 07:24:01,636 INFO   MySQL|dbserver1|snapshot  Step 3: read binlog position of MySQL master   [io.debezium.connector.mysql.SnapshotReader]
+2017-09-21 07:24:01,636 INFO   MySQL|dbserver1|snapshot  Step 3: read binlog position of MySQL primary server   [io.debezium.connector.mysql.SnapshotReader]
 2017-09-21 07:24:01,638 INFO   MySQL|dbserver1|snapshot  	 using binlog 'mysql-bin.000003' at position '154' and gtid ''   [io.debezium.connector.mysql.SnapshotReader]
 2017-09-21 07:24:01,638 INFO   MySQL|dbserver1|snapshot  Step 4: read list of available databases   [io.debezium.connector.mysql.SnapshotReader]
 2017-09-21 07:24:01,638 INFO   MySQL|dbserver1|snapshot  	 list of available databases is: [information_schema, inventory, mysql, performance_schema, sys]   [io.debezium.connector.mysql.SnapshotReader]

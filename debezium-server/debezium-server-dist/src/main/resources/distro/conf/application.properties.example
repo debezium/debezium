@@ -9,4 +9,4 @@ debezium.source.database.user=postgres
 debezium.source.database.password=postgres
 debezium.source.database.dbname=postgres
 debezium.source.database.server.name=tutorial
-debezium.source.schema.whitelist=inventory
+debezium.source.schema.include.list=inventory

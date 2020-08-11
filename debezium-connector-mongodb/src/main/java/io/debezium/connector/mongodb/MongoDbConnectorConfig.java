@@ -26,6 +26,9 @@ import io.debezium.connector.SourceInfoStructMaker;
  */
 public class MongoDbConnectorConfig extends CommonConnectorConfig {
 
+    protected static final String COLLECTION_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG = "\"collection.include.list\" or \"collection.whitelist\" is already specified";
+    protected static final String DATABASE_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG = "\"database.include.list\" or \"database.whitelist\" is already specified";
+
     /**
      * The set of predefined SnapshotMode options or aliases.
      */
@@ -236,23 +239,35 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
 
     /**
      * A comma-separated list of regular expressions that match the databases to be monitored.
-     * May not be used with {@link #DATABASE_BLACKLIST}.
+     * Must not be used with {@link #DATABASE_EXCLUDE_LIST}.
      */
-    public static final Field DATABASE_WHITELIST = Field.create("database.whitelist")
-            .withDisplayName("DB Whitelist")
+    public static final Field DATABASE_INCLUDE_LIST = Field.create("database.include.list")
+            .withDisplayName("Include Databases")
             .withType(Type.LIST)
             .withWidth(Width.LONG)
             .withImportance(Importance.HIGH)
-            .withValidation(Field::isListOfRegex,
-                    MongoDbConnectorConfig::validateDatabaseBlacklist)
+            .withValidation(Field::isListOfRegex, MongoDbConnectorConfig::validateDatabaseExcludeList)
             .withDescription("The databases for which changes are to be captured");
 
     /**
-     * A comma-separated list of regular expressions that match the databases to be excluded.
-     * May not be used with {@link #DATABASE_WHITELIST}.
+     * Old, backwards-compatible "whitelist" property.
      */
-    public static final Field DATABASE_BLACKLIST = Field.create("database.blacklist")
-            .withDisplayName("DB Blacklist")
+    @Deprecated
+    public static final Field DATABASE_WHITELIST = Field.create("database.whitelist")
+            .withDisplayName("Deprecated: Include Databases")
+            .withType(Type.LIST)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.LOW)
+            .withValidation(Field::isListOfRegex, MongoDbConnectorConfig::validateDatabaseExcludeList)
+            .withInvisibleRecommender()
+            .withDescription("The databases for which changes are to be captured (deprecated, use \"" + DATABASE_INCLUDE_LIST.name() + "\" instead)");
+
+    /**
+     * A comma-separated list of regular expressions that match the databases to be excluded.
+     * Must not be used with {@link #DATABASE_INCLUDE_LIST}.
+     */
+    public static final Field DATABASE_EXCLUDE_LIST = Field.create("database.exclude.list")
+            .withDisplayName("Exclude Databases")
             .withType(Type.LIST)
             .withWidth(Width.LONG)
             .withImportance(Importance.HIGH)
@@ -260,24 +275,58 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withDescription("The databases for which changes are to be excluded");
 
     /**
+     * Old, backwards-compatible "blacklist" property.
+     */
+    @Deprecated
+    public static final Field DATABASE_BLACKLIST = Field.create("database.blacklist")
+            .withDisplayName("Deprecated: Exclude Databases")
+            .withType(Type.LIST)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.LOW)
+            .withValidation(Field::isListOfRegex)
+            .withInvisibleRecommender()
+            .withDescription("The databases for which changes are to be excluded (deprecated, use \"" + DATABASE_EXCLUDE_LIST.name() + "\" instead)");
+
+    /**
      * A comma-separated list of regular expressions that match the fully-qualified namespaces of collections to be monitored.
      * Fully-qualified namespaces for collections are of the form {@code <databaseName>.<collectionName>}.
-     * May not be used with {@link #COLLECTION_BLACKLIST}.
+     * Must not be used with {@link #COLLECTION_EXCLUDE_LIST}.
      */
-    public static final Field COLLECTION_WHITELIST = Field.create("collection.whitelist")
-            .withDisplayName("Collections")
+    public static final Field COLLECTION_INCLUDE_LIST = Field.create("collection.include.list")
+            .withDisplayName("Include Collections")
             .withType(Type.LIST)
             .withWidth(Width.LONG)
             .withImportance(Importance.HIGH)
             .withValidation(Field::isListOfRegex,
-                    MongoDbConnectorConfig::validateCollectionBlacklist)
+                    MongoDbConnectorConfig::validateCollectionExcludeList)
             .withDescription("The collections for which changes are to be captured");
+
+    /**
+     * Old, backwards-compatible "whitelist" property.
+     */
+    @Deprecated
+    public static final Field COLLECTION_WHITELIST = Field.create("collection.whitelist")
+            .withDisplayName("Deprecated: Include Collections")
+            .withType(Type.LIST)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.LOW)
+            .withValidation(Field::isListOfRegex, MongoDbConnectorConfig::validateCollectionExcludeList)
+            .withInvisibleRecommender()
+            .withDescription("The collections for which changes are to be captured (deprecated, use \"" + COLLECTION_INCLUDE_LIST.name() + "\" instead)");
 
     /**
      * A comma-separated list of regular expressions that match the fully-qualified namespaces of collections to be excluded from
      * monitoring. Fully-qualified namespaces for collections are of the form {@code <databaseName>.<collectionName>}.
-     * May not be used with {@link #COLLECTION_WHITELIST}.
+     * Must not be used with {@link #COLLECTION_INCLUDE_LIST}.
      */
+    public static final Field COLLECTION_EXCLUDE_LIST = Field.create("collection.exclude.list")
+            .withValidation(Field::isListOfRegex)
+            .withInvisibleRecommender();
+
+    /**
+     * Old, backwards-compatible "blacklist" property.
+     */
+    @Deprecated
     public static final Field COLLECTION_BLACKLIST = Field.create("collection.blacklist")
             .withValidation(Field::isListOfRegex)
             .withInvisibleRecommender();
@@ -288,12 +337,25 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
      * <databaseName>.<collectionName>.<fieldName>.<nestedFieldName>}, where {@code <databaseName>} and
      * {@code <collectionName>} may contain the wildcard ({@code *}) which matches any characters.
      */
-    public static final Field FIELD_BLACKLIST = Field.create("field.blacklist")
+    public static final Field FIELD_EXCLUDE_LIST = Field.create("field.exclude.list")
             .withDisplayName("Exclude Fields")
             .withType(Type.STRING)
             .withWidth(Width.LONG)
             .withImportance(Importance.MEDIUM)
-            .withDescription("");
+            .withDescription("A comma-separated list of the fully-qualified names of fields that should be excluded from change event message values");
+
+    /**
+     * Old, backwards-compatible "blacklist" property.
+     */
+    @Deprecated
+    public static final Field FIELD_BLACKLIST = Field.create("field.blacklist")
+            .withDisplayName("Deprecated: Exclude Fields")
+            .withType(Type.STRING)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.LOW)
+            .withInvisibleRecommender()
+            .withDescription("A comma-separated list of the fully-qualified names of fields that should be excluded from change event message values (deprecated, use \""
+                    + FIELD_EXCLUDE_LIST.name() + "\" instead)");
 
     /**
      * A comma-separated list of the fully-qualified replacements of fields that should be used to rename fields in change
@@ -369,10 +431,15 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
                     SSL_ALLOW_INVALID_HOSTNAMES)
             .events(
                     DATABASE_WHITELIST,
+                    DATABASE_INCLUDE_LIST,
                     DATABASE_BLACKLIST,
+                    DATABASE_EXCLUDE_LIST,
                     COLLECTION_WHITELIST,
+                    COLLECTION_INCLUDE_LIST,
                     COLLECTION_BLACKLIST,
+                    COLLECTION_EXCLUDE_LIST,
                     FIELD_BLACKLIST,
+                    FIELD_EXCLUDE_LIST,
                     FIELD_RENAMES)
             .connector(
                     MAX_COPY_THREADS,
@@ -413,19 +480,21 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         return count;
     }
 
-    private static int validateCollectionBlacklist(Configuration config, Field field, ValidationOutput problems) {
-        return validateBlacklistField(config, problems, COLLECTION_WHITELIST, COLLECTION_BLACKLIST);
+    private static int validateCollectionExcludeList(Configuration config, Field field, ValidationOutput problems) {
+        String includeList = config.getFallbackStringProperty(COLLECTION_INCLUDE_LIST, COLLECTION_WHITELIST);
+        String excludeList = config.getFallbackStringProperty(COLLECTION_EXCLUDE_LIST, COLLECTION_BLACKLIST);
+        if (includeList != null && excludeList != null) {
+            problems.accept(COLLECTION_EXCLUDE_LIST, excludeList, COLLECTION_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG);
+            return 1;
+        }
+        return 0;
     }
 
-    private static int validateDatabaseBlacklist(Configuration config, Field field, ValidationOutput problems) {
-        return validateBlacklistField(config, problems, DATABASE_WHITELIST, DATABASE_BLACKLIST);
-    }
-
-    private static int validateBlacklistField(Configuration config, ValidationOutput problems, Field fieldWhitelist, Field fieldBlacklist) {
-        String whitelist = config.getString(fieldWhitelist);
-        String blacklist = config.getString(fieldBlacklist);
-        if (whitelist != null && blacklist != null) {
-            problems.accept(fieldBlacklist, blacklist, "Whitelist is already specified");
+    private static int validateDatabaseExcludeList(Configuration config, Field field, ValidationOutput problems) {
+        String includeList = config.getFallbackStringProperty(DATABASE_INCLUDE_LIST, DATABASE_WHITELIST);
+        String excludeList = config.getFallbackStringProperty(DATABASE_EXCLUDE_LIST, DATABASE_BLACKLIST);
+        if (includeList != null && excludeList != null) {
+            problems.accept(DATABASE_EXCLUDE_LIST, excludeList, DATABASE_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG);
             return 1;
         }
         return 0;

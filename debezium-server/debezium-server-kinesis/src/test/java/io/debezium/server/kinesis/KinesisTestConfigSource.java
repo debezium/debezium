@@ -31,8 +31,8 @@ public class KinesisTestConfigSource extends TestConfigSource {
         kinesisTest.put("debezium.source.database.password", TestDatabase.POSTGRES_PASSWORD);
         kinesisTest.put("debezium.source.database.dbname", TestDatabase.POSTGRES_DBNAME);
         kinesisTest.put("debezium.source.database.server.name", "testc");
-        kinesisTest.put("debezium.source.schema.whitelist", "inventory");
-        kinesisTest.put("debezium.source.table.whitelist", "inventory.customers");
+        kinesisTest.put("debezium.source.schema.include.list", "inventory");
+        kinesisTest.put("debezium.source.table.include.list", "inventory.customers");
 
         config = kinesisTest;
     }

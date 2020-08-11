@@ -60,7 +60,7 @@ public class MysqlDefaultValueAllZeroTimeIT extends AbstractConnectorTest {
     public void allZeroDateAndTimeTypeTest() throws InterruptedException {
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL)
-                .with(MySqlConnectorConfig.TABLE_WHITELIST, DATABASE.qualifiedTableName("ALL_ZERO_DATE_AND_TIME_TABLE"))
+                .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("ALL_ZERO_DATE_AND_TIME_TABLE"))
                 .build();
         start(MySqlConnector.class, config);
 

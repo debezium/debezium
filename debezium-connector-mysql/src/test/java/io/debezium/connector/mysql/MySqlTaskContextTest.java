@@ -90,7 +90,7 @@ public class MySqlTaskContextTest {
                 .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
                 .with(MySqlConnectorConfig.SERVER_ID, serverId)
                 .with(MySqlConnectorConfig.SERVER_NAME, serverName)
-                .with(MySqlConnectorConfig.DATABASE_WHITELIST, databaseName)
+                .with(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, databaseName)
                 .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
                 .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH);
     }

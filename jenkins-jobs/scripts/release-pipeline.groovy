@@ -432,7 +432,7 @@ node('Slave') {
                     "database.password": "dbz",
                     "database.server.id": "184054",
                     "database.server.name": "dbserver1",
-                    "database.whitelist": "inventory",
+                    "database.include.list": "inventory",
                     "database.history.kafka.bootstrap.servers": "kafka:9092",
                     "database.history.kafka.topic": "schema-changes.inventory"
                 }

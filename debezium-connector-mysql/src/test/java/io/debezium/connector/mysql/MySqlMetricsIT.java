@@ -68,7 +68,7 @@ public class MySqlMetricsIT extends AbstractConnectorTest {
                         .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                         .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
                         .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
-                        .with(MySqlConnectorConfig.TABLE_WHITELIST, DATABASE.qualifiedTableName("simple"))
+                        .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("simple"))
                         .with(MySqlConnectorConfig.TABLES_IGNORE_BUILTIN, Boolean.TRUE)
                         .with(DatabaseHistory.STORE_ONLY_MONITORED_TABLES_DDL, Boolean.TRUE)
                         .build());
@@ -116,7 +116,7 @@ public class MySqlMetricsIT extends AbstractConnectorTest {
                         .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_ONLY)
                         .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
                         .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
-                        .with(MySqlConnectorConfig.TABLE_WHITELIST, DATABASE.qualifiedTableName("simple"))
+                        .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("simple"))
                         .with(MySqlConnectorConfig.TABLES_IGNORE_BUILTIN, Boolean.TRUE)
                         .with(DatabaseHistory.STORE_ONLY_MONITORED_TABLES_DDL, Boolean.TRUE)
                         .build());
@@ -139,7 +139,7 @@ public class MySqlMetricsIT extends AbstractConnectorTest {
                         .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                         .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
                         .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
-                        .with(MySqlConnectorConfig.TABLE_WHITELIST, DATABASE.qualifiedTableName("simple"))
+                        .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("simple"))
                         .with(MySqlConnectorConfig.TABLES_IGNORE_BUILTIN, Boolean.TRUE)
                         .with(DatabaseHistory.STORE_ONLY_MONITORED_TABLES_DDL, Boolean.TRUE)
                         .build());
@@ -156,7 +156,7 @@ public class MySqlMetricsIT extends AbstractConnectorTest {
                         .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
                         .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
                         .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
-                        .with(MySqlConnectorConfig.TABLE_WHITELIST, DATABASE.qualifiedTableName("simple"))
+                        .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("simple"))
                         .with(MySqlConnectorConfig.TABLES_IGNORE_BUILTIN, Boolean.TRUE)
                         .with(DatabaseHistory.STORE_ONLY_MONITORED_TABLES_DDL, Boolean.TRUE)
                         .build());

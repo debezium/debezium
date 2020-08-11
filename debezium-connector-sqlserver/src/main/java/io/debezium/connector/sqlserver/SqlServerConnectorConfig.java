@@ -333,7 +333,9 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
                     SOURCE_TIMESTAMP_MODE)
             .excluding(
                     SCHEMA_WHITELIST,
-                    SCHEMA_BLACKLIST)
+                    SCHEMA_INCLUDE_LIST,
+                    SCHEMA_BLACKLIST,
+                    SCHEMA_EXCLUDE_LIST)
             .create();
 
     /**
@@ -358,7 +360,8 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
         this.databaseName = config.getString(DATABASE_NAME);
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE), SNAPSHOT_MODE.defaultValueAsString());
 
-        this.columnFilter = getColumnNameFilter(config.getString(RelationalDatabaseConnectorConfig.COLUMN_BLACKLIST));
+        this.columnFilter = getColumnNameFilter(
+                config.getFallbackStringProperty(SqlServerConnectorConfig.COLUMN_EXCLUDE_LIST, SqlServerConnectorConfig.COLUMN_BLACKLIST));
         this.readOnlyDatabaseConnection = READ_ONLY_INTENT.equals(config.getString(APPLICATION_INTENT_KEY));
         if (readOnlyDatabaseConnection) {
             this.snapshotIsolationMode = SnapshotIsolationMode.SNAPSHOT;

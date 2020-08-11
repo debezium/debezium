@@ -29,8 +29,8 @@ public class PubSubTestConfigSource extends TestConfigSource {
         pubsubTest.put("debezium.source.database.password", TestDatabase.POSTGRES_PASSWORD);
         pubsubTest.put("debezium.source.database.dbname", TestDatabase.POSTGRES_DBNAME);
         pubsubTest.put("debezium.source.database.server.name", "testc");
-        pubsubTest.put("debezium.source.schema.whitelist", "inventory");
-        pubsubTest.put("debezium.source.table.whitelist", "inventory.customers");
+        pubsubTest.put("debezium.source.schema.include.list", "inventory");
+        pubsubTest.put("debezium.source.table.include.list", "inventory.customers");
 
         config = pubsubTest;
     }

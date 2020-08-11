@@ -1413,7 +1413,7 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
 
     private static Configuration getConfiguration(String fieldRenames, String database, String collection) {
         Configuration.Builder builder = TestHelper.getConfiguration().edit()
-                .with(MongoDbConnectorConfig.COLLECTION_WHITELIST, database + "." + collection)
+                .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, database + "." + collection)
                 .with(MongoDbConnectorConfig.LOGICAL_NAME, SERVER_NAME);
 
         if (fieldRenames != null && !"".equals(fieldRenames.trim())) {

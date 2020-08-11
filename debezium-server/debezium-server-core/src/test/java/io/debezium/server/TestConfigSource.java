@@ -37,8 +37,8 @@ public class TestConfigSource implements ConfigSource {
         integrationTest.put("debezium.source.database.password", TestDatabase.POSTGRES_PASSWORD);
         integrationTest.put("debezium.source.database.dbname", TestDatabase.POSTGRES_DBNAME);
         integrationTest.put("debezium.source.database.server.name", "testc");
-        integrationTest.put("debezium.source.schema.whitelist", "inventory");
-        integrationTest.put("debezium.source.table.whitelist", "inventory.customers");
+        integrationTest.put("debezium.source.schema.include.list", "inventory");
+        integrationTest.put("debezium.source.table.include.list", "inventory.customers");
 
         unitTest.put("debezium.sink.type", "test");
         unitTest.put("debezium.source.connector.class", "org.apache.kafka.connect.file.FileStreamSourceConnector");

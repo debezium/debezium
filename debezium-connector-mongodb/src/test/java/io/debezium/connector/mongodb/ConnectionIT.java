@@ -40,8 +40,8 @@ public class ConnectionIT extends AbstractMongoIT {
     @Test
     public void shouldCreateMovieDatabase() {
         useConfiguration(config.edit()
-                .with(MongoDbConnectorConfig.DATABASE_WHITELIST, "dbA,dbB")
-                .with(MongoDbConnectorConfig.COLLECTION_BLACKLIST, "dbB.moviesB")
+                .with(MongoDbConnectorConfig.DATABASE_INCLUDE_LIST, "dbA,dbB")
+                .with(MongoDbConnectorConfig.COLLECTION_EXCLUDE_LIST, "dbB.moviesB")
                 .build());
 
         Testing.print("Configuration: " + config);

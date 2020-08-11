@@ -115,7 +115,7 @@
         <mysql.port>3306</mysql.port>
         <mysql.gtid.port>3306</mysql.gtid.port>
         <mysql.gtid.replica.port>3306</mysql.gtid.replica.port>
-        <mysql.replica.port>3306</mysql.replica.port> <!-- by default use master as 'replica' -->
+        <mysql.replica.port>3306</mysql.replica.port> <!-- by default use primary as 'replica' -->
         <mysql.init.timeout>60000</mysql.init.timeout> <!-- 60 seconds -->
         <!--
         By default, we should use the docker image maintained by the MySQL team. This property is changed with different profiles.

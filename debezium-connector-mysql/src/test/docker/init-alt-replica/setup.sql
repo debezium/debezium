@@ -1,4 +1,4 @@
--- In production you would almost certainly limit the replication user must be on the follower (slave) machine,
+-- In production you would almost certainly limit the replication user must be on the follower (replica) machine,
 -- to prevent other clients accessing the log from other machines. For example, 'replicator'@'follower.acme.com'.
 -- However, in this database we'll grant 3 users different privileges:
 --
@@ -17,5 +17,5 @@ GRANT ALL PRIVILEGES ON *.* TO 'mysqlreplica'@'%';
 -- Start the GTID-based replication ...
 CHANGE MASTER TO MASTER_HOST='alt-database-gtids', MASTER_PORT=3306, MASTER_USER='replicator', MASTER_PASSWORD = 'replpass', MASTER_AUTO_POSITION=1;
 
--- And start the slave ...
+-- And start the replica ...
 START SLAVE;

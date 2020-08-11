@@ -668,7 +668,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                             "Note this requires that the configured user has access. If the publication already exists, it will be used" +
                             ". i.e CREATE PUBLICATION <publication_name> FOR ALL TABLES;" +
                             "FILTERED - If no publication exists, the connector will create a new publication for all those tables matching" +
-                            "the current filter configuration (see table/database whitelist/blacklist properties). If the publication already" +
+                            "the current filter configuration (see table/database include/exclude list properties). If the publication already" +
                             " exists, it will be used. i.e CREATE PUBLICATION <publication_name> FOR TABLE <tbl1, tbl2, etc>");
 
     public static final Field STREAM_PARAMS = Field.create("slot.stream.params")
@@ -920,8 +920,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                 DEFAULT_SNAPSHOT_FETCH_SIZE);
 
         String hstoreHandlingModeStr = config.getString(PostgresConnectorConfig.HSTORE_HANDLING_MODE);
-        HStoreHandlingMode hStoreHandlingMode = HStoreHandlingMode.parse(hstoreHandlingModeStr);
-        this.hStoreHandlingMode = hStoreHandlingMode;
+        this.hStoreHandlingMode = HStoreHandlingMode.parse(hstoreHandlingModeStr);
         this.intervalHandlingMode = IntervalHandlingMode.parse(config.getString(PostgresConnectorConfig.INTERVAL_HANDLING_MODE));
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE));
         this.schemaRefreshMode = SchemaRefreshMode.parse(config.getString(SCHEMA_REFRESH_MODE));
@@ -997,30 +996,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
 
     public Map<String, ConfigValue> validate() {
         return getConfig().validate(ALL_FIELDS);
-    }
-
-    protected String schemaBlacklist() {
-        return getConfig().getString(SCHEMA_BLACKLIST);
-    }
-
-    protected String schemaWhitelist() {
-        return getConfig().getString(SCHEMA_WHITELIST);
-    }
-
-    protected String tableBlacklist() {
-        return getConfig().getString(TABLE_BLACKLIST);
-    }
-
-    protected String tableWhitelist() {
-        return getConfig().getString(TABLE_WHITELIST);
-    }
-
-    protected String columnBlacklist() {
-        return getConfig().getString(COLUMN_BLACKLIST);
-    }
-
-    protected String columnWhitelist() {
-        return getConfig().getString(COLUMN_WHITELIST);
     }
 
     protected Snapshotter getSnapshotter() {
