@@ -1257,7 +1257,7 @@ Typically, you configure the {prodname} SQL Server connector in a `.json` file u
 <5> The name of the SQL Server user
 <6> The password for the SQL Server user
 <7> The name of the database to capture changes from.
-<8> The logical name of the SQL Server instance/cluster, which forms a namespace and is used in all the names of the Kafka topics to which the connector writes, the Kafka Connect schema names, and the namespaces of the corresponding Avro schema when the Avro Connector is used.
+<8> The logical name of the SQL Server instance/cluster, which forms a namespace and is used in all the names of the Kafka topics to which the connector writes, the Kafka Connect schema names, and the namespaces of the corresponding Avro schema when the Avro converter is used.
 <9> A list of all tables whose changes {prodname} should capture.
 <10> The list of Kafka brokers that this connector will use to write and recover DDL statements to the database history topic.
 <11> The name of the database history topic where the connector will write and recover DDL statements. This topic is for internal use only and should not be used by consumers.
@@ -1296,7 +1296,7 @@ apiVersion: kafka.strimzi.io/v1beta1
 <5> The name of the SQL Server user
 <6> The password for the SQL Server user
 <7> The name of the database to capture changes from.
-<8> The logical name of the SQL Server instance/cluster, which forms a namespace and is used in all the names of the Kafka topics to which the connector writes, the Kafka Connect schema names, and the namespaces of the corresponding Avro schema when the Avro Connector is used.
+<8> The logical name of the SQL Server instance/cluster, which forms a namespace and is used in all the names of the Kafka topics to which the connector writes, the Kafka Connect schema names, and the namespaces of the corresponding Avro schema when the Avro converter is used.
 <9> A list of all tables whose changes {prodname} should capture.
 <10> The list of Kafka brokers that this connector will use to write and recover DDL statements to the database history topic.
 <11> The name of the database history topic where the connector will write and recover DDL statements. This topic is for internal use only and should not be used by consumers.
