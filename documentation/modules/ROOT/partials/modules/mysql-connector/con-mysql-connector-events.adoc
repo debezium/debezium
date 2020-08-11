@@ -5,7 +5,9 @@
 
 The {prodname} MySQL connector generates a data change event for each row-level `INSERT`, `UPDATE`, and `DELETE` operation. Each event contains a key and a value. The structure of the key and the value depends on the table that was changed. 
 
-{prodname} and Kafka Connect are designed around _continuous streams of event messages_. However, the structure of these events may change over time, which can be difficult for consumers to handle. To address this, each event contains the schema for its content, which makes each event self-contained. The following skeleton JSON shows the basic structure of a change event: 
+{prodname} and Kafka Connect are designed around _continuous streams of event messages_. However, the structure of these events may change over time, which can be difficult for consumers to handle. To address this, each event contains the schema for its content or, if you are using a schema registry, a schema ID that a consumer can use to obtain the schema from the registry. This makes each event self-contained. 
+
+The following skeleton JSON shows the basic four parts of a change event. However, how you configure the Kafka Connect converter that you choose to use in your application determines the representation of these four parts in change events. A `schema` field is in a change event only when you configure the converter to produce it. Likewise, the event key and event payload are in a change event only if you configure a converter to produce it. If you use the JSON converver and you configure it to produce all four basic change event parts, change events have this structure: 
 
 [source,json,index=0]
 ----
@@ -32,7 +34,9 @@ The {prodname} MySQL connector generates a data change event for each row-level 
 
 |1
 |`schema`
-|The first `schema` field is part of the event key. It specifies a Kafka Connect schema that describes what is in the event key's `payload` portion. In other words, the first `schema` field describes the structure of the primary key for the table that was changed.
+|The first `schema` field is part of the event key. It specifies a Kafka Connect schema that describes what is in the event key's `payload` portion. In other words, the first `schema` field describes the structure of the primary key, or the unique key if the table does not have a primary key, for the table that was changed. 
+
+Rarely, converter configuration overrides the key column with some other structure. In this case, the first schema field describes that structure.
 
 |2
 |`payload`
@@ -396,7 +400,7 @@ a| Optional field that displays the time at which the connector processed the ev
 
 |8
 |`source`
-a| Mandatory field that describes the source metadata for the event. The `source` structure shows information about MySQL’s record of this change, which provides traceability. It also has information you can use to compare to other events in this and other topics to know whether this event occurred before, after, or as part of the same MySQL commit as other events. The source metadata includes: 
+a| Mandatory field that describes the source metadata for the event. The `source` structure shows MySQL information about this change, which provides traceability. It also has information you can use to compare to other events in this and other topics to know whether this event occurred before, after, or as part of the same MySQL commit as other events. The source metadata includes: 
 
 * {prodname} version
 * Connector name
@@ -503,7 +507,7 @@ Updating the columns for a row's primary/unique key changes the value of the row
 === Primary key updates
 
 An `UPDATE` operation that changes a row's primary key field(s) is known
-as a primary key change. For a primary key change, in place of sending an `UPDATE` event record, the connector sends a `DELETE` event record for the old key and a `CREATE` event record for the new (updated) key. These events have the usual structure and content, and in addition, each one has a message header related to the primary key change: 
+as a primary key change. For a primary key change, in place an `UPDATE` event record, the connector emits a `DELETE` event record for the old key and a `CREATE` event record for the new (updated) key. These events have the usual structure and content, and in addition, each one has a message header related to the primary key change: 
 
 * The `DELETE` event record has `__debezium.newkey` as a message header. The value of this header is the new primary key for the updated row.
 
@@ -590,8 +594,8 @@ a|Optional field that displays the time at which the connector processed the eve
 
 A _delete_ change event record provides a consumer with the information it needs to process the removal of this row. The old values are included because some consumers might require them in order to properly handle the removal.
 
-MySQL connector events are designed to work with link:https://kafka.apache.org/documentation/#compaction[Kafka log compaction]. Log compaction enables removal of some older messages as long as at least the most recent message for every key is kept. This lets Kafka reclaim storage space while ensuring that the topic contains a complete data set and can be used for reloading key-based state.
+MySQL connector events are designed to work with link:{link-kafka-docs}/#compaction[Kafka log compaction]. Log compaction enables removal of some older messages as long as at least the most recent message for every key is kept. This lets Kafka reclaim storage space while ensuring that the topic contains a complete data set and can be used for reloading key-based state.
 
 [id="mysql-tombstone-events"]
 .Tombstone events
-When a row is deleted, the _delete_ event value still works with log compaction, because Kafka can remove all earlier messages that have that same key. However, for Kafka to remove all messages that have that same key, the message value must be `null`. To make this possible, {prodname}’s MySQL connector follows a _delete_ event with a special tombstone event that has the same key but a `null` value.
+When a row is deleted, the _delete_ event value still works with log compaction, because Kafka can remove all earlier messages that have that same key. However, for Kafka to remove all messages that have that same key, the message value must be `null`. To make this possible, after {prodname}’s MySQL connector emits a _delete_ event, the connector emits a special tombstone event that has the same key but a `null` value.
