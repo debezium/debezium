@@ -21,6 +21,7 @@ import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.connector.postgresql.connection.ReplicationMessage.Operation;
 import io.debezium.connector.postgresql.connection.ReplicationStream;
+import io.debezium.connector.postgresql.connection.WalPositionLocator;
 import io.debezium.connector.postgresql.spi.Snapshotter;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.pipeline.ErrorHandler;
@@ -96,22 +97,23 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
         }
 
         try {
+            final WalPositionLocator walPosition;
             if (hasStartLsnStoredInContext) {
                 // start streaming from the last recorded position in the offset
                 final Lsn lsn = offsetContext.lastCompletelyProcessedLsn() != null ? offsetContext.lastCompletelyProcessedLsn() : offsetContext.lsn();
-                if (LOGGER.isDebugEnabled()) {
-                    LOGGER.debug("retrieved latest position from stored offset '{}'", lsn);
-                }
-                replicationStream.compareAndSet(null, replicationConnection.startStreaming(lsn));
+                LOGGER.info("Retrieved latest position from stored offset '{}'", lsn);
+                walPosition = new WalPositionLocator(offsetContext.lastCommitLsn(), lsn);
+                replicationStream.compareAndSet(null, replicationConnection.startStreaming(lsn, walPosition));
             }
             else {
-                LOGGER.info("no previous LSN found in Kafka, streaming from the latest xlogpos or flushed LSN...");
-                replicationStream.compareAndSet(null, replicationConnection.startStreaming());
+                LOGGER.info("No previous LSN found in Kafka, streaming from the latest xlogpos or flushed LSN...");
+                walPosition = new WalPositionLocator();
+                replicationStream.compareAndSet(null, replicationConnection.startStreaming(walPosition));
             }
             // for large dbs, the refresh of schema can take too much time
             // such that the connection times out. We must enable keep
             // alive to ensure that it doesn't time out
-            final ReplicationStream stream = this.replicationStream.get();
+            ReplicationStream stream = this.replicationStream.get();
             stream.startKeepAlive(Executors.newSingleThreadExecutor());
 
             // refresh the schema so we have a latest view of the DB tables
@@ -119,80 +121,21 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
 
             this.lastCompletelyProcessedLsn = replicationStream.get().startLsn();
 
-            int noMessageIterations = 0;
-            while (context.isRunning()) {
-
-                boolean receivedMessage = stream.readPending(message -> {
-                    final Lsn lsn = stream.lastReceivedLsn();
-
-                    if (message.isLastEventForLsn()) {
-                        lastCompletelyProcessedLsn = lsn;
-                    }
-
-                    // Tx BEGIN/END event
-                    if (message.isTransactionalMessage()) {
-                        if (!connectorConfig.shouldProvideTransactionMetadata()) {
-                            LOGGER.trace("Received transactional message {}", message);
-                            // Don't skip on BEGIN message as it would flush LSN for the whole transaction
-                            // too early
-                            if (message.getOperation() == Operation.COMMIT) {
-                                skipMessage(lsn);
-                            }
-                            return;
-                        }
-
-                        offsetContext.updateWalPosition(lsn, lastCompletelyProcessedLsn, message.getCommitTime(), message.getTransactionId(), null,
-                                taskContext.getSlotXmin(connection));
-                        if (message.getOperation() == Operation.BEGIN) {
-                            dispatcher.dispatchTransactionStartedEvent(Long.toString(message.getTransactionId()), offsetContext);
-                        }
-                        else if (message.getOperation() == Operation.COMMIT) {
-                            dispatcher.dispatchTransactionCommittedEvent(offsetContext);
-                        }
-                        maybeWarnAboutGrowingWalBacklog(true);
-                        return;
-                    }
-                    // DML event
-                    else {
-                        TableId tableId = null;
-                        if (message.getOperation() != Operation.NOOP) {
-                            tableId = PostgresSchema.parse(message.getTable());
-                            Objects.requireNonNull(tableId);
-                        }
-
-                        offsetContext.updateWalPosition(lsn, lastCompletelyProcessedLsn, message.getCommitTime(), message.getTransactionId(), tableId,
-                                taskContext.getSlotXmin(connection));
-
-                        boolean dispatched = (message.getOperation() == Operation.NOOP) ? false
-                                : dispatcher.dispatchDataChangeEvent(
-                                        tableId,
-                                        new PostgresChangeRecordEmitter(
-                                                offsetContext,
-                                                clock,
-                                                connectorConfig,
-                                                schema,
-                                                connection,
-                                                message));
-
-                        maybeWarnAboutGrowingWalBacklog(dispatched);
-                    }
-                });
-
-                if (receivedMessage) {
-                    noMessageIterations = 0;
+            if (walPosition.searchingEnabled()) {
+                searchWalPosition(context, stream, walPosition);
+                stream.stopKeepAlive();
+                try {
+                    connection.commit();
                 }
-                else {
-                    if (offsetContext.hasCompletelyProcessedPosition()) {
-                        dispatcher.dispatchHeartbeatEvent(offsetContext);
-                    }
-                    noMessageIterations++;
-                    if (noMessageIterations >= THROTTLE_NO_MESSAGE_BEFORE_PAUSE) {
-                        noMessageIterations = 0;
-                        pauseNoMessage.sleepWhen(true);
-                    }
+                catch (Exception e) {
                 }
-                connection.commit();
+                walPosition.enableFiltering();
+                replicationConnection.reconnect();
+                replicationStream.set(replicationConnection.startStreaming(walPosition.getLastEventStoredLsn(), walPosition));
+                stream = this.replicationStream.get();
+                // stream.startKeepAlive(Executors.newSingleThreadExecutor());
             }
+            processMessages(context, stream);
         }
         catch (Throwable e) {
             errorHandler.setProducerThrowable(e);
@@ -219,9 +162,115 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
         }
     }
 
-    private void skipMessage(final Lsn lsn) throws SQLException, InterruptedException {
+    private void processMessages(ChangeEventSourceContext context, final ReplicationStream stream)
+            throws SQLException, InterruptedException {
+        LOGGER.info("Processing messages");
+        int noMessageIterations = 0;
+        while (context.isRunning()) {
+
+            boolean receivedMessage = stream.readPending(message -> {
+                final Lsn lsn = stream.lastReceivedLsn();
+
+                if (message.isLastEventForLsn()) {
+                    lastCompletelyProcessedLsn = lsn;
+                }
+
+                // Tx BEGIN/END event
+                if (message.isTransactionalMessage()) {
+                    if (!connectorConfig.shouldProvideTransactionMetadata()) {
+                        LOGGER.trace("Received transactional message {}", message);
+                        // Don't skip on BEGIN message as it would flush LSN for the whole transaction
+                        // too early
+                        if (message.getOperation() == Operation.COMMIT) {
+                            commitMessage(lsn);
+                        }
+                        return;
+                    }
+
+                    offsetContext.updateWalPosition(lsn, lastCompletelyProcessedLsn, message.getCommitTime(), message.getTransactionId(), null,
+                            taskContext.getSlotXmin(connection));
+                    if (message.getOperation() == Operation.BEGIN) {
+                        dispatcher.dispatchTransactionStartedEvent(Long.toString(message.getTransactionId()), offsetContext);
+                    }
+                    else if (message.getOperation() == Operation.COMMIT) {
+                        dispatcher.dispatchTransactionCommittedEvent(offsetContext);
+                    }
+                    maybeWarnAboutGrowingWalBacklog(true);
+                    return;
+                }
+                // DML event
+                else {
+                    TableId tableId = null;
+                    if (message.getOperation() != Operation.NOOP) {
+                        tableId = PostgresSchema.parse(message.getTable());
+                        Objects.requireNonNull(tableId);
+                    }
+
+                    offsetContext.updateWalPosition(lsn, lastCompletelyProcessedLsn, message.getCommitTime(), message.getTransactionId(), tableId,
+                            taskContext.getSlotXmin(connection));
+
+                    boolean dispatched = (message.getOperation() == Operation.NOOP) ? false
+                            : dispatcher.dispatchDataChangeEvent(
+                                    tableId,
+                                    new PostgresChangeRecordEmitter(
+                                            offsetContext,
+                                            clock,
+                                            connectorConfig,
+                                            schema,
+                                            connection,
+                                            message));
+
+                    maybeWarnAboutGrowingWalBacklog(dispatched);
+                }
+            });
+
+            if (receivedMessage) {
+                noMessageIterations = 0;
+            }
+            else {
+                if (offsetContext.hasCompletelyProcessedPosition()) {
+                    dispatcher.dispatchHeartbeatEvent(offsetContext);
+                }
+                noMessageIterations++;
+                if (noMessageIterations >= THROTTLE_NO_MESSAGE_BEFORE_PAUSE) {
+                    noMessageIterations = 0;
+                    pauseNoMessage.sleepWhen(true);
+                }
+            }
+            connection.commit();
+        }
+    }
+
+    private void searchWalPosition(ChangeEventSourceContext context, final ReplicationStream stream, final WalPositionLocator walPosition)
+            throws SQLException, InterruptedException {
+        AtomicReference<Lsn> resumeLsn = new AtomicReference<>();
+        int noMessageIterations = 0;
+
+        LOGGER.info("Searching for WAL resume position");
+        while (context.isRunning() && resumeLsn.get() == null) {
+
+            boolean receivedMessage = stream.readPending(message -> {
+                final Lsn lsn = stream.lastReceivedLsn();
+                resumeLsn.set(walPosition.resumeFromLsn(lsn, message).orElse(null));
+            });
+
+            if (receivedMessage) {
+                noMessageIterations = 0;
+            }
+            else {
+                noMessageIterations++;
+                if (noMessageIterations >= THROTTLE_NO_MESSAGE_BEFORE_PAUSE) {
+                    noMessageIterations = 0;
+                    pauseNoMessage.sleepWhen(true);
+                }
+            }
+        }
+        LOGGER.info("WAL resume position '{}' discovered", resumeLsn.get());
+    }
+
+    private void commitMessage(final Lsn lsn) throws SQLException, InterruptedException {
         lastCompletelyProcessedLsn = lsn;
-        offsetContext.updateWalPosition(lsn, lastCompletelyProcessedLsn, null, null, null, taskContext.getSlotXmin(connection));
+        offsetContext.updateCommitPosition(lsn, lastCompletelyProcessedLsn, null, null, null, taskContext.getSlotXmin(connection));
         maybeWarnAboutGrowingWalBacklog(false);
         dispatcher.dispatchHeartbeatEvent(offsetContext);
     }
