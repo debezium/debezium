@@ -23,6 +23,7 @@ import org.postgresql.util.PSQLState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
 import io.debezium.annotation.VisibleForTesting;
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresType;
@@ -61,8 +62,6 @@ public class PostgresConnection extends JdbcConnection {
 
     private final TypeRegistry typeRegistry;
 
-    private final Charset databaseCharset;
-
     /**
      * Creates a Postgres connection using the supplied configuration.
      * If necessary this connection is able to resolve data type mappings.
@@ -74,7 +73,6 @@ public class PostgresConnection extends JdbcConnection {
     public PostgresConnection(Configuration config, boolean provideTypeRegistry) {
         super(config, FACTORY, PostgresConnection::validateServerVersion, PostgresConnection::defaultSettings);
         this.typeRegistry = provideTypeRegistry ? new TypeRegistry(this) : null;
-        databaseCharset = determineDatabaseCharset();
     }
 
     /**
@@ -423,15 +421,11 @@ public class PostgresConnection extends JdbcConnection {
     }
 
     public Charset getDatabaseCharset() {
-        return databaseCharset;
-    }
-
-    private Charset determineDatabaseCharset() {
         try {
             return Charset.forName(((BaseConnection) connection()).getEncoding().name());
         }
         catch (SQLException e) {
-            throw new RuntimeException("Couldn't obtain encoding for database " + database(), e);
+            throw new DebeziumException("Couldn't obtain encoding for database " + database(), e);
         }
     }
 
