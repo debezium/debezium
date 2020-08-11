@@ -96,9 +96,9 @@ Details are in the following topics:
 
 * xref:how-debezium-postgresql-connectors-perform-database-snapshots[]
 * xref:how-debezium-postgresql-connectors-stream-change-event-records[]
-* xref:default-names-of-kafka-topics-that-receive-debezium-change-event-records[]
-* xref:metadata-in-debezium-change-event-records[]
-* xref:debezium-connector-generated-events-that-represent-transaction-boundaries[]
+* xref:default-names-of-kafka-topics-that-receive-debezium-postgresql-change-event-records[]
+* xref:metadata-in-debezium-postgresql-change-event-records[]
+* xref:debezium-postgresql-connector-generated-events-that-represent-transaction-boundaries[]
 
 endif::product[]
 
@@ -284,8 +284,8 @@ This is particularly valuable for environments where installation of plug-ins is
 See {link-prefix}:{link-postgresql-connector}#setting-up-postgresql[Setting up PostgreSQL] for more details.
 
 // Type: concept
-// ModuleID: default-names-of-kafka-topics-that-receive-debezium-change-event-records
-// Title: Default names of Kafka topics that receive {prodname} change event records
+// ModuleID: default-names-of-kafka-topics-that-receive-debezium-postgresql-change-event-records
+// Title: Default names of Kafka topics that receive {prodname} PostgreSQL change event records
 [[postgresql-topic-names]]
 === Topics names
 
@@ -310,8 +310,8 @@ Now suppose that the tables are not part of a specific schema but were created i
 * `fulfillment.public.orders`
 
 // Type: concept
-// ModuleID: metadata-in-debezium-change-event-records
-// Title: Metadata in {prodname} change event records
+// ModuleID: metadata-in-debezium-postgresql-change-event-records
+// Title: Metadata in {prodname} PostgreSQL change event records
 [[postgresql-meta-information]]
 === Meta information
 
@@ -340,19 +340,19 @@ In addition to a {link-prefix}:{link-postgresql-connector}#postgresql-events[_da
 * `kafkaPartition` with a setting of `null` means that the connector does not use a specific Kafka partition. The PostgreSQL connector uses only one Kafka Connect partition and it places the generated events into one Kafka partition. 
 
 // Type: concept
-// ModuleID: debezium-connector-generated-events-that-represent-transaction-boundaries
-// Title: {prodname} connector-generated events that represent transaction boundaries
+// ModuleID: debezium-postgresql-connector-generated-events-that-represent-transaction-boundaries
+// Title: {prodname} PostgreSQL connector-generated events that represent transaction boundaries
 [[postgresql-transaction-metadata]]
 === Transaction metadata
 
-{prodname} can generate events that represent transaction boundaries and that enrich change data event messages. For every transaction `BEGIN` and `END`, {prodname} generates tan event that contains: 
+{prodname} can generate events that represent transaction boundaries and that enrich data change event messages. For every transaction `BEGIN` and `END`, {prodname} generates an event that contains the following fields: 
 
 * `status` - `BEGIN` or `END`
 * `id` - string representation of unique transaction identifier
 * `event_count` (for `END` events) - total number of events emitted by the transaction
 * `data_collections` (for `END` events) - an array of pairs of `data_collection` and `event_count` that provides the number of events emitted by changes originating from given data collection
 
-.Examples
+.Example
 
 [source,json,indent=0,subs="attributes"]
 ----
@@ -420,7 +420,11 @@ Following is an example of a message:
 [[postgresql-events]]
 == Data change events
 
-Each data change event produced by the PostgreSQL connector has a key and a value. The structure of the key and value depends on the table from which the change event originates. The default behavior is that the connector streams change event records to {link-prefix}:{link-postgresql-connector}#postgresql-topic-names[topic names] that are the same as the event's originating table.
+Each data change event produced by the {prodname} PostgreSQL connector contains a key and a value. The structure of the event key and event value depends on the table from which the change event originates. 
+
+{prodname} and Kafka Connect are designed around _continuous streams of event messages_. However, the structure of these events may change over time, which can be difficult for consumers to handle. To make it easier, Kafka Connect makes each event self-contained. Each event key and each event value has two parts: a _schema_ and a _payload_. In each part, the schema describes the structure of its payload, while the payload contains the actual data.
+
+By default behavior is that the connector streams change event records to {link-prefix}:{link-postgresql-connector}#postgresql-topic-names[topics with names that are the same as the event's originating table].
 
 [NOTE]
 ====
@@ -429,36 +433,35 @@ Starting with Kafka 0.10, Kafka can optionally record the event key and value wi
 
 [WARNING]
 ====
-The PostgreSQL connector ensures that all Kafka Connect _schema names_ are http://avro.apache.org/docs/current/spec.html#names[valid Avro schema names]. This means that the logical server name must start with a Latin letter or an underscore, that is, a-z, A-Z, or \_. Each remaining character in the logical server name and each character in the schema and table names must be a Latin letter, a digit, or an underscore, that is, a-z, A-Z, 0-9, or \_. If there is an invalid character it is replaced with an underscore character.
+The PostgreSQL connector ensures that all Kafka Connect schema names adhere to the http://avro.apache.org/docs/current/spec.html#names[Avro schema name format]. This means that the logical server name must start with a Latin letter or an underscore, that is, a-z, A-Z, or \_. Each remaining character in the logical server name and each character in the schema and table names must be a Latin letter, a digit, or an underscore, that is, a-z, A-Z, 0-9, or \_. If there is an invalid character it is replaced with an underscore character.
 
-This can lead to unexpected conflicts if the logical server name, a schema name, or a table name contains invalid characters, and the only characters that  distinguish names from one another are invalid and thus replaced with underscores.
+This can lead to unexpected conflicts if the logical server name, a schema name, or a table name contains invalid characters, and the only characters that distinguish names from one another are invalid and thus replaced with underscores.
 ====
-
-{prodname} and Kafka Connect are designed around _continuous streams of event messages_. However, the structure of these events may change over time, which can be difficult for consumers to handle. To make it easier, Kafka Connect makes each event self-contained. Each message key and each message value has two parts: a _schema_ and a _payload_. The schema describes the structure of the payload, while the payload contains the actual data.
 
 ifdef::product[]
 Details are in the following topics:
 
-* xref:about-keys-in-debezium-change-events[]
-* xref:about-values-in-debezium-change-events[]
+* xref:about-keys-in-debezium-postgresql-change-events[]
+* xref:about-values-in-debezium-postgresql-change-events[]
 * xref:how-replica-identity-controls-data-that-can-be-in-debezium-change-events[]
-* xref:about-debezium-change-events-for-operations-that-create-content[]
-* xref:about-debezium-change-events-for-operations-that-update-content[]
-* xref:about-debezium-change-events-for-primary-key-updates[]
-* xref:about-debezium-change-events-for-operations-that-delete-content[]
+* xref:about-debezium-postgresql-change-events-for-operations-that-create-content[]
+* xref:about-debezium-postgresql-change-events-for-operations-that-update-content[]
+* xref:about-debezium-postgresql-change-events-for-primary-key-updates[]
+* xref:about-debezium-postgresql-change-events-for-operations-that-delete-content[]
 
 endif::product[]
 
 // Type: concept
-// ModuleID: about-keys-in-debezium-change-events
-// Title: About keys in {prodname} change events
+// ModuleID: about-keys-in-debezium-postgresql-change-events
+// Title: About keys in {prodname} PostgreSQL change events
 [[postgresql-change-events-key]]
 === Change event keys
 
 For a given table, the change event's key has a structure that contains a field for each column in the primary key of the table at the time the event was created. Alternatively, if the table has `REPLICA IDENTITY` set to `FULL` or `USING INDEX` there is a field for each unique key constraint. 
 
-Consider a `customers` table defined in the `public` database schema:
+Consider a `customers` table defined in the `public` database schema and the example of a change event key for that table.
 
+.Example table
 [source,sql,indent=0]
 ----
 CREATE TABLE customers (
@@ -470,16 +473,18 @@ CREATE TABLE customers (
 );
 ----
 
-If the `database.server.name` configuration property has the value `PostgreSQL_server`, every change event for the `customers` table while it has this definition has the same key structure, which in JSON looks like this:
+=====
+.Example change event key
+If the `database.server.name` connector configuration property has the value `PostgreSQL_server`, every change event for the `customers` table while it has this definition has the same key structure, which in JSON looks like this:
 
 [source,json,indent=0]
 ----
   {
-    "schema": {
+    "schema": { <1>
       "type": "struct",
-      "name": "PostgreSQL_server.public.customers.Key",
-      "optional": false,
-      "fields": [
+      "name": "PostgreSQL_server.public.customers.Key", <2>
+      "optional": false, <3>
+      "fields": [ <4>
             {
                 "name": "id",
                 "index": "0",
@@ -490,15 +495,19 @@ If the `database.server.name` configuration property has the value `PostgreSQL_s
             }
         ]
     },
-    "payload": {
+    "payload": { <5>
         "id": "1"
     },
   }
 ----
+<1> The `schema` portion of the key specifies a Kafka Connect schema that describes what is in the key's `payload` portion. 
+<2> The `PostgreSQL_server.public.customers.Key` schema defines the structure of the key's payload. 
+<3> The key's `payload` value is not optional.
+<4> Specifies the type of fields expected in the `payload`. 
+<5> The payload itself, which in this case contains a single `id` field.
 
-The `schema` portion of the key contains a Kafka Connect schema that describes what is in the key's `payload` portion. In this case, it means that the `payload` value is not optional, is a structure defined by a schema named `PostgreSQL_server.public.customers.Key`, and has one required field named `id` of type `INT32`. If you look at the value of the key's `payload` field, you see that it is indeed a structure, which in JSON is just an object, with a single `id` field, whose value is `1`.
-
-This key describes output from the connector named `PostgreSQL_server`,  for the row in the `public.customers` table, whose primary key, the `id` column, had a value of `1`.
+This key describes output from the connector named `PostgreSQL_server`. The output is for the `public.customers` table row whose primary key, the `id` column, has a value of `1`.
+=====
 
 [NOTE]
 ====
@@ -511,12 +520,12 @@ If the table does not have a primary or unique key, then the change event's key 
 ====
 
 // Type: concept
-// ModuleID: about-values-in-debezium-change-events
-// Title: About values in {prodname} change events
+// ModuleID: about-values-in-debezium-postgresql-change-events
+// Title: About values in {prodname} PostgreSQL change events
 [[postgresql-change-events-value]]
 === Change event values
 
-The value in a change event record is a bit more complicated than the key. Like the key, the value has a `schema` section and a `payload` section. The `schema` section contains a schema that describes the `Envelope` structure of the `payload` section, including its nested fields. The `payload` section has the following nested fields:  
+The value in a change event record is a bit more complicated than the key. Like the key, the value has a `schema` section and a `payload` section. The `schema` section contains the schema that describes the `Envelope` structure of the `payload` section, including its nested fields. The `payload` section has the following nested fields:  
 
 * `before` is an optional field. If present, it contains the state of the row _before_ the event occurred. The structure of the `before` field is described by a Kafka Connect `Value` schema. For example, for each row operation in the `public.customers` table, the connector uses the `PostgreSQL_server.public.customers.Value` schema to provide the content of the `before` field.
 
@@ -544,8 +553,8 @@ Whether or not this field is available is dependent on the {link-prefix}:{link-p
 * `ts_ms` is an optional field. If present, it contains the time at which the connector processed the event. This value reflects the system clock in the JVM running the Kafka Connect task. 
 
 // Type: concept
-// ModuleID: how-replica-identity-controls-data-that-can-be-in-debezium-change-events
-// Title: How `REPLICA IDENTITY` controls data that can be in {prodname}change events
+// ModuleID: how-replica-identity-controls-data-that-can-be-in-debezium-postgresql-change-events
+// Title: How `REPLICA IDENTITY` controls data that can be in {prodname} PostgreSQL change events
 [[postgresql-replica-identity]]
 === Replica identity
 
@@ -561,8 +570,8 @@ If a table does not have a primary key, the connector does not emit `UPDATE` or 
 * `INDEX` _index-name_ - Emitted events for `UPDATE` and `DELETE` operations contain the previous values of the columns contained in the specified index. `UPDATE` events also contain the indexed columns with the updated values.
 
 // Type: concept
-// ModuleID: about-debezium-change-events-for-operations-that-create-content
-// Title: About {prodname} change events for operations that create content
+// ModuleID: about-debezium-postgresql-change-events-for-operations-that-create-content
+// Title: About {prodname} PostgreSQL change events for operations that create content
 [[postgresql-create-events]]
 === _create_ events
 
@@ -757,8 +766,8 @@ It is possible and even recommended that you use the Avro converter to dramatica
 ====
 
 // Type: concept
-// ModuleID: about-debezium-change-events-for-operations-that-update-content
-// Title: About {prodname} change events for operations that update content
+// ModuleID: about-debezium-postgresql-change-events-for-operations-that-update-content
+// Title: About {prodname} PostgreSQL change events for operations that update content
 [[postgresql-update-events]]
 === _update_ events
 
@@ -818,8 +827,8 @@ Updating the columns for a row's primary/unique key changes the value of the row
 ====
 
 // Type: concept
-// ModuleID: about-debezium-change-events-for-primary-key-updates
-// Title: About {prodname} change events for primary key updates
+// ModuleID: about-debezium-postgresql-change-events-for-primary-key-updates
+// Title: About {prodname} PostgreSQL change events for primary key updates
 === Primary key updates
 
 An `UPDATE` operation that changes a row's primary key field(s) is known
@@ -830,8 +839,8 @@ as a primary key change. For a primary key change, in place of sending an `UPDAT
 * The `CREATE` event record has `__debezium.oldkey` as a message header. The value of this header is the previous (old) primary key that the updated row had.
 
 // Type: concept
-// ModuleID: about-debezium-change-events-for-operations-that-delete-content
-// Title: About {prodname} change events for operations that delete content
+// ModuleID: about-debezium-postgresql-change-events-for-operations-that-delete-content
+// Title: About {prodname} PostgreSQL change events for operations that delete content
 [[postgresql-delete-events]]
 === _delete_ events
 
@@ -880,7 +889,7 @@ This event gives a consumer all kinds of information that it can use to process 
 For a consumer to be able to process a _delete_ event generated for a table that does not have a primary key, set the table's `REPLICA IDENTITY` to `FULL`. When a table does not have a primary key and the table's `REPLICA IDENTITY` is set to `DEFAULT` or `NOTHING`, a _delete_ event has no `before` field.
 ====
 
-PostgreSQL connector events are designed to work with link:https://kafka.apache.org/documentation/#compaction[Kafka log compaction]. Log compaction enables removal of some older messages as long as at least the most recent message for every key is kept. This lets Kafka reclaim storage space while ensuring that the topic contains a complete data set an can be used for reloading key-based state.
+PostgreSQL connector events are designed to work with link:https://kafka.apache.org/documentation/#compaction[Kafka log compaction]. Log compaction enables removal of some older messages as long as at least the most recent message for every key is kept. This lets Kafka reclaim storage space while ensuring that the topic contains a complete data set and can be used for reloading key-based state.
 
 [[postgresql-tombstone-events]]
 .Tombstone events
@@ -892,7 +901,7 @@ When a row is deleted, the _delete_ event value still works with log compaction,
 [[postgresql-data-types]]
 == Data type mappings
 
-The PostgreSQL connector represents changes to rows with events that are structured like the table in which the row exist. The event contains a field for each column value. How that value is represented in the event depends on the PostgreSQL data type of the column. This section describes these mappings.
+The PostgreSQL connector represents changes to rows with events that are structured like the table in which the row exists. The event contains a field for each column value. How that value is represented in the event depends on the PostgreSQL data type of the column. This section describes these mappings.
 
 ifdef::product[]
 Details are in the following sections: 
@@ -921,7 +930,7 @@ The following table describes how the connector maps basic PostgreSQL data types
 .Mappings for PostgreSQL basic data types
 [cols="20%a,15%a,30%a,35%a",options="header"]
 |===
-|PostgreSQL Data Type
+|PostgreSQL data type
 |Literal type (schema type)
 |Semantic type (schema name)
 |Notes
@@ -1095,18 +1104,18 @@ The following table describes how the connector maps basic PostgreSQL data types
 
 Other than PostgreSQL's `TIMESTAMPTZ` and `TIMETZ` data types, which contain time zone information, how temporal types are mapped depends on the value of the `time.precision.mode` connector configuration property. The following sections describe these mappings: 
 
-* xref:time-precision-mode-adaptive[`time.precision.mode=adaptive`]
-* xref:time-precision-mode-adaptive-time-microseconds[`time.precision.mode=adaptive_time_microseconds`]
-* xref:time-precision-mode-connect[`time.precision.mode=connect`]
+* xref:postgresql-time-precision-mode-adaptive[`time.precision.mode=adaptive`]
+* xref:postgresql-time-precision-mode-adaptive-time-microseconds[`time.precision.mode=adaptive_time_microseconds`]
+* xref:postgresql-time-precision-mode-connect[`time.precision.mode=connect`]
 
-[[time-precision-mode-adaptive]]
+[[postgresql-time-precision-mode-adaptive]]
 .`time.precision.mode=adaptive`
 When the `time.precision.mode` property is set to `adaptive`, the default, the connector determines the literal type and semantic type based on the column's data type definition. This ensures that events _exactly_ represent the values in the database. 
 
 .Mappings when `time.precision.mode` is `adaptive`
 [cols="20%a,15%a,30%a,35%a",options="header"]
 |===
-|PostgreSQL Data Type
+|PostgreSQL data type
 |Literal type (schema type)
 |Semantic type (schema name)
 |Notes
@@ -1114,31 +1123,31 @@ When the `time.precision.mode` property is set to `adaptive`, the default, the c
 |`DATE`
 |`INT32`
 |`io.debezium.time.Date`
-| Represents the number of days since epoch.
+|Represents the number of days since the epoch.
 
 |`TIME(1)`, `TIME(2)`, `TIME(3)`
 |`INT32`
 |`io.debezium.time.Time`
-| Represents the number of milliseconds past midnight, and does not include timezone information.
+|Represents the number of milliseconds past midnight, and does not include timezone information.
 
 |`TIME(4)`, `TIME(5)`, `TIME(6)`
 |`INT64`
 |`io.debezium.time.MicroTime`
-| Represents the number of microseconds past midnight, and does not include timezone information.
+|Represents the number of microseconds past midnight, and does not include timezone information.
 
 |`TIMESTAMP(1)`, `TIMESTAMP(2)`, `TIMESTAMP(3)`
 |`INT64`
 |`io.debezium.time.Timestamp`
-| Represents the number of milliseconds since the epoch, and does not include timezone information.
+|Represents the number of milliseconds since the epoch, and does not include timezone information.
 
 |`TIMESTAMP(4)`, `TIMESTAMP(5)`, `TIMESTAMP(6)`, `TIMESTAMP`
 |`INT64`
 |`io.debezium.time.MicroTimestamp`
-| Represents the number of microseconds since the epoch, and does not include timezone information.
+|Represents the number of microseconds since the epoch, and does not include timezone information.
 
 |===
 
-[[time-precision-mode-adaptive-time-microseconds]]
+[[postgresql-time-precision-mode-adaptive-time-microseconds]]
 .`time.precision.mode=adaptive_time_microseconds`
 When the `time.precision.mode` configuration property is set to `adaptive_time_microseconds`, the connector determines the literal type and semantic type for temporal types based on the column's data type definition. This ensures that events _exactly_ represent the values in the database, except all `TIME` fields are captured as microseconds.
 
@@ -1153,26 +1162,26 @@ When the `time.precision.mode` configuration property is set to `adaptive_time_m
 |`DATE`
 |`INT32`
 |`io.debezium.time.Date`
-| Represents the number of days since epoch.
+|Represents the number of days since epoch.
 
 |`TIME([P])`
 |`INT64`
 |`io.debezium.time.MicroTime`
-| Represents the time value in microseconds and does not include timezone information. PostgreSQL allows precision `P` to be in the range 0-6 to store up to microsecond precision.
+|Represents the time value in microseconds and does not include timezone information. PostgreSQL allows precision `P` to be in the range 0-6 to store up to microsecond precision.
 
 |`TIMESTAMP(1)` , `TIMESTAMP(2)`, `TIMESTAMP(3)`
 |`INT64`
 |`io.debezium.time.Timestamp`
-| Represents the number of milliseconds past epoch, and does not include timezone information.
+|Represents the number of milliseconds past epoch, and does not include timezone information.
 
 |`TIMESTAMP(4)` , `TIMESTAMP(5)`, `TIMESTAMP(6)`, `TIMESTAMP`
 |`INT64`
 |`io.debezium.time.MicroTimestamp`
-| Represents the number of microseconds past epoch, and does not include timezone information.
+|Represents the number of microseconds past epoch, and does not include timezone information.
 
 |===
 
-[[time-precision-mode-connect]]
+[[postgresql-time-precision-mode-connect]]
 .`time.precision.mode=connect`
 When the `time.precision.mode` configuration property is set to `connect`, the connector uses Kafka Connect logical types. This may be useful when consumers know about only the built-in Kafka Connect logical types and are unable to handle variable-precision time values. However, since PostgreSQL supports microsecond precision, the events generated by a connector with the `connect` time precision mode *results in a loss of precision* when the database column has a _fractional second precision_ value that is greater than 3.
 
@@ -1187,17 +1196,17 @@ When the `time.precision.mode` configuration property is set to `connect`, the c
 |`DATE`
 |`INT32`
 |`org.apache.kafka.connect.data.Date`
-| Represents the number of days since epoch.
+|Represents the number of days since epoch.
 
 |`TIME([P])`
 |`INT64`
 |`org.apache.kafka.connect.data.Time`
-| Represents the number of milliseconds since midnight, and does not include timezone information. PostgreSQL allows `P` to be in the range 0-6 to store up to microsecond precision, though this mode results in a loss of precision when `P` > 3.
+|Represents the number of milliseconds since midnight, and does not include timezone information. PostgreSQL allows `P` to be in the range 0-6 to store up to microsecond precision, though this mode results in a loss of precision when `P` > 3.
 
 |`TIMESTAMP([P])`
 |`INT64`
 |`org.apache.kafka.connect.data.Timestamp`
-| Represents the number of milliseconds since epoch, and does not include timezone information. PostgreSQL allows `P` to be in the range 0-6 to store up to microsecond precision, though this mode results in a loss of precision when `P` > 3.
+|Represents the number of milliseconds since epoch, and does not include timezone information. PostgreSQL allows `P` to be in the range 0-6 to store up to microsecond precision, though this mode results in a loss of precision when `P` > 3.
 
 |===
 
@@ -1732,9 +1741,9 @@ endif::community[]
 == Deployment
 
 ifdef::community[]
-With link:https://zookeeper.apache.org[Zookeeper], link:http://kafka.apache.org/[Kafka], and {link-kafka-docs}.html#connect[Kafka Connect] installed, the remaining tasks to deploy a {prodname} PostgreSQL connector are to download the link: https://repo1.maven.org/maven2/io/debezium/debezium-connector-postgres/{debezium-version}/debezium-connector-postgres-{debezium-version}-plugin.tar.gz[connector's plug-in archive], extract the JAR files into your Kafka Connect environment, and add the directory with the JAR files to {link-kafka-docs}/#connectconfigs[Kafka Connect's `plugin.path`]. You then need to restart your Kafka Connect process to pick up the new JAR files.
+With link:https://zookeeper.apache.org[Zookeeper], link:http://kafka.apache.org/[Kafka], and {link-kafka-docs}.html#connect[Kafka Connect] installed, the remaining tasks to deploy a {prodname} PostgreSQL connector are to download the link:https://repo1.maven.org/maven2/io/debezium/debezium-connector-postgres/{debezium-version}/debezium-connector-postgres-{debezium-version}-plugin.tar.gz[connector's plug-in archive], extract the JAR files into your Kafka Connect environment, and add the directory with the JAR files to {link-kafka-docs}/#connectconfigs[Kafka Connect's `plugin.path`]. You then need to restart your Kafka Connect process to pick up the new JAR files.
 
-If you need immutable containers, see link:https://hub.docker.com/r/debezium/[{prodname}'s Docker images] for Zookeeper, Kafka, PostgreSQL and Kafka Connect with the PostgreSQL connector already installed and ready to run. You can also link:/blog/2016/05/31/Debezium-on-Kubernetes/[run {prodname} on Kubernetes and OpenShift].
+If you need immutable containers, see link:https://hub.docker.com/r/debezium/[{prodname}'s Container images] for Zookeeper, Kafka, PostgreSQL and Kafka Connect with the PostgreSQL connector already installed and ready to run. You can also link:/blog/2016/05/31/Debezium-on-Kubernetes/[run {prodname} on Kubernetes and OpenShift].
 endif::community[]
 
 ifdef::product[]
@@ -1801,21 +1810,21 @@ You can choose to produce events for a subset of the schemas and tables. Optiona
   }
 }
 ----
-<1> The name of our connector when we register it with a Kafka Connect service.
+<1> The name of the connector when registered with a Kafka Connect service.
 <2> The name of this PostgreSQL connector class.
 <3> The address of the PostgreSQL server.
 <4> The port number of the PostgreSQL server.
 <5> The name of the PostgreSQL user that has the {link-prefix}:{link-postgresql-connector}#postgresql-permissions[required privileges].
 <6> The password for the PostgreSQL user that has the {link-prefix}:{link-postgresql-connector}#postgresql-permissions[required privileges].
 <7> The name of the PostgreSQL database to connect to
-<8> The logical name of the PostgreSQL server/cluster, which forms a namespace and is used in all the names of the Kafka topics to which the connector writes, the Kafka Connect schema names, and the namespaces of the corresponding Avro schema when the Avro Connector is used.
+<8> The logical name of the PostgreSQL server/cluster, which forms a namespace and is used in all the names of the Kafka topics to which the connector writes, the Kafka Connect schema names, and the namespaces of the corresponding Avro schema when the Avro converter is used.
 <9> A list of all tables hosted by this server that this connector will monitor. This is optional, and there are other properties for listing the schemas and tables to include or exclude from monitoring.
 
 endif::community[]
 
 ifdef::product[]
 
-Following is an example of the configuration for a PostgreSQL connector that connects to a PostgreSQL server on port 5432 at 192.168.99.100, whose logical name is `fullfillment`. Typically, you configure the {prodname} PostgreSQL connector in a `.yaml` file using the configuration properties available for the connector.
+Following is an example of the configuration for a PostgreSQL connector that connects to a PostgreSQL server on port 5432 at 192.168.99.100, whose logical name is `fullfillment`. Typically, you configure a {prodname} PostgreSQL connector in a `.yaml` file using the configuration properties available for the connector.
 
 You can choose to produce events for a subset of the schemas and tables. Optionally, ignore, mask, or truncate columns that are sensitive, too large, or not needed.
 
@@ -1862,7 +1871,7 @@ You can send this configuration with a `POST` command to a running Kafka Connect
 // Type: procedure
 // ModuleID: adding-debezium-postgresql-connector-configuration-to-kafka-connect
 // Title: Adding {prodname} PostgreSQL connector configuration to Kafka Connect
-[[adding-connector-configuration]]
+[[postgresql-adding-connector-configuration]]
 === Adding connector configuration
 
 ifdef::community[]
@@ -1928,12 +1937,12 @@ Before Kafka Connect starts running the connector, Kafka Connect loads any third
 
 .. Point to the new container image. Do one of the following:
 +
-* Edit the `KafkaConnect.spec.image` property of the `KafkaConnect` custom resource. If set, this property overrides the `STRIMZI_DEFAULT_KAFKA_CONNECT_IMAGE` variable in the Cluster Operator. For example:
+* Edit the `spec.image` property of the `KafkaConnector` custom resource. If set, this property overrides the `STRIMZI_DEFAULT_KAFKA_CONNECT_IMAGE` variable in the Cluster Operator. For example:
 +
 [source,yaml,subs=attributes+]
 ----
 apiVersion: {KafkaConnectApiVersion}
-kind: KafkaConnect
+kind: KafkaConnector
 metadata:
   name: my-connect-cluster
 spec:
