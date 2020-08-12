@@ -145,7 +145,7 @@ public class PostgresSchemaIT {
         PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig().build());
         schema = TestHelper.getSchema(config);
 
-        try (PostgresConnection connection = TestHelper.create()) {
+        try (PostgresConnection connection = TestHelper.createWithTypeRegistry()) {
             schema.refresh(connection, false);
             assertTablesIncluded(tableId);
             assertKeySchema(tableId, "pk", Schema.INT32_SCHEMA);

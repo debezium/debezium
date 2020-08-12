@@ -20,6 +20,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import org.junit.After;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.postgresql.jdbc.PgConnection;
 
@@ -119,6 +120,8 @@ public class PostgresConnectionIT {
 
     @Test
     @FixFor("DBZ-934")
+    @Ignore
+    // Temporary slots no longer supported due to DBZ-2338
     public void temporaryReplicationSlotsShouldGetDroppedAutomatically() throws Exception {
         try (ReplicationConnection replicationConnection = TestHelper.createForReplication("test", true)) {
             replicationConnection.initConnection();
