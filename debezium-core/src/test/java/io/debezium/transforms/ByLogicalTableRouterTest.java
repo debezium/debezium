@@ -7,6 +7,7 @@ package io.debezium.transforms;
 
 import static org.fest.assertions.Assertions.assertThat;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -18,6 +19,7 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.Test;
 
 import io.debezium.doc.FixFor;
+import io.debezium.relational.history.HistoryRecord.Fields;
 
 /**
  * @author Mario Mueller
@@ -266,6 +268,37 @@ public class ByLogicalTableRouterTest {
         assertThat(transformed2.keySchema().fields().get(0).name()).isEqualTo("id");
 
         assertThat(((Struct) transformed2.key()).get("id")).isEqualTo(123L);
+    }
+
+    @Test
+    @FixFor("DBZ-2412")
+    public void shouldHandleSchemaChangeEvent() throws Exception {
+        final ByLogicalTableRouter<SourceRecord> router = new ByLogicalTableRouter<>();
+
+        final Map<String, String> props = new HashMap<>();
+
+        props.put("topic.regex", "(.*)");
+        props.put("topic.replacement", "$1_rerouted");
+
+        router.configure(props);
+
+        Schema schemaChangeKeySchema = SchemaBuilder.struct()
+                .name("io.debezium.connector.mysql.SchemaChangeKey")
+                .field(Fields.DATABASE_NAME, Schema.STRING_SCHEMA)
+                .build();
+
+        // just a basic non-CDC envelope
+        Schema schemaChangeValueSchema = SchemaBuilder.struct()
+                .name("io.debezium.connector.mysql.SchemaChangeValue")
+                .field(Fields.DATABASE_NAME, Schema.OPTIONAL_STRING_SCHEMA);
+
+        final SourceRecord record = new SourceRecord(null, Collections.singletonMap("offset", "1"), "schema_changes", 0,
+                schemaChangeKeySchema, new Struct(schemaChangeKeySchema).put(Fields.DATABASE_NAME, "my-db"), schemaChangeValueSchema,
+                new Struct(schemaChangeValueSchema).put(Fields.DATABASE_NAME, "my-db"));
+
+        SourceRecord transformed = router.apply(record);
+        assertThat(transformed.topic()).isEqualTo("schema_changes_rerouted");
+        assertThat(transformed.value()).isSameAs(record.value());
     }
 
     // FIXME: This SMT can use more tests for more detailed coverage.
