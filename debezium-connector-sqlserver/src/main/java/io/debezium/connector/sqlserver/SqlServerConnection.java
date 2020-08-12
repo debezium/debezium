@@ -68,7 +68,8 @@ public class SqlServerConnection extends JdbcConnection {
             + JdbcConfiguration.DATABASE + "}";
     private static final ConnectionFactory FACTORY = JdbcConnection.patternBasedFactory(URL_PATTERN,
             SQLServerDriver.class.getName(),
-            SqlServerConnection.class.getClassLoader());
+            SqlServerConnection.class.getClassLoader(),
+            JdbcConfiguration.PORT.withDefault(SqlServerConnectorConfig.PORT.defaultValueAsString()));
 
     /**
      * actual name of the database, which could differ in casing from the database name given in the connector config.

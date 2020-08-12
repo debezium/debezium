@@ -235,24 +235,31 @@ public class JdbcConnection implements AutoCloseable {
     private static String findAndReplace(String url, Properties props, Field... variables) {
         for (Field field : variables) {
             if (field != null) {
-                url = findAndReplace(url, field.name(), props);
+                url = findAndReplace(url, field.name(), props, field.defaultValueAsString());
             }
         }
         for (Object key : new HashSet<>(props.keySet())) {
             if (key != null) {
-                url = findAndReplace(url, key.toString(), props);
+                url = findAndReplace(url, key.toString(), props, null);
             }
         }
         return url;
     }
 
-    private static String findAndReplace(String url, String name, Properties props) {
+    private static String findAndReplace(String url, String name, Properties props, String defaultValue) {
         if (name != null && url.contains("${" + name + "}")) {
             {
                 // Otherwise, we have to remove it from the properties ...
                 String value = props.getProperty(name);
                 if (value != null) {
                     props.remove(name);
+                }
+
+                if (value == null) {
+                    value = defaultValue;
+                }
+
+                if (value != null) {
                     // And replace the variable ...
                     url = url.replaceAll("\\$\\{" + name + "\\}", value);
                 }
