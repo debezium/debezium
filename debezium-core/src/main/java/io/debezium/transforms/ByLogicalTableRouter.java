@@ -122,6 +122,7 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
     private final Cache<Schema, Schema> envelopeSchemaUpdateCache = new SynchronizedCache<>(new LRUCache<Schema, Schema>(16));
     private final Cache<String, String> keyRegexReplaceCache = new SynchronizedCache<>(new LRUCache<String, String>(16));
     private final Cache<String, String> topicRegexReplaceCache = new SynchronizedCache<>(new LRUCache<String, String>(16));
+    private SmtManager<R> smtManager;
 
     /**
      * If KEY_FIELD_REGEX has a value that is really a regex, then the KEY_FIELD_REPLACEMENT must be a non-empty value.
@@ -178,6 +179,8 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
         }
         keyFieldName = config.getString(KEY_FIELD_NAME);
         keyEnforceUniqueness = config.getBoolean(KEY_ENFORCE_UNIQUENESS);
+
+        smtManager = new SmtManager<>(config);
     }
 
     @Override
@@ -201,7 +204,9 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
             newKey = updateKey(newKeySchema, oldKey, oldTopic);
         }
 
-        if (record.value() == null) {
+        // In case of tombstones or non-CDC events (heartbeats, schema change events),
+        // leave the value as-is
+        if (record.value() == null || !smtManager.isValidEnvelope(record)) {
             // Value will be null in the case of a delete event tombstone
             return record.newRecord(
                     newTopic,
