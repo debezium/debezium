@@ -180,13 +180,13 @@ public class ReplicationConnectionIT {
     @Test
     public void shouldResumeFromLastReceivedLSN() throws Exception {
         String slotName = "test";
-        AtomicReference<Lsn> lastReceivedLSN = new AtomicReference<>();
-        startInsertStop(slotName, stream -> lastReceivedLSN.compareAndSet(null, stream.lastReceivedLsn()));
-        assertTrue(lastReceivedLSN.get().isValid());
+        AtomicReference<Lsn> lastReceivedLsn = new AtomicReference<>();
+        startInsertStop(slotName, stream -> lastReceivedLsn.compareAndSet(null, stream.lastReceivedLsn()));
+        assertTrue(lastReceivedLsn.get().isValid());
 
         // resume replication from the last received LSN and don't expect anything else
         try (ReplicationConnection connection = TestHelper.createForReplication(slotName, true)) {
-            ReplicationStream stream = connection.startStreaming(lastReceivedLSN.get(), new WalPositionLocator());
+            ReplicationStream stream = connection.startStreaming(lastReceivedLsn.get(), new WalPositionLocator());
             expectedMessagesFromStream(stream, 0);
         }
     }
