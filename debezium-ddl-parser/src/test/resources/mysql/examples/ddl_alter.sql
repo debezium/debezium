@@ -21,6 +21,8 @@ alter table add_test add column if not exists col1 varchar(255);
 alter table add_test add column if not exists col4 varchar(255);
 alter table add_test add index if not exists ix_add_test_col1 using btree (col1) comment 'test index';
 alter table add_test add index if not exists ix_add_test_col4 using btree (col4) comment 'test index';
+alter table add_test alter index ix_add_test_col1 invisible;
+alter table add_test alter index ix_add_test_col1 visible;
 alter table add_test change column if exists col8 col9 tinyint;
 alter table add_test change column if exists col3 col5 tinyint;
 alter table add_test modify column if exists col9 tinyint;
