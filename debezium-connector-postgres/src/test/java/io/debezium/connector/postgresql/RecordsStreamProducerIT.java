@@ -1239,7 +1239,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
             final Lsn flushLsn = slotState.slotLastFlushedLsn();
             // serverLsn is the latest server lsn and is equal to insert statement lsn
             final Lsn serverLsn = Lsn.valueOf(postgresConnection.currentXLogLocation());
-            assertNotEquals("lsn should not be flushed until heartbeat is produced", serverLsn, flushLsn);
+            assertNotEquals("LSN should not be flushed until heartbeat is produced", serverLsn, flushLsn);
 
             TestHelper.execute(statement);
 
@@ -1256,7 +1256,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
             // check if flushed lsn is equal to or greater than server lsn
             SlotState slotStateAfterHeartbeat = postgresConnection.getReplicationSlotState(Builder.DEFAULT_SLOT_NAME, TestHelper.decoderPlugin().getPostgresPluginName());
             final Lsn flushedLsn = slotStateAfterHeartbeat.slotLastFlushedLsn();
-            assertTrue("lsn should be flushed when heartbeat is produced", flushedLsn.compareTo(serverLsn) >= 0);
+            assertTrue("LSN should be flushed when heartbeat is produced", flushedLsn.compareTo(serverLsn) >= 0);
         }
     }
 
