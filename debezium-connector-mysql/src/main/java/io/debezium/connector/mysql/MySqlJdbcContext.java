@@ -24,6 +24,7 @@ import io.debezium.config.Configuration;
 import io.debezium.config.Configuration.Builder;
 import io.debezium.config.Field;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
+import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.jdbc.JdbcConnection.ConnectionFactory;
 import io.debezium.relational.history.DatabaseHistory;
@@ -43,7 +44,8 @@ public class MySqlJdbcContext implements AutoCloseable {
     private static final String SQL_SHOW_SYSTEM_VARIABLES_CHARACTER_SET = "SHOW VARIABLES WHERE Variable_name IN ('character_set_server','collation_server')";
     private static final String SQL_SHOW_SESSION_VARIABLE_SSL_VERSION = "SHOW SESSION STATUS LIKE 'Ssl_version'";
 
-    protected static ConnectionFactory FACTORY = JdbcConnection.patternBasedFactory(MYSQL_CONNECTION_URL);
+    protected static ConnectionFactory FACTORY = JdbcConnection.patternBasedFactory(MYSQL_CONNECTION_URL,
+            JdbcConfiguration.PORT.withDefault(MySqlConnectorConfig.PORT.defaultValueAsString()));
 
     protected final Logger logger = LoggerFactory.getLogger(getClass());
     protected final Configuration config;
