@@ -28,6 +28,7 @@ import io.debezium.connector.common.CdcSourceTaskContext;
 public abstract class Metrics {
 
     private final ObjectName name;
+    private volatile boolean registered = false;
 
     protected Metrics(CdcSourceTaskContext taskContext, String contextName) {
         this.name = metricName(taskContext.getConnectorType(), taskContext.getConnectorName(), contextName);
@@ -49,9 +50,10 @@ public abstract class Metrics {
                 return;
             }
             mBeanServer.registerMBean(this, name);
+            registered = true;
         }
         catch (JMException e) {
-            logger.warn("Error while register the MBean '{}': {}", name, e.getMessage());
+            logger.warn("Unable to register the MBean '{}': {}", name, e.getMessage());
         }
     }
 
@@ -60,7 +62,7 @@ public abstract class Metrics {
      * The method is intentionally synchronized to prevent preemption between registration and unregistration.
      */
     public final void unregister(Logger logger) {
-        if (this.name != null) {
+        if (this.name != null && registered) {
             try {
                 final MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
                 if (mBeanServer == null) {
@@ -70,7 +72,7 @@ public abstract class Metrics {
                 mBeanServer.unregisterMBean(name);
             }
             catch (JMException e) {
-                logger.error("Unable to unregister the MBean '{}'", name);
+                logger.warn("Unable to unregister the MBean '{}': {}", name, e.getMessage());
             }
         }
     }
@@ -90,5 +92,4 @@ public abstract class Metrics {
             throw new ConnectException("Invalid metric name '" + metricName + "'");
         }
     }
-
 }
