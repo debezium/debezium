@@ -174,6 +174,19 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
      * For instance, they could be of the form {@code <databaseName>.<tableName>.<columnName>} or
      * {@code <schemaName>.<tableName>.<columnName>} or {@code <databaseName>.<schemaName>.<tableName>.<columnName>}.
      */
+    public static final Field COLUMN_WHITELIST = Field.create("column.whitelist")
+            .withDisplayName("Include Columns")
+            .withType(Type.STRING)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("");
+
+    /**
+     * A comma-separated list of regular expressions that match fully-qualified names of columns to be excluded from monitoring
+     * and change messages. The exact form of fully qualified names for columns might vary between connector types.
+     * For instance, they could be of the form {@code <databaseName>.<tableName>.<columnName>} or
+     * {@code <schemaName>.<tableName>.<columnName>} or {@code <databaseName>.<schemaName>.<tableName>.<columnName>}.
+     */
     public static final Field COLUMN_BLACKLIST = Field.create("column.blacklist")
             .withDisplayName("Exclude Columns")
             .withType(Type.STRING)

@@ -383,7 +383,8 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
         this.databaseName = config.getString(DATABASE_NAME);
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE), SNAPSHOT_MODE.defaultValueAsString());
 
-        this.columnFilter = getColumnNameFilter(config.getString(RelationalDatabaseConnectorConfig.COLUMN_BLACKLIST));
+        this.columnFilter = getColumnNameFilter(config.getString(RelationalDatabaseConnectorConfig.COLUMN_WHITELIST),
+                config.getString(RelationalDatabaseConnectorConfig.COLUMN_BLACKLIST));
         this.readOnlyDatabaseConnection = READ_ONLY_INTENT.equals(config.getString(APPLICATION_INTENT_KEY));
         if (readOnlyDatabaseConnection) {
             this.snapshotIsolationMode = SnapshotIsolationMode.SNAPSHOT;
@@ -394,11 +395,17 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
         }
     }
 
-    private static ColumnNameFilter getColumnNameFilter(String excludedColumnPatterns) {
+    private static ColumnNameFilter getColumnNameFilter(String includedColumnPatterns, String excludedColumnPatterns) {
+        Predicate<ColumnId> delegate;
+
+        if (includedColumnPatterns != null) {
+            delegate = Predicates.includes(includedColumnPatterns, ColumnId::toString);
+        }
+        else {
+            delegate = Predicates.excludes(excludedColumnPatterns, ColumnId::toString);
+        }
+
         return new ColumnNameFilter() {
-
-            Predicate<ColumnId> delegate = Predicates.excludes(excludedColumnPatterns, ColumnId::toString);
-
             @Override
             public boolean matches(String catalogName, String schemaName, String tableName, String columnName) {
                 // ignore database name as it's not relevant here
