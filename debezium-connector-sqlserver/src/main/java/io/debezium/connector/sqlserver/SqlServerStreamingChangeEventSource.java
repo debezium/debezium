@@ -5,10 +5,7 @@
  */
 package io.debezium.connector.sqlserver;
 
-import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Timestamp;
-import java.sql.Types;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -28,6 +25,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
+import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.schema.SchemaChangeEvent.SchemaChangeEventType;
 import io.debezium.util.Clock;
@@ -55,11 +53,6 @@ import io.debezium.util.Metronome;
  * @author Jiri Pechanec
  */
 public class SqlServerStreamingChangeEventSource implements StreamingChangeEventSource {
-
-    private static final int COL_COMMIT_LSN = 1;
-    private static final int COL_ROW_LSN = 2;
-    private static final int COL_OPERATION = 3;
-    private static final int COL_DATA = 5;
 
     private static final Pattern MISSING_CDC_FUNCTION_CHANGES_ERROR = Pattern.compile("Invalid object name 'cdc.fn_cdc_get_all_changes_(.*)'\\.");
 
@@ -272,8 +265,10 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
             throws InterruptedException, SQLException {
         final ChangeTable newTable = schemaChangeCheckpoints.poll();
         LOGGER.info("Migrating schema to {}", newTable);
+        Table tableSchema = metadataConnection.getTableSchemaFromTable(newTable);
         dispatcher.dispatchSchemaChangeEvent(newTable.getSourceTableId(),
-                new SqlServerSchemaChangeEventEmitter(offsetContext, newTable, metadataConnection.getTableSchemaFromTable(newTable), SchemaChangeEventType.ALTER));
+                new SqlServerSchemaChangeEventEmitter(offsetContext, newTable, tableSchema, SchemaChangeEventType.ALTER));
+        newTable.setSourceTable(tableSchema);
     }
 
     private ChangeTable[] processErrorFromChangeTableQuery(SQLException exception, ChangeTable[] currentChangeTables) throws Exception {
@@ -324,6 +319,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                     futureTable = captures.get(0);
                 }
                 currentTable.setStopLsn(futureTable.getStartLsn());
+                futureTable.setSourceTable(dataConnection.getTableSchemaFromTable(futureTable));
                 tables.add(futureTable);
                 LOGGER.info("Multiple capture instances present for the same table: {} and {}", currentTable, futureTable);
             }
@@ -338,86 +334,17 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                                 dataConnection.getTableSchemaFromTable(currentTable),
                                 SchemaChangeEventType.CREATE));
             }
+            //
+            // TODO: This needs to be re-worked per https://github.com/debezium/debezium/pull/748#issuecomment-492526200
+            //
+            // If a column was renamed, then the old capture instance had been dropped and a new one
+            // created. In consequence, a table with out-dated schema might be assigned here.
+            // A proper value will be set when migration happens.
+            currentTable.setSourceTable(schema.tableFor(currentTable.getSourceTableId()));
             tables.add(currentTable);
         }
 
         return tables.toArray(new ChangeTable[tables.size()]);
     }
 
-    /**
-     * The logical representation of a position for the change in the transaction log.
-     * During each sourcing cycle it is necessary to query all change tables and then
-     * make a total order of changes across all tables.<br>
-     * This class represents an open database cursor over the change table that is
-     * able to move the cursor forward and report the LSN for the change to which the cursor
-     * now points.
-     *
-     * @author Jiri Pechanec
-     *
-     */
-    private static class ChangeTablePointer {
-
-        private final ChangeTable changeTable;
-        private final ResultSet resultSet;
-        private boolean completed = false;
-        private TxLogPosition currentChangePosition;
-
-        public ChangeTablePointer(ChangeTable changeTable, ResultSet resultSet) {
-            this.changeTable = changeTable;
-            this.resultSet = resultSet;
-        }
-
-        public ChangeTable getChangeTable() {
-            return changeTable;
-        }
-
-        public TxLogPosition getChangePosition() throws SQLException {
-            return currentChangePosition;
-        }
-
-        public int getOperation() throws SQLException {
-            return resultSet.getInt(COL_OPERATION);
-        }
-
-        public Object[] getData() throws SQLException {
-            final int dataColumnCount = resultSet.getMetaData().getColumnCount() - (COL_DATA - 1);
-            final Object[] data = new Object[dataColumnCount];
-            for (int i = 0; i < dataColumnCount; i++) {
-                if (resultSet.getMetaData().getColumnType(COL_DATA + i) == Types.TIME) {
-                    Timestamp timestamp = resultSet.getTimestamp(COL_DATA + i);
-                    data[i] = timestamp;
-                }
-                else {
-                    data[i] = resultSet.getObject(COL_DATA + i);
-                }
-
-            }
-            return data;
-        }
-
-        public boolean next() throws SQLException {
-            completed = !resultSet.next();
-            currentChangePosition = completed ? TxLogPosition.NULL
-                    : TxLogPosition.valueOf(Lsn.valueOf(resultSet.getBytes(COL_COMMIT_LSN)), Lsn.valueOf(resultSet.getBytes(COL_ROW_LSN)));
-            if (completed) {
-                LOGGER.trace("Closing result set of change tables for table {}", changeTable);
-                resultSet.close();
-            }
-            return !completed;
-        }
-
-        public boolean isCompleted() {
-            return completed;
-        }
-
-        public int compareTo(ChangeTablePointer o) throws SQLException {
-            return getChangePosition().compareTo(o.getChangePosition());
-        }
-
-        @Override
-        public String toString() {
-            return "ChangeTablePointer [changeTable=" + changeTable + ", resultSet=" + resultSet + ", completed="
-                    + completed + ", currentChangePosition=" + currentChangePosition + "]";
-        }
-    }
 }
