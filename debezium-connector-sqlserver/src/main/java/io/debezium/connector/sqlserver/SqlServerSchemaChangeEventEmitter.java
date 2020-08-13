@@ -5,9 +5,6 @@
  */
 package io.debezium.connector.sqlserver;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import io.debezium.pipeline.spi.SchemaChangeEventEmitter;
 import io.debezium.relational.Table;
 import io.debezium.schema.SchemaChangeEvent;
@@ -19,8 +16,6 @@ import io.debezium.schema.SchemaChangeEvent.SchemaChangeEventType;
  * @author Jiri Pechanec
  */
 public class SqlServerSchemaChangeEventEmitter implements SchemaChangeEventEmitter {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(SqlServerSchemaChangeEventEmitter.class);
 
     private final SqlServerOffsetContext offsetContext;
     private final SqlServerChangeTable changeTable;
