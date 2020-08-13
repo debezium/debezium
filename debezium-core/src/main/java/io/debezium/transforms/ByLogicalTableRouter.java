@@ -110,8 +110,9 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
             .withDescription("The replacement string used in conjunction with " + KEY_FIELD_REGEX.name() +
                     ". This will be used to create the physical table identifier in the record's key.");
 
-    private static final Logger logger = LoggerFactory.getLogger(ByLogicalTableRouter.class);
-    private final SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create(logger);
+    private static final Logger LOGGER = LoggerFactory.getLogger(ByLogicalTableRouter.class);
+
+    private final SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create(LOGGER);
     private Pattern topicRegex;
     private String topicReplacement;
     private Pattern keyFieldRegex;
@@ -162,7 +163,7 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
                 KEY_FIELD_REGEX,
                 KEY_FIELD_REPLACEMENT);
 
-        if (!config.validateAndRecord(configFields, logger::error)) {
+        if (!config.validateAndRecord(configFields, LOGGER::error)) {
             throw new ConnectException("Unable to validate config.");
         }
 
@@ -192,7 +193,12 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
             return record;
         }
 
-        logger.debug("Applying topic name transformation from {} to {}", oldTopic, newTopic);
+        if (newTopic.isEmpty()) {
+            LOGGER.warn("Routing regex returned an empty topic name, propagating original record");
+            return record;
+        }
+
+        LOGGER.debug("Applying topic name transformation from {} to {}", oldTopic, newTopic);
 
         Schema newKeySchema = null;
         Struct newKey = null;
