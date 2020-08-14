@@ -126,6 +126,9 @@ public class CommitLogProcessor extends AbstractProcessor {
                     queue.enqueue(new EOFEvent(file, false));
                 }
                 LOGGER.warn("Error occurred while processing commit log " + file.getName(), e);
+                if (commitLogTransfer.getClass().toString() == CassandraConnectorConfig.DEFAULT_COMMIT_LOG_TRANSFER_CLASS) {
+                    throw e;
+                }
             }
         }
         catch (InterruptedException e) {
