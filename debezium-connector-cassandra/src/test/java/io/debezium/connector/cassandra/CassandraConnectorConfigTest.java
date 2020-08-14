@@ -126,9 +126,8 @@ public class CassandraConnectorConfigTest {
         config = buildTaskConfig(CassandraConnectorConfig.COMMIT_LOG_POST_PROCESSING_ENABLED.name(), "false");
         assertEquals(false, config.postProcessEnabled());
 
-        boolean shouldReprocessErrorCommitLogs = true;
-        config = buildTaskConfig(CassandraConnectorConfig.COMMIT_LOG_ERROR_REPROCESSING_ENABLED.name(), shouldReprocessErrorCommitLogs);
-        assertEquals(shouldReprocessErrorCommitLogs, config.errorCommitLogReprocessEnabled());
+        config = buildTaskConfig(CassandraConnectorConfig.COMMIT_LOG_ERROR_REPROCESSING_ENABLED.name(), "true");
+        assertTrue(config.errorCommitLogReprocessEnabled());
 
         String transferClazz = "io.debezium.connector.cassandra.BlackHoleCommitLogTransfer";
         config = buildTaskConfig(CassandraConnectorConfig.COMMIT_LOG_TRANSFER_CLASS.name(), transferClazz);
