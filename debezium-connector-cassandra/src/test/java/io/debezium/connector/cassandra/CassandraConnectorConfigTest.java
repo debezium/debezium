@@ -126,6 +126,10 @@ public class CassandraConnectorConfigTest {
         config = buildTaskConfig(CassandraConnectorConfig.COMMIT_LOG_POST_PROCESSING_ENABLED.name(), "false");
         assertEquals(false, config.postProcessEnabled());
 
+        boolean shouldReprocessErrorCommitLogs = true;
+        config = buildTaskConfig(CassandraConnectorConfig.COMMIT_LOG_ERROR_REPROCESSING_ENABLED.name(), shouldReprocessErrorCommitLogs);
+        assertEquals(shouldReprocessErrorCommitLogs, config.errorCommitLogReprocessEnabled());
+
         String transferClazz = "io.debezium.connector.cassandra.BlackHoleCommitLogTransfer";
         config = buildTaskConfig(CassandraConnectorConfig.COMMIT_LOG_TRANSFER_CLASS.name(), transferClazz);
         assertEquals(transferClazz, config.getCommitLogTransfer().getClass().getName());
@@ -170,6 +174,7 @@ public class CassandraConnectorConfigTest {
         assertEquals(CassandraConnectorConfig.DEFAULT_CDC_DIR_POLL_INTERVAL_MS, config.cdcDirPollIntervalMs().toMillis());
         assertEquals(CassandraConnectorConfig.DEFAULT_SNAPSHOT_POLL_INTERVAL_MS, config.snapshotPollIntervalMs().toMillis());
         assertEquals(CassandraConnectorConfig.DEFAULT_COMMIT_LOG_POST_PROCESSING_ENABLED, config.postProcessEnabled());
+        assertEquals(CassandraConnectorConfig.DEFAULT_COMMIT_LOG_ERROR_REPROCESSING_ENABLED, config.errorCommitLogReprocessEnabled());
         assertEquals(CassandraConnectorConfig.DEFAULT_COMMIT_LOG_TRANSFER_CLASS, config.getCommitLogTransfer().getClass().getName());
         assertFalse(config.cassandraSslEnabled());
         assertFalse(config.tombstonesOnDelete());

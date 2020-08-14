@@ -39,5 +39,5 @@ public interface CommitLogTransfer {
     /**
      * Get all error commitLog files into cdc_raw directory for re-processing.
      */
-    void getErrorCommitLogs();
+    void getErrorCommitLogFiles();
 }

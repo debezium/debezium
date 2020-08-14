@@ -87,7 +87,7 @@ public class CommitLogProcessor extends AbstractProcessor {
             throw new InterruptedException();
         }
         if (errorCommitLogReprocessEnabled) {
-            commitLogTransfer.getErrorCommitLogs();
+            commitLogTransfer.getErrorCommitLogFiles();
         }
         if (initial) {
             LOGGER.info("Reading existing commit logs in {}", cdcDir);

@@ -23,5 +23,5 @@ public class BlackHoleCommitLogTransfer implements CommitLogTransfer {
     }
 
     @Override
-    public void getErrorCommitLogs() {}
+    public void getErrorCommitLogFiles() {}
 }
