@@ -5,9 +5,7 @@
  */
 package io.debezium.connector.sqlserver;
 
-import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Types;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -29,8 +27,8 @@ import org.slf4j.LoggerFactory;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
-import io.debezium.pipeline.source.spi.ChangeTableResultSet;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
+import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.schema.SchemaChangeEvent.SchemaChangeEventType;
 import io.debezium.util.Clock;
@@ -58,11 +56,6 @@ import io.debezium.util.Metronome;
  * @author Jiri Pechanec
  */
 public class SqlServerStreamingChangeEventSource implements StreamingChangeEventSource {
-
-    private static final int COL_COMMIT_LSN = 1;
-    private static final int COL_ROW_LSN = 2;
-    private static final int COL_OPERATION = 3;
-    private static final int COL_DATA = 5;
 
     private static final Pattern MISSING_CDC_FUNCTION_CHANGES_ERROR = Pattern.compile("Invalid object name 'cdc.fn_cdc_get_all_changes_(.*)'\\.");
 
@@ -172,17 +165,17 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
 
                         long eventSerialNoInInitialTx = 1;
                         final int tableCount = resultSets.length;
-                        final ChangeTablePointer[] changeTables = new ChangeTablePointer[tableCount];
+                        final SqlServerChangeTablePointer[] changeTables = new SqlServerChangeTablePointer[tableCount];
                         final SqlServerChangeTable[] tables = tablesSlot.get();
 
                         for (int i = 0; i < tableCount; i++) {
-                            changeTables[i] = new ChangeTablePointer(tables[i], resultSets[i]);
+                            changeTables[i] = new SqlServerChangeTablePointer(tables[i], resultSets[i]);
                             changeTables[i].next();
                         }
 
                         for (;;) {
-                            ChangeTablePointer tableWithSmallestLsn = null;
-                            for (ChangeTablePointer changeTable : changeTables) {
+                            SqlServerChangeTablePointer tableWithSmallestLsn = null;
+                            for (SqlServerChangeTablePointer changeTable : changeTables) {
                                 if (changeTable.isCompleted()) {
                                     continue;
                                 }
@@ -295,8 +288,10 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
             throws InterruptedException, SQLException {
         final SqlServerChangeTable newTable = schemaChangeCheckpoints.poll();
         LOGGER.info("Migrating schema to {}", newTable);
+        Table tableSchema = metadataConnection.getTableSchemaFromTable(newTable);
         dispatcher.dispatchSchemaChangeEvent(newTable.getSourceTableId(),
-                new SqlServerSchemaChangeEventEmitter(offsetContext, newTable, metadataConnection.getTableSchemaFromTable(newTable), SchemaChangeEventType.ALTER));
+                new SqlServerSchemaChangeEventEmitter(offsetContext, newTable, tableSchema, SchemaChangeEventType.ALTER));
+        newTable.setSourceTable(tableSchema);
     }
 
     private SqlServerChangeTable[] processErrorFromChangeTableQuery(SQLException exception, SqlServerChangeTable[] currentChangeTables) throws Exception {
@@ -347,6 +342,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                     futureTable = captures.get(0);
                 }
                 currentTable.setStopLsn(futureTable.getStartLsn());
+                futureTable.setSourceTable(dataConnection.getTableSchemaFromTable(futureTable));
                 tables.add(futureTable);
                 LOGGER.info("Multiple capture instances present for the same table: {} and {}", currentTable, futureTable);
             }
@@ -365,56 +361,17 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                                 dataConnection.getTableSchemaFromTable(currentTable),
                                 SchemaChangeEventType.CREATE));
             }
+            //
+            // TODO: This needs to be re-worked per https://github.com/debezium/debezium/pull/748#issuecomment-492526200
+            //
+            // If a column was renamed, then the old capture instance had been dropped and a new one
+            // created. In consequence, a table with out-dated schema might be assigned here.
+            // A proper value will be set when migration happens.
+            currentTable.setSourceTable(schema.tableFor(currentTable.getSourceTableId()));
             tables.add(currentTable);
         }
 
         return tables.toArray(new SqlServerChangeTable[tables.size()]);
     }
 
-    /**
-     * The logical representation of a position for the change in the transaction log.
-     * During each sourcing cycle it is necessary to query all change tables and then
-     * make a total order of changes across all tables.<br>
-     * This class represents an open database cursor over the change table that is
-     * able to move the cursor forward and report the LSN for the change to which the cursor
-     * now points.
-     *
-     * @author Jiri Pechanec
-     *
-     */
-    private static class ChangeTablePointer extends ChangeTableResultSet<SqlServerChangeTable, TxLogPosition> {
-
-        public ChangeTablePointer(SqlServerChangeTable changeTable, ResultSet resultSet) {
-            super(changeTable, resultSet, COL_DATA);
-        }
-
-        @Override
-        protected int getOperation(ResultSet resultSet) throws SQLException {
-            return resultSet.getInt(COL_OPERATION);
-        }
-
-        @Override
-        protected Object getColumnData(ResultSet resultSet, int columnIndex) throws SQLException {
-            if (resultSet.getMetaData().getColumnType(columnIndex) == Types.TIME) {
-                return resultSet.getTime(columnIndex);
-            }
-            return super.getColumnData(resultSet, columnIndex);
-        }
-
-        @Override
-        protected TxLogPosition getNextChangePosition(ResultSet resultSet) throws SQLException {
-            return isCompleted() ? TxLogPosition.NULL
-                    : TxLogPosition.valueOf(Lsn.valueOf(resultSet.getBytes(COL_COMMIT_LSN)), Lsn.valueOf(resultSet.getBytes(COL_ROW_LSN)));
-        }
-
-        /**
-         * Check whether TX in currentChangePosition is newer (higher) than TX in previousChangePosition
-         * @return true <=> TX in currentChangePosition > TX in previousChangePosition
-         * @throws SQLException
-         */
-        protected boolean isNewTransaction() throws SQLException {
-            return (getPreviousChangePosition() != null) &&
-                    getChangePosition().getCommitLsn().compareTo(getPreviousChangePosition().getCommitLsn()) > 0;
-        }
-    }
 }

@@ -6,6 +6,7 @@
 package io.debezium.connector.sqlserver;
 
 import io.debezium.relational.ChangeTable;
+import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 
 /**
@@ -30,6 +31,11 @@ public class SqlServerChangeTable extends ChangeTable {
      */
     private Lsn stopLsn;
 
+    /**
+     * The table from which the changes are captured
+     */
+    private Table sourceTable;
+
     public SqlServerChangeTable(TableId sourceTableId, String captureInstance, int changeTableObjectId, Lsn startLsn, Lsn stopLsn) {
         super(captureInstance, sourceTableId, resolveChangeTableId(sourceTableId, captureInstance), changeTableObjectId);
         this.startLsn = startLsn;
@@ -50,6 +56,14 @@ public class SqlServerChangeTable extends ChangeTable {
 
     public void setStopLsn(Lsn stopLsn) {
         this.stopLsn = stopLsn;
+    }
+
+    public Table getSourceTable() {
+        return sourceTable;
+    }
+
+    public void setSourceTable(Table sourceTable) {
+        this.sourceTable = sourceTable;
     }
 
     @Override
