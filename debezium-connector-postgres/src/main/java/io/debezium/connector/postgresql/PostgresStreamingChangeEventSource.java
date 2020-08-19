@@ -125,6 +125,12 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                 boolean receivedMessage = stream.readPending(message -> {
                     final Long lsn = stream.lastReceivedLsn();
 
+                    if (message == null) {
+                        skipMessage(lsn);
+
+                        return;
+                    }
+
                     if (message.isLastEventForLsn()) {
                         lastCompletelyProcessedLsn = lsn;
                     }
