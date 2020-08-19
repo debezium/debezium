@@ -2,59 +2,59 @@
 |===
 |Attributes |Type |Description
 
-|`LastEvent`
+|[[connectors-snaps-metric-lastevent]]<<connectors-snaps-metric-lastevent, `LastEvent`>>
 |`string`
 |The last snapshot event that the connector has read.
 
-|`MilliSecondsSinceLastEvent`
+|[[connectors-snaps-metric-millisecondssincelastevent]]<<connectors-snaps-metric-millisecondssincelastevent, `MilliSecondsSinceLastEvent`>>
 |`long`
 |The number of milliseconds since the connector has read and processed the most recent event.
 
-|`TotalNumberOfEventsSeen`
+|[[connectors-snaps-metric-totalnumberofeventsseen]]<<connectors-snaps-metric-totalnumberofeventsseen, `TotalNumberOfEventsSeen`>>
 |`long`
 |The total number of events that this connector has seen since last started or reset.
 
-|`NumberOfEventsFiltered`
+|[[connectors-snaps-metric-numberofeventsfiltered]]<<connectors-snaps-metric-numberofeventsfiltered, `NumberOfEventsFiltered`>>
 |`long`
 | The number of events that have been filtered by include/exclude list filtering rules configured on the connector.
 
-|`MonitoredTables`
+|[[connectors-snaps-metric-monitoredtables]]<<connectors-snaps-metric-monitoredtables, `MonitoredTables`>>
 |`string[]`
 |The list of tables that are monitored by the connector.
 
-|`QueueTotalCapacity`
+|[[connectors-snaps-metric-queuetotalcapacity]]<<connectors-snaps-metric-queuetotalcapacity, `QueueTotalCapacity`>>
 |`int`
 |The length the queue used to pass events between the snapshotter and the main Kafka Connect loop.
 
-|`QueueRemainingCapacity`
+|[[connectors-snaps-metric-queueremainingcapacity]]<<connectors-snaps-metric-queueremainingcapacity, `QueueRemainingCapacity`>>
 |`int`
 |The free capacity of the queue used to pass events between the snapshotter and the main Kafka Connect loop.
 
-|`TotalTableCount`
+|[[connectors-snaps-metric-totaltablecount]]<<connectors-snaps-metric-totaltablecount, `TotalTableCount`>>
 |`int`
 |The total number of tables that are being included in the snapshot.
 
-|`RemainingTableCount`
+|[[connectors-snaps-metric-remainingtablecount]]<<connectors-snaps-metric-remainingtablecount, `RemainingTableCount`>>
 |`int`
 |The number of tables that the snapshot has yet to copy.
 
-|`SnapshotRunning`
+|[[connectors-snaps-metric-snapshotrunning]]<<connectors-snaps-metric-snapshotrunning, `SnapshotRunning`>>
 |`boolean`
 |Whether the snapshot was started.
 
-|`SnapshotAborted`
+|[[connectors-snaps-metric-snapshotaborted]]<<connectors-snaps-metric-snapshotaborted, `SnapshotAborted`>>
 |`boolean`
 |Whether the snapshot was aborted.
 
-|`SnapshotCompleted`
+|[[connectors-snaps-metric-snapshotcompleted]]<<connectors-snaps-metric-snapshotcompleted, `SnapshotCompleted`>>
 |`boolean`
 |Whether the snapshot completed.
 
-|`SnapshotDurationInSeconds`
+|[[connectors-snaps-metric-snapshotdurationinseconds]]<<connectors-snaps-metric-snapshotdurationinseconds, `SnapshotDurationInSeconds`>>
 |`long`
 |The total number of seconds that the snapshot has taken so far, even if not complete.
 
-|`RowsScanned`
+|[[connectors-snaps-metric-rowsscanned]]<<connectors-snaps-metric-rowsscanned, `RowsScanned`>>
 |`Map<String, Long>`
 |Map containing the number of rows scanned for each table in the snapshot.
 Tables are incrementally added to the Map during processing.
