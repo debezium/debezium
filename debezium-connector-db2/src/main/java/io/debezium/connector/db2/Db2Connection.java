@@ -90,7 +90,8 @@ public class Db2Connection extends JdbcConnection {
 
     private static final ConnectionFactory FACTORY = JdbcConnection.patternBasedFactory(URL_PATTERN,
             DB2Driver.class.getName(),
-            Db2Connection.class.getClassLoader());
+            Db2Connection.class.getClassLoader(),
+            JdbcConfiguration.PORT.withDefault(Db2ConnectorConfig.PORT.defaultValueAsString()));
 
     /**
      * actual name of the database, which could differ in casing from the database name given in the connector config.

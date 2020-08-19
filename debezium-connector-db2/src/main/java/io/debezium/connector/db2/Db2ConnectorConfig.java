@@ -41,6 +41,8 @@ import io.debezium.relational.history.KafkaDatabaseHistory;
  */
 public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorConfig {
 
+    protected static final int DEFAULT_PORT = 50000;
+
     /**
      * The set of predefined SnapshotMode options or aliases.
      */
@@ -198,6 +200,38 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
         }
     }
 
+    public static final Field HOSTNAME = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.HOSTNAME)
+            .withDisplayName("Hostname")
+            .withType(Type.STRING)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.HIGH)
+            .withValidation(Field::isRequired)
+            .withDescription("Resolvable hostname or IP address of the Db2 database server.");
+
+    public static final Field PORT = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.PORT)
+            .withDisplayName("Port")
+            .withType(Type.INT)
+            .withWidth(Width.SHORT)
+            .withDefault(DEFAULT_PORT)
+            .withImportance(Importance.HIGH)
+            .withValidation(Field::isInteger)
+            .withDescription("Port of the Db2 database server.");
+
+    public static final Field USER = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.USER)
+            .withDisplayName("User")
+            .withType(Type.STRING)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.HIGH)
+            .withValidation(Field::isRequired)
+            .withDescription("Name of the Db2 database user to be used when connecting to the database.");
+
+    public static final Field PASSWORD = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.PASSWORD)
+            .withDisplayName("Password")
+            .withType(Type.PASSWORD)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.HIGH)
+            .withDescription("Password of the Db2 database user to be used when connecting to the database.");
+
     public static final Field SERVER_NAME = RelationalDatabaseConnectorConfig.SERVER_NAME
             .withValidation(CommonConnectorConfig::validateServerNameIsDifferentFromHistoryTopicName);
 
@@ -238,6 +272,10 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
      * The set of {@link Field}s defined as part of this configuration.
      */
     public static Field.Set ALL_FIELDS = Field.setOf(
+            HOSTNAME,
+            PORT,
+            USER,
+            PASSWORD,
             SERVER_NAME,
             DATABASE_NAME,
             SNAPSHOT_MODE,
@@ -261,7 +299,7 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
     public static ConfigDef configDef() {
         ConfigDef config = new ConfigDef();
 
-        Field.group(config, "DB2 Server", SERVER_NAME, DATABASE_NAME, SNAPSHOT_MODE);
+        Field.group(config, "DB2 Server", HOSTNAME, PORT, USER, PASSWORD, SERVER_NAME, DATABASE_NAME, SNAPSHOT_MODE);
         Field.group(config, "History Storage", KafkaDatabaseHistory.BOOTSTRAP_SERVERS,
                 KafkaDatabaseHistory.TOPIC, KafkaDatabaseHistory.RECOVERY_POLL_ATTEMPTS,
                 KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS, HistorizedRelationalDatabaseConnectorConfig.DATABASE_HISTORY);
