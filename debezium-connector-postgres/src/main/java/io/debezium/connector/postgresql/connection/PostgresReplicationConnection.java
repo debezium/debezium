@@ -610,7 +610,8 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
     @Override
     public void reconnect() throws SQLException {
         close(false);
-        connect();
+        // Don't re-execute initial commands on reconnection
+        connection(false);
     }
 
     protected static void defaultSettings(Configuration.Builder builder) {
