@@ -250,4 +250,55 @@ public class SchemaHistoryTopicIT extends AbstractConnectorTest {
                             .build());
         });
     }
+
+    @Test
+    @FixFor("DBZ-2303")
+    public void schemaChangeAfterSnapshot() throws Exception {
+        final int RECORDS_PER_TABLE = 1;
+        final int ID_START = 10;
+        final Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .with(SqlServerConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+                .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, "dbo.tablec")
+                .build();
+
+        connection.execute("CREATE TABLE tabled (id int primary key, cold varchar(30))");
+
+        connection.execute("INSERT INTO tablec VALUES(1, 'c')");
+        // Enable CDC for already existing table
+        TestHelper.enableTableCdc(connection, "tablec");
+
+        start(SqlServerConnector.class, config);
+        assertConnectorIsRunning();
+        TestHelper.waitForSnapshotToBeCompleted();
+
+        // 1 schema event + 1 data event
+        Testing.Print.enable();
+        SourceRecords records = consumeRecordsByTopic(1 + 1);
+        Assertions.assertThat(records.recordsForTopic("server1.dbo.tablec")).hasSize(1);
+
+        stopConnector();
+        assertConnectorNotRunning();
+
+        final Configuration config2 = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .with(SqlServerConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+                .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, "dbo.tablec,dbo.tabled")
+                .build();
+        start(SqlServerConnector.class, config2);
+
+        // CDC for newly added table
+        TestHelper.enableTableCdc(connection, "tabled");
+
+        connection.execute("INSERT INTO tabled VALUES(1, 'd')");
+
+        // 1-2 schema events + 1 data event
+        records = consumeRecordsByTopic(2 + 1);
+        Assertions.assertThat(records.recordsForTopic("server1.dbo.tabled")).hasSize(1);
+
+        final List<SourceRecord> schemaEvents = records.recordsForTopic("server1");
+        final SourceRecord schemaEventD = schemaEvents.get(schemaEvents.size() - 1);
+        Assertions.assertThat(((Struct) schemaEventD.value()).getStruct("source").getString("schema")).isEqualTo("dbo");
+        Assertions.assertThat(((Struct) schemaEventD.value()).getStruct("source").getString("table")).isEqualTo("tabled");
+    }
 }

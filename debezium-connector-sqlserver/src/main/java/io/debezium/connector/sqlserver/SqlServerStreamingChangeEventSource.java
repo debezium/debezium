@@ -9,6 +9,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Types;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -352,6 +353,10 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
             if (schema.tableFor(currentTable.getSourceTableId()) == null) {
                 LOGGER.info("Table {} is new to be monitored by capture instance {}", currentTable.getSourceTableId(), currentTable.getCaptureInstance());
                 // We need to read the source table schema - nullability information cannot be obtained from change table
+                // There might be no start LSN in the new change table at this time so current timestamp is used
+                offsetContext.event(
+                        currentTable.getSourceTableId(),
+                        Instant.now());
                 dispatcher.dispatchSchemaChangeEvent(
                         currentTable.getSourceTableId(),
                         new SqlServerSchemaChangeEventEmitter(
