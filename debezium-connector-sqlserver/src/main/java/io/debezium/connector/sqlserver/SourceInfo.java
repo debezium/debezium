@@ -105,6 +105,9 @@ public class SourceInfo extends BaseSourceInfo {
 
     @Override
     protected String database() {
+        if (tableId == null) {
+            return null;
+        }
         return tableId.catalog();
     }
 }

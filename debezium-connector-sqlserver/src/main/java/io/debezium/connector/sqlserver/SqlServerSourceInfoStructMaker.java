@@ -10,6 +10,7 @@ import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.AbstractSourceInfoStructMaker;
+import io.debezium.relational.TableId;
 
 public class SqlServerSourceInfoStructMaker extends AbstractSourceInfoStructMaker<SourceInfo> {
 
@@ -34,9 +35,10 @@ public class SqlServerSourceInfoStructMaker extends AbstractSourceInfoStructMake
 
     @Override
     public Struct struct(SourceInfo sourceInfo) {
+        final TableId tableId = sourceInfo.getTableId();
         final Struct ret = super.commonStruct(sourceInfo)
-                .put(SourceInfo.SCHEMA_NAME_KEY, sourceInfo.getTableId().schema())
-                .put(SourceInfo.TABLE_NAME_KEY, sourceInfo.getTableId().table());
+                .put(SourceInfo.SCHEMA_NAME_KEY, tableId != null ? tableId.schema() : "")
+                .put(SourceInfo.TABLE_NAME_KEY, tableId != null ? tableId.table() : "");
 
         if (sourceInfo.getChangeLsn() != null && sourceInfo.getChangeLsn().isAvailable()) {
             ret.put(SourceInfo.CHANGE_LSN_KEY, sourceInfo.getChangeLsn().toString());
