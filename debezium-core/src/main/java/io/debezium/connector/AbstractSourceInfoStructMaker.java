@@ -5,6 +5,7 @@
  */
 package io.debezium.connector;
 
+import java.time.Instant;
 import java.util.Objects;
 
 import org.apache.kafka.connect.data.Schema;
@@ -46,12 +47,14 @@ public abstract class AbstractSourceInfoStructMaker<T extends AbstractSourceInfo
     }
 
     protected Struct commonStruct(T sourceInfo) {
+        final Instant timestamp = sourceInfo.timestamp() == null ? Instant.now() : sourceInfo.timestamp();
+        final String database = sourceInfo.database() == null ? "" : sourceInfo.database();
         Struct ret = new Struct(schema())
                 .put(AbstractSourceInfo.DEBEZIUM_VERSION_KEY, version)
                 .put(AbstractSourceInfo.DEBEZIUM_CONNECTOR_KEY, connector)
                 .put(AbstractSourceInfo.SERVER_NAME_KEY, serverName)
-                .put(AbstractSourceInfo.TIMESTAMP_KEY, sourceInfo.timestamp().toEpochMilli())
-                .put(AbstractSourceInfo.DATABASE_NAME_KEY, sourceInfo.database());
+                .put(AbstractSourceInfo.TIMESTAMP_KEY, timestamp.toEpochMilli())
+                .put(AbstractSourceInfo.DATABASE_NAME_KEY, database);
         final SnapshotRecord snapshot = sourceInfo.snapshot();
         if (snapshot != null) {
             snapshot.toSource(ret);
