@@ -22,7 +22,6 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -218,21 +217,18 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                 this.createReplicationSlot();
             }
 
-            final AtomicReference<Lsn> xlogStart = new AtomicReference<>();
             // replication connection does not support parsing of SQL statements so we need to create
             // the connection without executing on connect statements - see JDBC opt preferQueryMode=simple
             pgConnection();
-            execute(statement -> {
-                String identifySystemStatement = "IDENTIFY_SYSTEM";
-                LOGGER.debug("running '{}' to validate replication connection", identifySystemStatement);
-                try (ResultSet rs = statement.executeQuery(identifySystemStatement)) {
-                    if (!rs.next()) {
-                        throw new IllegalStateException("The DB connection is not a valid replication connection");
-                    }
-                    String xlogpos = rs.getString("xlogpos");
-                    LOGGER.debug("received latest xlogpos '{}'", xlogpos);
-                    xlogStart.compareAndSet(null, Lsn.valueOf(xlogpos));
+            final String identifySystemStatement = "IDENTIFY_SYSTEM";
+            LOGGER.debug("running '{}' to validate replication connection", identifySystemStatement);
+            final Lsn xlogStart = queryAndMap(identifySystemStatement, rs -> {
+                if (!rs.next()) {
+                    throw new IllegalStateException("The DB connection is not a valid replication connection");
                 }
+                String xlogpos = rs.getString("xlogpos");
+                LOGGER.debug("received latest xlogpos '{}'", xlogpos);
+                return Lsn.valueOf(xlogpos);
             });
 
             if (slotCreationInfo != null) {
@@ -240,11 +236,11 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
             }
             else if (shouldCreateSlot || !slotInfo.hasValidFlushedLsn()) {
                 // this is a new slot or we weren't able to read a valid flush LSN pos, so we always start from the xlog pos that was reported
-                this.defaultStartingPos = xlogStart.get();
+                this.defaultStartingPos = xlogStart;
             }
             else {
                 Lsn latestFlushedLsn = slotInfo.latestFlushedLsn();
-                this.defaultStartingPos = latestFlushedLsn.compareTo(xlogStart.get()) < 0 ? latestFlushedLsn : xlogStart.get();
+                this.defaultStartingPos = latestFlushedLsn.compareTo(xlogStart) < 0 ? latestFlushedLsn : xlogStart;
                 if (LOGGER.isDebugEnabled()) {
                     LOGGER.debug("found previous flushed LSN '{}'", latestFlushedLsn);
                 }
