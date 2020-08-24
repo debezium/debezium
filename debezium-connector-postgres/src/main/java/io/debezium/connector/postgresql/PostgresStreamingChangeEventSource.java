@@ -123,17 +123,18 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
 
             if (walPosition.searchingEnabled()) {
                 searchWalPosition(context, stream, walPosition);
-                stream.stopKeepAlive();
                 try {
                     connection.commit();
                 }
                 catch (Exception e) {
+                    LOGGER.info("Commit failed while preparing for reconnect", e);
                 }
                 walPosition.enableFiltering();
+                stream.stopKeepAlive();
                 replicationConnection.reconnect();
                 replicationStream.set(replicationConnection.startStreaming(walPosition.getLastEventStoredLsn(), walPosition));
                 stream = this.replicationStream.get();
-                // stream.startKeepAlive(Executors.newSingleThreadExecutor());
+                stream.startKeepAlive(Executors.newSingleThreadExecutor());
             }
             processMessages(context, stream);
         }
