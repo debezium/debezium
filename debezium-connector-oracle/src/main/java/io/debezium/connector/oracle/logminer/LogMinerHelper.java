@@ -6,6 +6,7 @@
 package io.debezium.connector.oracle.logminer;
 
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.sql.CallableStatement;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -381,21 +382,20 @@ public class LogMinerHelper {
 
     /**
      * This method returns all online log files, starting from one which contains offset SCN and ending with one containing largest SCN
-     * 18446744073709551615 on Ora 19c is the max value of the nextScn in the current redo todo replace all Long with BigDecimal for SCN
+     * 18446744073709551615 on Ora 19c is the max value of the nextScn in the current redo todo replace all Long with BigInteger for SCN
      */
     private static Map<String, Long> getLogFilesForOffsetScn(Connection connection, Long offsetScn) throws SQLException {
         Map<String, String> redoLogFiles = getMap(connection, SqlUtils.ALL_ONLINE_LOGS, "-1");
         return redoLogFiles.entrySet().stream()
-                .filter(entry -> new BigDecimal(entry.getValue()).longValue() > offsetScn || new BigDecimal(entry.getValue()).longValue() == -1).collect(Collectors
-                        .toMap(Map.Entry::getKey, e -> new BigDecimal(e.getValue()).longValue() == -1 ? Long.MAX_VALUE : new BigDecimal(e.getValue()).longValue()));
+                .filter(entry -> new BigInteger(entry.getValue()).longValue() > offsetScn || new BigInteger(entry.getValue()).longValue() == -1).collect(Collectors
+                        .toMap(Map.Entry::getKey, e -> new BigInteger(e.getValue()).longValue() == -1 ? Long.MAX_VALUE : new BigInteger(e.getValue()).longValue()));
     }
 
     private static void executeCallableStatement(Connection connection, String statement) throws SQLException {
         Objects.requireNonNull(statement);
-        CallableStatement s;
-        s = connection.prepareCall(statement);
-        s.execute();
-        s.close();
+        try(CallableStatement s = connection.prepareCall(statement)) {
+            s.execute();
+        }
     }
 
     private static Map<String, String> getMap(Connection connection, String query, String nullReplacement) throws SQLException {
