@@ -130,6 +130,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                 }
 
                 // 1. Configure Log Miner to mine online redo logs
+                // todo: DBZ-137 this step can actually be executed outside the loop at start-up.
                 setNlsSessionParameters(jdbcConnection);
                 checkSupplementalLogging(jdbcConnection, connectorConfig.getPdbName());
 

@@ -172,14 +172,12 @@ public class LogMinerHelper {
         String checkQuery = SqlUtils.CURRENT_REDO_LOG_NAME;
 
         Set<String> fileNames = new HashSet<>();
-        PreparedStatement st = connection.prepareStatement(checkQuery);
-        ResultSet result = st.executeQuery();
-        while (result.next()) {
-            fileNames.add(result.getString(1));
-            LOGGER.trace(" Current Redo log fileName: {} ", fileNames);
+        try(PreparedStatement st = connection.prepareStatement(checkQuery); ResultSet result = st.executeQuery()) {
+            while (result.next()) {
+                fileNames.add(result.getString(1));
+                LOGGER.trace(" Current Redo log fileName: {} ", fileNames);
+            }
         }
-        st.close();
-        result.close();
 
         updateRedoLogMetrics(connection, metrics, fileNames);
         return fileNames;
