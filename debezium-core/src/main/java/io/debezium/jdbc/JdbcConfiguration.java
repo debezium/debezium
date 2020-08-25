@@ -5,6 +5,7 @@
  */
 package io.debezium.jdbc;
 
+import java.time.Duration;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -387,8 +388,8 @@ public interface JdbcConfiguration extends Configuration {
      *
      * @return the specified value, or null if there is none.
      */
-    default int getConnectionTimeoutMs() {
-        return getInteger(CONNECTION_TIMEOUT_MS);
+    default Duration getConnectionTimeoutMs() {
+        return Duration.ofMillis(getInteger(CONNECTION_TIMEOUT_MS));
     }
 
     /**
