@@ -112,12 +112,7 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
             LOGGER.info("Snapshot step 3 - Locking captured tables");
 
             if (snapshottingTask.snapshotSchema()) {
-                if (snapshottingTask.skipSnapshotLocking()) {
-                    LOGGER.info("Schema locking was disabled in connector configuration as snapshot.schema.lock is set to false");
-                }
-                else {
-                    lockTablesForSchemaSnapshot(context, ctx);
-                }
+                lockTablesForSchemaSnapshot(context, ctx);
             }
 
             LOGGER.info("Snapshot step 4 - Determining snapshot offset");
@@ -132,9 +127,7 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
                 createSchemaChangeEventsForTables(context, ctx, snapshottingTask);
 
                 // if we've been interrupted before, the TX rollback will cause any locks to be released
-                if (!snapshottingTask.skipSnapshotLocking()) {
-                    releaseSchemaSnapshotLocks(ctx);
-                }
+                releaseSchemaSnapshotLocks(ctx);
             }
             else {
                 LOGGER.info("Snapshot step 6 - Skipping persisting of schema history");
