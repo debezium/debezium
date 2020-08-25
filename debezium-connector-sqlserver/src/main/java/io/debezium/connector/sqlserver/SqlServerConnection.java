@@ -27,7 +27,6 @@ import org.slf4j.LoggerFactory;
 
 import com.microsoft.sqlserver.jdbc.SQLServerDriver;
 
-import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
@@ -116,7 +115,8 @@ public class SqlServerConnection extends JdbcConnection {
      * @param valueConverters {@link SqlServerValueConverters} instance
      * @param classLoaderSupplier class loader supplier
      */
-    public SqlServerConnection(Configuration config, Clock clock, SourceTimestampMode sourceTimestampMode, SqlServerValueConverters valueConverters, Supplier<ClassLoader> classLoaderSupplier) {
+    public SqlServerConnection(Configuration config, Clock clock, SourceTimestampMode sourceTimestampMode, SqlServerValueConverters valueConverters,
+                               Supplier<ClassLoader> classLoaderSupplier) {
         super(config, FACTORY, classLoaderSupplier);
         lsnToInstantCache = new BoundedConcurrentHashMap<>(100);
         realDatabaseName = retrieveRealDatabaseName();
