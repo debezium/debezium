@@ -1899,6 +1899,11 @@ Can be used to avoid snapshot interruptions when starting multiple connectors in
 |Specifies the maximum number of rows that should be read in one go from each table while taking a snapshot.
 The connector will read the table contents in multiple batches of this size. Defaults to 2000.
 
+|[[sqlserver-property-streaming-fetch-size]]<<sqlserver-property-streaming-fetch-size, `streaming.fetch.size`>>
+|
+|Specifies the maximum number of rows that should be read in one go from each change table while streaming.
+The connector will read the change table contents in multiple batches of this size.  Defaults to the JDBC driver's default fetch size.
+
 |[[sqlserver-property-snapshot-lock-timeout-ms]]<<sqlserver-property-snapshot-lock-timeout-ms, `snapshot.lock.timeout.ms`>>
 |`10000`
 |An integer value that specifies the maximum amount of time (in milliseconds) to wait to obtain table locks when performing a snapshot. If table locks cannot be acquired in this time interval, the snapshot will fail (also see {link-prefix}:{link-sqlserver-connector}#sqlserver-snapshots[snapshots]). +

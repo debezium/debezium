@@ -27,6 +27,7 @@ import org.slf4j.LoggerFactory;
 
 import com.microsoft.sqlserver.jdbc.SQLServerDriver;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
@@ -208,7 +209,7 @@ public class SqlServerConnection extends JdbcConnection {
             final Lsn fromLsn = getFromLsn(changeTable, intervalFromLsn);
             LOGGER.trace("Getting changes for table {} in range[{}, {}]", changeTable, fromLsn, intervalToLsn);
             preparers[idx] = statement -> {
-                String fetchSizeStr = config().asProperties().getProperty("incremental.fetch.size");
+                String fetchSizeStr = config().asProperties().getProperty(SqlServerConnectorConfig.STREAMING_FETCH_SIZE.name());
                 if (fetchSizeStr != null && fetchSizeStr.trim().length() > 0) {
                     statement.setFetchSize(Integer.parseInt(fetchSizeStr));
                 }

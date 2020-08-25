@@ -328,6 +328,14 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
             .withDescription(
                     "If true, locks all tables to be captured as we build the schema snapshot. This will prevent from any concurrent schema changes being applied to them.");
 
+    public static final Field STREAMING_FETCH_SIZE = Field.create("streaming.fetch.size")
+            .withDisplayName("Streaming fetch size")
+            .withType(Type.INT)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("The maximum number of records that should be loaded into memory while streaming")
+            .withValidation(Field::isNonNegativeInteger);
+
     private static final ConfigDefinition CONFIG_DEFINITION = HistorizedRelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .name("SQL Server")
             .type(
@@ -341,7 +349,8 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
                     SNAPSHOT_MODE,
                     SNAPSHOT_ISOLATION_MODE,
                     SOURCE_TIMESTAMP_MODE,
-                    SNAPSHOT_SKIP_LOCKS)
+                    SNAPSHOT_SKIP_LOCKS,
+                    STREAMING_FETCH_SIZE)
             .excluding(
                     SCHEMA_WHITELIST,
                     SCHEMA_INCLUDE_LIST,
