@@ -71,7 +71,7 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
             snapshotSchema = false;
         }
 
-        return new SnapshottingTask(snapshotSchema, snapshotData, false);
+        return new SnapshottingTask(snapshotSchema, snapshotData);
     }
 
     @Override
@@ -214,7 +214,7 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
     }
 
     @Override
-    protected Optional<String> getSnapshotSelect(SnapshotContext snapshotContext, TableId tableId) {
+    protected Optional<String> getSnapshotSelect(RelationalSnapshotContext snapshotContext, TableId tableId) {
         return snapshotter.buildSnapshotQuery(tableId);
     }
 
