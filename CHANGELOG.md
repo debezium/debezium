@@ -2,6 +2,35 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 1.2.2.Final
+August 25th, 2020 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12346622)
+
+### New features since 1.2.1.Final
+
+None
+
+
+### Breaking changes since 1.2.1.Final
+
+None
+
+
+### Fixes since 1.2.1.Final
+
+* Adding new table to cdc causes the sqlconnector to fail [DBZ-2303](https://issues.jboss.org/browse/DBZ-2303)
+* LSNs in replication slots are not monotonically increasing [DBZ-2338](https://issues.jboss.org/browse/DBZ-2338)
+* Transaction data loss when process restarted [DBZ-2397](https://issues.jboss.org/browse/DBZ-2397)
+* java.lang.NullPointerException in ByLogicalTableRouter.java [DBZ-2412](https://issues.jboss.org/browse/DBZ-2412)
+
+
+### Other changes since 1.2.1.Final
+
+* Refactor: Add domain type for LSN [DBZ-2200](https://issues.jboss.org/browse/DBZ-2200)
+* Miscellaneous small doc updates for the 1.2 release [DBZ-2399](https://issues.jboss.org/browse/DBZ-2399)
+* Update some doc file names  [DBZ-2402](https://issues.jboss.org/browse/DBZ-2402)
+
+
+
 ## 1.2.1.Final
 July 16th, 2020 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12346704)
 

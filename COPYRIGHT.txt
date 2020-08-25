@@ -79,6 +79,7 @@ Gurnaaz Randhawa
 Grzegorz Kołakowski
 Jan Hendrik Dolling
 Hans-Peter Grahsl
+Hector Ventura Reyes
 Henryk Konsek
 Horia Chiorean
 Hossein Torabi
@@ -93,6 +94,7 @@ Ivan San Jose
 Ivan Trusov
 Ivan Vucina
 Jakub Cechacek
+James Carl
 Jan-Hendrik Dolling
 Jan Uyttenhove
 Jaromir Hamala
