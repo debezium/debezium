@@ -391,7 +391,7 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
      * @param tableId the table to generate a query for
      * @return a valid query string or empty if table will not be snapshotted
      */
-    private Optional<String> determineSnapshotSelect(SnapshotContext snapshotContext, TableId tableId) {
+    private Optional<String> determineSnapshotSelect(RelationalSnapshotContext snapshotContext, TableId tableId) {
         String overriddenSelect = connectorConfig.getSnapshotSelectOverridesByTable().get(tableId);
 
         // try without catalog id, as this might or might not be populated based on the given connector
@@ -408,7 +408,7 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
      * @param overriddenSelect conditional snapshot select
      * @return enhanced select statement. By default it just returns original select statements.
      */
-    protected String enhanceOverriddenSelect(SnapshotContext snapshotContext, String overriddenSelect, TableId tableId) {
+    protected String enhanceOverriddenSelect(RelationalSnapshotContext snapshotContext, String overriddenSelect, TableId tableId) {
         return overriddenSelect;
     }
 
@@ -419,7 +419,7 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
     // TODO Should it be Statement or similar?
     // TODO Handle override option generically; a problem will be how to handle the dynamic part (Oracle's "... as of
     // scn xyz")
-    protected abstract Optional<String> getSnapshotSelect(SnapshotContext snapshotContext, TableId tableId);
+    protected abstract Optional<String> getSnapshotSelect(RelationalSnapshotContext snapshotContext, TableId tableId);
 
     private Column[] getColumnsForResultSet(Table table, ResultSet rs) throws SQLException {
         ResultSetMetaData metaData = rs.getMetaData();
