@@ -31,7 +31,7 @@
         <dependencies>
             <dependency>
                 <groupId>io.quarkus</groupId>
-                <artifactId>quarkus-bom-deployment</artifactId>
+                <artifactId>quarkus-bom</artifactId>
                 <version>${quarkus.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
