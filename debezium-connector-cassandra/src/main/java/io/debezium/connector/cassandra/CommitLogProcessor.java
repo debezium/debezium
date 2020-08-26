@@ -125,10 +125,11 @@ public class CommitLogProcessor extends AbstractProcessor {
                 if (!latestOnly) {
                     queue.enqueue(new EOFEvent(file, false));
                 }
-                LOGGER.error("Error occurred while processing commit log " + file.getName(), e);
                 if (commitLogTransfer.getClass().getName().equals(CassandraConnectorConfig.DEFAULT_COMMIT_LOG_TRANSFER_CLASS)) {
+                    LOGGER.error("Error occurred while processing commit log " + file.getName(), e);
                     throw e;
                 }
+                LOGGER.warn("Error occurred while processing commit log " + file.getName(), e);
             }
         }
         catch (InterruptedException e) {
