@@ -23,6 +23,7 @@ select 1 and (5 between 1 and 10) as c;
 
 select 1 = 16/4 between 3 and 5 as c;
 select 1 = 16/4 between 5 and 6 as c;
+select 17 member of('[23, "abc", 17, "ab", 10]');
 #end
 #begin
 -- Functions test
