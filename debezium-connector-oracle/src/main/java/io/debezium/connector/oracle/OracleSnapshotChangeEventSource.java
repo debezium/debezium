@@ -95,7 +95,7 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
 
                 LOGGER.debug("Locking table {}", tableId);
 
-                statement.execute("LOCK TABLE " + tableId.schema() + "." + tableId.table() + " IN EXCLUSIVE MODE");
+                statement.execute("LOCK TABLE " + quote(tableId) + " IN EXCLUSIVE MODE");
             }
         }
     }
@@ -233,7 +233,7 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
     @Override
     protected Optional<String> getSnapshotSelect(SnapshotContext snapshotContext, TableId tableId) {
         long snapshotOffset = (Long) snapshotContext.offset.getOffset().get("scn");
-        return Optional.of("SELECT * FROM " + tableId.schema() + "." + tableId.table() + " AS OF SCN " + snapshotOffset);
+        return Optional.of("SELECT * FROM " + quote(tableId) + " AS OF SCN " + snapshotOffset);
     }
 
     @Override
@@ -241,6 +241,10 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
         if (connectorConfig.getPdbName() != null) {
             jdbcConnection.resetSessionToCdb();
         }
+    }
+
+    private static String quote(TableId tableId) {
+        return TableId.parse(tableId.schema() + "." + tableId.table(), true).toDoubleQuotedString();
     }
 
     /**

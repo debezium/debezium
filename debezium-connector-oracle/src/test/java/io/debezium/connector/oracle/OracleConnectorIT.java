@@ -31,6 +31,7 @@ import org.junit.Test;
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.OracleConnectorConfig.SnapshotMode;
 import io.debezium.connector.oracle.util.TestHelper;
+import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
@@ -125,6 +126,58 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         setConsumeTimeout(TestHelper.defaultMessageConsumerPollTimeout(), TimeUnit.SECONDS);
         initializeConnectorTestFramework();
         Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
+    }
+
+    @Test
+    @FixFor("DBZ-2452")
+    public void shouldSnapshotAndStreamWithHyphenedTableName() throws Exception {
+        TestHelper.dropTable(connection, "debezium.\"my-table\"");
+
+        String ddl = "create table \"my-table\" (" +
+                " id numeric(9,0) not null, " +
+                " c1 int, " +
+                " c2 varchar(128), " +
+                " primary key (id))";
+
+        connection.execute(ddl);
+        connection.execute("GRANT SELECT ON debezium.\"my-table\" to " + TestHelper.CONNECTOR_USER);
+        connection.execute("ALTER TABLE debezium.\"my-table\" ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
+        connection.execute("INSERT INTO debezium.\"my-table\" VALUES (1, 25, 'Test')");
+        connection.execute("COMMIT");
+
+        Configuration config = TestHelper.defaultConfig()
+                .with(RelationalDatabaseConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.MY-TABLE")
+                .build();
+
+        start(OracleConnector.class, config);
+        assertConnectorIsRunning();
+
+        waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+        connection.execute("INSERT INTO debezium.\"my-table\" VALUES (2, 50, 'Test2')");
+        connection.execute("COMMIT");
+
+        SourceRecords records = consumeRecordsByTopic(2);
+        List<SourceRecord> hyphenatedTableRecords = records.recordsForTopic("server1.DEBEZIUM.my-table");
+        assertThat(hyphenatedTableRecords).hasSize(2);
+
+        // read
+        SourceRecord record1 = hyphenatedTableRecords.get(0);
+        VerifyRecord.isValidRead(record1, "ID", 1);
+        Struct after1 = (Struct) ((Struct) record1.value()).get(Envelope.FieldName.AFTER);
+        assertThat(after1.get("ID")).isEqualTo(1);
+        assertThat(after1.get("C1")).isEqualTo(BigDecimal.valueOf(25L));
+        assertThat(after1.get("C2")).isEqualTo("Test");
+        assertThat(record1.sourceOffset().get(SourceInfo.SNAPSHOT_KEY)).isEqualTo(true);
+        assertThat(record1.sourceOffset().get(SNAPSHOT_COMPLETED_KEY)).isEqualTo(true);
+
+        // insert
+        SourceRecord record2 = hyphenatedTableRecords.get(1);
+        VerifyRecord.isValidInsert(record2, "ID", 2);
+        Struct after2 = (Struct) ((Struct) record2.value()).get(Envelope.FieldName.AFTER);
+        assertThat(after2.get("ID")).isEqualTo(2);
+        assertThat(after2.get("C1")).isEqualTo(BigDecimal.valueOf(50L));
+        assertThat(after2.get("C2")).isEqualTo("Test2");
     }
 
     @Test
