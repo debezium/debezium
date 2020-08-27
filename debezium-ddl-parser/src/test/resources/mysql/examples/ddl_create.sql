@@ -120,6 +120,7 @@ CREATE DEFINER=`ctlplane`@`%` TRIGGER `write_key_add` AFTER INSERT ON `sources` 
 BEGIN
 DECLARE i, n INT DEFAULT 0;
 SET n = JSON_LENGTH(CAST(CONVERT(NEW.write_keys USING utf8mb4) AS JSON));
+SET campaign_id = NEW.write_keys->>'$.campaign_id';
 WHILE i < n DO
 INSERT INTO source_id_write_key_mapping (source_id, write_key)
 VALUES (NEW.id, JSON_UNQUOTE(JSON_EXTRACT(CAST(CONVERT(NEW.write_keys USING utf8mb4) AS JSON), CONCAT('$[', i, ']'))))

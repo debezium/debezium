@@ -2358,6 +2358,7 @@ predicate
     | predicate NOT? LIKE predicate (ESCAPE STRING_LITERAL)?        #likePredicate
     | predicate NOT? regex=(REGEXP | RLIKE) predicate               #regexpPredicate
     | (LOCAL_ID VAR_ASSIGN)? expressionAtom                         #expressionAtomPredicate
+    | predicate MEMBER OF '(' predicate ')'                         #jsonMemberOfPredicate
     ;
 
 
@@ -2377,6 +2378,7 @@ expressionAtom
     | INTERVAL expression intervalType                              #intervalExpressionAtom
     | left=expressionAtom bitOperator right=expressionAtom          #bitExpressionAtom
     | left=expressionAtom mathOperator right=expressionAtom         #mathExpressionAtom
+    | left=expressionAtom jsonOperator right=expressionAtom         #jsonExpressionAtom
     ;
 
 unaryOperator
@@ -2400,6 +2402,9 @@ mathOperator
     : '*' | '/' | '%' | DIV | MOD | '+' | '-' | '--'
     ;
 
+jsonOperator
+    : '-' '>' | '-' '>' '>'
+    ;
 
 //    Simple id sets
 //     (that keyword, which can be id)
@@ -2466,11 +2471,11 @@ keywordsCanBeId
     | MASTER_TLS_VERSION | MASTER_USER
     | MAX_CONNECTIONS_PER_HOUR | MAX_QUERIES_PER_HOUR
     | MAX_ROWS | MAX_SIZE | MAX_UPDATES_PER_HOUR
-    | MAX_USER_CONNECTIONS | MEDIUM | MEMORY | MERGE | MESSAGE_TEXT
+    | MAX_USER_CONNECTIONS | MEDIUM | MEMBER | MEMORY | MERGE | MESSAGE_TEXT
     | MID | MIGRATE
     | MIN_ROWS | MODE | MODIFY | MUTEX | MYSQL | MYSQL_ERRNO | NAME | NAMES
     | NCHAR | NEVER | NEXT | NO | NODEGROUP | NONE | NUMBER | OFFLINE | OFFSET
-    | OJ | OLD_PASSWORD | ONE | ONLINE | ONLY | OPEN | OPTIMIZER_COSTS
+    | OF | OJ | OLD_PASSWORD | ONE | ONLINE | ONLY | OPEN | OPTIMIZER_COSTS
     | OPTIONS | OWNER | PACK_KEYS | PAGE | PARSER | PARTIAL
     | PARTITIONING | PARTITIONS | PASSWORD | PHASE | PLUGINS
     | PLUGIN_DIR | PLUGIN | PORT | PRECEDES | PREPARE | PRESERVE | PREV
