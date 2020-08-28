@@ -566,7 +566,9 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
          * Determine the struct hosting the given unqualified field.
          */
         private static String determineStruct(String simpleFieldName) {
-            if (simpleFieldName.equals(Envelope.FieldName.OPERATION) || simpleFieldName.equals(Envelope.FieldName.TIMESTAMP)) {
+            if (simpleFieldName.equals(Envelope.FieldName.OPERATION) ||
+                    simpleFieldName.equals(Envelope.FieldName.TIMESTAMP) ||
+                    simpleFieldName.equals("patch")) {
                 return null;
             }
             else if (simpleFieldName.equals(TransactionMonitor.DEBEZIUM_TRANSACTION_ID_KEY) ||
