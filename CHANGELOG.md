@@ -2,6 +2,46 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 1.3.0.Beta1
+August 28th, 2020 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12346874)
+
+### New features since 1.3.0.Alpha1
+
+* Improve error handling in Cassandra Connector [DBZ-2410](https://issues.jboss.org/browse/DBZ-2410)
+* Add few MySql8 privileges support [DBZ-2413](https://issues.jboss.org/browse/DBZ-2413)
+* Add support for MySql Dynamic Privileges [DBZ-2415](https://issues.jboss.org/browse/DBZ-2415)
+* Support for MySql8 invisible / visible index [DBZ-2425](https://issues.jboss.org/browse/DBZ-2425)
+* Hitting "Unable to unregister the MBean" when stopping an embedded engine [DBZ-2427](https://issues.jboss.org/browse/DBZ-2427)
+
+
+### Breaking changes since 1.3.0.Alpha1
+
+* Avoid divisive language in docs and option names in core connectors [DBZ-2171](https://issues.jboss.org/browse/DBZ-2171)
+
+
+### Fixes since 1.3.0.Alpha1
+
+* Adding new table to cdc causes the sqlconnector to fail [DBZ-2303](https://issues.jboss.org/browse/DBZ-2303)
+* LSNs in replication slots are not monotonically increasing [DBZ-2338](https://issues.jboss.org/browse/DBZ-2338)
+* Transaction data loss when process restarted [DBZ-2397](https://issues.jboss.org/browse/DBZ-2397)
+* java.lang.NullPointerException in ByLogicalTableRouter.java [DBZ-2412](https://issues.jboss.org/browse/DBZ-2412)
+* Snapshot fails if table or schema contain hyphens [DBZ-2452](https://issues.jboss.org/browse/DBZ-2452)
+
+
+### Other changes since 1.3.0.Alpha1
+
+* Upgrade OpenShift guide [DBZ-1908](https://issues.jboss.org/browse/DBZ-1908)
+* Refactor: Add domain type for LSN [DBZ-2200](https://issues.jboss.org/browse/DBZ-2200)
+* Entries in metrics tables should be linkable [DBZ-2375](https://issues.jboss.org/browse/DBZ-2375)
+* Update some doc file names  [DBZ-2402](https://issues.jboss.org/browse/DBZ-2402)
+* Asciidoc throw warnings while building documentation [DBZ-2408](https://issues.jboss.org/browse/DBZ-2408)
+* Upgrade to Kafka 2.6.0 [DBZ-2411](https://issues.jboss.org/browse/DBZ-2411)
+* Confusing way of reporting incorrect DB credentials [DBZ-2418](https://issues.jboss.org/browse/DBZ-2418)
+* Default value for database port isn't honoured [DBZ-2423](https://issues.jboss.org/browse/DBZ-2423)
+* Update to Quarkus 1.7.1.Final [DBZ-2454](https://issues.jboss.org/browse/DBZ-2454)
+
+
+
 ## 1.3.0.Alpha1
 August 6th, 2020 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12345155)
 
