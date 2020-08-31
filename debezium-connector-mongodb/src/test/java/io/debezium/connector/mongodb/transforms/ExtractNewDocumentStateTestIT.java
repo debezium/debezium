@@ -28,6 +28,7 @@ import org.bson.types.ObjectId;
 import org.fest.assertions.Assertions;
 import org.junit.Test;
 
+import io.debezium.connector.mongodb.TestHelper;
 import io.debezium.data.Envelope;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.data.SchemaUtil;
@@ -1434,7 +1435,8 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         assertThat(value.schema()).isSameAs(transformed.valueSchema());
         assertThat(value.get("id")).isEqualTo(objId.toString());
         assertThat(value.get("a")).isEqualTo(22);
-        assertThat(value.get("__patch")).isEqualTo("{\"$v\": 1,\"$set\": {\"a\": 22}}");
+        String valueJson = TestHelper.getDocumentWithoutLanguageVersion(value.getString("__patch")).toJson();
+        assertThat(valueJson).isEqualTo("{\"$set\": {\"a\": 22}}");
 
         assertThat(value.schema().field("id").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
         assertThat(value.schema().field("a").schema()).isEqualTo(SchemaBuilder.OPTIONAL_INT32_SCHEMA);
