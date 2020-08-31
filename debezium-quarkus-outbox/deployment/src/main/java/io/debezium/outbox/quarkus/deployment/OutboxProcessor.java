@@ -25,14 +25,10 @@ import org.jboss.logging.Logger;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import io.debezium.outbox.quarkus.ExportedEvent;
-import io.debezium.outbox.quarkus.internal.DebeziumOutboxRecorder;
-import io.debezium.outbox.quarkus.internal.DebeziumOutboxRuntimeConfig;
 import io.debezium.outbox.quarkus.internal.EventDispatcher;
 import io.quarkus.arc.deployment.AdditionalBeanBuildItem;
 import io.quarkus.deployment.annotations.BuildProducer;
 import io.quarkus.deployment.annotations.BuildStep;
-import io.quarkus.deployment.annotations.ExecutionTime;
-import io.quarkus.deployment.annotations.Record;
 import io.quarkus.deployment.builditem.CombinedIndexBuildItem;
 import io.quarkus.deployment.builditem.FeatureBuildItem;
 import io.quarkus.deployment.builditem.GeneratedResourceBuildItem;
@@ -129,12 +125,6 @@ public final class OutboxProcessor {
     }
 
     @BuildStep
-    @Record(ExecutionTime.RUNTIME_INIT)
-    void configureconfigureDebeziumOutbox(DebeziumOutboxRecorder recorder, DebeziumOutboxRuntimeConfig config) {
-        recorder.configureRuntimeProperties(config);
-    }
-
-    @BuildStep(loadsApplicationClasses = true)
     public void build(OutboxEventEntityBuildItem outboxBuildItem,
                       BuildProducer<AdditionalBeanBuildItem> additionalBeanProducer,
                       BuildProducer<GeneratedResourceBuildItem> generatedResourcesProducer,
