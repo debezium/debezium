@@ -1491,7 +1491,7 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
     private void assertDocumentContainsFieldError(String fieldName) {
         final String message = "IllegalArgumentException: Document already contains field : " + fieldName;
         try {
-            Awaitility.await().atMost(Duration.ofSeconds(30))
+            Awaitility.await().atMost(Duration.ofSeconds(TestHelper.waitTimeForRecords() * 15))
                     .until(() -> logInterceptor.containsStacktraceElement(message));
         }
         catch (ConditionTimeoutException e) {
