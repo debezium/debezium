@@ -53,6 +53,7 @@ import okhttp3.Response;
  */
 public class KafkaConnectController {
     private static final Logger LOGGER = LoggerFactory.getLogger(KafkaConnectController.class);
+    private static final int METRICS_PORT = 9404;
 
     private final OpenShiftClient ocp;
     private final OkHttpClient http;
@@ -65,6 +66,7 @@ public class KafkaConnectController {
     private KafkaConnect kafkaConnect;
     private Route apiRoute;
     private Route metricsRoute;
+    private Service metricsService;
 
     public KafkaConnectController(KafkaConnect kafkaConnect, OpenShiftClient ocp, OkHttpClient http, boolean useConnectorResources) {
         this.kafkaConnect = kafkaConnect;
@@ -155,12 +157,16 @@ public class KafkaConnectController {
      */
     public Route exposeMetrics() {
         LOGGER.info("Exposing KafkaConnect metrics");
-        String name = kafkaConnect.getMetadata().getName() + "-connect-metrics";
-        String nameSvc = kafkaConnect.getMetadata().getName() + "-connect-api";
-        Service service = ocp.services().inNamespace(project).withName(nameSvc).get();
 
-        metricsRoute = ocpUtils
-                .createRoute(project, name, nameSvc, "tcp-prometheus", service.getMetadata().getLabels());
+        String namePort = "tcp-prometheus";
+        String name = kafkaConnect.getMetadata().getName() + "-connect-metrics";
+        String nameApiSvc = kafkaConnect.getMetadata().getName() + "-connect-api";
+        Service apiService = ocp.services().inNamespace(project).withName(nameApiSvc).get();
+        Map<String, String> selector = apiService.getSpec().getSelector();
+        Map<String, String> labels = apiService.getMetadata().getLabels();
+
+        metricsService = ocpUtils.createService(project, name, namePort, METRICS_PORT, selector, labels);
+        metricsRoute = ocpUtils.createRoute(project, name, name, namePort, labels);
         httpUtils.awaitApi(getMetricsURL());
 
         return metricsRoute;
