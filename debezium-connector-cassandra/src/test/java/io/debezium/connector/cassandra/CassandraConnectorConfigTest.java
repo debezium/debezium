@@ -19,6 +19,7 @@ import io.confluent.kafka.serializers.AbstractKafkaAvroSerDeConfig;
 import io.debezium.config.Configuration;
 
 public class CassandraConnectorConfigTest {
+
     @Test
     public void testConfigs() {
         String connectorName = "test_connector";
@@ -108,9 +109,12 @@ public class CassandraConnectorConfigTest {
         config = buildTaskConfig(CassandraConnectorConfig.SNAPSHOT_POLL_INTERVAL_MS.name(), String.valueOf(snapshotPollIntervalMs));
         assertEquals(snapshotPollIntervalMs, config.snapshotPollIntervalMs().toMillis());
 
-        String fieldBlacklist = "keyspace1.table1.column1,keyspace1.table1.column2";
-        config = buildTaskConfig(CassandraConnectorConfig.FIELD_BLACKLIST.name(), fieldBlacklist);
-        assertArrayEquals(fieldBlacklist.split(","), config.fieldBlacklist());
+        String fieldExcludeList = "keyspace1.table1.column1,keyspace1.table1.column2";
+        config = buildTaskConfig(CassandraConnectorConfig.FIELD_EXCLUDE_LIST.name(), fieldExcludeList);
+        assertArrayEquals(fieldExcludeList.split(","), config.fieldExcludeList());
+
+        config = buildTaskConfig(CassandraConnectorConfig.FIELD_BLACKLIST.name(), fieldExcludeList);
+        assertArrayEquals(fieldExcludeList.split(","), config.fieldExcludeList());
 
         config = buildTaskConfig(CassandraConnectorConfig.TOMBSTONES_ON_DELETE.name(), "true");
         assertTrue(config.tombstonesOnDelete());
@@ -143,7 +147,6 @@ public class CassandraConnectorConfigTest {
         String valueConverterClass = "org.apache.kafka.connect.json.JsonConverter";
         config = buildTaskConfig(CassandraConnectorConfig.VALUE_CONVERTER_CLASS_CONFIG.name(), valueConverterClass);
         assertEquals(valueConverterClass, config.getValueConverter().getClass().getName());
-
     }
 
     private CassandraConnectorConfig buildTaskConfigs(HashMap<String, Object> map) {

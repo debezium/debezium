@@ -24,7 +24,6 @@ import io.debezium.connector.oracle.OracleConnectorConfig.SnapshotMode;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.VerifyRecord;
 import io.debezium.embedded.AbstractConnectorTest;
-import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.util.Collect;
 import io.debezium.util.Testing;
 
@@ -74,7 +73,7 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
     @Test
     public void transactionMetadata() throws Exception {
         Configuration config = TestHelper.defaultConfig()
-                .with(RelationalDatabaseConnectorConfig.TABLE_WHITELIST, "DEBEZIUM\\.CUSTOMER")
+                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.CUSTOMER")
                 .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
                 .with(OracleConnectorConfig.PROVIDE_TRANSACTION_METADATA, true)
                 .build();

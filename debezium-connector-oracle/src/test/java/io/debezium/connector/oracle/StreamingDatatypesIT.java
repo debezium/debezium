@@ -41,12 +41,12 @@ public class StreamingDatatypesIT extends AbstractOracleDatatypesTest {
     }
 
     protected Builder connectorConfig() {
-        String whitelistedTables = getAllTables().stream()
+        String tableIncludeList = getAllTables().stream()
                 .map(t -> t.replaceAll("\\.", "\\\\."))
                 .collect(Collectors.joining(","));
 
         return TestHelper.defaultConfig()
-                .with(OracleConnectorConfig.TABLE_WHITELIST, whitelistedTables)
+                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, tableIncludeList)
                 .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY);
     }
 

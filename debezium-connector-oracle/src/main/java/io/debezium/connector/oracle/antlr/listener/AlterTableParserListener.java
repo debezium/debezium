@@ -54,7 +54,7 @@ public class AlterTableParserListener extends BaseParserListener {
     @Override
     public void enterAlter_table(PlSqlParser.Alter_tableContext ctx) {
         TableId tableId = new TableId(catalogName, schemaName, getTableName(ctx.tableview_name()));
-        // todo filter non-whitelisted tables
+        // todo filter tables not in table.include.list
         tableEditor = parser.databaseTables().editTable(tableId);
         if (tableEditor == null) {
             throw new ParsingException(null, "Trying to alter table " + tableId.toString()

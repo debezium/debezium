@@ -22,7 +22,6 @@ import io.debezium.connector.oracle.OracleConnectorConfig.SnapshotMode;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
-import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.util.Testing;
 
 /**
@@ -77,8 +76,8 @@ public class SchemaHistoryTopicIT extends AbstractConnectorTest {
         final int ID_START_1 = 10;
         final Configuration config = TestHelper.defaultConfig()
                 .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
-                .with(RelationalDatabaseConnectorConfig.TABLE_WHITELIST, "DEBEZIUM\\.TABLE[ABC]")
-                .with(RelationalDatabaseConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.TABLE[ABC]")
+                .with(OracleConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
                 .build();
 
         for (int i = 0; i < RECORDS_PER_TABLE; i++) {

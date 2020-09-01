@@ -23,6 +23,19 @@ Once connectors are deemed mature enough, they may be promoted into the Debezium
 
 Please see the [README.md](https://github.com/debezium/debezium#building-debezium) in the main repository for general instructions on building Debezium from source (prerequisites, usage of Docker etc).
 
+### Building the Cassandra connector
+
+In order to build the Cassandra connector you'll need JDK <= 9 because Cassandra
+doesn't support Java versions above Java 9.
+
+Then the Cassandra connector can be built like so:
+
+    $ mvn clean install -am -pl debezium-connector-cassandra
+    
+If you have multiple Java installation on your machine you can select the correct version by setting JAVA_HOME env var:
+
+    $ JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64 mvn clean install -am -pl debezium-connector-cassandra
+
 ### Building and testing the Db2 connector
 
 Running `mvn install` will compile all code and run the unit and integration tests. If there are any compile problems or any of the unit tests fail, the build will stop immediately. Otherwise, the command will continue to create the module's artifacts, create the Docker image with DB2 and custom scripts, start the Docker container, run the integration tests, stop the container (even if there are integration test failures), and run checkstyle on the code. If there are still no problems, the build will then install the module's artifacts into the local Maven repository.
@@ -69,10 +82,10 @@ making these parameters potentially obsolete.
 ```
 
 By default, Debezium will ignore some admin tables in Oracle 12c.
-But as those tables are different in Oracle 11g, Debezium will report an error on those tables. So when use Debezium on Oracle 11g, use table white list (remember to use lower case):
+But as those tables are different in Oracle 11g, Debezium will report an error on those tables. So when use Debezium on Oracle 11g, use `table.include.list` (remember to use lower case):
 
 ```json
-"table.whitelist":"orcl\\.debezium\\.(.*)"
+"table.include.list": "orcl\\.debezium\\.(.*)"
 ```
 
 Making this configuration obsolete is tracked under [DBZ-1045](https://issues.jboss.org/browse/DBZ-1045).

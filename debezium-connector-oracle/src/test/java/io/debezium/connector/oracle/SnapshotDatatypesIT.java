@@ -56,10 +56,10 @@ public class SnapshotDatatypesIT extends AbstractOracleDatatypesTest {
 
     protected Builder connectorConfig() {
         return TestHelper.defaultConfig()
-                .with(OracleConnectorConfig.TABLE_WHITELIST, getTableWhitelist());
+                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, getTableIncludeList());
     }
 
-    private String getTableWhitelist() {
+    private String getTableIncludeList() {
         switch (name.getMethodName()) {
             case "stringTypes":
                 return "debezium.type_string";

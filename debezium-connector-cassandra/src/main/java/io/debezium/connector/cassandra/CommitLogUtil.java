@@ -53,7 +53,7 @@ public final class CommitLogUtil {
         try {
             Matcher filenameMatcher = FILENAME_REGEX_PATTERN.matcher(file.getName());
             if (!filenameMatcher.matches()) {
-                throw new IllegalArgumentException("Cannot delete file beca use " + file.getName() + " does not appear to be a CommitLog");
+                throw new IllegalArgumentException("Cannot delete file because " + file.getName() + " does not appear to be a CommitLog");
             }
 
             Files.delete(file.toPath());

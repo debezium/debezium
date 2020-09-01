@@ -16,7 +16,6 @@ import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnectionFactory;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.jdbc.JdbcConfiguration;
-import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.history.FileDatabaseHistory;
 import io.debezium.util.Testing;
 
@@ -68,12 +67,12 @@ public class TestHelper {
         jdbcConfiguration.forEach(
                 (field, value) -> builder.with(OracleConnectorConfig.DATABASE_CONFIG_PREFIX + field, value));
 
-        return builder.with(RelationalDatabaseConnectorConfig.SERVER_NAME, SERVER_NAME)
+        return builder.with(OracleConnectorConfig.SERVER_NAME, SERVER_NAME)
                 .with(OracleConnectorConfig.PDB_NAME, "ORCLPDB1")
                 .with(OracleConnectorConfig.XSTREAM_SERVER_NAME, "dbzxout")
                 .with(OracleConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
                 .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
-                .with(RelationalDatabaseConnectorConfig.INCLUDE_SCHEMA_CHANGES, false);
+                .with(OracleConnectorConfig.INCLUDE_SCHEMA_CHANGES, false);
     }
 
     public static OracleConnection defaultConnection() {
@@ -181,10 +180,10 @@ public class TestHelper {
 
     public static void dropTable(OracleConnection connection, String table) {
         try {
-            connection.execute("drop table " + table);
+            connection.execute("DROP TABLE " + table);
         }
         catch (SQLException e) {
-            if (!e.getMessage().contains("table or view does not exist")) {
+            if (!e.getMessage().contains("ORA-00942") || 942 != e.getErrorCode()) {
                 throw new RuntimeException(e);
             }
         }

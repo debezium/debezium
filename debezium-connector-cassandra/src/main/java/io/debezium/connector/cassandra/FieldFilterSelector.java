@@ -12,10 +12,10 @@ import java.util.List;
  * This field filter selector is designed to determine the filter for excluding fields from a table.
  */
 public class FieldFilterSelector {
-    private final String[] blacklistFields;
+    private final String[] fieldExcludeList;
 
-    FieldFilterSelector(String[] blacklistFields) {
-        this.blacklistFields = blacklistFields.clone();
+    FieldFilterSelector(String[] fieldExcludeList) {
+        this.fieldExcludeList = fieldExcludeList.clone();
     }
 
     public interface FieldFilter {
@@ -27,7 +27,7 @@ public class FieldFilterSelector {
      */
     public FieldFilter selectFieldFilter(KeyspaceTable keyspaceTable) {
         List<Field> filteredFields = new ArrayList<>();
-        for (String column : blacklistFields) {
+        for (String column : fieldExcludeList) {
             Field field = new Field(column);
             if (field.keyspaceTable.equals(keyspaceTable)) {
                 filteredFields.add(field);
@@ -58,8 +58,8 @@ public class FieldFilterSelector {
         final KeyspaceTable keyspaceTable;
         final String column;
 
-        private Field(String fieldBlacklist) {
-            String[] elements = fieldBlacklist.split("\\.", 3);
+        private Field(String fieldExcludeList) {
+            String[] elements = fieldExcludeList.split("\\.", 3);
             String keyspace = elements[0];
             String table = elements[1];
             keyspaceTable = new KeyspaceTable(keyspace, table);

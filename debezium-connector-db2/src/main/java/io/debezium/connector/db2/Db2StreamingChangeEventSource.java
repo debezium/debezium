@@ -28,6 +28,7 @@ import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.ChangeTableResultSet;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.relational.TableId;
+import io.debezium.schema.DatabaseSchema;
 import io.debezium.schema.SchemaChangeEvent.SchemaChangeEventType;
 import io.debezium.util.Clock;
 import io.debezium.util.Metronome;
@@ -285,25 +286,24 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
             LOGGER.warn("No table has enabled CDC or security constraints prevents getting the list of change tables");
         }
 
-        final Map<TableId, List<Db2ChangeTable>> whitelistedCdcEnabledTables = cdcEnabledTables.stream()
+        final Map<TableId, List<Db2ChangeTable>> includedAndCdcEnabledTables = cdcEnabledTables.stream()
                 .filter(changeTable -> {
                     if (connectorConfig.getTableFilters().dataCollectionFilter().isIncluded(changeTable.getSourceTableId())) {
                         return true;
                     }
                     else {
-                        LOGGER.info("CDC is enabled for table {} but the table is not whitelisted by connector", changeTable);
+                        LOGGER.info("CDC is enabled for table {} but the table is not included by connector", changeTable);
                         return false;
                     }
                 })
                 .collect(Collectors.groupingBy(x -> x.getSourceTableId()));
 
-        if (whitelistedCdcEnabledTables.isEmpty()) {
-            LOGGER.warn(
-                    "No whitelisted table has enabled CDC, whitelisted table list does not contain any table with CDC enabled or no table match the white/blacklist filter(s)");
+        if (includedAndCdcEnabledTables.isEmpty()) {
+            LOGGER.warn(DatabaseSchema.NO_CAPTURED_DATA_COLLECTIONS_WARNING);
         }
 
         final List<Db2ChangeTable> tables = new ArrayList<>();
-        for (List<Db2ChangeTable> captures : whitelistedCdcEnabledTables.values()) {
+        for (List<Db2ChangeTable> captures : includedAndCdcEnabledTables.values()) {
             Db2ChangeTable currentTable = captures.get(0);
             if (captures.size() > 1) {
                 Db2ChangeTable futureTable;

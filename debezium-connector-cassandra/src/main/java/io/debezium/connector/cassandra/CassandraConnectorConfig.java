@@ -13,7 +13,9 @@ import java.util.Properties;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
+import org.apache.kafka.common.config.ConfigDef.Width;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.apache.kafka.connect.storage.Converter;
 
@@ -241,7 +243,25 @@ public class CassandraConnectorConfig extends CommonConnectorConfig {
      * A comma-separated list of fully-qualified names of fields that should be excluded from change event message values.
      * Fully-qualified names for fields are in the form {@code <keyspace_name>.<field_name>.<nested_field_name>}.
      */
-    public static final Field FIELD_BLACKLIST = Field.create("field.blacklist").withType(Type.STRING);
+    public static final Field FIELD_EXCLUDE_LIST = Field.create("field.exclude.list")
+            .withDisplayName("Exclude Fields")
+            .withType(Type.STRING)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.MEDIUM)
+            .withInvisibleRecommender()
+            .withDescription("Regular expressions matching columns to include in change events");
+
+    /**
+     * Old, backwards-compatible "blacklist" property.
+     */
+    @Deprecated
+    public static final Field FIELD_BLACKLIST = Field.create("field.blacklist")
+            .withDisplayName("Deprecated: Exclude Fields")
+            .withType(Type.STRING)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.LOW)
+            .withInvisibleRecommender()
+            .withDescription("Regular expressions matching columns to include in change events (deprecated, use \"" + FIELD_EXCLUDE_LIST.name() + "\" instead)");
 
     /**
      * Instead of parsing commit logs from CDC directory, this will look for the commit log with the
@@ -413,12 +433,12 @@ public class CassandraConnectorConfig extends CommonConnectorConfig {
         return Duration.ofMillis(ms);
     }
 
-    public String[] fieldBlacklist() {
-        String hosts = this.getConfig().getString(FIELD_BLACKLIST);
-        if (hosts == null) {
+    public String[] fieldExcludeList() {
+        String fieldExcludeList = this.getConfig().getFallbackStringProperty(FIELD_EXCLUDE_LIST, FIELD_BLACKLIST);
+        if (fieldExcludeList == null) {
             return new String[0];
         }
-        return hosts.split(",");
+        return fieldExcludeList.split(",");
     }
 
     /**

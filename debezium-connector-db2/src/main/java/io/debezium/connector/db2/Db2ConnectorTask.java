@@ -26,7 +26,6 @@ import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.metrics.DefaultChangeEventSourceMetricsFactory;
 import io.debezium.pipeline.spi.OffsetContext;
-import io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
 import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.schema.TopicSelector;
@@ -70,7 +69,7 @@ public class Db2ConnectorTask extends BaseSourceTask {
                 .build();
 
         final Configuration jdbcConfig = config.filter(
-                x -> !(x.startsWith(DatabaseHistory.CONFIGURATION_FIELD_PREFIX_STRING) || x.equals(HistorizedRelationalDatabaseConnectorConfig.DATABASE_HISTORY.name())))
+                x -> !(x.startsWith(DatabaseHistory.CONFIGURATION_FIELD_PREFIX_STRING) || x.equals(Db2ConnectorConfig.DATABASE_HISTORY.name())))
                 .subset("database.", true);
         dataConnection = new Db2Connection(jdbcConfig);
         metadataConnection = new Db2Connection(jdbcConfig);

@@ -23,7 +23,6 @@ import io.debezium.connector.oracle.OracleConnectorConfig.SnapshotMode;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.VerifyRecord;
 import io.debezium.embedded.AbstractConnectorTest;
-import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.util.Testing;
 
 /**
@@ -59,7 +58,7 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
         try {
             adminConnection.execute("DROP USER debezium2 CASCADE");
         }
-        catch (SQLException e) {
+        catch (SQLException ignored) {
         }
 
         adminConnection.execute(
@@ -69,30 +68,30 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
                 "GRANT CREATE TABLE TO debezium2",
                 "GRANT CREATE SEQUENCE TO debezium2",
                 "ALTER USER debezium2 QUOTA 100M ON users",
-                "create table debezium2.table2 (id numeric(9,0) not null,name varchar2(1000),primary key (id))",
-                "create table debezium2.nopk (id numeric(9,0) not null)",
-                "GRANT ALL PRIVILEGES ON debezium2.table2 to debezium",
-                "GRANT SELECT ON debezium2.table2 to " + TestHelper.CONNECTOR_USER,
-                "GRANT SELECT ON debezium2.nopk to " + TestHelper.CONNECTOR_USER,
+                "CREATE TABLE debezium2.table2 (id NUMERIC(9,0) NOT NULL, name VARCHAR2(1000), PRIMARY KEY (id))",
+                "CREATE TABLE debezium2.nopk (id NUMERIC(9,0) NOT NULL)",
+                "GRANT ALL PRIVILEGES ON debezium2.table2 TO debezium",
+                "GRANT SELECT ON debezium2.table2 TO " + TestHelper.CONNECTOR_USER,
+                "GRANT SELECT ON debezium2.nopk TO " + TestHelper.CONNECTOR_USER,
                 "ALTER TABLE debezium2.table2 ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
-        String ddl = "create table debezium.table1 (" +
-                "  id numeric(9,0) not null, " +
-                "  name varchar2(1000), " +
-                "  primary key (id)" +
+        String ddl = "CREATE TABLE debezium.table1 (" +
+                "  id NUMERIC(9,0) NOT NULL, " +
+                "  name VARCHAR2(1000), " +
+                "  PRIMARY KEY (id)" +
                 ")";
 
         connection.execute(ddl);
-        connection.execute("GRANT SELECT ON debezium.table1 to " + TestHelper.CONNECTOR_USER);
+        connection.execute("GRANT SELECT ON debezium.table1 TO " + TestHelper.CONNECTOR_USER);
         connection.execute("ALTER TABLE debezium.table1 ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
 
-        ddl = "create table debezium.table2 (" +
-                "  id numeric(9,0) not null, " +
-                "  name varchar2(1000), " +
-                "  primary key (id)" +
+        ddl = "CREATE TABLE debezium.table2 (" +
+                "  id NUMERIC(9,0) NOT NULL, " +
+                "  name VARCHAR2(1000), " +
+                "  PRIMARY KEY (id)" +
                 ")";
 
         connection.execute(ddl);
-        connection.execute("GRANT SELECT ON debezium.table2 to  " + TestHelper.CONNECTOR_USER);
+        connection.execute("GRANT SELECT ON debezium.table2 TO  " + TestHelper.CONNECTOR_USER);
         connection.execute("ALTER TABLE debezium.table2 ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
 
         initializeConnectorTestFramework();
@@ -100,10 +99,10 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
     }
 
     @Test
-    public void shouldApplyWhitelistConfiguration() throws Exception {
+    public void shouldApplyTableWhitelistConfiguration() throws Exception {
         Configuration config = TestHelper.defaultConfig()
                 .with(
-                        RelationalDatabaseConnectorConfig.TABLE_WHITELIST,
+                        OracleConnectorConfig.TABLE_WHITELIST,
                         "DEBEZIUM2\\.TABLE2,DEBEZIUM\\.TABLE1,DEBEZIUM\\.TABLE3")
                 .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_SCHEMA_ONLY)
                 .build();
@@ -117,14 +116,14 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
         connection.execute("INSERT INTO debezium.table2 VALUES (2, 'Text-2')");
         connection.execute("COMMIT");
 
-        String ddl = "create table debezium.table3 (" +
-                "  id numeric(9, 0) not null, " +
-                "  name varchar2(1000), " +
-                "  primary key (id)" +
+        String ddl = "CREATE TABLE debezium.table3 (" +
+                "  id NUMERIC(9, 0) NOT NULL, " +
+                "  name VARCHAR2(1000), " +
+                "  PRIMARY KEY (id)" +
                 ")";
 
         connection.execute(ddl);
-        connection.execute("GRANT SELECT ON debezium.table3 to c##xstrm");
+        connection.execute("GRANT SELECT ON debezium.table3 TO c##xstrm");
 
         connection.execute("INSERT INTO debezium.table3 VALUES (3, 'Text-3')");
         connection.execute("COMMIT");
@@ -152,10 +151,62 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
     }
 
     @Test
-    public void shouldApplyBlacklistConfiguration() throws Exception {
+    public void shouldApplyTableIncludeListConfiguration() throws Exception {
         Configuration config = TestHelper.defaultConfig()
                 .with(
-                        RelationalDatabaseConnectorConfig.TABLE_BLACKLIST,
+                        OracleConnectorConfig.TABLE_INCLUDE_LIST,
+                        "DEBEZIUM2\\.TABLE2,DEBEZIUM\\.TABLE1,DEBEZIUM\\.TABLE3")
+                .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_SCHEMA_ONLY)
+                .build();
+
+        start(OracleConnector.class, config);
+        assertConnectorIsRunning();
+
+        waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+        connection.execute("INSERT INTO debezium.table1 VALUES (1, 'Text-1')");
+        connection.execute("INSERT INTO debezium.table2 VALUES (2, 'Text-2')");
+        connection.execute("COMMIT");
+
+        String ddl = "CREATE TABLE debezium.table3 (" +
+                "  id NUMERIC(9, 0) NOT NULL, " +
+                "  name VARCHAR2(1000), " +
+                "  PRIMARY KEY (id)" +
+                ")";
+
+        connection.execute(ddl);
+        connection.execute("GRANT SELECT ON debezium.table3 TO c##xstrm");
+
+        connection.execute("INSERT INTO debezium.table3 VALUES (3, 'Text-3')");
+        connection.execute("COMMIT");
+
+        SourceRecords records = consumeRecordsByTopic(2);
+
+        List<SourceRecord> testTableRecords = records.recordsForTopic("server1.DEBEZIUM.TABLE1");
+        assertThat(testTableRecords).hasSize(1);
+
+        VerifyRecord.isValidInsert(testTableRecords.get(0), "ID", 1);
+        Struct after = (Struct) ((Struct) testTableRecords.get(0).value()).get("after");
+        assertThat(after.get("ID")).isEqualTo(1);
+        assertThat(after.get("NAME")).isEqualTo("Text-1");
+
+        testTableRecords = records.recordsForTopic("server1.DEBEZIUM.TABLE2");
+        assertThat(testTableRecords).isNull();
+
+        testTableRecords = records.recordsForTopic("server1.DEBEZIUM.TABLE3");
+        assertThat(testTableRecords).hasSize(1);
+
+        VerifyRecord.isValidInsert(testTableRecords.get(0), "ID", 3);
+        after = (Struct) ((Struct) testTableRecords.get(0).value()).get("after");
+        assertThat(after.get("ID")).isEqualTo(3);
+        assertThat(after.get("NAME")).isEqualTo("Text-3");
+    }
+
+    @Test
+    public void shouldApplyTableBlacklistConfiguration() throws Exception {
+        Configuration config = TestHelper.defaultConfig()
+                .with(
+                        OracleConnectorConfig.TABLE_BLACKLIST,
                         "DEBEZIUM\\.TABLE2,DEBEZIUM\\.CUSTOMER.*")
                 .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_SCHEMA_ONLY)
                 .build();
@@ -169,14 +220,66 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
         connection.execute("INSERT INTO debezium.table2 VALUES (2, 'Text-2')");
         connection.execute("COMMIT");
 
-        String ddl = "create table debezium.table3 (" +
-                "  id numeric(9,0) not null, " +
-                "  name varchar2(1000), " +
-                "  primary key (id)" +
+        String ddl = "CREATE TABLE debezium.table3 (" +
+                "  id NUMERIC(9,0) NOT NULL, " +
+                "  name VARCHAR2(1000), " +
+                "  PRIMARY KEY (id)" +
                 ")";
 
         connection.execute(ddl);
-        connection.execute("GRANT SELECT ON debezium.table3 to  " + TestHelper.CONNECTOR_USER);
+        connection.execute("GRANT SELECT ON debezium.table3 TO  " + TestHelper.CONNECTOR_USER);
+
+        connection.execute("INSERT INTO debezium.table3 VALUES (3, 'Text-3')");
+        connection.execute("COMMIT");
+
+        SourceRecords records = consumeRecordsByTopic(2);
+
+        List<SourceRecord> testTableRecords = records.recordsForTopic("server1.DEBEZIUM.TABLE1");
+        assertThat(testTableRecords).hasSize(1);
+
+        VerifyRecord.isValidInsert(testTableRecords.get(0), "ID", 1);
+        Struct after = (Struct) ((Struct) testTableRecords.get(0).value()).get("after");
+        assertThat(after.get("ID")).isEqualTo(1);
+        assertThat(after.get("NAME")).isEqualTo("Text-1");
+
+        testTableRecords = records.recordsForTopic("server1.DEBEZIUM.TABLE2");
+        assertThat(testTableRecords).isNull();
+
+        testTableRecords = records.recordsForTopic("server1.DEBEZIUM.TABLE3");
+        assertThat(testTableRecords).hasSize(1);
+
+        VerifyRecord.isValidInsert(testTableRecords.get(0), "ID", 3);
+        after = (Struct) ((Struct) testTableRecords.get(0).value()).get("after");
+        assertThat(after.get("ID")).isEqualTo(3);
+        assertThat(after.get("NAME")).isEqualTo("Text-3");
+    }
+
+    @Test
+    public void shouldApplyTableExcludeListConfiguration() throws Exception {
+        Configuration config = TestHelper.defaultConfig()
+                .with(
+                        OracleConnectorConfig.TABLE_EXCLUDE_LIST,
+                        "DEBEZIUM\\.TABLE2,DEBEZIUM\\.CUSTOMER.*")
+                .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_SCHEMA_ONLY)
+                .build();
+
+        start(OracleConnector.class, config);
+        assertConnectorIsRunning();
+
+        waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+        connection.execute("INSERT INTO debezium.table1 VALUES (1, 'Text-1')");
+        connection.execute("INSERT INTO debezium.table2 VALUES (2, 'Text-2')");
+        connection.execute("COMMIT");
+
+        String ddl = "CREATE TABLE debezium.table3 (" +
+                "  id NUMERIC(9,0) NOT NULL, " +
+                "  name VARCHAR2(1000), " +
+                "  PRIMARY KEY (id)" +
+                ")";
+
+        connection.execute(ddl);
+        connection.execute("GRANT SELECT ON debezium.table3 TO  " + TestHelper.CONNECTOR_USER);
 
         connection.execute("INSERT INTO debezium.table3 VALUES (3, 'Text-3')");
         connection.execute("COMMIT");

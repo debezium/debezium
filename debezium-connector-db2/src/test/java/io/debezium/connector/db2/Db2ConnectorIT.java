@@ -448,7 +448,7 @@ public class Db2ConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
-    public void whitelistTable() throws Exception {
+    public void testTableWhitelist() throws Exception {
         final int RECORDS_PER_TABLE = 5;
         final int TABLES = 1;
         final int ID_START = 10;
@@ -489,7 +489,89 @@ public class Db2ConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
-    public void blacklistTable() throws Exception {
+    public void testTableIncludeList() throws Exception {
+        final int RECORDS_PER_TABLE = 5;
+        final int TABLES = 1;
+        final int ID_START = 10;
+        final Configuration config = TestHelper.defaultConfig()
+                .with(Db2ConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                .with(Db2ConnectorConfig.TABLE_INCLUDE_LIST, "db2inst1.tableb")
+                .build();
+        connection.execute(
+                "INSERT INTO tableb VALUES(1, 'b')");
+
+        start(Db2Connector.class, config);
+        assertConnectorIsRunning();
+
+        // Wait for snapshot completion
+        consumeRecordsByTopic(1);
+
+        TestHelper.enableDbCdc(connection);
+        connection.execute("UPDATE ASNCDC.IBMSNAP_REGISTER SET STATE = 'A' WHERE SOURCE_OWNER = 'DB2INST1'");
+        TestHelper.refreshAndWait(connection);
+
+        for (int i = 0; i < RECORDS_PER_TABLE; i++) {
+            final int id = ID_START + i;
+            connection.execute(
+                    "INSERT INTO tablea VALUES(" + id + ", 'a')");
+            connection.execute(
+                    "INSERT INTO tableb VALUES(" + id + ", 'b')");
+        }
+
+        TestHelper.refreshAndWait(connection);
+
+        final SourceRecords records = consumeRecordsByTopic(RECORDS_PER_TABLE * TABLES);
+        final List<SourceRecord> tableA = records.recordsForTopic("testdb.DB2INST1.TABLEA");
+        final List<SourceRecord> tableB = records.recordsForTopic("testdb.DB2INST1.TABLEB");
+        assertThat(tableA == null || tableA.isEmpty()).isTrue();
+        assertThat(tableB).hasSize(RECORDS_PER_TABLE);
+
+        stopConnector();
+    }
+
+    @Test
+    public void testTableExcludeList() throws Exception {
+        final int RECORDS_PER_TABLE = 5;
+        final int TABLES = 1;
+        final int ID_START = 10;
+        final Configuration config = TestHelper.defaultConfig()
+                .with(Db2ConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .with(Db2ConnectorConfig.TABLE_EXCLUDE_LIST, "db2inst1.tablea")
+                .build();
+        connection.execute(
+                "INSERT INTO tableb VALUES(1, 'b')");
+
+        start(Db2Connector.class, config);
+        assertConnectorIsRunning();
+
+        // Wait for snapshot completion
+        consumeRecordsByTopic(1);
+
+        TestHelper.enableDbCdc(connection);
+        connection.execute("UPDATE ASNCDC.IBMSNAP_REGISTER SET STATE = 'A' WHERE SOURCE_OWNER = 'DB2INST1'");
+        TestHelper.refreshAndWait(connection);
+
+        for (int i = 0; i < RECORDS_PER_TABLE; i++) {
+            final int id = ID_START + i;
+            connection.execute(
+                    "INSERT INTO tablea VALUES(" + id + ", 'a')");
+            connection.execute(
+                    "INSERT INTO tableb VALUES(" + id + ", 'b')");
+        }
+
+        TestHelper.refreshAndWait(connection);
+
+        final SourceRecords records = consumeRecordsByTopic(RECORDS_PER_TABLE * TABLES);
+        final List<SourceRecord> tableA = records.recordsForTopic("testdb.DB2INST1.TABLEA");
+        final List<SourceRecord> tableB = records.recordsForTopic("testdb.DB2INST1.TABLEB");
+        assertThat(tableA == null || tableA.isEmpty()).isTrue();
+        assertThat(tableB).hasSize(RECORDS_PER_TABLE);
+
+        stopConnector();
+    }
+
+    @Test
+    public void testTableBlacklist() throws Exception {
         final int RECORDS_PER_TABLE = 5;
         final int TABLES = 1;
         final int ID_START = 10;
@@ -701,7 +783,7 @@ public class Db2ConnectorIT extends AbstractConnectorTest {
 
         Configuration config = TestHelper.defaultConfig()
                 .with(Db2ConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
-                .with(Db2ConnectorConfig.TABLE_WHITELIST, "my_products")
+                .with(Db2ConnectorConfig.TABLE_INCLUDE_LIST, "my_products")
                 .build();
 
         start(Db2Connector.class, config);

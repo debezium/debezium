@@ -22,7 +22,6 @@ import io.debezium.connector.db2.Db2ConnectorConfig.SnapshotMode;
 import io.debezium.connector.db2.util.TestHelper;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
-import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.util.Testing;
 
 /**
@@ -74,7 +73,7 @@ public class SchemaHistoryTopicIT extends AbstractConnectorTest {
         final int ID_START_1 = 10;
         final Configuration config = TestHelper.defaultConfig()
                 .with(Db2ConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
-                .with(RelationalDatabaseConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+                .with(Db2ConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
                 .build();
 
         for (int i = 0; i < RECORDS_PER_TABLE; i++) {
