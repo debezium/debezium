@@ -16,6 +16,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+import io.fabric8.kubernetes.api.model.IntOrString;
+import io.fabric8.kubernetes.api.model.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -70,6 +72,22 @@ public class OpenShiftUtils {
                 .endSpec()
                 .done();
         return route;
+    }
+
+    public Service createService(String project, String name, String portName, int port, Map<String, String> selector, Map<String, String> labels) {
+        Service service = client.services().inNamespace(project).createOrReplaceWithNew()
+                .withNewMetadata()
+                .withName(name)
+                .withLabels(labels)
+                .endMetadata()
+                .withNewSpec()
+                .addNewPort()
+                .withAppProtocol("tcp")
+                .withName(portName).withPort(port).withTargetPort(new IntOrString(port))
+                .endPort()
+                .withSelector(selector)
+                .endSpec().done();
+        return service;
     }
 
     /**
