@@ -2109,7 +2109,7 @@ If the publication already exists, either for all tables or configured with a su
 |
 |Logical name that identifies and provides a namespace for the particular PostgreSQL database server or cluster in which {prodname} is capturing changes. Only alphanumeric characters and underscores should be used in the database server logical name. The logical name should be unique across all other connectors, since it is used as a topic name prefix for all Kafka topics that receive records from this connector.
 
-|[[postgresql-property-schema-whitelist]]<<postgresql-property-schema-whitelist [[postgresql-property-schema-inlcude-list]]<<postgresql-property-schema-include-list , `schema.include.list`>>
+|[[postgresql-property-schema-whitelist]]<<postgresql-property-schema-whitelist [[postgresql-property-schema-include-list]]<<postgresql-property-schema-include-list , `schema.include.list`>>
 |
 |An optional, comma-separated list of regular expressions that match names of schemas for which you *want* to capture changes. Any schema name not included in `schema.include.list` is excluded from having its changes captured. By default, all non-system schemas have their changes captured. Do not also set the `schema.exclude.list` property.
 
@@ -2275,7 +2275,7 @@ If `table_a` has a an `id` column, and `regex_1` is `^i` (matches any column tha
  +
 `disabled` - The connector does not attempt to create a publication. A database administrator or the user configured to perform replications must have created the publication before running the connector. If the connector cannot find the publication, the connector throws an exception and stops. +
  +
-`filtered` - If a publication exists, the connector uses it. If no publication exists, the connector creates a new publication for tables that match the current filter configuration as specified by the `database.blacklist`, `database.whitelist`, `table.blacklist`, and `table.whitelist` connector configuration properties. For example: `CREATE PUBLICATION <publication_name> FOR TABLE <tbl1, tbl2, etc>`.
+`filtered` - If a publication exists, the connector uses it. If no publication exists, the connector creates a new publication for tables that match the current filter configuration as specified by the `database.exclude.list`, `database.include.list`, `table.exclude.list`, and `table.include.list` connector configuration properties. For example: `CREATE PUBLICATION <publication_name> FOR TABLE <tbl1, tbl2, tbl3>`.
 
 |[[postgresql-property-binary-handling-mode]]<<postgresql-property-binary-handling-mode, `binary.handling.mode`>>
 |bytes
