@@ -1,4 +1,4 @@
-FROM ibmcom/db2
+FROM ibmcom/db2:11.5.0.0a
 
 MAINTAINER  Peter Urbanetz
 
