@@ -9,8 +9,7 @@ import java.time.Duration;
 import java.util.Collections;
 import java.util.Map;
 
-import org.testcontainers.containers.FixedHostPortGenericContainer;
-import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 
 import io.quarkus.test.common.QuarkusTestResourceLifecycleManager;
@@ -19,31 +18,28 @@ import io.quarkus.test.common.QuarkusTestResourceLifecycleManager;
  * @author Chris Cranford
  */
 public class DatabaseTestResource implements QuarkusTestResourceLifecycleManager {
+
     private static final String POSTGRES_USER = "postgres";
     private static final String POSTGRES_PASSWORD = "postgres";
     private static final String POSTGRES_DBNAME = "postgres";
     private static final String POSTGRES_IMAGE = "debezium/postgres:9.6";
-    private static final Integer POSTGRES_PORT = 5432;
 
-    private GenericContainer container;
+    private static PostgreSQLContainer<?> container;
 
     @Override
     public Map<String, String> start() {
         try {
-
-            container = new FixedHostPortGenericContainer(POSTGRES_IMAGE)
-                    .withFixedExposedPort(POSTGRES_PORT, POSTGRES_PORT)
+            container = new PostgreSQLContainer<>(POSTGRES_IMAGE)
                     .waitingFor(Wait.forLogMessage(".*database system is ready to accept connections.*", 2))
-                    .withEnv("POSTGRES_USER", POSTGRES_USER)
-                    .withEnv("POSTGRES_PASSWORD", POSTGRES_PASSWORD)
-                    .withEnv("POSTGRES_DB", POSTGRES_DBNAME)
+                    .withUsername(POSTGRES_USER)
+                    .withPassword(POSTGRES_PASSWORD)
+                    .withDatabaseName(POSTGRES_DBNAME)
                     .withEnv("POSTGRES_INITDB_ARGS", "-E UTF8")
                     .withEnv("LANG", "en_US.utf8")
                     .withStartupTimeout(Duration.ofSeconds(30));
 
             container.start();
-
-            return Collections.emptyMap();
+            return Collections.singletonMap("quarkus.datasource.url", container.getJdbcUrl());
         }
         catch (Exception e) {
             throw new RuntimeException(e);
