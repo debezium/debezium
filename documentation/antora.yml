@@ -16,6 +16,7 @@ asciidoc:
     mysql-version: '8.0'
     strimzi-version: '0.18.0'
     apicurio-version: '1.2.2.Final'
+    linux-version: 11.5.0.0
     community: true
     registry: 'Apicurio Registry'
     registry-name-full: Apicurio API and Schema Registry
