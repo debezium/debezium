@@ -1441,6 +1441,10 @@ Note: Depending on the `_hashAlgorithm_` used, the `_salt_` selected and the act
 |`adaptive`
 | Time, date, and timestamps can be represented with different kinds of precision, including: `adaptive` (the default) captures the time and timestamp values exactly as in the database using either millisecond, microsecond, or nanosecond precision values based on the database column's type; or `connect` always represents time and timestamp values using Kafka Connect's built-in representations for Time, Date, and Timestamp, which uses millisecond precision regardless of the database columns' precision. See {link-prefix}:{link-sqlserver-connector}#sqlserver-temporal-values[temporal values].
 
+|[[sqlserver-property-include-schema-changes]]<<sqlserver-property-include-schema-changes, `include.schema.changes`>>
+|`true`
+|Boolean value that specifies whether the connector should publish changes in the database schema to a Kafka topic with the same name as the database server ID. Each schema change is recorded with a key that contains the database name and a value that is a JSON structure that describes the schema update. This is independent of how the connector internally records database history. The default is `true`.
+
 |[[sqlserver-property-tombstones-on-delete]]<<sqlserver-property-tombstones-on-delete, `tombstones.on.delete`>>
 |`true`
 | Controls whether a tombstone event should be generated after a delete event. +
