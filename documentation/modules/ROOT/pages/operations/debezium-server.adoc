@@ -255,18 +255,18 @@ The configuration will need to contain the list of transformations, implementati
 |Default
 |Description
 
-[id="debezium-transformations"]
-|`debezium.transformations`
+[id="debezium-transforms"]
+|`debezium.transforms`
 |
 |The comma separated list of symbolic names of transformations.
 
-[id="debezium-transformations-name-class"]
-|`debezium.transformations.<name>.class`
+[id="debezium-transforms-name-class"]
+|`debezium.transforms.<name>.class`
 |
 |The name of Java class implementing the transformation with name `<name>`.
 
-[id="debezium-transformations-name"]
-|`debezium.transformations.<name>.*`
+[id="debezium-transforms-name"]
+|`debezium.transforms.<name>.*`
 |
 |Configuration properties passed to the transformation with name `<name>`.
 
@@ -286,7 +286,7 @@ The most frequent used are:
 |Default
 |Description
 
-[id="debezium-transformations-name-class"]
+[id="debezium-transforms-name-class"]
 |`quarkus.http.port`
 |8080
 |The port on which Debezim exposes Microprofile Health endpoint and other exposed status information.
@@ -371,7 +371,7 @@ Pub/Sub exposes a set of REST APIs and provides a (not-only) Java SDK that is us
 |
 |Must be set to `pubsub`.
 
-|[[pubsub-project-id]]<<pubsub-projectid, `debezium.sink.pubsub.projectid`>>
+|[[pubsub-project-id]]<<pubsub-project.id, `debezium.sink.pubsub.project.id`>>
 |_system-wide default project id_
 |A project name in which the target topics are created.
 
