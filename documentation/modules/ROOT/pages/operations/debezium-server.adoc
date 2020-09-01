@@ -286,7 +286,7 @@ The most frequent used are:
 |Default
 |Description
 
-[id="debezium-transforms-name-class"]
+[id="debezium-quarkus-http-port"]
 |`quarkus.http.port`
 |8080
 |The port on which Debezim exposes Microprofile Health endpoint and other exposed status information.

@@ -145,6 +145,7 @@ Matthias Wessendorf
 Max Kaplan
 Melissa Winstanley
 Michael Wang
+Mickaël Isaert
 Mike Graham
 Mincong Huang
 Moira Tagle
