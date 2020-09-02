@@ -79,13 +79,13 @@ public class MongoDbCollectionSchema implements DataCollectionSchema {
                 break;
             case UPDATE:
                 final String patchStr = valueGenerator.apply(fieldFilter.apply(document));
-                value.put("patch", patchStr);
+                value.put(MongoDbFieldName.PATCH, patchStr);
                 final String updateFilterStr = valueGenerator.apply(fieldFilter.apply(filter));
-                value.put("filter", updateFilterStr);
+                value.put(MongoDbFieldName.FILTER, updateFilterStr);
                 break;
             case DELETE:
                 final String deleteFilterStr = valueGenerator.apply(fieldFilter.apply(filter));
-                value.put("filter", deleteFilterStr);
+                value.put(MongoDbFieldName.FILTER, deleteFilterStr);
                 break;
         }
         return value;

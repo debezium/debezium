@@ -41,7 +41,9 @@ import org.slf4j.LoggerFactory;
 import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
+import io.debezium.connector.mongodb.MongoDbFieldName;
 import io.debezium.data.Envelope;
+import io.debezium.data.Envelope.FieldName;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.pipeline.txmetadata.TransactionMonitor;
 import io.debezium.schema.FieldNameSelector;
@@ -497,9 +499,9 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
         handleDeletes = DeleteHandling.parse(config.getString(ExtractNewRecordStateConfigDefinition.HANDLE_DELETES));
 
         final Map<String, String> afterExtractorConfig = new HashMap<>();
-        afterExtractorConfig.put("field", "after");
+        afterExtractorConfig.put("field", FieldName.AFTER);
         final Map<String, String> patchExtractorConfig = new HashMap<>();
-        patchExtractorConfig.put("field", "patch");
+        patchExtractorConfig.put("field", MongoDbFieldName.PATCH);
         final Map<String, String> keyExtractorConfig = new HashMap<>();
         keyExtractorConfig.put("field", "id");
 
@@ -568,7 +570,7 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
         private static String determineStruct(String simpleFieldName) {
             if (simpleFieldName.equals(Envelope.FieldName.OPERATION) ||
                     simpleFieldName.equals(Envelope.FieldName.TIMESTAMP) ||
-                    simpleFieldName.equals("patch")) {
+                    simpleFieldName.equals(MongoDbFieldName.PATCH)) {
                 return null;
             }
             else if (simpleFieldName.equals(TransactionMonitor.DEBEZIUM_TRANSACTION_ID_KEY) ||

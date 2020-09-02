@@ -36,7 +36,7 @@ import io.debezium.util.Testing;
 public class FieldExcludeListIT extends AbstractConnectorTest {
 
     private static final String SERVER_NAME = "serverX";
-    private static final String PATCH = "patch";
+    private static final String PATCH = MongoDbFieldName.PATCH;
 
     private Configuration config;
     private MongoDbTaskContext context;

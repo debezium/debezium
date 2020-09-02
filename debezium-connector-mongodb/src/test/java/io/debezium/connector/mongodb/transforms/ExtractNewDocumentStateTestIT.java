@@ -28,6 +28,7 @@ import org.bson.types.ObjectId;
 import org.fest.assertions.Assertions;
 import org.junit.Test;
 
+import io.debezium.connector.mongodb.MongoDbFieldName;
 import io.debezium.connector.mongodb.TestHelper;
 import io.debezium.data.Envelope;
 import io.debezium.data.Envelope.Operation;
@@ -1417,7 +1418,7 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         assertNoRecordsToConsume();
 
         final Map<String, String> props = new HashMap<>();
-        props.put(ADD_FIELDS, "patch");
+        props.put(ADD_FIELDS, MongoDbFieldName.PATCH);
         transformation.configure(props);
 
         // Perform transformation
