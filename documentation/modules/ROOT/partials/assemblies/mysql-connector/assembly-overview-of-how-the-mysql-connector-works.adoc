@@ -14,7 +14,7 @@ include::{partialsdir}/modules/mysql-connector/con-how-the-mysql-connector-uses-
 
 include::{partialsdir}/modules/mysql-connector/con-how-the-mysql-connector-performs-database-snapshots.adoc[leveloffset=+1]
 
-include::{partialsdir}/modules/mysql-connector/con-how-the-mysql-connector-handles-schema-change-topics.adoc[leveloffset=+1]
+include::{partialsdir}/modules/mysql-connector/con-how-the-mysql-connector-exposes-schema-changes.adoc[leveloffset=+1]
 
 include::{partialsdir}/modules/mysql-connector/con-mysql-connector-events.adoc[leveloffset=+1]
 
