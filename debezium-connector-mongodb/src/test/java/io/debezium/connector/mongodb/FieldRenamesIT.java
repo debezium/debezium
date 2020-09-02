@@ -33,7 +33,7 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
     private static final String DATABASE_NAME = "dbA";
     private static final String COLLECTION_NAME = "c1";
     private static final String SERVER_NAME = "serverX";
-    private static final String PATCH = "patch";
+    private static final String PATCH = MongoDbFieldName.PATCH;
     private static final String ID = "_id";
 
     @Test
