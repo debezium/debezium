@@ -1417,7 +1417,7 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         assertNoRecordsToConsume();
 
         final Map<String, String> props = new HashMap<>();
-        props.put(ADD_FIELDS, "patch");
+        props.put(ADD_FIELDS, MongoDbFieldName.PATCH);
         transformation.configure(props);
 
         // Perform transformation
