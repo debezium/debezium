@@ -34,9 +34,9 @@ The following skeleton JSON shows the basic four parts of a change event. Howeve
 
 |1
 |`schema`
-|The first `schema` field is part of the event key. It specifies a Kafka Connect schema that describes what is in the event key's `payload` portion. In other words, the first `schema` field describes the structure of the primary key, or the unique key if the table does not have a primary key, for the table that was changed. 
-
-Rarely, converter configuration overrides the key column with some other structure. In this case, the first schema field describes that structure.
+|The first `schema` field is part of the event key. It specifies a Kafka Connect schema that describes what is in the event key's `payload` portion. In other words, the first `schema` field describes the structure of the primary key, or the unique key if the table does not have a primary key, for the table that was changed. +
+ +
+It is possible to override the table's primary key by setting the {link-prefix}:{link-mysql-connector}#mysql-property-message-key-columns[`message.key.columns` connector configuration property]. In this case, the first schema field describes the structure of the the key identified by that property.
 
 |2
 |`payload`
@@ -243,7 +243,7 @@ The following example shows the value portion of a change event that the connect
           {
             "type": "int64",
             "optional": false,
-            "field": "ts_ms"
+            "field": "ts_sec"
           },
           {
             "type": "boolean",
@@ -329,7 +329,7 @@ The following example shows the value portion of a change event that the connect
       "version": "{debezium-version}",
       "connector": "mysql",
       "name": "mysql-server-1",
-      "ts_ms": 0,
+      "ts_sec": 0,
       "snapshot": false,
       "db": "inventory",
       "table": "customers",
@@ -398,7 +398,7 @@ a| Optional field that displays the time at which the connector processed the ev
 
 |8
 |`source`
-a| Mandatory field that describes the source metadata for the event. The `source` structure shows MySQL information about this change, which provides traceability. It also has information you can use to compare to other events in this and other topics to know whether this event occurred before, after, or as part of the same MySQL commit as other events. The source metadata includes: 
+a| Mandatory field that describes the source metadata for the event. This field contains information that you can use to compare this event with other events, with regard to the origin of the events, the order in which the events occurred, and whether events were part of the same transaction. The source metadata includes: 
 
 * {prodname} version
 * Connector name
@@ -442,7 +442,7 @@ The value of a change event for an update in the sample `customers` table has th
       "name": "mysql-server-1",
       "connector": "mysql",
       "name": "mysql-server-1",
-      "ts_ms": 1465581,
+      "ts_sec": 1465581,
       "snapshot": false,
       "db": "inventory",
       "table": "customers",
@@ -532,7 +532,7 @@ The value in a _delete_ change event has the same `schema` portion as _create_ a
       "version": "{debezium-version}",
       "connector": "mysql",
       "name": "mysql-server-1",
-      "ts_ms": 1465581,
+      "ts_sec": 1465581,
       "snapshot": false,
       "db": "inventory",
       "table": "customers",
