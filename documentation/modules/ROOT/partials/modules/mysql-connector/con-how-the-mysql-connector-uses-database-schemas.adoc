@@ -10,7 +10,7 @@ To handle this, MySQL includes in the binlog the row-level changes to the data a
 
 When the connector restarts after having crashed or been stopped gracefully, the connector starts reading the binlog from a specific position, that is, from a specific point in time. The connector rebuilds the table structures that existed at this point in time by reading the database history Kafka topic and parsing all DDL statements up to the point in the binlog where the connector is starting.
 
-This database history topic is for connector use only. The connector can optionally generate schema change events on a different topic that is intended for consumer applications. This is described in {link-prefix}:{link-mysql-connector}#how-the-mysql-connector-handles-schema-change-topics_{context}[how the MySQL connector handles schema change topics].
+This database history topic is for connector use only. The connector can optionally generate schema change events on a different topic that is intended for consumer applications. This is described in {link-prefix}:{link-mysql-connector}#how-the-mysql-connector-exposes-schema-changes[how the MySQL connector exposes schema changes].
 
 When the MySQL connector captures changes in a table to which a schema change tool such as `gh-ost` or `pt-online-schema-change` is applied then helper tables created during the migration process need to be included among included tables.
 
