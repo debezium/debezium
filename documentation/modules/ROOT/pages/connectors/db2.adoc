@@ -319,7 +319,7 @@ a|Describes the kind of change. The value is one of the following:
 |List of columns that compose the table's primary key.
 
 |8
-`columns`
+|`columns`
 |Metadata for each column in the changed table. 
 
 |===
