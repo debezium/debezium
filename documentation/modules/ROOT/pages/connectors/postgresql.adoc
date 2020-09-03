@@ -2109,27 +2109,33 @@ If the publication already exists, either for all tables or configured with a su
 |
 |Logical name that identifies and provides a namespace for the particular PostgreSQL database server or cluster in which {prodname} is capturing changes. Only alphanumeric characters and underscores should be used in the database server logical name. The logical name should be unique across all other connectors, since it is used as a topic name prefix for all Kafka topics that receive records from this connector.
 
-|[[postgresql-property-schema-whitelist]]<<postgresql-property-schema-whitelist [[postgresql-property-schema-include-list]]<<postgresql-property-schema-include-list , `schema.include.list`>>
+|[[postgresql-property-schema-whitelist]]
+[[postgresql-property-schema-include-list]]<<postgresql-property-schema-include-list, `schema.include.list`>>
 |
 |An optional, comma-separated list of regular expressions that match names of schemas for which you *want* to capture changes. Any schema name not included in `schema.include.list` is excluded from having its changes captured. By default, all non-system schemas have their changes captured. Do not also set the `schema.exclude.list` property.
 
-|[[postgresql-property-schema-blacklist]]<<postgresql-property-schema-blacklist [[postgresql-property-schema-exclude-list]]<<postgresql-property-schema-exclude-list , `schema.exclude.list`>>
+|[[postgresql-property-schema-blacklist]]
+[[postgresql-property-schema-exclude-list]]<<postgresql-property-schema-exclude-list, `schema.exclude.list`>>
 |
 |An optional, comma-separated list of regular expressions that match names of schemas for which you *do not* want to capture changes. Any schema whose name is not included in `schema.exclude.list` has its changes captured, with the exception of system schemas. Do not also set the `schema.include.list` property.
 
-|[[postgresql-property-table-whitelist]]<<postgresql-property-table-whitelist [[postgresql-property-table-include-list]]<<postgresql-property-table-include-list, `table.include.list`>>
+|[[postgresql-property-table-whitelist]]
+[[postgresql-property-table-include-list]]<<postgresql-property-table-include-list, `table.include.list`>>
 |
 |An optional, comma-separated list of regular expressions that match fully-qualified table identifiers for tables whose changes you want to capture. Any table not included in `table.include.list` does not have its changes captured. Each identifier is of the form _schemaName_._tableName_. By default, the connector captures changes in every non-system table in each schema whose changes are being captured. Do not also set the `table.exclude.list` property.
 
-|[[postgresql-property-table-blacklist]]<<postgresql-property-table-blacklist [[postgresql-property-table-exclude.list]]<<postgresql-property-table-exclude.list, `table.exclude.list`>>
+|[[postgresql-property-table-blacklist]]
+[[postgresql-property-table-exclude.list]]<<postgresql-property-table-exclude.list, `table.exclude.list`>>
 |
 |An optional, comma-separated list of regular expressions that match fully-qualified table identifiers for tables whose changes you *do not* want to capture. Any table not included in `table.exclude.list` has it changes captured. Each identifier is of the form _schemaName_._tableName_. Do not also set the `table.include.list` property.
 
-|[[postgresql-property-column-whitelist]]<<postgresql-property-column-whitelist [[postgresql-property-column-include-list]]<<postgresql-property-column-include-list , `column.include.list`>>
+|[[postgresql-property-column-whitelist]]
+[[postgresql-property-column-include-list]]<<postgresql-property-column-include-list, `column.include.list`>>
 |
 |An optional, comma-separated list of regular expressions that match the fully-qualified names of columns that should be included in change event record values. Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_. Do not also set the `column.exclude.list` property.
 
-|[[postgresql-property-column-blacklist]]<<postgresql-property-column-blacklist [[postgresql-property-column-exclude-list]]<<postgresql-property-column-exclude-list, `column.exclude.list`>>
+|[[postgresql-property-column-blacklist]]
+[[postgresql-property-column-exclude-list]]<<postgresql-property-column-exclude-list, `column.exclude.list`>>
 |
 |An optional, comma-separated list of regular expressions that match the fully-qualified names of columns that should be excluded from change event record values. Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_. Do not also set the `column.include.list` property.
 
