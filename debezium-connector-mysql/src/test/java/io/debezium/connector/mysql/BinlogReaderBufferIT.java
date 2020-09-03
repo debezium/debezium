@@ -330,7 +330,7 @@ public class BinlogReaderBufferIT extends AbstractConnectorTest {
             int recordCount;
             int customerEventsCount;
             int topicCount;
-            if (MySQLConnection.isMySQL5()) {
+            if (MySQLConnection.isMySQL5() && !MySQLConnection.isPerconaServer()) {
                 // MySQL 5 contains events when the TX was effectively rolled-back
                 // INSERT + INSERT + ROLLBACK, SAVEPOINT filtered
                 recordCount = 3;
