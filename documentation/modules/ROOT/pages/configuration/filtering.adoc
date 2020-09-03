@@ -9,26 +9,40 @@
 
 toc::[]
 
+By default, {prodname} delivers every data change event that it receives to the Kafka broker.
+However, in many cases, you might be interested in only a subset of the events emitted by the producer. 
+To enable you to process only the records that are relevant to you, {prodname} provides the `Filter` simple message transform (SMT).
+
+Configure this transformation in the {prodname} connector's Kafka Connect configuration.
+By configuring the `Filter` SMT, you can specify the events that you are interested in by defining filter conditions based on business rules.
+As the `Filter` SMT processes the event stream, it evaluates each event against the configured filter conditions.
+Only events that meet the criteria of the filter conditions are passed to the broker.
+
 [NOTE]
 ====
-This SMT is currently in incubating state, i.e. exact semantics, configuration options etc. may change in future revisions, based on the feedback we receive. Please let us know if you encounter any problems while using this filter transformation.
+The `Filter` (SMT) is currently in an incubating state. The semantics, configuration options, and other aspects of the SMT are subject to change.
+ifdef::community[]
+We welcome you any feedback that you have about using this filter transformation.
+endif::community[]
 ====
 
-With real-life applications, it is often necessary to deliver only a subset of events into the Kafka broker.
-The user might need to filter the events according to different business rules.
-Kafka Connect provides a generic mechanism to do the filtering in the form of link:https://cwiki.apache.org/confluence/display/KAFKA/KIP-66%3A+Single+Message+Transforms+for+Kafka+Connect[Simple Message Transforms] (SMT).
-
-The SMT is a Java class that encodes the filtering logic.
-This is a very powerful mechanism but has two drawbacks:
+Although Kafka Connect provides its own link:https://cwiki.apache.org/confluence/display/KAFKA/KIP-66%3A+Single+Message+Transforms+for+Kafka+Connect[Simple Message Transforms] (SMT) to encode filtering logic,
+it has the following drawbacks:
 
 * It is necessary to compile the transformation upfront and deploy it to Kafka Connect.
 * Every change needs code recompilation and redeployment, leading to inflexible operations.
 
-To solve this problem, {prodname} comes with the Filtering SMT.
-This SMT allows the operator to write an expression that is evaluated for each event and according to the result, it is either filtered out or passed on for further processing.
-The current implementation supports any scripting language which integrates with https://jcp.org/en/jsr/detail?id=223[JSR 223] (Scripting for the Java(TM) Platform).
+The `Filter` SMT supports scripting languages that integrate with https://jcp.org/en/jsr/detail?id=223[JSR 223] (Scripting for the Java(TM) Platform).
 
-The Filtering SMT can be used like so:
+// Type: concept
+// ModuleID: example-of-configuring-filter-conditions
+// Title: Example of configuring filter conditions 
+== Example
+
+To filter change event records, configure the `Filter` transformation in the Kafka Connect configuration for the {prodname} connector.
+Configuration of the `Filter` SMT requires you to specify a regular expression that defines the filtering criteria. 
+
+For example, you might add the following configuration in a `.properties` file:name: value
 
 [source]
 ----
@@ -40,7 +54,8 @@ transforms.filter.condition=value.op == 'u' && value.before.id == 2
 ...
 ----
 
-In this example we are using `Groovy` as expression language, and we're filtering out all update records with `id` field equal to `2`.
+The preceding example specifies the use of the `Groovy` expression language.
+The regular expression `value.op == 'u' && value.before.id == 2` filters out all update records for which the `id` field is equal to `2`.
 
 [IMPORTANT]
 ====
@@ -59,13 +74,13 @@ Bootstrapping is done exclusively via the JSR 223 API currently, so the engine's
 * `headers` - the map of message headers keyed with header name and value composed of `schema` and `value` variables
 
 The `key` and `value` are of type `org.apache.kafka.connect.data.Struct` and `keySchema` and `valueSchema` are variables of type `org.apache.kafka.connect.data.Schema`.
-The expression can invoke arbitrary methods on the variables and should evaluate into a boolean value that decides whether the message is removed `true` or kept.
-Expressions should be side-effect free, i.e. they should *not* modify the passed variables in any way.
+The expression can invoke arbitrary methods on the variables and should evaluate into a Boolean value that decides whether the message is removed `true` or kept.
+Expressions should not result in any side-effects. That is, they should not modify any variables that they pass.
 
 == Language specifics
 
 The same business logic - remove all update records with `id` set to `2` can be expressed like this, depending on your preferred scripting language;
-In case of `Groovy`, the value fields can be accessed in a property-like way:
+If you use `Groovy` as the expression language, you can access the value fields as properties, as in the following example:
 
 [source,groovy]
 ----
@@ -75,12 +90,13 @@ value.op == 'u' && value.before.id == 2
 [TIP]
 ====
 The {prodname} MongoDB connector emits the `after` and `patch` fields not as structures but as serialized JSON documents.
-This means that when you are using the SMT with the MongoDB connector you should either first apply {link-prefix}:{link-mongodb-event-flattening}[`ExtractNewDocumentState]) SMT to unwind the field or use a JSON parser in the expression.
+When you use the `Filter` SMT with the MongoDB connector, you should first unwind the field by applying the {link-prefix}:{link-mongodb-event-flattening}[`ExtractNewDocumentState`] SMT.
 
-In case of Groovy it means adding `groovy-json` artifact on the classpath and write the expression like `(new groovy.json.JsonSlurper()).parseText(value.after).last_name == 'Kretchmar'`.
+As an alternative, you can use a JSON parser in the expression.
+If you use Groovy as the expression language, to use a JSON parser, add the `groovy-json` artifact to the classpath, and add an expression such as `(new groovy.json.JsonSlurper()).parseText(value.after).last_name == 'Kretchmar'`.
 ====
 
-Other languages, such as JavaScript, will typically require to  call the `Struct#get()` method:
+For other languages, such as JavaScript, you can call the `Struct#get()` method, as in the following example:
 
 [source,javascript]
 ----
@@ -94,8 +110,15 @@ When using JavaScript via Graal.js, simplified property references can be used, 
 value.op == 'u' && value.before.id == 2
 ----
 
+// Type: reference
+// ModuleID: filter-smt-configuration-options
+// Title: `Filter` SMT configuration options
 [[filter-configuration-options]]
 == Configuration options
+
+The following table lists the configuration options for the `Filter` SMT.
+
+.'Filter' configuration options
 [cols="30%a,25%a,45%a"]
 |===
 |Property
@@ -104,7 +127,7 @@ value.op == 'u' && value.before.id == 2
 
 |[[filter-topic-regex]]<<filter-topic-regex, `topic.regex`>>
 |
-|An optional regular expression for specifying the topic(s) this transformation should be applied to. Records on any topic whose name does not match the given expression are passed on as-is.
+|An optional regular expression that specifies the topics that the transformation applies to. Records for topics with names that do not match the given expression are passed on as-is.
 
 |[[filter-language]]<<filter-language, `language`>>
 |
@@ -112,10 +135,10 @@ value.op == 'u' && value.before.id == 2
 
 |[[filter-condition]]<<filter-condition, `condition`>>
 |
-|The expression evaluated for every message. Must evaluate to a boolean value where a result of `true` will keep the message, and a result of `false` will remove it.
+|The expression to be evaluated for every message. Must evaluate to a Boolean value where a result of `true` keeps the message, and a result of `false` removes it.
 
 |[[filter-null-handling-mode]]<<filter-null-handling-mode, `null.handling.mode`>>
 |`keep`
-|Prescribes how the transformation should handle `null` (tombstone) messages. The options are: `keep` (the default) to pass the message through, `drop` to remove the messages completely or `evaluate` to run the message through the condition expression.
+|Prescribes how the transformation handles `null` (tombstone) messages. The options are: `keep` (the default) to pass the message through, `drop` to remove the messages completely or `evaluate` to run the message through the condition expression.
 
 |===
