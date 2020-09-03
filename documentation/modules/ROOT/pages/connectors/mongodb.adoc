@@ -803,22 +803,26 @@ Only alphanumeric characters and underscores should be used.
 |`false`
 |When SSL is enabled this setting controls whether strict hostname checking is disabled during connection phase. If `true` the connection will not prevent man-in-the-middle attacks.
 
-|[[mongodb-property-database-whitelist]]<<mongodb-property-database-whitelist [[mongodb-property-database-include-list]]<<mongodb-property-database-include-list , `database.include.list`>>
+|[[mongodb-property-database-whitelist]]
+[[mongodb-property-database-include-list]]<<mongodb-property-database-include-list, `database.include.list`>>
 |_empty string_
 |An optional comma-separated list of regular expressions that match database names to be monitored; any database name not included in `database.include.list` is excluded from monitoring. By default all databases are monitored.
 Must not be used with `database.exclude.list`.
 
-|[[mongodb-property-database-blacklist]]<<mongodb-property-database-blacklist [[mongodb-property-database-exclude-list]]<<mongodb-property-database-exclude-list, `database.exclude.list`>>
+|[[mongodb-property-database-blacklist]]
+[[mongodb-property-database-exclude-list]]<<mongodb-property-database-exclude-list, `database.exclude.list`>>
 |_empty string_
 |An optional comma-separated list of regular expressions that match database names to be excluded from monitoring; any database name not included in `database.exclude.list` is monitored.
 Must not be used with `database.include.list`.
 
-|[[mongodb-property-collection-whitelist]]<<mongodb-property-collection-whitelist [[mongodb-property-collection-include-list]]<<mongodb-property-collection-include-list, `collection.include.list`>>
+|[[mongodb-property-collection-whitelist]]
+[[mongodb-property-collection-include-list]]<<mongodb-property-collection-include-list, `collection.include.list`>>
 |_empty string_
 |An optional comma-separated list of regular expressions that match fully-qualified namespaces for MongoDB collections to be monitored; any collection not included in `collection.include.list` is excluded from monitoring. Each identifier is of the form _databaseName_._collectionName_. By default the connector will monitor all collections except those in the `local` and `admin` databases.
 Must not be used with `collection.exclude.list`.
 
-|[[mongodb-property-collection-blacklist]]<<mongodb-property-collection-blacklist [[mongodb-property-collection-exclude-list]]<<mongodb-property-collection-exclude-list , `collection.exclude.list`>>
+|[[mongodb-property-collection-blacklist]]
+[[mongodb-property-collection-exclude-list]]<<mongodb-property-collection-exclude-list, `collection.exclude.list`>>
 |_empty string_
 |An optional comma-separated list of regular expressions that match fully-qualified namespaces for MongoDB collections to be excluded from monitoring; any collection not included in `collection.exclude.list` is monitored. Each identifier is of the form _databaseName_._collectionName_.
 Must not be used with `collection.include.list`.
@@ -827,7 +831,8 @@ Must not be used with `collection.include.list`.
 |`initial`
 |Specifies the criteria for running a snapshot upon startup of the connector. The default is *initial*, and specifies the connector reads a snapshot when either no offset is found or if the oplog no longer contains the previous offset. The *never* option specifies that the connector should never use snapshots, instead the connector should proceed to tail the log.
 
-|[[mongodb-property-field-blacklist]]<<mongodb-property-field-blacklist [[mongodb-property-field-exclude-list]]<<mongodb-property-field-exclude-list, `field.exclude.list`>>
+|[[mongodb-property-field-blacklist]]
+[[mongodb-property-field-exclude-list]]<<mongodb-property-field-exclude-list, `field.exclude.list`>>
 |_empty string_
 |An optional comma-separated list of the fully-qualified names of fields that should be excluded from change event message values. Fully-qualified names for fields are of the form _databaseName_._collectionName_._fieldName_._nestedFieldName_, where _databaseName_ and _collectionName_ may contain the wildcard (*) which matches any characters.
 
