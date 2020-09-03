@@ -92,6 +92,16 @@ public class MySQLConnection extends JdbcConnection {
         }
     }
 
+    /**
+     * Obtain whether the database source is the Percona Server fork.
+     *
+     * @return true if the database is Percona Server; otherwise false.
+     */
+    public static boolean isPerconaServer() {
+        String comment = forTestDatabase("mysql").getMySqlVersionComment();
+        return comment.startsWith("Percona");
+    }
+
     protected static void addDefaults(Configuration.Builder builder) {
         builder.withDefault(JdbcConfiguration.HOSTNAME, "localhost")
                 .withDefault(JdbcConfiguration.PORT, 3306)
@@ -143,6 +153,20 @@ public class MySQLConnection extends JdbcConnection {
         }
         catch (SQLException e) {
             throw new IllegalStateException("Couldn't obtain MySQL Server version", e);
+        }
+        return versionString;
+    }
+
+    public String getMySqlVersionComment() {
+        String versionString;
+        try {
+            versionString = connect().queryAndMap("SHOW GLOBAL VARIABLES LIKE 'version_comment'", rs -> {
+                rs.next();
+                return rs.getString(2);
+            });
+        }
+        catch (SQLException e) {
+            throw new IllegalStateException("Couldn't obtain MySQL Server version comment", e);
         }
         return versionString;
     }

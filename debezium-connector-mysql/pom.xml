@@ -113,6 +113,7 @@
         <mysql.replica.user>mysqlreplica</mysql.replica.user>
         <mysql.replica.password>mysqlpw</mysql.replica.password>
         <mysql.port>3306</mysql.port>
+        <mysql.percona.port>3306</mysql.percona.port>
         <mysql.gtid.port>3306</mysql.gtid.port>
         <mysql.gtid.replica.port>3306</mysql.gtid.replica.port>
         <mysql.replica.port>3306</mysql.replica.port> <!-- by default use primary as 'replica' -->
@@ -292,6 +293,54 @@
                       </assembly>
                     </build>
                   </image>
+                  <image>
+                    <!--
+                    A Docker image using a Percona Server installation
+                    -->
+                    <name>debezium/percona-server-test-database</name>
+                    <run>
+                      <namingStrategy>none</namingStrategy>
+                      <env>
+                        <MYSQL_ROOT_PASSWORD>debezium-rocks</MYSQL_ROOT_PASSWORD>
+                        <MYSQL_USER>${mysql.user}</MYSQL_USER>
+                        <MYSQL_PASSWORD>${mysql.password}</MYSQL_PASSWORD>
+                        <TZ>Pacific/Pago_Pago</TZ>
+                      </env>
+                      <ports>
+                        <port>${mysql.percona.port}:3306</port>
+                      </ports>
+                      <log>
+                        <prefix>percona-server</prefix>
+                        <enabled>true</enabled>
+                        <color>magenta</color>
+                      </log>
+                      <wait>
+                        <log>MySQL init process done. Ready for start up.</log>
+                        <time>${mysql.init.timeout}</time>
+                      </wait>
+                    </run>
+                    <build>
+                      <from>percona/percona-server:${version.mysql.server}</from>
+                      <assembly>
+                        <inline>
+                          <fileSets>
+                            <fileSet>
+                              <directory>${project.basedir}/src/test/docker/server</directory>
+                              <includes>
+                                <include>my.cnf</include>
+                              </includes>
+                              <outputDirectory>etc/mysql</outputDirectory>
+                            </fileSet>
+                            <fileSet>
+                              <directory>${project.basedir}/src/test/docker/init</directory>
+                              <outputDirectory>docker-entrypoint-initdb.d</outputDirectory>
+                            </fileSet>
+                          </fileSets>
+                        </inline>
+                        <targetDir>/</targetDir>
+                      </assembly>
+                    </build>
+                  </image>
                 </images>
               </configuration>
               <!--
@@ -402,10 +451,11 @@
             </activation>
             <properties>
               <!-- Run multiple images at the same time, but use different ports for all MySQL servers -->
-              <docker.filter>debezium/mysql-server-test-database,debezium/mysql-server-gtids-test-database,debezium/mysql-server-gtids-test-database-replica</docker.filter>
+              <docker.filter>debezium/mysql-server-test-database,debezium/mysql-server-gtids-test-database,debezium/mysql-server-gtids-test-database-replica,debezium/percona-server-test-database</docker.filter>
               <mysql.port>4301</mysql.port>
               <mysql.gtid.port>4302</mysql.gtid.port>
               <mysql.gtid.replica.port>4303</mysql.gtid.replica.port>
+              <mysql.percona.port>4304</mysql.percona.port>
             </properties>
             <build>
                 <plugins>
@@ -490,6 +540,20 @@
                                     </systemPropertyVariables>
                                 </configuration>
                             </execution>
+                            <!-- Then just Percona Server -->
+                            <execution>
+                                <id>integration-test-percona-server</id>
+                                <goals>
+                                    <goal>integration-test</goal>
+                                </goals>
+                                <configuration>
+                                    <systemPropertyVariables>
+                                        <!-- same port for both, since we're only running one server -->
+                                        <database.port>${mysql.percona.port}</database.port>
+                                        <database.replica.port>${mysql.percona.port}</database.replica.port>
+                                    </systemPropertyVariables>
+                                </configuration>
+                            </execution>
                             <execution>
                                 <id>verify</id>
                                 <goals>
@@ -539,6 +603,27 @@
         </properties>
       </profile>
       <!--  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+            Use the Docker image for Percona Server.
+            To use, specify "-Dpercona-server" or -Ppercona-server on the Maven command line.
+            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+            <profile>
+              <id>percona-server</id>
+              <activation>
+                <activeByDefault>false</activeByDefault>
+                <property>
+                  <name>percona-server</name>
+                </property>
+              </activation>
+              <properties>
+                <!-- Docker properties -->
+                <docker.filter>debezium/percona-server-test-database</docker.filter>
+                <!-- Integration test properties -->
+                <database.port>${mysql.percona.port}</database.port>
+                <database.replica.port>${mysql.percona.port}</database.replica.port>
+                <docker.initimage>ln -s /usr/share/zoneinfo/Pacific/Pago_Pago /etc/localtime</docker.initimage>
+              </properties>
+            </profile>
+            <!--  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
             Use the Docker image for a MySQL replica of another MySQL server 
             configured to use GTIDs. To use, specify "-Dmysql-replica" 
             or -Pmysql-replica on the Maven command line.
