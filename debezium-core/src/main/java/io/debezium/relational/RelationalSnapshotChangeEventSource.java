@@ -305,6 +305,7 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
         final Optional<String> selectStatement = determineSnapshotSelect(snapshotContext, table.id());
         if (!selectStatement.isPresent()) {
             LOGGER.warn("For table '{}' the select statement was not provided, skipping table", table.id());
+            snapshotProgressListener.dataCollectionSnapshotCompleted(table.id(), 0);
             return;
         }
         LOGGER.info("\t For table '{}' using select statement: '{}'", table.id(), selectStatement.get());
