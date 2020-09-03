@@ -16,6 +16,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.connect.runtime.standalone.StandaloneConfig;
 import org.fest.assertions.Assertions;
@@ -197,4 +198,61 @@ public class DebeziumEngineIT {
         }
     }
 
+    @Test
+    @FixFor("DBZ-2461")
+    public void testOffsetsCommitAfterStop() throws Exception {
+        final AtomicReference<Throwable> exception = new AtomicReference<>();
+        DebeziumEngine<ChangeEvent<String, String>> engine;
+
+        TestHelper.execute("DROP TABLE IF EXISTS tests;", "CREATE TABLE tests (id SERIAL PRIMARY KEY);");
+
+        final Properties props = new Properties();
+        props.putAll(TestHelper.defaultConfig().build().asMap());
+        props.setProperty("name", "debezium-engine");
+        props.setProperty("connector.class", "io.debezium.connector.postgresql.PostgresConnector");
+        props.setProperty(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG,
+                OFFSET_STORE_PATH.toAbsolutePath().toString());
+        props.setProperty("offset.flush.interval.ms", "3000");
+        props.setProperty("converter.schemas.enable", "false");
+
+        engine = DebeziumEngine.create(Json.class).using(props).using(new DebeziumEngine.ConnectorCallback() {
+            @Override
+            public void connectorStarted() {
+            }
+
+            @Override
+            public void connectorStopped() {
+            }
+        }).using((success, message, error) -> {
+            exception.compareAndSet(null, error);
+        }).notifying((records, committer) -> {
+            try {
+
+                for (ChangeEvent<String, String> record : records) {
+                    committer.markProcessed(record);
+                }
+                committer.markBatchFinished();
+            }
+            catch (Exception e) {
+                Testing.printError(e);
+            }
+        }).build();
+
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        executor.execute(engine);
+
+        for (int i = 0; i < 100; i++) {
+            TestHelper.execute("INSERT INTO tests VALUES(default)");
+        }
+        Thread.sleep(5000);
+        engine.close();
+
+        for (int i = 0; i < 100; i++) {
+            TestHelper.execute("INSERT INTO tests VALUES(default)");
+        }
+        executor.execute(engine);
+        engine.close();
+
+        Assertions.assertThat(exception.get()).isNull();
+    }
 }
