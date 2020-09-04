@@ -32,17 +32,14 @@ import io.debezium.relational.Table;
  */
 public class SqlServerChangeTablePointer extends ChangeTableResultSet<SqlServerChangeTable, TxLogPosition> {
 
-    // private static final Logger LOGGER = LoggerFactory.getLogger(SqlServerChangeTablePointer.class);
-
     private static final int COL_COMMIT_LSN = 1;
     private static final int COL_ROW_LSN = 2;
     private static final int COL_OPERATION = 3;
     private static final int COL_DATA = 5;
 
     private ResultSetMapper<Object[]> resultSetMapper;
-    // private SqlServerChangeTable changeTable;
-    private ResultSet resultSet;
-    private int columnDataOffset;
+    private final ResultSet resultSet;
+    private final int columnDataOffset;
 
     public SqlServerChangeTablePointer(SqlServerChangeTable changeTable, ResultSet resultSet) {
         this(changeTable, resultSet, COL_DATA);
@@ -87,12 +84,6 @@ public class SqlServerChangeTablePointer extends ChangeTableResultSet<SqlServerC
 
     @Override
     public Object[] getData() throws SQLException {
-        // final int dataColumnCount = resultSet.getMetaData().getColumnCount() - (columnDataOffset - 1);
-        // final Object[] data = new Object[dataColumnCount];
-        // for (int i = 0; i < dataColumnCount; ++i) {
-        // data[i] = getColumnData(resultSet, columnDataOffset + i);
-        // }
-        // return data;
         if (resultSetMapper == null) {
             this.resultSetMapper = createResultSetMapper(getChangeTable().getSourceTable());
         }
@@ -111,7 +102,8 @@ public class SqlServerChangeTablePointer extends ChangeTableResultSet<SqlServerC
      * a subset of columns
      */
     private ResultSetMapper<Object[]> createResultSetMapper(Table table) throws SQLException {
-        final List<String> sourceTableColumns = table.columns().stream()
+        final List<String> sourceTableColumns = table.columns()
+                .stream()
                 .map(Column::name)
                 .collect(Collectors.toList());
         final List<String> resultColumns = getResultColumnNames();
@@ -154,7 +146,7 @@ public class SqlServerChangeTablePointer extends ChangeTableResultSet<SqlServerC
         private final Map<Integer, Integer> mapping;
 
         IndicesMapping(List<String> sourceTableColumns, List<String> captureInstanceColumns) {
-            this.mapping = new HashMap<>(sourceTableColumns.size());
+            this.mapping = new HashMap<>(sourceTableColumns.size(), 1.0F);
 
             for (int i = 0; i < captureInstanceColumns.size(); ++i) {
                 mapping.put(i, sourceTableColumns.indexOf(captureInstanceColumns.get(i)));
