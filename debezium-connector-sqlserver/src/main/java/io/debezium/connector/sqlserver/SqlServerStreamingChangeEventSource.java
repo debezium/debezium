@@ -362,7 +362,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                                 SchemaChangeEventType.CREATE));
             }
             //
-            // TODO: This needs to be re-worked per https://github.com/debezium/debezium/pull/748#issuecomment-492526200
+            // TODO DBZ-2495: This needs to be re-worked per https://github.com/debezium/debezium/pull/748#issuecomment-492526200
             //
             // If a column was renamed, then the old capture instance had been dropped and a new one
             // created. In consequence, a table with out-dated schema might be assigned here.

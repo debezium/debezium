@@ -1253,28 +1253,28 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-1068")
-    public void blacklistColumnWhenCaptureInstanceExcludesColumns() throws Exception {
+    public void excludeColumnWhenCaptureInstanceExcludesColumns() throws Exception {
         connection.execute(
-                "CREATE TABLE blacklist_column_table_a (id int, name varchar(30), amount integer primary key(id))");
-        TestHelper.enableTableCdc(connection, "blacklist_column_table_a", "dbo_blacklist_column_table_a",
+                "CREATE TABLE excluded_column_table_a (id int, name varchar(30), amount integer primary key(id))");
+        TestHelper.enableTableCdc(connection, "excluded_column_table_a", "dbo_excluded_column_table_a",
                 Arrays.asList("id", "name"));
 
         final Configuration config = TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
-                .with(SqlServerConnectorConfig.COLUMN_BLACKLIST, "dbo.blacklist_column_table_a.amount")
+                .with(SqlServerConnectorConfig.COLUMN_EXCLUDE_LIST, "dbo.excluded_column_table_a.amount")
                 .build();
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
 
-        connection.execute("INSERT INTO blacklist_column_table_a VALUES(10, 'some_name', 120)");
+        connection.execute("INSERT INTO excluded_column_table_a VALUES(10, 'some_name', 120)");
 
         final SourceRecords records = consumeRecordsByTopic(1);
-        final List<SourceRecord> tableA = records.recordsForTopic("server1.dbo.blacklist_column_table_a");
+        final List<SourceRecord> tableA = records.recordsForTopic("server1.dbo.excluded_column_table_a");
 
         Schema expectedSchemaA = SchemaBuilder.struct()
                 .optional()
-                .name("server1.dbo.blacklist_column_table_a.Value")
+                .name("server1.dbo.excluded_column_table_a.Value")
                 .field("id", Schema.INT32_SCHEMA)
                 .field("name", Schema.OPTIONAL_STRING_SCHEMA)
                 .build();
