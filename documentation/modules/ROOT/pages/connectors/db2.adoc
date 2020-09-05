@@ -1463,7 +1463,7 @@ The above example assumes that you extracted the {prodname} Db2 connector to the
 endif::product[]
 
 // Type: concept
-// ModuleID:debezium-db2-connector-configuration-example
+// ModuleID: debezium-db2-connector-configuration-example
 // Title: {prodname} db2 connector configuration example
 [[db2-example]]
 [[db2-example-configuration]]
