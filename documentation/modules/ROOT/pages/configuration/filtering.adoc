@@ -18,14 +18,6 @@ By configuring the `Filter` SMT, you can specify the events that you are interes
 As the `Filter` SMT processes the event stream, it evaluates each event against the configured filter conditions.
 Only events that meet the criteria of the filter conditions are passed to the broker.
 
-[NOTE]
-====
-The `Filter` (SMT) is currently in an incubating state. The semantics, configuration options, and other aspects of the SMT are subject to change.
-ifdef::community[]
-We welcome you any feedback that you have about using this filter transformation.
-endif::community[]
-====
-
 Although Kafka Connect provides its own link:https://cwiki.apache.org/confluence/display/KAFKA/KIP-66%3A+Single+Message+Transforms+for+Kafka+Connect[Simple Message Transforms] (SMT) to encode filtering logic,
 it has the following drawbacks:
 
@@ -77,10 +69,15 @@ The `key` and `value` are of type `org.apache.kafka.connect.data.Struct` and `ke
 The expression can invoke arbitrary methods on the variables and should evaluate into a Boolean value that decides whether the message is removed `true` or kept.
 Expressions should not result in any side-effects. That is, they should not modify any variables that they pass.
 
+// Type: reference
+// ModuleID: filter-condition-configuration-for-other-scripting-languages
+// Title: Filter condition configuration for other scripting languages 
 == Language specifics
 
-The same business logic - remove all update records with `id` set to `2` can be expressed like this, depending on your preferred scripting language;
-If you use `Groovy` as the expression language, you can access the value fields as properties, as in the following example:
+The way that you specify filtering conditions depends on the scripting language that you use.
+
+For example, as shown in {link-prefix}:{link-filtering}#example-of-configuring-filter-conditions[], when you use `Groovy` as the expression language, 
+to remove update records for which the `id` value is set to `2`, you would use the following expression:
 
 [source,groovy]
 ----
@@ -93,17 +90,20 @@ The {prodname} MongoDB connector emits the `after` and `patch` fields not as str
 When you use the `Filter` SMT with the MongoDB connector, you should first unwind the field by applying the {link-prefix}:{link-mongodb-event-flattening}[`ExtractNewDocumentState`] SMT.
 
 As an alternative, you can use a JSON parser in the expression.
-If you use Groovy as the expression language, to use a JSON parser, add the `groovy-json` artifact to the classpath, and add an expression such as `(new groovy.json.JsonSlurper()).parseText(value.after).last_name == 'Kretchmar'`.
+To use a JSON parser when Groovy is the expression language, add the `groovy-json` artifact to the classpath, and add an expression such as `(new groovy.json.JsonSlurper()).parseText(value.after).last_name == 'Kretchmar'`.
 ====
 
-For other languages, such as JavaScript, you can call the `Struct#get()` method, as in the following example:
+.Javascript
+When you use JavaScript as the expression language, you can call the `Struct#get()` method to specify the filtering condition, as in the following example:
 
 [source,javascript]
 ----
 value.get('op') == 'u' && value.get('before').get('id') == 2
 ----
 
-When using JavaScript via Graal.js, simplified property references can be used, akin to the Groovy approach:
+.Javascript with Graal.js
+When you create filtering conditions by using JavaScript with Graal.js, you use an approach that is similar to the one use with Groovy.
+For example:
 
 [source,javascript]
 ----
@@ -111,8 +111,8 @@ value.op == 'u' && value.before.id == 2
 ----
 
 // Type: reference
-// ModuleID: filter-smt-configuration-options
-// Title: `Filter` SMT configuration options
+// ModuleID: options-for-configuring-filter-transformation
+// Title: Options for configuring `Filter` transformation
 [[filter-configuration-options]]
 == Configuration options
 
@@ -127,7 +127,9 @@ The following table lists the configuration options for the `Filter` SMT.
 
 |[[filter-topic-regex]]<<filter-topic-regex, `topic.regex`>>
 |
-|An optional regular expression that specifies the topics that the transformation applies to. Records for topics with names that do not match the given expression are passed on as-is.
+|An optional regular expression that determines whether the filter logic is applied to an event based on name of the Kafka topic where the event is routed. 
+If the destination topic matches the value in `topic.regex`, the transformation applies the filter logic before it passes the event to the topic.
+If the destination topic does not match the value in `topic.regex`, the SMT passes the event to the topic unmodified.
 
 |[[filter-language]]<<filter-language, `language`>>
 |
