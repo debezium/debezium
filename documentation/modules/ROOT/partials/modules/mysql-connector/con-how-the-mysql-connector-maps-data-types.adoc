@@ -234,7 +234,6 @@ a|`org.apache.kafka.connect.data.Timestamp`
 NOTE: Represents the number of milliseconds since epoch, and does not include time zone information.
 
 |===
-+
 
 == Decimal values
 
