@@ -36,7 +36,7 @@ The following skeleton JSON shows the basic four parts of a change event. Howeve
 |`schema`
 |The first `schema` field is part of the event key. It specifies a Kafka Connect schema that describes what is in the event key's `payload` portion. In other words, the first `schema` field describes the structure of the primary key, or the unique key if the table does not have a primary key, for the table that was changed. +
  +
-It is possible to override the table's primary key by setting the {link-prefix}:{link-mysql-connector}#mysql-property-message-key-columns[`message.key.columns` connector configuration property]. In this case, the first schema field describes the structure of the the key identified by that property.
+It is possible to override the table's primary key by setting the {link-prefix}:{link-mysql-connector}#mysql-property-message-key-columns[`message.key.columns` connector configuration property]. In this case, the first schema field describes the structure of the key identified by that property.
 
 |2
 |`payload`
