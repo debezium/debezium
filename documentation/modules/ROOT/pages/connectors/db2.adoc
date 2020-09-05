@@ -1406,7 +1406,7 @@ VALUES ASNCDC.ASNCDCSERVICES('reinit','asncdc');
 {link-prefix}:{link-db2-connector}#managing-debezium-db2-connectors[Reference table for {prodname} Db2 management UDFs]
 
 // Type: assembly
-// ModuleID: deploying--debezium-db2-connectors
+// ModuleID: deploying-debezium-db2-connectors
 // Title: Deploying {prodname} Db2 connectors
 [[db2-deploying-a-connector]]
 == Deployment
@@ -2125,9 +2125,3 @@ However, when a table is in capture mode, after a change to a column name, the D
 . In the ASN register table, mark the tables as `INACTIVE`. This marks the old change-data tables as inactive, which allows the data in them to remain but they are no longer updated.
 . {link-prefix}:{link-db2-connector}#debezium-db2-reinitialize-asn-service[Reinitialize the ASN capture service.]
 . Optional. Restart the connector to see updated column names in change events. 
-
-ifdef::community[]
-=== Example
-
-To be added. 
-endif::community[]
