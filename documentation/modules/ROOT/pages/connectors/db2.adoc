@@ -194,7 +194,7 @@ A message to the schema change topic contains a logical representation of the ta
       "version": "{debezium-version}",
       "connector": "db2",
       "name": "db2",
-      "ts_ms": 1588252618953,
+      "ts_sec": 1588252618953,
       "snapshot": "true",
       "db": "testdb",
       "schema": "DB2INST1",
@@ -462,7 +462,7 @@ The following skeleton JSON shows the basic four parts of a change event. Howeve
 |`schema`
 |The first `schema` field is part of the event key. It specifies a Kafka Connect schema that describes what is in the event key's `payload` portion. In other words, the first `schema` field describes the structure of the primary key, or the unique key if the table does not have a primary key, for the table that was changed. +
  +
-Rarely, converter configuration overrides the key column with some other structure. In this case, the first schema field describes that structure.
+It is possible to override the table's primary key by setting the {link-prefix}:{link-db2-connector}#db2-property-message-key-columns[`message.key.columns` connector configuration property]. In this case, the first schema field describes the structure of the the key identified by that property.
 
 |2
 |`payload`
@@ -700,7 +700,7 @@ The following example shows the value portion of a change event that the connect
           {
             "type": "int64",
             "optional": false,
-            "field": "ts_ms"
+            "field": "ts_sec"
           },
           {
             "type": "boolean",
@@ -764,7 +764,7 @@ The following example shows the value portion of a change event that the connect
       "version": "{debezium-version}",
       "connector": "db2",
       "name": "myconnector",
-      "ts_ms": 1559729468470,
+      "ts_sec": 1559729468470,
       "snapshot": false,
       "db": "mydatabase",
       "schema": "MYSCHEMA",
@@ -864,7 +864,7 @@ The value of a change event for an update in the sample `customers` table has th
       "version": "{debezium-version}",
       "connector": "db2",
       "name": "myconnector",
-      "ts_ms": 1559729995937,
+      "ts_sec": 1559729995937,
       "snapshot": false,
       "db": "mydatabase",
       "schema": "MYSCHEMA",
@@ -940,7 +940,7 @@ The value in a _delete_ change event has the same `schema` portion as _create_ a
       "version": "{debezium-version}",
       "connector": "db2",
       "name": "myconnector",
-      "ts_ms": 1559730445243,
+      "ts_sec": 1559730445243,
       "snapshot": false,
       "db": "mydatabase",
       "schema": "MYSCHEMA",
