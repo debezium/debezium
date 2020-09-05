@@ -425,7 +425,7 @@ public class CommitLogReadHandlerImpl implements CommitLogReadHandler {
                     Object value;
                     Object deletionTs = null;
                     AbstractType abstractType = cd.type;
-                    if (abstractType.isCollection()) {
+                    if (abstractType.isCollection() && abstractType.isMultiCell()) {
                         ComplexColumnData ccd = row.getComplexColumnData(cd);
                         value = CassandraTypeDeserializer.deserialize((CollectionType) abstractType, ccd);
                     }
