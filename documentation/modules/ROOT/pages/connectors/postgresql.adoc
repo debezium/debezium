@@ -443,7 +443,7 @@ Details are in the following topics:
 
 * xref:about-keys-in-debezium-postgresql-change-events[]
 * xref:about-values-in-debezium-postgresql-change-events[]
-* xref:how-replica-identity-controls-data-that-can-be-in-debezium-change-events[]
+* xref:how-replica-identity-controls-data-that-can-be-in-debezium-postgresql-change-events[]
 * xref:about-debezium-postgresql-change-events-for-operations-that-create-content[]
 * xref:about-debezium-postgresql-change-events-for-operations-that-update-content[]
 * xref:about-debezium-postgresql-change-events-for-primary-key-updates[]
