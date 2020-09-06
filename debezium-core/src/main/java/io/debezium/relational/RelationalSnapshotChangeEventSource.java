@@ -109,7 +109,7 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
             determineCapturedTables(ctx);
             snapshotProgressListener.monitoredDataCollectionsDetermined(ctx.capturedTables);
 
-            LOGGER.info("Snapshot step 3 - Locking captured tables");
+            LOGGER.info("Snapshot step 3 - Locking captured tables {}", ctx.capturedTables);
 
             if (snapshottingTask.snapshotSchema()) {
                 lockTablesForSchemaSnapshot(context, ctx);
@@ -186,7 +186,7 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
     }
 
     private void determineCapturedTables(RelationalSnapshotContext ctx) throws Exception {
-        Set<TableId> allTableIds = getAllTableIds(ctx);
+        Set<TableId> allTableIds = determineAllowedDataCollectionsForSnapshot(getAllTableIds(ctx));
 
         Set<TableId> capturedTables = new HashSet<>();
 

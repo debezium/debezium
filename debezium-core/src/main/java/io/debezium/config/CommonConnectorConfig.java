@@ -11,7 +11,9 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -309,6 +311,14 @@ public abstract class CommonConnectorConfig {
             .withDescription("The maximum number of records that should be loaded into memory while performing a snapshot")
             .withValidation(Field::isNonNegativeInteger);
 
+    public static final Field SNAPSHOT_MODE_TABLES = Field.create("snapshot.table")
+            .withDisplayName("Snapshot Mode Custom Tables")
+            .withType(Type.LIST)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.MEDIUM)
+            .withDescription(
+                    "this setting must be set to specify a list of tables/collections whose snapshot must be taken on creating or restarting the connector.");
+
     public static final Field SOURCE_STRUCT_MAKER_VERSION = Field.create("source.struct.version")
             .withDisplayName("Source struct maker version")
             .withEnum(Version.class, Version.V2)
@@ -388,6 +398,7 @@ public abstract class CommonConnectorConfig {
                     PROVIDE_TRANSACTION_METADATA,
                     SKIPPED_OPERATIONS,
                     SNAPSHOT_DELAY_MS,
+                    SNAPSHOT_MODE_TABLES,
                     SNAPSHOT_FETCH_SIZE,
                     RETRIABLE_RESTART_WAIT,
                     QUERY_FETCH_SIZE)
@@ -539,6 +550,12 @@ public abstract class CommonConnectorConfig {
         else {
             return Collections.emptySet();
         }
+    }
+
+    public Set<String> getSnapshotAllowedTables() {
+        return Optional.ofNullable(config.getString(SNAPSHOT_MODE_TABLES))
+                .map(tables -> Strings.setOf(tables, Function.identity()))
+                .orElseGet(Collections::emptySet);
     }
 
     /**

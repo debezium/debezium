@@ -29,12 +29,14 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Configuration.Builder;
 import io.debezium.data.KeyValueStore;
 import io.debezium.data.KeyValueStore.Collection;
 import io.debezium.data.SchemaChangeHistory;
 import io.debezium.data.VerifyRecord;
+import io.debezium.doc.FixFor;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.SkipTestRule;
@@ -273,6 +275,59 @@ public class SnapshotReaderIT {
         }
         t.join();
         assertFalse(connectException);
+    }
+
+    @Test
+    @FixFor("DBZ-2456")
+    public void shouldCreateSnapshotSelectively() throws Exception {
+        config = simpleConfig()
+                .with(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, "connector_(.*)_" + DATABASE.getIdentifier())
+                .with(CommonConnectorConfig.SNAPSHOT_MODE_TABLES, "connector_(.*).customers")
+                .build();
+
+        context = new MySqlTaskContext(config, new Filters.Builder(config).build());
+        context.start();
+        reader = new SnapshotReader("snapshot", context);
+
+        reader.uponCompletion(completed::countDown);
+        reader.generateReadEvents();
+        // Start the snapshot ...
+        reader.start();
+
+        // Poll for records ...
+        // Testing.Print.enable();
+        List<SourceRecord> records = null;
+        KeyValueStore store = KeyValueStore.createForTopicsBeginningWith(DATABASE.getServerName() + ".");
+        SchemaChangeHistory schemaChanges = new SchemaChangeHistory(DATABASE.getServerName());
+        while ((records = reader.poll()) != null) {
+            records.forEach(record -> {
+                VerifyRecord.isValid(record);
+                VerifyRecord.hasNoSourceQuery(record);
+                store.add(record);
+                schemaChanges.add(record);
+            });
+        }
+        // The last poll should always return null ...
+        assertThat(records).isNull();
+
+        // There should be no schema changes ...
+        assertThat(schemaChanges.recordCount()).isEqualTo(0);
+
+        // Check the records via the store ...
+        assertThat(store.databases()).containsOnly(DATABASE.getDatabaseName(), OTHER_DATABASE.getDatabaseName()); // 2 databases
+        assertThat(store.collectionCount()).isEqualTo(2); // 2 databases
+
+        Collection customers = store.collection(DATABASE.getDatabaseName(), "customers");
+        assertThat(customers.numberOfCreates()).isEqualTo(0);
+        assertThat(customers.numberOfUpdates()).isEqualTo(0);
+        assertThat(customers.numberOfDeletes()).isEqualTo(0);
+        assertThat(customers.numberOfReads()).isEqualTo(4);
+        assertThat(customers.numberOfTombstones()).isEqualTo(0);
+        assertThat(customers.numberOfKeySchemaChanges()).isEqualTo(1);
+        assertThat(customers.numberOfValueSchemaChanges()).isEqualTo(1);
+
+        Collection orders = store.collection(DATABASE.getDatabaseName(), "orders");
+        assertThat(orders).isNull();
     }
 
     @Test

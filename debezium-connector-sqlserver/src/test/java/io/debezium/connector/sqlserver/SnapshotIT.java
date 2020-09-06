@@ -27,6 +27,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.CommonConnectorConfig.Version;
 import io.debezium.config.Configuration;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotIsolationMode;
@@ -365,6 +366,46 @@ public class SnapshotIT extends AbstractConnectorTest {
         SourceRecordAssert.assertThat(tableB.get(0))
                 .valueAfterFieldIsEqualTo(expectedValueB)
                 .valueAfterFieldSchemaIsEqualTo(expectedSchemaB);
+
+        stopConnector();
+    }
+
+    @Test
+    public void shouldSelectivelySnapshotTables() throws SQLException, InterruptedException {
+        connection.execute(
+                "CREATE TABLE table_a (id int, name varchar(30), amount integer primary key(id))",
+                "CREATE TABLE table_b (id int, name varchar(30), amount integer primary key(id))");
+        connection.execute("INSERT INTO table_a VALUES(10, 'some_name', 120)");
+        connection.execute("INSERT INTO table_b VALUES(11, 'some_name', 447)");
+        TestHelper.enableTableCdc(connection, "table_a");
+        TestHelper.enableTableCdc(connection, "table_b");
+
+        final Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .with(SqlServerConnectorConfig.COLUMN_EXCLUDE_LIST, "dbo.table_a.amount")
+                .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, "dbo.table_a,dbo.table_b")
+                .with(CommonConnectorConfig.SNAPSHOT_MODE_TABLES, "[A-z].*dbo.table_a")
+                .build();
+
+        start(SqlServerConnector.class, config);
+        assertConnectorIsRunning();
+
+        SourceRecords records = consumeRecordsByTopic(1);
+        List<SourceRecord> tableA = records.recordsForTopic("server1.dbo.table_a");
+        List<SourceRecord> tableB = records.recordsForTopic("server1.dbo.table_b");
+
+        Assertions.assertThat(tableA).hasSize(1);
+        Assertions.assertThat(tableB).isNull();
+        TestHelper.waitForSnapshotToBeCompleted();
+        connection.execute("INSERT INTO table_a VALUES(22, 'some_name', 556)");
+        connection.execute("INSERT INTO table_b VALUES(24, 'some_name', 558)");
+
+        records = consumeRecordsByTopic(2);
+        tableA = records.recordsForTopic("server1.dbo.table_a");
+        tableB = records.recordsForTopic("server1.dbo.table_b");
+
+        Assertions.assertThat(tableA).hasSize(1);
+        Assertions.assertThat(tableB).hasSize(1);
 
         stopConnector();
     }
