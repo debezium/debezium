@@ -21,9 +21,11 @@ import org.slf4j.LoggerFactory;
 
 import io.fabric8.kubernetes.api.model.Container;
 import io.fabric8.kubernetes.api.model.EnvVar;
+import io.fabric8.kubernetes.api.model.IntOrString;
 import io.fabric8.kubernetes.api.model.LocalObjectReference;
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.PodList;
+import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.api.model.ServiceAccount;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.kubernetes.api.model.networking.NetworkPolicy;
@@ -70,6 +72,22 @@ public class OpenShiftUtils {
                 .endSpec()
                 .done();
         return route;
+    }
+
+    public Service createService(String project, String name, String portName, int port, Map<String, String> selector, Map<String, String> labels) {
+        Service service = client.services().inNamespace(project).createOrReplaceWithNew()
+                .withNewMetadata()
+                .withName(name)
+                .withLabels(labels)
+                .endMetadata()
+                .withNewSpec()
+                .addNewPort()
+                .withAppProtocol("tcp")
+                .withName(portName).withPort(port).withTargetPort(new IntOrString(port))
+                .endPort()
+                .withSelector(selector)
+                .endSpec().done();
+        return service;
     }
 
     /**

@@ -1310,7 +1310,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         assertThat(key.schema()).isSameAs(deleteRecord.keySchema());
         assertThat(key.get("id")).isEqualTo(JSONSerializers.getStrict().serialize(objId));
 
-        Document patchObj = Document.parse(value.getString("patch"));
+        Document patchObj = Document.parse(value.getString(MongoDbFieldName.PATCH));
         patchObj.remove("$v");
 
         assertThat(value.schema()).isSameAs(deleteRecord.valueSchema());
@@ -1365,7 +1365,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
 
         assertThat(value.schema()).isSameAs(deleteRecord.valueSchema());
         assertThat(value.getString(Envelope.FieldName.AFTER)).isNull();
-        assertThat(value.getString("patch")).isNull();
+        assertThat(value.getString(MongoDbFieldName.PATCH)).isNull();
         assertThat(value.getString(Envelope.FieldName.OPERATION)).isEqualTo(Operation.DELETE.code());
         assertThat(value.getInt64(Envelope.FieldName.TIMESTAMP)).isGreaterThanOrEqualTo(timestamp.toEpochMilli());
 
@@ -1424,7 +1424,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
 
         assertThat(value.schema()).isSameAs(record.valueSchema());
         assertThat(value.getString(Envelope.FieldName.AFTER)).isNull();
-        assertThat(value.getString("patch")).isNull();
+        assertThat(value.getString(MongoDbFieldName.PATCH)).isNull();
         assertThat(value.getString(Envelope.FieldName.OPERATION)).isEqualTo(Operation.DELETE.code());
         assertThat(value.getInt64(Envelope.FieldName.TIMESTAMP)).isGreaterThanOrEqualTo(timestamp.toEpochMilli());
 
@@ -1804,7 +1804,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         assertThat(key.schema()).isSameAs(deleteRecord.keySchema());
         assertThat(key.get("id")).isEqualTo(JSONSerializers.getStrict().serialize(objId));
 
-        Document patchObj = Document.parse(value.getString("patch"));
+        Document patchObj = Document.parse(value.getString(MongoDbFieldName.PATCH));
         patchObj.remove("$v");
 
         assertThat(value.schema()).isSameAs(deleteRecord.valueSchema());

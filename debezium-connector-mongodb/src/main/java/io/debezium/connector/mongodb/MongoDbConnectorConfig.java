@@ -247,7 +247,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withWidth(Width.LONG)
             .withImportance(Importance.HIGH)
             .withValidation(Field::isListOfRegex, MongoDbConnectorConfig::validateDatabaseExcludeList)
-            .withDescription("The databases for which changes are to be captured");
+            .withDescription("A comma-separated list of regular expressions that match the database names for which changes are to be captured");
 
     /**
      * Old, backwards-compatible "whitelist" property.
@@ -260,7 +260,8 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withImportance(Importance.LOW)
             .withValidation(Field::isListOfRegex, MongoDbConnectorConfig::validateDatabaseExcludeList)
             .withInvisibleRecommender()
-            .withDescription("The databases for which changes are to be captured (deprecated, use \"" + DATABASE_INCLUDE_LIST.name() + "\" instead)");
+            .withDescription("A comma-separated list of regular expressions that match the database names for which changes are to be captured (deprecated, use \""
+                    + DATABASE_INCLUDE_LIST.name() + "\" instead)");
 
     /**
      * A comma-separated list of regular expressions that match the databases to be excluded.
@@ -272,7 +273,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withWidth(Width.LONG)
             .withImportance(Importance.HIGH)
             .withValidation(Field::isListOfRegex)
-            .withDescription("The databases for which changes are to be excluded");
+            .withDescription("A comma-separated list of regular expressions that match the database names for which changes are to be excluded");
 
     /**
      * Old, backwards-compatible "blacklist" property.
@@ -285,7 +286,8 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withImportance(Importance.LOW)
             .withValidation(Field::isListOfRegex)
             .withInvisibleRecommender()
-            .withDescription("The databases for which changes are to be excluded (deprecated, use \"" + DATABASE_EXCLUDE_LIST.name() + "\" instead)");
+            .withDescription("A comma-separated list of regular expressions that match the database names for which changes are to be excluded (deprecated, use \""
+                    + DATABASE_EXCLUDE_LIST.name() + "\" instead)");
 
     /**
      * A comma-separated list of regular expressions that match the fully-qualified namespaces of collections to be monitored.
@@ -299,7 +301,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withImportance(Importance.HIGH)
             .withValidation(Field::isListOfRegex,
                     MongoDbConnectorConfig::validateCollectionExcludeList)
-            .withDescription("The collections for which changes are to be captured");
+            .withDescription("A comma-separated list of regular expressions that match the collection names for which changes are to be captured");
 
     /**
      * Old, backwards-compatible "whitelist" property.
@@ -312,7 +314,8 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withImportance(Importance.LOW)
             .withValidation(Field::isListOfRegex, MongoDbConnectorConfig::validateCollectionExcludeList)
             .withInvisibleRecommender()
-            .withDescription("The collections for which changes are to be captured (deprecated, use \"" + COLLECTION_INCLUDE_LIST.name() + "\" instead)");
+            .withDescription("A comma-separated list of regular expressions that match the collection names for which changes are to be captured (deprecated, use \""
+                    + COLLECTION_INCLUDE_LIST.name() + "\" instead)");
 
     /**
      * A comma-separated list of regular expressions that match the fully-qualified namespaces of collections to be excluded from
@@ -321,7 +324,8 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
      */
     public static final Field COLLECTION_EXCLUDE_LIST = Field.create("collection.exclude.list")
             .withValidation(Field::isListOfRegex)
-            .withInvisibleRecommender();
+            .withInvisibleRecommender()
+            .withDescription("A comma-separated list of regular expressions that match the collection names for which changes are to be excluded");
 
     /**
      * Old, backwards-compatible "blacklist" property.
@@ -329,7 +333,9 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     @Deprecated
     public static final Field COLLECTION_BLACKLIST = Field.create("collection.blacklist")
             .withValidation(Field::isListOfRegex)
-            .withInvisibleRecommender();
+            .withInvisibleRecommender()
+            .withDescription("A comma-separated list of regular expressions that match the collection names for which changes are to be excluded (deprecated, use \""
+                    + COLLECTION_EXCLUDE_LIST.name() + "\" instead)");
 
     /**
      * A comma-separated list of the fully-qualified names of fields that should be excluded from change event message values.

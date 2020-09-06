@@ -54,27 +54,32 @@ Only alphanumeric characters and underscores should be used.
 |
 |A list of host/port pairs that the connector will use for establishing an initial connection to the Kafka cluster. This connection will be used for retrieving database schema history previously stored by the connector, and for writing each DDL statement read from the source database. This should point to the same Kafka cluster used by the Kafka Connect process.
 
-|[[mysql-property-database-whitelist]]<<mysql-property-database-whitelist [[mysql-property-database-include-list]]<<mysql-property-database-include-list, `database.include.list`>>
+|[[mysql-property-database-whitelist]]
+[[mysql-property-database-include-list]]<<mysql-property-database-include-list, `database.include.list`>>
 |_empty string_
 |An optional comma-separated list of regular expressions that match database names to be monitored; any database name not included in `database.include.list` will be excluded from monitoring. By default all databases will be monitored.
 Must not be used with `database.exclude.list`.
 
-|[[mysql-property-database-blacklist]]<<mysql-property-database-blacklist[[mysql-property-database-exclude-list]]<<mysql-property-database-exclude-list, `database.exclude.list`>>
+|[[mysql-property-database-blacklist]]
+[[mysql-property-database-exclude-list]]<<mysql-property-database-exclude-list, `database.exclude.list`>>
 |_empty string_
 |An optional comma-separated list of regular expressions that match database names to be excluded from monitoring; any database name not included in `database.exclude.list` will be monitored.
 Must not be used with `database.include.list`.
 
-|[[mysql-property-table-whitelist]]<<mysql-property-table-whitelist [[mysql-property-table-include-list]]<<mysql-property-table-include-list, `table.include.list`>>
+|[[mysql-property-table-whitelist]]
+[[mysql-property-table-include-list]]<<mysql-property-table-include-list, `table.include.list`>>
 |_empty string_
 |An optional comma-separated list of regular expressions that match fully-qualified table identifiers for tables to be monitored; any table not included in `table.include.list` will be excluded from monitoring. Each identifier is of the form _databaseName_._tableName_. By default the connector will monitor every non-system table in each monitored database.
 Must not be used with `table.exclude.list`.
 
-|[[mysql-property-table-blacklist]]<<mysql-property-table-blacklist [[mysql-property-table-exclude-list]]<<mysql-property-table-exclude-list , `table.exclude.list`>>
+|[[mysql-property-table-blacklist]]
+[[mysql-property-table-exclude-list]]<<mysql-property-table-exclude-list, `table.exclude.list`>>
 |_empty string_
 |An optional comma-separated list of regular expressions that match fully-qualified table identifiers for tables to be excluded from monitoring; any table not included in `table.exclude.list` will be monitored. Each identifier is of the form _databaseName_._tableName_.
 Must not be used with `table.include.list`.
 
-|[[mysql-property-column-blacklist]]<<mysql-property-column-blacklist [[mysql-property-column-exclude-list]]<<mysql-property-column-exclude-list, `column.exclude.list`>>
+|[[mysql-property-column-blacklist]]
+[[mysql-property-column-exclude-list]]<<mysql-property-column-exclude-list, `column.exclude.list`>>
 |_empty string_
 |An optional comma-separated list of regular expressions that match the fully-qualified names of columns that should be excluded from change event message values. Fully-qualified names for columns are of the form _databaseName_._tableName_._columnName_, or _databaseName_._schemaName_._tableName_._columnName_.
 

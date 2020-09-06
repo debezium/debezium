@@ -30,6 +30,8 @@ import io.debezium.connector.mongodb.ConnectionContext.MongoPrimary;
 public class TestHelper {
     protected final static Logger logger = LoggerFactory.getLogger(TestHelper.class);
 
+    private static final String TEST_PROPERTY_PREFIX = "debezium.test.";
+
     public static Configuration getConfiguration() {
         return Configuration.fromSystemProperties("connector.").edit()
                 .withDefault(MongoDbConnectorConfig.HOSTS, "rs0/localhost:27017")
@@ -84,5 +86,9 @@ public class TestHelper {
         final Document document = Document.parse(jsonString);
         document.remove("$v");
         return document;
+    }
+
+    public static int waitTimeForRecords() {
+        return Integer.parseInt(System.getProperty(TEST_PROPERTY_PREFIX + "records.waittime", "2"));
     }
 }

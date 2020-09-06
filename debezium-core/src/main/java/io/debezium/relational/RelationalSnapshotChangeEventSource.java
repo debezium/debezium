@@ -110,7 +110,7 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
             determineCapturedTables(ctx);
             snapshotProgressListener.monitoredDataCollectionsDetermined(ctx.capturedTables);
 
-            LOGGER.info("Snapshot step 3 - Locking captured tables");
+            LOGGER.info("Snapshot step 3 - Locking captured tables {}", ctx.capturedTables);
 
             if (snapshottingTask.snapshotSchema()) {
                 lockTablesForSchemaSnapshot(context, ctx);
@@ -181,7 +181,7 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
     }
 
     private void determineCapturedTables(RelationalSnapshotContext ctx) throws Exception {
-        Set<TableId> allTableIds = getAllTableIds(ctx);
+        Set<TableId> allTableIds = determineAllowedDataCollectionsForSnapshot(getAllTableIds(ctx));
 
         Set<TableId> capturedTables = new HashSet<>();
 
@@ -305,6 +305,7 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
         final Optional<String> selectStatement = determineSnapshotSelect(snapshotContext, table.id());
         if (!selectStatement.isPresent()) {
             LOGGER.warn("For table '{}' the select statement was not provided, skipping table", table.id());
+            snapshotProgressListener.dataCollectionSnapshotCompleted(table.id(), 0);
             return;
         }
         LOGGER.info("\t For table '{}' using select statement: '{}'", table.id(), selectStatement.get());

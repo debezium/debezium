@@ -1,8 +1,8 @@
 // Metadata created by nebel
 //
 :schemaChange:
-[id="how-the-mysql-connector-handles-schema-change-topics_{context}"]
-= How the MySQL connector handles schema change topics
+[id="how-the-mysql-connector-exposes-schema-changes"]
+= How the MySQL connector exposes schema changes
 
 You can configure the {prodname} *MySQL connector* to produce schema change events that include all DDL statements applied to databases in the MySQL server. The connector writes all of these events to a Kafka topic named `<serverName>` where `serverName` is the name of the connector as specified in the `database.server.name` configuration property.
 
@@ -157,7 +157,7 @@ The schema change event message value contains a structure that includes the DDL
 }
 ----
 
-=== Important tips regarding schema change topics
+== Important tips about the schema change topic
 
 The `ddl` field may contain multiple DDL statements. Every statement applies to the database in the `databaseName` field and appears in the same order as they were applied in the database. The `source` field is structured exactly as a standard data change event written to table-specific topics. This field is useful to correlate events on different topic.
 

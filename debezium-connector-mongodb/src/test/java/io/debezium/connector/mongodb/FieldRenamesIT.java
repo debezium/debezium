@@ -8,12 +8,16 @@ package io.debezium.connector.mongodb;
 import static io.debezium.connector.mongodb.MongoDbSchema.COMPACT_JSON_SETTINGS;
 import static io.debezium.data.Envelope.FieldName.AFTER;
 import static org.fest.assertions.Assertions.assertThat;
+import static org.junit.Assert.fail;
 
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collections;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.awaitility.Awaitility;
+import org.awaitility.core.ConditionTimeoutException;
 import org.bson.Document;
 import org.bson.types.ObjectId;
 import org.junit.Test;
@@ -29,7 +33,7 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
     private static final String DATABASE_NAME = "dbA";
     private static final String COLLECTION_NAME = "c1";
     private static final String SERVER_NAME = "serverX";
-    private static final String PATCH = "patch";
+    private static final String PATCH = MongoDbFieldName.PATCH;
     private static final String ID = "_id";
 
     @Test
@@ -1485,10 +1489,17 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
     }
 
     private void assertDocumentContainsFieldError(String fieldName) {
-        stopConnector(value -> {
-            final String message = "IllegalArgumentException: Document already contains field : " + fieldName;
-            assertThat(logInterceptor.containsStacktraceElement(message)).isTrue();
-        });
+        final String message = "IllegalArgumentException: Document already contains field : " + fieldName;
+        try {
+            Awaitility.await().atMost(Duration.ofSeconds(TestHelper.waitTimeForRecords() * 15))
+                    .until(() -> logInterceptor.containsStacktraceElement(message));
+        }
+        catch (ConditionTimeoutException e) {
+            fail("Did not detect \"" + message + "\" in the log");
+        }
+        finally {
+            stopConnector();
+        }
     }
 
     private void assertShouldNotRenameDuringRead(String renamesList, Document snapshot, String fieldName) throws Exception {

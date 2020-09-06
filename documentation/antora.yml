@@ -6,9 +6,9 @@ nav:
 
 asciidoc:
   attributes:
-    debezium-version: '1.3.0.Alpha1'
+    debezium-version: '1.3.0.Beta1'
     debezium-dev-version: '1.3'
-    debezium-kafka-version: '2.5.0'
+    debezium-kafka-version: '2.6.0'
     debezium-docker-label: '1.2'
     install-version: '1.2'
     assemblies: '../assemblies'
@@ -16,6 +16,7 @@ asciidoc:
     mysql-version: '8.0'
     strimzi-version: '0.18.0'
     apicurio-version: '1.2.2.Final'
+    linux-version: 11.5.0.0
     community: true
     registry: 'Apicurio Registry'
     registry-name-full: Apicurio API and Schema Registry
@@ -23,11 +24,13 @@ asciidoc:
     link-cassandra-connector: 'connectors/cassandra.adoc'
     link-cloud-events: 'integrations/cloudevents.adoc'
     link-connectors: 'connectors/index.adoc'
+    link-content-based-routing: 'configuration/content-based-routing.adoc'
     link-custom-converters: 'development/converters.adoc'
     link-db2-connector: 'connectors/db2.adoc'
     link-debezium-monitoring: 'operations/monitoring.adoc'
     link-engine: 'development/engine.adoc'
     link-event-flattening: 'configuration/event-flattening.adoc'
+    link-filtering: 'configuration/filtering.adoc'
     link-mongodb-connector: 'connectors/mongodb.adoc'
     link-mongodb-event-flattening: 'configuration/mongodb-event-flattening.adoc' 
     link-mysql-connector: 'connectors/mysql.adoc'

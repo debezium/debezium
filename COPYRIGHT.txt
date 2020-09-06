@@ -35,6 +35,7 @@ Ben Williams
 Bin Li
 Bingqin Zhou
 Björn Häuser
+Bob Roldan
 Braden Groom
 Braden Staudacher
 Brandon Brown
@@ -80,6 +81,7 @@ Grant Cooksey
 Guillaume Rosauro
 Gunnar Morling
 Gurnaaz Randhawa
+Guy Pascarella
 Grzegorz Kołakowski
 Jan Hendrik Dolling
 Hans-Peter Grahsl
@@ -144,6 +146,7 @@ Matthias Wessendorf
 Max Kaplan
 Melissa Winstanley
 Michael Wang
+Mickaël Isaert
 Mike Graham
 Mincong Huang
 Moira Tagle

@@ -21,6 +21,11 @@ public class ChangeTable {
     private final int changeTableObjectId;
 
     /**
+     * The table from which the changes are captured
+     */
+    private Table sourceTable;
+
+    /**
      * Creates an object that represents a source table's change table.
      *
      * @param captureInstance the logical name of the change capture process
@@ -49,6 +54,14 @@ public class ChangeTable {
 
     public int getChangeTableObjectId() {
         return changeTableObjectId;
+    }
+
+    public Table getSourceTable() {
+        return sourceTable;
+    }
+
+    public void setSourceTable(Table sourceTable) {
+        this.sourceTable = sourceTable;
     }
 
     @Override

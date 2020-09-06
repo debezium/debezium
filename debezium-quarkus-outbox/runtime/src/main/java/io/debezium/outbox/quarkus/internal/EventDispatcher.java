@@ -38,16 +38,8 @@ public class EventDispatcher {
     /**
      * Debezium runtime configuration
      */
+    @Inject
     DebeziumOutboxRuntimeConfig config;
-
-    /**
-     * Set the runtime configuration properties.
-     *
-     * @param outboxRuntimeProperties the configuration properties
-     */
-    public void setOutboxRuntimeProperties(DebeziumOutboxRuntimeConfig outboxRuntimeProperties) {
-        config = outboxRuntimeProperties;
-    }
 
     /**
      * An event handler for {@link ExportedEvent} events and will be called when the event fires.
