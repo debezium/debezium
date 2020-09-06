@@ -398,12 +398,12 @@ public class ConnectionContext implements AutoCloseable {
          *
          * @return the collection identifiers; never null
          */
-        public List<CollectionId> collections() {
+        public Set<CollectionId> collections() {
             String replicaSetName = replicaSet.replicaSetName();
 
             // For each database, get the list of collections ...
             return execute("get collections in databases", primary -> {
-                List<CollectionId> collections = new ArrayList<>();
+                Set<CollectionId> collections = new HashSet<>();
                 Set<String> databaseNames = databaseNames();
 
                 for (String dbName : databaseNames) {

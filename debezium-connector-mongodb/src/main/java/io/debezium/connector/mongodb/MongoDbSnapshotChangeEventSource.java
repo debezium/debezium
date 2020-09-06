@@ -12,6 +12,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
+import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -342,7 +343,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
 
         LOGGER.info("Beginning snapshot of '{}' at {}", rsName, rsOffsetContext.getOffset());
 
-        final List<CollectionId> collections = primaryClient.collections();
+        final Set<CollectionId> collections = determineAllowedDataCollectionsForSnapshot(primaryClient.collections());
         snapshotProgressListener.monitoredDataCollectionsDetermined(collections);
         if (connectionContext.maxNumberOfCopyThreads() > 1) {
             // Since multiple copy threads are to be used, create a thread pool and initiate the copy.

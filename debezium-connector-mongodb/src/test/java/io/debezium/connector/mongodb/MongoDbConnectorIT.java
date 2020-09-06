@@ -965,6 +965,52 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         assertThat(after.get("op")).isEqualTo("bar");
     }
 
+    @Test
+    public void shouldSelectivelySnapshot() throws InterruptedException {
+        config = TestHelper.getConfiguration().edit()
+                .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
+                .with(MongoDbConnectorConfig.SNAPSHOT_MODE, MongoDbConnectorConfig.SnapshotMode.INITIAL)
+                .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
+                .with(CommonConnectorConfig.SNAPSHOT_MODE_TABLES, "[A-z].*dbit.restaurants1")
+                .with(MongoDbConnectorConfig.LOGICAL_NAME, "mongo")
+                .build();
+
+        // Set up the replication context for connections ...
+        context = new MongoDbTaskContext(config);
+
+        // Cleanup database
+        TestHelper.cleanDatabase(primary(), "dbit");
+
+        // Before starting the connector, add data to the databases ...
+        storeDocuments("dbit", "restaurants1", "restaurants1.json");
+        storeDocuments("dbit", "restaurants2", "restaurants2.json");
+
+        // Start the connector ...
+        start(MongoDbConnector.class, config);
+        waitForStreamingRunning("mongodb", "mongo");
+
+        SourceRecords records = consumeRecordsByTopic(6);
+
+        List<SourceRecord> restaurant1 = records.recordsForTopic("mongo.dbit.restaurants1");
+        List<SourceRecord> restaurant2 = records.recordsForTopic("mongo.dbit.restaurants2");
+
+        assertThat(restaurant1.size()).isEqualTo(6);
+        assertThat(restaurant2).isNull();
+
+        // Insert record
+        final Instant timestamp = Instant.now();
+        ObjectId objId = new ObjectId();
+        Document obj = Document.parse("{\"name\": \"Brunos On The Boulevard\", \"restaurant_id\": \"40356151\"}");
+        insertDocuments("dbit", "restaurants2", obj);
+
+        // Consume records, should be 1, the insert
+        records = consumeRecordsByTopic(1);
+        assertThat(records.allRecordsInOrder().size()).isEqualTo(1);
+        assertNoRecordsToConsume();
+
+        stopConnector();
+    }
+
     protected void verifyNotFromInitialSync(SourceRecord record) {
         assertThat(record.sourceOffset().containsKey(SourceInfo.INITIAL_SYNC)).isFalse();
         Struct value = (Struct) record.value();
