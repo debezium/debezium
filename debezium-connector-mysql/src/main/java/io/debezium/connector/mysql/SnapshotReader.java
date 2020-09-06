@@ -27,6 +27,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -254,6 +255,9 @@ public class SnapshotReader extends AbstractReader {
         final List<TableId> tablesToSnapshotSchemaAfterUnlock = new ArrayList<>();
         Set<TableId> lockedTables = Collections.emptySet();
 
+        final Set<String> snapshotAllowedTables = context.getConnectorConfig().getSnapshotAllowedTables();
+        final Predicate<TableId> isAllowedForSnapshot = tableId -> snapshotAllowedTables.size() == 0
+                || snapshotAllowedTables.stream().anyMatch(s -> tableId.identifier().matches(s));
         try {
             metrics.snapshotStarted();
 
@@ -404,7 +408,8 @@ public class SnapshotReader extends AbstractReader {
                                 else {
                                     logger.info("\t '{}' is not added among known tables", id);
                                 }
-                                if (filters.tableFilter().test(id)) {
+                                //
+                                if (filters.tableFilter().and(isAllowedForSnapshot).test(id)) {
                                     capturedTableIds.add(id);
                                     logger.info("\t including '{}' for further processing", id);
                                 }

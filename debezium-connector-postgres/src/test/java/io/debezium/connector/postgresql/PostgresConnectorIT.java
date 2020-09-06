@@ -1159,6 +1159,57 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
+    public void shouldAllowForSelectiveSnapshot() throws InterruptedException {
+        TestHelper.execute(SETUP_TABLES_STMT);
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.ALWAYS.name())
+                .with(CommonConnectorConfig.SNAPSHOT_MODE_TABLES, "s1.a")
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE);
+
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+
+        /* Snapshot must be taken only for the listed tables */
+        SourceRecords actualRecords = consumeRecordsByTopic(1);
+        List<SourceRecord> s1recs = actualRecords.recordsForTopic(topicName("s1.a"));
+        List<SourceRecord> s2recs = actualRecords.recordsForTopic(topicName("s2.a"));
+
+        assertThat(s1recs.size()).isEqualTo(1);
+        assertThat(s2recs).isNull();
+        VerifyRecord.isValidRead(s1recs.get(0), PK_FIELD, 1);
+
+        /* streaming should work normally */
+        TestHelper.execute(INSERT_STMT);
+        actualRecords = consumeRecordsByTopic(2);
+
+        s1recs = actualRecords.recordsForTopic(topicName("s1.a"));
+        s2recs = actualRecords.recordsForTopic(topicName("s2.a"));
+
+        assertThat(s1recs.size()).isEqualTo(1);
+        assertThat(s2recs.size()).isEqualTo(1);
+        VerifyRecord.isValidInsert(s1recs.get(0), PK_FIELD, 2);
+        VerifyRecord.isValidInsert(s2recs.get(0), PK_FIELD, 2);
+
+        stopConnector();
+
+        /* start the connector back up and make sure snapshot is being taken */
+        start(PostgresConnector.class, configBuilder
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE_TABLES, "s2.a")
+                .build());
+        assertConnectorIsRunning();
+
+        actualRecords = consumeRecordsByTopic(2);
+        s1recs = actualRecords.recordsForTopic(topicName("s1.a"));
+        s2recs = actualRecords.recordsForTopic(topicName("s2.a"));
+
+        assertThat(s2recs.size()).isEqualTo(2);
+        assertThat(s1recs).isNull();
+        VerifyRecord.isValidRead(s2recs.get(0), PK_FIELD, 1);
+        VerifyRecord.isValidRead(s2recs.get(1), PK_FIELD, 2);
+    }
+
+    @Test
     @FixFor("DBZ-1035")
     public void shouldAllowForExportedSnapshot() throws Exception {
         TestHelper.dropDefaultReplicationSlot();

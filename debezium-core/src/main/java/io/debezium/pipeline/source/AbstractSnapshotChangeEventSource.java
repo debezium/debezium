@@ -6,6 +6,8 @@
 package io.debezium.pipeline.source;
 
 import java.time.Duration;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,6 +18,7 @@ import io.debezium.pipeline.source.spi.SnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.SnapshotResult;
+import io.debezium.schema.DataCollectionId;
 import io.debezium.util.Clock;
 import io.debezium.util.Metronome;
 import io.debezium.util.Threads;
@@ -78,6 +81,18 @@ public abstract class AbstractSnapshotChangeEventSource implements SnapshotChang
         finally {
             LOGGER.info("Snapshot - Final stage");
             complete(ctx);
+        }
+    }
+
+    protected <T extends DataCollectionId> Set<T> determineAllowedDataCollectionsForSnapshot(final Set<T> allDataCollections) {
+        final Set<String> snapshotAllowedTables = connectorConfig.getSnapshotAllowedTables();
+        if (snapshotAllowedTables.size() == 0) {
+            return allDataCollections;
+        }
+        else {
+            return allDataCollections.stream()
+                    .filter(dataCollectionId -> snapshotAllowedTables.stream().anyMatch(s -> dataCollectionId.identifier().matches(s)))
+                    .collect(Collectors.toSet());
         }
     }
 
