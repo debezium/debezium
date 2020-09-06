@@ -25,6 +25,7 @@ pipelineJob('debezium-openshift-test') {
         stringParam('STRZ_RESOURCES_ARCHIVE_URL', "", "URL to productised strimzi sources")
 //        TEST CONFIG
         stringParam('TEST_WAIT_SCALE', "1", "Wait time scaling factor")
+        stringParam('TEST_VERSION_KAFKA', "", "Kafka version")
     }
 
     definition {

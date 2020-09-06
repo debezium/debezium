@@ -57,6 +57,7 @@ pipeline {
                     env.OCP_PROJECT_POSTGRESQL = "debezium-${BUILD_NUMBER}-postgresql"
                     env.OCP_PROJECT_SQLSERVER = "debezium-${BUILD_NUMBER}-sqlserver"
                     env.OCP_PROJECT_MONGO = "debezium-${BUILD_NUMBER}-mongo"
+                    env.TEST_PROPERTY_VERSION_KAFKA = env.TEST_VERSION_KAFKA ? "-Dversion.kafka=${env.TEST_VERSION_KAFKA}" : ""
                 }
                 withCredentials([
                         usernamePassword(credentialsId: "${OCP_CREDENTIALS}", usernameVariable: 'OCP_USERNAME', passwordVariable: 'OCP_PASSWORD'),
@@ -140,7 +141,8 @@ pipeline {
                     -Dtest.ocp.project.mongo="${OCP_PROJECT_MONGO}" \\
                     -Dimage.fullname="${DBZ_CONNECT_IMAGE}" \\
                     -Dtest.ocp.pull.secret.paths="${SECRET_PATH}" \\
-                    -Dtest.wait.scale="${TEST_WAIT_SCALE}"
+                    -Dtest.wait.scale="${TEST_WAIT_SCALE}" \\
+                    ${TEST_PROPERTY_VERSION_KAFKA}
                     '''
                 }
             }
