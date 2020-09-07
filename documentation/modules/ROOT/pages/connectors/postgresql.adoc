@@ -431,9 +431,55 @@ Following is an example of a message:
 [[postgresql-events]]
 == Data change events
 
-Each data change event produced by the {prodname} PostgreSQL connector contains a key and a value. The structure of the event key and event value depends on the table from which the change event originates. 
+The {prodname} PostgreSQL connector generates a data change event for each row-level `INSERT`, `UPDATE`, and `DELETE` operation. Each event contains a key and a value. The structure of the key and the value depends on the table that was changed. 
 
-{prodname} and Kafka Connect are designed around _continuous streams of event messages_. However, the structure of these events may change over time, which can be difficult for consumers to handle. To make it easier, Kafka Connect makes each event self-contained. Each event key and each event value has two parts: a _schema_ and a _payload_. In each part, the schema describes the structure of its payload, while the payload contains the actual data.
+{prodname} and Kafka Connect are designed around _continuous streams of event messages_. However, the structure of these events may change over time, which can be difficult for consumers to handle. To address this, each event contains the schema for its content or, if you are using a schema registry, a schema ID that a consumer can use to obtain the schema from the registry. This makes each event self-contained. 
+
+The following skeleton JSON shows the basic four parts of a change event. However, how you configure the Kafka Connect converter that you choose to use in your application determines the representation of these four parts in change events. A `schema` field is in a change event only when you configure the converter to produce it. Likewise, the event key and event payload are in a change event only if you configure a converter to produce it. If you use the JSON converver and you configure it to produce all four basic change event parts, change events have this structure: 
+
+[source,json,index=0]
+----
+{
+ "schema": { //<1>
+   ...
+  },
+ "payload": { //<2>
+   ...
+ },
+ "schema": { //<3> 
+   ...
+ },
+ "payload": { //<4>
+   ...
+ },
+}
+----
+
+.Overview of change event basic content
+[cols="1,2,7",options="header"]
+|===
+|Item |Field name |Description
+
+|1
+|`schema`
+|The first `schema` field is part of the event key. It specifies a Kafka Connect schema that describes what is in the event key's `payload` portion. In other words, the first `schema` field describes the structure of the primary key, or the unique key if the table does not have a primary key, for the table that was changed. +
+ +
+It is possible to override the table's primary key by setting the {link-prefix}:{link-postgresql-connector}#postgresql-property-message-key-columns[`message.key.columns` connector configuration property]. In this case, the first schema field describes the structure of the key identified by that property.
+
+|2
+|`payload`
+|The first `payload` field is part of the event key. It has the structure described by the previous `schema` field and it contains the key for the row that was changed. 
+
+|3
+|`schema`
+|The second `schema` field is part of the event value. It specifies the Kafka Connect schema that describes what is in the event value's `payload` portion. In other words, the second `schema` describes the structure of the row that was changed. Typically, this schema contains nested schemas. 
+
+|4
+|`payload`
+|The second `payload` field is part of the event value. It has the structure described by the previous `schema` field and it contains the actual data for the row that was changed.
+
+|===
+
 
 By default behavior is that the connector streams change event records to {link-prefix}:{link-postgresql-connector}#postgresql-topic-names[topics with names that are the same as the event's originating table].
 
@@ -484,7 +530,6 @@ CREATE TABLE customers (
 );
 ----
 
-=====
 .Example change event key
 If the `database.server.name` connector configuration property has the value `PostgreSQL_server`, every change event for the `customers` table while it has this definition has the same key structure, which in JSON looks like this:
 
@@ -511,14 +556,37 @@ If the `database.server.name` connector configuration property has the value `Po
     },
   }
 ----
-<1> The `schema` portion of the key specifies a Kafka Connect schema that describes what is in the key's `payload` portion. 
-<2> The `PostgreSQL_server.public.customers.Key` schema defines the structure of the key's payload. 
-<3> The key's `payload` value is not optional.
-<4> Specifies the type of fields expected in the `payload`. 
-<5> The payload itself, which in this case contains a single `id` field.
 
-This key describes output from the connector named `PostgreSQL_server`. The output is for the `public.customers` table row whose primary key, the `id` column, has a value of `1`.
-=====
+.Description of change event key
+[cols="1,2,7",options="header"]
+|===
+|Item |Field name |Description
+
+|1
+|`schema`
+|The schema portion of the key specifies a Kafka Connect schema that describes what is in the key's `payload` portion. 
+
+|2
+|`PostgreSQL_server.inventory.customers.Key`
+a|Name of the schema that defines the structure of the key's payload. This schema describes the structure of the primary key for the table that was changed. Key schema names have the format _connector-name_._database-name_._table-name_.`Key`. In this example: + 
+
+* `PostgreSQL_server` is the name of the connector that generated this event. + 
+* `public` is the database that contains the table that was changed. +
+* `customers` is the table that was updated.
+
+|3
+|`optional`
+|Indicates whether the event key must contain a value in its `payload` field. In this example, a value in the key's payload is required. A value in the key's payload field is optional when a table does not have a primary key.
+
+|4
+|`fields` 
+|Specifies each field that is expected in the `payload`, including each field's name, index, and schema.
+
+|5
+|`payload`
+|Contains the key for the row for which this change event was generated. In this example, the key, contains a single `id` field whose value is `1`.
+
+|===
 
 [NOTE]
 ====
@@ -536,36 +604,34 @@ If the table does not have a primary or unique key, then the change event's key 
 [[postgresql-change-events-value]]
 === Change event values
 
-The value in a change event record is a bit more complicated than the key. Like the key, the value has a `schema` section and a `payload` section. The `schema` section contains the schema that describes the `Envelope` structure of the `payload` section, including its nested fields. The `payload` section has the following nested fields:  
+The value in a change event is a bit more complicated than the key. Like the key, the value has a `schema` section and a `payload` section. The `schema` section contains the schema that describes the `Envelope` structure of the `payload` section, including its nested fields. Change events for operations that create, update or delete data all have a value payload with an envelope structure. 
 
-* `before` is an optional field. If present, it contains the state of the row _before_ the event occurred. The structure of the `before` field is described by a Kafka Connect `Value` schema. For example, for each row operation in the `public.customers` table, the connector uses the `PostgreSQL_server.public.customers.Value` schema to provide the content of the `before` field.
+Consider the same sample table that was used to show an example of a change event key: 
 
-[NOTE]
-====
-Whether or not this field is available is dependent on the {link-prefix}:{link-postgresql-connector}#postgresql-replica-identity[`REPLICA IDENTITY`] setting for each table.
-====
+[source,sql,indent=0]
+----
+CREATE TABLE customers (
+  id SERIAL,
+  first_name VARCHAR(255) NOT NULL,
+  last_name VARCHAR(255) NOT NULL,
+  email VARCHAR(255) NOT NULL,
+  PRIMARY KEY(id)
+);
+----
 
-* `after` is an optional field. If present, it contains the state of the row _after_ the operation occurred. The structure is described by the same Kafka Connect `Value` schema that is used for the `before` field.
+The value portion of a change event for a change to this table varies according to the `REPLICA IDENTITY` setting and the operation that the event is for. 
 
-* `source` is a mandatory field that contains a structure that describes the source metadata for the event. For PostgreSQL connectors, the metadata provides: 
+ifdef::product[]
+Details follow in these sections: 
 
-** {prodname} version
-** Connector name
-** Names of the database, schema, and table that contains the change
-** Whether this event is part of an ongoing snapshot
-** {link-prefix}:{link-postgresql-connector}#postgresql-meta-information[Partition and offset metadata]
+* <<postgresql-replica-identity, Replica identity>>
+* <<postgresql-create-events,_create_ events>>
+* <<postgresql-update-events,_update_ events>>
+* <<postgresql-primary-key-updates, Primary key updates>>
+* <<postgreswl-delete-events,_delete_ events>>
+* <<postgresql-tombstone-events, Tombstone events>>
+endif::product[]
 
-* `op` is a mandatory field that contains a string value that describes the type of operation. Allowed values for the PostgreSQL connector are: 
-** `c` for create or insert
-** `u` for update
-** `d` for delete
-** `r` for read in the case of a snapshot
-
-* `ts_ms` is an optional field. If present, it contains the time at which the connector processed the event. This value reflects the system clock in the JVM running the Kafka Connect task. 
-
-// Type: concept
-// ModuleID: how-replica-identity-controls-data-that-can-be-in-debezium-postgresql-change-events
-// Title: How `REPLICA IDENTITY` controls data that can be in {prodname} PostgreSQL change events
 [[postgresql-replica-identity]]
 === Replica identity
 
@@ -580,18 +646,15 @@ If a table does not have a primary key, the connector does not emit `UPDATE` or 
 * `FULL` - Emitted events for `UPDATE` and `DELETE` operations contain the previous values of all columns in the table.
 * `INDEX` _index-name_ - Emitted events for `UPDATE` and `DELETE` operations contain the previous values of the columns contained in the specified index. `UPDATE` events also contain the indexed columns with the updated values.
 
-// Type: concept
-// ModuleID: about-debezium-postgresql-change-events-for-operations-that-create-content
-// Title: About {prodname} PostgreSQL change events for operations that create content
 [[postgresql-create-events]]
 === _create_ events
 
-The following example shows a _create_ event value for the `customers` table:
+The following example shows the value portion of a change event that the connector generates for an operation that creates data in the `customers` table: 
 
-[source,json,indent=0,subs="attributes"]
+[source,json,options="nowrap",indent=0,subs="+attributes"]
 ----
 {
-    "schema": {
+    "schema": { <1>
         "type": "struct",
         "fields": [
             {
@@ -619,7 +682,7 @@ The following example shows a _create_ event value for the `customers` table:
                     }
                 ],
                 "optional": true,
-                "name": "PostgreSQL_server.inventory.customers.Value",
+                "name": "PostgreSQL_server.inventory.customers.Value", <2>
                 "field": "before"
             },
             {
@@ -647,7 +710,7 @@ The following example shows a _create_ event value for the `customers` table:
                     }
                 ],
                 "optional": true,
-                "name": "PostgreSQL_server.inventory.customers.Value",
+                "name": "PostgreSQL_server.inventory.customers.Value", <2>
                 "field": "after"
             },
             {
@@ -671,7 +734,7 @@ The following example shows a _create_ event value for the `customers` table:
                     {
                         "type": "int64",
                         "optional": false,
-                        "field": "ts_ms"
+                        "field": "ts_sec"
                     },
                     {
                         "type": "boolean",
@@ -711,7 +774,7 @@ The following example shows a _create_ event value for the `customers` table:
                     }
                 ],
                 "optional": false,
-                "name": "io.debezium.connector.postgresql.Source",
+                "name": "io.debezium.connector.postgresql.Source", <2>
                 "field": "source"
             },
             {
@@ -726,21 +789,21 @@ The following example shows a _create_ event value for the `customers` table:
             }
         ],
         "optional": false,
-        "name": "PostgreSQL_server.inventory.customers.Envelope"
+        "name": "PostgreSQL_server.inventory.customers.Envelope" <2>
     },
-    "payload": {
-        "before": null,
-        "after": {
+    "payload": { <3>
+        "before": null, <4>
+        "after": { <5>
             "id": 1,
             "first_name": "Anne",
             "last_name": "Kretchmar",
             "email": "annek@noanswer.org"
         },
-        "source": {
+        "source": { <6>
             "version": "{debezium-version}",
             "connector": "postgresql",
             "name": "PostgreSQL_server",
-            "ts_ms": 1559033904863,
+            "ts_sec": 1559033904863,
             "snapshot": true,
             "db": "postgres",
             "schema": "public",
@@ -749,60 +812,106 @@ The following example shows a _create_ event value for the `customers` table:
             "lsn": 24023128,
             "xmin": null
         },
-        "op": "c",
-        "ts_ms": 1559033904863
+        "op": "c", <7>
+        "ts_ms": 1559033904863 <8>
     }
 }
 ----
 
-In the `schema` portion of this event's value, you can see schemas for: 
- 
-* `customers.Envelope`
-* The `source` structure, which is specific to the PostgreSQL connector and reused across all events.
-* The `before` and `after` fields, whose schemas are specific to the table. 
-+
-The names of the schemas for the `before` and `after` fields are of the form `_logicalName_._schemaName_._tableName_.Value`, and thus are entirely independent from all other schemas for all other tables. This means that when using the Avro converter, the resulting Avro schemas for _each table_ in each _logical source_ have their own evolution and history.
 
-In the `payload` portion of this event's value, you can see:  
+.Descriptions of _create_ event value fields
+[cols="1,2,7",options="header"]
+|===
+|Item |Field name |Description
 
-* The `before` field is null, which means that the event does not contain any previous row values. 
-* The `after` field contains values for the inserted row's `id`, `first_name`, `last_name`, and `email` columns.
-* The `source` field contains metadata.
-* The `op` field contains `c` to indicate that a row was created. 
+|1
+|`schema`
+|The value's schema, which describes the structure of the value's payload. A change event's value schema is the same in every change event that the connector generates for a particular table. 
 
-[NOTE]
-====
-JSON representations of events are much larger than the rows they describe. This is because the JSON representation must include the `schema` and the `payload` portions of the change event record. 
-It is possible and even recommended that you use the Avro converter to dramatically decrease the size of the records written to the Kafka topics.
-====
+|2
+|`name`
+a|In the `schema` section, each `name` field specifies the schema for a field in the value's payload. In this example: 
 
-// Type: concept
-// ModuleID: about-debezium-postgresql-change-events-for-operations-that-update-content
-// Title: About {prodname} PostgreSQL change events for operations that update content
+* `PostgreSQL_server.inventory.customers.Value` is the schema for the payload's `before` and `after` fields. This schema is specific to the `customers` table.
+
+* `io.debezium.connector.postgresql.Source` is the schema for the payload's `source` field. This schema is specific to the PostgreSQL connector. The connector uses it for all events that it generates. 
+
+* `PostgreSQL_server.inventory.customers.Envelope` is the schema for the overall structure of the payload, where `PostgreSQL_server` is the connector name, `inventory` is the database, and `customers` is the table.
+
+Names of schemas for `before` and `after` fields are of the form `_logicalName_._tableName_.Value`, which ensures that the schema name is unique in the database. This means that when using the {link-prefix}:{link-avro-serialization}[Avro converter], the resulting Avro schema for each table in each logical source has its own evolution and history.
+
+|3
+|`payload`
+|The value's actual data. This is the information that the change event is providing. 
+
+It may appear that the JSON representations of the events are much larger than the rows they describe. This is because the JSON representation must include the schema and the payload portions of the message.
+However, by using the {link-prefix}:{link-avro-serialization}[Avro converter], you can significantly decrease the size of the messages that the connector streams to Kafka topics.
+
+|4
+|`before`
+a|An optional field that specifies the state of the row before the event occurred. When the `op` field is `c` for create, as it is in this example, the `before` field is `null` since this change event is for new content.  +
+ +
+ [NOTE]
+ ====
+ Whether or not this field is available is dependent on the {link-prefix}:{link-postgresql-connector}#postgresql-replica-identity[`REPLICA IDENTITY`] setting for each table.
+ ====
+
+|5
+|`after`
+|An optional field that specifies the state of the row after the event occurred. In this example, the `after` field contains the values of the new row's `id`, `first_name`, `last_name`, and `email` columns.
+
+|6
+|`source`
+a|Mandatory field that describes the source metadata for the event. This field contains information that you can use to compare this event with other events, with regard to the origin of the events, the order in which the events occurred, and whether events were part of the same transaction. The source metadata includes: +
+ +
+* {prodname} version
+* Connector type and name
+* Database and table that contains the new row
+* Schema name
+* If the event was part of a snapshot
+* ID of the transaction in which the operation was performed
+* Offset of the operation in the database log
+* Timestamp
+
+|7
+|`op`
+a|Mandatory string that describes the type of operation that caused the connector to generate the event. In this example, `c` indicates that the operation created a row. Valid values are: 
+
+* `c` = create
+* `u` = update
+* `d` = delete
+* `r` = read (applies to only snapshots)
+
+|8
+|`ts_ms`
+a|Optional field that displays the time at which the connector processed the event. The time is based on the system clock in the JVM running the Kafka Connect task.
+
+|===
+
 [[postgresql-update-events]]
 === _update_ events
 
-The value of an _update_ event on the sample `customers` table has the same `schema` specification as the _create_ event example. An _update_ event's payload has the same structure as a _create_ event for the same table. However, the _update_ event's payload contains different values, as shown in this example: 
+The value of a change event for an update in the sample `customers` table has the same schema as a _create_ event for that table. Likewise, the event value's payload has the same structure. However, the event value payload contains different values in an _update_ event. Here is an example of a change event value in an event that the connector generates for an update in the `customers` table: 
 
-[source,json,indent=0,subs="attributes"]
+[source,json,indent=0,options="nowrap",subs="attributes"]
 ----
 {
     "schema": { ... },
     "payload": {
-        "before": {
+        "before": { <1>
             "id": 1
         },
-        "after": {
+        "after": { <2>
             "id": 1,
             "first_name": "Anne Marie",
             "last_name": "Kretchmar",
             "email": "annek@noanswer.org"
         },
-        "source": {
+        "source": { <3>
             "version": "{debezium-version}",
             "connector": "postgresql",
             "name": "PostgreSQL_server",
-            "ts_ms": 1559033904863,
+            "ts_sec": 1559033904863,
             "snapshot": null,
             "db": "postgres",
             "schema": "public",
@@ -811,35 +920,52 @@ The value of an _update_ event on the sample `customers` table has the same `sch
             "lsn": 24023128,
             "xmin": null
         },
-        "op": "u",
+        "op": "u", <4>
         "ts_ms": 1465584025523
     }
 }
 ----
 
-As compared with the payload section in the _create_ event, you can see the following differences in the payload section of the _update_ event:  
+.Descriptions of _update_ event value fields
+[cols="1,2,7",options="header"]
+|===
+|Item |Field name |Description
 
-* The `op` field value is `u` to indicate that the row changed because of an `UPDATE`.
-* The `before` field contains the values that were in the row before the database commit. In this example, only the primary key column, `id`, is present because the table's {link-prefix}:{link-postgresql-connector}#postgresql-replica-identity[`REPLICA IDENTITY`] setting is, by default, `DEFAULT`.
+|1
+|`before`
+|An optional field that contains values that were in the row before the database commit. In this example, only the primary key column, `id`, is present because the table's {link-prefix}:{link-postgresql-connector}#postgresql-replica-identity[`REPLICA IDENTITY`] setting is, by default, `DEFAULT`.
 +
 For an _update_ event to contain the previous values of all columns in the row, you would have to change the `customers` table by running `ALTER TABLE customers REPLICA IDENTITY FULL`.
 
-* The `after` field has the updated state of the row. As you can see, the `first_name` value is now `Anne Marie`.
+|2
+|`after`
+| An optional field that specifies the state of the row after the event occurred. In this example, the `first_name` value is now `Anne Marie`. 
 
-* The `source` field structure has the same fields as the _create_ event, but the values are different since this event is from a different position in the WAL.
+|3
+|`source`
+a|Mandatory field that describes the source metadata for the event. The `source` field structure has the same fields as in a _create_ event, but some values are different. The source metadata includes: 
 
-* The `ts_ms` shows the timestamp that {prodname} processed this event.
+* {prodname} version
+* Connector type and name
+* Database and table that contains the new row
+* Schema name
+* If the event was part of a snapshot
+* ID of the transaction in which the operation was performed
+* Offset of the operation in the database log
+* Timestamp
 
-There are several things to learn by looking at this `payload` section. You can compare the `before` and `after` structures to determine what changed in this row because of the commit. The `source` structure provides information about PostgreSQL's record of this change, which enables tracing. Perhaps more importantly, this payload has information that you can compare to other events. For example, a comparison typically indicates whether this event occurred before, after, or as part of the same PostgreSQL commit as another event.
+|4
+|`op`
+a|Mandatory string that describes the type of operation. In an _update_ event value, the `op` field value is `u`, signifying that this row changed because of an update.
+
+|===
 
 [NOTE]
 ====
 Updating the columns for a row's primary/unique key changes the value of the row's key. When a key changes, {prodname} outputs _three_ events: a `DELETE` event and a {link-prefix}:{link-postgresql-connector}#postgresql-tombstone-events[tombstone event] with the old key for the row, followed by an event with the new key for the row. Details are in the next section. 
 ====
 
-// Type: concept
-// ModuleID: about-debezium-postgresql-change-events-for-primary-key-updates
-// Title: About {prodname} PostgreSQL change events for primary key updates
+[[postgresql-primary-key-updates]]
 === Primary key updates
 
 An `UPDATE` operation that changes a row's primary key field(s) is known
@@ -849,24 +975,21 @@ as a primary key change. For a primary key change, in place of sending an `UPDAT
 
 * The `CREATE` event record has `__debezium.oldkey` as a message header. The value of this header is the previous (old) primary key that the updated row had.
 
-// Type: concept
-// ModuleID: about-debezium-postgresql-change-events-for-operations-that-delete-content
-// Title: About {prodname} PostgreSQL change events for operations that delete content
 [[postgresql-delete-events]]
 === _delete_ events
 
-The value in a _delete_ event has the same `schema` portion as _create_ and _update_ events for the same table. The `payload` portion in a _delete_ event for the sample `customers` table looks like this: 
+The value in a _delete_ change event has the same `schema` portion as _create_ and _update_ events for the same table. The `payload` portion in a _delete_ event for the sample `customers` table looks like this:  
 
-[source,json,indent=0,subs="attributes"]
+[source,json,indent=0,subs="+attributes"]
 ----
 {
     "schema": { ... },
     "payload": {
-        "before": {
+        "before": { <1>
             "id": 1
         },
-        "after": null,
-        "source": {
+        "after": null, <2>
+        "source": { <3>
             "version": "{debezium-version}",
             "connector": "postgresql",
             "name": "PostgreSQL_server",
@@ -879,28 +1002,58 @@ The value in a _delete_ event has the same `schema` portion as _create_ and _upd
             "lsn": 46523128,
             "xmin": null
         },
-        "op": "d",
-        "ts_ms": 1465581902461
+        "op": "d", <4>
+        "ts_ms": 1465581902461 <5>
     }
 }
 ----
 
-Compared with the _create_ or _update_ event payloads, the differences in a _delete_ event are: 
+.Descriptions of _delete_ event value fields
+[cols="1,2,7",options="header"]
+|===
+|Item |Field name |Description
 
-* The `before` field has the state of the row that was deleted by the database commit. In this example, the `before` field contains only the primary key column because the table's {link-prefix}:{link-postgresql-connector}#postgresql-replica-identity[`REPLICA IDENTITY`] setting is `DEFAULT`.
-* The `after` field is null to indicate that the row no longer exists.
-* The `source` field structure has many of the same values as in the _create_ and _update_ events, except the `ts_ms`, `lsn` and `txId` fields have changed.
-* The `op` field value is `d` to indicate that this row was deleted.
-* The `ts_ms` shows the timestamp that {prodname} processed this event.
+|1
+|`before`
+|Optional field that specifies the state of the row before the event occurred. In a _delete_ event value, the `before` field contains the values that were in the row before it was deleted with the database commit. +
+ +
+In this example, the `before` field contains only the primary key column because the table's {link-prefix}:{link-postgresql-connector}#postgresql-replica-identity[`REPLICA IDENTITY`] setting is `DEFAULT`.
 
-This event gives a consumer all kinds of information that it can use to process the removal of this row.
+|2
+|`after`
+| Optional field that specifies the state of the row after the event occurred. In a _delete_ event value, the `after` field is `null`, signifying that the row no longer exists.
+
+|3
+|`source`
+a|Mandatory field that describes the source metadata for the event. In a _delete_ event value, the `source` field structure is the same as for _create_ and _update_ events for the same table. Many `source` field values are also the same. In a _delete_ event value, the `ts_ms` and `lsn` field values, as well as other values, might have changed. But the `source` field in a _delete_ event value provides the same metadata: 
+
+* {prodname} version
+* Connector type and name
+* Database and table that contains the new row
+* Schema name
+* If the event was part of a snapshot
+* ID of the transaction in which the operation was performed
+* Offset of the operation in the database log
+* Timestamp
+
+|4
+|`op`
+a|Mandatory string that describes the type of operation. The `op` field value is `d`, signifying that this row was deleted.
+
+|5
+|`ts_ms`
+a|Optional field that displays the time at which the connector processed the event. The time is based on the system clock in the JVM running the Kafka Connect task.
+
+|===
+
+A _delete_ change event record provides a consumer with the information it needs to process the removal of this row. 
 
 [WARNING]
 ====
 For a consumer to be able to process a _delete_ event generated for a table that does not have a primary key, set the table's `REPLICA IDENTITY` to `FULL`. When a table does not have a primary key and the table's `REPLICA IDENTITY` is set to `DEFAULT` or `NOTHING`, a _delete_ event has no `before` field.
 ====
 
-PostgreSQL connector events are designed to work with link:https://kafka.apache.org/documentation/#compaction[Kafka log compaction]. Log compaction enables removal of some older messages as long as at least the most recent message for every key is kept. This lets Kafka reclaim storage space while ensuring that the topic contains a complete data set and can be used for reloading key-based state.
+PostgreSQL connector events are designed to work with link:{link-kafka-docs}#compaction[Kafka log compaction]. Log compaction enables removal of some older messages as long as at least the most recent message for every key is kept. This lets Kafka reclaim storage space while ensuring that the topic contains a complete data set and can be used for reloading key-based state.
 
 [[postgresql-tombstone-events]]
 .Tombstone events
