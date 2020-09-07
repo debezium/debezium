@@ -199,19 +199,73 @@ Kafka maintains total order only for events written to a single topic partition.
 Partitioning the events by key does mean that all events with the same key always go to the same partition. This ensures that all events for a specific document are always totally ordered.
 
 [[mongodb-events]]
-=== Events
+=== Data change events
 
-All data change events produced by the MongoDB connector have a key and a value.
+The {prodname} MongoDB connector generates a data change event for each document-level operation that inserts, updates, or deletes data. Each event contains a key and a value. The structure of the key and the value depends on the collection that was changed. 
 
-{prodname} and Kafka Connect are designed around _continuous streams of event messages_, and the structure of these events could potentially change over time if the source of those events changed in structure or if the connector is improved or changed.
-This could be difficult for consumers to deal with, so to make it very easy Kafka Connect makes each event self-contained. Every message key and value has two parts: a _schema_ and _payload_. The schema describes the structure of the payload, while the payload contains the actual data.
+{prodname} and Kafka Connect are designed around _continuous streams of event messages_. However, the structure of these events may change over time, which can be difficult for consumers to handle. To address this, each event contains the schema for its content or, if you are using a schema registry, a schema ID that a consumer can use to obtain the schema from the registry. This makes each event self-contained. 
+
+The following skeleton JSON shows the basic four parts of a change event. However, how you configure the Kafka Connect converter that you choose to use in your application determines the representation of these four parts in change events. A `schema` field is in a change event only when you configure the converter to produce it. Likewise, the event key and event payload are in a change event only if you configure a converter to produce it. If you use the JSON converver and you configure it to produce all four basic change event parts, change events have this structure: 
+
+[source,json,index=0]
+----
+{
+ "schema": { //<1>
+   ...
+  },
+ "payload": { //<2>
+   ...
+ },
+ "schema": { //<3> 
+   ...
+ },
+ "payload": { //<4>
+   ...
+ },
+}
+----
+
+.Overview of change event basic content
+[cols="1,2,7",options="header"]
+|===
+|Item |Field name |Description
+
+|1
+|`schema`
+|The first `schema` field is part of the event key. It specifies a Kafka Connect schema that describes what is in the event key's `payload` portion. In other words, the first `schema` field describes the structure of the key for the document that was changed. 
+
+|2
+|`payload`
+|The first `payload` field is part of the event key. It has the structure described by the previous `schema` field and it contains the key for the document that was changed. 
+
+|3
+|`schema`
+|The second `schema` field is part of the event value. It specifies the Kafka Connect schema that describes what is in the event value's `payload` portion. In other words, the second `schema` describes the structure of the document that was changed. Typically, this schema contains nested schemas. 
+
+|4
+|`payload`
+|The second `payload` field is part of the event value. It has the structure described by the previous `schema` field and it contains the actual data for the document that was changed.
+
+|===
+
+By default, the connector streams change event records to topics with names that are the same as the event's originating collection. See {link-prefix}:{link-mongodb-connector}#mongodb-topic-names[topic names].
+
+[WARNING]
+====
+The MongoDB connector ensures that all Kafka Connect schema names adhere to the link:http://avro.apache.org/docs/current/spec.html#names[Avro schema name format]. This means that the logical server name must start with a Latin letter or an underscore, that is, a-z, A-Z, or \_. Each remaining character in the logical server name and each character in the database and collection names must be a Latin letter, a digit, or an underscore, that is, a-z, A-Z, 0-9, or \_. If there is an invalid character it is replaced with an underscore character.
+
+This can lead to unexpected conflicts if the logical server name, a database name, or a collection name contains invalid characters, and the only characters that distinguish names from one another are invalid and thus replaced with underscores.
+====
 
 [[mongodb-change-events-key]]
-==== Change event's key
+==== Change event keys
 
-For a given collection, the change event's key contains a single `id` field.
-Its value is the document's identifier represented as string which is derived from the https://docs.mongodb.com/manual/reference/mongodb-extended-json/[MongoDB extended JSON serialization in strict mode]. Consider a connector with a logical name of `fulfillment`, a replica set containing an `inventory` database with a `customers` collection containing documents such as:
+A change event's key contains the schema for the changed document's key and the changed document's actual key. For a given collection, both the schema and its corresponding payload contain a single `id` field.
+The value of this field is the document's identifier represented as a string that is derived from link:https://docs.mongodb.com/manual/reference/mongodb-extended-json/[MongoDB extended JSON serialization strict mode].
 
+Consider a connector with a logical name of `fulfillment`, a replica set containing an `inventory` database, and a `customers` collection that contains documents such as the following. 
+
+.Example document
 [source,json,indent=0]
 ----
   {
@@ -222,16 +276,17 @@ Its value is the document's identifier represented as string which is derived fr
   }
 ----
 
-Every change event for the `customers` collection will feature the same key structure, which in JSON looks like this:
+.Example change event key
+Every change event that captures a change to the `customers` collection has the same event key schema. For as long as the `customers` collection has the previous definition, every change event that captures a change to the `customers` collection has the following key structure. In JSON, it looks like this:
 
 [source,json,indent=0]
 ----
   {
-    "schema": {
+    "schema": { <1>
       "type": "struct",
-      "name": "fulfillment.inventory.customers.Key"
-      "optional": false,
-      "fields": [
+      "name": "fulfillment.inventory.customers.Key" <2>
+      "optional": false, <3>
+      "fields": [ <4>
         {
           "field": "id",
           "type": "string",
@@ -239,77 +294,111 @@ Every change event for the `customers` collection will feature the same key stru
         }
       ]
     },
-    "payload": {
+    "payload": { <5>
       "id": "1004"
     }
   }
 ----
 
-The `schema` portion of the key contains a Kafka Connect schema describing what is in the payload portion. In this case, it means that the `payload` value is not optional, is a structure defined by a schema named `fulfillment.inventory.customers.Key`, and has one required field named `id` of type `string`. If you look at the value of the key's `payload` field, you can see that it is indeed a structure (which in JSON is just an object) with a single `id` field, whose value is a string containing the integer `1004`.
+.Description of change event key
+[cols="1,2,7",options="header"]
+|===
+|Item |Field name |Description
 
-This example used a document with an integer identifier, but any valid MongoDB document identifier (including documents) will work. The value of the `id` field in the payload will simply be a string representing a MongoDB extended JSON serialization (strict mode) of the original document's `_id` field. Find below a few examples showing how `_id` fields of
-different types will get encoded as the event key's payload:
+|1
+|`schema`
+|The schema portion of the key specifies a Kafka Connect schema that describes what is in the key's `payload` portion. 
 
+|2
+|`fulfillment.inventory.customers.Key`
+a|Name of the schema that defines the structure of the key's payload. This schema describes the structure of the key for the document that was changed. Key schema names have the format _connector-name_._database-name_._collection-name_.`Key`. In this example: + 
+
+* `fulfillment` is the name of the connector that generated this event. + 
+* `inventory` is the database that contains the collection that was changed. +
+* `customers` is the collection that contains the document that was updated.
+
+|3
+|`optional`
+|Indicates whether the event key must contain a value in its `payload` field. In this example, a value in the key's payload is required. A value in the key's payload field is optional when a document does not have a key.
+
+|4
+|`fields` 
+|Specifies each field that is expected in the `payload`, including each field's name, type, and whether it is required.
+
+|5
+|`payload`
+|Contains the key for the document for which this change event was generated. In this example, the key contains a single `id` field of type `string` whose value is `1004`.
+
+|===
+
+This example uses a document with an integer identifier, but any valid MongoDB document identifier works the same way, including a document identifier. For a document identifier, an event key's `payload.id` value is a string that represents the updated document's original `_id` field as a MongoDB extended JSON serialization that uses strict mode. The following table provides examples of how different types of `_id` fields are represented. 
+
+.Examples of representing document `_id` fields in event key payloads
 [options="header",role="code-wordbreak-col2 code-wordbreak-col3"]
 |===
 |Type    |MongoDB `_id` Value|Key's payload
 |Integer |1234|`{ "id" : "1234" }`
 |Float   |12.34|`{ "id" : "12.34" }`
 |String  |"1234"|`{ "id" : "\"1234\"" }`
-|Document|{ "hi" : "kafka", "nums" : [10.0, 100.0, 1000.0] }|`{ "id" : "{\"hi\" : \"kafka\", \"nums\" : [10.0, 100.0, 1000.0]}" }`
-|ObjectId|ObjectId("596e275826f08b2730779e1f")|`{ "id" : "{\"$oid\" : \"596e275826f08b2730779e1f\"}" }`
-|Binary  |BinData("a2Fma2E=",0)|`{ "id" : "{\"$binary\" : \"a2Fma2E=\", \"$type\" : \"00\"}" }`
+|Document|`{ "hi" : "kafka", "nums" : [10.0, 100.0, 1000.0] }`|`{ "id" : "{\"hi\" : \"kafka\", \"nums\" : [10.0, 100.0, 1000.0]}" }`
+|`ObjectId|ObjectId("596e275826f08b2730779e1f")``|`{ "id" : "{\"$oid\" : \"596e275826f08b2730779e1f\"}" }`
+|Binary  |`BinData("a2Fma2E=",0)`|`{ "id" : "{\"$binary\" : \"a2Fma2E=\", \"$type\" : \"00\"}" }`
 |===
 
-ifdef::community[]
-[WARNING]
-====
-The MongoDB connector ensures that all Kafka Connect _schema names_ are http://avro.apache.org/docs/current/spec.html#names[valid Avro schema names]. This means that the logical server name must start with Latin letters or an underscore (e.g., [a-z,A-Z,\_]), and the remaining characters in the logical server name and all characters in the database and collections names must be Latin letters, digits, or an underscore (e.g., [a-z,A-Z,0-9,\_]). If not, then all invalid characters will automatically be replaced with an underscore character.
-
-This can lead to unexpected conflicts in schemas names when the logical server name, database names, and collection names contain other characters, and the only distinguishing characters between collection full names are invalid and thus replaced with underscores. The connector attempts to produce an exception in this such cases, but only when the conflicts exist between schemas used within a single connector.
-====
-endif::community[]
-
 [[mongodb-change-events-value]]
-==== Change event's value
+==== Change event values
 
-The value of the change event message is a bit more complicated.
-Like the key message, it has a _schema_ section and _payload_ section.
-The payload section of every change event value produced by the MongoDB connector has an _envelope_ structure with the following fields:
+The value in a change event is a bit more complicated than the key. Like the key, the value has a `schema` section and a `payload` section. The `schema` section contains the schema that describes the `Envelope` structure of the `payload` section, including its nested fields. Change events for operations that create, update or delete data all have a value payload with an envelope structure. 
 
-* `op` is a mandatory field that contains a string value describing the type of operation. Values for the MongoDB connector are `c` for create (or insert), `u` for update, `d` for delete, and `r` for read (in the case of a snapshot).
-* `after` is an optional field that if present contains the state of the document _after_ the event occurred. MongoDB's oplog entries only contain the full state of a document for _create_ events, so these are the only events that contain an _after_ field.
-* `source` is a mandatory field that contains a structure describing the source metadata for the event, which in the case of MongoDB contains several fields: the {prodname} version, the logical name, the replica set's name, the namespace of the collection, the MongoDB timestamp (and ordinal of the event within the timestamp) at which the event occurred, a unique identifier of the MongoDB operation (depending on the version of MongoDB, either the `h` field in the oplog event, or a field named `stxnid`, representing the `lsid` and `txnNumber` fields from the oplog event), and the `snapshot` flag if the event resulted during a snapshot.
-* `ts_ms` is optional and if present contains the time (using the system clock in the JVM running the Kafka Connect task) at which the connector processed the event.
+Consider the same sample document that was used to show an example of a change event key: 
 
-And of course, the _schema_ portion of the event message's value contains a schema that describes this envelope structure and the nested fields within it.
 
-Let's look at what a _create_/_read_ event value might look like for our `customers` collection:
+.Example document
+[source,json,indent=0]
+----
+  {
+    "_id": 1004,
+    "first_name": "Anne",
+    "last_name": "Kretchmar",
+    "email": "annek@noanswer.org"
+  }
+----
 
-[source,json,indent=0,subs="attributes"]
+The value portion of a change event for a change to this document is described for each event type: 
+
+* <<mongodb-create-events,_create_ events>>
+* <<mongodb-update-events,_update_ events>>
+* <<mongodb-delete-events,_delete_ events>>
+
+[id="mongodb-create-events"]
+==== _create_ events
+
+The following example shows the value portion of a change event that the connector generates for an operation that creates data in the `customers` collection: 
+
+[source,json,options="nowrap",indent=0,subs="+attributes"]
 ----
 {
-    "schema": {
+    "schema": { <1>
       "type": "struct",
       "fields": [
         {
           "type": "string",
           "optional": true,
-          "name": "io.debezium.data.Json",
+          "name": "io.debezium.data.Json", <2>
           "version": 1,
           "field": "after"
         },
         {
           "type": "string",
           "optional": true,
-          "name": "io.debezium.data.Json",
+          "name": "io.debezium.data.Json", <2>
           "version": 1,
           "field": "patch"
         },
         {
           "type": "string",
           "optional": true,
-          "name": "io.debezium.data.Json",
+          "name": "io.debezium.data.Json", <2>
           "version": 1,
           "field": "filter"
         },
@@ -334,7 +423,7 @@ Let's look at what a _create_/_read_ event value might look like for our `custom
             {
               "type": "int64",
               "optional": false,
-              "field": "ts_ms"
+              "field": "ts_sec"
             },
             {
               "type": "boolean",
@@ -369,7 +458,7 @@ Let's look at what a _create_/_read_ event value might look like for our `custom
             }
           ],
           "optional": false,
-          "name": "io.debezium.connector.mongo.Source",
+          "name": "io.debezium.connector.mongo.Source", <2>
           "field": "source"
         },
         {
@@ -384,57 +473,111 @@ Let's look at what a _create_/_read_ event value might look like for our `custom
         }
       ],
       "optional": false,
-      "name": "dbserver1.inventory.customers.Envelope"
+      "name": "dbserver1.inventory.customers.Envelope" <2>
       },
-    "payload": {
-      "after": "{\"_id\" : {\"$numberLong\" : \"1004\"},\"first_name\" : \"Anne\",\"last_name\" : \"Kretchmar\",\"email\" : \"annek@noanswer.org\"}",
+    "payload": { <3>
+      "after": "{\"_id\" : {\"$numberLong\" : \"1004\"},\"first_name\" : \"Anne\",\"last_name\" : \"Kretchmar\",\"email\" : \"annek@noanswer.org\"}", <4>
       "patch": null,
-      "source": {
+      "source": { <5>
         "version": "{debezium-version}",
         "connector": "mongodb",
         "name": "fulfillment",
-        "ts_ms": 1558965508000,
-        "snapshot": true,
+        "ts_sec": 1558965508000,
+        "snapshot": false,
         "db": "inventory",
         "rs": "rs0",
         "collection": "customers",
         "ord": 31,
         "h": 1546547425148721999
       },
-      "op": "r",
-      "ts_ms": 1558965515240
+      "op": "c", <6>
+      "ts_ms": 1558965515240 <7>
     }
   }
 ----
 
-If we look at the `schema` portion of this event's _value_, we can see the schema for the _envelope_ is specific to the collection, and the schema for the `source` structure (which is specific to the MongoDB connector and reused across all events). Also note that the `after` value is always a string, and that by convention it will contain a JSON representation of the document.
+.Descriptions of _create_ event value fields
+[cols="1,2,7",options="header"]
+|===
+|Item |Field name |Description
 
-If we look at the `payload` portion of this event's _value_, we can see the information in the event, namely that it is describing that the document was read as part of an snapshot (since `op=r` and `snapshot=true`), and that the `after` field value contains the JSON string representation of the document.
+|1
+|`schema`
+|The value's schema, which describes the structure of the value's payload. A change event's value schema is the same in every change event that the connector generates for a particular collection. 
 
-[NOTE]
-====
-It may appear that the JSON representations of the events are much larger than the rows they describe. This is true, because the JSON representation must include the _schema_ and the _payload_ portions of the message.
-ifdef::community[]
-It is possible and even recommended to use the link:/docs/faq/#avro-converter[Avro Converter] to dramatically decrease the size of the actual messages written to the Kafka topics.
-endif::community[]
-====
+|2
+|`name`
+a|In the `schema` section, each `name` field specifies the schema for a field in the value's payload. In this example: 
 
-The value of an _update_ change event on this collection will actually have the exact same _schema_, and its payload is structured the same but will hold different values. Specifically, an update event will not have an `after` value and will instead have a `patch` string containing the JSON representation of the idempotent update operation and a `filter` string containing the JSON representation of the selection criteria for the update.  The `filter` string can include multiple shard key fields for sharded collections. Here's an example:
+* `io.debezium.data.Json` is the schema for the payload's `after`, `patch`, and `filter` fields. This schema is specific to the `customers` collection. A _create_ event is the only kind of event that contains an `after` field. An _update_ event contains a `filter` field and a `patch` field. A _delete_ event contains a `filter` field, but not an `after` field nor a `patch` field. 
 
-[source,json,indent=0,subs="attributes"]
+* `io.debezium.connector.mongo.Source` is the schema for the payload's `source` field. This schema is specific to the MongoDB connector. The connector uses it for all events that it generates. 
+
+* `dbserver1.inventory.customers.Envelope` is the schema for the overall structure of the payload, where `dbserver1` is the connector name, `inventory` is the database, and `customers` is the collection. This schema is specific to the collection. 
+
+|3
+|`payload`
+|The value's actual data. This is the information that the change event is providing. 
+
+It may appear that the JSON representations of the events are much larger than the documents they describe. This is because the JSON representation must include the schema and the payload portions of the message.
+However, by using the {link-prefix}:{link-avro-serialization}[Avro converter], you can significantly decrease the size of the messages that the connector streams to Kafka topics.
+
+|4
+|`after`
+| An optional field that specifies the state of the document after the event occurred. In this example, the `after` field contains the values of the new document's `\_id`, `first_name`, `last_name`, and `email` fields. The `after` value is always a string. By convention, it contains a JSON representation of the document. MongoDB's oplog entries contain the full state of a document only for _create_ events; in other words, a _create_ event is the only kind of event that contains an _after_ field.
+
+|5
+|`source`
+a| Mandatory field that describes the source metadata for the event. This field contains information that you can use to compare this event with other events, with regard to the origin of the events, the order in which the events occurred, and whether events were part of the same transaction. The source metadata includes: 
+
+* {prodname} version.
+* Name of the connector that generated the event.
+* Logical name of the MongoDB replica set, which forms a namespace for generated events and is used in Kafka topic names to which the connector writes.
+* Names of the collection and database that contain the new document.
+* If the event was part of a snapshot.
+* Timestamp for when the event occurred and ordinal of the event within the timestamp.
+* Unique identifier of the MongoDB operation, which depends on the version of MongoDB. It is either the `h` field in the oplog event, or a field named `stxnid`, which represents the `lsid` and `txnNumber` fields from the oplog event.
+
+|6
+|`op`
+a| Mandatory string that describes the type of operation that caused the connector to generate the event. In this example, `c` indicates that the operation created a document. Valid values are: 
+
+* `c` = create
+* `u` = update
+* `d` = delete
+* `r` = read (applies to only snapshots)
+
+|7
+|`ts_ms`
+a| Optional field that displays the time at which the connector processed the event. The time is based on the system clock in the JVM running the Kafka Connect task.
+
+|===
+
+[id="mongodb-update-events"]
+==== _update_ events
+
+The value of a change event for an update in the sample `customers` collection has the same schema as a _create_ event for that collection. Likewise, the event value's payload has the same structure. However, the event value payload contains different values in an _update_ event. An _update_ event does not have an `after` value. Instead, it has these two fields:  
+
+* `patch` is a string field that contains the JSON representation of the idempotent update operation 
+
+* `filter` is a string field that contains the JSON representation of the selection criteria for the update. The `filter` string can include multiple shard key fields for sharded collections. 
+
+Here is an example of a change event value in an event that the connector generates for an update in the `customers` collection: 
+
+[source,json,indent=0,options="nowrap",subs="+attributes"]
 ----
 {
     "schema": { ... },
     "payload": {
-      "op": "u",
-      "ts_ms": 1465491461815,
-      "patch": "{\"$set\":{\"first_name\":\"Anne Marie\"}}",
-      "filter": "{\"_id\" : {\"$numberLong\" : \"1004\"}}",
-      "source": {
+      "op": "u", <1>
+      "ts_ms": 1465491461815, <2>
+      "patch": "{\"$set\":{\"first_name\":\"Anne Marie\"}}", <3>
+      "filter": "{\"_id\" : {\"$numberLong\" : \"1004\"}}", <4>
+      "source": { <5>
         "version": "{debezium-version}",
         "connector": "mongodb",
         "name": "fulfillment",
-        "ts_ms": 1558965508000,
+        "ts_sec": 1558965508000,
         "snapshot": true,
         "db": "inventory",
         "rs": "rs0",
@@ -446,46 +589,71 @@ The value of an _update_ change event on this collection will actually have the 
   }
 ----
 
-When we compare this to the value in the _insert_ event, we see a couple of differences in the `payload` section:
+.Descriptions of _update_ event value fields
+[cols="1,2,7",options="header"]
+|===
+|Item |Field name |Description
 
-* The `op` field value is now `u`, signifying that this document changed because of an update
-* The `patch` field appears and has the stringified JSON representation of the actual MongoDB idempotent change to the document, which in this example involves setting the `first_name` field to a new value
-* The `filter` field appears and has the stringified JSON representation of the MongoDB selection criteria used for the update
-* The `after` field no longer appears
-* The `source` field structure has the same fields as before, but the values are different since this event is from a different position in the oplog
-* The `ts_ms` shows the timestamp that {prodname} processed this event
+|1
+|`op`
+a| Mandatory string that describes the type of operation that caused the connector to generate the event. In this example, `u` indicates that the operation updated a document. 
+
+|2
+|`ts_ms`
+a| Optional field that displays the time at which the connector processed the event. The time is based on the system clock in the JVM running the Kafka Connect task.
+
+|3
+|`patch`
+|Contains the JSON string representation of the actual MongoDB idempotent change to the document. In this example, the update changed the `first_name` field to a new value. +
+ +
+An _update_ event value does not contain an `after` field. 
+
+|4
+|`filter`
+|Contains the JSON string representation of the MongoDB selection criteria that was used to identify the document to be updated. 
+
+|5
+|`source`
+a| Mandatory field that describes the source metadata for the event. This field contains the same information as a _create_ event for the same collection, but the values are different since this event is from a different position in the oplog. The source metadata includes: 
+
+* {prodname} version.
+* Name of the connector that generated the event.
+* Logical name of the MongoDB replica set, which forms a namespace for generated events and is used in Kafka topic names to which the connector writes.
+* Names of the collection and database that contain the updated document.
+* If the event was part of a snapshot.
+* Timestamp for when the event occurred and ordinal of the event within the timestamp.
+* Unique identifier of the MongoDB operation, which depends on the version of MongoDB. It is either the `h` field in the oplog event, or a field named `stxnid`, which represents the `lsid` and `txnNumber` fields from the oplog event.
+
+|===
 
 [WARNING]
 ====
-The content of the patch field is provided by MongoDB itself and its exact format depends on the specific database version.
-You should therefore be prepared for potential changes to the format when upgrading the MongoDB instance to a new version.
-
-All examples in this document were obtained from MongoDB 3.4 and might differ if you use a different one.
+In a {prodname} change event, MongoDB provides the content of the `patch` field. The format of this field depends on the version of the MongoDB database. Consequently, be prepared for potential changes to the format when you upgrade to a newer MongoDB database version. Examples in this document were obtained from MongoDB 3.4, In your application, event formats might be different.
 ====
 
 [NOTE]
 ====
-Update events in MongoDB's oplog do not have the _before_ or _after_ states of the changed document, so there's no way for the connector to provide this information.
-However, because _create_ or _read_ events _do_ contain the starting state, downstream consumers of the stream can actually fully-reconstruct the state by keeping the latest state for each document and applying each event to that state. {prodname} connector's are not able to keep such state, so it is not able to do this.
+In MongoDB's oplog, _update_ events do not contain the _before_ or _after_ states of the changed document. Consequently, it is not possible for a {prodname} connector to provide this information. However, MongoDB's oplog contains a document's starting state in _create_ and _read_ events. Downstream consumers of the stream can reconstruct document state by keeping the latest state for each document and comparing the state in a new event with the saved state. {prodname} connector's are not able to keep this state. 
 ====
 
-So far, you have seen samples of _create_/_read_ and _update_ events. The following sample shows the value of a _delete_ event for the same collection.
-The value of a _delete_ event on this collection has the exact same _schema_, and its payload is structured the same but it holds different values.
-In particular, a delete event does not have an `after` value nor a `patch` value:
+[id="mongodb-delete-events"]
+==== _delete_ events
 
-[source,json,indent=0,subs="attributes"]
+The value in a _delete_ change event has the same `schema` portion as _create_ and _update_ events for the same collection. The `payload` portion in a _delete_ event contains values that are different from _create_ and _update_ events for the same collection. In particular, a _delete_ event contains neither an `after` value nor a `patch` value. Here is an example of a _delete_ event for a document in the `customers` collection: 
+
+[source,json,indent=0,subs="+attributes"]
 ----
 {
     "schema": { ... },
     "payload": {
-      "op": "d",
-      "ts_ms": 1465495462115,
-      "filter": "{\"_id\" : {\"$numberLong\" : \"1004\"}}",
-      "source": {
+      "op": "d", <1>
+      "ts_ms": 1465495462115, <2>
+      "filter": "{\"_id\" : {\"$numberLong\" : \"1004\"}}", <3>
+      "source": { <4>
         "version": "{debezium-version}",
         "connector": "mongodb",
         "name": "fulfillment",
-        "ts_ms": 1558965508000,
+        "ts_sec": 1558965508000,
         "snapshot": true,
         "db": "inventory",
         "rs": "rs0",
@@ -497,23 +665,42 @@ In particular, a delete event does not have an `after` value nor a `patch` value
   }
 ----
 
-When we compare this to the value in the other events, we see a couple of differences in the `payload` section:
+.Descriptions of _delete_ event value fields
+[cols="1,2,7",options="header",subs="+attributes"]
+|===
+|Item |Field name |Description
 
-* The `op` field value is now `d`, signifying that this document was deleted
-* The `patch` field does not appear
-* The `after` field does not appear
-* The `filter` field appears and has the stringified JSON representation of the MongoDB selection criteria used for the delete
-* The `source` field structure has the same fields as before, but the values are different since this event is from a different position in the oplog
-* The `ts_ms` shows the timestamp that {prodname} processed this event
+|1
+|`op`
+a|Mandatory string that describes the type of operation. The `op` field value is `d`, signifying that this document was deleted.
 
-The MongoDB connector provides one other kind of event. Each _delete_ event is followed by a _tombstone_ event that has the same key as the _delete_ event but a `null` value. This provides Kafka with the information needed to run its link:https://kafka.apache.org/documentation/#compaction[log compaction] mechanism to remove _all_ messages with that key.
+|2
+|`ts_ms`
+a|Optional field that displays the time at which the connector processed the event. The time is based on the system clock in the JVM running the Kafka Connect task.
 
-[NOTE]
-====
-All MongoDB connector events are designed to work with link:https://kafka.apache.org/documentation/#compaction[Kafka log compaction], which allows for the removal of older messages as long as at least the most recent message for every key is kept. This is how Kafka can reclaim storage space while ensuring that the topic contains a complete dataset and can be used for reloading key-based state.
+|3
+|`filter`
+|Contains the JSON string representation of the MongoDB selection criteria that was used to identify the document to be deleted.  
 
-All MongoDB connector events for a uniquely identified document have exactly the same key, signaling to Kafka that only the latest event be kept. A tombstone event informs Kafka that _all_ messages with that same key can be removed.
-====
+|4
+|`source`
+a| Mandatory field that describes the source metadata for the event. This field contains the same information as a _create_ or _update_ event for the same collection, but the values are different since this event is from a different position in the oplog. The source metadata includes: 
+
+* {prodname} version.
+* Name of the connector that generated the event.
+* Logical name of the MongoDB replica set, which forms a namespace for generated events and is used in Kafka topic names to which the connector writes.
+* Names of the collection and database that contained the deleted document.
+* If the event was part of a snapshot.
+* Timestamp for when the event occurred and ordinal of the event within the timestamp.
+* Unique identifier of the MongoDB operation, which depends on the version of MongoDB. It is either the `h` field in the `oplog` event, or a field named `stxnid`, which represents the `lsid` and `txnNumber` fields from the `oplog` event.
+
+|===
+
+MongoDB connector events are designed to work with link:{link-kafka-docs}/#compaction[Kafka log compaction]. Log compaction enables removal of some older messages as long as at least the most recent message for every key is kept. This lets Kafka reclaim storage space while ensuring that the topic contains a complete data set and can be used for reloading key-based state.
+
+[id="mongodb-tombstone-events"]
+.Tombstone events
+All MongoDB connector events for a uniquely identified document have exactly the same key. When a document is deleted, the _delete_ event value still works with log compaction because Kafka can remove all earlier messages that have that same key. However, for Kafka to remove all messages that have that key, the message value must be `null`. To make this possible, after {prodname}’s MongoDB connector emits a _delete_ event, the connector emits a special tombstone event that has the same key but a `null` value. A tombstone event informs Kafka that all messages with that same key can be removed.
 
 [[mongodb-transaction-metadata]]
 === Transaction Metadata
@@ -647,7 +834,7 @@ endif::community[]
 === Example configuration
 
 To use the connector to produce change events for a particular MongoDB replica set or sharded cluster, create a configuration file in JSON.
-When the connector starts, it will perform a snapshot of the collections in your MongoDB replica sets and start reading the replica sets' oplogs, producing events for every inserted, updated, and deleted row.
+When the connector starts, it will perform a snapshot of the collections in your MongoDB replica sets and start reading the replica sets' oplogs, producing events for every inserted, updated, and deleted document.
 Optionally filter out collections that are not needed.
 
 ifdef::community[]
