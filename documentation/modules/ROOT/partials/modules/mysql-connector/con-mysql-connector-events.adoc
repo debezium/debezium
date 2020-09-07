@@ -298,7 +298,7 @@ The following example shows the value portion of a change event that the connect
           }
         ],
         "optional": false,
-        "name": "io.product.connector.mysql.Source", // <2>
+        "name": "io.debezium.connector.mysql.Source", // <2>
         "field": "source"
       },
       {
@@ -360,7 +360,7 @@ a|In the `schema` section, each `name` field specifies the schema for a field in
 
 * `mysql-server-1.inventory.customers.Value` is the schema for the payload's `before` and `after` fields. This schema is specific to the `customers` table.
 
-* `io.product.connector.mysql.Source` is the schema for the payload's `source` field. This schema is specific to the MySQL connector. The connector uses it for all events that it generates. 
+* `io.debezium.connector.mysql.Source` is the schema for the payload's `source` field. This schema is specific to the MySQL connector. The connector uses it for all events that it generates. 
 
 * `mysql-server-1.inventory.customers.Envelope` is the schema for the overall structure of the payload, where `mysql-server-1` is the connector name, `inventory` is the database, and `customers` is the table.
 
