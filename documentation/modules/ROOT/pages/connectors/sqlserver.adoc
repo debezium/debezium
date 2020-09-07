@@ -354,31 +354,157 @@ In messages to the schema change topic, the key is the name of the database that
 }
 ----
 
-=== Events
+=== Change data events
 
-All data change events produced by the SQL Server connector have a key and a value, although the structure of the key and value depend on the table from which the change events originated (see {link-prefix}:{link-sqlserver-connector}#sqlserver-topic-names[Topic names]).
+The {prodname} SQL Server connector generates a data change event for each row-level `INSERT`, `UPDATE`, and `DELETE` operation. Each event contains a key and a value. The structure of the key and the value depends on the table that was changed. 
+
+{prodname} and Kafka Connect are designed around _continuous streams of event messages_. However, the structure of these events may change over time, which can be difficult for consumers to handle. To address this, each event contains the schema for its content or, if you are using a schema registry, a schema ID that a consumer can use to obtain the schema from the registry. This makes each event self-contained. 
+
+The following skeleton JSON shows the basic four parts of a change event. However, how you configure the Kafka Connect converter that you choose to use in your application determines the representation of these four parts in change events. A `schema` field is in a change event only when you configure the converter to produce it. Likewise, the event key and event payload are in a change event only if you configure a converter to produce it. If you use the JSON converver and you configure it to produce all four basic change event parts, change events have this structure: 
+
+[source,json,index=0]
+----
+{
+ "schema": { //<1>
+   ...
+  },
+ "payload": { //<2>
+   ...
+ },
+ "schema": { //<3> 
+   ...
+ },
+ "payload": { //<4>
+   ...
+ },
+}
+----
+
+.Overview of change event basic content
+[cols="1,2,7",options="header"]
+|===
+|Item |Field name |Description
+
+|1
+|`schema`
+|The first `schema` field is part of the event key. It specifies a Kafka Connect schema that describes what is in the event key's `payload` portion. In other words, the first `schema` field describes the structure of the primary key, or the unique key if the table does not have a primary key, for the table that was changed. +
+ +
+It is possible to override the table's primary key by setting the {link-prefix}:{link-sqlserver-connector}#sqlserver-property-message-key-columns[`message.key.columns` connector configuration property]. In this case, the first schema field describes the structure of the key identified by that property.
+
+|2
+|`payload`
+|The first `payload` field is part of the event key. It has the structure described by the previous `schema` field and it contains the key for the row that was changed. 
+
+|3
+|`schema`
+|The second `schema` field is part of the event value. It specifies the Kafka Connect schema that describes what is in the event value's `payload` portion. In other words, the second `schema` describes the structure of the row that was changed. Typically, this schema contains nested schemas. 
+
+|4
+|`payload`
+|The second `payload` field is part of the event value. It has the structure described by the previous `schema` field and it contains the actual data for the row that was changed.
+
+|===
+
+By default, the connector streams change event records to topics with names that are the same as the event's originating table. See {link-prefix}:{link-sqlserver-connector}#sqlserver-topic-names[topic names].
 
 [WARNING]
 ====
-The SQL Server connector ensures that all Kafka Connect _schema names_ are http://avro.apache.org/docs/current/spec.html#names[valid Avro schema names].
-This means that the logical server name must start with Latin letters or an underscore (e.g., [a-z,A-Z,\_]),
-and the remaining characters in the logical server name and all characters in the schema and table names must be Latin letters, digits, or an underscore (e.g., [a-z,A-Z,0-9,\_]).
-If not, then all invalid characters will automatically be replaced with an underscore character.
+The SQL Server connector ensures that all Kafka Connect schema names adhere to the link:http://avro.apache.org/docs/current/spec.html#names[Avro schema name format]. This means that the logical server name must start with a Latin letter or an underscore, that is, a-z, A-Z, or \_. Each remaining character in the logical server name and each character in the database and table names must be a Latin letter, a digit, or an underscore, that is, a-z, A-Z, 0-9, or \_. If there is an invalid character it is replaced with an underscore character.
 
-This can lead to unexpected conflicts when the logical server name, schema names, and table names contain other characters, and the only distinguishing characters between table full names are invalid and thus replaced with underscores.
+This can lead to unexpected conflicts if the logical server name, a database name, or a table name contains invalid characters, and the only characters that distinguish names from one another are invalid and thus replaced with underscores.
 ====
-
-{prodname} and Kafka Connect are designed around _continuous streams of event messages_, and the structure of these events may change over time.
-This could be difficult for consumers to deal with, so to make it easy Kafka Connect makes each event self-contained.
-Every message key and value has two parts: a _schema_ and _payload_.
-The schema describes the structure of the payload, while the payload contains the actual data.
 
 [[sqlserver-change-event-keys]]
 ==== Change Event Keys
 
-For a given table, the change event's key will have a structure that contains a field for each column in the primary key (or unique key constraint) of the table at the time the event was created.
+A change event's key contains the schema for the changed table's key and the changed row's actual key. Both the schema and its corresponding payload contain a field for each column in the changed table's primary key (or unique key constraint) at the time the connector created the event.
 
-Consider a `customers` table defined in the `inventory` database's schema `dbo`:
+Consider the following `customers` table, which is followed by an example of a change event key for this table. 
+
+.Example table
+[source,sql,indent=0]
+----
+CREATE TABLE customers (
+  id INTEGER IDENTITY(1001,1) NOT NULL PRIMARY KEY,
+  first_name VARCHAR(255) NOT NULL,
+  last_name VARCHAR(255) NOT NULL,
+  email VARCHAR(255) NOT NULL UNIQUE
+);
+----
+
+.Example change event key
+Every change event that captures a change to the `customers` table has the same event key schema. For as long as the `customers` table has the previous definition, every change event that captures a change to the `customers` table has the following key structure, which in JSON, looks like this:
+
+[source,json,indent=0]
+----
+{
+    "schema": { <1>
+        "type": "struct",
+        "fields": [ <2>
+            {
+                "type": "int32",
+                "optional": false,
+                "field": "id"
+            }
+        ],
+        "optional": false, <3>
+        "name": "server1.dbo.customers.Key" <4>
+    },
+    "payload": { <5>
+        "id": 1004
+    }
+}
+----
+
+.Description of change event key
+[cols="1,2,7",options="header"]
+|===
+|Item |Field name |Description
+
+|1
+|`schema`
+|The schema portion of the key specifies a Kafka Connect schema that describes what is in the key's `payload` portion. 
+
+|2
+|`fields` 
+|Specifies each field that is expected in the `payload`, including each field's name, type, and whether it is required. In this example, there is one required field named `id` of type `int32`.
+
+|3
+|`optional`
+|Indicates whether the event key must contain a value in its `payload` field. In this example, a value in the key's payload is required. A value in the key's payload field is optional when a table does not have a primary key.
+
+|4
+|`server1.dbo.customers.Key`
+a|Name of the schema that defines the structure of the key's payload. This schema describes the structure of the primary key for the table that was changed. Key schema names have the format _connector-name_._database-schema-name_._table-name_.`Key`. In this example: + 
+
+* `server1` is the name of the connector that generated this event. + 
+* `dbo` is the database schema for the table that was changed. +
+* `customers` is the table that was updated.
+
+|5
+|`payload`
+|Contains the key for the row for which this change event was generated. In this example, the key, contains a single `id` field whose value is `1004`.
+
+|===
+
+ifdef::community[]
+[NOTE]
+====
+Although the `column.exclude.list` configuration property allows you to remove columns from the event values, all columns in a primary or unique key are always included in the event's key.
+====
+
+[WARNING]
+====
+If the table does not have a primary or unique key, then the change event's key is null. This makes sense since the rows in a table without a primary or unique key constraint cannot be uniquely identified.
+====
+endif::community[]
+
+[[sqlserver-change-event-values]]
+==== Change event values
+
+The value in a change event is a bit more complicated than the key. Like the key, the value has a `schema` section and a `payload` section. The `schema` section contains the schema that describes the `Envelope` structure of the `payload` section, including its nested fields. Change events for operations that create, update or delete data all have a value payload with an envelope structure. 
+
+Consider the same sample table that was used to show an example of a change event key: 
 
 [source,sql,indent=0]
 ----
@@ -390,81 +516,23 @@ CREATE TABLE customers (
 );
 ----
 
-If the `database.server.name` configuration property has the value `server1`,
-every change event for the `customers` table while it has this definition will feature the same key structure, which in JSON looks like this:
+The value portion of a change event for a change to this table is described for each event type. 
 
-[source,json,indent=0]
-----
-{
-    "schema": {
-        "type": "struct",
-        "fields": [
-            {
-                "type": "int32",
-                "optional": false,
-                "field": "id"
-            }
-        ],
-        "optional": false,
-        "name": "server1.dbo.customers.Key"
-    },
-    "payload": {
-        "id": 1004
-    }
-}
-----
-
-The `schema` portion of the key contains a Kafka Connect schema describing what is in the key portion. In this case, it means that the `payload` value is not optional, is a structure defined by a schema named `server1.dbo.customers.Key`, and has one required field named `id` of type `int32`.
-If you look at the value of the key's `payload` field, you can see that it is indeed a structure (which in JSON is just an object) with a single `id` field, whose value is `1004`.
-
-Therefore, you can interpret this key as describing the row in the `dbo.customers` table (output from the connector named `server1`) whose `id` primary key column had a value of `1004`.
-
-ifdef::community[]
-[NOTE]
-====
-Although the `column.exclude.list` configuration property allows you to remove columns from the event values, all columns in a primary or unique key are always included in the event's key.
-====
-
-[WARNING]
-====
-If the table does not have a primary or unique key, then the change event's key will be null. This makes sense since the rows in a table without a primary or unique key constraint cannot be uniquely identified.
-====
-endif::community[]
-
-[[sqlserver-change-event-values]]
-==== Change Event Values
-
-Like the message key, the value of a change event message has a _schema_ section and _payload_ section.
-The payload section of every change event value produced by the SQL Server connector has an _envelope_ structure with the following fields:
-
-* `op` is a mandatory field that contains a string value describing the type of operation. Values for the SQL Server connector are `c` for create (or insert), `u` for update, `d` for delete, and `r` for read (in the case of a snapshot).
-* `before` is an optional field that if present contains the state of the row _before_ the event occurred. The structure is described by the `server1.dbo.customers.Value` Kafka Connect schema, which the `server1` connector uses for all rows in the `dbo.customers` table.
-
-* `after` is an optional field that if present contains the state of the row _after_ the event occurred. The structure is described by the same `server1.dbo.customers.Value` Kafka Connect schema used in `before`.
-* `source` is a mandatory field that contains a structure describing the source metadata for the event, which in the case of SQL Server contains these fields: the {prodname} version, the connector name, whether the event is part of an ongoing snapshot or not, the commit LSN (not while snapshotting), the LSN of the change, database, schema and table where the change happened, and a timestamp representing the point in time when the record was changed in the source database (during snapshotting, this is the point in time of snapshotting).
-+
-Also a field `event_serial_no` is present during streaming.
-This is used to differentiate among events that have the same commit and change LSN.
-There are mostly two situations when you can see it present with value different from `1`:
-+
-** update events will have the value set to `2`, this is because the update generates two events in the CDC change table of SQL Server (https://docs.microsoft.com/en-us/sql/relational-databases/system-tables/cdc-capture-instance-ct-transact-sql?view=sql-server-2017[source documentation]).
-The first one contains the old values and the second one contains new values.
-So the first one is dropped and the values from it are used with the second one to create the {prodname} change event.
-** when a primary key is updated, then SQL Server emits two records - `delete` to remove the record with the old primary key value and `insert` to create the record with the new primary key.
-Both operations share the same commit and change LSN and their event numbers are `1` and `2`.
-* `ts_ms` is optional and if present contains the time (using the system clock in the JVM running the Kafka Connect task) at which the connector processed the event.
-
-And of course, the _schema_ portion of the event message's value contains a schema that describes this envelope structure and the nested fields within it.
+ifdef::product[]
+* <<sqlserver-create-events,_create_ events>>
+* <<sqlserver-update-events,_update_ events>>
+* <<sqlserver-delete-events,_delete_ events>>
+endif::product[]
 
 [[sqlserver-create-events]]
-===== Create events
+===== _create_ events
 
-Let's look at what a _create_ event value might look like for our `customers` table:
+The following example shows the value portion of a change event that the connector generates for an operation that creates data in the `customers` table: 
 
-[source,json,indent=0,subs="attributes"]
+[source,json,indent=0,subs="+attributes"]
 ----
 {
-  "schema": {
+  "schema": { <1>
     "type": "struct",
     "fields": [
       {
@@ -492,7 +560,7 @@ Let's look at what a _create_ event value might look like for our `customers` ta
           }
         ],
         "optional": true,
-        "name": "server1.dbo.customers.Value",
+        "name": "server1.dbo.customers.Value", <2>
         "field": "before"
       },
       {
@@ -520,7 +588,7 @@ Let's look at what a _create_ event value might look like for our `customers` ta
           }
         ],
         "optional": true,
-        "name": "server1.dbo.customers.Value",
+        "name": "server1.dbo.customers.Value", <2>
         "field": "after"
       },
       {
@@ -544,7 +612,7 @@ Let's look at what a _create_ event value might look like for our `customers` ta
           {
             "type": "int64",
             "optional": false,
-            "field": "ts_ms"
+            "field": "ts_sec"
           },
           {
             "type": "boolean",
@@ -584,7 +652,7 @@ Let's look at what a _create_ event value might look like for our `customers` ta
           }
         ],
         "optional": false,
-        "name": "io.debezium.connector.sqlserver.Source",
+        "name": "io.debezium.connector.sqlserver.Source", <2>
         "field": "source"
       },
       {
@@ -599,21 +667,21 @@ Let's look at what a _create_ event value might look like for our `customers` ta
       }
     ],
     "optional": false,
-    "name": "server1.dbo.customers.Envelope"
+    "name": "server1.dbo.customers.Envelope" <2>
   },
-  "payload": {
-    "before": null,
-    "after": {
+  "payload": { <3>
+    "before": null, <4>
+    "after": { <5>
       "id": 1005,
       "first_name": "john",
       "last_name": "doe",
       "email": "john.doe@example.org"
     },
-    "source": {
+    "source": { <6>
       "version": "{debezium-version}",
       "connector": "sqlserver",
       "name": "server1",
-      "ts_ms": 1559729468470,
+      "ts_sec": 1559729468470,
       "snapshot": false,
       "db": "testDB",
       "schema": "dbo",
@@ -622,56 +690,103 @@ Let's look at what a _create_ event value might look like for our `customers` ta
       "commit_lsn": "00000027:00000758:0005",
       "event_serial_no": "1"
     },
-    "op": "c",
-    "ts_ms": 1559729471739
+    "op": "c", <7>
+    "ts_ms": 1559729471739 <8>
   }
 }
 ----
 
-If we look at the `schema` portion of this event's _value_, we can see the schema for the _envelope_, the schema for the `source` structure (which is specific to the SQL Server connector and reused across all events), and the table-specific schemas for the `before` and `after` fields.
 
-[NOTE]
-====
-The names of the schemas for the `before` and `after` fields are of the form _logicalName_._schemaName_._tableName_.Value, and thus are entirely independent from all other schemas for all other tables.
-This means that when using the Avro Converter, the resulting Avro schemas for _each table_ in each _logical source_ have their own evolution and history.
-====
+.Descriptions of _create_ event value fields
+[cols="1,2,7",options="header"]
+|===
+|Item |Field name |Description
 
-If we look at the `payload` portion of this event's _value_, we can see the information in the event, namely that it is describing that the row was created (since `op=c`), and that the `after` field value contains the values of the new inserted row's' `id`, `first_name`, `last_name`, and `email` columns.
+|1
+|`schema`
+|The value's schema, which describes the structure of the value's payload. A change event's value schema is the same in every change event that the connector generates for a particular table. 
 
-[NOTE]
-====
-It may appear that the JSON representations of the events are much larger than the rows they describe.
-This is true, because the JSON representation must include the _schema_ and the _payload_ portions of the message.
-It is possible and even recommended to use the to dramatically decrease the size of the actual messages written to the Kafka topics.
-====
+|2
+|`name`
+a|In the `schema` section, each `name` field specifies the schema for a field in the value's payload. In this example: 
+
+* `server1.dbo.customers.Value` is the schema for the payload's `before` and `after` fields. This schema is specific to the `customers` table.
+
+* `io.debezium.connector.sqlserver.Source` is the schema for the payload's `source` field. This schema is specific to the SQL Server connector. The connector uses it for all events that it generates. 
+
+* `server1.dbo.customers.Envelope` is the schema for the overall structure of the payload, where `server1` is the connector name, `dbo` is the database schema name, and `customers` is the table.
+
+Names of schemas for `before` and `after` fields are of the form `_logicalName_._database-schemaName_._tableName_.Value`, which ensures that the schema name is unique in the database. This means that when using the {link-prefix}:{link-avro-serialization}[Avro converter], the resulting Avro schema for each table in each logical source has its own evolution and history.
+
+|3
+|`payload`
+|The value's actual data. This is the information that the change event is providing. 
+
+It may appear that the JSON representations of the events are much larger than the rows they describe. This is because the JSON representation must include the schema and the payload portions of the message.
+However, by using the {link-prefix}:{link-avro-serialization}[Avro converter], you can significantly decrease the size of the messages that the connector streams to Kafka topics.
+
+|4
+|`before`
+| An optional field that specifies the state of the row before the event occurred. When the `op` field is `c` for create, as it is in this example, the `before` field is `null` since this change event is for new content. 
+
+|5
+|`after`
+| An optional field that specifies the state of the row after the event occurred. In this example, the `after` field contains the values of the new row's `id`, `first_name`, `last_name`, and `email` columns.
+
+|6
+|`source`
+a| Mandatory field that describes the source metadata for the event. This field contains information that you can use to compare this event with other events, with regard to the origin of the events, the order in which the events occurred, and whether events were part of the same transaction. The source metadata includes: 
+
+* {prodname} version
+* Connector type and name
+* Database and schema names
+* Timestamp
+* If the event was part of a snapshot
+* Name of the table that contains the new row
+* Server log offsets
+
+|7
+|`op`
+a| Mandatory string that describes the type of operation that caused the connector to generate the event. In this example, `c` indicates that the operation created a row. Valid values are: 
+
+* `c` = create
+* `u` = update
+* `d` = delete
+* `r` = read (applies to only snapshots)
+
+|8
+|`ts_ms`
+a| Optional field that displays the time at which the connector processed the event. The time is based on the system clock in the JVM running the Kafka Connect task.
+
+|===
 
 [[sqlserver-update-events]]
-===== Update events
-The value of an _update_ change event on this table will actually have the exact same _schema_, and its payload is structured the same but will hold different values.
-Here's an example:
+===== _update_ events
 
-[source,json,indent=0,subs="attributes"]
+The value of a change event for an update in the sample `customers` table has the same schema as a _create_ event for that table. Likewise, the event value's payload has the same structure. However, the event value payload contains different values in an _update_ event. Here is an example of a change event value in an event that the connector generates for an update in the `customers` table: 
+
+[source,json,indent=0,subs="+attributes"]
 ----
 {
   "schema": { ... },
   "payload": {
-    "before": {
+    "before": { <1>
       "id": 1005,
       "first_name": "john",
       "last_name": "doe",
       "email": "john.doe@example.org"
     },
-    "after": {
+    "after": { <2>
       "id": 1005,
       "first_name": "john",
       "last_name": "doe",
       "email": "noreply@example.org"
     },
-    "source": {
+    "source": { <3>
       "version": "{debezium-version}",
       "connector": "sqlserver",
       "name": "server1",
-      "ts_ms": 1559729995937,
+      "ts_sec": 1559729995937,
       "snapshot": false,
       "db": "testDB",
       "schema": "dbo",
@@ -680,55 +795,79 @@ Here's an example:
       "commit_lsn": "00000027:00000ac0:0007",
       "event_serial_no": "2"
     },
-    "op": "u",
+    "op": "u", <4>
     "ts_ms": 1559729998706
   }
 }
 ----
 
-When we compare this to the value in the _insert_ event, we see a couple of differences in the `payload` section:
 
-* The `op` field value is now `u`, signifying that this row changed because of an update
-* The `before` field now has the state of the row with the values before the database commit
-* The `after` field now has the updated state of the row, and here was can see that the `email` value is now `noreply@example.org`.
-* The `source` field structure has the same fields as before, but the values are different since this event is from a different position in the transaction log.
-* The `event_serial_no` field has value `2`.
-That is due to the update event composed of two events behind the scenes and we are exposing only the second one.
-If you are interested in details please check the https://docs.microsoft.com/en-us/sql/relational-databases/system-tables/cdc-capture-instance-ct-transact-sql?view=sql-server-2017[source documentation] and refer to the field `$operation`.
-* The `ts_ms` shows the timestamp that {prodname} processed this event.
+.Descriptions of _update_ event value fields
+[cols="1,2,7",options="header"]
+|===
+|Item |Field name |Description
 
-There are several things we can learn by just looking at this `payload` section. We can compare the `before` and `after` structures to determine what actually changed in this row because of the commit.
-The `source` structure tells us information about SQL Server's record of this change (providing traceability), but more importantly this has information we can compare to other events in this and other topics to know whether this event occurred before, after, or as part of the same SQL Server commit as other events.
+|1
+|`before`
+|An optional field that specifies the state of the row before the event occurred. In an _update_ event value, the `before` field contains a field for each table column and the value that was in that column before the database commit. In this example, the `email` value is `john.doe@example.org.`
+
+|2
+|`after`
+| An optional field that specifies the state of the row after the event occurred. You can compare the `before` and `after` structures to determine what the update to this row was. In the example, the `email` value is now `noreply@example.org`. 
+
+|3
+|`source`
+a|Mandatory field that describes the source metadata for the event. The `source` field structure has the same fields as in a _create_ event, but some values are different, for example, the sample _update_ event has a different offset. The source metadata includes: 
+
+* {prodname} version
+* Connector type and name
+* Database and schema names
+* Timestamp
+* If the event was part of a snapshot
+* Name of the table that contains the new row
+* Server log offsets
+
+The `event_serial_no` field differentiates events that have the same commit and change LSN. Typical situations for when this field has a value other than `1`:
+
+* _update_ events have the value set to `2` because the update generates two events in the CDC change table of SQL Server (link:https://docs.microsoft.com/en-us/sql/relational-databases/system-tables/cdc-capture-instance-ct-transact-sql?view=sql-server-2017[see the source documentation for details]). The first event contains the old values and the second contains contains new values. The connector uses values in the first event to create the second event. The connector drops the first event. 
+
+* When a primary key is updated SQL Server emits two evemts. A _delete_ event for the removal of the record with the old primary key value and a _create_ event for the addition of the record with the new primary key.
+Both operations share the same commit and change LSN and their event numbers are `1` and `2`, respectively. 
+
+|4
+|`op`
+a|Mandatory string that describes the type of operation. In an _update_ event value, the `op` field value is `u`, signifying that this row changed because of an update.
+
+|===
 
 [NOTE]
 ====
-When the columns for a row's primary/unique key are updated, the value of the row's key has changed so {prodname} will output _three_ events: a `DELETE` event and a {link-prefix}:{link-sqlserver-connector}#sqlserver-tombstone-events[tombstone event] with the old key for the row, followed by an `INSERT` event with the new key for the row.
+Updating the columns for a row's primary/unique key changes the value of the row's key. When a key changes, {prodname} outputs _three_ events: a _delete_ event and a {link-prefix}:{link-sqlserver-connector}#sqlserver-tombstone-events[tombstone event] with the old key for the row, followed by a _create_ event with the new key for the row.
 ====
 
 [[sqlserver-delete-events]]
-===== Delete events
+===== _delete_ events
 
-So far, you have seen samples of _create_ and _update_ events.
-The following sample shows the value of a _delete_ event for the same table. Once again, the `schema` portion of the value is exactly the same as with the _create_ and _update_ events:
+The value in a _delete_ change event has the same `schema` portion as _create_ and _update_ events for the same table. The `payload` portion in a _delete_ event for the sample `customers` table looks like this:  
 
-[source,json,indent=0,subs="attributes"]
+[source,json,indent=0,subs="+attributes"]
 ----
 {
   "schema": { ... },
   },
   "payload": {
-    "before": {
+    "before": { <>
       "id": 1005,
       "first_name": "john",
       "last_name": "doe",
       "email": "noreply@example.org"
     },
-    "after": null,
-    "source": {
+    "after": null, <2>
+    "source": { <3>
       "version": "{debezium-version}",
       "connector": "sqlserver",
       "name": "server1",
-      "ts_ms": 1559730445243,
+      "ts_sec": 1559730445243,
       "snapshot": false,
       "db": "testDB",
       "schema": "dbo",
@@ -737,30 +876,52 @@ The following sample shows the value of a _delete_ event for the same table. Onc
       "commit_lsn": "00000027:00000db0:0007",
       "event_serial_no": "1"
     },
-    "op": "d",
-    "ts_ms": 1559730450205
+    "op": "d", <4>
+    "ts_ms": 1559730450205 <5>
   }
 }
 ----
 
-If we look at the `payload` portion, we see a number of differences compared with the _create_ or _update_ event payloads:
+.Descriptions of _delete_ event value fields
+[cols="1,2,7",options="header"]
+|===
+|Item |Field name |Description
 
-* The `op` field value is now `d`, signifying that this row was deleted
-* The `before` field now has the state of the row that was deleted with the database commit.
-* The `after` field is null, signifying that the row no longer exists
-* The `source` field structure has many of the same values as before, except the `ts_ms`, `commit_lsn` and `change_lsn` fields have changed
-* The `ts_ms` shows the timestamp that {prodname} processed this event.
+|1
+|`before`
+|Optional field that specifies the state of the row before the event occurred. In a _delete_ event value, the `before` field contains the values that were in the row before it was deleted with the database commit.
 
-This event gives a consumer all kinds of information that it can use to process the removal of this row.
+|2
+|`after`
+| Optional field that specifies the state of the row after the event occurred. In a _delete_ event value, the `after` field is `null`, signifying that the row no longer exists.
 
-The SQL Server connector's events are designed to work with https://cwiki.apache.org/confluence/display/KAFKA/Log+Compaction[Kafka log compaction],
-which allows for the removal of some older messages as long as at least the most recent message for every key is kept.
-This allows Kafka to reclaim storage space while ensuring the topic contains a complete dataset and can be used for reloading key-based state.
+|3
+|`source`
+a|Mandatory field that describes the source metadata for the event. In a _delete_ event value, the `source` field structure is the same as for _create_ and _update_ events for the same table. Many `source` field values are also the same. In a _delete_ event value, the `ts_ms` and `pos` field values, as well as other values, might have changed. But the `source` field in a _delete_ event value provides the same metadata: 
+
+* {prodname} version
+* Connector type and name
+* Database and schema names
+* Timestamp
+* If the event was part of a snapshot
+* Name of the table that contains the new row
+* Server log offsets
+
+|4
+|`op`
+a|Mandatory string that describes the type of operation. The `op` field value is `d`, signifying that this row was deleted.
+
+|5
+|`ts_ms`
+a|Optional field that displays the time at which the connector processed the event. The time is based on the system clock in the JVM running the Kafka Connect task.
+
+|===
+
+SQL Server connector events are designed to work with link:{link-kafka-docs}/#compaction[Kafka log compaction]. Log compaction enables removal of some older messages as long as at least the most recent message for every key is kept. This lets Kafka reclaim storage space while ensuring that the topic contains a complete data set and can be used for reloading key-based state.
 
 [[sqlserver-tombstone-events]]
-When a row is deleted, the _delete_ event value listed above still works with log compaction, since Kafka can still remove all earlier messages with that same key.
-But only if the message value is `null` will Kafka know that it can remove _all messages_ with that same key.
-To make this possible, the SQL Server connector always follows the _delete_ event with a special _tombstone_ event that has the same key but `null` value.
+.Tombstone events
+When a row is deleted, the _delete_ event value still works with log compaction, because Kafka can remove all earlier messages that have that same key. However, for Kafka to remove all messages that have that same key, the message value must be `null`. To make this possible, after {prodname}’s SQL Server connector emits a _delete_ event, the connector emits a special tombstone event that has the same key but a `null` value.
 
 [[sqlserver-transaction-metadata]]
 === Transaction Metadata
