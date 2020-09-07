@@ -271,12 +271,20 @@ For `DELETE` events, this option is only supported when the `delete.handling.mod
 |`drop`
 |The SMT can `drop`, `rewrite` or pass delete records (`none`). The `rewrite` mode will add a `__deleted` field set to `true` or `false` depending on the represented operation.
 
+|[[mongodb-extract-new-record-state-add-headers-prefix]]<<mongodb-extract-new-record-state-add-headers-prefix, `add.headers.prefix`>>
+|__ (double-underscore)
+|Set this optional string to prefix a header.
+
 |[[mongodb-extract-new-record-state-add-headers]]<<mongodb-extract-new-record-state-add-headers, `add.headers`>>
 |
 |Specify a list of metadata fields to add to header of the flattened message.
 In case of duplicate field names (e.g. "ts_ms" exists twice), the struct should be specified to get the correct field (e.g. "source.ts_ms").
 The fields will be prefixed with `pass:[__]` or `pass:[__]<struct>pass:[__]`, depending on the specification of the struct.
 Please use a comma separated list without spaces.
+
+|[[mongodb-extract-new-record-state-add-fields-prefix]]<<mongodb-extract-new-record-state-add-fields-prefix, `add.fields.prefix`>>
+|__ (double-underscore)
+|Set this optional string to prefix a field.
 
 |[[mongodb-extract-new-record-state-add-fields]]<<mongodb-extract-new-record-state-add-fields, `add.fields`>>
 |

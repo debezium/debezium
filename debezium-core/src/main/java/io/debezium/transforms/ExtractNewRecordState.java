@@ -93,8 +93,10 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
         dropTombstones = config.getBoolean(ExtractNewRecordStateConfigDefinition.DROP_TOMBSTONES);
         handleDeletes = DeleteHandling.parse(config.getString(ExtractNewRecordStateConfigDefinition.HANDLE_DELETES));
 
-        additionalFields = FieldReference.fromConfiguration(config.getString(ExtractNewRecordStateConfigDefinition.ADD_FIELDS));
-        additionalHeaders = FieldReference.fromConfiguration(config.getString(ExtractNewRecordStateConfigDefinition.ADD_HEADERS));
+        String addFieldsPrefix = config.getString(ExtractNewRecordStateConfigDefinition.ADD_FIELDS_PREFIX);
+        String addHeadersPrefix = config.getString(ExtractNewRecordStateConfigDefinition.ADD_HEADERS_PREFIX);
+        additionalFields = FieldReference.fromConfiguration(addFieldsPrefix, config.getString(ExtractNewRecordStateConfigDefinition.ADD_FIELDS));
+        additionalHeaders = FieldReference.fromConfiguration(addHeadersPrefix, config.getString(ExtractNewRecordStateConfigDefinition.ADD_HEADERS));
 
         String routeFieldConfig = config.getString(ExtractNewRecordStateConfigDefinition.ROUTE_BY_FIELD);
         routeByField = routeFieldConfig.isEmpty() ? null : routeFieldConfig;
@@ -307,17 +309,22 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
         private final String field;
 
         /**
-         * The name for the outgoing attribute/field, e.g. "__op" or "__source_ts_ms".
+         * The prefix for the new field name.
+         */
+        private final String prefix;
+        /**
+         * The name for the outgoing attribute/field, e.g. "__op" or "__source_ts_ms" when the prefix is "__"
          */
         private final String newFieldName;
 
-        private FieldReference(String field) {
+        private FieldReference(String prefix, String field) {
+            this.prefix = prefix;
             String[] parts = FIELD_SEPARATOR.split(field);
 
             if (parts.length == 1) {
                 this.struct = determineStruct(parts[0]);
                 this.field = parts[0];
-                this.newFieldName = ExtractNewRecordStateConfigDefinition.METADATA_FIELD_PREFIX + field;
+                this.newFieldName = prefix + field;
             }
             else if (parts.length == 2) {
                 this.struct = parts[0];
@@ -327,7 +334,7 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
                 }
 
                 this.field = parts[1];
-                this.newFieldName = ExtractNewRecordStateConfigDefinition.METADATA_FIELD_PREFIX + this.struct + "_" + this.field;
+                this.newFieldName = prefix + this.struct + "_" + this.field;
             }
             else {
                 throw new IllegalArgumentException("Unexpected field name: " + field);
@@ -351,14 +358,14 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
             }
         }
 
-        static List<FieldReference> fromConfiguration(String addHeadersConfig) {
+        static List<FieldReference> fromConfiguration(String fieldPrefix, String addHeadersConfig) {
             if (Strings.isNullOrEmpty(addHeadersConfig)) {
                 return Collections.emptyList();
             }
             else {
                 return Arrays.stream(addHeadersConfig.split(","))
                         .map(String::trim)
-                        .map(FieldReference::new)
+                        .map(field -> new FieldReference(fieldPrefix, field))
                         .collect(Collectors.toList());
             }
         }

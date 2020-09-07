@@ -279,6 +279,11 @@ For example, configuration of `route.by.field=destination` routes records to the
  +
 If you are configuring the `ExtractNewRecordState` SMT on a sink connector, setting this option might be useful when the destination topic name dictates the name of the database table that will be updated with the simplified change event record. If the topic name is not correct for your use case, you can configure `route.by.field` to re-route the event.
 
+[id="extract-new-record-state-add-fields-prefix"]
+|{link-prefix}:{link-event-flattening}#extract-new-record-state-add-fields-prefix[`add.fields.prefix`]
+| __ (double-underscore)
+|Set this optional string to prefix a field.
+
 [id="extract-new-record-state-add-fields"]
 |{link-prefix}:{link-event-flattening}#extract-new-record-state-add-fields[`add.fields`]
 |
@@ -286,7 +291,12 @@ If you are configuring the `ExtractNewRecordState` SMT on a sink connector, sett
  +
 When the SMT adds metadata fields to the simplified record's value, it prefixes each metadata field name with a double underscore. For a struct specification, the SMT also inserts an underscore between the struct name and the field name. +
  +
-If you specify a field that is not in the change event record, the SMT still adds the field to the record's value.  
+If you specify a field that is not in the change event record, the SMT still adds the field to the record's value.
+
+[id="extract-new-record-state-add-headers-prefix"]
+|{link-prefix}:{link-event-flattening}#extract-new-record-state-add-headers-prefix[`add.headers.prefix`]
+| __ (double-underscore)
+|Set this optional string to prefix a header.
 
 [id="extract-new-record-state-add-headers"]
 |{link-prefix}:{link-event-flattening}#extract-new-record-state-add-headers[`add.headers`]

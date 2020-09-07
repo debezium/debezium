@@ -57,6 +57,8 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
     private static final String ADD_SOURCE_FIELDS = "add.source.fields";
     private static final String ADD_HEADERS = "add.headers";
     private static final String ADD_FIELDS = "add.fields";
+    private static final String ADD_FIELDS_PREFIX = ADD_FIELDS + ".prefix";
+    private static final String ADD_HEADERS_PREFIX = ADD_HEADERS + ".prefix";
 
     @Override
     protected String getCollectionName() {
@@ -1232,20 +1234,21 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
     }
 
     @Test
-    @FixFor("DBZ-1791")
+    @FixFor({ "DBZ-1791", "DBZ-2504" })
     public void testAddHeadersSpecifyingStruct() throws Exception {
         waitForStreamingRunning();
 
         final Map<String, String> props = new HashMap<>();
         props.put(ADD_HEADERS, "op,source.rs,source.collection");
+        props.put(ADD_HEADERS_PREFIX, "prefix.");
         transformation.configure(props);
 
         final SourceRecord createRecord = createCreateRecord();
         final SourceRecord transformed = transformation.apply(createRecord);
         assertThat(transformed.headers()).hasSize(3);
-        assertThat(getSourceRecordHeaderByKey(transformed, "__op")).isEqualTo(Operation.CREATE.code());
-        assertThat(getSourceRecordHeaderByKey(transformed, "__source_rs")).isEqualTo("rs0");
-        assertThat(getSourceRecordHeaderByKey(transformed, "__source_collection")).isEqualTo(getCollectionName());
+        assertThat(getSourceRecordHeaderByKey(transformed, "prefix.op")).isEqualTo(Operation.CREATE.code());
+        assertThat(getSourceRecordHeaderByKey(transformed, "prefix.source_rs")).isEqualTo("rs0");
+        assertThat(getSourceRecordHeaderByKey(transformed, "prefix.source_collection")).isEqualTo(getCollectionName());
     }
 
     @Test
@@ -1263,18 +1266,19 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
     }
 
     @Test
-    @FixFor("DBZ-1791")
+    @FixFor({ "DBZ-1791", "DBZ-2504" })
     public void testAddFields() throws Exception {
         waitForStreamingRunning();
 
         final Map<String, String> props = new HashMap<>();
         props.put(ADD_FIELDS, "op , ts_ms");
+        props.put(ADD_FIELDS_PREFIX, "prefix.");
         transformation.configure(props);
 
         final SourceRecord createRecord = createCreateRecord();
         final SourceRecord transformed = transformation.apply(createRecord);
-        assertThat(((Struct) transformed.value()).get("__op")).isEqualTo(Operation.CREATE.code());
-        assertThat(((Struct) transformed.value()).get("__ts_ms")).isNotNull();
+        assertThat(((Struct) transformed.value()).get("prefix.op")).isEqualTo(Operation.CREATE.code());
+        assertThat(((Struct) transformed.value()).get("prefix.ts_ms")).isNotNull();
     }
 
     @Test
