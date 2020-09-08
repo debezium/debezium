@@ -2,6 +2,33 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 1.2.3.Final
+September 8th, 2020 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12347072)
+
+### New features since 1.2.2.Final
+
+None
+
+
+### Breaking changes since 1.2.2.Final
+
+None
+
+
+### Fixes since 1.2.1.Final
+
+* JSON functions in MySQL grammar unsupported [DBZ-2453](https://issues.jboss.org/browse/DBZ-2453)
+
+
+### Other changes since 1.2.1.Final
+
+* CloudEvents remains TP but has avro support downstream [DBZ-2245](https://issues.jboss.org/browse/DBZ-2245)
+* Prepare DB2 connector doc for TP [DBZ-2403](https://issues.jboss.org/browse/DBZ-2403)
+* Adjust outbox extension to updated Quarkus semantics [DBZ-2465](https://issues.jboss.org/browse/DBZ-2465)
+* Doc tweaks required to automatically build Db2 content in downstream user guide [DBZ-2500](https://issues.jboss.org/browse/DBZ-2500)
+
+
+
 ## 1.2.2.Final
 August 25th, 2020 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12346622)
 
