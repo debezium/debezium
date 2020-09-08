@@ -18,7 +18,7 @@ The outbox pattern is a way to ensure that related services that need the same d
 * Capture changes in an outbox table
 * Apply the {prodname} `outbox.EventRouter` single message transformation (SMT)
 
-A {prodname} connector that is configured to apply the outbox SMT should capture changes in only an outbox table. 
+A {prodname} connector that is configured to apply the outbox SMT should capture changes in only an outbox table. A connector can capture changes in more than one outbox table only if each outbox table has the same structure.  
 
 ifdef::community[]
 [NOTE]
