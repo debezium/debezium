@@ -478,10 +478,8 @@ node('Slave') {
                     failed = false
                     for (i = 0; i < CONNECTORS.size(); i++) {
                         def connector = CONNECTORS[i]
-                        try {
-                            new URL("https://repo1.maven.org/maven2/io/debezium/debezium-connector-$connector/${RELEASE_VERSION}/debezium-connector-$connector-${RELEASE_VERSION}-plugin.tar.gz").bytes
-                        }
-                        catch (FileNotFoundException e) {
+                        def curl = sh(returnStatus: true, script: "curl -IfskL -o /dev/null https://repo1.maven.org/maven2/io/debezium/debezium-connector-$connector/${RELEASE_VERSION}/debezium-connector-$connector-${RELEASE_VERSION}-plugin.tar.gz")
+                        if (curl) {
                             echo "Connector $connector not yet in Maven Central"
                             failed = true
                         }
