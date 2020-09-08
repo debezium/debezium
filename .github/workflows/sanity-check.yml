@@ -12,4 +12,4 @@ jobs:
         env:
           BASE_REF: ${{ github.base_ref }}
         run: |
-          ! git log --format='format:%s' refs/remotes/origin/master.. | tail -n +2 | grep -Ev '^(DBZ-[[:digit:]]+)|(\[release\])|(\[jenkins-jobs\]) '
+          ! git log --format='format:%s' refs/remotes/origin/$BASE_REF.. | tail -n +2 | grep -Ev '^(DBZ-[[:digit:]]+)|(\[release\])|(\[jenkins-jobs\]) '
