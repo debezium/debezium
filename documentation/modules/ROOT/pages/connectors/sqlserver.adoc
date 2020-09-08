@@ -190,7 +190,7 @@ The format of messages that a connector emits to its schema change topic is in a
 
 A message to the schema change topic contains a logical representation of the table schema, for example: 
 
-[source,json,indent=0,subs="attributes"]
+[source,json,indent=0,subs="+attributes"]
 ----
 {
   "schema": {
@@ -210,19 +210,19 @@ A message to the schema change topic contains a logical representation of the ta
       "commit_lsn": "00000025:00000d98:00a2",
       "event_serial_no": null
     },
-    "databaseName": "testDB", // <1>
+    "databaseName": "testDB", <1>
     "schemaName": "dbo",
-    "ddl": null, // <2>
-    "tableChanges": [ // <3>
+    "ddl": null, <2>
+    "tableChanges": [ <3>
       {
-        "type": "CREATE", // <4>
-        "id": "\"testDB\".\"dbo\".\"customers\"", // <5>
-        "table": { // <6>
+        "type": "CREATE", <4>
+        "id": "\"testDB\".\"dbo\".\"customers\"", <5>
+        "table": { <6>
           "defaultCharsetName": null,
-          "primaryKeyColumnNames": [ // <7>
+          "primaryKeyColumnNames": [ <7>
             "id"
           ],
-          "columns": [ // <8>
+          "columns": [ <8>
             {
               "name": "id",
               "jdbcType": 4,
@@ -1373,50 +1373,45 @@ The `connect.decimal.precision` schema parameter contains an integer representin
 |===
 
 [[sqlserver-deploying-a-connector]]
-== Deploying the SQL Server connector
+== Deployment
 
 ifdef::community[]
-If you have already installed https://zookeeper.apache.org[Zookeeper], http://kafka.apache.org/[Kafka], and {link-kafka-docs}.html#connect[Kafka Connect], then using {prodname}'s SQL Server` connector is easy.
-Simply download the https://repo1.maven.org/maven2/io/debezium/debezium-connector-sqlserver/{debezium-version}/debezium-connector-sqlserver-{debezium-version}-plugin.tar.gz[connector's plug-in archive], extract the JARs into your Kafka Connect environment, and add the directory with the JARs to {link-kafka-docs}/#connectconfigs[Kafka Connect's `plugin.path`].
-Restart your Kafka Connect process to pick up the new JARs.
+With link:https://zookeeper.apache.org[Zookeeper], http://kafka.apache.org/[Kafka], and {link-kafka-docs}.html#connect[Kafka Connect] installed, the remaining tasks to deploy a {prodname} SQL Server connector are to download the https://repo1.maven.org/maven2/io/debezium/debezium-connector-sqlserver/{debezium-version}/debezium-connector-sqlserver-{debezium-version}-plugin.tar.gz[connector's plug-in archive], extract the JAR files into your Kafka Connect environment, and add the directory with the JAR files to {link-kafka-docs}/#connectconfigs[Kafka Connect's `plugin.path`].
+Restart your Kafka Connect process to pick up the new JAR files.
+
+If you need immutable containers, see link:https://hub.docker.com/r/debezium/[{prodname}'s container images] for Zookeeper, Kafka, SQL Server and Kafka Connect with the SQL Server connector already installed and ready to run. You can also link:https://debezium.io/blog/2016/05/31/Debezium-on-Kubernetes/[run {prodname} on Kubernetes and OpenShift].
 endif::community[]
 
 ifdef::product[]
-Installing the SQL Server connector is a simple process whereby you only need to download the JAR, extract it to your Kafka Connect environment, and ensure the plug-in's parent directory is specified in your Kafka Connect environment.
+To deploy a {prodname} SQL Server connector, install the {prodname} SQL Server connector archive, configure the connector, and start the connector by adding its configuration to Kafka Connect. 
 
-.Prerequisites
+To install the SQL Server connector, follow the procedures in {LinkDebeziumInstallOpenShift}[{NameDebeziumInstallOpenShift}]. The main steps are:
 
-* You have link:https://zookeeper.apache.org/[Zookeeper], link:http://kafka.apache.org/[Kafka], and link:{link-kafka-docs}.html#connect[Kafka Connect] installed.
-* You have SQL Server installed and setup.
-
-.Procedure
+. Use link:https://access.redhat.com/products/red-hat-amq#streams[Red Hat AMQ Streams] to set up Apache Kafka and Kafka Connect on OpenShift. AMQ Streams offers operators and images that bring Kafka to OpenShift. 
 
 . Download the {prodname} link:https://access.redhat.com/jbossnetwork/restricted/listSoftware.html?product=red.hat.integration&downloadType=distributions[SQL Server connector].
-. Extract the files into your Kafka Connect environment.
-. Add the plug-in's parent directory to your Kafka Connect `plugin.path`:
+
+. Extract the connector files into your Kafka Connect environment.
+. Add the connector plug-in's parent directory to your Kafka Connect `plugin.path`, for example: 
 +
 [source]
 ----
 plugin.path=/kafka/connect
 ----
++
+The above example assumes that you extracted the {prodname} SQL Server connector to the `/kafka/connect/{prodname}-connector-sqlserver` path.
 
-NOTE: The above example assumes you have extracted the {prodname} SQL Server connector to the `/kafka/connect/debezium-connector-sqlserver` path.
+. Restart your Kafka Connect process to ensure that the new JAR files are picked up.
 
-[start=4]
-. Restart your Kafka Connect process. This ensures the new JARs are picked up.
+You also need to {LinkDebeziumUserGuide}#{LinkDebeziumUserGuide}#setting-up-sqlserver[set up SQL Server] to run a {prodname} connector.
 
 .Additional resources
 
-For more information on the deployment process, and deploying connectors with AMQ Streams, refer to the {prodname} installation guides.
+For more information about the deployment process, and deploying connectors with AMQ Streams, see the {prodname} installation guides.
 
 * {LinkDebeziumInstallOpenShift}[{NameDebeziumInstallOpenShift}]
 * {LinkDebeziumInstallRHEL}[{NameDebeziumInstallRHEL}]
 endif::product[]
-
-ifdef::community[]
-If immutable containers are your thing, then check out https://hub.docker.com/r/debezium/[{prodname}'s Docker images] for Zookeeper, Kafka and Kafka Connect with the SQL Server connector already pre-installed and ready to go.
-You can even link:/docs/openshift/[run {prodname} on OpenShift].
-endif::community[]
 
 [[sqlserver-example-configuration]]
 === Example configuration
@@ -1437,18 +1432,18 @@ Typically, you configure the {prodname} SQL Server connector in a `.json` file u
 [source,json]
 ----
 {
-  "name": "inventory-connector",  // <1>
+  "name": "inventory-connector", <1>
   "config": {
-    "connector.class": "io.debezium.connector.sqlserver.SqlServerConnector", // <2>
-    "database.hostname": "192.168.99.100", // <3>
-    "database.port": "1433", // <4>
-    "database.user": "sa", // <5>
-    "database.password": "Password!", // <6>
-    "database.dbname": "testDB", // <7>
-    "database.server.name": "fullfillment", // <8>
-    "table.include.list": "dbo.customers", // <9>
-    "database.history.kafka.bootstrap.servers": "kafka:9092", // <10>
-    "database.history.kafka.topic": "dbhistory.fullfillment" // <11>
+    "connector.class": "io.debezium.connector.sqlserver.SqlServerConnector", <2>
+    "database.hostname": "192.168.99.100", <3>
+    "database.port": "1433", <4>
+    "database.user": "sa", <5>
+    "database.password": "Password!", <6>
+    "database.dbname": "testDB", <7>
+    "database.server.name": "fullfillment", <8>
+    "table.include.list": "dbo.customers", <9>
+    "database.history.kafka.bootstrap.servers": "kafka:9092", <10>
+    "database.history.kafka.topic": "dbhistory.fullfillment" <11>
   }
 }
 ----
@@ -1475,20 +1470,20 @@ Typically, you configure the {prodname} SQL Server connector in a `.yaml` file u
 apiVersion: kafka.strimzi.io/v1beta1 
   kind: KafkaConnector
   metadata:
-    name: inventory-connector  // <1>
+    name: inventory-connector <1>
     labels: strimzi.io/cluster: my-connect-cluster
   spec:
-    class: io.debezium.connector.sqlserver.SqlServerConnector // <2>
+    class: io.debezium.connector.sqlserver.SqlServerConnector <2>
     config:  
-      database.hostname: 192.168.99.100  // <3>
-      database.port: 1433 //<4>
-      database.user: debezium  //<5>
-      database.password: dbz  //<6>
-      database.dbname: testDB  //<7>
-      database.server.name: fullfullment //<8>
-      database.include.list: dbo.customers   //<9>
-      database.history.kafka.bootstrap.servers: my-cluster-kafka-bootstrap:9092  //<10> 
-      database.history.kafka.topic: dbhistory.fullfillment  //<11>
+      database.hostname: 192.168.99.100 <3>
+      database.port: 1433 <4>
+      database.user: debezium <5>
+      database.password: dbz <6>
+      database.dbname: testDB <7>
+      database.server.name: fullfullment <8>
+      database.include.list: dbo.customers <9>
+      database.history.kafka.bootstrap.servers: my-cluster-kafka-bootstrap:9092 <10> 
+      database.history.kafka.topic: dbhistory.fullfillment <11>
 
 ----
 <1> The name of our connector when we register it with a Kafka Connect service.
@@ -1508,6 +1503,117 @@ endif::product[]
 See the {link-prefix}:{link-sqlserver-connector}#sqlserver-connector-properties[complete list of connector properties] that can be specified in these configurations.
 
 This configuration can be sent via POST to a running Kafka Connect service, which will then record the configuration and start up the one connector task that will connect to the SQL Server database, read the transaction log, and record events to Kafka topics.
+
+
+[[sqlserver-adding-connector-configuration]]
+=== Adding connector configuration
+
+ifdef::community[]
+To run a {prodname} SQL Server connector, create a connector configuration file and add it to your Kafka Connect cluster. 
+
+.Prerequisites
+
+* SQL Server is set up to run a {prodname} connector.
+
+* A {prodname} SQL Server connector is installed. 
+
+.Procedure
+
+. Create a configuration file for the SQL Server connector.
+
+. Use the link:{link-kafka-docs}/#connect_rest[Kafka Connect REST API] to add that connector configuration to your Kafka Connect cluster. 
+
+endif::community[]
+
+ifdef::product[]
+You can use a provided {prodname} container to deploy a {prodname} SQL Server connector. In this procedure, you build a custom Kafka Connect container image for {prodname}, configure the {prodname} connector as needed, and then add your connector configuration to your Kafka Connect environment. 
+
+.Prerequisites
+
+* Podman is installed and you have sufficient rights to create and manage containers.
+* You installed the {prodname} SQL Server connector archive. 
+
+.Procedure
+
+. Extract the {prodname} SQL Server connector archive to create a directory structure for the connector plug-in, for example: 
++
+[subs=+macros]
+----
+pass:quotes[*tree ./my-plugins/*]
+./my-plugins/
+├── debezium-connector-sqlserver
+│   ├── ...
+----
+
+. Create and publish a custom image for running your {prodname} connector:
+
+.. Create a new `Dockerfile` by using `{DockerKafkaConnect}` as the base image. In the following example, you would replace _my-plugins_ with the name of your plug-ins directory:
++
+[subs=+macros]
+----
+FROM registry.redhat.io/amq7/amq-streams-kafka-25:1.5.0
+USER root:root
+pass:quotes[COPY _./my-plugins/_ /opt/kafka/plugins/]
+USER 1001
+----
++
+Before Kafka Connect starts running the connector, Kafka Connect loads any third-party plug-ins that are in the `/opt/kafka/plugins` directory.
+
+.. Build the docker container image. For example, if you saved the docker file that you created in the previous step as `debezium-container-for-sqlserver`, then you would run the following command:
++
+`podman build -t debezium-container-for-sqlserver:latest`
+
+.. Push your custom image to your container registry, for example:
++
+`podman push debezium-container-for-sqlserver:latest`
+
+.. Point to the new container image. Do one of the following:
++
+* Edit the `spec.image` property of the `KafkaConnector` custom resource. If set, this property overrides the `STRIMZI_DEFAULT_KAFKA_CONNECT_IMAGE` variable in the Cluster Operator. For example:
++
+[source,yaml,subs="+attributes"]
+----
+apiVersion: {KafkaConnectApiVersion}
+kind: KafkaConnector
+metadata:
+  name: my-connect-cluster
+spec:
+  #...
+  image: debezium-container-for-sqlserver
+----
++
+* In the `install/cluster-operator/050-Deployment-strimzi-cluster-operator.yaml` file, edit the `STRIMZI_DEFAULT_KAFKA_CONNECT_IMAGE` variable to point to the new container image and reinstall the Cluster Operator. If you edit this file you must apply it to your OpenShift cluster.
+
+. Create a `KafkaConnector` custom resource that defines your {prodname} SQL Server connector instance. See {LinkDebeziumUserGuide}#sqlserver-example-configuration[the connector configuration example].
+
+. Apply the connector instance, for example: 
++
+`oc apply -f inventory-connector.yaml`
++
+This registers `inventory-connector` and the connector starts to run against the `inventory` database.
+
+. Verify that the connector was created and has started to capture changes in the specified database. You can verify the connector instance by watching the Kafka Connect log output as, for example, `inventory-connector` starts.
+
+.. Display the Kafka Connect log output:
++
+[source,shell,options="nowrap"]
+----
+oc logs $(oc get pods -o name -l strimzi.io/name=my-connect-cluster-connect)
+----
+
+.. Review the log output to verify that the initial snapshot has been executed. You should see something like the following lines: 
++
+[source,shell,options="nowrap"]
+----
+... INFO Starting snapshot for ...
+... INFO Snapshot is using user 'debezium' ... 
+----
+
+endif::product[]
+
+.Results
+
+When the connector starts, it {link-prefix}:{link-sqlserver-connector}#sqlserver-snapshots[performs a consistent snapshot] of the SQL Server databases that the connector is configured for. The connector then starts generating data change events for row-level operations and streaming change event records to Kafka topics. 
 
 [[sqlserver-monitoring]]
 === Monitoring
