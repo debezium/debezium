@@ -89,21 +89,10 @@ public class SqlServerConnection extends JdbcConnection {
      * @param config {@link Configuration} instance, may not be null.
      * @param clock the clock
      * @param sourceTimestampMode strategy for populating {@code source.ts_ms}.
-     */
-    public SqlServerConnection(Configuration config, Clock clock, SourceTimestampMode sourceTimestampMode) {
-        this(config, clock, sourceTimestampMode, null);
-    }
-
-    /**
-     * Creates a new connection using the supplied configuration.
-     *
-     * @param config {@link Configuration} instance, may not be null.
-     * @param clock the clock
-     * @param sourceTimestampMode strategy for populating {@code source.ts_ms}.
      * @param valueConverters {@link SqlServerValueConverters} instance
      */
     public SqlServerConnection(Configuration config, Clock clock, SourceTimestampMode sourceTimestampMode, SqlServerValueConverters valueConverters) {
-        this(config, clock, sourceTimestampMode, null, null);
+        this(config, clock, sourceTimestampMode, valueConverters, null);
     }
 
     /**
