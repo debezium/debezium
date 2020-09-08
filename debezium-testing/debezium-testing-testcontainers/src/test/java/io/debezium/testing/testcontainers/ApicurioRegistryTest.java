@@ -49,8 +49,8 @@ import com.jayway.jsonpath.JsonPath;
  */
 public class ApicurioRegistryTest {
 
-    private static final String DEBEZIUM_VERSION = "1.2.0.Final";
-    private static final String APICURIO_VERSION = "1.2.2.Final";
+    private static final String DEBEZIUM_VERSION = "1.2.3.Final";
+    private static final String APICURIO_VERSION = "1.3.0.Final";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ApicurioRegistryTest.class);
 
