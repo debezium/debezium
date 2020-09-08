@@ -81,11 +81,11 @@ Must not be used with `table.include.list`.
 |[[mysql-property-column-blacklist]]
 [[mysql-property-column-exclude-list]]<<mysql-property-column-exclude-list, `column.exclude.list`>>
 |_empty string_
-|An optional comma-separated list of regular expressions that match the fully-qualified names of columns that should be excluded from change event message values. Fully-qualified names for columns are of the form _databaseName_._tableName_._columnName_, or _databaseName_._schemaName_._tableName_._columnName_.
+|An optional comma-separated list of regular expressions that match the fully-qualified names of columns that should be excluded from change event message values. Fully-qualified names for columns are of the form _databaseName_._tableName_._columnName_.
 
 |[[mysql-property-column-include-list]]<<mysql-property-column-include-list, `column.include.list`>>
 |_empty string_
-|An optional comma-separated list of regular expressions that match the fully-qualified names of columns that should be included in change event message values. Fully-qualified names for columns are of the form _databaseName_._tableName_._columnName_, or _databaseName_._schemaName_._tableName_._columnName_.
+|An optional comma-separated list of regular expressions that match the fully-qualified names of columns that should be included in change event message values. Fully-qualified names for columns are of the form _databaseName_._tableName_._columnName_.
 
 |[[mysql-property-column-truncate-to-length-chars]]<<mysql-property-column-truncate-to-length-chars, `column.truncate.to._length_.chars`>>
 |_n/a_

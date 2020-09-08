@@ -121,7 +121,6 @@ public class Filters {
                 this.columnFilter = ColumnNameFilterFactory.createIncludeListFilter(includeColumnsFilter);
             }
             else {
-                // Define the filter that excludes blacklisted columns, truncated columns, and masked columns ...
                 this.columnFilter = ColumnNameFilterFactory
                         .createExcludeListFilter(config.getFallbackStringProperty(MySqlConnectorConfig.COLUMN_EXCLUDE_LIST, MySqlConnectorConfig.COLUMN_BLACKLIST));
             }
