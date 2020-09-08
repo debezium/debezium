@@ -931,7 +931,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertFloat(Column column, Field fieldDefn, Object data) {
-        return convertDouble(column, fieldDefn, data);
+        return convertReal(column, fieldDefn, data);
     }
 
     /**
