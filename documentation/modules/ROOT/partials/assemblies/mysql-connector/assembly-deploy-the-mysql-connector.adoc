@@ -12,6 +12,8 @@ include::{partialsdir}/modules/mysql-connector/proc-install-the-mysql-connector.
 
 include::{partialsdir}/modules/mysql-connector/proc-configure-the-mysql-connector.adoc[leveloffset=+1]
 
+include::{partialsdir}/modules/mysql-connector/proc-add-mysql-connector-configuration-to-kafka-connect.adoc[leveloffset=+1]
+
 include::{partialsdir}/modules/mysql-connector/ref-mysql-connector-configuration-properties.adoc[leveloffset=+1]
 
 include::{partialsdir}/modules/mysql-connector/ref-mysql-connector-monitoring-metrics.adoc[leveloffset=+1]
