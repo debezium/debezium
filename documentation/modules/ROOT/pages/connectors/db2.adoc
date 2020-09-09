@@ -676,7 +676,7 @@ The following example shows the value portion of a change event that the connect
           }
         ],
         "optional": true,
-        "name": "mydatabase.MYSCHEMA.CUSTOMERS.Value",  // <2>
+        "name": "mydatabase.MYSCHEMA.CUSTOMERS.Value",
         "field": "after"
       },
       {
@@ -735,7 +735,7 @@ The following example shows the value portion of a change event that the connect
           },
         ],
         "optional": false,
-        "name": "io.debezium.connector.db2.Source",  // <2>
+        "name": "io.debezium.connector.db2.Source",  // <3>
         "field": "source"
       },
       {
@@ -750,17 +750,17 @@ The following example shows the value portion of a change event that the connect
       }
     ],
     "optional": false,
-    "name": "mydatabase.MYSCHEMA.CUSTOMERS.Envelope"  // <2>
+    "name": "mydatabase.MYSCHEMA.CUSTOMERS.Envelope"  // <4>
   },
-  "payload": {  // <3>
-    "before": null,  // <4>
-    "after": {  // <5>
+  "payload": {  // <5>
+    "before": null,  // <6>
+    "after": {  // <7>
       "ID": 1005,
       "FIRST_NAME": "john",
       "LAST_NAME": "doe",
       "EMAIL": "john.doe@example.org"
     },
-    "source": {  // <6>
+    "source": {  // <8>
       "version": "{debezium-version}",
       "connector": "db2",
       "name": "myconnector",
@@ -772,8 +772,8 @@ The following example shows the value portion of a change event that the connect
       "change_lsn": "00000027:00000758:0003",
       "commit_lsn": "00000027:00000758:0005",
     },
-    "op": "c",  // <7>
-    "ts_ms": 1559729471739  // <8>
+    "op": "c",  // <9>
+    "ts_ms": 1559729471739  // <10>
   }
 }
 ----
@@ -789,30 +789,36 @@ The following example shows the value portion of a change event that the connect
 
 |2
 |`name`
-a|In the `schema` section, each `name` field specifies the schema for a field in the value's payload. In this example:
-
-* `mydatabase.MYSCHEMA.CUSTOMERS.Value` is the schema for the payload's `before` and `after` fields. This schema is specific to the `customers` table. The connector uses this schema for all rows in the `MYSCHEMA.CUSTOMERS` table. Names of schemas for `before` and `after` fields are of the form `_logicalName_._schemaName_._tableName_.Value`, which ensures that the schema name is unique in the database. This means that when using the {link-prefix}:{link-avro-serialization}[Avro converter], the resulting Avro schema for each table in each logical source has its own evolution and history.
-
-* `io.debezium.connector.db2.Source` is the schema for the payload's `source` field. This schema is specific to the Db2 connector. The connector uses it for all events that it generates.
-
-* `mydatabase.MYSCHEMA.CUSTOMERS.Envelope` is the schema for the overall structure of the payload, where `mydatabase` is the database, `MYSCHEMA` is the schema, and `CUSTOMERS` is the table.
+a|In the `schema` section, each `name` field specifies the schema for a field in the value's payload. +
+ +
+`mydatabase.MYSCHEMA.CUSTOMERS.Value` is the schema for the payload's `before` and `after` fields. This schema is specific to the `customers` table. The connector uses this schema for all rows in the `MYSCHEMA.CUSTOMERS` table. +
+ +
+Names of schemas for `before` and `after` fields are of the form `_logicalName_._schemaName_._tableName_.Value`, which ensures that the schema name is unique in the database. This means that when using the {link-prefix}:{link-avro-serialization}[Avro converter], the resulting Avro schema for each table in each logical source has its own evolution and history.
 
 |3
-|`payload`
-|The value's actual data. This is the information that the change event is providing.
+|`name`
+a|`io.debezium.connector.db2.Source` is the schema for the payload's `source` field. This schema is specific to the Db2 connector. The connector uses it for all events that it generates.
 
+|4
+|`name`
+a|`mydatabase.MYSCHEMA.CUSTOMERS.Envelope` is the schema for the overall structure of the payload, where `mydatabase` is the database, `MYSCHEMA` is the schema, and `CUSTOMERS` is the table.
+
+|5
+|`payload`
+|The value's actual data. This is the information that the change event is providing. +
+ +
 It may appear that JSON representations of events are much larger than the rows they describe. This is because a JSON representation must include the schema portion and the payload portion of the message.
 However, by using the {link-prefix}:{link-avro-serialization}[Avro converter], you can significantly decrease the size of the messages that the connector streams to Kafka topics.
 
-|4
-|`before`
-| An optional field that specifies the state of the row before the event occurred. When the `op` field is `c` for create, as it is in this example, the `before` field is `null` since this change event is for new content.
-
-|5
-|`after`
-| An optional field that specifies the state of the row after the event occurred. In this example, the `after` field contains the values of the new row's `ID`, `FIRST_NAME`, `LAST_NAME`, and `EMAIL` columns.
-
 |6
+|`before`
+|An optional field that specifies the state of the row before the event occurred. When the `op` field is `c` for create, as it is in this example, the `before` field is `null` since this change event is for new content.
+
+|7
+|`after`
+|An optional field that specifies the state of the row after the event occurred. In this example, the `after` field contains the values of the new row's `ID`, `FIRST_NAME`, `LAST_NAME`, and `EMAIL` columns.
+
+|8
 |`source`
 a| Mandatory field that describes the source metadata for the event. The `source` structure shows Db2 information about this change, which provides traceability. It also has information you can use to compare to other events in the same topic or in other topics to know whether this event occurred before, after, or as part of the same commit as other events. The source metadata includes:
 
@@ -824,18 +830,18 @@ a| Mandatory field that describes the source metadata for the event. The `source
 * Change LSN
 * Commit LSN (omitted if this event is part of a snapshot)
 
-|7
+|9
 |`op`
-a| Mandatory string that describes the type of operation that caused the connector to generate the event. In this example, `c` indicates that the operation created a row. Valid values are:
+a|Mandatory string that describes the type of operation that caused the connector to generate the event. In this example, `c` indicates that the operation created a row. Valid values are:
 
 * `c` = create
 * `u` = update
 * `d` = delete
 * `r` = read (applies to only snapshots)
 
-|8
+|10
 |`ts_ms`
-a| Optional field that displays the time at which the connector processed the event. The time is based on the system clock in the JVM running the Kafka Connect task.
+a|Optional field that displays the time at which the connector processed the event. The time is based on the system clock in the JVM running the Kafka Connect task.
 
 |===
 
