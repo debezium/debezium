@@ -919,7 +919,7 @@ You can use a provided {prodname} container to deploy a {prodname} MongoDB conne
 
 .Prerequisites
 
-* You have Podman or Docker installed and sufficient rights to create and manage containers.
+* Podman or Docker is installed and you have sufficient rights to create and manage containers.
 * You installed the {prodname} MongoDB connector archive. 
 
 .Procedure
