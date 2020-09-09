@@ -18,14 +18,14 @@ The outbox pattern is a way to safely and reliably exchange data between multipl
 To implement the outbox pattern in a {prodname} application, configure a {prodname} connector to: 
 
 * Capture changes in an outbox table
-* Apply the {prodname} `outbox.EventRouter` single message transformation (SMT)
+* Apply the {prodname} outbox event router single message transformation (SMT)
 
 A {prodname} connector that is configured to apply the outbox SMT should capture changes in only an outbox table. A connector can capture changes in more than one outbox table only if each outbox table has the same structure.  
 
 ifdef::community[]
 [NOTE]
 ====
-The `outbox.EventRouter` SMT is under active development. The structure of the emitted message or other details might change as development progresses.
+The outbox event router SMT is under active development. The structure of the emitted message or other details might change as development progresses.
 ====
 endif::community[]
 
@@ -39,23 +39,23 @@ endif::product[]
 See link:https://debezium.io/blog/2019/02/19/reliable-microservices-data-exchange-with-the-outbox-pattern/[Reliable Microservices Data Exchange With the Outbox Pattern] to learn about why the outbox pattern is useful and how it works. 
 
 ifdef::community[]
-For an example that you can run, see the  link:https://github.com/debezium/debezium-examples/tree/master/outbox[outbox pattern demo], which is in the {prodname} examples repository. It includes an example of how to configure a {prodname} connector to run the `outbox.EventRouter` SMT. 
+For an example that you can run, see the  link:https://github.com/debezium/debezium-examples/tree/master/outbox[outbox pattern demo], which is in the {prodname} examples repository. It includes an example of how to configure a {prodname} connector to run the outbox event router SMT. 
 endif::community[]
 
 [NOTE]
 ====
-The `outbox.EventRouter` SMT does *not* support the MongoDB connector.
+The outbox event router SMT does *not* support the MongoDB connector.
 ====
 
 ifdef::product[]
 The following topics provide details: 
 
 * xref:example-of-a-debezium-outbox-message[]
-* xref:outbox-table-structure-expected-by-debezium-outbox-eventrouter-smt[]
+* xref:outbox-table-structure-expected-by-debezium-outbox-event-router-smt[]
 * xref:basic-debezium-outbox-event-router-smt-configuration[]
 * xref:using-avro-as-the-payload-format-in-debezium-outbox-messages[]
 * xref:emitting-additional-fields-in-debezium-outbox-messages[]
-* xref:options-for-configuring-outbox-eventrouter-transformation[]
+* xref:options-for-configuring-outbox-event-router-transformation[]
 endif::product[]
 
 // Type: concept
@@ -64,7 +64,7 @@ endif::product[]
 [[example-outbox-message]]
 == Example outbox message
 
-To learn about how to configure the {prodname} `outbox.EventRouter` SMT, consider the following example of a {prodname} outbox message:
+To learn about how to configure the {prodname} outbox event router SMT, consider the following example of a {prodname} outbox message:
 
 [source,javascript,indent=0]
 ----
@@ -77,7 +77,7 @@ To learn about how to configure the {prodname} `outbox.EventRouter` SMT, conside
 }
 ----
 
-A {prodname} connector that is configured to apply the `outbox.EventRouter` SMT generates the above message by transforming a {prodname} raw message like this: 
+A {prodname} connector that is configured to apply the outbox event router SMT generates the above message by transforming a {prodname} raw message like this: 
 
 [source,javascript,indent=0]
 ----
@@ -113,15 +113,15 @@ A {prodname} connector that is configured to apply the `outbox.EventRouter` SMT 
 }
 ----
 
-This example of a {prodname} outbox message is based on the {link-prefix}:{link-outbox-event-router}#outbox-event-router-configuration-options[default `outbox.EventRouter` configuration], which assumes an outbox table structure and event routing based on aggregates. To customize behavior, the `outbox.EventRouter` SMT provides numerous {link-prefix}:{link-outbox-event-router}#outbox-event-router-configuration-options[configuration options].
+This example of a {prodname} outbox message is based on the {link-prefix}:{link-outbox-event-router}#outbox-event-router-configuration-options[default outbox event router configuration], which assumes an outbox table structure and event routing based on aggregates. To customize behavior, the outbox event router SMT provides numerous {link-prefix}:{link-outbox-event-router}#outbox-event-router-configuration-options[configuration options].
 
 // Type: concept
 // Title: Outbox table structure expected by {prodname} outbox event router SMT
-// ModuleID: outbox-table-structure-expected-by-debezium-outbox-eventrouter-smt
+// ModuleID: outbox-table-structure-expected-by-debezium-outbox-event-router-smt
 [[basic-outbox-table]]
 == Basic outbox table
 
-To apply the default `outbox.EventRouter` SMT configuration, your outbox table is assumed to have the following columns: 
+To apply the default outbox event router SMT configuration, your outbox table is assumed to have the following columns: 
 
 [source]
 ----
@@ -190,7 +190,7 @@ transforms.outbox.type=io.debezium.transforms.outbox.EventRouter
 [[avro-as-payload-format]]
 == Using Avro as the payload format
 
-The `outbox.EventRouter` SMT supports arbitrary payload formats. The `payload` column value in an outbox table is passed on transparently. An alternative to working with JSON is to use Avro.
+The outbox event router SMT supports arbitrary payload formats. The `payload` column value in an outbox table is passed on transparently. An alternative to working with JSON is to use Avro.
 This can be beneficial for message format governance and for ensuring that outbox event schemas evolve in a backwards-compatible way.
 
 How a source application produces Avro formatted content for outbox message payloads is out of the scope of this documentation.
@@ -234,14 +234,14 @@ transforms.outbox.table.fields.additional.placement=type:envelope:eventType
 ----
 
 // Type: reference
-// ModuleID: options-for-configuring-outbox-eventrouter-transformation
-// Title: Options for configuring `outbox.EventRouter` transformation
+// ModuleID: options-for-configuring-outbox-event-router-transformation
+// Title: Options for configuring outbox event router transformation
 [[outbox-event-router-configuration-options]]
 == Configuration options
 
-The following table describes the options that you can specify for the `outbox.EventRouter` SMT. In the table, the *Group* column indicates a  configuration option classification for Kafka.
+The following table describes the options that you can specify for the outbox event router SMT. In the table, the *Group* column indicates a  configuration option classification for Kafka.
 
-.Descriptions of `outbox.EventRouter` SMT configuration options
+.Descriptions of outbox event router SMT configuration options
 [cols="30%a,20%a,10%a,40%a"]
 |===
 |Option
