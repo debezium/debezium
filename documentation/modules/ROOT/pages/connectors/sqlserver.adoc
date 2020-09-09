@@ -1379,7 +1379,7 @@ ifdef::community[]
 With link:https://zookeeper.apache.org[Zookeeper], http://kafka.apache.org/[Kafka], and {link-kafka-docs}.html#connect[Kafka Connect] installed, the remaining tasks to deploy a {prodname} SQL Server connector are to download the https://repo1.maven.org/maven2/io/debezium/debezium-connector-sqlserver/{debezium-version}/debezium-connector-sqlserver-{debezium-version}-plugin.tar.gz[connector's plug-in archive], extract the JAR files into your Kafka Connect environment, and add the directory with the JAR files to {link-kafka-docs}/#connectconfigs[Kafka Connect's `plugin.path`].
 Restart your Kafka Connect process to pick up the new JAR files.
 
-If you need immutable containers, see link:https://hub.docker.com/r/debezium/[{prodname}'s container images] for Zookeeper, Kafka, SQL Server and Kafka Connect with the SQL Server connector already installed and ready to run. You can also link:https://debezium.io/blog/2016/05/31/Debezium-on-Kubernetes/[run {prodname} on Kubernetes and OpenShift].
+If you are working with immutable containers, see link:https://hub.docker.com/r/debezium/[{prodname}'s container images] for Zookeeper, Kafka, SQL Server and Kafka Connect with the SQL Server connector already installed and ready to run. You can also xref:operations/openshift.adoc[run {prodname} on Kubernetes and OpenShift].
 endif::community[]
 
 ifdef::product[]
@@ -1470,33 +1470,62 @@ Typically, you configure the {prodname} SQL Server connector in a `.yaml` file u
 apiVersion: kafka.strimzi.io/v1beta1 
   kind: KafkaConnector
   metadata:
-    name: inventory-connector <1>
+    name: inventory-connector // <1>
     labels: strimzi.io/cluster: my-connect-cluster
   spec:
-    class: io.debezium.connector.sqlserver.SqlServerConnector <2>
+    class: io.debezium.connector.sqlserver.SqlServerConnector // <2>
     config:  
-      database.hostname: 192.168.99.100 <3>
-      database.port: 1433 <4>
-      database.user: debezium <5>
-      database.password: dbz <6>
-      database.dbname: testDB <7>
-      database.server.name: fullfullment <8>
-      database.include.list: dbo.customers <9>
-      database.history.kafka.bootstrap.servers: my-cluster-kafka-bootstrap:9092 <10> 
-      database.history.kafka.topic: dbhistory.fullfillment <11>
+      database.hostname: 192.168.99.100 // <3>
+      database.port: 1433 // <4>
+      database.user: debezium // <5>
+      database.password: dbz // <6>
+      database.dbname: testDB // <7>
+      database.server.name: fullfullment // <8>
+      database.include.list: dbo.customers // <9>
+      database.history.kafka.bootstrap.servers: my-cluster-kafka-bootstrap:9092 // <10> 
+      database.history.kafka.topic: dbhistory.fullfillment // <11>
 
 ----
-<1> The name of our connector when we register it with a Kafka Connect service.
-<2> The name of this SQL Server connector class.
-<3> The address of the SQL Server instance.
-<4> The port number of the SQL Server instance.
-<5> The name of the SQL Server user
-<6> The password for the SQL Server user
-<7> The name of the database to capture changes from.
-<8> The logical name of the SQL Server instance/cluster, which forms a namespace and is used in all the names of the Kafka topics to which the connector writes, the Kafka Connect schema names, and the namespaces of the corresponding Avro schema when the Avro converter is used.
-<9> A list of all tables whose changes {prodname} should capture.
-<10> The list of Kafka brokers that this connector will use to write and recover DDL statements to the database history topic.
-<11> The name of the database history topic where the connector will write and recover DDL statements. This topic is for internal use only and should not be used by consumers.
+
+.Descriptions of connector configuration settings
+[cols="1,7",options="header",subs="+attributes"]
+|===
+|Item |Description
+
+|1
+|The name of our connector when we register it with a Kafka Connect service.
+
+|2
+|The name of this SQL Server connector class.
+
+|3
+|The address of the SQL Server instance.
+
+|4
+|The port number of the SQL Server instance.
+
+|5
+|The name of the SQL Server user.
+
+|6
+|The password for the SQL Server user.
+
+|7
+|The name of the database to capture changes from.
+
+|8
+|The logical name of the SQL Server instance/cluster, which forms a namespace and is used in all the names of the Kafka topics to which the connector writes, the Kafka Connect schema names, and the namespaces of the corresponding Avro schema when the Avro converter is used.
+
+|9
+|A list of all tables whose changes {prodname} should capture.
+
+|10
+|The list of Kafka brokers that this connector will use to write and recover DDL statements to the database history topic.
+
+|11
+|The name of the database history topic where the connector will write and recover DDL statements. This topic is for internal use only and should not be used by consumers.
+
+|===
 
 endif::product[]
 
@@ -1509,7 +1538,7 @@ This configuration can be sent via POST to a running Kafka Connect service, whic
 === Adding connector configuration
 
 ifdef::community[]
-To run a {prodname} SQL Server connector, create a connector configuration file and add it to your Kafka Connect cluster. 
+To run a {prodname} SQL Server connector, create a connector configuration and add the configuration to your Kafka Connect cluster. 
 
 .Prerequisites
 
@@ -1519,7 +1548,7 @@ To run a {prodname} SQL Server connector, create a connector configuration file 
 
 .Procedure
 
-. Create a configuration file for the SQL Server connector.
+. Create a configuration for the SQL Server connector.
 
 . Use the link:{link-kafka-docs}/#connect_rest[Kafka Connect REST API] to add that connector configuration to your Kafka Connect cluster. 
 
@@ -1530,7 +1559,7 @@ You can use a provided {prodname} container to deploy a {prodname} SQL Server co
 
 .Prerequisites
 
-* Podman is installed and you have sufficient rights to create and manage containers.
+* Podman or Docker is installed and you have sufficient rights to create and manage containers.
 * You installed the {prodname} SQL Server connector archive. 
 
 .Procedure
@@ -1551,7 +1580,7 @@ pass:quotes[*tree ./my-plugins/*]
 +
 [subs=+macros]
 ----
-FROM registry.redhat.io/amq7/amq-streams-kafka-25:1.5.0
+FROM {DockerKafkaConnect}
 USER root:root
 pass:quotes[COPY _./my-plugins/_ /opt/kafka/plugins/]
 USER 1001
@@ -1559,7 +1588,7 @@ USER 1001
 +
 Before Kafka Connect starts running the connector, Kafka Connect loads any third-party plug-ins that are in the `/opt/kafka/plugins` directory.
 
-.. Build the docker container image. For example, if you saved the docker file that you created in the previous step as `debezium-container-for-sqlserver`, then you would run the following command:
+.. Build the container image. For example, if you saved the `Dockerfile` that you created in the previous step as `debezium-container-for-sqlserver`, then you would run the following command:
 +
 `podman build -t debezium-container-for-sqlserver:latest`
 
