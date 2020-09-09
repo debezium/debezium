@@ -47,6 +47,7 @@ import io.debezium.util.Clock;
 public class SqlServerConnection extends JdbcConnection {
 
     public static final String SERVER_TIMEZONE_PROP_NAME = "server.timezone";
+    public static final String INSTANCE_NAME = "instance";
 
     private static final String GET_DATABASE_NAME = "SELECT db_name()";
 

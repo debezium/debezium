@@ -258,6 +258,13 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
             .withDescription("The name of the database the connector should be monitoring. When working with a "
                     + "multi-tenant set-up, must be set to the CDB name.");
 
+    public static final Field INSTANCE = Field.create(DATABASE_CONFIG_PREFIX + SqlServerConnection.INSTANCE_NAME)
+            .withDisplayName("Instance name")
+            .withType(Type.STRING)
+            .withImportance(Importance.LOW)
+            .withValidation(Field::isOptional)
+            .withDescription("The SQL Server instance name");
+
     public static final Field SERVER_TIMEZONE = Field.create(DATABASE_CONFIG_PREFIX + SqlServerConnection.SERVER_TIMEZONE_PROP_NAME)
             .withDisplayName("Server timezone")
             .withType(Type.STRING)
@@ -326,7 +333,8 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
                     PORT,
                     USER,
                     PASSWORD,
-                    SERVER_TIMEZONE)
+                    SERVER_TIMEZONE,
+                    INSTANCE)
             .connector(
                     SNAPSHOT_MODE,
                     SNAPSHOT_ISOLATION_MODE,
@@ -348,6 +356,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     }
 
     private final String databaseName;
+    private final String instanceName;
     private final SnapshotMode snapshotMode;
     private final SnapshotIsolationMode snapshotIsolationMode;
     private final SourceTimestampMode sourceTimestampMode;
@@ -358,6 +367,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
         super(SqlServerConnector.class, config, config.getString(SERVER_NAME), new SystemTablesPredicate(), x -> x.schema() + "." + x.table(), true);
 
         this.databaseName = config.getString(DATABASE_NAME);
+        this.instanceName = config.getString(INSTANCE);
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE), SNAPSHOT_MODE.defaultValueAsString());
 
         this.columnFilter = getColumnNameFilter(
@@ -389,6 +399,10 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
 
     public String getDatabaseName() {
         return databaseName;
+    }
+
+    public String getInstanceName() {
+        return instanceName;
     }
 
     public SnapshotIsolationMode getSnapshotIsolationMode() {
