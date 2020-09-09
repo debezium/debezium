@@ -48,11 +48,6 @@ public interface JdbcConfiguration extends Configuration {
     public static final Field HOSTNAME = Field.create("hostname", "IP address of the database");
 
     /**
-     * A field for the instance name if any. This field has no default value.
-     */
-    public static final Field INSTANCE = Field.create("instance", "Instance name").withValidation(Field::isOptional);
-
-    /**
      * A field for the port of the database server. There is no default value.
      */
     public static final Field PORT = Field.create("port", "Port of the database");
@@ -80,7 +75,7 @@ public interface JdbcConfiguration extends Configuration {
      * The set of names of the pre-defined JDBC configuration fields, including {@link #DATABASE}, {@link #USER},
      * {@link #PASSWORD}, {@link #HOSTNAME}, and {@link #PORT}.
      */
-    public static Set<String> ALL_KNOWN_FIELDS = Collect.unmodifiableSet(Field::name, DATABASE, USER, PASSWORD, HOSTNAME, INSTANCE, PORT, ON_CONNECT_STATEMENTS,
+    public static Set<String> ALL_KNOWN_FIELDS = Collect.unmodifiableSet(Field::name, DATABASE, USER, PASSWORD, HOSTNAME, PORT, ON_CONNECT_STATEMENTS,
             CONNECTION_FACTORY_CLASS, CONNECTION_TIMEOUT_MS);
 
     /**
@@ -159,16 +154,6 @@ public interface JdbcConfiguration extends Configuration {
         }
 
         /**
-         * Use the given instance name in the resulting configuration.
-         *
-         * @param instanceName the name of the instance
-         * @return this builder object so methods can be chained together; never null
-         */
-        default Builder withInstance(String instanceName) {
-            return with(INSTANCE, instanceName);
-        }
-
-        /**
          * Use the given port in the resulting configuration.
          *
          * @param port the port
@@ -179,13 +164,13 @@ public interface JdbcConfiguration extends Configuration {
         }
 
         /**
-         * Use the given datasource factory class in the resulting configuration.
+         * Use the given connection factory class in the resulting configuration.
          *
-         * @param datasourceFactoryClassName the datasource factory class name
+         * @param connectionFactoryClass the connection factory class name
          * @return this builder object so methods can be chained together; never null
          */
-        default Builder withDatasourceClass(String datasourceFactoryClassName) {
-            return with(CONNECTION_FACTORY_CLASS, datasourceFactoryClassName);
+        default Builder withConnectionFactoryClass(String connectionFactoryClass) {
+            return with(CONNECTION_FACTORY_CLASS, connectionFactoryClass);
         }
 
         /**
@@ -388,16 +373,7 @@ public interface JdbcConfiguration extends Configuration {
      *
      * @return the specified value, or null if there is none.
      */
-    default Duration getConnectionTimeoutMs() {
+    default Duration getConnectionTimeout() {
         return Duration.ofMillis(getInteger(CONNECTION_TIMEOUT_MS));
-    }
-
-    /**
-     * Get the instance from the configuration.
-     *
-     * @return the specified value, or null if there is none.
-     */
-    default String getInstance() {
-        return getString(INSTANCE);
     }
 }

@@ -5,6 +5,9 @@
  */
 package io.debezium.relational;
 
+import static io.debezium.relational.RelationalDatabaseConnectorConfig.COLUMN_BLACKLIST;
+import static io.debezium.relational.RelationalDatabaseConnectorConfig.COLUMN_EXCLUDE_LIST;
+
 import java.util.function.Predicate;
 
 import io.debezium.config.Configuration;
@@ -15,6 +18,7 @@ import io.debezium.schema.DataCollectionFilters;
 public class RelationalTableFilters implements DataCollectionFilters {
 
     private final TableFilter tableFilter;
+    private final String excludeColumns;
 
     public RelationalTableFilters(Configuration config, TableFilter systemTablesFilter, TableIdToStringMapper tableIdMapper) {
         // Define the filter using the include and exclude lists for tables and database names ...
@@ -44,10 +48,15 @@ public class RelationalTableFilters implements DataCollectionFilters {
                 : predicate;
 
         this.tableFilter = finalPredicate::test;
+        this.excludeColumns = config.getFallbackStringProperty(COLUMN_EXCLUDE_LIST, COLUMN_BLACKLIST);
     }
 
     @Override
     public TableFilter dataCollectionFilter() {
         return tableFilter;
+    }
+
+    public String getExcludeColumns() {
+        return excludeColumns;
     }
 }
