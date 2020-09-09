@@ -235,6 +235,7 @@ public abstract class CommonConnectorConfig {
 
     public static final int DEFAULT_MAX_QUEUE_SIZE = 8192;
     public static final int DEFAULT_MAX_BATCH_SIZE = 2048;
+    public static final int DEFAULT_QUERY_FETCH_SIZE = 0;
     public static final long DEFAULT_POLL_INTERVAL_MILLIS = 500;
     public static final String DATABASE_CONFIG_PREFIX = "database.";
     private static final String CONVERTER_TYPE_SUFFIX = ".type";
@@ -369,6 +370,15 @@ public abstract class CommonConnectorConfig {
                     + "'base64' represents binary data as base64-encoded string"
                     + "'hex' represents binary data as hex-encoded (base16) string");
 
+    public static final Field QUERY_FETCH_SIZE = Field.create("query.fetch.size")
+            .withDisplayName("Query fetch size")
+            .withType(Type.INT)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("The maximum number of records that should be loaded into memory while streaming.  A value of `0` uses the default JDBC fetch size.")
+            .withValidation(Field::isNonNegativeInteger)
+            .withDefault(DEFAULT_QUERY_FETCH_SIZE);
+
     protected static final ConfigDefinition CONFIG_DEFINITION = ConfigDefinition.editor()
             .connector(
                     EVENT_PROCESSING_FAILURE_HANDLING_MODE,
@@ -379,7 +389,8 @@ public abstract class CommonConnectorConfig {
                     SKIPPED_OPERATIONS,
                     SNAPSHOT_DELAY_MS,
                     SNAPSHOT_FETCH_SIZE,
-                    RETRIABLE_RESTART_WAIT)
+                    RETRIABLE_RESTART_WAIT,
+                    QUERY_FETCH_SIZE)
             .events(
                     CUSTOM_CONVERTERS,
                     SANITIZE_FIELD_NAMES,
@@ -399,6 +410,7 @@ public abstract class CommonConnectorConfig {
     private final Duration snapshotDelayMs;
     private final Duration retriableRestartWait;
     private final int snapshotFetchSize;
+    private final Integer queryFetchSize;
     private final SourceInfoStructMaker<? extends AbstractSourceInfo> sourceInfoStructMaker;
     private final boolean sanitizeFieldNames;
     private final boolean shouldProvideTransactionMetadata;
@@ -417,6 +429,7 @@ public abstract class CommonConnectorConfig {
         this.snapshotDelayMs = Duration.ofMillis(config.getLong(SNAPSHOT_DELAY_MS));
         this.retriableRestartWait = Duration.ofMillis(config.getLong(RETRIABLE_RESTART_WAIT));
         this.snapshotFetchSize = config.getInteger(SNAPSHOT_FETCH_SIZE, defaultSnapshotFetchSize);
+        this.queryFetchSize = config.getInteger(QUERY_FETCH_SIZE);
         this.sourceInfoStructMaker = getSourceInfoStructMaker(Version.parse(config.getString(SOURCE_STRUCT_MAKER_VERSION)));
         this.sanitizeFieldNames = config.getBoolean(SANITIZE_FIELD_NAMES) || isUsingAvroConverter(config);
         this.shouldProvideTransactionMetadata = config.getBoolean(PROVIDE_TRANSACTION_METADATA);
@@ -473,6 +486,10 @@ public abstract class CommonConnectorConfig {
 
     public int getSnapshotFetchSize() {
         return snapshotFetchSize;
+    }
+
+    public int getQueryFetchSize() {
+        return queryFetchSize;
     }
 
     public boolean shouldProvideTransactionMetadata() {

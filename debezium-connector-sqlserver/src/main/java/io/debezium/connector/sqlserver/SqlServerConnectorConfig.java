@@ -318,14 +318,6 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
                     + "In '" + SnapshotIsolationMode.READ_UNCOMMITTED.getValue()
                     + "' mode neither table nor row-level locks are acquired, but connector does not guarantee snapshot consistency.");
 
-    public static final Field STREAMING_FETCH_SIZE = Field.create("streaming.fetch.size")
-            .withDisplayName("Streaming fetch size")
-            .withType(Type.INT)
-            .withWidth(Width.MEDIUM)
-            .withImportance(Importance.MEDIUM)
-            .withDescription("The maximum number of records that should be loaded into memory while streaming")
-            .withValidation(Field::isNonNegativeInteger);
-
     private static final ConfigDefinition CONFIG_DEFINITION = HistorizedRelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .name("SQL Server")
             .type(
@@ -338,8 +330,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
             .connector(
                     SNAPSHOT_MODE,
                     SNAPSHOT_ISOLATION_MODE,
-                    SOURCE_TIMESTAMP_MODE,
-                    STREAMING_FETCH_SIZE)
+                    SOURCE_TIMESTAMP_MODE)
             .excluding(
                     SCHEMA_WHITELIST,
                     SCHEMA_INCLUDE_LIST,
