@@ -27,6 +27,7 @@ import org.slf4j.LoggerFactory;
 
 import com.microsoft.sqlserver.jdbc.SQLServerDriver;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
@@ -79,6 +80,7 @@ public class SqlServerConnection extends JdbcConnection {
     private final ZoneId transactionTimezone;
     private final SourceTimestampMode sourceTimestampMode;
     private final Clock clock;
+    private final int queryFetchSize;
 
     private final BoundedConcurrentHashMap<Lsn, Instant> lsnToInstantCache;
     private final SqlServerDefaultValueConverter defaultValueConverter;
@@ -115,6 +117,7 @@ public class SqlServerConnection extends JdbcConnection {
         this.clock = clock;
         this.sourceTimestampMode = sourceTimestampMode;
         defaultValueConverter = new SqlServerDefaultValueConverter(this::connection, valueConverters);
+        this.queryFetchSize = config().getInteger(CommonConnectorConfig.QUERY_FETCH_SIZE);
     }
 
     /**
@@ -198,9 +201,8 @@ public class SqlServerConnection extends JdbcConnection {
             final Lsn fromLsn = getFromLsn(changeTable, intervalFromLsn);
             LOGGER.trace("Getting changes for table {} in range[{}, {}]", changeTable, fromLsn, intervalToLsn);
             preparers[idx] = statement -> {
-                String fetchSizeStr = config().asProperties().getProperty(SqlServerConnectorConfig.STREAMING_FETCH_SIZE.name());
-                if (fetchSizeStr != null && fetchSizeStr.trim().length() > 0) {
-                    statement.setFetchSize(Integer.parseInt(fetchSizeStr));
+                if (queryFetchSize > 0) {
+                    statement.setFetchSize(queryFetchSize);
                 }
                 statement.setBytes(1, fromLsn.getBinary());
                 statement.setBytes(2, intervalToLsn.getBinary());
