@@ -796,7 +796,7 @@ endif::[]
 extract the JAR files into your Kafka Connect environment, and add the directory with the JAR files to  {link-kafka-docs}/#connectconfigs[Kafka Connect's `plugin.path`]. You then need to 
 restart your Kafka Connect process to pick up the new JAR files.
 
-If you need immutable containers, see link:https://hub.docker.com/r/debezium/[{prodname}'s Container images] for Zookeeper, Kafka, and Kafka Connect with the MongoDB connector already installed and ready to run. You can also link:https://debezium.io/blog/2016/05/31/Debezium-on-Kubernetes/[run {prodname} on Kubernetes and OpenShift].
+If you are working with immutable containers, see link:https://hub.docker.com/r/debezium/[{prodname}'s Container images] for Zookeeper, Kafka, and Kafka Connect with the MongoDB connector already installed and ready to run. You can also xref:operations/openshift.adoc[run {prodname} on Kubernetes and OpenShift].
 
 The {prodname} xref:tutorial.adoc[tutorial] walks you through using these images, and this is a great way to learn about {prodname}. 
 endif::community[]
@@ -898,7 +898,7 @@ This configuration can be sent via POST to a running Kafka Connect service, whic
 === Adding connector configuration
 
 ifdef::community[]
-To run a {prodname} MongoDB connector, create a connector configuration file and add it to your Kafka Connect cluster. 
+To run a {prodname} MongoDB connector, create a connector configuration and add the configuration to your Kafka Connect cluster. 
 
 .Prerequisites
 
@@ -908,7 +908,7 @@ To run a {prodname} MongoDB connector, create a connector configuration file and
 
 .Procedure
 
-. Create a configuration file for the MongoDB connector.
+. Create a configuration for the MongoDB connector.
 
 . Use the link:{link-kafka-docs}/#connect_rest[Kafka Connect REST API] to add that connector configuration to your Kafka Connect cluster. 
 
@@ -919,7 +919,7 @@ You can use a provided {prodname} container to deploy a {prodname} MongoDB conne
 
 .Prerequisites
 
-* You have Podman installed and sufficient rights to create and manage containers.
+* You have Podman or Docker installed and sufficient rights to create and manage containers.
 * You installed the {prodname} MongoDB connector archive. 
 
 .Procedure
@@ -938,9 +938,9 @@ pass:quotes[*tree ./my-plugins/*]
 
 .. Create a new `Dockerfile` by using `{DockerKafkaConnect}` as the base image. In the following example, you would replace _my-plugins_ with the name of your plug-ins directory:
 +
-[subs=+macros]
+[subs=+macros,subs="+attributes"]
 ----
-FROM registry.redhat.io/amq7/amq-streams-kafka-25:1.5.0
+FROM {DockerKafkaConnect}
 USER root:root
 pass:quotes[COPY _./my-plugins/_ /opt/kafka/plugins/]
 USER 1001
@@ -948,7 +948,7 @@ USER 1001
 +
 Before Kafka Connect starts running the connector, Kafka Connect loads any third-party plug-ins that are in the `/opt/kafka/plugins` directory.
 
-.. Build the docker container image. For example, if you saved the docker file that you created in the previous step as `debezium-container-for-mongodb`, then you would run the following command:
+.. Build the container image. For example, if you saved the `Dockerfile` that you created in the previous step as `debezium-container-for-mongodb`, then you would run the following command:
 +
 `podman build -t debezium-container-for-mongodb:latest`
 
