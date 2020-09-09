@@ -5,7 +5,7 @@
 = Adding MySQL connector configuration to Kafka Connect
 
 ifdef::community[]
-To start running a MySQL connector, create a connector configuration file and add it to your Kafka Connect cluster. 
+To start running a MySQL connector, configure a connector and add the configuration to your Kafka Connect cluster. 
 
 .Prerequisites
 
@@ -16,7 +16,7 @@ set up for a {prodname} connector.
 
 .Procedure
 
-. Create a configuration file for the MySQL connector.
+. Create a configuration for the MySQL connector.
 
 . Use the link:{link-kafka-docs}/#connect_rest[Kafka Connect REST API] to add that connector configuration to your Kafka Connect cluster. 
 
@@ -27,7 +27,7 @@ You can use a provided {prodname} container to deploy a {prodname} MySQL connect
 
 .Prerequisites
 
-* Podman is installed and you have sufficient rights to create and manage containers.
+* Podman or Docker is installed and you have sufficient rights to create and manage containers.
 * You installed the {prodname} MySQL connector archive. 
 
 .Procedure
@@ -46,9 +46,9 @@ pass:quotes[*tree ./my-plugins/*]
 
 .. Create a new `Dockerfile` by using `{DockerKafkaConnect}` as the base image. In the following example, you would replace _my-plugins_ with the name of your plug-ins directory:
 +
-[subs=+macros]
+[subs=+macros,subs="+attributes"]
 ----
-FROM registry.redhat.io/amq7/amq-streams-kafka-25:1.5.0
+FROM {DockerKafkaConnect}
 USER root:root
 pass:quotes[COPY _./my-plugins/_ /opt/kafka/plugins/]
 USER 1001
@@ -56,7 +56,7 @@ USER 1001
 +
 Before Kafka Connect starts running the connector, Kafka Connect loads any third-party plug-ins that are in the `/opt/kafka/plugins` directory.
 
-.. Build the docker container image. For example, if you saved the docker file that you created in the previous step as `debezium-container-for-mysql`, then you would run the following command:
+.. Build the container image. For example, if you saved the `Dockerfile` that you created in the previous step as `debezium-container-for-mysql`, then you would run the following command:
 +
 `podman build -t debezium-container-for-mysql:latest`
 
