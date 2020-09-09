@@ -1909,7 +1909,7 @@ endif::community[]
 ifdef::community[]
 With link:https://zookeeper.apache.org[Zookeeper], link:http://kafka.apache.org/[Kafka], and {link-kafka-docs}.html#connect[Kafka Connect] installed, the remaining tasks to deploy a {prodname} PostgreSQL connector are to download the link:https://repo1.maven.org/maven2/io/debezium/debezium-connector-postgres/{debezium-version}/debezium-connector-postgres-{debezium-version}-plugin.tar.gz[connector's plug-in archive], extract the JAR files into your Kafka Connect environment, and add the directory with the JAR files to {link-kafka-docs}/#connectconfigs[Kafka Connect's `plugin.path`]. You then need to restart your Kafka Connect process to pick up the new JAR files.
 
-If you need immutable containers, see link:https://hub.docker.com/r/debezium/[{prodname}'s Container images] for Zookeeper, Kafka, PostgreSQL and Kafka Connect with the PostgreSQL connector already installed and ready to run. You can also link:https://debezium.io/blog/2016/05/31/Debezium-on-Kubernetes/[run {prodname} on Kubernetes and OpenShift].
+If you are working with immutable containers, see link:https://hub.docker.com/r/debezium/[{prodname}'s Container images] for Zookeeper, Kafka, PostgreSQL and Kafka Connect with the PostgreSQL connector already installed and ready to run. You can also xref:operations/openshift.adoc[run {prodname} on Kubernetes and OpenShift].
 endif::community[]
 
 ifdef::product[]
@@ -2041,7 +2041,7 @@ You can send this configuration with a `POST` command to a running Kafka Connect
 === Adding connector configuration
 
 ifdef::community[]
-To start running a PostgreSQL connector, create a connector configuration file and add it to your Kafka Connect cluster. 
+To start running a PostgreSQL connector, create a connector configuration and add the configuration to your Kafka Connect cluster. 
 
 .Prerequisites
 
@@ -2053,7 +2053,7 @@ To start running a PostgreSQL connector, create a connector configuration file a
 
 .Procedure
 
-. Create a configuration file for the PostgreSQL connector.
+. Create a configuration for the PostgreSQL connector.
 
 . Use the link:{link-kafka-docs}/#connect_rest[Kafka Connect REST API] to add that connector configuration to your Kafka Connect cluster. 
 
@@ -2064,7 +2064,7 @@ You can use a provided {prodname} container to deploy a {prodname} PostgreSQL co
 
 .Prerequisites
 
-* You have Podman installed and sufficient rights to create and manage containers.
+* Podman or Docker is installed and you have sufficient rights to create and manage containers.
 * You installed the {prodname} PostgreSQL connector archive. 
 
 .Procedure
@@ -2083,9 +2083,9 @@ pass:quotes[*tree ./my-plugins/*]
 
 .. Create a new `Dockerfile` by using `{DockerKafkaConnect}` as the base image. In the following example, you would replace _my-plugins_ with the name of your plug-ins directory:
 +
-[subs=+macros]
+[subs=+macros,subs="+attributes"]
 ----
-FROM registry.redhat.io/amq7/amq-streams-kafka-25:1.5.0
+FROM {DockerKafkaConnect}
 USER root:root
 pass:quotes[COPY _./my-plugins/_ /opt/kafka/plugins/]
 USER 1001
@@ -2093,7 +2093,7 @@ USER 1001
 +
 Before Kafka Connect starts running the connector, Kafka Connect loads any third-party plug-ins that are in the `/opt/kafka/plugins` directory.
 
-.. Build the docker container image. For example, if you saved the docker file that you created in the previous step as `debezium-container-for-postgresql`, then you would run the following command:
+.. Build the container image. For example, if you saved the `Dockerfile` that you created in the previous step as `debezium-container-for-postgresql`, then you would run the following command:
 +
 `podman build -t debezium-container-for-postgresql:latest`
 
