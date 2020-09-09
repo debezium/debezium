@@ -633,7 +633,7 @@ In a {prodname} change event, MongoDB provides the content of the `patch` field.
 
 [NOTE]
 ====
-In MongoDB's oplog, _update_ events do not contain the _before_ or _after_ states of the changed document. Consequently, it is not possible for a {prodname} connector to provide this information. However, MongoDB's oplog contains a document's starting state in _create_ and _read_ events. Downstream consumers of the stream can reconstruct document state by keeping the latest state for each document and comparing the state in a new event with the saved state. {prodname} connector's are not able to keep this state. 
+In MongoDB's oplog, _update_ events do not contain the _before_ or _after_ states of the changed document. Consequently, it is not possible for a {prodname} connector to provide this information. However, a {prodname} connector provides a document's starting state in _create_ and _read_ events. Downstream consumers of the stream can reconstruct document state by keeping the latest state for each document and comparing the state in a new event with the saved state. {prodname} connector's are not able to keep this state. 
 ====
 
 [id="mongodb-delete-events"]
