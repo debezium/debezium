@@ -191,14 +191,25 @@ public interface Snapshotter {
      * @return true if the snapshotter should take a snapshot
      */
     boolean shouldSnapshot();
+
     /**
      * @return true if the snapshotter should stream after taking a snapshot
      */
     boolean shouldStream();
 
     /**
+     *
+     * @return true if streaming should resume from the start of the snapshot
+     * transaction, or false for when a connector resumes and takes a snapshot,
+     * streaming should resume from where streaming previously left off.
+     */
+    default boolean shouldStreamEventsStartingFromSnapshot() {
+        return true;
+    }
+
+    /**
      * @return true if when creating a slot, a snapshot should be exported, which
-     * can be used as an alternative to takFIRST BUILD OF SPLIT FILE: ing a lock
+     * can be used as an alternative to taking a lock
      */
     default boolean exportSnapshot() {
         return false;
@@ -234,7 +245,7 @@ public interface Snapshotter {
         statements.append("SET lock_timeout = ").append(lockTimeout.toMillis()).append(";").append(lineSeparator);
         // we're locking in ACCESS SHARE MODE to avoid concurrent schema changes while we're taking the snapshot
         // this does not prevent writes to the table, but prevents changes to the table's schema....
-        // DBZ-298 Quoting name in case it has been quoted originally; it does not do harm if it has not been quoted
+        // DBZ-298 Quoting name in case it has been quoted originally; it doesn't do harm if it hasn't been quoted
         tableIds.forEach(tableId -> statements.append("LOCK TABLE ")
                 .append(tableId.toDoubleQuotedString())
                 .append(" IN ACCESS SHARE MODE;")
