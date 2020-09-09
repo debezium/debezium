@@ -13,7 +13,9 @@
 
 toc::[]
 
-The outbox pattern is a way to ensure that related services that need the same data updates get those updates in a consistent manner. To implement the outbox pattern in a {prodname} application, configure a {prodname} connector to: 
+The outbox pattern is a way to safely and reliably exchange data between multiple (micro) services. An outbox pattern implementation avoids inconsistencies between a service's internal state (as typically persisted in its database) and state in events consumed by services that need the same data.
+
+To implement the outbox pattern in a {prodname} application, configure a {prodname} connector to: 
 
 * Capture changes in an outbox table
 * Apply the {prodname} `outbox.EventRouter` single message transformation (SMT)
@@ -37,7 +39,7 @@ endif::product[]
 See link:https://debezium.io/blog/2019/02/19/reliable-microservices-data-exchange-with-the-outbox-pattern/[Reliable Microservices Data Exchange With the Outbox Pattern] to learn about why the outbox pattern is useful and how it works. 
 
 ifdef::community[]
-For details about how {prodname} implements the outbox pattern, see {jira-url}/browse/DBZ-1169[Outbox SMT Design]. For an example that you can run, see the  link:https://github.com/debezium/debezium-examples/tree/master/outbox[outbox pattern demo], which is in the {prodname} examples repository. It includes an example of how to configure a {prodname} connector to run the `outbox.EventRouter` SMT. 
+For an example that you can run, see the  link:https://github.com/debezium/debezium-examples/tree/master/outbox[outbox pattern demo], which is in the {prodname} examples repository. It includes an example of how to configure a {prodname} connector to run the `outbox.EventRouter` SMT. 
 endif::community[]
 
 [NOTE]
