@@ -94,21 +94,42 @@ TIP: For a complete list of configuration properties, see {link-prefix}:{link-my
       database.history.kafka.bootstrap.servers: my-cluster-kafka-bootstrap:9092  // <7>
       database.history.kafka.topic: schema-changes.inventory  // <7>
 ----
-<1> The name of the connector.
-<2> Only one task should operate at any one time.
+
+.Descriptions of connector configuration settings
+[cols="1,7",options="header",subs="+attributes"]
+|===
+|Item |Description
+
+|1
+|The name of the connector.
+
+|2
+|Only one task should operate at any one time.
 Because the MySQL connector reads the MySQL server’s `binlog`,
 using a single connector task ensures proper order and event handling.
 The Kafka Connect service uses connectors to start one or more tasks that do the work,
 and it automatically distributes the running tasks across the cluster of Kafka Connect services.
 If any of the services stop or crash,
 those tasks will be redistributed to running services.
-<3> The connector’s configuration.
-<4> The database host, which is the name of the container running the MySQL server (`mysql`).
-<5> A unique server ID and name.
+
+|3
+|The connector’s configuration.
+
+|4
+|The database host, which is the name of the container running the MySQL server (`mysql`).
+
+|5
+|A unique server ID and name.
 The server name is the logical identifier for the MySQL server or cluster of servers.
 This name will be used as the prefix for all Kafka topics.
-<6> Only changes in the `inventory` database will be detected.
-<7> The connector will store the history of the database schemas in Kafka using this broker (the same broker to which you are sending events) and topic name.
+
+|6
+Only changes in the `inventory` database will be detected.
+
+|7
+|The connector will store the history of the database schemas in Kafka using this broker (the same broker to which you are sending events) and topic name.
 Upon restart, the connector will recover the schemas of the database that existed at the point in time in the `binlog` when the connector should begin reading.
+
+|===
 
 endif::product[]
