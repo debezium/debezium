@@ -112,7 +112,7 @@ Db2`s replication feature is not designed to store the complete history of datab
 
 By default, when a Db2 connector performs a snapshot, it does the following:
 
-. Determines which tables are in capture mode, and thus must be included in the snapshot. By default, all non-system tables are in capture mode. Connector configuration properties, such as `table.blacklist` and `table.whitelist` let you specify which tables should be in capture mode.
+. Determines which tables are in capture mode, and thus must be included in the snapshot. By default, all non-system tables are in capture mode. Connector configuration properties, such as `table.exclude.list` and `table.include.list` let you specify which tables should be in capture mode.
 . Obtains a lock on each of the tables in capture mode. This ensures that no schema changes can occur in those tables during the snapshot.
 The level of the lock is determined by the `snapshot.isolation.mode` connector  configuration property.
 . Reads the highest (most recent) LSN position in the server's transaction log.
@@ -1530,7 +1530,7 @@ apiVersion: kafka.strimzi.io/v1beta1
       database.password: Password!
       database.dbname: mydatabase
       database.server.name: fullfillment   // <5>
-      database.whitelist: public.inventory   // <6>
+      database.include.list: public.inventory   // <6>
 ----
 <1> The name of the connector.
 <2> Only one task should operate at any one time.
@@ -1722,15 +1722,18 @@ The following configuration properties are _required_ unless a default value is 
 |
 |A list of host/port pairs that the connector uses to establish an initial connection to the Kafka cluster. This connection is used for retrieving database schema history previously stored by the connector, and for writing each DDL statement read from the source database. Each pair should point to the same Kafka cluster used by the {prodname} Kafka Connect process.
 
-|[[db2-property-table-whitelist]]<<db2-property-table-whitelist [[db2-property-table-include-list]]<<db2-property-table-include-list, `table.include.list`>>
+|[[db2-property-table-whitelist]]
+[[db2-property-table-include-list]]<<db2-property-table-include-list, `table.include.list`>>
 |
 |An optional, comma-separated list of regular expressions that match fully-qualified table identifiers for tables whose changes you want the connector to capture. Any table not included in the include list does not have its changes captured. Each identifier is of the form _schemaName_._tableName_. By default, the connector captures changes in every non-system table. Do not also set the `table.exclude.list` property.
 
-|[[db2-property-table-blacklist]]<<db2-property-table-blacklist [[db2-property-table-exclude-list]]<<db2-property-table-exclude-list, `table.exclude.list`>>
+|[[db2-property-table-blacklist]]
+[[db2-property-table-exclude-list]]<<db2-property-table-exclude-list, `table.exclude.list`>>
 |
 |An optional, comma-separated list of regular expressions that match fully-qualified table identifiers for tables whose changes you do not want the connector to capture. The connector captures changes in each non-system table that is not included in the exclude list. Each identifier is of the form _schemaName_._tableName_. Do not also set the `table.include.list` property.
 
-|[[db2-property-column-blacklist]]<<db2-property-column-blacklist [[db2-property-column-exclude-list]]<<db2-property-column-exclude-list, `column.exclude.list`>>
+|[[db2-property-column-blacklist]]
+[[db2-property-column-exclude-list]]<<db2-property-column-exclude-list, `column.exclude.list`>>
 |_empty string_
 |An optional, comma-separated list of regular expressions that match the fully-qualified names of columns to exclude from change event values.
 Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_.
