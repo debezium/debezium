@@ -13,8 +13,8 @@ By default, {prodname} delivers every data change event that it receives to the 
 However, in many cases, you might be interested in only a subset of the events emitted by the producer. 
 To enable you to process only the records that are relevant to you, {prodname} provides the _filter_ simple message transform (SMT).
 
-Configure this transformation in the {prodname} connector's Kafka Connect configuration.
-By configuring the filter SMT, you can specify the events that you are interested in by defining filter conditions based on business rules.
+You configure the filter transformation in the {prodname} connector's Kafka Connect configuration.
+In the configuration, you specify the events that you are interested in by defining filter conditions that are based on business rules.
 As the filter SMT processes the event stream, it evaluates each event against the configured filter conditions.
 Only events that meet the criteria of the filter conditions are passed to the broker.
 
@@ -48,7 +48,7 @@ transforms.filter.condition=value.op == 'u' && value.before.id == 2
 ----
 
 The preceding example specifies the use of the `Groovy` expression language.
-The regular expression `value.op == 'u' && value.before.id == 2` filters out all update records for which the `id` field is equal to `2`.
+The regular expression `value.op == 'u' && value.before.id == 2` removes all messages, except those that represent update (`u`) records with `id` values that are equal to `2`.
 
 [IMPORTANT]
 ====
@@ -66,7 +66,8 @@ If you install the script engine JAR to a different directory, you must add that
 == Variables for use in filter expressions
 
 When you create expressions to specify filter conditions, you can use the variables that {prodname} binds into the evaluation context.
-The SMT looks up and interprets these variables when it evaluates an expression. 
+Certain variables are bound into the evaluation context for the SMT.
+By binding variables , {prodname} enables the SMT to look up and interpret their values as it evaluates the conditions in an expression. 
 
 The following table lists the variables that {prodname} binds into the evaluation context for the filter SMT:
 
@@ -78,12 +79,23 @@ The following table lists the variables that {prodname} binds into the evaluatio
 |`value` |A value of the message. |`org.apache.kafka.connect.data.Struct`
 |`keySchema` |Schema of the message key.|`org.apache.kafka.connect.data.Schema`
 |`valueSchema`|Schema of the message value.| `org.apache.kafka.connect.data.Schema`
-|`topic`|Name of the target topic.| N/A
-|`headers`|The map of message headers keyed with header name and value composed of `schema` and `value` variables| N/A
+|`topic`|Name of the target topic.| String
+|`headers`
+a|A Java map of message headers. The key field is the header name. 
+The `headers` variable exposes the following properties:
+
+* `value` (of type `Object`) 
+
+* `schema` (of type `org.apache.kafka.connect.data.Schema`)
+
+| `java.util.Map<String, io.debezium.transforms.scripting.RecordHeader>`
 |=======================
 
 An expression can invoke arbitrary methods on its variables. 
-The expression should resolve to a Boolean value that determines whether the message is removed (`true`) or kept.
+Expressions should resolve to a Boolean value that determines how the SMT dispositions the message.
+When the filter condition in an expression evaluates to `true`, the message is retained. 
+Whenthe filter condition evaluates to `false`, the message is removed.
+
 Expressions should not result in any side-effects. That is, they should not modify any variables that they pass.
 
 // Type: reference
@@ -94,20 +106,21 @@ Expressions should not result in any side-effects. That is, they should not modi
 The way that you express filtering conditions depends on the scripting language that you use.
 
 For example, as shown in {link-prefix}:{link-filtering}#example-of-configuring-filter-conditions[], when you use `Groovy` as the expression language, 
-to remove update records for which the `id` value is set to `2`, you would use the following expression:
+the following expression removes all messages, except for update records that have `id` values set to `2`:
 
 [source,groovy]
 ----
 value.op == 'u' && value.before.id == 2
 ----
+Other languages use different methods to express the same condition.
 
 [TIP]
 ====
-The {prodname} MongoDB connector emits the `after` and `patch` fields not as structures but as serialized JSON documents.
-When you use the filter SMT with the MongoDB connector, you should first unwind the field by applying the {link-prefix}:{link-mongodb-event-flattening}[`ExtractNewDocumentState`] SMT.
+The {prodname} MongoDB connector emits the `after` and `patch` fields as serialized JSON documents rather than as structures.
+To use the filter SMT with the MongoDB connector, you must first unwind the fields by applying the {link-prefix}:{link-mongodb-event-flattening}[`ExtractNewDocumentState`] SMT.
 
-As an alternative, you can use a JSON parser in the expression.
-To use a JSON parser when Groovy is the expression language, add the `groovy-json` artifact to the classpath, and add an expression such as `(new groovy.json.JsonSlurper()).parseText(value.after).last_name == 'Kretchmar'`.
+You could also take the approach of using a JSON parser within the expression.
+For example, if you use Groovy as the expression language, add the `groovy-json` artifact to the classpath, and then add an expression such as `(new groovy.json.JsonSlurper()).parseText(value.after).last_name == 'Kretchmar'`.
 ====
 
 .Javascript
@@ -119,7 +132,7 @@ value.get('op') == 'u' && value.get('before').get('id') == 2
 ----
 
 .Javascript with Graal.js
-When you create filtering conditions by using JavaScript with Graal.js, you use an approach that is similar to the one use with Groovy.
+When you create filtering conditions by using JavaScript with Graal.js, you use an approach that is similar to the one that you use with Groovy.
 For example:
 
 [source,javascript]
@@ -158,6 +171,10 @@ If the name of the topic does not match the value in `topic.regex`, the SMT pass
 
 |[[filter-null-handling-mode]]<<filter-null-handling-mode, `null.handling.mode`>>
 |`keep`
-|Prescribes how the transformation handles `null` (tombstone) messages. The options are: `keep` (the default) to pass the message through, `drop` to remove the messages completely or `evaluate` to run the message through the condition expression.
+a|Specifies how the transformation handles `null` (tombstone) messages. You can specify one of the following options: 
+
+`keep`:: (Default) Pass the messages through.
+`drop`:: Remove the messages completely.
+`evaluate`:: Apply the filter condition to the messages.
 
 |===
