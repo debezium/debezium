@@ -22,11 +22,9 @@ It is supported though to capture tables newly added while the connector is runn
 [[oracle-overview]]
 == Overview
 
-{prodname} ingests change events from Oracle using the https://docs.oracle.com/database/121/XSTRM/xstrm_intro.htm#XSTRM72647[XStream API].
-In order to use this API and hence this connector, you need to have a license for the GoldenGate product
+{prodname} ingests change events from Oracle using the https://docs.oracle.com/database/121/XSTRM/xstrm_intro.htm#XSTRM72647[XStream API] or directly by Log Miner.
+In order to use the XStream API, you need to have a license for the GoldenGate product
 (though it is not required that GoldenGate itself is installed).
-We are currently exploring alternatives to using XStream for a future {prodname} release, e.g. based on LogMiner and/or alternative solutions.
-Please track the {jira-url}/browse/DBZ-137[DBZ-137] JIRA issue and join the discussion if you are aware of potential other ways for ingesting change events from Oracle.
 
 [[setting-up-oracle]]
 == Setting up Oracle
@@ -38,6 +36,8 @@ if you're not using this model, adjust the steps accordingly.
 You can find a template for setting up Oracle in a virtual machine (via Vagrant) in the https://github.com/debezium/oracle-vagrant-box/[oracle-vagrant-box/] repository.
 
 === Preparing the Database
+
+==== XStream
 
 Enable GoldenGate replication and archive log mode:
 
@@ -67,7 +67,45 @@ E.g. like so for a specific table:
 ALTER TABLE inventory.customers ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS;
 ----
 
-=== Creating an XStream Admin User and a User For the Connector
+==== Log Miner
+
+[NOTE]
+====
+The Log Miner implementation requires the database to be configured with a minimum number of redo log groups and files per group.
+It's recommended to have a minimum of `5` redo log groups each with `2` redo files per group.
+Please refer to the Oracle documentation on how to manipulate redo log groups and files for your database version.
+====
+
+Enable archive log mode:
+
+[source,indent=0]
+----
+ORACLE_SID=ORACLCDB dbz_oracle sqlplus /nolog
+
+CONNECT sys/top_secret AS SYSDBA
+alter system set db_recovery_file_dest_size = 10G;
+alter system set db_recovery_file_dest = '/opt/oracle/oradta/recovery_area' scope=spfile;
+shutdown immediate
+startup mount
+alter database archivelog;
+alter database open;
+-- Should now "Database log mode: Archive Mode"
+archive log list
+
+exit;
+----
+
+Furthermore, in order to capture the _before_ state of changed rows, supplemental logging must be enabled for the captured tables or the database in general.
+E.g. like so for a specific table:
+
+[source,indent=0]
+----
+ALTER TABLE inventory.customers ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS;
+----
+
+=== Creating Users for the connector
+
+==== XStream
 
 Create an XStream admin user in the container database (used per Oracle's recommendation for administering XStream):
 
@@ -146,7 +184,51 @@ GRANT FLASHBACK ANY TABLE TO c##xstrm CONTAINER=ALL;
 exit;
 ----
 
+==== Log Miner
+
+Create Log Miner user (used by the {prodname} connector to connect to Oracle):
+
+[source,indent=0]
+----
+sqlplus sys/top_secret@//localhost:1521/ORCLCDB as sysdba
+CREATE TABLESPACE logminer_tbs DATAFILE '/opt/oracle/oradata/ORCLCDB/logminer_tbs.dbf'
+  SIZE 25M REUSE AUTOEXTEND ON MAXSIZE UNLIMITED;
+exit;
+----
+
+[source,indent=0]
+----
+sqlplus sys/top_secret@//localhost:1521/ORCLPDB1 as sysdba
+CREATE TABLESPACE logminer_tbs DATAFILE '/opt/oracle/oradata/ORCLCDB/ORCLPDB1/logminer_tbs.dbf'
+  SIZE 25M REUSE AUTOEXTEND ON MAXSIZE UNLIMITED;
+exit;
+----
+
+[source,indent=0]
+----
+sqlplus sys/top_secret@//localhost:1521/ORCLCDB as sysdba
+
+CREATE USER c##logminer IDENTIFIED BY lm
+  DEFAULT TABLESPACE logminer_tbs
+  QUOTA UNLIMITED ON logminer_tbs
+  CONTAINER=ALL;
+
+GRANT CREATE SESSION TO c##logminer CONTAINER=ALL;
+GRANT SET CONTAINER TO c##logminer CONTAINER=ALL;
+GRANT SELECT ON V_$DATABASE to c##logminer CONTAINER=ALL;
+GRANT FLASHBACK ANY TABLE TO c##logminer CONTAINER=ALL;
+GRANT LOGMINING TO c##logminer CONTAINER=ALL;
+GRANT LOCK ANY TABLE TO c##logminer CONTAINER=ALL;
+
+exit;
+----
+
 === Create an XStream Outbound Server
+
+[NOTE]
+====
+If you're using the Log Miner implementation, this step is not necessary.
+====
 
 Create an https://docs.oracle.com/cd/E11882_01/server.112/e16545/xstrm_cncpt.htm#XSTRM1088[XStream Outbound server]
 (given the right privileges, this may be done automatically by the connector going forward, see {jira-url}/browse/DBZ-721[DBZ-721]):
@@ -1136,6 +1218,12 @@ The following configuration properties are _required_ unless a default value is 
 |
 |Logical name that identifies and provides a namespace for the particular Oracle database server being monitored. The logical name should be unique across all other connectors, since it is used as a prefix for all Kafka topic names emanating from this connector.
 Only alphanumeric characters and underscores should be used.
+
+|[[oracle-property-database-connection-adapter]]<<oracle-database-connection-adapter, `database.connection.adapter`>>
+|`xstream`
+|The adapter implementation to use.
+`xstream` uses the Oracle XStreams API.
+`logminer` uses the native Oracle Log Miner API.
 
 |[[oracle-property-database-history-kafka-topic]]<<oracle-property-database-history-kafka-topic, `database.history.kafka.topic`>>
 |
