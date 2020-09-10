@@ -5,7 +5,6 @@
  */
 package io.debezium.connector.oracle.logminer;
 
-import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.CallableStatement;
 import java.sql.Connection;
@@ -172,7 +171,7 @@ public class LogMinerHelper {
         String checkQuery = SqlUtils.CURRENT_REDO_LOG_NAME;
 
         Set<String> fileNames = new HashSet<>();
-        try(PreparedStatement st = connection.prepareStatement(checkQuery); ResultSet result = st.executeQuery()) {
+        try (PreparedStatement st = connection.prepareStatement(checkQuery); ResultSet result = st.executeQuery()) {
             while (result.next()) {
                 fileNames.add(result.getString(1));
                 LOGGER.trace(" Current Redo log fileName: {} ", fileNames);
@@ -391,7 +390,7 @@ public class LogMinerHelper {
 
     private static void executeCallableStatement(Connection connection, String statement) throws SQLException {
         Objects.requireNonNull(statement);
-        try(CallableStatement s = connection.prepareCall(statement)) {
+        try (CallableStatement s = connection.prepareCall(statement)) {
             s.execute();
         }
     }

@@ -192,7 +192,7 @@ public class Db2SnapshotChangeEventSource extends RelationalSnapshotChangeEventS
      * @return a valid query string
      */
     @Override
-    protected Optional<String> getSnapshotSelect(SnapshotContext snapshotContext, TableId tableId) {
+    protected Optional<String> getSnapshotSelect(RelationalSnapshotContext snapshotContext, TableId tableId) {
         return Optional.of(String.format("SELECT * FROM %s.%s", tableId.schema(), tableId.table()));
     }
 

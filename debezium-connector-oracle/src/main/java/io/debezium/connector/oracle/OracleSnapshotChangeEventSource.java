@@ -58,7 +58,6 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
     protected SnapshottingTask getSnapshottingTask(OffsetContext previousOffset) {
         boolean snapshotSchema = true;
         boolean snapshotData = true;
-        boolean skipSnapsotLock = false;
 
         // found a previous offset and the earlier snapshot has completed
         if (previousOffset != null && !previousOffset.isSnapshotRunning()) {
@@ -67,10 +66,9 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
         }
         else {
             snapshotData = connectorConfig.getSnapshotMode().includeData();
-            skipSnapsotLock = connectorConfig.skipSnapshotLock();
         }
 
-        return new SnapshottingTask(snapshotSchema, snapshotData, skipSnapsotLock);
+        return new SnapshottingTask(snapshotSchema, snapshotData);
     }
 
     @Override

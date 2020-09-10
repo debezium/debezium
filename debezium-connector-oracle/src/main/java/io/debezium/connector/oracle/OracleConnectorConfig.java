@@ -146,16 +146,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withImportance(Importance.HIGH)
             .withDescription("There are two adapters: XStream and LogMiner.");
 
-    public static final Field SNAPSHOT_SKIP_LOCKS = Field.create("snapshot.skip.locks")
-            .withDisplayName("Should schema be locked as we build the schema snapshot?")
-            .withType(Type.BOOLEAN)
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.LOW)
-            .withDefault(false)
-            .withValidation(Field::isBoolean)
-            .withDescription(
-                    "If true, locks all tables to be captured as we build the schema snapshot. This will prevent from any concurrent schema changes being applied to them.");
-
     public static final Field LOG_MINING_STRATEGY = Field.create("log.mining.strategy")
             .withDisplayName("Log Mining Strategy")
             .withEnum(LogMiningStrategy.class, LogMiningStrategy.CATALOG_IN_REDO)
@@ -218,7 +208,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             Heartbeat.HEARTBEAT_TOPICS_PREFIX,
             TABLENAME_CASE_INSENSITIVE,
             ORACLE_VERSION,
-            SNAPSHOT_SKIP_LOCKS,
             SCHEMA_NAME,
             CONNECTOR_ADAPTER,
             LOG_MINING_STRATEGY,
@@ -288,7 +277,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                 CommonConnectorConfig.EVENT_PROCESSING_FAILURE_HANDLING_MODE);
         Field.group(config, "Connector", CommonConnectorConfig.POLL_INTERVAL_MS, CommonConnectorConfig.MAX_BATCH_SIZE,
                 CommonConnectorConfig.MAX_QUEUE_SIZE, CommonConnectorConfig.SNAPSHOT_DELAY_MS, CommonConnectorConfig.SNAPSHOT_FETCH_SIZE,
-                SNAPSHOT_SKIP_LOCKS, SNAPSHOT_ENHANCEMENT_TOKEN, DRIVER_TYPE);
+                SNAPSHOT_ENHANCEMENT_TOKEN, DRIVER_TYPE);
 
         return config;
     }
@@ -636,13 +625,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     @Override
     public String getContextName() {
         return Module.contextName();
-    }
-
-    /**
-     * @return true if lock to be obtained before building the schema
-     */
-    public boolean skipSnapshotLock() {
-        return getConfig().getBoolean(SNAPSHOT_SKIP_LOCKS);
     }
 
     /**
