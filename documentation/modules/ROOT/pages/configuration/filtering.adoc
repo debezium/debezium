@@ -11,28 +11,29 @@ toc::[]
 
 By default, {prodname} delivers every data change event that it receives to the Kafka broker.
 However, in many cases, you might be interested in only a subset of the events emitted by the producer. 
-To enable you to process only the records that are relevant to you, {prodname} provides the `Filter` simple message transform (SMT).
+To enable you to process only the records that are relevant to you, {prodname} provides the _filter_ simple message transform (SMT).
 
 Configure this transformation in the {prodname} connector's Kafka Connect configuration.
-By configuring the `Filter` SMT, you can specify the events that you are interested in by defining filter conditions based on business rules.
-As the `Filter` SMT processes the event stream, it evaluates each event against the configured filter conditions.
+By configuring the filter SMT, you can specify the events that you are interested in by defining filter conditions based on business rules.
+As the filter SMT processes the event stream, it evaluates each event against the configured filter conditions.
 Only events that meet the criteria of the filter conditions are passed to the broker.
 
-Although Kafka Connect provides its own link:https://cwiki.apache.org/confluence/display/KAFKA/KIP-66%3A+Single+Message+Transforms+for+Kafka+Connect[Simple Message Transforms] (SMT) to encode filtering logic,
-it has the following drawbacks:
+The filter SMT supports scripting languages that integrate with https://jcp.org/en/jsr/detail?id=223[JSR 223] (Scripting for the Java(TM) Platform).
 
-* It is necessary to compile the transformation upfront and deploy it to Kafka Connect.
+Kafka Connect provides its own link:https://cwiki.apache.org/confluence/display/KAFKA/KIP-66%3A+Single+Message+Transforms+for+Kafka+Connect[Simple Message Transforms] (SMT) to encode filtering logic.
+However, the following drawbacks apply to using the generic SMT:
+
+* It is necessary to compile the transformation up front and deploy it to Kafka Connect.
 * Every change needs code recompilation and redeployment, leading to inflexible operations.
 
-The `Filter` SMT supports scripting languages that integrate with https://jcp.org/en/jsr/detail?id=223[JSR 223] (Scripting for the Java(TM) Platform).
 
 // Type: concept
 // ModuleID: example-of-configuring-filter-conditions
 // Title: Example of configuring filter conditions 
 == Example
 
-To filter change event records, configure the `Filter` transformation in the Kafka Connect configuration for the {prodname} connector.
-Configuration of the `Filter` SMT requires you to specify a regular expression that defines the filtering criteria. 
+To filter change event records, configure the filter transformation in the Kafka Connect configuration for the {prodname} connector.
+Configuration of the filter SMT requires you to specify a regular expression that defines the filtering criteria. 
 
 For example, you might add the following configuration in a `.properties` file:name: value
 
@@ -51,22 +52,38 @@ The regular expression `value.op == 'u' && value.before.id == 2` filters out all
 
 [IMPORTANT]
 ====
-{prodname} does not come with the language implementations in its installation packages.
-It is the user's responsibility to provide an implementation, such as link:https://groovy-lang.org/[Groovy 3] or link:https://github.com/graalvm/graaljs[GraalVM JavaScript], on the classpath.
-Bootstrapping is done exclusively via the JSR 223 API currently, so the engine's support for this API must be provided as well.
+Although the {prodname} package includes the JSR 223 API, which provides support for scripting languages that integrate with JSR 223, by default {prodname} cannot interpret scripts from these languages.
+To use an expression language, you must download the JSR-223 script engine JAR for the language, and add the JAR to your classpath, along any other JAR files used by the language implementation.
+For Groovy 3, you can download the JAR from https://groovy-lang.org/. For GraalVM JavaScript, the JAR is available at https://github.com/graalvm/graaljs.   
+
+Typically, you add the language JAR to the directory that contains the {prodname} connector JAR files, which is the directory that is referenced in the `plugin.path` configuration property that is set for the Kafka Connect plugin. 
+If you install the script engine JAR to a different directory, you must add that directory to the list in the `plugin.path` property. 
+
 ====
 
-{prodname} binds four variables into the evaluation context:
+// Type: concept
+// ModuleID: variables-for-use-in-filter-expressions
+== Variables for use in filter expressions
 
-* `key` - a key of the message
-* `value` - a value of the message
-* `keySchema` - the schema of the message key
-* `valueSchema` - the schema of the message value
-* `topic` - the name of the target topic
-* `headers` - the map of message headers keyed with header name and value composed of `schema` and `value` variables
+When you create expressions to specify filter conditions, you can use the variables that {prodname} binds into the evaluation context.
+The SMT looks up and interprets these variables when it evaluates an expression. 
 
-The `key` and `value` are of type `org.apache.kafka.connect.data.Struct` and `keySchema` and `valueSchema` are variables of type `org.apache.kafka.connect.data.Schema`.
-The expression can invoke arbitrary methods on the variables and should evaluate into a Boolean value that decides whether the message is removed `true` or kept.
+The following table lists the variables that {prodname} binds into the evaluation context for the filter SMT:
+
+.Filter expression variables
+[options="header"]
+|=======================
+|Name |Description |Type
+|`key`   |A key of the message. |`org.apache.kafka.connect.data.Struct`
+|`value` |A value of the message. |`org.apache.kafka.connect.data.Struct`
+|`keySchema` |Schema of the message key.|`org.apache.kafka.connect.data.Schema`
+|`valueSchema`|Schema of the message value.| `org.apache.kafka.connect.data.Schema`
+|`topic`|Name of the target topic.| N/A
+|`headers`|The map of message headers keyed with header name and value composed of `schema` and `value` variables| N/A
+|=======================
+
+An expression can invoke arbitrary methods on its variables. 
+The expression should resolve to a Boolean value that determines whether the message is removed (`true`) or kept.
 Expressions should not result in any side-effects. That is, they should not modify any variables that they pass.
 
 // Type: reference
@@ -74,7 +91,7 @@ Expressions should not result in any side-effects. That is, they should not modi
 // Title: Filter condition configuration for other scripting languages 
 == Language specifics
 
-The way that you specify filtering conditions depends on the scripting language that you use.
+The way that you express filtering conditions depends on the scripting language that you use.
 
 For example, as shown in {link-prefix}:{link-filtering}#example-of-configuring-filter-conditions[], when you use `Groovy` as the expression language, 
 to remove update records for which the `id` value is set to `2`, you would use the following expression:
@@ -87,7 +104,7 @@ value.op == 'u' && value.before.id == 2
 [TIP]
 ====
 The {prodname} MongoDB connector emits the `after` and `patch` fields not as structures but as serialized JSON documents.
-When you use the `Filter` SMT with the MongoDB connector, you should first unwind the field by applying the {link-prefix}:{link-mongodb-event-flattening}[`ExtractNewDocumentState`] SMT.
+When you use the filter SMT with the MongoDB connector, you should first unwind the field by applying the {link-prefix}:{link-mongodb-event-flattening}[`ExtractNewDocumentState`] SMT.
 
 As an alternative, you can use a JSON parser in the expression.
 To use a JSON parser when Groovy is the expression language, add the `groovy-json` artifact to the classpath, and add an expression such as `(new groovy.json.JsonSlurper()).parseText(value.after).last_name == 'Kretchmar'`.
@@ -112,13 +129,13 @@ value.op == 'u' && value.before.id == 2
 
 // Type: reference
 // ModuleID: options-for-configuring-filter-transformation
-// Title: Options for configuring `Filter` transformation
+// Title: Options for configuring filter transformation
 [[filter-configuration-options]]
 == Configuration options
 
-The following table lists the configuration options for the `Filter` SMT.
+The following table lists the configuration options for the filter SMT.
 
-.'Filter' configuration options
+.filter SMT configuration options
 [cols="30%a,25%a,45%a"]
 |===
 |Property
@@ -127,9 +144,9 @@ The following table lists the configuration options for the `Filter` SMT.
 
 |[[filter-topic-regex]]<<filter-topic-regex, `topic.regex`>>
 |
-|An optional regular expression that determines whether the filter logic is applied to an event based on name of the Kafka topic where the event is routed. 
-If the destination topic matches the value in `topic.regex`, the transformation applies the filter logic before it passes the event to the topic.
-If the destination topic does not match the value in `topic.regex`, the SMT passes the event to the topic unmodified.
+|An optional regular expression that evaluates the name of the destination topic for an event to determine whether to apply filtering logic. 
+If the name of the destination topic matches the value in `topic.regex`, the transformation applies the filter logic before it passes the event to the topic.
+If the name of the topic does not match the value in `topic.regex`, the SMT passes the event to the topic unmodified.
 
 |[[filter-language]]<<filter-language, `language`>>
 |
