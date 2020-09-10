@@ -12,10 +12,10 @@ import java.util.List;
  * This field filter selector is designed to determine the filter for excluding fields from a table.
  */
 public class FieldFilterSelector {
-    private final String[] fieldExcludeList;
+    private final List<String> fieldExcludeList;
 
-    FieldFilterSelector(String[] fieldExcludeList) {
-        this.fieldExcludeList = fieldExcludeList.clone();
+    FieldFilterSelector(List<String> fieldExcludeList) {
+        this.fieldExcludeList = fieldExcludeList;
     }
 
     public interface FieldFilter {

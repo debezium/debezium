@@ -138,13 +138,13 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             PDB_NAME,
             XSTREAM_SERVER_NAME,
             SNAPSHOT_MODE,
-            OracleConnectorConfig.DATABASE_HISTORY,
-            OracleConnectorConfig.TABLE_WHITELIST,
-            OracleConnectorConfig.TABLE_INCLUDE_LIST,
-            OracleConnectorConfig.TABLE_BLACKLIST,
-            OracleConnectorConfig.TABLE_EXCLUDE_LIST,
-            OracleConnectorConfig.TABLE_IGNORE_BUILTIN,
-            OracleConnectorConfig.MSG_KEY_COLUMNS,
+            HistorizedRelationalDatabaseConnectorConfig.DATABASE_HISTORY,
+            RelationalDatabaseConnectorConfig.TABLE_WHITELIST,
+            RelationalDatabaseConnectorConfig.TABLE_INCLUDE_LIST,
+            RelationalDatabaseConnectorConfig.TABLE_BLACKLIST,
+            RelationalDatabaseConnectorConfig.TABLE_EXCLUDE_LIST,
+            RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN,
+            RelationalDatabaseConnectorConfig.MSG_KEY_COLUMNS,
             CommonConnectorConfig.POLL_INTERVAL_MS,
             CommonConnectorConfig.MAX_BATCH_SIZE,
             CommonConnectorConfig.MAX_QUEUE_SIZE,
@@ -182,13 +182,13 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                 XSTREAM_SERVER_NAME, SNAPSHOT_MODE);
         Field.group(config, "History Storage", KafkaDatabaseHistory.BOOTSTRAP_SERVERS,
                 KafkaDatabaseHistory.TOPIC, KafkaDatabaseHistory.RECOVERY_POLL_ATTEMPTS,
-                KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS, OracleConnectorConfig.DATABASE_HISTORY);
-        Field.group(config, "Events", OracleConnectorConfig.TABLE_WHITELIST,
-                OracleConnectorConfig.TABLE_INCLUDE_LIST,
-                OracleConnectorConfig.TABLE_BLACKLIST,
-                OracleConnectorConfig.TABLE_EXCLUDE_LIST,
-                OracleConnectorConfig.MSG_KEY_COLUMNS,
-                OracleConnectorConfig.TABLE_IGNORE_BUILTIN,
+                KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS, HistorizedRelationalDatabaseConnectorConfig.DATABASE_HISTORY);
+        Field.group(config, "Events", RelationalDatabaseConnectorConfig.TABLE_WHITELIST,
+                RelationalDatabaseConnectorConfig.TABLE_INCLUDE_LIST,
+                RelationalDatabaseConnectorConfig.TABLE_BLACKLIST,
+                RelationalDatabaseConnectorConfig.TABLE_EXCLUDE_LIST,
+                RelationalDatabaseConnectorConfig.MSG_KEY_COLUMNS,
+                RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN,
                 CommonConnectorConfig.PROVIDE_TRANSACTION_METADATA,
                 Heartbeat.HEARTBEAT_INTERVAL, Heartbeat.HEARTBEAT_TOPICS_PREFIX,
                 CommonConnectorConfig.EVENT_PROCESSING_FAILURE_HANDLING_MODE);
@@ -305,7 +305,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         /**
          * Perform a snapshot of the schema but no data upon initial startup of a connector.
          *
-         * @deprecated to be removed in 1.1; use {@link #INITIAL_SCHEMA} instead.
+         * @deprecated to be removed in 1.1; use {@link #SCHEMA_ONLY} instead.
          */
         @Deprecated
         INITIAL_SCHEMA_ONLY("initial_schema_only", false),

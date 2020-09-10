@@ -145,7 +145,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         connection.execute("COMMIT");
 
         Configuration config = TestHelper.defaultConfig()
-                .with(RelationalDatabaseConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.MY-TABLE")
+                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.MY-TABLE")
                 .build();
 
         start(OracleConnector.class, config);

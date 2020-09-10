@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.cassandra;
 
+import java.util.List;
+
 /**
  * A utility class that contains various kinds of filters.
  * Currently only field-level filter is implemented (i.e. `field.exclude.list`).
@@ -13,7 +15,7 @@ package io.debezium.connector.cassandra;
 public class Filters {
     private final FieldFilterSelector fieldFilterSelector;
 
-    public Filters(String[] fieldExcludeList) {
+    public Filters(List<String> fieldExcludeList) {
         fieldFilterSelector = new FieldFilterSelector(fieldExcludeList);
     }
 

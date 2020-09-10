@@ -279,17 +279,17 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
             SERVER_NAME,
             DATABASE_NAME,
             SNAPSHOT_MODE,
-            Db2ConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE,
-            Db2ConnectorConfig.DATABASE_HISTORY,
-            Db2ConnectorConfig.TABLE_WHITELIST,
-            Db2ConnectorConfig.TABLE_INCLUDE_LIST,
-            Db2ConnectorConfig.TABLE_BLACKLIST,
-            Db2ConnectorConfig.TABLE_EXCLUDE_LIST,
-            Db2ConnectorConfig.TABLE_IGNORE_BUILTIN,
-            Db2ConnectorConfig.COLUMN_BLACKLIST,
-            Db2ConnectorConfig.COLUMN_EXCLUDE_LIST,
-            Db2ConnectorConfig.DECIMAL_HANDLING_MODE,
-            Db2ConnectorConfig.TIME_PRECISION_MODE,
+            RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE,
+            HistorizedRelationalDatabaseConnectorConfig.DATABASE_HISTORY,
+            RelationalDatabaseConnectorConfig.TABLE_WHITELIST,
+            RelationalDatabaseConnectorConfig.TABLE_INCLUDE_LIST,
+            RelationalDatabaseConnectorConfig.TABLE_BLACKLIST,
+            RelationalDatabaseConnectorConfig.TABLE_EXCLUDE_LIST,
+            RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN,
+            RelationalDatabaseConnectorConfig.COLUMN_BLACKLIST,
+            RelationalDatabaseConnectorConfig.COLUMN_EXCLUDE_LIST,
+            RelationalDatabaseConnectorConfig.DECIMAL_HANDLING_MODE,
+            RelationalDatabaseConnectorConfig.TIME_PRECISION_MODE,
             CommonConnectorConfig.POLL_INTERVAL_MS,
             CommonConnectorConfig.MAX_BATCH_SIZE,
             CommonConnectorConfig.MAX_QUEUE_SIZE,
@@ -305,21 +305,21 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
         Field.group(config, "DB2 Server", HOSTNAME, PORT, USER, PASSWORD, SERVER_NAME, DATABASE_NAME, SNAPSHOT_MODE);
         Field.group(config, "History Storage", KafkaDatabaseHistory.BOOTSTRAP_SERVERS,
                 KafkaDatabaseHistory.TOPIC, KafkaDatabaseHistory.RECOVERY_POLL_ATTEMPTS,
-                KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS, Db2ConnectorConfig.DATABASE_HISTORY);
-        Field.group(config, "Events", Db2ConnectorConfig.TABLE_WHITELIST,
-                Db2ConnectorConfig.TABLE_INCLUDE_LIST,
-                Db2ConnectorConfig.TABLE_BLACKLIST,
-                Db2ConnectorConfig.TABLE_EXCLUDE_LIST,
-                Db2ConnectorConfig.COLUMN_BLACKLIST,
-                Db2ConnectorConfig.COLUMN_EXCLUDE_LIST,
-                Db2ConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE,
-                Db2ConnectorConfig.TABLE_IGNORE_BUILTIN,
+                KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS, HistorizedRelationalDatabaseConnectorConfig.DATABASE_HISTORY);
+        Field.group(config, "Events", RelationalDatabaseConnectorConfig.TABLE_WHITELIST,
+                RelationalDatabaseConnectorConfig.TABLE_INCLUDE_LIST,
+                RelationalDatabaseConnectorConfig.TABLE_BLACKLIST,
+                RelationalDatabaseConnectorConfig.TABLE_EXCLUDE_LIST,
+                RelationalDatabaseConnectorConfig.COLUMN_BLACKLIST,
+                RelationalDatabaseConnectorConfig.COLUMN_EXCLUDE_LIST,
+                RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE,
+                RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN,
                 Heartbeat.HEARTBEAT_INTERVAL, Heartbeat.HEARTBEAT_TOPICS_PREFIX,
                 CommonConnectorConfig.SOURCE_STRUCT_MAKER_VERSION,
                 CommonConnectorConfig.EVENT_PROCESSING_FAILURE_HANDLING_MODE);
         Field.group(config, "Connector", CommonConnectorConfig.POLL_INTERVAL_MS, CommonConnectorConfig.MAX_BATCH_SIZE,
                 CommonConnectorConfig.MAX_QUEUE_SIZE, CommonConnectorConfig.SNAPSHOT_DELAY_MS, CommonConnectorConfig.SNAPSHOT_FETCH_SIZE,
-                Db2ConnectorConfig.DECIMAL_HANDLING_MODE, Db2ConnectorConfig.TIME_PRECISION_MODE);
+                RelationalDatabaseConnectorConfig.DECIMAL_HANDLING_MODE, RelationalDatabaseConnectorConfig.TIME_PRECISION_MODE);
 
         return config;
     }
@@ -336,7 +336,7 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE), SNAPSHOT_MODE.defaultValueAsString());
         this.snapshotIsolationMode = SnapshotIsolationMode.parse(config.getString(SNAPSHOT_ISOLATION_MODE), SNAPSHOT_ISOLATION_MODE.defaultValueAsString());
         this.columnFilter = getColumnNameFilter(
-                config.getFallbackStringProperty(Db2ConnectorConfig.COLUMN_EXCLUDE_LIST, Db2ConnectorConfig.COLUMN_BLACKLIST));
+                config.getFallbackStringProperty(RelationalDatabaseConnectorConfig.COLUMN_EXCLUDE_LIST, RelationalDatabaseConnectorConfig.COLUMN_BLACKLIST));
     }
 
     private static ColumnNameFilter getColumnNameFilter(String excludedColumnPatterns) {

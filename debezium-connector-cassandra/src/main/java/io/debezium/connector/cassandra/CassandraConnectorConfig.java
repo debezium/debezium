@@ -7,6 +7,8 @@ package io.debezium.connector.cassandra;
 
 import java.time.Duration;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
@@ -249,7 +251,7 @@ public class CassandraConnectorConfig extends CommonConnectorConfig {
             .withWidth(Width.LONG)
             .withImportance(Importance.MEDIUM)
             .withInvisibleRecommender()
-            .withDescription("Regular expressions matching columns to include in change events");
+            .withDescription("Regular expressions matching fields to include in change events");
 
     /**
      * Old, backwards-compatible "blacklist" property.
@@ -261,7 +263,7 @@ public class CassandraConnectorConfig extends CommonConnectorConfig {
             .withWidth(Width.LONG)
             .withImportance(Importance.LOW)
             .withInvisibleRecommender()
-            .withDescription("Regular expressions matching columns to include in change events (deprecated, use \"" + FIELD_EXCLUDE_LIST.name() + "\" instead)");
+            .withDescription("Regular expressions matching fields to include in change events (deprecated, use \"" + FIELD_EXCLUDE_LIST.name() + "\" instead)");
 
     /**
      * Instead of parsing commit logs from CDC directory, this will look for the commit log with the
@@ -433,12 +435,12 @@ public class CassandraConnectorConfig extends CommonConnectorConfig {
         return Duration.ofMillis(ms);
     }
 
-    public String[] fieldExcludeList() {
+    public List<String> fieldExcludeList() {
         String fieldExcludeList = this.getConfig().getFallbackStringProperty(FIELD_EXCLUDE_LIST, FIELD_BLACKLIST);
         if (fieldExcludeList == null) {
-            return new String[0];
+            return Collections.emptyList();
         }
-        return fieldExcludeList.split(",");
+        return Arrays.asList(fieldExcludeList.split(","));
     }
 
     /**

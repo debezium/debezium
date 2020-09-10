@@ -10,7 +10,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Properties;
 
 import org.junit.Test;
@@ -110,11 +112,12 @@ public class CassandraConnectorConfigTest {
         assertEquals(snapshotPollIntervalMs, config.snapshotPollIntervalMs().toMillis());
 
         String fieldExcludeList = "keyspace1.table1.column1,keyspace1.table1.column2";
+        List<String> fieldExcludeListExpected = Arrays.asList(fieldExcludeList.split(","));
         config = buildTaskConfig(CassandraConnectorConfig.FIELD_EXCLUDE_LIST.name(), fieldExcludeList);
-        assertArrayEquals(fieldExcludeList.split(","), config.fieldExcludeList());
+        assertEquals(fieldExcludeListExpected, config.fieldExcludeList());
 
         config = buildTaskConfig(CassandraConnectorConfig.FIELD_BLACKLIST.name(), fieldExcludeList);
-        assertArrayEquals(fieldExcludeList.split(","), config.fieldExcludeList());
+        assertEquals(fieldExcludeListExpected, config.fieldExcludeList());
 
         config = buildTaskConfig(CassandraConnectorConfig.TOMBSTONES_ON_DELETE.name(), "true");
         assertTrue(config.tombstonesOnDelete());
