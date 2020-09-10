@@ -230,7 +230,7 @@ For id = 1001 and registration_date = 1562202942545, the key payload in JSON rep
 
 [NOTE]
 ====
-Although the `column.blacklist` configuration property allows you to remove columns from the event values, all columns in a primary key are always included in the event's key.
+Although the `column.exclude.list` configuration property allows you to remove columns from the event values, all columns in a primary key are always included in the event's key.
 ====
 
 
@@ -998,7 +998,8 @@ refreshing the cached Cassandra table schemas.
 |`false`
 |Whether deletion events should have a subsequent tombstone event (true) or not (false). It's important to note that in Cassandra, two events with the same key may be updating different columns of a given table. So this could potentially result in records being lost during compaction if they have not been consumed by the consumer yet. In other words, do NOT set this to true if you have Kafka compaction turned on.
 
-|[[cassandra-property-field-blacklist]]<<cassandra-property-field-blacklist, `field.blacklist`>>
+|[[cassandra-property-field-blacklist]]
+[[cassandra-property-field-exclude-list]]<<cassandra-property-field-exclude-list, `field.exclude.list`>>
 |
 |A comma-separated list of fully-qualified names of fields that should be excluded from change event message values. Fully-qualified names for fields are in the form keyspace_name>.<field_name>.<nested_field_name>.
 

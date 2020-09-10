@@ -464,7 +464,7 @@ Therefore, you can interpret this key as describing the row in the `inventory.cu
 ////
 [NOTE]
 ====
-Although the `column.blacklist` configuration property allows you to remove columns from the event values, all columns in a primary or unique key are always included in the event's key.
+Although the `column.exclude.list` configuration property allows you to remove columns from the event values, all columns in a primary or unique key are always included in the event's key.
 ====
 
 [WARNING]
@@ -1149,13 +1149,15 @@ Only alphanumeric characters and underscores should be used.
 |_initial_
 |A mode for taking an initial snapshot of the structure and optionally data of captured tables. Supported values are _initial_ (will take a snapshot of structure and data of captured tables; useful if topics should be populated with a complete representation of the data from the captured tables) and _schema_only_ (will take a snapshot of the structure of captured tables only; useful if only changes happening from now onwards should be propagated to topics). Once the snapshot is complete, the connector will continue reading change events from the database's redo logs.
 
-|[[oracle-property-table-whitelist]]<<oracle-property-table-whitelist, `table.whitelist`>>
+|[[oracle-property-table-whitelist]]
+[[oracle-property-table-include-list]]<<oracle-property-table-include-list, `table.include.list`>>
 |_empty string_
-|An optional comma-separated list of regular expressions that match fully-qualified table identifiers for tables to be monitored; any table not included in the whitelist will be excluded from monitoring. Each identifier is of the form _schemaName_._tableName_. By default the connector will monitor every non-system table in each monitored database. May not be used with `table.blacklist`.
+|An optional comma-separated list of regular expressions that match fully-qualified table identifiers for tables to be monitored; any table not included in the include list will be excluded from monitoring. Each identifier is of the form _schemaName_._tableName_. By default the connector will monitor every non-system table in each monitored database. May not be used with `table.exclude.list`.
 
-|[[oracle-property-table-blacklist]]<<oracle-property-table-blacklist, `table.blacklist`>>
+|[[oracle-property-table-blacklist]]
+[[oracle-property-table-exclude-list]]<<oracle-property-table-exclude-list, `table.exclude.list`>>
 |_empty string_
-|An optional comma-separated list of regular expressions that match fully-qualified table identifiers for tables to be excluded from monitoring; any table not included in the blacklist will be monitored. Each identifier is of the form _schemaName_._tableName_. May not be used with `table.whitelist`.
+|An optional comma-separated list of regular expressions that match fully-qualified table identifiers for tables to be excluded from monitoring; any table not included in the exclude list will be monitored. Each identifier is of the form _schemaName_._tableName_. May not be used with `table.include.list`.
 
 |[[oracle-property-column-mask-hash]]<<oracle-property-column-mask-hash, `column.mask.hash._hashAlgorithm_.with.salt._salt_`>>
 |_n/a_
