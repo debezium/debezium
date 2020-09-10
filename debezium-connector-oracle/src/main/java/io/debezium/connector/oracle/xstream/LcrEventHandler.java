@@ -29,7 +29,7 @@ import oracle.streams.XStreamLCRCallbackHandler;
  */
 class LcrEventHandler implements XStreamLCRCallbackHandler {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(XstreamStreamingChangeEventSource.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(LcrEventHandler.class);
 
     private final ErrorHandler errorHandler;
     private final EventDispatcher<TableId> dispatcher;

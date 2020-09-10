@@ -5,10 +5,13 @@
  */
 package io.debezium.connector.oracle;
 
+import static io.debezium.connector.oracle.OracleConnectorConfig.CONNECTOR_ADAPTER;
+
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 
+import io.debezium.connector.oracle.OracleConnectorConfig.ConnectorAdapter;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection.ConnectionFactory;
 
@@ -22,9 +25,12 @@ public class OracleConnectionFactory implements ConnectionFactory {
         String user = config.getUser();
         String password = config.getPassword();
 
-        String driverType = config.getString(OracleConnectorConfig.DRIVER_TYPE);
-        final String url = "jdbc:oracle:" + driverType + ":@" + hostName + ":" + port + "/" + database;
+        final String url = "jdbc:oracle:" + getDriverType(config) + ":@" + hostName + ":" + port + "/" + database;
 
         return DriverManager.getConnection(url, user, password);
+    }
+
+    private static String getDriverType(JdbcConfiguration config) {
+        return ConnectorAdapter.parse(config.getString(CONNECTOR_ADAPTER)).getDriverType();
     }
 }

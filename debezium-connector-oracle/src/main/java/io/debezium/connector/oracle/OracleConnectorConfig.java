@@ -20,7 +20,6 @@ import io.debezium.config.Field.ValidationOutput;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.connector.oracle.xstream.LcrPosition;
-import io.debezium.connector.oracle.xstream.OracleVersion;
 import io.debezium.document.Document;
 import io.debezium.function.Predicates;
 import io.debezium.heartbeat.Heartbeat;
@@ -170,14 +169,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withImportance(Importance.HIGH)
             .withDescription("A token to replace on snapshot predicate template");
 
-    public static final Field DRIVER_TYPE = Field.create("database.driver.type")
-            .withDisplayName("oci for xStream or thin for LogMiner")
-            .withType(Type.STRING)
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.HIGH)
-            .withDefault("oci")
-            .withDescription("A token to use in connection factories");
-
     /**
      * The set of {@link Field}s defined as part of this configuration.
      */
@@ -212,7 +203,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             CONNECTOR_ADAPTER,
             LOG_MINING_STRATEGY,
             SNAPSHOT_ENHANCEMENT_TOKEN,
-            DRIVER_TYPE,
             CommonConnectorConfig.EVENT_PROCESSING_FAILURE_HANDLING_MODE);
 
     private final String databaseName;
@@ -228,20 +218,19 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     public OracleConnectorConfig(Configuration config) {
         super(OracleConnector.class, config, config.getString(SERVER_NAME), new SystemTablesPredicate(), x -> x.schema() + "." + x.table(), true);
 
-        this.databaseName = setUpperCase(config.getString(DATABASE_NAME));
-        this.pdbName = setUpperCase(config.getString(PDB_NAME));
+        this.databaseName = toUpperCase(config.getString(DATABASE_NAME));
+        this.pdbName = toUpperCase(config.getString(PDB_NAME));
         this.xoutServerName = config.getString(XSTREAM_SERVER_NAME);
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE));
         this.tablenameCaseInsensitive = config.getBoolean(TABLENAME_CASE_INSENSITIVE);
         this.oracleVersion = OracleVersion.parse(config.getString(ORACLE_VERSION));
-        this.schemaName = setUpperCase(config.getString(SCHEMA_NAME));
-        String blacklistedColumns = setUpperCase(config.getString(RelationalDatabaseConnectorConfig.COLUMN_BLACKLIST));
+        this.schemaName = toUpperCase(config.getString(SCHEMA_NAME));
+        String blacklistedColumns = toUpperCase(config.getString(RelationalDatabaseConnectorConfig.COLUMN_BLACKLIST));
         this.columnFilter = getColumnNameFilter(blacklistedColumns);
     }
 
-    private String setUpperCase(String property) {
-        property = property == null ? null : property.toUpperCase();
-        return property;
+    private static String toUpperCase(String property) {
+        return property == null ? null : property.toUpperCase();
     }
 
     protected Tables.ColumnNameFilter getColumnNameFilter(String excludedColumnPatterns) {
@@ -277,7 +266,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                 CommonConnectorConfig.EVENT_PROCESSING_FAILURE_HANDLING_MODE);
         Field.group(config, "Connector", CommonConnectorConfig.POLL_INTERVAL_MS, CommonConnectorConfig.MAX_BATCH_SIZE,
                 CommonConnectorConfig.MAX_QUEUE_SIZE, CommonConnectorConfig.SNAPSHOT_DELAY_MS, CommonConnectorConfig.SNAPSHOT_FETCH_SIZE,
-                SNAPSHOT_ENHANCEMENT_TOKEN, DRIVER_TYPE);
+                SNAPSHOT_ENHANCEMENT_TOKEN);
 
         return config;
     }
@@ -481,12 +470,24 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         /**
          * This is based on XStream API.
          */
-        XSTREAM("XStream"),
+        XSTREAM("XStream") {
+            @Override
+            public String getDriverType() {
+                return "oci";
+            }
+        },
 
         /**
          * This is based on LogMiner utility.
          */
-        LOG_MINER("LogMiner");
+        LOG_MINER("LogMiner") {
+            @Override
+            public String getDriverType() {
+                return "thin";
+            }
+        };
+
+        public abstract String getDriverType();
 
         private final String value;
 
