@@ -124,7 +124,7 @@ For example, if you use Groovy as the expression language, add the `groovy-json`
 ====
 
 .Javascript
-When you use JavaScript as the expression language, you can call the `Struct#get()` method to specify the filtering condition, as in the following example:
+If you use JavaScript as the expression language, you can call the `Struct#get()` method to specify the filtering condition, as in the following example:
 
 [source,javascript]
 ----
@@ -132,7 +132,7 @@ value.get('op') == 'u' && value.get('before').get('id') == 2
 ----
 
 .Javascript with Graal.js
-When you create filtering conditions by using JavaScript with Graal.js, you use an approach that is similar to the one that you use with Groovy.
+If you use JavaScript with Graal.js to define filtering conditions, you use an approach that is similar to the one that you use with Groovy.
 For example:
 
 [source,javascript]
