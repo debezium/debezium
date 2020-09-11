@@ -122,7 +122,7 @@ public class SqlServerChangeTablePointer extends ChangeTableResultSet<SqlServerC
         else {
             final IndicesMapping indicesMapping = new IndicesMapping(sourceTableColumns, resultColumns);
             return resultSet -> {
-                final Object[] data = new Object[resultColumnCount];
+                final Object[] data = new Object[sourceColumnCount];
                 for (int i = 0; i < resultColumnCount; i++) {
                     int index = indicesMapping.getSourceTableColumnIndex(i);
                     data[index] = getColumnData(resultSet, columnDataOffset + i);
