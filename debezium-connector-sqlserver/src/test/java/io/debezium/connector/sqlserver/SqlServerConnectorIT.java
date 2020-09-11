@@ -1290,6 +1290,85 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         stopConnector();
     }
 
+    @Test
+    @FixFor("DBZ-2522")
+    public void excludeColumnWhenCaptureInstanceExcludesColumnInMiddleOfTable() throws Exception {
+        connection.execute(
+                "CREATE TABLE blacklist_column_table_a (id int, amount integer, name varchar(30), primary key(id))");
+        TestHelper.enableTableCdc(connection, "blacklist_column_table_a", "dbo_blacklist_column_table_a",
+                Arrays.asList("id", "name"));
+
+        final Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                .with(SqlServerConnectorConfig.COLUMN_EXCLUDE_LIST, "dbo.blacklist_column_table_a.amount")
+                .build();
+
+        start(SqlServerConnector.class, config);
+        assertConnectorIsRunning();
+
+        connection.execute("INSERT INTO blacklist_column_table_a VALUES(10, 120, 'some_name')");
+
+        final SourceRecords records = consumeRecordsByTopic(1);
+        final List<SourceRecord> tableA = records.recordsForTopic("server1.dbo.blacklist_column_table_a");
+
+        Schema expectedSchemaA = SchemaBuilder.struct()
+                .optional()
+                .name("server1.dbo.blacklist_column_table_a.Value")
+                .field("id", Schema.INT32_SCHEMA)
+                .field("name", Schema.OPTIONAL_STRING_SCHEMA)
+                .build();
+        Struct expectedValueA = new Struct(expectedSchemaA)
+                .put("id", 10)
+                .put("name", "some_name");
+
+        Assertions.assertThat(tableA).hasSize(1);
+        SourceRecordAssert.assertThat(tableA.get(0))
+                .valueAfterFieldIsEqualTo(expectedValueA)
+                .valueAfterFieldSchemaIsEqualTo(expectedSchemaA);
+
+        stopConnector();
+    }
+
+    @Test
+    @FixFor("DBZ-2522")
+    public void excludeMultipleColumnsWhenCaptureInstanceExcludesSingleColumn() throws Exception {
+        connection.execute(
+                "CREATE TABLE blacklist_column_table_a (id int, amount integer, note varchar(30), name varchar(30), primary key(id))");
+        TestHelper.enableTableCdc(connection, "blacklist_column_table_a", "dbo_blacklist_column_table_a",
+                Arrays.asList("id", "note", "name"));
+
+        // Exclude the note column on top of the already excluded amount column
+        final Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                .with(SqlServerConnectorConfig.COLUMN_BLACKLIST, "dbo.blacklist_column_table_a.amount,dbo.blacklist_column_table_a.note")
+                .build();
+
+        start(SqlServerConnector.class, config);
+        assertConnectorIsRunning();
+
+        connection.execute("INSERT INTO blacklist_column_table_a VALUES(10, 120, 'a note', 'some_name')");
+
+        final SourceRecords records = consumeRecordsByTopic(1);
+        final List<SourceRecord> tableA = records.recordsForTopic("server1.dbo.blacklist_column_table_a");
+
+        Schema expectedSchemaA = SchemaBuilder.struct()
+                .optional()
+                .name("server1.dbo.blacklist_column_table_a.Value")
+                .field("id", Schema.INT32_SCHEMA)
+                .field("name", Schema.OPTIONAL_STRING_SCHEMA)
+                .build();
+        Struct expectedValueA = new Struct(expectedSchemaA)
+                .put("id", 10)
+                .put("name", "some_name");
+
+        Assertions.assertThat(tableA).hasSize(1);
+        SourceRecordAssert.assertThat(tableA.get(0))
+                .valueAfterFieldIsEqualTo(expectedValueA)
+                .valueAfterFieldSchemaIsEqualTo(expectedSchemaA);
+
+        stopConnector();
+    }
+
     /**
      * Passing the "applicationName" property which can be asserted from the connected sessions".
      */
