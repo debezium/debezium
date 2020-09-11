@@ -9,21 +9,30 @@ package io.debezium.connector.postgresql;
 import static org.fest.assertions.Assertions.assertThat;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.file.Path;
 import java.sql.SQLException;
+import java.util.Collection;
+import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.connect.runtime.standalone.StandaloneConfig;
+import org.apache.kafka.connect.storage.FileOffsetBackingStore;
+import org.apache.kafka.connect.util.Callback;
 import org.fest.assertions.Assertions;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.debezium.doc.FixFor;
 import io.debezium.document.Document;
@@ -47,6 +56,8 @@ import io.debezium.util.Testing;
  * @author Jiri Pechanec
  */
 public class DebeziumEngineIT {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(DebeziumEngineIT.class);
 
     protected static final Path OFFSET_STORE_PATH = Testing.Files.createTestingPath("connector-offsets.txt").toAbsolutePath();
 
@@ -198,6 +209,25 @@ public class DebeziumEngineIT {
         }
     }
 
+    private static final AtomicInteger offsetStoreSetCalls = new AtomicInteger();
+
+    public static class TestOffsetStore extends FileOffsetBackingStore {
+
+        @Override
+        public Future<Map<ByteBuffer, ByteBuffer>> get(Collection<ByteBuffer> keys) {
+            LOGGER.info("Get offsets called");
+            return super.get(keys);
+        }
+
+        @Override
+        public Future<Void> set(Map<ByteBuffer, ByteBuffer> values, Callback<Void> callback) {
+            LOGGER.info("Set offsets called");
+            offsetStoreSetCalls.incrementAndGet();
+            return super.set(values, callback);
+        }
+
+    }
+
     @Test
     @FixFor("DBZ-2461")
     public void testOffsetsCommitAfterStop() throws Exception {
@@ -214,6 +244,8 @@ public class DebeziumEngineIT {
                 OFFSET_STORE_PATH.toAbsolutePath().toString());
         props.setProperty("offset.flush.interval.ms", "3000");
         props.setProperty("converter.schemas.enable", "false");
+        props.setProperty("offset.storage",
+                TestOffsetStore.class.getName());
 
         engine = DebeziumEngine.create(Json.class).using(props).using(new DebeziumEngine.ConnectorCallback() {
             @Override
@@ -241,18 +273,24 @@ public class DebeziumEngineIT {
         ExecutorService executor = Executors.newSingleThreadExecutor();
         executor.execute(engine);
 
-        for (int i = 0; i < 100; i++) {
+        while (offsetStoreSetCalls.get() < 1) {
             TestHelper.execute("INSERT INTO tests VALUES(default)");
         }
-        Thread.sleep(5000);
         engine.close();
+
+        Assertions.assertThat(offsetStoreSetCalls.get()).isGreaterThanOrEqualTo(1);
+        offsetStoreSetCalls.set(0);
 
         for (int i = 0; i < 100; i++) {
             TestHelper.execute("INSERT INTO tests VALUES(default)");
         }
         executor.execute(engine);
+        while (offsetStoreSetCalls.get() < 1) {
+            TestHelper.execute("INSERT INTO tests VALUES(default)");
+        }
         engine.close();
 
+        Assertions.assertThat(offsetStoreSetCalls.get()).isGreaterThanOrEqualTo(1);
         Assertions.assertThat(exception.get()).isNull();
     }
 }
