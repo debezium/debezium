@@ -1598,7 +1598,7 @@ You can use a provided {prodname} container to deploy a {prodname} Db2 connector
 
 .Prerequisites
 
-* Podman or Docker is installed with sufficient rights to create and manage containers.
+* Podman or Docker is installed and you have sufficient rights to create and manage containers.
 * You installed the {prodname} Db2 connector archive. 
 
 .Procedure
