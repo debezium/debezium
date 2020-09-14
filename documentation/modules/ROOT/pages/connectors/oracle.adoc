@@ -364,6 +364,7 @@ The example of the message is:
       "table": "CUSTOMERS",
       "txId" : null,
       "scn" : "1513734",
+      "commit_scn": "1513734",
       "lcr_position" : null
     },
     "databaseName": "ORCLPDB1",
@@ -671,6 +672,11 @@ Let's look at what a _create_ event value might look like for our `customers` ta
                         "field": "scn"
                     },
                     {
+                        "type": "int64",
+                        "optional": true,
+                        "field": "commit_scn"
+                    },
+                    {
                         "type": "boolean",
                         "optional": true,
                         "field": "snapshot"
@@ -708,6 +714,7 @@ Let's look at what a _create_ event value might look like for our `customers` ta
             "ts_ms": 1520085154000,
             "txId": "6.28.807",
             "scn": 2122185,
+            "commit_scn": 2122185,
             "snapshot": false
         },
         "op": "c",
@@ -761,6 +768,7 @@ Here's an example:
             "ts_ms": 1520085811000,
             "txId": "6.9.809",
             "scn": 2125544,
+            "commit_scn": 2125544,
             "snapshot": false
         },
         "op": "u",
@@ -809,6 +817,7 @@ Now, let's look at the value of a _delete_ event for the same table. Once again,
             "ts_ms": 1520085153000,
             "txId": "6.28.807",
             "scn": 2122184,
+            "commit_scn": 2122184,
             "snapshot": false
         },
         "op": "d",
@@ -1188,6 +1197,69 @@ include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-snapshot-
 The *MBean* is `debezium.oracle:type=connector-metrics,context=streaming,server=_<database.server.name>_`.
 
 include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-streaming-metrics.adoc[leveloffset=+1]
+
+[[oracle-monitoring-streaming-logminer]]
+==== Log Miner Metrics
+
+The *MBean* is `debezium.oracle:type=connector-metrics,context=log-miner,server=_<database.server.name>_`.
+
+[cols="45%a,25%a,30%a"]
+|===
+|Attributes |Type |Description
+
+|[[log-miner-metrics-currentscn]]<<log-miner-metrics-currentscn, `CurrentScn`>>
+|`long`
+|The most recent SCN has has been processed.
+
+|[[log-miner-metrics-captureddmlcount]]<<log-miner-metrics-captureddmlcount, `CapturedDmlCount`>>
+|`int`
+|The number of DML operations observed.
+
+|[[log-miner-metrics-currentlogfilename]]<<log-miner-metrics-currentlogfilename, `CurrentLogFileName`>>
+|`string[]`
+|The current redo log filename.
+
+|[[log-miner-metrics-redologstatus]]<<log-miner-metrics-redologstatus, `RedoLogStatus`>>
+|`string[]`
+|The current status of the redo logs.
+
+|[[log-miner-metrics-switchcounter]]<<log-miner-metrics-switchcounter, `SwitchCounter`>>
+|`long`
+|The number of times the redo logs have switched.
+
+|[[log-miner-metrics-lastlogminerqueryduration]]<<log-miner-metrics-lastlogminerqueryduration, `LastLogMinerQueryDuration`>>
+|`Duration`
+|The duration it took for the last log mining query to prepare results for processing.
+
+|[[log-miner-metrics-averagelogminerqueryduration]]<<log-miner-metrics-averagelogminerqueryduration, `AverageLogMinerQueryDuration`>>
+|`Duration`
+|The average duration it has taken for log mining queries to prepare results for processing.
+
+|[[log-miner-metrics-logminerquerycount]]<<log-miner-metrics-logminerquerycount, `LogMinerQueryCount`>>
+|`int`
+|The number of log mining queries executed.
+
+|[[log-miner-metrics-lastprocessedcapturedbatchduration]]<<log-miner-metrics-lastprocessedcapturedbatchduration, `LastProcessedCapturedBatchDuration`>>
+|`Duration`
+|The duration it took for the last log mining query results to be processed.
+
+|[[log-miner-metrics-averageprocessedcapturedbatchduration]]<<log-miner-metrics-averageprocessedcapturedbatchduration, `AverageProcessedCapturedBatchDuration`>>
+|`Duration`
+|The average duration it has taken for the log mining query results to be processed.
+
+|[[log-miner-metrics-processedcapturebatchcount]]<<log-miner-metrics-processedcapturebatchcount, `ProcesssedCaptureBatchCount`>>
+|`int`
+|The number of log mining query results processed.
+
+|[[log-miner-metrics-batchsize]]<<log-miner-metrics-batchsize, `BatchSize`>>
+|`int`
+|The number of entries fetched by the log mining query per database round-trip.
+
+|[[log-miner-metrics-millisecondtosleepbetweenminingquery]]<<log-miner-metrics-millisecondtosleepbetweenminingquery, `MillisecondToSleepBetweenMiningQuery`>>
+|`int`
+|The number of milliseconds the connector sleeps before fetching another batch of results from the log mining view.
+
+|===
 
 [[oracle-monitoring-schema-history]]
 [[oracle-schema-history-metrics]]
