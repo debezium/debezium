@@ -13,11 +13,6 @@ By default, {prodname} delivers every data change event that it receives to the 
 However, in many cases, you might be interested in only a subset of the events emitted by the producer. 
 To enable you to process only the records that are relevant to you, {prodname} provides the _filter_ simple message transform (SMT).
 
-You configure the filter transformation in the {prodname} connector's Kafka Connect configuration.
-In the configuration, you specify the events that you are interested in by defining filter conditions that are based on business rules.
-As the filter SMT processes the event stream, it evaluates each event against the configured filter conditions.
-Only events that meet the criteria of the filter conditions are passed to the broker.
-
 The filter SMT supports scripting languages that integrate with https://jcp.org/en/jsr/detail?id=223[JSR 223] (Scripting for the Java(TM) Platform).
 
 Kafka Connect provides its own link:https://cwiki.apache.org/confluence/display/KAFKA/KIP-66%3A+Single+Message+Transforms+for+Kafka+Connect[Simple Message Transforms] (SMT) to encode filtering logic.
@@ -26,16 +21,21 @@ However, the following drawbacks apply to using the generic SMT:
 * It is necessary to compile the transformation up front and deploy it to Kafka Connect.
 * Every change needs code recompilation and redeployment, leading to inflexible operations.
 
-
 // Type: concept
-// ModuleID: example-of-configuring-filter-conditions
-// Title: Example of configuring filter conditions 
-== Example
+// Title: Example: {prodname} basic filter SMT configuration
+// ModuleID: example-basic-debezium-filter-smt-configuration
+[[example-basic-filter-configuration-example]]
+== Example: Basic configuration
 
-To filter change event records, configure the filter transformation in the Kafka Connect configuration for the {prodname} connector.
+You configure the filter transformation in the {prodname} connector's Kafka Connect configuration.
+In the configuration, you specify the events that you are interested in by defining filter conditions that are based on business rules.
+As the filter SMT processes the event stream, it evaluates each event against the configured filter conditions.
+Only events that meet the criteria of the filter conditions are passed to the broker.
+
+To configure a {prodname} connector to filter change event records, configure the `Filter` SMT in the Kafka Connect configuration for the {prodname} connector.
 Configuration of the filter SMT requires you to specify a regular expression that defines the filtering criteria. 
 
-For example, you might add the following configuration in a `.properties` file:name: value
+For example, you might add the following configuration in your connector configuration.
 
 [source]
 ----
@@ -65,9 +65,9 @@ If you install the script engine JAR to a different directory, you must add that
 // ModuleID: variables-for-use-in-filter-expressions
 == Variables for use in filter expressions
 
+{prodname} binds certain variables into the evaluation context for the filter SMT.
 When you create expressions to specify filter conditions, you can use the variables that {prodname} binds into the evaluation context.
-Certain variables are bound into the evaluation context for the SMT.
-By binding variables , {prodname} enables the SMT to look up and interpret their values as it evaluates the conditions in an expression. 
+By binding variables, {prodname} enables the SMT to look up and interpret their values as it evaluates the conditions in an expression. 
 
 The following table lists the variables that {prodname} binds into the evaluation context for the filter SMT:
 
@@ -94,7 +94,7 @@ The `headers` variable exposes the following properties:
 An expression can invoke arbitrary methods on its variables. 
 Expressions should resolve to a Boolean value that determines how the SMT dispositions the message.
 When the filter condition in an expression evaluates to `true`, the message is retained. 
-Whenthe filter condition evaluates to `false`, the message is removed.
+When the filter condition evaluates to `false`, the message is removed.
 
 Expressions should not result in any side-effects. That is, they should not modify any variables that they pass.
 
@@ -105,7 +105,7 @@ Expressions should not result in any side-effects. That is, they should not modi
 
 The way that you express filtering conditions depends on the scripting language that you use.
 
-For example, as shown in {link-prefix}:{link-filtering}#example-of-configuring-filter-conditions[], when you use `Groovy` as the expression language, 
+For example, as shown in {link-prefix}:{link-filtering}#example-basic-debezium-filter-smt-configuration[], when you use `Groovy` as the expression language, 
 the following expression removes all messages, except for update records that have `id` values set to `2`:
 
 [source,groovy]
@@ -146,7 +146,7 @@ value.op == 'u' && value.before.id == 2
 [[filter-configuration-options]]
 == Configuration options
 
-The following table lists the configuration options for the filter SMT.
+The following table lists the configuration options that you can use with the filter SMT.
 
 .filter SMT configuration options
 [cols="30%a,25%a,45%a"]
@@ -163,7 +163,8 @@ If the name of the topic does not match the value in `topic.regex`, the SMT pass
 
 |[[filter-language]]<<filter-language, `language`>>
 |
-|The language in which the expression is written. Must begin with `jsr223.`, e.g. `jsr223.groovy`, or `jsr223.graal.js`. Currently, only bootstrapping via the https://jcp.org/en/jsr/detail?id=223[JSR 223 API] ("Scripting for the Java (TM) Platform") is supported.
+|The language in which the expression is written. Must begin with `jsr223.`, e.g. `jsr223.groovy`, or `jsr223.graal.js`. 
+{prodname} supports bootstrapping through the https://jcp.org/en/jsr/detail?id=223[JSR 223 API ("Scripting for the Java (TM) Platform")] only.
 
 |[[filter-condition]]<<filter-condition, `condition`>>
 |
