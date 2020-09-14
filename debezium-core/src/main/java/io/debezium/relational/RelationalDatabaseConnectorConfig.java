@@ -379,6 +379,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withDefault(true);
 
     public static final Field MASK_COLUMN_WITH_HASH = Field.create("column.mask.hash.([^.]+).with.salt.(.+)")
+            .withDisplayName("Mask Columns Using Hash and Salt")
             .withType(Type.STRING)
             .withWidth(Width.LONG)
             .withImportance(Importance.MEDIUM)
@@ -386,11 +387,13 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
                     + "be masked by hashing the input. Using the specified hash algorithms and salt.");
 
     public static final Field MASK_COLUMN = Field.create("column.mask.with.(d+).chars")
+            .withDisplayName("Mask Columns With n Asterisks")
             .withValidation(Field::isInteger)
             .withDescription("A comma-separated list of regular expressions matching fully-qualified names of columns that should "
                     + "be masked with configured amount of asterisk ('*') characters.");
 
     public static final Field TRUNCATE_COLUMN = Field.create("column.truncate.to.(d+).chars")
+            .withDisplayName("Truncate Columns To n Characters")
             .withValidation(Field::isInteger)
             .withDescription("A comma-separated list of regular expressions matching fully-qualified names of columns that should "
                     + "be truncated to the configured amount of characters.");
