@@ -62,7 +62,10 @@ public interface JdbcConfiguration extends Configuration {
      * An optional field for datasource factory class that will be used to build the datasource connection pool.
      */
     public static final Field CONNECTION_FACTORY_CLASS = Field.create("connection.factory.class")
-            .withDescription("The factory class for creation of datasource connection pool")
+            .withDisplayName("Connection factory class")
+            .withDescription(
+                    "(Incubating) The factory class for creation of datasource connection pool; the FQN of an implementation of io.debezium.jdbc.JdbcConnection.ConnectionFactory must be given.")
+            .withType(Type.CLASS)
             .withValidation(Field::isOptional);
 
     public static final Field CONNECTION_TIMEOUT_MS = Field.create("connection.timeout.ms")
