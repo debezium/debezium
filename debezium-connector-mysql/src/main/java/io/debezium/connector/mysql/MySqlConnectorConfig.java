@@ -312,6 +312,24 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
             return value;
         }
 
+        public boolean usesMinimalLocking() {
+            return value.equals(MINIMAL.value) || value.equals(MINIMAL_PERCONA.value);
+        }
+
+        /**
+        * Determine which flavour of MySQL locking to use.
+        *
+        * @return the correct SQL to obtain a global lock for the current mode
+        */
+        public String getLockStatement() {
+            if (value.equals(MINIMAL_PERCONA.value)) {
+                return "LOCK TABLES FOR BACKUP";
+            }
+            else {
+                return "FLUSH TABLES WITH READ LOCK";
+            }
+        }
+
         /**
          * Determine if the supplied value is one of the predefined options.
          *
