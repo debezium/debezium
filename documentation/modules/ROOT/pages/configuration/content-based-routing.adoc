@@ -1,5 +1,9 @@
+// Category: debezium-using
+// Type: assembly
+// ModuleID: routing-change-event-records-to-topics-according-to-event-content
+// Title: Routing change event records to topics according to event content
 [id="content-based-routing"]
-= Content-Based Routing
+= Content-based routing
 
 :toc:
 :toc-placement: macro
@@ -9,26 +13,29 @@
 
 toc::[]
 
-[NOTE]
-====
-This SMT is currently in incubating state, i.e. exact semantics, configuration options etc. may change in future revisions, based on the feedback we receive. Please let us know if you encounter any problems while using this routing transformation.
-====
+By default, {prodname} streams all of the change events that it reads from a table to a single static topic.
+However, there might be situations in which you might want to reroute selected events to other topics, based on the event content.
+The process of routing messages based on their content is described in the https://www.enterpriseintegrationpatterns.com/patterns/messaging/ContentBasedRouter.html[Content-based routing] messaging pattern. 
+To apply this pattern in {prodname}, you use the content-based routing SMT to write expressions that are evaluated for each event.
+Depending how an event is evaluated, the SMT either routes the event message to the original destination topic, or reroutes it to the topic that you specify in the expression.
 
-With real-life applications, it is often necessary to route the events not only to a static topic but to a topic based on the message content.
-This is expressed as the https://www.enterpriseintegrationpatterns.com/patterns/messaging/ContentBasedRouter.html[Content-Based Router] integration pattern.
-Kafka Connect provides a generic mechanism to do the routing in the form of link:https://cwiki.apache.org/confluence/display/KAFKA/KIP-66%3A+Single+Message+Transforms+for+Kafka+Connect[Simple Message Transforms] (SMT).
+Kafka Connect provides its own link:https://cwiki.apache.org/confluence/display/KAFKA/KIP-66%3A+Single+Message+Transforms+for+Kafka+Connect[Simple Message Transforms] (SMT) to encode routing logic.
+However, the following drawbacks apply to using the generic SMT:
 
-The SMT is a Java class that encodes the routing logic.
-This is a very powerful mechanism but has two drawbacks:
-
-* It is necessary to compile the transformation upfront and deploy it to Kafka Connect.
+* It is necessary to compile the transformation up front and deploy it to Kafka Connect.
 * Every change needs code recompilation and redeployment, leading to inflexible operations.
 
-To solve this problem, {prodname} comes with the Content-Based Router SMT.
-This SMT allows the operator to write an expression that is evaluated for each event and according to the result, it is either kept in the original topic or re-routed to another one.
-The current implementation supports any scripting language which integrates with https://jcp.org/en/jsr/detail?id=223[JSR 223] (Scripting for the Java(TM) Platform).
+The content-based routing SMT supports scripting languages that integrate with https://jcp.org/en/jsr/detail?id=223[JSR 223] (Scripting for the Java(TM) Platform).
 
-The Content-Based Router SMT can be used like so:
+// Type: concept
+// ModuleID: example-of-configuring-content-based-routing-conditions
+// Title: Example of configuring content-based routing conditions 
+== Example
+
+To route change event records to topics based on their content, configure the content-based routing transformation in the Kafka Connect configuration for the {prodname} connector.
+Configuration of the content-based routing SMT requires you to specify a regular expression to define routing criteria. 
+
+For example, you might add the following configuration to your connector configuration:
 
 [source]
 ----
@@ -40,60 +47,102 @@ transforms.route.topic.expression=value.op == 'u' ? 'updates' : null
 ...
 ----
 
-In this example, we are using `Groovy` as the expression language, and we're re-routing all update records to the `updates` topic and the others into the default one.
+The preceding example specifies the use of the `Groovy` expression language.
+The regular expression reroutes all update (`u`) records to the `updates` topic, and routes other records to the default topic.
 
 [IMPORTANT]
 ====
-{prodname} does not come with the language implementations in its installation packages.
-It is the user's responsibility to provide an implementation, such as link:https://groovy-lang.org/[Groovy 3] or link:https://github.com/graalvm/graaljs[GraalVM JavaScript], on the classpath.
-Bootstrapping is done exclusively via the JSR 223 API currently, so the engine's support for this API must be provided as well.
+Although the {prodname} package includes the JSR 223 API, which provides support for scripting languages that integrate with JSR 223, by default, {prodname} cannot interpret scripts from these languages.
+To use an expression language, you must download the JSR-223 script engine JAR for the language, and add the JAR to your classpath, along any other JAR files used by the language implementation.
+For Groovy 3, you can download the JAR from https://groovy-lang.org/. For GraalVM JavaScript, the JAR is available at https://github.com/graalvm/graaljs.   
+
+Typically, you add the language JAR to the directory that contains the {prodname} connector JAR files, which is the directory that is referenced in the `plugin.path` configuration property that is set for the Kafka Connect plugin. 
+If you install the script engine JAR to a different directory, you must add that directory to the list in the `plugin.path` property. 
 ====
 
-{prodname} binds four variables into the evaluation context:
+// Type: concept
+// ModuleID: variables-for-use-in-content-based-routing-expressions
+== Variables for use in content-based routing expressions
 
-* `key` - a key of the message
-* `value` - a value of the message
-* `keySchema` - the schema of the message key
-* `valueSchema` - the schema of the message value
-* `topic` - the name of the target topic
-* `headers` - the map of message headers keyed with header name and value composed of `schema` and `value` variables
+{prodname} binds certain variables into the evaluation context for the SMT.
+When you create expressions to specify conditions to control the routing destination, 
+the SMT can look up and interpret the values of these variables to evaluate conditions in an expression. 
 
-The `key` and `value` are of type `org.apache.kafka.connect.data.Struct` and `keySchema` and `valueSchema` are variables of type `org.apache.kafka.connect.data.Schema`.
-The expression can invoke arbitrary methods on the variables and should evaluate into a boolean value that decides whether the message is removed `true` or kept.
-Expressions should be side-effect free, i.e. they should *not* modify the passed variables in any way.
+The following table lists the variables that {prodname} binds into the evaluation context for the content-based routing SMT:
 
+.Content-based routing expression variables
+[options="header"]
+|=======================
+|Name |Description |Type
+|`key`   |A key of the message. |`org.apache.kafka.connect.data.Struct`
+|`value` |A value of the message. |`org.apache.kafka.connect.data.Struct`
+|`keySchema` |Schema of the message key.|`org.apache.kafka.connect.data.Schema`
+|`valueSchema`|Schema of the message value.| `org.apache.kafka.connect.data.Schema`
+|`topic`|Name of the target topic.| String
+|`headers`
+a|A Java map of message headers. The key field is the header name. 
+The `headers` variable exposes the following properties:
+
+* `value` (of type `Object`) 
+
+* `schema` (of type `org.apache.kafka.connect.data.Schema`)
+
+| `java.util.Map<String, io.debezium.transforms.scripting.RecordHeader>`
+|=======================
+
+An expression can invoke arbitrary methods on its variables. 
+Expressions should resolve to a Boolean value that determines how the SMT dispositions the message.
+When the routing condition in an expression evaluates to `true`, the message is retained. 
+When the routing condition evaluates to `false`, the message is removed.
+
+Expressions should not result in any side-effects. That is, they should not modify any variables that they pass.
+
+// Type: reference
+// ModuleID: configuration-of-content-based-routing-conditions-for-other-scripting-languages
+// Title: Configuration of content-based routing conditions for other scripting languages 
 == Language specifics
 
-The same business logic - re-route all update records an be expressed like this, depending on your preferred scripting language;
-In case of `Groovy`, the value fields can be accessed in a property-like way:
+The way that you express content-based routing conditions depends on the scripting language that you use.
+For example, as shown in {link-prefix}:{link-content-based-routing}#example-of-configuring-content-based-routing-conditions[], when you use `Groovy` as the expression language, 
+the following expression reroutes all update (`u`) records to the `updates` topic, while routing other records to the default topic:
 
 [source,groovy]
 ----
 value.op == 'u' ? 'updates' : null
 ----
 
+Other languages use different methods to express the same condition.
+
 [TIP]
 ====
-The {prodname} MongoDB connector emits the `after` and `patch` fields not as structures but as serialized JSON documents.
-This means that when you are using the SMT with the MongoDB connector you should either first apply {link-prefix}:{link-mongodb-event-flattening}[`ExtractNewDocumentState]) SMT to unwind the field or use a JSON parser in the expression.
+The {prodname} MongoDB connector emits the `after` and `patch` fields as serialized JSON documents rather than as structures.
+To use the ContentBasedRouting SMT with the MongoDB connector, you must first unwind the fields by applying the {link-prefix}:{link-mongodb-event-flattening}[`ExtractNewDocumentState`] SMT.
 
-In case of Groovy it means adding `groovy-json` artifact on the classpath and write the expression like `(new groovy.json.JsonSlurper()).parseText(value.after).last_name == 'Kretchmar'`.
+You could also take the approach of using a JSON parser within the expression.
+For example, if you use Groovy as the expression language, add the `groovy-json` artifact to the classpath, and then add an expression such as `(new groovy.json.JsonSlurper()).parseText(value.after).last_name == 'Kretchmar'`.
 ====
 
-Other languages, such as JavaScript, will typically require to  call the `Struct#get()` method:
+.Javascript
+When you use JavaScript as the expression language, you can call the `Struct#get()` method to specify the content-based routing condition, as in the following example:
 
 [source,javascript]
 ----
 value.get('op') == 'u' ? 'updates' : null
 ----
 
-When using JavaScript via Graal.js, simplified property references can be used, akin to the Groovy approach:
+.Javascript with Graal.js
+When you create coentent-based routing conditions by using JavaScript with Graal.js, you use an approach that is similar to the one use with Groovy.
+For example:
 
 [source,javascript]
 ----
 value.op == 'u' ? 'updates' : null
 ----
 
+
+// Type: reference
+// ModuleID: options-for-configuring-the-content-based-routing-transformation
+// Title: Options for configuring the content-based routing transformation
 [[content-based-router-configuration-options]]
 == Configuration options
 [cols="30%a,25%a,45%a"]
@@ -104,18 +153,23 @@ value.op == 'u' ? 'updates' : null
 
 |[[content-based-router-topic-regex]]<<content-based-router-topic-regex, `topic.regex`>>
 |
-|An optional regular expression for specifying the topic(s) this transformation should be applied to. Records on any topic whose name does not match the given expression are passed on as-is.
+|An optional regular expression that evaluates the name of the destination topic for an event to determine whether to apply the condition logic. 
+If the name of the destination topic matches the value in `topic.regex`, the transformation applies the condition logic before it passes the event to the topic.
+If the name of the topic does not match the value in `topic.regex`, the SMT passes the event to the topic unmodified.
 
 |[[content-based-router-language]]<<content-based-router-language, `language`>>
 |
-|The language in which the expression is written. Must begin with `jsr223.`, e.g. `jsr223.groovy`, or `jsr223.graal.js`. Currently, only bootstrapping via the https://jcp.org/en/jsr/detail?id=223[JSR 223 API] ("Scripting for the Java (TM) Platform") is supported.
+|The language in which the expression is written. Must begin with `jsr223.`, e.g. `jsr223.groovy`, or `jsr223.graal.js`. {prodname} supports bootstrapping through the https://jcp.org/en/jsr/detail?id=223[JSR 223 API ("Scripting for the Java (TM) Platform")] only.
 
 |[[content-based-router-topic-expression]]<<content-based-router-topic-expression, `topic.expression`>>
 |
-|The expression evaluated for every message. Must evaluate to a `String` value where a result of non-null will re-route the message to a new topic, and a `null` value will keep it in the original topic.
+|The expression to be evaluated for every message. Must evaluate to a `String` value where a result of non-null reroutes the message to a new topic, and a `null` value routes the message to the default topic.
 
 |[[content-based-router-null-handling-mode]]<<content-based-router-null-handling-mode, `null.handling.mode`>>
 |`keep`
-|Prescribes how the transformation should handle `null` (tombstone) messages. The options are: `keep` (the default) to pass the message through, `drop` to remove the messages completely, or `evaluate` to run the message through the topic expression.
+a|Specifies how the transformation handles `null` (tombstone) messages. You can specify one of the following options: 
 
+`keep`:: (Default) Pass the messages through.
+`drop`:: Remove the messages completely.
+`evaluate`:: Apply the condition logic to the messages.
 |===
