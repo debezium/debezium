@@ -1127,6 +1127,40 @@ The following shows an example JSON request for registering an instance of the {
 }
 ----
 
+[[selecting-the-adapter]]
+== Selecting the adapter
+
+{prodname} provides multiple ways to ingest change events from Oracle.
+By default {prodname} uses the XStream API but this isn't always applicable for every installation.
+
+The following example configuration illustrates that by adding the `database.connection.adapter`, the connector can be toggled to use the Log Miner implementation.
+
+[source,json,indent=0]
+----
+{
+    "name": "inventory-connector",
+    "config": {
+        "connector.class" : "io.debezium.connector.oracle.OracleConnector",
+        "tasks.max" : "1",
+        "database.server.name" : "server1",
+        "database.hostname" : "<oracle ip>",
+        "database.port" : "1521",
+        "database.user" : "c##xstrm",
+        "database.password" : "xs",
+        "database.dbname" : "ORCLCDB",
+        "database.pdb.name" : "ORCLPDB1",
+        "database.out.server.name" : "dbzxout",
+        "database.history.kafka.bootstrap.servers" : "kafka:9092",
+        "database.history.kafka.topic": "schema-changes.inventory"
+        "database.connection.adapter": "logminer"
+    }
+}
+----
+
+[NOTE]
+====
+We do encourage the use of the Log Miner implementation but we do not yet recommend its use in production as its still under active development.
+====
 
 [[oracle-monitoring]]
 === Monitoring
