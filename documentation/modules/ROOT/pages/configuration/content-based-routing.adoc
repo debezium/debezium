@@ -28,14 +28,21 @@ However, the following drawbacks apply to using the generic SMT:
 The content-based routing SMT supports scripting languages that integrate with https://jcp.org/en/jsr/detail?id=223[JSR 223] (Scripting for the Java(TM) Platform).
 
 // Type: concept
-// ModuleID: example-of-configuring-content-based-routing-conditions
-// Title: Example of configuring content-based routing conditions 
-== Example
+// ModuleID: example-debezium-basic-content-based-routing-configuration
+// Title: Example: {prodname} basic content-based routing configuration 
+[[example-basic-content-based-routing-configuration]]
+== Example: Basic configuration
 
-To route change event records to topics based on their content, configure the content-based routing transformation in the Kafka Connect configuration for the {prodname} connector.
-Configuration of the content-based routing SMT requires you to specify a regular expression to define routing criteria. 
+To configure a {prodname} connector to route change event records based on the event content, you configure the `ContentBasedRouter` SMT in the Kafka Connect configuration for the connector.
 
-For example, you might add the following configuration to your connector configuration:
+Configuration of the content-based routing SMT requires you to specify a regular expression that defines the filtering criteria. 
+In the configuration, you create a regular expression that defines routing criteria. 
+The expression defines a pattern for evaluating event records.
+It also specifies the name of a destination topic where events that match the pattern are routed. 
+The pattern that you specify might designate an event type, such as a table insert, update, or delete operation.
+You might also define a pattern that matches a value in a specific column or row.
+
+For example, to reroute all update (`u`) records to an `updates` topic, you might add the following configuration to your connector configuration:
 
 [source]
 ----
@@ -48,7 +55,8 @@ transforms.route.topic.expression=value.op == 'u' ? 'updates' : null
 ----
 
 The preceding example specifies the use of the `Groovy` expression language.
-The regular expression reroutes all update (`u`) records to the `updates` topic, and routes other records to the default topic.
+
+Records that do not match the pattern are routed to the default topic.
 
 [IMPORTANT]
 ====
@@ -61,7 +69,8 @@ If you install the script engine JAR to a different directory, you must add that
 ====
 
 // Type: concept
-// ModuleID: variables-for-use-in-content-based-routing-expressions
+// ModuleID: variables-for-use-in-debezium-content-based-routing-expressions
+//Title: Variables for use in {prodname} content-based routing expressions
 == Variables for use in content-based routing expressions
 
 {prodname} binds certain variables into the evaluation context for the SMT.
@@ -103,7 +112,7 @@ Expressions should not result in any side-effects. That is, they should not modi
 == Language specifics
 
 The way that you express content-based routing conditions depends on the scripting language that you use.
-For example, as shown in {link-prefix}:{link-content-based-routing}#example-of-configuring-content-based-routing-conditions[], when you use `Groovy` as the expression language, 
+For example, as shown in {link-prefix}:{link-content-based-routing}#example-basic-content-based-routing-configuration[], when you use `Groovy` as the expression language, 
 the following expression reroutes all update (`u`) records to the `updates` topic, while routing other records to the default topic:
 
 [source,groovy]
