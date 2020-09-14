@@ -22,26 +22,26 @@ import io.debezium.metrics.Metrics;
  */
 @ThreadSafe
 public class TransactionalBufferMetrics extends Metrics implements TransactionalBufferMetricsMXBean {
-    private AtomicLong oldestScn = new AtomicLong();
-    private AtomicLong committedScn = new AtomicLong();
-    private AtomicReference<Duration> lagFromTheSource = new AtomicReference<>();
-    private AtomicInteger activeTransactions = new AtomicInteger();
-    private AtomicLong rolledBackTransactions = new AtomicLong();
-    private AtomicLong committedTransactions = new AtomicLong();
-    private AtomicLong capturedDmlCounter = new AtomicLong();
-    private AtomicLong committedDmlCounter = new AtomicLong();
-    private AtomicInteger commitQueueCapacity = new AtomicInteger();
-    private AtomicReference<Duration> maxLagFromTheSource = new AtomicReference<>();
-    private AtomicReference<Duration> minLagFromTheSource = new AtomicReference<>();
-    private AtomicReference<Duration> averageLagsFromTheSource = new AtomicReference<>();
-    private AtomicReference<Set<String>> abandonedTransactionIds = new AtomicReference<>();
-    private AtomicReference<Set<String>> rolledBackTransactionIds = new AtomicReference<>();
-    private Instant startTime;
-    private static long MILLIS_PER_SECOND = 1000L;
-    private AtomicLong timeDifference = new AtomicLong();
-    private AtomicInteger errorCounter = new AtomicInteger();
-    private AtomicInteger warningCounter = new AtomicInteger();
-    private AtomicInteger scnFreezeCounter = new AtomicInteger();
+    private final AtomicLong oldestScn = new AtomicLong();
+    private final AtomicLong committedScn = new AtomicLong();
+    private final AtomicReference<Duration> lagFromTheSource = new AtomicReference<>();
+    private final AtomicInteger activeTransactions = new AtomicInteger();
+    private final AtomicLong rolledBackTransactions = new AtomicLong();
+    private final AtomicLong committedTransactions = new AtomicLong();
+    private final AtomicLong capturedDmlCounter = new AtomicLong();
+    private final AtomicLong committedDmlCounter = new AtomicLong();
+    private final AtomicInteger commitQueueCapacity = new AtomicInteger();
+    private final AtomicReference<Duration> maxLagFromTheSource = new AtomicReference<>();
+    private final AtomicReference<Duration> minLagFromTheSource = new AtomicReference<>();
+    private final AtomicReference<Duration> averageLagsFromTheSource = new AtomicReference<>();
+    private final AtomicReference<Set<String>> abandonedTransactionIds = new AtomicReference<>();
+    private final AtomicReference<Set<String>> rolledBackTransactionIds = new AtomicReference<>();
+    private final Instant startTime;
+    private final static long MILLIS_PER_SECOND = 1000L;
+    private final AtomicLong timeDifference = new AtomicLong();
+    private final AtomicInteger errorCounter = new AtomicInteger();
+    private final AtomicInteger warningCounter = new AtomicInteger();
+    private final AtomicInteger scnFreezeCounter = new AtomicInteger();
 
     TransactionalBufferMetrics(CdcSourceTaskContext taskContext) {
         super(taskContext, "log-miner-transactional-buffer");
@@ -62,7 +62,7 @@ public class TransactionalBufferMetrics extends Metrics implements Transactional
     }
 
     public void setTimeDifference(AtomicLong timeDifference) {
-        this.timeDifference = timeDifference;
+        this.timeDifference.set(timeDifference.get());
     }
 
     void calculateLagMetrics(Instant changeTime) {

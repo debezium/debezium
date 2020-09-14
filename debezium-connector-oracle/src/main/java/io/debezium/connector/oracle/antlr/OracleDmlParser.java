@@ -25,10 +25,10 @@ import io.debezium.relational.Tables;
  */
 public class OracleDmlParser extends AntlrDdlParser<PlSqlLexer, PlSqlParser> {
 
+    protected final String catalogName;
+    protected final String schemaName;
+    private final OracleChangeRecordValueConverter converter;
     private LogMinerDmlEntry dmlEntry;
-    protected String catalogName;
-    protected String schemaName;
-    private OracleChangeRecordValueConverter converter;
 
     public OracleDmlParser(boolean throwErrorsFromTreeWalk, final String catalogName, final String schemaName, OracleChangeRecordValueConverter converter) {
         super(throwErrorsFromTreeWalk);

@@ -33,6 +33,7 @@ import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.VerifyRecord;
 import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.util.Testing;
 
 /**

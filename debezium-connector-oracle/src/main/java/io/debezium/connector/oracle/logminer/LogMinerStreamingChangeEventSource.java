@@ -122,8 +122,8 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
 
                 startScn = offsetContext.getScn();
                 createAuditTable(connection);
-                LOGGER.trace("current millis {}, db time {}", System.currentTimeMillis(), getTimeDifference(connection));
-                transactionalBufferMetrics.setTimeDifference(new AtomicLong(getTimeDifference(connection)));
+                LOGGER.trace("current millis {}, db time {}", System.currentTimeMillis(), getTimeDifference(connection).toMillis());
+                transactionalBufferMetrics.setTimeDifference(new AtomicLong(getTimeDifference(connection).toMillis()));
 
                 if (!isContinuousMining && startScn < getFirstOnlineLogScn(connection)) {
                     throw new RuntimeException("Online REDO LOG files don't contain the offset SCN. Clean offset and start over");

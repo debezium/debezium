@@ -52,14 +52,14 @@ import net.sf.jsqlparser.statement.update.Update;
 public class SimpleDmlParser {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SimpleDmlParser.class);
-    protected String catalogName;
-    protected String schemaName;
-    protected Table table;
+    protected final String catalogName;
+    protected final String schemaName;
     private final OracleChangeRecordValueConverter converter;
+    private final CCJSqlParserManager pm;
+    private final Map<String, LogMinerColumnValueWrapper> newColumnValues = new LinkedHashMap<>();
+    private final Map<String, LogMinerColumnValueWrapper> oldColumnValues = new LinkedHashMap<>();
+    protected Table table;
     private String aliasName;
-    private Map<String, LogMinerColumnValueWrapper> newColumnValues = new LinkedHashMap<>();
-    private Map<String, LogMinerColumnValueWrapper> oldColumnValues = new LinkedHashMap<>();
-    private CCJSqlParserManager pm;
 
     /**
      * Constructor

@@ -101,9 +101,6 @@ public class OracleValueConverters extends JdbcValueConverters {
             if (scale <= 0) {
                 int width = column.length() - scale;
 
-                if (scale == 0 && column.length() == 1) {
-                    return SchemaBuilder.bool();
-                }
                 if (width < 3) {
                     return SchemaBuilder.int8();
                 }
@@ -181,11 +178,6 @@ public class OracleValueConverters extends JdbcValueConverters {
             Integer scale = column.scale().get();
 
             if (scale <= 0) {
-                // Boolean represtented as Number(1,0)
-                if (scale == 0 && column.length() == 1) {
-                    return data -> convertBoolean(column, fieldDefn, data);
-                }
-
                 int width = column.length() - scale;
 
                 if (width < 3) {

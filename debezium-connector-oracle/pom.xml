@@ -106,7 +106,6 @@
 
     <properties>
         <adapter.name>xstream</adapter.name>
-        <version.oracle.driver>12.2.0.1</version.oracle.driver>
     </properties>
 
     <build>

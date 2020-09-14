@@ -23,29 +23,30 @@ import io.debezium.metrics.Metrics;
  */
 @ThreadSafe
 public class LogMinerMetrics extends Metrics implements LogMinerMetricsMXBean {
-    private AtomicLong currentScn = new AtomicLong();
-    private AtomicInteger capturedDmlCount = new AtomicInteger();
-    private AtomicReference<String[]> currentLogFileName;
-    private AtomicReference<String[]> redoLogStatus;
-    private AtomicInteger switchCounter = new AtomicInteger();
-    private AtomicReference<Duration> lastLogMinerQueryDuration = new AtomicReference<>();
-    private AtomicReference<Duration> averageLogMinerQueryDuration = new AtomicReference<>();
-    private AtomicInteger logMinerQueryCount = new AtomicInteger();
-    private AtomicReference<Duration> lastProcessedCapturedBatchDuration = new AtomicReference<>();
-    private AtomicInteger processedCapturedBatchCount = new AtomicInteger();
-    private AtomicReference<Duration> averageProcessedCapturedBatchDuration = new AtomicReference<>();
-    private AtomicInteger batchSize = new AtomicInteger();
-    private AtomicInteger millisecondToSleepBetweenMiningQuery = new AtomicInteger();
 
-    private final int MAX_SLEEP_TIME = 3_000;
-    private final int DEFAULT_SLEEP_TIME = 1_000;
-    private final int MIN_SLEEP_TIME = 100;
+    private final static int MAX_SLEEP_TIME = 3_000;
+    private final static int DEFAULT_SLEEP_TIME = 1_000;
+    private final static int MIN_SLEEP_TIME = 100;
 
-    private final int MIN_BATCH_SIZE = 1_000;
-    private final int MAX_BATCH_SIZE = 100_000;
-    private final int DEFAULT_BATCH_SIZE = 5_000;
+    private final static int MIN_BATCH_SIZE = 1_000;
+    private final static int MAX_BATCH_SIZE = 100_000;
+    private final static int DEFAULT_BATCH_SIZE = 5_000;
 
-    private final int SLEEP_TIME_INCREMENT = 200;
+    private final static int SLEEP_TIME_INCREMENT = 200;
+
+    private final AtomicLong currentScn = new AtomicLong();
+    private final AtomicInteger capturedDmlCount = new AtomicInteger();
+    private final AtomicReference<String[]> currentLogFileName;
+    private final AtomicReference<String[]> redoLogStatus;
+    private final AtomicInteger switchCounter = new AtomicInteger();
+    private final AtomicReference<Duration> lastLogMinerQueryDuration = new AtomicReference<>();
+    private final AtomicReference<Duration> averageLogMinerQueryDuration = new AtomicReference<>();
+    private final AtomicInteger logMinerQueryCount = new AtomicInteger();
+    private final AtomicReference<Duration> lastProcessedCapturedBatchDuration = new AtomicReference<>();
+    private final AtomicInteger processedCapturedBatchCount = new AtomicInteger();
+    private final AtomicReference<Duration> averageProcessedCapturedBatchDuration = new AtomicReference<>();
+    private final AtomicInteger batchSize = new AtomicInteger();
+    private final AtomicInteger millisecondToSleepBetweenMiningQuery = new AtomicInteger();
 
     LogMinerMetrics(CdcSourceTaskContext taskContext) {
         super(taskContext, "log-miner");

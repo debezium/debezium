@@ -125,16 +125,16 @@ public class LogMinerHelper {
     /**
      * Calculate time difference between database and connector timers. It could be negative if DB time is ahead.
      * @param connection connection
-     * @return difference in milliseconds
+     * @return the time difference as a {@link Duration}
      */
-    static long getTimeDifference(Connection connection) throws SQLException {
+    static Duration getTimeDifference(Connection connection) throws SQLException {
         Timestamp dbCurrentMillis = (Timestamp) getSingleResult(connection, SqlUtils.CURRENT_TIMESTAMP, DATATYPE.TIMESTAMP);
         if (dbCurrentMillis == null) {
-            return 0;
+            return Duration.ZERO;
         }
         Instant fromDb = dbCurrentMillis.toInstant();
         Instant now = Instant.now();
-        return Duration.between(fromDb, now).toMillis();
+        return Duration.between(fromDb, now);
     }
 
     /**
