@@ -395,6 +395,20 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withDescription("A comma-separated list of regular expressions matching fully-qualified names of columns that should "
                     + "be truncated to the configured amount of characters.");
 
+    public static final Field PROPAGATE_COLUMN_SOURCE_TYPE = Field.create("column.propagate.source.type")
+            .withDisplayName("Propagate Source Types by Columns")
+            .withType(Type.LIST)
+            .withValidation(Field::isListOfRegex)
+            .withDescription("A comma-separated list of regular expressions matching fully-qualified names of columns that "
+                    + " adds the column’s original type and original length as parameters to the corresponding field schemas in the emitted change records.");
+
+    public static final Field PROPAGATE_DATATYPE_SOURCE_TYPE = Field.create("datatype.propagate.source.type")
+            .withDisplayName("Propagate Source Types by Data Type")
+            .withType(Type.LIST)
+            .withValidation(Field::isListOfRegex)
+            .withDescription("A comma-separated list of regular expressions matching the database-specific data type names that "
+                    + "adds the data type's original type and original length as parameters to the corresponding field schemas in the emitted change records.");
+
     protected static final ConfigDefinition CONFIG_DEFINITION = CommonConnectorConfig.CONFIG_DEFINITION.edit()
             .type(
                     SERVER_NAME)
@@ -421,7 +435,9 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
                     MASK_COLUMN_WITH_HASH,
                     MASK_COLUMN,
                     TRUNCATE_COLUMN,
-                    INCLUDE_SCHEMA_CHANGES)
+                    INCLUDE_SCHEMA_CHANGES,
+                    PROPAGATE_COLUMN_SOURCE_TYPE,
+                    PROPAGATE_DATATYPE_SOURCE_TYPE)
             .create();
 
     private final RelationalTableFilters tableFilters;
