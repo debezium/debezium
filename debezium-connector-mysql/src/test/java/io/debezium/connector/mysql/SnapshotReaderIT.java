@@ -242,6 +242,7 @@ public class SnapshotReaderIT {
         reader.generateInsertEvents();
 
         if (!MySQLConnection.isPerconaServer()) {
+            reader.start(); // Start the reader to avoid failure in the afterEach method.
             return; // Skip these tests for non-Percona flavours of MySQL
         }
 
