@@ -4,7 +4,7 @@
 // Title: Filtering Debezium change event records
 [id="message-filtering"]
 = Message Filtering
-
+ifdef::community[]
 :toc:
 :toc-placement: macro
 :linkattrs:
@@ -12,7 +12,7 @@
 :source-highlighter: highlight.js
 
 toc::[]
-
+endif::community[]
 By default, {prodname} delivers every data change event that it receives to the Kafka broker.
 However, in many cases, you might be interested in only a subset of the events emitted by the producer. 
 To enable you to process only the records that are relevant to you, {prodname} provides the _filter_ simple message transform (SMT).
