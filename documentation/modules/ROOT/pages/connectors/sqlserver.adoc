@@ -490,7 +490,7 @@ a|Name of the schema that defines the structure of the key's payload. This schem
 ifdef::community[]
 [NOTE]
 ====
-Although the `column.exclude.list` configuration property allows you to remove columns from the event values, all columns in a primary or unique key are always included in the event's key.
+Although the `column.exclude.list` and `column.include.list` connector configuration properties allow you to capture only a subset of table columns, all columns in a primary or unique key are always included in the event's key.
 ====
 
 [WARNING]
@@ -1745,12 +1745,22 @@ Must not be used with `table.exclude.list`.
 |An optional comma-separated list of regular expressions that match fully-qualified table identifiers for tables to be excluded from monitoring; any table not included in `table.exclude.list` is monitored.
 Each identifier is of the form _schemaName_._tableName_. Must not be used with `table.include.list`.
 
+|[[sqlserver-property-column-whitelist]]
+[[sqlserver-property-column-include-list]]<<sqlserver-property-column-include-list, `column.include.list`>>
+|_empty string_
+|An optional comma-separated list of regular expressions that match the fully-qualified names of columns that should be included in the change event message values.
+Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_.
+Note that primary key columns are always included in the event's key, even if not included in the value.
+Do not also set the `column.exclude.list` property.
+
 |[[sqlserver-property-column-blacklist]]
 [[sqlserver-property-column-exclude-list]]<<sqlserver-property-column-exclude-list, `column.exclude.list`>>
 |_empty string_
 |An optional comma-separated list of regular expressions that match the fully-qualified names of columns that should be excluded from change event message values.
 Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_.
 Note that primary key columns are always included in the event's key, also if excluded from the value.
+Do not also set the `column.include.list` property.
+
 
 |[[sqlserver-property-column-mask-hash]]<<sqlserver-property-column-mask-hash, `column.mask.hash._hashAlgorithm_.with.salt._salt_`>>
 |_n/a_
