@@ -22,7 +22,7 @@ It is supported though to capture tables newly added while the connector is runn
 [[oracle-overview]]
 == Overview
 
-{prodname} ingests change events from Oracle using the https://docs.oracle.com/database/121/XSTRM/xstrm_intro.htm#XSTRM72647[XStream API] or directly by Log Miner.
+{prodname} ingests change events from Oracle using the https://docs.oracle.com/database/121/XSTRM/xstrm_intro.htm#XSTRM72647[XStream API] or directly by LogMiner.
 In order to use the XStream API, you need to have a license for the GoldenGate product
 (though it is not required that GoldenGate itself is installed).
 
@@ -67,11 +67,11 @@ E.g. like so for a specific table:
 ALTER TABLE inventory.customers ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS;
 ----
 
-==== Log Miner
+==== LogMiner
 
 [NOTE]
 ====
-The Log Miner implementation requires the database to be configured with a minimum number of redo log groups and files per group.
+The LogMiner implementation requires the database to be configured with a minimum number of redo log groups and files per group.
 It's recommended to have a minimum of `5` redo log groups each with `2` redo files per group.
 Please refer to the Oracle documentation on how to manipulate redo log groups and files for your database version.
 ====
@@ -184,9 +184,9 @@ GRANT FLASHBACK ANY TABLE TO c##xstrm CONTAINER=ALL;
 exit;
 ----
 
-==== Log Miner
+==== LogMiner
 
-Create Log Miner user (used by the {prodname} connector to connect to Oracle):
+Create LogMiner user (used by the {prodname} connector to connect to Oracle):
 
 [source,indent=0]
 ----
@@ -227,7 +227,7 @@ exit;
 
 [NOTE]
 ====
-If you're using the Log Miner implementation, this step is not necessary.
+If you're using the LogMiner implementation, this step is not necessary.
 ====
 
 Create an https://docs.oracle.com/cd/E11882_01/server.112/e16545/xstrm_cncpt.htm#XSTRM1088[XStream Outbound server]
@@ -571,7 +571,14 @@ Whether or not this field and its elements are available is highly dependent on 
 ====
 
 * `after` is an optional field that if present contains the state of the row _after_ the event occurred. The structure is described by the same `server1.INVENTORY.CUSTOMERS.Value` Kafka Connect schema used in `before`.
-* `source` is a mandatory field that contains a structure describing the source metadata for the event, which in the case of Oracle contains these fields: the {prodname} version, the connector name, whether the event is part of an ongoing snapshot or not, the transaction id (not while snapshotting), the SCN of the change, and a timestamp representing the point in time when the record was changed in the source database (during snapshotting, this is the point in time of snapshotting)
+* `source` is a mandatory field that contains a structure describing the source metadata for the event, which in the case of Oracle contains these fields: the {prodname} version, the connector name, whether the event is part of an ongoing snapshot or not, the transaction id (not while snapshotting), the SCN of the change, and a timestamp representing the point in time when the record was changed in the source database (during snapshotting, this is the point in time of snapshotting).
+
+[TIP]
+====
+The `commit_scn` field is optional and describes the SCN of the transaction commit that the change event participates within.
+This field is only present when using the LogMiner connection adapter.
+====
+
 * `ts_ms` is optional and if present contains the time (using the system clock in the JVM running the Kafka Connect task) at which the connector processed the event.
 
 And of course, the _schema_ portion of the event message's value contains a schema that describes this envelope structure and the nested fields within it.
@@ -1142,7 +1149,7 @@ The following shows an example JSON request for registering an instance of the {
 {prodname} provides multiple ways to ingest change events from Oracle.
 By default {prodname} uses the XStream API but this isn't always applicable for every installation.
 
-The following example configuration illustrates that by adding the `database.connection.adapter`, the connector can be toggled to use the Log Miner implementation.
+The following example configuration illustrates that by adding the `database.connection.adapter`, the connector can be toggled to use the LogMiner implementation.
 
 [source,json,indent=0]
 ----
@@ -1168,7 +1175,7 @@ The following example configuration illustrates that by adding the `database.con
 
 [NOTE]
 ====
-We do encourage the use of the Log Miner implementation but we do not yet recommend its use in production as its still under active development.
+We do encourage the use of the LogMiner implementation for testing purposes and providing us with your feedback, but we do not yet recommend its use in production as its still under active development.
 ====
 
 [[oracle-monitoring]]
@@ -1199,7 +1206,7 @@ The *MBean* is `debezium.oracle:type=connector-metrics,context=streaming,server=
 include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-streaming-metrics.adoc[leveloffset=+1]
 
 [[oracle-monitoring-streaming-logminer]]
-==== Log Miner Metrics
+==== LogMiner Metrics
 
 The *MBean* is `debezium.oracle:type=connector-metrics,context=log-miner,server=_<database.server.name>_`.
 
@@ -1329,7 +1336,7 @@ Only alphanumeric characters and underscores should be used.
 |`xstream`
 |The adapter implementation to use.
 `xstream` uses the Oracle XStreams API.
-`logminer` uses the native Oracle Log Miner API.
+`logminer` uses the native Oracle LogMiner API.
 
 |[[oracle-property-database-history-kafka-topic]]<<oracle-property-database-history-kafka-topic, `database.history.kafka.topic`>>
 |
