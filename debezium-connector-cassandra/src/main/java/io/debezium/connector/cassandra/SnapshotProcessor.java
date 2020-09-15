@@ -29,6 +29,7 @@ import com.datastax.driver.core.querybuilder.BuiltStatement;
 import com.datastax.driver.core.querybuilder.QueryBuilder;
 import com.datastax.driver.core.querybuilder.Select;
 
+import io.debezium.DebeziumException;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.cassandra.exceptions.CassandraConnectorTaskException;
 import io.debezium.connector.cassandra.transforms.CassandraTypeDeserializer;
@@ -152,12 +153,20 @@ public class SnapshotProcessor extends AbstractProcessor {
      * by converting the row into a record and enqueue it to {@link ChangeRecord}
      */
     private void takeTableSnapshot(TableMetadata tableMetadata) throws IOException {
-        BuiltStatement statement = generateSnapshotStatement(tableMetadata);
-        statement.setConsistencyLevel(consistencyLevel);
-        LOGGER.info("Executing snapshot query '{}' with consistency level {}", statement.getQueryString(), statement.getConsistencyLevel());
-        ResultSet resultSet = cassandraClient.execute(statement);
-        processResultSet(tableMetadata, resultSet);
-        LOGGER.debug("The snapshot of table '{}' has been taken", tableName(tableMetadata));
+        try {
+            BuiltStatement statement = generateSnapshotStatement(tableMetadata);
+            statement.setConsistencyLevel(consistencyLevel);
+            LOGGER.info("Executing snapshot query '{}' with consistency level {}", statement.getQueryString(), statement.getConsistencyLevel());
+            ResultSet resultSet = cassandraClient.execute(statement);
+            processResultSet(tableMetadata, resultSet);
+            LOGGER.debug("The snapshot of table '{}' has been taken", tableName(tableMetadata));
+        }
+        catch (IOException e) {
+            throw e;
+        }
+        catch (Exception e) {
+            throw new DebeziumException(String.format("Failed to snapshot table %s in keyspace %s", tableMetadata.getName(), tableMetadata.getKeyspace().getName()), e);
+        }
     }
 
     /**
