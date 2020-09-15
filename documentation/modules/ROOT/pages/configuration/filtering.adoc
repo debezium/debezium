@@ -1,3 +1,7 @@
+// Category: debezium-using
+// Type: assembly
+// ModuleID: filtering-debezium-change-event-records
+// Title: Filtering Debezium change event records
 [id="message-filtering"]
 = Message Filtering
 
