@@ -370,8 +370,12 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
         this.instanceName = config.getString(INSTANCE);
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE), SNAPSHOT_MODE.defaultValueAsString());
 
-        this.columnFilter = getColumnNameFilter(
-                config.getFallbackStringProperty(SqlServerConnectorConfig.COLUMN_EXCLUDE_LIST, SqlServerConnectorConfig.COLUMN_BLACKLIST));
+        if (columnIncludeList() != null) {
+            this.columnFilter = getColumnIncludeNameFilter(columnIncludeList());
+        }
+        else {
+            this.columnFilter = getColumnExcludeNameFilter(columnExcludeList());
+        }
         this.readOnlyDatabaseConnection = READ_ONLY_INTENT.equals(config.getString(APPLICATION_INTENT_KEY));
         if (readOnlyDatabaseConnection) {
             this.snapshotIsolationMode = SnapshotIsolationMode.SNAPSHOT;
@@ -384,10 +388,23 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
         this.sourceTimestampMode = SourceTimestampMode.fromMode(config.getString(SOURCE_TIMESTAMP_MODE_CONFIG_NAME));
     }
 
-    private static ColumnNameFilter getColumnNameFilter(String excludedColumnPatterns) {
+    private static ColumnNameFilter getColumnExcludeNameFilter(String excludedColumnPatterns) {
         return new ColumnNameFilter() {
 
             Predicate<ColumnId> delegate = Predicates.excludes(excludedColumnPatterns, ColumnId::toString);
+
+            @Override
+            public boolean matches(String catalogName, String schemaName, String tableName, String columnName) {
+                // ignore database name as it's not relevant here
+                return delegate.test(new ColumnId(new TableId(null, schemaName, tableName), columnName));
+            }
+        };
+    }
+
+    private static ColumnNameFilter getColumnIncludeNameFilter(String excludedColumnPatterns) {
+        return new ColumnNameFilter() {
+
+            Predicate<ColumnId> delegate = Predicates.includes(excludedColumnPatterns, ColumnId::toString);
 
             @Override
             public boolean matches(String catalogName, String schemaName, String tableName, String columnName) {
