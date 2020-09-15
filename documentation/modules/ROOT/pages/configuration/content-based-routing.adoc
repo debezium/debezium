@@ -4,7 +4,7 @@
 // Title: Routing change event records to topics according to event content
 [id="content-based-routing"]
 = Content-based routing
-
+ifdef::community[]
 :toc:
 :toc-placement: macro
 :linkattrs:
@@ -12,7 +12,7 @@
 :source-highlighter: highlight.js
 
 toc::[]
-
+endif::community[]
 By default, {prodname} streams all of the change events that it reads from a table to a single static topic.
 However, there might be situations in which you might want to reroute selected events to other topics, based on the event content.
 The process of routing messages based on their content is described in the https://www.enterpriseintegrationpatterns.com/patterns/messaging/ContentBasedRouter.html[Content-based routing] messaging pattern. 
