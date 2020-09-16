@@ -17,6 +17,7 @@ Andreas Bergmeier
 Andras Istvan Nagy
 Andrew Garrett
 Andrew Tongen
+Andrey Ignatenko
 Andrey Pustovetov
 Andy Teijelo
 Anton Kondratev
@@ -67,6 +68,7 @@ Eero Koplimets
 Elan Hasson
 Emmanuel Brard
 Emrul Islam
+Eric Weaver
 Eric S. Kreiseir
 Ewen Cheslack-Postava
 Fabian Aussems
@@ -77,6 +79,7 @@ Felix Eckhardt
 Fintan Bolton
 Frank Mormino
 Gagan Agrawal
+Ganesh Ramasubramanian
 Grant Cooksey
 Guillaume Rosauro
 Gunnar Morling
@@ -152,6 +155,7 @@ Mike Graham
 Mincong Huang
 Moira Tagle
 Muhammad Sufyian
+Nathan Mills
 Navdeep Agarwal
 Nayana Hettiarachchi
 Nikhil Benesch

@@ -49,3 +49,5 @@ TovaCohen,Tova Cohen
 renardeinside,Ivan Trusov
 linhnh,Linh Nguyen Hoang
 victorxiang30,Victor Xiang
+AndreyIg,Andrey Ignatenko
+eric-weaver,Eric Weaver
