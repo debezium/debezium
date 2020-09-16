@@ -16,7 +16,7 @@ toc::[]
 {prodname} automatically creates *internal* topics for offsets, connector status, config
 storage and history topics. The destination topics for the captured tables will be
 automatically created with a default config by the Kafka brokers when
-`auto.create.topics.enable` is enabled.{empty} +
+`auto.create.topics.enable` is set to `true`.{empty} +
 When topic creation is disabled on the brokers, for example in production environments,
 or when the topics need a different configuration then these topics have to be created
 upfront either automated in a custom deployment process or manually until Kafka Connect 2.6.
@@ -49,15 +49,18 @@ topic names that should be included or excluded.
 [NOTE]
 ====
 You can specify both, `include` and `exclude` parameters, but note that exclusion rules
-have precedent and override any inclusion rules for topics.
+take precedence and override any inclusion rules for topics.
 ====
 
 You don't have to specify any custom group. When there's no custom group registered or
 the registered group's `include` patterns don't match the topic which is to be created
 then the default config will be used.
 
-You can specify all https://kafka.apache.org/documentation/#topicconfigs[*topic level configuration parameters*]
+You can specify all {link-kafka-docs}/#topicconfigs[*topic level configuration parameters*]
 to customize how topics will be created.
+
+See {link-prefix}:{link-install-debezium}#_configuring_debezium_topics[Configuring {prodname} Topics] section in the
+{prodname} installation guide on generic topic configuration considerations.
 
 === Default Group Config
 
@@ -91,17 +94,17 @@ the default group.
 the default group.
 
 |3
-|`topic.creation.default.cleanup.policy` is mapped to the https://kafka.apache.org/documentation/#cleanup.policy[`cleanup.policy`]
-property of the https://kafka.apache.org/documentation/#topicconfigs[topic level configuration parameters] and
+|`topic.creation.default.cleanup.policy` is mapped to the {link-kafka-docs}/#cleanup.policy[`cleanup.policy`]
+property of the {link-kafka-docs}/#topicconfigs[topic level configuration parameters] and
 defines the log retention policy.
 
 |4
-|`topic.creation.default.compression.type` is mapped to the https://kafka.apache.org/documentation/#compression.type[`compression.type`]
-property of the https://kafka.apache.org/documentation/#topicconfigs[topic level configuration parameters] and
+|`topic.creation.default.compression.type` is mapped to the {link-kafka-docs}/#compression.type[`compression.type`]
+property of the {link-kafka-docs}/#topicconfigs[topic level configuration parameters] and
 defines how messages are compressed on harddisk.
 |===
 
-As you can see, you can put every https://kafka.apache.org/documentation/#topicconfigs[topic level configuration parameter]
+As you can see, you can put every {link-kafka-docs}/#topicconfigs[topic level configuration parameter]
 as property.
 
 === Custom Group Config
@@ -211,6 +214,10 @@ A complete connector JSON config will look like that:
 
 ifdef::community[]
 == Additional resources
+
+For more information on topic auto-creation you can have a look at these resources:
+
 - Debezium Blog: https://debezium.io/blog/2020/09/15/debezium-auto-create-topics/[Auto-creating Debezium Change Data Topics]
-- Kafka Improvement Proposal about adding topic auto-creation to Kafka Connect: https://cwiki.apache.org/confluence/display/KAFKA/KIP-158%3A+Kafka+Connect+should+allow+source+connectors+to+set+topic-specific+settings+for+new+topics[KIP-158]
+- Kafka Improvement Proposal about adding topic auto-creation to Kafka Connect: https://cwiki.apache.org/confluence/display/KAFKA/KIP-158%3A+Kafka+Connect+should+allow+source+connectors+to+set+topic-specific+settings+for+new+topics[KIP-158 Kafka Connect should allow source connectors to set topic-specific settings for new topics]
+
 endif::community[]
