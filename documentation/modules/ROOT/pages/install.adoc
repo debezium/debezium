@@ -103,6 +103,10 @@ e.g. when updating them
 ** Replicated in production
 ** Single partition
 *** You can relax the single partition rule but your application must handle out-of-order events for different rows in database (events for a single row are still totally ordered). If multiple partitions are used, Kafka will determine the partition by hashing the key by default. Other partition strategies require using SMTs to set the partition number for each record.
+// the condition can be removed once downstream  is updated to Kafka 2.6+
+ifdef::community[]
+** For customizable topic auto-creation (available since Kafka Connect 2.6.0) see {link-prefix}:{link-topic-auto-creation}[Custom Topic Auto-Creation]
+endif::community[]
 
 == Using the {prodname} Libraries
 
