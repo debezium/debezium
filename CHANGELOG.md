@@ -9,7 +9,7 @@ September 16th, 2020 [Detailed release notes](https://issues.redhat.com/secure/R
 
 * Ingest change data from Oracle databases using LogMiner [DBZ-137](https://issues.redhat.com/browse/DBZ-137)
 * Server-side column filtering in SQL Server connector [DBZ-1068](https://issues.redhat.com/browse/DBZ-1068)
-* Introduce column.whitelist for MySQL Connector [DBZ-2508](https://issues.redhat.com/browse/DBZ-2508)
+* Introduce column.include.list for MySQL Connector [DBZ-2508](https://issues.redhat.com/browse/DBZ-2508)
 
 
 ### Breaking changes since 1.3.0.Beta1
