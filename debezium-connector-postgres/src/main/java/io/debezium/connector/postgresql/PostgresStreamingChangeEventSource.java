@@ -168,7 +168,9 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                     replicationConnection.close();
                 }
                 catch (Exception e) {
+                    LOGGER.debug("Exception while closing the connection", e);
                 }
+                replicationStream.set(null);
             }
         }
     }
