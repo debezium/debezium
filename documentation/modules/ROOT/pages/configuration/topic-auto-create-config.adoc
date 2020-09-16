@@ -23,7 +23,7 @@ upfront either automated in a custom deployment process or manually until Kafka 
 
 Since Kafka 2.6.0 Kafka Connect supports customizable topic auto-creation.
 
-== Kafka Connect
+== Setup Kafka Connect
 
 Kafka Connect since Kafka 2.6.0 comes with topic creation enabled:
 
@@ -32,13 +32,36 @@ Kafka Connect since Kafka 2.6.0 comes with topic creation enabled:
 topic.creation.enable = true
 ----
 
-// TODO: how to express this for downstream?
+ifdef::community[]
 [NOTE]
 ====
 If you don't want to allow automatic topic creation by connectors you can set this value to `false`
 in the Kafka Connect config (_connect-distributed.properties_ file or via environment variable
-_CONNECT_TOPIC_CREATION_ENABLE_ when using https://hub.docker.com/r/debezium/connect[Debezium's container image for Kafka Connect]).
+_CONNECT_TOPIC_CREATION_ENABLE_ when using https://hub.docker.com/r/debezium/connect[{prodname}'s container image for Kafka Connect]).
 ====
+endif::community[]
+
+ifdef::product[]
+[NOTE]
+====
+If you don't want to allow automatic topic creation by connectors you can set this value to `false`
+in the Kafka Connect CRD:
+====
+
+[source,yaml,options="nowrap"]
+----
+apiVersion: kafka.strimzi.io/v1beta1
+kind: KafkaConnect
+metadata:
+  name: my-connect-cluster
+
+...
+
+spec:
+  config:
+    topic.creation.enable: "false"
+----
+endif::product[]
 
 == Configuration
 
@@ -56,7 +79,7 @@ You don't have to specify any custom group. When there's no custom group registe
 the registered group's `include` patterns don't match the topic which is to be created
 then the default config will be used.
 
-You can specify all {link-kafka-docs}/#topicconfigs[*topic level configuration parameters*]
+You can specify all {link-kafka-docs}/#topicconfigs[topic level configuration parameters]
 to customize how topics will be created.
 
 See {link-prefix}:{link-install-debezium}#_configuring_debezium_topics[Configuring {prodname} Topics] section in the
@@ -104,7 +127,7 @@ property of the {link-kafka-docs}/#topicconfigs[topic level configuration parame
 defines how messages are compressed on harddisk.
 |===
 
-As you can see, you can put every {link-kafka-docs}/#topicconfigs[topic level configuration parameter]
+As you can see, you can use every {link-kafka-docs}/#topicconfigs[topic level configuration parameter]
 as property.
 
 === Custom Group Config
