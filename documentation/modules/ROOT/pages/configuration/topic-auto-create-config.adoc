@@ -110,11 +110,17 @@ The default config can be passed in the connector config JSON like:
 
 |1
 |`topic.creation.default.replication.factor` defines the replication factor for topics created by
-the default group.
+the default group.{empty} +
+`replication.factor` is mandatory for the `default` group but optional for custom groups. Custom
+groups will fallback to the `default` group's value if not set. Use `-1` to use the Kafka
+broker's default value.
 
 |2
 |`topic.creation.default.partitions` defines the number of partitions for topics created by
-the default group.
+the default group.{empty} +
+`partitions` is mandatory for the `default` group but optional for custom groups. Custom
+groups will fallback to the `default` group's value if not set. Use `-1` to use the Kafka
+broker's default value.
 
 |3
 |`topic.creation.default.cleanup.policy` is mapped to the {link-kafka-docs}/#cleanup.policy[`cleanup.policy`]
@@ -130,6 +136,14 @@ defines how messages are compressed on harddisk.
 As you can see, you can use every {link-kafka-docs}/#topicconfigs[topic level configuration parameter]
 as property.
 
+[NOTE]
+====
+Note that `replication.factor` and `partitions` properties are mandatory for the `default` group
+and optional for custom groups. Custom groups will fallback to the `default` group's value if not
+set. Use `-1` to use the Kafka broker's default value.{empty} +
+This fallback does not apply to other config parameters.
+====
+
 === Custom Group Config
 
 You can specify multiple groups. Similar to the `default` group you group properties together by
@@ -142,7 +156,6 @@ the group name. This will look like that in your connector JSON:
 
     //<1>
     "topic.creation.inventory.include": "dbserver1\\.inventory\\.*",  //<2>
-    "topic.creation.inventory.replication.factor": 3,
     "topic.creation.inventory.partitions": 20,
     "topic.creation.inventory.cleanup.policy": "compact",
     "topic.creation.inventory.delete.retention.ms": 7776000000,
@@ -166,7 +179,10 @@ the group name. This will look like that in your connector JSON:
 |Item |Description
 
 |1
-|First we define the configuration for the `inventory` group.
+|First we define the configuration for the `inventory` group.{empty} +
+Note that `replication.factor` and `partitions` properties are optional for custom groups. Custom
+groups will fallback to the `default` group's value if not set. Use `-1` to use the Kafka broker's
+default value.
 
 |2
 |`topic.creation.inventory.include` defines a regular expression to match all topics that start with
@@ -174,7 +190,10 @@ the group name. This will look like that in your connector JSON:
 topic name matches the given regular expression.
 
 |3
-|Then we define the configuration for the `applicationlogs` group.
+|Then we define the configuration for the `applicationlogs` group.{empty} +
+Note that `replication.factor` and `partitions` properties are optional for custom groups. Custom
+groups will fallback to the `default` group's value if not set. Use `-1` to use the Kafka broker's
+default value.
 
 |4
 |`topic.creation.applicationlogs.include` defines a regular expression to match all topics that start
