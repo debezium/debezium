@@ -2,6 +2,35 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 1.2.4.Final
+September 17th, 2020 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12347255)
+
+### New features since 1.2.3.Final
+
+None
+
+
+### Breaking changes since 1.2.3.Final
+
+* Extract scripting SMTs into a separate module with separate installation package [DBZ-2549]
+
+
+### Fixes since 1.2.3.Final
+
+None
+
+
+### Other changes since 1.2.3.Final
+
+* Document outbox event router SMT [DBZ-2480](https://issues.jboss.org/browse/DBZ-2480)
+* Unify representation of events - part two - update other connector doc [DBZ-2501](https://issues.jboss.org/browse/DBZ-2501)
+* Add annotations to support splitting files for downstream docs  [DBZ-2539](https://issues.jboss.org/browse/DBZ-2539)
+(https://issues.jboss.org/browse/DBZ-2549)
+* Prepare message filtering SMT doc for product release [DBZ-2460](https://issues.jboss.org/browse/DBZ-2460)
+* Prepare content-based router SMT doc for product release [DBZ-2519](https://issues.jboss.org/browse/DBZ-2519)
+
+
+
 ## 1.2.3.Final
 September 8th, 2020 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12347072)
 
@@ -15,12 +44,12 @@ None
 None
 
 
-### Fixes since 1.2.1.Final
+### Fixes since 1.2.2.Final
 
 * JSON functions in MySQL grammar unsupported [DBZ-2453](https://issues.jboss.org/browse/DBZ-2453)
 
 
-### Other changes since 1.2.1.Final
+### Other changes since 1.2.2.Final
 
 * CloudEvents remains TP but has avro support downstream [DBZ-2245](https://issues.jboss.org/browse/DBZ-2245)
 * Prepare DB2 connector doc for TP [DBZ-2403](https://issues.jboss.org/browse/DBZ-2403)
