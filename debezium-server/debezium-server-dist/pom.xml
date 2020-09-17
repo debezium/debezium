@@ -93,7 +93,7 @@
                                 <goals>
                                     <goal>single</goal>
                                 </goals>
-				<configuration>
+                                <configuration>
                                     <appendAssemblyId>false</appendAssemblyId>
                                     <attach>true</attach>  <!-- we want attach & deploy these to Maven -->
                                     <descriptors>

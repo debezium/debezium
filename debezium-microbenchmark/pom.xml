@@ -17,6 +17,10 @@
         </dependency>
         <dependency>
             <groupId>io.debezium</groupId>
+            <artifactId>debezium-scripting</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.debezium</groupId>
             <artifactId>debezium-connector-mysql</artifactId>
         </dependency>
         <dependency>
