@@ -16,16 +16,53 @@ endif::community[]
 By default, {prodname} streams all of the change events that it reads from a table to a single static topic.
 However, there might be situations in which you might want to reroute selected events to other topics, based on the event content.
 The process of routing messages based on their content is described in the https://www.enterpriseintegrationpatterns.com/patterns/messaging/ContentBasedRouter.html[Content-based routing] messaging pattern. 
-To apply this pattern in {prodname}, you use the content-based routing SMT to write expressions that are evaluated for each event.
+To apply this pattern in {prodname}, you use the content-based routing link:https://cwiki.apache.org/confluence/display/KAFKA/KIP-66%3A+Single+Message+Transforms+for+Kafka+Connect[single message transform] (SMT) to write expressions that are evaluated for each event.
 Depending how an event is evaluated, the SMT either routes the event message to the original destination topic, or reroutes it to the topic that you specify in the expression.
 
-Kafka Connect provides its own link:https://cwiki.apache.org/confluence/display/KAFKA/KIP-66%3A+Single+Message+Transforms+for+Kafka+Connect[Simple Message Transforms] (SMT) to encode routing logic.
-However, the following drawbacks apply to using the generic SMT:
+ifdef::community[]
+[NOTE]
+====
+The content-based routing SMT is under active development. The structure of the emitted message or other details might change as development progresses.
+====
+endif::community[]
+
+ifdef::product[]
+[IMPORTANT]
+====
+The {prodname} content-based routing SMT is a Technology Preview feature. Technology Preview features are not supported with Red Hat production service-level agreements (SLAs) and might not be functionally complete; therefore, Red Hat does not recommend implementing any Technology Preview features in production environments. This Technology Preview feature provides early access to upcoming product innovations, enabling you to test functionality and provide feedback during the development process. For more information about support scope, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
+====
+endif::product[]
+
+Kafka Connect allows to implement bespoke SMTs to encode routing logic using Java.
+However, there are some drawbacks to that:
 
 * It is necessary to compile the transformation up front and deploy it to Kafka Connect.
 * Every change needs code recompilation and redeployment, leading to inflexible operations.
 
 The content-based routing SMT supports scripting languages that integrate with https://jcp.org/en/jsr/detail?id=223[JSR 223] (Scripting for the Java(TM) Platform).
+
+[[set-up-content-based-routing]]
+== Set up
+
+For security reasons, the content-based routing SMT is not part of the {prodname} connector archives,
+but is provided in a separate artifact, debezium-scripting-{debezium-version}.tar.gz, which must be explicitly added to your Kafka Connect environment.
+In order to use this SMT for a given connector plug-in, add the contents of debezium-scripting-{debezium-version}.tar.gz to the connector's plug-in directory.
+Note that this allows anyone who can set up connectors in your Kafka Connect instance to execute scripting expressions.
+You should therefore only add this SMT after securing your Kafka Connect instance appropriately.
+
+ifdef::community[]
+With https://zookeeper.apache.org[Zookeeper], http://kafka.apache.org/[Kafka], {link-kafka-docs}.html#connect[Kafka Connect], and one or more {prodname} connectors installed, the remaining tasks to install the filter SMT are:
+
+. Download the link:https://repo1.maven.org/maven2/io/debezium/debezium-scripting/{debezium-version}/debezium-scripting-{debezium-version}.tar.gz[scripting SMT archive]
+. Extract the contents of the archive into the {prodname} plug-in directories of your Kafka Connect environment.
+. Restart your Kafka Connect process to pick up the new JAR files.
+endif::community[]
+
+ifdef::product[]
+. Download the {prodname} link:https://access.redhat.com/jbossnetwork/restricted/listSoftware.html?product=red.hat.integration&downloadType=distributions[scripting SMT archive].
+. Extract the contents of the archive into the {prodname} plug-in directories of your Kafka Connect environment.
+. Restart your Kafka Connect process to pick up the new JAR files.
+endif::product[]
 
 // Type: concept
 // ModuleID: example-debezium-basic-content-based-routing-configuration
