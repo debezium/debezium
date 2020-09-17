@@ -30,6 +30,7 @@ node('Slave') {
                 for CONNECTOR in \${CONNECTORS}; do
                     curl -OLs "\${SOURCE_MAVEN_REPO}/debezium-connector-\$CONNECTOR/${BUILD_VERSION}/debezium-connector-\$CONNECTOR-${BUILD_VERSION}-plugin.zip"
                 done
+                curl -OLs "\${SOURCE_MAVEN_REPO}/debezium-scripting/${BUILD_VERSION}/debezium-scripting-${BUILD_VERSION}.zip"
                 for CONNECTOR in \${CONNECTORS_INCUBATOR}; do
                     curl -OLs "\${SOURCE_MAVEN_REPO}/debezium-connector-\$CONNECTOR/${BUILD_VERSION_INCUBATOR}/debezium-connector-\$CONNECTOR-${BUILD_VERSION_INCUBATOR}-plugin.zip"
                 done
