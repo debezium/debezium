@@ -28,15 +28,15 @@ link:https://kafka.apache.org/documentation/#connect_transforms[Kafka Connect SM
 ifdef::product[]
 The following topics provide details: 
 
-* xref:use-case-for-routing-records-to-topics-that-you-specify[]
-* xref:example-of-routing-records-for-multiple-tables-to-one-topic[]
-* xref:ensuring-unique-keys-across-records-routed-to-the-same-topic[]
-* xref:options-for-configuring-topic-routing-transformation[]
+* xref:use-case-for-routing-debezium-records-to-topics-that-you-specify[]
+* xref:example-of-routing-debezium-records-for-multiple-tables-to-one-topic[]
+* xref:ensuring-unique-keys-across-debezium-records-routed-to-the-same-topic[]
+* xref:options-for-configuring-debezium-topic-routing-transformation[]
 endif::product[]
 
 // Type: concept
-// ModuleID: use-case-for-routing-records-to-topics-that-you-specify
-// Title: Use case for routing records to topics that you specify
+// ModuleID: use-case-for-routing-debezium-records-to-topics-that-you-specify
+// Title: Use case for routing {prodname} records to topics that you specify
 == Use case
 
 The default behavior is that a {prodname} connector sends each change event record to a topic whose name is formed from the name of the database and the name of the table in which the change was made. In other words, a topic receives records for one physical table. When you want a topic to receive records for more than one physical table, you must configure the {prodname} connector to re-route the records to that topic. 
@@ -51,8 +51,8 @@ You can re-route change event records for tables in any of the shards to the sam
 When the {prodname} PostgreSQL connector captures changes in a partitioned table, the default behavior is that change event records are routed to a different topic for each partition. To emit records from all partitions to one topic, configure the topic routing SMT. Because each key in a partitioned table is guaranteed to be unique, configure {link-prefix}:{link-topic-routing}#by-logical-table-router-key-enforce-uniqueness[`key.enforce.uniqueness=false`] so that the SMT does not add a key field to ensure unique keys. The addition of a key field is default behavior. 
 
 // Type: concept
-// ModuleID: example-of-routing-records-for-multiple-tables-to-one-topic
-// Title: Example of routing records for multiple tables to one topic
+// ModuleID: example-of-routing-debezium-records-for-multiple-tables-to-one-topic
+// Title: Example of routing {prodname} records for multiple tables to one topic
 == Example
 
 To route change event records for multiple physical tables to the same topic, configure the topic routing transformation in the Kafka Connect configuration for the {prodname} connector. Configuration of the topic routing SMT requires you to specify regular expressions that determine: 
@@ -81,8 +81,8 @@ In the example, the regular expression, `(.*)customers_shard(.*)` matches record
 `topic.replacement`:: Specifies a regular expression that represents the destination topic name. The transformation routes each matching record to the topic identified by this expression. In this example, records for the three sharded tables listed above would be routed to the `myserver.mydb.customers_all_shards` topic. 
 
 // Type: procedure
-// ModuleID: ensuring-unique-keys-across-records-routed-to-the-same-topic
-// Title: Ensuring unique keys across records routed to the same topic
+// ModuleID: ensuring-unique-keys-across-debezium-records-routed-to-the-same-topic
+// Title: Ensuring unique keys across {prodname} records routed to the same topic
 == Ensure unique key
 
 A {prodname} change event key uses the table columns that make up the table's primary key. To route records for multiple physical tables to one topic, the event key must be unique across all of those tables. However, it is possible for each physical table to have a primary key that is unique within only that table. For example, a row in the `myserver.mydb.customers_shard1` table might have the same key value as a row in the `myserver.mydb.customers_shard2` table. 
@@ -138,8 +138,8 @@ ifdef::community[]
 endif::community[]
 
 // Type: reference
-// ModuleID: options-for-configuring-topic-routing-transformation
-// Title: Options for configuring topic routing transformation
+// ModuleID: options-for-configuring-debezium-topic-routing-transformation
+// Title: Options for configuring {prodname} topic routing transformation
 == Configuration options
 
 The following table describes topic routing SMT configuration options.
