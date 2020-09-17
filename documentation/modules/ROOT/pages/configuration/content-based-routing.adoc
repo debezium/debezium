@@ -47,20 +47,27 @@ The content-based routing SMT supports scripting languages that integrate with h
 For security reasons, the content-based routing SMT is not part of the {prodname} connector archives,
 but is provided in a separate artifact, debezium-scripting-{debezium-version}.tar.gz, which must be explicitly added to your Kafka Connect environment.
 In order to use this SMT for a given connector plug-in, add the contents of debezium-scripting-{debezium-version}.tar.gz to the connector's plug-in directory.
+
 Note that this allows anyone who can set up connectors in your Kafka Connect instance to execute scripting expressions.
-You should therefore only add this SMT after securing your Kafka Connect instance appropriately.
+You should therefore only add this SMT after securing your Kafka Connect instance and its configuration interface appropriately.
+
+{prodname} itself doesn't come with any implementations of the JSR 223 API.
+To use an expression language, you must download the JSR 223 script engine implementation for the language, and add to your {prodname} connector plug-in directories, along any other JAR files used by the language implementation.
+Eg. for Groovy 3, you can download its JSR 223 implementation from https://groovy-lang.org/. For GraalVM JavaScript, this is is available at https://github.com/graalvm/graaljs.
 
 ifdef::community[]
 With https://zookeeper.apache.org[Zookeeper], http://kafka.apache.org/[Kafka], {link-kafka-docs}.html#connect[Kafka Connect], and one or more {prodname} connectors installed, the remaining tasks to install the filter SMT are:
 
 . Download the link:https://repo1.maven.org/maven2/io/debezium/debezium-scripting/{debezium-version}/debezium-scripting-{debezium-version}.tar.gz[scripting SMT archive]
 . Extract the contents of the archive into the {prodname} plug-in directories of your Kafka Connect environment.
+. Obtain a JSR-223 script engine implementation and add its contents to the {prodname} plug-in directories of your Kafka Connect environment.
 . Restart your Kafka Connect process to pick up the new JAR files.
 endif::community[]
 
 ifdef::product[]
 . Download the {prodname} link:https://access.redhat.com/jbossnetwork/restricted/listSoftware.html?product=red.hat.integration&downloadType=distributions[scripting SMT archive].
 . Extract the contents of the archive into the {prodname} plug-in directories of your Kafka Connect environment.
+. Obtain a JSR-223 script engine implementation and add its contents to the {prodname} plug-in directories of your Kafka Connect environment.
 . Restart your Kafka Connect process to pick up the new JAR files.
 endif::product[]
 
@@ -94,16 +101,6 @@ transforms.route.topic.expression=value.op == 'u' ? 'updates' : null
 The preceding example specifies the use of the `Groovy` expression language.
 
 Records that do not match the pattern are routed to the default topic.
-
-[IMPORTANT]
-====
-Although the {prodname} package includes the JSR 223 API, which provides support for scripting languages that integrate with JSR 223, by default, {prodname} cannot interpret scripts from these languages.
-To use an expression language, you must download the JSR-223 script engine JAR for the language, and add the JAR to your classpath, along any other JAR files used by the language implementation.
-For Groovy 3, you can download the JAR from https://groovy-lang.org/. For GraalVM JavaScript, the JAR is available at https://github.com/graalvm/graaljs.   
-
-Typically, you add the language JAR to the directory that contains the {prodname} connector JAR files, which is the directory that is referenced in the `plugin.path` configuration property that is set for the Kafka Connect plugin. 
-If you install the script engine JAR to a different directory, you must add that directory to the list in the `plugin.path` property. 
-====
 
 // Type: concept
 // ModuleID: variables-for-use-in-debezium-content-based-routing-expressions
