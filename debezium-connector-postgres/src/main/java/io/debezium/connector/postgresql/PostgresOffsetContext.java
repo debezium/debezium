@@ -226,6 +226,11 @@ public class PostgresOffsetContext implements OffsetContext {
     }
 
     public static PostgresOffsetContext initialContext(PostgresConnectorConfig connectorConfig, PostgresConnection jdbcConnection, Clock clock) {
+        return initialContext(connectorConfig, jdbcConnection, clock, null, null);
+    }
+
+    public static PostgresOffsetContext initialContext(PostgresConnectorConfig connectorConfig, PostgresConnection jdbcConnection, Clock clock, Lsn lastCommitLsn,
+                                                       Lsn lastCompletelyProcessedLsn) {
         try {
             LOGGER.info("Creating initial offset context");
             final Lsn lsn = Lsn.valueOf(jdbcConnection.currentXLogLocation());
@@ -234,8 +239,8 @@ public class PostgresOffsetContext implements OffsetContext {
             return new PostgresOffsetContext(
                     connectorConfig,
                     lsn,
-                    null,
-                    null,
+                    lastCompletelyProcessedLsn,
+                    lastCommitLsn,
                     txId,
                     clock.currentTimeAsInstant(),
                     false,
