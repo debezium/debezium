@@ -26,6 +26,7 @@ import org.mockito.Mockito;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot.AdapterName;
+import io.debezium.doc.FixFor;
 import io.debezium.relational.TableId;
 
 @SkipWhenAdapterNameIsNot(value = AdapterName.LOGMINER)
@@ -157,10 +158,30 @@ public class RowMapperTest {
 
     @Test
     public void testGetTableId() throws SQLException {
-        Mockito.when(rs.getString(8)).thenReturn("schema");
-        Mockito.when(rs.getString(7)).thenReturn("table");
-        TableId tableId = RowMapper.getTableId("catalog", rs);
+        Mockito.when(rs.getString(8)).thenReturn("SCHEMA");
+        Mockito.when(rs.getString(7)).thenReturn("TABLE");
+        TableId tableId = RowMapper.getTableId("CATALOG", rs);
         assertThat(tableId.toString().equals("CATALOG.SCHEMA.TABLE")).isTrue();
+        verify(rs).getString(8);
+        Mockito.when(rs.getString(8)).thenThrow(SQLException.class);
+
+        tableId = null;
+        try {
+            tableId = RowMapper.getTableId("catalog", rs);
+            assertThat(1 == 2).isTrue();
+        }
+        catch (SQLException e) {
+            assertThat(tableId).isNull();
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-2555")
+    public void testGetTableIdWithVariedCase() throws SQLException {
+        Mockito.when(rs.getString(8)).thenReturn("Schema");
+        Mockito.when(rs.getString(7)).thenReturn("table");
+        TableId tableId = RowMapper.getTableId("CATALOG", rs);
+        assertThat(tableId.toString().equals("CATALOG.Schema.table")).isTrue();
         verify(rs).getString(8);
         Mockito.when(rs.getString(8)).thenThrow(SQLException.class);
 

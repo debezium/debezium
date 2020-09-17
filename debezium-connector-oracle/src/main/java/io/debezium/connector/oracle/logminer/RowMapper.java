@@ -169,7 +169,7 @@ public class RowMapper {
     }
 
     public static TableId getTableId(String catalogName, ResultSet rs) throws SQLException {
-        return new TableId(catalogName.toUpperCase(), rs.getString(SEG_OWNER).toUpperCase(), rs.getString(TABLE_NAME).toUpperCase());
+        return new TableId(catalogName, rs.getString(SEG_OWNER), rs.getString(TABLE_NAME));
     }
 
 }
