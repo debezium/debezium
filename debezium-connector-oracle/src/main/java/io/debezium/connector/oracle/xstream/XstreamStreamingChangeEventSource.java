@@ -79,7 +79,7 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
             }
         }
         catch (Throwable e) {
-            throw new RuntimeException(e);
+            errorHandler.setProducerThrowable(e);
         }
         finally {
             // 3. disconnect
