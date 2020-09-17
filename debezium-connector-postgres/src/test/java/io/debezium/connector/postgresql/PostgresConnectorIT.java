@@ -1490,6 +1490,8 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         VerifyRecord.isValidRead(s1recs.get(1), PK_FIELD, 1);
         VerifyRecord.isValidRead(s1recs.get(2), PK_FIELD, 2);
 
+        assertNoRecordsToConsume();
+
         TestHelper.assertNoOpenTransactions();
 
         stopConnector(value -> assertThat(logInterceptor.containsMessage("For table 's2.a' the select statement was not provided, skipping table")).isTrue());

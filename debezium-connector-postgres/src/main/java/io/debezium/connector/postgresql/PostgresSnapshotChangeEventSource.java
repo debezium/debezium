@@ -44,6 +44,7 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
     private final Snapshotter snapshotter;
     private final SlotCreationResult slotCreatedInfo;
     private final SlotState startingSlotInfo;
+    private final PostgresOffsetContext previousOffset;
 
     public PostgresSnapshotChangeEventSource(PostgresConnectorConfig connectorConfig, Snapshotter snapshotter, PostgresOffsetContext previousOffset,
                                              PostgresConnection jdbcConnection, PostgresSchema schema, EventDispatcher<TableId> dispatcher, Clock clock,
@@ -55,6 +56,7 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
         this.snapshotter = snapshotter;
         this.slotCreatedInfo = slotCreatedInfo;
         this.startingSlotInfo = startingSlotInfo;
+        this.previousOffset = previousOffset;
     }
 
     @Override
@@ -130,7 +132,17 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
     protected void determineSnapshotOffset(RelationalSnapshotContext ctx) throws Exception {
         PostgresOffsetContext offset = (PostgresOffsetContext) ctx.offset;
         if (offset == null) {
-            offset = PostgresOffsetContext.initialContext(connectorConfig, jdbcConnection, getClock());
+            if (previousOffset != null && !snapshotter.shouldStreamEventsStartingFromSnapshot()) {
+                // The connect framework, not the connector, manages triggering committing offset state so the
+                // replication stream may not have flushed the latest offset state during catch up streaming.
+                // The previousOffset variable is shared between the catch up streaming and snapshot phases and
+                // has the latest known offset state.
+                offset = PostgresOffsetContext.initialContext(connectorConfig, jdbcConnection, getClock(),
+                        previousOffset.lastCommitLsn(), previousOffset.lastCompletelyProcessedLsn());
+            }
+            else {
+                offset = PostgresOffsetContext.initialContext(connectorConfig, jdbcConnection, getClock());
+            }
             ctx.offset = offset;
         }
 
