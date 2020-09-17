@@ -179,6 +179,7 @@
         <module>debezium-connector-sqlserver</module>
         <module>debezium-microbenchmark</module>
         <module>debezium-quarkus-outbox</module>
+        <module>debezium-scripting</module>
         <module>debezium-server</module>
         <module>debezium-testing</module>
     </modules>
@@ -468,6 +469,11 @@
             <dependency>
                 <groupId>io.debezium</groupId>
                 <artifactId>debezium-core</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
+                <artifactId>debezium-scripting</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
