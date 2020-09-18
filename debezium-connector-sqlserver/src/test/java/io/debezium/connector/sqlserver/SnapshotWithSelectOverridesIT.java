@@ -108,7 +108,7 @@ public class SnapshotWithSelectOverridesIT extends AbstractConnectorTest {
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
 
-        SourceRecords records = consumeRecordsByTopic(INITIAL_RECORDS_PER_TABLE + INITIAL_RECORDS_PER_TABLE + INITIAL_RECORDS_PER_TABLE / 2);
+        SourceRecords records = consumeRecordsByTopic(INITIAL_RECORDS_PER_TABLE + (INITIAL_RECORDS_PER_TABLE + INITIAL_RECORDS_PER_TABLE) / 2);
         List<SourceRecord> table1 = records.recordsForTopic("server1.dbo.table1");
         List<SourceRecord> table2 = records.recordsForTopic("server1.dbo.table2");
         List<SourceRecord> table3 = records.recordsForTopic("server1.dbo.table3");

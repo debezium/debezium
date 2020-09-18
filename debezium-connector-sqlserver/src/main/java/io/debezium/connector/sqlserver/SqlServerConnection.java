@@ -338,7 +338,8 @@ public class SqlServerConnection extends JdbcConnection {
                                 rs.getString(3),
                                 rs.getInt(4),
                                 Lsn.valueOf(rs.getBytes(6)),
-                                Lsn.valueOf(rs.getBytes(7))));
+                                Lsn.valueOf(rs.getBytes(7)),
+                                rs.getString(15)));
             }
             return changeTables;
         });
@@ -375,13 +376,18 @@ public class SqlServerConnection extends JdbcConnection {
                 changeTable.getSourceTableId().table(),
                 null)) {
             while (rs.next()) {
-                readTableColumn(rs, changeTable.getSourceTableId(), null).ifPresent(ce -> columns.add(ce.create()));
+                readTableColumn(rs, changeTable.getSourceTableId(), null).ifPresent(ce -> {
+                    // Filter out columns not included in the change table.
+                    if (changeTable.getCapturedColumnList().contains(ce.name())) {
+                        columns.add(ce.create());
+                    }
+                });
             }
         }
 
         final List<String> pkColumnNames = readPrimaryKeyOrUniqueIndexNames(metadata, changeTable.getSourceTableId());
         Collections.sort(columns);
-        return Table.editor()
+        return Table.editorSkippableColumns()
                 .tableId(changeTable.getSourceTableId())
                 .addColumns(columns)
                 .setPrimaryKeyNames(pkColumnNames)

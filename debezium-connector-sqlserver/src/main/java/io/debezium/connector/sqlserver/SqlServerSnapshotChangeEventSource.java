@@ -12,7 +12,8 @@ import java.sql.SQLException;
 import java.sql.Savepoint;
 import java.sql.Statement;
 import java.sql.Types;
-import java.util.Objects;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -44,6 +45,7 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
     private final SqlServerConnectorConfig connectorConfig;
     private final SqlServerConnection jdbcConnection;
     private final SqlServerDatabaseSchema sqlServerDatabaseSchema;
+    private Map<TableId, SqlServerChangeTable> changeTables;
 
     public SqlServerSnapshotChangeEventSource(SqlServerConnectorConfig connectorConfig, SqlServerOffsetContext previousOffset, SqlServerConnection jdbcConnection,
                                               SqlServerDatabaseSchema schema, EventDispatcher<TableId> dispatcher, Clock clock,
@@ -185,6 +187,25 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
                     connectorConfig.getTableFilters().dataCollectionFilter(),
                     null,
                     false);
+
+            // Save changeTables for sql select later.
+            changeTables = jdbcConnection.listOfChangeTables().stream()
+                    .collect(Collectors.toMap(SqlServerChangeTable::getSourceTableId, changeTable -> changeTable,
+                            (changeTable1, changeTable2) -> changeTable1.getStartLsn().compareTo(changeTable2.getStartLsn()) > 0
+                                    ? changeTable1
+                                    : changeTable2));
+
+            // Update table schemas to only include columns that are also included in the cdc tables.
+            changeTables.forEach((tableId, sqlServerChangeTable) -> {
+                Table sourceTable = snapshotContext.tables.forTable(tableId);
+                // SourceTable will be null for that tables are excluded in the configuration, but have cdc enabled.
+                if (sourceTable != null) {
+                    List<Column> cdcEnabledSourceColumns = sourceTable.filterColumns(
+                            column -> sqlServerChangeTable.getCapturedColumnList().contains(column.name()));
+                    snapshotContext.tables.overwriteTable(sourceTable.id(), cdcEnabledSourceColumns,
+                            sourceTable.primaryKeyColumnNames(), sourceTable.defaultCharsetName());
+                }
+            });
         }
     }
 
@@ -223,41 +244,41 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
     @Override
     protected Optional<String> getSnapshotSelect(RelationalSnapshotContext snapshotContext, TableId tableId) {
         String modifiedColumns = checkExcludedColumns(tableId);
-        if (modifiedColumns != null) {
-            return Optional.of(String.format("SELECT %s FROM [%s].[%s]", modifiedColumns, tableId.schema(), tableId.table()));
-        }
-        return Optional.of(String.format("SELECT * FROM [%s].[%s]", tableId.schema(), tableId.table()));
+        return Optional.of(String.format("SELECT %s FROM [%s].[%s]", modifiedColumns, tableId.schema(), tableId.table()));
     }
 
     @Override
     protected String enhanceOverriddenSelect(RelationalSnapshotContext snapshotContext, String overriddenSelect, TableId tableId) {
         String modifiedColumns = checkExcludedColumns(tableId);
-        if (modifiedColumns != null) {
-            overriddenSelect = overriddenSelect.replaceAll("\\*", modifiedColumns);
-        }
-        return overriddenSelect;
+        return overriddenSelect.replaceAll("\\*", modifiedColumns);
     }
 
     private String checkExcludedColumns(TableId tableId) {
-        String modifiedColumns = null;
-        String excludedColumnStr = connectorConfig.getTableFilters().getExcludeColumns();
-        if (Objects.nonNull(excludedColumnStr)
-                && excludedColumnStr.trim().length() > 0
-                && excludedColumnStr.contains(tableId.table())) {
-            Table table = sqlServerDatabaseSchema.tableFor(tableId);
-            modifiedColumns = table.retrieveColumnNames().stream()
-                    .map(s -> {
-                        StringBuilder sb = new StringBuilder();
-                        if (!s.contains(tableId.table())) {
-                            sb.append(tableId.table()).append(".").append(s);
-                        }
-                        else {
-                            sb.append(s);
-                        }
-                        return sb.toString();
-                    }).collect(Collectors.joining(","));
+        Table table = sqlServerDatabaseSchema.tableFor(tableId);
+        return table.retrieveColumnNames().stream()
+                .filter(columnName -> filterChangeTableColumns(tableId, columnName))
+                .filter(columnName -> connectorConfig.getColumnFilter().matches(tableId.catalog(), tableId.schema(), tableId.table(), columnName))
+                .map(columnName -> {
+                    StringBuilder sb = new StringBuilder();
+                    if (!columnName.contains(tableId.table())) {
+                        sb.append("[").append(tableId.table()).append("]")
+                                .append(".[").append(columnName).append("]");
+                    }
+                    else {
+                        sb.append("[").append(columnName).append("]");
+                    }
+                    return sb.toString();
+                }).collect(Collectors.joining(","));
+    }
+
+    private boolean filterChangeTableColumns(TableId tableId, String columnName) {
+        SqlServerChangeTable changeTable = changeTables.get(tableId);
+        if (changeTable != null) {
+            return changeTable.getCapturedColumnList().contains(columnName);
         }
-        return modifiedColumns;
+        // ChangeTable will be null if cdc has not been enabled for it yet.
+        // Return true to allow columns to be captured.
+        return true;
     }
 
     @Override
