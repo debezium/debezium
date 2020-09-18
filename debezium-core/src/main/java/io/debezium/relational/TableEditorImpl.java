@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
-final class TableEditorImpl implements TableEditor {
+class TableEditorImpl implements TableEditor {
 
     private TableId id;
     private LinkedHashMap<String, Column> sortedColumns = new LinkedHashMap<>();
@@ -256,7 +256,7 @@ final class TableEditorImpl implements TableEditor {
 
     protected boolean positionsAreValid() {
         AtomicInteger position = new AtomicInteger(1);
-        return sortedColumns.values().stream().allMatch(defn -> defn.position() == position.getAndIncrement());
+        return sortedColumns.values().stream().allMatch(defn -> defn.position() >= position.getAndSet(defn.position() + 1));
     }
 
     @Override
@@ -275,5 +275,9 @@ final class TableEditorImpl implements TableEditor {
             columns.add(column);
         });
         return new TableImpl(id, columns, primaryKeyColumnNames(), defaultCharsetName);
+    }
+
+    public LinkedHashMap<String, Column> getSortedColumns() {
+        return sortedColumns;
     }
 }

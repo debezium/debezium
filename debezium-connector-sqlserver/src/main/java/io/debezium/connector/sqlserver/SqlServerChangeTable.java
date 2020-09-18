@@ -5,8 +5,12 @@
  */
 package io.debezium.connector.sqlserver;
 
+import java.util.Arrays;
+import java.util.List;
+import java.util.Optional;
+import java.util.regex.Pattern;
+
 import io.debezium.relational.ChangeTable;
-import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 
 /**
@@ -20,6 +24,7 @@ import io.debezium.relational.TableId;
 public class SqlServerChangeTable extends ChangeTable {
 
     private static final String CDC_SCHEMA = "cdc";
+    private static final Pattern BRACKET_PATTERN = Pattern.compile("[\\[\\]]");
 
     /**
      * A LSN from which the data in the change table are relevant
@@ -31,19 +36,19 @@ public class SqlServerChangeTable extends ChangeTable {
      */
     private Lsn stopLsn;
 
-    /**
-     * The table from which the changes are captured
-     */
-    private Table sourceTable;
+    private List<String> capturedColumnList;
 
-    public SqlServerChangeTable(TableId sourceTableId, String captureInstance, int changeTableObjectId, Lsn startLsn, Lsn stopLsn) {
+    public SqlServerChangeTable(TableId sourceTableId, String captureInstance, int changeTableObjectId, Lsn startLsn, Lsn stopLsn,
+                                String capturedColumnListString) {
         super(captureInstance, sourceTableId, resolveChangeTableId(sourceTableId, captureInstance), changeTableObjectId);
         this.startLsn = startLsn;
         this.stopLsn = stopLsn;
+        this.capturedColumnList = Arrays.asList(BRACKET_PATTERN.matcher(Optional.ofNullable(capturedColumnListString).orElse(""))
+                .replaceAll("").split(", "));
     }
 
     public SqlServerChangeTable(String captureInstance, int changeTableObjectId, Lsn startLsn, Lsn stopLsn) {
-        this(null, captureInstance, changeTableObjectId, startLsn, stopLsn);
+        this(null, captureInstance, changeTableObjectId, startLsn, stopLsn, null);
     }
 
     public Lsn getStartLsn() {
@@ -58,12 +63,8 @@ public class SqlServerChangeTable extends ChangeTable {
         this.stopLsn = stopLsn;
     }
 
-    public Table getSourceTable() {
-        return sourceTable;
-    }
-
-    public void setSourceTable(Table sourceTable) {
-        this.sourceTable = sourceTable;
+    public List<String> getCapturedColumnList() {
+        return capturedColumnList;
     }
 
     @Override

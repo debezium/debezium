@@ -318,8 +318,15 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
         try (Statement statement = readTableStatement();
                 ResultSet rs = statement.executeQuery(selectStatement.get())) {
 
-            Column[] columns = getColumnsForResultSet(table, rs);
-            final int numColumns = table.columns().size();
+            ResultSetMetaData metaData = rs.getMetaData();
+            Column[] columns = new Column[metaData.getColumnCount()];
+            int greatestColumnPosition = 0;
+            for (int i = 0; i < columns.length; i++) {
+                columns[i] = table.columnWithName(metaData.getColumnName(i + 1));
+                greatestColumnPosition = greatestColumnPosition < columns[i].position()
+                        ? columns[i].position()
+                        : greatestColumnPosition;
+            }
             long rows = 0;
             Timer logTimer = getTableScanLogTimer();
             snapshotContext.lastRecordInTable = false;
@@ -331,9 +338,9 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
                     }
 
                     rows++;
-                    final Object[] row = new Object[numColumns];
-                    for (int i = 0; i < numColumns; i++) {
-                        row[i] = getColumnValue(rs, i + 1, columns[i]);
+                    final Object[] row = new Object[greatestColumnPosition];
+                    for (int i = 0; i < columns.length; i++) {
+                        row[columns[i].position() - 1] = getColumnValue(rs, i + 1, columns[i]);
                     }
 
                     snapshotContext.lastRecordInTable = !rs.next();
@@ -413,17 +420,6 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
     // TODO Handle override option generically; a problem will be how to handle the dynamic part (Oracle's "... as of
     // scn xyz")
     protected abstract Optional<String> getSnapshotSelect(RelationalSnapshotContext snapshotContext, TableId tableId);
-
-    private Column[] getColumnsForResultSet(Table table, ResultSet rs) throws SQLException {
-        ResultSetMetaData metaData = rs.getMetaData();
-        Column[] columns = new Column[metaData.getColumnCount()];
-
-        for (int i = 0; i < columns.length; i++) {
-            columns[i] = table.columnWithName(metaData.getColumnName(i + 1));
-        }
-
-        return columns;
-    }
 
     protected Object getColumnValue(ResultSet rs, int columnIndex, Column column) throws SQLException {
         return rs.getObject(columnIndex);
