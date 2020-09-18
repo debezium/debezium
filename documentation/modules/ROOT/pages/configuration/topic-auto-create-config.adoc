@@ -3,7 +3,7 @@
 // ModuleID: configuring-debezium-to-auto-create-change-data-capture-topics
 // Title: Configuring {prodname} to use automatically create topics
 [id="cdc-topic-auto-create-config"]
-= Custom Topic Auto-Creation
+= Customizing Topic Auto-Creation
 
 :toc:
 :toc-placement: macro
@@ -23,7 +23,7 @@ upfront either automated in a custom deployment process or manually until Kafka 
 
 Since Kafka 2.6.0 Kafka Connect supports customizable topic auto-creation.
 
-== Setup Kafka Connect
+== Set up Kafka Connect
 
 Kafka Connect since Kafka 2.6.0 comes with topic creation enabled:
 
@@ -85,7 +85,7 @@ to customize how topics will be created.
 See {link-prefix}:{link-install-debezium}#_configuring_debezium_topics[Configuring {prodname} Topics] section in the
 {prodname} installation guide on generic topic configuration considerations.
 
-=== Default Group Config
+=== Default group configuration
 
 The default config can be passed in the connector config JSON like:
 
@@ -144,7 +144,7 @@ set. Use `-1` to use the Kafka broker's default value.{empty} +
 This fallback does not apply to other config parameters.
 ====
 
-=== Custom Group Config
+=== Custom group configuration
 
 You can specify multiple groups. Similar to the `default` group you group properties together by
 the group name. This will look like that in your connector JSON:
@@ -211,7 +211,7 @@ which name matches the `include` regular expression/s *and* _not_ match the `exc
 expression/s.
 |===
 
-=== Registering Custom Groups
+=== Registering custom groups
 
 Finally, we need to register the two defined custom groups `inventory` and `applicationlogs` with
 the `topic.creation.groups` property:
@@ -259,7 +259,7 @@ ifdef::community[]
 
 For more information on topic auto-creation you can have a look at these resources:
 
-- Debezium Blog: https://debezium.io/blog/2020/09/15/debezium-auto-create-topics/[Auto-creating Debezium Change Data Topics]
-- Kafka Improvement Proposal about adding topic auto-creation to Kafka Connect: https://cwiki.apache.org/confluence/display/KAFKA/KIP-158%3A+Kafka+Connect+should+allow+source+connectors+to+set+topic-specific+settings+for+new+topics[KIP-158 Kafka Connect should allow source connectors to set topic-specific settings for new topics]
+* Debezium Blog: https://debezium.io/blog/2020/09/15/debezium-auto-create-topics/[Auto-creating Debezium Change Data Topics]
+* Kafka Improvement Proposal about adding topic auto-creation to Kafka Connect: https://cwiki.apache.org/confluence/display/KAFKA/KIP-158%3A+Kafka+Connect+should+allow+source+connectors+to+set+topic-specific+settings+for+new+topics[KIP-158 Kafka Connect should allow source connectors to set topic-specific settings for new topics]
 
 endif::community[]

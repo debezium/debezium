@@ -12,7 +12,7 @@
 ** xref:configuration/outbox-event-router.adoc[Outbox Event Router]
 ** xref:configuration/filtering.adoc[Message Filtering]
 ** xref:configuration/content-based-routing.adoc[Content-Based Routing]
-** xref:configuration/topic-auto-create-config.adoc[Custom Topic Auto-Creation]
+** xref:configuration/topic-auto-create-config.adoc[Customizing Topic Auto-Creation]
 * Connectors
 ** xref:connectors/index.adoc[Overview]
 ** xref:connectors/mysql.adoc[MySQL]
