@@ -39,7 +39,7 @@ public class DatabaseTestResource implements QuarkusTestResourceLifecycleManager
                     .withStartupTimeout(Duration.ofSeconds(30));
 
             container.start();
-            return Collections.singletonMap("quarkus.datasource.url", container.getJdbcUrl());
+            return Collections.singletonMap("quarkus.datasource.jdbc.url", container.getJdbcUrl());
         }
         catch (Exception e) {
             throw new RuntimeException(e);
