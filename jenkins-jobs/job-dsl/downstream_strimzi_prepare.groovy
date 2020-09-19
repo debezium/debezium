@@ -19,6 +19,8 @@ pipelineJob('downstream-strimzi-prepare-job') {
 //        DEBEZIUM CONNECT IMAGE CONFIG
         booleanParam('DBZ_CONNECT_BUILD', true, 'Also build debezium images')
         textParam('DBZ_CONNECTOR_ARCHIVE_URLS', "", "List of URLs to productised Debezium connectors")
+//        EXTRA CONFIG
+        textParam('DBZ_EXTRA_LIBS', "", "List of extra libraries added to connectors")
     }
 
     definition {

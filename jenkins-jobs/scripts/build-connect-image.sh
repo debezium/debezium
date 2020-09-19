@@ -4,8 +4,9 @@ COPY_IMAGES=true
 REGISTRY="quay.io"
 DOCKER_FILE=${DIR}/../docker/Dockerfile.AMQ
 PLUGIN_DIR="plugins"
+EXTRA_LIBS=""
 
-OPTS=`getopt -o d:i:a:f:r:o: --long dir:,images:,archive-urls:,dockerfile:,registry:,organisation:,dest-creds:,src-creds:,img-output: -n 'parse-options' -- "$@"`
+OPTS=`getopt -o d:i:a:l:f:r:o: --long dir:,images:,archive-urls:,libs:,dockerfile:,registry:,organisation:,dest-creds:,src-creds:,img-output: -n 'parse-options' -- "$@"`
 if [ $? != 0 ] ; then echo "Failed parsing options." >&2 ; exit 1 ; fi
 eval set -- "$OPTS"
 
@@ -15,6 +16,7 @@ while true; do
                                 PLUGIN_DIR=${BUILD_DIR}/plugins;    shift; shift ;;
     -i | --images )             IMAGES=$2;                          shift; shift ;;
     -a | --archive-urls )       ARCHIVE_URLS=$2;                    shift; shift ;;
+    -l | --libs )               EXTRA_LIBS=$2;                      shift; shift ;;
     -f | --dockerfile )         DOCKER_FILE=$2;                     shift; shift ;;
     -r | --registry )           REGISTRY=$2;                        shift; shift ;;
     -o | --organisation )       ORGANISATION=$2;                    shift; shift ;;
@@ -60,12 +62,26 @@ function process_image() {
 echo "Creating plugin directory ${PLUGIN_DIR}"
 mkdir -p "${PLUGIN_DIR}"
 
+cd ${PLUGIN_DIR}
 for archive in ${ARCHIVE_URLS}; do
     echo "[Processing] ${archive}"
-    cd ${PLUGIN_DIR} && curl -OJs ${archive} && cd -
+    curl -OJs ${archive} && unzip \*.zip && rm *.zip
 done
 
-#
+for input in ${EXTRA_LIBS}; do
+    echo "[Processing] input"
+    lib=`echo ${input} | awk -F "::"  '{print $1}' | xargs`
+    dest=`echo ${input} |  awk -F "::"  '{print $2}' | xargs`
+
+    curl -OJs ${lib}
+    if [[ "${lib}" =~ ^.*\.zip$ ]] ; then
+        unzip -d ${dest} \*.zip && rm *.zip
+    else
+        mv *.jar ${dest}
+    fi
+done
+cd -
+
 for image in $IMAGES; do
     echo "[Processing] $image"
     process_image "${image}" "${REGISTRY}" "${ORGANISATION}"

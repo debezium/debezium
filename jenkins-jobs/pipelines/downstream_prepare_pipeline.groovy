@@ -44,7 +44,7 @@ pipeline {
                         --images="${STRZ_IMAGES}"                                   \\
                         --registry="quay.io" --organisation="${QUAY_ORGANISATION}"  \\
                         --dest-creds="${QUAY_USERNAME}:${QUAY_PASSWORD}"            \\
-                        --img-output="${WORKSPACE}/published_images.txt"
+                        --img-output="${WORKSPACE}/published_images.txt"            
                     '''
                     zip(archive: true, zipFile: 'amq-streams-install-examples.zip', dir: 'strimzi')
                 }
@@ -65,10 +65,11 @@ pipeline {
                     ./jenkins-jobs/scripts/build-connect-image.sh                   \\
                         --dir="${WORKSPACE}"                                        \\
                         --archive-urls="${DBZ_CONNECTOR_ARCHIVE_URLS}"              \\
+                        --libs="${DBZ_EXTRA_LIBS}"                                  \\
                         --images="${STRZ_IMAGES}"                                   \\
                         --registry="quay.io" --organisation="${QUAY_ORGANISATION}"  \\
                         --dest-creds="${QUAY_USERNAME}:${QUAY_PASSWORD}"            \\
-                        --img-output="${WORKSPACE}/published_images_dbz.txt"     
+                        --img-output="${WORKSPACE}/published_images_dbz.txt"
                     '''
                 }
             }
