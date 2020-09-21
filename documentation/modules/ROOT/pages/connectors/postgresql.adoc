@@ -365,7 +365,7 @@ In addition to a {link-prefix}:{link-postgresql-connector}#postgresql-events[_da
 
 .Example
 
-[source,json,indent=0,subs="attributes"]
+[source,json,indent=0,subs="+attributes"]
 ----
 {
   "status": "BEGIN",
@@ -404,7 +404,7 @@ This field provides information about every event in the form of a composite of 
 
 Following is an example of a message:
 
-[source,json,indent=0,subs="attributes"]
+[source,json,indent=0,subs="+attributes"]
 ----
 {
   "before": null,
@@ -440,16 +440,16 @@ The following skeleton JSON shows the basic four parts of a change event. Howeve
 [source,json,index=0]
 ----
 {
- "schema": { //<1>
+ "schema": { // <1>
    ...
   },
- "payload": { //<2>
+ "payload": { // <2>
    ...
  },
- "schema": { //<3> 
+ "schema": { // <3> 
    ...
  },
- "payload": { //<4>
+ "payload": { // <4>
    ...
  },
 }
@@ -536,11 +536,11 @@ If the `database.server.name` connector configuration property has the value `Po
 [source,json,indent=0]
 ----
   {
-    "schema": { <1>
+    "schema": { // <1>
       "type": "struct",
-      "name": "PostgreSQL_server.public.customers.Key", <2>
-      "optional": false, <3>
-      "fields": [ <4>
+      "name": "PostgreSQL_server.public.customers.Key", // <2>
+      "optional": false, // <3>
+      "fields": [ // <4>
             {
                 "name": "id",
                 "index": "0",
@@ -551,7 +551,7 @@ If the `database.server.name` connector configuration property has the value `Po
             }
         ]
     },
-    "payload": { <5>
+    "payload": { // <5>
         "id": "1"
     },
   }
@@ -567,11 +567,11 @@ If the `database.server.name` connector configuration property has the value `Po
 |The schema portion of the key specifies a Kafka Connect schema that describes what is in the key's `payload` portion. 
 
 |2
-|`PostgreSQL_server.inventory.customers.Key`
+|`PostgreSQL_server{zwsp}.inventory.customers{zwsp}.Key`
 a|Name of the schema that defines the structure of the key's payload. This schema describes the structure of the primary key for the table that was changed. Key schema names have the format _connector-name_._database-name_._table-name_.`Key`. In this example: + 
 
 * `PostgreSQL_server` is the name of the connector that generated this event. + 
-* `public` is the database that contains the table that was changed. +
+* `inventory` is the database that contains the table that was changed. +
 * `customers` is the table that was updated.
 
 |3
@@ -628,10 +628,11 @@ Details follow in these sections:
 * <<postgresql-create-events,_create_ events>>
 * <<postgresql-update-events,_update_ events>>
 * <<postgresql-primary-key-updates, Primary key updates>>
-* <<postgreswl-delete-events,_delete_ events>>
+* <<postgresql-delete-events,_delete_ events>>
 * <<postgresql-tombstone-events, Tombstone events>>
 endif::product[]
 
+// Type: continue
 [[postgresql-replica-identity]]
 === Replica identity
 
@@ -646,6 +647,7 @@ If a table does not have a primary key, the connector does not emit `UPDATE` or 
 * `FULL` - Emitted events for `UPDATE` and `DELETE` operations contain the previous values of all columns in the table.
 * `INDEX` _index-name_ - Emitted events for `UPDATE` and `DELETE` operations contain the previous values of the columns contained in the specified index. `UPDATE` events also contain the indexed columns with the updated values.
 
+// Type: continue
 [[postgresql-create-events]]
 === _create_ events
 
@@ -892,12 +894,13 @@ a|Optional field that displays the time at which the connector processed the eve
 
 |===
 
+// Type: continue
 [[postgresql-update-events]]
 === _update_ events
 
 The value of a change event for an update in the sample `customers` table has the same schema as a _create_ event for that table. Likewise, the event value's payload has the same structure. However, the event value payload contains different values in an _update_ event. Here is an example of a change event value in an event that the connector generates for an update in the `customers` table: 
 
-[source,json,indent=0,options="nowrap",subs="attributes"]
+[source,json,indent=0,options="nowrap",subs="+attributes"]
 ----
 {
     "schema": { ... },
@@ -969,6 +972,7 @@ a|Mandatory string that describes the type of operation. In an _update_ event va
 Updating the columns for a row's primary/unique key changes the value of the row's key. When a key changes, {prodname} outputs _three_ events: a `DELETE` event and a {link-prefix}:{link-postgresql-connector}#postgresql-tombstone-events[tombstone event] with the old key for the row, followed by an event with the new key for the row. Details are in the next section. 
 ====
 
+// Type: continue
 [[postgresql-primary-key-updates]]
 === Primary key updates
 
@@ -1059,6 +1063,7 @@ For a consumer to be able to process a _delete_ event generated for a table that
 
 PostgreSQL connector events are designed to work with link:{link-kafka-docs}#compaction[Kafka log compaction]. Log compaction enables removal of some older messages as long as at least the most recent message for every key is kept. This lets Kafka reclaim storage space while ensuring that the topic contains a complete data set and can be used for reloading key-based state.
 
+// Type: continue
 [[postgresql-tombstone-events]]
 .Tombstone events
 When a row is deleted, the _delete_ event value still works with log compaction, because Kafka can remove all earlier messages that have that same key. However, for Kafka to remove all messages that have that same key, the message value must be `null`. To make this possible, the PostgreSQL connector follows a _delete_ event with a special _tombstone_ event that has the same key but a `null` value.
@@ -1096,174 +1101,179 @@ The following table describes how the connector maps basic PostgreSQL data types
 * _semantic type_ describes how the Kafka Connect schema captures the _meaning_ of the field using the name of the Kafka Connect schema for the field.
 
 .Mappings for PostgreSQL basic data types
-[cols="20%a,15%a,30%a,35%a",options="header"]
+[cols="25%a,20%a,55%a",options="header"]
 |===
 |PostgreSQL data type
 |Literal type (schema type)
-|Semantic type (schema name)
-|Notes
+|Semantic type (schema name) and Notes
 
 |`BOOLEAN`
 |`BOOLEAN`
 |n/a
-|
 
 |`BIT(1)`
 |`BOOLEAN`
 |n/a
-|
 
 |`BIT( > 1)`
 |`BYTES`
-|`io.debezium.data.Bits`
-|The `length` schema parameter contains an integer that represents the number of bits. The resulting `byte[]` contains the bits in little-endian form and is sized to contain the specified number of bits. For example, `numBytes = n/8 + (n % 8 == 0 ? 0 : 1)` where `n` is the number of bits.
+|`io.debezium.data.Bits` +
+ +
+The `length` schema parameter contains an integer that represents the number of bits. The resulting `byte[]` contains the bits in little-endian form and is sized to contain the specified number of bits. For example, `numBytes = n/8 + (n % 8 == 0 ? 0 : 1)` where `n` is the number of bits.
 
 |`BIT VARYING[(M)]`
 |`BYTES`
-|`io.debezium.data.Bits`
-|The `length` schema parameter contains an integer that represents the number of bits (2^31 - 1 in case no length is given for the column). The resulting `byte[]` contains the bits in little-endian form and is sized based on the content. The specified size `(M)` is stored in the length parameter of the `io.debezium.data.Bits` type.
+|`io.debezium.data.Bits` +
+ +
+The `length` schema parameter contains an integer that represents the number of bits (2^31 - 1 in case no length is given for the column). The resulting `byte[]` contains the bits in little-endian form and is sized based on the content. The specified size `(M)` is stored in the length parameter of the `io.debezium.data.Bits` type.
 
 |`SMALLINT`, `SMALLSERIAL`
 |`INT16`
 |n/a
-|
 
 |`INTEGER`, `SERIAL`
 |`INT32`
 |n/a
-|
 
 |`BIGINT`, `BIGSERIAL`
 |`INT64`
 |n/a
-|
 
 |`REAL`
 |`FLOAT32`
 |n/a
-|
 
 |`DOUBLE PRECISION`
 |`FLOAT64`
 |n/a
-|
 
 |`CHAR[(M)]`
 |`STRING`
 |n/a
-|
 
 |`VARCHAR[(M)]`
 |`STRING`
 |n/a
-|
 
 |`CHARACTER[(M)]`
 |`STRING`
 |n/a
-|
 
 |`CHARACTER VARYING[(M)]`
 |`STRING`
 |n/a
-|
 
 |`TIMESTAMPTZ`, `TIMESTAMP WITH TIME ZONE`
 |`STRING`
-|`io.debezium.time.ZonedTimestamp`
-| A string representation of a timestamp with timezone information, where the timezone is GMT.
+|`io.debezium.time.ZonedTimestamp` +
+ +
+A string representation of a timestamp with timezone information, where the timezone is GMT.
 
 |`TIMETZ`, `TIME WITH TIME ZONE`
 |`STRING`
-|`io.debezium.time.ZonedTime`
-| A string representation of a time value with timezone information, where the timezone is GMT.
+|`io.debezium.time.ZonedTime` +
+ +
+A string representation of a time value with timezone information, where the timezone is GMT.
 
 |`INTERVAL [P]`
 |`INT64`
 |`io.debezium.time.MicroDuration` +
-(default)
-|The approximate number of microseconds for a time interval using the `365.25 / 12.0` formula for days per month average.
+(default) +
+ +
+The approximate number of microseconds for a time interval using the `365.25 / 12.0` formula for days per month average.
 
 |`INTERVAL [P]`
 |`STRING`
 |`io.debezium.time.Interval` +
-(when `interval.handling.mode` is set to `string`)
-|The string representation of the interval value that follows the pattern `P<years>Y<months>M<days>DT<hours>H<minutes>M<seconds>S`, for example,  `P1Y2M3DT4H5M6.78S`.
+(when `interval.handling.mode` is set to `string`) +
+ +
+The string representation of the interval value that follows the pattern `P<years>Y<months>M<days>DT<hours>H<minutes>M<seconds>S`, for example,  `P1Y2M3DT4H5M6.78S`.
 
 |`BYTEA`
 |`BYTES` or `STRING`
-|n/a
-|Either the raw bytes (the default), a base64-encoded string, or a hex-encoded string, based on the connector's {link-prefix}:{link-postgresql-connector}#postgresql-property-binary-handling-mode[binary handling mode] setting.
+|n/a +
+ +
+Either the raw bytes (the default), a base64-encoded string, or a hex-encoded string, based on the connector's {link-prefix}:{link-postgresql-connector}#postgresql-property-binary-handling-mode[binary handling mode] setting.
 
 |`JSON`, `JSONB`
 |`STRING`
-|`io.debezium.data.Json`
-|Contains the string representation of a JSON document, array, or scalar.
+|`io.debezium.data.Json` +
+ +
+Contains the string representation of a JSON document, array, or scalar.
 
 |`XML`
 |`STRING`
-|`io.debezium.data.Xml`
-|Contains the string representation of an XML document.
+|`io.debezium.data.Xml` +
+ +
+Contains the string representation of an XML document.
 
 |`UUID`
 |`STRING`
-|`io.debezium.data.Uuid`
-|Contains the string representation of a PostgreSQL UUID value.
+|`io.debezium.data.Uuid` +
+ +
+Contains the string representation of a PostgreSQL UUID value.
 
 |`POINT`
 |`STRUCT`
-|`io.debezium.data.geometry.Point`
-|Contains a structure with two `FLOAT64` fields, `(x,y)`. Each field represents the coordinates of a geometric point.
+|`io.debezium.data.geometry.Point` +
+ +
+Contains a structure with two `FLOAT64` fields, `(x,y)`. Each field represents the coordinates of a geometric point.
 
 |`LTREE`
 |`STRING`
-|`io.debezium.data.Ltree`
-|Contains the string representation of a PostgreSQL LTREE value.
+|`io.debezium.data.Ltree` +
+ +
+Contains the string representation of a PostgreSQL LTREE value.
 
 |`CITEXT`
 |`STRING`
 |n/a
-|
 
 |`INET`
 |`STRING`
 |n/a
-|
 
 |`INT4RANGE`
 |`STRING`
-|n/a
-|Range of integer.
+|n/a +
+ +
+Range of integer.
 
 |`INT8RANGE`
 |`STRING`
-|n/a
-|Range of `bigint`.
+|n/a +
+ +
+Range of `bigint`.
 
 |`NUMRANGE`
 |`STRING`
-|n/a
-|Range of `numeric`.
+|n/a +
+ +
+Range of `numeric`.
 
 |`TSRANGE`
 |`STRING`
-|n/a
-|Contains the string representation of a timestamp range without a time zone.
+|n/a +
+ +
+Contains the string representation of a timestamp range without a time zone.
 
 |`TSTZRANGE`
 |`STRING`
-|n/a
-|Contains the string representation of a timestamp range with the local system time zone.
+|n/a +
+ +
+Contains the string representation of a timestamp range with the local system time zone.
 
 |`DATERANGE`
 |`STRING`
-|n/a
-|Contains the string representation of a date range. It always has an exclusive upper-bound.
+|n/a +
+ +
+Contains the string representation of a date range. It always has an exclusive upper-bound.
 
 |`ENUM`
 |`STRING`
-|`io.debezium.data.Enum`
-|Contains the string representation of the PostgreSQL `ENUM` value. The set of allowed values is maintained in the `allowed` schema parameter.
+|`io.debezium.data.Enum` +
+ +
+Contains the string representation of the PostgreSQL `ENUM` value. The set of allowed values is maintained in the `allowed` schema parameter.
 
 |===
 
@@ -1281,37 +1291,41 @@ Other than PostgreSQL's `TIMESTAMPTZ` and `TIMETZ` data types, which contain tim
 When the `time.precision.mode` property is set to `adaptive`, the default, the connector determines the literal type and semantic type based on the column's data type definition. This ensures that events _exactly_ represent the values in the database. 
 
 .Mappings when `time.precision.mode` is `adaptive`
-[cols="20%a,15%a,30%a,35%a",options="header"]
+[cols="25%a,20%a,55%a",options="header"]
 |===
 |PostgreSQL data type
 |Literal type (schema type)
-|Semantic type (schema name)
-|Notes
+|Semantic type (schema name) and Notes
 
 |`DATE`
 |`INT32`
-|`io.debezium.time.Date`
-|Represents the number of days since the epoch.
+|`io.debezium.time.Date` +
+ +
+Represents the number of days since the epoch.
 
 |`TIME(1)`, `TIME(2)`, `TIME(3)`
 |`INT32`
-|`io.debezium.time.Time`
-|Represents the number of milliseconds past midnight, and does not include timezone information.
+|`io.debezium.time.Time` +
+ +
+Represents the number of milliseconds past midnight, and does not include timezone information.
 
 |`TIME(4)`, `TIME(5)`, `TIME(6)`
 |`INT64`
-|`io.debezium.time.MicroTime`
-|Represents the number of microseconds past midnight, and does not include timezone information.
+|`io.debezium.time.MicroTime` +
+ +
+Represents the number of microseconds past midnight, and does not include timezone information.
 
 |`TIMESTAMP(1)`, `TIMESTAMP(2)`, `TIMESTAMP(3)`
 |`INT64`
-|`io.debezium.time.Timestamp`
-|Represents the number of milliseconds since the epoch, and does not include timezone information.
+|`io.debezium.time.Timestamp` +
+ +
+Represents the number of milliseconds since the epoch, and does not include timezone information.
 
 |`TIMESTAMP(4)`, `TIMESTAMP(5)`, `TIMESTAMP(6)`, `TIMESTAMP`
 |`INT64`
-|`io.debezium.time.MicroTimestamp`
-|Represents the number of microseconds since the epoch, and does not include timezone information.
+|`io.debezium.time.MicroTimestamp` +
+ +
+Represents the number of microseconds since the epoch, and does not include timezone information.
 
 |===
 
@@ -1320,32 +1334,35 @@ When the `time.precision.mode` property is set to `adaptive`, the default, the c
 When the `time.precision.mode` configuration property is set to `adaptive_time_microseconds`, the connector determines the literal type and semantic type for temporal types based on the column's data type definition. This ensures that events _exactly_ represent the values in the database, except all `TIME` fields are captured as microseconds.
 
 .Mappings when `time.precision.mode` is `adaptive_time_microseconds`
-[cols="20%a,15%a,30%a,35%a",options="header"]
+[cols="25%a,20%a,55%a",options="header"]
 |===
-|PostgreSQL Data Type
+|PostgreSQL data type
 |Literal type (schema type)
-|Semantic type (schema name)
-|Notes
+|Semantic type (schema name) and Notes
 
 |`DATE`
 |`INT32`
-|`io.debezium.time.Date`
-|Represents the number of days since epoch.
+|`io.debezium.time.Date` +
+ +
+Represents the number of days since the epoch.
 
 |`TIME([P])`
 |`INT64`
-|`io.debezium.time.MicroTime`
-|Represents the time value in microseconds and does not include timezone information. PostgreSQL allows precision `P` to be in the range 0-6 to store up to microsecond precision.
+|`io.debezium.time.MicroTime` +
+ +
+Represents the time value in microseconds and does not include timezone information. PostgreSQL allows precision `P` to be in the range 0-6 to store up to microsecond precision.
 
 |`TIMESTAMP(1)` , `TIMESTAMP(2)`, `TIMESTAMP(3)`
 |`INT64`
-|`io.debezium.time.Timestamp`
-|Represents the number of milliseconds past epoch, and does not include timezone information.
+|`io.debezium.time.Timestamp` +
+ +
+Represents the number of milliseconds past the epoch, and does not include timezone information.
 
 |`TIMESTAMP(4)` , `TIMESTAMP(5)`, `TIMESTAMP(6)`, `TIMESTAMP`
 |`INT64`
-|`io.debezium.time.MicroTimestamp`
-|Represents the number of microseconds past epoch, and does not include timezone information.
+|`io.debezium.time.MicroTimestamp` +
+ +
+Represents the number of microseconds past the epoch, and does not include timezone information.
 
 |===
 
@@ -1354,32 +1371,34 @@ When the `time.precision.mode` configuration property is set to `adaptive_time_m
 When the `time.precision.mode` configuration property is set to `connect`, the connector uses Kafka Connect logical types. This may be useful when consumers can handle only the built-in Kafka Connect logical types and are unable to handle variable-precision time values. However, since PostgreSQL supports microsecond precision, the events generated by a connector with the `connect` time precision mode *results in a loss of precision* when the database column has a _fractional second precision_ value that is greater than 3.
 
 .Mappings when `time.precision.mode` is `connect`
-[cols="20%a,15%a,30%a,35%a",options="header"]
+[cols="25%a,20%a,55%a",options="header"]
 |===
 |PostgreSQL data type
 |Literal type (schema type)
-|Semantic type (schema name)
-|Notes
+|Semantic type (schema name) and Notes
 
 |`DATE`
 |`INT32`
-|`org.apache.kafka.connect.data.Date`
-|Represents the number of days since epoch.
+|`org.apache.kafka.connect.data.Date` +
+ +
+Represents the number of days since the epoch.
 
 |`TIME([P])`
 |`INT64`
-|`org.apache.kafka.connect.data.Time`
-|Represents the number of milliseconds since midnight, and does not include timezone information. PostgreSQL allows `P` to be in the range 0-6 to store up to microsecond precision, though this mode results in a loss of precision when `P` is greater than 3.
+|`org.apache.kafka.connect.data.Time` +
+ +
+Represents the number of milliseconds since midnight, and does not include timezone information. PostgreSQL allows `P` to be in the range 0-6 to store up to microsecond precision, though this mode results in a loss of precision when `P` is greater than 3.
 
 |`TIMESTAMP([P])`
 |`INT64`
-|`org.apache.kafka.connect.data.Timestamp`
-|Represents the number of milliseconds since the epoch, and does not include timezone information. PostgreSQL allows `P` to be in the range 0-6 to store up to microsecond precision, though this mode results in a loss of precision when `P` is greater than 3.
+|`org.apache.kafka.connect.data.Timestamp` +
+ +
+Represents the number of milliseconds since the epoch, and does not include timezone information. PostgreSQL allows `P` to be in the range 0-6 to store up to microsecond precision, though this mode results in a loss of precision when `P` is greater than 3.
 
 |===
 
 [id="postgresql-timestamp-type"]
-=== `TIMESTAMP` type
+=== TIMESTAMP type
 
 The `TIMESTAMP` type represents a timestamp without time zone information.
 Such columns are converted into an equivalent Kafka Connect value based on UTC. For example, the `TIMESTAMP` value "2018-06-20 15:13:16.945104" is represented by an `io.debezium.time.MicroTimestamp` with the value "1529507596945104" when `time.precision.mode` is not set to `connect`.
@@ -1394,22 +1413,23 @@ The setting of the PostgreSQL connector configuration property, `decimal.handlin
 When the `decimal.handling.mode` property is set to `precise`, the connector uses the Kafka Connect `org.apache.kafka.connect.data.Decimal` logical type for all `DECIMAL` and `NUMERIC` columns. This is the default mode.
 
 .Mappings when `decimal.handling.mode` is `precise`
-[cols="15%a,15%a,35%a,35%a",options="header"]
+[cols="28%a,17%a,55%a",options="header"]
 |===
 |PostgreSQL data type
 |Literal type (schema type)
-|Semantic type (schema name)
-|Notes
+|Semantic type (schema name) and Notes
 
 |`NUMERIC[(M[,D])]`
 |`BYTES`
-|`org.apache.kafka.connect.data.Decimal`
-|The `scale` schema parameter contains an integer representing how many digits the decimal point was shifted.
+|`org.apache.kafka.connect.data.Decimal` +
+ +
+The `scale` schema parameter contains an integer representing how many digits the decimal point was shifted.
 
 |`DECIMAL[(M[,D])]`
 |`BYTES`
-|`org.apache.kafka.connect.data.Decimal`
-|The `scale` schema parameter contains an integer representing how many digits the decimal point was shifted.
+|`org.apache.kafka.connect.data.Decimal` +
+ +
+The `scale` schema parameter contains an integer representing how many digits the decimal point was shifted.
 
 |===
 
@@ -1417,43 +1437,41 @@ There is an exception to this rule.
 When the `NUMERIC` or `DECIMAL` types are used without scale constraints, the values coming from the database have a different (variable) scale for each value. In this case, the connector uses `io.debezium.data.VariableScaleDecimal`, which contains both the value and the scale of the transferred value.
 
 .Mappings of decimal types when there are no scale constraints
-[cols="15%a,15%a,35%a,35%a",options="header"]
+[cols="25%a,20%a,55%a",options="header"]
 |===
 |PostgreSQL data type
 |Literal type (schema type)
-|Semantic type (schema name)
-|Notes
+|Semantic type (schema name) and Notes
 
 |`NUMERIC`
 |`STRUCT`
-|`io.debezium.data.VariableScaleDecimal`
-|Contains a structure with two fields: `scale` of type `INT32` that contains the scale of the transferred value and `value` of type `BYTES` containing the original value in an unscaled form.
+|`io.debezium.data.VariableScaleDecimal` +
+ +
+Contains a structure with two fields: `scale` of type `INT32` that contains the scale of the transferred value and `value` of type `BYTES` containing the original value in an unscaled form.
 
 |`DECIMAL`
 |`STRUCT`
-|`io.debezium.data.VariableScaleDecimal`
-|Contains a structure with two fields: `scale` of type `INT32` that contains the scale of the transferred value and `value` of type `BYTES` containing the original value in an unscaled form.
+|`io.debezium.data.VariableScaleDecimal` +
+ +
+Contains a structure with two fields: `scale` of type `INT32` that contains the scale of the transferred value and `value` of type `BYTES` containing the original value in an unscaled form.
 
 |===
 
 When the `decimal.handling.mode` property is set to `double`, the connector represents all `DECIMAL` and `NUMERIC` values as Java double values and encodes them as shown in the following table.
 
 .Mappings when `decimal.handling.mode` is `double`
-[cols="15%a,15%a,35%a,35%a",options="header"]
+[cols="30%a,30%a,40%a",options="header"]
 |===
 |PostgreSQL data type
 |Literal type (schema type)
 |Semantic type (schema name)
-|Notes
 
 |`NUMERIC[(M[,D])]`
 |`FLOAT64`
 |
-|
 
 |`DECIMAL[(M[,D])]`
 |`FLOAT64`
-|
 |
 
 |===
@@ -1461,21 +1479,18 @@ When the `decimal.handling.mode` property is set to `double`, the connector repr
 The last possible setting for the `decimal.handling.mode` configuration property is `string`. In this case, the connector represents `DECIMAL` and `NUMERIC` values as their formatted string representation, and encodes them as shown in the following table. 
 
 .Mappings when `decimal.handling.mode` is `string`
-[cols="15%a,15%a,35%a,35%a",options="header"]
+[cols="30%a,30%a,40%a",options="header"]
 |===
 |PostgreSQL data type
 |Literal type (schema type)
 |Semantic type (schema name)
-|Notes
 
 |`NUMERIC[(M[,D])]`
 |`STRING`
 |
-|
 
 |`DECIMAL[(M[,D])]`
 |`STRING`
-|
 |
 
 |===
@@ -1483,27 +1498,28 @@ The last possible setting for the `decimal.handling.mode` configuration property
 PostgreSQL supports `NaN` (not a number) as a special value to be stored in `DECIMAL`/`NUMERIC` values when the setting of `decimal.handling.mode` is `string` or `double`. In this case, the connector encodes `NaN` as either `Double.NaN` or the string constant `NAN`.
 
 [id="postgresql-hstore-type"]
-=== `HSTORE` type
+=== HSTORE type
 
 When the `hstore.handling.mode` connector configuration property is set to `json` (the default), the connector represents `HSTORE` values as string representations of JSON values and encodes them as shown in the following table. When the `hstore.handling.mode` property is set to `map`, the connector uses the `MAP` schema type for `HSTORE` values. 
 
 .Mappings for `HSTORE` data type
-[cols="15%a,15%a,35%a,35%a",options="header"]
+[cols="25%a,20%a,55%a",options="header"]
 |===
 |PostgreSQL data type
 |Literal type (schema type)
-|Semantic type (schema name)
-|Notes
+|Semantic type (schema name) and Notes
 
 |`HSTORE`
 |`STRING`
-|`io.debezium.data.Json`
-| Example: output representation using the JSON converter is `{\"key\" : \"val\"}`
+|`io.debezium.data.Json` +
+ +
+Example: output representation using the JSON converter is `{\"key\" : \"val\"}`
 
 |`HSTORE`
 |`MAP`
-|
-| Example: output representation  using the JSON converter is `{"key" : "val"}`
+|n/a +
+ +
+Example: output representation  using the JSON converter is `{"key" : "val"}`
 
 |===
 
@@ -1525,32 +1541,35 @@ When a column is defined to contain a domain type that extends another domain ty
 PostgreSQL has data types that can store IPv4, IPv6, and MAC addresses. It is better to use these types instead of plain text types to store network addresses. Network address types offer input error checking and specialized operators and functions.
 
 .Mappings for network address types
-[cols="15%a,15%a,35%a,35%a",options="header"]
+[cols="25%a,20%a,55%a",options="header"]
 |===
 |PostgreSQL data type
 |Literal type (schema type)
-|Semantic type (schema name)
-|Notes
+|Semantic type (schema name) and Notes
 
 |`INET`
 |`STRING`
-|
-|IPv4 and IPv6 networks
+|n/a +
+ +
+IPv4 and IPv6 networks
 
 |`CIDR`
 |`STRING`
-|
-|IPv4 and IPv6 hosts and networks
+|n/a +
+ +
+IPv4 and IPv6 hosts and networks
 
 |`MACADDR`
 |`STRING`
-|
-|MAC addresses
+|n/a +
+ +
+MAC addresses
 
 |`MACADDR8`
 |`STRING`
-|
-|MAC addresses in EUI-64 format
+|n/a +
+ +
+MAC addresses in EUI-64 format
 
 |===
 
@@ -1560,18 +1579,18 @@ PostgreSQL has data types that can store IPv4, IPv6, and MAC addresses. It is be
 The PostgreSQL connector supports all link:http://postgis.net[PostGIS data types].
 
 .Mappings of PostGIS data types
-[cols="20%a,15%a,30%a,35%a",options="header"]
+[cols="25%a,20%a,55%a",options="header"]
 |===
 |PostGIS data type
 |Literal type (schema type)
-|Semantic type (schema name)
-|Notes
+|Semantic type (schema name) and Notes
 
 |`GEOMETRY` +
 (planar)
-|`STRUCT`
-|`io.debezium.data.geometry.Geometry`
-|Contains a structure with two fields: +
+|`STRUCT` 
+a|`io.debezium.data.geometry.Geometry` +
+ +
+Contains a structure with two fields: +
 
 * `srid (INT32)` - Spatial Reference System Identifier that defines what type of geometry object is stored in the structure.
 * `wkb (BYTES)` - A binary representation of the geometry object encoded in the Well-Known-Binary format. +
@@ -1581,8 +1600,9 @@ For format details, see link:http://www.opengeospatial.org/standards/sfa[Open Ge
 |`GEOGRAPHY` +
 (spherical)
 |`STRUCT`
-|`io.debezium.data.geometry.Geography`
-|Contains a structure with two fields: +
+|`io.debezium.data.geometry.Geography` +
+ +
+Contains a structure with two fields: +
 
 * `srid (INT32)` - Spatial Reference System Identifier that defines what type of geography object is stored in the structure.
 * `wkb (BYTES)` - A binary representation of the geometry object encoded in the Well-Known-Binary format. +
@@ -1779,7 +1799,7 @@ If you are using one of the supported {link-prefix}:{link-postgresql-connector}#
 # MODULES
 shared_preload_libraries = 'decoderbufs,wal2json' // <1>
 ----
-<1> instructs the server to load the `decoderbufs` and `wal2json` logical decoding plug-ins at startup. The names of the plug-ins are set in the link:https://github.com/debezium/postgres-decoderbufs/blob/v0.3.0/Makefile[`Protobuf`] and link:https://github.com/eulerto/wal2json/blob/master/Makefile[`wal2json`] make files. 
+<1> Instructs the server to load the `decoderbufs` and `wal2json` logical decoding plug-ins at startup. The names of the plug-ins are set in the link:https://github.com/debezium/postgres-decoderbufs/blob/v0.3.0/Makefile[`Protobuf`] and link:https://github.com/eulerto/wal2json/blob/master/Makefile[`wal2json`] make files. 
 
 . To configure the replication slot regardless of the decoder being used, specify the following in the `postgresql.conf` file: 
 +
@@ -2083,7 +2103,7 @@ pass:quotes[*tree ./my-plugins/*]
 
 .. Create a new `Dockerfile` by using `{DockerKafkaConnect}` as the base image. In the following example, you would replace _my-plugins_ with the name of your plug-ins directory:
 +
-[subs=+macros,subs="+attributes"]
+[subs="+macros,+attributes"]
 ----
 FROM {DockerKafkaConnect}
 USER root:root
@@ -2105,7 +2125,7 @@ Before Kafka Connect starts running the connector, Kafka Connect loads any third
 +
 * Edit the `spec.image` property of the `KafkaConnector` custom resource. If set, this property overrides the `STRIMZI_DEFAULT_KAFKA_CONNECT_IMAGE` variable in the Cluster Operator. For example:
 +
-[source,yaml,subs=attributes+]
+[source,yaml,subs="+attributes"]
 ----
 apiVersion: {KafkaConnectApiVersion}
 kind: KafkaConnector
@@ -2243,7 +2263,7 @@ Slot names must conform to link:https://www.postgresql.org/docs/current/static/w
 Set to `true` in only testing or development environments. Dropping the slot allows the database to discard WAL segments. When the connector restarts it performs a new snapshot or it can continue from a persistent offset in the Kafka Connect offsets topic. 
 
 |[[postgresql-property-publication-name]]<<postgresql-property-publication-name, `publication.name`>>
-|`dbz_publication`
+|`dbz_{zwsp}publication`
 |The name of the PostgreSQL publication created for streaming changes when using `pgoutput`.
 
 This publication is created at start-up if it does not already exist and it includes _all tables_.
@@ -2273,43 +2293,43 @@ If the publication already exists, either for all tables or configured with a su
 |
 |The name of the PostgreSQL database from which to stream the changes.
 
-|[[postgresql-property-database-server-name]]<<postgresql-property-database-server-name, `database.server.name`>>
+|[[postgresql-property-database-server-name]]<<postgresql-property-database-server-name, `database.server{zwsp}.name`>>
 |
 |Logical name that identifies and provides a namespace for the particular PostgreSQL database server or cluster in which {prodname} is capturing changes. Only alphanumeric characters and underscores should be used in the database server logical name. The logical name should be unique across all other connectors, since it is used as a topic name prefix for all Kafka topics that receive records from this connector.
 
 |[[postgresql-property-schema-whitelist]]
-[[postgresql-property-schema-include-list]]<<postgresql-property-schema-include-list, `schema.include.list`>>
+[[postgresql-property-schema-include-list]]<<postgresql-property-schema-include-list, `schema.include{zwsp}.list`>>
 |
 |An optional, comma-separated list of regular expressions that match names of schemas for which you *want* to capture changes. Any schema name not included in `schema.include.list` is excluded from having its changes captured. By default, all non-system schemas have their changes captured. Do not also set the `schema.exclude.list` property.
 
 |[[postgresql-property-schema-blacklist]]
-[[postgresql-property-schema-exclude-list]]<<postgresql-property-schema-exclude-list, `schema.exclude.list`>>
+[[postgresql-property-schema-exclude-list]]<<postgresql-property-schema-exclude-list, `schema.exclude{zwsp}.list`>>
 |
 |An optional, comma-separated list of regular expressions that match names of schemas for which you *do not* want to capture changes. Any schema whose name is not included in `schema.exclude.list` has its changes captured, with the exception of system schemas. Do not also set the `schema.include.list` property.
 
 |[[postgresql-property-table-whitelist]]
-[[postgresql-property-table-include-list]]<<postgresql-property-table-include-list, `table.include.list`>>
+[[postgresql-property-table-include-list]]<<postgresql-property-table-include-list, `table.include{zwsp}.list`>>
 |
 |An optional, comma-separated list of regular expressions that match fully-qualified table identifiers for tables whose changes you want to capture. Any table not included in `table.include.list` does not have its changes captured. Each identifier is of the form _schemaName_._tableName_. By default, the connector captures changes in every non-system table in each schema whose changes are being captured. Do not also set the `table.exclude.list` property.
 
 |[[postgresql-property-table-blacklist]]
-[[postgresql-property-table-exclude.list]]<<postgresql-property-table-exclude.list, `table.exclude.list`>>
+[[postgresql-property-table-exclude.list]]<<postgresql-property-table-exclude.list, `table.exclude{zwsp}.list`>>
 |
 |An optional, comma-separated list of regular expressions that match fully-qualified table identifiers for tables whose changes you *do not* want to capture. Any table not included in `table.exclude.list` has it changes captured. Each identifier is of the form _schemaName_._tableName_. Do not also set the `table.include.list` property.
 
 |[[postgresql-property-column-whitelist]]
-[[postgresql-property-column-include-list]]<<postgresql-property-column-include-list, `column.include.list`>>
+[[postgresql-property-column-include-list]]<<postgresql-property-column-include-list, `column.include{zwsp}.list`>>
 |
 |An optional, comma-separated list of regular expressions that match the fully-qualified names of columns that should be included in change event record values. Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_. Do not also set the `column.exclude.list` property.
 
 |[[postgresql-property-column-blacklist]]
-[[postgresql-property-column-exclude-list]]<<postgresql-property-column-exclude-list, `column.exclude.list`>>
+[[postgresql-property-column-exclude-list]]<<postgresql-property-column-exclude-list, `column.exclude{zwsp}.list`>>
 |
 |An optional, comma-separated list of regular expressions that match the fully-qualified names of columns that should be excluded from change event record values. Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_. Do not also set the `column.include.list` property.
 
 |[[postgresql-property-time-precision-mode]]<<postgresql-property-time-precision-mode, `time.precision.mode`>>
 |`adaptive`
-| Time, date, and timestamps can be represented with different kinds of precision: +
+|Time, date, and timestamps can be represented with different kinds of precision: +
  +
 `adaptive` captures the time and timestamp values exactly as in the database using either millisecond, microsecond, or nanosecond precision values based on the database column's type. +
  +
@@ -2317,9 +2337,9 @@ If the publication already exists, either for all tables or configured with a su
  +
 `connect` always represents time and timestamp values by using Kafka Connect's built-in representations for `Time`, `Date`, and `Timestamp`, which use millisecond precision regardless of the database columns' precision. See {link-prefix}:{link-postgresql-connector}#postgresql-temporal-values[temporal values].
 
-|[[postgresql-property-decimal-handling-mode]]<<postgresql-property-decimal-handling-mode, `decimal.handling.mode`>>
+|[[postgresql-property-decimal-handling-mode]]<<postgresql-property-decimal-handling-mode, `decimal.handling{zwsp}.mode`>>
 |`precise`
-| Specifies how the connector should handle values for `DECIMAL` and `NUMERIC` columns: +
+|Specifies how the connector should handle values for `DECIMAL` and `NUMERIC` columns: +
  +
 `precise` represents values by using `java.math.BigDecimal` to represent values in binary form in change events. +
  +
@@ -2327,7 +2347,7 @@ If the publication already exists, either for all tables or configured with a su
  +
 `string` encodes values as formatted strings, which are easy to consume but semantic information about the real type is lost. See {link-prefix}:{link-postgresql-connector}#postgresql-decimal-types[Decimal types].
 
-|[[postgresql-property-hstore-handling-mode]]<<postgresql-property-hstore-handling-mode, `hstore.handling.mode`>>
+|[[postgresql-property-hstore-handling-mode]]<<postgresql-property-hstore-handling-mode, `hstore.handling{zwsp}.mode`>>
 |`map`
 | Specifies how the connector should handle values for `hstore` columns: +
  +
@@ -2335,7 +2355,7 @@ If the publication already exists, either for all tables or configured with a su
  +
 `json` represents values by using `json string`. This setting encodes values as formatted strings such as `{"key" : "val"}`. See {link-prefix}:{link-postgresql-connector}#postgresql-hstore-type[PostgreSQL `HSTORE` type].
 
-|[[postgresql-property-interval-handling-mode]]<<postgresql-property-interval-handling-mode, `interval.handling.mode`>>
+|[[postgresql-property-interval-handling-mode]]<<postgresql-property-interval-handling-mode, `interval.handling{zwsp}.mode`>>
 |`numeric`
 | Specifies how the connector should handle values for `interval` columns: +
  +
@@ -2363,19 +2383,19 @@ If the publication already exists, either for all tables or configured with a su
 |
 |The path to the file that contains the SSL private key of the client. See link:https://www.postgresql.org/docs/current/static/libpq-connect.html[the PostgreSQL documentation] for more information.
 
-|[[postgresql-property-database-sslpassword]]<<postgresql-property-database-sslpassword, `database.sslpassword`>>
+|[[postgresql-property-database-sslpassword]]<<postgresql-property-database-sslpassword, `database{zwsp}.sslpassword`>>
 |
 |The password to access the client private key from the file specified by `database.sslkey`. See link:https://www.postgresql.org/docs/current/static/libpq-connect.html[the PostgreSQL documentation] for more information.
 
-|[[postgresql-property-database-sslrootcert]]<<postgresql-property-database-sslrootcert, `database.sslrootcert`>>
+|[[postgresql-property-database-sslrootcert]]<<postgresql-property-database-sslrootcert, `database{zwsp}.sslrootcert`>>
 |
 |The path to the file that contains the root certificate(s) against which the server is validated. See link:https://www.postgresql.org/docs/current/static/libpq-connect.html[the PostgreSQL documentation] for more information.
 
-|[[postgresql-property-database-tcpkeepalive]]<<postgresql-property-database-tcpkeepalive, `database.tcpKeepAlive`>>
+|[[postgresql-property-database-tcpkeepalive]]<<postgresql-property-database-tcpkeepalive, `database{zwsp}.tcpKeepAlive`>>
 |`true`
 |Enable TCP keep-alive probe to verify that the database connection is still alive. See link:https://www.postgresql.org/docs/current/static/libpq-connect.html[the PostgreSQL documentation] for more information.
 
-|[[postgresql-property-tombstones-on-delete]]<<postgresql-property-tombstones-on-delete, `tombstones.on.delete`>>
+|[[postgresql-property-tombstones-on-delete]]<<postgresql-property-tombstones-on-delete, `tombstones.on{zwsp}.delete`>>
 |`true`
 | Controls whether a tombstone event should be generated after a _delete_ event. +
  +
@@ -2385,15 +2405,15 @@ If the publication already exists, either for all tables or configured with a su
  +
 After a _delete_ operation, emitting a tombstone event enables Kafka to delete all change event records that have the same key as the deleted row. 
 
-|[[postgresql-property-column-truncate-to-length-chars]]<<postgresql-property-column-truncate-to-length-chars, `column.truncate.to._length_.chars`>>
+|[[postgresql-property-column-truncate-to-length-chars]]<<postgresql-property-column-truncate-to-length-chars, `column.truncate.to{zwsp}._length_.chars`>>
 |_n/a_
 |An optional, comma-separated list of regular expressions that match the fully-qualified names of character-based columns. Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_. In change event records, values in these columns are truncated if they are longer than the number of characters specified by _length_ in the property name. You can specify multiple properties with different lengths in a single configuration. Length must be a positive integer, for example, `column.truncate.to.20.chars`. 
 
-|[[postgresql-property-column-mask-with-length-chars]]<<postgresql-property-column-mask-with-length-chars, `column.mask.with._length_.chars`>>
+|[[postgresql-property-column-mask-with-length-chars]]<<postgresql-property-column-mask-with-length-chars, `column.mask.with{zwsp}._length_.chars`>>
 |_n/a_
 |An optional, comma-separated list of regular expressions that match the fully-qualified names of character-based columns. Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_. In change event values, the values in the specified table columns are replaced with _length_ number of asterisk (`*`) characters. You can specify multiple properties with different lengths in a single configuration. Length must be a positive integer or zero. When you specify zero, the connector replaces a value with an empty string.  
 
-|[[postgresql-property-column-mask-hash]]<<postgresql-property-column-mask-hash, `column.mask.hash._hashAlgorithm_.with.salt._salt_`>>
+|[[postgresql-property-column-mask-hash]]<<postgresql-property-column-mask-hash, `column.mask{zwsp}.hash._hashAlgorithm_{zwsp}.with.salt._salt_`>>
 |_n/a_
 |An optional, comma-separated list of regular expressions that match the fully-qualified names of character-based columns. Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_. In change event values, the values in the specified columns are replaced with pseudonyms. +
  +
@@ -2405,7 +2425,7 @@ If necessary, the pseudonym is automatically shortened to the length of the colu
  +
 Depending on the _hashAlgorithm_ used, the _salt_ selected, and the actual data set, the resulting masked data set might not be completely masked.
 
-|[[postgresql-property-column-propagate-source-type]]<<postgresql-property-column-propagate-source-type, `column.propagate.source.type`>>
+|[[postgresql-property-column-propagate-source-type]]<<postgresql-property-column-propagate-source-type, `column.propagate{zwsp}.source.type`>>
 |_n/a_
 |An optional, comma-separated list of regular expressions that match the fully-qualified names of columns. Fully-qualified names for columns are of the form _databaseName_._tableName_._columnName_, or _databaseName_._schemaName_._tableName_._columnName_. +
  +
@@ -2415,7 +2435,7 @@ For each specified column, the connector adds the column's original type and ori
  +
 This property is useful for properly sizing corresponding columns in sink databases.
 
-|[[postgresql-property-datatype-propagate-source-type]]<<postgresql-property-datatype-propagate-source-type, `datatype.propagate.source.type`>>
+|[[postgresql-property-datatype-propagate-source-type]]<<postgresql-property-datatype-propagate-source-type, `datatype.propagate{zwsp}.source.type`>>
 |_n/a_
 |An optional, comma-separated list of regular expressions that match the database-specific data type name for some columns. Fully-qualified data type names are of the form _databaseName_._tableName_._typeName_, or _databaseName_._schemaName_._tableName_._typeName_. +
  +
@@ -2427,7 +2447,7 @@ These parameters propagate a column's original type name and length, for variabl
  +
 See the {link-prefix}:{link-postgresql-connector}#postgresql-data-types[list of PostgreSQL-specific data type names].
 
-|[[postgresql-property-message-key-columns]]<<postgresql-property-message-key-columns, `message.key.columns`>>
+|[[postgresql-property-message-key-columns]]<<postgresql-property-message-key-columns, `message.key{zwsp}.columns`>>
 |_empty string_
 |A semicolon separated list of tables with regular expressions that match table column names. The connector maps values in matching columns to key fields in change event records that it sends to Kafka topics. This is useful when a table does not have a primary key, or when you want to order change event records in a Kafka topic according to a field that is not a primary key. +
  +
@@ -2441,7 +2461,7 @@ For example, +
  +
 If `table_a` has a an `id` column, and `regex_1` is `^i` (matches any column that starts with `i`), the connector maps the value in ``table_a``'s `id` column to a key field in change events that the connector sends to Kafka. 
 
-|[[postgresql-publication-autocreate-mode]]<<postgresql-publication-autocreate-mode, `publication.autocreate.mode`>>
+|[[postgresql-publication-autocreate-mode]]<<postgresql-publication-autocreate-mode, `publication{zwsp}.autocreate.mode`>>
 |_all_tables_
 |Applies only when streaming changes by using link:https://www.postgresql.org/docs/current/sql-createpublication.html[the `pgoutput` plug-in]. The setting determines how creation of a link:https://www.postgresql.org/docs/current/logical-replication-publication.html[publication] should work. Possible settings are: +
  +
@@ -2451,7 +2471,7 @@ If `table_a` has a an `id` column, and `regex_1` is `^i` (matches any column tha
  +
 `filtered` - If a publication exists, the connector uses it. If no publication exists, the connector creates a new publication for tables that match the current filter configuration as specified by the `database.exclude.list`, `database.include.list`, `table.exclude.list`, and `table.include.list` connector configuration properties. For example: `CREATE PUBLICATION <publication_name> FOR TABLE <tbl1, tbl2, tbl3>`.
 
-|[[postgresql-property-binary-handling-mode]]<<postgresql-property-binary-handling-mode, `binary.handling.mode`>>
+|[[postgresql-property-binary-handling-mode]]<<postgresql-property-binary-handling-mode, `binary.handling{zwsp}.mode`>>
 |bytes
 |Specifies how binary (`bytea`) columns should be represented in change events: +
  +
@@ -2466,7 +2486,7 @@ If `table_a` has a an `id` column, and `regex_1` is `^i` (matches any column tha
 The following _advanced_ configuration properties have defaults that work in most situations and therefore rarely need to be specified in the connector's configuration.
 
 .Advanced connector configuration properties
-[cols="30%a,25%a,45%a",options="header"]
+[cols="30%a,28%a,42%a",options="header"]
 |===
 |Property
 |Default
@@ -2498,11 +2518,11 @@ ifdef::community[]
 | A full Java class name that is an implementation of the `io.debezium.connector.postgresql.spi.Snapshotter` interface. Required when the `snapshot.mode` property is set to `custom`. See {link-prefix}:{link-postgresql-connector}#postgresql-custom-snapshot[custom snapshotter SPI].
 endif::community[]
 
-|[[postgresql-property-snapshot-lock-timeout-ms]]<<postgresql-property-snapshot-lock-timeout-ms, `snapshot.lock.timeout.ms`>>
+|[[postgresql-property-snapshot-lock-timeout-ms]]<<postgresql-property-snapshot-lock-timeout-ms, `snapshot.lock{zwsp}.timeout.ms`>>
 |`10000`
 |Positive integer value that specifies the maximum amount of time (in milliseconds) to wait to obtain table locks when performing a snapshot. If the connector cannot acquire table locks in this time interval, the snapshot fails. {link-prefix}:{link-postgresql-connector}#postgresql-snapshots[How the connector performs snapshots] provides details. 
 
-|[[postgresql-property-snapshot-select-statement-overrides]]<<postgresql-property-snapshot-select-statement-overrides, `snapshot.select.statement.overrides`>>
+|[[postgresql-property-snapshot-select-statement-overrides]]<<postgresql-property-snapshot-select-statement-overrides, `snapshot.select{zwsp}.statement{zwsp}.overrides`>>
 |
 |Controls which table rows are included in snapshots. This property affects snapshots only. It does not affect events that are generated by the logical decoding plug-in. Specify a comma-separated list of fully-qualified table names in the form _databaseName.tableName_. +
  +
@@ -2510,7 +2530,7 @@ For each table that you specify, also specify another configuration property: `s
  +
 A possible use case for setting these properties is large, append-only tables. You can specify a `SELECT` statement that sets a specific point for where to start a snapshot, or where to resume a snapshot if a previous snapshot was interrupted.
 
-|[[postgresql-property-event-processing-failure-handling-mode]]<<postgresql-property-event-processing-failure-handling-mode, `event.processing.failure.handling.mode`>>
+|[[postgresql-property-event-processing-failure-handling-mode]]<<postgresql-property-event-processing-failure-handling-mode, `event.processing{zwsp}.failure.handling{zwsp}.mode`>>
 |`fail`
 | Specifies how the connector should react to exceptions during processing of events: +
  +
@@ -2532,7 +2552,7 @@ A possible use case for setting these properties is large, append-only tables. Y
 |`1000`
 |Positive integer value that specifies the number of milliseconds the connector should wait for new change events to appear before it starts processing a batch of events. Defaults to 1000 milliseconds, or 1 second.
 
-|[[postgresql-property-include-unknown-datatypes]]<<postgresql-property-include-unknown-datatypes, `include.unknown.datatypes`>>
+|[[postgresql-property-include-unknown-datatypes]]<<postgresql-property-include-unknown-datatypes, `include.unknown{zwsp}.datatypes`>>
 |`false`
 |Specifies connector behavior when the connector encounters a field whose data type is unknown. The default behavior is that the connector omits the field from the change event and logs a warning. +
  +
@@ -2540,7 +2560,7 @@ Set this property to `true` if you want the change event to contain an opaque bi
 
 NOTE: Consumers risk backward compatibility issues when `include.unknown.datatypes` is set to `true`. Not only may the database-specific binary representation change between releases, but if the data type is eventually supported by {prodname}, the data type will be sent downstream in a logical type, which would require adjustments by consumers. In general, when encountering unsupported data types, create a feature request so that support can be added.
 
-|[[postgresql-property-database-initial-statements]]<<postgresql-property-database-initial-statements, `database.initial.statements`>>
+|[[postgresql-property-database-initial-statements]]<<postgresql-property-database-initial-statements, `database.initial{zwsp}.statements`>>
 |
 |A semicolon separated list of SQL statements that the connector executes when it establishes a JDBC connection to the database. To use a semicolon as a character and not as a delimiter, specify two consecutive semicolons, `;;`. +
  +
@@ -2548,7 +2568,7 @@ The connector may establish JDBC connections at its own discretion. Consequently
  +
 The connector does not execute these statements when it creates a connection for reading the transaction log. +
 
-|[[postgresql-property-heartbeat-interval-ms]]<<postgresql-property-heartbeat-interval-ms, `heartbeat.interval.ms`>>
+|[[postgresql-property-heartbeat-interval-ms]]<<postgresql-property-heartbeat-interval-ms, `heartbeat.interval{zwsp}.ms`>>
 |`0`
 |Controls how frequently the connector sends heartbeat messages to a Kafka topic. The default behavior is that the connector does not send heartbeat messages. +
  +
@@ -2556,7 +2576,7 @@ Heartbeat messages are useful for monitoring whether the connector is receiving 
  +
 Heartbeat messages are needed when there are many updates in a database that is being tracked but only a tiny number of updates are related to the table(s) and schema(s) for which the connector is capturing changes. In this situation, the connector reads from the database transaction log as usual but rarely emits change records to Kafka. This means that no offset updates are committed to Kafka and the connector does not have an opportunity to send the latest retrieved LSN to the database. The database retains WAL files that contain events that have already been processed by the connector. Sending heartbeat messages enables the connector to send the latest retrieved LSN to the database, which allows the database to reclaim disk space being used by no longer needed WAL files. 
 
-|[[postgresql-property-heartbeat-topics-prefix]]<<postgresql-property-heartbeat-topics-prefix, `heartbeat.topics.prefix`>>
+|[[postgresql-property-heartbeat-topics-prefix]]<<postgresql-property-heartbeat-topics-prefix, `heartbeat.topics{zwsp}.prefix`>>
 |`__debezium-heartbeat`
 |Controls the name of the topic to which the connector sends heartbeat messages. The topic name has this pattern: +
  +
@@ -2564,7 +2584,7 @@ _<heartbeat.topics.prefix>_._<server.name>_ +
  +
 For example, if the database server name is `fullfillment`, the default topic name is `__debezium-heartbeat.fulfillment`.
 
-|[[postgresql-property-heartbeat-action-query]]<<postgresql-property-heartbeat-action-query, `heartbeat.action.query`>>
+|[[postgresql-property-heartbeat-action-query]]<<postgresql-property-heartbeat-action-query, `heartbeat.action{zwsp}.query`>>
 |
 |Specifies a query that the connector executes on the source database when the connector sends a heartbeat message. +
  +
@@ -2601,7 +2621,7 @@ ifdef::community[]
 If you are using the `wal2json` plug-in, this property is useful for enabling server-side table filtering. Allowed values depend on the configured plug-in.
 endif::community[]
 
-|[[postgresql-property-sanitize-field-names]]<<postgresql-property-sanitize-field-names, `sanitize.field.names`>>
+|[[postgresql-property-sanitize-field-names]]<<postgresql-property-sanitize-field-names, `sanitize.field{zwsp}.names`>>
 |`true` if connector configuration sets the `key.converter` or `value.converter` property to the Avro converter. 
 
 `false` if not.
@@ -2615,18 +2635,18 @@ endif::community[]
 |`10000` (10 seconds)
 |The number of milliseconds to wait between retry attempts when the connector fails to connect to a replication slot.
 
-|[[postgresql-property-toasted-value-placeholder]]<<postgresql-property-toasted-value-placeholder, `toasted.value.placeholder`>>
+|[[postgresql-property-toasted-value-placeholder]]<<postgresql-property-toasted-value-placeholder, `toasted.value{zwsp}.placeholder`>>
 |`__debezium_unavailable_value`
 |Specifies the constant that the connector provides to indicate that the original value is a toasted value that is not provided by the database.
 If the setting of `toasted.value.placeholder` starts with the `hex:` prefix it is expected that the rest of the string represents hexadecimally encoded octets. See {link-prefix}:{link-postgresql-connector}#postgresql-toasted-values[toasted values] for additional details.
 
-|[[postgresql-property-provide-transaction-metadata]]<<postgresql-property-provide-transaction-metadata, `provide.transaction.metadata`>>
+|[[postgresql-property-provide-transaction-metadata]]<<postgresql-property-provide-transaction-metadata, `provide.transaction{zwsp}.metadata`>>
 |`false`
 |Determines whether the connector generates events with transaction boundaries and enriches change event envelopes with transaction metadata. Specify `true` if you want the connector to do this. See {link-prefix}:{link-postgresql-connector}#postgresql-transaction-metadata[Transaction metadata] for details.
 
 |[[postgresql-property-retriable-restart-connector-wait-ms]]<<postgresql-property-retriable-restart-connector-wait-ms, `retriable.restart{zwsp}.connector.wait.ms`>> +
 |10000 (10 seconds)
-|The number of milli-seconds to wait before restarting a connector after a retriable error occurs.
+|The number of milliseconds to wait before restarting a connector after a retriable error occurs.
 
 |===
 
