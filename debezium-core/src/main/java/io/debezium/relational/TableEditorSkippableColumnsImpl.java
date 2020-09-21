@@ -7,6 +7,10 @@ package io.debezium.relational;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
+/**
+ * Allows for columns to be "missing" or "skipped" from the table to support captured_column_list for sql sever connector.
+ * Example, columns 1,2,4 are populated, but 3 is excluded from the CDC tables.
+ */
 final class TableEditorSkippableColumnsImpl extends TableEditorImpl {
 
     /**
@@ -25,7 +29,7 @@ final class TableEditorSkippableColumnsImpl extends TableEditorImpl {
      */
     @Override
     protected void updatePositions() {
-        // Do nothing and allow
+        // Do nothing and allow columns to maintain their inputted positions.
     }
 
     /**

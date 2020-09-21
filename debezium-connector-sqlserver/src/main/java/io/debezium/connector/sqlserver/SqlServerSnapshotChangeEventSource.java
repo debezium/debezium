@@ -198,7 +198,7 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
             // Update table schemas to only include columns that are also included in the cdc tables.
             changeTables.forEach((tableId, sqlServerChangeTable) -> {
                 Table sourceTable = snapshotContext.tables.forTable(tableId);
-                // SourceTable will be null for that tables are excluded in the configuration, but have cdc enabled.
+                // SourceTable will be null for tables that have cdc enabled, but are excluded in the configuration.
                 if (sourceTable != null) {
                     List<Column> cdcEnabledSourceColumns = sourceTable.filterColumns(
                             column -> sqlServerChangeTable.getCapturedColumnList().contains(column.name()));

@@ -92,12 +92,6 @@ GO
 ----
 If the result is empty then please make sure that the user has privileges to access both the capture instance and _CDC_ tables.
 
-[NOTE]
-====
-When calling `sys.sp_cdc_enable_table()` with the `captured_column_list` parameter for capturing only a subset of a table's columns,
-the connector's {link-prefix}:{link-sqlserver-connector}#sqlserver-property-column-exclude-list[column.exclude.list] configuration property must be set accordingly, excluding all non-captured columns.
-====
-
 [[sqlserver-on-azure]]
 === SQL Server on Azure
 
