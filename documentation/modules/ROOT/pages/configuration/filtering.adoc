@@ -31,27 +31,30 @@ The {prodname} filter SMT is a Technology Preview feature. Technology Preview fe
 ====
 endif::product[]
 
-Kafka Connect allows to implement bespoke SMTs to encode filtering logic using Java.
-However, there are some drawbacks to that:
+While it is possible to use Java to create a custom SMT to encode filtering logic, using a custom-coded SMT has its drawbacks.
+For example:
 
 * It is necessary to compile the transformation up front and deploy it to Kafka Connect.
 * Every change needs code recompilation and redeployment, leading to inflexible operations.
 
 The filter SMT supports scripting languages that integrate with https://jcp.org/en/jsr/detail?id=223[JSR 223] (Scripting for the Java(TM) Platform).
 
+{prodname} does not come with any implementations of the JSR 223 API.
+To use an expression language with {prodname}, you must download the JSR 223 script engine implementation for the language, and add to your {prodname} connector plug-in directories, along any other JAR files used by the language implementation.
+For example, for Groovy 3, you can download its JSR 223 implementation from https://groovy-lang.org/. The JSR223 implementation for GraalVM JavaScript is available at https://github.com/graalvm/graaljs.
+
+// Type: procedure
+// Title: Setting up the {prodname] filter SMT
+// ModuleID: setting-up-the-debezium-filter-smt
 [[set-up-filter]]
 == Set up
 
-For security reasons, the filter SMT is not part of the {prodname} connector archives,
-but is provided in a separate artifact, debezium-scripting-{debezium-version}.tar.gz, which must be explicitly added to your Kafka Connect environment.
-In order to use this SMT for a given connector plug-in, add the contents of debezium-scripting-{debezium-version}.tar.gz to the connector's plug-in directory.
+For security reasons, the filter SMT is not included with the {prodname} connector archives.
+Instead, it is provided in a separate artifact, `debezium-scripting-{debezium-version}.tar.gz`.
+To use the filter SMT with a {prodname} connector plug-in, you must explicitly add the SMT artifact to your Kafka Connect environment.
 
-Note that this allows anyone who can set up connectors in your Kafka Connect instance to execute scripting expressions.
-You should therefore only add this SMT after securing your Kafka Connect instance and its configuration interface appropriately.
-
-{prodname} itself doesn't come with any implementations of the JSR 223 API.
-To use an expression language, you must download the JSR 223 script engine implementation for the language, and add to your {prodname} connector plug-in directories, along any other JAR files used by the language implementation.
-Eg. for Groovy 3, you can download its JSR 223 implementation from https://groovy-lang.org/. For GraalVM JavaScript, this is is available at https://github.com/graalvm/graaljs.
+IMPORTANT: After the filter SMT is present in a Kafka Connect instance, any user who is allowed to add a connector to the instance can run scripting expressions.
+To ensure that scripting expressions can be run only by authorized users, be sure to secure the Kafka Connect instance and its configuration interface before you add the filter SMT.
 
 ifdef::community[]
 With https://zookeeper.apache.org[Zookeeper], http://kafka.apache.org/[Kafka], {link-kafka-docs}.html#connect[Kafka Connect], and one or more {prodname} connectors installed, the remaining tasks to install the filter SMT are:
@@ -63,10 +66,11 @@ With https://zookeeper.apache.org[Zookeeper], http://kafka.apache.org/[Kafka], {
 endif::community[]
 
 ifdef::product[]
-. Download the {prodname} link:https://access.redhat.com/jbossnetwork/restricted/listSoftware.html?product=red.hat.integration&downloadType=distributions[scripting SMT archive].
+.Procedure
+. Download the {prodname} scripting SMT archive (`debezium-scripting-{debezium-version}.tar.gz`) from https://access.redhat.com/jbossnetwork/restricted/listSoftware.html?product=red.hat.integration&downloadType=distributions.
 . Extract the contents of the archive into the {prodname} plug-in directories of your Kafka Connect environment.
 . Obtain a JSR-223 script engine implementation and add its contents to the {prodname} plug-in directories of your Kafka Connect environment.
-. Restart your Kafka Connect process to pick up the new JAR files.
+. Restart the Kafka Connect process to pick up the new JAR files.
 endif::product[]
 
 // Type: concept
