@@ -13,7 +13,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.BiConsumer;
-import java.util.function.Function;
 import java.util.function.Predicate;
 
 import org.apache.kafka.connect.data.Schema;
@@ -251,27 +250,6 @@ public final class Tables {
                 changes.add(existingTableId);
                 changes.add(updated.id());
             }
-        });
-    }
-
-    /**
-     * Add or update the definition for the identified table.
-     *
-     * @param tableId the identifier of the table
-     * @param changer the function that accepts the current {@link Table} and returns either the same or an updated
-     *            {@link Table}; may not be null
-     * @return the previous table definition, or null if there was no prior table definition
-     */
-    public Table updateTable(TableId tableId, Function<Table, Table> changer) {
-        return lock.write(() -> {
-            TableImpl existing = tablesByTableId.get(tableId);
-            Table updated = changer.apply(existing);
-            if (updated != existing) {
-                tablesByTableId.put(tableId, new TableImpl(tableId, updated.columns(),
-                        updated.primaryKeyColumnNames(), updated.defaultCharsetName()));
-            }
-            changes.add(tableId);
-            return existing;
         });
     }
 
