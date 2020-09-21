@@ -6,6 +6,7 @@
 package io.debezium.connector.mongodb.transforms;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -167,58 +168,14 @@ public class MongoDataConverter {
                             ArrayList<Object> list = new ArrayList<>();
 
                             arrValues.stream().forEach(arrValue -> {
-                                if (arrValue.getBsonType() == BsonType.STRING && valueType == BsonType.STRING) {
-                                    String temp = arrValue.asString().getValue();
-                                    list.add(temp);
+                                final Schema valueSchema;
+                                if (Arrays.asList(BsonType.ARRAY, BsonType.DOCUMENT).contains(valueType)) {
+                                    valueSchema = schema.field(keyvalueforStruct.getKey()).schema().valueSchema();
                                 }
-                                else if (arrValue.getBsonType() == BsonType.JAVASCRIPT && valueType == BsonType.JAVASCRIPT) {
-                                    String temp = arrValue.asJavaScript().getCode();
-                                    list.add(temp);
+                                else {
+                                    valueSchema = null;
                                 }
-                                else if (arrValue.getBsonType() == BsonType.OBJECT_ID && valueType == BsonType.OBJECT_ID) {
-                                    String temp = arrValue.asObjectId().getValue().toString();
-                                    list.add(temp);
-                                }
-                                else if (arrValue.getBsonType() == BsonType.DOUBLE && valueType == BsonType.DOUBLE) {
-                                    double temp = arrValue.asDouble().getValue();
-                                    list.add(temp);
-                                }
-                                else if (arrValue.getBsonType() == BsonType.BINARY && valueType == BsonType.BINARY) {
-                                    byte[] temp = arrValue.asBinary().getData();
-                                    list.add(temp);
-                                }
-                                else if (arrValue.getBsonType() == BsonType.INT32 && valueType == BsonType.INT32) {
-                                    int temp = arrValue.asInt32().getValue();
-                                    list.add(temp);
-                                }
-                                else if (arrValue.getBsonType() == BsonType.INT64 && valueType == BsonType.INT64) {
-                                    long temp = arrValue.asInt64().getValue();
-                                    list.add(temp);
-                                }
-                                else if (arrValue.getBsonType() == BsonType.DATE_TIME && valueType == BsonType.DATE_TIME) {
-                                    Date temp = new Date(arrValue.asInt64().getValue());
-                                    list.add(temp);
-                                }
-                                else if (arrValue.getBsonType() == BsonType.DECIMAL128 && valueType == BsonType.DECIMAL128) {
-                                    String temp = arrValue.asDecimal128().getValue().toString();
-                                    list.add(temp);
-                                }
-                                else if (arrValue.getBsonType() == BsonType.TIMESTAMP && valueType == BsonType.TIMESTAMP) {
-                                    Date temp = new Date(1000L * arrValue.asInt32().getValue());
-                                    list.add(temp);
-                                }
-                                else if (arrValue.getBsonType() == BsonType.BOOLEAN && valueType == BsonType.BOOLEAN) {
-                                    boolean temp = arrValue.asBoolean().getValue();
-                                    list.add(temp);
-                                }
-                                else if (arrValue.getBsonType() == BsonType.DOCUMENT && valueType == BsonType.DOCUMENT) {
-                                    Schema schema1 = schema.field(keyvalueforStruct.getKey()).schema().valueSchema();
-                                    Struct struct1 = new Struct(schema1);
-                                    for (Entry<String, BsonValue> entry9 : arrValue.asDocument().entrySet()) {
-                                        convertFieldValue(entry9, struct1, schema1);
-                                    }
-                                    list.add(struct1);
-                                }
+                                convertFieldValue(valueSchema, valueType, arrValue, list);
                             });
                             colValue = list;
                             break;
@@ -244,6 +201,74 @@ public class MongoDataConverter {
                 return;
         }
         struct.put(key, keyvalueforStruct.getValue().isNull() ? null : colValue);
+    }
+
+    private void convertFieldValue(Schema valueSchema, BsonType valueType, BsonValue arrValue, ArrayList<Object> list) {
+        if (arrValue.getBsonType() == BsonType.STRING && valueType == BsonType.STRING) {
+            String temp = arrValue.asString().getValue();
+            list.add(temp);
+        }
+        else if (arrValue.getBsonType() == BsonType.JAVASCRIPT && valueType == BsonType.JAVASCRIPT) {
+            String temp = arrValue.asJavaScript().getCode();
+            list.add(temp);
+        }
+        else if (arrValue.getBsonType() == BsonType.OBJECT_ID && valueType == BsonType.OBJECT_ID) {
+            String temp = arrValue.asObjectId().getValue().toString();
+            list.add(temp);
+        }
+        else if (arrValue.getBsonType() == BsonType.DOUBLE && valueType == BsonType.DOUBLE) {
+            double temp = arrValue.asDouble().getValue();
+            list.add(temp);
+        }
+        else if (arrValue.getBsonType() == BsonType.BINARY && valueType == BsonType.BINARY) {
+            byte[] temp = arrValue.asBinary().getData();
+            list.add(temp);
+        }
+        else if (arrValue.getBsonType() == BsonType.INT32 && valueType == BsonType.INT32) {
+            int temp = arrValue.asInt32().getValue();
+            list.add(temp);
+        }
+        else if (arrValue.getBsonType() == BsonType.INT64 && valueType == BsonType.INT64) {
+            long temp = arrValue.asInt64().getValue();
+            list.add(temp);
+        }
+        else if (arrValue.getBsonType() == BsonType.DATE_TIME && valueType == BsonType.DATE_TIME) {
+            Date temp = new Date(arrValue.asInt64().getValue());
+            list.add(temp);
+        }
+        else if (arrValue.getBsonType() == BsonType.DECIMAL128 && valueType == BsonType.DECIMAL128) {
+            String temp = arrValue.asDecimal128().getValue().toString();
+            list.add(temp);
+        }
+        else if (arrValue.getBsonType() == BsonType.TIMESTAMP && valueType == BsonType.TIMESTAMP) {
+            Date temp = new Date(1000L * arrValue.asInt32().getValue());
+            list.add(temp);
+        }
+        else if (arrValue.getBsonType() == BsonType.BOOLEAN && valueType == BsonType.BOOLEAN) {
+            boolean temp = arrValue.asBoolean().getValue();
+            list.add(temp);
+        }
+        else if (arrValue.getBsonType() == BsonType.DOCUMENT && valueType == BsonType.DOCUMENT) {
+            Struct struct1 = new Struct(valueSchema);
+            for (Entry<String, BsonValue> entry9 : arrValue.asDocument().entrySet()) {
+                convertFieldValue(entry9, struct1, valueSchema);
+            }
+            list.add(struct1);
+        }
+        else if (arrValue.getBsonType() == BsonType.ARRAY && valueType == BsonType.ARRAY) {
+            ArrayList<Object> subList = new ArrayList<>();
+            final Schema subValueSchema;
+            if (Arrays.asList(BsonType.ARRAY, BsonType.DOCUMENT).contains(arrValue.asArray().get(0).getBsonType())) {
+                subValueSchema = valueSchema.valueSchema();
+            }
+            else {
+                subValueSchema = null;
+            }
+            for (BsonValue v : arrValue.asArray()) {
+                convertFieldValue(subValueSchema, v.getBsonType(), v, subList);
+            }
+            list.add(subList);
+        }
     }
 
     protected String arrayElementStructName(int i) {
@@ -335,71 +360,10 @@ public class MongoDataConverter {
                 else {
                     switch (arrayEncoding) {
                         case ARRAY:
-                            BsonType valueType = keyValuesforSchema.getValue().asArray().get(0).getBsonType();
-                            for (BsonValue element : keyValuesforSchema.getValue().asArray()) {
-                                if (element.getBsonType() != valueType) {
-                                    throw new ConnectException("Field " + key + " of schema " + builder.name() + " is not a homogenous array.\n"
-                                            + "Check option 'struct' of parameter 'array.encoding'");
-                                }
-                            }
-
-                            switch (valueType) {
-                                case NULL:
-                                case STRING:
-                                case JAVASCRIPT:
-                                case OBJECT_ID:
-                                case DECIMAL128:
-                                    builder.field(key, SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build());
-                                    break;
-                                case DOUBLE:
-                                    builder.field(key, SchemaBuilder.array(Schema.OPTIONAL_FLOAT64_SCHEMA).optional().build());
-                                    break;
-                                case BINARY:
-                                    builder.field(key, SchemaBuilder.array(Schema.OPTIONAL_BYTES_SCHEMA).optional().build());
-                                    break;
-
-                                case INT32:
-                                    builder.field(key, SchemaBuilder.array(Schema.OPTIONAL_INT32_SCHEMA).optional().build());
-                                    break;
-
-                                case INT64:
-                                    builder.field(key, SchemaBuilder.array(Schema.OPTIONAL_INT64_SCHEMA).optional().build());
-                                    break;
-
-                                case TIMESTAMP:
-                                case DATE_TIME:
-                                    builder.field(key, org.apache.kafka.connect.data.Timestamp.builder().optional().build());
-                                    break;
-
-                                case BOOLEAN:
-                                    builder.field(key, SchemaBuilder.array(Schema.OPTIONAL_BOOLEAN_SCHEMA).optional().build());
-                                    break;
-
-                                case DOCUMENT:
-                                    final SchemaBuilder documentSchemaBuilder = SchemaBuilder.struct().name(builder.name() + "." + key).optional();
-                                    final Map<String, BsonType> union = new HashMap<>();
-                                    for (BsonValue element : keyValuesforSchema.getValue().asArray()) {
-                                        final BsonDocument arrayDocs = element.asDocument();
-                                        for (Entry<String, BsonValue> arrayDoc : arrayDocs.entrySet()) {
-                                            final BsonType prevType = union.putIfAbsent(arrayDoc.getKey(), arrayDoc.getValue().getBsonType());
-                                            if (prevType == null) {
-                                                addFieldSchema(arrayDoc, documentSchemaBuilder);
-                                            }
-                                            else if (prevType != arrayDoc.getValue().getBsonType()) {
-                                                throw new ConnectException("Field " + arrayDoc.getKey() + " of schema " + documentSchemaBuilder.name()
-                                                        + " is not the same type for all documents in the array.\n"
-                                                        + "Check option 'struct' of parameter 'array.encoding'");
-                                            }
-                                        }
-                                    }
-
-                                    Schema build = documentSchemaBuilder.build();
-                                    builder.field(key, SchemaBuilder.array(build).optional().build());
-                                    break;
-
-                                default:
-                                    break;
-                            }
+                            BsonArray value = keyValuesforSchema.getValue().asArray();
+                            BsonType valueType = value.get(0).getBsonType();
+                            testType(builder, key, keyValuesforSchema.getValue(), valueType);
+                            builder.field(key, SchemaBuilder.array(subSchema(builder, key, valueType, value)).optional().build());
                             break;
                         case DOCUMENT:
                             final BsonArray array = keyValuesforSchema.getValue().asArray();
@@ -416,6 +380,92 @@ public class MongoDataConverter {
                 break;
             default:
                 break;
+        }
+    }
+
+    private Schema subSchema(SchemaBuilder builder, String key, BsonType valueType, BsonValue value) {
+        switch (valueType) {
+            case NULL:
+            case STRING:
+            case JAVASCRIPT:
+            case OBJECT_ID:
+            case DECIMAL128:
+                return Schema.OPTIONAL_STRING_SCHEMA;
+            case DOUBLE:
+                return Schema.OPTIONAL_FLOAT64_SCHEMA;
+            case BINARY:
+                return Schema.OPTIONAL_BYTES_SCHEMA;
+            case INT32:
+                return Schema.OPTIONAL_INT32_SCHEMA;
+            case INT64:
+                return Schema.OPTIONAL_INT64_SCHEMA;
+            case TIMESTAMP:
+            case DATE_TIME:
+                return org.apache.kafka.connect.data.Timestamp.builder().optional().build();
+            case BOOLEAN:
+                return Schema.OPTIONAL_BOOLEAN_SCHEMA;
+            case DOCUMENT:
+                final SchemaBuilder documentSchemaBuilder = SchemaBuilder.struct().name(builder.name() + "." + key).optional();
+                final Map<String, BsonType> union = new HashMap<>();
+                if (value.isArray()) {
+                    for (BsonValue element : value.asArray()) {
+                        subSchema(documentSchemaBuilder, union, element.asDocument());
+                    }
+                }
+                else {
+                    subSchema(documentSchemaBuilder, union, value.asDocument());
+                }
+                return documentSchemaBuilder.build();
+            case ARRAY:
+                BsonType subValueType = value.asArray().get(0).asArray().get(0).getBsonType();
+                return SchemaBuilder.array(subSchema(builder, key, subValueType, value.asArray().get(0))).optional().build();
+            default:
+                throw new IllegalArgumentException("The value type '" + valueType + " is not yet supported inside for a subSchema.");
+        }
+    }
+
+    private void subSchema(SchemaBuilder documentSchemaBuilder, Map<String, BsonType> union, BsonDocument arrayDocs) {
+        for (Entry<String, BsonValue> arrayDoc : arrayDocs.entrySet()) {
+            final BsonType prevType = union.putIfAbsent(arrayDoc.getKey(), arrayDoc.getValue().getBsonType());
+            if (prevType == null) {
+                addFieldSchema(arrayDoc, documentSchemaBuilder);
+            }
+            else if (prevType != arrayDoc.getValue().getBsonType()) {
+                throw new ConnectException("Field " + arrayDoc.getKey() + " of schema " + documentSchemaBuilder.name()
+                        + " is not the same type for all documents in the array.\n"
+                        + "Check option 'struct' of parameter 'array.encoding'");
+            }
+        }
+    }
+
+    private void testType(SchemaBuilder builder, String key, BsonValue value, BsonType valueType) {
+        if (valueType == BsonType.DOCUMENT) {
+            final Map<String, BsonType> union = new HashMap<>();
+            for (BsonValue element : value.asArray()) {
+                final BsonDocument arrayDocs = element.asDocument();
+                for (Entry<String, BsonValue> arrayDoc : arrayDocs.entrySet()) {
+                    final BsonType prevType = union.putIfAbsent(arrayDoc.getKey(), arrayDoc.getValue().getBsonType());
+                    if (prevType != null && prevType != arrayDoc.getValue().getBsonType()) {
+                        throw new ConnectException("Field " + arrayDoc.getKey() + " of schema " + builder.name()
+                                + " is not the same type for all documents in the array.\n"
+                                + "Check option 'struct' of parameter 'array.encoding'");
+                    }
+                }
+            }
+        }
+        else if (valueType == BsonType.ARRAY) {
+            for (BsonValue element : value.asArray()) {
+                BsonType subValueType = element.asArray().get(0).getBsonType();
+                testType(builder, key, element, subValueType);
+            }
+        }
+        else {
+            for (BsonValue element : value.asArray()) {
+                if (element.getBsonType() != valueType) {
+                    throw new ConnectException("Field " + key + " of schema " + builder.name() + " is not a homogenous array.\n"
+                            + "Check option 'struct' of parameter 'array.encoding'");
+                }
+            }
         }
     }
 }

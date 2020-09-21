@@ -21,6 +21,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
@@ -1471,6 +1472,157 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         for (SourceRecord record : records.allRecordsInOrder()) {
             final SourceRecord transformed = transformation.apply(record);
         }
+    }
+
+    @Test
+    @FixFor("DBZ-2569")
+    public void testMatrixType() throws InterruptedException, IOException {
+        final Map<String, String> transformationConfig = new HashMap<>();
+        transformationConfig.put("array.encoding", "array");
+        transformationConfig.put(CONFIG_DROP_TOMBSTONES, "false");
+        transformationConfig.put(HANDLE_DELETES, "none");
+        transformation.configure(transformationConfig);
+
+        // Test insert
+        primary().execute("insert", client -> {
+            client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
+                    .insertOne(Document.parse(
+                            "{"
+                                    + "  'matrix': ["
+                                    + "    [1,2,3],"
+                                    + "    [4,5,6],"
+                                    + "    [7,8,9],"
+                                    + "  ]"
+                                    + "  ,'array_complex': ["
+                                    + "    {'k1' : 'v1','k2' : 1},{'k1' : 'v2','k2' : 2},"
+                                    + "  ]"
+                                    + "  ,'matrix_complex': ["
+                                    + "    [{'k3' : 'v111','k4' : [1,2,3]},{'k3' : 'v211','k4' : [4,5,6]}],"
+                                    + "    [{'k3' : 'v112','k4' : [7,8]},{'k3' : 'v212','k4' : [8]}],"
+                                    + "  ]"
+                                    + "}"));
+        });
+        SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
+
+        final SourceRecord insertRecord = records.recordsForTopic(this.topicName()).get(0);
+        final SourceRecord transformedInsert = transformation.apply(insertRecord);
+        final Struct transformedInsertValue = (Struct) transformedInsert.value();
+
+        final Schema matrixSchema = transformedInsert.valueSchema().field("matrix").schema();
+        assertThat(matrixSchema.type()).isEqualTo(Schema.Type.ARRAY);
+        final Schema subMatrixSchema = matrixSchema.valueSchema().schema();
+        assertThat(subMatrixSchema.type()).isEqualTo(Schema.Type.ARRAY);
+        assertThat(subMatrixSchema.valueSchema()).isEqualTo(Schema.OPTIONAL_INT32_SCHEMA);
+        assertThat(transformedInsertValue.get("matrix")).isEqualTo(Arrays.asList(Arrays.asList(1, 2, 3), Arrays.asList(4, 5, 6), Arrays.asList(7, 8, 9)));
+
+        final Schema arrayComplexSchema = transformedInsert.valueSchema().field("array_complex").schema();
+        assertThat(arrayComplexSchema.type()).isEqualTo(Schema.Type.ARRAY);
+        final Schema subArrayComplexSchema = arrayComplexSchema.valueSchema().schema();
+        assertThat(subArrayComplexSchema.type()).isEqualTo(Schema.Type.STRUCT);
+        assertThat(subArrayComplexSchema.field("k1").schema()).isEqualTo(Schema.OPTIONAL_STRING_SCHEMA);
+        assertThat(subArrayComplexSchema.field("k2").schema()).isEqualTo(Schema.OPTIONAL_INT32_SCHEMA);
+        final Field k1 = subArrayComplexSchema.field("k1");
+        final Field k2 = subArrayComplexSchema.field("k2");
+        final Struct subStruct1 = new Struct(subArrayComplexSchema);
+        subStruct1.put(k1, "v1");
+        subStruct1.put(k2, 1);
+        final Struct subStruct2 = new Struct(subArrayComplexSchema);
+        subStruct2.put(k1, "v2");
+        subStruct2.put(k2, 2);
+        assertThat(transformedInsertValue.get("array_complex")).isEqualTo(Arrays.asList(subStruct1, subStruct2));
+
+        final Schema matrixComplexSchema = transformedInsert.valueSchema().field("matrix_complex").schema();
+        assertThat(matrixComplexSchema.type()).isEqualTo(Schema.Type.ARRAY);
+        final Schema subMatrixComplexSchema = matrixComplexSchema.valueSchema().schema();
+        assertThat(subMatrixComplexSchema.type()).isEqualTo(Schema.Type.ARRAY);
+        Schema strucSchema = subMatrixComplexSchema.valueSchema();
+        assertThat(strucSchema.schema().type()).isEqualTo(Schema.Type.STRUCT);
+        assertThat(strucSchema.field("k3").schema()).isEqualTo(Schema.OPTIONAL_STRING_SCHEMA);
+        assertThat(strucSchema.field("k4").schema().type()).isEqualTo(Schema.Type.ARRAY);
+        assertThat(strucSchema.field("k4").schema().valueSchema()).isEqualTo(Schema.OPTIONAL_INT32_SCHEMA);
+        final Field k3 = strucSchema.field("k3");
+        final Field k4 = strucSchema.field("k4");
+        final Struct subStruct11 = new Struct(strucSchema.schema());
+        subStruct11.put(k3, "v111");
+        subStruct11.put(k4, Arrays.asList(1, 2, 3));
+        final Struct subStruct12 = new Struct(strucSchema.schema());
+        subStruct12.put(k3, "v112");
+        subStruct12.put(k4, Arrays.asList(7, 8));
+        final Struct subStruct21 = new Struct(strucSchema.schema());
+        subStruct21.put(k3, "v211");
+        subStruct21.put(k4, Arrays.asList(4, 5, 6));
+        final Struct subStruct22 = new Struct(strucSchema.schema());
+        subStruct22.put(k3, "v212");
+        subStruct22.put(k4, Arrays.asList(8));
+        assertThat(transformedInsertValue.get("matrix_complex"))
+                .isEqualTo(Arrays.asList(Arrays.asList(subStruct11, subStruct21), Arrays.asList(subStruct12, subStruct22)));
+    }
+
+    @Test
+    @FixFor("DBZ-2569")
+    public void testMatrixArrayAsDocumentType() throws InterruptedException, IOException {
+        final Map<String, String> transformationConfig = new HashMap<>();
+        transformationConfig.put("array.encoding", "document");
+        transformationConfig.put(CONFIG_DROP_TOMBSTONES, "false");
+        transformationConfig.put(HANDLE_DELETES, "none");
+        transformation.configure(transformationConfig);
+
+        // Test insert
+        primary().execute("insert", client -> {
+            client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
+                    .insertOne(Document.parse(
+                            "{"
+                                    + "  'matrix': ["
+                                    + "    [1,'aa',3],"
+                                    + "    [4,5,'6'],"
+                                    + "    [7.0,8],"
+                                    + "  ]"
+                                    + "}"));
+        });
+        SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
+
+        final SourceRecord insertRecord = records.recordsForTopic(this.topicName()).get(0);
+        final SourceRecord transformedInsert = transformation.apply(insertRecord);
+
+        final Schema matrixSchema = transformedInsert.valueSchema().field("matrix").schema();
+        assertThat(matrixSchema.type()).isEqualTo(Schema.Type.STRUCT);
+        assertThat(matrixSchema.fields().size()).isEqualTo(3);
+        final Schema firstSubSchema = matrixSchema.field("_0").schema();
+        assertThat(firstSubSchema.type()).isEqualTo(Schema.Type.STRUCT);
+        assertThat(firstSubSchema.fields().size()).isEqualTo(3);
+        assertThat(firstSubSchema.field("_0").schema()).isEqualTo(Schema.OPTIONAL_INT32_SCHEMA);
+        assertThat(firstSubSchema.field("_1").schema()).isEqualTo(Schema.OPTIONAL_STRING_SCHEMA);
+        assertThat(firstSubSchema.field("_2").schema()).isEqualTo(Schema.OPTIONAL_INT32_SCHEMA);
+        final Schema secondSubSchema = matrixSchema.field("_1").schema();
+        assertThat(secondSubSchema.type()).isEqualTo(Schema.Type.STRUCT);
+        assertThat(secondSubSchema.fields().size()).isEqualTo(3);
+        assertThat(secondSubSchema.field("_0").schema()).isEqualTo(Schema.OPTIONAL_INT32_SCHEMA);
+        assertThat(secondSubSchema.field("_1").schema()).isEqualTo(Schema.OPTIONAL_INT32_SCHEMA);
+        assertThat(secondSubSchema.field("_2").schema()).isEqualTo(Schema.OPTIONAL_STRING_SCHEMA);
+        final Schema thirdSubSchema = matrixSchema.field("_2").schema();
+        assertThat(thirdSubSchema.type()).isEqualTo(Schema.Type.STRUCT);
+        assertThat(thirdSubSchema.fields().size()).isEqualTo(2);
+        assertThat(thirdSubSchema.field("_0").schema()).isEqualTo(Schema.OPTIONAL_FLOAT64_SCHEMA);
+        assertThat(thirdSubSchema.field("_1").schema()).isEqualTo(Schema.OPTIONAL_INT32_SCHEMA);
+        final Struct transformedInsertValue = (Struct) transformedInsert.value();
+        final Struct firstSubStruct = new Struct(firstSubSchema);
+        firstSubStruct.put(firstSubSchema.field("_0"), 1);
+        firstSubStruct.put(firstSubSchema.field("_1"), "aa");
+        firstSubStruct.put(firstSubSchema.field("_2"), 3);
+        final Struct secondSubStruct = new Struct(secondSubSchema);
+        secondSubStruct.put(secondSubSchema.field("_0"), 4);
+        secondSubStruct.put(secondSubSchema.field("_1"), 5);
+        secondSubStruct.put(secondSubSchema.field("_2"), "6");
+        final Struct thirdSubStruct = new Struct(thirdSubSchema);
+        thirdSubStruct.put(thirdSubSchema.field("_0"), 7.0);
+        thirdSubStruct.put(thirdSubSchema.field("_1"), 8);
+        final Struct struct = new Struct(matrixSchema);
+        struct.put(matrixSchema.field("_0"), firstSubStruct);
+        struct.put(matrixSchema.field("_1"), secondSubStruct);
+        struct.put(matrixSchema.field("_2"), thirdSubStruct);
+        assertThat(transformedInsertValue.get("matrix")).isEqualTo(struct);
     }
 
     private SourceRecords createCreateRecordFromJson(String pathOnClasspath) throws Exception {
