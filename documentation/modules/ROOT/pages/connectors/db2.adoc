@@ -438,16 +438,16 @@ The following skeleton JSON shows the basic four parts of a change event. Howeve
 [source,json,index=0]
 ----
 {
- "schema": { //<1>
+ "schema": { // <1>
    ...
   },
- "payload": { //<2>
+ "payload": { // <2>
    ...
  },
- "schema": { //<3>
+ "schema": { // <3>
    ...
  },
- "payload": { //<4>
+ "payload": { // <4>
    ...
  },
 }
@@ -1032,109 +1032,100 @@ The following table describes how the connector maps each of the Db2 data types 
 * _semantic type_ describes how the Kafka Connect schema captures the _meaning_ of the field using the name of the Kafka Connect schema for the field.
 
 .Mappings for Db2 basic data types
-[cols="20%a,15%a,30%a,35%a",options="header"]
+[cols="25%a,20%a,55%a",options="header"]
 |===
-|Db2 data type |Literal type (schema type) |Semantic type (schema name) |Notes
+|Db2 data type 
+|Literal type (schema type) 
+|Semantic type (schema name) and Notes
 
 |`BOOLEAN`
 |`BOOLEAN`
 |n/a
-|
+
 
 |`BIGINT`
 |`INT64`
 |n/a
-|
 
 |`BINARY`
 |`BYTES`
 |n/a
-|
 
 |`BLOB`
 |`BYTES`
 |n/a
-|
 
 |`CHAR[(N)]`
 |`STRING`
 |n/a
-|
 
 |`CLOB`
 |`STRING`
 |n/a
-|
 
 |`DATE`
 |`INT32`
-|`io.debezium.time.Date`
-|String representation of a timestamp without timezone information
+|`io.debezium.time.Date` +
+ +
+String representation of a timestamp without timezone information
 
 |`DECFLOAT`
 |`BYTES`
 |`org.apache.kafka.connect.data.Decimal`
-|
 
 |`DECIMAL`
 |`BYTES`
 |`org.apache.kafka.connect.data.Decimal`
-|
 
 |`DBCLOB`
 |`STRING`
 |n/a
-|
 
 |`DOUBLE`
 |`FLOAT64`
 |n/a
-|
 
 |`INTEGER`
 |`INT32`
 |n/a
-|
 
 |`REAL`
 |`FLOAT32`
 |n/a
-|
 
 |`SMALLINT`
 |`INT16`
 |n/a
-|
 
 |`TIME`
 |`INT32`
-|`io.debezium.time.Time`
-|String representation of a time without timezone information
+|`io.debezium.time.Time` +
+ +
+String representation of a time without timezone information
 
 |`TIMESTAMP`
 |`INT64`
-|`io.debezium.time.MicroTimestamp`
-|String representation of a timestamp without timezone information
+|`io.debezium.time.MicroTimestamp` +
+ +
+String representation of a timestamp without timezone information
 
 |`VARBINARY`
 |`BYTES`
 |n/a
-|
 
 |`VARCHAR[(N)]`
 |`STRING`
 |n/a
-|
 
 |`VARGRAPHIC`
 |`STRING`
 |n/a
-|
 
 |`XML`
 |`STRING`
-|`io.debezium.data.Xml`
-|String representation of an XML document
+|`io.debezium.data.Xml` +
+ +
+String representation of an XML document
 |===
 
 If present, a column's default value is propagated to the corresponding field's Kafka Connect schema. Change events contain the field's default value unless an explicit column value had been given. Consequently, there is rarely a need to obtain the default value from the schema.
@@ -1155,54 +1146,63 @@ Other than Db2's `DATETIMEOFFSET` data type, which contains time zone informatio
 When the `time.precision.mode` configuration property is set to `adaptive`, the default, the connector determines the literal type and semantic type based on the column's data type definition. This ensures that events _exactly_ represent the values in the database.
 
 .Mappings when `time.precision.mode` is `adaptive`
-[cols="20%a,15%a,30%a,35%a",options="header"]
+[cols="25%a,20%a,55%a",options="header"]
 |===
-|Db2 data type |Literal type (schema type) |Semantic type (schema name) |Notes
+|Db2 data type |Literal type (schema type) |Semantic type (schema name) and Notes
 
 |`DATE`
 |`INT32`
-|`io.debezium.time.Date`
-|Represents the number of days since the epoch.
+|`io.debezium.time.Date` +
+ +
+Represents the number of days since the epoch.
 
 |`TIME(0)`, `TIME(1)`, `TIME(2)`, `TIME(3)`
 |`INT32`
-|`io.debezium.time.Time`
-|Represents the number of milliseconds past midnight, and does not include timezone information.
+|`io.debezium.time.Time` +
+ +
+Represents the number of milliseconds past midnight, and does not include timezone information.
 
 |`TIME(4)`, `TIME(5)`, `TIME(6)`
 |`INT64`
-|`io.debezium.time.MicroTime`
-|Represents the number of microseconds past midnight, and does not include timezone information.
+|`io.debezium.time.MicroTime` +
+ +
+Represents the number of microseconds past midnight, and does not include timezone information.
 
 |`TIME(7)`
 |`INT64`
-|`io.debezium.time.NanoTime`
-|Represents the number of nanoseconds past midnight, and does not include timezone information.
+|`io.debezium.time.NanoTime` +
+ +
+Represents the number of nanoseconds past midnight, and does not include timezone information.
 
 |`DATETIME`
 |`INT64`
-|`io.debezium.time.Timestamp`
-|Represents the number of milliseconds since the epoch, and does not include timezone information.
+|`io.debezium.time.Timestamp` +
+ +
+Represents the number of milliseconds since the epoch, and does not include timezone information.
 
 |`SMALLDATETIME`
 |`INT64`
-|`io.debezium.time.Timestamp`
-|Represents the number of milliseconds since the epoch, and does not include timezone information.
+|`io.debezium.time.Timestamp` +
+ +
+Represents the number of milliseconds since the epoch, and does not include timezone information.
 
 |`DATETIME2(0)`, `DATETIME2(1)`, `DATETIME2(2)`, `DATETIME2(3)`
 |`INT64`
-|`io.debezium.time.Timestamp`
-|Represents the number of milliseconds since the epoch, and does not include timezone information.
+|`io.debezium.time.Timestamp` +
+ +
+Represents the number of milliseconds since the epoch, and does not include timezone information.
 
 |`DATETIME2(4)`, `DATETIME2(5)`, `DATETIME2(6)`
 |`INT64`
-|`io.debezium.time.MicroTimestamp`
-|Represents the number of microseconds since the epoch, and does not include timezone information.
+|`io.debezium.time.MicroTimestamp` +
+ +
+Represents the number of microseconds since the epoch, and does not include timezone information.
 
 |`DATETIME2(7)`
 |`INT64`
-|`io.debezium.time.NanoTimestamp`
-|Represents the number of nanoseconds past the epoch, and does not include timezone information.
+|`io.debezium.time.NanoTimestamp` +
+ +
+Represents the number of nanoseconds past the epoch, and does not include timezone information.
 |===
 
 [[db2-time-precision-mode-connect]]
@@ -1210,34 +1210,39 @@ When the `time.precision.mode` configuration property is set to `adaptive`, the 
 When the `time.precision.mode` configuration property is set to `connect`, the connector uses Kafka Connect logical types. This may be useful when consumers can handle only the built-in Kafka Connect logical types and are unable to handle variable-precision time values. However, since Db2 supports tenth of a microsecond precision, the events generated by a connector with the `connect` time precision *results in a loss of precision* when the database column has a _fractional second precision_ value that is greater than 3.
 
 .Mappings when `time.precision.mode` is `connect`
-[cols="20%a,15%a,30%a,35%a",options="header"]
+[cols="25%a,20%a,55%a",options="header"]
 |===
-|Db2 data type |Literal type (schema type) |Semantic type (schema name) |Notes
+|Db2 data type |Literal type (schema type) |Semantic type (schema name) and Notes
 
 |`DATE`
 |`INT32`
-|`org.apache.kafka.connect.data.Date`
-| Represents the number of days since the epoch.
+|`org.apache.kafka.connect.data.Date` +
+ +
+Represents the number of days since the epoch.
 
 |`TIME([P])`
 |`INT64`
-|`org.apache.kafka.connect.data.Time`
-| Represents the number of milliseconds since midnight, and does not include timezone information. Db2 allows `P` to be in the range 0-7 to store up to tenth of a microsecond precision, though this mode results in a loss of precision when `P` is greater than 3.
+|`org.apache.kafka.connect.data.Time` +
+ +
+Represents the number of milliseconds since midnight, and does not include timezone information. Db2 allows `P` to be in the range 0-7 to store up to tenth of a microsecond precision, though this mode results in a loss of precision when `P` is greater than 3.
 
 |`DATETIME`
 |`INT64`
-|`org.apache.kafka.connect.data.Timestamp`
-| Represents the number of milliseconds since the epoch, and does not include timezone information.
+|`org.apache.kafka.connect.data.Timestamp` +
+ +
+Represents the number of milliseconds since the epoch, and does not include timezone information.
 
 |`SMALLDATETIME`
 |`INT64`
-|`org.apache.kafka.connect.data.Timestamp`
-| Represents the number of milliseconds since the epoch, and does not include timezone information.
+|`org.apache.kafka.connect.data.Timestamp` +
+ +
+Represents the number of milliseconds since the epoch, and does not include timezone information.
 
 |`DATETIME2`
 |`INT64`
-|`org.apache.kafka.connect.data.Timestamp`
-| Represents the number of milliseconds since the epoch, and does not include timezone information. Db2 allows `P` to be in the range 0-7 to store up to tenth of a microsecond precision, though this mode results in a loss of precision when `P` is greater than 3.
+|`org.apache.kafka.connect.data.Timestamp` +
+ +
+Represents the number of milliseconds since the epoch, and does not include timezone information. Db2 allows `P` to be in the range 0-7 to store up to tenth of a microsecond precision, though this mode results in a loss of precision when `P` is greater than 3.
 |===
 
 [[db2-timestamp-types]]
@@ -1251,32 +1256,36 @@ The timezone of the JVM running Kafka Connect and {prodname} does not affect thi
 [[db2-decimal-types]]
 === Decimal types
 
-[cols="15%a,15%a,35%a,35%a",options="header"]
+[cols="27%a,18%a,55%a",options="header"]
 |===
-|Db2 data type |Literal type (schema type) |Semantic type (schema name) |Notes
+|Db2 data type |Literal type (schema type) |Semantic type (schema name) and Notes
 
 |`NUMERIC[(P[,S])]`
 |`BYTES`
-|`org.apache.kafka.connect.data.Decimal`
-|The `scale` schema parameter contains an integer that represents how many digits the decimal point is shifted.
+|`org.apache.kafka.connect.data.Decimal` +
+ +
+The `scale` schema parameter contains an integer that represents how many digits the decimal point is shifted.
 The `connect.decimal.precision` schema parameter contains an integer that represents the precision of the given decimal value.
 
 |`DECIMAL[(P[,S])]`
 |`BYTES`
-|`org.apache.kafka.connect.data.Decimal`
-|The `scale` schema parameter contains an integer that represents how many digits the decimal point is shifted.
+|`org.apache.kafka.connect.data.Decimal` +
+ +
+The `scale` schema parameter contains an integer that represents how many digits the decimal point is shifted.
 The `connect.decimal.precision` schema parameter contains an integer that  represents the precision of the given decimal value.
 
 |`SMALLMONEY`
 |`BYTES`
-|`org.apache.kafka.connect.data.Decimal`
-|The `scale` schema parameter contains an integer that represents how many digits the decimal point iss shifted.
+|`org.apache.kafka.connect.data.Decimal` +
+ +
+The `scale` schema parameter contains an integer that represents how many digits the decimal point iss shifted.
 The `connect.decimal.precision` schema parameter contains an integer that represents the precision of the given decimal value.
 
 |`MONEY`
 |`BYTES`
-|`org.apache.kafka.connect.data.Decimal`
-|The `scale` schema parameter contains an integer that represents how many digits the decimal point is shifted.
+|`org.apache.kafka.connect.data.Decimal` +
+ +
+The `scale` schema parameter contains an integer that represents how many digits the decimal point is shifted.
 The `connect.decimal.precision` schema parameter contains an integer that represents the precision of the given decimal value.
 |===
 
@@ -1470,7 +1479,7 @@ endif::product[]
 
 // Type: concept
 // ModuleID: debezium-db2-connector-configuration-example
-// Title: {prodname} db2 connector configuration example
+// Title: {prodname} Db2 connector configuration example
 [[db2-example]]
 [[db2-example-configuration]]
 === Connector configuration example
@@ -1519,9 +1528,9 @@ Following is an example of the configuration for a Db2 connector that connects t
 
 You can choose to produce events for a subset of the schemas and tables. Optionally, ignore, mask, or truncate columns that are sensitive, too large, or not needed.
 
-[source,yaml,options="nowrap"]
+[source,yaml,options="nowrap",subs="+attributes"]
 ----
-apiVersion: kafka.strimzi.io/v1beta1
+apiVersion: {KafkaConnectApiVersion}
   kind: KafkaConnector
   metadata:
     name: inventory-connector  // <1>
@@ -1617,7 +1626,7 @@ pass:quotes[*tree ./my-plugins/*]
 
 .. Create a new `Dockerfile` by using `{DockerKafkaConnect}` as the base image. In the following example, you would replace _my-plugins_ with the name of your plug-ins directory:
 +
-[subs=+macros]
+[subs="+macros,+attributes"]
 ----
 FROM {DockerKafkaConnect}
 USER root:root
@@ -1639,7 +1648,7 @@ Before Kafka Connect starts running the connector, Kafka Connect loads any third
 +
 * Edit the `spec.image` property of the `KafkaConnector` custom resource. If set, this property overrides the `STRIMZI_DEFAULT_KAFKA_CONNECT_IMAGE` variable in the Cluster Operator. For example:
 +
-[source,yaml,subs=attributes+]
+[source,yaml,subs="+attributes"]
 ----
 apiVersion: {KafkaConnectApiVersion}
 kind: KafkaConnector
@@ -1735,15 +1744,15 @@ The following configuration properties are _required_ unless a default value is 
 |
 |The name of the Db2 database from which to stream the changes
 
-|[[db2-property-database-server-name]]<<db2-property-database-server-name, `database.server.name`>>
+|[[db2-property-database-server-name]]<<db2-property-database-server-name, `database.server{zwsp}.name`>>
 |
 |Logical name that identifies and provides a namespace for the particular Db2 database server that hosts the database for which {prodname} is capturing changes. Only alphanumeric characters and underscores should be used in the database server logical name. The logical name should be unique across all other connectors, since it is used as a topic name prefix for all Kafka topics that receive records from this connector.
 
-|[[db2-property-database-history-kafka-topic]]<<db2-property-database-history-kafka-topic, `database.history.kafka.topic`>>
+|[[db2-property-database-history-kafka-topic]]<<db2-property-database-history-kafka-topic, `database.history{zwsp}.kafka.topic`>>
 |
 |The full name of the Kafka topic where the connector stores the database schema history.
 
-|[[db2-property-database-history-kafka-bootstrap-servers]]<<db2-property-database-history-kafka-bootstrap-servers, `database.history{zwsp}.kafka.bootstrap.servers`>>
+|[[db2-property-database-history-kafka-bootstrap-servers]]<<db2-property-database-history-kafka-bootstrap-servers, `database.history{zwsp}.kafka.bootstrap{zwsp}.servers`>>
 |
 |A list of host/port pairs that the connector uses to establish an initial connection to the Kafka cluster. This connection is used for retrieving database schema history previously stored by the connector, and for writing each DDL statement read from the source database. Each pair should point to the same Kafka cluster used by the {prodname} Kafka Connect process.
 
@@ -1764,7 +1773,7 @@ The following configuration properties are _required_ unless a default value is 
 Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_.
 Primary key columns are always included in the event's key, even if they are excluded from the value.
 
-|[[db2-property-column-mask-hash]]<<db2-property-column-mask-hash, `column.mask.hash._hashAlgorithm_.with.salt._salt_`>>
+|[[db2-property-column-mask-hash]]<<db2-property-column-mask-hash, `column.mask{zwsp}.hash._hashAlgorithm_{zwsp}.with.salt._salt_`>>
 |_n/a_
 |An optional, comma-separated list of regular expressions that match the fully-qualified names of character-based columns whose values should be pseudonyms in change event values. A pseudonym is a field value that  consists of the hashed value obtained by applying the `_hashAlgorithm_` algorithm and the `_salt_` salt that you specify in the property name. +
  +
@@ -1787,7 +1796,7 @@ Depending on the `_hashAlgorithm_` used, the `_salt_` selected, and the actual d
  +
 `connect` always represents time and timestamp values by using Kafka Connect's built-in representations for `Time`, `Date`, and `Timestamp`, which uses millisecond precision regardless of the database columns' precision. See {link-prefix}:{link-db2-connector}#db2-temporal-values[temporal values].
 
-|[[db2-property-tombstones-on-delete]]<<db2-property-tombstones-on-delete, `tombstones.on.delete`>>
+|[[db2-property-tombstones-on-delete]]<<db2-property-tombstones-on-delete, `tombstones.on{zwsp}.delete`>>
 |`true`
 | Controls whether a tombstone event should be generated after a _delete_ event. +
  +
@@ -1797,19 +1806,19 @@ Depending on the `_hashAlgorithm_` used, the `_salt_` selected, and the actual d
  +
 After a _delete_ operation, emitting a tombstone event enables Kafka to delete all change event records that have the same key as the deleted row.
 
-|[[db2-property-include-schema-changes]]<<db2-property-include-schema-changes, `include.schema.changes`>>
+|[[db2-property-include-schema-changes]]<<db2-property-include-schema-changes, `include.schema{zwsp}.changes`>>
 |`true`
 |Boolean value that specifies whether the connector should publish changes in the database schema to a Kafka topic with the same name as the database server ID. Each schema change is recorded with a key that contains the database name and a value that is a JSON structure that describes the schema update. This is independent of how the connector internally records database history.
 
-|[[db2-property-column-truncate-to-length-chars]]<<db2-property-column-truncate-to-length-chars, `column.truncate.to._length_.chars`>>
+|[[db2-property-column-truncate-to-length-chars]]<<db2-property-column-truncate-to-length-chars, `column.truncate.to.{zwsp}_length_.chars`>>
 |_n/a_
 |An optional, comma-separated list of regular expressions that match the fully-qualified names of character-based columns. Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_. In change event records, values in these columns are truncated if they are longer than the number of characters specified by _length_ in the property name. You can specify multiple properties with different lengths in a single configuration. Length must be a positive integer, for example, `column.truncate.to.20.chars`.
 
-|[[db2-property-column-mask-with-length-chars]]<<db2-property-column-mask-with-length-chars, `column.mask.with._length_.chars`>>
+|[[db2-property-column-mask-with-length-chars]]<<db2-property-column-mask-with-length-chars, `column.mask{zwsp}.with._length_.chars`>>
 |_n/a_
 |An optional, comma-separated list of regular expressions that match the fully-qualified names of character-based columns. Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_. In change event values, the values in the specified table columns are replaced with _length_ number of asterisk (`*`) characters. You can specify multiple properties with different lengths in a single configuration. Length must be a positive integer or zero. When you specify zero, the connector replaces a value with an empty string.
 
-|[[db2-property-column-propagate-source-type]]<<db2-property-column-propagate-source-type, `column.propagate.source.type`>>
+|[[db2-property-column-propagate-source-type]]<<db2-property-column-propagate-source-type, `column.propagate{zwsp}.source.type`>>
 |_n/a_
 |An optional, comma-separated list of regular expressions that match the fully-qualified names of columns. Fully-qualified names for columns are of the form _databaseName_._tableName_._columnName_, or _databaseName_._schemaName_._tableName_._columnName_. +
  +
@@ -1819,7 +1828,7 @@ For each specified column, the connector adds the column's original type and ori
  +
 This property is useful for properly sizing corresponding columns in sink databases.
 
-|[[db2-property-datatype-propagate-source-type]]<<db2-property-datatype-propagate-source-type, `datatype.propagate.source.type`>>
+|[[db2-property-datatype-propagate-source-type]]<<db2-property-datatype-propagate-source-type, `datatype.propagate{zwsp}.source.type`>>
 |_n/a_
 |An optional, comma-separated list of regular expressions that match the database-specific data type name for some columns. Fully-qualified data type names are of the form _databaseName_._tableName_._typeName_, or _databaseName_._schemaName_._tableName_._typeName_. +
  +
@@ -1831,9 +1840,9 @@ These parameters propagate a column's original type name and length, for variabl
  +
 See {link-prefix}:{link-db2-connector}#db2-data-types[Db2 data types] for the list of Db2-specific data type names.
 
-|[[db2-property-message-key-columns]]<<db2-property-message-key-columns, `message.key.columns`>>
+|[[db2-property-message-key-columns]]<<db2-property-message-key-columns, `message.key{zwsp}.columns`>>
 |_empty string_
-A semicolon separated list of tables with regular expressions that match table column names. The connector maps values in matching columns to key fields in change event records that it sends to Kafka topics. This is useful when a table does not have a primary key, or when you want to order change event records in a Kafka topic according to a field that is not a primary key. +
+|A semicolon separated list of tables with regular expressions that match table column names. The connector maps values in matching columns to key fields in change event records that it sends to Kafka topics. This is useful when a table does not have a primary key, or when you want to order change event records in a Kafka topic according to a field that is not a primary key. +
  +
 Separate entries with semicolons. Insert a colon between the fully-qualified table name and its regular expression. The format is: +
  +
@@ -1863,7 +1872,7 @@ The following _advanced_ configuration properties have defaults that work in mos
  +
 `schema_only` - For tables in capture mode, the connector takes a snapshot of only the schema for the table. This is useful when only the changes that are happening from now on need to be emitted to Kafka topics. After the snapshot is complete, the connector continues by reading change events from the database's redo logs.
 
-|[[db2-property-snapshot-isolation-mode]]<<db2-property-snapshot-isolation-mode, `snapshot.isolation.mode`>>
+|[[db2-property-snapshot-isolation-mode]]<<db2-property-snapshot-isolation-mode, `snapshot.isolation{zwsp}.mode`>>
 |`repeatable_read`
 |During a snapshot, controls the transaction isolation level and how long the connector locks the tables that are in capture mode. The possible values are: +
  +
@@ -1875,7 +1884,7 @@ The following _advanced_ configuration properties have defaults that work in mos
  +
 `exclusive` - Uses repeatable read isolation level but takes an  exclusive lock for all tables to be read. This mode prevents other transactions from updating table rows during an initial snapshot. Only `exclusive` mode guarantees full consistency; the initial snapshot and streaming logs constitute a linear history.
 
-|[[db2-property-event-processing-failure-handling-mode]]<<db2-property-event-processing-failure-handling-mode, `event.processing{zwsp}.failure.handling.mode`>>
+|[[db2-property-event-processing-failure-handling-mode]]<<db2-property-event-processing-failure-handling-mode, `event.processing{zwsp}.failure.handling{zwsp}.mode`>>
 |`fail`
 |Specifies how the connector handles exceptions during processing of events. The possible values are: +
  +
@@ -1897,7 +1906,7 @@ The following _advanced_ configuration properties have defaults that work in mos
 |`2048`
 |Positive integer value that specifies the maximum size of each batch of events that the connector processes.
 
-|[[db2-property-heartbeat-interval-ms]]<<db2-property-heartbeat-interval-ms, `heartbeat.interval.ms`>>
+|[[db2-property-heartbeat-interval-ms]]<<db2-property-heartbeat-interval-ms, `heartbeat.interval{zwsp}.ms`>>
 |`0`
 |Controls how frequently the connector sends heartbeat messages to a Kafka topic. The default behavior is that the connector does not send heartbeat messages. +
  +
@@ -1905,7 +1914,7 @@ Heartbeat messages are useful for monitoring whether the connector is receiving 
  +
 Heartbeat messages are useful when there are many updates in a database that is being tracked but only a tiny number of updates are in tables that are in capture mode. In this situation, the connector reads from the database transaction log as usual but rarely emits change records to Kafka. This means that the connector has few opportunities to send the latest offset to Kafka. Sending heartbeat messages enables the connector to send the latest offset to Kafka.
 
-|[[db2-property-heartbeat-topics-prefix]]<<db2-property-heartbeat-topics-prefix, `heartbeat.topics.prefix`>>
+|[[db2-property-heartbeat-topics-prefix]]<<db2-property-heartbeat-topics-prefix, `heartbeat.topics{zwsp}.prefix`>>
 |`__debezium-heartbeat`
 |Specifies the prefix for the name of the topic to which the connector sends heartbeat messages. The format for this topic name is  `<heartbeat.topics.prefix>.<server.name>`.
 
@@ -1917,7 +1926,7 @@ Heartbeat messages are useful when there are many updates in a database that is 
 |`2000`
 |During a snapshot, the connector reads table content in batches of rows. This property specifies the maximum number of rows in a batch.
 
-|[[db2-property-snapshot-lock-timeout-ms]]<<db2-property-snapshot-lock-timeout-ms, `snapshot.lock.timeout.ms`>>
+|[[db2-property-snapshot-lock-timeout-ms]]<<db2-property-snapshot-lock-timeout-ms, `snapshot.lock{zwsp}.timeout.ms`>>
 |`10000`
 |Positive integer value that specifies the maximum amount of time (in milliseconds) to wait to obtain table locks when performing a snapshot. If the connector cannot acquire table locks in this interval, the snapshot fails. {link-prefix}:{link-db2-connector}#db2-snapshots[How the connector performs snapshots] provides details. Other possible settings are: +
  +
@@ -1925,7 +1934,7 @@ Heartbeat messages are useful when there are many updates in a database that is 
  +
 `-1` - The connector waits infinitely.
 
-|[[db2-property-snapshot-select-statement-overrides]]<<db2-property-snapshot-select-statement-overrides, `snapshot.select.statement.overrides`>>
+|[[db2-property-snapshot-select-statement-overrides]]<<db2-property-snapshot-select-statement-overrides, `snapshot.select{zwsp}.statement{zwsp}.overrides`>>
 |
 |Controls which table rows are included in snapshots. This property affects snapshots only. It does not affect events that the connector reads from the log. Specify a comma-separated list of fully-qualified table names in the form _schemaName.tableName_. +
  +
@@ -1933,13 +1942,13 @@ For each table that you specify, also specify another configuration property: `s
  +
 A possible use case for setting these properties is large, append-only tables. You can specify a `SELECT` statement that sets a specific point for where to start a snapshot, or where to resume a snapshot if a previous snapshot was interrupted.
 
-|[[db2-property-sanitize-field-names]]<<db2-property-sanitize-field-names, `sanitize.field.names`>>
+|[[db2-property-sanitize-field-names]]<<db2-property-sanitize-field-names, `sanitize.field{zwsp}.names`>>
 |`true` if connector configuration sets the `key.converter` or `value.converter` property to the Avro converter.
 
 `false` if not.
 |Indicates whether field names are sanitized to adhere to {link-prefix}:{link-avro-serialization}#avro-naming[Avro naming requirements].
 
-|[[db2-property-provide-transaction-metadata]]<<db2-property-provide-transaction-metadata, `provide.transaction.metadata`>>
+|[[db2-property-provide-transaction-metadata]]<<db2-property-provide-transaction-metadata, `provide.transaction{zwsp}.metadata`>>
 |`false`
 |Determines whether the connector generates events with transaction boundaries and enriches change event envelopes with transaction metadata. Specify `true` if you want the connector to do this. See  {link-prefix}:{link-db2-connector}#db2-transaction-metadata[Transaction metadata] for details.
 
@@ -2032,33 +2041,31 @@ include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-schema-hi
 After you deploy a {prodname} Db2 connector, use the {prodname} management UDFs to control Db2 replication (ASN) with SQL commands. Some of the UDFs expect a return value in which case you use the  SQL `VALUE` statement to invoke them. For other UDFs, use the SQL `CALL` statement.
 
 .Descriptions of {prodname} management UDFs
-[cols="1,3, 2",options="header"]
+[cols="1,4",options="header"]
 |===
-|Task |Command |Notes
+|Task |Command and notes
 
 |[[debezium-db2-start-asn-agent]]<<debezium-db2-start-asn-agent,Start the ASN agent>>
 |`VALUES ASNCDC.ASNCDCSERVICES('start','asncdc');`
-|
 
 |[[debezium-db2-stop-asn-agent]]<<debezium-db2-stop-asn-agent,Stop the ASN agent>>
 |`VALUES ASNCDC.ASNCDCSERVICES('stop','asncdc');`
-|
 
 |[[debezium-db2-check-asn-agent]]<<debezium-db2-check-asn-agent,Check the status of the ASN agent>>
 |`VALUES ASNCDC.ASNCDCSERVICES('status','asncdc');`
-|
 
 |[[debezium-db2-put-capture-mode]]<<debezium-db2-put-capture-mode,Put a table into capture mode>>
-|`CALL ASNCDC.ADDTABLE('MYSCHEMA', 'MYTABLE');`
-|Replace `MYSCHEMA`  with the name of the schema that contains the table you want to put into capture mode. Likewise, replace `MYTABLE` with the name of the table to put into capture mode.
+|`CALL ASNCDC.ADDTABLE('MYSCHEMA', 'MYTABLE');` +
+ +
+Replace `MYSCHEMA`  with the name of the schema that contains the table you want to put into capture mode. Likewise, replace `MYTABLE` with the name of the table to put into capture mode.
 
 |[[debezium-db2-remove-capture-mode]]<<debezium-db2-remove-capture-mode,Remove a table from capture mode>>
 |`CALL ASNCDC.REMOVETABLE('MYSCHEMA', 'MYTABLE');`
-|
 
 |[[debezium-db2-reinitialize-asn-service]]<<debezium-db2-reinitialize-asn-service,Reinitialize the ASN service>>
-|`VALUES ASNCDC.ASNCDCSERVICES('reinit','asncdc');`
-|Do this after you put a table into capture mode or after you remove a table from capture mode.
+|`VALUES ASNCDC.ASNCDCSERVICES('reinit','asncdc');` +
+ +
+Do this after you put a table into capture mode or after you remove a table from capture mode.
 
 |===
 
