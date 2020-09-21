@@ -82,7 +82,7 @@ public class OpenShiftUtils {
                 .endMetadata()
                 .withNewSpec()
                 .addNewPort()
-                .withAppProtocol("tcp")
+                .withProtocol("TCP")
                 .withName(portName).withPort(port).withTargetPort(new IntOrString(port))
                 .endPort()
                 .withSelector(selector)
