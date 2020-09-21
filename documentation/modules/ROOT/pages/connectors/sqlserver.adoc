@@ -1,5 +1,5 @@
 [id="debezium-connector-for-sql-server"]
-= {prodname} Connector for SQL Server
+= {prodname} connector for SQL Server
 
 ifdef::community[]
 
@@ -210,19 +210,19 @@ A message to the schema change topic contains a logical representation of the ta
       "commit_lsn": "00000025:00000d98:00a2",
       "event_serial_no": null
     },
-    "databaseName": "testDB", <1>
+    "databaseName": "testDB", // <1>
     "schemaName": "dbo",
-    "ddl": null, <2>
-    "tableChanges": [ <3>
+    "ddl": null, // <2>
+    "tableChanges": [ // <3>
       {
-        "type": "CREATE", <4>
-        "id": "\"testDB\".\"dbo\".\"customers\"", <5>
-        "table": { <6>
+        "type": "CREATE", // <4>
+        "id": "\"testDB\".\"dbo\".\"customers\"", // <5>
+        "table": { // <6>
           "defaultCharsetName": null,
-          "primaryKeyColumnNames": [ <7>
+          "primaryKeyColumnNames": [ // <7>
             "id"
           ],
-          "columns": [ <8>
+          "columns": [ // <8>
             {
               "name": "id",
               "jdbcType": 4,
@@ -288,7 +288,7 @@ A message to the schema change topic contains a logical representation of the ta
 ----
 
 .Descriptions of fields in messages emitted to the schema change topic
-[cols="1,3,6",options="header"]
+[cols="1,4,5",options="header"]
 |===
 |Item |Field name |Description
 
@@ -333,7 +333,7 @@ a|Describes the kind of change. The value is one of the following:
 
 In messages to the schema change topic, the key is the name of the database that contains the schema change. In the following example, the `payload` field contains the key:
 
-[source,json,indent=0,subs="attributes"]
+[source,json,indent=0,subs="+attributes"]
 ----
 {
   "schema": {
@@ -365,16 +365,16 @@ The following skeleton JSON shows the basic four parts of a change event. Howeve
 [source,json,index=0]
 ----
 {
- "schema": { //<1>
+ "schema": { // <1>
    ...
   },
- "payload": { //<2>
+ "payload": { // <2>
    ...
  },
- "schema": { //<3> 
+ "schema": { // <3> 
    ...
  },
- "payload": { //<4>
+ "payload": { // <4>
    ...
  },
 }
@@ -438,19 +438,19 @@ Every change event that captures a change to the `customers` table has the same 
 [source,json,indent=0]
 ----
 {
-    "schema": { <1>
+    "schema": { // <1>
         "type": "struct",
-        "fields": [ <2>
+        "fields": [ // <2>
             {
                 "type": "int32",
                 "optional": false,
                 "field": "id"
             }
         ],
-        "optional": false, <3>
-        "name": "server1.dbo.customers.Key" <4>
+        "optional": false, // <3>
+        "name": "server1.dbo.customers.Key" // <4>
     },
-    "payload": { <5>
+    "payload": { // <5>
         "id": 1004
     }
 }
@@ -474,7 +474,7 @@ Every change event that captures a change to the `customers` table has the same 
 |Indicates whether the event key must contain a value in its `payload` field. In this example, a value in the key's payload is required. A value in the key's payload field is optional when a table does not have a primary key.
 
 |4
-|`server1.dbo.customers.Key`
+|`server1.dbo{zwsp}.customers{zwsp}.Key`
 a|Name of the schema that defines the structure of the key's payload. This schema describes the structure of the primary key for the table that was changed. Key schema names have the format _connector-name_._database-schema-name_._table-name_.`Key`. In this example: + 
 
 * `server1` is the name of the connector that generated this event. + 
@@ -774,19 +774,19 @@ The value of a change event for an update in the sample `customers` table has th
 {
   "schema": { ... },
   "payload": {
-    "before": { <1>
+    "before": { // <1>
       "id": 1005,
       "first_name": "john",
       "last_name": "doe",
       "email": "john.doe@example.org"
     },
-    "after": { <2>
+    "after": { // <2>
       "id": 1005,
       "first_name": "john",
       "last_name": "doe",
       "email": "noreply@example.org"
     },
-    "source": { <3>
+    "source": { // <3>
       "version": "{debezium-version}",
       "connector": "sqlserver",
       "name": "server1",
@@ -799,7 +799,7 @@ The value of a change event for an update in the sample `customers` table has th
       "commit_lsn": "00000027:00000ac0:0007",
       "event_serial_no": "2"
     },
-    "op": "u", <4>
+    "op": "u", // <4>
     "ts_ms": 1559729998706
   }
 }
@@ -943,7 +943,7 @@ Every event contains
 
 Following is an example of what a message looks like:
 
-[source,json,indent=0,subs="attributes"]
+[source,json,indent=0,subs="+attributes"]
 ----
 {
   "status": "BEGIN",
@@ -981,7 +981,7 @@ This field provides information about every event in the form of a composite of 
 
 Following is an example of what a message looks like:
 
-[source,json,indent=0,subs="attributes"]
+[source,json,indent=0,subs="+attributes"]
 ----
 {
   "before": null,
@@ -1140,87 +1140,75 @@ The following table describes how the connector maps each of the SQL Server data
 Here, the _literal type_ describes how the value is literally represented using Kafka Connect schema types, namely `INT8`, `INT16`, `INT32`, `INT64`, `FLOAT32`, `FLOAT64`, `BOOLEAN`, `STRING`, `BYTES`, `ARRAY`, `MAP`, and `STRUCT`.
 The _semantic type_ describes how the Kafka Connect schema captures the _meaning_ of the field using the name of the Kafka Connect schema for the field.
 
-[cols="20%a,15%a,30%a,35%a"]
+[cols="30%a,25%a,45%a",options="header"]
 |===
-|SQL Server Data Type
+|SQL Server data type
 |Literal type (schema type)
-|Semantic type (schema name)
-|Notes
+|Semantic type (schema name) and Notes
 
 |`BIT`
 |`BOOLEAN`
 |n/a
-|
 
 |`TINYINT`
 |`INT16`
 |n/a
-|
 
 |`SMALLINT`
 |`INT16`
 |n/a
-|
 
 |`INT`
 |`INT32`
 |n/a
-|
 
 |`BIGINT`
 |`INT64`
 |n/a
-|
 
 |`REAL`
 |`FLOAT32`
 |n/a
-|
 
 |`FLOAT[(N)]`
 |`FLOAT64`
 |n/a
-|
 
 |`CHAR[(N)]`
 |`STRING`
 |n/a
-|
 
 |`VARCHAR[(N)]`
 |`STRING`
 |n/a
-|
 
 |`TEXT`
 |`STRING`
 |n/a
-|
 
 |`NCHAR[(N)]`
 |`STRING`
 |n/a
-|
 
 |`NVARCHAR[(N)]`
 |`STRING`
 |n/a
-|
 
 |`NTEXT`
 |`STRING`
 |n/a
-|
 
 |`XML`
 |`STRING`
-|`io.debezium.data.Xml`
-|Contains the string representation of a XML document
+|`io.debezium.data.Xml` +
+ +
+Contains the string representation of an XML document
 
 |`DATETIMEOFFSET[(P)]`
 |`STRING`
-|`io.debezium.time.ZonedTimestamp`
-| A string representation of a timestamp with timezone information, where the timezone is GMT
+|`io.debezium.time.ZonedTimestamp` +
+ +
+A string representation of a timestamp with timezone information, where the timezone is GMT
 
 |===
 
@@ -1238,93 +1226,105 @@ endif::community[]
 
 Other than SQL Server's `DATETIMEOFFSET` data type (which contain time zone information), the other temporal types depend on the value of the `time.precision.mode` configuration property.  When the `time.precision.mode` configuration property is set to `adaptive` (the default), then the connector will determine the literal type and semantic type for the temporal types based on the column's data type definition so that events _exactly_ represent the values in the database:
 
-[cols="20%a,15%a,30%a,35%a"]
+[cols="30%a,25%a,45%a",options="header"]
 |===
-|SQL Server Data Type
+|SQL Server data type
 |Literal type (schema type)
-|Semantic type (schema name)
-|Notes
+|Semantic type (schema name) and Notes
 
 |`DATE`
 |`INT32`
-|`io.debezium.time.Date`
-| Represents the number of days since epoch.
+|`io.debezium.time.Date` +
+ +
+Represents the number of days since the epoch.
 
 |`TIME(0)`, `TIME(1)`, `TIME(2)`, `TIME(3)`
 |`INT32`
-|`io.debezium.time.Time`
-| Represents the number of milliseconds past midnight, and does not include timezone information.
+|`io.debezium.time.Time` +
+ +
+Represents the number of milliseconds past midnight, and does not include timezone information.
 
 |`TIME(4)`, `TIME(5)`, `TIME(6)`
 |`INT64`
-|`io.debezium.time.MicroTime`
-| Represents the number of microseconds past midnight, and does not include timezone information.
+|`io.debezium.time.MicroTime` +
+ +
+Represents the number of microseconds past midnight, and does not include timezone information.
 
 |`TIME(7)`
 |`INT64`
-|`io.debezium.time.NanoTime`
-| Represents the number of nanoseconds past midnight, and does not include timezone information.
+|`io.debezium.time.NanoTime` +
+ +
+Represents the number of nanoseconds past midnight, and does not include timezone information.
 
 |`DATETIME`
 |`INT64`
-|`io.debezium.time.Timestamp`
-| Represents the number of milliseconds past epoch, and does not include timezone information.
+|`io.debezium.time.Timestamp` +
+ +
+Represents the number of milliseconds past the epoch, and does not include timezone information.
 
 |`SMALLDATETIME`
 |`INT64`
-|`io.debezium.time.Timestamp`
-| Represents the number of milliseconds past epoch, and does not include timezone information.
+|`io.debezium.time.Timestamp` +
+ +
+Represents the number of milliseconds past the epoch, and does not include timezone information.
 
 |`DATETIME2(0)`, `DATETIME2(1)`, `DATETIME2(2)`, `DATETIME2(3)`
 |`INT64`
-|`io.debezium.time.Timestamp`
-| Represents the number of milliseconds past epoch, and does not include timezone information.
+|`io.debezium.time.Timestamp` +
+ +
+Represents the number of milliseconds past the epoch, and does not include timezone information.
 
 |`DATETIME2(4)`, `DATETIME2(5)`, `DATETIME2(6)`
 |`INT64`
-|`io.debezium.time.MicroTimestamp`
-| Represents the number of microseconds past epoch, and does not include timezone information.
+|`io.debezium.time.MicroTimestamp` +
+ +
+Represents the number of microseconds past the epoch, and does not include timezone information.
 
 |`DATETIME2(7)`
 |`INT64`
-|`io.debezium.time.NanoTimestamp`
-| Represents the number of nanoseconds past epoch, and does not include timezone information.
+|`io.debezium.time.NanoTimestamp` +
+ +
+Represents the number of nanoseconds past the epoch, and does not include timezone information.
 
 |===
 
 When the `time.precision.mode` configuration property is set to `connect`, then the connector will use the predefined Kafka Connect logical types. This may be useful when consumers only know about the built-in Kafka Connect logical types and are unable to handle variable-precision time values. On the other hand, since SQL Server supports tenth of microsecond precision, the events generated by a connector with the `connect` time precision mode will *result in a loss of precision* when the database column has a _fractional second precision_ value greater than 3:
 
-[cols="20%a,15%a,30%a,35%a"]
+[cols="25%a,20%a,55%a",options="header"]
 |===
-|SQL Server Data Type
+|SQL Server data type
 |Literal type (schema type)
-|Semantic type (schema name)
-|Notes
+|Semantic type (schema name) and Notes
 
 |`DATE`
 |`INT32`
-|`org.apache.kafka.connect.data.Date`
-| Represents the number of days since epoch.
+|`org.apache.kafka.connect.data.Date` +
+ +
+Represents the number of days since the epoch.
 
 |`TIME([P])`
 |`INT64`
-|`org.apache.kafka.connect.data.Time`
-| Represents the number of milliseconds since midnight, and does not include timezone information. SQL Server allows `P` to be in the range 0-7 to store up to tenth of microsecond precision, though this mode results in a loss of precision when `P` > 3.
+|`org.apache.kafka.connect.data.Time` +
+ +
+Represents the number of milliseconds since midnight, and does not include timezone information. SQL Server allows `P` to be in the range 0-7 to store up to tenth of a microsecond precision, though this mode results in a loss of precision when `P` > 3.
 
 |`DATETIME`
 |`INT64`
-|`org.apache.kafka.connect.data.Timestamp`
-| Represents the number of milliseconds since epoch, and does not include timezone information.
+|`org.apache.kafka.connect.data.Timestamp` +
+ +
+Represents the number of milliseconds since the epoch, and does not include timezone information.
 
 |`SMALLDATETIME`
 |`INT64`
-|`org.apache.kafka.connect.data.Timestamp`
-| Represents the number of milliseconds past epoch, and does not include timezone information.
+|`org.apache.kafka.connect.data.Timestamp` +
+ +
+Represents the number of milliseconds past the epoch, and does not include timezone information.
 
 |`DATETIME2`
 |`INT64`
-|`org.apache.kafka.connect.data.Timestamp`
-| Represents the number of milliseconds since epoch, and does not include timezone information. SQL Server allows `P` to be in the range 0-7 to store up to tenth of microsecond precision, though this mode results in a loss of precision when `P` > 3.
+|`org.apache.kafka.connect.data.Timestamp` +
+ +
+Represents the number of milliseconds since the epoch, and does not include timezone information. SQL Server allows `P` to be in the range 0-7 to store up to tenth of a microsecond precision, though this mode results in a loss of precision when `P` > 3.
 
 |===
 
@@ -1339,38 +1339,32 @@ Note that the timezone of the JVM running Kafka Connect and {prodname} does not 
 
 ==== Decimal values
 
-[cols="15%a,15%a,35%a,35%a"]
+[cols="30%a,17%a,53%a",options="header"]
 |===
-|SQL Server Data Type
+|SQL Server data type
 |Literal type (schema type)
 |Semantic type (schema name)
-|Notes
 
 |`NUMERIC[(P[,S])]`
 |`BYTES`
-|`org.apache.kafka.connect.data.Decimal`
-|The `scale` schema parameter contains an integer representing how many digits the decimal point was shifted.
-The `connect.decimal.precision` schema parameter contains an integer representing the precision of the given decimal value.
+|`org.apache.kafka.connect.data.Decimal` 
 
 |`DECIMAL[(P[,S])]`
 |`BYTES`
-|`org.apache.kafka.connect.data.Decimal`
-|The `scale` schema parameter contains an integer representing how many digits the decimal point was shifted.
-The `connect.decimal.precision` schema parameter contains an integer representing the precision of the given decimal value.
+|`org.apache.kafka.connect.data.Decimal` 
 
 |`SMALLMONEY`
 |`BYTES`
 |`org.apache.kafka.connect.data.Decimal`
-|The `scale` schema parameter contains an integer representing how many digits the decimal point was shifted.
-The `connect.decimal.precision` schema parameter contains an integer representing the precision of the given decimal value.
 
 |`MONEY`
 |`BYTES`
 |`org.apache.kafka.connect.data.Decimal`
-|The `scale` schema parameter contains an integer representing how many digits the decimal point was shifted.
-The `connect.decimal.precision` schema parameter contains an integer representing the precision of the given decimal value.
 
 |===
+
+The `scale` schema parameter contains an integer that represents how many digits the decimal point was shifted.
+The `connect.decimal.precision` schema parameter contains an integer that represents the precision of the given decimal value.
 
 [[sqlserver-deploying-a-connector]]
 == Deployment
@@ -1432,18 +1426,18 @@ Typically, you configure the {prodname} SQL Server connector in a `.json` file u
 [source,json]
 ----
 {
-  "name": "inventory-connector", <1>
+  "name": "inventory-connector", // <1>
   "config": {
-    "connector.class": "io.debezium.connector.sqlserver.SqlServerConnector", <2>
-    "database.hostname": "192.168.99.100", <3>
-    "database.port": "1433", <4>
-    "database.user": "sa", <5>
-    "database.password": "Password!", <6>
-    "database.dbname": "testDB", <7>
-    "database.server.name": "fullfillment", <8>
-    "table.include.list": "dbo.customers", <9>
-    "database.history.kafka.bootstrap.servers": "kafka:9092", <10>
-    "database.history.kafka.topic": "dbhistory.fullfillment" <11>
+    "connector.class": "io.debezium.connector.sqlserver.SqlServerConnector", // <2>
+    "database.hostname": "192.168.99.100", // <3>
+    "database.port": "1433", // <4>
+    "database.user": "sa", // <5>
+    "database.password": "Password!", // <6>
+    "database.dbname": "testDB", // <7>
+    "database.server.name": "fullfillment", // <8>
+    "table.include.list": "dbo.customers", // <9>
+    "database.history.kafka.bootstrap.servers": "kafka:9092", // <10>
+    "database.history.kafka.topic": "dbhistory.fullfillment" // <11>
   }
 }
 ----
@@ -1578,7 +1572,7 @@ pass:quotes[*tree ./my-plugins/*]
 
 .. Create a new `Dockerfile` by using `{DockerKafkaConnect}` as the base image. In the following example, you would replace _my-plugins_ with the name of your plug-ins directory:
 +
-[subs=+macros]
+[subs="+macros,+attributes"]
 ----
 FROM {DockerKafkaConnect}
 USER root:root
@@ -1681,7 +1675,7 @@ include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-schema-hi
 
 The following configuration properties are _required_ unless a default value is available.
 
-[cols="30%a,25%a,45%a"]
+[cols="30%a,25%a,45%a",options="header"]
 |===
 |Property
 |Default
@@ -1719,16 +1713,16 @@ The following configuration properties are _required_ unless a default value is 
 |
 |The name of the SQL Server database from which to stream the changes
 
-|[[sqlserver-property-database-server-name]]<<sqlserver-property-database-server-name, `database.server.name`>>
+|[[sqlserver-property-database-server-name]]<<sqlserver-property-database-server-name, `database.server{zwsp}.name`>>
 |
 |Logical name that identifies and provides a namespace for the particular SQL Server database server being monitored. The logical name should be unique across all other connectors, since it is used as a prefix for all Kafka topic names emanating from this connector.
 Only alphanumeric characters and underscores should be used.
 
-|[[sqlserver-property-database-history-kafka-topic]]<<sqlserver-property-database-history-kafka-topic, `database.history.kafka.topic`>>
+|[[sqlserver-property-database-history-kafka-topic]]<<sqlserver-property-database-history-kafka-topic, `database.history{zwsp}.kafka.topic`>>
 |
 |The full name of the Kafka topic where the connector will store the database schema history.
 
-|[[sqlserver-property-database-history-kafka-bootstrap-servers]]<<sqlserver-property-database-history-kafka-bootstrap-servers, `database.history{zwsp}.kafka.bootstrap.servers`>>
+|[[sqlserver-property-database-history-kafka-bootstrap-servers]]<<sqlserver-property-database-history-kafka-bootstrap-servers, `database.history{zwsp}.kafka.bootstrap{zwsp}.servers`>>
 |
 |A list of host/port pairs that the connector will use for establishing an initial connection to the Kafka cluster.
 This connection is used for retrieving database schema history previously stored by the connector, and for writing each DDL statement read from the source database. This should point to the same Kafka cluster used by the Kafka Connect process.
@@ -1762,7 +1756,7 @@ Note that primary key columns are always included in the event's key, also if ex
 Do not also set the `column.include.list` property.
 
 
-|[[sqlserver-property-column-mask-hash]]<<sqlserver-property-column-mask-hash, `column.mask.hash._hashAlgorithm_.with.salt._salt_`>>
+|[[sqlserver-property-column-mask-hash]]<<sqlserver-property-column-mask-hash, `column.mask{zwsp}.hash._hashAlgorithm_{zwsp}.with.salt._salt_`>>
 |_n/a_
 |An optional comma-separated list of regular expressions that match the fully-qualified names of character-based columns whose values should be pseudonyms in the change event message values with a field value consisting of the hashed value using the algorithm `_hashAlgorithm_` and salt `_salt_`.
 Based on the used hash function referential integrity is kept while data is pseudonymized. Supported hash functions are described in the {link-java7-standard-names}[MessageDigest section] of the Java Cryptography Architecture Standard Algorithm Name Documentation.
@@ -1778,36 +1772,36 @@ where `CzQMA0cB5K` is a randomly selected salt.
 
 Note: Depending on the `_hashAlgorithm_` used, the `_salt_` selected and the actual data set, the resulting masked data set may not be completely anonymized.
 
-|[[sqlserver-property-time-precision-mode]]<<sqlserver-property-time-precision-mode, `time.precision.mode`>>
+|[[sqlserver-property-time-precision-mode]]<<sqlserver-property-time-precision-mode, `time.precision{zwsp}.mode`>>
 |`adaptive`
 | Time, date, and timestamps can be represented with different kinds of precision, including: `adaptive` (the default) captures the time and timestamp values exactly as in the database using either millisecond, microsecond, or nanosecond precision values based on the database column's type; or `connect` always represents time and timestamp values using Kafka Connect's built-in representations for Time, Date, and Timestamp, which uses millisecond precision regardless of the database columns' precision. See {link-prefix}:{link-sqlserver-connector}#sqlserver-temporal-values[temporal values].
 
-|[[sqlserver-property-include-schema-changes]]<<sqlserver-property-include-schema-changes, `include.schema.changes`>>
+|[[sqlserver-property-include-schema-changes]]<<sqlserver-property-include-schema-changes, `include.schema{zwsp}.changes`>>
 |`true`
 |Boolean value that specifies whether the connector should publish changes in the database schema to a Kafka topic with the same name as the database server ID. Each schema change is recorded with a key that contains the database name and a value that is a JSON structure that describes the schema update. This is independent of how the connector internally records database history. The default is `true`.
 
-|[[sqlserver-property-tombstones-on-delete]]<<sqlserver-property-tombstones-on-delete, `tombstones.on.delete`>>
+|[[sqlserver-property-tombstones-on-delete]]<<sqlserver-property-tombstones-on-delete, `tombstones.on{zwsp}.delete`>>
 |`true`
 | Controls whether a tombstone event should be generated after a delete event. +
 When `true` the delete operations are represented by a delete event and a subsequent tombstone event. When `false` only a delete event is sent. +
 Emitting the tombstone event (the default behavior) allows Kafka to completely delete all events pertaining to the given key once the source record got deleted.
 
-|[[sqlserver-property-column-truncate-to-length-chars]]<<sqlserver-property-column-truncate-to-length-chars, `column.truncate.to._length_.chars`>>
+|[[sqlserver-property-column-truncate-to-length-chars]]<<sqlserver-property-column-truncate-to-length-chars, `column.truncate.to{zwsp}._length_.chars`>>
 |_n/a_
 |An optional comma-separated list of regular expressions that match the fully-qualified names of character-based columns whose values should be truncated in the change event message values if the field values are longer than the specified number of characters. Multiple properties with different lengths can be used in a single configuration, although in each the length must be a positive integer. Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_.
 
-|[[sqlserver-property-column-mask-with-length-chars]]<<sqlserver-property-column-mask-with-length-chars, `column.mask.with._length_.chars`>>
+|[[sqlserver-property-column-mask-with-length-chars]]<<sqlserver-property-column-mask-with-length-chars, `column.mask.with{zwsp}._length_.chars`>>
 |_n/a_
 |An optional comma-separated list of regular expressions that match the fully-qualified names of character-based columns whose values should be replaced in the change event message values with a field value consisting of the specified number of asterisk (`*`) characters. Multiple properties with different lengths can be used in a single configuration, although in each the length must be a positive integer or zero. Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_.
 
-|[[sqlserver-property-column-propagate-source-type]]<<sqlserver-property-column-propagate-source-type, `column.propagate.source.type`>>
+|[[sqlserver-property-column-propagate-source-type]]<<sqlserver-property-column-propagate-source-type, `column.propagate{zwsp}.source.type`>>
 |_n/a_
 |An optional comma-separated list of regular expressions that match the fully-qualified names of columns whose original type and length should be added as a parameter to the corresponding field schemas in the emitted change messages.
 The schema parameters `pass:[_]pass:[_]debezium.source.column.type`, `pass:[_]pass:[_]debezium.source.column.length` and `pass:[_]pass:[_]debezium.source.column.scale` is used to propagate the original type name and length (for variable-width types), respectively.
 Useful to properly size corresponding columns in sink databases.
 Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_.
 
-|[[sqlserver-property-datatype-propagate-source-type]]<<sqlserver-property-datatype-propagate-source-type,`datatype.propagate.source.type`>>
+|[[sqlserver-property-datatype-propagate-source-type]]<<sqlserver-property-datatype-propagate-source-type,`datatype.propagate{zwsp}.source.type`>>
 |_n/a_
 |An optional comma-separated list of regular expressions that match the database-specific data type name of columns whose original type and length should be added as a parameter to the corresponding field schemas in the emitted change messages.
 The schema parameters `pass:[_]pass:[_]debezium.source.column.type`, `pass:[_]pass:[_]debezium.source.column.length` and `pass:[_]pass:[_]debezium.source.column.scale` will be used to propagate the original type name and length (for variable-width types), respectively.
@@ -1824,7 +1818,7 @@ Fully-qualified tables could be defined as _schemaName_._tableName_.
 
 The following _advanced_ configuration properties have good defaults that will work in most situations and therefore rarely need to be specified in the connector's configuration.
 
-[cols="30%a,25%a,45%a"]
+[cols="30%a,25%a,45%a",options="header"]
 |===
 |Property
 |Default
@@ -1840,7 +1834,7 @@ Supported values are: +
 `initial_only`: Takes a snapshot of structure and data like `initial` but instead does not transition into streaming changes once the snapshot has completed. +
 `schema_only`: Takes a snapshot of the structure of captured tables only; useful if only changes happening from now onwards should be propagated to topics.
 
-|[[sqlserver-property-snapshot-isolation-mode]]<<sqlserver-property-snapshot-isolation-mode, `snapshot.isolation.mode`>>
+|[[sqlserver-property-snapshot-isolation-mode]]<<sqlserver-property-snapshot-isolation-mode, `snapshot.isolation{zwsp}.mode`>>
 |_repeatable_read_
 |Mode to control which transaction isolation level is used and how long the connector locks the monitored tables.
 There are five possible values: `read_uncommitted`, `read_committed`, `repeatable_read`, `snapshot`, and `exclusive` (
@@ -1857,13 +1851,13 @@ twice - once in initial snapshot and once in streaming phase. Nonetheless, that 
 data mirroring.
 For `read_uncommitted` there are no data consistency guarantees at all (some data might be lost or corrupted).
 
-|[[sqlserver-property-source-timestamp-mode]]<<sqlserver-property-source-timestamp-mode, `source.timestamp.mode`>>
+|[[sqlserver-property-source-timestamp-mode]]<<sqlserver-property-source-timestamp-mode, `source.timestamp{zwsp}.mode`>>
 |_commit_
 |String representing the criteria of the attached timestamp within the source record (ts_ms).
 `commit` will set the source timestamp to the instant where the record was committed in the database (default and current behavior).
 `processing` will set the source timestamp to the instant where the record was processed by {prodname}. This option could be used when either we want to set the top level `ts_ms` value here or when we want to skip the query to extract the timestamp of that LSN.
 
-|[[sqlserver-property-event-processing-failure-handling-mode]]<<sqlserver-property-event-processing-failure-handling-mode, `event.processing{zwsp}.failure.handling.mode`>>
+|[[sqlserver-property-event-processing-failure-handling-mode]]<<sqlserver-property-event-processing-failure-handling-mode, `event.processing{zwsp}.failure.handling{zwsp}.mode`>>
 |`fail`
 | Specifies how the connector should react to exceptions during processing of events.
 `fail` will propagate the exception (indicating the offset of the problematic event), causing the connector to stop. +
@@ -1882,7 +1876,7 @@ For `read_uncommitted` there are no data consistency guarantees at all (some dat
 |`2048`
 |Positive integer value that specifies the maximum size of each batch of events that should be processed during each iteration of this connector. Defaults to 2048.
 
-|[[sqlserver-property-heartbeat-interval-ms]]<<sqlserver-property-heartbeat-interval-ms, `heartbeat.interval.ms`>>
+|[[sqlserver-property-heartbeat-interval-ms]]<<sqlserver-property-heartbeat-interval-ms, `heartbeat.interval{zwsp}.ms`>>
 |`0`
 |Controls how frequently heartbeat messages are sent. +
 This property contains an interval in milli-seconds that defines how frequently the connector sends messages into a heartbeat topic.
@@ -1894,7 +1888,7 @@ This may result in more change events to be re-sent after a connector restart.
 Set this parameter to `0` to not send heartbeat messages at all. +
 Disabled by default.
 
-|[[sqlserver-property-heartbeat-topics-prefix]]<<sqlserver-property-heartbeat-topics-prefix, `heartbeat.topics.prefix`>>
+|[[sqlserver-property-heartbeat-topics-prefix]]<<sqlserver-property-heartbeat-topics-prefix, `heartbeat.topics{zwsp}.prefix`>>
 |`__debezium-heartbeat`
 |Controls the naming of the topic to which heartbeat messages are sent. +
 The topic is named according to the pattern `<heartbeat.topics.prefix>.<server.name>`.
@@ -1914,12 +1908,12 @@ The connector will read the table contents in multiple batches of this size. Def
 |Specifies the number of rows that will be fetched for each database round-trip of a given query.
 Defaults to the JDBC driver's default fetch size.
 
-|[[sqlserver-property-snapshot-lock-timeout-ms]]<<sqlserver-property-snapshot-lock-timeout-ms, `snapshot.lock.timeout.ms`>>
+|[[sqlserver-property-snapshot-lock-timeout-ms]]<<sqlserver-property-snapshot-lock-timeout-ms, `snapshot.lock{zwsp}.timeout.ms`>>
 |`10000`
 |An integer value that specifies the maximum amount of time (in milliseconds) to wait to obtain table locks when performing a snapshot. If table locks cannot be acquired in this time interval, the snapshot will fail (also see {link-prefix}:{link-sqlserver-connector}#sqlserver-snapshots[snapshots]). +
 When set to `0` the connector will fail immediately when it cannot obtain the lock. Value `-1` indicates infinite waiting.
 
-|[[sqlserver-property-snapshot-select-statement-overrides]]<<sqlserver-property-snapshot-select-statement-overrides, `snapshot.select.statement.overrides`>>
+|[[sqlserver-property-snapshot-select-statement-overrides]]<<sqlserver-property-snapshot-select-statement-overrides, `snapshot.select{zwsp}.statement{zwsp}.overrides`>>
 |
 |Controls which rows from tables are included in snapshot. +
 This property contains a comma-separated list of fully-qualified tables _(SCHEMA_NAME.TABLE_NAME)_. Select statements for the individual tables are specified in further configuration properties, one for each table, identified by the id `snapshot.select.statement.overrides.[SCHEMA_NAME].[TABLE_NAME]`. The value of those properties is the SELECT statement to use when retrieving data from the specific table during snapshotting. _A possible use case for large append-only tables is setting a specific point where to start (resume) snapshotting, in case a previous snapshotting was interrupted._ +
@@ -1935,14 +1929,14 @@ By setting this option to `v1` the structure used in earlier versions can be pro
 Note that this setting is not recommended and is planned for removal in a future {prodname} version.
 endif::community[]
 
-|[[sqlserver-property-sanitize-field-names]]<<sqlserver-property-sanitize-field-names, `sanitize.field.names`>>
+|[[sqlserver-property-sanitize-field-names]]<<sqlserver-property-sanitize-field-names, `sanitize.field{zwsp}.names`>>
 |`true` when connector configuration explicitly specifies the `key.converter` or `value.converter` parameters to use Avro, otherwise defaults to `false`.
 |Whether field names are sanitized to adhere to Avro naming requirements.
 ifdef::community[]
 See {link-prefix}:{link-avro-serialization}#avro-naming[Avro naming] for more details.
 endif::community[]
 
-|[[sqlserver-property-database-server-timezone]]<<sqlserver-property-database-server-timezone, `database.server.timezone`>>
+|[[sqlserver-property-database-server-timezone]]<<sqlserver-property-database-server-timezone, `database.server{zwsp}.timezone`>>
 |
 | Timezone of the server.
 
@@ -1950,7 +1944,7 @@ This is used to define the timezone of the transaction timestamp (ts_ms) retriev
 When unset, default behavior is to use the timezone of the VM running the {prodname} connector. In this case, when running on on SQL Server 2014 or older and using different timezones on server and the connector, incorrect ts_ms values may be produced. +
 Possible values include "Z", "UTC", offset values like "+02:00", short zone ids like "CET", and long zone ids like "Europe/Paris".
 
-|[[sqlserver-property-provide-transaction-metadata]]<<sqlserver-property-provide-transaction-metadata, `provide.transaction.metadata`>>
+|[[sqlserver-property-provide-transaction-metadata]]<<sqlserver-property-provide-transaction-metadata, `provide.transaction{zwsp}.metadata`>>
 |`false`
 |When set to `true` {prodname} generates events with transaction boundaries and enriches data events envelope with transaction metadata.
 
