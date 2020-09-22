@@ -1,4 +1,4 @@
-[cols="45%a,25%a,30%a"]
+[cols="45%a,25%a,30%a",options="header"]
 |===
 |Attributes |Type |Description
 

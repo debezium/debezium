@@ -1,4 +1,4 @@
-[cols="45%a,25%a,30%a"]
+[cols="45%a,25%a,30%a",options="header"]
 |===
 |Attributes |Type |Description
 
@@ -18,11 +18,11 @@
 |`long`
 |the total number of schema changes applied during recovery and runtime.
 
-|[[connectors-shist-metric-millisecondssincelastrecoveredchange]]<<connectors-shist-metric-millisecondssincelastrecoveredchange, `MilliSecondsSinceLastRecoveredChange`>>
+|[[connectors-shist-metric-millisecondssincelastrecoveredchange]]<<connectors-shist-metric-millisecondssincelastrecoveredchange, `MilliSecondsSinceLast{zwsp}RecoveredChange`>>
 |`long`
 |The number of milliseconds that elapsed since the last change was recovered from the history store.
 
-|[[connectors-shist-metric-millisecondssincelastappliedchange]]<<connectors-shist-metric-millisecondssincelastappliedchange, `MilliSecondsSinceLastAppliedChange`>>
+|[[connectors-shist-metric-millisecondssincelastappliedchange]]<<connectors-shist-metric-millisecondssincelastappliedchange, `MilliSecondsSinceLast{zwsp}AppliedChange`>>
 |`long`
 |The number of milliseconds that elapsed since the last change was applied.
 
