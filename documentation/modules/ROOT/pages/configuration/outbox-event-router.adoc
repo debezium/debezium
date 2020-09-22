@@ -146,9 +146,9 @@ payload       | jsonb                  |
 To obtain the unique ID of the event from a different outbox table column, set the {link-prefix}:{link-outbox-event-router}#outbox-event-router-property-table-field-event-id[`table.field.event.id` SMT option] in the connector configuration.  
 
 |[[route-by-field-example]]`aggregatetype`
-|Contains a value that the SMT appends to the name of the topic to which the connector emits an outbox message. The default behavior is that this value replaces the default `${routedByValue}` variable in the {link-prefix}:{link-outbox-event-router}#outbox-event-router-property-route-topic-replacement[`route.topic.replacement`] SMT option. +
+|Contains a value that the SMT appends to the name of the topic to which the connector emits an outbox message. The default behavior is that this value replaces the default `pass:[${routedByValue}]` variable in the {link-prefix}:{link-outbox-event-router}#outbox-event-router-property-route-topic-replacement[`route.topic.replacement`] SMT option. +
  +
-For example, in a default configuration, the {link-prefix}:{link-outbox-event-router}#outbox-event-router-property-route-by-field[`route.by.field`] SMT option is set to `aggregatetype` and the `route.topic.replacement` SMT option is set to `outbox.event.${routedByValue}`. Suppose that your application adds two records to the outbox table. In the first record, the value in the `aggregatetype` column is `customers`. In the second record, the value in the `aggregatetype` column is `orders`. The connector emits the first record to the `outbox.event.customers` topic. The connector emits the second record to the `outbox.event.orders` topic. +
+For example, in a default configuration, the {link-prefix}:{link-outbox-event-router}#outbox-event-router-property-route-by-field[`route.by.field`] SMT option is set to `aggregatetype` and the `route.topic.replacement` SMT option is set to `outbox.event.pass:[${routedByValue}]`. Suppose that your application adds two records to the outbox table. In the first record, the value in the `aggregatetype` column is `customers`. In the second record, the value in the `aggregatetype` column is `orders`. The connector emits the first record to the `outbox.event.customers` topic. The connector emits the second record to the `outbox.event.orders` topic. +
  +
 To obtain this value from a different outbox table column, set the {link-prefix}:{link-outbox-event-router}#outbox-event-router-property-route-by-field[`route.by.field` SMT option] in the connector configuration. 
 
@@ -304,7 +304,7 @@ Configuration examples are in {link-prefix}:{link-outbox-event-router}#emitting-
 |Router
 |Specifies a regular expression that the outbox SMT applies in the RegexRouter to outbox table records. This regular expression is part of the setting of the `route.topic.replacement` SMT option. +
  +
-The default behavior is that the SMT replaces the default `${routedByValue}` variable in the setting of the `route.topic.replacement` SMT option with the setting of the `route.by.field` outbox SMT option.  
+The default behavior is that the SMT replaces the default `pass:[${routedByValue}]` variable in the setting of the `route.topic.replacement` SMT option with the setting of the `route.by.field` outbox SMT option.  
 
 |[[outbox-event-router-property-route-topic-replacement]]<<outbox-event-router-property-route-topic-replacement, `route.topic.replacement`>>
 |`outbox.event{zwsp}.pass:[${routedByValue}]`
