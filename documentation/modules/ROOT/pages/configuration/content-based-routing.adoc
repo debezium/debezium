@@ -47,7 +47,7 @@ For example, for Groovy 3, you can download its JSR 223 implementation from http
 The JSR 223 implementation for GraalVM JavaScript is available at https://github.com/graalvm/graaljs.
 
 // Type: procedure
-// Title: Setting up the {prodname] content-based-routing SMT
+// Title: Setting up the {prodname} content-based-routing SMT
 // ModuleID: setting-up-the-debezium-content-based-routing-smt
 [[set-up-content-based-routing]]
 == Set up
