@@ -225,7 +225,7 @@ endif::community[]
 The following table describes the options that you can specify to configure the event flattening SMT. 
 
 .Descriptions of event flattening SMT configuration options
-[cols="30%a,25%a,45%a",subs="+attributes"]
+[cols="30%a,25%a,45%a",subs="+attributes",options="header"]
 |===
 |Option
 |Default
