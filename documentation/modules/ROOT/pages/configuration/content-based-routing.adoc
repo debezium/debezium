@@ -56,8 +56,8 @@ For security reasons, the content-based routing SMT is not included with the {pr
 Instead, it is provided in a separate artifact, `debezium-scripting-{debezium-version}.tar.gz`.
 To use the content-based routing SMT with a {prodname} connector plug-in, you must explicitly add the SMT artifact to your Kafka Connect environment.
 
-IMPORTANT: After the filter SMT is present in a Kafka Connect instance, any user who is allowed to add a connector to the instance can run scripting expressions.
-To ensure that scripting expressions can be run only by authorized users, be sure to secure the Kafka Connect instance and its configuration interface before you add the filter SMT.
+IMPORTANT: After the routing SMT is present in a Kafka Connect instance, any user who is allowed to add a connector to the instance can run scripting expressions.
+To ensure that scripting expressions can be run only by authorized users, be sure to secure the Kafka Connect instance and its configuration interface before you add the routing SMT.
 
 ifdef::community[]
 With https://zookeeper.apache.org[Zookeeper], http://kafka.apache.org/[Kafka], {link-kafka-docs}.html#connect[Kafka Connect], and one or more {prodname} connectors installed, the remaining tasks to install the filter SMT are:
