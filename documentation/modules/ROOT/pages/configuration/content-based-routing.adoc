@@ -51,7 +51,7 @@ For example, for Groovy 3, you can download its JSR 223 implementation from http
 [[set-up-content-based-routing]]
 == Set up
 
-For security reasons, the content-based routing SMT is not included with the {prodname} connector archives,
+For security reasons, the content-based routing SMT is not included with the {prodname} connector archives.
 Instead, it is provided in a separate artifact, `debezium-scripting-{debezium-version}.tar.gz`.
 To use the content-based routing SMT with a {prodname} connector plug-in, you must explicitly add the SMT artifact to your Kafka Connect environment.
 
