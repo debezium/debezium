@@ -145,7 +145,7 @@ endif::community[]
 The following table describes topic routing SMT configuration options.
 
 .Topic routing SMT configuration options
-[cols="30%a,25%a,45%a",subs="+attributes"]
+[cols="30%a,25%a,45%a",subs="+attributes",options="header"]
 |===
 |Option
 |Default

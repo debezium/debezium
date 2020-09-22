@@ -135,7 +135,7 @@ payload       | jsonb                  |
 ----
 
 .Descriptions of expected outbox table columns
-[cols="30%a,70%a"]
+[cols="30%a,70%a",options="header"]
 |===
 |Column
 |Effect
@@ -242,7 +242,7 @@ transforms.outbox.table.fields.additional.placement=type:envelope:eventType
 The following table describes the options that you can specify for the outbox event router SMT. In the table, the *Group* column indicates a  configuration option classification for Kafka.
 
 .Descriptions of outbox event router SMT configuration options
-[cols="30%a,20%a,10%a,40%a"]
+[cols="30%a,20%a,10%a,40%a",options="header"]
 |===
 |Option
 |Default
