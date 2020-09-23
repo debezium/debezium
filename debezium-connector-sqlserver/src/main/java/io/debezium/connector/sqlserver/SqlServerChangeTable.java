@@ -36,14 +36,17 @@ public class SqlServerChangeTable extends ChangeTable {
      */
     private Lsn stopLsn;
 
-    private List<String> capturedColumnList;
+    /**
+     * List of columns captured by the cdc table.
+     */
+    private final List<String> capturedColumns;
 
     public SqlServerChangeTable(TableId sourceTableId, String captureInstance, int changeTableObjectId, Lsn startLsn, Lsn stopLsn,
                                 String capturedColumnListString) {
         super(captureInstance, sourceTableId, resolveChangeTableId(sourceTableId, captureInstance), changeTableObjectId);
         this.startLsn = startLsn;
         this.stopLsn = stopLsn;
-        this.capturedColumnList = Arrays.asList(BRACKET_PATTERN.matcher(Optional.ofNullable(capturedColumnListString).orElse(""))
+        this.capturedColumns = Arrays.asList(BRACKET_PATTERN.matcher(Optional.ofNullable(capturedColumnListString).orElse(""))
                 .replaceAll("").split(", "));
     }
 
@@ -63,8 +66,8 @@ public class SqlServerChangeTable extends ChangeTable {
         this.stopLsn = stopLsn;
     }
 
-    public List<String> getCapturedColumnList() {
-        return capturedColumnList;
+    public List<String> getCapturedColumns() {
+        return capturedColumns;
     }
 
     @Override

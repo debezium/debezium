@@ -378,7 +378,7 @@ public class SqlServerConnection extends JdbcConnection {
             while (rs.next()) {
                 readTableColumn(rs, changeTable.getSourceTableId(), null).ifPresent(ce -> {
                     // Filter out columns not included in the change table.
-                    if (changeTable.getCapturedColumnList().contains(ce.name())) {
+                    if (changeTable.getCapturedColumns().contains(ce.name())) {
                         columns.add(ce.create());
                     }
                 });
