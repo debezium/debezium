@@ -1397,6 +1397,27 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
     }
 
     @Test
+    @FixFor("DBZ-2585")
+    public void testEmptyArray() throws InterruptedException, IOException {
+        final Map<String, String> transformationConfig = new HashMap<>();
+        transformationConfig.put("array.encoding", "array");
+        transformationConfig.put("sanitize.field.names", "true");
+        transformation.configure(transformationConfig);
+
+        // Test insert
+        primary().execute("insert", client -> {
+            client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
+                    .insertOne(Document.parse("{'empty_array': [] }"));
+        });
+        SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
+
+        final SourceRecord insertRecord = records.recordsForTopic(this.topicName()).get(0);
+        final SourceRecord transformedInsert = transformation.apply(insertRecord);
+        assertThat(transformedInsert.valueSchema().field("empty_array")).isNull();
+    }
+
+    @Test
     @FixFor("DBZ-2455")
     public void testAddPatchFieldAfterUpdate() throws Exception {
         waitForStreamingRunning();

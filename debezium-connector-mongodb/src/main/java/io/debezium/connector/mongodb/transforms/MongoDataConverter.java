@@ -40,14 +40,16 @@ public class MongoDataConverter {
 
     private final ArrayEncoding arrayEncoding;
     private final FieldNamer<String> fieldNamer;
+    private final boolean sanitizeValue;
 
-    public MongoDataConverter(ArrayEncoding arrayEncoding, FieldNamer<String> fieldNamer) {
+    public MongoDataConverter(ArrayEncoding arrayEncoding, FieldNamer<String> fieldNamer, boolean sanitizeValue) {
         this.arrayEncoding = arrayEncoding;
         this.fieldNamer = fieldNamer;
+        this.sanitizeValue = sanitizeValue;
     }
 
     public MongoDataConverter(ArrayEncoding arrayEncoding) {
-        this(arrayEncoding, FieldNameSelector.defaultNonRelationalSelector(false));
+        this(arrayEncoding, FieldNameSelector.defaultNonRelationalSelector(false), false);
     }
 
     public Struct convertRecord(Entry<String, BsonValue> keyvalueforStruct, Schema schema, Struct struct) {
@@ -149,7 +151,7 @@ public class MongoDataConverter {
                 break;
 
             case ARRAY:
-                if (keyvalueforStruct.getValue().asArray().isEmpty()) {
+                if (keyvalueforStruct.getValue().asArray().isEmpty() && !sanitizeValue) {
                     switch (arrayEncoding) {
                         case ARRAY:
                             colValue = new ArrayList<>();
@@ -159,6 +161,9 @@ public class MongoDataConverter {
                             colValue = new Struct(fieldSchema);
                             break;
                     }
+                }
+                else if (keyvalueforStruct.getValue().asArray().isEmpty()) {
+                    return;
                 }
                 else {
                     switch (arrayEncoding) {
@@ -347,7 +352,7 @@ public class MongoDataConverter {
                 break;
 
             case ARRAY:
-                if (keyValuesforSchema.getValue().asArray().isEmpty()) {
+                if (keyValuesforSchema.getValue().asArray().isEmpty() && !sanitizeValue) {
                     switch (arrayEncoding) {
                         case ARRAY:
                             builder.field(key, SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build());
@@ -357,7 +362,7 @@ public class MongoDataConverter {
                             break;
                     }
                 }
-                else {
+                else if (!keyValuesforSchema.getValue().asArray().isEmpty()) {
                     switch (arrayEncoding) {
                         case ARRAY:
                             BsonArray value = keyValuesforSchema.getValue().asArray();
