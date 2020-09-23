@@ -161,12 +161,12 @@ class LogMinerQueryResultProcessor {
                     continue;
                 }
 
-                // this will happen for instance on a blacklisted column change, we will omit this update
+                // this will happen for instance on a excluded column change, we will omit this update
                 if (dmlEntry.getCommandType().equals(Envelope.Operation.UPDATE)
                         && dmlEntry.getOldValues().size() == dmlEntry.getNewValues().size()
                         && dmlEntry.getNewValues().containsAll(dmlEntry.getOldValues())) {
                     LOGGER.trace("Following DML was skipped, " +
-                            "most likely because of ignored blacklisted column change: {}, details: {}", redo_sql, logMessage);
+                            "most likely because of ignored excluded column change: {}, details: {}", redo_sql, logMessage);
                     continue;
                 }
 

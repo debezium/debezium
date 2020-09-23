@@ -226,7 +226,7 @@ public class SimpleDmlParser {
             Object stripedValue = ParserUtils.removeApostrophes(value);
             Column column = table.columnWithName(columnName);
             if (column == null) {
-                LOGGER.trace("blacklisted column: {}", columnName);
+                LOGGER.trace("excluded column: {}", columnName);
                 continue;
             }
             Object valueObject = ParserUtils.convertValueToSchemaType(column, stripedValue, converter);
@@ -252,7 +252,7 @@ public class SimpleDmlParser {
 
                 Column column = table.columnWithName(columnName);
                 if (column == null) {
-                    LOGGER.trace("blacklisted column in where clause: {}", columnName);
+                    LOGGER.trace("excluded column in where clause: {}", columnName);
                     return;
                 }
                 value = ParserUtils.removeApostrophes(value);
@@ -273,7 +273,7 @@ public class SimpleDmlParser {
                 columnName = ParserUtils.stripeQuotes(columnName);
                 Column column = table.columnWithName(columnName);
                 if (column == null) {
-                    LOGGER.trace("blacklisted column in where clause: {}", columnName);
+                    LOGGER.trace("excluded column in where clause: {}", columnName);
                     return;
                 }
                 LogMinerColumnValueWrapper logMinerColumnValueWrapper = oldColumnValues.get(columnName.toUpperCase());
