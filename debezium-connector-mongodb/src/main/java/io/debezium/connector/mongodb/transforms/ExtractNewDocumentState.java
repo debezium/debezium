@@ -485,7 +485,7 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
 
         converter = new MongoDataConverter(
                 ArrayEncoding.parse(config.getString(ARRAY_ENCODING)),
-                FieldNameSelector.defaultNonRelationalSelector(config.getBoolean(SANITIZE_FIELD_NAMES)));
+                FieldNameSelector.defaultNonRelationalSelector(config.getBoolean(SANITIZE_FIELD_NAMES)), config.getBoolean(SANITIZE_FIELD_NAMES));
 
         addOperationHeader = config.getBoolean(OPERATION_HEADER);
 
