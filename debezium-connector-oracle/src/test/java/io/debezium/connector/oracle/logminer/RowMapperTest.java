@@ -6,6 +6,7 @@
 package io.debezium.connector.oracle.logminer;
 
 import static org.fest.assertions.Assertions.assertThat;
+import static org.junit.Assert.fail;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -168,7 +169,7 @@ public class RowMapperTest {
         tableId = null;
         try {
             tableId = RowMapper.getTableId("catalog", rs);
-            assertThat(1 == 2).isTrue();
+            fail("RowMapper should not have returned a TableId");
         }
         catch (SQLException e) {
             assertThat(tableId).isNull();
@@ -188,7 +189,7 @@ public class RowMapperTest {
         tableId = null;
         try {
             tableId = RowMapper.getTableId("catalog", rs);
-            assertThat(1 == 2).isTrue();
+            fail("RowMapper should not have returned a TableId");
         }
         catch (SQLException e) {
             assertThat(tableId).isNull();
