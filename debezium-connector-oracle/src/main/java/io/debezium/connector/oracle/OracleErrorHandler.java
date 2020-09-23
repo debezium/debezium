@@ -37,6 +37,6 @@ public class OracleErrorHandler extends ErrorHandler {
                 throwable.getCause() instanceof IOException ||
                 throwable instanceof SQLRecoverableException ||
                 throwable.getMessage().toUpperCase().startsWith("NO MORE DATA TO READ FROM SOCKET") ||
-                throwable.getCause().getCause() instanceof NetException;
+                (throwable.getCause() != null && throwable.getCause().getCause() instanceof NetException);
     }
 }
