@@ -12,6 +12,8 @@ import static org.fest.assertions.Assertions.assertThat;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaAndValue;
@@ -131,5 +133,25 @@ public class ByteBufferConverterTest {
         assertThat(value.get("schema").get("optional").asBoolean()).isTrue();
         assertThat(value.get("payload")).isNotNull();
         assertThat(value.get("payload").asText()).isEqualTo("{\"message\": \"Hello World\"}");
+    }
+
+    @Test
+    public void shouldConvertUsingDelegateConverterWithOptions() {
+        // Configure delegate converter
+        final Map<String, String> config = new HashMap<>();
+        config.put(ByteBufferConverter.DELEGATE_CONVERTER_TYPE, JsonConverter.class.getName());
+        config.put(ByteBufferConverter.DELEGATE_CONVERTER_TYPE + ".schemas.enable", Boolean.FALSE.toString());
+        converter.configure(config, false);
+
+        byte[] data = converter.fromConnectData(TOPIC, Schema.OPTIONAL_STRING_SCHEMA, "{\"message\": \"Hello World\"}");
+
+        JsonNode value = null;
+        try (JsonDeserializer jsonDeserializer = new JsonDeserializer()) {
+            value = jsonDeserializer.deserialize(TOPIC, data);
+        }
+
+        assertThat(value.has("schema")).isFalse();
+        assertThat(value.has("payload")).isFalse();
+        assertThat(value.asText()).isEqualTo("{\"message\": \"Hello World\"}");
     }
 }
