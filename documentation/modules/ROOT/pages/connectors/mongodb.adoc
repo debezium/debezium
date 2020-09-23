@@ -284,7 +284,7 @@ Every change event that captures a change to the `customers` collection has the 
   {
     "schema": { // <1>
       "type": "struct",
-      "name": "fulfillment.inventory.customers.Key," // <2>
+      "name": "fulfillment.inventory.customers.Key", // <2>
       "optional": false, // <3>
       "fields": [ // <4>
         {
