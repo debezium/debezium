@@ -786,8 +786,18 @@ public class BinlogReader extends AbstractReader {
             return;
         }
         if (upperCasedStatementBegin.equals("INSERT ") || upperCasedStatementBegin.equals("UPDATE ") || upperCasedStatementBegin.equals("DELETE ")) {
-            throw new ConnectException(
-                    "Received DML '" + sql + "' for processing, binlog probably contains events generated with statement or mixed based replication format");
+            if (eventDeserializationFailureHandlingMode == EventProcessingFailureHandlingMode.FAIL) {
+                throw new ConnectException(
+                        "Received DML '" + sql + "' for processing, binlog probably contains events generated with statement or mixed based replication format");
+            }
+            else if (eventDeserializationFailureHandlingMode == EventProcessingFailureHandlingMode.WARN) {
+                logger.warn("Warning only: Received DML '" + sql
+                        + "' for processing, binlog probably contains events generated with statement or mixed based replication format");
+                return;
+            }
+            else {
+                return;
+            }
         }
         if (sql.equalsIgnoreCase("ROLLBACK")) {
             // We have hit a ROLLBACK which is not supported
