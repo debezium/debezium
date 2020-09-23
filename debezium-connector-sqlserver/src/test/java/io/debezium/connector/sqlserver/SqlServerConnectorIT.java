@@ -1485,7 +1485,6 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
 
         final Configuration config = TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
-                .with(SqlServerConnectorConfig.COLUMN_EXCLUDE_LIST, "dbo.excluded_column_table_a.amount")
                 .build();
 
         start(SqlServerConnector.class, config);

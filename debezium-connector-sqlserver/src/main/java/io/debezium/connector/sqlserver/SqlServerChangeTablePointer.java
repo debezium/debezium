@@ -101,7 +101,7 @@ public class SqlServerChangeTablePointer extends ChangeTableResultSet<SqlServerC
      * a subset of columns
      */
     private ResultSetMapper<Object[]> createResultSetMapper(Table table) throws SQLException {
-        Map<String, Column> sourceTableColumns = new HashMap<>(table.columns().size());
+        Map<String, Column> sourceTableColumns = new HashMap<>();
         AtomicInteger greatestColumnPosition = new AtomicInteger(0);
         for (Column column : table.columns()) {
             sourceTableColumns.put(column.name(), column);
