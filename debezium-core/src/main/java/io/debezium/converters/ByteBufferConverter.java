@@ -15,6 +15,11 @@ import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.storage.Converter;
 import org.apache.kafka.connect.storage.ConverterConfig;
 import org.apache.kafka.connect.storage.HeaderConverter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import io.debezium.config.Configuration;
+import io.debezium.config.Instantiator;
 
 /**
  * A customized value converter to allow avro message to be delivered as it is (byte[]) to kafka, this is used
@@ -27,7 +32,17 @@ import org.apache.kafka.connect.storage.HeaderConverter;
  */
 public class ByteBufferConverter implements Converter, HeaderConverter {
 
-    private static final ConfigDef CONFIG_DEF = ConverterConfig.newConfigDef();
+    private static final Logger LOGGER = LoggerFactory.getLogger(ByteBufferConverter.class);
+
+    public static final String DELEGATE_CONVERTER_TYPE = "delegate.converter.type";
+
+    private Converter delegateConverter;
+    private static final ConfigDef CONFIG_DEF;
+
+    static {
+        CONFIG_DEF = ConverterConfig.newConfigDef();
+        CONFIG_DEF.define(DELEGATE_CONVERTER_TYPE, ConfigDef.Type.STRING, null, ConfigDef.Importance.LOW, "Specifies the delegate converter class");
+    }
 
     @Override
     public ConfigDef config() {
@@ -40,24 +55,31 @@ public class ByteBufferConverter implements Converter, HeaderConverter {
 
     @Override
     public void configure(Map<String, ?> configs, boolean isKey) {
+        final String converterTypeName = (String) configs.get(DELEGATE_CONVERTER_TYPE);
+        if (converterTypeName != null) {
+            delegateConverter = Instantiator.getInstance(converterTypeName, () -> getClass().getClassLoader(), null);
+            delegateConverter.configure(Configuration.from(configs).subset(DELEGATE_CONVERTER_TYPE, true).asMap(), isKey);
+        }
     }
 
     @Override
     public byte[] fromConnectData(String topic, Schema schema, Object value) {
-        validateSchemaType(schema);
-        validateValueType(value);
+        if (schema != null && schema.type() != Schema.Type.BYTES) {
+            assertDataException("schema", schema.type());
+            LOGGER.debug("Value is not of Schema.Type.BYTES, delegating to " + delegateConverter.getClass().getName());
+            return delegateConverter.fromConnectData(topic, schema, value);
+        }
+        else if (value != null && !(value instanceof ByteBuffer)) {
+            assertDataException("value", value.getClass().getName());
+            LOGGER.debug("Value is not of type ByteBuffer, delegating to " + delegateConverter.getClass().getName());
+            return delegateConverter.fromConnectData(topic, schema, value);
+        }
         return value == null ? null : ((ByteBuffer) value).array();
     }
 
-    private void validateValueType(Object value) {
-        if (value != null && !(value instanceof ByteBuffer)) {
-            throw new DataException("ByteBufferConverter is not compatible with objects of type " + value.getClass());
-        }
-    }
-
-    private void validateSchemaType(Schema schema) {
-        if (schema != null && schema.type() != Schema.Type.BYTES) {
-            throw new DataException("Invalid schema type for ByteBufferConverter: " + schema.type().toString());
+    private void assertDataException(String name, Object type) {
+        if (delegateConverter == null) {
+            throw new DataException("A " + name + " of type '" + type + "' requires a delegate.converter.type to be configured");
         }
     }
 

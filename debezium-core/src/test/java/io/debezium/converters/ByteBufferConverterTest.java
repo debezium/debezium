@@ -16,8 +16,12 @@ import java.util.Collections;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaAndValue;
 import org.apache.kafka.connect.errors.DataException;
+import org.apache.kafka.connect.json.JsonConverter;
+import org.apache.kafka.connect.json.JsonDeserializer;
 import org.junit.Before;
 import org.junit.Test;
+
+import com.fasterxml.jackson.databind.JsonNode;
 
 public class ByteBufferConverterTest {
 
@@ -96,5 +100,36 @@ public class ByteBufferConverterTest {
 
         assertThat(schemaAndValue.schema()).isEqualTo(Schema.OPTIONAL_BYTES_SCHEMA);
         assertThat(schemaAndValue.value()).isNull();
+    }
+
+    @Test
+    public void shouldThrowWhenNoDelegateConverterConfigured() {
+        try {
+            converter.fromConnectData(TOPIC, Schema.OPTIONAL_STRING_SCHEMA, "Hello World");
+            fail("now expected exception thrown");
+        }
+        catch (Exception e) {
+            assertThat(e).isExactlyInstanceOf(DataException.class);
+        }
+    }
+
+    @Test
+    public void shouldConvertUsingDelegateConverter() {
+        // Configure delegate converter
+        converter.configure(Collections.singletonMap(ByteBufferConverter.DELEGATE_CONVERTER_TYPE, JsonConverter.class.getName()), false);
+
+        byte[] data = converter.fromConnectData(TOPIC, Schema.OPTIONAL_STRING_SCHEMA, "{\"message\": \"Hello World\"}");
+
+        JsonNode value = null;
+        try (JsonDeserializer jsonDeserializer = new JsonDeserializer()) {
+            value = jsonDeserializer.deserialize(TOPIC, data);
+        }
+
+        assertThat(value).isNotNull();
+        assertThat(value.get("schema")).isNotNull();
+        assertThat(value.get("schema").get("type").asText()).isEqualTo("string");
+        assertThat(value.get("schema").get("optional").asBoolean()).isTrue();
+        assertThat(value.get("payload")).isNotNull();
+        assertThat(value.get("payload").asText()).isEqualTo("{\"message\": \"Hello World\"}");
     }
 }

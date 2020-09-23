@@ -205,6 +205,12 @@ transforms.outbox.type=io.debezium.transforms.outbox.EventRouter
 value.converter=io.debezium.converters.ByteBufferConverter
 ----
 
+[WARNING]
+====
+If the connector is configured to emit heartbeat events, an additional configuration option `value.converter.delegate.converter.type` will be required.
+This option defines the fully qualified converter class name that will be delegated events that the `ByteBufferConverter` does not natively support.
+====
+
 By default, the `payload` column value (the Avro data) is the only message value.
 Configuration of `ByteBufferConverter` as the value converter propagates the `payload` column value as-is into the Kafka message value.
 
