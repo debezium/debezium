@@ -1544,7 +1544,7 @@ userAuthOption
       IDENTIFIED ((WITH|VIA) authPlugin)? BY STRING_LITERAL         #stringAuthOption
     | userName
       IDENTIFIED (WITH|VIA) authPlugin
-      (AS STRING_LITERAL)?                                          #hashAuthOption
+      ((USING|AS) STRING_LITERAL)?                                  #hashAuthOption
     | userName                                                      #simpleAuthOption
     ;
 
