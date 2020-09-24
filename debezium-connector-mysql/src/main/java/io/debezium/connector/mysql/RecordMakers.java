@@ -225,7 +225,7 @@ public class RecordMakers {
             public int read(SourceInfo source, Object[] row, int rowNumber, int numberOfRows, BitSet includedColumns, Instant ts,
                             BlockingConsumer<SourceRecord> consumer)
                     throws InterruptedException {
-                Object key = tableSchema.keyFromColumnData(row);
+                Struct key = tableSchema.keyFromColumnData(row);
                 Struct value = tableSchema.valueFromColumnData(row);
                 if (value != null || key != null) {
                     Schema keySchema = tableSchema.keySchema();
@@ -246,7 +246,7 @@ public class RecordMakers {
                               BlockingConsumer<SourceRecord> consumer)
                     throws InterruptedException {
                 validateColumnCount(tableSchema, row);
-                Object key = tableSchema.keyFromColumnData(row);
+                Struct key = tableSchema.keyFromColumnData(row);
                 Struct value = tableSchema.valueFromColumnData(row);
                 if (value != null || key != null) {
                     Schema keySchema = tableSchema.keySchema();
@@ -269,7 +269,7 @@ public class RecordMakers {
                     throws InterruptedException {
                 int count = 0;
                 validateColumnCount(tableSchema, after);
-                Object newkey = tableSchema.keyFromColumnData(after);
+                Struct newkey = tableSchema.keyFromColumnData(after);
                 Struct valueAfter = tableSchema.valueFromColumnData(after);
                 if (valueAfter != null || newkey != null) {
                     Object oldKey = tableSchema.keyFromColumnData(before);
@@ -325,7 +325,7 @@ public class RecordMakers {
                     throws InterruptedException {
                 int count = 0;
                 validateColumnCount(tableSchema, row);
-                Object key = tableSchema.keyFromColumnData(row);
+                Struct key = tableSchema.keyFromColumnData(row);
                 Struct value = tableSchema.valueFromColumnData(row);
                 if (value != null || key != null) {
                     Schema keySchema = tableSchema.keySchema();
