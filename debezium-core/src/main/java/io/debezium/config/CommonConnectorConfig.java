@@ -311,11 +311,12 @@ public abstract class CommonConnectorConfig {
             .withDescription("The maximum number of records that should be loaded into memory while performing a snapshot")
             .withValidation(Field::isNonNegativeInteger);
 
-    public static final Field SNAPSHOT_MODE_TABLES = Field.create("snapshot.table")
-            .withDisplayName("Snapshot Mode Custom Tables")
+    public static final Field SNAPSHOT_MODE_TABLES = Field.create("snapshot.include.collection.list")
+            .withDisplayName("Snapshot Mode include Data Collection")
             .withType(Type.LIST)
             .withWidth(Width.LONG)
             .withImportance(Importance.MEDIUM)
+            .withValidation(Field::isListOfRegex)
             .withDescription(
                     "this setting must be set to specify a list of tables/collections whose snapshot must be taken on creating or restarting the connector.");
 
