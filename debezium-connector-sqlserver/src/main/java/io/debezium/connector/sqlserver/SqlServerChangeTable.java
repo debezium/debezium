@@ -5,10 +5,9 @@
  */
 package io.debezium.connector.sqlserver;
 
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
-import java.util.regex.Pattern;
 
 import io.debezium.relational.ChangeTable;
 import io.debezium.relational.TableId;
@@ -24,7 +23,6 @@ import io.debezium.relational.TableId;
 public class SqlServerChangeTable extends ChangeTable {
 
     private static final String CDC_SCHEMA = "cdc";
-    private static final Pattern BRACKET_PATTERN = Pattern.compile("[\\[\\]]");
 
     /**
      * A LSN from which the data in the change table are relevant
@@ -42,12 +40,11 @@ public class SqlServerChangeTable extends ChangeTable {
     private final List<String> capturedColumns;
 
     public SqlServerChangeTable(TableId sourceTableId, String captureInstance, int changeTableObjectId, Lsn startLsn, Lsn stopLsn,
-                                String capturedColumnListString) {
+                                List<String> capturedColumns) {
         super(captureInstance, sourceTableId, resolveChangeTableId(sourceTableId, captureInstance), changeTableObjectId);
         this.startLsn = startLsn;
         this.stopLsn = stopLsn;
-        this.capturedColumns = Arrays.asList(BRACKET_PATTERN.matcher(Optional.ofNullable(capturedColumnListString).orElse(""))
-                .replaceAll("").split(", "));
+        this.capturedColumns = Optional.ofNullable(capturedColumns).orElse(Collections.emptyList());
     }
 
     public SqlServerChangeTable(String captureInstance, int changeTableObjectId, Lsn startLsn, Lsn stopLsn) {
