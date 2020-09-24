@@ -57,7 +57,7 @@ pipeline {
                     env.OCP_PROJECT_POSTGRESQL = "debezium-${BUILD_NUMBER}-postgresql"
                     env.OCP_PROJECT_SQLSERVER = "debezium-${BUILD_NUMBER}-sqlserver"
                     env.OCP_PROJECT_MONGO = "debezium-${BUILD_NUMBER}-mongo"
-                    env.OCP_PROJECT_DDB2 = "debezium-${BUILD_NUMBER}-db2"
+                    env.OCP_PROJECT_DB2 = "debezium-${BUILD_NUMBER}-db2"
                     env.TEST_PROPERTY_VERSION_KAFKA = env.TEST_VERSION_KAFKA ? "-Dversion.kafka=${env.TEST_VERSION_KAFKA}" : ""
                 }
                 withCredentials([
