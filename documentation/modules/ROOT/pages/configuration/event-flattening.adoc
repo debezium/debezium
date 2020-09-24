@@ -231,8 +231,7 @@ The following table describes the options that you can specify to configure the 
 |Default
 |Description
 
-[id="extract-new-record-state-drop-tombstones"]
-|{link-prefix}:{link-event-flattening}#extract-new-record-state-drop-tombstones[`drop.tombstones`]
+|[[extract-new-record-state-drop-tombstones]]{link-prefix}:{link-event-flattening}#extract-new-record-state-drop-tombstones[`drop.tombstones`]
 |`true`
 |{prodname} generates a tombstone record for each `DELETE` operation. The default behavior is that event flattening SMT removes tombstone records from the stream. To keep tombstone records in the stream, specify `drop.tombstones=false`.  
 
