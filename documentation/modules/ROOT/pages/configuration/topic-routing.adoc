@@ -170,8 +170,7 @@ endif::product[]
 |Default
 |Description
 
-[id="by-logical-table-router-topic-regex"]
-|{link-prefix}:{link-topic-routing}#by-logical-table-router-topic-regex[`topic.regex`]
+|[[by-logical-table-router-topic-regex]]{link-prefix}:{link-topic-routing}#by-logical-table-router-topic-regex[`topic.regex`]
 |
 |Specifies a regular expression that the transformation applies to each change event record to determine if it should be routed to a particular topic.
 
