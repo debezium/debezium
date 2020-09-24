@@ -208,7 +208,7 @@ value.converter=io.debezium.converters.ByteBufferConverter
 By default, the `payload` column value (the Avro data) is the only message value.
 Configuration of `ByteBufferConverter` as the value converter propagates the `payload` column value as-is into the Kafka message value.
 
-The {prodname} connector may be configured to emit heartbeat, transaction metadata, or schena change events (support varies by connector).
+The {prodname} connectors may be configured to emit heartbeat, transaction metadata, or schema change events (support varies by connector).
 These events cannot be serialized by the `ByteBufferConverter` so additional configuration must be provided so the converter knows how to serialize these events.
 As an example, the following configuration illustrates using the Apache Kafka `JsonConverter` with no schemas:
 
@@ -222,7 +222,7 @@ value.converter.delegate.converter.type.schemas.enable=false
 ----
 
 The delegate `Converter` implementation is specified by the `delegate.converter.type` option.
-If any extra configuration options are needed by the converter, they can also be specified, such as the disablement of schemas show above using `schemas.enable=false`.
+If any extra configuration options are needed by the converter, they can also be specified, such as the disablement of schemas shown above using `schemas.enable=false`.
 
 // Type: concept
 // Title: Emitting additional fields in {prodname} outbox messages 
