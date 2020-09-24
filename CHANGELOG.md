@@ -2,6 +2,31 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 1.2.5.Final
+September 24th, 2020 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12350624)
+
+### New features since 1.2.4.Final
+
+None
+
+
+### Breaking changes since 1.2.4.Final
+
+None
+
+
+### Fixes since 1.2.4.Final
+
+* Fix Quarkus datasource configuration for Quarkus 1.9 [DBZ-2558](https://issues.jboss.org/browse/DBZ-2558)
+
+
+### Other changes since 1.2.3.Final
+
+* Prepare revised SMT docs (filter and content-based routing) for downstream  [DBZ-2567](https://issues.jboss.org/browse/DBZ-2567)
+* Swap closing square bracket for curly brace in downstream title annotations [DBZ-2577](https://issues.jboss.org/browse/DBZ-2577)
+
+
+
 ## 1.2.4.Final
 September 17th, 2020 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12347255)
 
@@ -25,7 +50,6 @@ None
 * Document outbox event router SMT [DBZ-2480](https://issues.jboss.org/browse/DBZ-2480)
 * Unify representation of events - part two - update other connector doc [DBZ-2501](https://issues.jboss.org/browse/DBZ-2501)
 * Add annotations to support splitting files for downstream docs  [DBZ-2539](https://issues.jboss.org/browse/DBZ-2539)
-(https://issues.jboss.org/browse/DBZ-2549)
 * Prepare message filtering SMT doc for product release [DBZ-2460](https://issues.jboss.org/browse/DBZ-2460)
 * Prepare content-based router SMT doc for product release [DBZ-2519](https://issues.jboss.org/browse/DBZ-2519)
 
