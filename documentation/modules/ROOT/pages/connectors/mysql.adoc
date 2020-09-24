@@ -1,3 +1,6 @@
+// Category: debezium-using
+// Type: assembly
+
 :toc:
 :toc-placement: macro
 :linkattrs:
@@ -6,20 +9,422 @@
 :context: debezium
 
 [id="debezium-connector-for-mysql"]
-= {prodname} Connector for MySQL
+= {prodname} connector for MySQL
 
-MySQL has a binary log (binlog) that records all operations in the order in which they are committed to the database. This includes changes to table schemas and the data within tables. MySQL uses the binlog for replication and recovery.
+MySQL has a binary log (binlog) that records all operations in the order in which they are committed to the database. This includes changes to table schemas as well as changes to the data in tables. MySQL uses the binlog for replication and recovery.
 
 The {prodname} MySQL connector reads the binlog and produces change events for row-level `INSERT`, `UPDATE`, and `DELETE` operations and records the change events in a Kafka topic. Client applications read those Kafka topics.
 
 As MySQL is typically set up to purge binlogs after a specified period of time, the MySQL connector performs an initial _consistent snapshot_ of each of your databases. The MySQL connector reads the binlog from the point at which the snapshot was made.
 
-The following sections provide more detailed information on how the {prodname} MySQL connector functions, instructs you on how to set it up, as well as deploy and troubleshoot the connector.
+ifdef::product[]
+Information and procedures for using a {prodname} MySQL connector are organized as follows:
 
-include::{partialsdir}/assemblies/mysql-connector/assembly-overview-of-how-the-mysql-connector-works.adoc[leveloffset=+1]
+* xref:how-debezium-mysql-connectors-work[]
+* xref:descriptions-of-debezium-mysql-connector-data-change-events[]
+* xref:how-debezium-mysql-connectors-map-data-types[]
+* xref:setting-up-mysql-to-run-a-debezium-connector[]
+* xref:deploying-debezium-mysql-connectors[]
+* xref:monitoring-debezium-mysql-connector-performance[]
+* xref:how-debezium-mysql-connectors-handle-faults-and-problems[]
 
-include::{partialsdir}/assemblies/mysql-connector/assembly-setup-the-mysql-server.adoc[leveloffset=+1]
+endif::product[]
 
-include::{partialsdir}/assemblies/mysql-connector/assembly-deploy-the-mysql-connector.adoc[leveloffset=+1]
+// Type: assembly
+// ModuleID: how-debezium-mysql-connectors-work
+// Title: How {prodname} MySQL connectors work
+[[how-the-mysql-connector-works]]
+== How the connector works
 
-include::{partialsdir}/assemblies/mysql-connector/assembly-connector-common-issues.adoc[leveloffset=+1]
+To optimally configure and run a {prodname} MySQL connector, it is helpful to understand how the connector tracks the structure of tables, exposes schema changes, performs snapshots, and determines Kafka topic names. An overview of the MySQL topologies that the connector supports is useful for planning your application. 
+
+ifdef::product[]
+Details are in the following topics:
+
+* xref:how-debezium-mysql-connectors-handle-database-schema-changes[]
+* xref:how-debezium-mysql-connectors-expose-database-schema-changes[]
+* xref:how-debezium-mysql-connectors-perform-database-snapshots[]
+* xref:default-names-of-kafka-topics-that-receive-debezium-mysql-change-event-records[]
+* xref:mysql-topologies-supported-by-debezium-mysql-connectors[]
+
+endif::product[]
+
+
+// Type: concept
+// Title: How the {prodname} MySQL connector exposes schema changes
+[id="how-the-debezium-mysql-connector-exposes-schema-changes"]
+[[mysql-schema-change-topic]]
+=== Schema change topic
+
+
+
+// Type: concept
+// ModuleID: how-debezium-mysql-connectors-perform-database-snapshots
+// Title: How {prodname} MySQL connectors perform database snapshots
+[[mysql-snapshots]]
+=== Snapshots
+
+
+// Type: concept
+// ModuleID: default-names-of-kafka-topics-that-receive-debezium-mysql-change-event-records
+// Title: Default names of Kafka topics that receive {prodname} MySQL change event records
+[[mysql-topic-names]]
+=== Topic names
+
+
+
+
+// Type: assembly
+// ModuleID: descriptions-of-debezium-mysql-connector-data-change-events
+// Title: Descriptions of {prodname} MySQL connector data change events
+[[mysql-events]]
+== Data change events
+
+
+
+ifdef::product[]
+Details are in the following topics:
+
+* xref:about-keys-in-debezium-mysql-change-events[]
+* xref:about-values-in-debezium-mysql-change-events[]
+
+endif::product[]
+
+// Type: concept
+// ModuleID: about-keys-in-debezium-mysql-change-events
+// Title: About keys in {prodname} mysql change events
+[[mysql-change-event-keys]]
+=== Change event keys
+
+
+
+
+// Type: concept
+// ModuleID: about-values-in-debezium-mysql-change-events
+// Title: About values in {prodname} MySQL change events
+[[mysql-change-event-values]]
+=== Change event values
+
+
+
+
+// Type: reference
+// ModuleID: how-debezium-mysql-connectors-map-data-types
+// Title: How {prodname} MySQL connectors map data types
+[[mysql-data-types]]
+== Data type mappings
+
+
+
+ifdef::product[]
+Details are in the following sections:
+
+* xref:mysql-basic-types[]
+* xref:mysql-temporal-types[]
+* xref:mysql-decimal-types[]
+* xref:mysql-boolean-values[]
+* xref:mysql-spatial-types[]
+
+endif::product[]
+
+
+
+
+
+
+// Type: assembly
+// ModuleID: setting-up-mysql-to-run-a-debezium-connector
+// Title: Setting up MySQL to run a {prodname} connector
+[[setting-up-mysql]]
+== Set up
+
+
+
+ifdef::product[]
+Details are in the following sections:
+
+* xref:[]
+* xref:[]
+* xref:[]
+* xref:[]
+* xref:[]
+
+endif::product[]
+
+
+
+
+
+// Type: assembly
+// ModuleID: deploying-debezium-mysql-connectors
+// Title: Deploying {prodname} MySQL connectors
+[[mysql-deploying-a-connector]]
+== Deployment
+
+
+
+ifdef::product[]
+To deploy a {prodname} MySQL connector, install the {prodname} MySQL connector archive, configure the connector, and start the connector by adding its configuration to Kafka Connect. Details are in the following topics:
+
+* xref:installing-debezium-mysql-connectors[]
+* xref:debezium-mysql-connector-configuration-example[]
+* xref:adding-debezium-mysql-connector-configuration-to-kafka-connect[]
+* xref:descriptions-of-debezium-mysql-connector-configuration-properties[]
+endif::product[]
+
+// Type: concept
+[id="installing-debezium-mysql-connectors"]
+=== Installing {prodname} MySQL connectors
+
+To install a {prodname} MySQL connector, download the connector archive, extract it to your Kafka Connect environment, and ensure that the plug-ins parent directory is specified in your Kafka Connect environment.
+
+.Prerequisites
+
+* link:https://zookeeper.apache.org/[Zookeeper], link:http://kafka.apache.org/[Kafka], and link:{link-kafka-docs}.html#connect[Kafka Connect] are installed.
+* MySQL Server is installed and set up for {prodname}.
+
+.Procedure
+
+ifdef::product[]
+. Download the {prodname} link:https://access.redhat.com/jbossnetwork/restricted/listSoftware.html?product=red.hat.integration&downloadType=distributions[MySQL connector].
+endif::product[]
+ifdef::community[]
+ifeval::['{page-version}' == 'master']
+. Download the {prodname} link:{link-mysql-plugin-snapshot}[MySQL connector plug-in].
+endif::[]
+ifeval::['{page-version}' != 'master']
+. Download the {prodname} link:https://repo1.maven.org/maven2/io/debezium/debezium-connector-mysql/{debezium-version}/debezium-connector-mysql-{debezium-version}-plugin.tar.gz[MySQL connector plug-in].
+endif::[]
+endif::community[]
+. Extract the files into your Kafka Connect environment.
+. Add the plug-in's parent directory to your Kafka Connect `plugin.path`:
++
+[source]
+----
+plugin.path=/kafka/connect
+----
++
+The above example assumes that you extracted the {prodname} MySQL connector into the `/kafka/connect/debezium-connector-mysql` path.
+
+. Restart your Kafka Connect process. This ensures that the new JAR files are picked up.
+
+// Type: concept
+// ModuleID: debezium-mysql-connector-configuration-example
+// Title: {prodname} MySQL connector configuration example
+[[mysql-example]]
+[[mysql-example-configuration]]
+=== Connector configuration example
+
+ifdef::community[]
+Typically, you configure a {prodname} MySQL connector in a `.json` file that sets configuration properties for the connector. Following is an example configuration for a MySQL connector that connects to a MySQL server on port 3306 at 192.168.99.100, whose logical name is `fullfillment`.
+
+For details, see {link-prefix}:{link-mysql-connector}#mysql-connector-configuration-properties[MySQL connector configuration properties].
+
+[source,json]
+----
+{
+  "name": "inventory-connector", // <1>
+  "config": {
+    "connector.class": "io.debezium.connector.mysql.MySqlConnector", // <2>
+    "database.hostname": "192.168.99.100", // <3>
+    "database.port": "3306", // <4>
+    "database.user": "debezium-user", // <5>
+    "database.password": "debezium-user-pw", // <6>
+    "database.server.id": "184054", <7>
+    "database.server.name": "fullfillment", // <8>
+    "database.whitelist": "inventory", // <9>
+    "database.history.kafka.bootstrap.servers": "kafka:9092", // <10>
+    "database.history.kafka.topic": "dbhistory.fullfillment", // <11>
+    "include.schema.changes": "true" // <12>
+  }
+}
+----
+<1> Connector's name when registered with the Kafka Connect service.
+<2> Connector's class name.
+<3> MySQL server address.
+<4> MySQL server port number.
+<5> MySQL user with the appropriate privileges.
+<6> MySQL user's password.
+<7> Unique ID of the connector.
+<8> Logical name of the MySQL server or cluster.
+<9> List of databases hosted by the specified server.
+<10> List of Kafka brokers that the connector uses to write and recover DDL statements to the database history topic.
+<11> Name of the database history topic. This topic is for internal use only and should not be used by consumers. 
+<12> Flag that specifies if the connector should generate events for DDL changes and emit them to the `fulfillment` schema change topic for use by consumers. 
+endif::community[]
+
+ifdef::product[]
+
+Typically, you configure a {prodname} MySQL connector in a `.yaml` file that sets connector configuration properties. Following is an example of the configuration for a MySQL connector that connects to a MySQL server on port 3306 and captures changes to the `inventory` database. 
+For details, see {link-prefix}:{link-mysql-connector}#mysql-connector-configuration-properties[MySQL connector configuration properties].
+
+[source,yaml,options="nowrap"]
+----
+  apiVersion: kafka.strimzi.io/v1beta1
+  kind: KafkaConnector
+  metadata:
+    name: inventory-connector  // <1>
+    labels:
+      strimzi.io/cluster: my-connect-cluster
+  spec:
+    class: io.debezium.connector.mysql.MySqlConnector
+    tasksMax: 1  // <2>
+    config:  // <3>
+      database.hostname: mysql  // <4>
+      database.port: 3306
+      database.user: debezium
+      database.password: dbz
+      database.server.id: 184054  // <5>
+      database.server.name: dbserver1  // <5>
+      database.whitelist: inventory  // <6>
+      database.history.kafka.bootstrap.servers: my-cluster-kafka-bootstrap:9092  // <7>
+      database.history.kafka.topic: schema-changes.inventory  // <7>
+----
+
+.Descriptions of connector configuration settings
+[cols="1,7",options="header",subs="+attributes"]
+|===
+|Item |Description
+
+|1
+|The name of the connector.
+
+|2
+|Only one task should operate at any one time.
+Because the MySQL connector reads the MySQL server’s `binlog`,
+using a single connector task ensures proper order and event handling.
+The Kafka Connect service uses connectors to start one or more tasks that do the work,
+and it automatically distributes the running tasks across the cluster of Kafka Connect services.
+If any of the services stop or crash,
+those tasks will be redistributed to running services.
+
+|3
+|The connector’s configuration.
+
+|4
+|The database host, which is the name of the container running the MySQL server (`mysql`).
+
+|5
+|A unique server ID and name.
+The server name is the logical identifier for the MySQL server or cluster of servers.
+This name will be used as the prefix for all Kafka topics.
+
+|6
+|Only changes in the `inventory` database will be detected.
+
+|7
+|The connector will store the history of the database schemas in Kafka using this broker (the same broker to which you are sending events) and topic name.
+Upon restart, the connector will recover the schemas of the database that existed at the point in time in the `binlog` when the connector should begin reading.
+
+|===
+
+endif::product[]
+
+
+
+
+// Type: assembly
+// ModuleID: monitoring-debezium-mysql-connector-performance
+// Title: Monitoring {prodname} MySQL connector performance
+[[mysql-monitoring]]
+== Monitoring
+
+The {prodname} MySQL connector provides three types of metrics that are in addition to the built-in support for JMX metrics that Zookeeper, Kafka, and Kafka Connect provide.
+
+* {link-prefix}:{link-mysql-connector}#mysql-snapshot-metrics[Snapshot metrics] provide information about connector operation while performing a snapshot.
+* {link-prefix}:{link-mysql-connector}#mysql-binlog-metrics[Binlog metrics] provide information about connector operation when the connector is reading the binlog.
+* {link-prefix}:{link-mysql-connector}#mysql-schema-history-metrics[Schema history metrics] provide information about the status of the connector's schema history.
+
+{link-prefix}:{link-debezium-monitoring}[{prodname} monitoring documentation] provides details for how to expose these metrics by using JMX.
+
+// Type: reference
+// ModuleID: monitoring-debezium-during-snapshots-of-mysql-databases
+// Title: Monitoring {prodname} during snapshots of MySQL databases
+[[mysql-monitoring-snapshots]]
+[[mysql-snapshot-metrics]]
+=== Snapshot metrics
+
+The *MBean* is `debezium.mysql:type=connector-metrics,context=snapshot,server=_<database.server.name>_`.
+
+include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-snapshot-metrics.adoc[leveloffset=+1]
+
+
+The {prodname} MySQL connector also provides the following custom snapshot metrics:
+
+[cols="3,2,5",options="header"]
+|===
+|Attribute |Type |Description
+
+|`HoldingGlobalLock`
+|`boolean`
+|Whether the connector currently holds a global or table write lock.
+
+|===
+
+// Type: reference
+// ModuleID: monitoring-debezium-mysql-connector-binlog-reading
+// Title: Monitoring {prodname} MySQL connector binlog reading
+[[mysql-connector-binlog-metrics]]
+[[mysql-binlog-metrics]]
+=== Binlog metrics
+
+The *MBean* is `debezium.mysql:type=connector-metrics,context=binlog,server=<database.server.name>`.
+
+Transaction-related attributes are available only if binlog event buffering is enabled. See {link-prefix}:{link-mysql-connector}#binlog-buffer-size[`binlog.buffer.size`] in the advanced connector configuration properties for more details.
+
+include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-streaming-metrics.adoc[leveloffset=+1]
+
+The {prodname} MySQL connector also provides the following custom binlog metrics:
+
+[cols="3,2,5",options="header"]
+|===
+|Attribute |Type |Description
+
+|`BinlogFilename`
+|`string`
+|The name of the binlog file that the connector has most recently read.
+
+|`BinlogPosition`
+|`long`
+|The most recent position (in bytes) within the binlog that the connector has read.
+
+|`IsGtidModeEnabled`
+|`boolean`
+|Flag that denotes whether the connector is currently tracking GTIDs from MySQL server.
+
+|`GtidSet`
+|`string`
+|The string representation of the most recent GTID set processed by the connector when reading the binlog.
+
+|`NumberOfSkipped{zwsp}Events`
+|`long`
+|The number of events that have been skipped by the MySQL connector. Typically events are skipped due to a malformed or unparseable event from MySQL's binlog.
+
+|`NumberOfDisconnects`
+|`long`
+|The number of disconnects by the MySQL connector.
+
+|`NumberOfRolledBack{zwsp}Transactions`
+|`long`
+|The number of processed transactions that were rolled back and not streamed.
+
+|`NumberOfNotWell{zwsp}FormedTransactions`
+|`long`
+|The number of transactions that have not conformed to the expected protocol of `BEGIN` + `COMMIT`/`ROLLBACK`. This value should be `0` under normal conditions.
+
+|`NumberOfLarge{zwsp}Transactions`
+|`long`
+|The number of transactions that have not fit into the look-ahead buffer. For optimal performance, this value should be significantly smaller than `NumberOfCommittedTransactions` and `NumberOfRolledBackTransactions`.
+
+|===
+
+// Type: reference
+// ModuleID: monitoring-debezium-mysql-connector-schema history
+// Title: Monitoring {prodname} MySQL connector schema history
+[[mysql-monitoring-schema-history]]
+[[mysql-schema-history-metrics]]
+=== Schema history metrics
+
+The *MBean* is `debezium.mysql:type=connector-metrics,context=schema-history,server=_<database.server.name>_`.
+
+include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-schema-history-metrics.adoc[leveloffset=+1]
