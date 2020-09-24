@@ -14,12 +14,14 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Supplier;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
@@ -51,7 +53,7 @@ public class SqlServerConnection extends JdbcConnection {
 
     private static final String GET_DATABASE_NAME = "SELECT db_name()";
 
-    private static Logger LOGGER = LoggerFactory.getLogger(SqlServerConnection.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(SqlServerConnection.class);
 
     private static final String STATEMENTS_PLACEHOLDER = "#";
     private static final String GET_MAX_LSN = "SELECT sys.fn_cdc_get_max_lsn()";
@@ -64,6 +66,7 @@ public class SqlServerConnection extends JdbcConnection {
     private static final String GET_LIST_OF_CDC_ENABLED_TABLES = "EXEC sys.sp_cdc_help_change_data_capture";
     private static final String GET_LIST_OF_NEW_CDC_ENABLED_TABLES = "SELECT * FROM cdc.change_tables WHERE start_lsn BETWEEN ? AND ?";
     private static final String GET_LIST_OF_KEY_COLUMNS = "SELECT * FROM cdc.index_columns WHERE object_id=?";
+    private static final Pattern BRACKET_PATTERN = Pattern.compile("[\\[\\]]");
 
     private static final int CHANGE_TABLE_DATA_COLUMN_OFFSET = 5;
 
@@ -339,7 +342,8 @@ public class SqlServerConnection extends JdbcConnection {
                                 rs.getInt(4),
                                 Lsn.valueOf(rs.getBytes(6)),
                                 Lsn.valueOf(rs.getBytes(7)),
-                                rs.getString(15)));
+                                Arrays.asList(BRACKET_PATTERN.matcher(Optional.ofNullable(rs.getString(15)).orElse(""))
+                                        .replaceAll("").split(", "))));
             }
             return changeTables;
         });

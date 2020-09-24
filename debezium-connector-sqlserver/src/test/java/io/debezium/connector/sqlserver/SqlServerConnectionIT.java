@@ -14,6 +14,7 @@ import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.Arrays;
+import java.util.List;
 
 import org.fest.assertions.Assertions;
 import org.junit.Before;
@@ -178,17 +179,16 @@ public class SqlServerConnectionIT {
 
             // and issue a test call to a CDC wrapper function
             Thread.sleep(5_000); // Need to wait to make sure the min_lsn is available
-            String capturedColumnList = String.join(", ",
-                    Arrays.asList("int_no_default_not_null", "int_no_default", "bigint_column", "int_column", "smallint_column", "tinyint_column",
-                            "bit_column", "decimal_column", "numeric_column", "money_column", "smallmoney_column", "float_column", "real_column",
-                            "date_column", "datetime_column", "datetime2_column", "datetime2_0_column", "datetime2_1_column", "datetime2_2_column", "datetime2_3_column",
-                            "datetime2_4_column", "datetime2_5_column", "datetime2_6_column", "datetime2_7_column", "datetimeoffset_column", "smalldatetime_column",
-                            "time_column", "time_0_column", "time_1_column", "time_2_column", "time_3_column", "time_4_column", "time_5_column", "time_6_column",
-                            "time_7_column", "char_column", "varchar_column", "text_column", "nchar_column", "nvarchar_column", "ntext_column", "binary_column",
-                            "varbinary_column", "image_column"));
+            List<String> capturedColumns = Arrays.asList("int_no_default_not_null", "int_no_default", "bigint_column", "int_column", "smallint_column", "tinyint_column",
+                    "bit_column", "decimal_column", "numeric_column", "money_column", "smallmoney_column", "float_column", "real_column",
+                    "date_column", "datetime_column", "datetime2_column", "datetime2_0_column", "datetime2_1_column", "datetime2_2_column", "datetime2_3_column",
+                    "datetime2_4_column", "datetime2_5_column", "datetime2_6_column", "datetime2_7_column", "datetimeoffset_column", "smalldatetime_column",
+                    "time_column", "time_0_column", "time_1_column", "time_2_column", "time_3_column", "time_4_column", "time_5_column", "time_6_column",
+                    "time_7_column", "char_column", "varchar_column", "text_column", "nchar_column", "nvarchar_column", "ntext_column", "binary_column",
+                    "varbinary_column", "image_column");
 
             SqlServerChangeTable changeTable = new SqlServerChangeTable(new TableId("testDB", "dbo", "table_with_defaults"),
-                    null, 0, null, null, "[" + capturedColumnList + "]");
+                    null, 0, null, null, capturedColumns);
             Table table = connection.getTableSchemaFromTable(changeTable);
 
             assertColumnHasNotDefaultValue(table, "int_no_default_not_null");
