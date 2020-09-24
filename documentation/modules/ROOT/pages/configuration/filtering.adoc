@@ -146,7 +146,7 @@ Expressions should not result in any side-effects. That is, they should not modi
 
 The way that you express filtering conditions depends on the scripting language that you use.
 
-For example, as shown in the {link-prefix}:{link-filtering}#example-basic-debezium-filter-smt-configuration[basic configuration example], when you use `Groovy` as the expression language, 
+For example, as shown in the {link-prefix}:{link-filtering}#example-basic-filter-configuration-example[basic configuration example], when you use `Groovy` as the expression language, 
 the following expression removes all messages, except for update records that have `id` values set to `2`:
 
 [source,groovy]
