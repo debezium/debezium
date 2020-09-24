@@ -387,7 +387,7 @@ public class SqlServerConnection extends JdbcConnection {
 
         final List<String> pkColumnNames = readPrimaryKeyOrUniqueIndexNames(metadata, changeTable.getSourceTableId());
         Collections.sort(columns);
-        return Table.editorSkippableColumns()
+        return Table.editor()
                 .tableId(changeTable.getSourceTableId())
                 .addColumns(columns)
                 .setPrimaryKeyNames(pkColumnNames)

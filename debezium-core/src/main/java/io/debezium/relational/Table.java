@@ -26,10 +26,6 @@ public interface Table {
         return new TableEditorImpl();
     }
 
-    static TableEditor editorSkippableColumns() {
-        return new TableEditorSkippableColumnsImpl();
-    }
-
     /**
      * Get the identifier for this table.
      * @return the identifier; never null
@@ -150,4 +146,6 @@ public interface Table {
      * @return the editor; never null
      */
     TableEditor edit();
+
+    void toString(StringBuilder sb, String prefix);
 }
