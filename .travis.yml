@@ -27,7 +27,7 @@ before_install:
   - export M2_HOME=$PWD/apache-maven-3.6.3
   - export PATH=$M2_HOME/bin:$PATH
   - mvn -version
-  - git clone https://github.com/debezium/debezium.git $PWD/core-repo && cd $PWD/core-repo && mvn clean install -DskipTests -DskipITs && cd $OLDPWD
+  - git clone https://github.com/debezium/debezium.git $PWD/core-repo && cd $PWD/core-repo && mvn -B clean install -DskipTests -DskipITs -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn && cd $OLDPWD
 
 # By default Travis will install dependencies before it runs a build, and with Maven projects that
 # means running an install build without tests. We don't need to do this, and it actually causes problems.
@@ -38,7 +38,7 @@ after_install:
   - docker ps -a
 
 script:
-  - "mvn clean install -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check"
+  - "mvn -B clean install -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn"
 
 notifications:
   webhooks:
