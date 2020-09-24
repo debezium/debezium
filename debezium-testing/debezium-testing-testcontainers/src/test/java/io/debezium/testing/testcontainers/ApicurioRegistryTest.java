@@ -52,8 +52,8 @@ public class ApicurioRegistryTest {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ApicurioRegistryTest.class);
 
-    private static final String DEBEZIUM_VERSION = "1.2.3.Final";
-    private static final String APICURIO_VERSION = "1.3.0.Final";
+    private static final String DEBEZIUM_VERSION = "1.3.0.Final";
+    private static final String APICURIO_VERSION = "1.3.2.Final";
 
     private static final DockerImageName POSTGRES_DOCKER_IMAGE_NAME = DockerImageName.parse("debezium/postgres:11")
             .asCompatibleSubstituteFor("postgres");
