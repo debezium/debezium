@@ -6,6 +6,7 @@
 package io.debezium.connector.mongodb;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -397,12 +398,12 @@ public class ConnectionContext implements AutoCloseable {
          *
          * @return the collection identifiers; never null
          */
-        public Set<CollectionId> collections() {
+        public List<CollectionId> collections() {
             String replicaSetName = replicaSet.replicaSetName();
 
             // For each database, get the list of collections ...
             return execute("get collections in databases", primary -> {
-                Set<CollectionId> collections = new HashSet<>();
+                List<CollectionId> collections = new ArrayList<>();
                 Set<String> databaseNames = databaseNames();
 
                 for (String dbName : databaseNames) {
