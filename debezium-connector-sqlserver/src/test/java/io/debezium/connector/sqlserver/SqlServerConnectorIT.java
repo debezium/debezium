@@ -745,6 +745,8 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         final String tableaCT = connection.getNameOfChangeTable("tablea");
         final String tablebCT = connection.getNameOfChangeTable("tableb");
 
+        TestHelper.waitForCdcRecord(connection, "tableb", rs -> rs.getInt("id") == expectedIds.get(expectedIds.size() - 1));
+
         Awaitility.await().atMost(30, TimeUnit.SECONDS).until(() -> {
             // Wait for max lsn to be available
             if (!connection.getMaxLsn().isAvailable()) {
