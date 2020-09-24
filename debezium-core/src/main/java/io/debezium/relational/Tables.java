@@ -182,8 +182,14 @@ public final class Tables {
     public Table overwriteTable(TableId tableId, List<Column> columnDefs, List<String> primaryKeyColumnNames,
                                 String defaultCharsetName) {
         return lock.write(() -> {
-            TableImpl updated = new TableImpl(tableId, columnDefs, primaryKeyColumnNames, defaultCharsetName);
-            TableImpl existing = tablesByTableId.get(tableId);
+            Table updated = Table.editor()
+                    .tableId(tableId)
+                    .addColumns(columnDefs)
+                    .setPrimaryKeyNames(primaryKeyColumnNames)
+                    .setDefaultCharsetName(defaultCharsetName)
+                    .create();
+
+            Table existing = tablesByTableId.get(tableId);
             if (existing == null || !existing.equals(updated)) {
                 // Our understanding of the table has changed ...
                 changes.add(tableId);
@@ -264,7 +270,7 @@ public final class Tables {
      */
     public Table updateTable(TableId tableId, Function<Table, Table> changer) {
         return lock.write(() -> {
-            TableImpl existing = tablesByTableId.get(tableId);
+            Table existing = tablesByTableId.get(tableId);
             Table updated = changer.apply(existing);
             if (updated != existing) {
                 tablesByTableId.put(tableId, new TableImpl(tableId, updated.columns(),
@@ -403,7 +409,7 @@ public final class Tables {
     private static class TablesById {
 
         private final boolean tableIdCaseInsensitive;
-        private final ConcurrentMap<TableId, TableImpl> values;
+        private final ConcurrentMap<TableId, Table> values;
 
         public TablesById(boolean tableIdCaseInsensitive) {
             this.tableIdCaseInsensitive = tableIdCaseInsensitive;
@@ -428,15 +434,15 @@ public final class Tables {
             }
         }
 
-        public TableImpl remove(TableId tableId) {
+        public Table remove(TableId tableId) {
             return values.remove(toLowerCaseIfNeeded(tableId));
         }
 
-        public TableImpl get(TableId tableId) {
+        public Table get(TableId tableId) {
             return values.get(toLowerCaseIfNeeded(tableId));
         }
 
-        public Table put(TableId tableId, TableImpl updated) {
+        public Table put(TableId tableId, Table updated) {
             return values.put(toLowerCaseIfNeeded(tableId), updated);
         }
 
@@ -444,11 +450,11 @@ public final class Tables {
             return values.size();
         }
 
-        void forEach(BiConsumer<? super TableId, ? super TableImpl> action) {
+        void forEach(BiConsumer<? super TableId, ? super Table> action) {
             values.forEach(action);
         }
 
-        Set<Map.Entry<TableId, TableImpl>> entrySet() {
+        Set<Map.Entry<TableId, Table>> entrySet() {
             return values.entrySet();
         }
 
