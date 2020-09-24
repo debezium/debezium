@@ -69,6 +69,7 @@ With https://zookeeper.apache.org[Zookeeper], http://kafka.apache.org/[Kafka], {
 endif::community[]
 
 ifdef::product[]
+.Procedure
 . Download the {prodname} scripting SMT archive (`debezium-scripting-{debezium-version}.tar.gz`) from https://access.redhat.com/jbossnetwork/restricted/listSoftware.html?product=red.hat.integration&downloadType=distributions.
 . Extract the contents of the archive into the {prodname} plug-in directories of your Kafka Connect environment.
 . Obtain a JSR-223 script engine implementation and add its contents to the {prodname} plug-in directories of your Kafka Connect environment.
@@ -118,13 +119,13 @@ the SMT can look up and interpret the values of these variables to evaluate cond
 The following table lists the variables that {prodname} binds into the evaluation context for the content-based routing SMT:
 
 .Content-based routing expression variables
-[options="header"]
-|=======================
+[cols="25%a,35%a,40%a",subs="+attributes",options="header"]
+|===
 |Name |Description |Type
-|`key`   |A key of the message. |`org.apache.kafka.connect.data.Struct`
-|`value` |A value of the message. |`org.apache.kafka.connect.data.Struct`
-|`keySchema` |Schema of the message key.|`org.apache.kafka.connect.data.Schema`
-|`valueSchema`|Schema of the message value.| `org.apache.kafka.connect.data.Schema`
+|`key`   |A key of the message. |`org.apache.kafka.connect{zwsp}.data{zwsp}.Struct`
+|`value` |A value of the message. |`org.apache.kafka.connect{zwsp}.data{zwsp}.Struct`
+|`keySchema` |Schema of the message key.|`org.apache.kafka.connect{zwsp}.data{zwsp}.Schema`
+|`valueSchema`|Schema of the message value.| `org.apache.kafka.connect{zwsp}.data{zwsp}.Schema`
 |`topic`|Name of the target topic.| String
 |`headers`
 a|A Java map of message headers. The key field is the header name. 
@@ -132,10 +133,10 @@ The `headers` variable exposes the following properties:
 
 * `value` (of type `Object`) 
 
-* `schema` (of type `org.apache.kafka.connect.data.Schema`)
+* `schema` (of type `org.apache.kafka{zwsp}.connect{zwsp}.data{zwsp}.Schema`)
 
-| `java.util.Map<String, io.debezium.transforms.scripting.RecordHeader>`
-|=======================
+| `java.util.Map{zwsp}<String,{zwsp} io.debezium{zwsp}.transforms{zwsp}.scripting{zwsp}.RecordHeader>`
+|===
 
 An expression can invoke arbitrary methods on its variables. 
 Expressions should resolve to a Boolean value that determines how the SMT dispositions the message.
@@ -206,7 +207,7 @@ If the name of the topic does not match the value in `topic.regex`, the SMT pass
 
 |[[content-based-router-language]]<<content-based-router-language, `language`>>
 |
-|The language in which the expression is written. Must begin with `jsr223.`, e.g. `jsr223.groovy`, or `jsr223.graal.js`. {prodname} supports bootstrapping through the https://jcp.org/en/jsr/detail?id=223[JSR 223 API ("Scripting for the Java (TM) Platform")] only.
+|The language in which the expression is written. Must begin with `jsr223.`, for example, `jsr223.groovy`, or `jsr223.graal.js`. {prodname} supports bootstrapping through the https://jcp.org/en/jsr/detail?id=223[JSR 223 API ("Scripting for the Java (TM) Platform")] only.
 
 |[[content-based-router-topic-expression]]<<content-based-router-topic-expression, `topic.expression`>>
 |
