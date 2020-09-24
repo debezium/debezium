@@ -150,7 +150,7 @@ Expressions should not result in any side-effects. That is, they should not modi
 == Language specifics
 
 The way that you express content-based routing conditions depends on the scripting language that you use.
-For example, as shown in {link-prefix}:{link-content-based-routing}#example-basic-content-based-routing-configuration[], when you use `Groovy` as the expression language, 
+For example, as shown in the {link-prefix}:{link-content-based-routing}#example-basic-content-based-routing-configuration[basic configuration example], when you use `Groovy` as the expression language, 
 the following expression reroutes all update (`u`) records to the `updates` topic, while routing other records to the default topic:
 
 [source,groovy]
@@ -178,7 +178,7 @@ value.get('op') == 'u' ? 'updates' : null
 ----
 
 .Javascript with Graal.js
-When you create coentent-based routing conditions by using JavaScript with Graal.js, you use an approach that is similar to the one use with Groovy.
+When you create content-based routing conditions by using JavaScript with Graal.js, you use an approach that is similar to the one use with Groovy.
 For example:
 
 [source,javascript]
