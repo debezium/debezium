@@ -9,7 +9,6 @@ import java.sql.Types;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Field;
@@ -135,8 +134,8 @@ public class TableSchemaBuilder {
                 .build();
 
         // Create the generators ...
-        Function<Object[], Object> keyGenerator = createKeyGenerator(keySchema, tableId, tableKey.keyColumns());
-        Function<Object[], Struct> valueGenerator = createValueGenerator(valSchema, tableId, table.columns(), filter, mappers);
+        StructGenerator keyGenerator = createKeyGenerator(keySchema, tableId, tableKey.keyColumns());
+        StructGenerator valueGenerator = createValueGenerator(valSchema, tableId, table.columns(), filter, mappers);
 
         // And the table schema ...
         return new TableSchema(tableId, keySchema, keyGenerator, envelope, valSchema, valueGenerator);
@@ -172,7 +171,7 @@ public class TableSchemaBuilder {
      * @param columns the column definitions for the table that defines the row; may not be null
      * @return the key-generating function, or null if there is no key schema
      */
-    protected Function<Object[], Object> createKeyGenerator(Schema schema, TableId columnSetName, List<Column> columns) {
+    protected StructGenerator createKeyGenerator(Schema schema, TableId columnSetName, List<Column> columns) {
         if (schema != null) {
             int[] recordIndexes = indexesForColumns(columns);
             Field[] fields = fieldsForColumns(schema, columns);
@@ -235,8 +234,8 @@ public class TableSchemaBuilder {
      * @param mappers the mapping functions for columns; may be null if none of the columns are to be mapped to different values
      * @return the value-generating function, or null if there is no value schema
      */
-    protected Function<Object[], Struct> createValueGenerator(Schema schema, TableId tableId, List<Column> columns,
-                                                              ColumnNameFilter filter, ColumnMappers mappers) {
+    protected StructGenerator createValueGenerator(Schema schema, TableId tableId, List<Column> columns,
+                                                   ColumnNameFilter filter, ColumnMappers mappers) {
         if (schema != null) {
             List<Column> columnsThatShouldBeAdded = columns.stream()
                     .filter(column -> filter == null || filter.matches(tableId.catalog(), tableId.schema(), tableId.table(), column.name()))
