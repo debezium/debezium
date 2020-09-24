@@ -1775,7 +1775,6 @@ The {prodname} logical decoding plug-ins have been installed and tested on only 
 Plug-in behavior is not completely the same for all cases.
 These differences have been identified:
 
-* The `wal2json` plug-in is not able to process quoted identifiers (link:https://github.com/eulerto/wal2json/issues/35[issue]).
 * The `wal2json` and `decoderbufs` plug-ins emit events for tables without primary keys.
 * The `wal2json` plug-in does not support special values, such as `NaN` or `infinity`, for floating point types.
 * The `wal2json` plug-in should be used with the `schema.refresh.mode` connector configuration property set to `columns_diff_exclude_unchanged_toast`. Otherwise, when receiving a change event for a row that contains an unchanged `TOAST` column, no field for that column is contained in the emitted change event's `after` field. This is because `wal2json` plug-in messages do not contain a field for such a column.
