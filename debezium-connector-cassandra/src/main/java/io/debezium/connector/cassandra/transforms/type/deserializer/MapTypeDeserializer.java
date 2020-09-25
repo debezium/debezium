@@ -66,7 +66,8 @@ public class MapTypeDeserializer extends CollectionTypeDeserializer<MapType<?, ?
         TypeDeserializer keysTypeDeserializer = CassandraTypeDeserializer.getTypeDeserializer(keysType);
         TypeDeserializer valuesTypeDeserializer = CassandraTypeDeserializer.getTypeDeserializer(valuesType);
         Map<Object, Object> resultedMap = new HashMap<>();
-        for (Map.Entry entry : deserializedMap.entrySet()) {
+
+        for (Map.Entry<?, ?> entry : deserializedMap.entrySet()) {
             Object key = entry.getKey();
             if (keysTypeDeserializer instanceof LogicalTypeDeserializer) {
                 key = ((LogicalTypeDeserializer) keysTypeDeserializer).convertDeserializedValue(keysType, key);
@@ -77,6 +78,7 @@ public class MapTypeDeserializer extends CollectionTypeDeserializer<MapType<?, ?
             }
             resultedMap.put(key, value);
         }
+
         return resultedMap;
     }
 }

@@ -56,7 +56,7 @@ public class ListTypeDeserializer extends CollectionTypeDeserializer<ListType<?>
         AbstractType<?> elementsType = ((ListType<?>) abstractType).getElementsType();
         TypeDeserializer elementsTypeDeserializer = CassandraTypeDeserializer.getTypeDeserializer(elementsType);
         if (elementsTypeDeserializer instanceof LogicalTypeDeserializer) {
-            List<Object> convertedDeserializedList = new ArrayList<>();
+            List<Object> convertedDeserializedList = new ArrayList<>(deserializedList.size());
             for (Object element : deserializedList) {
                 Object convertedElement = ((LogicalTypeDeserializer) elementsTypeDeserializer).convertDeserializedValue(elementsType, element);
                 convertedDeserializedList.add(convertedElement);
