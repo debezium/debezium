@@ -146,6 +146,4 @@ public interface Table {
      * @return the editor; never null
      */
     TableEditor edit();
-
-    void toString(StringBuilder sb, String prefix);
 }
