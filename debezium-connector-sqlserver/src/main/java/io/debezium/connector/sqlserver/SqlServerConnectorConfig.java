@@ -285,6 +285,14 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
             .withDescription("The timezone of the server used to correctly shift the commit transaction timestamp on the client side"
                     + "Options include: Any valid Java ZoneId");
 
+    public static final Field STREAMING_MAX_LSN_SELECT_STATEMENT = Field.create("streaming.max.lsn.select.statement")
+            .withDisplayName("A select statement for the maximum lsn to utilize when determining if changes tables should be queried.")
+            .withDefault("")
+            .withType(Type.STRING)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.LOW)
+            .withDescription("This property can be used to fine tune when cdc tables are queried during the streaming process.");
+
     public static final Field SOURCE_TIMESTAMP_MODE = Field.create(SOURCE_TIMESTAMP_MODE_CONFIG_NAME)
             .withDisplayName("Source timestamp mode")
             .withDefault(SourceTimestampMode.COMMIT.getValue())
@@ -338,7 +346,8 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
             .connector(
                     SNAPSHOT_MODE,
                     SNAPSHOT_ISOLATION_MODE,
-                    SOURCE_TIMESTAMP_MODE)
+                    SOURCE_TIMESTAMP_MODE,
+                    STREAMING_MAX_LSN_SELECT_STATEMENT)
             .excluding(
                     SCHEMA_WHITELIST,
                     SCHEMA_INCLUDE_LIST,
@@ -362,6 +371,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     private final SourceTimestampMode sourceTimestampMode;
     private final ColumnNameFilter columnFilter;
     private final boolean readOnlyDatabaseConnection;
+    private final String maxLsnSelectStatement;
 
     public SqlServerConnectorConfig(Configuration config) {
         super(SqlServerConnector.class, config, config.getString(SERVER_NAME), new SystemTablesPredicate(), x -> x.schema() + "." + x.table(), true);
@@ -386,6 +396,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
         }
 
         this.sourceTimestampMode = SourceTimestampMode.fromMode(config.getString(SOURCE_TIMESTAMP_MODE_CONFIG_NAME));
+        this.maxLsnSelectStatement = config.getString(STREAMING_MAX_LSN_SELECT_STATEMENT);
     }
 
     private static ColumnNameFilter getColumnExcludeNameFilter(String excludedColumnPatterns) {
@@ -440,6 +451,10 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
 
     public boolean isReadOnlyDatabaseConnection() {
         return readOnlyDatabaseConnection;
+    }
+
+    public String getMaxLsnSelectStatement() {
+        return maxLsnSelectStatement;
     }
 
     @Override
