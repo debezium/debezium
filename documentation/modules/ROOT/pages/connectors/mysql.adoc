@@ -12,7 +12,7 @@ MySQL has a binary log (binlog) that records all operations in the order in whic
 
 The {prodname} MySQL connector reads the binlog and produces change events for row-level `INSERT`, `UPDATE`, and `DELETE` operations and records the change events in a Kafka topic. Client applications read those Kafka topics.
 
-As MySQL is typically set up to purge binlogs after a specified period of time, the MySQL connector performs and initial _consistent snapshot_ of each of your databases. The MySQL connector reads the binlog from the point at which the snapshot was made.
+As MySQL is typically set up to purge binlogs after a specified period of time, the MySQL connector performs an initial _consistent snapshot_ of each of your databases. The MySQL connector reads the binlog from the point at which the snapshot was made.
 
 The following sections provide more detailed information on how the {prodname} MySQL connector functions, instructs you on how to set it up, as well as deploy and troubleshoot the connector.
 
