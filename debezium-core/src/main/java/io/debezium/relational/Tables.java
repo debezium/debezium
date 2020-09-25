@@ -394,7 +394,12 @@ public final class Tables {
                 sb.append(System.lineSeparator());
                 tablesByTableId.forEach((tableId, table) -> {
                     sb.append("  ").append(tableId).append(": {").append(System.lineSeparator());
-                    table.toString(sb, "    ");
+                    if (table instanceof TableImpl) {
+                        ((TableImpl) table).toString(sb, "    ");
+                    }
+                    else {
+                        sb.append(table.toString());
+                    }
                     sb.append("  }").append(System.lineSeparator());
                 });
             }

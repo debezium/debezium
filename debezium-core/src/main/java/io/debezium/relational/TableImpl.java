@@ -96,7 +96,6 @@ final class TableImpl implements Table {
         return sb.toString();
     }
 
-    @Override
     public void toString(StringBuilder sb, String prefix) {
         if (prefix == null) {
             prefix = "";

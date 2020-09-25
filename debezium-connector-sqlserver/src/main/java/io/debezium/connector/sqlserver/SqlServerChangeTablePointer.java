@@ -12,12 +12,12 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import io.debezium.jdbc.JdbcConnection.ResultSetMapper;
 import io.debezium.pipeline.source.spi.ChangeTableResultSet;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
+import io.debezium.util.ColumnUtils;
 
 /**
  * The logical representation of a position for the change in the transaction log.
@@ -101,20 +101,13 @@ public class SqlServerChangeTablePointer extends ChangeTableResultSet<SqlServerC
      * a subset of columns
      */
     private ResultSetMapper<Object[]> createResultSetMapper(Table table) throws SQLException {
-        Map<String, Column> sourceTableColumns = new HashMap<>();
-        AtomicInteger greatestColumnPosition = new AtomicInteger(0);
-        for (Column column : table.columns()) {
-            sourceTableColumns.put(column.name(), column);
-            greatestColumnPosition.set(greatestColumnPosition.get() < column.position()
-                    ? column.position()
-                    : greatestColumnPosition.get());
-        }
+        ColumnUtils.MappedColumns columnMap = ColumnUtils.toMap(table);
         final List<String> resultColumns = getResultColumnNames();
         final int resultColumnCount = resultColumns.size();
 
-        final IndicesMapping indicesMapping = new IndicesMapping(sourceTableColumns, resultColumns);
+        final IndicesMapping indicesMapping = new IndicesMapping(columnMap.getSourceTableColumns(), resultColumns);
         return resultSet -> {
-            final Object[] data = new Object[greatestColumnPosition.get()];
+            final Object[] data = new Object[columnMap.getGreatestColumnPosition()];
             for (int i = 0; i < resultColumnCount; i++) {
                 int index = indicesMapping.getSourceTableColumnIndex(i);
                 data[index] = getColumnData(resultSet, columnDataOffset + i);

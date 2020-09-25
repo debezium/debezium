@@ -7,7 +7,6 @@ package io.debezium.relational;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.Duration;
@@ -37,6 +36,7 @@ import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.SnapshotResult;
 import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.util.Clock;
+import io.debezium.util.ColumnUtils;
 import io.debezium.util.Strings;
 import io.debezium.util.Threads;
 import io.debezium.util.Threads.Timer;
@@ -318,15 +318,7 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
         try (Statement statement = readTableStatement();
                 ResultSet rs = statement.executeQuery(selectStatement.get())) {
 
-            ResultSetMetaData metaData = rs.getMetaData();
-            Column[] columns = new Column[metaData.getColumnCount()];
-            int greatestColumnPosition = 0;
-            for (int i = 0; i < columns.length; i++) {
-                columns[i] = table.columnWithName(metaData.getColumnName(i + 1));
-                greatestColumnPosition = greatestColumnPosition < columns[i].position()
-                        ? columns[i].position()
-                        : greatestColumnPosition;
-            }
+            ColumnUtils.ColumnArray columnArray = ColumnUtils.toArray(rs, table);
             long rows = 0;
             Timer logTimer = getTableScanLogTimer();
             snapshotContext.lastRecordInTable = false;
@@ -338,9 +330,9 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
                     }
 
                     rows++;
-                    final Object[] row = new Object[greatestColumnPosition];
-                    for (int i = 0; i < columns.length; i++) {
-                        row[columns[i].position() - 1] = getColumnValue(rs, i + 1, columns[i]);
+                    final Object[] row = new Object[columnArray.getGreatestColumnPosition()];
+                    for (int i = 0; i < columnArray.getColumns().length; i++) {
+                        row[columnArray.getColumns()[i].position() - 1] = getColumnValue(rs, i + 1, columnArray.getColumns()[i]);
                     }
 
                     snapshotContext.lastRecordInTable = !rs.next();
