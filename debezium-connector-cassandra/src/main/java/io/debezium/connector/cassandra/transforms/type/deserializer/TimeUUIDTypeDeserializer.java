@@ -15,17 +15,22 @@ import org.apache.kafka.connect.data.Values;
 
 import io.debezium.connector.cassandra.transforms.UuidUtil;
 
-public class TimeUUIDTypeDeserializer extends TypeDeserializer {
+public class TimeUUIDTypeDeserializer extends LogicalTypeDeserializer {
 
     @Override
     public Object deserialize(AbstractType<?> abstractType, ByteBuffer bb) {
         Object value = super.deserialize(abstractType, bb);
-        byte[] bytes = UuidUtil.asBytes((java.util.UUID) value);
-        return Values.convertToString(getSchemaBuilder(abstractType).build(), bytes);
+        return convertDeserializedValue(abstractType, value);
     }
 
     @Override
     public SchemaBuilder getSchemaBuilder(AbstractType<?> abstractType) {
         return UUID_TYPE;
+    }
+
+    @Override
+    public Object convertDeserializedValue(AbstractType<?> abstractType, Object value) {
+        byte[] bytes = UuidUtil.asBytes((java.util.UUID) value);
+        return Values.convertToString(getSchemaBuilder(abstractType).build(), bytes);
     }
 }

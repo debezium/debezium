@@ -152,4 +152,13 @@ public final class CassandraTypeDeserializer {
         TypeDeserializer typeDeserializer = TYPE_MAP.get(abstractType.getClass());
         return typeDeserializer.getSchemaBuilder(abstractType);
     }
+
+    /**
+     * Get TypeDeserializer of AbstractType
+     * @param abstractType the {@link AbstractType} of a column in cassandra
+     * @return the TypeDeserializer of the AbstractType.
+     */
+    public static TypeDeserializer getTypeDeserializer(AbstractType<?> abstractType) {
+        return TYPE_MAP.get(abstractType.getClass());
+    }
 }

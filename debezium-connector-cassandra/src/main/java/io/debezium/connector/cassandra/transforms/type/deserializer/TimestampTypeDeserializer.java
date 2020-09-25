@@ -13,17 +13,22 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 
 import io.debezium.connector.cassandra.transforms.CassandraTypeKafkaSchemaBuilders;
 
-public class TimestampTypeDeserializer extends TypeDeserializer {
+public class TimestampTypeDeserializer extends LogicalTypeDeserializer {
 
     @Override
     public Object deserialize(AbstractType<?> abstractType, ByteBuffer bb) {
         Object value = super.deserialize(abstractType, bb);
-        Date date = (Date) value;
-        return date.getTime();
+        return convertDeserializedValue(abstractType, value);
     }
 
     @Override
     public SchemaBuilder getSchemaBuilder(AbstractType<?> abstractType) {
         return CassandraTypeKafkaSchemaBuilders.TIMESTAMP_MILLI_TYPE;
+    }
+
+    @Override
+    public Object convertDeserializedValue(AbstractType<?> abstractType, Object value) {
+        Date date = (Date) value;
+        return date.getTime();
     }
 }

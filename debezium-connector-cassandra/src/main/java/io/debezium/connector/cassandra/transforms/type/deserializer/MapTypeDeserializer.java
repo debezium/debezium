@@ -24,6 +24,7 @@ public class MapTypeDeserializer extends CollectionTypeDeserializer<MapType<?, ?
     @Override
     public Object deserialize(AbstractType<?> abstractType, ByteBuffer bb) {
         Map<?, ?> deserializedMap = (Map<?, ?>) super.deserialize(abstractType, bb);
+        deserializedMap = convertDeserializedElementsIfNecessary(abstractType, deserializedMap);
         return Values.convertToMap(getSchemaBuilder(abstractType).build(), deserializedMap);
     }
 
@@ -38,19 +39,44 @@ public class MapTypeDeserializer extends CollectionTypeDeserializer<MapType<?, ?
     }
 
     @Override
-    public Object deserialize(MapType<?, ?> collectionType, ComplexColumnData ccd) {
-        List<ByteBuffer> bbList = collectionType.serializedValues(ccd.iterator());
-        AbstractType<?> keyType = collectionType.getKeysType();
-        AbstractType<?> valueType = collectionType.getValuesType();
-
+    public Object deserialize(MapType<?, ?> mapType, ComplexColumnData ccd) {
+        List<ByteBuffer> bbList = mapType.serializedValues(ccd.iterator());
+        AbstractType<?> keysType = mapType.getKeysType();
+        AbstractType<?> valuesType = mapType.getValuesType();
         Map<Object, Object> deserializedMap = new HashMap<>();
         int i = 0;
         while (i < bbList.size()) {
             ByteBuffer kbb = bbList.get(i++);
             ByteBuffer vbb = bbList.get(i++);
-            deserializedMap.put(super.deserialize(keyType, kbb), super.deserialize(valueType, vbb));
+            deserializedMap.put(CassandraTypeDeserializer.deserialize(keysType, kbb), CassandraTypeDeserializer.deserialize(valuesType, vbb));
         }
+        return Values.convertToMap(getSchemaBuilder(mapType).build(), deserializedMap);
+    }
 
-        return Values.convertToMap(getSchemaBuilder(collectionType).build(), deserializedMap);
+    /**
+     * If elements in a deserialized map is LogicalType, convert each element to fit in Kafka Schema type
+     * @param abstractType the {@link AbstractType} of a column in Cassandra
+     * @param deserializedMap Map deserialized from Cassandra
+     * @return A deserialized map from Cassandra with each element that fits in Kafka Schema type
+     */
+    private Map<?, ?> convertDeserializedElementsIfNecessary(AbstractType<?> abstractType, Map<?, ?> deserializedMap) {
+        MapType<?, ?> mapType = (MapType<?, ?>) abstractType;
+        AbstractType<?> keysType = mapType.getKeysType();
+        AbstractType<?> valuesType = mapType.getValuesType();
+        TypeDeserializer keysTypeDeserializer = CassandraTypeDeserializer.getTypeDeserializer(keysType);
+        TypeDeserializer valuesTypeDeserializer = CassandraTypeDeserializer.getTypeDeserializer(valuesType);
+        Map<Object, Object> resultedMap = new HashMap<>();
+        for (Map.Entry entry : deserializedMap.entrySet()) {
+            Object key = entry.getKey();
+            if (keysTypeDeserializer instanceof LogicalTypeDeserializer) {
+                key = ((LogicalTypeDeserializer) keysTypeDeserializer).convertDeserializedValue(keysType, key);
+            }
+            Object value = entry.getValue();
+            if (valuesTypeDeserializer instanceof LogicalTypeDeserializer) {
+                value = ((LogicalTypeDeserializer) valuesTypeDeserializer).convertDeserializedValue(valuesType, value);
+            }
+            resultedMap.put(key, value);
+        }
+        return resultedMap;
     }
 }

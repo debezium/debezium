@@ -59,8 +59,6 @@ import org.junit.Test;
 
 import com.datastax.driver.core.DataType;
 
-import io.debezium.doc.FixFor;
-
 /**
  * This class ONLY tests the {@link CassandraTypeDeserializer#deserialize(AbstractType, ByteBuffer)}
  * method because the {@link CassandraTypeDeserializer#deserialize(DataType, ByteBuffer)} calls
@@ -430,7 +428,6 @@ public class CassandraTypeDeserializerTest {
     }
 
     @Test
-    @FixFor("DBZ-1967")
     public void testReversedType() {
         Date timestamp = new Date();
         Long expectedLongTimestamp = timestamp.getTime();
@@ -442,5 +439,30 @@ public class CassandraTypeDeserializerTest {
         Object deserializedTimestamp = CassandraTypeDeserializer.deserialize(reversedTimeStampType, serializedTimestamp);
 
         Assert.assertEquals(expectedLongTimestamp, deserializedTimestamp);
+    }
+
+    @Test
+    public void testListUUIDType() {
+
+        List<UUID> originalList = new ArrayList<>();
+        UUID uuid1 = UUID.randomUUID();
+        UUID uuid2 = UUID.randomUUID();
+        UUID uuid3 = UUID.randomUUID();
+        originalList.add(uuid1);
+        originalList.add(uuid2);
+        originalList.add(uuid3);
+
+        List<String> expectedList = new ArrayList<>();
+        String expectedUuidStr1 = Values.convertToString(CassandraTypeKafkaSchemaBuilders.UUID_TYPE, UuidUtil.asBytes(uuid1));
+        String expectedUuidStr2 = Values.convertToString(CassandraTypeKafkaSchemaBuilders.UUID_TYPE, UuidUtil.asBytes(uuid2));
+        String expectedUuidStr3 = Values.convertToString(CassandraTypeKafkaSchemaBuilders.UUID_TYPE, UuidUtil.asBytes(uuid3));
+        expectedList.add(expectedUuidStr1);
+        expectedList.add(expectedUuidStr2);
+        expectedList.add(expectedUuidStr3);
+
+        ListType<UUID> frozenListType = ListType.getInstance(UUIDType.instance, false);
+        ByteBuffer serializedList = frozenListType.decompose(originalList);
+        Object deserializedList = CassandraTypeDeserializer.deserialize(frozenListType, serializedList);
+        Assert.assertEquals(expectedList, deserializedList);
     }
 }
