@@ -28,6 +28,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.microsoft.sqlserver.jdbc.SQLServerDriver;
+import com.microsoft.sqlserver.jdbc.StringUtils;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
@@ -151,6 +152,26 @@ public class SqlServerConnection extends JdbcConnection {
             LOGGER.trace("Current maximum lsn is {}", ret);
             return ret;
         }, "Maximum LSN query must return exactly one value"));
+    }
+
+    public MaxLsnResult getMaxLsnResult(String alternativeMaxTransactionalQuery) throws SQLException {
+        Lsn maxLsn = queryAndMap(GET_MAX_LSN, singleResultMapper(rs -> {
+            final Lsn ret = Lsn.valueOf(rs.getBytes(1));
+            LOGGER.trace("Current maximum lsn is {}", ret);
+            return ret;
+        }, "Maximum LSN query must return exactly one value"));
+
+        if (StringUtils.isEmpty(alternativeMaxTransactionalQuery)) {
+            // If not alternative query is provided, return the default for both.
+            return new MaxLsnResult(maxLsn, maxLsn);
+        }
+
+        // Else run the alternative query for getting the largest lsn related to a valid transaction.
+        return new MaxLsnResult(maxLsn, queryAndMap(alternativeMaxTransactionalQuery, singleResultMapper(rs -> {
+            final Lsn ret = Lsn.valueOf(rs.getBytes(1));
+            LOGGER.trace("Current maximum transactional lsn is {}", ret);
+            return ret;
+        }, "Maximum transactional LSN query must return exactly one value")));
     }
 
     /**
