@@ -164,10 +164,9 @@ public class Db2Connection extends JdbcConnection {
             queries[idx] = query;
             // If the table was added in the middle of queried buffer we need
             // to adjust from to the first LSN available
-            final Lsn fromLsn = changeTable.getStartLsn().compareTo(intervalFromLsn) > 0 ? changeTable.getStartLsn() : intervalFromLsn;
-            LOGGER.trace("Getting changes for table {} in range[{}, {}]", changeTable, fromLsn, intervalToLsn);
+            LOGGER.trace("Getting changes for table {} in range[{}, {}]", changeTable, intervalFromLsn, intervalToLsn);
             preparers[idx] = statement -> {
-                statement.setBytes(1, fromLsn.getBinary());
+                statement.setBytes(1, intervalFromLsn.getBinary());
                 statement.setBytes(2, intervalToLsn.getBinary());
 
             };
