@@ -71,7 +71,7 @@ public class MySqlAntlrDdlParserTest {
         assertThat(tables.size()).isEqualTo(1);
 
         Table table = tables.forTable(null, null, "mytable");
-        assertThat(table.columns()).hasSize(3);
+        assertThat(table.columnSpan()).isEqualTo(3);
         assertThat(table.columnWithName("id")).isNotNull();
         assertThat(table.columnWithName("val1")).isNotNull();
         assertThat(table.columnWithName("val2")).isNotNull();
@@ -127,7 +127,7 @@ public class MySqlAntlrDdlParserTest {
         assertThat(tables.size()).isEqualTo(1);
 
         Table table = tables.forTable(null, null, "mytable");
-        assertThat(table.columns()).hasSize(3);
+        assertThat(table.columnSpan()).isEqualTo(3);
         assertThat(table.columnWithName("id")).isNotNull();
         assertThat(table.columnWithName("val1")).isNotNull();
         assertThat(table.columnWithName("last_val")).isNotNull();
@@ -156,7 +156,7 @@ public class MySqlAntlrDdlParserTest {
         assertThat(tables.size()).isEqualTo(1);
 
         Table table = tables.forTable(null, null, "mytable");
-        assertThat(table.columns()).hasSize(3);
+        assertThat(table.columnSpan()).isEqualTo(3);
         assertThat(table.columnWithName("id")).isNotNull();
         assertThat(table.columnWithName("val1")).isNotNull();
         assertThat(table.columnWithName("last_val")).isNotNull();
@@ -176,7 +176,7 @@ public class MySqlAntlrDdlParserTest {
         assertThat(tables.size()).isEqualTo(1);
 
         Table table = tables.forTable(null, null, "mytable");
-        assertThat(table.columns()).hasSize(2);
+        assertThat(table.columnSpan()).isEqualTo(2);
         assertThat(table.columnWithName("id")).isNotNull();
         assertThat(table.columnWithName("val1")).isNotNull();
         assertThat(table.columnWithName("val2")).isNull();
@@ -222,7 +222,7 @@ public class MySqlAntlrDdlParserTest {
         assertThat(tables.size()).isEqualTo(1);
 
         Table table = tables.forTable(null, null, "newtable");
-        assertThat(table.columns()).hasSize(2);
+        assertThat(table.columnSpan()).isEqualTo(2);
         assertThat(table.columnWithName("val2")).isNotNull();
     }
 
@@ -334,7 +334,7 @@ public class MySqlAntlrDdlParserTest {
         assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
 
         final Table table = tables.forTable(null, null, "mytable");
-        assertThat(table.columns().size()).isEqualTo(4);
+        assertThat(table.columnSpan()).isEqualTo(4);
 
         final Column f1 = table.columnWithName("f1");
         assertThat(f1.typeName()).isEqualTo("FLOAT");
@@ -372,7 +372,7 @@ public class MySqlAntlrDdlParserTest {
 
         Stream.of("foo1", "foo2", "foo3").forEach(tableName -> {
             final Table table = tables.forTable(null, null, tableName);
-            assertThat(table.columns().size()).isEqualTo(2);
+            assertThat(table.columnSpan()).isEqualTo(2);
             final Column id = table.columnWithName("id");
             assertThat(id.name()).isEqualTo("id");
             assertThat(id.typeName()).isEqualTo("BIGINT UNSIGNED");
@@ -385,13 +385,13 @@ public class MySqlAntlrDdlParserTest {
 
         Stream.of("foo4", "foo5").forEach(tableName -> {
             final Table table = tables.forTable(null, null, tableName);
-            assertThat(table.columns().size()).isEqualTo(2);
+            assertThat(table.columnSpan()).isEqualTo(2);
             assertThat(table.primaryKeyColumnNames()).hasSize(1).containsOnly("val");
         });
 
         Stream.of("foo6").forEach(tableName -> {
             final Table table = tables.forTable(null, null, tableName);
-            assertThat(table.columns().size()).isEqualTo(2);
+            assertThat(table.columnSpan()).isEqualTo(2);
             final Column id = table.columnWithName("id");
             assertThat(id.name()).isEqualTo("id");
             assertThat(id.typeName()).isEqualTo("BIGINT UNSIGNED");
@@ -402,7 +402,7 @@ public class MySqlAntlrDdlParserTest {
 
         Stream.of("foo7").forEach(tableName -> {
             final Table table = tables.forTable(null, null, tableName);
-            assertThat(table.columns().size()).isEqualTo(2);
+            assertThat(table.columnSpan()).isEqualTo(2);
             final Column id = table.columnWithName("id");
             assertThat(id.name()).isEqualTo("id");
             assertThat(id.typeName()).isEqualTo("BIGINT UNSIGNED");
@@ -430,7 +430,7 @@ public class MySqlAntlrDdlParserTest {
 
         Stream.of("foo1", "foo2", "foo3").forEach(tableName -> {
             final Table table = tables.forTable(null, null, tableName);
-            assertThat(table.columns().size()).isEqualTo(2);
+            assertThat(table.columnSpan()).isEqualTo(2);
             final Column id = table.columnWithName("id");
             assertThat(id.name()).isEqualTo("id");
             assertThat(id.typeName()).isEqualTo("SMALLINT");
@@ -443,13 +443,13 @@ public class MySqlAntlrDdlParserTest {
 
         Stream.of("foo4", "foo5").forEach(tableName -> {
             final Table table = tables.forTable(null, null, tableName);
-            assertThat(table.columns().size()).isEqualTo(2);
+            assertThat(table.columnSpan()).isEqualTo(2);
             assertThat(table.primaryKeyColumnNames()).hasSize(1).containsOnly("val");
         });
 
         Stream.of("foo6").forEach(tableName -> {
             final Table table = tables.forTable(null, null, tableName);
-            assertThat(table.columns().size()).isEqualTo(2);
+            assertThat(table.columnSpan()).isEqualTo(2);
             final Column id = table.columnWithName("id");
             assertThat(id.name()).isEqualTo("id");
             assertThat(id.typeName()).isEqualTo("SMALLINT");
@@ -460,7 +460,7 @@ public class MySqlAntlrDdlParserTest {
 
         Stream.of("foo7").forEach(tableName -> {
             final Table table = tables.forTable(null, null, tableName);
-            assertThat(table.columns().size()).isEqualTo(2);
+            assertThat(table.columnSpan()).isEqualTo(2);
             final Column id = table.columnWithName("id");
             assertThat(id.name()).isEqualTo("id");
             assertThat(id.typeName()).isEqualTo("SMALLINT UNSIGNED");
@@ -685,7 +685,7 @@ public class MySqlAntlrDdlParserTest {
         assertThat(tables.size()).isEqualTo(1);
         final Table table = tables.forTable(new TableId(null, "db", "t3"));
         assertThat(table).isNotNull();
-        assertThat(table.columns()).hasSize(1);
+        assertThat(table.columnSpan()).isEqualTo(1);
     }
 
     @Test
@@ -759,11 +759,12 @@ public class MySqlAntlrDdlParserTest {
         assertThat(tables.size()).isEqualTo(1);
 
         final Table t1 = tables.forTable(null, null, "ok");
-        assertThat(t1.columns()).hasSize(3);
+        assertThat(t1.columnSpan()).isEqualTo(3);
 
-        final Column c1 = t1.columns().get(0);
-        final Column c2 = t1.columns().get(1);
-        final Column c3 = t1.columns().get(2);
+        List<Column> columns = t1.columns().collect(Collectors.toList());
+        final Column c1 = columns.get(0);
+        final Column c2 = columns.get(1);
+        final Column c3 = columns.get(2);
         assertThat(c1.name()).isEqualTo("id");
         assertThat(c1.typeName()).isEqualTo("INT");
         assertThat(c2.name()).isEqualTo("val");
@@ -795,9 +796,9 @@ public class MySqlAntlrDdlParserTest {
         parser.parse(ddl, tables);
         assertThat(tables.size()).isEqualTo(3);
 
-        assertThat(tables.forTable(null, null, "t1").columns()).hasSize(2);
-        assertThat(tables.forTable(null, null, "t2").columns()).hasSize(2);
-        assertThat(tables.forTable(null, null, "t3").columns()).hasSize(2);
+        assertThat(tables.forTable(null, null, "t1").columnSpan()).isEqualTo(2);
+        assertThat(tables.forTable(null, null, "t2").columnSpan()).isEqualTo(2);
+        assertThat(tables.forTable(null, null, "t3").columnSpan()).isEqualTo(2);
     }
 
     @Test
@@ -832,10 +833,11 @@ public class MySqlAntlrDdlParserTest {
         assertThat(tables.size()).isEqualTo(1);
 
         final Table t1 = tables.forTable(null, null, "foo");
-        assertThat(t1.columns()).hasSize(2);
+        assertThat(t1.columnSpan()).isEqualTo(2);
 
-        final Column c1 = t1.columns().get(0);
-        final Column c2 = t1.columns().get(1);
+        List<Column> columns = t1.columns().collect(Collectors.toList());
+        final Column c1 = columns.get(0);
+        final Column c2 = columns.get(1);
         assertThat(c1.name()).isEqualTo("id");
         assertThat(c1.typeName()).isEqualTo("INT");
         assertThat(c2.name()).isEqualTo("new");
@@ -1883,7 +1885,7 @@ public class MySqlAntlrDdlParserTest {
         assertThat(tables.size()).isEqualTo(1);
         final Table table = tables.forTable(new TableId(null, "db", "t1"));
         assertThat(table).isNotNull();
-        assertThat(table.columns()).hasSize(2);
+        assertThat(table.columnSpan()).isEqualTo(2);
     }
 
     @FixFor("DBZ-437")
@@ -2181,7 +2183,6 @@ public class MySqlAntlrDdlParserTest {
         parser.parse(ddl, tables);
         mytable = tables.forTable(new TableId(null, null, "mytable"));
         List<String> mytableColumnNames = mytable.columns()
-                .stream()
                 .map(Column::name)
                 .collect(Collectors.toList());
 
@@ -2244,7 +2245,6 @@ public class MySqlAntlrDdlParserTest {
         parser.parse(ddl, tables);
         mytable = tables.forTable(new TableId(null, null, "mytable"));
         List<String> mytableColumnNames = mytable.columns()
-                .stream()
                 .map(Column::name)
                 .collect(Collectors.toList());
 
@@ -2374,15 +2374,15 @@ public class MySqlAntlrDdlParserTest {
         assertThat(tables.size()).isEqualTo(1);
         Table table = tables.forTable(new TableId(null, null, "test"));
         assertThat(table).isNotNull();
-        assertThat(table.columns().size()).isEqualTo(2);
+        assertThat(table.columnSpan()).isEqualTo(2);
 
         final String alter1 = "ALTER TABLE test " +
                 "  CHANGE myvalue myvalue INT;";
 
         parser.parse(alter1, tables);
         table = tables.forTable(new TableId(null, null, "test"));
-        assertThat(table.columns().size()).isEqualTo(2);
-        Column col = table.columns().get(1);
+        assertThat(table.columnSpan()).isEqualTo(2);
+        Column col = table.columns().collect(Collectors.toList()).get(1);
         assertThat(col.name()).isEqualTo("myvalue");
         assertThat(col.typeName()).isEqualTo("INT");
 
@@ -2391,8 +2391,8 @@ public class MySqlAntlrDdlParserTest {
 
         parser.parse(alter2, tables);
         table = tables.forTable(new TableId(null, null, "test"));
-        assertThat(table.columns().size()).isEqualTo(2);
-        col = table.columns().get(1);
+        assertThat(table.columnSpan()).isEqualTo(2);
+        col = table.columns().collect(Collectors.toList()).get(1);
         assertThat(col.name()).isEqualTo("myvalue");
         assertThat(col.typeName()).isEqualTo("TINYINT");
     }
@@ -2476,7 +2476,7 @@ public class MySqlAntlrDdlParserTest {
         parser.parse(alter1, tables);
         table = tables.forTable(new TableId(null, null, "my_table"));
 
-        assertThat(table.columns().size()).isEqualTo(4);
+        assertThat(table.columnSpan()).isEqualTo(4);
         assertThat(table.columnWithName("ts_col4").isOptional()).isEqualTo(false);
         assertThat(table.columnWithName("ts_col4").hasDefaultValue()).isEqualTo(true);
         assertThat(table.columnWithName("ts_col4").defaultValue()).isEqualTo(isoEpoch);
@@ -2487,7 +2487,7 @@ public class MySqlAntlrDdlParserTest {
         parser.parse(alter2, tables);
         table = tables.forTable(new TableId(null, null, "my_table"));
 
-        assertThat(table.columns().size()).isEqualTo(5);
+        assertThat(table.columnSpan()).isEqualTo(5);
         assertThat(table.columnWithName("ts_col5").isOptional()).isEqualTo(false);
         assertThat(table.columnWithName("ts_col5").hasDefaultValue()).isEqualTo(true);
         assertThat(table.columnWithName("ts_col5").defaultValue()).isEqualTo(isoEpoch);

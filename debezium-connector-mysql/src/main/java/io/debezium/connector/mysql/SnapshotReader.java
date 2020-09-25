@@ -645,11 +645,12 @@ public class SnapshotReader extends AbstractReader {
                                         // The table is included in the connector's filters, so process all of the table records
                                         // ...
                                         final Table table = schema.tableFor(tableId);
-                                        final int numColumns = table.columns().size();
+                                        final int numColumns = table.columnSpan();
                                         final Object[] row = new Object[numColumns];
                                         while (rs.next()) {
                                             for (int i = 0, j = 1; i != numColumns; ++i, ++j) {
-                                                Column actualColumn = table.columns().get(i);
+                                                String columnName = rs.getMetaData().getColumnName(j);
+                                                Column actualColumn = table.columnWithName(columnName);
                                                 row[i] = readField(rs, j, actualColumn, table);
                                             }
                                             recorder.recordRow(recordMaker, row, clock.currentTimeAsInstant()); // has no row number!

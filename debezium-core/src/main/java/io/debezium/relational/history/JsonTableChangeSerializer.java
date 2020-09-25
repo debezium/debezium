@@ -55,7 +55,6 @@ public class JsonTableChangeSerializer implements TableChanges.TableChangesSeria
         document.set("primaryKeyColumnNames", Array.create(table.primaryKeyColumnNames()));
 
         List<Document> columns = table.columns()
-                .stream()
                 .map(this::toDocument)
                 .collect(Collectors.toList());
 

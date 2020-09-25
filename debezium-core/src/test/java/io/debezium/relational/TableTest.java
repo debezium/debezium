@@ -8,6 +8,7 @@ package io.debezium.relational;
 import static org.fest.assertions.Assertions.assertThat;
 
 import java.sql.Types;
+import java.util.stream.Collectors;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -83,7 +84,7 @@ public class TableTest {
     @Test
     public void shouldHaveColumns() {
         assertThat(table.retrieveColumnNames()).containsExactly("C1", "C2", "C3", "C4");
-        assertThat(table.columns()).containsExactly(c1, c2, c3, c4);
+        assertThat(table.columns().collect(Collectors.toList())).containsExactly(c1, c2, c3, c4);
     }
 
     @Test

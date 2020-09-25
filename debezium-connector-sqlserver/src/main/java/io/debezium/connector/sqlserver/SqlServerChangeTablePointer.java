@@ -103,7 +103,6 @@ public class SqlServerChangeTablePointer extends ChangeTableResultSet<SqlServerC
      */
     private ResultSetMapper<Object[]> createResultSetMapper(Table table) throws SQLException {
         final List<String> sourceTableColumns = table.columns()
-                .stream()
                 .map(Column::name)
                 .collect(Collectors.toList());
         final List<String> resultColumns = getResultColumnNames();

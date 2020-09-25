@@ -21,7 +21,7 @@ import io.debezium.relational.history.TableChanges.TableChange;
 import io.debezium.util.SchemaNameAdjuster;
 
 /**
- * Ther serializer responsible for converting of {@link TableChanges} into an array of {@link Struct}s.
+ * The serializer responsible for converting of {@link TableChanges} into an array of {@link Struct}s.
  *
  * @author Jiri Pechanec
  *
@@ -102,7 +102,7 @@ public class ConnectTableChangeSerializer implements TableChanges.TableChangesSe
         struct.put(DEFAULT_CHARSET_NAME_KEY, table.defaultCharsetName());
         struct.put(PRIMARY_KEY_COLUMN_NAMES_KEY, table.primaryKeyColumnNames());
 
-        final List<Struct> columns = table.columns().stream()
+        final List<Struct> columns = table.columns()
                 .map(this::toStruct)
                 .collect(Collectors.toList());
 

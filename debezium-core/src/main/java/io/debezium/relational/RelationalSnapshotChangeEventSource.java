@@ -319,7 +319,7 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
                 ResultSet rs = statement.executeQuery(selectStatement.get())) {
 
             Column[] columns = getColumnsForResultSet(table, rs);
-            final int numColumns = table.columns().size();
+            final int numColumns = table.columnSpan();
             long rows = 0;
             Timer logTimer = getTableScanLogTimer();
             snapshotContext.lastRecordInTable = false;
@@ -440,6 +440,7 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
      * Completes the snapshot, doing any required clean-up (resource disposal etc.).
      * @param snapshotContext snapshot context
      */
+    @Override
     protected abstract void complete(SnapshotContext snapshotContext);
 
     private void rollbackTransaction(Connection connection) {

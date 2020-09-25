@@ -14,6 +14,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.BiConsumer;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Schema;
 
@@ -241,7 +242,7 @@ public final class Tables {
                 return null;
             }
             tablesByTableId.remove(existing.id());
-            TableImpl updated = new TableImpl(newTableId, existing.columns(),
+            TableImpl updated = new TableImpl(newTableId, existing.columns().collect(Collectors.toList()),
                     existing.primaryKeyColumnNames(), existing.defaultCharsetName());
             try {
                 return tablesByTableId.put(updated.id(), updated);

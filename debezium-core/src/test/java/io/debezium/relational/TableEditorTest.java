@@ -9,6 +9,7 @@ import static org.fest.assertions.Assertions.assertThat;
 
 import java.sql.Types;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -43,7 +44,7 @@ public class TableEditorTest {
     public void shouldCreateTableWhenEditorHasIdButNoColumns() {
         table = editor.tableId(id).create();
         assertThat(table.columnWithName("any")).isNull();
-        assertThat(table.columns()).isEmpty();
+        assertThat(table.columnSpan()).isEqualTo(0);
         assertThat(table.primaryKeyColumnNames()).isEmpty();
     }
 
@@ -73,7 +74,7 @@ public class TableEditorTest {
         assertThat(c3.position()).isEqualTo(3);
         table = editor.create();
         assertThat(table.retrieveColumnNames()).containsExactly("C1", "C2", "C3");
-        assertThat(table.columns()).containsExactly(c1, c2, c3);
+        assertThat(table.columns().collect(Collectors.toList())).containsExactly(c1, c2, c3);
         assertThat(table.primaryKeyColumnNames()).containsOnly("C1");
         assertValidPositions(editor);
     }
@@ -191,6 +192,6 @@ public class TableEditorTest {
 
     protected void assertValidPositions(Table editor) {
         AtomicInteger position = new AtomicInteger(1);
-        assertThat(editor.columns().stream().allMatch(defn -> defn.position() == position.getAndIncrement())).isTrue();
+        assertThat(editor.columns().allMatch(defn -> defn.position() == position.getAndIncrement())).isTrue();
     }
 }

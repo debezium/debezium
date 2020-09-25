@@ -356,7 +356,7 @@ public class RecordMakers {
             }
 
             private void validateColumnCount(TableSchema tableSchema, Object[] row) {
-                final int expectedColumnsCount = schema.tableFor(tableSchema.id()).columns().size();
+                final int expectedColumnsCount = schema.tableFor(tableSchema.id()).columnSpan();
                 if (expectedColumnsCount != row.length) {
                     logger.error("Invalid number of columns, expected '{}' arrived '{}'", expectedColumnsCount, row.length);
                     throw new ConnectException(

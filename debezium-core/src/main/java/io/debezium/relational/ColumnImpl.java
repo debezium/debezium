@@ -12,7 +12,7 @@ import java.util.Optional;
 
 import io.debezium.util.Strings;
 
-final class ColumnImpl implements Column, Comparable<Column> {
+public final class ColumnImpl implements Column, Comparable<Column> {
     private final String name;
     private final int position;
     private final int jdbcType;

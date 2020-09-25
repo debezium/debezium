@@ -9,6 +9,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import io.debezium.annotation.Immutable;
 
@@ -59,7 +60,6 @@ public interface Table {
      */
     default List<Column> filterColumns(Predicate<Column> predicate) {
         return columns()
-                .stream()
                 .filter(predicate)
                 .collect(Collectors.toList());
     }
@@ -78,7 +78,13 @@ public interface Table {
      *
      * @return the immutable and ordered list of definitions; never null
      */
-    List<Column> columns();
+    Stream<Column> columns();
+
+    /**
+     * Returns the number of column definitions in this table.
+     * @return
+     */
+    int columnSpan();
 
     /**
      * Get the definition for the column in this table with the supplied name. The case of the supplied name does not matter.

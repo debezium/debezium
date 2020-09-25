@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
@@ -112,7 +113,6 @@ public class TableSchemaBuilder {
         });
 
         table.columns()
-                .stream()
                 .filter(column -> filter == null || filter.matches(tableId.catalog(), tableId.schema(), tableId.table(), column.name()))
                 .forEach(column -> {
                     ColumnMapper mapper = mappers == null ? null : mappers.mapperFor(tableId, column);
@@ -234,10 +234,10 @@ public class TableSchemaBuilder {
      * @param mappers the mapping functions for columns; may be null if none of the columns are to be mapped to different values
      * @return the value-generating function, or null if there is no value schema
      */
-    protected StructGenerator createValueGenerator(Schema schema, TableId tableId, List<Column> columns,
+    protected StructGenerator createValueGenerator(Schema schema, TableId tableId, Stream<Column> columns,
                                                    ColumnNameFilter filter, ColumnMappers mappers) {
         if (schema != null) {
-            List<Column> columnsThatShouldBeAdded = columns.stream()
+            List<Column> columnsThatShouldBeAdded = columns
                     .filter(column -> filter == null || filter.matches(tableId.catalog(), tableId.schema(), tableId.table(), column.name()))
                     .collect(Collectors.toList());
             int[] recordIndexes = indexesForColumns(columnsThatShouldBeAdded);
@@ -265,12 +265,12 @@ public class TableSchemaBuilder {
                             result.put(fields[i], value);
                         }
                         catch (DataException | IllegalArgumentException e) {
-                            Column col = columns.get(i);
+                            Column col = columnsThatShouldBeAdded.get(i);
                             LOGGER.error("Failed to properly convert data value for '{}.{}' of type {} for row {}:",
                                     tableId, col.name(), col.typeName(), row, e);
                         }
                         catch (final Exception e) {
-                            Column col = columns.get(i);
+                            Column col = columnsThatShouldBeAdded.get(i);
                             LOGGER.error("Failed to properly convert data value for '{}.{}' of type {} for row {}:",
                                     tableId, col.name(), col.typeName(), row, e);
                         }

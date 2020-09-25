@@ -152,12 +152,12 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
         Objects.requireNonNull(table);
 
         // based on the schema columns, create the values on the same position as the columns
-        List<Column> schemaColumns = table.columns();
+        int span = table.columnSpan();
         // based on the replication message without toasted columns for now
         List<ReplicationMessage.Column> columnsWithoutToasted = columns.stream().filter(Predicates.not(ReplicationMessage.Column::isToastedColumn))
                 .collect(Collectors.toList());
         // JSON does not deliver a list of all columns for REPLICA IDENTITY DEFAULT
-        Object[] values = new Object[columnsWithoutToasted.size() < schemaColumns.size() ? schemaColumns.size() : columnsWithoutToasted.size()];
+        Object[] values = new Object[columnsWithoutToasted.size() < span ? span : columnsWithoutToasted.size()];
 
         final Set<String> undeliveredToastableColumns = new HashSet<>(schema.getToastableColumnsForTableId(table.id()));
         for (ReplicationMessage.Column column : columns) {
@@ -247,7 +247,7 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
     }
 
     private boolean schemaChanged(List<ReplicationMessage.Column> columns, Table table, boolean metadataInMessage) {
-        int tableColumnCount = table.columns().size();
+        int tableColumnCount = table.columnSpan();
         int replicationColumnCount = columns.size();
 
         boolean msgHasMissingColumns = tableColumnCount > replicationColumnCount;
@@ -327,7 +327,6 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
 
         // Compute list of table columns not present in the replication message
         List<String> missingColumnNames = table.columns()
-                .stream()
                 .filter(c -> !msgColumnNames.contains(c.name()))
                 .map(Column::name)
                 .collect(Collectors.toList());

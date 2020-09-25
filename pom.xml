@@ -94,7 +94,7 @@
         <!-- Testing -->
         <version.junit>4.12</version.junit>
         <version.fest>1.4</version.fest>
-        <version.jmh>1.21</version.jmh>
+        <version.jmh>1.25.2</version.jmh>
         <version.mockito>3.0.0</version.mockito>
         <version.awaitility>4.0.1</version.awaitility>
         <version.testcontainers>1.12.5</version.testcontainers>

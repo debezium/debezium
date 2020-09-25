@@ -121,7 +121,6 @@ public class Key {
 
             return (table) -> {
                 List<Column> candidates = table.columns()
-                        .stream()
                         .filter(c -> {
                             final TableId tableId = table.id();
                             if (tableIdMapper == null) {

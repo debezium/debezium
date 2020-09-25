@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -554,11 +555,12 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
     private static List<Column> resolveColumnsFromStreamTupleData(ByteBuffer buffer, TypeRegistry typeRegistry, Table table) {
         // Read number of the columns
         short numberOfColumns = buffer.getShort();
-
         List<Column> columns = new ArrayList<>(numberOfColumns);
-        for (short i = 0; i < numberOfColumns; ++i) {
 
-            final io.debezium.relational.Column column = table.columns().get(i);
+        Iterator<io.debezium.relational.Column> tableColumns = table.columns().iterator();
+
+        while (tableColumns.hasNext()) {
+            final io.debezium.relational.Column column = tableColumns.next();
             final String columnName = column.name();
             final String typeName = column.typeName();
             final PostgresType columnType = typeRegistry.get(typeName);

@@ -11,6 +11,7 @@ import static io.debezium.relational.ddl.AbstractDdlParser.withoutQuotes;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParser;
@@ -108,7 +109,7 @@ public class ViewSelectedColumnsParserListener extends MySqlParserBaseListener {
         TableEditor table = Table.editor();
         if (ctx.star != null) {
             tableByAlias.keySet().forEach(tableId -> {
-                table.addColumns(tableByAlias.get(tableId).columns());
+                table.addColumns(tableByAlias.get(tableId).columns().collect(Collectors.toList()));
             });
         }
         else {
@@ -116,7 +117,7 @@ public class ViewSelectedColumnsParserListener extends MySqlParserBaseListener {
                 if (selectElementContext instanceof MySqlParser.SelectStarElementContext) {
                     TableId tableId = parser.parseQualifiedTableId(((MySqlParser.SelectStarElementContext) selectElementContext).fullId());
                     Table selectedTable = tableByAlias.get(tableId);
-                    table.addColumns(selectedTable.columns());
+                    table.addColumns(selectedTable.columns().collect(Collectors.toList()));
                 }
                 else if (selectElementContext instanceof MySqlParser.SelectColumnElementContext) {
                     MySqlParser.SelectColumnElementContext selectColumnElementContext = (MySqlParser.SelectColumnElementContext) selectElementContext;
@@ -173,11 +174,9 @@ public class ViewSelectedColumnsParserListener extends MySqlParserBaseListener {
     }
 
     private void addColumnFromTable(TableEditor table, String columnName, String newColumnName, Table selectedTable) {
-        for (Column column : selectedTable.columns()) {
-            if (column.name().equals(columnName)) {
-                table.addColumn(column.edit().name(newColumnName).create());
-                break;
-            }
-        }
+        selectedTable.columns()
+                .filter(c -> c.name().equals(columnName))
+                .findFirst()
+                .ifPresent(c -> table.addColumn(c.edit().name(newColumnName).create()));
     }
 }
