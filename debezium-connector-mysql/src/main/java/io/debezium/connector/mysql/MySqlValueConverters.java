@@ -40,8 +40,10 @@ import com.github.shyiko.mysql.binlog.event.deserialization.AbstractRowsEventDat
 import com.github.shyiko.mysql.binlog.event.deserialization.json.JsonBinary;
 import com.mysql.cj.CharsetMapping;
 
+import io.debezium.DebeziumException;
 import io.debezium.annotation.Immutable;
 import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
+import io.debezium.connector.mysql.BinlogReader.ParsingErrorHandler;
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.data.Json;
 import io.debezium.jdbc.JdbcValueConverters;
@@ -110,6 +112,10 @@ public class MySqlValueConverters extends JdbcValueConverters {
         return temporal;
     }
 
+    private ParsingErrorHandler parsingErrorHandler = (message, exception) -> {
+        throw new DebeziumException(message, exception);
+    };
+
     /**
      * Create a new instance that always uses UTC for the default time zone when_needed converting values without timezone information
      * to values that require timezones.
@@ -159,10 +165,12 @@ public class MySqlValueConverters extends JdbcValueConverters {
      *            {@link io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode#PRECISE} is to be used
      * @param adjuster a temporal adjuster to make a database specific time modification before conversion
      * @param binaryMode how binary columns should be represented
+     * @param handler for errors during postponed binlog parsing
      */
     public MySqlValueConverters(DecimalMode decimalMode, TemporalPrecisionMode temporalPrecisionMode, BigIntUnsignedMode bigIntUnsignedMode, TemporalAdjuster adjuster,
-                                BinaryHandlingMode binaryMode) {
+                                BinaryHandlingMode binaryMode, ParsingErrorHandler parsingErrorHandler) {
         this(decimalMode, temporalPrecisionMode, ZoneOffset.UTC, bigIntUnsignedMode, adjuster, binaryMode);
+        this.parsingErrorHandler = parsingErrorHandler;
     }
 
     @Override
@@ -375,7 +383,8 @@ public class MySqlValueConverters extends JdbcValueConverters {
                         r.deliver(JsonBinary.parseAsString((byte[]) data));
                     }
                     catch (IOException e) {
-                        throw new ConnectException("Failed to parse and read a JSON value on " + column + ": " + e.getMessage(), e);
+                        parsingErrorHandler.error("Failed to parse and read a JSON value on '" + column + "' value " + Arrays.toString((byte[]) data), e);
+                        r.deliver(column.isOptional() ? null : "{}");
                     }
                 }
             }

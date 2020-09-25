@@ -15,7 +15,9 @@ import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
 import io.debezium.annotation.NotThreadSafe;
+import io.debezium.config.CommonConnectorConfig.EventProcessingFailureHandlingMode;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlConnectorConfig.BigIntUnsignedHandlingMode;
 import io.debezium.connector.mysql.MySqlSystemVariables.MySqlScope;
@@ -149,10 +151,20 @@ public class MySqlSchema extends RelationalDatabaseSchema {
         String bigIntUnsignedHandlingModeStr = configuration.getConfig().getString(MySqlConnectorConfig.BIGINT_UNSIGNED_HANDLING_MODE);
         BigIntUnsignedHandlingMode bigIntUnsignedHandlingMode = BigIntUnsignedHandlingMode.parse(bigIntUnsignedHandlingModeStr);
         BigIntUnsignedMode bigIntUnsignedMode = bigIntUnsignedHandlingMode.asBigIntUnsignedMode();
-
         final boolean timeAdjusterEnabled = configuration.getConfig().getBoolean(MySqlConnectorConfig.ENABLE_TIME_ADJUSTER);
-        return new MySqlValueConverters(decimalMode, timePrecisionMode, bigIntUnsignedMode, timeAdjusterEnabled ? MySqlValueConverters::adjustTemporal : x -> x,
-                configuration.binaryHandlingMode());
+        // TODO With MySQL connector rewrite the error handling should report also binlog coordinates
+        return new MySqlValueConverters(decimalMode, timePrecisionMode, bigIntUnsignedMode,
+                timeAdjusterEnabled ? MySqlValueConverters::adjustTemporal : x -> x, configuration.binaryHandlingMode(),
+                (message, exception) -> {
+                    if (configuration
+                            .getEventProcessingFailureHandlingMode() == EventProcessingFailureHandlingMode.FAIL) {
+                        throw new DebeziumException(message, exception);
+                    }
+                    else if (configuration
+                            .getEventProcessingFailureHandlingMode() == EventProcessingFailureHandlingMode.WARN) {
+                        logger.warn(message, exception);
+                    }
+                });
     }
 
     protected HistoryRecordComparator historyComparator() {

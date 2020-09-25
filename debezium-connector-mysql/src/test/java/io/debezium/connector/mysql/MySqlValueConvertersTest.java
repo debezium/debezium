@@ -11,12 +11,15 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Month;
 import java.time.temporal.TemporalAdjuster;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.kafka.connect.data.Field;
 import org.junit.Test;
 
+import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
+import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.Column;
@@ -32,6 +35,8 @@ import io.debezium.relational.ddl.DdlParser;
 public class MySqlValueConvertersTest {
 
     private static final TemporalAdjuster ADJUSTER = MySqlValueConverters::adjustTemporal;
+    private static final byte[] INVALID_JSON = { 2, 1, 0, 91, 0, 0, 7, 0, 2, 0, 84, 0, 18, 0, 4, 0, 22, 0, 6, 0, 12, 28,
+            0, 0, 47, 0, 116, 121, 112, 101 };
 
     @Test
     public void shouldAdjustLocalDateWithTwoDigitYears() {
@@ -69,15 +74,10 @@ public class MySqlValueConvertersTest {
 
     @Test
     public void testJsonValues() {
-        String sql = "CREATE TABLE JSON_TABLE (" +
-                "    A JSON," +
-                "    B JSON NOT NULL" +
-                ");";
+        String sql = "CREATE TABLE JSON_TABLE (" + "    A JSON," + "    B JSON NOT NULL" + ");";
 
         MySqlValueConverters converters = new MySqlValueConverters(JdbcValueConverters.DecimalMode.DOUBLE,
-                TemporalPrecisionMode.CONNECT,
-                JdbcValueConverters.BigIntUnsignedMode.LONG,
-                BinaryHandlingMode.BYTES);
+                TemporalPrecisionMode.CONNECT, JdbcValueConverters.BigIntUnsignedMode.LONG, BinaryHandlingMode.BYTES);
 
         DdlParser parser = new MySqlAntlrDdlParser();
         Tables tables = new Tables();
@@ -103,6 +103,58 @@ public class MySqlValueConvertersTest {
         assertThat(converters.converter(colB, fieldB).convert(null)).isEqualTo("{}");
         assertThat(converters.converter(colB, fieldB).convert("{ \"key1\": \"val1\", \"key2\": {\"key3\":\"val3\"} }"))
                 .isEqualTo("{ \"key1\": \"val1\", \"key2\": {\"key3\":\"val3\"} }");
+    }
+
+    @Test
+    @FixFor("DBZ-2563")
+    public void testSkipInvalidJsonValues() {
+        final AtomicInteger errorCount = new AtomicInteger(0);
+        String sql = "CREATE TABLE JSON_TABLE (" + "    A JSON," + "    B JSON NOT NULL" + ");";
+
+        MySqlValueConverters converters = new MySqlValueConverters(JdbcValueConverters.DecimalMode.DOUBLE,
+                TemporalPrecisionMode.CONNECT, JdbcValueConverters.BigIntUnsignedMode.LONG, x -> x,
+                BinaryHandlingMode.BYTES, (message, exception) -> {
+                    errorCount.incrementAndGet();
+                });
+
+        DdlParser parser = new MySqlAntlrDdlParser();
+        Tables tables = new Tables();
+        parser.parse(sql, tables);
+        Table table = tables.forTable(new TableId(null, null, "JSON_TABLE"));
+
+        // ColA - Nullable column
+        Column colA = table.columnWithName("A");
+        Field fieldA = new Field(colA.name(), -1, converters.schemaBuilder(colA).optional().build());
+        assertThat(converters.converter(colA, fieldA).convert(INVALID_JSON)).isEqualTo(null);
+        assertThat(errorCount.get()).isEqualTo(1);
+
+        // ColB - NOT NUll column
+        Column colB = table.columnWithName("B");
+        Field fieldB = new Field(colB.name(), -1, converters.schemaBuilder(colB).build());
+        assertThat(converters.converter(colB, fieldB).convert(INVALID_JSON)).isEqualTo("{}");
+        assertThat(errorCount.get()).isEqualTo(2);
+    }
+
+    @Test(expected = DebeziumException.class)
+    @FixFor("DBZ-2563")
+    public void testErrorOnInvalidJsonValues() {
+        String sql = "CREATE TABLE JSON_TABLE (" + "    A JSON," + "    B JSON NOT NULL" + ");";
+
+        MySqlValueConverters converters = new MySqlValueConverters(JdbcValueConverters.DecimalMode.DOUBLE,
+                TemporalPrecisionMode.CONNECT, JdbcValueConverters.BigIntUnsignedMode.LONG, x -> x,
+                BinaryHandlingMode.BYTES, (message, exception) -> {
+                    throw new DebeziumException(message, exception);
+                });
+
+        DdlParser parser = new MySqlAntlrDdlParser();
+        Tables tables = new Tables();
+        parser.parse(sql, tables);
+        Table table = tables.forTable(new TableId(null, null, "JSON_TABLE"));
+
+        // ColA - Nullable column
+        Column colA = table.columnWithName("A");
+        Field fieldA = new Field(colA.name(), -1, converters.schemaBuilder(colA).optional().build());
+        converters.converter(colA, fieldA).convert(INVALID_JSON);
     }
 
     protected LocalDate localDateWithYear(int year) {
