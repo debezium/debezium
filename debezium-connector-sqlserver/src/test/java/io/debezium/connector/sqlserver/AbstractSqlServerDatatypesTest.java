@@ -201,6 +201,9 @@ public abstract class AbstractSqlServerDatatypesTest extends AbstractConnectorTe
                     "INSERT INTO type_string VALUES (0, 'c\u010d', 'vc\u010d', 't\u010d', N'c\u010d', N'vc\u010d', N't\u010d')",
                     "INSERT INTO type_time VALUES (0, '2018-07-13', '10:23:45.678', '10:23:45.6789', '2018-07-13 11:23:45.34', '2018-07-13 12:23:45.456+11:00', '2018-07-13 13:23:45.78', '2018-07-13 14:23:45')",
                     "INSERT INTO type_xml VALUES (0, '<a>b</a>')");
+
+            // Make sure to wait for the CDC record for the last insert.
+            TestHelper.waitForCdcRecord(connection, "type_xml", rs -> rs.getInt("id") == 0);
         }
     }
 
@@ -312,6 +315,6 @@ public abstract class AbstractSqlServerDatatypesTest extends AbstractConnectorTe
                 .build();
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
-        Thread.sleep(1000);
+        TestHelper.waitForSnapshotToBeCompleted();
     }
 }
