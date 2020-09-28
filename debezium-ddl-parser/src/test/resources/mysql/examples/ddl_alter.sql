@@ -78,3 +78,26 @@ alter definer = 'ivan'@'%' view my_view3 as select count(*) from t3;
 alter definer = current_user sql security invoker view my_view4(c1, 1c, _, c1_2) 
 	as select * from  (t1 as tt1, t2 as tt2) inner join t1 on t1.col1 = tt1.col1;
 #end
+#begin
+-- Alter user
+alter user 'user'@'%' identified with 'mysql_native_password' as '*2470C0C06DEE42FD1618BB99005ADCA2EC9D1E19'
+    require none password expire default account unlock password history default;
+alter user 'user'@'%' identified with 'mysql_native_password' as '*2470C0C06DEE42FD1618BB99005ADCA2EC9D1E19'
+    require none password expire default account unlock password history 90;
+alter user 'user'@'%' identified with 'mysql_native_password' as '*2470C0C06DEE42FD1618BB99005ADCA2EC9D1E19'
+    require none password expire default account unlock password reuse interval default;
+alter user 'user'@'%' identified with 'mysql_native_password' as '*2470C0C06DEE42FD1618BB99005ADCA2EC9D1E19'
+    require none password expire default account unlock password reuse interval 360 DAY;
+alter user 'user'@'%' identified with 'mysql_native_password' as '*2470C0C06DEE42FD1618BB99005ADCA2EC9D1E19'
+    require none password expire default account unlock password require current;
+alter user 'user'@'%' identified with 'mysql_native_password' as '*2470C0C06DEE42FD1618BB99005ADCA2EC9D1E19'
+    require none password expire default account unlock password require current optional;
+alter user 'user'@'%' identified with 'mysql_native_password' as '*2470C0C06DEE42FD1618BB99005ADCA2EC9D1E19'
+    require none password expire default account unlock password require current default;
+alter user 'user'@'%' identified with 'mysql_native_password' as '*2470C0C06DEE42FD1618BB99005ADCA2EC9D1E19'
+    require none password expire default account unlock failed_login_attempts 5;
+alter user 'user'@'%' identified with 'mysql_native_password' as '*2470C0C06DEE42FD1618BB99005ADCA2EC9D1E19'
+    require none password expire default account unlock password_lock_time 2;
+alter user 'user'@'%' identified with 'mysql_native_password' as '*2470C0C06DEE42FD1618BB99005ADCA2EC9D1E19'
+    require none password expire default account unlock password_lock_time unbounded;
+#end
