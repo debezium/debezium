@@ -136,6 +136,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                 // There is no change in the database
                 if (maxLsnResult.getMaxTransactionalLsn().compareTo(lastProcessedPosition.getCommitLsn()) <= 0 && shouldIncreaseFromLsn) {
                     LOGGER.debug("No change in the database");
+                    metronome.pause();
                     continue;
                 }
 

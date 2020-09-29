@@ -285,9 +285,9 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
             .withDescription("The timezone of the server used to correctly shift the commit transaction timestamp on the client side"
                     + "Options include: Any valid Java ZoneId");
 
-    public static final Field STREAMING_MAX_LSN_SELECT_STATEMENT = Field.create("streaming.max.lsn.select.statement")
+    public static final Field STREAMING_MAX_LSN_SELECT_STATEMENT = Field.createInternal("streaming.max.lsn.select.statement")
             .withDisplayName("A select statement for the maximum lsn to utilize when determining if changes tables should be queried.")
-            .withDefault("")
+            .withDefault("SELECT MAX(start_lsn) FROM cdc.lsn_time_mapping WHERE tran_id <> 0x00")
             .withType(Type.STRING)
             .withWidth(Width.LONG)
             .withImportance(Importance.LOW)
