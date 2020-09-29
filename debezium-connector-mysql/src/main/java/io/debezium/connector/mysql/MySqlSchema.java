@@ -154,7 +154,7 @@ public class MySqlSchema extends RelationalDatabaseSchema {
         final boolean timeAdjusterEnabled = configuration.getConfig().getBoolean(MySqlConnectorConfig.ENABLE_TIME_ADJUSTER);
         // TODO With MySQL connector rewrite the error handling should report also binlog coordinates
         return new MySqlValueConverters(decimalMode, timePrecisionMode, bigIntUnsignedMode,
-                timeAdjusterEnabled ? MySqlValueConverters::adjustTemporal : x -> x, configuration.binaryHandlingMode(),
+                configuration.binaryHandlingMode(), timeAdjusterEnabled ? MySqlValueConverters::adjustTemporal : x -> x,
                 (message, exception) -> {
                     if (configuration
                             .getEventProcessingFailureHandlingMode() == EventProcessingFailureHandlingMode.FAIL) {

@@ -112,8 +112,8 @@ public class MySqlValueConvertersTest {
         String sql = "CREATE TABLE JSON_TABLE (" + "    A JSON," + "    B JSON NOT NULL" + ");";
 
         MySqlValueConverters converters = new MySqlValueConverters(JdbcValueConverters.DecimalMode.DOUBLE,
-                TemporalPrecisionMode.CONNECT, JdbcValueConverters.BigIntUnsignedMode.LONG, x -> x,
-                BinaryHandlingMode.BYTES, (message, exception) -> {
+                TemporalPrecisionMode.CONNECT, JdbcValueConverters.BigIntUnsignedMode.LONG, BinaryHandlingMode.BYTES,
+                x -> x, (message, exception) -> {
                     errorCount.incrementAndGet();
                 });
 
@@ -141,8 +141,8 @@ public class MySqlValueConvertersTest {
         String sql = "CREATE TABLE JSON_TABLE (" + "    A JSON," + "    B JSON NOT NULL" + ");";
 
         MySqlValueConverters converters = new MySqlValueConverters(JdbcValueConverters.DecimalMode.DOUBLE,
-                TemporalPrecisionMode.CONNECT, JdbcValueConverters.BigIntUnsignedMode.LONG, x -> x,
-                BinaryHandlingMode.BYTES, (message, exception) -> {
+                TemporalPrecisionMode.CONNECT, JdbcValueConverters.BigIntUnsignedMode.LONG, BinaryHandlingMode.BYTES,
+                x -> x, (message, exception) -> {
                     throw new DebeziumException(message, exception);
                 });
 
