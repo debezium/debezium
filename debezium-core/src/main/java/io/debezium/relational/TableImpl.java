@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import io.debezium.annotation.PackagePrivate;
 import io.debezium.util.Strings;
 
 final class TableImpl implements Table {
@@ -21,11 +22,13 @@ final class TableImpl implements Table {
     private final Map<String, Column> columnsByLowercaseName;
     private final String defaultCharsetName;
 
-    protected TableImpl(Table table) {
+    @PackagePrivate
+    TableImpl(Table table) {
         this(table.id(), table.columns(), table.primaryKeyColumnNames(), table.defaultCharsetName());
     }
 
-    protected TableImpl(TableId id, List<Column> sortedColumns, List<String> pkColumnNames, String defaultCharsetName) {
+    @PackagePrivate
+    TableImpl(TableId id, List<Column> sortedColumns, List<String> pkColumnNames, String defaultCharsetName) {
         this.id = id;
         this.columnDefs = Collections.unmodifiableList(sortedColumns);
         this.pkColumnNames = pkColumnNames == null ? Collections.emptyList() : Collections.unmodifiableList(pkColumnNames);
