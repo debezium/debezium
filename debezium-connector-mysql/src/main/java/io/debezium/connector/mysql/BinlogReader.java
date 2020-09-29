@@ -172,11 +172,6 @@ public class BinlogReader extends AbstractReader {
         }
     }
 
-    @FunctionalInterface
-    public static interface ParsingErrorHandler {
-        void error(String message, Exception exception);
-    }
-
     /**
      * Create a binlog reader.
      *

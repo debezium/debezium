@@ -43,7 +43,6 @@ import com.mysql.cj.CharsetMapping;
 import io.debezium.DebeziumException;
 import io.debezium.annotation.Immutable;
 import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
-import io.debezium.connector.mysql.BinlogReader.ParsingErrorHandler;
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.data.Json;
 import io.debezium.jdbc.JdbcValueConverters;
@@ -70,6 +69,11 @@ import io.debezium.util.Strings;
  */
 @Immutable
 public class MySqlValueConverters extends JdbcValueConverters {
+
+    @FunctionalInterface
+    public static interface ParsingErrorHandler {
+        void error(String message, Exception exception);
+    }
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MySqlValueConverters.class);
 
