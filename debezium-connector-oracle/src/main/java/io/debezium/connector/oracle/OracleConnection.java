@@ -108,7 +108,7 @@ public class OracleConnection extends JdbcConnection {
     }
 
     protected Set<TableId> getAllTableIds(String catalogName, String schemaNamePattern, boolean isView) throws SQLException {
-
+        schemaNamePattern = schemaNamePattern == null ? "" : schemaNamePattern;
         String query = "select table_name, owner from all_tables where table_name NOT LIKE 'MDRT_%' AND table_name not LIKE 'MDXT_%' " +
                 " and owner like '%" + schemaNamePattern.toUpperCase() + "%'";
         if (isView) {

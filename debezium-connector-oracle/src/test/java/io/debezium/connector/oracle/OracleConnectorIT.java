@@ -34,6 +34,7 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.OracleConnectorConfig.SnapshotMode;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIs;
+import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
@@ -246,6 +247,23 @@ public class OracleConnectorIT extends AbstractConnectorTest {
                 .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.CUSTOMER")
                 .build();
 
+        continueStreamingAfterSnapshot(config);
+    }
+
+    @Test
+    @FixFor("DBZ-2607")
+    @SkipWhenAdapterNameIs(value = SkipWhenAdapterNameIs.AdapterName.LOGMINER, reason = "Creates a backward compatibility regression")
+    public void shouldNotRequireDatabaseSchemaConfiguration() throws Exception {
+        final Map<String, ?> configMap = TestHelper.defaultConfig()
+                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.CUSTOMER")
+                .build()
+                .asMap();
+        configMap.remove(OracleConnectorConfig.SCHEMA_NAME.name());
+
+        continueStreamingAfterSnapshot(Configuration.from(configMap));
+    }
+
+    private void continueStreamingAfterSnapshot(Configuration config) throws Exception {
         int expectedRecordCount = 0;
         connection.execute("INSERT INTO debezium.customer VALUES (1, 'Billie-Bob', 1234.56, TO_DATE('2018/02/22', 'yyyy-mm-dd'))");
         connection.execute("INSERT INTO debezium.customer VALUES (2, 'Bruce', 2345.67, null)");
