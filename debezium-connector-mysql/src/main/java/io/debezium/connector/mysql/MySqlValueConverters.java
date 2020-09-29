@@ -112,9 +112,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
         return temporal;
     }
 
-    private ParsingErrorHandler parsingErrorHandler = (message, exception) -> {
-        throw new DebeziumException(message, exception);
-    };
+    private final ParsingErrorHandler parsingErrorHandler;
 
     /**
      * Create a new instance that always uses UTC for the default time zone when_needed converting values without timezone information
@@ -130,27 +128,9 @@ public class MySqlValueConverters extends JdbcValueConverters {
      */
     public MySqlValueConverters(DecimalMode decimalMode, TemporalPrecisionMode temporalPrecisionMode, BigIntUnsignedMode bigIntUnsignedMode,
                                 BinaryHandlingMode binaryMode) {
-        this(decimalMode, temporalPrecisionMode, ZoneOffset.UTC, bigIntUnsignedMode, x -> x, binaryMode);
-    }
-
-    /**
-     * Create a new instance, and specify the time zone offset that should be used only when converting values without timezone
-     * information to values that require timezones. This default offset should not be needed when values are highly-correlated
-     * with the expected SQL/JDBC types.
-     *
-     * @param decimalMode how {@code DECIMAL} and {@code NUMERIC} values should be treated; may be null if
-     *            {@link io.debezium.jdbc.JdbcValueConverters.DecimalMode#PRECISE} is to be used
-     * @param temporalPrecisionMode temporal precision mode based on {@link io.debezium.jdbc.TemporalPrecisionMode}
-     * @param defaultOffset the zone offset that is to be used when converting non-timezone related values to values that do
-     *            have timezones; may be null if UTC is to be used
-     * @param bigIntUnsignedMode how {@code BIGINT UNSIGNED} values should be treated; may be null if
-     *            {@link io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode#PRECISE} is to be used
-     * @param adjuster a temporal adjuster to make a database specific time modification before conversion
-     * @param binaryMode how binary columns should be represented
-     */
-    public MySqlValueConverters(DecimalMode decimalMode, TemporalPrecisionMode temporalPrecisionMode, ZoneOffset defaultOffset, BigIntUnsignedMode bigIntUnsignedMode,
-                                TemporalAdjuster adjuster, BinaryHandlingMode binaryMode) {
-        super(decimalMode, temporalPrecisionMode, defaultOffset, adjuster, bigIntUnsignedMode, binaryMode);
+        this(decimalMode, temporalPrecisionMode, bigIntUnsignedMode, binaryMode, x -> x, (message, exception) -> {
+            throw new DebeziumException(message, exception);
+        });
     }
 
     /**
@@ -163,13 +143,14 @@ public class MySqlValueConverters extends JdbcValueConverters {
      * @param temporalPrecisionMode temporal precision mode based on {@link io.debezium.jdbc.TemporalPrecisionMode}
      * @param bigIntUnsignedMode how {@code BIGINT UNSIGNED} values should be treated; may be null if
      *            {@link io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode#PRECISE} is to be used
-     * @param adjuster a temporal adjuster to make a database specific time modification before conversion
      * @param binaryMode how binary columns should be represented
+     * @param adjuster a temporal adjuster to make a database specific time modification before conversion
      * @param handler for errors during postponed binlog parsing
      */
-    public MySqlValueConverters(DecimalMode decimalMode, TemporalPrecisionMode temporalPrecisionMode, BigIntUnsignedMode bigIntUnsignedMode, TemporalAdjuster adjuster,
-                                BinaryHandlingMode binaryMode, ParsingErrorHandler parsingErrorHandler) {
-        this(decimalMode, temporalPrecisionMode, ZoneOffset.UTC, bigIntUnsignedMode, adjuster, binaryMode);
+    public MySqlValueConverters(DecimalMode decimalMode, TemporalPrecisionMode temporalPrecisionMode, BigIntUnsignedMode bigIntUnsignedMode,
+                                BinaryHandlingMode binaryMode,
+                                TemporalAdjuster adjuster, ParsingErrorHandler parsingErrorHandler) {
+        super(decimalMode, temporalPrecisionMode, ZoneOffset.UTC, adjuster, bigIntUnsignedMode, binaryMode);
         this.parsingErrorHandler = parsingErrorHandler;
     }
 
