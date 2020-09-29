@@ -1426,6 +1426,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
                 Arrays.asList("id", "name"));
 
         final Configuration config = TestHelper.defaultConfig()
+                .with(RelationalDatabaseConnectorConfig.TABLE_INCLUDE_LIST, ".*excluded_column_table_a")
                 .build();
 
         start(SqlServerConnector.class, config);
@@ -1441,7 +1442,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
 
         connection.execute("INSERT INTO excluded_column_table_a VALUES(11, 'some_name', 120)");
 
-        final SourceRecords records = consumeRecordsByTopic(3);
+        final SourceRecords records = consumeRecordsByTopic(2);
         final List<SourceRecord> tableA = records.recordsForTopic("server1.dbo.excluded_column_table_a");
 
         Schema expectedSchema1 = SchemaBuilder.struct()
