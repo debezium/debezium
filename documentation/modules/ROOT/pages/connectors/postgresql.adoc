@@ -2030,7 +2030,7 @@ apiVersion: kafka.strimzi.io/v1beta1
       database.password: dbz
       database.dbname: postgres  
       database.server.name: fullfillment   // <5>
-      database.include.list: public.inventory   // <6>
+      schema.include.list: public.inventory   // <6>
 ----
 <1> The name of the connector.
 <2> Only one task should operate at any one time.
@@ -2045,7 +2045,7 @@ those tasks will be redistributed to running services.
 <5> A unique server name.
 The server name is the logical identifier for the PostgreSQL server or cluster of servers.
 This name is used as the prefix for all Kafka topics that receive change event records.
-<6> Changes in only the `public.inventory` database are captured.
+<6> Changes in only the `public.inventory` schema are captured.
 
 endif::product[]
 
@@ -2468,7 +2468,7 @@ If `table_a` has a an `id` column, and `regex_1` is `^i` (matches any column tha
  +
 `disabled` - The connector does not attempt to create a publication. A database administrator or the user configured to perform replications must have created the publication before running the connector. If the connector cannot find the publication, the connector throws an exception and stops. +
  +
-`filtered` - If a publication exists, the connector uses it. If no publication exists, the connector creates a new publication for tables that match the current filter configuration as specified by the `database.exclude.list`, `database.include.list`, `table.exclude.list`, and `table.include.list` connector configuration properties. For example: `CREATE PUBLICATION <publication_name> FOR TABLE <tbl1, tbl2, tbl3>`.
+`filtered` - If a publication exists, the connector uses it. If no publication exists, the connector creates a new publication for tables that match the current filter configuration as specified by the `database.exclude.list`, `schema.include.list`, `schema.exclude.list`, and `table.include.list` connector configuration properties. For example: `CREATE PUBLICATION <publication_name> FOR TABLE <tbl1, tbl2, tbl3>`.
 
 |[[postgresql-property-binary-handling-mode]]<<postgresql-property-binary-handling-mode, `binary.handling{zwsp}.mode`>>
 |bytes
