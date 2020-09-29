@@ -12,13 +12,12 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Indicates that visibility of the annotated element is raised for the purposes of testing
- * (e.g. package-visible instead of private).
+ * Indicates that the annotated element intentionally uses default visibility.
  *
  * @author Gunnar Morling
  */
 @Documented
-@Target({ ElementType.TYPE, ElementType.FIELD, ElementType.METHOD })
+@Target({ ElementType.TYPE, ElementType.FIELD, ElementType.METHOD, ElementType.CONSTRUCTOR })
 @Retention(RetentionPolicy.SOURCE)
-public @interface VisibleForTesting {
+public @interface PackagePrivate {
 }

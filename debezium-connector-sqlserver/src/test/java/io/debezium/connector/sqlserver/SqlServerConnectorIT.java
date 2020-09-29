@@ -51,6 +51,7 @@ import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.junit.logging.LogInterceptor;
+import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.Tables;
 import io.debezium.relational.ddl.DdlParser;
 import io.debezium.relational.history.DatabaseHistory;
@@ -1524,7 +1525,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
                 Arrays.asList("id", "name"));
 
         final Configuration config = TestHelper.defaultConfig()
-                .with(SqlServerConnectorConfig.COLUMN_EXCLUDE_LIST, "dbo.exclude_list_column_table_a.amount")
+                .with(RelationalDatabaseConnectorConfig.TABLE_INCLUDE_LIST, ".*exclude_list_column_table_a")
                 .build();
 
         start(SqlServerConnector.class, config);
@@ -1532,7 +1533,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         waitForSnapshotToBeCompleted("sql_server", "server1");
         connection.execute("INSERT INTO exclude_list_column_table_a VALUES(11, 120, 'some_name')");
 
-        final SourceRecords records = consumeRecordsByTopic(3); // 3 as tablea has row insert in the before
+        final SourceRecords records = consumeRecordsByTopic(2);
         final List<SourceRecord> tableA = records.recordsForTopic("server1.dbo.exclude_list_column_table_a");
 
         Schema expectedSchemaA = SchemaBuilder.struct()
