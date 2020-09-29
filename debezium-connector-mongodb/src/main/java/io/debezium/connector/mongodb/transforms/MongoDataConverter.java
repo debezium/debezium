@@ -12,10 +12,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
+import org.apache.kafka.connect.errors.DataException;
 import org.bson.BsonArray;
 import org.bson.BsonDocument;
 import org.bson.BsonType;
@@ -130,7 +132,11 @@ public class MongoDataConverter {
                 break;
 
             case DOCUMENT:
-                Schema documentSchema = schema.field(keyvalueforStruct.getKey()).schema();
+                Field field = schema.field(keyvalueforStruct.getKey());
+                if (field == null) {
+                    throw new DataException("Failed to find field '" + keyvalueforStruct.getKey() + "' in schema " + schema.name());
+                }
+                Schema documentSchema = field.schema();
                 Struct documentStruct = new Struct(documentSchema);
                 BsonDocument docs = keyvalueforStruct.getValue().asDocument();
 
