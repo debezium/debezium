@@ -6,20 +6,25 @@
 package io.debezium.connector.mongodb.transforms;
 
 import static org.fest.assertions.Assertions.assertThat;
+import static org.junit.Assert.fail;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.header.Header;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.bson.Document;
@@ -36,6 +41,8 @@ import io.debezium.data.SchemaUtil;
 import io.debezium.doc.FixFor;
 import io.debezium.transforms.ExtractNewRecordStateConfigDefinition;
 import io.debezium.util.Collect;
+import io.debezium.util.IoUtil;
+import io.debezium.util.Testing;
 
 /**
  * Integration test for {@link ExtractNewDocumentState}. It sends operations into
@@ -59,6 +66,7 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
     private static final String ADD_FIELDS = "add.fields";
     private static final String ADD_FIELDS_PREFIX = ADD_FIELDS + ".prefix";
     private static final String ADD_HEADERS_PREFIX = ADD_HEADERS + ".prefix";
+    private static final String ARRAY_ENCODING = "array.encoding";
 
     @Override
     protected String getCollectionName() {
@@ -1447,6 +1455,53 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         assertThat(value.schema().field("a").schema()).isEqualTo(SchemaBuilder.OPTIONAL_INT32_SCHEMA);
         assertThat(value.schema().field("__patch").schema()).isEqualTo(io.debezium.data.Json.builder().optional().build());
         assertThat(value.schema().fields()).hasSize(3);
+    }
+
+    @Test(expected = DataException.class)
+    @FixFor("DBZ-2316")
+    public void testShouldThrowExceptionWithElementsDifferingStructures() throws Exception {
+        waitForStreamingRunning();
+
+        final Map<String, String> props = new HashMap<>();
+        props.put(ARRAY_ENCODING, "array");
+        props.put(ADD_FIELDS, "op,source.ts_ms");
+        transformation.configure(props);
+
+        final SourceRecords records = createCreateRecordFromJson("dbz-2316.json");
+        for (SourceRecord record : records.allRecordsInOrder()) {
+            final SourceRecord transformed = transformation.apply(record);
+        }
+    }
+
+    private SourceRecords createCreateRecordFromJson(String pathOnClasspath) throws Exception {
+        final List<Document> documents = loadTestDocuments(pathOnClasspath);
+        primary().execute("Load JSON", client -> {
+            for (Document document : documents) {
+                client.getDatabase(DB_NAME).getCollection(getCollectionName()).insertOne(document);
+            }
+        });
+
+        final SourceRecords records = consumeRecordsByTopic(documents.size());
+        assertThat(records.recordsForTopic(topicName()).size()).isEqualTo(documents.size());
+        assertNoRecordsToConsume();
+
+        return records;
+    }
+
+    private List<Document> loadTestDocuments(String pathOnClasspath) {
+        final List<Document> documents = new ArrayList<>();
+        try (InputStream stream = Testing.Files.readResourceAsStream(pathOnClasspath)) {
+            assertThat(stream).isNotNull();
+            IoUtil.readLines(stream, line -> {
+                Document document = Document.parse(line);
+                assertThat(document.size()).isGreaterThan(0);
+                documents.add(document);
+            });
+        }
+        catch (IOException e) {
+            fail("Unable to find or read file '" + pathOnClasspath + "': " + e.getMessage());
+        }
+        return documents;
     }
 
     private SourceRecord createCreateRecord() throws Exception {
