@@ -11,6 +11,12 @@ When you start the container,
 set this environment variable to one of the log levels (for example, `-e LOG_LEVEL=DEBUG`),
 and all of the code within the container will use that log level.
 
+There is also an option to override other log4j properties.  If you want to configure `log4j.rootLogger`
+differently, then use the environment variable `CONNECT_LOG4J_LOGGERS`.  For example to log only to stdout
+(without `appender`), you can use `CONNECT_LOG4J_LOGGERS=INFO, stdout`.  You can also set other supported
+log4j environment variables with the CONNECT_LOG4J prefix, which will be mapped to properties in the `log4j.properties`
+file by removing the `CONNECT_` prefix, lowercasing all characters, and converting all '_' characters to '.'.
+
 If you need more control over the logging configuration,
 create a new container image that is based on ours,
 except that in your `Dockerfile`, copy your own `log4j.properties` file into the image.
