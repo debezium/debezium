@@ -2376,14 +2376,48 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-2582")
-    public void testMaxLsnSelectStatement() throws Exception {
+    public void testMaxLsnSelectStatementWithDefault() throws Exception {
         final int RECORDS_PER_TABLE = 5;
         final int TABLES = 2;
         final int ID_START = 10;
 
         final Configuration config = TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
-                .with(SqlServerConnectorConfig.STREAMING_MAX_LSN_SELECT_STATEMENT, "SELECT MAX(start_lsn) FROM cdc.lsn_time_mapping WHERE tran_id <> 0x00")
+                .build();
+
+        start(SqlServerConnector.class, config);
+        assertConnectorIsRunning();
+
+        // Wait for snapshot completion
+        consumeRecordsByTopic(1);
+
+        for (int i = 0; i < RECORDS_PER_TABLE; i++) {
+            final int id = ID_START + i;
+            connection.execute(
+                    "INSERT INTO tablea VALUES(" + id + ", 'a')");
+            connection.execute(
+                    "INSERT INTO tableb VALUES(" + id + ", 'b')");
+        }
+
+        final SourceRecords records = consumeRecordsByTopic(RECORDS_PER_TABLE * TABLES);
+        final List<SourceRecord> tableA = records.recordsForTopic("server1.dbo.tablea");
+        final List<SourceRecord> tableB = records.recordsForTopic("server1.dbo.tableb");
+        Assertions.assertThat(tableA).hasSize(RECORDS_PER_TABLE);
+        Assertions.assertThat(tableB).hasSize(RECORDS_PER_TABLE);
+
+        stopConnector();
+    }
+
+    @Test
+    @FixFor("DBZ-2582")
+    public void testMaxLsnSelectStatementWithoutDefault() throws Exception {
+        final int RECORDS_PER_TABLE = 5;
+        final int TABLES = 2;
+        final int ID_START = 10;
+
+        final Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                .with(SqlServerConnectorConfig.STREAMING_MAX_LSN_SELECT_STATEMENT, "")
                 .build();
 
         start(SqlServerConnector.class, config);
