@@ -140,7 +140,7 @@ The `connector.class` field defines the name of the class that extends the Kafka
 
 When a Kafka Connect connector runs, it reads information from the source and periodically records "offsets" that define how much of that information it has processed. Should the connector be restarted, it will use the last recorded offset to know where in the source information it should resume reading.
 Since connectors don't know or care *how* the offsets are stored, it is up to the engine to provide a way to store and recover these offsets.
-The next few fields of our configuration specify that our engine should use the `FileOffsetBackingStore` class to store offsets in the `/path/to/storage/offset.dat` file on the local file system (the file can be named anything and stored anywhere).
+The next few fields of our configuration specify that our engine should use the `FileOffsetBackingStore` class to store offsets in the `/tmp/offsets.dat` file on the local file system (the file can be named anything and stored anywhere).
 Additionally, although the connector records the offsets with every source record it produces, the engine flushes the offsets to the backing store periodically (in our case, once each minute).
 These fields can be tailored as needed for your application.
 
@@ -179,7 +179,7 @@ In our code we set it to a fairly large but somewhat random value we'll use only
 
 The configuration also specifies a logical name for the MySQL server.
 The connector includes this logical name within the topic field of every source record it produces, enabling your application to discern the origin of those records.
-Our example uses a server name of "products", presumably because the database contains product information. Of course, you can name this anything meaningful to your application.
+Our example uses a server name of "my-app-connector". Of course, you can name this anything meaningful to your application.
 
 When the `MySqlConnector` class runs, it reads the MySQL server's binlog, which includes all data changes and schema changes made to the databases hosted by the server.
 Since all changes to data are structured in terms of the owning table's schema at the time the change was recorded, the connector needs to track all of the schema changes so that it can properly decode the change events.
