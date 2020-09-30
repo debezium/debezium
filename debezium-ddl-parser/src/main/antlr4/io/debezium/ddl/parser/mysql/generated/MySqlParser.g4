@@ -1539,13 +1539,20 @@ userSpecification
     ;
 
 userAuthOption
-    : userName IDENTIFIED BY PASSWORD hashed=STRING_LITERAL         #passwordAuthOption
+    : userName IDENTIFIED BY PASSWORD hashed=STRING_LITERAL         #hashAuthOption
     | userName
-      IDENTIFIED ((WITH|VIA) authPlugin)? BY STRING_LITERAL         #stringAuthOption
+      IDENTIFIED BY STRING_LITERAL                                  #stringAuthOption
     | userName
-      IDENTIFIED (WITH|VIA) authPlugin
-      ((USING|AS) STRING_LITERAL)?                                  #hashAuthOption
+      IDENTIFIED (WITH | VIA)
+      authenticationRule (OR authenticationRule)*                   #moduleAuthOption
     | userName                                                      #simpleAuthOption
+    ;
+
+authenticationRule
+    : authPlugin
+      ((USING | AS) STRING_LITERAL)?                                #onlyModule
+    | authPlugin
+      (USING | AS) passwordFunctionClause                           #passwordModuleOption
     ;
 
 tlsOption
@@ -2512,7 +2519,7 @@ keywordsCanBeId
     | TEMPORARY | TEMPTABLE | THAN | TRADITIONAL
     | TRANSACTION | TRANSACTIONAL | TRIGGERS | TRUNCATE | UNDEFINED | UNDOFILE
     | UNDO_BUFFER_SIZE | UNINSTALL | UNKNOWN | UNTIL | UPGRADE | USER | USE_FRM | USER_RESOURCES
-    | VALIDATION | VALUE | VARIABLES | VERSION_TOKEN_ADMIN | VIEW | WAIT | WARNINGS | WITHOUT
+    | VALIDATION | VALUE | VARIABLES | VERSION_TOKEN_ADMIN | VIA | VIEW | WAIT | WARNINGS | WITHOUT
     | WORK | WRAPPER | X509 | XA | XA_RECOVER_ADMIN | XML
     ;
 
