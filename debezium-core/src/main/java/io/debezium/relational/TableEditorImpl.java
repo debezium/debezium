@@ -276,8 +276,4 @@ class TableEditorImpl implements TableEditor {
         });
         return new TableImpl(id, columns, primaryKeyColumnNames(), defaultCharsetName);
     }
-
-    public LinkedHashMap<String, Column> getSortedColumns() {
-        return sortedColumns;
-    }
 }
