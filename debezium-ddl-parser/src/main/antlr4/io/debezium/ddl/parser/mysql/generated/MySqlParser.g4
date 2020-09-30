@@ -1550,7 +1550,7 @@ userAuthOption
 
 authenticationRule
     : authPlugin
-      ((USING | AS) STRING_LITERAL)?                                #module
+      ((BY | USING | AS) STRING_LITERAL)?                           #module
     | authPlugin
       (USING | AS) passwordFunctionClause                           #passwordModuleOption // MariaDB
     ;
