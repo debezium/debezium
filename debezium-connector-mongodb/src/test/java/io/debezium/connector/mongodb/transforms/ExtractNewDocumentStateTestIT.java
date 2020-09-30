@@ -1470,7 +1470,7 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
 
         final SourceRecords records = createCreateRecordFromJson("dbz-2316.json");
         for (SourceRecord record : records.allRecordsInOrder()) {
-            final SourceRecord transformed = transformation.apply(record);
+            transformation.apply(record);
         }
     }
 
@@ -1494,11 +1494,22 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
                                     + "    [7,8,9],"
                                     + "  ]"
                                     + "  ,'array_complex': ["
-                                    + "    {'k1' : 'v1','k2' : 1},{'k1' : 'v2','k2' : 2},"
+                                    + "    {'k1' : 'v1','k2' : 1},"
+                                    + "    {'k1' : 'v2','k2' : 2},"
                                     + "  ]"
                                     + "  ,'matrix_complex': ["
-                                    + "    [{'k3' : 'v111','k4' : [1,2,3]},{'k3' : 'v211','k4' : [4,5,6]}],"
-                                    + "    [{'k3' : 'v112','k4' : [7,8]},{'k3' : 'v212','k4' : [8]}],"
+                                    + "    ["
+                                    + "      {'k3' : 'v111',"
+                                    + "       'k4' : [1,2,3]},"
+                                    + "      {'k3' : 'v211',"
+                                    + "       'k4' : [4,5,6]}"
+                                    + "    ],"
+                                    + "    ["
+                                    + "      {'k3' : 'v112',"
+                                    + "       'k4' : [7,8]},"
+                                    + "      {'k3' : 'v212',"
+                                    + "       'k4' : [8]}"
+                                    + "    ],"
                                     + "  ]"
                                     + "}"));
         });
