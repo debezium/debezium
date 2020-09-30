@@ -39,6 +39,7 @@ import io.debezium.connector.mongodb.TestHelper;
 import io.debezium.data.Envelope;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.data.SchemaUtil;
+import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.transforms.ExtractNewRecordStateConfigDefinition;
 import io.debezium.util.Collect;
@@ -1414,7 +1415,9 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
 
         final SourceRecord insertRecord = records.recordsForTopic(this.topicName()).get(0);
         final SourceRecord transformedInsert = transformation.apply(insertRecord);
+
         assertThat(transformedInsert.valueSchema().field("empty_array")).isNull();
+        VerifyRecord.isValid(transformedInsert);
     }
 
     @Test

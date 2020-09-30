@@ -40,6 +40,10 @@ public class MongoDataConverter {
 
     private final ArrayEncoding arrayEncoding;
     private final FieldNamer<String> fieldNamer;
+
+    /**
+     * Whether to adjust certain field values to conform with Avro requirements.
+     */
     private final boolean sanitizeValue;
 
     public MongoDataConverter(ArrayEncoding arrayEncoding, FieldNamer<String> fieldNamer, boolean sanitizeValue) {
@@ -151,7 +155,12 @@ public class MongoDataConverter {
                 break;
 
             case ARRAY:
-                if (keyvalueforStruct.getValue().asArray().isEmpty() && !sanitizeValue) {
+                if (keyvalueforStruct.getValue().asArray().isEmpty()) {
+                    // export empty arrays as null for Avro
+                    if (sanitizeValue) {
+                        return;
+                    }
+
                     switch (arrayEncoding) {
                         case ARRAY:
                             colValue = new ArrayList<>();
@@ -161,9 +170,6 @@ public class MongoDataConverter {
                             colValue = new Struct(fieldSchema);
                             break;
                     }
-                }
-                else if (keyvalueforStruct.getValue().asArray().isEmpty()) {
-                    return;
                 }
                 else {
                     switch (arrayEncoding) {
@@ -352,7 +358,12 @@ public class MongoDataConverter {
                 break;
 
             case ARRAY:
-                if (keyValuesforSchema.getValue().asArray().isEmpty() && !sanitizeValue) {
+                if (keyValuesforSchema.getValue().asArray().isEmpty()) {
+                    // ignore empty arrays; currently only for Avro, but might be worth doing in general as we
+                    // cannot conclude an element type in any meaningful way
+                    if (sanitizeValue) {
+                        return;
+                    }
                     switch (arrayEncoding) {
                         case ARRAY:
                             builder.field(key, SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build());
@@ -362,7 +373,7 @@ public class MongoDataConverter {
                             break;
                     }
                 }
-                else if (!keyValuesforSchema.getValue().asArray().isEmpty()) {
+                else {
                     switch (arrayEncoding) {
                         case ARRAY:
                             BsonArray value = keyValuesforSchema.getValue().asArray();
