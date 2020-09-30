@@ -29,6 +29,7 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+import javax.management.InstanceNotFoundException;
 import javax.management.MBeanServer;
 import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
@@ -875,6 +876,7 @@ public abstract class AbstractConnectorTest implements Testing {
                 .alias("Streaming was not started on time")
                 .pollInterval(100, TimeUnit.MILLISECONDS)
                 .atMost(60, TimeUnit.SECONDS)
+                .ignoreException(InstanceNotFoundException.class)
                 .until(() -> {
                     boolean snapshotCompleted = (boolean) mbeanServer
                             .getAttribute(getSnapshotMetricsObjectName(connector, server), "SnapshotCompleted");
@@ -894,6 +896,7 @@ public abstract class AbstractConnectorTest implements Testing {
                 .alias("Streaming was not started on time")
                 .pollInterval(100, TimeUnit.MILLISECONDS)
                 .atMost(60, TimeUnit.SECONDS)
+                .ignoreException(InstanceNotFoundException.class)
                 .until(() -> {
                     boolean connected = (boolean) mbeanServer
                             .getAttribute(getStreamingMetricsObjectName(connector, server, contextName), "Connected");
