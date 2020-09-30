@@ -35,7 +35,7 @@ import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
 import io.debezium.relational.Tables.ColumnNameFilter;
 import io.debezium.relational.Tables.TableFilter;
-
+import io.debezium.util.Strings;
 import oracle.jdbc.OracleTypes;
 
 public class OracleConnection extends JdbcConnection {
@@ -108,21 +108,38 @@ public class OracleConnection extends JdbcConnection {
     }
 
     protected Set<TableId> getAllTableIds(String catalogName, String schemaNamePattern, boolean isView) throws SQLException {
-        schemaNamePattern = schemaNamePattern == null ? "" : schemaNamePattern;
-        String query = "select table_name, owner from all_tables where table_name NOT LIKE 'MDRT_%' AND table_name not LIKE 'MDXT_%' " +
-                " and owner like '%" + schemaNamePattern.toUpperCase() + "%'";
-        if (isView) {
-            query = "select view_name, owner from all_views where owner like '%" + schemaNamePattern.toUpperCase() + "%'";
+        String query;
+        boolean filterBySchema = !Strings.isNullOrEmpty(schemaNamePattern);
+
+        if (!isView) {
+            query = "select table_name, owner from all_tables where table_name NOT LIKE 'MDRT_%' AND table_name not LIKE 'MDXT_%' ";
+
+            if (filterBySchema) {
+                query += " and owner like '%?%'";
+            }
         }
+        else {
+            query = "select view_name, owner from all_views";
+
+            if (filterBySchema) {
+                query += " where owner like '%?%'";
+            }
+        }
+
         Set<TableId> tableIds = new HashSet<>();
 
-        try (PreparedStatement statement = connection().prepareStatement(query);
-                ResultSet result = statement.executeQuery();) {
-            while (result.next()) {
-                String tableName = result.getString(1);
-                final String schemaName = result.getString(2);
-                TableId tableId = new TableId(catalogName, schemaName, tableName);
-                tableIds.add(tableId);
+        try (PreparedStatement statement = connection().prepareStatement(query)) {
+            if (filterBySchema) {
+                statement.setString(1, schemaNamePattern.toUpperCase());
+            }
+
+            try(ResultSet result = statement.executeQuery()) {
+                while (result.next()) {
+                    String tableName = result.getString(1);
+                    final String schemaName = result.getString(2);
+                    TableId tableId = new TableId(catalogName, schemaName, tableName);
+                    tableIds.add(tableId);
+                }
             }
         }
         finally {
