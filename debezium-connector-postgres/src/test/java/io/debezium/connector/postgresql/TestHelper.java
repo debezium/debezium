@@ -8,6 +8,7 @@ package io.debezium.connector.postgresql;
 
 import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.fail;
 
 import java.net.URL;
 import java.nio.charset.Charset;
@@ -342,8 +343,8 @@ public final class TestHelper {
                         .until(() -> getOpenIdleTransactions(connection).size() == 0);
             }
             catch (ConditionTimeoutException e) {
+                fail("Expected no open transactions but there was at least one.");
             }
-            assertThat(getOpenIdleTransactions(connection)).hasSize(0);
         }
     }
 
