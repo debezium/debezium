@@ -157,7 +157,7 @@ public class SqlServerConnection extends JdbcConnection {
     public MaxLsnResult getMaxLsnResult(String alternativeMaxTransactionalQuery) throws SQLException {
         Lsn maxLsn = queryAndMap(GET_MAX_LSN, singleResultMapper(rs -> {
             final Lsn ret = Lsn.valueOf(rs.getBytes(1));
-            LOGGER.trace("Current maximum lsn is {}", ret);
+            LOGGER.trace("Current maximum LSN is {}", ret);
             return ret;
         }, "Maximum LSN query must return exactly one value"));
 
@@ -169,7 +169,7 @@ public class SqlServerConnection extends JdbcConnection {
         // Else run the alternative query for getting the largest lsn related to a valid transaction.
         return new MaxLsnResult(maxLsn, queryAndMap(alternativeMaxTransactionalQuery, singleResultMapper(rs -> {
             final Lsn ret = Lsn.valueOf(rs.getBytes(1));
-            LOGGER.trace("Current maximum transactional lsn is {}", ret);
+            LOGGER.trace("Current maximum transactional LSN is {}", ret);
             return ret;
         }, "Maximum transactional LSN query must return exactly one value")));
     }
