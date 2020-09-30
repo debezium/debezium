@@ -1079,7 +1079,7 @@ UPPER:                               'UPPER';
 UUID:                                'UUID';
 UUID_SHORT:                          'UUID_SHORT';
 VALIDATE_PASSWORD_STRENGTH:          'VALIDATE_PASSWORD_STRENGTH';
-VIA:                                 'VIA';
+VIA:                                 'VIA'; // MariaDB
 VERSION:                             'VERSION';
 WAIT_UNTIL_SQL_THREAD_AFTER_GTIDS:   'WAIT_UNTIL_SQL_THREAD_AFTER_GTIDS';
 WEEKDAY:                             'WEEKDAY';

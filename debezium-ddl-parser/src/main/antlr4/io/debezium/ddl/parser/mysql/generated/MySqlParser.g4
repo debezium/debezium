@@ -1543,16 +1543,16 @@ userAuthOption
     | userName
       IDENTIFIED BY STRING_LITERAL                                  #stringAuthOption
     | userName
-      IDENTIFIED (WITH | VIA)
+      IDENTIFIED (WITH | VIA)                                       // VIA and OR are MariaDB only
       authenticationRule (OR authenticationRule)*                   #moduleAuthOption
     | userName                                                      #simpleAuthOption
     ;
 
 authenticationRule
     : authPlugin
-      ((USING | AS) STRING_LITERAL)?                                #onlyModule
+      ((USING | AS) STRING_LITERAL)?                                #module
     | authPlugin
-      (USING | AS) passwordFunctionClause                           #passwordModuleOption
+      (USING | AS) passwordFunctionClause                           #passwordModuleOption // MariaDB
     ;
 
 tlsOption
