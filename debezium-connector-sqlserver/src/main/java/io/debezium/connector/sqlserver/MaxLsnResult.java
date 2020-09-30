@@ -16,7 +16,7 @@ public class MaxLsnResult {
     private final Lsn maxLsn;
 
     /**
-     * The highest lsn belonging to a valid change transaction as determined by {@link SqlServerConnectorConfig#STREAMING_MAX_LSN_SELECT_STATEMENT} or default to the same as maxLsn.
+     * The highest lsn belonging to a valid change transaction as determined by {@link SqlServerConnectorConfig#MAX_LSN_OPTIMIZATION} or default to the same as maxLsn.
      */
     private final Lsn maxTransactionalLsn;
 
