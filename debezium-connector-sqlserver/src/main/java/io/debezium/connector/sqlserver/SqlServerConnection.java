@@ -28,7 +28,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.microsoft.sqlserver.jdbc.SQLServerDriver;
-import com.microsoft.sqlserver.jdbc.StringUtils;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
@@ -58,6 +57,9 @@ public class SqlServerConnection extends JdbcConnection {
 
     private static final String STATEMENTS_PLACEHOLDER = "#";
     private static final String GET_MAX_LSN = "SELECT sys.fn_cdc_get_max_lsn()";
+
+    private static final String GET_MAX_LSN_SKIP_LOW_ACTIVTY = "SELECT (SELECT MAX(start_lsn) FROM cdc.lsn_time_mapping), (SELECT MAX(start_lsn) FROM cdc.lsn_time_mapping WHERE tran_id <> 0x00)";
+
     private static final String GET_MIN_LSN = "SELECT sys.fn_cdc_get_min_lsn('#')";
     private static final String LOCK_TABLE = "SELECT * FROM [#] WITH (TABLOCKX)";
     private static final String SQL_SERVER_VERSION = "SELECT @@VERSION AS 'SQL Server Version'";
@@ -154,24 +156,22 @@ public class SqlServerConnection extends JdbcConnection {
         }, "Maximum LSN query must return exactly one value"));
     }
 
-    public MaxLsnResult getMaxLsnResult(String alternativeMaxTransactionalQuery) throws SQLException {
-        Lsn maxLsn = queryAndMap(GET_MAX_LSN, singleResultMapper(rs -> {
+    public MaxLsnResult getMaxLsnResult(boolean skipLowActivityLSNsEnabled) throws SQLException {
+        if (skipLowActivityLSNsEnabled) {
+            return prepareQueryAndMap(GET_MAX_LSN_SKIP_LOW_ACTIVTY, statement -> {
+            }, singleResultMapper(rs -> {
+                final MaxLsnResult ret = new MaxLsnResult(Lsn.valueOf(rs.getBytes(1)), Lsn.valueOf(rs.getBytes(2)));
+                LOGGER.trace("Current maximum transactional LSN is {}", ret);
+                return ret;
+            }, "Maximum transactional LSN query must return exactly one value"));
+        }
+        Lsn maxLsn = prepareQueryAndMap(GET_MAX_LSN, statement -> {
+        }, singleResultMapper(rs -> {
             final Lsn ret = Lsn.valueOf(rs.getBytes(1));
             LOGGER.trace("Current maximum LSN is {}", ret);
             return ret;
         }, "Maximum LSN query must return exactly one value"));
-
-        if (StringUtils.isEmpty(alternativeMaxTransactionalQuery)) {
-            // If not alternative query is provided, return the default for both.
-            return new MaxLsnResult(maxLsn, maxLsn);
-        }
-
-        // Else run the alternative query for getting the largest lsn related to a valid transaction.
-        return new MaxLsnResult(maxLsn, queryAndMap(alternativeMaxTransactionalQuery, singleResultMapper(rs -> {
-            final Lsn ret = Lsn.valueOf(rs.getBytes(1));
-            LOGGER.trace("Current maximum transactional LSN is {}", ret);
-            return ret;
-        }, "Maximum transactional LSN query must return exactly one value")));
+        return new MaxLsnResult(maxLsn, maxLsn);
     }
 
     /**
