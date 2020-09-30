@@ -24,6 +24,8 @@ import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.connector.postgresql.PostgresValueConverter;
+
 /**
  * Transformer for time/date related string representations in JSON messages coming from the wal2json plugin.
  *
@@ -119,6 +121,11 @@ public interface DateTimeFormat {
                 .appendOffset("+HH:mm", "")
                 .toFormatter();
 
+        private static final String POSITIVE_INFINITY_STRING = "infinity";
+        private static final String NEGATIVE_INFINITY_STRING = "-infinity";
+        private static final OffsetDateTime POSITIVE_INFINITY_OFFSET_DATE_TIME = PostgresValueConverter.TIMESTAMP_POSITIVE_INFINITY.atOffset(ZoneOffset.UTC);
+        private static final OffsetDateTime NEGATIVE_INFINITY_OFFSET_DATE_TIME = PostgresValueConverter.TIMESTAMP_NEGATIVE_INFINITY.atOffset(ZoneOffset.UTC);
+
         @Override
         public LocalDate date(final String s) {
             return format(DATE_FORMAT_OPT_ERA_PATTERN_HINT, s, () -> LocalDate.parse(s, DATE_FORMAT_OPT_ERA));
@@ -146,11 +153,23 @@ public interface DateTimeFormat {
 
         @Override
         public Instant timestampToInstant(String s) {
+            if (POSITIVE_INFINITY_STRING.equals(s)) {
+                return PostgresValueConverter.TIMESTAMP_POSITIVE_INFINITY;
+            }
+            else if (NEGATIVE_INFINITY_STRING.equals(s)) {
+                return PostgresValueConverter.TIMESTAMP_NEGATIVE_INFINITY;
+            }
             return format(TS_FORMAT_PATTERN_HINT, s, () -> LocalDateTime.from(TS_FORMAT.parse(s)).toInstant(ZoneOffset.UTC));
         }
 
         @Override
         public OffsetDateTime timestampWithTimeZoneToOffsetDateTime(String s) {
+            if (POSITIVE_INFINITY_STRING.equals(s)) {
+                return POSITIVE_INFINITY_OFFSET_DATE_TIME;
+            }
+            else if (NEGATIVE_INFINITY_STRING.equals(s)) {
+                return NEGATIVE_INFINITY_OFFSET_DATE_TIME;
+            }
             return format(TS_TZ_FORMAT_PATTERN_HINT, s, () -> OffsetDateTime.from(TS_TZ_FORMAT.parse(s)));
         }
 

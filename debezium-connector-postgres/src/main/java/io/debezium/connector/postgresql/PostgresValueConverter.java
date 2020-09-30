@@ -14,6 +14,7 @@ import java.math.BigDecimal;
 import java.nio.charset.Charset;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.OffsetTime;
@@ -64,6 +65,7 @@ import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.Column;
 import io.debezium.relational.ValueConverter;
+import io.debezium.time.Conversions;
 import io.debezium.time.Interval;
 import io.debezium.time.MicroDuration;
 import io.debezium.time.MicroTime;
@@ -107,6 +109,16 @@ public class PostgresValueConverter extends JdbcValueConverters {
     public static final String NEGATIVE_INFINITY = "-Infinity";
 
     private static final BigDecimal MICROSECONDS_PER_SECOND = new BigDecimal(1_000_000);
+
+    /**
+     * A value used by Debezium to define timestamp as positive infinity.
+     */
+    public static final Instant TIMESTAMP_POSITIVE_INFINITY = Conversions.toInstantFromMicros(Long.MAX_VALUE);
+
+    /**
+     * A number used by Debezium to define timestamp as negative infinity.
+     */
+    public static final Instant TIMESTAMP_NEGATIVE_INFINITY = Conversions.toInstantFromMicros(Long.MAX_VALUE + 1);
 
     /**
      * A formatter used to parse TIMETZ columns when provided as strings.

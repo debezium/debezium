@@ -43,6 +43,18 @@ public class PgProtoColumnValue extends AbstractColumnValue<PgProto.DatumMessage
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PgProtoColumnValue.class);
 
+    /**
+     * A number used by PostgreSQL to define minimum timestamp (inclusive).
+     * Defined in timestamp.h
+     */
+    private static final long TIMESTAMP_MIN = -211813488000000000L;
+
+    /**
+     * A number used by PostgreSQL to define maximum timestamp (exclusive).
+     * Defined in timestamp.h
+     */
+    private static final long TIMESTAMP_MAX = 9223371331200000000L;
+
     private PgProto.DatumMessage value;
 
     public PgProtoColumnValue(PgProto.DatumMessage value) {
@@ -192,6 +204,12 @@ public class PgProtoColumnValue extends AbstractColumnValue<PgProto.DatumMessage
     @Override
     public Instant asInstant() {
         if (value.hasDatumInt64()) {
+            if (value.getDatumInt64() < TIMESTAMP_MIN) {
+                return PostgresValueConverter.TIMESTAMP_NEGATIVE_INFINITY;
+            }
+            else if (value.getDatumInt64() >= TIMESTAMP_MAX) {
+                return PostgresValueConverter.TIMESTAMP_POSITIVE_INFINITY;
+            }
             return Conversions.toInstantFromMicros(value.getDatumInt64());
         }
 
