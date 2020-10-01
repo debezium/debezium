@@ -1159,6 +1159,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
+    @FixFor("DBZ-2456")
     public void shouldAllowForSelectiveSnapshot() throws InterruptedException {
         TestHelper.execute(SETUP_TABLES_STMT);
         Configuration.Builder configBuilder = TestHelper.defaultConfig()

@@ -6,8 +6,9 @@
 package io.debezium.pipeline.source;
 
 import java.time.Duration;
+import java.util.Collection;
 import java.util.Set;
-import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -84,15 +85,14 @@ public abstract class AbstractSnapshotChangeEventSource implements SnapshotChang
         }
     }
 
-    protected <T extends DataCollectionId> Set<T> determineAllowedDataCollectionsForSnapshot(final Set<T> allDataCollections) {
-        final Set<String> snapshotAllowedTables = connectorConfig.getSnapshotAllowedTables();
-        if (snapshotAllowedTables.size() == 0) {
-            return allDataCollections;
+    protected <T extends DataCollectionId> Stream<T> determineDataCollectionsToBeSnapshotted(final Collection<T> allDataCollections) {
+        final Set<String> snapshotAllowedDataCollections = connectorConfig.getDataCollectionsToBeSnapshotted();
+        if (snapshotAllowedDataCollections.size() == 0) {
+            return allDataCollections.stream();
         }
         else {
             return allDataCollections.stream()
-                    .filter(dataCollectionId -> snapshotAllowedTables.stream().anyMatch(s -> dataCollectionId.identifier().matches(s)))
-                    .collect(Collectors.toSet());
+                    .filter(dataCollectionId -> snapshotAllowedDataCollections.stream().anyMatch(s -> dataCollectionId.identifier().matches(s)));
         }
     }
 

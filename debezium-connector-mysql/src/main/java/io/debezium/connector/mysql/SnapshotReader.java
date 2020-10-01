@@ -255,7 +255,7 @@ public class SnapshotReader extends AbstractReader {
         final List<TableId> tablesToSnapshotSchemaAfterUnlock = new ArrayList<>();
         Set<TableId> lockedTables = Collections.emptySet();
 
-        final Set<String> snapshotAllowedTables = context.getConnectorConfig().getSnapshotAllowedTables();
+        final Set<String> snapshotAllowedTables = context.getConnectorConfig().getDataCollectionsToBeSnapshotted();
         final Predicate<TableId> isAllowedForSnapshot = tableId -> snapshotAllowedTables.size() == 0
                 || snapshotAllowedTables.stream().anyMatch(s -> tableId.identifier().matches(s));
         try {
@@ -408,7 +408,6 @@ public class SnapshotReader extends AbstractReader {
                                 else {
                                     logger.info("\t '{}' is not added among known tables", id);
                                 }
-                                //
                                 if (filters.tableFilter().and(isAllowedForSnapshot).test(id)) {
                                     capturedTableIds.add(id);
                                     logger.info("\t including '{}' for further processing", id);

@@ -312,7 +312,7 @@ public abstract class CommonConnectorConfig {
             .withValidation(Field::isNonNegativeInteger);
 
     public static final Field SNAPSHOT_MODE_TABLES = Field.create("snapshot.include.collection.list")
-            .withDisplayName("Snapshot Mode include Data Collection")
+            .withDisplayName("Snapshot mode include data collection")
             .withType(Type.LIST)
             .withWidth(Width.LONG)
             .withImportance(Importance.MEDIUM)
@@ -553,7 +553,7 @@ public abstract class CommonConnectorConfig {
         }
     }
 
-    public Set<String> getSnapshotAllowedTables() {
+    public Set<String> getDataCollectionsToBeSnapshotted() {
         return Optional.ofNullable(config.getString(SNAPSHOT_MODE_TABLES))
                 .map(tables -> Strings.setOf(tables, Function.identity()))
                 .orElseGet(Collections::emptySet);
