@@ -615,7 +615,8 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
                 new SchemaAndValueField("tz_large", ZonedTimestamp.builder().optional().build(), expectedTzLarge),
                 new SchemaAndValueField("ts_max", MicroTimestamp.builder().optional().build(), 9223371331200000000L - 1L),
                 // PostgreSQL rejects smaller timestamp even if it is larger than TIMESTAMP_MIN
-                new SchemaAndValueField("ts_min", MicroTimestamp.builder().optional().build(), -210831897600000001L),
+                // disabled due to DBZ-2616
+                // new SchemaAndValueField("ts_min", MicroTimestamp.builder().optional().build(), -210831897600000001L),
                 new SchemaAndValueField("tz_max", ZonedTimestamp.builder().optional().build(), "+294247-01-01T23:59:59.999999Z"));
     }
 
