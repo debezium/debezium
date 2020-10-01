@@ -17,6 +17,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.bson.BsonTimestamp;
@@ -342,7 +343,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
 
         LOGGER.info("Beginning snapshot of '{}' at {}", rsName, rsOffsetContext.getOffset());
 
-        final Set<CollectionId> collections = determineAllowedDataCollectionsForSnapshot(primaryClient.collections());
+        final List<CollectionId> collections = determineDataCollectionsToBeSnapshotted(primaryClient.collections()).collect(Collectors.toList());
         snapshotProgressListener.monitoredDataCollectionsDetermined(collections);
         if (connectionContext.maxNumberOfCopyThreads() > 1) {
             // Since multiple copy threads are to be used, create a thread pool and initiate the copy.

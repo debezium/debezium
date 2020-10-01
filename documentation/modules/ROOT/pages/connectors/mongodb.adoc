@@ -1138,7 +1138,7 @@ Must not be used with `collection.include.list`.
 
 |[[mongodb-property-snapshot-include-collection-list]]<<mongodb-property-snapshot-include-collection-list, `snapshot.include.collection.list`>>
 | All collections specified in `collection.include.list`
-|An optional, comma-separated list of regular expressions that match names of schemas specified in `table.include.list` for which you *want* to take the snapshot.
+|An optional, comma-separated list of regular expressions that match names of schemas specified in `collection.include.list` for which you *want* to take the snapshot.
 
 |[[mongodb-property-field-blacklist]]
 [[mongodb-property-field-exclude-list]]<<mongodb-property-field-exclude-list, `field.exclude{zwsp}.list`>>

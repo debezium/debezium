@@ -966,6 +966,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
+    @FixFor("DBZ-2456")
     public void shouldSelectivelySnapshot() throws InterruptedException {
         config = TestHelper.getConfiguration().edit()
                 .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)

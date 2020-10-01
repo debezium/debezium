@@ -186,7 +186,7 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
     }
 
     private void determineCapturedTables(RelationalSnapshotContext ctx) throws Exception {
-        Set<TableId> allTableIds = determineAllowedDataCollectionsForSnapshot(getAllTableIds(ctx));
+        Set<TableId> allTableIds = determineDataCollectionsToBeSnapshotted(getAllTableIds(ctx)).collect(Collectors.toSet());
 
         Set<TableId> capturedTables = new HashSet<>();
 

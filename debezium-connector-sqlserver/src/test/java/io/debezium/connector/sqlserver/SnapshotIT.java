@@ -371,6 +371,7 @@ public class SnapshotIT extends AbstractConnectorTest {
     }
 
     @Test
+    @FixFor("DBZ-2456")
     public void shouldSelectivelySnapshotTables() throws SQLException, InterruptedException {
         connection.execute(
                 "CREATE TABLE table_a (id int, name varchar(30), amount integer primary key(id))",
