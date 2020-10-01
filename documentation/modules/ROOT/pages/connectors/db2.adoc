@@ -1040,7 +1040,7 @@ The following table describes how the connector maps each of the Db2 data types 
 
 |`BOOLEAN`
 |`BOOLEAN`
-|We are investigating a problem with BOOLEAN types on tables. At this time only the snapshot works, but no CDC can be done on tables with BOOLEAN types.
+|Only snapshots can be taken from tables with BOOLEAN type columns. Currently SQL Replication on Db2 does not support BOOLEAN, so Debezium can not perform CDC on those tables. Consider using a different type.
 
 
 |`BIGINT`
