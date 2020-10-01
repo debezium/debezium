@@ -2526,7 +2526,9 @@ ifdef::community[]
 |
 | A full Java class name that is an implementation of the `io.debezium.connector.postgresql.spi.Snapshotter` interface. Required when the `snapshot.mode` property is set to `custom`. See {link-prefix}:{link-postgresql-connector}#postgresql-custom-snapshot[custom snapshotter SPI].
 endif::community[]
-
+|[[postgresql-property-snapshot-include-collection-list]]<<postgresql-property-snapshot-include-collection-list, `snapshot.include.collection.list`>>
+| All tables specified in `table.include.list`
+|An optional, comma-separated list of regular expressions that match names of schemas specified in `table.include.list` for which you *want* to take the snapshot when the `snapshot.mode` is not `never`
 |[[postgresql-property-snapshot-lock-timeout-ms]]<<postgresql-property-snapshot-lock-timeout-ms, `snapshot.lock{zwsp}.timeout.ms`>>
 |`10000`
 |Positive integer value that specifies the maximum amount of time (in milliseconds) to wait to obtain table locks when performing a snapshot. If the connector cannot acquire table locks in this time interval, the snapshot fails. {link-prefix}:{link-postgresql-connector}#postgresql-snapshots[How the connector performs snapshots] provides details. 
