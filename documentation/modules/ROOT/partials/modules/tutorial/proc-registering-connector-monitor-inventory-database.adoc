@@ -66,7 +66,7 @@ This name will be used as the prefix for all Kafka topics.
 <7> The connector will store the history of the database schemas in Kafka using this broker (the same broker to which you are sending events) and topic name.
 Upon restart, the connector will recover the schemas of the database that existed at the point in time in the `binlog` when the connector should begin reading.
 
-For more information about connector configuration properties, see {link-prefix}:{link-mysql-connector}#mysql-connector-configuration-properties_{context}[MySQL connector configuration properties].
+For more information, see {link-prefix}:{link-mysql-connector}#mysql-connector-properties[MySQL connector configuration properties].
 --
 
 . Open a new terminal, and use the `curl` command to register the {prodname} MySQL connector.
