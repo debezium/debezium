@@ -2,6 +2,55 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 1.3.0.Final
+October 1st, 2020 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12350725)
+
+### New features since 1.3.0.CR1
+
+* Allow configurable CONNECT_LOG4J_LOGGERS in connect images [DBZ-2541](https://issues.jboss.org/browse/DBZ-2541)
+* MySQL connector - ignore statement-based logs [DBZ-2583](https://issues.jboss.org/browse/DBZ-2583)
+* Add a configuration which sanitizes values in mongodb [DBZ-2585](https://issues.jboss.org/browse/DBZ-2585)
+
+
+### Breaking changes since 1.3.0.CR1
+
+None
+
+
+### Fixes since 1.3.0.CR1
+
+* Sqlserver connector block cdc cleanup job [DBZ-1285](https://issues.jboss.org/browse/DBZ-1285)
+* Upgrade Guava library due to GuavaCompatibility errors [DBZ-2008](https://issues.jboss.org/browse/DBZ-2008)
+* mongodb-connector NPE in process of  MongoDataConverter  [DBZ-2316](https://issues.jboss.org/browse/DBZ-2316)
+* Error with UUID-typed collection column [DBZ-2512](https://issues.jboss.org/browse/DBZ-2512)
+* event.processing.failure.handling.mode doesn't skip unparseable data events [DBZ-2563](https://issues.jboss.org/browse/DBZ-2563)
+* decoderbufs Segmentation fault on timestamp with infinity [DBZ-2565](https://issues.jboss.org/browse/DBZ-2565)
+* MongoDB ExtractNewDocumentState can not extract array of array [DBZ-2569](https://issues.jboss.org/browse/DBZ-2569)
+* New MySQL 8 ALTER USER password options not supported [DBZ-2576](https://issues.jboss.org/browse/DBZ-2576)
+* MariaDB ANTLR parser issue for grant syntax [DBZ-2586](https://issues.jboss.org/browse/DBZ-2586)
+* Debezium Db2 connector fails with tables using BOOLEAN type [DBZ-2587](https://issues.jboss.org/browse/DBZ-2587)
+* db2 connector doesn't allow to reprocess messages [DBZ-2591](https://issues.jboss.org/browse/DBZ-2591)
+* Missing links in filter and content-based SMT doc [DBZ-2593](https://issues.jboss.org/browse/DBZ-2593)
+* Format error in doc for topic routing and event flattening SMTs [DBZ-2596](https://issues.jboss.org/browse/DBZ-2596)
+* Debezium refers to database instead of schema in Postgres config [DBZ-2605](https://issues.jboss.org/browse/DBZ-2605)
+* NullPointerException thrown when calling getAllTableIds [DBZ-2607](https://issues.jboss.org/browse/DBZ-2607)
+
+
+### Other changes since 1.3.0.CR1
+
+* Coordinate docs work for downstream 1.2 release [DBZ-2272](https://issues.jboss.org/browse/DBZ-2272)
+* Gracefully handle server-side filtered columns [DBZ-2495](https://issues.jboss.org/browse/DBZ-2495)
+* Schema change events fail to be dispatched due to inconsistent case [DBZ-2555](https://issues.jboss.org/browse/DBZ-2555)
+* Use dedicated functional interface for struct generators [DBZ-2588](https://issues.jboss.org/browse/DBZ-2588)
+* Remove obsolete note from docs [DBZ-2590](https://issues.jboss.org/browse/DBZ-2590)
+* Intermittent test failure on CI - ReplicationConnectionIT#shouldResumeFromLastReceivedLSN [DBZ-2435](https://issues.jboss.org/browse/DBZ-2435)
+* Intermittent test failure on CI - PostgresConnectorIT#shouldExecuteOnConnectStatements [DBZ-2468](https://issues.jboss.org/browse/DBZ-2468)
+* Intermittent test failure on CI - AbstractSqlServerDatatypesTest#stringTypes() [DBZ-2474](https://issues.jboss.org/browse/DBZ-2474)
+* Intermittent test failure on CI - PostgresConnectorIT#customSnapshotterSkipsTablesOnRestart() [DBZ-2544](https://issues.jboss.org/browse/DBZ-2544)
+* Intermittent test failure on CI - SQLServerConnectorIT#verifyOffsets [DBZ-2599](https://issues.jboss.org/browse/DBZ-2599)
+
+
+
 ## 1.3.0.CR1
 September 24th, 2020 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12350459)
 

@@ -6,12 +6,12 @@ nav:
 
 asciidoc:
   attributes:
-    debezium-version: '1.3.0.CR1'
+    debezium-version: '1.3.0.Final'
     debezium-dev-version: '1.3'
     debezium-kafka-version: '2.6.0'
     debezium-docker-label: '1.3'
     DockerKafkaConnect: registry.redhat.io/amq7/amq-streams-kafka-25:1.5.0
-    install-version: '1.2'
+    install-version: '1.3'
     assemblies: '../assemblies'
     modules: '../../modules'
     mysql-version: '8.0'
