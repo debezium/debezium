@@ -230,3 +230,15 @@ CREATE TABLE `tab1` (
   mi MIDDLEINT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 #end
+#begin
+-- Create procedure
+-- The default value for local variables in a DECLARE statement should be an expression
+-- src: https://dev.mysql.com/doc/refman/5.7/en/declare-local-variable.html
+-- delimiter //
+CREATE PROCEDURE procedure1()
+BEGIN
+  DECLARE var1 INT unsigned default 1;
+  DECLARE var2 TIMESTAMP default CURRENT_TIMESTAMP;
+  DECLARE var3 INT unsigned default 2 + var1;
+END -- //-- delimiter ;
+#end
