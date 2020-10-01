@@ -2495,7 +2495,7 @@ The *MBean* is `debezium.mysql:type=connector-metrics,context=schema-history,ser
 
 include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-schema-history-metrics.adoc[leveloffset=+1]
 
-// Type: assembly
+// Type: concept
 // ModuleID: how-debezium-mysql-connectors-handle-faults-and-problems
 // Title: How {prodname} MySQL connectors handle faults and problems
 [[mysql-when-things-go-wrong]]
