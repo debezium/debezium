@@ -45,15 +45,15 @@ Details are in the following topics:
 * xref:how-debezium-mysql-connectors-expose-database-schema-changes[]
 * xref:how-debezium-mysql-connectors-perform-database-snapshots[]
 * xref:default-names-of-kafka-topics-that-receive-debezium-mysql-change-event-records[]
-* xref:mysql-topologies-supported-by-debezium-mysql-connectors[]
+* xref:mysql-topologies-supported-by-debezium-connectors[]
 
 endif::product[]
 
 // Type: concept
-// ModuleID: how-debezium-mysql-connectors-handle-schema-changes
-// Title: How {prodname} MySQL connectors handle schema changes
+// ModuleID: how-debezium-mysql-connectors-handle-database-schema-changes
+// Title: How {prodname} MySQL connectors handle database schema changes
 [[mysql-schema-history-topic]]
-=== Database schema history
+=== Schema history topic
 
 When a database client queries a database, the client uses the database’s current schema. However, the database schema can be changed at any time, which means that the connector must be able to identify what the schema was at the time each insert, update, or delete operation was recorded. Also, a connector cannot just use the current schema because the connector might be processing events that are relatively old and may have been recorded before the tables' schemas were changed. 
 
@@ -61,16 +61,16 @@ To handle this, MySQL includes in the binlog not only the row-level changes to t
 
 When the connector restarts after having crashed or been stopped gracefully, the connector starts reading the binlog from a specific position, that is, from a specific point in time. The connector rebuilds the table structures that existed at this point in time by reading the database history Kafka topic and parsing all DDL statements up to the point in the binlog where the connector is starting.
 
-This database history topic is for connector use only. The connector can optionally emit schema change events to a different topic that is intended for consumer applications. See {link-prefix}:{link-mysql-connector}#how-the-mysql-connector-exposes-schema-changes[how the MySQL connector exposes schema changes].
+This database history topic is for connector use only. The connector can optionally See {link-prefix}:{link-mysql-connector}#mysql-schema-change-topic[emit schema change events to a different topic that is intended for consumer applications].
 
 When the MySQL connector captures changes in a table to which a schema change tool such as `gh-ost` or `pt-online-schema-change` is applied there are helper tables created during the migration process. The connector needs to be configured to capture change to these helper tables. If consumers do not need the records generated for helper tables then a simple message transform can be applied to filter them out.
 
 See {link-prefix}:{link-mysql-connector}#mysql-topic-names[default names for topics] that receive {prodname} event records.
 
 // Type: concept
-// ModuleID: how-debezium-mysql-connectors-expose-schema-changes
-// Title: How {prodname} MySQL connectors exposes schema changes
-[[mysql-schema-change-topic]]
+// ModuleID: how-debezium-mysql-connectors-expose-database-schema-changes
+// Title: How {prodname} MySQL connectors expose database schema changes
+[id="mysql-schema-change-topic"]
 === Schema change topic
 
 You can configure a {prodname} MySQL connector to produce schema change events that include all DDL statements applied to databases in the MySQL server. The connector emits these events to a Kafka topic named _serverName_ where _serverName_ is the name of the connector as specified by the `database.server.name` connector configuration property.
@@ -79,7 +79,7 @@ If you choose to use _schema change events_, ensure that you consume records fro
 
 IMPORTANT: A global order for events emitted to the schema change topic is vital. Therefore, you must not partition the database history topic. This means that you must specify a partition count of `1` when creating the database history topic. When relying on auto topic creation, make sure that Kafka’s `num.partitions` configuration option, which specifies the default number of partitions, is set to `1`.
 
-Each message that is written to the schema change topic contains a message key that includes the name of the connected database used when applying DDL statements, for example: 
+Each record that the connector emits to the schema change topic contains a message key that includes the name of the connected database when the DDL statement was applied, for example: 
 
 [source,json,subs="+attributes"]
 ----
@@ -102,7 +102,7 @@ Each message that is written to the schema change topic contains a message key t
 }
 ----
 
-The schema change event record value contains a structure that includes the DDL statements, the database to which the statements were applied, and the position in the binlog where the statements appeared, for example: 
+The schema change event record value contains a structure that includes the DDL statements, the name of the database to which the statements were applied, and the position in the binlog where the statements appeared, for example: 
 
 [source,json,subs="attributes"]
 ----
@@ -202,7 +202,7 @@ The schema change event record value contains a structure that includes the DDL 
     "databaseName": "inventory",
     "ddl": "CREATE TABLE products ( id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255) NOT NULL, description VARCHAR(512), weight FLOAT ); ALTER TABLE products AUTO_INCREMENT = 101;",
     "source" : {
-      "version": "0.10.0.Beta4",
+      "version": "{debezium-version}",
       "name": "mysql-server-1",
       "server_id": 0,
       "ts_sec": 0,
@@ -237,7 +237,7 @@ The `ddl` field might contain multiple DDL statements. Each statement applies to
 
 A client can submit multiple DDL statements to be applied to multiple databases. If MySQL applies them atomically, the connector takes the DDL statements in order, groups them by database, and creates a schema change event for each group. If MySQL applies them individually, the connector creates a separate schema change event for each statement.
 
-See also: {link-prefix}:{link-mysql-connector}#mysql-schema-history-topic[Database schema history topic].
+See also: {link-prefix}:{link-mysql-connector}#mysql-schema-history-topic[schema history topic].
 
 // Type: concept
 // ModuleID: how-debezium-mysql-connectors-perform-database-snapshots
@@ -283,16 +283,14 @@ a|Records the completed snapshot in the connector offsets.
 
 |===
 
-.If the connector fails
-
+Connector restarts::
 If the connector fails, stops, or is rebalanced while performing the _initial snapshot_, then after the connector restarts, it performs a new snapshot. After that _intial snapshot_ is completed, the {prodname} MySQL connector restarts from the same position in the binlog so it does not miss any updates.
-
++
 If the connector stops for long enough, MySQL could purge old binlog files and the connector's position would be lost. If the position is lost, the connector reverts to the _initial snapshot_ for its starting position. For more tips on troubleshooting the {prodname} MySQL connector, see {link-prefix}:{link-mysql-connector}#mysql-when-things-go-wrong[behavior when things go wrong].
 
-.If global read locks are not allowed
-
+Global read locks not allowed::
 Some environments do not allow global read locks. If the {prodname} MySQL connector detects that global read locks are not permitted, the connector uses table-level locks instead and performs a snapshot with this method. This requires the database user for the {prodname} connector to have `LOCK_TABLES` privileges. 
-
++
 .Workflow for performing an initial snapshot with table-level locks
 [cols="1,9",options="header",subs="+attributes"]
 |===
@@ -351,7 +349,7 @@ fulfillment.inventory.products
 // Type: concept
 // ModuleID: mysql-topologies-supported-by-debezium-connectors
 // Title: MySQL topologies supported by {prodname} connectors
-[[supported-mysql-topologies]
+[id="supported-mysql-topologies"]
 === Supported MySQL topologies
 
 The {prodname} MySQL connector supports the following MySQL topologies:
@@ -368,7 +366,7 @@ High available clusters::
 A variety of link:https://dev.mysql.com/doc/mysql-ha-scalability/en/[high availability] solutions exist for MySQL, and they make it significantly easier to tolerate and almost immediately recover from problems and failures. Most HA MySQL clusters use GTIDs so that replicas are able to keep track of all changes on any of the primary servers.
 
 Multi-primary::
-link: https://dev.mysql.com/doc/refman/{mysql-version}/en/mysql-cluster-replication-multi-source.html[Network Database (NDB) cluster replication] uses one or more MySQL replica nodes that each replicate from multiple primary servers. This is a powerful way to aggregate the replication of multiple MySQL clusters. This topology requires the use of GTIDs.
+link:https://dev.mysql.com/doc/refman/{mysql-version}/en/mysql-cluster-replication-multi-source.html[Network Database (NDB) cluster replication] uses one or more MySQL replica nodes that each replicate from multiple primary servers. This is a powerful way to aggregate the replication of multiple MySQL clusters. This topology requires the use of GTIDs.
 +
 A {prodname} MySQL connector can use these multi-primary MySQL replicas as sources, and can fail over to different multi-primary MySQL replicas as long as the new replica is caught up to the old replica. That is, the new replica has all transactions that were seen on the first replica. This works even if the connector is using only a subset of databases and/or tables, as the connector can be configured to include or exclude specific GTID sources when attempting to reconnect to a new multi-primary MySQL replica and find the correct position in the binlog.
 
@@ -458,7 +456,6 @@ A change event's key contains the schema for the changed table's key and the cha
 
 Consider the following `customers` table, which is followed by an example of a change event key for this table. 
 
-.Example table
 [source,sql]
 ----
 CREATE TABLE customers (
@@ -469,7 +466,6 @@ CREATE TABLE customers (
 ) AUTO_INCREMENT=1001;
 ----
 
-.Example change event key
 Every change event that captures a change to the `customers` table has the same event key schema. For as long as the `customers` table has the previous definition, every change event that captures a change to the `customers` table has the following key structure. In JSON, it looks like this:
 
 [source,json,index=0]
@@ -544,7 +540,6 @@ CREATE TABLE customers (
 ) AUTO_INCREMENT=1001;
 ----
 
-ifdef::product[]
 The value portion of a change event for a change to this table is described for: 
 
 * <<mysql-create-events,_create_ events>>
@@ -552,7 +547,6 @@ The value portion of a change event for a change to this table is described for:
 * <<mysql-primary-key-updates,Primary key updates>>
 * <<mysql-delete-events,_delete_ events>>
 * <<mysql-tombstone-events,Tombstone events>>
-endif::product[]
 
 // Type: continue
 [id="mysql-create-events"]
@@ -1001,7 +995,7 @@ MySQL connector events are designed to work with link:{link-kafka-docs}/#compact
 
 // Type: continue
 [id="mysql-tombstone-events"]
-.Tombstone events
+=== Tombstone events
 When a row is deleted, the _delete_ event value still works with log compaction, because Kafka can remove all earlier messages that have that same key. However, for Kafka to remove all messages that have that same key, the message value must be `null`. To make this possible, after {prodname}’s MySQL connector emits a _delete_ event, the connector emits a special tombstone event that has the same key but a `null` value.
 
 // Type: reference
@@ -1188,7 +1182,7 @@ More details about properties related to termporal values are in the documentati
 time.precision.mode=adaptive_time_microseconds(default)::
 The MySQL connector determines the literal type and semantic type based on the column's data type definition so that events represent exactly the values in the database. All time fields are in microseconds. Only positive `TIME` field values in the range of `00:00:00.000000` to `23:59:59.999999` can be captured correctly.
 +
-.Mappings when `time.precision.mode=adaptive_time-microseconds`
+.Mappings when `time.precision.mode=adaptive_time_microseconds`
 [cols="25%a,20%a,55%a",options="header",subs="+attributes"]
 |===
 |MySQL type |Literal type |Semantic type
@@ -1304,9 +1298,8 @@ a|_n/a_
 MySQL handles the `BOOLEAN` value internally in a specific way.
 The `BOOLEAN` column is internally mapped to the `TINYINT(1)` data type.
 When the table is created during streaming then it uses proper `BOOLEAN` mapping as {prodname} receives the original DDL.
-During snapshots, {prodname} executes `SHOW CREATE TABLE` to obtain table definition that return `TINYINT(1)` for both `BOOLEAN` and `TINYINT(1)` columns.
+During snapshots, {prodname} executes `SHOW CREATE TABLE` to obtain table definitions that return `TINYINT(1)` for both `BOOLEAN` and `TINYINT(1)` columns. {prodname} then has no way to obtain the original type mapping and so maps to `TINYINT(1)`.
 
-{prodname} then has no way how to obtain the original type mapping and so maps to `TINYINT(1)`.
 ifdef::community[]
 The operator can configure the out-of-the-box {link-prefix}:{link-custom-converters}[`TinyIntOneToBooleanConverter` custom converter] that would either map all `TINYINT(1)` columns to `BOOLEAN` or if the `selector` parameter is set then a subset of columns could be enumerated using comma-separated regular expressions.
 endif::community[]
@@ -1484,7 +1477,7 @@ FROM information_schema.global_variables WHERE variable_name='log_bin';
 
 [[binlog-configuration-properties-mysql-connector]]
 .Descriptions of MySQL binlog configuration properties
-[cols="1,2,7",options="header",subs="+attributes"]
+[cols="1,4",options="header",subs="+attributes"]
 |===
 |Property |Description
 
@@ -1602,7 +1595,7 @@ mysql> interactive_timeout=<duration-in-seconds>
 +
 [source,SQL]
 ----
-mysql> wait_timeout= <duration-in-seconds>
+mysql> wait_timeout=<duration-in-seconds>
 ----
 
 .Descriptions of MySQL session timeout options
@@ -1643,7 +1636,7 @@ This option is available in MySQL 5.6 and later.
 mysql> binlog_rows_query_log_events=ON
 ----
 +
-`binlog_rows_query_log_events` is set to a Boolean value that enables/disables support for including the original `SQL` statement in the binlog entry.
+`binlog_rows_query_log_events` is set to a value that enables/disables support for including the original `SQL` statement in the binlog entry.
 +
 ** `ON` = enabled
 ** `OFF` = disabled
@@ -1822,7 +1815,7 @@ To start running a MySQL connector, configure a connector and add the configurat
 
 .Prerequisites
 
-* {link-prefix}:{link-mysql-connector}#setup-the-mysql-server[MySQL server] is 
+* {link-prefix}:{link-mysql-connector}#setting-up-mysql[MySQL server] is 
 set up for a {prodname} connector.
 
 * {prodname} MySQL connector is installed. 
@@ -1895,7 +1888,7 @@ spec:
 +
 * In the `install/cluster-operator/050-Deployment-strimzi-cluster-operator.yaml` file, edit the `STRIMZI_DEFAULT_KAFKA_CONNECT_IMAGE` variable to point to the new container image and reinstall the Cluster Operator. If you edit this file you must apply it to your OpenShift cluster.
 
-. Create a `KafkaConnector` custom resource that defines your {prodname} MySQL connector instance. See {LinkDebeziumUserGuide}#configure-the-mysql-connector_{context}[the connector configuration example].
+. Create a `KafkaConnector` custom resource that defines your {prodname} MySQL connector instance. See {LinkDebeziumUserGuide}#mysql-example-configuration[the connector configuration example].
 
 . Apply the connector instance, for example: 
 +
@@ -1934,11 +1927,11 @@ When the connector starts, it {link-prefix}:{link-mysql-connector}#mysql-snapsho
 
 The {prodname} MySQL connector has numerous configuration properties that you can use to achieve the right connector behavior for your application. Many properties have default values. Information about the properties is organized as follows:
 
-* xref:mysql-required-configuration-properties[Required configuration properties]
-* xref:mysql-advanced-configuration-properties[Advanced configuration properties]
-* xref:mysql-pass-through-properties[Pass-through configuration properties]
+* xref:mysql-required-connector-configuration-properties[Required connector configuration properties]
+* xref:mysql-advanced-connector-configuration-properties[Advanced connector configuration properties]
+* xref:mysql-pass-through-configuration-properties[Pass-through configuration properties]
 
-[id="mysql-required-configuration-properties"]
+[id="mysql-required-connector-configuration-properties"]
 The following configuration properties are _required_ unless a default value is available.
 
 .Required MySQL connector configuration properties
@@ -2034,89 +2027,118 @@ Do not also specify the `table.include.list` connector configuration property.
 
 |[[mysql-property-column-mask-hash]]<<mysql-property-column-mask-hash, `column.mask{zwsp}.hash._hashAlgorithm_{zwsp}.with.salt._salt_`>>
 |_n/a_
-a|An optional, comma-separated list of regular expressions that match the fully-qualified names of character-based columns whose values should be pseudonyms in the change event record values. Pseudonyms consist of the hashed value obtained by applying the algorithm `_hashAlgorithm_` and salt `_salt_`.
+a|An optional, comma-separated list of regular expressions that match the fully-qualified names of character-based columns whose values should be pseudonyms in the change event record values. Pseudonyms consist of the hashed value obtained by applying the algorithm `_hashAlgorithm_` and salt `_salt_`. +
+ +
 Based on the hash function used, referential integrity is kept while data is pseudonymized. Supported hash functions are described in the {link-java7-standard-names}[MessageDigest section] of the Java Cryptography Architecture Standard Algorithm Name Documentation.
-The hash result is automatically shortened to the length of the column.
-
-You can configure multiple properties with different lengths in a single configuration. Each length must be a positive integer or zero. Fully-qualified names for columns are of the form _databaseName_._tableName_._columnName_. For example: 
-
-`column.mask.hash.SHA-256.with.salt.CzQMA0cB5K = inventory.orders.customerName, inventory.shipment.customerName`
-
+The hash result is automatically shortened to the length of the column. +
+ +
+You can configure multiple properties with different lengths in a single configuration. Each length must be a positive integer or zero. Fully-qualified names for columns are of the form _databaseName_._tableName_._columnName_. For example: +
+ +
+`column.mask.hash.SHA-256.with.salt.CzQMA0cB5K = inventory.orders.customerName, inventory.shipment.customerName` +
+ +
 `CzQMA0cB5K` is a randomly selected salt.
-
+ +
 Depending on the configured `_hashAlgorithm_`, the selected `_salt_`, and the actual data set, the resulting masked data set might not be completely anonymized.
 
 |[[mysql-property-column-propagate-source-type]]<<mysql-property-column-propagate-source-type, `column.propagate{zwsp}.source.type`>>
 |_n/a_
-|An optional, comma-separated list of regular expressions that match the fully-qualified names of columns whose original type and length should be added as a parameter to the corresponding field schemas in the emitted change event records.
-These schema parameters: +
-`pass:[_]pass:[_]{prodname}.source.column.type` + `pass:[_]pass:[_]{prodname}.source.column.length` + `pass:[_]{prodname}.source.column.scale` +
-are used to propagate the original type name and length for variable-width types, respectively. This is useful to properly size corresponding columns in sink databases.
-Fully-qualified names for columns are of one of these forms: + _databaseName_._tableName_._columnName_ + _databaseName_._schemaName_._tableName_._columnName_
+a|An optional, comma-separated list of regular expressions that match the fully-qualified names of columns whose original type and length should be added as a parameter to the corresponding field schemas in the emitted change event records. These schema parameters: 
+
+`pass:[_]pass:[_]{prodname}.source.column.type` 
+
+`pass:[_]pass:[_]{prodname}.source.column.length` 
+ 
+`pass:[_]pass:[_]{prodname}.source.column.scale` 
+
+are used to propagate the original type name and length for variable-width types, respectively. This is useful to properly size corresponding columns in sink databases. Fully-qualified names for columns are of one of these forms: 
+
+_databaseName_._tableName_._columnName_ 
+
+_databaseName_._schemaName_._tableName_._columnName_
 
 |[[mysql-property-datatype-propagate-source-type]]<<mysql-property-datatype-propagate-source-type, `datatype.propagate{zwsp}.source.type`>>
 |_n/a_
-|An optional, comma-separated list of regular expressions that match the database-specific data type name of columns whose original type and length should be added as a parameter to the corresponding field schemas in the emitted change event records.
-These schema parameters: + 
-`pass:[_]pass:[_]debezium.source.column.type` + `pass:[_]pass:[_]debezium.source.column.length` + `pass:[_]pass:[_]debezium.source.column.scale` +
-are used to propagate the original type name and length for variable-width types, respectively.
-This is useful to properly size corresponding columns in sink databases.
-Fully-qualified data type names are of one of these forms: + _databaseName_._tableName_._typeName_ + _databaseName_._schemaName_._tableName_._typeName_ +
+a|An optional, comma-separated list of regular expressions that match the database-specific data type name of columns whose original type and length should be added as a parameter to the corresponding field schemas in the emitted change event records. These schema parameters: 
+ 
+`pass:[_]pass:[_]debezium.source.column.type`  
+
+`pass:[_]pass:[_]debezium.source.column.length`
+
+`pass:[_]pass:[_]debezium.source.column.scale`  
+
+are used to propagate the original type name and length for variable-width types, respectively. This is useful to properly size corresponding columns in sink databases. Fully-qualified data type names are of one of these forms: 
+
+_databaseName_._tableName_._typeName_ 
+
+_databaseName_._schemaName_._tableName_._typeName_ 
+ 
 See {link-prefix}:{link-mysql-connector}#mysql-data-types[how MySQL connectors map data types] for the list of MySQL-specific data type names.
 
 |[[mysql-property-time-precision-mode]]<<mysql-property-time-precision-mode, `time.precision.mode`>>
 |`adaptive_time{zwsp}_microseconds`
-| Time, date, and timestamps can be represented with different kinds of precision, including: +
+|Time, date, and timestamps can be represented with different kinds of precision, including: +
  +
-`adaptive_time_microseconds` (the default) captures the date, datetime and timestamp values exactly as in the database using either millisecond, microsecond, or nanosecond precision values based on the database column's type, with the exception of TIME type fields, which are always captured as microseconds.
+`adaptive_time_microseconds` (the default) captures the date, datetime and timestamp values exactly as in the database using either millisecond, microsecond, or nanosecond precision values based on the database column's type, with the exception of TIME type fields, which are always captured as microseconds. +
  +
 ifdef::community[]
-`adaptive` (deprecated) captures the time and timestamp values exactly as in the database using either millisecond, microsecond, or nanosecond precision values based on the database column's type.
+`adaptive` (deprecated) captures the time and timestamp values exactly as in the database using either millisecond, microsecond, or nanosecond precision values based on the database column's type. +
 endif::community[]
  +
 `connect` always represents time and timestamp values using Kafka Connect's built-in representations for Time, Date, and Timestamp, which use millisecond precision regardless of the database columns' precision.
 
 |[[mysql-property-decimal-handling-mode]]<<mysql-property-decimal-handling-mode,`decimal.handling.mode`>>
 |`precise`
-| Specifies how the connector should handle values for `DECIMAL` and `NUMERIC` columns: +
+|Specifies how the connector should handle values for `DECIMAL` and `NUMERIC` columns: +
  +
 `precise` (the default) represents them precisely using `java.math.BigDecimal` values represented in change events in a binary form. +
  +
 `double` represents them using `double` values, which may result in a loss of precision but is easier to use. +
  +
-`string` encodes values as formatted strings, which is easy to consume butS semantic information about the real type is lost.
+`string` encodes values as formatted strings, which is easy to consume but  semantic information about the real type is lost.
 
 |[[mysql-property-bigint-unsigned-handling-mode]]<<mysql-property-bigint-unsigned-handling-mode, `bigint.unsigned{zwsp}.handling.mode`>>
 |`long`
-| Specifies how BIGINT UNSIGNED columns should be represented in change events, including: `precise` uses `java.math.BigDecimal` to represent values, which are encoded in the change events using a binary representation and Kafka Connect's `org.apache.kafka.connect.data.Decimal` type; `long` (the default) represents values using Java's `long`, which may not offer the precision but will be far easier to use in consumers. `long` is usually the preferable setting. Only when working with values larger than 2^63, the `precise` setting should be used as those values cannot be conveyed using `long`.
+|Specifies how BIGINT UNSIGNED columns should be represented in change events. Possible settings are: +
+ +
+ `long` represents values by using Java's `long`, which might not offer the precision but which is easy to use in consumers. `long` is usually the preferred setting. +
+ +
+`precise` uses `java.math.BigDecimal` to represent values, which are encoded in the change events by using a binary representation and Kafka Connect's `org.apache.kafka.connect.data.Decimal` type. Use this setting when working with values larger than 2^63, because these values cannot be conveyed by using `long`.
 
 |[[mysql-property-include-schema-changes]]<<mysql-property-include-schema-changes, `include.schema{zwsp}.changes`>>
 |`true`
-|Boolean value that specifies whether the connector should publish changes in the database schema to a Kafka topic with the same name as the database server ID. Each schema change will be recorded using a key that contains the database name and whose value includes the DDL statement(s). This is independent of how the connector internally records database history. The default is `true`.
+|Boolean value that specifies whether the connector should publish changes in the database schema to a Kafka topic with the same name as the database server ID. Each schema change is recorded by using a key that contains the database name and whose value includes the DDL statement(s). This is independent of how the connector internally records database history. 
 
 |[[mysql-property-include-query]]<<mysql-property-include-query, `include.query`>>
 |`false`
 |Boolean value that specifies whether the connector should include the original SQL query that generated the change event. +
-Note: This option requires MySQL be configured with the `binlog_rows_query_log_events` option set to `ON`. Query will not be present for events generated from the snapshot process. +
-WARNING: Enabling this option may expose tables or fields explicitly excluded or masked by including the original SQL statement in the change event. For this reason this option is defaulted to 'false'.
+ +
+If you set this option to `true` then you must also configure MySQL with the `binlog_rows_query_log_events` option set to `ON`. When `include.query` is `true`, the query is not present for events that the snapshot process generates. +
+ +
+Setting `include.query`to `true` might expose tables or fields explicitly excluded or masked by including the original SQL statement in the change event. For this reason, the default setting is `false`.
 
 |[[mysql-property-event-processing-failure-handling-mode]]<<mysql-property-event-processing-failure-handling-mode, `event.processing{zwsp}.failure.handling.mode`>>
 |`fail`
-| Specifies how the connector should react to exceptions during deserialization of binlog events.
-`fail` will propagate the exception (indicating the problematic event and its binlog offset), causing the connector to stop. +
-`warn` will cause the problematic event to be skipped and the problematic event and its binlog offset to be logged. +
-`skip` will cause problematic event will be skipped.
+|Specifies how the connector should react to exceptions during deserialization of binlog events. +
+ +
+`fail` propagates the exception, which indicates the problematic event and its binlog offset, and causes the connector to stop. +
+ +
+`warn` logs the problematic event and its binlog offset and then skips the event. +
+ +
+`skip` passes over the problematic event and does not log anything.
 
 |[[mysql-property-inconsistent-schema-handling-mode]]<<mysql-property-inconsistent-schema-handling-mode, `inconsistent.schema{zwsp}.handling.mode`>>
 |`fail`
-| Specifies how the connector should react to binlog events that relate to tables that are not present in internal schema representation (i.e. internal representation is not consistent with database)
-`fail` will throw an exception (indicating the problematic event and its binlog offset), causing the connector to stop. +
-`warn` will cause the problematic event to be skipped and the problematic event and its binlog offset to be logged. +
-`skip` will cause the problematic event to be skipped.
+|Specifies how the connector should react to binlog events that relate to tables that are not present in internal schema representation. That is, the internal representation is not consistent with the database. +
+ +
+`fail` throws an exception that indicates the problematic event and its binlog offset, and causes the connector to stop. +
+ +
+`warn` logs the problematic event and its binlog offset and skips the event. +
+ +
+`skip` passes over the problematic event and does not log anything.
 
 |[[mysql-property-max-queue-size]]<<mysql-property-max-queue-size, `max.queue.size`>>
 |`8192`
-|Positive integer value that specifies the maximum size of the blocking queue into which change events read from the database log are placed before they are written to Kafka. This queue can provide backpressure to the binlog reader when, for example, writes to Kafka are slower or if Kafka is not available. Events that appear in the queue are not included in the offsets periodically recorded by this connector. Defaults to 8192, and should always be larger than the maximum batch size specified in the `max.batch.size` property.
+|Positive integer value that specifies the maximum size of the blocking queue into which change events read from the database log are placed before they are written to Kafka. This queue can provide backpressure to the binlog reader when, for example, writes to Kafka are slow or if Kafka is not available. Events that appear in the queue are not included in the offsets periodically recorded by this connector. Defaults to 8192, and should always be larger than the maximum batch size specified by the `max.batch.size` property.
 
 |[[mysql-property-max-batch-size]]<<mysql-property-max-batch-size, `max.batch.size`>>
 |`2048`
@@ -2124,7 +2146,7 @@ WARNING: Enabling this option may expose tables or fields explicitly excluded or
 
 |[[mysql-property-poll-interval-ms]]<<mysql-property-poll-interval-ms, `poll.interval.ms`>>
 |`1000`
-|Positive integer value that specifies the number of milliseconds the connector should wait during each iteration for new change events to appear. Defaults to 1000 milliseconds, or 1 second.
+|Positive integer value that specifies the number of milliseconds the connector should wait for new change events to appear before it starts processing a batch of events. Defaults to 1000 milliseconds, or 1 second.
 
 |[[mysql-property-connect-timeout-ms]]<<mysql-property-connect-timeout-ms, `connect.timeout.ms`>>
 |`30000`
@@ -2132,44 +2154,60 @@ WARNING: Enabling this option may expose tables or fields explicitly excluded or
 
 |[[mysql-property-gtid-source-includes]]<<mysql-property-gtid-source-includes, `gtid.source.includes`>>
 |
-|A comma-separated list of regular expressions that match source UUIDs in the GTID set used to find the binlog position in the MySQL server. Only the GTID ranges that have sources matching one of these include patterns will be used.
-Must not be used with `gtid.source.excludes`.
+|A comma-separated list of regular expressions that match source UUIDs in the GTID set used to find the binlog position in the MySQL server. Only the GTID ranges that have sources that match one of these include patterns are used.
+Do not also specify a setting for `gtid.source.excludes`.
 
 |[[mysql-property-gtid-source-excludes]]<<mysql-property-gtid-source-excludes, `gtid.source.excludes`>>
 |
-|A comma-separated list of regular expressions that match source UUIDs in the GTID set used to find the binlog position in the MySQL server. Only the GTID ranges that have sources matching none of these exclude patterns will be used.
-Must not be used with `gtid.source.includes`.
+|A comma-separated list of regular expressions that match source UUIDs in the GTID set used to find the binlog position in the MySQL server. Only the GTID ranges that have sources that do not match any of these exclude patterns are used. Do not also specify a value for `gtid.source.includes`.
 
 ifdef::community[]
-// Do not include deprecated content in downstream doc
 |[[mysql-property-gtid-new-channel-position]]<<mysql-property-gtid-new-channel-position, `gtid.new.channel.position`>> +
 _deprecated and scheduled for removal_
 |`earliest`
-| When set to `latest`, when the connector sees a new GTID channel, it will start consuming from the last executed transaction in that GTID channel. If set to `earliest` (default), the connector starts reading that channel from the first available (not purged) GTID position. `earliest` is useful when you have a active-passive MySQL setup where {prodname} is connected to the primary server, in this case during failover the replica with new UUID (and GTID channel) starts receiving writes before {prodname} is connected. These writes would be lost when using `latest`.
+|When set to `latest`, when the connector sees a new GTID channel, it starts consuming from the last executed transaction in that GTID channel. If set to `earliest` (default), the connector starts reading that channel from the first available (not purged) GTID position. `earliest` is useful when you have an active-passive MySQL setup where {prodname} is connected to the primary server. In this case, during failover, the replica with the new UUID (and GTID channel) starts receiving writes before {prodname} is connected. These writes would be lost when using `latest`.
 endif::community[]
 
 |[[mysql-property-tombstones-on-delete]]<<mysql-property-tombstones-on-delete, `tombstones.on.delete`>>
 |`true`
-| Controls whether a tombstone event should be generated after a delete event. +
-When `true` the delete operations are represented by a delete event and a subsequent tombstone event. When `false` only a delete event is sent. +
-Emitting the tombstone event (the default behavior) allows Kafka to completely delete all events pertaining to the given key once the source record got deleted.
+|Controls whether a delete event is followed by a tombstone event. +
+ +
+`true`  - a delete operation is represented by a delete event and a subsequent tombstone event.  +
+ +
+`false` - only a delete event is emitted. +
+ +
+After a source record is deleted, emitting a tombstone event (the default behavior) allows Kafka to completely delete all events that pertain to the key of the deleted row. 
 
 |[[mysql-property-message-key-columns]]<<mysql-property-message-key-columns, `message.key.columns`>>
 |_empty string_
-| A semi-colon list of regular expressions that match fully-qualified tables and columns to map a primary key. +
-Each item (regular expression) must match the `<fully-qualified table>:<a comma-separated list of columns>` representing the custom key. +
-Fully-qualified tables could be defined as _databaseName_._tableName_.
+|A semicolon separated list of tables with regular expressions that match table column names. The connector maps values in matching columns to key fields in change event records that it sends to Kafka topics. This is useful when a table does not have a primary key, or when you want to order change event records in a Kafka topic according to a field that is not a primary key. +
+ +
+Separate entries with semicolons. Insert a colon between the fully-qualified table name and its regular expression. The format (shown with spaces for clarity only) is: +
+ +
+_database-name_ `.` _table-name_ `:` _regexp_ `;` ... +
+ +
+For example: +
+ +
+`dbA.table_a:regex_1;dbB.table_b:regex_2;dbC.table_c:regex_3` +
+ +
+If `table_a` has an `id` column, and `regex_1` is `^i` (matches any column that starts with `i`), the connector maps the value in the `id` column of `table_a` to a key field in change events that the connector sends to Kafka. 
 
 |[[mysql-property-binary-handling-mode]]<<mysql-property-binary-handling-mode,`binary.handling.mode`>>
 |bytes
-|Specifies how binary (`blob`, `binary`, `varbinary`, etc.) columns should be represented in change events, including: `bytes` represents binary data as byte array (default), `base64` represents binary data as base64-encoded String, `hex` represents binary data as hex-encoded (base16) String
+|Specifies how binary columns, for example, `blob`, `binary`, `varbinary`, should be represented in change events. Possible settings:  +
+ +
+`bytes` represents binary data as a byte array. +
+ +
+`base64` represents binary data as a base64-encoded String. +
+ +
+`hex` represents binary data as a hex-encoded (base16) String.
 
 |===
 
-[[advanced-mysql-connector-properties]]
-.Advanced MySQL connector properties
+[id="mysql-advanced-connector-configuration-properties"]
+.Advanced MySQL connector configuration properties
 
-The following table describes {link-prefix}:{link-mysql-connector}#advanced-mysql-connector-properties[advanced MySQL connector properties]. The default values for these properties rarely need to be changed. Therefore, they do not need to be specified in the connector configuration.
+The following table describes {link-prefix}:{link-mysql-connector}#mysql-advanced-connector-configuration-properties[advanced MySQL connector properties]. The default values for these properties rarely need to be changed. Therefore, you do not need to specify them in the connector configuration.
 
 .Descriptions of MySQL connector advanced configuration properties
 [cols="30%a,20%a,50%a",options="header",subs="+attributes"]
@@ -2178,11 +2216,11 @@ The following table describes {link-prefix}:{link-mysql-connector}#advanced-mysq
 
 |[[mysql-property-connect-keep-alive]]<<mysql-property-connect-keep-alive, `connect.keep.alive`>>
 |`true`
-|A boolean value that specifies whether a separate thread should be used to ensure the connection to the MySQL server/cluster is kept alive.
+|A Boolean value that specifies whether a separate thread should be used to ensure that the connection to the MySQL server/cluster is kept alive.
 
 |[[mysql-property-table-ignore-builtin]]<<mysql-property-table-ignore-builtin, `table.ignore{zwsp}.builtin`>>
 |`true`
-|Boolean value that specifies whether built-in system tables should be ignored. This applies regardless of the table include or exclude lists. By default system tables are excluded from monitoring, and no events are generated when changes are made to any of the system tables.
+|A Boolean value that specifies whether built-in system tables should be ignored. This applies regardless of the table include and exclude lists. By default, system tables are excluded from having their changes captured, and no events are generated when changes are made to any system tables.
 
 |[[mysql-property-database-history-kafka-recovery-poll-interval-ms]]<<mysql-property-database-history-kafka-recovery-poll-interval-ms, `database.history{zwsp}.kafka.recovery{zwsp}.poll.interval.ms`>>
 |`100`
@@ -2190,137 +2228,151 @@ The following table describes {link-prefix}:{link-mysql-connector}#advanced-mysq
 
 |[[mysql-property-database-history-kafka-recovery-attempts]]<<mysql-property-database-history-kafka-recovery-attempts, `database.history{zwsp}.kafka.recovery{zwsp}.attempts`>>
 |`4`
-|The maximum number of times that the connector should attempt to read persisted history data before the connector recovery fails with an error. The maximum amount of time to wait after receiving no data is `recovery.attempts` x `recovery.poll.interval.ms`.
+|The maximum number of times that the connector should try to read persisted history data before the connector recovery fails with an error. The maximum amount of time to wait after receiving no data is `recovery.attempts` x `recovery.poll.interval.ms`.
 
 |[[mysql-property-database-history-skip-unparseable-ddl]]<<mysql-property-database-history-skip-unparseable-ddl, `database.history{zwsp}.skip.unparseable{zwsp}.ddl`>>
 |`false`
-|Boolean value that specifies if connector should ignore malformed or unknown database statements or stop processing and let operator to fix the issue.
+|A Boolean value that specifies whether the connector should ignore malformed or unknown database statements or stop processing so a human can fix the issue.
 The safe default is `false`.
-Skipping should be used only with care as it can lead to data loss or mangling when binlog is processed.
+Skipping should be used only with care as it can lead to data loss or mangling when the binlog is being processed.
 
 |[[mysql-property-database-history-store-only-monitored-tables-ddl]]<<mysql-property-database-history-store-only-monitored-tables-ddl, `database.history{zwsp}.store.only{zwsp}.monitored.tables{zwsp}.ddl`>>
 |`false`
-|Boolean value that specifies if connector should should record all DDL statements or (when `true`) only those that are relevant to tables that are monitored by {prodname} (via filter configuration).
+|A Boolean value that specifies whether the connector should record all DDL statements  +
+ +
+`true` records only those DDL statements that are relevant to tables whose changes are being captured by {prodname}. Set to `true` with care because missing data might become necessary if you change which tables have their changes captured. +
+ +
 The safe default is `false`.
-This feature should be used only with care as the missing data might be necessary when the filters are changed.
 
 |[[mysql-property-database-ssl-mode]]<<mysql-property-database-ssl-mode, `database.ssl.mode`>>
 |`disabled`
-|Specifies whether to use an encrypted connection.  The default is `disabled`, and specifies to use an unencrypted connection.
-
-The `preferred` option establishes an encrypted connection if the server supports secure connections but falls back to an unencrypted connection otherwise.
-
-The `required` option establishes an encrypted connection but will fail if one cannot be made for any reason.
-
-The `verify_ca` option behaves like `required` but additionally it verifies the server TLS certificate against the configured Certificate Authority (CA) certificates and will fail if it doesn't match any valid CA certificates.
-
-The `verify_identity` option behaves like `verify_ca` but additionally verifies that the server certificate matches the host of the remote connection.
+|Specifies whether to use an encrypted connection. Possible settings are: +
+ +
+`disabled` specifies the use of an unencrypted connection. +
+ +
+`preferred` establishes an encrypted connection if the server supports secure connections. If the server does not support secure connections, falls back to an unencrypted connection. +
+ +
+`required` establishes an encrypted connection or fails if one cannot be made for any reason. +
+ +
+`verify_ca` behaves like `required` but additionally it verifies the server TLS certificate against the configured Certificate Authority (CA) certificates and fails if the server TLS certificate does not match any valid CA certificates. +
+ +
+`verify_identity` behaves like `verify_ca` but additionally verifies that the server certificate matches the host of the remote connection.
 
 |[[mysql-property-binlog-buffer-size]]<<mysql-property-binlog-buffer-size, `binlog.buffer.size`>>
 |0
-|The size of a look-ahead buffer used by the binlog reader. +
-Under specific conditions it is possible that MySQL binlog contains uncommitted data finished by a `ROLLBACK` statement.
+|The size of a look-ahead buffer used by the binlog reader. The default setting of `0` disables buffering. +
+ +
+Under specific conditions, it is possible that the MySQL binlog contains uncommitted data finished by a `ROLLBACK` statement.
 Typical examples are using savepoints or mixing temporary and regular table changes in a single transaction. +
-When a beginning of a transaction is detected then {prodname} tries to roll forward the binlog position and find either `COMMIT` or `ROLLBACK` so it can decide whether the changes from  the transaction will be streamed or not.
-The size of the buffer defines the maximum number of changes in the transaction that {prodname} can buffer while searching for transaction boundaries.
-If the size of transaction is larger than the buffer then {prodname} needs to rewind and re-read the events that has not fit into the buffer while streaming. Value `0` disables buffering. +
-Disabled by default. +
-_Note:_ This feature should be considered an incubating one. We need a feedback from customers but it is expected that it is not completely polished.
+ +
+When a beginning of a transaction is detected then {prodname} tries to roll forward the binlog position and find either `COMMIT` or `ROLLBACK` so it can determine whether to stream the changes from the transaction.
+The size of the binlog buffer defines the maximum number of changes in the transaction that {prodname} can buffer while searching for transaction boundaries.
+If the size of the transaction is larger than the buffer then {prodname} must rewind and re-read the events that have not fit into the buffer while streaming. +
+ +
+NOTE: This feature is incubating. Feedback is encouraged. It is expected that this feature is not completely polished.
 
 |[[mysql-property-snapshot-mode]]<<mysql-property-snapshot-mode, `snapshot.mode`>>
 |`initial`
-|Specifies the criteria for running a snapshot upon startup of the connector. The default is `initial`, and specifies the connector can run a snapshot only when no offsets have been recorded for the logical server name. The `when_needed` option specifies that the connector run a snapshot upon startup whenever it deems it necessary (when no offsets are available, or when a previously recorded offset specifies a binlog location or GTID that is not available in the server). The `never` option specifies that the connect should never use snapshots and that upon first startup with a logical server name the connector should read from the beginning of the binlog; this should be used with care, as it is only valid when the binlog is guaranteed to contain the entire history of the database. If you don't need the topics to contain a consistent snapshot of the data but only need them to have the changes since the connector was started, you can use the `schema_only` option, where the connector only snapshots the schemas (not the data).
-
-`schema_only_recovery` is a recovery option for an existing connector to recover a corrupted or lost database history topic, or to periodically "clean up" a database history topic (which requires infinite retention) that may be growing unexpectedly.
+|Specifies the criteria for running a snapshot when the connector starts. Possible settings are: +
+ +
+`initial` - the connector runs a snapshot only when no offsets have been recorded for the logical server name. +
+ +
+`when_needed` - the connector runs a snapshot upon startup whenever it deems it necessary. That is, when no offsets are available, or when a previously recorded offset specifies a binlog location or GTID that is not available in the server. +
+ +
+`never` - the connector never uses snapshots. Upon first startup with a logical server name, the connector reads from the beginning of the binlog. Configure this behavior with care. It is valid only when the binlog is guaranteed to contain the entire history of the database. +
+ +
+`schema_only` - the connector runs a snapshot of the schemas and not the data. This setting is useful when you do not need the topics to contain a consistent snapshot of the data but need them to have only the changes since the connector was started. +
+ +
+`schema_only_recovery` - this is a recovery setting for a connector that has already been capturing changes. When you restart the connector, this setting enables recovery of a corrupted or lost database history topic. You might set it periodically to "clean up" a database history topic that has been growing unexpectedly. Database history topics require infinite retention.
 
 |[[mysql-property-snapshot-locking-mode]]<<mysql-property-snapshot-locking-mode, `snapshot.locking{zwsp}.mode`>>
 |`minimal`
-|Controls if and how long the connector holds onto the global MySQL read lock (preventing any updates to the database) while it is performing a snapshot.  There are three possible values `minimal`, `extended`, and `none`. +
-
-`minimal` The connector holds the global read lock for just the initial portion of the snapshot while the connector reads the database schemas and other metadata. The remaining work in a snapshot involves selecting all rows from each table, and this can be done in a consistent fashion using the REPEATABLE READ transaction even when the global read lock is no longer held and while other MySQL clients are updating the database. +
-
-`minimal_percona` The connector holds https://www.percona.com/doc/percona-server/5.7/management/backup_locks.html[the global backup lock] for just the initial portion of the snapshot while the connector reads the database schemas and other metadata. The remaining work in a snapshot involves selecting all rows from each table, and this can be done in a consistent fashion using the REPEATABLE READ transaction even when the global read lock is no longer held and while other MySQL clients are updating the database. This mode does not flush tables to disk and is not blocked by long-running reads, and is only available in Percona Server +
-
-`extended` In some cases where clients are submitting operations that MySQL excludes from REPEATABLE READ semantics, it may be desirable to block all writes for the entire duration of the snapshot. For these such cases, use this option. +
-
-`none` Will prevent the connector from acquiring any table locks during the snapshot process. This value can be used with all snapshot modes but it is safe to use if and _only_ if no schema changes are happening while the snapshot is taken. Note that for tables defined with MyISAM engine, the tables would still be locked despite this property being set as MyISAM acquires a table lock. This behavior is unlike InnoDB engine which acquires row level locks.
+a|Controls whether and how long the connector holds the global MySQL read lock, which prevents any updates to the database, while the connector is performing a snapshot. Possible settings are: +
+ +
+`minimal` - the connector holds the global read lock for only the initial portion of the snapshot during which the connector reads the database schemas and other metadata. The remaining work in a snapshot involves selecting all rows from each table. The connector can do this in a consistent fashion by using a REPEATABLE READ transaction. This is the case even when the global read lock is no longer held and other MySQL clients are updating the database. +
+ +
+`minimal_percona` - the connector holds link:https://www.percona.com/doc/percona-server/5.7/management/backup_locks.html[the global backup lock] for only the initial portion of the snapshot during which the connector reads the database schemas and other metadata. The remaining work in a snapshot involves selecting all rows from each table. The connector can do this in a consistent fashion by using a REPEATABLE READ transaction. This is the case even when the global backup lock is no longer held and other MySQL clients are updating the database. This mode does not flush tables to disk, is not blocked by long-running reads, and is available only in Percona Server. +
+ +
+`extended` - blocks all writes for the duration of the snapshot. Use this setting if there are clients that are submitting operations that MySQL excludes from REPEATABLE READ semantics. +
+ +
+`none` - prevents the connector from acquiring any table locks during the snapshot. While this setting is allowed with all snapshot modes, it is safe to use if and _only_ if no schema changes are happening while the snapshot is running. For tables defined with MyISAM engine, the tables would still be locked despite this property being set as MyISAM acquires a table lock. This behavior is unlike InnoDB engine, which acquires row level locks.
 
 |[[mysql-property-snapshot-select-statement-overrides]]<<mysql-property-snapshot-select-statement-overrides, `snapshot.select{zwsp}.statement{zwsp}.overrides`>>
 |
-|Controls which rows from tables will be included in snapshot. +
-This property contains a comma-separated list of fully-qualified tables _(DB_NAME.TABLE_NAME)_. Select statements for the individual tables are specified in further configuration properties, one for each table, identified by the id `snapshot.select.statement.overrides.[DB_NAME].[TABLE_NAME]`. The value of those properties is the SELECT statement to use when retrieving data from the specific table during snapshotting. _A possible use case for large append-only tables is setting a specific point where to start (resume) snapshotting, in case a previous snapshotting was interrupted._ +
-*Note*: This setting has impact on snapshots only. Events captured from binlog are not affected by it at all.
+|Controls which table rows are included in snapshots. This property affects snapshots only. It does not affect events captured from the binlog. Specify a comma-separated list of fully-qualified table names in the form _databaseName{zwsp}.tableName_. +
+ +
+For each table that you specify, also specify another configuration property: `snapshot{zwsp}.select{zwsp}.statement{zwsp}.overrides{zwsp}._DB_NAME_._TABLE_NAME_`. For example, the name of the other configuration property might be:  `snapshot{zwsp}.select{zwsp}.statement{zwsp}.overrides{zwsp}.customers{zwsp}.orders`. Set this property to a `SELECT` statement that obtains only the rows that you want in the snapshot. When the connector performs a snapshot, it executes this `SELECT` statement to retrieve data from that table. +
+ +
+A possible use case for setting these properties is large, append-only tables. You can specify a `SELECT` statement that sets a specific point for where to start a snapshot, or where to resume a snapshot if a previous snapshot was interrupted.
 
 |[[mysql-property-min-row-count-to-stream-results]]<<mysql-property-min-row-count-to-stream-results, `min.row.count.to{zwsp}.stream.results`>>
 |`1000`
-|During a snapshot operation, the connector will query each included table to produce a read event for all rows in that table. This parameter determines whether the MySQL connection will pull all results for a table into memory (which is fast but requires large amounts of memory), or whether the results will instead be streamed (can be slower, but will work for very large tables). The value specifies the minimum number of rows a table must contain before the connector will stream results, and defaults to 1,000. Set this parameter to '0' to skip all table size checks and always stream all results during a snapshot.
+|During a snapshot, the connector queries each table for which the connector is configured to capture changes. The connector uses each query result to produce a read event that contains data for all rows in that table. This property determines whether the MySQL connector puts results for a table into memory, which is fast but requires large amounts of memory, or streams the results, which can be slower but work for very large tables. The setting of this property specifies the minimum number of rows a table must contain before the connector streams results. +
+ +
+To skip all table size checks and always stream all results during a snapshot, set this property to `0`.
 
 |[[mysql-property-heartbeat-interval-ms]]<<mysql-property-heartbeat-interval-ms, `heartbeat.interval{zwsp}.ms`>>
 |`0`
-|Controls how frequently the heartbeat messages are sent. +
-This property contains an interval in milliseconds that defines how frequently the connector sends heartbeat messages into a heartbeat topic.
-Set this parameter to `0` to not send heartbeat messages at all. +
-Disabled by default.
+|Controls how frequently the connector sends heartbeat messages to a Kafka topic. The default behavior is that the connector does not send heartbeat messages. +
+ +
+Heartbeat messages are useful for monitoring whether the connector is receiving change events from the database. Heartbeat messages might help decrease the number of change events that need to be re-sent when a connector restarts. To send heartbeat messages, set this property to a positive integer, which indicates the number of milliseconds between heartbeat messages. 
 
 |[[mysql-property-heartbeat-topics-prefix]]<<mysql-property-heartbeat-topics-prefix, `heartbeat.topics{zwsp}.prefix`>>
 |`__debezium-heartbeat`
-|Controls the naming of the topic to which heartbeat messages are sent. +
-The topic is named according to the pattern `<heartbeat.topics.prefix>.<server.name>`.
+|Controls the name of the topic to which the connector sends heartbeat messages. The topic name has this pattern: +
+ +
+_heartbeat.topics.prefix_._server.name_ +
+ +
+For example, if the database server name is `fulfillment`, the default topic name is `__debezium-heartbeat.fulfillment`.
 
 |[[mysql-property-database-initial-statements]]<<mysql-property-database-initial-statements, `database.initial{zwsp}.statements`>>
 |
-|A semicolon separated list of SQL statements to be executed when a JDBC connection (not the transaction log reading connection) to the database is established.
-Use doubled semicolon (';;') to use a semicolon as a character and not as a delimiter. +
-_Note: The connector may establish JDBC connections at its own discretion, so this should typically be used for configuration of session parameters only, but not for executing DML statements._
+|A semicolon separated list of SQL statements to be executed when a JDBC connection, not the connection that is reading the transaction log, to the database is established.
+To specify a semicolon as a character in a SQ statement and not as a delimiter, use two semicolons, (`;;`). +
+ +
+The connector might establish JDBC connections at its own discretion, so this property is ony for configuring session parameters. It is not for executing DML statements.
 
 |[[mysql-property-snapshot-delay-ms]]<<mysql-property-snapshot-delay-ms, `snapshot.delay.ms`>>
 |
-|An interval in milliseconds that the connector should wait before taking a snapshot after starting up; +
-Can be used to avoid snapshot interruptions when starting multiple connectors in a cluster, which may cause re-balancing of connectors.
+|An interval in milliseconds that the connector should wait before performing a snapshot when the connector starts. If you are starting multiple connectors in a cluster, this property is useful for avoiding snapshot interruptions, which might cause re-balancing of connectors. 
 
 |[[mysql-property-snapshot-fetch-size]]<<mysql-property-snapshot-fetch-size, `snapshot.fetch.size`>>
 |
-|Specifies the maximum number of rows that should be read in one go from each table while taking a snapshot.
-The connector will read the table contents in multiple batches of this size.
+|During a snapshot, the connector reads table content in batches of rows. This property specifies the maximum number of rows in a batch.
 
 |[[mysql-property-snapshot-lock-timeout-ms]]<<mysql-property-snapshot-lock-timeout-ms, `snapshot.lock{zwsp}.timeout.ms`>>
 |`10000`
-|Positive integer value that specifies the maximum amount of time (in milliseconds) to wait to obtain table locks when performing a snapshot.
-If table locks cannot be acquired in this time interval, the snapshot will fail. See {link-prefix}:{link-mysql-connector}#mysql-snapshots[how MySQL connectors perform database snapshots].
+|Positive integer that specifies the maximum amount of time (in milliseconds) to wait to obtain table locks when performing a snapshot. If the connector cannot acquire table locks in this time interval, the snapshot fails. See {link-prefix}:{link-mysql-connector}#mysql-snapshots[how MySQL connectors perform database snapshots].
 
 |[[mysql-property-enable-time-adjuster]]<<mysql-property-enable-time-adjuster, `enable.time{zwsp}.adjuster`>>
-|
-|MySQL allows user to insert year value as either 2-digit or 4-digit.
-In case of two digits the value is automatically mapped to 1970 - 2069 range.
-This is usually done by database. +
-Set to `true` (the default) when {prodname} should do the conversion. +
-Set to `false` when conversion is fully delegated to the database.
+|`true`
+|Boolean value that indicates whether the connector converts a 2-digit year specification to 4 digits. Set to `false` when conversion is fully delegated to the database. +
+ +
+MySQL allows users to insert year values with either 2-digits or 4-digits. For 2-digit values, the value gets mapped to a year in the range 1970 - 2069. The default behavior is that the connector does the conversion. 
 
 ifdef::community[]
 |[[mysql-property-source-struct-version]]<<mysql-property-source-struct-version, `source.struct{zwsp}.version`>>
-|v2
-|Schema version for the `source` block in {prodname} events; {prodname} 0.10 introduced a few breaking +
-changes to the structure of the `source` block in order to unify the exposed structure across
-all the connectors. +
-By setting this option to `v1` the structure used in earlier versions can be produced.
-Note that this setting is not recommended and is planned for removal in a future {prodname} version.
+|`v2`
+|Schema version for the `source` block in {prodname} events.  {prodname} 0.10 introduced a few breaking changes to the structure of the `source` block in order to unify the exposed structure across all the connectors. +
+ +
+By setting this option to `v1`, the structure used in earlier versions can be produced. However, this setting is not recommended and is planned for removal in a future {prodname} version.
 endif::community[]
 
 |[[mysql-property-sanitize-field-names]]<<mysql-property-sanitize-field-names, `sanitize.field{zwsp}.names`>>
-|`true` when connector configuration explicitly specifies the `key.converter` or `value.converter` parameters to use Avro, otherwise defaults to `false`.
-|Whether field names will be sanitized to adhere to Avro naming requirements.
+|`true` if connector configuration sets the `key{zwsp}.converter` or `value{zwsp}.converter` property to the Avro converter. +
+`false` if not.
+|Indicates whether field names are sanitized to adhere to {link-prefix}:{link-avro-serialization}#avro-naming[Avro naming requirements].
 
 |[[mysql-property-skipped-operations]]<<mysql-property-skipped-operations, `skipped.operations`>>
 |
-| comma-separated list of oplog operations that will be skipped during streaming.
-The operations include: `c` for inserts, `u` for updates, and `d` for deletes.
-By default, no operations are skipped.
+|Comma-separated list of oplog operations to skip during streaming. Values that you can specify are: `c` for inserts, `u` for updates, `d` for deletes. By default, no operations are skipped.
+
 |===
 
-[[mysql-connector-pass-through-properties]]
+[id="mysql-pass-through-configuration-properties"]
 .Pass-through configuration properties
 
-The MySQL connector also supports {link-prefix}:{link-mysql-connector}#mysql-connector-pass-through-properties[pass-through configuration properties] that are used when creating the Kafka producer and consumer. Specifically, all connector configuration properties that begin with the `database.history.producer.` prefix are used (without the prefix) when creating the Kafka producer that writes to the database history. All properties that begin with the prefix `database.history.consumer.` are used (without the prefix) when creating the Kafka consumer that reads the database history upon connector start-up.
+The MySQL connector also supports {link-prefix}:{link-mysql-connector}#mysql-pass-through-configuration-properties[pass-through configuration properties] that are used when creating the Kafka producer and consumer. Specifically, all connector configuration properties that begin with the `database.history.producer.` prefix are used (without the prefix) when creating the Kafka producer that writes to the database history. All properties that begin with the prefix `database.history.consumer.` are used (without the prefix) when creating the Kafka consumer that reads the database history upon connector start-up.
 
 For example, the following connector configuration properties can be used to secure connections to the Kafka broker:
 
@@ -2341,10 +2393,10 @@ database.history.consumer.ssl.key.password=test1234
 
 See link:{link-kafka-docs}.html[the Kafka documentation] for more details about _pass-through_ properties.
 
-[id="mysql-connector-pass-through-properties-for-database-drivers"]
+[id="mysql-pass-through-properties-for-database-drivers"]
 .Pass-through properties for database drivers
 
-In addition to the pass-through properties for the Kafka producer and consumer, there are {link-prefix}:{link-mysql-connector}#mysql-connector-pass-through-properties-for-database-drivers[pass-through properties for database drivers]. These properties have the `database.` prefix. For example, `database.tinyInt1isBit=false` is passed to the JDBC URL.
+In addition to the pass-through properties for the Kafka producer and consumer, there are {link-prefix}:{link-mysql-connector}#mysql-pass-through-properties-for-database-drivers[pass-through properties for database drivers]. These properties have the `database.` prefix. For example, `database.tinyInt1isBit=false` is passed to the JDBC URL.
 
 
 // Type: assembly
@@ -2462,50 +2514,56 @@ Details are in the following sections:
 
 * xref:debezium-mysql-connector-configuration-and-startup-errors[]
 * xref:mysql-becomes-unavailable-while-debezium-is-running[]
-* xref:debezium-mysql-kafka-connect-process-stops[]
+* xref:debezium-mysql-kafka-connect-process-stops-gracefully[]
+* xref:debezium-mysql-kafka-connect-process-crashes[]
+* xref:debezium-mysql-kafka-process-becomes-unavailable[]
 * xref:mysql-purges-binlog-files-used-by-debezium[]
 
 endif::product[]
 
-[[debezium-mysql-connector-configuration-and-startup-errors]]
+[id="debezium-mysql-connector-configuration-and-startup-errors"]
 === Configuration and startup errors
 
-The {prodname} MySQL connector fails, reports an error, and stops running when the following startup errors occur:
+In the following situations, the connector fails when trying to start, reports an error or exception in the log, and stops running:
 
 * The connector's configuration is invalid.
-* The connector cannot connect to the MySQL server using the specified connectivity parameters.
-* The connector is attempting to restart at a position in the binlog where MySQL no longer has the history available.
+* The connector cannot successfully connect to the MySQL server by using the specified connection parameters.
+* The connector is attempting to restart at a position in the binlog for which MySQL no longer has the history available.
 
-If you receive any of these errors, you receive more details in the error message. The error message also contains workarounds where possible.
+In these cases, the error message has details about the problem and possibly a suggested workaround. After you correct the configuration or address the MySQL problem, restart the connector.
 
-[[mysql-becomes-unavailable-while-debezium-is-running]]
+[id="mysql-becomes-unavailable-while-debezium-is-running"]
 === MySQL becomes unavailable
 
 If your MySQL server becomes unavailable, the {prodname} MySQL connector fails with an error and the connector stops. When the server is available again, restart the connector.
 
-However, if GTIDs are enabled for a highly available MySQL cluster, restart the connector immediately. It will connect to a different MySQL server in the cluster, find the location in the server's binlog that represents the last transaction, and begin reading the new server's binlog from that specific location.
+However, if GTIDs are enabled for a highly available MySQL cluster, you can restart the connector immediately. It will connect to a different MySQL server in the cluster, find the location in the server's binlog that represents the last transaction, and begin reading the new server's binlog from that specific location.
 
 If GTIDs are not enabled, the connector records the binlog position of only the MySQL server to which it was connected. To restart from the correct binlog position, you must reconnect to that specific server.
 
-[[debezium-mysql-kafka-connect-process-stops]]
-=== Kafka Connect stops
+[id="debezium-mysql-kafka-connect-process-stops-gracefully"]
+=== Kafka Connect stops gracefully
 
-There are three scenarios that cause some issues when Kafka Connect stops:
+When Kafka Connect stops gracefully, there is a short delay while the {prodname} MySQL connector tasks are stopped and restarted on new Kafka Connect processes.
 
-Kafka Connect stops gracefully:: When Kafka Connect stops gracefully, there is only a short delay while the {prodname} MySQL connector tasks are stopped and restarted on new Kafka Connect processes.
+[id="debezium-mysql-kafka-connect-process-crashes"]
+=== Kafka Connect process crashes
 
-Kafka Connect process crashes:: If Kafka Connect crashes, the process stops and any {prodname} MySQL connector tasks terminate without their most recently-processed offsets being recorded. In distributed mode, Kafka Connect restarts the connector tasks on other processes. However, the MySQL connector resumes from the last offset recorded by the earlier processes. This means that the replacement tasks might generate some of the same events processed prior to the crash, creating duplicate events.
-+
+If Kafka Connect crashes, the process stops and any {prodname} MySQL connector tasks terminate without their most recently-processed offsets being recorded. In distributed mode, Kafka Connect restarts the connector tasks on other processes. However, the MySQL connector resumes from the last offset recorded by the earlier processes. This means that the replacement tasks might generate some of the same events processed prior to the crash, creating duplicate events.
+
 Each change event message includes source-specific information that you can use to identify duplicate events, for example: 
-+
+
 * Event origin
 * MySQL server's event time
 * The binlog file name and position
 * GTIDs (if used)
 
-Kafka becomes unavailable:: The Kafka Connect framework records {prodname} change events in Kafka using the Kafka producer API. If the Kafka brokers become unavailable, the {prodname} MySQL connector pauses until the connection is reestablished and the connector resumes where it last left off.
+[id="debezium-mysql-kafka-process-becomes-unavailable"]
+=== Kafka becomes unavailable
 
-[[mysql-purges-binlog-files-used-by-debezium]]
+The Kafka Connect framework records {prodname} change events in Kafka by using the Kafka producer API. If the Kafka brokers become unavailable, the {prodname} MySQL connector pauses until the connection is reestablished and the connector resumes where it left off.
+
+[id="mysql-purges-binlog-files-used-by-debezium"]
 === MySQL purges binlog files
 
 If the {prodname} MySQL connector stops for too long, the MySQL server purges older binlog files and the connector's last position may be lost. When the connector is restarted, the MySQL server no longer has the starting point and the connector performs another initial snapshot. If the snapshot is disabled, the connector fails with an error.
