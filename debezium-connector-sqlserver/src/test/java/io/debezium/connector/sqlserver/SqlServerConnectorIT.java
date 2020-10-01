@@ -8,7 +8,6 @@ package io.debezium.connector.sqlserver;
 import static io.debezium.connector.sqlserver.util.TestHelper.TYPE_LENGTH_PARAMETER_KEY;
 import static io.debezium.connector.sqlserver.util.TestHelper.TYPE_NAME_PARAMETER_KEY;
 import static io.debezium.connector.sqlserver.util.TestHelper.TYPE_SCALE_PARAMETER_KEY;
-import static io.debezium.connector.sqlserver.util.TestHelper.waitForMaxLsnAvailable;
 import static org.fest.assertions.Assertions.assertThat;
 import static org.fest.assertions.MapAssert.entry;
 import static org.junit.Assert.assertNull;
@@ -1433,14 +1432,12 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
-        waitForSnapshotToBeCompleted("sql_server", "server1");
+        waitForStreamingRunning("sql_server", "server1");
 
-        waitForMaxLsnAvailable(connection);
         TestHelper.disableTableCdc(connection, "excluded_column_table_a");
         connection.execute("EXEC sp_RENAME 'excluded_column_table_a.name', 'first_name', 'COLUMN'");
         TestHelper.enableTableCdc(connection, "excluded_column_table_a", "dbo_excluded_column_table_a",
                 Arrays.asList("id", "first_name"));
-        waitForMaxLsnAvailable(connection);
 
         connection.execute("INSERT INTO excluded_column_table_a VALUES(11, 'some_name', 120)");
 
