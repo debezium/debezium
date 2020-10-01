@@ -23,6 +23,7 @@ import org.postgresql.util.PGmoney;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
 import io.debezium.connector.postgresql.PgOid;
 import io.debezium.connector.postgresql.PostgresStreamingChangeEventSource.PgConnectionSupplier;
 import io.debezium.connector.postgresql.PostgresType;
@@ -42,6 +43,18 @@ import io.debezium.time.Conversions;
 public class PgProtoColumnValue extends AbstractColumnValue<PgProto.DatumMessage> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PgProtoColumnValue.class);
+
+    /**
+     * A number used by PostgreSQL to define minimum timestamp (inclusive).
+     * Defined in timestamp.h
+     */
+    private static final long TIMESTAMP_MIN = -211813488000000000L;
+
+    /**
+     * A number used by PostgreSQL to define maximum timestamp (exclusive).
+     * Defined in timestamp.h
+     */
+    private static final long TIMESTAMP_MAX = 9223371331200000000L;
 
     private PgProto.DatumMessage value;
 
@@ -182,6 +195,9 @@ public class PgProtoColumnValue extends AbstractColumnValue<PgProto.DatumMessage
     @Override
     public OffsetDateTime asOffsetDateTimeAtUtc() {
         if (value.hasDatumInt64()) {
+            if (value.getDatumInt64() < TIMESTAMP_MIN || value.getDatumInt64() >= TIMESTAMP_MAX) {
+                throw new DebeziumException("Infinite value '" + value.getDatumInt64() + "' arrived from database, this is not supported yet");
+            }
             return Conversions.toInstantFromMicros(value.getDatumInt64()).atOffset(ZoneOffset.UTC);
         }
 
@@ -192,6 +208,9 @@ public class PgProtoColumnValue extends AbstractColumnValue<PgProto.DatumMessage
     @Override
     public Instant asInstant() {
         if (value.hasDatumInt64()) {
+            if (value.getDatumInt64() < TIMESTAMP_MIN || value.getDatumInt64() >= TIMESTAMP_MAX) {
+                throw new DebeziumException("Infinite value '" + value.getDatumInt64() + "' arrived from database, this is not supported yet");
+            }
             return Conversions.toInstantFromMicros(value.getDatumInt64());
         }
 
@@ -225,7 +244,7 @@ public class PgProtoColumnValue extends AbstractColumnValue<PgProto.DatumMessage
     @Override
     public PGpoint asPoint() {
         if (value.hasDatumPoint()) {
-            PgProto.Point datumPoint = datumPoint = value.getDatumPoint();
+            PgProto.Point datumPoint = value.getDatumPoint();
             return new PGpoint(datumPoint.getX(), datumPoint.getY());
         }
         else if (value.hasDatumBytes()) {

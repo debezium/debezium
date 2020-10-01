@@ -31,6 +31,9 @@ CREATE TABLE time_table (pk SERIAL, ts TIMESTAMP, tsneg TIMESTAMP(6) WITHOUT TIM
     ts_large_us TIMESTAMP(6),
     ts_large_ms TIMESTAMP(3),
     tz_large TIMESTAMPTZ,
+    ts_max TIMESTAMP(6),
+    ts_min TIMESTAMP(6),
+    tz_max TIMESTAMPTZ,
     PRIMARY KEY(pk));
 
 CREATE TABLE text_table (pk SERIAL, j JSON, jb JSONB, x XML, u Uuid, PRIMARY KEY(pk));
