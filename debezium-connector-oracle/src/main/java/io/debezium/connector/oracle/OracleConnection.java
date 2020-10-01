@@ -36,6 +36,7 @@ import io.debezium.relational.Tables;
 import io.debezium.relational.Tables.ColumnNameFilter;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.util.Strings;
+
 import oracle.jdbc.OracleTypes;
 
 public class OracleConnection extends JdbcConnection {
@@ -115,14 +116,14 @@ public class OracleConnection extends JdbcConnection {
             query = "select table_name, owner from all_tables where table_name NOT LIKE 'MDRT_%' AND table_name not LIKE 'MDXT_%' ";
 
             if (filterBySchema) {
-                query += " and owner like '%?%'";
+                query += " and owner like ?";
             }
         }
         else {
             query = "select view_name, owner from all_views";
 
             if (filterBySchema) {
-                query += " where owner like '%?%'";
+                query += " where owner like ?";
             }
         }
 
@@ -130,10 +131,10 @@ public class OracleConnection extends JdbcConnection {
 
         try (PreparedStatement statement = connection().prepareStatement(query)) {
             if (filterBySchema) {
-                statement.setString(1, schemaNamePattern.toUpperCase());
+                statement.setString(1, '%' + schemaNamePattern.toUpperCase() + '%');
             }
 
-            try(ResultSet result = statement.executeQuery()) {
+            try (ResultSet result = statement.executeQuery()) {
                 while (result.next()) {
                     String tableName = result.getString(1);
                     final String schemaName = result.getString(2);
