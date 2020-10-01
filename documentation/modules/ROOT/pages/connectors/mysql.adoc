@@ -1703,7 +1703,7 @@ The above example assumes that you extracted the {prodname} MySQL connector into
 ifdef::community[]
 Typically, you configure a {prodname} MySQL connector in a `.json` file that sets configuration properties for the connector. Following is an example configuration for a MySQL connector that connects to a MySQL server on port 3306 at 192.168.99.100, whose logical name is `fullfillment`.
 
-For details, see {link-prefix}:{link-mysql-connector}#mysql-configuration-properties[MySQL connector configuration properties].
+For details, see {link-prefix}:{link-mysql-connector}#mysql-connector-properties[MySQL connector configuration properties].
 
 [source,json]
 ----
@@ -1741,7 +1741,7 @@ endif::community[]
 ifdef::product[]
 
 Typically, you configure a {prodname} MySQL connector in a `.yaml` file that sets connector configuration properties. Following is an example of the configuration for a MySQL connector that connects to a MySQL server on port 3306 and captures changes to the `inventory` database. 
-For details, see {link-prefix}:{link-mysql-connector}#mysql-configuration-properties[MySQL connector configuration properties].
+For details, see {link-prefix}:{link-mysql-connector}#mysql-connector-properties[MySQL connector configuration properties].
 
 [source,yaml,options="nowrap"]
 ----
@@ -2435,7 +2435,7 @@ The {prodname} MySQL connector also provides the `HoldingGlobalLock` custom snap
 
 The *MBean* is `debezium.mysql:type=connector-metrics,context=binlog,server=<database.server.name>`.
 
-Transaction-related attributes are available only if binlog event buffering is enabled. See {link-prefix}:{link-mysql-connector}#binlog-buffer-size[`binlog.buffer.size`] in the advanced connector configuration properties for more details.
+Transaction-related attributes are available only if binlog event buffering is enabled. See {link-prefix}:{link-mysql-connector}#mysql-property-binlog-buffer-size[`binlog.buffer.size`] in the advanced connector configuration properties for more details.
 
 include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-streaming-metrics.adoc[leveloffset=+1]
 
