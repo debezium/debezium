@@ -1413,7 +1413,7 @@ cursorStatement
 // details
 
 declareVariable
-    : DECLARE uidList dataType (DEFAULT defaultValue)?
+    : DECLARE uidList dataType (DEFAULT expression)?
     ;
 
 declareCondition
