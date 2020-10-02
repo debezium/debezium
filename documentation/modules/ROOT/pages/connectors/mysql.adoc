@@ -434,7 +434,7 @@ By default, the connector streams change event records to topics with names that
 
 [WARNING]
 ====
-The MySQL connector ensures that all Kafka Connect schema names adhere to the link:http://avro.apache.org/docs/current/spec.html#names[Avro schema name format]. This means that the logical server name must start with a Latin letter or an underscore, that is, a-z, A-Z, or `_`. Each remaining character in the logical server name and each character in the database and table names must be a Latin letter, a digit, or an underscore, that is, a-z, A-Z, 0-9, or `_`. If there is an invalid character it is replaced with an underscore character.
+The MySQL connector ensures that all Kafka Connect schema names adhere to the link:http://avro.apache.org/docs/current/spec.html#names[Avro schema name format]. This means that the logical server name must start with a Latin letter or an underscore, that is, a-z, A-Z, or pass:[_]. Each remaining character in the logical server name and each character in the database and table names must be a Latin letter, a digit, or an underscore, that is, a-z, A-Z, 0-9, or pass:[_]. If there is an invalid character it is replaced with an underscore character.
 
 This can lead to unexpected conflicts if the logical server name, a database name, or a table name contains invalid characters, and the only characters that distinguish names from one another are invalid and thus replaced with underscores.
 ====
@@ -1344,6 +1344,8 @@ Contains a structure with two fields:
 [[setting-up-mysql]]
 == Set up
 
+Some MySQL setup tasks are required before you can install and run a {prodname} connector. 
+
 ifdef::product[]
 Details are in the following sections:
 
@@ -1647,8 +1649,10 @@ mysql> binlog_rows_query_log_events=ON
 [[mysql-deploying-a-connector]]
 == Deployment
 
+To deploy a {prodname} MySQL connector, install the {prodname} MySQL connector archive, configure the connector, and start the connector by adding its configuration to Kafka Connect. 
+
 ifdef::product[]
-To deploy a {prodname} MySQL connector, install the {prodname} MySQL connector archive, configure the connector, and start the connector by adding its configuration to Kafka Connect. Details are in the following topics:
+Details are in the following topics:
 
 * xref:installing-debezium-mysql-connectors[]
 * xref:debezium-mysql-connector-configuration-example[]
@@ -1671,7 +1675,7 @@ To install a {prodname} MySQL connector, download the connector archive, extract
 .Procedure
 
 ifdef::product[]
-. Download the {prodname} link:https://access.redhat.com/jbossnetwork/restricted/listSoftware.html?product=red.hat.integration&downloadType=distributions[MySQL connector].
+. Download the link:https://access.redhat.com/jbossnetwork/restricted/listSoftware.html?product=red.hat.integration&downloadType=distributions[{prodname} MySQL connector].
 endif::product[]
 ifdef::community[]
 ifeval::['{page-version}' == 'master']
@@ -1696,7 +1700,6 @@ The above example assumes that you extracted the {prodname} MySQL connector into
 // Type: concept
 // ModuleID: debezium-mysql-connector-configuration-example
 // Title: {prodname} MySQL connector configuration example
-[[mysql-example]]
 [[mysql-example-configuration]]
 === Connector configuration example
 
@@ -1841,7 +1844,7 @@ You can use a provided {prodname} container to deploy a {prodname} MySQL connect
 
 . Extract the {prodname} MySQL connector archive to create a directory structure for the connector plug-in, for example: 
 +
-[subs=""+macros"]
+[subs="+macros"]
 ----
 pass:quotes[*tree ./my-plugins/*]
 ./my-plugins/
@@ -1875,7 +1878,7 @@ Before Kafka Connect starts running the connector, Kafka Connect loads any third
 +
 * Edit the `spec.image` property of the `KafkaConnector` custom resource. If set, this property overrides the `STRIMZI_DEFAULT_KAFKA_CONNECT_IMAGE` variable in the Cluster Operator. For example:
 +
-[source,yaml,subs=attributes+]
+[source,yaml,subs="+attributes"]
 ----
 apiVersion: {KafkaConnectApiVersion}
 kind: KafkaConnector
@@ -2416,7 +2419,6 @@ The {prodname} MySQL connector provides three types of metrics that are in addit
 // Type: reference
 // ModuleID: monitoring-debezium-during-snapshots-of-mysql-databases
 // Title: Monitoring {prodname} during snapshots of MySQL databases
-[[mysql-monitoring-snapshots]]
 [[mysql-snapshot-metrics]]
 === Snapshot metrics
 
@@ -2429,7 +2431,6 @@ The {prodname} MySQL connector also provides the `HoldingGlobalLock` custom snap
 // Type: reference
 // ModuleID: monitoring-debezium-mysql-connector-binlog-reading
 // Title: Monitoring {prodname} MySQL connector binlog reading
-[[mysql-connector-binlog-metrics]]
 [[mysql-binlog-metrics]]
 === Binlog metrics
 
@@ -2487,7 +2488,6 @@ The {prodname} MySQL connector also provides the following custom binlog metrics
 // Type: reference
 // ModuleID: monitoring-debezium-mysql-connector-schema history
 // Title: Monitoring {prodname} MySQL connector schema history
-[[mysql-monitoring-schema-history]]
 [[mysql-schema-history-metrics]]
 === Schema history metrics
 
