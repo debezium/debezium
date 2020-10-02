@@ -128,7 +128,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                 final MaxLsnResult maxLsnResult = dataConnection.getMaxLsnResult(connectorConfig.isSkipLowActivityLSNsEnabled());
 
                 // Shouldn't happen if the agent is running, but it is better to guard against such situation
-                if (!maxLsnResult.getMaxLsn().isAvailable()) {
+                if (!maxLsnResult.getMaxLsn().isAvailable() || !maxLsnResult.getMaxTransactionalLsn().isAvailable()) {
                     LOGGER.warn("No maximum LSN recorded in the database; please ensure that the SQL Server Agent is running");
                     metronome.pause();
                     continue;
@@ -361,9 +361,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                                 dataConnection.getTableSchemaFromTable(currentTable),
                                 SchemaChangeEventType.CREATE));
             }
-            //
-            // TODO DBZ-2495: This needs to be re-worked per https://github.com/debezium/debezium/pull/748#issuecomment-492526200
-            //
+
             // If a column was renamed, then the old capture instance had been dropped and a new one
             // created. In consequence, a table with out-dated schema might be assigned here.
             // A proper value will be set when migration happens.
