@@ -69,7 +69,7 @@
         <!-- Databases -->
         <version.postgresql.driver>42.2.14</version.postgresql.driver>
         <version.mysql.server>5.7</version.mysql.server>
-        <version.mysql.driver>8.0.16</version.mysql.driver>
+        <version.mysql.driver>8.0.19</version.mysql.driver>
         <version.mysql.binlog>0.23.1</version.mysql.binlog>
         <version.mongo.server>3.6</version.mongo.server>
         <version.mongo.driver>3.12.3</version.mongo.driver>
