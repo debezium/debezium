@@ -20,8 +20,5 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-maven-
 
-    - name: Build configuration
-      run: mvn clean install -pl :debezium-ide-configs
-
     - name: Run formatting and import order checks
-      run: mvn process-sources -Dformat.formatter.goal=validate -Dformat.imports.goal=check
+      run: mvn clean install -DskipTests=true -DskipITs=true -Dformat.formatter.goal=validate -Dformat.imports.goal=check
