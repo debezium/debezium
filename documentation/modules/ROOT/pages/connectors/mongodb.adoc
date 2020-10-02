@@ -948,9 +948,9 @@ USER 1001
 +
 Before Kafka Connect starts running the connector, Kafka Connect loads any third-party plug-ins that are in the `/opt/kafka/plugins` directory.
 
-.. Build the container image. For example, if you saved the `Dockerfile` that you created in the previous step as `debezium-container-for-mongodb`, then you would run the following command:
+.. Build the container image. For example, if you saved the `Dockerfile` that you created in the previous step as `debezium-container-for-mongodb`, and if the `Dockerfile` is in the current directory, then you would run the following command:
 +
-`podman build -t debezium-container-for-mongodb:latest`
+`podman build -t debezium-container-for-mongodb:latest .`
 
 .. Push your custom image to your container registry, for example:
 +
