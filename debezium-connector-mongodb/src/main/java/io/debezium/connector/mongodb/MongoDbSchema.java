@@ -7,6 +7,7 @@ package io.debezium.connector.mongodb;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
 import org.apache.kafka.connect.data.Schema;
@@ -56,7 +57,7 @@ public class MongoDbSchema implements DatabaseSchema<CollectionId> {
     private final Schema sourceSchema;
     private final SchemaNameAdjuster adjuster = SchemaNameAdjuster.create(LOGGER);
     private final Function<Document, String> valueTransformer;
-    private final Map<CollectionId, MongoDbCollectionSchema> collections = new HashMap<>();
+    private final Map<CollectionId, MongoDbCollectionSchema> collections = new ConcurrentHashMap<>();
 
     public MongoDbSchema(Filters filters, TopicSelector<CollectionId> topicSelector, Schema sourceSchema) {
         this.filters = filters;
