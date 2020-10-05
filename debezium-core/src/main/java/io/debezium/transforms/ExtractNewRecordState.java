@@ -67,6 +67,7 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
     private static final String PURPOSE = "source field insertion";
     private static final int SCHEMA_CACHE_SIZE = 64;
     private static final Pattern FIELD_SEPARATOR = Pattern.compile("\\.");
+    private static final Pattern NEW_FIELD_SEPARATOR = Pattern.compile(":");
 
     private boolean dropTombstones;
     private DeleteHandling handleDeletes;
@@ -212,11 +213,11 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
             // add "d" operation header to tombstone events
             if (originalRecordValue == null) {
                 if (FieldName.OPERATION.equals(fieldReference.field)) {
-                    headers.addString(fieldReference.newFieldName, Operation.DELETE.code());
+                    headers.addString(fieldReference.getNewField(), Operation.DELETE.code());
                 }
                 continue;
             }
-            headers.add(fieldReference.getNewFieldName(), fieldReference.getValue(originalRecordValue),
+            headers.add(fieldReference.getNewField(), fieldReference.getValue(originalRecordValue),
                     fieldReference.getSchema(originalRecordValue.schema()));
         }
 
@@ -267,11 +268,11 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
     }
 
     private SchemaBuilder updateSchema(FieldReference fieldReference, SchemaBuilder builder, Schema originalRecordSchema) {
-        return builder.field(fieldReference.getNewFieldName(), fieldReference.getSchema(originalRecordSchema));
+        return builder.field(fieldReference.getNewField(), fieldReference.getSchema(originalRecordSchema));
     }
 
     private Struct updateValue(FieldReference fieldReference, Struct updatedValue, Struct struct) {
-        return updatedValue.put(fieldReference.getNewFieldName(), fieldReference.getValue(struct));
+        return updatedValue.put(fieldReference.getNewField(), fieldReference.getValue(struct));
     }
 
     @Override
@@ -312,29 +313,24 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
          * The prefix for the new field name.
          */
         private final String prefix;
+
         /**
          * The name for the outgoing attribute/field, e.g. "__op" or "__source_ts_ms" when the prefix is "__"
          */
-        private final String newFieldName;
+        private final String newField;
 
         private FieldReference(String prefix, String field) {
             this.prefix = prefix;
-            String[] parts = FIELD_SEPARATOR.split(field);
+            String[] parts = NEW_FIELD_SEPARATOR.split(field);
+            String[] splits = FIELD_SEPARATOR.split(parts[0]);
+            this.field = splits.length == 1 ? splits[0] : splits[1];
+            this.struct = determineStruct(this.field);
 
             if (parts.length == 1) {
-                this.struct = determineStruct(parts[0]);
-                this.field = parts[0];
-                this.newFieldName = prefix + field;
+                this.newField = prefix + (splits.length == 1 ? this.field : this.struct + "_" + this.field);
             }
             else if (parts.length == 2) {
-                this.struct = parts[0];
-
-                if (!(this.struct.equals(Envelope.FieldName.SOURCE) || this.struct.equals(Envelope.FieldName.TRANSACTION))) {
-                    throw new IllegalArgumentException("Unexpected field name: " + field);
-                }
-
-                this.field = parts[1];
-                this.newFieldName = prefix + this.struct + "_" + this.field;
+                this.newField = prefix + parts[1];
             }
             else {
                 throw new IllegalArgumentException("Unexpected field name: " + field);
@@ -370,8 +366,8 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
             }
         }
 
-        String getNewFieldName() {
-            return newFieldName;
+        public String getNewField() {
+            return this.newField;
         }
 
         Object getValue(Struct originalRecordValue) {

@@ -266,6 +266,8 @@ If you are configuring the event flattening SMT on a sink connector, setting thi
 |
 |Set this option to a comma-separated list, with no spaces, of metadata fields to add to the simplified Kafka record's value. When there are duplicate field names, to add metadata for one of those fields, specify the struct as well as the field, for example `source.ts_ms`. +
  +
+Optionally, you can override the field name via `<field name>:<new field name>`, e.g. like so: new field name like `version:VERSION, connector:CONNECTOR, source.ts_ms:EVENT_TIMESTAMP`. Please note that the `new field name` is case-sensitive. +
+ +
 When the SMT adds metadata fields to the simplified record's value, it prefixes each metadata field name with a double underscore. For a struct specification, the SMT also inserts an underscore between the struct name and the field name. +
  +
 If you specify a field that is not in the change event record, the SMT still adds the field to the record's value.
@@ -279,6 +281,8 @@ If you specify a field that is not in the change event record, the SMT still add
 |{link-prefix}:{link-event-flattening}#extract-new-record-state-add-headers[`add.headers`]
 |
 |Set this option to a comma-separated list, with no spaces, of metadata fields to add to the header of the simplified Kafka record. When there are duplicate field names, to add metadata for one of those fields, specify the struct as well as the field, for example `source.ts_ms`. +
+ +
+Optionally, you can override the field name via `<field name>:<new field name>`, e.g. like so: new field name like `version:VERSION, connector:CONNECTOR, source.ts_ms:EVENT_TIMESTAMP`. Please note that the `new field name` is case-sensitive. +
  +
 When the SMT adds metadata fields to the simplified record's header, it prefixes each metadata field name with a double underscore. For a struct specification, the SMT also inserts an underscore between the struct name and the field name. +
  +
