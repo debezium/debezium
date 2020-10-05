@@ -6,8 +6,7 @@ if (
     !DEVELOPMENT_VERSION ||
     !DEBEZIUM_REPOSITORY ||
     !DEBEZIUM_BRANCH ||
-    !DEBEZIUM_INCUBATOR_REPOSITORY ||
-    !DEBEZIUM_INCUBATOR_BRANCH ||
+    !DEBEZIUM_ADDITIONAL_REPOSITORIES ||
     !IMAGES_REPOSITORY ||
     !IMAGES_BRANCH ||
     !POSTGRES_DECODER_REPOSITORY ||
@@ -31,7 +30,6 @@ HOME_DIR = '/home/cloud-user'
 GPG_DIR = 'gpg'
 
 DEBEZIUM_DIR = 'debezium'
-DEBEZIUM_INCUBATOR_DIR = 'debezium-incubator'
 IMAGES_DIR = 'images'
 POSTGRES_DECODER_DIR = 'postgres-decoder'
 ORACLE_ARTIFACT_DIR = "$HOME_DIR/oracle-libs/12.2.0.1.0"
@@ -43,43 +41,35 @@ VERSION_MAJOR_MINOR = "${VERSION_PARTS[0]}.${VERSION_PARTS[1]}"
 IMAGE_TAG = VERSION_MAJOR_MINOR
 
 POSTGRES_TAGS = ['9.6', '9.6-alpine', '10', '10-alpine', '11', '11-alpine', '12', '12-alpine']
-CORE_CONNECTORS_PER_VERSION = [
-    '0.8': ['mongodb','mysql','postgres'],
-    '0.9': ['mongodb','mysql','postgres','sqlserver'],
-    '0.10': ['mongodb','mysql','postgres','sqlserver'],
-    '1.0': ['mongodb','mysql','postgres','sqlserver'],
-    '1.1': ['mongodb','mysql','postgres','sqlserver'],
-    '1.2': ['mongodb','mysql','postgres','sqlserver'],
-    '1.3': ['mongodb','mysql','postgres','sqlserver']
-]
-INCUBATOR_CONNECTORS_PER_VERSION = [
-    '0.8': ['oracle'],
-    '0.9': ['oracle'],
-    '0.10': ['oracle'],
-    '1.0': ['oracle','cassandra'],
-    '1.1': ['oracle','cassandra','db2'],
-    '1.2': ['oracle','cassandra','db2'],
-    '1.3': ['oracle','cassandra','db2']
+CONNECTORS_PER_VERSION = [
+    '0.8' : ['mongodb', 'mysql', 'postgres', 'oracle'],
+    '0.9' : ['mongodb', 'mysql', 'postgres', 'sqlserver', 'oracle'],
+    '0.10': ['mongodb', 'mysql', 'postgres', 'sqlserver', 'oracle'],
+    '1.0' : ['mongodb', 'mysql', 'postgres', 'sqlserver', 'oracle', 'cassandra'],
+    '1.1' : ['mongodb', 'mysql', 'postgres', 'sqlserver', 'oracle', 'cassandra', 'db2'],
+    '1.2' : ['mongodb', 'mysql', 'postgres', 'sqlserver', 'oracle', 'cassandra', 'db2'],
+    '1.3' : ['mongodb', 'mysql', 'postgres', 'sqlserver', 'oracle', 'cassandra', 'db2'],
+    '1.4' : ['mongodb', 'mysql', 'postgres', 'sqlserver', 'oracle', 'cassandra', 'db2', 'vitess']
 ]
 
-CORE_CONNECTORS = CORE_CONNECTORS_PER_VERSION[VERSION_MAJOR_MINOR]
-INCUBATOR_CONNECTORS = INCUBATOR_CONNECTORS_PER_VERSION[VERSION_MAJOR_MINOR]
-if (CORE_CONNECTORS == null) {
-    error "List of core connectors not available"
+CONNECTORS = CONNECTORS_PER_VERSION[VERSION_MAJOR_MINOR]
+if (CONNECTORS == null) {
+    error "List of connectors not available"
 }
-if (INCUBATOR_CONNECTORS == null) {
-    error "List of incubator connectors not available"
-}
-
-
-CONNECTORS = CORE_CONNECTORS + INCUBATOR_CONNECTORS
 echo "Connectors to be released: $CONNECTORS"
 
-IMAGES = ['connect', 'connect-base', 'examples/mysql', 'examples/mysql-gtids', 'examples/postgres', 'examples/mongodb', 'kafka', 'zookeeper']
+ADDITIONAL_REPOSITORIES = [:]
+DEBEZIUM_ADDITIONAL_REPOSITORIES.split().each {
+    def (id, repository, branch) = it.split('#')
+    ADDITIONAL_REPOSITORIES[id] = ['git': repository, 'branch': branch]
+    echo "Additional repository $repository will be used"
+}
+
+IMAGES = ['connect', 'connect-base', 'examples/mysql', 'examples/mysql-gtids', 'examples/postgres', 'examples/mongodb', 'kafka', 'server', 'zookeeper']
 MAVEN_CENTRAL = 'https://repo1.maven.org/maven2'
 STAGING_REPO = 'https://oss.sonatype.org/content/repositories'
 STAGING_REPO_ID = null
-INCUBATOR_STAGING_REPO_ID = null
+ADDITIONAL_STAGING_REPO_ID = [:]
 LOCAL_MAVEN_REPO = "$HOME_DIR/.m2/repository"
 
 withCredentials([usernamePassword(credentialsId: JIRA_CREDENTIALS_ID, passwordVariable: 'PASSWORD', usernameVariable: 'USERNAME')]) {
@@ -250,35 +240,37 @@ node('Slave') {
                 echo gpglog
             }
         }
-        checkout([$class: 'GitSCM', 
-            branches: [[name: "*/$DEBEZIUM_BRANCH"]], 
-            doGenerateSubmoduleConfigurations: false, 
-            extensions: [[$class: 'RelativeTargetDirectory', relativeTargetDir: DEBEZIUM_DIR]], 
-                submoduleCfg: [], 
+        checkout([$class: 'GitSCM',
+            branches: [[name: "*/$DEBEZIUM_BRANCH"]],
+            doGenerateSubmoduleConfigurations: false,
+            extensions: [[$class: 'RelativeTargetDirectory', relativeTargetDir: DEBEZIUM_DIR]],
+                submoduleCfg: [],
                 userRemoteConfigs: [[url: "https://$DEBEZIUM_REPOSITORY", credentialsId: GIT_CREDENTIALS_ID]]
             ]
         )
-        checkout([$class: 'GitSCM', 
-            branches: [[name: "*/$DEBEZIUM_INCUBATOR_BRANCH"]], 
-            doGenerateSubmoduleConfigurations: false, 
-            extensions: [[$class: 'RelativeTargetDirectory', relativeTargetDir: DEBEZIUM_INCUBATOR_DIR]], 
-                submoduleCfg: [], 
-                userRemoteConfigs: [[url: "https://$DEBEZIUM_INCUBATOR_REPOSITORY", credentialsId: GIT_CREDENTIALS_ID]]
-            ]
-        )
-        checkout([$class: 'GitSCM', 
-            branches: [[name: "*/$IMAGES_BRANCH"]], 
-            doGenerateSubmoduleConfigurations: false, 
-            extensions: [[$class: 'RelativeTargetDirectory', relativeTargetDir: IMAGES_DIR]], 
-                submoduleCfg: [], 
+        ADDITIONAL_REPOSITORIES.each { id, repo ->
+            checkout([$class: 'GitSCM',
+                branches: [[name: "*/${repo.branch}"]],
+                doGenerateSubmoduleConfigurations: false,
+                extensions: [[$class: 'RelativeTargetDirectory', relativeTargetDir: id]],
+                    submoduleCfg: [],
+                    userRemoteConfigs: [[url: "https://${repo.git}", credentialsId: GIT_CREDENTIALS_ID]]
+                ]
+            )
+        }
+        checkout([$class: 'GitSCM',
+            branches: [[name: "*/$IMAGES_BRANCH"]],
+            doGenerateSubmoduleConfigurations: false,
+            extensions: [[$class: 'RelativeTargetDirectory', relativeTargetDir: IMAGES_DIR]],
+                submoduleCfg: [],
                 userRemoteConfigs: [[url: "https://$IMAGES_REPOSITORY", credentialsId: GIT_CREDENTIALS_ID]]
             ]
         )
-        checkout([$class: 'GitSCM', 
-            branches: [[name: "*/$POSTGRES_DECODER_BRANCH"]], 
-            doGenerateSubmoduleConfigurations: false, 
-            extensions: [[$class: 'RelativeTargetDirectory', relativeTargetDir: POSTGRES_DECODER_DIR]], 
-                submoduleCfg: [], 
+        checkout([$class: 'GitSCM',
+            branches: [[name: "*/$POSTGRES_DECODER_BRANCH"]],
+            doGenerateSubmoduleConfigurations: false,
+            extensions: [[$class: 'RelativeTargetDirectory', relativeTargetDir: POSTGRES_DECODER_DIR]],
+                submoduleCfg: [],
                 userRemoteConfigs: [[url: "https://$POSTGRES_DECODER_REPOSITORY", credentialsId: GIT_CREDENTIALS_ID]]
             ]
         )
@@ -345,19 +337,28 @@ node('Slave') {
             sh "mvn clean install -DskipTests -DskipITs"
         }
         STAGING_REPO_ID = mvnRelease(DEBEZIUM_DIR, DEBEZIUM_REPOSITORY, DEBEZIUM_BRANCH)
-        dir(DEBEZIUM_INCUBATOR_DIR) {
-            modifyFile("pom.xml") {
-                it.replaceFirst('<version>.+</version>\n    </parent>', "<version>$RELEASE_VERSION</version>\n    </parent>")
-	    }
-	    sh "git commit -a -m 'Stable parent $RELEASE_VERSION for release'"
-            sh "mvn clean install -DskipTests -DskipITs -Poracle"
-        }
-        INCUBATOR_STAGING_REPO_ID = mvnRelease(DEBEZIUM_INCUBATOR_DIR, DEBEZIUM_INCUBATOR_REPOSITORY, DEBEZIUM_INCUBATOR_BRANCH, '-Dversion.debezium=$RELEASE_VERSION -Poracle')
-        dir(DEBEZIUM_INCUBATOR_DIR) {
-            modifyFile("pom.xml") {
-                it.replaceFirst('<version>.+</version>\n    </parent>', "<version>x$DEVELOPMENT_VERSION</version>\n    </parent>")
-	    }
-	    sh "git commit -a -m 'New parent $DEVELOPMENT_VERSION for development'"
+        ADDITIONAL_REPOSITORIES.each { id, repo ->
+            dir(id) {
+                modifyFile("pom.xml") {
+                    it.replaceFirst('<version>.+</version>\n    </parent>', "<version>$RELEASE_VERSION</version>\n    </parent>")
+            }
+            sh "git commit -a -m '[release] Stable parent $RELEASE_VERSION for release'"
+            sh "mvn clean install -DskipTests -DskipITs${id == 'incubator' ? ' -Poracle' : ''}"
+            }
+            ADDITIONAL_REPOSITORIES[id].mavenRepoId = mvnRelease(id, repo.git, repo.branch, "-Dversion.debezium=$RELEASE_VERSION${id == 'incubator' ? ' -Poracle' : ''}")
+            dir(id) {
+                modifyFile("pom.xml") {
+                    it.replaceFirst('<version>.+</version>\n    </parent>', "<version>x$DEVELOPMENT_VERSION</version>\n    </parent>")
+                }
+                sh "git commit -a -m '[release] New parent $DEVELOPMENT_VERSION for development'"
+                if (!DRY_RUN) {
+                    withCredentials([usernamePassword(credentialsId: GIT_CREDENTIALS_ID, passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USERNAME')]) {
+                        sh """
+                           git push https://\${GIT_USERNAME}:\${GIT_PASSWORD}@${repo.git} HEAD:${repo.branch}
+                        """
+                    }
+                }
+            }
         }
     }
 
@@ -375,11 +376,12 @@ node('Slave') {
         sums['SCRIPTING'] = sh (script: "md5sum -b $LOCAL_MAVEN_REPO/io/debezium/debezium-scripting/$RELEASE_VERSION/debezium-scripting-${RELEASE_VERSION}.tar.gz | awk '{print \$1}'", returnStdout: true).trim()
         dir ("$IMAGES_DIR/connect/$IMAGE_TAG") {
             echo "Modifying main Dockerfile"
+            def additionalRepoList = ADDITIONAL_REPOSITORIES.collect({ id, repo -> "${id.toUpperCase()}=$STAGING_REPO/${repo.mavenRepoId}" }).join(' ')
             modifyFile('Dockerfile') {
                 def ret = it
                     .replaceFirst('DEBEZIUM_VERSION="\\S+"', "DEBEZIUM_VERSION=\"$RELEASE_VERSION\"")
                     .replaceFirst('MAVEN_REPO_CENTRAL="[^"]*"', "MAVEN_REPO_CENTRAL=\"$STAGING_REPO/$STAGING_REPO_ID/\"")
-                    .replaceFirst('MAVEN_REPO_INCUBATOR="[^"]*"', "MAVEN_REPO_INCUBATOR=\"$STAGING_REPO/$INCUBATOR_STAGING_REPO_ID/\"")
+                    .replaceFirst('MAVEN_REPOS_ADDITIONAL="[^"]*"', "MAVEN_REPOS_ADDITIONAL=\"$additionalRepoList\"")
                 for (entry in sums) {
                     ret = ret.replaceFirst("${entry.key}_MD5=\\S+", "${entry.key}_MD5=${entry.value}")
                 }
@@ -456,7 +458,7 @@ node('Slave') {
             modifyFile('Dockerfile') {
                 it
                     .replaceFirst('MAVEN_REPO_CENTRAL="[^"]+"', "MAVEN_REPO_CENTRAL=\"\"")
-                    .replaceFirst('MAVEN_REPO_INCUBATOR="[^"]+"', "MAVEN_REPO_INCUBATOR=\"\"")
+                    .replaceFirst('MAVEN_REPOS_ADDITIONAL="[^"]+"', "MAVEN_REPOS_ADDITIONAL=\"\"")
             }
             modifyFile('Dockerfile.local') {
                 it
