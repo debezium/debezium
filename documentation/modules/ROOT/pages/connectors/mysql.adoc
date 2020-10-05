@@ -1,5 +1,9 @@
 // Category: debezium-using
 // Type: assembly
+[id="debezium-connector-for-mysql"]
+= {prodname} connector for MySQL
+
+ifdef::community[]
 
 :toc:
 :toc-placement: macro
@@ -8,8 +12,9 @@
 :source-highlighter: highlight.js
 :context: debezium
 
-[id="debezium-connector-for-mysql"]
-= {prodname} connector for MySQL
+toc::[]
+
+endif::community[]
 
 MySQL has a binary log (binlog) that records all operations in the order in which they are committed to the database. This includes changes to table schemas as well as changes to the data in tables. MySQL uses the binlog for replication and recovery.
 
@@ -36,18 +41,48 @@ endif::product[]
 [[how-the-mysql-connector-works]]
 == How the connector works
 
-To optimally configure and run a {prodname} MySQL connector, it is helpful to understand how the connector tracks the structure of tables, exposes schema changes, performs snapshots, and determines Kafka topic names. An overview of the MySQL topologies that the connector supports is useful for planning your application. 
+An overview of the MySQL topologies that the connector supports is useful for planning your application. To optimally configure and run a {prodname} MySQL connector, it is helpful to understand how the connector tracks the structure of tables, exposes schema changes, performs snapshots, and determines Kafka topic names. 
 
 ifdef::product[]
 Details are in the following topics:
 
+* xref:mysql-topologies-supported-by-debezium-connectors[]
 * xref:how-debezium-mysql-connectors-handle-database-schema-changes[]
 * xref:how-debezium-mysql-connectors-expose-database-schema-changes[]
 * xref:how-debezium-mysql-connectors-perform-database-snapshots[]
 * xref:default-names-of-kafka-topics-that-receive-debezium-mysql-change-event-records[]
-* xref:mysql-topologies-supported-by-debezium-connectors[]
 
 endif::product[]
+
+
+// Type: concept
+// ModuleID: mysql-topologies-supported-by-debezium-connectors
+// Title: MySQL topologies supported by {prodname} connectors
+[id="supported-mysql-topologies"]
+=== Supported MySQL topologies
+
+The {prodname} MySQL connector supports the following MySQL topologies:
+
+Standalone::
+When a single MySQL server is used, the server must have the binlog enabled (_and optionally GTIDs enabled_) so the {prodname} MySQL connector can monitor the server. This is often acceptable, since the binary log can also be used as an incremental link:https://dev.mysql.com/doc/refman/{mysql-version}/en/backup-methods.html[backup]. In this case, the MySQL connector always connects to and follows this standalone MySQL server instance.
+
+Primary and replica::
+The {prodname} MySQL connector can follow one of the primary servers or one of the replicas (_if that replica has its binlog enabled_), but the connector sees changes in only the cluster that is visible to that server. Generally, this is not a problem except for the multi-primary topologies.
++
+The connector records its position in the server’s binlog, which is different on each server in the cluster. Therefore, the connector must follow just one MySQL server instance. If that server fails, that server must be restarted or recovered before the connector can continue.
+
+High available clusters::
+A variety of link:https://dev.mysql.com/doc/mysql-ha-scalability/en/[high availability] solutions exist for MySQL, and they make it significantly easier to tolerate and almost immediately recover from problems and failures. Most HA MySQL clusters use GTIDs so that replicas are able to keep track of all changes on any of the primary servers.
+
+Multi-primary::
+link:https://dev.mysql.com/doc/refman/{mysql-version}/en/mysql-cluster-replication-multi-source.html[Network Database (NDB) cluster replication] uses one or more MySQL replica nodes that each replicate from multiple primary servers. This is a powerful way to aggregate the replication of multiple MySQL clusters. This topology requires the use of GTIDs.
++
+A {prodname} MySQL connector can use these multi-primary MySQL replicas as sources, and can fail over to different multi-primary MySQL replicas as long as the new replica is caught up to the old replica. That is, the new replica has all transactions that were seen on the first replica. This works even if the connector is using only a subset of databases and/or tables, as the connector can be configured to include or exclude specific GTID sources when attempting to reconnect to a new multi-primary MySQL replica and find the correct position in the binlog.
+
+Hosted::
+There is support for the {prodname} MySQL connector to use hosted options such as Amazon RDS and Amazon Aurora.
++
+Because these hosted options do not allow a global read lock, table-level locks are used to create the _consistent snapshot_.
 
 // Type: concept
 // ModuleID: how-debezium-mysql-connectors-handle-database-schema-changes
@@ -345,35 +380,6 @@ fulfillment.inventory.orders
 fulfillment.inventory.customers
 fulfillment.inventory.products
 ----
-
-// Type: concept
-// ModuleID: mysql-topologies-supported-by-debezium-connectors
-// Title: MySQL topologies supported by {prodname} connectors
-[id="supported-mysql-topologies"]
-=== Supported MySQL topologies
-
-The {prodname} MySQL connector supports the following MySQL topologies:
-
-Standalone::
-When a single MySQL server is used, the server must have the binlog enabled (_and optionally GTIDs enabled_) so the {prodname} MySQL connector can monitor the server. This is often acceptable, since the binary log can also be used as an incremental link:https://dev.mysql.com/doc/refman/{mysql-version}/en/backup-methods.html[backup]. In this case, the MySQL connector always connects to and follows this standalone MySQL server instance.
-
-Primary and replica::
-The {prodname} MySQL connector can follow one of the primary servers or one of the replicas (_if that replica has its binlog enabled_), but the connector sees changes in only the cluster that is visible to that server. Generally, this is not a problem except for the multi-primary topologies.
-+
-The connector records its position in the server’s binlog, which is different on each server in the cluster. Therefore, the connector must follow just one MySQL server instance. If that server fails, that server must be restarted or recovered before the connector can continue.
-
-High available clusters::
-A variety of link:https://dev.mysql.com/doc/mysql-ha-scalability/en/[high availability] solutions exist for MySQL, and they make it significantly easier to tolerate and almost immediately recover from problems and failures. Most HA MySQL clusters use GTIDs so that replicas are able to keep track of all changes on any of the primary servers.
-
-Multi-primary::
-link:https://dev.mysql.com/doc/refman/{mysql-version}/en/mysql-cluster-replication-multi-source.html[Network Database (NDB) cluster replication] uses one or more MySQL replica nodes that each replicate from multiple primary servers. This is a powerful way to aggregate the replication of multiple MySQL clusters. This topology requires the use of GTIDs.
-+
-A {prodname} MySQL connector can use these multi-primary MySQL replicas as sources, and can fail over to different multi-primary MySQL replicas as long as the new replica is caught up to the old replica. That is, the new replica has all transactions that were seen on the first replica. This works even if the connector is using only a subset of databases and/or tables, as the connector can be configured to include or exclude specific GTID sources when attempting to reconnect to a new multi-primary MySQL replica and find the correct position in the binlog.
-
-Hosted::
-There is support for the {prodname} MySQL connector to use hosted options such as Amazon RDS and Amazon Aurora.
-+
-Because these hosted options do not allow a global read lock, table-level locks are used to create the _consistent snapshot_.
 
 // Type: assembly
 // ModuleID: descriptions-of-debezium-mysql-connector-data-change-events
