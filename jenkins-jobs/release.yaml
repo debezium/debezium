@@ -27,13 +27,9 @@
           description: "A branch from which Debezium is built"
           default: "master"
       - string:
-          name: DEBEZIUM_INCUBATOR_REPOSITORY
-          description: "Repository from which Debezium incubating modules are built"
-          default: "github.com/debezium/debezium-incubator.git"
-      - string:
-          name: DEBEZIUM_INCUBATOR_BRANCH
-          description: "A branch from which Debezium incubating modules are built"
-          default: "master"
+          name: DEBEZIUM_ADDITIONAL_REPOSITORIES
+          description: "A space separated list of additional repositories from which Debezium incubating components are built (id#repo#branch)"
+          default: "incubator#github.com/debezium/debezium-incubator.git#master vitess#github.com/debezium/debezium-connector-vitess#master"
       - string:
           name: IMAGES_REPOSITORY
           description: "Repository from which Debezium images are built"
