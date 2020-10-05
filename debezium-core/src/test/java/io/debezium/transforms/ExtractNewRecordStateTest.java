@@ -337,6 +337,39 @@ public class ExtractNewRecordStateTest {
     }
 
     @Test
+    @FixFor({ "DBZ-2606" })
+    public void testNewFieldAndHeaderMapping() {
+        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+            final Map<String, String> props = new HashMap<>();
+            String fieldPrefix = "";
+            String headerPrefix = "prefix.";
+            props.put(ADD_FIELDS, "op:OP, lsn:LSN, id:ID, source.lsn:source_lsn, transaction.total_order:TOTAL_ORDER");
+            props.put(ADD_FIELDS_PREFIX, fieldPrefix);
+            props.put(ADD_HEADERS, "op, source.lsn:source_lsn, transaction.id:TXN_ID, transaction.total_order:TOTAL_ORDER");
+            props.put(ADD_HEADERS_PREFIX, headerPrefix);
+            transform.configure(props);
+
+            final SourceRecord updateRecord = createUpdateRecord();
+            final SourceRecord unwrapped = transform.apply(updateRecord);
+            assertThat(((Struct) unwrapped.value()).get(fieldPrefix + "OP")).isEqualTo(Envelope.Operation.UPDATE.code());
+            assertThat(((Struct) unwrapped.value()).get(fieldPrefix + "LSN")).isEqualTo(1234);
+            assertThat(((Struct) unwrapped.value()).get(fieldPrefix + "ID")).isEqualTo("571");
+            assertThat(((Struct) unwrapped.value()).get(fieldPrefix + "source_lsn")).isEqualTo(1234);
+            assertThat(((Struct) unwrapped.value()).get(fieldPrefix + "TOTAL_ORDER")).isEqualTo(42L);
+
+            assertThat(unwrapped.headers()).hasSize(4);
+            String headerValue = getSourceRecordHeaderByKey(unwrapped, headerPrefix + "op");
+            assertThat(headerValue).isEqualTo(Envelope.Operation.UPDATE.code());
+            headerValue = getSourceRecordHeaderByKey(unwrapped, headerPrefix + "source_lsn");
+            assertThat(headerValue).isEqualTo(String.valueOf(1234));
+            headerValue = getSourceRecordHeaderByKey(unwrapped, headerPrefix + "TXN_ID");
+            assertThat(headerValue).isEqualTo(String.valueOf(571L));
+            headerValue = getSourceRecordHeaderByKey(unwrapped, headerPrefix + "TOTAL_ORDER");
+            assertThat(headerValue).isEqualTo(String.valueOf(42L));
+        }
+    }
+
+    @Test
     @FixFor("DBZ-1452")
     public void testAddFieldsForMissingOptionalField() {
         try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
