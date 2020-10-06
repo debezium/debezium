@@ -55,7 +55,7 @@ public class CreateTableParserListener extends MySqlParserBaseListener {
         parser.runIfNotNull(() -> {
             // Make sure that the table's character set has been set ...
             if (!tableEditor.hasDefaultCharsetName()) {
-                tableEditor.setDefaultCharsetName(parser.currentDatabaseCharset());
+                tableEditor.setDefaultCharsetName(parser.charsetForTable(tableEditor.tableId()));
             }
             listeners.remove(columnDefinitionListener);
             columnDefinitionListener = null;

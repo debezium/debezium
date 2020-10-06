@@ -63,6 +63,24 @@ public class MySqlAntlrDdlParserTest {
     }
 
     @Test
+    @FixFor("DBZ-2604")
+    public void shouldUseDatabaseCharacterSet() {
+        String ddl = "CREATE DATABASE `mydb` character set UTF8mb4 collate utf8mb4_unicode_ci;"
+                + "CREATE TABLE mydb.mytable (id INT PRIMARY KEY, val1 CHAR(16) CHARSET latin2, val2 CHAR(5));";
+        parser.parse(ddl, tables);
+        assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
+        assertThat(tables.size()).isEqualTo(1);
+
+        Table table = tables.forTable(null, null, "mydb.mytable");
+        assertThat(table.columns()).hasSize(3);
+        assertThat(table.columnWithName("id")).isNotNull();
+        assertThat(table.columnWithName("val1")).isNotNull();
+        assertThat(table.columnWithName("val2")).isNotNull();
+        assertThat(table.columnWithName("val1").charsetName()).isEqualTo("latin2");
+        assertThat(table.columnWithName("val2").charsetName()).isEqualTo("UTF8mb4");
+    }
+
+    @Test
     @FixFor("DBZ-2130")
     public void shouldParseCharacterDatatype() {
         String ddl = "CREATE TABLE mytable (id INT PRIMARY KEY, val1 CHARACTER, val2 CHARACTER(5));";
