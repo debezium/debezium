@@ -326,6 +326,16 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
     }
 
     /**
+     * Get the name of the character set for the give table name.
+     *
+     * @return the name of the character set for the given table, or null if not known ...
+     */
+    public String charsetForTable(TableId tableId) {
+        final String defaultDatabaseCharset = tableId.catalog() != null ? charsetNameForDatabase().get(tableId.catalog()) : null;
+        return defaultDatabaseCharset != null ? defaultDatabaseCharset : currentDatabaseCharset();
+    }
+
+    /**
      * Runs a function if all given object are not null.
      *
      * @param function function to run; may not be null

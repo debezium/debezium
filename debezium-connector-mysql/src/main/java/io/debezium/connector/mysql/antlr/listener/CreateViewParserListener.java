@@ -56,7 +56,7 @@ public class CreateViewParserListener extends MySqlParserBaseListener {
             tableEditor.addColumns(selectColumnsListener.getSelectedColumns());
             // Make sure that the table's character set has been set ...
             if (!tableEditor.hasDefaultCharsetName()) {
-                tableEditor.setDefaultCharsetName(parser.currentDatabaseCharset());
+                tableEditor.setDefaultCharsetName(parser.charsetForTable(tableEditor.tableId()));
             }
             parser.databaseTables().overwriteTable(tableEditor.create());
             listeners.remove(selectColumnsListener);
