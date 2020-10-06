@@ -332,6 +332,10 @@ public class MySqlValueConverters extends JdbcValueConverters {
         }
         String encoding = CharsetMapping.getJavaEncodingForMysqlCharset(mySqlCharsetName);
         if (encoding == null) {
+            logger.debug("Column uses MySQL character set '{}', which has no mapping to a Java character set, will try it in lowercase", mySqlCharsetName);
+            encoding = CharsetMapping.getJavaEncodingForMysqlCharset(mySqlCharsetName.toLowerCase());
+        }
+        if (encoding == null) {
             logger.warn("Column uses MySQL character set '{}', which has no mapping to a Java character set", mySqlCharsetName);
         }
         else {
