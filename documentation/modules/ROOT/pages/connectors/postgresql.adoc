@@ -3,6 +3,8 @@
 [id="debezium-connector-for-postgresql"]
 = {prodname} connector for PostgreSQL
 
+:product: true
+
 ifdef::community[]
 
 :toc:
@@ -1930,9 +1932,9 @@ Again, regularly emitting events solves the problem.
 endif::community[]
 
 // Type: assembly
-// ModuleID: deploying-and-managing-debezium-postgresql-connectors
-// Title: Deploying and managing {prodname} PostgreSQL connectors
-[[postgresql-deploying-a-connector]]
+// ModuleID: deployment-of-debezium-postgresql-connectors
+// Title: Deployment of {prodname} PostgreSQL connectors
+[[postgresql-deployment]]
 == Deployment
 
 ifdef::community[]
@@ -1942,47 +1944,175 @@ If you are working with immutable containers, see link:https://hub.docker.com/r/
 endif::community[]
 
 ifdef::product[]
-To deploy a {prodname} PostgreSQL connector, install the {prodname} PostgreSQL connector archive, configure the connector, and start the connector by adding its configuration to Kafka Connect. Details are in the following topics: 
+To deploy a {prodname} PostgreSQL connector, add the connector files to Kafka Connect, create a custom container to run the connector, and add connector configuration to your container. Details are in the following topics: 
 
-* xref:steps-for-installing-debezium-postgresql-connectors[]
-* xref:debezium-postgresql-connector-configuration-example[]
-* xref:adding-debezium-postgresql-connector-configuration-to-kafka-connect[]
-* xref:monitoring-debezium-postgresql-connector-performance[]
+* xref:deploying-debezium-postgresql-connectors[]
 * xref:descriptions-of-debezium-postgresql-connector-configuration-properties[]
 
-// Type: concept
-[id="steps-for-installing-debezium-postgresql-connectors"]
-=== Steps for installing {prodname} PostgreSQL connectors
+// Type: procedure
+// ModuleID: deploying-debezium-postgresql-connectors
+// Title: Deploying {prodname} PostgreSQL connectors
+[[postgresql-deploying-a-connector]]
+=== Deploying connectors
 
-To install the PostgreSQL connector, follow the procedures in {LinkDebeziumInstallOpenShift}[{NameDebeziumInstallOpenShift}]. The main steps are:
+To deploy a {prodname} connector, use the provided {prodname} container to build a custom Kafka Connect container image. After pushing the custom image to your container registry, create a `KafkaConnector` custom resource (CR) that configures your connector, and apply this CR to your container. 
 
-. {LinkDebeziumUserGuide}#setting-up-postgresql-to-run-a-debezium-connector[Set up PostgreSQL to run a {prodname} connector].
+.Prerequisites
 
-. Use link:https://access.redhat.com/products/red-hat-amq#streams[Red Hat AMQ Streams] to set up Apache Kafka and Kafka Connect on OpenShift. AMQ Streams offers operators and images that bring Kafka to OpenShift. 
+* PostgreSQL is running and you performed the steps to {LinkDebeziumUserGuide}#setting-up-postgresql-to-run-a-debezium-connector[set up PostgreSQL to run a {prodname} connector].
 
-. Download the {prodname} link:https://access.redhat.com/jbossnetwork/restricted/listSoftware.html?product=red.hat.integration&downloadType=distributions[PostgreSQL connector].
+* link:https://access.redhat.com/products/red-hat-amq#streams[Red Hat AMQ Streams] was used to set up and start running Apache Kafka and Kafka Connect on OpenShift. AMQ Streams offers operators and images that bring Kafka to OpenShift. 
 
-. Extract the files into your Kafka Connect environment.
-. Add the plug-in's parent directory to your Kafka Connect `plugin.path`, for example: 
+* Podman or Docker is installed and you have sufficient rights to create and manage containers.
+
+.Procedure
+
+. Add the {prodname} PostgreSQL connector files to Kafka Connect: 
+.. Download the {prodname} link:https://access.redhat.com/jbossnetwork/restricted/listSoftware.html?product=red.hat.integration&downloadType=distributions[PostgreSQL connector archive].
+
+.. Extract the {prodname} PostgreSQL connector archive to create a directory structure for the connector plug-in, for example: 
++
+[subs="+macros"]
+----
+pass:quotes[*tree ./my-plugins/*]
+./my-plugins/
+├── debezium-connector-postgresql
+│   ├── ...
+----
+
+.. Add the plug-in's parent directory to your Kafka Connect `plugin.path`. For example, if you extracted the {prodname} PostgreSQL connector to `/kafka/connect/debezium-connector-postgresql`, execute this command: 
 +
 [source]
 ----
 plugin.path=/kafka/connect
 ----
-+
-The above example assumes that you extracted the {prodname} PostgreSQL connector to the `/kafka/connect/{prodname}-connector-postgresql` path.
 
-. Restart your Kafka Connect process to ensure that the new JAR files are picked up.
+.. Restart your Kafka Connect process so that it picks up the new files in the plug-in's parent directory. 
+
+. Create and publish a custom image for running your {prodname} connector:
+
+.. Create a new `Dockerfile` by using `{DockerKafkaConnect}` as the base image. In the following example, you would replace _my-plugins_ with the name of your plug-ins directory:
++
+[subs="+macros,+attributes"]
+----
+FROM {DockerKafkaConnect}
+USER root:root
+pass:quotes[COPY _./my-plugins/_ /opt/kafka/plugins/]
+USER 1001
+----
++
+Before Kafka Connect starts running the connector, Kafka Connect loads any third-party plug-ins that are in the `/opt/kafka/plugins` directory.
+
+.. Build the container image. For example, if you saved the `Dockerfile` that you created in the previous step as `debezium-container-for-postgresql`, and if the `Dockerfile` is in the current directory, then you would run the following command:
++
+[source,shell,options="nowrap"]
+----
+podman build -t debezium-container-for-postgresql:latest .
+----
+
+.. Push your custom image to your container registry, for example:
++
+[source,shell,options="nowrap"]
+----
+podman push debezium-container-for-postgresql:latest
+----
+
+.. Update your Kafka environment to point to the new container image. Do this by editing your `KafkaConnect` custom resource to set the `spec.image` property to the name of the new container image. If set, this property overrides the `STRIMZI_DEFAULT_KAFKA_CONNECT_IMAGE` variable in the Cluster Operator. For example:
++
+[source,yaml,subs="+attributes"]
+----
+apiVersion: kafka.strimzi.io/v1beta1
+kind: KafkaConnect
+metadata:
+  name: my-connect-cluster
+  annotations: strimzi.io/use-connector-resources: "true"
+spec:
+  image: debezium-container-for-postgresql
+----
++
+The `metadata.annotations` setting indicates to the Cluster Operator that `KafkaConnector` resources are used to configure connectors in this Kafka Connect cluster.
++
+The `spec.image` setting specifies the name of the image that you created to run your {prodname} connector. 
++
+Alternatively, you can edit the `install/cluster-operator/050-Deployment-strimzi-cluster-operator.yaml` file to set the  `STRIMZI_DEFAULT_KAFKA_CONNECT_IMAGE` variable to point to the new container image. If you edit this file you must apply it to your OpenShift cluster and then reinstall the Cluster Operator.
+
+. Create a `KafkaConnector` custom resource that configures your {prodname} PostgreSQL connector instance. Typically, you configure a {prodname} PostgreSQL connector in a `.yaml` file that sets connector configuration properties. For example, a connector configuration can produce events for a subset of the schemas and tables, or it can ignore, mask, or truncate columns that are sensitive, too large, or not needed. See the {link-prefix}:{link-postgresql-connector}#postgresql-connector-properties[complete list of PostgreSQL connector properties] that can be specified in these configurations.
++
+The following example configures a {prodname} connector that connects to a PostgreSQL server on port 5432 at 192.168.99.100, whose logical name is `fullfillment`.
++
+[source,yaml,options="nowrap"]
+----
+apiVersion: kafka.strimzi.io/v1alpha1
+  kind: KafkaConnector
+  metadata:
+    name: inventory-connector  // <1>
+    labels: 
+      strimzi.io/cluster: my-connect-cluster
+  spec:
+    class: io.debezium.connector.postgresql.PostgresConnector
+    tasksMax: 1  // <2>
+    config:  // <3>
+      database.hostname: postgresqldb   // <4>
+      database.port: 5432
+      database.user: debezium
+      database.password: dbz
+      database.dbname: postgres  
+      database.server.name: fullfillment   // <5>
+      schema.include.list: public.inventory   // <6>
+----
+<1> The name of the connector.
+<2> Only one task should operate at any one time.
+Because the PostgreSQL connector reads the PostgreSQL server’s `binlog`,
+using a single connector task ensures proper order and event handling.
+The Kafka Connect service uses connectors to start one or more tasks that do the work,
+and it automatically distributes the running tasks across the cluster of Kafka Connect services.
+If any of the services stop or crash,
+those tasks will be redistributed to running services.
+<3> The connector’s configuration.
+<4> The database host, which is the name of the container that is running the PostgreSQL server (`postgresqldb`).
+<5> A unique server name.
+The server name is the logical identifier for the PostgreSQL server or cluster of servers.
+This name is used as the prefix for all Kafka topics that receive change event records.
+<6> Changes in only the `public.inventory` schema are captured.
+
+. Register your connector instance with Kafka Connect. For example, if you saved your `KafkaConnector` resource in the `inventory-connector.yaml` file, you would run the following command: 
++
+[source,shell,options="nowrap"]
+----
+oc apply -f inventory-connector.yaml
+----
++
+This registers `inventory-connector` and the connector starts to run against the `inventory` database.
+
+. Verify that the connector was created and has started: 
+.. Display the Kafka Connect log output to verify that the connector was created and has started to capture changes in the specified database:
++
+[source,shell,options="nowrap"]
+----
+oc logs $(oc get pods -o name -l strimzi.io/cluster=my-connect-cluster)
+----
+
+.. Review the log output to verify that the initial snapshot has been executed. You should see something like this: 
++
+[source,shell,options="nowrap"]
+----
+... INFO Starting snapshot for ...
+... INFO Snapshot is using user 'debezium' ... 
+----
+
+.Results
+
+When the connector starts, it {link-prefix}:{link-postgresql-connector}#postgresql-snapshots[performs a consistent snapshot] of the PostgreSQL server databases that the connector is configured for. The connector then starts generating data change events for row-level operations and streaming change event records to Kafka topics. 
 
 endif::product[]
+
+ifdef::community[]
 
 // Type: concept
 // ModuleID:debezium-postgresql-connector-configuration-example
 // Title: {prodname} PostgreSQL connector configuration example
 [[postgresql-example-configuration]]
 === Connector configuration example
-
-ifdef::community[]
 
 Following is an example of the configuration for a PostgreSQL connector that connects to a PostgreSQL server on port 5432 at 192.168.99.100, whose logical name is `fullfillment`. Typically, you configure the {prodname} PostgreSQL connector in a `.json` file using the configuration properties available for the connector.
 
@@ -2015,61 +2145,13 @@ You can choose to produce events for a subset of the schemas and tables. Optiona
 <8> The logical name of the PostgreSQL server/cluster, which forms a namespace and is used in all the names of the Kafka topics to which the connector writes, the Kafka Connect schema names, and the namespaces of the corresponding Avro schema when the Avro converter is used.
 <9> A list of all tables hosted by this server that this connector will monitor. This is optional, and there are other properties for listing the schemas and tables to include or exclude from monitoring.
 
-endif::community[]
-
-ifdef::product[]
-
-Following is an example of the configuration for a PostgreSQL connector that connects to a PostgreSQL server on port 5432 at 192.168.99.100, whose logical name is `fullfillment`. Typically, you configure a {prodname} PostgreSQL connector in a `.yaml` file using the configuration properties available for the connector.
-
-You can choose to produce events for a subset of the schemas and tables. Optionally, ignore, mask, or truncate columns that are sensitive, too large, or not needed.
-
-[source,yaml,options="nowrap"]
-----
-apiVersion: kafka.strimzi.io/v1beta1
-  kind: KafkaConnector
-  metadata:
-    name: inventory-connector  // <1>
-    labels: strimzi.io/cluster: my-connect-cluster
-  spec:
-    class: io.debezium.connector.postgresql.PostgresConnector
-    tasksMax: 1  // <2>
-    config:  // <3>
-      database.hostname: postgresqldb   // <4>
-      database.port: 5432
-      database.user: debezium
-      database.password: dbz
-      database.dbname: postgres  
-      database.server.name: fullfillment   // <5>
-      schema.include.list: public.inventory   // <6>
-----
-<1> The name of the connector.
-<2> Only one task should operate at any one time.
-Because the PostgreSQL connector reads the PostgreSQL server’s `binlog`,
-using a single connector task ensures proper order and event handling.
-The Kafka Connect service uses connectors to start one or more tasks that do the work,
-and it automatically distributes the running tasks across the cluster of Kafka Connect services.
-If any of the services stop or crash,
-those tasks will be redistributed to running services.
-<3> The connector’s configuration.
-<4> The database host, which is the name of the container that is running the PostgreSQL server (`postgresqldb`).
-<5> A unique server name.
-The server name is the logical identifier for the PostgreSQL server or cluster of servers.
-This name is used as the prefix for all Kafka topics that receive change event records.
-<6> Changes in only the `public.inventory` schema are captured.
-
-endif::product[]
-
 See the {link-prefix}:{link-postgresql-connector}#postgresql-connector-properties[complete list of PostgreSQL connector properties] that can be specified in these configurations.
 
 You can send this configuration with a `POST` command to a running Kafka Connect service. The service records the configuration and starts the connector task that connects to the PostgreSQL database and streams change event records to Kafka topics.
 
-// Type: procedure
-// ModuleID: adding-debezium-postgresql-connector-configuration-to-kafka-connect
-// Title: Adding {prodname} PostgreSQL connector configuration to Kafka Connect
 [[postgresql-adding-connector-configuration]]
 === Adding connector configuration
 
-ifdef::community[]
 To start running a PostgreSQL connector, create a connector configuration and add the configuration to your Kafka Connect cluster. 
 
 .Prerequisites
@@ -2087,129 +2169,6 @@ To start running a PostgreSQL connector, create a connector configuration and ad
 . Use the link:{link-kafka-docs}/#connect_rest[Kafka Connect REST API] to add that connector configuration to your Kafka Connect cluster. 
 
 endif::community[]
-
-ifdef::product[]
-You can use a provided {prodname} container to deploy a {prodname} PostgreSQL connector. In this procedure, you build a custom Kafka Connect container image for {prodname}, configure the {prodname} connector as needed, and then add your connector configuration to your Kafka Connect environment. 
-
-.Prerequisites
-
-* Podman or Docker is installed and you have sufficient rights to create and manage containers.
-* You installed the {prodname} PostgreSQL connector archive. 
-
-.Procedure
-
-. Extract the {prodname} PostgreSQL connector archive to create a directory structure for the connector plug-in, for example: 
-+
-[subs=+macros]
-----
-pass:quotes[*tree ./my-plugins/*]
-./my-plugins/
-├── debezium-connector-postgres
-│   ├── ...
-----
-
-. Create and publish a custom image for running your {prodname} connector:
-
-.. Create a new `Dockerfile` by using `{DockerKafkaConnect}` as the base image. In the following example, you would replace _my-plugins_ with the name of your plug-ins directory:
-+
-[subs="+macros,+attributes"]
-----
-FROM {DockerKafkaConnect}
-USER root:root
-pass:quotes[COPY _./my-plugins/_ /opt/kafka/plugins/]
-USER 1001
-----
-+
-Before Kafka Connect starts running the connector, Kafka Connect loads any third-party plug-ins that are in the `/opt/kafka/plugins` directory.
-
-.. Build the container image. For example, if you saved the `Dockerfile` that you created in the previous step as `debezium-container-for-postgresql`, and if the `Dockerfile` is in the current directory, then you would run the following command:
-+
-`podman build -t debezium-container-for-postgresql:latest .`
-
-.. Push your custom image to your container registry, for example:
-+
-`podman push debezium-container-for-postgresql:latest`
-
-.. Point to the new container image. Do one of the following:
-+
-* Edit the `spec.image` property of the `KafkaConnector` custom resource. If set, this property overrides the `STRIMZI_DEFAULT_KAFKA_CONNECT_IMAGE` variable in the Cluster Operator. For example:
-+
-[source,yaml,subs="+attributes"]
-----
-apiVersion: {KafkaConnectApiVersion}
-kind: KafkaConnector
-metadata:
-  name: my-connect-cluster
-spec:
-  #...
-  image: debezium-container-for-postgresql
-----
-+
-* In the `install/cluster-operator/050-Deployment-strimzi-cluster-operator.yaml` file, edit the `STRIMZI_DEFAULT_KAFKA_CONNECT_IMAGE` variable to point to the new container image and reinstall the Cluster Operator. If you edit this file you must apply it to your OpenShift cluster.
-
-. Create a `KafkaConnector` custom resource that defines your {prodname} PostgreSQL connector instance. See {LinkDebeziumUserGuide}#debezium-postgresql-connector-configuration-example[the connector configuration example].
-
-. Apply the connector instance, for example: 
-+
-`oc apply -f inventory-connector.yaml`
-+
-This registers `inventory-connector` and the connector starts to run against the `inventory` database.
-
-. Verify that the connector was created and has started to capture changes in the specified database. You can verify the connector instance by watching the Kafka Connect log output as, for example, `inventory-connector` starts.
-
-.. Display the Kafka Connect log output:
-+
-[source,shell,options="nowrap"]
-----
-oc logs $(oc get pods -o name -l strimzi.io/name=my-connect-cluster-connect)
-----
-
-.. Review the log output to verify that the initial snapshot has been executed. You should see something like the following lines: 
-+
-[source,shell,options="nowrap"]
-----
-... INFO Starting snapshot for ...
-... INFO Snapshot is using user 'debezium' ... 
-----
-
-endif::product[]
-
-.Results
-
-When the connector starts, it {link-prefix}:{link-postgresql-connector}#postgresql-snapshots[performs a consistent snapshot] of the PostgreSQL server databases that the connector is configured for. The connector then starts generating data change events for row-level operations and streaming change event records to Kafka topics. 
-
-// Type: assembly
-// ModuleID: monitoring-debezium-postgresql-connector-performance
-// Title: Monitoring {prodname} PostgreSQL connector performance
-[[postgresql-monitoring]]
-=== Monitoring
-
-The {prodname} PostgreSQL connector provides two types of metrics that are in addition to the built-in support for JMX metrics that Zookeeper, Kafka, and Kafka Connect provide.
-
-* {link-prefix}:{link-postgresql-connector}#postgresql-snapshot-metrics[Snapshot metrics] provide information about connector operation while performing a snapshot. 
-* {link-prefix}:{link-postgresql-connector}#postgresql-streaming-metrics[Streaming metrics] provide information about connector operation when the connector is capturing changes and streaming change event records. 
-
-{link-prefix}:{link-debezium-monitoring}#monitoring-debezium[{prodname} monitoring documentation] provides details for how to expose these metrics by using JMX.
-
-// Type: reference
-// ModuleID: monitoring-debezium-during-snapshots-of-postgresql-databases
-// Title: Monitoring {prodname} during snapshots of PostgreSQL databases
-[[postgresql-snapshot-metrics]]
-==== Snapshot metrics
-
-The *MBean* is `debezium.postgres:type=connector-metrics,context=snapshot,server=_<database.server.name>_`.
-
-include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-snapshot-metrics.adoc[leveloffset=+1]
-
-// Type: reference
-// ModuleID: monitoring-debezium-postgresql-connector-record-streaming
-// Title: Monitoring {prodname} PostgreSQL connector record streaming
-[[postgresql-streaming-metrics]]
-==== Streaming metrics
-
-The *MBean* is `debezium.postgres:type=connector-metrics,context=streaming,server=_<database.server.name>_`.
-
-include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-streaming-metrics.adoc[leveloffset=+1]
 
 // Type: reference
 // ModuleID: descriptions-of-debezium-postgresql-connector-configuration-properties
@@ -2666,6 +2625,42 @@ If the setting of `toasted.value.placeholder` starts with the `hex:` prefix it i
 The connector also supports _pass-through_ configuration properties that are used when creating the Kafka producer and consumer.
 
 Be sure to consult the {link-kafka-docs}.html[Kafka documentation] for all of the configuration properties for Kafka producers and consumers. The PostgreSQL connector does use the {link-kafka-docs}.html#consumerconfigs[new consumer configuration properties].
+
+
+// Type: assembly
+// ModuleID: monitoring-debezium-postgresql-connector-performance
+// Title: Monitoring {prodname} PostgreSQL connector performance
+[[postgresql-monitoring]]
+== Monitoring
+
+The {prodname} PostgreSQL connector provides two types of metrics that are in addition to the built-in support for JMX metrics that Zookeeper, Kafka, and Kafka Connect provide.
+
+* {link-prefix}:{link-postgresql-connector}#postgresql-snapshot-metrics[Snapshot metrics] provide information about connector operation while performing a snapshot. 
+* {link-prefix}:{link-postgresql-connector}#postgresql-streaming-metrics[Streaming metrics] provide information about connector operation when the connector is capturing changes and streaming change event records. 
+
+{link-prefix}:{link-debezium-monitoring}#monitoring-debezium[{prodname} monitoring documentation] provides details for how to expose these metrics by using JMX.
+
+// Type: reference
+// ModuleID: monitoring-debezium-during-snapshots-of-postgresql-databases
+// Title: Monitoring {prodname} during snapshots of PostgreSQL databases
+[[postgresql-snapshot-metrics]]
+=== Snapshot metrics
+
+The *MBean* is `debezium.postgres:type=connector-metrics,context=snapshot,server=_<database.server.name>_`.
+
+include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-snapshot-metrics.adoc[leveloffset=+1]
+
+// Type: reference
+// ModuleID: monitoring-debezium-postgresql-connector-record-streaming
+// Title: Monitoring {prodname} PostgreSQL connector record streaming
+[[postgresql-streaming-metrics]]
+=== Streaming metrics
+
+The *MBean* is `debezium.postgres:type=connector-metrics,context=streaming,server=_<database.server.name>_`.
+
+include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-streaming-metrics.adoc[leveloffset=+1]
+
+
 
 // Type: assembly
 // ModuleID: how-debezium-postgresql-connectors-handle-faults-and-problems
