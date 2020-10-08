@@ -31,6 +31,7 @@ create table table_with_index (id int, data varchar(50), UNIQUE INDEX `data_UNIQ
 create table transactional_table(name varchar(255), class_id int, id int) transactional=1;
 create table transactional(name varchar(255), class_id int, id int);
 create table add_test(col1 varchar(255), col2 int, col3 int);
+create table blob_test(id int, col1 blob(45));
 #end
 #begin
 -- Rename table
