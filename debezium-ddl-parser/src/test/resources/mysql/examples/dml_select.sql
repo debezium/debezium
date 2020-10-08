@@ -131,3 +131,4 @@ select  t.*, tt.* FROM wptests_terms AS t  INNER JOIN wptests_term_taxonomy AS t
 SELECT CAST('1' AS INT);
 SELECT CAST('1' AS INTEGER);
 #end
+SELECT trigger.num FROM test `trigger`;

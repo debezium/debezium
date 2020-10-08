@@ -1940,6 +1940,7 @@ tableName
 
 fullColumnName
     : uid (dottedId dottedId? )?
+    | . dottedId dottedId?
     ;
 
 indexColumnName
