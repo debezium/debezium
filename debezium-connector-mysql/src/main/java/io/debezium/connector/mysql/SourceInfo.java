@@ -453,6 +453,15 @@ final class SourceInfo extends AbstractSourceInfo {
                 MySqlConnectorConfig.SnapshotNewTables.PARALLEL.getValue())) {
             setFilterDataFromConfig(config);
         }
+        else {
+            if (hasFilterInfo()) {
+                // Connector has filter info but snapshot.new.tables is disabled. Filter info should be unset.
+                this.databaseIncludeList = null;
+                this.databaseExcludeList = null;
+                this.tableIncludeList = null;
+                this.tableExcludeList = null;
+            }
+        }
     }
 
     /**
