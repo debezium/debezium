@@ -27,6 +27,12 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
@@ -921,11 +927,36 @@ public class JdbcConnection implements AutoCloseable {
                 statementCache.values().forEach(this::cleanupPreparedStatement);
                 statementCache.clear();
                 LOGGER.trace("Closing database connection");
-                conn.close();
+                doClose();
             }
             finally {
                 conn = null;
             }
+        }
+    }
+
+    private void doClose() throws SQLException {
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        // attempting to close the connection gracefully
+        Future<Object> futureClose = executor.submit(() -> {
+            conn.close();
+            return null;
+        });
+        try {
+            futureClose.get(10, TimeUnit.SECONDS);
+        }
+        catch (ExecutionException e) {
+            if (e.getCause() instanceof SQLException) {
+                throw (SQLException) e.getCause();
+            }
+            throw (RuntimeException) e.getCause();
+        }
+        catch (TimeoutException | InterruptedException e) {
+            LOGGER.warn("Failed to close database connection by calling close(), attempting abort()");
+            conn.abort(Runnable::run);
+        }
+        finally {
+            executor.shutdownNow();
         }
     }
 
