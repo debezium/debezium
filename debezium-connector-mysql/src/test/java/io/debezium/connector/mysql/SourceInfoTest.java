@@ -230,6 +230,29 @@ public class SourceInfoTest {
     }
 
     @Test
+    public void shouldRecoverSourceInfoFromOffsetWithoutFilterDataIfSnapshotNewTablesIsOff() {
+        final String databaseIncludeList = "a,b";
+        final String tableIncludeList = "c.foo,d.bar,d.baz";
+        Map<String, String> offset = offset(10, 10);
+        offset.put(SourceInfo.DATABASE_INCLUDE_LIST_KEY, databaseIncludeList);
+        offset.put(SourceInfo.TABLE_INCLUDE_LIST_KEY, tableIncludeList);
+
+        sourceWith(offset);
+        assertThat(source.hasFilterInfo()).isTrue();
+
+        final Configuration configuration = Configuration.create()
+                .with(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, databaseIncludeList)
+                .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, tableIncludeList)
+                .with(MySqlConnectorConfig.SNAPSHOT_NEW_TABLES, MySqlConnectorConfig.SnapshotNewTables.OFF)
+                .build();
+        source.maybeSetFilterDataFromConfig(configuration);
+
+        assertThat(source.hasFilterInfo()).isFalse();
+        assertThat(source.getDatabaseIncludeList()).isNull();
+        assertThat(source.getTableIncludeList()).isNull();
+    }
+
+    @Test
     public void shouldStartSourceInfoFromBinlogCoordinatesWithGtidsAndZeroBinlogCoordinates() {
         sourceWith(offset(GTID_SET, 0, 0, false));
         assertThat(source.gtidSet()).isEqualTo(GTID_SET);
