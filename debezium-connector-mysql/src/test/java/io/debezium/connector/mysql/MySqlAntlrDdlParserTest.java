@@ -63,6 +63,23 @@ public class MySqlAntlrDdlParserTest {
     }
 
     @Test
+    @FixFor("DBZ-2641")
+    public void shouldProcessDimensionalBlob() {
+        String ddl = "CREATE TABLE blobtable (id INT PRIMARY KEY, val1 BLOB(16), val2 BLOB);";
+        parser.parse(ddl, tables);
+        assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
+        assertThat(tables.size()).isEqualTo(1);
+
+        Table table = tables.forTable(null, null, "blobtable");
+        assertThat(table.columns()).hasSize(3);
+        assertThat(table.columnWithName("id")).isNotNull();
+        assertThat(table.columnWithName("val1")).isNotNull();
+        assertThat(table.columnWithName("val2")).isNotNull();
+        assertThat(table.columnWithName("val1").length()).isEqualTo(16);
+        assertThat(table.columnWithName("val2").length()).isEqualTo(-1);
+    }
+
+    @Test
     @FixFor("DBZ-2604")
     public void shouldUseDatabaseCharacterSet() {
         String ddl = "CREATE DATABASE `mydb` character set UTF8mb4 collate utf8mb4_unicode_ci;"
