@@ -370,7 +370,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     private final SourceTimestampMode sourceTimestampMode;
     private final ColumnNameFilter columnFilter;
     private final boolean readOnlyDatabaseConnection;
-    private final boolean skipLowActivityLSNsEnabled;
+    private final boolean skipLowActivityLsnsEnabled;
 
     public SqlServerConnectorConfig(Configuration config) {
         super(SqlServerConnector.class, config, config.getString(SERVER_NAME), new SystemTablesPredicate(), x -> x.schema() + "." + x.table(), true);
@@ -395,7 +395,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
         }
 
         this.sourceTimestampMode = SourceTimestampMode.fromMode(config.getString(SOURCE_TIMESTAMP_MODE_CONFIG_NAME));
-        this.skipLowActivityLSNsEnabled = config.getBoolean(MAX_LSN_OPTIMIZATION);
+        this.skipLowActivityLsnsEnabled = config.getBoolean(MAX_LSN_OPTIMIZATION);
     }
 
     private static ColumnNameFilter getColumnExcludeNameFilter(String excludedColumnPatterns) {
@@ -452,8 +452,8 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
         return readOnlyDatabaseConnection;
     }
 
-    public boolean isSkipLowActivityLSNsEnabled() {
-        return skipLowActivityLSNsEnabled;
+    public boolean isSkipLowActivityLsnsEnabled() {
+        return skipLowActivityLsnsEnabled;
     }
 
     @Override

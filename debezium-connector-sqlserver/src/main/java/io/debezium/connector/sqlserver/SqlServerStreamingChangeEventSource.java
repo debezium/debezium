@@ -125,7 +125,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                 if (connectorConfig.isReadOnlyDatabaseConnection()) {
                     dataConnection.commit();
                 }
-                final MaxLsnResult maxLsnResult = dataConnection.getMaxLsnResult(connectorConfig.isSkipLowActivityLSNsEnabled());
+                final MaxLsnResult maxLsnResult = dataConnection.getMaxLsnResult(connectorConfig.isSkipLowActivityLsnsEnabled());
 
                 // Shouldn't happen if the agent is running, but it is better to guard against such situation
                 if (!maxLsnResult.getMaxLsn().isAvailable() || !maxLsnResult.getMaxTransactionalLsn().isAvailable()) {
