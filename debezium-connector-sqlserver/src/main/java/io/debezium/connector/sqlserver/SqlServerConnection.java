@@ -156,8 +156,8 @@ public class SqlServerConnection extends JdbcConnection {
         }, "Maximum LSN query must return exactly one value"));
     }
 
-    public MaxLsnResult getMaxLsnResult(boolean skipLowActivityLSNsEnabled) throws SQLException {
-        if (skipLowActivityLSNsEnabled) {
+    public MaxLsnResult getMaxLsnResult(boolean skipLowActivityLsnsEnabled) throws SQLException {
+        if (skipLowActivityLsnsEnabled) {
             return prepareQueryAndMap(GET_MAX_LSN_SKIP_LOW_ACTIVTY, statement -> {
             }, singleResultMapper(rs -> {
                 final MaxLsnResult ret = new MaxLsnResult(Lsn.valueOf(rs.getBytes(1)), Lsn.valueOf(rs.getBytes(2)));
