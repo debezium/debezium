@@ -14,7 +14,9 @@ import java.math.BigDecimal;
 import java.nio.charset.Charset;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.OffsetTime;
 import java.time.ZoneOffset;
@@ -937,7 +939,11 @@ public class PostgresValueConverter extends JdbcValueConverters {
         }
         final Timestamp timestamp = (Timestamp) data;
 
-        return timestamp.toLocalDateTime();
+        final Instant instant = timestamp.toInstant();
+        final LocalDateTime utcTime = LocalDateTime
+                .ofInstant(instant, ZoneOffset.systemDefault());
+
+        return utcTime;
     }
 
     @Override

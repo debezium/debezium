@@ -105,7 +105,7 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
     protected static final String INSERT_CASH_TYPES_STMT = "INSERT INTO cash_table (csh) VALUES ('$1234.11')";
     protected static final String INSERT_NEGATIVE_CASH_TYPES_STMT = "INSERT INTO cash_table (csh) VALUES ('($1234.11)')";
     protected static final String INSERT_NULL_CASH_TYPES_STMT = "INSERT INTO cash_table (csh) VALUES (NULL)";
-    protected static final String INSERT_DATE_TIME_TYPES_STMT = "INSERT INTO time_table(ts, tsneg, ts_ms, ts_us, tz, date, ti, tip, ttf, ttz, tptz, it, ts_large, ts_large_us, ts_large_ms, tz_large, ts_max, ts_min, tz_max) "
+    protected static final String INSERT_DATE_TIME_TYPES_STMT = "INSERT INTO time_table(ts, tsneg, ts_ms, ts_us, tz, date, ti, tip, ttf, ttz, tptz, it, ts_large, ts_large_us, ts_large_ms, tz_large, ts_max, ts_min, tz_max, tz_min) "
             +
             "VALUES ('2016-11-04T13:51:30.123456'::TIMESTAMP, '1936-10-25T22:10:12.608'::TIMESTAMP, '2016-11-04T13:51:30.123456'::TIMESTAMP, '2016-11-04T13:51:30.123456'::TIMESTAMP, '2016-11-04T13:51:30.123456+02:00'::TIMESTAMPTZ, "
             +
@@ -115,7 +115,8 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
             "'21016-11-04T13:51:30.123456+07:00'::TIMESTAMPTZ," +
             "'294247-01-01T23:59:59.999999'::TIMESTAMP," +
             "'4713-12-31T23:59:59.999999 BC'::TIMESTAMP," +
-            "'294247-01-01T23:59:59.999999+00:00'::TIMESTAMPTZ"
+            "'294247-01-01T23:59:59.999999+00:00'::TIMESTAMPTZ," +
+            "'4714-12-31T23:59:59.999999Z BC'::TIMESTAMPTZ"
             + ")";
     protected static final String INSERT_BIN_TYPES_STMT = "INSERT INTO bitbin_table (ba, bol, bol2, bs, bs7, bv, bv2, bvl, bvunlimited1, bvunlimited2) " +
             "VALUES (E'\\\\001\\\\002\\\\003'::bytea, '0'::bit(1), '1'::bit(1), '11'::bit(2), '1'::bit(7), '00'::bit(2), '000000110000001000000001'::bit(24)," +
@@ -597,6 +598,34 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
 
         String expectedTzLarge = "+21016-11-04T06:51:30.123456Z";
 
+        // The assertion for minimimum timestamps is problematic as it seems that Java and PostgreSQL handles conversion from large negative date
+        // to microseconds in different way
+        // written to database: 4713-12-31T23:59:59.999999 BC
+        // arrived from decoding plugin: -210831897600000001
+        // value from decoding plugin converted to Instant: -4712-12-31T23:59:59.999999Z - 1 year difference
+        // JDBC driver delivers Timestamp B.C.E. 4713-12-31T23:59:59.000+0100 that internally contains -210835184391000001 and translates to Instant -4712-11-23T22:59:59.999999Z
+        // The result is that JDBC driver and logical decoding plugin provides different values which moreover
+        // do not map to Java conversions
+        // It seems that JDBC driver always uses Gregorian calendar while Java Time API uses Julian
+        // Also it seems that further distortions could be introduced by timezone used so instead of matching
+        // against exact value the requested date should be smaller than -4712-11-01
+        final SchemaAndValueField.Condition largeNegativeTimestamp = (String fieldName, Object expectedValue, Object actualValue) -> {
+            final long expectedMinTsStreaming = -210831897600000001L;
+            final long expectedMinTsSnapshot = LocalDateTime.of(-4712, 11, 1, 0, 0, 0).toInstant(java.time.ZoneOffset.UTC).getEpochSecond() * 1_000_000;
+            final long ts = (long) actualValue;
+            assertTrue("Negative timestamp don't match for " + fieldName + ", got " + actualValue, ts >= expectedMinTsSnapshot && ts < 0);
+        };
+        // The same issue is with timezoned timestamp
+        // Database: 4714-12-31T23:59:59.999999Z BC
+        // JDBC: -4713-11-23T23:59:59.999999Z
+        // Streamed as: -210863520000000001
+        // Java conversion: -4713-12-31T23:59:59.999999Z
+        final SchemaAndValueField.Condition largeNegativeTzTimestamp = (String fieldName, Object expectedValue, Object actualValue) -> {
+            final String expectedMinTsStreaming = "-4713-12-31T23:59:59.999999Z";
+            final String expectedMinTsSnapshot = "-4713-11-23T23:59:59.999999Z";
+            assertTrue("Negative timestamp don't match for " + fieldName + ", got " + actualValue,
+                    expectedMinTsSnapshot.equals(actualValue) || expectedMinTsStreaming.equals(actualValue));
+        };
         return Arrays.asList(new SchemaAndValueField("ts", MicroTimestamp.builder().optional().build(), expectedTs),
                 new SchemaAndValueField("tsneg", MicroTimestamp.builder().optional().build(), expectedNegTs),
                 new SchemaAndValueField("ts_ms", Timestamp.builder().optional().build(), expectedTsMs),
@@ -614,10 +643,9 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
                 new SchemaAndValueField("ts_large_ms", Timestamp.builder().optional().build(), expectedTsLargeMs),
                 new SchemaAndValueField("tz_large", ZonedTimestamp.builder().optional().build(), expectedTzLarge),
                 new SchemaAndValueField("ts_max", MicroTimestamp.builder().optional().build(), 9223371331200000000L - 1L),
-                // PostgreSQL rejects smaller timestamp even if it is larger than TIMESTAMP_MIN
-                // disabled due to DBZ-2616
-                // new SchemaAndValueField("ts_min", MicroTimestamp.builder().optional().build(), -210831897600000001L),
-                new SchemaAndValueField("tz_max", ZonedTimestamp.builder().optional().build(), "+294247-01-01T23:59:59.999999Z"));
+                new SchemaAndValueField("ts_min", MicroTimestamp.builder().optional().build(), -1L).assertWithCondition(largeNegativeTimestamp),
+                new SchemaAndValueField("tz_max", ZonedTimestamp.builder().optional().build(), "+294247-01-01T23:59:59.999999Z"),
+                new SchemaAndValueField("tz_min", ZonedTimestamp.builder().optional().build(), "").assertWithCondition(largeNegativeTzTimestamp));
     }
 
     protected List<SchemaAndValueField> schemaAndValuesForTimeArrayTypes() {
@@ -1080,10 +1108,18 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
     }
 
     protected static class SchemaAndValueField {
+        @FunctionalInterface
+        protected static interface Condition {
+            void assertField(String fieldName, Object expectedValue, Object actualValue);
+        }
+
         private final Schema schema;
         private final Object value;
         private final String fieldName;
         private Supplier<Boolean> assertValueOnlyIf = null;
+        private Condition valueCondition = (fieldName, expectedValue, actualValue) -> {
+            assertEquals("Values don't match for " + fieldName, expectedValue, actualValue);
+        };
 
         public SchemaAndValueField(String fieldName, Schema schema, Object value) {
             this.schema = schema;
@@ -1093,6 +1129,11 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
 
         public SchemaAndValueField assertValueOnlyIf(final Supplier<Boolean> predicate) {
             assertValueOnlyIf = predicate;
+            return this;
+        }
+
+        public SchemaAndValueField assertWithCondition(final Condition valueCondition) {
+            this.valueCondition = valueCondition;
             return this;
         }
 
@@ -1136,7 +1177,7 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
                 assertStruct((Struct) value, (Struct) actualValue);
             }
             else {
-                assertEquals("Values don't match for field '" + fieldName + "'", value, actualValue);
+                valueCondition.assertField(fieldName, value, actualValue);
             }
         }
 
