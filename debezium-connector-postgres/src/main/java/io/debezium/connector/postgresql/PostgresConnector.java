@@ -134,10 +134,14 @@ public class PostgresConnector extends RelationalBaseSourceConnector {
                     LOGGER.error(errorMessage);
                 }
             }
-            catch (SQLException e) {
+            catch (Exception e) {
                 LOGGER.error("Failed testing connection for {} with user '{}'", connection.connectionString(),
                         connection.username(), e);
                 hostnameValue.addErrorMessage("Error while validating connector config: " + e.getMessage());
+                portValue.addErrorMessage("Unable to connect: " + e.getMessage());
+                databaseValue.addErrorMessage("Unable to connect: " + e.getMessage());
+                userValue.addErrorMessage("Unable to connect: " + e.getMessage());
+                passwordValue.addErrorMessage("Unable to connect: " + e.getMessage());
             }
         }
     }
