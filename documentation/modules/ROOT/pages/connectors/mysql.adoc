@@ -2316,6 +2316,10 @@ a|Controls whether and how long the connector holds the global MySQL read lock, 
  +
 `none` - prevents the connector from acquiring any table locks during the snapshot. While this setting is allowed with all snapshot modes, it is safe to use if and _only_ if no schema changes are happening while the snapshot is running. For tables defined with MyISAM engine, the tables would still be locked despite this property being set as MyISAM acquires a table lock. This behavior is unlike InnoDB engine, which acquires row level locks.
 
+|[[mysql-property-snapshot-include-collection-list]]<<mysql-property-snapshot-include-collection-list, `snapshot.include.collection.list`>>
+| All tables specified in `table.include.list`
+|An optional, comma-separated list of regular expressions that match names of schemas specified in `table.include.list` for which you *want* to take the snapshot.
+
 |[[mysql-property-snapshot-select-statement-overrides]]<<mysql-property-snapshot-select-statement-overrides, `snapshot.select{zwsp}.statement{zwsp}.overrides`>>
 |
 |Controls which table rows are included in snapshots. This property affects snapshots only. It does not affect events captured from the binlog. Specify a comma-separated list of fully-qualified table names in the form _databaseName{zwsp}.tableName_. +
