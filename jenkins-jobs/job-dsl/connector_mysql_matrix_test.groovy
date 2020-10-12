@@ -1,19 +1,14 @@
-// Job definition to test PostgreSQL connector against different PostgreSQL versions
+// Job definition to test MySQL connector against different MySQL versions
 
-matrixJob('debezium-postgresql-matrix-test') {
+matrixJob('connector-debezium-mysql-matrix-test') {
 
-    displayName('Debezium PostgreSQL Test Matrix')
-    description('Executes tests for PostgreSQL Connector with PostgreSQL matrix')
+    displayName('Debezium MySQL Connector Test Matrix')
+    description('Executes tests for MySQL Connector with MySQL matrix')
     label('Slave')
-    combinationFilter('''
-         DECODER_PLUGIN == "decoderbufs" ||
-        (DECODER_PLUGIN == "pgoutput" && (POSTGRES_VERSION == "10" || POSTGRES_VERSION == "11")) ||
-         POSTGRES_VERSION == "12"
-         ''')
 
     axes {
-        text('POSTGRES_VERSION', '10', '11', '12')
-        text('DECODER_PLUGIN', 'decoderbufs', 'wal2json', 'wal2json_streaming', 'pgoutput')
+        text('MYSQL_VERSION', '8.0.20', '5.5', '5.6')
+        text('PROFILE', 'none', 'assembly')
         label("Node", "Slave")
     }
 
@@ -65,23 +60,17 @@ else
     git checkout $BRANCH
 fi
 
-# Setup pg config for Alpine distributions
-if [[ $POSTGRES_VERSION =~ alpine$ ]] ; then
-    MAVEN_ARGS = "-Dpostgres.config.file=/usr/local/share/postgresql/postgresql.conf.sample"
-else
-    MAVEN_ARGS="-Dnone"
-fi
-                               
 # Run maven build
-mvn clean install -U -s $HOME/.m2/settings-snapshots.xml -pl debezium-connector-postgres -am -fae \
+mvn clean install -U -s $HOME/.m2/settings-snapshots.xml -pl debezium-connector-mysql -am -fae \
     -Dmaven.test.failure.ignore=true \
-    -Dpostgres.port=55432 \
-    -Dversion.postgres.server=$POSTGRES_VERSION \
-    -Ddecoder.plugin.name=$DECODER_PLUGIN \
-    -Dtest.argline="-Ddebezium.test.records.waittime=5" \
+    -Dversion.mysql.server=$MYSQL_VERSION \
+    -Dmysql.port=4301 \
+    -Dmysql.replica.port=4301 \
+    -Dmysql.gtid.port=4302 \
+    -Dmysql.gtid.replica.port=4303 \
+    -P$PROFILE \
     -Dinsecure.repositories=WARN \
-    -P$PROFILE_PROD \
-    $MAVEN_ARGS
+    -P$PROFILE_PROD
 ''')
     }
 }

@@ -1,8 +1,8 @@
 // Job definition to test SQL Server connector against different SQL Server versions
 
-matrixJob('debezium-sqlserver-matrix-test') {
+matrixJob('connector-debezium-sqlserver-matrix-test') {
 
-    displayName('Debezium SQL Server Test Matrix')
+    displayName('Debezium SQL Server Connector Test Matrix')
     description('Executes tests for SQL Server Connector with SQL Server matrix')
     label('Slave')
 

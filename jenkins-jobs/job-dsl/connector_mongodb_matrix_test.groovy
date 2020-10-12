@@ -1,8 +1,8 @@
 // Job definition to test MongoDB connector against different MongoDB versions
 
-matrixJob('debezium-mongodb-matrix-test') {
+matrixJob('connector-debezium-mongodb-matrix-test') {
 
-    displayName('Debezium MongoDB Test Matrix')
+    displayName('Debezium MongoDB Connector Test Matrix')
     description('Executes tests for MongoDB Connector with MongoDB matrix')
     label('Slave')
 
