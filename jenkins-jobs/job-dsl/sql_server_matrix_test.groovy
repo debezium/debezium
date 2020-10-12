@@ -8,6 +8,7 @@ matrixJob('debezium-sqlserver-matrix-test') {
 
     axes {
         text('SQL_SERVER_VERSION', '2017', '2019')
+        label("Node", "Slave")
     }
 
     properties {

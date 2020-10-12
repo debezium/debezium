@@ -14,6 +14,7 @@ matrixJob('debezium-postgresql-matrix-test') {
     axes {
         text('POSTGRES_VERSION', '10', '11', '12')
         text('DECODER_PLUGIN', 'decoderbufs', 'wal2json', 'wal2json_streaming', 'pgoutput')
+        label("Node", "Slave")
     }
 
     properties {
