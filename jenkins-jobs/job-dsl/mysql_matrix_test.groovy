@@ -9,6 +9,7 @@ matrixJob('debezium-mysql-matrix-test') {
     axes {
         text('MYSQL_VERSION', '8.0.20', '5.5', '5.6')
         text('PROFILE', 'none', 'assembly')
+        label("Node", "Slave")
     }
 
     properties {
