@@ -54,6 +54,7 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTask;
 import org.junit.Rule;
 import org.junit.rules.TestRule;
+import org.postgresql.jdbc.PgStatement;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -105,7 +106,7 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
     protected static final String INSERT_CASH_TYPES_STMT = "INSERT INTO cash_table (csh) VALUES ('$1234.11')";
     protected static final String INSERT_NEGATIVE_CASH_TYPES_STMT = "INSERT INTO cash_table (csh) VALUES ('($1234.11)')";
     protected static final String INSERT_NULL_CASH_TYPES_STMT = "INSERT INTO cash_table (csh) VALUES (NULL)";
-    protected static final String INSERT_DATE_TIME_TYPES_STMT = "INSERT INTO time_table(ts, tsneg, ts_ms, ts_us, tz, date, ti, tip, ttf, ttz, tptz, it, ts_large, ts_large_us, ts_large_ms, tz_large, ts_max, ts_min, tz_max, tz_min) "
+    protected static final String INSERT_DATE_TIME_TYPES_STMT = "INSERT INTO time_table(ts, tsneg, ts_ms, ts_us, tz, date, ti, tip, ttf, ttz, tptz, it, ts_large, ts_large_us, ts_large_ms, tz_large, ts_max, ts_min, tz_max, tz_min, ts_pinf, ts_ninf, tz_pinf, tz_ninf) "
             +
             "VALUES ('2016-11-04T13:51:30.123456'::TIMESTAMP, '1936-10-25T22:10:12.608'::TIMESTAMP, '2016-11-04T13:51:30.123456'::TIMESTAMP, '2016-11-04T13:51:30.123456'::TIMESTAMP, '2016-11-04T13:51:30.123456+02:00'::TIMESTAMPTZ, "
             +
@@ -116,7 +117,11 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
             "'294247-01-01T23:59:59.999999'::TIMESTAMP," +
             "'4713-12-31T23:59:59.999999 BC'::TIMESTAMP," +
             "'294247-01-01T23:59:59.999999+00:00'::TIMESTAMPTZ," +
-            "'4714-12-31T23:59:59.999999Z BC'::TIMESTAMPTZ"
+            "'4714-12-31T23:59:59.999999Z BC'::TIMESTAMPTZ," +
+            "'infinity'::TIMESTAMP," +
+            "'-infinity'::TIMESTAMP," +
+            "'infinity'::TIMESTAMPTZ," +
+            "'-infinity'::TIMESTAMPTZ"
             + ")";
     protected static final String INSERT_BIN_TYPES_STMT = "INSERT INTO bitbin_table (ba, bol, bol2, bs, bs7, bv, bv2, bvl, bvunlimited1, bvunlimited2) " +
             "VALUES (E'\\\\001\\\\002\\\\003'::bytea, '0'::bit(1), '1'::bit(1), '11'::bit(2), '1'::bit(7), '00'::bit(2), '000000110000001000000001'::bit(24)," +
@@ -645,7 +650,11 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
                 new SchemaAndValueField("ts_max", MicroTimestamp.builder().optional().build(), 9223371331200000000L - 1L),
                 new SchemaAndValueField("ts_min", MicroTimestamp.builder().optional().build(), -1L).assertWithCondition(largeNegativeTimestamp),
                 new SchemaAndValueField("tz_max", ZonedTimestamp.builder().optional().build(), "+294247-01-01T23:59:59.999999Z"),
-                new SchemaAndValueField("tz_min", ZonedTimestamp.builder().optional().build(), "").assertWithCondition(largeNegativeTzTimestamp));
+                new SchemaAndValueField("tz_min", ZonedTimestamp.builder().optional().build(), "").assertWithCondition(largeNegativeTzTimestamp),
+                new SchemaAndValueField("ts_pinf", MicroTimestamp.builder().optional().build(), PgStatement.DATE_POSITIVE_INFINITY),
+                new SchemaAndValueField("ts_ninf", MicroTimestamp.builder().optional().build(), PgStatement.DATE_NEGATIVE_INFINITY),
+                new SchemaAndValueField("tz_pinf", ZonedTimestamp.builder().optional().build(), "infinity"),
+                new SchemaAndValueField("tz_ninf", ZonedTimestamp.builder().optional().build(), "-infinity"));
     }
 
     protected List<SchemaAndValueField> schemaAndValuesForTimeArrayTypes() {

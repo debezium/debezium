@@ -1498,6 +1498,10 @@ Such columns are converted into an equivalent Kafka Connect value based on UTC. 
 
 The timezone of the JVM running Kafka Connect and {prodname} does not affect this conversion.
 
+PostgreSQL supports using `+/-infinite` values in `TIMESTAMP` columns.
+These special values are converted to timestamps with value `9223372036825200000` in case of positive infinity or `-9223372036832400000` in case of negative infinity.
+This behaviour mimics the standard behaviour of PostgreSQL JDBC driver - see `org.postgresql.PGStatement` interface for reference.
+
 [id="postgresql-decimal-types"]
 === Decimal types
 

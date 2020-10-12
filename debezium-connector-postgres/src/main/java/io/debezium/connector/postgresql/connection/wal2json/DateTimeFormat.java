@@ -18,6 +18,7 @@ import java.time.format.DateTimeParseException;
 import java.time.format.SignStyle;
 import java.time.format.TextStyle;
 import java.time.temporal.ChronoField;
+import java.time.temporal.TemporalAccessor;
 import java.util.function.Supplier;
 
 import org.apache.kafka.connect.errors.ConnectException;
@@ -78,6 +79,16 @@ public interface DateTimeFormat {
                 .appendLiteral(' ')
                 .append(DateTimeFormatter.ISO_LOCAL_TIME)
                 .appendOffset("+HH:mm", "")
+                .optionalStart()
+                .appendLiteral(" ")
+                .appendText(ChronoField.ERA, TextStyle.SHORT)
+                .optionalEnd()
+                .toFormatter();
+        private static final DateTimeFormatter TS_TZ_WITH_SECONDS_FORMAT = new DateTimeFormatterBuilder()
+                .append(NON_ISO_LOCAL_DATE)
+                .appendLiteral(' ')
+                .append(DateTimeFormatter.ISO_LOCAL_TIME)
+                .appendOffset("+HH:MM:SS", "")
                 .optionalStart()
                 .appendLiteral(" ")
                 .appendText(ChronoField.ERA, TextStyle.SHORT)
@@ -151,7 +162,21 @@ public interface DateTimeFormat {
 
         @Override
         public OffsetDateTime timestampWithTimeZoneToOffsetDateTime(String s) {
-            return format(TS_TZ_FORMAT_PATTERN_HINT, s, () -> OffsetDateTime.from(TS_TZ_FORMAT.parse(s)));
+            return format(TS_TZ_FORMAT_PATTERN_HINT, s, () -> {
+                TemporalAccessor parsedTimestamp;
+                // Usually the timestamp contains only hour offset and optionally minutes
+                // For very large negative timestamps the offset could contain seconds
+                // The standard parsing library does not allow both optional minutes and seconds in offset,
+                // so it is necessary to parse it with optional minutes and if that fails then retyr with
+                // seconds
+                try {
+                    parsedTimestamp = TS_TZ_FORMAT.parse(s);
+                }
+                catch (DateTimeParseException e) {
+                    parsedTimestamp = TS_TZ_WITH_SECONDS_FORMAT.parse(s);
+                }
+                return OffsetDateTime.from(parsedTimestamp);
+            });
         }
 
         @Override
