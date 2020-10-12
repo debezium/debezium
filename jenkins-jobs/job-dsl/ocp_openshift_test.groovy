@@ -1,4 +1,4 @@
-pipelineJob('debezium-openshift-test') {
+pipelineJob('ocp-debezium-openshift-test') {
     displayName('Debezium OpenShift TestSuite')
     description('Executes tests for OpenShift & Strimzi compatibility verification')
 
