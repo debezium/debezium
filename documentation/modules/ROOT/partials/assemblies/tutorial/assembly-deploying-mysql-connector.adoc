@@ -2,7 +2,7 @@
 //
 // UserStory: As an evaluator, I want to use Debezium to monitor my sample MySQL database so that I can see how Debezium captures database changes.
 
-:context: debezium
+:context: mysql
 
 [id="deploying-mysql-connector"]
 = Deploying the MySQL connector

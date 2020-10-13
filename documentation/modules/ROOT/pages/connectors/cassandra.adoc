@@ -1,6 +1,7 @@
 [id="debezium-connector-for-cassandra"]
 = {prodname} Connector for Cassandra
 
+:context: cassandra
 :toc:
 :toc-placement: macro
 :linkattrs:
