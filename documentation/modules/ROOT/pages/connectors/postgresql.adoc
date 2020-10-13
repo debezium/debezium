@@ -347,7 +347,7 @@ In addition to a {link-prefix}:{link-postgresql-connector}#postgresql-events[_da
 
 ** `lsn` represents the PostgreSQL https://www.postgresql.org/docs/current/static/datatype-pg-lsn.html[Log Sequence Number] or `offset` in the transaction log.
 ** `txId` represents the identifier of the server transaction that caused the event.
-** `ts_ms` represents the server time at which the transaction was committed in the form of the number of microseconds since the epoch. 
+** `ts_ms` represents the server time at which the transaction was committed in the form of the number of milliseconds since the epoch. 
 * `kafkaPartition` with a setting of `null` means that the connector does not use a specific Kafka partition. The PostgreSQL connector uses only one Kafka Connect partition and it places the generated events into one Kafka partition. 
 
 // Type: concept
@@ -736,7 +736,7 @@ The following example shows the value portion of a change event that the connect
                     {
                         "type": "int64",
                         "optional": false,
-                        "field": "ts_sec"
+                        "field": "ts_ms"
                     },
                     {
                         "type": "boolean",
@@ -805,7 +805,7 @@ The following example shows the value portion of a change event that the connect
             "version": "{debezium-version}",
             "connector": "postgresql",
             "name": "PostgreSQL_server",
-            "ts_sec": 1559033904863,
+            "ts_ms": 1559033904863,
             "snapshot": true,
             "db": "postgres",
             "schema": "public",
@@ -877,7 +877,7 @@ a|Mandatory field that describes the source metadata for the event. This field c
 * If the event was part of a snapshot
 * ID of the transaction in which the operation was performed
 * Offset of the operation in the database log
-* Timestamp
+* Timestamp for when the change was made in the database
 
 |9
 |`op`
@@ -890,7 +890,9 @@ a|Mandatory string that describes the type of operation that caused the connecto
 
 |10
 |`ts_ms`
-a|Optional field that displays the time at which the connector processed the event. The time is based on the system clock in the JVM running the Kafka Connect task.
+a|Optional field that displays the time at which the connector processed the event. The time is based on the system clock in the JVM running the Kafka Connect task.  +
+ +
+In the `source` object, `ts_ms` indicates the time that the change was made in the database. By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
 
 |===
 
@@ -918,7 +920,7 @@ The value of a change event for an update in the sample `customers` table has th
             "version": "{debezium-version}",
             "connector": "postgresql",
             "name": "PostgreSQL_server",
-            "ts_sec": 1559033904863,
+            "ts_ms": 1559033904863,
             "snapshot": null,
             "db": "postgres",
             "schema": "public",
@@ -959,7 +961,7 @@ a|Mandatory field that describes the source metadata for the event. The `source`
 * If the event was part of a snapshot
 * ID of the transaction in which the operation was performed
 * Offset of the operation in the database log
-* Timestamp
+* Timestamp for when the change was made in the database
 
 |4
 |`op`
@@ -1042,7 +1044,7 @@ a|Mandatory field that describes the source metadata for the event. In a _delete
 * If the event was part of a snapshot
 * ID of the transaction in which the operation was performed
 * Offset of the operation in the database log
-* Timestamp
+* Timestamp for when the change was made in the database
 
 |4
 |`op`
@@ -1050,7 +1052,9 @@ a|Mandatory string that describes the type of operation. The `op` field value is
 
 |5
 |`ts_ms`
-a|Optional field that displays the time at which the connector processed the event. The time is based on the system clock in the JVM running the Kafka Connect task.
+a|Optional field that displays the time at which the connector processed the event. The time is based on the system clock in the JVM running the Kafka Connect task.  +
+ +
+In the `source` object, `ts_ms` indicates the time that the change was made in the database. By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
 
 |===
 
