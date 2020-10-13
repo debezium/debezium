@@ -92,7 +92,7 @@
         <version.graalvm.js>20.0.0</version.graalvm.js>
 
         <!-- Testing -->
-        <version.junit>4.12</version.junit>
+        <version.junit>4.13.1</version.junit>
         <version.fest>1.4</version.fest>
         <version.jmh>1.21</version.jmh>
         <version.mockito>3.0.0</version.mockito>

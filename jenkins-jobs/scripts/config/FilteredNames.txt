@@ -1,3 +1,4 @@
 Jenkins user
 Debezium Builder
 snyk-test
+dependabotb
