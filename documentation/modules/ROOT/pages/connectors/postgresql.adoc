@@ -930,7 +930,7 @@ The value of a change event for an update in the sample `customers` table has th
             "xmin": null
         },
         "op": "u", // <4>
-        "ts_ms": 1465584025523
+        "ts_ms": 1465584025523  // <5>
     }
 }
 ----
@@ -966,6 +966,12 @@ a|Mandatory field that describes the source metadata for the event. The `source`
 |4
 |`op`
 a|Mandatory string that describes the type of operation. In an _update_ event value, the `op` field value is `u`, signifying that this row changed because of an update.
+
+|5
+|`ts_ms`
+a|Optional field that displays the time at which the connector processed the event. The time is based on the system clock in the JVM running the Kafka Connect task.  +
+ +
+In the `source` object, `ts_ms` indicates the time that the change was made in the database. By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
 
 |===
 
