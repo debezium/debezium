@@ -423,7 +423,7 @@ The following example shows the value portion of a change event that the connect
             {
               "type": "int64",
               "optional": false,
-              "field": "ts_sec"
+              "field": "ts_ms"
             },
             {
               "type": "boolean",
@@ -482,7 +482,7 @@ The following example shows the value portion of a change event that the connect
         "version": "{debezium-version}",
         "connector": "mongodb",
         "name": "fulfillment",
-        "ts_sec": 1558965508000,
+        "ts_ms": 1558965508000,
         "snapshot": false,
         "db": "inventory",
         "rs": "rs0",
@@ -539,7 +539,7 @@ a|Mandatory field that describes the source metadata for the event. This field c
 * Logical name of the MongoDB replica set, which forms a namespace for generated events and is used in Kafka topic names to which the connector writes.
 * Names of the collection and database that contain the new document.
 * If the event was part of a snapshot.
-* Timestamp for when the event occurred and ordinal of the event within the timestamp.
+* Timestamp for when the change was made in the database and ordinal of the event within the timestamp.
 * Unique identifier of the MongoDB operation, which depends on the version of MongoDB. It is either the `h` field in the oplog event, or a field named `stxnid`, which represents the `lsid` and `txnNumber` fields from the oplog event.
 
 |8
@@ -553,7 +553,9 @@ a|Mandatory string that describes the type of operation that caused the connecto
 
 |9
 |`ts_ms`
-a|Optional field that displays the time at which the connector processed the event. The time is based on the system clock in the JVM running the Kafka Connect task.
+a|Optional field that displays the time at which the connector processed the event. The time is based on the system clock in the JVM running the Kafka Connect task.  +
+ +
+In the `source` object, `ts_ms` indicates the time that the change was made in the database. By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
 
 |===
 
@@ -581,7 +583,7 @@ Here is an example of a change event value in an event that the connector genera
         "version": "{debezium-version}",
         "connector": "mongodb",
         "name": "fulfillment",
-        "ts_sec": 1558965508000,
+        "ts_ms": 1558965508000,
         "snapshot": true,
         "db": "inventory",
         "rs": "rs0",
@@ -604,7 +606,9 @@ a|Mandatory string that describes the type of operation that caused the connecto
 
 |2
 |`ts_ms`
-a|Optional field that displays the time at which the connector processed the event. The time is based on the system clock in the JVM running the Kafka Connect task.
+a|Optional field that displays the time at which the connector processed the event. The time is based on the system clock in the JVM running the Kafka Connect task.  +
+ +
+In the `source` object, `ts_ms` indicates the time that the change was made in the database. By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
 
 |3
 |`patch`
@@ -625,7 +629,7 @@ a|Mandatory field that describes the source metadata for the event. This field c
 * Logical name of the MongoDB replica set, which forms a namespace for generated events and is used in Kafka topic names to which the connector writes.
 * Names of the collection and database that contain the updated document.
 * If the event was part of a snapshot.
-* Timestamp for when the event occurred and ordinal of the event within the timestamp.
+* Timestamp for when the change was made in the database and ordinal of the event within the timestamp.
 * Unique identifier of the MongoDB operation, which depends on the version of MongoDB. It is either the `h` field in the oplog event, or a field named `stxnid`, which represents the `lsid` and `txnNumber` fields from the oplog event.
 
 |===
@@ -657,7 +661,7 @@ The value in a _delete_ change event has the same `schema` portion as _create_ a
         "version": "{debezium-version}",
         "connector": "mongodb",
         "name": "fulfillment",
-        "ts_sec": 1558965508000,
+        "ts_ms": 1558965508000,
         "snapshot": true,
         "db": "inventory",
         "rs": "rs0",
@@ -680,7 +684,9 @@ a|Mandatory string that describes the type of operation. The `op` field value is
 
 |2
 |`ts_ms`
-a|Optional field that displays the time at which the connector processed the event. The time is based on the system clock in the JVM running the Kafka Connect task.
+a|Optional field that displays the time at which the connector processed the event. The time is based on the system clock in the JVM running the Kafka Connect task.  +
+ +
+In the `source` object, `ts_ms` indicates the time that the change was made in the database. By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
 
 |3
 |`filter`
@@ -695,7 +701,7 @@ a|Mandatory field that describes the source metadata for the event. This field c
 * Logical name of the MongoDB replica set, which forms a namespace for generated events and is used in Kafka topic names to which the connector writes.
 * Names of the collection and database that contained the deleted document.
 * If the event was part of a snapshot.
-* Timestamp for when the event occurred and ordinal of the event within the timestamp.
+* Timestamp for when the change was made in the database and ordinal of the event within the timestamp.
 * Unique identifier of the MongoDB operation, which depends on the version of MongoDB. It is either the `h` field in the `oplog` event, or a field named `stxnid`, which represents the `lsid` and `txnNumber` fields from the `oplog` event.
 
 |===
