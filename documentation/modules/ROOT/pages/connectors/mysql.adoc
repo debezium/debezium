@@ -181,7 +181,7 @@ The schema change event record value contains a structure that includes the DDL 
           {
             "type": "int64",
             "optional": false,
-            "field": "ts_sec"
+            "field": "ts_ms"
           },
           {
             "type": "string",
@@ -240,7 +240,7 @@ The schema change event record value contains a structure that includes the DDL 
       "version": "{debezium-version}",
       "name": "mysql-server-1",
       "server_id": 0,
-      "ts_sec": 0,
+      "ts_ms": 0,
       "gtid": null,
       "file": "mysql-bin.000003",
       "pos": 154,
@@ -643,7 +643,7 @@ The following example shows the value portion of a change event that the connect
           {
             "type": "int64",
             "optional": false,
-            "field": "ts_sec"
+            "field": "ts_ms"
           },
           {
             "type": "boolean",
@@ -729,7 +729,7 @@ The following example shows the value portion of a change event that the connect
       "version": "{debezium-version}",
       "connector": "mysql",
       "name": "mysql-server-1",
-      "ts_sec": 0,
+      "ts_ms": 0,
       "snapshot": false,
       "db": "inventory",
       "table": "customers",
@@ -788,7 +788,9 @@ a| Mandatory string that describes the type of operation that caused the connect
 
 |7
 |`ts_ms`
-a| Optional field that displays the time at which the connector processed the event. The time is based on the system clock in the JVM running the Kafka Connect task.
+a| Optional field that displays the time at which the connector processed the event. The time is based on the system clock in the JVM running the Kafka Connect task.  +
+ +
+In the `source` object, `ts_ms` indicates the time that the change was made in the database. By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
 
 |8
 |`before`
@@ -811,7 +813,7 @@ a| Mandatory field that describes the source metadata for the event. This field 
 * Name of the database and table that contain the new row
 * ID of the MySQL thread that created the event (non-snapshot only)
 * MySQL server ID (if available)
-* Timestamp
+* Timestamp for when the change was made in the database
 
 If the {link-prefix}:{link-mysql-connector}#enable-query-log-events[`binlog_rows_query_log_events`] MySQL configuration option is enabled and the connector configuration `include.query` property is enabled, the `source` field also provides the `query` field, which contains the original SQL statement that caused the change event.
 
@@ -845,7 +847,7 @@ The value of a change event for an update in the sample `customers` table has th
       "name": "mysql-server-1",
       "connector": "mysql",
       "name": "mysql-server-1",
-      "ts_sec": 1465581,
+      "ts_ms": 1465581029100,
       "snapshot": false,
       "db": "inventory",
       "table": "customers",
@@ -889,7 +891,7 @@ a|Mandatory field that describes the source metadata for the event. The `source`
 * Name of the database and table that contain the updated row
 * ID of the MySQL thread that created the event (non-snapshot only)
 * MySQL server ID (if available)
-* Timestamp
+* Timestamp for when the change was made in the database
 
 If the {link-prefix}:{link-mysql-connector}#enable-query-log-events[`binlog_rows_query_log_events`] MySQL configuration option is enabled and the connector configuration `include.query` property is enabled, the `source` field also provides the `query` field, which contains the original SQL statement that caused the change event.
 
@@ -937,7 +939,7 @@ The value in a _delete_ change event has the same `schema` portion as _create_ a
       "version": "{debezium-version}",
       "connector": "mysql",
       "name": "mysql-server-1",
-      "ts_sec": 1465581,
+      "ts_ms": 1465581902300,
       "snapshot": false,
       "db": "inventory",
       "table": "customers",
@@ -981,7 +983,7 @@ a|Mandatory field that describes the source metadata for the event. In a _delete
 * Name of the database and table that contain the updated row
 * ID of the MySQL thread that created the event (non-snapshot only)
 * MySQL server ID (if available)
-* Timestamp
+* Timestamp for when the change was made in the database
 
 If the {link-prefix}:{link-mysql-connector}#enable-query-log-events[`binlog_rows_query_log_events`] MySQL configuration option is enabled and the connector configuration `include.query` property is enabled, the `source` field also provides the `query` field, which contains the original SQL statement that caused the change event.
 
@@ -991,7 +993,9 @@ a|Mandatory string that describes the type of operation. The `op` field value is
 
 |5
 |`ts_ms`
-a|Optional field that displays the time at which the connector processed the event. The time is based on the system clock in the JVM running the Kafka Connect task.
+a|Optional field that displays the time at which the connector processed the event. The time is based on the system clock in the JVM running the Kafka Connect task.  +
+ +
+In the `source` object, `ts_ms` indicates the time that the change was made in the database. By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
 
 |===
 
