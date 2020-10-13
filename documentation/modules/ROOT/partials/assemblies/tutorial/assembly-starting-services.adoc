@@ -2,7 +2,7 @@
 //
 // UserStory: As an evaluator, I want to quickly start the Kafka, Debezium, and MySQL services so that I can register the MySQL connector with a sample database.
 
-:context: debezium
+:context: mysql
 
 [id="starting-services"]
 = Starting the services

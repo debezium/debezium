@@ -1,6 +1,7 @@
 [id="debezium-connector-for-mongodb"]
 = {prodname} connector for MongoDB
 
+:context: mongodb
 ifdef::community[]
 
 :toc:

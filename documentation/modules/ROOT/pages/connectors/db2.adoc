@@ -3,6 +3,7 @@
 [id="debezium-connector-for-db2"]
 = {prodname} connector for Db2
 
+:context: db2
 ifdef::community[]
 
 :toc:

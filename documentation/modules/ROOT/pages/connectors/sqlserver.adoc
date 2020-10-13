@@ -1,6 +1,7 @@
 [id="debezium-connector-for-sql-server"]
 = {prodname} connector for SQL Server
 
+:context: sqlserver
 ifdef::community[]
 
 :toc:

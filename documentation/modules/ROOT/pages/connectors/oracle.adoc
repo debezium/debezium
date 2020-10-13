@@ -1,6 +1,7 @@
 [id="debezium-connector-for-oracle"]
 = {prodname} Connector for Oracle
 
+:context: oracle
 :toc:
 :toc-placement: macro
 :linkattrs:

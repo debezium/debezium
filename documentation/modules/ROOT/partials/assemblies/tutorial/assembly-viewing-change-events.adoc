@@ -1,7 +1,7 @@
 // Metadata created by nebel
 //
 // UserStory: As an evaluator, I want to use Debezium to view create, update, and delete events in my database.
-:context: debezium
+:context: mysql
 
 [id="viewing-change-events"]
 = Viewing change events

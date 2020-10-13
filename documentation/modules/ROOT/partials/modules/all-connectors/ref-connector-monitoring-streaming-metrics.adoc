@@ -2,52 +2,52 @@
 |===
 |Attributes |Type |Description
 
-|[[connectors-strm-metric-lastevent]]<<connectors-strm-metric-lastevent, `LastEvent`>>
+|[[connectors-strm-metric-lastevent_{context}]]<<connectors-strm-metric-lastevent_{context}, `LastEvent`>>
 |`string`
 |The last streaming event that the connector has read.
 
-|[[connectors-strm-metric-millisecondssincelastevent]]<<connectors-strm-metric-millisecondssincelastevent, `MilliSecondsSinceLastEvent`>>
+|[[connectors-strm-metric-millisecondssincelastevent_{context}]]<<connectors-strm-metric-millisecondssincelastevent_{context}, `MilliSecondsSinceLastEvent`>>
 |`long`
 |The number of milliseconds since the connector has read and processed the most recent event.
 
-|[[connectors-strm-metric-totalnumberofeventsseen]]<<connectors-strm-metric-totalnumberofeventsseen, `TotalNumberOfEventsSeen`>>
+|[[connectors-strm-metric-totalnumberofeventsseen_{context}]]<<connectors-strm-metric-totalnumberofeventsseen_{context}, `TotalNumberOfEventsSeen`>>
 |`long`
 |The total number of events that this connector has seen since last started or reset.
 
-|[[connectors-strm-metric-numberofeventsfiltered]]<<connectors-strm-metric-numberofeventsfiltered, `NumberOfEventsFiltered`>>
+|[[connectors-strm-metric-numberofeventsfiltered_{context}]]<<connectors-strm-metric-numberofeventsfiltered_{context}, `NumberOfEventsFiltered`>>
 |`long`
 |The number of events that have been filtered by include/exclude list filtering rules configured on the connector.
 
-|[[connectors-strm-metric-monitoredtables]]<<connectors-strm-metric-monitoredtables, `MonitoredTables`>>
+|[[connectors-strm-metric-monitoredtables_{context}]]<<connectors-strm-metric-monitoredtables_{context}, `MonitoredTables`>>
 |`string[]`
 |The list of tables that are monitored by the connector.
 
-|[[connectors-strm-metric-queuetotalcapacity]]<<connectors-strm-metric-queuetotalcapacity, `QueueTotalCapacity`>>
+|[[connectors-strm-metric-queuetotalcapacity_{context}]]<<connectors-strm-metric-queuetotalcapacity_{context}, `QueueTotalCapacity`>>
 |`int`
 |The length the queue used to pass events between the streamer and the main Kafka Connect loop.
 
-|[[connectors-strm-metric-queueremainingcapacity]]<<connectors-strm-metric-queueremainingcapacity, `QueueRemainingCapacity`>>
+|[[connectors-strm-metric-queueremainingcapacity_{context}]]<<connectors-strm-metric-queueremainingcapacity_{context}, `QueueRemainingCapacity`>>
 |`int`
 |The free capacity of the queue used to pass events between the streamer and the main Kafka Connect loop.
 
-|[[connectors-strm-metric-connected]]<<connectors-strm-metric-connected, `Connected`>>
+|[[connectors-strm-metric-connected_{context}]]<<connectors-strm-metric-connected_{context}, `Connected`>>
 |`boolean`
 |Flag that denotes whether the connector is currently connected to the database server.
 
-|[[connectors-strm-metric-millisecondsbehindsource]]<<connectors-strm-metric-millisecondsbehindsource, `MilliSecondsBehindSource`>>
+|[[connectors-strm-metric-millisecondsbehindsource_{context}]]<<connectors-strm-metric-millisecondsbehindsource_{context}, `MilliSecondsBehindSource`>>
 |`long`
 |The number of milliseconds between the last change event's timestamp and the connector processing it.
 The values will incoporate any differences between the clocks on the machines where the database server and the connector are running.
 
-|[[connectors-strm-metric-numberofcommittedtransactions]]<<connectors-strm-metric-numberofcommittedtransactions, `NumberOfCommittedTransactions`>>
+|[[connectors-strm-metric-numberofcommittedtransactions_{context}]]<<connectors-strm-metric-numberofcommittedtransactions_{context}, `NumberOfCommittedTransactions`>>
 |`long`
 |The number of processed transactions that were committed.
 
-|[[connectors-strm-metric-sourceeventposition]]<<connectors-strm-metric-sourceeventposition, `SourceEventPosition`>>
+|[[connectors-strm-metric-sourceeventposition_{context}]]<<connectors-strm-metric-sourceeventposition_{context}, `SourceEventPosition`>>
 |`Map<String, String>`
 |The coordinates of the last received event.
 
-|[[connectors-strm-metric-lasttransactionid]]<<connectors-strm-metric-lasttransactionid, `LastTransactionId`>>
+|[[connectors-strm-metric-lasttransactionid_{context}]]<<connectors-strm-metric-lasttransactionid_{context}, `LastTransactionId`>>
 |`string`
 |Transaction identifier of the last processed transaction.
 

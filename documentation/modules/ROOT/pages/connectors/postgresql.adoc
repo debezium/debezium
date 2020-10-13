@@ -3,6 +3,7 @@
 [id="debezium-connector-for-postgresql"]
 = {prodname} connector for PostgreSQL
 
+:context: postgresql
 ifdef::community[]
 
 :toc:
