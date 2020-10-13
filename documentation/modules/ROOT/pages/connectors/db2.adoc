@@ -194,7 +194,7 @@ A message to the schema change topic contains a logical representation of the ta
       "version": "{debezium-version}",
       "connector": "db2",
       "name": "db2",
-      "ts_sec": 1588252618953,
+      "ts_ms": 1588252618953,
       "snapshot": "true",
       "db": "testdb",
       "schema": "DB2INST1",
@@ -700,7 +700,7 @@ The following example shows the value portion of a change event that the connect
           {
             "type": "int64",
             "optional": false,
-            "field": "ts_sec"
+            "field": "ts_ms"
           },
           {
             "type": "boolean",
@@ -764,7 +764,7 @@ The following example shows the value portion of a change event that the connect
       "version": "{debezium-version}",
       "connector": "db2",
       "name": "myconnector",
-      "ts_sec": 1559729468470,
+      "ts_ms": 1559729468470,
       "snapshot": false,
       "db": "mydatabase",
       "schema": "MYSCHEMA",
@@ -824,7 +824,7 @@ a| Mandatory field that describes the source metadata for the event. The `source
 
 * {prodname} version
 * Connector type and name
-* Timestamp for when the connector read the record
+* Timestamp for when the change was made in the database
 * Whether the event is part of an ongoing snapshot
 * Name of the database, schema, and table that contain the new row
 * Change LSN
@@ -841,7 +841,9 @@ a|Mandatory string that describes the type of operation that caused the connecto
 
 |10
 |`ts_ms`
-a|Optional field that displays the time at which the connector processed the event. The time is based on the system clock in the JVM running the Kafka Connect task.
+a|Optional field that displays the time at which the connector processed the event. The time is based on the system clock in the JVM running the Kafka Connect task. +
+ +
+In the `source` object, `ts_ms` indicates the time that the change was made in the database. By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
 
 |===
 
@@ -870,7 +872,7 @@ The value of a change event for an update in the sample `customers` table has th
       "version": "{debezium-version}",
       "connector": "db2",
       "name": "myconnector",
-      "ts_sec": 1559729995937,
+      "ts_ms": 1559729995937,
       "snapshot": false,
       "db": "mydatabase",
       "schema": "MYSCHEMA",
@@ -903,7 +905,7 @@ a|Mandatory field that describes the source metadata for the event. The `source`
 
 * {prodname} version
 * Connector type and name
-* Timestamp for when the connector read the record
+* Timestamp for when the change was made in the database
 * Whether the event is part of an ongoing snapshot
 * Name of the database, schema, and table that contain the new row
 * Change LSN
@@ -915,7 +917,9 @@ a|Mandatory string that describes the type of operation. In an _update_ event va
 
 |5
 |`ts_ms`
-a|Optional field that displays the time at which the connector processed the event. The time is based on the system clock in the JVM running the Kafka Connect task.
+a|Optional field that displays the time at which the connector processed the event. The time is based on the system clock in the JVM running the Kafka Connect task. +
+ +
+In the `source` object, `ts_ms` indicates the time that the change was made in the database. By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
 
 |===
 
@@ -946,7 +950,7 @@ The value in a _delete_ change event has the same `schema` portion as _create_ a
       "version": "{debezium-version}",
       "connector": "db2",
       "name": "myconnector",
-      "ts_sec": 1559730445243,
+      "ts_ms": 1559730445243,
       "snapshot": false,
       "db": "mydatabase",
       "schema": "MYSCHEMA",
@@ -979,7 +983,7 @@ a|Mandatory field that describes the source metadata for the event. In a _delete
 
 * {prodname} version
 * Connector type and name
-* Timestamp for when the connector read the record
+* Timestamp for when the change was made in the database
 * Whether the event is part of an ongoing snapshot
 * Name of the database, schema, and table that contain the new row
 * Change LSN
@@ -991,7 +995,9 @@ a|Mandatory string that describes the type of operation. The `op` field value is
 
 |5
 |`ts_ms`
-a|Optional field that displays the time at which the connector processed the event. The time is based on the system clock in the JVM running the Kafka Connect task.
+a|Optional field that displays the time at which the connector processed the event. The time is based on the system clock in the JVM running the Kafka Connect task. +
+ +
+In the `source` object, `ts_ms` indicates the time that the change was made in the database. By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
 
 |===
 
