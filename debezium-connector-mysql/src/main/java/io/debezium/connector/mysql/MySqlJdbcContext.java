@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.mysql;
 
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -210,6 +212,20 @@ public class MySqlJdbcContext implements AutoCloseable {
             throw new ConnectException("Unexpected error while connecting to MySQL and looking at GTID mode: ", e);
         }
 
+        if (null == gtidSetStr.get()) {
+            logger.info("Could not find GTID set in MASTER STATUS, check instead using 'SHOW SLAVE STATUS'");
+            try {
+                jdbc.query("SHOW SLAVE STATUS", rs -> {
+                    if (rs.next() && hasColumn(rs, "Executed_Gtid_Set")) {
+                        gtidSetStr.set(rs.getString("Executed_Gtid_Set"));
+                    }
+                });
+            }
+            catch (SQLException e) {
+                throw new ConnectException("Unexpected error while connecting to MySQL and looking at GTID mode: ", e);
+            }
+        }
+
         String result = gtidSetStr.get();
         return result != null ? result : "";
     }
@@ -410,5 +426,15 @@ public class MySqlJdbcContext implements AutoCloseable {
             return sessionVariables.get(SSL_VERSION);
         }
         return null;
+    }
+
+    static boolean hasColumn(final ResultSet rs, final String columnName) throws SQLException {
+        final ResultSetMetaData metaData = rs.getMetaData();
+        for (int i = 1; i <= metaData.getColumnCount(); i++) {
+            if (columnName.equals(metaData.getColumnName(i))) {
+                return true;
+            }
+        }
+        return false;
     }
 }

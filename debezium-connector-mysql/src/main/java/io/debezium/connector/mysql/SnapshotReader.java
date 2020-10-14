@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.mysql;
 
+import static io.debezium.connector.mysql.MySqlJdbcContext.hasColumn;
+
 import java.io.UnsupportedEncodingException;
 import java.sql.Blob;
 import java.sql.Connection;
@@ -890,7 +892,9 @@ public class SnapshotReader extends AbstractReader {
             source.startSnapshot();
         }
         else {
-            logger.info("Step {}: read binlog position of MySQL primary server", step);
+            logger.info("Step {}: read binlog position of MySQL primary/replica server", step);
+
+            final AtomicBoolean readPositionFromMaster = new AtomicBoolean(false);
             String showMasterStmt = "SHOW MASTER STATUS";
             sql.set(showMasterStmt);
             mysql.query(sql.get(), rs -> {
@@ -908,13 +912,40 @@ public class SnapshotReader extends AbstractReader {
                     else {
                         logger.info("\t using binlog '{}' at position '{}'", binlogFilename, binlogPosition);
                     }
+                    readPositionFromMaster.set(true);
                     source.startSnapshot();
                 }
                 else {
-                    throw new IllegalStateException("Cannot read the binlog filename and position via '" + showMasterStmt
-                            + "'. Make sure your server is correctly configured");
+                    logger.info("Cannot read the binlog filename and position via '{}', will try to use slave status instead", showMasterStmt);
                 }
             });
+
+            if (!readPositionFromMaster.get()) {
+                final String showSlaveStmt = "SHOW SLAVE STATUS";
+                sql.set(showSlaveStmt);
+                mysql.query(sql.get(), rs -> {
+                    if (rs.next() && hasColumn(rs, "Relay_Master_Log_File") && hasColumn(rs, "Exec_Master_Log_Pos")) {
+                        final String binlogFilename = rs.getString("Relay_Master_Log_File");
+                        final long binlogPosition = rs.getLong("Exec_Master_Log_Pos");
+                        source.setBinlogStartPoint(binlogFilename, binlogPosition);
+                        if (hasColumn(rs, "Executed_Gtid_Set")) {
+                            final String executedGtidSet = rs.getString("Executed_Gtid_Set");
+                            source.setCompletedGtidSet(executedGtidSet);
+                            logger.info("\t using binlog '{}' at position '{}' and gtid '{}'", binlogFilename, binlogPosition,
+                                    executedGtidSet);
+                        }
+                        else {
+                            logger.info("\t using binlog '{}' at position '{}'", binlogFilename, binlogPosition);
+                        }
+                        source.startSnapshot();
+                    }
+                    else {
+                        throw new IllegalStateException("Cannot read the binlog filename and position via '" + showMasterStmt
+                                + "' and '" + showSlaveStmt +
+                                "'. Make sure your server is correctly configured");
+                    }
+                });
+            }
         }
     }
 
