@@ -31,11 +31,21 @@ The value is used to specify the JVM parameter `-Dcom.sun.management.jmxremote.s
 
 .Enabling JMX in a Kafka Connect Docker container
 ====
-The following example Docker command starts a container using the `debezium/connect` image with values for the `JMXPORT` and `HOST_NAME` environment variables,
+The following example Docker command starts a container using the `debezium/connect` image with values for the `JMXPORT` and `JMXHOST` environment variables,
 and maps the Docker host's port 9012 to the container's JMX port:
 
 [source,shell,options="nowrap"]
 ----
-$ docker run -it --rm --name connect -p 8083:8083 -p 9012:9012 -e JMXPORT=9012 -e JMXHOST=10.0.1.10 -e GROUP_ID=1 -e CONFIG_STORAGE_TOPIC=my_connect_configs -e OFFSET_STORAGE_TOPIC=my_connect_offsets --link zookeeper:zookeeper --link kafka:kafka --link mysql:mysql debezium/connect:latest
+$ docker run -it --rm --name connect \
+  -p 8083:8083 -p 9012:9012 \
+  -e JMXPORT=9012 -e JMXHOST=10.0.1.10 \
+  -e GROUP_ID=1 \
+  -e CONFIG_STORAGE_TOPIC=my_connect_configs \
+  -e OFFSET_STORAGE_TOPIC=my_connect_offsets \
+  -e STATUS_STORAGE_TOPIC=my_connect_statuses \
+  --link zookeeper:zookeeper \
+  --link kafka:kafka \
+  --link mysql:mysql \
+  debezium/connect:latest
 ----
 ====
