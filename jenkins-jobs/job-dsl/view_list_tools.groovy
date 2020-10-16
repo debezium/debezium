@@ -1,7 +1,7 @@
-listView('Debezium-OpenShift-Tests') {
-    description('OpenShift certification jobs')
+listView('Debezium-Tools') {
+    description('Tooling jobs')
     jobs {
-        regex(/^ocp-.*$/)
+        regex(/^tools-.*$/)
     }
     columns {
         status()
