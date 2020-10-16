@@ -383,6 +383,17 @@ public class JdbcConnection implements AutoCloseable {
         return this;
     }
 
+    public synchronized JdbcConnection rollback() throws SQLException {
+        if (!isConnected()) {
+            return this;
+        }
+        Connection conn = connection();
+        if (!conn.getAutoCommit()) {
+            conn.rollback();
+        }
+        return this;
+    }
+
     /**
      * Ensure a connection to the database is established.
      *

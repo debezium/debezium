@@ -207,6 +207,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                         dispatcher.dispatchTransactionStartedEvent(Long.toString(message.getTransactionId()), offsetContext);
                     }
                     else if (message.getOperation() == Operation.COMMIT) {
+                        commitMessage(lsn);
                         dispatcher.dispatchTransactionCommittedEvent(offsetContext);
                     }
                     maybeWarnAboutGrowingWalBacklog(true);
