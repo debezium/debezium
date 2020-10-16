@@ -449,12 +449,6 @@ public class SqlServerConnection extends JdbcConnection {
                 .create();
     }
 
-    public synchronized void rollback() throws SQLException {
-        if (isConnected()) {
-            connection().rollback();
-        }
-    }
-
     public String getNameOfChangeTable(String captureName) {
         return captureName + "_CT";
     }

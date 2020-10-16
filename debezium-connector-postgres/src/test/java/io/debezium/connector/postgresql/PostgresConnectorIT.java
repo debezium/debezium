@@ -1057,6 +1057,62 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
+    @FixFor("DBZ-2660")
+    public void shouldRegularlyFlushLsnWithTxMonitoring() throws InterruptedException, SQLException {
+        final int recordCount = 10;
+        TestHelper.execute(SETUP_TABLES_STMT);
+        Configuration config = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.getValue())
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1.a")
+                .with(PostgresConnectorConfig.PROVIDE_TRANSACTION_METADATA, true)
+                .build();
+        start(PostgresConnector.class, config);
+        assertConnectorIsRunning();
+        waitForStreamingRunning("postgres", TestHelper.TEST_SERVER);
+        // there shouldn't be any snapshot records
+        assertNoRecordsToConsume();
+
+        final String txTopic = topicName("transaction");
+        TestHelper.execute(INSERT_STMT);
+        final SourceRecords firstRecords = consumeRecordsByTopic(3);
+        assertThat(firstRecords.topics().size()).isEqualTo(2);
+        assertThat(firstRecords.recordsForTopic(txTopic).size()).isEqualTo(2);
+        Assertions.assertThat(firstRecords.recordsForTopic(txTopic).get(1).sourceOffset().containsKey("lsn_commit")).isTrue();
+        stopConnector();
+        assertConnectorNotRunning();
+
+        start(PostgresConnector.class, config);
+        assertConnectorIsRunning();
+        waitForStreamingRunning("postgres", TestHelper.TEST_SERVER);
+        // there shouldn't be any snapshot records
+        assertNoRecordsToConsume();
+
+        final Set<String> flushLsn = new HashSet<>();
+        try (final PostgresConnection connection = TestHelper.create()) {
+            flushLsn.add(getConfirmedFlushLsn(connection));
+            for (int i = 2; i <= recordCount + 2; i++) {
+                TestHelper.execute(INSERT_STMT);
+
+                final SourceRecords actualRecords = consumeRecordsByTopic(3);
+                assertThat(actualRecords.topics().size()).isEqualTo(2);
+                assertThat(actualRecords.recordsForTopic(topicName("s1.a")).size()).isEqualTo(1);
+
+                // Wait max 2 seconds for LSN change
+                try {
+                    Awaitility.await().atMost(2, TimeUnit.SECONDS).ignoreExceptions().until(() -> flushLsn.add(getConfirmedFlushLsn(connection)));
+                }
+                catch (ConditionTimeoutException e) {
+                    // We do not require all flushes to succeed in time
+                }
+            }
+        }
+        // Theoretically the LSN should change for each record but in reality there can be
+        // unfortunate timings so let's suppose the change will happen in 75 % of cases
+        Assertions.assertThat(flushLsn.size()).isGreaterThanOrEqualTo((recordCount * 3) / 4);
+    }
+
+    @Test
     @FixFor("DBZ-892")
     @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.WAL2JSON, reason = "Only wal2json decoder emits empty events and passes them to streaming source")
     public void shouldFlushLsnOnEmptyMessage() throws InterruptedException, SQLException {
@@ -1551,7 +1607,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
     }
 
     private String getConfirmedFlushLsn(PostgresConnection connection) throws SQLException {
-        return connection.prepareQueryAndMap(
+        final String lsn = connection.prepareQueryAndMap(
                 "select * from pg_replication_slots where slot_name = ? and database = ? and plugin = ?", statement -> {
                     statement.setString(1, ReplicationConnection.Builder.DEFAULT_SLOT_NAME);
                     statement.setString(2, "postgres");
@@ -1566,6 +1622,8 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
                     }
                     return null;
                 });
+        connection.rollback();
+        return lsn;
     }
 
     private void assertFieldAbsent(SourceRecord record, String fieldName) {
