@@ -1,7 +1,8 @@
-listView('Debezium-OpenShift-Tests') {
-    description('OpenShift certification jobs')
+listView('Jenkins') {
+    description('Jenkins tools')
     jobs {
-        regex(/^ocp-.*$/)
+        name('job-configurator')
+        name('MonitoringTest')
     }
     columns {
         status()
