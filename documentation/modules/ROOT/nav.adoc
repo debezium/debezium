@@ -22,6 +22,7 @@
 ** xref:connectors/sqlserver.adoc[SQL Server]
 ** xref:connectors/db2.adoc[Db2]
 ** xref:connectors/cassandra.adoc[Cassandra]
+** xref:connectors/vitess.adoc[Vitess]
 * API and SPI
 ** xref:development/engine.adoc[Debezium Engine]
 ** xref:development/converters.adoc[Custom Converters]
