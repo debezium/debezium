@@ -11,6 +11,7 @@ We currently have the following connectors:
 * xref:connectors/oracle.adoc[Oracle] (Incubating)
 * xref:connectors/db2.adoc[Db2] (Incubating)
 * xref:connectors/cassandra.adoc[Cassandra] (Incubating)
+* xref:connectors/vitess.adoc[Vitess] (Incubating)
 
 [NOTE]
 ====
