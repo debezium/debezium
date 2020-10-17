@@ -6,22 +6,9 @@
     Checkstyle file which allow for custom file/package exclusions
 -->
 <suppressions>
-    <!--we're only including the PG driver temporarily (hopefully) so we don't want to checkstyle it...-->
-    <suppress checks="." files="[\\/]org[\\/]postgresql[\\/].*\.java$"/>
-    <!--exclude any protobuf generated files-->
-    <suppress checks="." files=".[\\/]io[\\/]debezium[\\/]connector[\\/]postgresql[\\/]proto[\\/].*\.java$"/>
-
-    <!--exclude any antlr generated files-->
-    <suppress checks="." files=".[\\/]io[\\/]debezium[\\/]ddl[\\/]parser[\\/]mysql[\\/]generated[\\/].*\.java$"/>
-    <suppress checks="." files=".[\\/]io[\\/]debezium[\\/]ddl[\\/]parser[\\/]oracle[\\/]generated[\\/].*\.java$"/>
-
     <!--exclude files from antlr which has to be copied into the module, because they are not included in library-->
     <suppress checks="." files=".[\\/]io[\\/]debezium[\\/]antlr[\\/]CaseChangingCharStream\.java$"/>
     <suppress checks="." files=".[\\/]io[\\/]debezium[\\/]antlr[\\/]ProxyParseTreeListener\.java$"/>
 
     <suppress checks="." files=".[\\/]io[\\/]debezium[\\/]util[\\/]BoundedConcurrentHashMap\.java$"/>
-
-    <!--exclude quarkus generated files-->
-    <suppress checks="." files=".[\\/]annotations[\\/]io[\\/]debezium[\\/]outbox[\\/]quarkus[\\/]internal[\\/].*\.java$" />
-    <suppress checks="." files=".[\\/]annotations[\\/]io[\\/]debezium[\\/]outbox[\\/]quarkus[\\/].*\.java$" />
 </suppressions>
