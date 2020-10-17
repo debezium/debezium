@@ -190,6 +190,22 @@ public class MySqlSchemaTest {
         assertHistoryRecorded();
     }
 
+    @Test
+    public void shouldAllowNonASSIICCharacters() {
+        mysql = build
+                .with(DatabaseHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, false)
+                .storeDatabaseHistoryInFile(TEST_FILE_PATH)
+                .serverName(SERVER_NAME)
+                .createSchemas();
+        mysql.start();
+        source.setBinlogStartPoint("binlog-001", 400);
+        mysql.applyDdl(source, "db1", readFile("ddl/mysql-dbz-2670.ddl"), this::printStatements);
+
+        assertTableIncluded("connector_test.business_order_1");
+        assertTableIncluded("connector_test.business_order_2");
+        assertHistoryRecorded();
+    }
+
     protected void assertTableIncluded(String fullyQualifiedTableName) {
         TableId tableId = TableId.parse(fullyQualifiedTableName);
         TableSchema tableSchema = mysql.schemaFor(tableId);
