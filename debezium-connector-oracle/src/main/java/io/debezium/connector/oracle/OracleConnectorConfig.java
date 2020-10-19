@@ -101,6 +101,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withType(Type.STRING)
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.HIGH)
+            .withValidation(OracleConnectorConfig::validateDatabaseSchema)
             .withDescription("Name of the connection user to the database ");
 
     public static final Field XSTREAM_SERVER_NAME = Field.create(DATABASE_CONFIG_PREFIX + "out.server.name")
@@ -472,8 +473,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
          */
         XSTREAM("XStream") {
             @Override
-            public String getDriverType() {
-                return "oci";
+            public String getConnectionUrl() {
+                return "jdbc:oracle:oci:@${" + JdbcConfiguration.HOSTNAME + "}:${" + JdbcConfiguration.PORT + "}/${" + JdbcConfiguration.DATABASE + "}";
             }
         },
 
@@ -482,12 +483,12 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
          */
         LOG_MINER("LogMiner") {
             @Override
-            public String getDriverType() {
-                return "thin";
+            public String getConnectionUrl() {
+                return "jdbc:oracle:thin:@${" + JdbcConfiguration.HOSTNAME + "}:${" + JdbcConfiguration.PORT + "}/${" + JdbcConfiguration.DATABASE + "}";
             }
         };
 
-        public abstract String getDriverType();
+        public abstract String getConnectionUrl();
 
         private final String value;
 
@@ -508,7 +509,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
          */
         public static ConnectorAdapter parse(String value) {
             if (value == null) {
-                return null;
+                return ConnectorAdapter.XSTREAM;
             }
             value = value.trim();
             for (ConnectorAdapter adapter : ConnectorAdapter.values()) {
@@ -677,5 +678,18 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     @Override
     public String getConnectorName() {
         return Module.name();
+    }
+
+    public static int validateDatabaseSchema(Configuration config, Field field, ValidationOutput problems) {
+        if (ConnectorAdapter.LOG_MINER.equals(ConnectorAdapter.parse(config.getString(CONNECTOR_ADAPTER)))) {
+            final String schemaName = config.getString(SCHEMA_NAME);
+            if (schemaName == null || schemaName.trim().length() == 0) {
+                problems.accept(SCHEMA_NAME, schemaName, "The '" + SCHEMA_NAME.name() + "' be provided when using the LogMiner connection adapter");
+                return 1;
+            }
+        }
+
+        // Everything checks out ok.
+        return 0;
     }
 }

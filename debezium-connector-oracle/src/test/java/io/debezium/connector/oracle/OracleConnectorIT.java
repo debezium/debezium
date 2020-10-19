@@ -59,12 +59,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
     @BeforeClass
     public static void beforeClass() throws SQLException {
-        if (TestHelper.adapter().equals(OracleConnectorConfig.ConnectorAdapter.LOG_MINER)) {
-            connection = TestHelper.logMinerPdbConnection();
-        }
-        else {
-            connection = TestHelper.testConnection();
-        }
+        connection = TestHelper.testConnection();
 
         TestHelper.dropTable(connection, "debezium.customer");
         TestHelper.dropTable(connection, "debezium.masked_hashed_column_table");
@@ -897,6 +892,60 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         assertThat(before.schema().field("F1").schema().parameters()).includes(
                 entry(TYPE_NAME_PARAMETER_KEY, "FLOAT"),
                 entry(TYPE_LENGTH_PARAMETER_KEY, "10"));
+    }
+
+    @Test
+    @FixFor("DBZ-2624")
+    public void shouldSnapshotAndStreamChangesFromTableWithNumericDefaultValues() throws Exception {
+        // Drop table if it exists
+        TestHelper.dropTable(connection, "debezium.complex_ddl");
+
+        try {
+            // complex ddl
+            final String ddl = "create table debezium.complex_ddl (" +
+                    " id numeric(6) constraint customers_id_nn not null, " +
+                    " name varchar2(100)," +
+                    " value numeric default 1, " +
+                    " constraint customers_pk primary key(id)" +
+                    ")";
+
+            // create table
+            connection.execute(ddl);
+            connection.execute("GRANT SELECT ON debezium.complex_ddl to " + TestHelper.getConnectorUserName());
+            connection.execute("ALTER TABLE debezium.complex_ddl ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
+
+            // Insert a snapshot record
+            connection.execute("INSERT INTO debezium.complex_ddl (id, name) values (1, 'Acme')");
+            connection.commit();
+
+            final Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM.COMPLEX_DDL")
+                    .with(OracleConnectorConfig.LOG_MINING_STRATEGY, "online_catalog")
+                    .build();
+
+            // Perform a basic startup & initial snapshot of data
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            // Verify record generated during snapshot
+            final SourceRecords snapshotRecords = consumeRecordsByTopic(1);
+            assertThat(snapshotRecords.recordsForTopic("server1.DEBEZIUM.COMPLEX_DDL").size()).isEqualTo(1);
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.execute("INSERT INTO debezium.complex_ddl (id, name)values (2, 'Acme2')");
+            connection.commit();
+
+            // Verify record generated during streaming
+            final SourceRecords streamingRecords = consumeRecordsByTopic(1);
+            assertThat(streamingRecords.recordsForTopic("server1.DEBEZIUM.COMPLEX_DDL").size()).isEqualTo(1);
+        }
+        catch (Exception e) {
+            TestHelper.dropTable(connection, "debezium.complex_ddl");
+            throw e;
+        }
     }
 
     private void verifyHeartbeatRecord(SourceRecord heartbeat) {

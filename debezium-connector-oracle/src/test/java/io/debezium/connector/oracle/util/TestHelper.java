@@ -13,7 +13,6 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.OracleConnection;
-import io.debezium.connector.oracle.OracleConnectionFactory;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.relational.history.FileDatabaseHistory;
@@ -104,7 +103,7 @@ public class TestHelper {
         Configuration config = defaultConfig().build();
         Configuration jdbcConfig = config.subset("database.", true);
 
-        OracleConnection jdbcConnection = new OracleConnection(jdbcConfig, new OracleConnectionFactory(), TestHelper.class::getClassLoader);
+        OracleConnection jdbcConnection = new OracleConnection(jdbcConfig, TestHelper.class::getClassLoader);
 
         String pdbName = new OracleConnectorConfig(config).getPdbName();
 
@@ -113,19 +112,6 @@ public class TestHelper {
         }
 
         return jdbcConnection;
-    }
-
-    /**
-     * Database level connection.
-     * this is PDB level connector with LogMiner adapter
-     * @return OracleConnection
-     */
-    public static OracleConnection logMinerPdbConnection() {
-        Configuration jdbcConfig = testJdbcConfig().edit()
-                .with(OracleConnectorConfig.CONNECTOR_ADAPTER, "LogMiner")
-                // .with(OracleConnectorConfig.DRIVER_TYPE, "thin")
-                .build();
-        return new OracleConnection(jdbcConfig, new OracleConnectionFactory(), TestHelper.class::getClassLoader);
     }
 
     /**
@@ -178,7 +164,7 @@ public class TestHelper {
         Configuration config = testConfig().build();
         Configuration jdbcConfig = config.subset("database.", true);
 
-        OracleConnection jdbcConnection = new OracleConnection(jdbcConfig, new OracleConnectionFactory(), TestHelper.class::getClassLoader);
+        OracleConnection jdbcConnection = new OracleConnection(jdbcConfig, TestHelper.class::getClassLoader);
         try {
             jdbcConnection.setAutoCommit(false);
         }
@@ -199,7 +185,7 @@ public class TestHelper {
         Configuration config = adminConfig().build();
         Configuration jdbcConfig = config.subset("database.", true);
 
-        OracleConnection jdbcConnection = new OracleConnection(jdbcConfig, new OracleConnectionFactory(), TestHelper.class::getClassLoader);
+        OracleConnection jdbcConnection = new OracleConnection(jdbcConfig, TestHelper.class::getClassLoader);
         try {
             jdbcConnection.setAutoCommit(false);
         }

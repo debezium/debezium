@@ -88,7 +88,9 @@ public class LogMinerHelper {
         String recordExists = (String) getSingleResult(connection, SqlUtils.AUDIT_TABLE_RECORD_EXISTS, DATATYPE.STRING);
         if (recordExists == null) {
             executeCallableStatement(connection, SqlUtils.INSERT_AUDIT_TABLE);
-            connection.commit();
+            if (!connection.getAutoCommit()) {
+                connection.commit();
+            }
         }
     }
 
