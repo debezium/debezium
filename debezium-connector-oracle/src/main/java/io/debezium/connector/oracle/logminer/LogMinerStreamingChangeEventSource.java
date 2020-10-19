@@ -176,26 +176,26 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                     fetchFromMiningView.setLong(1, startScn);
                     fetchFromMiningView.setLong(2, endScn);
 
-                    ResultSet res = fetchFromMiningView.executeQuery();
-                    logMinerMetrics.setLastLogMinerQueryDuration(Duration.between(startTime, Instant.now()));
-                    processor.processResult(res);
+                    try(ResultSet res = fetchFromMiningView.executeQuery()) {
+                        logMinerMetrics.setLastLogMinerQueryDuration(Duration.between(startTime, Instant.now()));
+                        processor.processResult(res);
 
-                    updateStartScn();
-                    // LOGGER.trace("largest scn = {}", transactionalBuffer.getLargestScn());
+                        updateStartScn();
+                        // LOGGER.trace("largest scn = {}", transactionalBuffer.getLargestScn());
 
-                    // update SCN in offset context only if buffer is empty, otherwise we update offset in TransactionalBuffer
-                    if (transactionalBuffer.isEmpty()) {
-                        offsetContext.setScn(startScn);
-                        transactionalBuffer.resetLargestScn(null);
+                        // update SCN in offset context only if buffer is empty, otherwise we update offset in TransactionalBuffer
+                        if (transactionalBuffer.isEmpty()) {
+                            offsetContext.setScn(startScn);
+                            transactionalBuffer.resetLargestScn(null);
+                        }
+
+                        // we don't do it for other modes to save time on building data dictionary
+                        // if (strategy == OracleConnectorConfig.LogMiningStrategy.ONLINE_CATALOG) {
+                        // endMining(connection);
+                        // updateRedoLogMetrics(connection, logMinerMetrics);
+                        // currentRedoLogFiles = getCurrentRedoLogFiles(connection, logMinerMetrics);
+                        // }
                     }
-
-                    res.close();
-                    // we don't do it for other modes to save time on building data dictionary
-                    // if (strategy == OracleConnectorConfig.LogMiningStrategy.ONLINE_CATALOG) {
-                    // endMining(connection);
-                    // updateRedoLogMetrics(connection, logMinerMetrics);
-                    // currentRedoLogFiles = getCurrentRedoLogFiles(connection, logMinerMetrics);
-                    // }
                 }
             }
         }
