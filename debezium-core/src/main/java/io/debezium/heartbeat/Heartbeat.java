@@ -28,7 +28,7 @@ import io.debezium.jdbc.JdbcConnection;
  */
 public interface Heartbeat {
 
-    public static final String HEARTBEAT_INTERVAL_PROPERTY_NAME = "heartbeat.interval.ms";
+    String HEARTBEAT_INTERVAL_PROPERTY_NAME = "heartbeat.interval.ms";
 
     /**
      * Returns the offset to be used when emitting a heartbeat event. This supplier
@@ -36,7 +36,7 @@ public interface Heartbeat {
      * actually is sent, in cases where it's determination is costly.
      */
     @FunctionalInterface
-    public static interface OffsetProducer {
+    interface OffsetProducer {
         Map<String, ?> offset();
     }
 
@@ -64,7 +64,7 @@ public interface Heartbeat {
     /**
      * No-op Heartbeat implementation
      */
-    public static final Heartbeat NULL = new Heartbeat() {
+    Heartbeat NULL = new Heartbeat() {
 
         @Override
         public void heartbeat(Map<String, ?> partition, Map<String, ?> offset, BlockingConsumer<SourceRecord> consumer) throws InterruptedException {
@@ -130,7 +130,7 @@ public interface Heartbeat {
      * @param topicName topic to which the heartbeat messages will be sent
      * @param key kafka partition key to use for the heartbeat message
      */
-    public static Heartbeat create(Configuration configuration, String topicName, String key) {
+    static Heartbeat create(Configuration configuration, String topicName, String key) {
         return configuration.getDuration(HeartbeatImpl.HEARTBEAT_INTERVAL, ChronoUnit.MILLIS).isZero() ? NULL : new HeartbeatImpl(configuration, topicName, key);
     }
 
@@ -142,7 +142,7 @@ public interface Heartbeat {
      * @param key kafka partition key to use for the heartbeat message
      * @param jdbcConnection a database connection
      */
-    public static Heartbeat create(Configuration configuration, String topicName, String key, JdbcConnection jdbcConnection) {
+    static Heartbeat create(Configuration configuration, String topicName, String key, JdbcConnection jdbcConnection) {
         if (configuration.getDuration(HeartbeatImpl.HEARTBEAT_INTERVAL, ChronoUnit.MILLIS).isZero()) {
             return NULL;
         }

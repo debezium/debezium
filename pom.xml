@@ -85,7 +85,7 @@
         <quarkus.version>1.7.1.Final</quarkus.version>
 
         <!-- HTTP client -->
-        <version.okhttp>4.2.2</version.okhttp>
+        <version.okhttp>4.8.1</version.okhttp>
 
         <!-- Scripting -->
         <version.groovy>3.0.2</version.groovy>
@@ -99,7 +99,6 @@
         <version.awaitility>4.0.1</version.awaitility>
         <version.testcontainers>1.12.5</version.testcontainers>
         <version.jsonpath>2.4.0</version.jsonpath>
-        <version.okhttp>4.2.2</version.okhttp>
 
         <!-- Maven Plugins -->
         <version.compiler.plugin>3.8.1</version.compiler.plugin>
