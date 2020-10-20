@@ -41,6 +41,7 @@ import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.config.Configuration;
@@ -65,6 +66,7 @@ import io.debezium.util.Strings;
 @NotThreadSafe
 public class JdbcConnection implements AutoCloseable {
 
+    private static final int WAIT_FOR_CLOSE_SECONDS = 10;
     private static final char STATEMENT_DELIMITER = ';';
     private static final int STATEMENT_CACHE_CAPACITY = 10_000;
     private final static Logger LOGGER = LoggerFactory.getLogger(JdbcConnection.class);
@@ -940,16 +942,20 @@ public class JdbcConnection implements AutoCloseable {
         // attempting to close the connection gracefully
         Future<Object> futureClose = executor.submit(() -> {
             conn.close();
+            LOGGER.info("Connection gracefully closed");
             return null;
         });
         try {
-            futureClose.get(10, TimeUnit.SECONDS);
+            futureClose.get(WAIT_FOR_CLOSE_SECONDS, TimeUnit.SECONDS);
         }
         catch (ExecutionException e) {
             if (e.getCause() instanceof SQLException) {
                 throw (SQLException) e.getCause();
             }
-            throw (RuntimeException) e.getCause();
+            else if (e.getCause() instanceof RuntimeException) {
+                throw (RuntimeException) e.getCause();
+            }
+            throw new DebeziumException(e.getCause());
         }
         catch (TimeoutException | InterruptedException e) {
             LOGGER.warn("Failed to close database connection by calling close(), attempting abort()");
