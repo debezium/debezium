@@ -2495,7 +2495,7 @@ The {prodname} MySQL connector also provides the following custom binlog metrics
 |`long`
 |The number of processed transactions that were rolled back and not streamed.
 
-|[[number-of-not-well-formed-transactions]]<<number-of-not-well-formed-transactions.`NumberOfNotWell{zwsp}FormedTransactions`>>
+|[[number-of-not-well-formed-transactions]]<<number-of-not-well-formed-transactions,`NumberOfNotWell{zwsp}FormedTransactions`>>
 |`long`
 |The number of transactions that have not conformed to the expected protocol of `BEGIN` + `COMMIT`/`ROLLBACK`. This value should be `0` under normal conditions.
 
@@ -2506,7 +2506,7 @@ The {prodname} MySQL connector also provides the following custom binlog metrics
 |===
 
 // Type: reference
-// ModuleID: monitoring-debezium-mysql-connector-schema history
+// ModuleID: monitoring-debezium-mysql-connector-schema-history
 // Title: Monitoring {prodname} MySQL connector schema history
 [[mysql-schema-history-metrics]]
 === Schema history metrics
