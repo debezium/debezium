@@ -5,6 +5,7 @@
  */
 package io.debezium.heartbeat;
 
+import java.sql.SQLException;
 import java.util.Map;
 
 import org.apache.kafka.common.config.ConfigDef;
@@ -12,6 +13,7 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.function.BlockingConsumer;
@@ -47,8 +49,16 @@ public class DatabaseHeartbeatImpl extends HeartbeatImpl {
         try {
             jdbcConnection.execute(heartBeatActionQuery);
         }
-        catch (Exception e) {
-            LOGGER.error("Could not execute heartbeat action", e);
+        catch (SQLException e) {
+            String sqlErrorId = e.getSQLState();
+            switch (sqlErrorId) {
+                case "57P01": // Postgres error admin_shutdown, see https://www.postgresql.org/docs/12/errcodes-appendix.html
+                case "57P03": // Postgres error cannot_connect_now, see https://www.postgresql.org/docs/12/errcodes-appendix.html
+                    throw new DebeziumException("Could not execute heartbeat action (Error: " + sqlErrorId + ")", e);
+                default:
+                    LOGGER.error("Could not execute heartbeat action (Error: " + sqlErrorId + ")", e);
+                    break;
+            }
         }
         LOGGER.debug("Executed heartbeat action query");
 
