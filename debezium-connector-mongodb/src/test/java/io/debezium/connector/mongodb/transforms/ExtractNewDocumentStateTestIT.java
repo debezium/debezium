@@ -286,6 +286,39 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
     }
 
     @Test
+    @FixFor("DBZ-2680")
+    public void shouldSupportSubSanitizeFieldName() throws InterruptedException, IOException {
+        final Map<String, String> transformationConfig = new HashMap<>();
+        transformationConfig.put("array.encoding", "array");
+        transformationConfig.put("operation.header", "true");
+        transformationConfig.put("sanitize.field.names", "true");
+        transformation.configure(transformationConfig);
+        final String doc = "{" +
+                "  \"_id\": \"222\"," +
+                "  \"metrics\": {" +
+                "    \"metric::fct\": {" +
+                "      \"min\": 0," +
+                "      \"max\": 1," +
+                "    }," +
+                "  }" +
+                "}";
+
+        primary().execute("insert", client -> {
+            client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
+                    .insertOne(Document.parse(doc));
+        });
+
+        SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
+
+        final SourceRecord transformed = transformation.apply(records.allRecordsInOrder().get(0));
+        validate(transformed);
+        final Struct metric = ((Struct) transformed.value()).getStruct("metrics").getStruct("metric__fct");
+        Assertions.assertThat(metric.getInt32("min")).isEqualTo(0);
+        Assertions.assertThat(metric.getInt32("max")).isEqualTo(1);
+    }
+
+    @Test
     @FixFor("DBZ-1442")
     public void shouldAddSourceFields() throws InterruptedException {
         waitForStreamingRunning();
