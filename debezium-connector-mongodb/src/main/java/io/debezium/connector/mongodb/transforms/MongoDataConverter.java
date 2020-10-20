@@ -109,14 +109,14 @@ public class MongoDataConverter {
                 break;
 
             case JAVASCRIPT_WITH_SCOPE:
-                Struct jsStruct = new Struct(schema.field(keyvalueforStruct.getKey()).schema());
+                Struct jsStruct = new Struct(schema.field(key).schema());
                 Struct jsScopeStruct = new Struct(
-                        schema.field(keyvalueforStruct.getKey()).schema().field("scope").schema());
+                        schema.field(key).schema().field("scope").schema());
                 jsStruct.put("code", keyvalueforStruct.getValue().asJavaScriptWithScope().getCode());
                 BsonDocument jwsDoc = keyvalueforStruct.getValue().asJavaScriptWithScope().getScope().asDocument();
 
                 for (Entry<String, BsonValue> jwsDocKey : jwsDoc.entrySet()) {
-                    convertFieldValue(jwsDocKey, jsScopeStruct, schema.field(keyvalueforStruct.getKey()).schema());
+                    convertFieldValue(jwsDocKey, jsScopeStruct, schema.field(key).schema());
                 }
 
                 jsStruct.put("scope", jsScopeStruct);
@@ -124,7 +124,7 @@ public class MongoDataConverter {
                 break;
 
             case REGULAR_EXPRESSION:
-                Struct regexStruct = new Struct(schema.field(keyvalueforStruct.getKey()).schema());
+                Struct regexStruct = new Struct(schema.field(key).schema());
                 regexStruct.put("regex", keyvalueforStruct.getValue().asRegularExpression().getPattern());
                 regexStruct.put("options", keyvalueforStruct.getValue().asRegularExpression().getOptions());
                 colValue = regexStruct;
@@ -139,9 +139,9 @@ public class MongoDataConverter {
                 break;
 
             case DOCUMENT:
-                Field field = schema.field(keyvalueforStruct.getKey());
+                Field field = schema.field(key);
                 if (field == null) {
-                    throw new DataException("Failed to find field '" + keyvalueforStruct.getKey() + "' in schema " + schema.name());
+                    throw new DataException("Failed to find field '" + key + "' in schema " + schema.name());
                 }
                 Schema documentSchema = field.schema();
                 Struct documentStruct = new Struct(documentSchema);
@@ -166,7 +166,7 @@ public class MongoDataConverter {
                             colValue = new ArrayList<>();
                             break;
                         case DOCUMENT:
-                            final Schema fieldSchema = schema.field(keyvalueforStruct.getKey()).schema();
+                            final Schema fieldSchema = schema.field(key).schema();
                             colValue = new Struct(fieldSchema);
                             break;
                     }
@@ -181,7 +181,7 @@ public class MongoDataConverter {
                             arrValues.stream().forEach(arrValue -> {
                                 final Schema valueSchema;
                                 if (Arrays.asList(BsonType.ARRAY, BsonType.DOCUMENT).contains(valueType)) {
-                                    valueSchema = schema.field(keyvalueforStruct.getKey()).schema().valueSchema();
+                                    valueSchema = schema.field(key).schema().valueSchema();
                                 }
                                 else {
                                     valueSchema = null;
@@ -193,7 +193,7 @@ public class MongoDataConverter {
                         case DOCUMENT:
                             final BsonArray array = keyvalueforStruct.getValue().asArray();
                             final Map<String, BsonValue> convertedArray = new HashMap<>();
-                            final Schema arraySchema = schema.field(keyvalueforStruct.getKey()).schema();
+                            final Schema arraySchema = schema.field(key).schema();
                             final Struct arrayStruct = new Struct(arraySchema);
                             for (int i = 0; i < array.size(); i++) {
                                 convertedArray.put(arrayElementStructName(i), array.get(i));
@@ -442,12 +442,13 @@ public class MongoDataConverter {
 
     private void subSchema(SchemaBuilder documentSchemaBuilder, Map<String, BsonType> union, BsonDocument arrayDocs) {
         for (Entry<String, BsonValue> arrayDoc : arrayDocs.entrySet()) {
-            final BsonType prevType = union.putIfAbsent(arrayDoc.getKey(), arrayDoc.getValue().getBsonType());
+            final String key = fieldNamer.fieldNameFor(arrayDoc.getKey());
+            final BsonType prevType = union.putIfAbsent(key, arrayDoc.getValue().getBsonType());
             if (prevType == null) {
                 addFieldSchema(arrayDoc, documentSchemaBuilder);
             }
             else if (prevType != arrayDoc.getValue().getBsonType()) {
-                throw new ConnectException("Field " + arrayDoc.getKey() + " of schema " + documentSchemaBuilder.name()
+                throw new ConnectException("Field " + key + " of schema " + documentSchemaBuilder.name()
                         + " is not the same type for all documents in the array.\n"
                         + "Check option 'struct' of parameter 'array.encoding'");
             }
@@ -460,9 +461,10 @@ public class MongoDataConverter {
             for (BsonValue element : value.asArray()) {
                 final BsonDocument arrayDocs = element.asDocument();
                 for (Entry<String, BsonValue> arrayDoc : arrayDocs.entrySet()) {
-                    final BsonType prevType = union.putIfAbsent(arrayDoc.getKey(), arrayDoc.getValue().getBsonType());
+                    final String docKey = fieldNamer.fieldNameFor(arrayDoc.getKey());
+                    final BsonType prevType = union.putIfAbsent(docKey, arrayDoc.getValue().getBsonType());
                     if (prevType != null && prevType != arrayDoc.getValue().getBsonType()) {
-                        throw new ConnectException("Field " + arrayDoc.getKey() + " of schema " + builder.name()
+                        throw new ConnectException("Field " + docKey + " of schema " + builder.name()
                                 + " is not the same type for all documents in the array.\n"
                                 + "Check option 'struct' of parameter 'array.encoding'");
                     }
