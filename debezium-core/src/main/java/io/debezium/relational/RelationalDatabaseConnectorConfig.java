@@ -306,7 +306,6 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withWidth(Width.LONG)
             .withImportance(Importance.HIGH)
             .withValidation(Field::isListOfRegex)
-            .withDependents(TABLE_INCLUDE_LIST_NAME)
             .withDescription("The schemas for which events should be captured");
 
     /**
@@ -319,7 +318,6 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withWidth(Width.LONG)
             .withImportance(Importance.LOW)
             .withValidation(Field::isListOfRegex)
-            .withDependents(TABLE_INCLUDE_LIST_NAME)
             .withInvisibleRecommender()
             .withDescription("The schemas for which events should be captured (deprecated, use \"" + SCHEMA_INCLUDE_LIST.name() + "\" instead)");
 

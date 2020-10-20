@@ -678,16 +678,6 @@ public final class Field {
     }
 
     /**
-     * Create and return a new Field instance that is a copy of this field but with the given display name.
-     * @param dependents the names of the fields that depend on this field
-     * @return the new field; never null
-     */
-    public Field withDependents(String... dependents) {
-        return new Field(name(), displayName(), type(), width, description(), importance(),
-                Arrays.asList(dependents), defaultValueGenerator, validator, recommender);
-    }
-
-    /**
      * Create and return a new Field instance that is a copy of this field but with the given default value.
      * @param defaultValue the new default value for the new field
      * @return the new field; never null

@@ -635,8 +635,7 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withDescription(
                     "Password to unlock the keystore file (store password) specified by 'ssl.trustore' configuration property or the 'javax.net.ssl.trustStore' system or JVM property.");
 
-    public static final Field TABLES_IGNORE_BUILTIN = RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN
-            .withDependents(DATABASE_INCLUDE_LIST_NAME);
+    public static final Field TABLES_IGNORE_BUILTIN = RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN;
 
     public static final Field JDBC_DRIVER = Field.create("database.jdbc.driver")
             .withDisplayName("Jdbc Driver Class Name")
@@ -656,7 +655,6 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withType(Type.LIST)
             .withWidth(Width.LONG)
             .withImportance(Importance.HIGH)
-            .withDependents(TABLE_INCLUDE_LIST_NAME)
             .withDescription("The databases for which changes are to be captured");
 
     /**
@@ -669,7 +667,6 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withWidth(Width.LONG)
             .withImportance(Importance.LOW)
             .withInvisibleRecommender()
-            .withDependents(TABLE_INCLUDE_LIST_NAME)
             .withDescription("The databases for which changes are to be captured (deprecated, use \"" + DATABASE_INCLUDE_LIST.name() + "\" instead)");
 
     /**
@@ -710,7 +707,6 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withType(Type.LIST)
             .withWidth(Width.LONG)
             .withImportance(Importance.HIGH)
-            .withDependents(TABLE_INCLUDE_LIST_NAME)
             .withDescription("The source UUIDs used to include GTID ranges when determine the starting position in the MySQL server's binlog.");
 
     /**
