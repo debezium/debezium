@@ -99,6 +99,7 @@ To provide the needed Kafka record format for consumers, configure the event fla
 // Type: concept
 // ModuleID: behavior-of-debezium-event-flattening-transformation
 // Behavior of {prodname} event flattening transformation
+[[event-flattening-behavior]]
 == Behavior
 
 The event flattening SMT extracts the `after` field from a {prodname} change event in a Kafka record. The SMT replaces the original change event with only its `after` field to create a simple Kafka record. 
