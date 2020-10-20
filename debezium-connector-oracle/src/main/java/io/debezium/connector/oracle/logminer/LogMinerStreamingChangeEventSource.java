@@ -176,7 +176,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                     fetchFromMiningView.setLong(1, startScn);
                     fetchFromMiningView.setLong(2, endScn);
 
-                    try(ResultSet res = fetchFromMiningView.executeQuery()) {
+                    try (ResultSet res = fetchFromMiningView.executeQuery()) {
                         logMinerMetrics.setLastLogMinerQueryDuration(Duration.between(startTime, Instant.now()));
                         processor.processResult(res);
 
