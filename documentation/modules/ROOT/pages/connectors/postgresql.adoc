@@ -30,7 +30,8 @@ Information and procedures for using a {prodname} PostgreSQL connector is organi
 * xref:descriptions-of-debezium-postgresql-connector-data-change-events[]
 * xref:how-debezium-postgresql-connectors-map-data-types[]
 * xref:setting-up-postgresql-to-run-a-debezium-connector[]
-* xref:deploying-and-managing-debezium-postgresql-connectors[]
+* xref:deployment-of-debezium-postgresql-connectors[]
+* xref:monitoring-debezium-postgresql-connector-performance[]
 * xref:how-debezium-postgresql-connectors-handle-faults-and-problems[]
 
 endif::product[]
@@ -501,11 +502,6 @@ Details are in the following topics:
 
 * xref:about-keys-in-debezium-postgresql-change-events[]
 * xref:about-values-in-debezium-postgresql-change-events[]
-* xref:how-replica-identity-controls-data-that-can-be-in-debezium-postgresql-change-events[]
-* xref:about-debezium-postgresql-change-events-for-operations-that-create-content[]
-* xref:about-debezium-postgresql-change-events-for-operations-that-update-content[]
-* xref:about-debezium-postgresql-change-events-for-primary-key-updates[]
-* xref:about-debezium-postgresql-change-events-for-operations-that-delete-content[]
 
 endif::product[]
 
@@ -992,6 +988,7 @@ as a primary key change. For a primary key change, in place of sending an `UPDAT
 
 * The `CREATE` event record has `__debezium.oldkey` as a message header. The value of this header is the previous (old) primary key that the updated row had.
 
+// Type: continue
 [[postgresql-delete-events]]
 === _delete_ events
 
@@ -1989,7 +1986,7 @@ For example, from a terminal window, enter the following:
 +
 [subs="+macros,+attributes"]
 ----
-pass:quotes[*cat <<EOF >debezium-container-for-postgresql.yaml*] // <1>
+pass:quotes[*cat &lt;&lt;EOF &gt;debezium-container-for-postgresql.yaml*] // <1>
 pass:quotes[*FROM {DockerKafkaConnect}*]
 pass:quotes[*USER root:root*]
 pass:quotes[*COPY ./my-plugins/ /opt/kafka/plugins/*] // <2>
@@ -1998,7 +1995,7 @@ pass:quotes[*EOF*]
 ----
 <1> You can specify any file name that you want.
 <2> Replace `my-plugins` with the name of your plug-ins directory.
-
++
 The command creates a Docker file with the name `debezium-container-for-postgresql.yaml` in the current directory.
 
 .. Build the container image from the `debezium-container-for-postgresql.yaml` Docker file that you created in the previous step. From the directory that contains the file, run the following command:
@@ -2021,7 +2018,7 @@ podman push debezium-container-for-postgresql:latest
 +
 [source,yaml,subs="+attributes"]
 ----
-apiVersion: kafka.strimzi.io/v1beta1
+apiVersion: {KafkaConnectApiVersion}
 kind: KafkaConnect
 metadata:
   name: my-connect-cluster
@@ -2048,9 +2045,9 @@ You configure a {prodname} PostgreSQL connector in a `.yaml` file that sets conn
 The following example configures a {prodname} connector that connects to a PostgreSQL server host, `192.168.99.100`, on port `5432`. This host has a database named `sampledb`, a schema named `public`, and `fulfillment` is the server's logical name. 
 +
 .`fulfillment-connector.yaml`
-[source,yaml,options="nowrap"]
+[source,yaml,options="nowrap",subs="+attributes"]
 ----
-apiVersion: kafka.strimzi.io/v1alpha1
+apiVersion: {KafkaConnectorApiVersion}
   kind: KafkaConnector
   metadata:
     name: fulfillment-connector  // <1>
