@@ -13,6 +13,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
@@ -35,6 +36,7 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
 
+import io.debezium.config.Configuration;
 import io.debezium.connector.SnapshotRecord;
 import io.debezium.connector.mysql.RecordMakers.RecordsForTable;
 import io.debezium.data.Envelope;
@@ -301,6 +303,7 @@ public class SnapshotReader extends AbstractReader {
             long lockAcquired = 0L;
             int step = 1;
 
+            Configuration configuration = context.config();
             try {
                 // ------------------------------------
                 // LOCK TABLES
@@ -430,7 +433,7 @@ public class SnapshotReader extends AbstractReader {
                  * +
                  */
                 List<Pattern> tableIncludeListPattern = Strings.listOfRegex(
-                        context.config().getFallbackStringProperty(MySqlConnectorConfig.TABLE_INCLUDE_LIST, MySqlConnectorConfig.TABLE_WHITELIST),
+                        configuration.getFallbackStringProperty(MySqlConnectorConfig.TABLE_INCLUDE_LIST, MySqlConnectorConfig.TABLE_WHITELIST),
                         Pattern.CASE_INSENSITIVE);
                 List<TableId> tableIdsSorted = new ArrayList<>();
                 tableIncludeListPattern.forEach(pattern -> {
@@ -707,7 +710,7 @@ public class SnapshotReader extends AbstractReader {
                     // We've copied all of the tables and we've not yet been stopped, but our buffer holds onto the
                     // very last record. First mark the snapshot as complete and then apply the updated offset to
                     // the buffered record ...
-                    source.markLastSnapshot(context.config());
+                    source.markLastSnapshot(configuration);
                     long stop = clock.currentTimeInMillis();
                     try {
                         bufferedRecordQueue.close(this::replaceOffsetAndSource);
@@ -818,7 +821,7 @@ public class SnapshotReader extends AbstractReader {
                     source.completeSnapshot();
                     Heartbeat
                             .create(
-                                    context.config(),
+                                    configuration.getDuration(Heartbeat.HEARTBEAT_INTERVAL, ChronoUnit.MILLIS),
                                     context.topicSelector().getHeartbeatTopic(),
                                     context.getConnectorConfig().getLogicalName())
                             .forcedBeat(source.partition(), source.offset(), this::enqueueRecord);

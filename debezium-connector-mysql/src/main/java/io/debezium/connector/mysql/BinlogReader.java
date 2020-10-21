@@ -19,6 +19,7 @@ import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.BitSet;
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -67,6 +68,7 @@ import com.github.shyiko.mysql.binlog.network.SSLMode;
 import com.github.shyiko.mysql.binlog.network.SSLSocketFactory;
 
 import io.debezium.config.CommonConnectorConfig.EventProcessingFailureHandlingMode;
+import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
 import io.debezium.connector.mysql.RecordMakers.RecordsForTable;
 import io.debezium.data.Envelope.Operation;
@@ -219,8 +221,9 @@ public class BinlogReader extends AbstractReader {
                 client.setSslSocketFactory(sslSocketFactory);
             }
         }
-        client.setKeepAlive(context.config().getBoolean(MySqlConnectorConfig.KEEP_ALIVE));
-        final long keepAliveInterval = context.config().getLong(MySqlConnectorConfig.KEEP_ALIVE_INTERVAL_MS);
+        Configuration configuration = context.config();
+        client.setKeepAlive(configuration.getBoolean(MySqlConnectorConfig.KEEP_ALIVE));
+        final long keepAliveInterval = configuration.getLong(MySqlConnectorConfig.KEEP_ALIVE_INTERVAL_MS);
         client.setKeepAliveInterval(keepAliveInterval);
         // Considering heartbeatInterval should be less than keepAliveInterval, we use the heartbeatIntervalFactor
         // multiply by keepAliveInterval and set the result value to heartbeatInterval.The default value of heartbeatIntervalFactor
@@ -236,7 +239,7 @@ public class BinlogReader extends AbstractReader {
             client.registerEventListener(this::logEvent);
         }
 
-        boolean filterDmlEventsByGtidSource = context.config().getBoolean(MySqlConnectorConfig.GTID_SOURCE_FILTER_DML_EVENTS);
+        boolean filterDmlEventsByGtidSource = configuration.getBoolean(MySqlConnectorConfig.GTID_SOURCE_FILTER_DML_EVENTS);
         gtidDmlSourceFilter = filterDmlEventsByGtidSource ? context.gtidSourceFilter() : null;
 
         // Set up the event deserializer with additional type(s) ...
@@ -296,8 +299,8 @@ public class BinlogReader extends AbstractReader {
 
         // Set up for JMX ...
         metrics = new BinlogReaderMetrics(client, context, name, changeEventQueueMetrics);
-        heartbeat = Heartbeat.create(context.config(), context.topicSelector().getHeartbeatTopic(),
-                context.getConnectorConfig().getLogicalName());
+        heartbeat = Heartbeat.create(configuration.getDuration(Heartbeat.HEARTBEAT_INTERVAL, ChronoUnit.MILLIS),
+                context.topicSelector().getHeartbeatTopic(), context.getConnectorConfig().getLogicalName());
     }
 
     @Override

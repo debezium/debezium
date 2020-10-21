@@ -5,23 +5,21 @@
  */
 package io.debezium.heartbeat;
 
-import java.time.temporal.ChronoUnit;
+import java.time.Duration;
 import java.util.Map;
-import java.util.function.Consumer;
 
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
 import org.apache.kafka.connect.source.SourceRecord;
 
-import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.function.BlockingConsumer;
 import io.debezium.jdbc.JdbcConnection;
 
 /**
  * A class that is able to generate periodic heartbeat messages based on a pre-configured interval. The clients are
- * supposed to call method {@link #heartbeat(Consumer)} from a main loop of a connector.
+ * supposed to call method {@link #heartbeat(Map, Map, BlockingConsumer)} from a main loop of a connector.
  *
  * @author Jiri Pechanec
  *
@@ -40,7 +38,7 @@ public interface Heartbeat {
         Map<String, ?> offset();
     }
 
-    public static final Field HEARTBEAT_INTERVAL = Field.create(HEARTBEAT_INTERVAL_PROPERTY_NAME)
+    Field HEARTBEAT_INTERVAL = Field.create(HEARTBEAT_INTERVAL_PROPERTY_NAME)
             .withDisplayName("Connector heartbeat interval (milli-seconds)")
             .withType(Type.INT)
             .withWidth(Width.MEDIUM)
@@ -52,7 +50,7 @@ public interface Heartbeat {
             .withDefault(HeartbeatImpl.DEFAULT_HEARTBEAT_INTERVAL)
             .withValidation(Field::isNonNegativeInteger);
 
-    public static final Field HEARTBEAT_TOPICS_PREFIX = Field.create("heartbeat.topics.prefix")
+    Field HEARTBEAT_TOPICS_PREFIX = Field.create("heartbeat.topics.prefix")
             .withDisplayName("A prefix used for naming of heartbeat topics")
             .withType(Type.STRING)
             .withWidth(Width.MEDIUM)
@@ -64,7 +62,7 @@ public interface Heartbeat {
     /**
      * No-op Heartbeat implementation
      */
-    Heartbeat NULL = new Heartbeat() {
+    Heartbeat DEFAULT_NOOP_HEARTBEAT = new Heartbeat() {
 
         @Override
         public void heartbeat(Map<String, ?> partition, Map<String, ?> offset, BlockingConsumer<SourceRecord> consumer) throws InterruptedException {
@@ -94,8 +92,7 @@ public interface Heartbeat {
      * @param offset offset for the heartbeat record
      * @param consumer - a code to place record among others to be sent into Connect
      */
-    // TODO would be nice to pass OffsetContext here; not doing it for now, though, until MySQL is using OffsetContext,
-    // too
+    // TODO would be nice to pass OffsetContext here; not doing it for now, though, until MySQL is using OffsetContext, too
     void heartbeat(Map<String, ?> partition, Map<String, ?> offset, BlockingConsumer<SourceRecord> consumer) throws InterruptedException;
 
     /**
@@ -114,8 +111,7 @@ public interface Heartbeat {
      * @param offset offset for the heartbeat record
      * @param consumer - a code to place record among others to be sent into Connect
      */
-    // TODO would be nice to pass OffsetContext here; not doing it for now, though, until MySQL is using OffsetContext,
-    // too
+    // TODO would be nice to pass OffsetContext here; not doing it for now, though, until MySQL is using OffsetContext, too
     void forcedBeat(Map<String, ?> partition, Map<String, ?> offset, BlockingConsumer<SourceRecord> consumer) throws InterruptedException;
 
     /**
@@ -126,33 +122,24 @@ public interface Heartbeat {
     /**
      * Provide an instance of Heartbeat object
      *
-     * @param configuration connector configuration
+     * @param heartbeatInterval heartbeat interval config value as java.time.Duration
      * @param topicName topic to which the heartbeat messages will be sent
      * @param key kafka partition key to use for the heartbeat message
      */
-    static Heartbeat create(Configuration configuration, String topicName, String key) {
-        return configuration.getDuration(HeartbeatImpl.HEARTBEAT_INTERVAL, ChronoUnit.MILLIS).isZero() ? NULL : new HeartbeatImpl(configuration, topicName, key);
+    static Heartbeat create(Duration heartbeatInterval, String topicName, String key) {
+        return heartbeatInterval.isZero() ? DEFAULT_NOOP_HEARTBEAT : new HeartbeatImpl(heartbeatInterval, topicName, key);
     }
 
-    /**
-     * Provide an instance of Heartbeat object
-     *
-     * @param configuration connector configuration
-     * @param topicName topic to which the heartbeat messages will be sent
-     * @param key kafka partition key to use for the heartbeat message
-     * @param jdbcConnection a database connection
-     */
-    static Heartbeat create(Configuration configuration, String topicName, String key, JdbcConnection jdbcConnection) {
-        if (configuration.getDuration(HeartbeatImpl.HEARTBEAT_INTERVAL, ChronoUnit.MILLIS).isZero()) {
-            return NULL;
+    static Heartbeat create(Duration heartbeatInterval, String heartbeatQuery, String topicName, String key, JdbcConnection jdbcConnection,
+                            HeartbeatErrorHandler errorHandler) {
+        if (heartbeatInterval.isZero()) {
+            return DEFAULT_NOOP_HEARTBEAT;
         }
 
-        String heartBeatActionQuery = configuration.getString(DatabaseHeartbeatImpl.HEARTBEAT_ACTION_QUERY);
-
-        if (heartBeatActionQuery != null) {
-            return new DatabaseHeartbeatImpl(configuration, topicName, key, jdbcConnection, heartBeatActionQuery);
+        if (heartbeatQuery != null) {
+            return new DatabaseHeartbeatImpl(heartbeatInterval, topicName, key, jdbcConnection, heartbeatQuery, errorHandler);
         }
 
-        return new HeartbeatImpl(configuration, topicName, key);
+        return new HeartbeatImpl(heartbeatInterval, topicName, key);
     }
 }

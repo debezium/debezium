@@ -7,7 +7,6 @@ package io.debezium.heartbeat;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.Map;
 
 import org.apache.kafka.connect.data.Schema;
@@ -17,7 +16,6 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.config.Configuration;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.function.BlockingConsumer;
 import io.debezium.util.Clock;
@@ -27,8 +25,6 @@ import io.debezium.util.Threads.Timer;
 
 /**
  * Default implementation of Heartbeat
- *
- * @author Jiri Pechanec
  *
  */
 class HeartbeatImpl implements Heartbeat {
@@ -49,11 +45,11 @@ class HeartbeatImpl implements Heartbeat {
 
     private static final String SERVER_NAME_KEY = "serverName";
 
-    private static Schema KEY_SCHEMA = SchemaBuilder.struct()
+    private static final Schema KEY_SCHEMA = SchemaBuilder.struct()
             .name(schemaNameAdjuster.adjust("io.debezium.connector.common.ServerNameKey"))
             .field(SERVER_NAME_KEY, Schema.STRING_SCHEMA)
             .build();
-    private static Schema VALUE_SCHEMA = SchemaBuilder.struct()
+    private static final Schema VALUE_SCHEMA = SchemaBuilder.struct()
             .name(schemaNameAdjuster.adjust("io.debezium.connector.common.Heartbeat"))
             .field(AbstractSourceInfo.TIMESTAMP_KEY, Schema.INT64_SCHEMA)
             .build();
@@ -64,11 +60,10 @@ class HeartbeatImpl implements Heartbeat {
 
     private volatile Timer heartbeatTimeout;
 
-    HeartbeatImpl(Configuration configuration, String topicName, String key) {
+    HeartbeatImpl(Duration heartbeatInterval, String topicName, String key) {
         this.topicName = topicName;
         this.key = key;
-
-        heartbeatInterval = configuration.getDuration(HeartbeatImpl.HEARTBEAT_INTERVAL, ChronoUnit.MILLIS);
+        this.heartbeatInterval = heartbeatInterval;
         heartbeatTimeout = resetHeartbeat();
     }
 
