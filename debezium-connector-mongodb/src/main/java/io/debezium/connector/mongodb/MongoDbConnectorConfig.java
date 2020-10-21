@@ -5,13 +5,6 @@
  */
 package io.debezium.connector.mongodb;
 
-import java.util.concurrent.TimeUnit;
-
-import org.apache.kafka.common.config.ConfigDef;
-import org.apache.kafka.common.config.ConfigDef.Importance;
-import org.apache.kafka.common.config.ConfigDef.Type;
-import org.apache.kafka.common.config.ConfigDef.Width;
-
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.ConfigDefinition;
 import io.debezium.config.Configuration;
@@ -20,6 +13,15 @@ import io.debezium.config.Field;
 import io.debezium.config.Field.ValidationOutput;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SourceInfoStructMaker;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.TimeUnit;
+import org.apache.kafka.common.config.ConfigDef;
+import org.apache.kafka.common.config.ConfigDef.Importance;
+import org.apache.kafka.common.config.ConfigDef.Type;
+import org.apache.kafka.common.config.ConfigDef.Width;
 
 /**
  * The configuration properties.
@@ -416,6 +418,16 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withValidation(Field::isInteger)
             .withInvisibleRecommender();
 
+    public static final Field SNAPSHOT_FILTER_QUERY_BY_COLLECTION = Field.create("snapshot.collection.filter.overrides")
+                    .withDisplayName("Snapshot mode")
+            .withType(Type.STRING)
+           .withWidth(Width.LONG)
+           .withImportance(Importance.MEDIUM)
+           .withDescription("This property contains a comma-separated list of <dbName>.<collectionName>, for which "
+               + " the initial snapshot may be a subset of data present in the data source. The subset would be defined"
+               + " by mongodb filter query specified as value for property snapshot.collection.filter.override.<dbname>.<collectionName>");
+
+
     private static final ConfigDefinition CONFIG_DEFINITION = CommonConnectorConfig.CONFIG_DEFINITION.edit()
             .name("MongoDB")
             .type(
@@ -446,7 +458,9 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
                     COLLECTION_EXCLUDE_LIST,
                     FIELD_BLACKLIST,
                     FIELD_EXCLUDE_LIST,
-                    FIELD_RENAMES)
+                    FIELD_RENAMES,
+                    SNAPSHOT_FILTER_QUERY_BY_COLLECTION
+                )
             .connector(
                     MAX_COPY_THREADS,
                     SNAPSHOT_MODE)
@@ -518,6 +532,31 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             default:
                 return new MongoDbSourceInfoStructMaker(Module.name(), Module.version(), this);
         }
+    }
+
+    public Optional<String> getSnapshotFilterQueryForCollection(CollectionId collectionId){
+        return Optional.ofNullable(getSnapshotFilterQueryByCollection().get(collectionId.dbName() +"."+collectionId.name()));
+    }
+
+    public Map<String, String> getSnapshotFilterQueryByCollection() {
+        String collectionList = getConfig().getString(SNAPSHOT_FILTER_QUERY_BY_COLLECTION);
+
+        if (collectionList == null) {
+            return Collections.emptyMap();
+        }
+
+        Map<String, String> snapshotFilterQueryByCollection = new HashMap<>();
+
+        for (String collection : collectionList.split(",")) {
+            snapshotFilterQueryByCollection.put(
+                collection,
+                getConfig().getString(
+                    new StringBuilder().append(SNAPSHOT_FILTER_QUERY_BY_COLLECTION).append(".")
+                        .append(collection).toString()));
+        }
+
+        return Collections.unmodifiableMap(snapshotFilterQueryByCollection);
+
     }
 
     @Override

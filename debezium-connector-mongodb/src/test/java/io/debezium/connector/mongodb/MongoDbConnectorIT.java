@@ -966,6 +966,50 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
+    @FixFor("DBZ-2496")
+    public void shouldFilterItemsInCollectionWhileTakingSnapshot() throws Exception {
+        // Use the DB configuration to define the connector's configuration ...
+        config = TestHelper.getConfiguration().edit()
+            .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
+            .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
+            .with(MongoDbConnectorConfig.LOGICAL_NAME, "mongo")
+            .with(MongoDbConnectorConfig.SNAPSHOT_FILTER_QUERY_BY_COLLECTION,"dbit.simpletons,dbit.restaurants1")
+            .with(MongoDbConnectorConfig.SNAPSHOT_FILTER_QUERY_BY_COLLECTION + "." +"dbit.simpletons", "{ \"_id\": { \"$gt\": 4 } }")
+            .with(MongoDbConnectorConfig.SNAPSHOT_FILTER_QUERY_BY_COLLECTION + "." +"dbit.restaurants1", "{ cuisine: \"American \"  }")
+            .build();
+
+        // Set up the replication context for connections ...
+        context = new MongoDbTaskContext(config);
+
+        // Cleanup database
+        TestHelper.cleanDatabase(primary(), "dbit");
+
+        // Before starting the connector, add data to the databases ...
+
+        // Before starting the connector, add data to the databases ...
+        storeDocuments("dbit", "simpletons", "simple_objects.json");
+        storeDocuments("dbit", "restaurants1", "restaurants1.json");
+        storeDocuments("dbit", "restaurants2", "restaurants2.json");
+
+        // Start the connector ...
+        start(MongoDbConnector.class, config);
+
+        // ---------------------------------------------------------------------------------------------------------------
+        // Consume all of the events due to startup and initialization of the database
+        // ---------------------------------------------------------------------------------------------------------------
+        SourceRecords records = consumeRecordsByTopic(10);
+        assertThat(records.topics().size()).isEqualTo(3);
+        assertThat(records.recordsForTopic("mongo.dbit.simpletons").size()).isEqualTo(4);
+        assertThat(records.recordsForTopic("mongo.dbit.restaurants1").size()).isEqualTo(2);
+        assertThat(records.recordsForTopic("mongo.dbit.restaurants2").size()).isEqualTo(4);
+        assertNoRecordsToConsume();
+
+        stopConnector();
+
+
+    }
+
+    @Test
     @FixFor("DBZ-2456")
     public void shouldSelectivelySnapshot() throws InterruptedException {
         config = TestHelper.getConfiguration().edit()
