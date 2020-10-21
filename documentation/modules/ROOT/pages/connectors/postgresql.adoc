@@ -2297,7 +2297,7 @@ If the publication already exists, either for all tables or configured with a su
 |An optional, comma-separated list of regular expressions that match fully-qualified table identifiers for tables whose changes you want to capture. Any table not included in `table.include.list` does not have its changes captured. Each identifier is of the form _schemaName_._tableName_. By default, the connector captures changes in every non-system table in each schema whose changes are being captured. Do not also set the `table.exclude.list` property.
 
 |[[postgresql-property-table-blacklist]]
-[[postgresql-property-table-exclude.list]]<<postgresql-property-table-exclude.list, `table.exclude{zwsp}.list`>>
+[[postgresql-property-table-exclude-list]]<<postgresql-property-table-exclude-list, `table.exclude{zwsp}.list`>>
 |
 |An optional, comma-separated list of regular expressions that match fully-qualified table identifiers for tables whose changes you *do not* want to capture. Any table not included in `table.exclude.list` has it changes captured. Each identifier is of the form _schemaName_._tableName_. Do not also set the `table.include.list` property.
 
