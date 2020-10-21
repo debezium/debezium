@@ -1255,6 +1255,13 @@ endif::community[]
 The operations include: `i` for inserts, `u` for updates, and `d` for deletes.
 By default, no operations are skipped.
 
+|[[mongodb-property-snapshot-collection-filter-overrides]]<<mongodb-property-snapshot-collection-filter-overrides, `snapshot.collection.filter.overrides`>>
+|
+| Controls which collection items are included in snapshot. This property affects snapshots only. Specify a comma-separated list of collection names in the form _databaseName{zwsp}.collectionName_.
+
+For each collection that you specify, also specify another configuration property: `snapshot{zwsp}.collection{zwsp}.filter{zwsp}.overrides{zwsp}._DB_NAME_._COLLECTION_NAME_`. For example, the name of the other configuration property might be:  `snapshot{zwsp}.collection{zwsp}.filter{zwsp}.overrides{zwsp}.customers{zwsp}.orders`. Set this property to a valid filter expression that retrieves only the items that you want in the snapshot. When the connector performs a snapshot, it retrieves only the items that matches the filter expression.
+
+
 |[[mongodb-property-provide-transaction-metadata]]<<mongodb-property-provide-transaction-metadata, `provide.transaction{zwsp}.metadata`>>
 |`false`
 |When set to `true` {prodname} generates events with transaction boundaries and enriches data events envelope with transaction metadata.
