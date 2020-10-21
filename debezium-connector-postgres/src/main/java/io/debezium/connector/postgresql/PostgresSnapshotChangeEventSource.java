@@ -223,6 +223,7 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
 
     @Override
     protected void complete(SnapshotContext snapshotContext) {
+        snapshotter.snapshotCompleted();
     }
 
     @Override
