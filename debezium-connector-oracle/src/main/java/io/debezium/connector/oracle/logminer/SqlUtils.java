@@ -129,6 +129,6 @@ class SqlUtils {
 
         StringJoiner tableNames = new StringJoiner(",");
         tables.forEach(table -> tableNames.add("'" + table + "'"));
-        return " AND table_name IN (" + tableNames + ") AND SEG_NAME IN (" + tableNames + ") ";
+        return " AND table_name IN (" + tableNames + ") ";
     }
 }
