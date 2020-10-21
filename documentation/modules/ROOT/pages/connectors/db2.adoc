@@ -1484,8 +1484,6 @@ The above example assumes that you extracted the {prodname} Db2 connector to the
 
 endif::product[]
 
-[[db2-example]]
-
 // Type: concept
 // ModuleID: debezium-db2-connector-configuration-example
 // Title: {prodname} Db2 connector configuration example
@@ -1493,6 +1491,8 @@ endif::product[]
 === Connector configuration example
 
 ifdef::community[]
+
+[[db2-example]]
 
 Following is an example of the configuration for a Db2 connector that connects to a Db2 server on port 50000 at 192.168.99.100, whose logical name is `fullfillment`. Typically, you configure the {prodname} Db2 connector in a `.json` file using the configuration properties available for the connector.
 

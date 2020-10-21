@@ -98,7 +98,7 @@ To provide the needed Kafka record format for consumers, configure the event fla
 
 // Type: concept
 // ModuleID: behavior-of-debezium-event-flattening-transformation
-// Behavior of {prodname} event flattening transformation
+// Title: Behavior of {prodname} event flattening transformation
 [[event-flattening-behavior]]
 == Behavior
 
