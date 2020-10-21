@@ -970,13 +970,13 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
     public void shouldFilterItemsInCollectionWhileTakingSnapshot() throws Exception {
         // Use the DB configuration to define the connector's configuration ...
         config = TestHelper.getConfiguration().edit()
-            .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
-            .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
-            .with(MongoDbConnectorConfig.LOGICAL_NAME, "mongo")
-            .with(MongoDbConnectorConfig.SNAPSHOT_FILTER_QUERY_BY_COLLECTION,"dbit.simpletons,dbit.restaurants1")
-            .with(MongoDbConnectorConfig.SNAPSHOT_FILTER_QUERY_BY_COLLECTION + "." +"dbit.simpletons", "{ \"_id\": { \"$gt\": 4 } }")
-            .with(MongoDbConnectorConfig.SNAPSHOT_FILTER_QUERY_BY_COLLECTION + "." +"dbit.restaurants1", "{ cuisine: \"American \"  }")
-            .build();
+                .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
+                .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
+                .with(MongoDbConnectorConfig.LOGICAL_NAME, "mongo")
+                .with(MongoDbConnectorConfig.SNAPSHOT_FILTER_QUERY_BY_COLLECTION, "dbit.simpletons,dbit.restaurants1")
+                .with(MongoDbConnectorConfig.SNAPSHOT_FILTER_QUERY_BY_COLLECTION + "." + "dbit.simpletons", "{ \"_id\": { \"$gt\": 4 } }")
+                .with(MongoDbConnectorConfig.SNAPSHOT_FILTER_QUERY_BY_COLLECTION + "." + "dbit.restaurants1", "{ cuisine: \"American \"  }")
+                .build();
 
         // Set up the replication context for connections ...
         context = new MongoDbTaskContext(config);
@@ -1005,7 +1005,6 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         assertNoRecordsToConsume();
 
         stopConnector();
-
 
     }
 
