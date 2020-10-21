@@ -9,10 +9,12 @@ package io.debezium.connector.postgresql;
 import java.nio.charset.Charset;
 import java.sql.SQLException;
 import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.errors.ConnectException;
+import org.apache.kafka.connect.errors.RetriableException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,6 +29,7 @@ import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.connector.postgresql.spi.SlotCreationResult;
 import io.debezium.connector.postgresql.spi.SlotState;
 import io.debezium.connector.postgresql.spi.Snapshotter;
+import io.debezium.heartbeat.DatabaseHeartbeatImpl;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.DataChangeEvent;
@@ -54,7 +57,6 @@ public class PostgresConnectorTask extends BaseSourceTask {
     private volatile ChangeEventQueue<DataChangeEvent> queue;
     private volatile PostgresConnection jdbcConnection;
     private volatile PostgresConnection heartbeatConnection;
-    private volatile ErrorHandler errorHandler;
     private volatile PostgresSchema schema;
 
     @Override
@@ -151,12 +153,28 @@ public class PostgresConnectorTask extends BaseSourceTask {
                     .loggingContextSupplier(() -> taskContext.configureLoggingContext(CONTEXT_NAME))
                     .build();
 
-            errorHandler = new PostgresErrorHandler(connectorConfig.getLogicalName(), queue);
+            ErrorHandler errorHandler = new PostgresErrorHandler(connectorConfig.getLogicalName(), queue);
 
             final PostgresEventMetadataProvider metadataProvider = new PostgresEventMetadataProvider();
 
-            Heartbeat heartbeat = Heartbeat.create(connectorConfig.getConfig(), topicSelector.getHeartbeatTopic(),
-                    connectorConfig.getLogicalName(), heartbeatConnection);
+            Configuration configuration = connectorConfig.getConfig();
+            Heartbeat heartbeat = Heartbeat.create(
+                    configuration.getDuration(Heartbeat.HEARTBEAT_INTERVAL, ChronoUnit.MILLIS),
+                    configuration.getString(DatabaseHeartbeatImpl.HEARTBEAT_ACTION_QUERY),
+                    topicSelector.getHeartbeatTopic(),
+                    connectorConfig.getLogicalName(), heartbeatConnection, exception -> {
+                        String sqlErrorId = exception.getSQLState();
+                        switch (sqlErrorId) {
+                            case "57P01":
+                                // Postgres error admin_shutdown, see https://www.postgresql.org/docs/12/errcodes-appendix.html
+                                throw new DebeziumException("Could not execute heartbeat action (Error: " + sqlErrorId + ")", exception);
+                            case "57P03":
+                                // Postgres error cannot_connect_now, see https://www.postgresql.org/docs/12/errcodes-appendix.html
+                                throw new RetriableException("Could not execute heartbeat action (Error: " + sqlErrorId + ")", exception);
+                            default:
+                                break;
+                        }
+                    });
 
             final EventDispatcher<TableId> dispatcher = new EventDispatcher<>(
                     connectorConfig,
