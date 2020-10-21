@@ -99,4 +99,11 @@ public interface Snapshotter {
                 .append(lineSeparator));
         return Optional.of(statements.toString());
     }
+
+    /**
+     * Lifecycle hook called once the snapshot phase is finished.
+     */
+    default void snapshotCompleted() {
+        // no operation
+    }
 }
