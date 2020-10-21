@@ -63,6 +63,19 @@ public class MySqlAntlrDdlParserTest {
     }
 
     @Test
+    @FixFor("DBZ-2670")
+    public void shouldAllowNonAsciiIdentifiers() {
+        String ddl = "create table žluťoučký (kůň int);";
+        parser.parse(ddl, tables);
+        assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
+        assertThat(tables.size()).isEqualTo(1);
+
+        Table table = tables.forTable(null, null, "žluťoučký");
+        assertThat(table.columns()).hasSize(1);
+        assertThat(table.columnWithName("kůň")).isNotNull();
+    }
+
+    @Test
     @FixFor("DBZ-2641")
     public void shouldProcessDimensionalBlob() {
         String ddl = "CREATE TABLE blobtable (id INT PRIMARY KEY, val1 BLOB(16), val2 BLOB);";
