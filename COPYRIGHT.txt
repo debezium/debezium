@@ -73,6 +73,7 @@ Eric S. Kreiseir
 Ewen Cheslack-Postava
 Fabian Aussems
 Fabio Cantarini
+Faizan
 Fatih Güçlü Akkaya
 Fándly Gergő 
 Felix Eckhardt
@@ -111,6 +112,7 @@ Javier Holguera
 Jeremy Finzel
 jinguangyang
 Jiri Pechanec
+Johan Rhedin
 Johan Venant
 John Graf
 John Martin
@@ -127,6 +129,7 @@ Juan Antonio Pedraza
 Jun Du
 Jure Kajzer
 Justin Hiza
+Kaushik Iyer
 Keith Barber
 Kevin Pullin
 Kewei Shang
@@ -199,6 +202,7 @@ Saulius Valatka
 Sayed Mohammad Hossein Torabi
 Scofield Xu
 Sean Rooney
+Sergei Morozov
 Sherafudheen PM
 Shubham Rawat
 Siddhant Agnihotry
@@ -216,6 +220,7 @@ Tom Bentley
 Tomaz Lemos Fernandes
 Tony Rizko
 Tova Cohen
+Travis Elnicky
 Vasily Ulianko
 Vedit Firat Arig
 Victor Xiang
@@ -226,4 +231,5 @@ William Pursell
 Willie Cheong
 Wout Scheepers
 Yang Yang
+Yiming Liu
 志飞 张
