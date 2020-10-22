@@ -171,6 +171,12 @@ public class SnapshotReader extends AbstractReader {
             // read it again to get correct scale
             return rs.getObject(fieldNo) == null ? null : rs.getInt(fieldNo);
         }
+        // DBZ-2673
+        else if (actualColumn.typeName().equals("CHAR") ||
+                actualColumn.typeName().equals("VARCHAR") ||
+                actualColumn.typeName().equals("TEXT")) {
+            return rs.getBytes(fieldNo);
+        }
         else {
             return rs.getObject(fieldNo);
         }
