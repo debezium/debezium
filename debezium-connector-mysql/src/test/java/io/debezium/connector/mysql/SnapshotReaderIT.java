@@ -190,6 +190,20 @@ public class SnapshotReaderIT {
         assertThat(customers.numberOfKeySchemaChanges()).isEqualTo(1);
         assertThat(customers.numberOfValueSchemaChanges()).isEqualTo(1);
 
+        List<Struct> customerRecrods = new ArrayList<>();
+        customers.forEach(val -> {
+            customerRecrods.add(((Struct) val.value()).getStruct("after"));
+        });
+
+        Struct customer = customerRecrods.stream().sorted((a, b) -> a.getInt32("id").compareTo(b.getInt32("id"))).findFirst().get();
+        assertThat(customer.get("first_name")).isInstanceOf(String.class);
+        assertThat(customer.get("last_name")).isInstanceOf(String.class);
+        assertThat(customer.get("email")).isInstanceOf(String.class);
+
+        assertThat(customer.get("first_name")).isEqualTo("Sally");
+        assertThat(customer.get("last_name")).isEqualTo("Thomas");
+        assertThat(customer.get("email")).isEqualTo("sally.thomas@acme.com");
+
         Collection orders = store.collection(DATABASE.getDatabaseName(), "orders");
         assertThat(orders.numberOfCreates()).isEqualTo(5);
         assertThat(orders.numberOfUpdates()).isEqualTo(0);
@@ -250,6 +264,7 @@ public class SnapshotReaderIT {
 
         MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());
         Thread t = new Thread() {
+            @Override
             public void run() {
                 try {
                     JdbcConnection connection = db.connect();
