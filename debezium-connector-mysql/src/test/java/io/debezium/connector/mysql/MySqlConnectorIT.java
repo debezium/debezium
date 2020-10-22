@@ -70,6 +70,8 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
 
     // Defines how many initial events are generated from loading the test databases.
     private static final int PRODUCTS_TABLE_EVENT_COUNT = 9;
+    private static final int PRODUCTS_ON_HAND_TABLE_EVENT_COUNT = 9;
+    private static final int CUSTOMERS_TABLE_EVENT_COUNT = 4;
     private static final int ORDERS_TABLE_EVENT_COUNT = 5;
     private static final int INITIAL_EVENT_COUNT = PRODUCTS_TABLE_EVENT_COUNT + 9 + 4 + ORDERS_TABLE_EVENT_COUNT + 6;
 
@@ -746,6 +748,129 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // Start the connector again, and we should see the next two
         Testing.print("*** Done with simple insert");
 
+    }
+
+    @Test
+    public void shouldParallelSnapshot() throws SQLException, InterruptedException {
+        shouldConsumeAllEventsFromTableUsingSnapshotByField(MySqlConnectorConfig.TABLE_INCLUDE_LIST, 18776);
+    }
+
+    private void shouldConsumeAllEventsFromTableUsingSnapshotByField(Field tableIncludeListField, int serverId)
+            throws SQLException, InterruptedException {
+        String masterPort = System.getProperty("database.port", "3306");
+        String replicaPort = System.getProperty("database.replica.port", "3306");
+        boolean replicaIsMaster = masterPort.equals(replicaPort);
+        if (!replicaIsMaster) {
+            // Give time for the replica to catch up to the master ...
+            Thread.sleep(5000L);
+        }
+
+        String tableIncludeList = DATABASE.getDatabaseName() + "." + "products";
+
+        // Use the DB configuration to define the connector's configuration to use the "replica"
+        // which may be the same as the "master" ...
+        config = Configuration.create()
+                .with(MySqlConnectorConfig.HOSTNAME, System.getProperty("database.replica.hostname", "localhost"))
+                .with(MySqlConnectorConfig.PORT, System.getProperty("database.replica.port", "3306"))
+                .with(MySqlConnectorConfig.USER, "snapper")
+                .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
+                .with(MySqlConnectorConfig.SERVER_ID, serverId)
+                .with(MySqlConnectorConfig.SERVER_NAME, DATABASE.getServerName())
+                .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
+                .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
+                .with(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, DATABASE.getDatabaseName())
+                .with(tableIncludeListField, tableIncludeList)
+                .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
+                .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+                .with(MySqlConnectorConfig.SNAPSHOT_NEW_TABLES, "parallel")
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, "when_needed")
+                .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
+                .build();
+
+        // Start the connector ...
+        start(MySqlConnector.class, config);
+
+        // Testing.Print.enable();
+
+        // ---------------------------------------------------------------------------------------------------------------
+        // Consume all of the events due to startup and initialization of the database
+        // ---------------------------------------------------------------------------------------------------------------
+        SourceRecords records = consumeRecordsByTopic(PRODUCTS_TABLE_EVENT_COUNT + 11 + 1); // 11 schema change records + 1 SET statement
+        assertThat(records.recordsForTopic(DATABASE.getServerName()).size()).isEqualTo(9);
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("products")).size()).isEqualTo(PRODUCTS_TABLE_EVENT_COUNT);
+        assertThat(records.topics().size()).isEqualTo(2);
+        assertThat(records.databaseNames().size()).isEqualTo(2);
+        assertThat(records.ddlRecordsForDatabase(DATABASE.getDatabaseName()).size()).isEqualTo(8);
+        assertThat(records.ddlRecordsForDatabase("readbinlog_test")).isNull();
+        assertThat(records.ddlRecordsForDatabase("").size()).isEqualTo(1);
+        records.ddlRecordsForDatabase(DATABASE.getDatabaseName()).forEach(this::print);
+
+        // Check that all records are valid, can be serialized and deserialized ...
+        records.forEach(this::validate);
+
+        // Check that the last record has snapshots disabled in the offset, but not in the source
+        List<SourceRecord> allRecords = records.allRecordsInOrder();
+        SourceRecord last = allRecords.get(allRecords.size() - 1);
+        SourceRecord secondToLast = allRecords.get(allRecords.size() - 2);
+        assertThat(secondToLast.sourceOffset().containsKey(SourceInfo.SNAPSHOT_KEY)).isTrue();
+        assertThat(last.sourceOffset().containsKey(SourceInfo.SNAPSHOT_KEY)).isFalse(); // not snapshot
+        assertThat(((Struct) secondToLast.value()).getStruct(Envelope.FieldName.SOURCE).getString(SourceInfo.SNAPSHOT_KEY)).isEqualTo("true");
+        assertThat(((Struct) last.value()).getStruct(Envelope.FieldName.SOURCE).getString(SourceInfo.SNAPSHOT_KEY)).isEqualTo("last");
+
+        // Make sure there are no more events and then stop the connector ...
+        waitForAvailableRecords(3, TimeUnit.SECONDS);
+        int totalConsumed = consumeAvailableRecords(this::print);
+        System.out.println("TOTAL CONSUMED = " + totalConsumed);
+        // assertThat(totalConsumed).isEqualTo(0);
+        stopConnector();
+
+        // Now add an additional table to the table include list
+        tableIncludeList += "," + DATABASE.getDatabaseName() + ".products_on_hand";
+        config = Configuration.copy(config)
+                .with(tableIncludeListField, tableIncludeList)
+                .build();
+
+        // Add some additional records while the connector is down
+        try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());) {
+            try (JdbcConnection connection = db.connect()) {
+                connection.execute("INSERT INTO products(id,name,description,weight) VALUES "
+                        + "(3001,'ashley','super robot',34.56), "
+                        + "(3002,'arthur','motorcycle',87.65), "
+                        + "(3003,'oak','tree',987.65);");
+                connection.query("SELECT * FROM products", rs -> {
+                    if (Testing.Print.isEnabled()) {
+                        connection.print(rs);
+                    }
+                });
+
+                // Add records for the products_on_hand table we are going to be snapshotting as well
+                connection.execute("INSERT INTO products_on_hand(product_id,quantity) VALUES "
+                        + "(3001, 4), "
+                        + "(3002, 14), "
+                        + "(3003, 42);");
+                connection.query("SELECT * FROM products_on_hand", rs -> {
+                    if (Testing.Print.isEnabled()) {
+                        connection.print(rs);
+                    }
+                });
+            }
+        }
+
+        Testing.print("*** Restarting connector after adding to table include list");
+
+        // Start the connector ...
+        start(MySqlConnector.class, config);
+
+        records = consumeRecordsByTopic(9 + 3 + 3 + 1);
+        assertThat(records.recordsForTopic(DATABASE.getServerName()).size()).isEqualTo(1);
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("products")).size()).isEqualTo(3);
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("products_on_hand")).size()).isEqualTo(PRODUCTS_ON_HAND_TABLE_EVENT_COUNT + 3);
+        assertThat(records.topics().size()).isEqualTo(3);
+        assertThat(records.databaseNames().size()).isEqualTo(1);
+        assertThat(records.ddlRecordsForDatabase("").size()).isEqualTo(1);
+
+        // Check that all records are valid, can be serialized and deserialized ...
+        records.forEach(this::validate);
     }
 
     @Test
