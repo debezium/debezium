@@ -8,6 +8,7 @@ package io.debezium.connector.mysql;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingDeque;
@@ -48,7 +49,7 @@ public abstract class AbstractReader implements Reader {
     private ConnectException failureException;
     private final int maxBatchSize;
     private final Metronome metronome;
-    private final AtomicReference<Runnable> uponCompletion = new AtomicReference<>();
+    private final AtomicReference<List<Runnable>> uponCompletion = new AtomicReference<>(new LinkedList<>());
     private final Duration pollInterval;
     protected final ChangeEventQueueMetrics changeEventQueueMetrics;
 
@@ -94,8 +95,10 @@ public abstract class AbstractReader implements Reader {
 
     @Override
     public void uponCompletion(Runnable handler) {
-        assert this.uponCompletion.get() == null;
-        this.uponCompletion.set(handler);
+        this.uponCompletion.updateAndGet(existing -> {
+            existing.add(handler);
+            return existing;
+        });
     }
 
     @Override
@@ -304,9 +307,9 @@ public abstract class AbstractReader implements Reader {
             doCleanup();
         }
         finally {
-            Runnable completionHandler = uponCompletion.getAndSet(null); // set to null so that we call it only once
-            if (completionHandler != null) {
-                completionHandler.run();
+            List<Runnable> completionHandlers = uponCompletion.getAndSet(null); // set to null so that we call it only once
+            if (completionHandlers != null) {
+                completionHandlers.forEach(Runnable::run);
             }
         }
     }
