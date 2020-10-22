@@ -229,6 +229,35 @@ public class SourceInfoTest {
         assertEquals(tableBlacklist, source.getTableExcludeList());
     }
 
+    /**
+     * We do not want to overwrite the sourceInfo's include/exclude lists if parallel snapshotting is enabled
+     */
+    @Test
+    public void shouldRecoverSourceInfoFromOffsetIfFilterDataIsPresentAndSnapshotNewTablesIsParallel() {
+        final String offsetDatabaseIncludeList = "a,b";
+        final String offsetTableIncludeList = "c.foo,d.bar,d.baz";
+        Map<String, String> offset = offset(10, 10);
+        offset.put(SourceInfo.DATABASE_INCLUDE_LIST_KEY, offsetDatabaseIncludeList);
+        offset.put(SourceInfo.TABLE_INCLUDE_LIST_KEY, offsetTableIncludeList);
+
+        sourceWith(offset);
+        assertThat(source.hasFilterInfo()).isTrue();
+
+        final String configurationDatabaseIncludeList = "a,b,c";
+        final String configurationTableIncludeList = "c.foo,d.bar,d.baz,c.moo";
+
+        final Configuration configuration = Configuration.create()
+                .with(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, configurationDatabaseIncludeList)
+                .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, configurationTableIncludeList)
+                .with(MySqlConnectorConfig.SNAPSHOT_NEW_TABLES, MySqlConnectorConfig.SnapshotNewTables.PARALLEL)
+                .build();
+        source.maybeSetFilterDataFromConfig(configuration);
+
+        assertThat(source.hasFilterInfo()).isTrue();
+        assertThat(source.getDatabaseIncludeList()).isEqualTo(offsetDatabaseIncludeList);
+        assertThat(source.getTableIncludeList()).isEqualTo(offsetTableIncludeList);
+    }
+
     @Test
     public void shouldRecoverSourceInfoFromOffsetWithoutFilterDataIfSnapshotNewTablesIsOff() {
         final String databaseIncludeList = "a,b";

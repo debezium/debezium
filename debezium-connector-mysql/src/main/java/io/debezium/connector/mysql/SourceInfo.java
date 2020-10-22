@@ -445,13 +445,18 @@ final class SourceInfo extends AbstractSourceInfo {
     }
 
     /**
-     * Set filter data from config if and only if parallel snapshotting of new tables is turned on
+     * Set filter data from config if parallel snapshotting of new tables is turned on and no filter info is present in
+     * the offset. If parallel snapshotting is not enabled and filter info is present in the offset then remove it.
+     *
      * @param config the configuration.
      */
     public void maybeSetFilterDataFromConfig(Configuration config) {
         if (config.getString(MySqlConnectorConfig.SNAPSHOT_NEW_TABLES).equals(
                 MySqlConnectorConfig.SnapshotNewTables.PARALLEL.getValue())) {
-            setFilterDataFromConfig(config);
+
+            if (!hasFilterInfo()) {
+                setFilterDataFromConfig(config);
+            }
         }
         else {
             if (hasFilterInfo()) {
