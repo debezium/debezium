@@ -626,7 +626,8 @@ public class MySqlAntlrDdlParserTest {
         // antlr is parsing only those, which will make any model changes
         int numberOfCreatedIndexesWhichNotMakeChangeOnTablesModel = 5;
         int numberOfAlterViewStatements = 6;
-        int numberOfDroppedViews = 7;
+        // DROP VIEW statements are skipped by default
+        int numberOfDroppedViews = 0;
         assertThat(listener.total()).isEqualTo(59 - numberOfAlteredTablesWhichDoesNotExists - numberOfIndexesOnNonExistingTables
                 - numberOfCreatedIndexesWhichNotMakeChangeOnTablesModel + numberOfAlterViewStatements + numberOfDroppedViews);
         listener.forEach(this::printEvent);
