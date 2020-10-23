@@ -344,13 +344,7 @@ public class TableSchemaBuilder {
             return converter;
         }
 
-        return (value) -> {
-            if (value != null) {
-                value = converter.convert(value);
-            }
-
-            return mappingConverter.convert(value);
-        };
+        return (value) -> mappingConverter.convert(converter.convert(value));
     }
 
     /**

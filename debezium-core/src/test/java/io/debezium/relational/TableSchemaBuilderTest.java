@@ -21,11 +21,14 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.Before;
 import org.junit.Test;
 
+import io.debezium.config.Configuration;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcValueConverters;
+import io.debezium.junit.relational.TestRelationalDatabaseConfig;
 import io.debezium.relational.Key.CustomKeyMapper;
 import io.debezium.relational.Key.KeyMapper;
+import io.debezium.relational.mapping.ColumnMappers;
 import io.debezium.time.Date;
 import io.debezium.util.SchemaNameAdjuster;
 
@@ -423,5 +426,33 @@ public class TableSchemaBuilderTest {
         assertThat(key2.fields()).hasSize(2);
         assertThat(key2.fields().get(0).name()).isEqualTo("t2ID");
         assertThat(key2.fields().get(1).name()).isEqualTo("t1ID");
+    }
+
+    @Test
+    @FixFor("DBZ-2682")
+    public void mapperConvertersShouldLeaveEmptyDatesAsZero() {
+        TableId id2 = new TableId("catalog", "schema", "table2");
+        Table table2 = Table.editor()
+                .tableId(id2)
+                .addColumns(
+                        Column.editor().name("C1")
+                                .type("DATE").jdbcType(Types.DATE)
+                                .optional(false)
+                                .create())
+                .create();
+
+        Configuration config = Configuration.create()
+                .with("column.truncate.to.65536.chars", id2 + ".C1")
+                .build();
+
+        Object[] data = new Object[]{ null };
+
+        ColumnMappers mappers = ColumnMappers.create(new TestRelationalDatabaseConfig(config, "test", null, null, 0));
+
+        schema = new TableSchemaBuilder(new JdbcValueConverters(), adjuster, customConverterRegistry, SchemaBuilder.struct().build(), false)
+                .create(prefix, "sometopic", table2, null, mappers, null);
+
+        Struct value = schema.valueFromColumnData(data);
+        assertThat(value.get("C1")).isEqualTo(0);
     }
 }
