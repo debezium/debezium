@@ -22,6 +22,8 @@ spec:
       containers:
       - name: db2
         image: 'quay.io/debezium/db2-cdc:1.2'
+        command:
+          - '/var/db2_setup/lib/openshift_entrypoint.sh'
         ports:
         - containerPort: 50000
           protocol: TCP
