@@ -51,4 +51,4 @@ linhnh,Linh Nguyen Hoang
 victorxiang30,Victor Xiang
 AndreyIg,Andrey Ignatenko
 eric-weaver,Eric Weaver
-karamel,Johan Rhedin
+karamel,Michael Wang
