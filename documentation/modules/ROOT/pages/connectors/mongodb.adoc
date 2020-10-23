@@ -1248,6 +1248,14 @@ ifdef::community[]
 See {link-prefix}:{link-avro-serialization}#avro-naming[Avro naming] for more details.
 endif::community[]
 
+|[[mongodb-property-snapshot-select-statement-overrides]]<<mongodb-property-snapshot-select-statement-overrides, `snapshot.select{zwsp}.statement{zwsp}.overrides`>>
+|
+|Controls which collection documents are included in snapshots. This property affects snapshots only. It does not affect events captured. Specify a comma-separated list of fully-qualified collection names in the form _databaseName{zwsp}.collectionName_. +
++
+For each collection that you specify, also specify another configuration property: `snapshot{zwsp}.select{zwsp}.statement{zwsp}.overrides{zwsp}._DB_NAME_._COLLECTION_NAME_`. For example, the name of the other configuration property might be:  `snapshot{zwsp}.select{zwsp}.statement{zwsp}.overrides{zwsp}.customers{zwsp}.orders`. Set this property to a valid MongoDB query document statement that obtains only the rows that you want in the snapshot. When the connector performs a snapshot, it executes this  query statement to retrieve documents from that collection. +
++
+A possible use case for setting these properties is large, append-only tables. You can specify a query statement that sets a specific point for where to start a snapshot, or where to resume a snapshot if a previous snapshot was interrupted.
+
 |[[mongodb-property-skipped-operations]]<<mongodb-property-skipped-operations, `skipped.operations`>>
 |
 | comma-separated list of oplog operations that will be skipped during streaming.

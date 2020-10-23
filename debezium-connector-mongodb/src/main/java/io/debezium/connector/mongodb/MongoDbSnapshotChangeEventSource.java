@@ -5,13 +5,7 @@
  */
 package io.debezium.connector.mongodb;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Queue;
+import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -25,6 +19,7 @@ import org.bson.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.mongodb.BasicDBObject;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
@@ -447,7 +442,8 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
             final int batchSize = taskContext.getConnectorConfig().getSnapshotFetchSize();
 
             long docs = 0;
-            try (MongoCursor<Document> cursor = collection.find().batchSize(batchSize).iterator()) {
+            BasicDBObject filter = determineSnapshotSelect(snapshotContext, collectionId);
+            try (MongoCursor<Document> cursor = collection.find(filter).batchSize(batchSize).iterator()) {
                 snapshotContext.lastRecordInCollection = false;
                 if (cursor.hasNext()) {
                     while (cursor.hasNext()) {
@@ -477,6 +473,33 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
                 snapshotProgressListener.dataCollectionSnapshotCompleted(collectionId, docs);
             }
         });
+    }
+
+    /**
+     * Generate a valid MongoDB query string for the specified collection
+     *
+     * @param collectionId the table to generate a query for
+     * @return a valid query string
+     */
+    protected String getSnapshotSelect(MongoDbSnapshotContext snapshotContext, CollectionId collectionId) {
+        return "{}";
+    }
+
+    /**
+     * Returns a valid query string for the specified collection, either given by the user via snapshot select overrides or
+     * defaulting to a statement provided by the DB-specific change event source.
+     *
+     * @param collectionId the collection to generate a query for
+     * @return a valid query BasicDBObject or empty if table will not be snapshotted
+     */
+    private BasicDBObject determineSnapshotSelect(MongoDbSnapshotContext snapshotContext, CollectionId collectionId) {
+        CollectionId check = new CollectionId("", collectionId.dbName(), collectionId.name());
+        String overriddenSelect = connectorConfig.getSnapshotSelectOverridesByCollection().get(check);
+        if (overriddenSelect == null) {
+            return BasicDBObject.parse(getSnapshotSelect(snapshotContext, collectionId));
+        }
+
+        return BasicDBObject.parse(overriddenSelect);
     }
 
     protected ChangeRecordEmitter getChangeRecordEmitter(SnapshotContext snapshotContext, CollectionId collectionId, Document document, ReplicaSet replicaSet) {

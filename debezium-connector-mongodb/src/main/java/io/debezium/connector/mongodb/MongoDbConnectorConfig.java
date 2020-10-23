@@ -5,6 +5,9 @@
  */
 package io.debezium.connector.mongodb;
 
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.common.config.ConfigDef;
@@ -415,6 +418,19 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withDescription("Internal use only")
             .withValidation(Field::isInteger)
             .withInvisibleRecommender();
+    public static final Field SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_COLLECTION = Field.create("snapshot.select.statement.overrides")
+            .withDisplayName("List of collection where the default select statement used during snapshotting should be overridden.")
+            .withType(Type.STRING)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.MEDIUM)
+            .withDescription(" This property contains a comma-separated list of fully-qualified tables (DB_NAME.COLLECTION_NAME), depending on the"
+                    +
+                    "specific connectors . Select statements for the individual tables are " +
+                    "specified in further configuration properties, one for each table, identified by the id 'snapshot.select.statement.overrides.[DB_NAME].[COLLECTION_NAME]'"
+                    +
+                    "respectively. " +
+                    "The value of those properties is the select statement to use when retrieving data from the specific table during snapshotting. " +
+                    "A possible use case for large append-only collection is setting a specific point where to start (resume) snapshotting, in case a previous snapshotting was interrupted.");
 
     private static final ConfigDefinition CONFIG_DEFINITION = CommonConnectorConfig.CONFIG_DEFINITION.edit()
             .name("MongoDB")
@@ -446,7 +462,8 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
                     COLLECTION_EXCLUDE_LIST,
                     FIELD_BLACKLIST,
                     FIELD_EXCLUDE_LIST,
-                    FIELD_RENAMES)
+                    FIELD_RENAMES,
+                    SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_COLLECTION)
             .connector(
                     MAX_COPY_THREADS,
                     SNAPSHOT_MODE)
@@ -504,6 +521,27 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             return 1;
         }
         return 0;
+    }
+
+    /**
+     * Returns any SELECT overrides, if present.
+     */
+    public Map<CollectionId, String> getSnapshotSelectOverridesByCollection() {
+        String collectionList = getConfig().getString(SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_COLLECTION);
+
+        if (collectionList == null) {
+            return Collections.emptyMap();
+        }
+
+        Map<CollectionId, String> snapshotSelectOverridesByCollection = new HashMap<>();
+
+        for (String collection : collectionList.split(",")) {
+            snapshotSelectOverridesByCollection.put(
+                    CollectionId.parse("", collection),
+                    getConfig().getString(SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_COLLECTION + "." + collection));
+        }
+
+        return Collections.unmodifiableMap(snapshotSelectOverridesByCollection);
     }
 
     public SnapshotMode getSnapshotMode() {

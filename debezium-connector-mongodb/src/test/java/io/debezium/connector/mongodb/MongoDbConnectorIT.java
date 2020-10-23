@@ -369,6 +369,43 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
+    public void shouldConsumeAllEventsFromDatabaseWithSnapshotSelectOverridesByCollection()
+            throws InterruptedException, IOException {
+        // Use the DB configuration to define the connector's configuration ...
+        config = TestHelper.getConfiguration().edit()
+                .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
+                .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
+                .with(MongoDbConnectorConfig.LOGICAL_NAME, "mongo")
+                .with(MongoDbConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_COLLECTION, "dbit.restaurants")
+                .with("snapshot.select.statement.overrides.dbit.restaurants", "{ \"cuisine\": \"American \" }")
+                .build();
+
+        // Set up the replication context for connections ...
+        context = new MongoDbTaskContext(config);
+
+        // Cleanup database
+        TestHelper.cleanDatabase(primary(), "dbit");
+
+        // Before starting the connector, add data to the databases ...
+        storeDocuments("dbit", "restaurants", "restaurants1.json");
+
+        // Start the connector ...
+        start(MongoDbConnector.class, config);
+
+        // ---------------------------------------------------------------------------------------------------------------
+        // Consume all of the events due to startup and initialization of the database
+        // ---------------------------------------------------------------------------------------------------------------
+        SourceRecords records = consumeRecordsByTopic(2);
+        records.topics().forEach(System.out::println);
+        assertThat(records.recordsForTopic("mongo.dbit.restaurants").size()).isEqualTo(2);
+        records.forEach(record -> {
+            Document after = Document.parse((String) ((Struct) record.value()).get("after"));
+            String cuisine = after.getString("cuisine");
+            assertThat(cuisine).isEqualTo("American ");
+        });
+    }
+
+    @Test
     @FixFor("DBZ-1831")
     public void shouldConsumeAllEventsFromDatabaseWithSkippedOperations() throws InterruptedException, IOException {
         // Use the DB configuration to define the connector's configuration ...
