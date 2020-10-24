@@ -1830,6 +1830,10 @@ The following _advanced_ configuration properties have good defaults that will w
 |Default
 |Description
 
+|[[sqlserver-property-skipped-operations]]<<sqlserver-property-skipped-operations, `skipped.operations`>>
+|
+|Comma-separated list of LSNs operations to skip during streaming. Values that you can specify are: `c` for inserts/create, `u` for updates, `d` for deletes. By default, no operations are skipped.
+
 |[[sqlserver-property-snapshot-mode]]<<sqlserver-property-snapshot-mode, `snapshot.mode`>>
 |_initial_
 |A mode for taking an initial snapshot of the structure and optionally data of captured tables.

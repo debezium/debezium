@@ -341,7 +341,8 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
                     USER,
                     PASSWORD,
                     SERVER_TIMEZONE,
-                    INSTANCE)
+                    INSTANCE,
+                    CommonConnectorConfig.SKIPPED_OPERATIONS)
             .connector(
                     SNAPSHOT_MODE,
                     SNAPSHOT_ISOLATION_MODE,
@@ -365,6 +366,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
 
     private final String databaseName;
     private final String instanceName;
+    private final String skippedOperations;
     private final SnapshotMode snapshotMode;
     private final SnapshotIsolationMode snapshotIsolationMode;
     private final SourceTimestampMode sourceTimestampMode;
@@ -378,6 +380,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
         this.databaseName = config.getString(DATABASE_NAME);
         this.instanceName = config.getString(INSTANCE);
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE), SNAPSHOT_MODE.defaultValueAsString());
+        this.skippedOperations = config.getString(SKIPPED_OPERATIONS);
 
         if (columnIncludeList() != null) {
             this.columnFilter = getColumnIncludeNameFilter(columnIncludeList());

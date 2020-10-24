@@ -31,6 +31,7 @@ import com.microsoft.sqlserver.jdbc.SQLServerDriver;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
+import io.debezium.data.Envelope;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.relational.Column;
@@ -85,6 +86,7 @@ public class SqlServerConnection extends JdbcConnection {
      */
     private final String realDatabaseName;
     private final ZoneId transactionTimezone;
+    private final Set<Envelope.Operation> skippedOperations;
     private final SourceTimestampMode sourceTimestampMode;
     private final Clock clock;
     private final int queryFetchSize;
@@ -100,8 +102,9 @@ public class SqlServerConnection extends JdbcConnection {
      * @param sourceTimestampMode strategy for populating {@code source.ts_ms}.
      * @param valueConverters {@link SqlServerValueConverters} instance
      */
-    public SqlServerConnection(Configuration config, Clock clock, SourceTimestampMode sourceTimestampMode, SqlServerValueConverters valueConverters) {
-        this(config, clock, sourceTimestampMode, valueConverters, null);
+    public SqlServerConnection(Configuration config, Clock clock, SourceTimestampMode sourceTimestampMode, Set<Envelope.Operation> skippedOperations,
+                               SqlServerValueConverters valueConverters) {
+        this(config, clock, sourceTimestampMode, skippedOperations, valueConverters, null);
     }
 
     /**
@@ -113,7 +116,8 @@ public class SqlServerConnection extends JdbcConnection {
      * @param valueConverters {@link SqlServerValueConverters} instance
      * @param classLoaderSupplier class loader supplier
      */
-    public SqlServerConnection(Configuration config, Clock clock, SourceTimestampMode sourceTimestampMode, SqlServerValueConverters valueConverters,
+    public SqlServerConnection(Configuration config, Clock clock, SourceTimestampMode sourceTimestampMode, Set<Envelope.Operation> skippedOperations,
+                               SqlServerValueConverters valueConverters,
                                Supplier<ClassLoader> classLoaderSupplier) {
         super(config, FACTORY, classLoaderSupplier);
         lsnToInstantCache = new BoundedConcurrentHashMap<>(100);
@@ -123,6 +127,7 @@ public class SqlServerConnection extends JdbcConnection {
         lsnToTimestamp = getLsnToTimestamp(supportsAtTimeZone);
         this.clock = clock;
         this.sourceTimestampMode = sourceTimestampMode;
+        this.skippedOperations = skippedOperations;
         defaultValueConverter = new SqlServerDefaultValueConverter(this::connection, valueConverters);
         this.queryFetchSize = config().getInteger(CommonConnectorConfig.QUERY_FETCH_SIZE);
     }
@@ -196,7 +201,29 @@ public class SqlServerConnection extends JdbcConnection {
      * @throws SQLException
      */
     public void getChangesForTable(TableId tableId, Lsn fromLsn, Lsn toLsn, ResultSetConsumer consumer) throws SQLException {
-        final String query = GET_ALL_CHANGES_FOR_TABLE.replace(STATEMENTS_PLACEHOLDER, cdcNameForTable(tableId));
+        String query = GET_ALL_CHANGES_FOR_TABLE.replace(STATEMENTS_PLACEHOLDER, cdcNameForTable(tableId));
+
+        Set<String> skippedOps = new HashSet<>();
+        if (!skippedOperations.isEmpty()) {
+            query += " WHERE __$operation NOT IN (?)";
+            skippedOperations.forEach((Envelope.Operation operation) -> {
+                // This number are the __$operation number in the SQLServer
+                switch (operation) {
+                    case CREATE:
+                        skippedOps.add("2");
+                        break;
+                    case UPDATE:
+                        skippedOps.add("3");
+                        skippedOps.add("4");
+                        break;
+                    case DELETE:
+                        skippedOps.add("1");
+                        break;
+                }
+            });
+            query.replace("?", String.join(",", skippedOps));
+        }
+
         prepareQuery(query, statement -> {
             statement.setBytes(1, fromLsn.getBinary());
             statement.setBytes(2, toLsn.getBinary());
@@ -219,12 +246,35 @@ public class SqlServerConnection extends JdbcConnection {
 
         int idx = 0;
         for (SqlServerChangeTable changeTable : changeTables) {
-            final String query = GET_ALL_CHANGES_FOR_TABLE.replace(STATEMENTS_PLACEHOLDER, changeTable.getCaptureInstance());
+            String query = GET_ALL_CHANGES_FOR_TABLE.replace(STATEMENTS_PLACEHOLDER, changeTable.getCaptureInstance());
+
+            Set<String> skippedOps = new HashSet<>();
+            if (!skippedOperations.isEmpty()) {
+                query += " WHERE __$operation NOT IN ($operations)";
+                skippedOperations.forEach((Envelope.Operation operation) -> {
+                    // This number are the __$operation number in the SQLServer
+                    switch (operation) {
+                        case CREATE:
+                            skippedOps.add("2");
+                            break;
+                        case UPDATE:
+                            skippedOps.add("3");
+                            skippedOps.add("4");
+                            break;
+                        case DELETE:
+                            skippedOps.add("1");
+                            break;
+                    }
+                });
+                query = query.replace("$operations", String.join(",", skippedOps));
+            }
+
             queries[idx] = query;
             // If the table was added in the middle of queried buffer we need
             // to adjust from to the first LSN available
             final Lsn fromLsn = getFromLsn(changeTable, intervalFromLsn);
             LOGGER.trace("Getting changes for table {} in range[{}, {}]", changeTable, fromLsn, intervalToLsn);
+
             preparers[idx] = statement -> {
                 if (queryFetchSize > 0) {
                     statement.setFetchSize(queryFetchSize);

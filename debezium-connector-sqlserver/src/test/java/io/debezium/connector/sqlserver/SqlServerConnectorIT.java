@@ -1840,6 +1840,42 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
+    @FixFor("DBZ-2697")
+    public void shouldEmitNoEventsForSkippedUpdateAndDeleteOperations() throws Exception {
+        final Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .with(SqlServerConnectorConfig.SKIPPED_OPERATIONS, "u,d")
+                .build();
+
+        start(SqlServerConnector.class, config);
+        assertConnectorIsRunning();
+
+        // Wait for snapshot completion
+        consumeRecordsByTopic(1);
+
+        connection.execute("INSERT INTO tablea VALUES(201, 'insert201')");
+        connection.execute("UPDATE tablea SET cola='insert201-update' WHERE id=201");
+        connection.execute("INSERT INTO tablea VALUES(202, 'insert202')");
+        connection.execute("DELETE FROM tablea WHERE id=202");
+        connection.execute("INSERT INTO tablea VALUES(203, 'insert203')");
+
+        final SourceRecords records = consumeRecordsByTopic(3);
+        final List<SourceRecord> tableA = records.recordsForTopic("server1.dbo.tablea");
+        Assertions.assertThat(tableA).hasSize(3);
+        tableA.forEach((SourceRecord record) -> {
+            Struct value = (Struct) record.value();
+            assertThat(value.get("op")).isEqualTo(Envelope.Operation.CREATE.code());
+            assertThat(value.get("op")).isNotEqualTo(Envelope.Operation.UPDATE.code());
+            assertThat(value.get("op")).isNotEqualTo(Envelope.Operation.DELETE.code());
+        });
+
+        assertInsert(tableA.get(0), "id", 201);
+        assertInsert(tableA.get(1), "id", 202);
+        assertInsert(tableA.get(2), "id", 203);
+
+    }
+
+    @Test
     @FixFor("DBZ-1128")
     public void restartInTheMiddleOfTxAfterSnapshot() throws Exception {
         restartInTheMiddleOfTx(true, false);
