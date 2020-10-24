@@ -2388,7 +2388,7 @@ endif::community[]
 
 |[[mysql-property-skipped-operations]]<<mysql-property-skipped-operations, `skipped.operations`>>
 |
-|Comma-separated list of oplog operations to skip during streaming. Values that you can specify are: `c` for inserts, `u` for updates, `d` for deletes. By default, no operations are skipped.
+|Comma-separated list of binlog operations to skip during streaming. Values that you can specify are: `c` for inserts/create, `u` for updates, `d` for deletes. By default, no operations are skipped.
 
 |===
 

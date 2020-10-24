@@ -52,6 +52,7 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
     private final boolean unchangedToastColumnMarkerMissing;
     private final boolean nullToastedValuesMissingFromOld;
     private final Map<String, Object> cachedOldToastedValues = new HashMap<>();
+    private final Set<Operation> skippedOperations;
 
     public PostgresChangeRecordEmitter(OffsetContext offset, Clock clock, PostgresConnectorConfig connectorConfig, PostgresSchema schema, PostgresConnection connection,
                                        ReplicationMessage message) {
@@ -65,6 +66,7 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
         this.tableId = PostgresSchema.parse(message.getTable());
         this.unchangedToastColumnMarkerMissing = !connectorConfig.plugin().hasUnchangedToastColumnMarker();
         this.nullToastedValuesMissingFromOld = !connectorConfig.plugin().sendsNullToastedValuesInOld();
+        this.skippedOperations = connectorConfig.getSkippedOps();
         Objects.requireNonNull(tableId);
     }
 
@@ -85,7 +87,11 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
     @Override
     public void emitChangeRecords(DataCollectionSchema schema, Receiver receiver) throws InterruptedException {
         schema = synchronizeTableSchema(schema);
-        super.emitChangeRecords(schema, receiver);
+
+        Operation operation = getOperation();
+        if (!skippedOperations.contains(operation)) {
+            super.emitChangeRecords(schema, receiver);
+        }
     }
 
     @Override

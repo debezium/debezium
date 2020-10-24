@@ -12,6 +12,7 @@ import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static junit.framework.TestCase.assertEquals;
 import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -1807,6 +1808,46 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         assertThat(logInterceptor.containsMessage(DatabaseSchema.NO_CAPTURED_DATA_COLLECTIONS_WARNING)).isFalse();
 
         stopConnector();
+    }
+
+    @Test
+    @FixFor("DBZ-2696")
+    public void shouldEmitNoEventsForSkippedCreateOperations() throws Exception {
+        Testing.Print.enable();
+        TestHelper.dropDefaultReplicationSlot();
+        TestHelper.execute(SETUP_TABLES_STMT);
+        Configuration config = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.getValue())
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
+                .with(PostgresConnectorConfig.SKIPPED_OPERATIONS, Envelope.Operation.UPDATE.code())
+                .build();
+        start(PostgresConnector.class, config);
+        assertConnectorIsRunning();
+        waitForStreamingRunning("postgres", TestHelper.TEST_SERVER);
+        assertNoRecordsToConsume();
+
+        // insert record and update it
+        TestHelper.execute("INSERT into s1.a VALUES(201, 1);");
+        TestHelper.execute("UPDATE s1.a SET aa=201 WHERE pk=201");
+        TestHelper.execute("INSERT into s1.a VALUES(202, 2)");
+        TestHelper.execute("UPDATE s1.a SET aa=202 WHERE pk=202");
+        TestHelper.execute("INSERT into s1.a VALUES(203, 3)");
+        TestHelper.execute("UPDATE s1.a SET aa=203 WHERE pk=203");
+
+        SourceRecords records = consumeRecordsByTopic(3);
+        List<SourceRecord> recordsForTopic = records.recordsForTopic(topicName("s1.a"));
+
+        assertThat(recordsForTopic.size()).isEqualTo(3);
+        assertInsert(recordsForTopic.get(0), PK_FIELD, 201);
+        assertInsert(recordsForTopic.get(1), PK_FIELD, 202);
+        assertInsert(recordsForTopic.get(2), PK_FIELD, 203);
+
+        recordsForTopic.forEach(record -> {
+            Struct value = (Struct) record.value();
+            String op = value.getString("op");
+            assertNotEquals(op, Envelope.Operation.UPDATE.code());
+        });
+
     }
 
     @Test

@@ -2613,6 +2613,10 @@ endif::community[]
 `false` if not.
 |Indicates whether field names are sanitized to adhere to {link-prefix}:{link-avro-serialization}#avro-naming[Avro naming requirements].
 
+|[[postgresql-property-skipped-operations]]<<postgresql-property-skipped-operations, `skipped.operations`>>
+|
+|Comma-separated list of LSNs operations to skip during streaming. Values that you can specify are: `c` for inserts/create, `u` for updates, `d` for deletes. By default, no operations are skipped.
+
 |[[postgresql-property-slot-max-retries]]<<postgresql-property-slot-max-retries, `slot.max.retries`>>
 |`6`
 |If connecting to a replication slot fails, this is the maximum number of consecutive attempts to connect.
