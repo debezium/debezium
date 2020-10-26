@@ -23,7 +23,7 @@ The Cassanadra connector can monitor a Cassandra cluster and record all row-leve
 
 Cassandra is an open-sourced NoSQL database. Similar to most databases, the write path of Cassandra starts with the immeidate logging of a change into its commit log. The commit log resides locally on each node, recording every write made to that node.
 
-Since Cassandra 3.0, a http://cassandra.apache.org/doc/3.11.3/operating/cdc.html[change data capture (CDC) feature] is introduced. The CDC feature can be enabled on the table level by setting the table property `cdc=true`, after which any commit log containing data for a CDC-enabled table will be moved to the CDC directory specified in `cassandra.yaml` on disgard.
+Since Cassandra 3.0, a http://cassandra.apache.org/doc/3.11.3/operating/cdc.html[change data capture (CDC) feature] is introduced. The CDC feature can be enabled on the table level by setting the table property `cdc=true`, after which any commit log containing data for a CDC-enabled table will be moved to the CDC directory specified in `cassandra.yaml` on discard.
 
 The Cassandra connector resides on each Cassandra node and monitors the `cdc_raw` directory for change. It processes all local commit log segments as they are detected, produces a change event for every row-level insert, update, and delete operations in the commit log, publishes all change events for each table in a separate Kafka topic, and finally deletes the commit log from the `cdc_raw` directory. This last step is important because once CDC is enabled, Cassandra itself cannot purge the commit logs. If the `cdc_free_space_in_mb` fills up, writes to CDC-enabled tables will be rejected.
 
@@ -111,7 +111,7 @@ Unlike relational databases, there is no read lock applied during a snapshot, so
 
 If the connector fails or stops before the snapshot is completed, the connector will begin a new snapshot upon restarts. In the default snapshot mode (`initial`), once the connector completes its initial snapshot, it will no longer perform any additional snapshots. The only exception would be during a connector restart: if cdc is enabled on a table, and then the connector is restarted, that table would be snapshotted.
 
-The second snapshot mode (`always`) allows the connetor to perform snapshot whenever necessary. it will check periodically for newly cdc-enabled tables, and snapshot them as soon as they are detected.
+The second snapshot mode (`always`) allows the connector to perform snapshot whenever necessary. it will check periodically for newly cdc-enabled tables, and snapshot them as soon as they are detected.
 
 The third snapshot mode ('never') ensures the connector never performs snapshots. When a new connector is configured this way, it will only read the commit log in the CDC directory. This is not the default behavior because starting a new connector in this mode (without a snapshot) requires the commit logs to contain the entire history of all cdc-enabled tables, which is often not the case. Another use case for this mode is if there is one connector already doing the snapshotting, you can disable snapshot on others to avoid duplicated work.
 
