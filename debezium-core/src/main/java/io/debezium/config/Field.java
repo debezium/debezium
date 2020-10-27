@@ -19,7 +19,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.BooleanSupplier;
-import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.IntSupplier;
 import java.util.function.LongSupplier;
@@ -38,7 +37,6 @@ import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.common.config.ConfigValue;
 
 import io.debezium.annotation.Immutable;
-import io.debezium.function.Predicates;
 import io.debezium.util.Strings;
 
 /**
@@ -109,31 +107,6 @@ public final class Field {
          */
         public Field[] asArray() {
             return fieldsByName.values().toArray(new Field[fieldsByName.size()]);
-        }
-
-        /**
-         * Call the supplied function for each of this set's fields that have non-existent dependents.
-         * @param consumer the function; may not be null
-         */
-        public void forEachMissingDependent(Consumer<String> consumer) {
-            fieldsByName.values().stream()
-                    .map(Field::dependents)
-                    .flatMap(Collection::stream)
-                    .filter(Predicates.not(fieldsByName::containsKey))
-                    .forEach(consumer);
-        }
-
-        /**
-         * Call the supplied function for each of this set's fields that are not included as dependents in other
-         * fields.
-         * @param consumer the function; may not be null
-         */
-        public void forEachTopLevelField(Consumer<Field> consumer) {
-            Collection<String> namesOfDependents = fieldsByName.values().stream()
-                    .map(Field::dependents)
-                    .flatMap(Collection::stream)
-                    .collect(Collectors.toSet());
-            fieldsByName.values().stream().filter(f -> !namesOfDependents.contains(f.name())).forEach(consumer);
         }
 
         /**
@@ -218,8 +191,7 @@ public final class Field {
 
     /**
      * A component that is able to provide recommended values for a field given a configuration.
-     * In case that there are {@link Field#dependents() dependencies} between fields, the valid values and visibility
-     * for a field may change given the values of other fields.
+     *
      */
     public static interface Recommender {
         /**
@@ -256,7 +228,7 @@ public final class Field {
      * @return the field; never null
      */
     public static Field createInternal(String name) {
-        return new Field(INTERNAL_PREFIX + name, null, null, null, null, null, null, null, null, null);
+        return new Field(INTERNAL_PREFIX + name, null, null, null, null, null, null, null, null);
     }
 
     /**
@@ -393,14 +365,14 @@ public final class Field {
                 for (int i = 0; i != fields.length; ++i) {
                     Field f = fields[i];
                     configDef.define(f.name(), f.type(), f.defaultValue(), null, f.importance(), f.description(),
-                            groupName, i + 1, f.width(), f.displayName(), f.dependents(), null);
+                            groupName, i + 1, f.width(), f.displayName(), null, null);
                 }
             }
             else {
                 for (int i = 0; i != fields.length; ++i) {
                     Field f = fields[i];
                     configDef.define(f.name(), f.type(), f.defaultValue(), null, f.importance(), f.description(),
-                            null, 1, f.width(), f.displayName(), f.dependents(), null);
+                            null, 1, f.width(), f.displayName(), null, null);
                 }
             }
         }
@@ -415,16 +387,15 @@ public final class Field {
     private final Width width;
     private final Type type;
     private final Importance importance;
-    private final List<String> dependents;
     private final Recommender recommender;
 
     protected Field(String name, String displayName, Type type, Width width, String description, Importance importance,
                     Supplier<Object> defaultValueGenerator, Validator validator) {
-        this(name, displayName, type, width, description, importance, null, defaultValueGenerator, validator, null);
+        this(name, displayName, type, width, description, importance, defaultValueGenerator, validator, null);
     }
 
     protected Field(String name, String displayName, Type type, Width width, String description, Importance importance,
-                    List<String> dependents, Supplier<Object> defaultValueGenerator, Validator validator,
+                    Supplier<Object> defaultValueGenerator, Validator validator,
                     Recommender recommender) {
         Objects.requireNonNull(name, "The field name is required");
         this.name = name;
@@ -435,7 +406,6 @@ public final class Field {
         this.type = type != null ? type : Type.STRING;
         this.width = width != null ? width : Width.NONE;
         this.importance = importance != null ? importance : Importance.MEDIUM;
-        this.dependents = dependents != null ? dependents : Collections.emptyList();
         this.recommender = recommender;
         assert this.name != null;
     }
@@ -506,14 +476,6 @@ public final class Field {
     }
 
     /**
-     * Get the names of the fields that are or may be dependent upon this field.
-     * @return the list of dependents; never null but possibly empty
-     */
-    public List<String> dependents() {
-        return dependents;
-    }
-
-    /**
      * Get the validator for this field.
      * @return the validator; may be null if there is no validator
      */
@@ -555,7 +517,7 @@ public final class Field {
      */
     protected void validate(Configuration config, Function<String, Field> fieldSupplier, Map<String, ConfigValue> results) {
         // First, merge any new recommended values ...
-        ConfigValue value = results.computeIfAbsent(this.name(), n -> new ConfigValue(n));
+        ConfigValue value = results.computeIfAbsent(this.name(), ConfigValue::new);
 
         // Apply the validator ...
         validate(config, (f, v, problem) -> {
@@ -580,14 +542,6 @@ public final class Field {
                 value.addErrorMessage(e.getMessage());
             }
         }
-
-        // Do the same for any dependents ...
-        dependents.forEach(name -> {
-            Field dependentField = fieldSupplier.apply(name);
-            if (dependentField != null) {
-                dependentField.validate(config, fieldSupplier, results);
-            }
-        });
     }
 
     /**
@@ -596,7 +550,7 @@ public final class Field {
      * @return the new field; never null
      */
     public Field withDescription(String description) {
-        return new Field(name(), displayName, type(), width, description, importance(), dependents,
+        return new Field(name(), displayName, type(), width, description, importance(),
                 defaultValueGenerator, validator, recommender);
     }
 
@@ -607,7 +561,7 @@ public final class Field {
      * @return the new field; never null
      */
     public Field withDisplayName(String displayName) {
-        return new Field(name(), displayName, type(), width, description(), importance(), dependents,
+        return new Field(name(), displayName, type(), width, description(), importance(),
                 defaultValueGenerator, validator, recommender);
     }
 
@@ -617,7 +571,7 @@ public final class Field {
      * @return the new field; never null
      */
     public Field withWidth(Width width) {
-        return new Field(name(), displayName(), type(), width, description(), importance(), dependents,
+        return new Field(name(), displayName(), type(), width, description(), importance(),
                 defaultValueGenerator, validator, recommender);
     }
 
@@ -627,7 +581,7 @@ public final class Field {
      * @return the new field; never null
      */
     public Field withType(Type type) {
-        return new Field(name(), displayName(), type, width(), description(), importance(), dependents,
+        return new Field(name(), displayName(), type, width(), description(), importance(),
                 defaultValueGenerator, validator, recommender);
     }
 
@@ -673,7 +627,7 @@ public final class Field {
      * @return the new field; never null
      */
     public Field withImportance(Importance importance) {
-        return new Field(name(), displayName(), type(), width(), description(), importance, dependents,
+        return new Field(name(), displayName(), type(), width(), description(), importance,
                 defaultValueGenerator, validator, recommender);
     }
 
@@ -683,7 +637,7 @@ public final class Field {
      * @return the new field; never null
      */
     public Field withDefault(String defaultValue) {
-        return new Field(name(), displayName(), type(), width, description(), importance(), dependents,
+        return new Field(name(), displayName(), type(), width, description(), importance(),
                 () -> defaultValue, validator, recommender);
     }
 
@@ -694,7 +648,7 @@ public final class Field {
      * @return the new field; never null
      */
     public Field withDefault(boolean defaultValue) {
-        return new Field(name(), displayName(), type(), width, description(), importance(), dependents,
+        return new Field(name(), displayName(), type(), width, description(), importance(),
                 () -> Boolean.valueOf(defaultValue), validator, recommender);
     }
 
@@ -704,7 +658,7 @@ public final class Field {
      * @return the new field; never null
      */
     public Field withDefault(int defaultValue) {
-        return new Field(name(), displayName(), type(), width, description(), importance(), dependents,
+        return new Field(name(), displayName(), type(), width, description(), importance(),
                 () -> defaultValue, validator, recommender);
     }
 
@@ -715,7 +669,7 @@ public final class Field {
      * @return the new field; never null
      */
     public Field withDefault(long defaultValue) {
-        return new Field(name(), displayName(), type(), width, description(), importance(), dependents,
+        return new Field(name(), displayName(), type(), width, description(), importance(),
                 () -> defaultValue, validator, recommender);
     }
 
@@ -727,7 +681,7 @@ public final class Field {
      * @return the new field; never null
      */
     public Field withDefault(BooleanSupplier defaultValueGenerator) {
-        return new Field(name(), displayName(), type(), width, description(), importance(), dependents,
+        return new Field(name(), displayName(), type(), width, description(), importance(),
                 defaultValueGenerator::getAsBoolean, validator, recommender);
     }
 
@@ -739,7 +693,7 @@ public final class Field {
      * @return the new field; never null
      */
     public Field withDefault(IntSupplier defaultValueGenerator) {
-        return new Field(name(), displayName(), type(), width, description(), importance(), dependents,
+        return new Field(name(), displayName(), type(), width, description(), importance(),
                 defaultValueGenerator::getAsInt, validator, recommender);
     }
 
@@ -751,7 +705,7 @@ public final class Field {
      * @return the new field; never null
      */
     public Field withDefault(LongSupplier defaultValueGenerator) {
-        return new Field(name(), displayName(), type(), width, description(), importance(), dependents,
+        return new Field(name(), displayName(), type(), width, description(), importance(),
                 defaultValueGenerator::getAsLong, validator, recommender);
     }
 
@@ -762,7 +716,7 @@ public final class Field {
      * @return the new field; never null
      */
     public Field withRecommender(Recommender recommender) {
-        return new Field(name(), displayName(), type(), width, description(), importance(), dependents,
+        return new Field(name(), displayName(), type(), width, description(), importance(),
                 defaultValueGenerator, validator, recommender);
     }
 
@@ -776,7 +730,7 @@ public final class Field {
      * @return the new field; never null
      */
     public Field withNoValidation() {
-        return new Field(name(), displayName(), type(), width, description(), importance(), dependents,
+        return new Field(name(), displayName(), type(), width, description(), importance(),
                 defaultValueGenerator, null, recommender);
     }
 
@@ -794,7 +748,7 @@ public final class Field {
                 actualValidator = validator.and(actualValidator);
             }
         }
-        return new Field(name(), displayName(), type(), width(), description(), importance(), dependents,
+        return new Field(name(), displayName(), type(), width(), description(), importance(),
                 defaultValueGenerator, actualValidator, recommender);
     }
 
