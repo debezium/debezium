@@ -1440,6 +1440,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
                 Arrays.asList("id", "first_name"));
 
         connection.execute("INSERT INTO excluded_column_table_a VALUES(11, 'some_name', 120)");
+        TestHelper.waitForCdcRecord(connection, "excluded_column_table_a", "dbo_excluded_column_table_a", rs -> rs.getInt("id") == 11);
 
         final SourceRecords records = consumeRecordsByTopic(2);
         final List<SourceRecord> tableA = records.recordsForTopic("server1.dbo.excluded_column_table_a");
@@ -1530,6 +1531,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         assertConnectorIsRunning();
         waitForSnapshotToBeCompleted("sql_server", "server1");
         connection.execute("INSERT INTO exclude_list_column_table_a VALUES(11, 120, 'some_name')");
+        TestHelper.waitForCdcRecord(connection, "exclude_list_column_table_a", rs -> rs.getInt("id") == 11);
 
         final SourceRecords records = consumeRecordsByTopic(2);
         final List<SourceRecord> tableA = records.recordsForTopic("server1.dbo.exclude_list_column_table_a");
@@ -1575,6 +1577,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         assertConnectorIsRunning();
 
         connection.execute("INSERT INTO include_list_column_table_a VALUES(10, 120, 'some_name')");
+        TestHelper.waitForCdcRecord(connection, "include_list_column_table_a", rs -> rs.getInt("id") == 10);
 
         final SourceRecords records = consumeRecordsByTopic(1);
         final List<SourceRecord> tableA = records.recordsForTopic("server1.dbo.include_list_column_table_a");
@@ -1615,6 +1618,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         assertConnectorIsRunning();
 
         connection.execute("INSERT INTO exclude_list_column_table_a VALUES(10, 120, 'a note', 'some_name')");
+        TestHelper.waitForCdcRecord(connection, "exclude_list_column_table_a", rs -> rs.getInt("id") == 10);
 
         final SourceRecords records = consumeRecordsByTopic(1);
         final List<SourceRecord> tableA = records.recordsForTopic("server1.dbo.exclude_list_column_table_a");
@@ -1655,6 +1659,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         assertConnectorIsRunning();
 
         connection.execute("INSERT INTO include_list_column_table_a VALUES(10, 120, 'a note', 'some_name')");
+        TestHelper.waitForCdcRecord(connection, "include_list_column_table_a", rs -> rs.getInt("id") == 10);
 
         final SourceRecords records = consumeRecordsByTopic(1);
         final List<SourceRecord> tableA = records.recordsForTopic("server1.dbo.include_list_column_table_a");
