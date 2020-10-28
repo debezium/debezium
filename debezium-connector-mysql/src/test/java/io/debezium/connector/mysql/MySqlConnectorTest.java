@@ -40,7 +40,6 @@ public class MySqlConnectorTest {
             else if (!expected.equals(MySqlConnectorConfig.SERVER_ID)) {
                 assertThat(key.defaultValue).isEqualTo(expected.defaultValue());
             }
-            assertThat(key.dependents).isEqualTo(expected.dependents());
             assertThat(key.width).isNotNull();
             assertThat(key.group).isNotNull();
             assertThat(key.orderInGroup).isGreaterThan(0);
