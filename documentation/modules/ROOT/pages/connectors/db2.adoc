@@ -1914,6 +1914,10 @@ The following _advanced_ configuration properties have defaults that work in mos
 |`2048`
 |Positive integer value that specifies the maximum size of each batch of events that the connector processes.
 
+|[[db2-property-max-queue-size-in-bytes]]<<db2-property-max-queue-size-in-bytes, `max.queue.size.in.bytes`>>
+|`0`
+|Long value for the maximum size in bytes of the blocking queue. The feature is disabled by default, it will be active if it's set with a positive long value.
+
 |[[db2-property-heartbeat-interval-ms]]<<db2-property-heartbeat-interval-ms, `heartbeat.interval{zwsp}.ms`>>
 |`0`
 |Controls how frequently the connector sends heartbeat messages to a Kafka topic. The default behavior is that the connector does not send heartbeat messages. +

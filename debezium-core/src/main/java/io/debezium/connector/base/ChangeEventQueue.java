@@ -8,8 +8,11 @@ package io.debezium.connector.base;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
 
 import org.apache.kafka.connect.source.SourceRecord;
@@ -22,6 +25,7 @@ import io.debezium.util.Clock;
 import io.debezium.util.LoggingContext;
 import io.debezium.util.LoggingContext.PreviousContext;
 import io.debezium.util.Metronome;
+import io.debezium.util.ObjectSizeCalculator;
 import io.debezium.util.Threads;
 import io.debezium.util.Threads.Timer;
 
@@ -57,19 +61,24 @@ public class ChangeEventQueue<T> implements ChangeEventQueueMetrics {
     private final Duration pollInterval;
     private final int maxBatchSize;
     private final int maxQueueSize;
+    private final long maxQueueSizeInBytes;
     private final BlockingQueue<T> queue;
     private final Metronome metronome;
     private final Supplier<PreviousContext> loggingContextSupplier;
+    private AtomicLong currentQueueSizeInBytes = new AtomicLong(0);
+    private Map<T, Long> objectMap = new ConcurrentHashMap<>();
 
     private volatile RuntimeException producerException;
 
-    private ChangeEventQueue(Duration pollInterval, int maxQueueSize, int maxBatchSize, Supplier<LoggingContext.PreviousContext> loggingContextSupplier) {
+    private ChangeEventQueue(Duration pollInterval, int maxQueueSize, int maxBatchSize, Supplier<LoggingContext.PreviousContext> loggingContextSupplier,
+                             long maxQueueSizeInBytes) {
         this.pollInterval = pollInterval;
         this.maxBatchSize = maxBatchSize;
         this.maxQueueSize = maxQueueSize;
         this.queue = new LinkedBlockingDeque<>(maxQueueSize);
         this.metronome = Metronome.sleeper(pollInterval, Clock.SYSTEM);
         this.loggingContextSupplier = loggingContextSupplier;
+        this.maxQueueSizeInBytes = maxQueueSizeInBytes;
     }
 
     public static class Builder<T> {
@@ -78,6 +87,7 @@ public class ChangeEventQueue<T> implements ChangeEventQueueMetrics {
         private int maxQueueSize;
         private int maxBatchSize;
         private Supplier<LoggingContext.PreviousContext> loggingContextSupplier;
+        private long maxQueueSizeInBytes;
 
         public Builder<T> pollInterval(Duration pollInterval) {
             this.pollInterval = pollInterval;
@@ -99,8 +109,13 @@ public class ChangeEventQueue<T> implements ChangeEventQueueMetrics {
             return this;
         }
 
+        public Builder<T> maxQueueSizeInBytes(long maxQueueSizeInBytes) {
+            this.maxQueueSizeInBytes = maxQueueSizeInBytes;
+            return this;
+        }
+
         public ChangeEventQueue<T> build() {
-            return new ChangeEventQueue<T>(pollInterval, maxQueueSize, maxBatchSize, loggingContextSupplier);
+            return new ChangeEventQueue<T>(pollInterval, maxQueueSize, maxBatchSize, loggingContextSupplier, maxQueueSizeInBytes);
         }
     }
 
@@ -126,9 +141,18 @@ public class ChangeEventQueue<T> implements ChangeEventQueueMetrics {
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("Enqueuing source record '{}'", record);
         }
-
+        // Waiting for queue to add more record.
+        while (maxQueueSizeInBytes > 0 && currentQueueSizeInBytes.get() > maxQueueSizeInBytes) {
+            Thread.sleep(pollInterval.toMillis());
+        }
         // this will also raise an InterruptedException if the thread is interrupted while waiting for space in the queue
         queue.put(record);
+        // If we pass a positiveLong max.queue.size.in.bytes to enable handling queue size in bytes feature
+        if (maxQueueSizeInBytes > 0) {
+            long messageSize = ObjectSizeCalculator.getObjectSize(record);
+            objectMap.put(record, messageSize);
+            currentQueueSizeInBytes.addAndGet(messageSize);
+        }
     }
 
     /**
@@ -153,6 +177,14 @@ public class ChangeEventQueue<T> implements ChangeEventQueueMetrics {
                 // no records yet, so wait a bit
                 metronome.pause();
                 LOGGER.debug("checking for more records...");
+            }
+            if (maxQueueSizeInBytes > 0 && records.size() > 0) {
+                records.parallelStream().forEach((record) -> {
+                    if (objectMap.containsKey(record)) {
+                        currentQueueSizeInBytes.addAndGet(-objectMap.get(record));
+                        objectMap.remove(record);
+                    }
+                });
             }
             return records;
         }
@@ -179,5 +211,15 @@ public class ChangeEventQueue<T> implements ChangeEventQueueMetrics {
     @Override
     public int remainingCapacity() {
         return queue.remainingCapacity();
+    }
+
+    @Override
+    public long maxQueueSizeInBytes() {
+        return maxQueueSizeInBytes;
+    }
+
+    @Override
+    public long currentQueueSizeInBytes() {
+        return currentQueueSizeInBytes.get();
     }
 }

@@ -84,6 +84,17 @@ public abstract class AbstractReader implements Reader {
             public int remainingCapacity() {
                 return records.remainingCapacity();
             }
+
+            @Override
+            public long maxQueueSizeInBytes() {
+                return context.getConnectorConfig().getMaxQueueSizeInBytes();
+            }
+
+            @Override
+            public long currentQueueSizeInBytes() {
+                // return 0 since MySQL connector doesn't use ChangeEventQueue implementation
+                return 0;
+            }
         };
     }
 
