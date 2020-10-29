@@ -85,6 +85,7 @@ public final class MongoDbConnectorTask extends BaseSourceTask {
                     .pollInterval(connectorConfig.getPollInterval())
                     .maxBatchSize(connectorConfig.getMaxBatchSize())
                     .maxQueueSize(connectorConfig.getMaxQueueSize())
+                    .maxQueueSizeInBytes(connectorConfig.getMaxQueueSizeInBytes())
                     .loggingContextSupplier(() -> taskContext.configureLoggingContext(CONTEXT_NAME))
                     .build();
 

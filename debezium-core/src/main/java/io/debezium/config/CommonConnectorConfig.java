@@ -242,6 +242,7 @@ public abstract class CommonConnectorConfig {
     public static final String DATABASE_CONFIG_PREFIX = "database.";
     private static final String CONVERTER_TYPE_SUFFIX = ".type";
     public static final long DEFAULT_RETRIABLE_RESTART_WAIT = 10000L;
+    public static final long DEFAULT_MAX_QUEUE_SIZE_IN_BYTES = 0; // In case we don't want to pass max.queue.size.in.bytes;
 
     public static final Field RETRIABLE_RESTART_WAIT = Field.create("retriable.restart.connector.wait.ms")
             .withDisplayName("Retriable restart wait (ms)")
@@ -293,6 +294,16 @@ public abstract class CommonConnectorConfig {
                     "Frequency in milliseconds to wait for new change events to appear after receiving no events. Defaults to " + DEFAULT_POLL_INTERVAL_MILLIS + "ms.")
             .withDefault(DEFAULT_POLL_INTERVAL_MILLIS)
             .withValidation(Field::isPositiveInteger);
+
+    public static final Field MAX_QUEUE_SIZE_IN_BYTES = Field.create("max.queue.size.in.bytes")
+            .withDisplayName("Change event buffer size in bytes")
+            .withType(Type.LONG)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("Maximum size of the queue in bytes for change events read from the database log but not yet recorded or forwarded. Defaults to "
+                    + DEFAULT_MAX_QUEUE_SIZE_IN_BYTES + ". Mean the feature is not enabled")
+            .withDefault(DEFAULT_MAX_QUEUE_SIZE_IN_BYTES)
+            .withValidation(Field::isNonNegativeLong);
 
     public static final Field SNAPSHOT_DELAY_MS = Field.create("snapshot.delay.ms")
             .withDisplayName("Snapshot Delay (milliseconds)")
@@ -405,6 +416,7 @@ public abstract class CommonConnectorConfig {
                     MAX_BATCH_SIZE,
                     MAX_QUEUE_SIZE,
                     POLL_INTERVAL_MS,
+                    MAX_QUEUE_SIZE_IN_BYTES,
                     PROVIDE_TRANSACTION_METADATA,
                     SKIPPED_OPERATIONS,
                     SNAPSHOT_DELAY_MS,
@@ -426,6 +438,7 @@ public abstract class CommonConnectorConfig {
     private final boolean emitTombstoneOnDelete;
     private final int maxQueueSize;
     private final int maxBatchSize;
+    private final long maxQueueSizeInBytes;
     private final Duration pollInterval;
     private final String logicalName;
     private final String heartbeatTopicsPrefix;
@@ -447,6 +460,7 @@ public abstract class CommonConnectorConfig {
         this.maxQueueSize = config.getInteger(MAX_QUEUE_SIZE);
         this.maxBatchSize = config.getInteger(MAX_BATCH_SIZE);
         this.pollInterval = config.getDuration(POLL_INTERVAL_MS, ChronoUnit.MILLIS);
+        this.maxQueueSizeInBytes = config.getLong(MAX_QUEUE_SIZE_IN_BYTES);
         this.logicalName = logicalName;
         this.heartbeatTopicsPrefix = config.getString(Heartbeat.HEARTBEAT_TOPICS_PREFIX);
         this.snapshotDelayMs = Duration.ofMillis(config.getLong(SNAPSHOT_DELAY_MS));
@@ -482,6 +496,10 @@ public abstract class CommonConnectorConfig {
 
     public int getMaxBatchSize() {
         return maxBatchSize;
+    }
+
+    public long getMaxQueueSizeInBytes() {
+        return maxQueueSizeInBytes;
     }
 
     public Duration getPollInterval() {

@@ -28,5 +28,9 @@ public interface ChangeEventSourceMetricsMXBean {
 
     int getQueueRemainingCapacity();
 
+    long getMaxQueueSizeInBytes();
+
+    long getCurrentQueueSizeInBytes();
+
     void reset();
 }

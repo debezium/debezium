@@ -51,4 +51,12 @@ The values will incoporate any differences between the clocks on the machines wh
 |`string`
 |Transaction identifier of the last processed transaction.
 
+|[[connectors-strm-metric-maxqueuesizeinbytes_{context}]]<<connectors-strm-metric-maxqueuesizeinbytes_{context}, `MaxQueueSizeInBytes`>>
+|`long`
+|The maximum buffer of the queue in bytes.
+
+|[[connectors-strm-metric-currentqueuesizeinbytes_{context}]]<<connectors-strm-metric-currentqueuesizeinbytes_{context}, `CurrentQueueSizeInBytes`>>
+|`long`
+|The current data of records in the queue in bytes.
+
 |===
