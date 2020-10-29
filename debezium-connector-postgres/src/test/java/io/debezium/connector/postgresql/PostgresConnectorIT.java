@@ -1076,9 +1076,9 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
 
         final String txTopic = topicName("transaction");
         TestHelper.execute(INSERT_STMT);
-        final SourceRecords firstRecords = consumeRecordsByTopic(3);
+        final SourceRecords firstRecords = consumeDmlRecordsByTopic(1);
         assertThat(firstRecords.topics().size()).isEqualTo(2);
-        assertThat(firstRecords.recordsForTopic(txTopic).size()).isEqualTo(2);
+        assertThat(firstRecords.recordsForTopic(txTopic).size()).isGreaterThanOrEqualTo(2);
         Assertions.assertThat(firstRecords.recordsForTopic(txTopic).get(1).sourceOffset().containsKey("lsn_commit")).isTrue();
         stopConnector();
         assertConnectorNotRunning();
@@ -1086,8 +1086,8 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         start(PostgresConnector.class, config);
         assertConnectorIsRunning();
         waitForStreamingRunning("postgres", TestHelper.TEST_SERVER);
-        // there shouldn't be any snapshot records
-        assertNoRecordsToConsume();
+        // there shouldn't be any snapshot records, only potentially transaction messages
+        assertOnlyTransactionRecordsToConsume();
 
         final Set<String> flushLsn = new HashSet<>();
         try (final PostgresConnection connection = TestHelper.create()) {
@@ -1095,8 +1095,9 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
             for (int i = 2; i <= recordCount + 2; i++) {
                 TestHelper.execute(INSERT_STMT);
 
-                final SourceRecords actualRecords = consumeRecordsByTopic(3);
+                final SourceRecords actualRecords = consumeDmlRecordsByTopic(1);
                 assertThat(actualRecords.topics().size()).isEqualTo(2);
+                assertThat(actualRecords.recordsForTopic(txTopic).size()).isGreaterThanOrEqualTo(2);
                 assertThat(actualRecords.recordsForTopic(topicName("s1.a")).size()).isEqualTo(1);
 
                 // Wait max 2 seconds for LSN change
