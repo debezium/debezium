@@ -2239,6 +2239,12 @@ See {link-prefix}:{link-sqlserver-connector}#sqlserver-transaction-metadata[Tran
 |10000 (10 seconds)
 |The number of milli-seconds to wait before restarting a connector after a retriable error occurs.
 
+|[[sqlserver-property-skipped-operations]]<<sqlserver-property-skipped-operations, `+skipped.operations+`>>
+|
+| comma-separated list of oplog operations that will be skipped during streaming.
+The operations include: `c` for inserts/create, `u` for updates, and `d` for deletes.
+By default, no operations are skipped.
+
 |===
 
 The connector also supports _pass-through_ configuration properties that are used when creating the Kafka producer and consumer. Specifically, all connector configuration properties that begin with the `database.history.producer.` prefix are used (without the prefix) when creating the Kafka producer that writes to the database history, and all those that begin with the prefix `database.history.consumer.` are used (without the prefix) when creating the Kafka consumer that reads the database history upon connector startup.

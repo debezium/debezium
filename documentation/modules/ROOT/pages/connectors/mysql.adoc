@@ -2492,6 +2492,12 @@ endif::community[]
 |`false`
 |Determines whether the connector generates events with transaction boundaries and enriches change event envelopes with transaction metadata. Specify `true` if you want the connector to do this. See {link-prefix}:{link-mysql-connector}#mysql-transaction-metadata[Transaction metadata] for details.
 
+|[[mysql-property-skipped-operations]]<<mysql-property-skipped-operations, `+skipped.operations+`>>
+|
+| comma-separated list of oplog operations that will be skipped during streaming.
+The operations include: `c` for inserts/create, `u` for updates, and `d` for deletes.
+By default, no operations are skipped.
+
 |===
 
 [id="mysql-pass-through-configuration-properties"]

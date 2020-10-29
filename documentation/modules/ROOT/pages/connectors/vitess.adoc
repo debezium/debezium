@@ -1174,6 +1174,12 @@ The following _advanced_ configuration properties have defaults that work in mos
 `false` if not.
 |Indicates whether field names are sanitized to adhere to {link-prefix}:{link-avro-serialization}#avro-naming[Avro naming requirements].
 
+|[[vitess-property-skipped-operations]]<<vitess-property-skipped-operations, `+skipped.operations+`>>
+|
+| comma-separated list of oplog operations that will be skipped during streaming.
+The operations include: `c` for inserts/create, `u` for updates, and `d` for deletes.
+By default, no operations are skipped.
+
 |===
 
 [id="vitess-pass-through-properties"]
