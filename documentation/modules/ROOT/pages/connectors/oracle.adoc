@@ -1499,6 +1499,12 @@ When set to `0`, log mining history is is disabled.
 |A comma-separated list of RAC node host names or addresses.
 This field is required to enable Oracle RAC support.
 
+|[[oracle-property-skipped-operations]]<<oracle-property-skipped-operations, `+skipped.operations+`>>
+|
+| comma-separated list of oplog operations that will be skipped during streaming.
+The operations include: `c` for inserts/create, `u` for updates, and `d` for deletes.
+By default, no operations are skipped.
+
 |===
 
 [[oracle-monitoring]]
