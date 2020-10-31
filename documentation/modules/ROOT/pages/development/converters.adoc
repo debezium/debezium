@@ -25,7 +25,7 @@ For this purpose {prodname} provides an extension point that allows users to inj
 The converters are written in Java and are enabled and configured via connector properties.
 
 During connector startup, all configured converters are instantiated and placed in an registry.
-While the connector-internal schema representation is built, every converter is invoked for every column/field of every table/collection and it can register itself to become responsible for the conversion of the given column or ield.
+While the connector-internal schema representation is built, every converter is invoked for every column/field of every table/collection and it can register itself to become responsible for the conversion of the given column or field.
 
 Whenever a new change is processed by {prodname}, the converter is invoked to execute the actual conversion for the registered columns or fields.
 
