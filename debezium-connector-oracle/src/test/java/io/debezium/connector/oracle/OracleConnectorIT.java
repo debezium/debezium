@@ -948,6 +948,60 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         }
     }
 
+    @Test
+    @FixFor("DBZ-2683")
+    public void shouldSnapshotAndStreamChangesFromPartitionedTable() throws Exception {
+        try {
+            final String ddl = "CREATE TABLE players (" +
+                    "id NUMERIC(6), " +
+                    "name VARCHAR(100), " +
+                    "birth_date DATE," +
+                    "primary key(id)) " +
+                    "PARTITION BY RANGE (birth_date) (" +
+                    "PARTITION p2019 VALUES LESS THAN (TO_DATE('01-JAN-2020', 'dd-MON-yyyy')), " +
+                    "PARTITION p2020 VALUES LESS THAN (TO_DATE('01-JAN-2021', 'dd-MON-yyyy'))" +
+                    ")";
+            connection.execute(ddl);
+            connection.execute("GRANT SELECT ON debezium.players to " + TestHelper.getConnectorUserName());
+            connection.execute("ALTER TABLE debezium.players ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
+
+            // Insert a record to be captured by snapshot
+            connection.execute("INSERT INTO debezium.players (id, name, birth_date) VALUES (1, 'Roger Rabbit', '01-MAY-2019')");
+            connection.commit();
+
+            // Start connector
+            final Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM.PLAYERS")
+                    .build();
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            final SourceRecords snapshotRecords = consumeRecordsByTopic(1);
+            assertThat(snapshotRecords.recordsForTopic("server1.DEBEZIUM.PLAYERS").size()).isEqualTo(1);
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            // Insert a record to be captured during streaming
+            connection.execute("INSERT INTO debezium.players (id, name, birth_date) VALUES (2, 'Bugs Bunny', '26-JUN-2019')");
+            connection.execute("INSERT INTO debezium.players (id, name, birth_date) VALUES (3, 'Elmer Fud', '01-NOV-2020')");
+            connection.commit();
+
+            final SourceRecords streamRecords = consumeRecordsByTopic(2);
+            assertThat(streamRecords.recordsForTopic("server1.DEBEZIUM.PLAYERS").size()).isEqualTo(2);
+
+        }
+        finally {
+            try {
+                connection.execute("DROP TABLE players");
+            }
+            catch (Exception ignored) {
+                // ignored
+            }
+        }
+    }
+
     private void verifyHeartbeatRecord(SourceRecord heartbeat) {
         assertEquals("__debezium-heartbeat.server1", heartbeat.topic());
 
