@@ -1202,6 +1202,9 @@ public class JdbcConnection implements AutoCloseable {
      * included in column.include.list.
      */
     protected Optional<ColumnEditor> readTableColumn(ResultSet columnMetadata, TableId tableId, ColumnNameFilter columnFilter) throws SQLException {
+        // Oracle drivers require this for LONG/LONGRAW to be fetched first.
+        final String defaultValue = columnMetadata.getString(13);
+
         final String columnName = columnMetadata.getString(4);
         if (columnFilter == null || columnFilter.matches(tableId.catalog(), tableId.schema(), tableId.table(), columnName)) {
             final ColumnEditor column = Column.editor().name(columnName);
@@ -1224,7 +1227,6 @@ public class JdbcConnection implements AutoCloseable {
 
             column.nativeType(resolveNativeType(column.typeName()));
             column.jdbcType(resolveJdbcType(columnMetadata.getInt(5), column.nativeType()));
-            final String defaultValue = columnMetadata.getString(13);
             if (defaultValue != null) {
                 getDefaultValue(column.create(), defaultValue).ifPresent(column::defaultValue);
             }
