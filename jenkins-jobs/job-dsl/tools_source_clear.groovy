@@ -16,7 +16,7 @@ freeStyleJob('tools-debezium-source-clear') {
 
     wrappers {
         timeout {
-            noActivity(90)
+            noActivity(900)
         }
 
         credentialsBinding {
