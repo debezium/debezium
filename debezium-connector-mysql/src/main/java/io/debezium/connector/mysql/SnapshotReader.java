@@ -172,9 +172,11 @@ public class SnapshotReader extends AbstractReader {
             return rs.getObject(fieldNo) == null ? null : rs.getInt(fieldNo);
         }
         // DBZ-2673
-        else if (actualColumn.typeName().equals("CHAR") ||
-                actualColumn.typeName().equals("VARCHAR") ||
-                actualColumn.typeName().equals("TEXT")) {
+        // It is necessary to check the type names as types like ENUM and SET are
+        // also reported as JDBC type char
+        else if ("CHAR".equals(actualColumn.typeName()) ||
+                "VARCHAR".equals(actualColumn.typeName()) ||
+                "TEXT".equals(actualColumn.typeName())) {
             return rs.getBytes(fieldNo);
         }
         else {
