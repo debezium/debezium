@@ -558,8 +558,8 @@ public abstract class AbstractConnectorTest implements Testing {
             SourceRecord record = consumedLines.poll(pollTimeoutInMs, TimeUnit.MILLISECONDS);
             if (record != null) {
                 nullReturn = 0;
+                final Struct value = (Struct) record.value();
                 if (isTransactionRecord(record)) {
-                    final Struct value = (Struct) record.value();
                     final String status = value.getString(TransactionMonitor.DEBEZIUM_TRANSACTION_STATUS_KEY);
                     if (status.equals(TransactionStatus.BEGIN.name())) {
                         endTransactions.add(value.getString(TransactionMonitor.DEBEZIUM_TRANSACTION_ID_KEY));
@@ -569,6 +569,8 @@ public abstract class AbstractConnectorTest implements Testing {
                     }
                 }
                 else {
+                    final String txId = value.getStruct("source").getInt64("txId").toString();
+                    assertThat(endTransactions.contains(txId)).as("DML record txId " + txId + " not in open transaction set").isTrue();
                     ++recordsConsumed;
                 }
                 if (recordConsumer != null) {
@@ -576,12 +578,12 @@ public abstract class AbstractConnectorTest implements Testing {
                 }
                 if (Testing.Debug.isEnabled()) {
                     Testing.debug("Consumed record " + recordsConsumed + " / " + numberOfRecords + " ("
-                            + (numberOfRecords - recordsConsumed) + " more)");
+                            + (numberOfRecords - recordsConsumed) + " more), " + endTransactions.size() + " active transactions");
                     debug(record);
                 }
                 else if (Testing.Print.isEnabled()) {
                     Testing.print("Consumed record " + recordsConsumed + " / " + numberOfRecords + " ("
-                            + (numberOfRecords - recordsConsumed) + " more)");
+                            + (numberOfRecords - recordsConsumed) + " more), " + endTransactions.size() + " active transactions");
                     print(record);
                 }
                 if (assertRecords) {
@@ -599,14 +601,19 @@ public abstract class AbstractConnectorTest implements Testing {
             SourceRecord record = consumedLines.poll(pollTimeoutInMs, TimeUnit.MILLISECONDS);
             if (record != null) {
                 nullReturn = 0;
+                final Struct value = (Struct) record.value();
                 if (isTransactionRecord(record)) {
-                    final Struct value = (Struct) record.value();
                     final String status = value.getString(TransactionMonitor.DEBEZIUM_TRANSACTION_STATUS_KEY);
                     if (status.equals(TransactionStatus.END.name())) {
                         endTransactions.remove(value.getString(TransactionMonitor.DEBEZIUM_TRANSACTION_ID_KEY));
                     }
+                    else {
+                        endTransactions.add(value.getString(TransactionMonitor.DEBEZIUM_TRANSACTION_ID_KEY));
+                    }
                 }
                 else {
+                    final String txId = value.getStruct("source").getInt64("txId").toString();
+                    assertThat(endTransactions.contains(txId)).as("DML record txId " + txId + " not in open transaction set").isTrue();
                     ++recordsConsumed;
                 }
                 if (recordConsumer != null) {
@@ -614,12 +621,12 @@ public abstract class AbstractConnectorTest implements Testing {
                 }
                 if (Testing.Debug.isEnabled()) {
                     Testing.debug("Consumed record " + recordsConsumed + " / " + numberOfRecords + " ("
-                            + (numberOfRecords - recordsConsumed) + " more)");
+                            + (numberOfRecords - recordsConsumed) + " more), " + endTransactions.size() + " active transactions");
                     debug(record);
                 }
                 else if (Testing.Print.isEnabled()) {
                     Testing.print("Consumed record " + recordsConsumed + " / " + numberOfRecords + " ("
-                            + (numberOfRecords - recordsConsumed) + " more)");
+                            + (numberOfRecords - recordsConsumed) + " more), " + endTransactions.size() + " active transactions");
                     print(record);
                 }
                 if (assertRecords) {
@@ -785,7 +792,7 @@ public abstract class AbstractConnectorTest implements Testing {
      * Assert that there are only transaction topic records to be consumed.
      */
     protected void assertOnlyTransactionRecordsToConsume() {
-        consumedLines.iterator().forEachRemaining(r -> assertThat(r.topic()).endsWith(".transaction"));
+        consumedLines.iterator().forEachRemaining(r -> assertThat(isTransactionRecord(r)).isTrue());
     }
 
     protected void assertKey(SourceRecord record, String pkField, int pk) {
