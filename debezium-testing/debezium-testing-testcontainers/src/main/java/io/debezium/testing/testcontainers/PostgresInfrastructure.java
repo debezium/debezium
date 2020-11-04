@@ -1,0 +1,79 @@
+package io.debezium.testing.testcontainers;
+
+import java.util.Map;
+import java.util.stream.Stream;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.testcontainers.containers.Network;
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.containers.output.Slf4jLogConsumer;
+import org.testcontainers.lifecycle.Startables;
+
+public class PostgresInfrastructure {
+
+    protected static final String POSTGRES_DEFAULT_IMAGE = "postgres:9.6.19";
+    protected static final String POSTGRES_DEFAULT_DEBEZIUM_IMAGE = "debezium/example-postgres:1.3";
+
+    protected static Map<String, PostgresInfrastructure> postgresInfrastructures;
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(PostgresInfrastructure.class);
+
+    protected final String postgresImageName;
+    protected final Network network = Network.newNetwork();
+    private final PostgreSQLContainer<?> postgresContainer;
+
+    private PostgresInfrastructure(String postgresImageName) {
+        this.postgresImageName = postgresImageName;
+        postgresContainer = new PostgreSQLContainer<>(postgresImageName)
+                .withNetwork(network)
+                .withDatabaseName("postgres")
+                .withUsername("postgres")
+                .withPassword("postgres")
+                .withLogConsumer(new Slf4jLogConsumer(LOGGER))
+                .withNetworkAliases("postgres");
+    }
+
+    public static PostgresInfrastructure getDebeziumPostgresInfrastructure() {
+        return new PostgresInfrastructure(POSTGRES_DEFAULT_DEBEZIUM_IMAGE);
+    }
+
+    public static PostgresInfrastructure getPostgresInfrastructure() {
+        return new PostgresInfrastructure(POSTGRES_DEFAULT_IMAGE);
+    }
+
+    public static PostgresInfrastructure getInfrastructure(String postgresImage) {
+        if (postgresInfrastructures.containsKey(postgresImage)) {
+            return postgresInfrastructures.get(postgresImage);
+        }
+        PostgresInfrastructure infrastructure = new PostgresInfrastructure(postgresImage);
+        postgresInfrastructures.put(postgresImage, infrastructure);
+        return infrastructure;
+    }
+
+    public String getPostgresImageName() {
+        return postgresImageName;
+    }
+
+    public PostgreSQLContainer<?> getPostgresContainer() {
+        return postgresContainer;
+    }
+
+    public void startContainer() {
+        Startables.deepStart(Stream.of(postgresContainer)).join();
+    }
+
+    public ConnectorConfiguration getPostgresConnectorConfiguration(int id, String... options) {
+        final ConnectorConfiguration config = ConnectorConfiguration.forJdbcContainer(postgresContainer)
+                .with("database.server.name", "dbserver" + id)
+                .with("slot.name", "debezium_" + id);
+
+        if (options != null && options.length > 0) {
+            for (int i = 0; i < options.length; i += 2) {
+                config.with(options[i], options[i + 1]);
+            }
+        }
+        return config;
+    }
+
+}

@@ -47,9 +47,9 @@ public class DebeziumContainerTest {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DebeziumContainerTest.class);
 
-    private static Network network = Network.newNetwork();
+    private static final Network network = Network.newNetwork();
 
-    private static KafkaContainer kafkaContainer = new KafkaContainer()
+    private static final KafkaContainer kafkaContainer = new KafkaContainer()
             .withNetwork(network);
 
     public static PostgreSQLContainer<?> postgresContainer = new PostgreSQLContainer<>("debezium/postgres:11")
@@ -78,7 +78,7 @@ public class DebeziumContainerTest {
                 .atMost(Duration.ofSeconds(30))
                 .untilAsserted(
                         () -> {
-                            String status = executeHttpRequest(debeziumContainer.getConnectorStatus("my-connector-1"));
+                            String status = executeHttpRequest(debeziumContainer.getConnectorStatusURI("my-connector-1"));
 
                             assertThat(JsonPath.<String> read(status, "$.name")).isEqualTo("my-connector-1");
                             assertThat(JsonPath.<String> read(status, "$.connector.state")).isEqualTo("RUNNING");

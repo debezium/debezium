@@ -31,6 +31,7 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import javax.management.InstanceNotFoundException;
+import javax.management.JMException;
 import javax.management.MBeanServer;
 import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
@@ -183,7 +184,7 @@ public abstract class AbstractConnectorTest implements Testing {
                 }
             }
             if (callback != null) {
-                callback.accept(engine != null ? engine.isRunning() : false);
+                callback.accept(engine != null && engine.isRunning());
             }
         }
         finally {
@@ -353,7 +354,7 @@ public abstract class AbstractConnectorTest implements Testing {
             engine.run();
         });
         try {
-            if (!latch.await(1000, TimeUnit.SECONDS)) {
+            if (!latch.await(5, TimeUnit.MINUTES)) {
                 // maybe it takes more time to start up, so just log a warning and continue
                 logger.warn("The connector did not finish starting its task(s) or complete in the expected amount of time");
             }
@@ -1052,12 +1053,23 @@ public abstract class AbstractConnectorTest implements Testing {
                 .pollInterval(100, TimeUnit.MILLISECONDS)
                 .atMost(60, TimeUnit.SECONDS)
                 .ignoreException(InstanceNotFoundException.class)
-                .until(() -> {
-                    boolean connected = (boolean) mbeanServer
-                            .getAttribute(getStreamingMetricsObjectName(connector, server, contextName), "Connected");
+                .until(() -> (boolean) mbeanServer
+                        .getAttribute(getStreamingMetricsObjectName(connector, server, contextName), "Connected"));
+    }
 
-                    return connected;
-                });
+    public static boolean isStreamingRunning(String connector, String server) {
+        return isStreamingRunning(connector, server, "streaming");
+    }
+
+    public static boolean isStreamingRunning(String connector, String server, String contextName) {
+        final MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
+
+        try {
+            return (boolean) mbeanServer.getAttribute(getStreamingMetricsObjectName(connector, server, contextName), "Connected");
+        }
+        catch (JMException ignored) {
+        }
+        return false;
     }
 
     public static ObjectName getSnapshotMetricsObjectName(String connector, String server) throws MalformedObjectNameException {
