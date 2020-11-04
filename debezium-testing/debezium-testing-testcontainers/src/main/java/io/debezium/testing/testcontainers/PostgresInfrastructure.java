@@ -1,3 +1,8 @@
+/*
+ * Copyright Debezium Authors.
+ *
+ * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
+ */
 package io.debezium.testing.testcontainers;
 
 import java.util.Map;
@@ -10,6 +15,9 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.containers.output.Slf4jLogConsumer;
 import org.testcontainers.lifecycle.Startables;
 
+/**
+ * Postgres Testcontainers infrastructure handling.
+ */
 public class PostgresInfrastructure {
 
     protected static final String POSTGRES_DEFAULT_IMAGE = "postgres:9.6.19";
