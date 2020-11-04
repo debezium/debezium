@@ -79,7 +79,7 @@ pipeline {
     post {
         always {
             mail to: 'jcechace@redhat.com', subject: "Debezium OpenShift test run #${BUILD_NUMBER} finished", body: """
-OpenShift interoperability test run ${BUILD_URL} finished with result: ${currentBuild.result}
+${currentBuild.projectName} run ${BUILD_URL} finished with result: ${currentBuild.result}
 """
         }
         success {
