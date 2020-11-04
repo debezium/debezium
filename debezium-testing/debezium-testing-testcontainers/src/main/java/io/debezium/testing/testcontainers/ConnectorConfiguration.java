@@ -18,11 +18,11 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
  */
 public class ConnectorConfiguration {
 
-    private final ObjectMapper mapper = new ObjectMapper();
     private final ObjectNode configNode;
 
     protected ConnectorConfiguration() {
-        this.configNode = this.mapper.createObjectNode();
+        ObjectMapper mapper = new ObjectMapper();
+        this.configNode = mapper.createObjectNode();
         this.configNode.put("tasks.max", 1);
     }
 

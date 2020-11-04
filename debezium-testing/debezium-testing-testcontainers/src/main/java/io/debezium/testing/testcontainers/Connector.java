@@ -18,11 +18,19 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
  */
 public class Connector {
 
+    public enum State {
+        UNASSIGNED,
+        RUNNING,
+        PAUSED,
+        FAILED,
+        DESTROYED
+    }
+
     private static final String NAME = "name";
     private static final String CONFIGURATION = "config";
 
-    private String name;
-    private ConnectorConfiguration configuration;
+    private final String name;
+    private final ConnectorConfiguration configuration;
 
     private final static ObjectMapper mapper = new ObjectMapper();
 
