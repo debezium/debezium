@@ -224,16 +224,15 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                     offsetContext.updateWalPosition(lsn, lastCompletelyProcessedLsn, message.getCommitTime(), message.getTransactionId(), tableId,
                             taskContext.getSlotXmin(connection));
 
-                    boolean dispatched = (message.getOperation() == Operation.NOOP) ? false
-                            : dispatcher.dispatchDataChangeEvent(
-                                    tableId,
-                                    new PostgresChangeRecordEmitter(
-                                            offsetContext,
-                                            clock,
-                                            connectorConfig,
-                                            schema,
-                                            connection,
-                                            message));
+                    boolean dispatched = message.getOperation() != Operation.NOOP && dispatcher.dispatchDataChangeEvent(
+                            tableId,
+                            new PostgresChangeRecordEmitter(
+                                    offsetContext,
+                                    clock,
+                                    connectorConfig,
+                                    schema,
+                                    connection,
+                                    message));
 
                     maybeWarnAboutGrowingWalBacklog(dispatched);
                 }
