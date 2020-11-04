@@ -79,6 +79,6 @@ node('Slave') {
             }
         }
     } finally {
-        mail to: 'jpechane@redhat.com', subject: "${JOB_NAME} run #${BUILD_NUMBER} finished", body: "Run ${BUILD_URL} finished with result: ${currentBuild.result}"
+        mail to: 'jpechane@redhat.com', subject: "${JOB_NAME} run #${BUILD_NUMBER} finished", body: "Run ${BUILD_URL} finished with result: ${currentBuild.currentResult}"
     }
 }
