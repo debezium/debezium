@@ -348,7 +348,7 @@ node('Slave') {
                 ADDITIONAL_REPOSITORIES[id].mavenRepoId = mvnRelease(id, repo.git, repo.branch, "-Dversion.debezium=$RELEASE_VERSION${id == 'incubator' ? ' -Poracle' : ''}")
                 dir(id) {
                     modifyFile("pom.xml") {
-                        it.replaceFirst('<version>.+</version>\n    </parent>', "<version>x$DEVELOPMENT_VERSION</version>\n    </parent>")
+                        it.replaceFirst('<version>.+</version>\n    </parent>', "<version>$DEVELOPMENT_VERSION</version>\n    </parent>")
                     }
                     sh "git commit -a -m '[release] New parent $DEVELOPMENT_VERSION for development'"
                     if (!DRY_RUN) {
