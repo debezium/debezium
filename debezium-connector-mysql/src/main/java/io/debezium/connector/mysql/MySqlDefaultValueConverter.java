@@ -158,6 +158,7 @@ public class MySqlDefaultValueConverter {
 
             return Timestamp.from(Instant.EPOCH);
         }
+        value = cleanTimestamp(value);
         return Timestamp.valueOf(value).toInstant().atZone(ZoneId.systemDefault());
     }
 
@@ -257,6 +258,115 @@ public class MySqlDefaultValueConverter {
             dtf.appendFraction(ChronoField.MICRO_OF_SECOND, 0, length, true);
         }
         return dtf.toFormatter();
+    }
+
+    /**
+     * Clean input timestamp to yyyy-mm-dd hh:mm:ss[.fffffffff] format
+     *
+     * @param s input timestamp
+     * @return cleaned timestamp
+     */
+    private String cleanTimestamp(String s) {
+        if (s == null) {
+            throw new java.lang.IllegalArgumentException("null string");
+        }
+
+        s = s.trim();
+
+        final int MAX_MONTH = 12;
+        final int MAX_DAY = 31;
+
+        // Parse the date
+        int firstDash = s.indexOf('-');
+        int secondDash = s.indexOf('-', firstDash + 1);
+
+        int dividingStart = -1;
+        int dividingEnd = -1;
+        boolean hasDividing = false;
+        for (int i = secondDash + 1; i < s.length(); i++) {
+            if (!Character.isDigit(s.charAt(i))) {
+                dividingStart = i;
+                hasDividing = true;
+                break;
+            }
+        }
+        if (hasDividing) {
+            for (int i = dividingStart; i < s.length(); i++) {
+                if (Character.isDigit(s.charAt(i))) {
+                    break;
+                }
+                dividingEnd = i;
+            }
+        }
+
+        // Parse the time
+        int firstColon = s.indexOf(':', dividingEnd + 1);
+        int secondColon = s.indexOf(':', firstColon + 1);
+        int period = s.indexOf('.', secondColon + 1);
+
+        int year = 0;
+        int month = 0;
+        int day = 0;
+        int hour = 0;
+        int minute = 0;
+        int second = 0;
+
+        // Get the date
+        int len = s.length();
+        boolean parsedDate = false;
+        if (firstDash > 0 && secondDash > firstDash) {
+            year = Integer.parseInt(s.substring(0, firstDash));
+            month = Integer.parseInt(s.substring(firstDash + 1, secondDash));
+            if (hasDividing) {
+                day = Integer.parseInt(s.substring(secondDash + 1, dividingStart));
+            }
+            else {
+                day = Integer.parseInt(s.substring(secondDash + 1, len));
+            }
+
+            if ((month >= 1 && month <= MAX_MONTH) && (day >= 1 && day <= MAX_DAY)) {
+                parsedDate = true;
+            }
+        }
+        if (!parsedDate) {
+            throw new java.lang.IllegalArgumentException("Cannot parse the date from " + s);
+        }
+
+        // Get the time. Hour, minute, second and colons are all optional
+        if (hasDividing && dividingEnd < len - 1) {
+            if (firstColon == -1) {
+                hour = Integer.parseInt(s.substring(dividingEnd + 1, len));
+            }
+            else {
+                hour = Integer.parseInt(s.substring(dividingEnd + 1, firstColon));
+                if (firstColon < len - 1) {
+                    if (secondColon == -1) {
+                        minute = Integer.parseInt(s.substring(firstColon + 1, len));
+                    }
+                    else {
+                        minute = Integer.parseInt(s.substring(firstColon + 1, secondColon));
+                        if (secondColon < len - 1) {
+                            if (period == -1) {
+                                second = Integer.parseInt(s.substring(secondColon + 1, len));
+                            }
+                            else {
+                                second = Integer.parseInt(s.substring(secondColon + 1, period));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        StringBuilder cleanedTimestamp = new StringBuilder();
+        cleanedTimestamp = cleanedTimestamp
+                .append(String.format("%04d-%02d-%02d %02d:%02d:%02d", year, month, day, hour, minute, second));
+
+        if (period != -1 && period < len - 1) {
+            cleanedTimestamp = cleanedTimestamp.append(".").append(s.substring(period + 1));
+        }
+
+        return cleanedTimestamp.toString();
     }
 
     public ColumnEditor setColumnDefaultValue(ColumnEditor columnEditor) {
