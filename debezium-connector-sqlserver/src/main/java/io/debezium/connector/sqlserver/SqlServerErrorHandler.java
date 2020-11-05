@@ -25,6 +25,7 @@ public class SqlServerErrorHandler extends ErrorHandler {
     protected boolean isRetriable(Throwable throwable) {
         return throwable instanceof SQLServerException
                 && (throwable.getMessage().contains("Connection timed out (Read failed)")
+                        || throwable.getMessage().contains("Connection timed out (Write failed)")
                         || throwable.getMessage().contains("The connection has been closed.")
                         || throwable.getMessage().contains("Connection reset")
                         || throwable.getMessage().contains("SHUTDOWN is in progress"));
