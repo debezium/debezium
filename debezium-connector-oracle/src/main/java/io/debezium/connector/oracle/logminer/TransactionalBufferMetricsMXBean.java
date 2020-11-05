@@ -34,18 +34,11 @@ public interface TransactionalBufferMetricsMXBean {
     long getCommitThroughput();
 
     /**
-     * Exposes average number of captured and parsed DML per second
+     * exposes total number of registered DMLs
      *
-     * @return average number of captured and parsed DML per second in the in-memory buffer
+     * @return registered DML count
      */
-    long getCapturedDmlThroughput();
-
-    /**
-     * exposes total number of captured DMLs
-     *
-     * @return captured DML count
-     */
-    long getCapturedDmlCount();
+    long getRegisteredDmlCount();
 
     /**
      * Exposes number of transaction, buffered in memory
@@ -69,6 +62,11 @@ public interface TransactionalBufferMetricsMXBean {
     Long getCommittedScn();
 
     /**
+     * @return offset SCN
+     */
+    Long getOffsetScn();
+
+    /**
      * This is to get the lag between latest captured change timestamp in REDO LOG and time of it's placement in the buffer
      *
      * @return lag in milliseconds
@@ -88,14 +86,6 @@ public interface TransactionalBufferMetricsMXBean {
      * @return value in milliseconds
      */
     long getMinLagFromSource();
-
-    /**
-     * This is to get average value of the time difference between logging of source DB records into redo log and capturing it by Log Miner.
-     * Average is calculated as summary of all lags / number of captured DB changes
-     *
-     * @return value in milliseconds
-     */
-    long getAverageLagFromSource();
 
     /**
      * This is to get list of removed transactions from the Transactional Buffer
@@ -143,4 +133,16 @@ public interface TransactionalBufferMetricsMXBean {
      * @return the scn freeze counter
      */
     int getScnFreezeCounter();
+
+    /**
+     * Get time duration taken my executing all callbacks for the commit
+     * @return milliseconds
+     */
+    Long getLastCommitDuration();
+
+    /**
+     * Get max time duration taken my executing all callbacks
+     * @return milliseconds
+     */
+    Long getMaxCommitDuration();
 }

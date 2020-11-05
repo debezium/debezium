@@ -7,10 +7,9 @@ package io.debezium.connector.oracle.logminer;
 
 import java.math.BigDecimal;
 import java.sql.Timestamp;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -54,8 +53,6 @@ public final class TransactionalBuffer {
     private final Supplier<Integer> commitQueueCapacity;
     private TransactionalBufferMetrics metrics;
     private final Set<String> abandonedTransactionIds;
-
-    // storing rolledBackTransactionIds is for debugging purposes to check what was rolled back to research, todo delete in future releases
     private final Set<String> rolledBackTransactionIds;
 
     // It holds the latest captured SCN.
@@ -121,33 +118,28 @@ public final class TransactionalBuffer {
      * @param transactionId transaction identifier
      * @param scn           SCN
      * @param changeTime    time of DML parsing completion
-     * @param redoSql       statement from redo
      * @param callback      callback to execute when transaction commits
      */
-    void registerCommitCallback(String transactionId, BigDecimal scn, Instant changeTime, String redoSql, CommitCallback callback) {
+    void registerCommitCallback(String transactionId, BigDecimal scn, Instant changeTime, CommitCallback callback) {
         if (abandonedTransactionIds.contains(transactionId)) {
-            LogMinerHelper.logWarn(metrics, "Another DML for an abandoned transaction {} : {}, ignored", transactionId, redoSql);
+            LogMinerHelper.logWarn(metrics, "Captured DML for abandoned transaction {}, ignored", transactionId);
+            return;
+        }
+        // this should never happen
+        if (rolledBackTransactionIds.contains(transactionId)) {
+            LogMinerHelper.logWarn(metrics, "Captured DML for rolled-back transaction {}, ignored", transactionId);
             return;
         }
 
         transactions.computeIfAbsent(transactionId, s -> new Transaction(scn));
 
         metrics.setActiveTransactions(transactions.size());
-        metrics.incrementCapturedDmlCounter();
+        metrics.incrementRegisteredDmlCounter();
         metrics.calculateLagMetrics(changeTime);
 
-        // The transaction object is not a lightweight object anymore having all REDO_SQL stored.
         Transaction transaction = transactions.get(transactionId);
         if (transaction != null) {
-
-            // todo this should never happen, delete when tested and confirmed
-            if (rolledBackTransactionIds.contains(transactionId)) {
-                LogMinerHelper.logWarn(metrics, "Ignore DML for rolled back transaction: SCN={}, REDO_SQL={}", scn, redoSql);
-                return;
-            }
-
             transaction.commitCallbacks.add(callback);
-            transaction.addRedoSql(scn, redoSql);
         }
 
         if (scn.compareTo(largestScn) > 0) {
@@ -174,6 +166,8 @@ public final class TransactionalBuffer {
         if (transaction == null) {
             return false;
         }
+
+        Instant start = Instant.now();
 
         calculateLargestScn();
         transaction = transactions.remove(transactionId);
@@ -218,7 +212,9 @@ public final class TransactionalBuffer {
                 metrics.setActiveTransactions(transactions.size());
                 metrics.incrementCommittedDmlCounter(commitCallbacks.size());
                 metrics.setCommittedScn(scn.longValue());
+                metrics.setOffsetScn(offsetContext.getScn());
                 metrics.setCommitQueueCapacity(commitQueueCapacity.get());
+                metrics.setLastCommitDuration(Duration.between(start, Instant.now()).toMillis());
                 taskCounter.decrementAndGet();
             }
         });
@@ -238,7 +234,7 @@ public final class TransactionalBuffer {
 
         Transaction transaction = transactions.get(transactionId);
         if (transaction != null) {
-            LOGGER.debug("Transaction rolled back, {} , Statements: {}", debugMessage, transaction.redoSqlMap.values().toArray());
+            LOGGER.debug("Transaction rolled back: {}", debugMessage);
 
             calculateLargestScn(); // in case if largest SCN was in this transaction
             transactions.remove(transactionId);
@@ -248,7 +244,7 @@ public final class TransactionalBuffer {
 
             metrics.setActiveTransactions(transactions.size());
             metrics.incrementRolledBackTransactions();
-            metrics.addRolledBackTransactionId(transactionId); // todo decide if we need both metrics
+            metrics.addRolledBackTransactionId(transactionId);
 
             return true;
         }
@@ -258,24 +254,23 @@ public final class TransactionalBuffer {
 
     /**
      * If for some reason the connector got restarted, the offset will point to the beginning of the oldest captured transaction.
-     * Taking in consideration offset flush interval, the offset could be even older.
-     * If that transaction was lasted for a long time, let say > 30 minutes, the offset will be not accessible after restart,
-     * because we don't mine archived logs, neither rely on continuous_mine configuration option.
+     * If that transaction was lasted for a long time, let say > 4 hours, the offset might be not accessible after restart,
      * Hence we have to address these cases manually.
      * <p>
-     * It is limited by  following condition:
-     * allOnlineRedoLogFiles.size() - currentlyMinedLogFiles.size() <= 1
-     * <p>
-     * If each redo lasts for 10 minutes and 7 redo group have been configured, any transaction cannot lasts longer than 1 hour.
-     * <p>
-     * In case of an abandonment, all DMLs/Commits/Rollbacs for this transaction will be ignored
-     * <p>
-     * In other words connector will not send any part of this transaction to Kafka
+     * In case of an abandonment, all DMLs/Commits/Rollbacks for this transaction will be ignored
      *
      * @param thresholdScn the smallest SVN of any transaction to keep in the buffer. All others will be removed.
      */
     void abandonLongTransactions(Long thresholdScn) {
         BigDecimal threshold = new BigDecimal(thresholdScn);
+        BigDecimal smallestScn = calculateSmallestScn();
+        if (smallestScn == null) {
+            // no transactions in the buffer
+            return;
+        }
+        if (threshold.compareTo(smallestScn) < 0) {
+            threshold = smallestScn;
+        }
         Iterator<Map.Entry<String, Transaction>> iter = transactions.entrySet().iterator();
         while (iter.hasNext()) {
             Map.Entry<String, Transaction> transaction = iter.next();
@@ -290,6 +285,10 @@ public final class TransactionalBuffer {
                 metrics.setActiveTransactions(transactions.size());
             }
         }
+    }
+
+    boolean isTransactionRegistered(String txId) {
+        return transactions.get(txId) != null;
     }
 
     private BigDecimal calculateSmallestScn() {
@@ -366,25 +365,11 @@ public final class TransactionalBuffer {
         private final BigDecimal firstScn;
         private BigDecimal lastScn;
         private final List<CommitCallback> commitCallbacks;
-        private final Map<BigDecimal, List<String>> redoSqlMap;
 
         private Transaction(BigDecimal firstScn) {
             this.firstScn = firstScn;
             this.commitCallbacks = new ArrayList<>();
-            this.redoSqlMap = new HashMap<>();
             this.lastScn = firstScn;
-        }
-
-        private void addRedoSql(BigDecimal scn, String redoSql) {
-            this.lastScn = scn;
-
-            List<String> sqlList = redoSqlMap.get(scn);
-            if (sqlList == null) {
-                redoSqlMap.put(scn, new ArrayList<>(Collections.singletonList(redoSql)));
-            }
-            else {
-                sqlList.add(redoSql);
-            }
         }
 
         @Override
@@ -392,7 +377,6 @@ public final class TransactionalBuffer {
             return "Transaction{" +
                     "firstScn=" + firstScn +
                     ", lastScn=" + lastScn +
-                    ", redoSqls=" + Arrays.toString(redoSqlMap.values().toArray()) +
                     '}';
         }
     }

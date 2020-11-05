@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.oracle;
 
+import java.util.Set;
 import java.util.function.Predicate;
 
 import org.apache.kafka.common.config.ConfigDef;
@@ -32,6 +33,7 @@ import io.debezium.relational.Tables;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.history.HistoryRecordComparator;
 import io.debezium.relational.history.KafkaDatabaseHistory;
+import io.debezium.util.Strings;
 
 import oracle.streams.XStreamUtility;
 
@@ -170,6 +172,37 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withImportance(Importance.HIGH)
             .withDescription("A token to replace on snapshot predicate template");
 
+    public static final Field RECORD_LOG_MINING_HISTORY = Field.create("log.mining.record.history")
+            .withDisplayName("Record Log Mining history")
+            .withType(Type.BOOLEAN)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.HIGH)
+            .withDefault("false")
+            .withDescription("Flag to record Log Mining history");
+
+    public static final Field LOG_MINING_HISTORY_RETENTION = Field.create("database.history.retention.hours")
+            .withDisplayName("Log Mining history retention")
+            .withType(Type.STRING)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDefault("4")
+            .withDescription("Hours to keep Log Mining history");
+
+    public static final Field RAC_SYSTEM = Field.create("database.rac")
+            .withDisplayName("Oracle RAC")
+            .withType(Type.BOOLEAN)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.HIGH)
+            .withDefault("false")
+            .withDescription("Flag to if it is RAC system");
+
+    public static final Field RAC_NODE_NAMES = Field.create("database.rac.nodes.ip")
+            .withDisplayName("Oracle RAC nodes ip")
+            .withType(Type.STRING)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.HIGH)
+            .withDescription("RAC nodes which are balanced to connect the application");
+
     /**
      * The set of {@link Field}s defined as part of this configuration.
      */
@@ -204,6 +237,10 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             CONNECTOR_ADAPTER,
             LOG_MINING_STRATEGY,
             SNAPSHOT_ENHANCEMENT_TOKEN,
+            RECORD_LOG_MINING_HISTORY,
+            LOG_MINING_HISTORY_RETENTION,
+            RAC_SYSTEM,
+            RAC_NODE_NAMES,
             CommonConnectorConfig.EVENT_PROCESSING_FAILURE_HANDLING_MODE);
 
     private final String databaseName;
@@ -267,7 +304,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                 CommonConnectorConfig.EVENT_PROCESSING_FAILURE_HANDLING_MODE);
         Field.group(config, "Connector", CommonConnectorConfig.POLL_INTERVAL_MS, CommonConnectorConfig.MAX_BATCH_SIZE,
                 CommonConnectorConfig.MAX_QUEUE_SIZE, CommonConnectorConfig.SNAPSHOT_DELAY_MS, CommonConnectorConfig.SNAPSHOT_FETCH_SIZE,
-                SNAPSHOT_ENHANCEMENT_TOKEN);
+                SNAPSHOT_ENHANCEMENT_TOKEN, RECORD_LOG_MINING_HISTORY, LOG_MINING_HISTORY_RETENTION, RAC_SYSTEM, RAC_NODE_NAMES);
 
         return config;
     }
@@ -641,6 +678,26 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
      */
     public LogMiningStrategy getLogMiningStrategy() {
         return LogMiningStrategy.parse(getConfig().getString(LOG_MINING_STRATEGY));
+    }
+
+    /**
+     * @return flag if mining history will be recorded
+     */
+    public Boolean recordLogMiningHistory() {
+        return getConfig().getBoolean(RECORD_LOG_MINING_HISTORY);
+    }
+
+    public long logMinerHistoryRetention() {
+        return Long.parseLong(getConfig().getString(LOG_MINING_HISTORY_RETENTION));
+    }
+
+    public Boolean isRacSystem() {
+        return getConfig().getBoolean(RAC_SYSTEM);
+    }
+
+    public Set<String> racNodeNames() {
+        String nodes = getConfig().getString(RAC_NODE_NAMES);
+        return Strings.setOf(nodes, String::new);
     }
 
     /**

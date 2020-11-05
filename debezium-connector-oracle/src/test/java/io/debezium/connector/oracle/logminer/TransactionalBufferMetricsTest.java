@@ -50,23 +50,21 @@ public class TransactionalBufferMetricsTest {
     public void testLagMetrics() {
         // no time difference between connector and database
         long lag = metrics.getLagFromSource();
-        assertThat(lag == 0).isTrue();
+        assertThat(lag).isEqualTo(0);
         Instant dbEventTime = Instant.now().minusMillis(2000);
         metrics.calculateLagMetrics(dbEventTime);
         lag = metrics.getLagFromSource();
-        assertThat(lag == 2000).isTrue();
-        assertThat(metrics.getMaxLagFromSource() == 2000).isTrue();
-        assertThat(metrics.getMinLagFromSource() == 0).isTrue();
-        assertThat(metrics.getAverageLagFromSource() == 2000).isTrue();
+        assertThat(lag).isEqualTo(2000);
+        assertThat(metrics.getMaxLagFromSource()).isEqualTo(2000);
+        assertThat(metrics.getMinLagFromSource()).isEqualTo(0);
 
         // not realistic scenario
         dbEventTime = Instant.now().plusMillis(2000);
         metrics.calculateLagMetrics(dbEventTime);
         lag = metrics.getLagFromSource();
-        assertThat(lag == -2000).isTrue();
-        assertThat(metrics.getMaxLagFromSource() == 2000).isTrue();
-        assertThat(metrics.getMinLagFromSource() == -2000).isTrue();
-        assertThat(metrics.getAverageLagFromSource() == 0).isTrue();
+        assertThat(lag).isEqualTo(2000);
+        assertThat(metrics.getMaxLagFromSource()).isEqualTo(2000);
+        assertThat(metrics.getMinLagFromSource()).isEqualTo(0);
 
         metrics.reset();
 
@@ -76,18 +74,16 @@ public class TransactionalBufferMetricsTest {
         dbEventTime = Instant.now().minusMillis(2000);
         metrics.calculateLagMetrics(dbEventTime);
         lag = metrics.getLagFromSource();
-        assertThat(lag == 3000).isTrue();
-        assertThat(metrics.getMaxLagFromSource() == 3000).isTrue();
-        assertThat(metrics.getMinLagFromSource() == 0).isTrue();
-        assertThat(metrics.getAverageLagFromSource() == 3000).isTrue();
+        assertThat(lag).isEqualTo(3000);
+        assertThat(metrics.getMaxLagFromSource()).isEqualTo(3000);
+        assertThat(metrics.getMinLagFromSource()).isEqualTo(0);
 
         dbEventTime = Instant.now().minusMillis(3000);
         metrics.calculateLagMetrics(dbEventTime);
         lag = metrics.getLagFromSource();
-        assertThat(lag == 4000).isTrue();
-        assertThat(metrics.getMaxLagFromSource() == 4000).isTrue();
-        assertThat(metrics.getMinLagFromSource() == 0).isTrue();
-        assertThat(metrics.getAverageLagFromSource() == 3500).isTrue();
+        assertThat(lag).isEqualTo(4000);
+        assertThat(metrics.getMaxLagFromSource()).isEqualTo(4000);
+        assertThat(metrics.getMinLagFromSource()).isEqualTo(0);
 
         metrics.reset();
 
@@ -97,54 +93,64 @@ public class TransactionalBufferMetricsTest {
         dbEventTime = Instant.now().minusMillis(2000);
         metrics.calculateLagMetrics(dbEventTime);
         lag = metrics.getLagFromSource();
-        assertThat(lag == 1000).isTrue();
-        assertThat(metrics.getMaxLagFromSource() == 1000).isTrue();
-        assertThat(metrics.getMinLagFromSource() == 0).isTrue();
-        assertThat(metrics.getAverageLagFromSource() == 1000).isTrue();
+        assertThat(lag).isEqualTo(1000);
+        assertThat(metrics.getMaxLagFromSource()).isEqualTo(1000);
+        assertThat(metrics.getMinLagFromSource()).isEqualTo(0);
     }
 
     @Test
     public void testOtherMetrics() {
         metrics.incrementScnFreezeCounter();
-        assertThat(metrics.getScnFreezeCounter() == 1).isTrue();
+        assertThat(metrics.getScnFreezeCounter()).isEqualTo(1);
 
         metrics.incrementErrorCounter();
-        assertThat(metrics.getErrorCounter() == 1).isTrue();
+        assertThat(metrics.getErrorCounter()).isEqualTo(1);
 
         metrics.incrementWarningCounter();
-        assertThat(metrics.getWarningCounter() == 1).isTrue();
+        assertThat(metrics.getWarningCounter()).isEqualTo(1);
 
         metrics.incrementCommittedDmlCounter(5_000);
         for (int i = 0; i < 1000; i++) {
-            metrics.incrementCapturedDmlCounter();
+            metrics.incrementRegisteredDmlCounter();
             metrics.incrementCommittedTransactions();
         }
-        assertThat(metrics.getCapturedDmlCount() == 1000).isTrue();
-        assertThat(metrics.getCapturedDmlThroughput() > 10_000).isTrue();
-        assertThat(metrics.getNumberOfCommittedTransactions() == 1000).isTrue();
-        assertThat(metrics.getCommitThroughput() >= 1_000).isTrue();
+        assertThat(metrics.getRegisteredDmlCount()).isEqualTo(1000);
+        assertThat(metrics.getNumberOfCommittedTransactions()).isEqualTo(1000);
+        assertThat(metrics.getCommitThroughput()).isGreaterThanOrEqualTo(1_000);
 
         metrics.incrementRolledBackTransactions();
-        assertThat(metrics.getNumberOfRolledBackTransactions() == 1).isTrue();
+        assertThat(metrics.getNumberOfRolledBackTransactions()).isEqualTo(1);
 
         metrics.setActiveTransactions(5);
-        assertThat(metrics.getNumberOfActiveTransactions() == 5).isTrue();
+        assertThat(metrics.getNumberOfActiveTransactions()).isEqualTo(5);
 
         metrics.addRolledBackTransactionId("rolledback id");
-        assertThat(metrics.getNumberOfRolledBackTransactions() == 1).isTrue();
+        assertThat(metrics.getNumberOfRolledBackTransactions()).isEqualTo(1);
         assertThat(metrics.getRolledBackTransactionIds().contains("rolledback id")).isTrue();
 
         metrics.addAbandonedTransactionId("abandoned id");
-        assertThat(metrics.getAbandonedTransactionIds().size() == 1).isTrue();
+        assertThat(metrics.getAbandonedTransactionIds().size()).isEqualTo(1);
         assertThat(metrics.getAbandonedTransactionIds().contains("abandoned id")).isTrue();
 
         metrics.setOldestScn(10L);
-        assertThat(metrics.getOldestScn() == 10L).isTrue();
+        assertThat(metrics.getOldestScn()).isEqualTo(10);
 
         metrics.setCommittedScn(10L);
-        assertThat(metrics.getCommittedScn() == 10L).isTrue();
+        assertThat(metrics.getCommittedScn()).isEqualTo(10);
 
-        assertThat(metrics.toString().contains("capturedDmlCounter=1000")).isTrue();
+        assertThat(metrics.toString().contains("registeredDmlCounter=1000")).isTrue();
+
+        metrics.setLastCommitDuration(100L);
+        assertThat(metrics.getLastCommitDuration()).isEqualTo(100L);
+
+        metrics.setLastCommitDuration(50L);
+        assertThat(metrics.getMaxCommitDuration()).isEqualTo(100L);
+
+        metrics.setOffsetScn(10L);
+        assertThat(metrics.getOldestScn() == 10).isTrue();
+
+        metrics.setCommitQueueCapacity(1000);
+        assertThat(metrics.getCommitQueueCapacity()).isEqualTo(1000);
 
     }
 }

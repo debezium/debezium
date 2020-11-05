@@ -89,7 +89,6 @@ public class SimpleDmlParser {
                 LOGGER.debug("Cannot parse NULL , transaction: {}", txId);
                 return null;
             }
-            // todo investigate: happens on CTAS
             if (dmlContent.endsWith(";null;")) {
                 dmlContent = dmlContent.substring(0, dmlContent.lastIndexOf(";null;"));
             }
@@ -134,7 +133,7 @@ public class SimpleDmlParser {
 
         }
         catch (Throwable e) {
-            LOGGER.error("Cannot parse statement : {}, transaction: {}, due to the {}", dmlContent, txId, e);
+            LOGGER.error("Cannot parse statement : {}, transaction: {}, due to the {}", dmlContent, txId, e.getMessage());
             return null;
         }
 

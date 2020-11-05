@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.oracle.logminer;
 
+import static io.debezium.connector.oracle.logminer.LogMinerMetrics.RECORD_HISTORY_QUEUE_CAPACITY;
 import static org.fest.assertions.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
@@ -43,37 +44,37 @@ public class LogMinerMetricsTest {
     @Test
     public void testMetrics() {
 
-        metrics.incrementCapturedDmlCount();
-        assertThat(metrics.getCapturedDmlCount() == 1).isTrue();
+        metrics.setLastCapturedDmlCount(1);
+        assertThat(metrics.getTotalCapturedDmlCount() == 1).isTrue();
 
         metrics.setCurrentScn(1000L);
-        assertThat(metrics.getCurrentScn() == 1000L).isTrue();
+        assertThat(metrics.getCurrentScn()).isEqualTo(1000L);
 
         metrics.setBatchSize(10);
-        assertThat(metrics.getBatchSize() == 5_000).isTrue();
+        assertThat(metrics.getBatchSize() == LogMinerMetrics.DEFAULT_BATCH_SIZE).isTrue();
         metrics.setBatchSize(1_000_000);
-        assertThat(metrics.getBatchSize() == 5_000).isTrue();
+        assertThat(metrics.getBatchSize()).isEqualTo(LogMinerMetrics.DEFAULT_BATCH_SIZE);
         metrics.setBatchSize(6000);
-        assertThat(metrics.getBatchSize() == 6_000).isTrue();
+        assertThat(metrics.getBatchSize()).isEqualTo(6_000);
 
-        assertThat(metrics.getMillisecondToSleepBetweenMiningQuery() == 1000).isTrue();
+        assertThat(metrics.getMillisecondToSleepBetweenMiningQuery()).isEqualTo(1000);
         metrics.changeSleepingTime(true);
-        assertThat(metrics.getMillisecondToSleepBetweenMiningQuery() == 1200).isTrue();
+        assertThat(metrics.getMillisecondToSleepBetweenMiningQuery()).isEqualTo(1200);
         metrics.changeSleepingTime(false);
-        assertThat(metrics.getMillisecondToSleepBetweenMiningQuery() == 1000).isTrue();
-        metrics.setMillisecondToSleepBetweenMiningQuery(20);
-        assertThat(metrics.getMillisecondToSleepBetweenMiningQuery() == 1000).isTrue();
+        assertThat(metrics.getMillisecondToSleepBetweenMiningQuery()).isEqualTo(1000);
+        metrics.setMillisecondToSleepBetweenMiningQuery(-1);
+        assertThat(metrics.getMillisecondToSleepBetweenMiningQuery()).isEqualTo(1000);
         metrics.setMillisecondToSleepBetweenMiningQuery(4000);
-        assertThat(metrics.getMillisecondToSleepBetweenMiningQuery() == 1000).isTrue();
+        assertThat(metrics.getMillisecondToSleepBetweenMiningQuery()).isEqualTo(1000);
         metrics.setMillisecondToSleepBetweenMiningQuery(2000);
-        assertThat(metrics.getMillisecondToSleepBetweenMiningQuery() == 2000).isTrue();
+        assertThat(metrics.getMillisecondToSleepBetweenMiningQuery()).isEqualTo(2000);
 
-        metrics.setLastLogMinerQueryDuration(Duration.ofMillis(100));
-        assertThat(metrics.getLastLogMinerQueryDuration() == 100).isTrue();
-        metrics.setLastLogMinerQueryDuration(Duration.ofMillis(200));
-        assertThat(metrics.getLastLogMinerQueryDuration() == 200).isTrue();
-        assertThat(metrics.getAverageLogMinerQueryDuration() == 150).isTrue();
-        assertThat(metrics.getLogMinerQueryCount() == 2).isTrue();
+        metrics.setLastDurationOfBatchCapturing(Duration.ofMillis(100));
+        assertThat(metrics.getLastDurationOfFetchingQuery()).isEqualTo(100);
+        metrics.setLastDurationOfBatchCapturing(Duration.ofMillis(200));
+        assertThat(metrics.getLastDurationOfFetchingQuery()).isEqualTo(200);
+        assertThat(metrics.getMaxDurationOfFetchingQuery()).isEqualTo(200);
+        assertThat(metrics.getFetchingQueryCount()).isEqualTo(2);
 
         metrics.setCurrentLogFileName(new HashSet<>(Arrays.asList("name", "name1")));
         assertThat(metrics.getCurrentRedoLogFileName()[0].equals("name")).isTrue();
@@ -82,15 +83,84 @@ public class LogMinerMetricsTest {
         metrics.setSwitchCount(5);
         assertThat(metrics.getSwitchCounter() == 5).isTrue();
 
-        metrics.setProcessedCapturedBatchDuration(Duration.ofMillis(1000));
-        assertThat(metrics.getLastProcessedCapturedBatchDuration() == 1000).isTrue();
-        assertThat(metrics.getProcessedCapturedBatchCount() == 1).isTrue();
-        assertThat(metrics.getAverageProcessedCapturedBatchDuration() == 1000).isTrue();
+        metrics.reset();
+        metrics.setLastDurationOfBatchCapturing(Duration.ofMillis(1000));
+        assertThat(metrics.getLastDurationOfFetchingQuery()).isEqualTo(1000);
+        assertThat(metrics.getFetchingQueryCount()).isEqualTo(1);
+
+        metrics.reset();
+        metrics.setLastCapturedDmlCount(300);
+        metrics.setLastDurationOfBatchProcessing(Duration.ofMillis(1000));
+        assertThat(metrics.getLastCapturedDmlCount()).isEqualTo(300);
+        assertThat(metrics.getLastBatchProcessingDuration()).isEqualTo(1000);
+        assertThat(metrics.getAverageBatchProcessingThroughput()).isGreaterThanOrEqualTo(300);
+        assertThat(metrics.getMaxCapturedDmlInBatch()).isEqualTo(300);
+        assertThat(metrics.getMaxBatchProcessingThroughput()).isEqualTo(300);
+
+        metrics.setLastCapturedDmlCount(500);
+        metrics.setLastDurationOfBatchProcessing(Duration.ofMillis(1000));
+        assertThat(metrics.getAverageBatchProcessingThroughput()).isEqualTo(400);
+        assertThat(metrics.getMaxCapturedDmlInBatch()).isEqualTo(500);
+        assertThat(metrics.getMaxBatchProcessingThroughput()).isEqualTo(500);
+        assertThat(metrics.getLastBatchProcessingThroughput()).isEqualTo(500);
+
+        metrics.setLastDurationOfBatchProcessing(Duration.ofMillis(5000));
+        assertThat(metrics.getLastBatchProcessingThroughput()).isEqualTo(100);
+
+        metrics.setLastDurationOfBatchProcessing(Duration.ZERO);
+        assertThat(metrics.getLastBatchProcessingThroughput()).isEqualTo(0);
+
+        assertThat(metrics.getHoursToKeepTransactionInBuffer()).isEqualTo(4);
 
         metrics.setRedoLogStatus(Collections.singletonMap("name", "current"));
         assertThat(metrics.getRedoLogStatus()[0].equals("name | current")).isTrue();
 
         assertThat(metrics.toString().contains("logMinerQueryCount"));
+
+        assertThat(metrics.getRecordMiningHistory()).isFalse();
+        metrics.setRecordMiningHistory(true);
+        assertThat(metrics.getRecordMiningHistory()).isTrue();
+
+        assertThat(metrics.getRecordHistoryQueueCapacity()).isEqualTo(RECORD_HISTORY_QUEUE_CAPACITY);
+        metrics.setRecordHistoryQueueCapacity(100);
+        assertThat(metrics.getRecordHistoryQueueCapacity()).isEqualTo(100);
+
+        assertThat(metrics.getTempHistoryTableRecordsCounter()).isEqualTo(0);
+        metrics.incrementTempHistoryTableRecordsCounter();
+        metrics.incrementTempHistoryTableRecordsCounter();
+        metrics.incrementTempHistoryTableRecordsCounter();
+        assertThat(metrics.getTempHistoryTableRecordsCounter()).isEqualTo(3);
+
+        assertThat(metrics.getTotalHistoryTableRecordsCounter()).isEqualTo(0);
+        assertThat(metrics.getCurrentHistoryTableRecordsCounter()).isEqualTo(0);
+        metrics.incrementCurrentHistoryTableRecordsCounter();
+        assertThat(metrics.getCurrentHistoryTableRecordsCounter()).isEqualTo(3);
+
+        metrics.incrementTotalHistoryTableRecordsCounter();
+        assertThat(metrics.getTotalHistoryTableRecordsCounter()).isEqualTo(3);
+
+        metrics.setHoursToKeepTransactionInBuffer(3);
+        assertThat(metrics.getHoursToKeepTransactionInBuffer()).isEqualTo(3);
+
+        metrics.incrementNetworkConnectionProblemsCounter();
+        assertThat(metrics.getNetworkConnectionProblemsCounter()).isEqualTo(1);
+
+        assertThat(metrics.getMiningHistoryQueueLimit()).isEqualTo(RECORD_HISTORY_QUEUE_CAPACITY);
+
+        metrics.resetTempHistoryTableRecordsCounter();
+        metrics.incrementTempHistoryTableRecordsCounter();
+        assertThat(metrics.getTempHistoryTableRecordsCounter()).isEqualTo(1);
+        metrics.resetTempHistoryTableRecordsCounter();
+        assertThat(metrics.getTempHistoryTableRecordsCounter()).isEqualTo(0);
+
+        metrics.resetCurrentHistoryTableRecordsCounter();
+        assertThat(metrics.getCurrentHistoryTableRecordsCounter()).isEqualTo(0);
+
+        metrics.setBatchSize(5000);
+        metrics.changeBatchSize(true);
+        assertThat(metrics.getBatchSize()).isEqualTo(6000);
+        metrics.changeBatchSize(false);
+        assertThat(metrics.getBatchSize()).isEqualTo(5000);
     }
 
 }

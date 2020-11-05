@@ -89,7 +89,6 @@ public class OracleDdlParserTest {
         testColumn(alteredTable, "COL21", true, Types.VARCHAR, "VARCHAR2", 20, null, true, null);
         testColumn(alteredTable, "COL22", true, Types.NUMERIC, "NUMBER", 19, 0, true, null);
 
-        // todo check real LogMiner entry, maybe this entry never happens
         ddl = "alter table " + TABLE_NAME + " add col23 varchar2(20);";
         try {
             parser.parse(ddl, tables);

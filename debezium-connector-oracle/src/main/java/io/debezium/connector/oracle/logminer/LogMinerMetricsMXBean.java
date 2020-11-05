@@ -38,41 +38,41 @@ public interface LogMinerMetricsMXBean {
     int getSwitchCounter();
 
     /**
-     * @return number of milliseconds last Log Miner query took
-     */
-    Long getLastLogMinerQueryDuration();
-
-    /**
      * @return number of captured DML since the connector is up
      */
-    int getCapturedDmlCount();
-
-    /**
-     * @return number of Log Miner view queries since the connector is up
-     */
-    int getLogMinerQueryCount();
+    long getTotalCapturedDmlCount();
 
     /**
      * @return average duration of Log Miner view query
      */
-    Long getAverageLogMinerQueryDuration();
+    Long getMaxDurationOfFetchingQuery();
 
     /**
      * Log Miner view query returns number of captured DML , Commit and Rollback. This is what we call a batch.
-     * @return duration of the last batch processing, which includes parsing and dispatching
+     * @return duration of the last batch fetching
      */
-    Long getLastProcessedCapturedBatchDuration();
+    Long getLastDurationOfFetchingQuery();
 
     /**
      * Log Miner view query returns number of captured DML , Commit and Rollback. This is what we call a batch.
-     * @return number of all processed batches , which includes parsing and dispatching
+     * @return number of all processed batches
      */
-    int getProcessedCapturedBatchCount();
+    long getFetchingQueryCount();
 
     /**
-     * @return average time of processing captured batch from Log Miner view
+     * @return max number of DML captured during connector start time
      */
-    Long getAverageProcessedCapturedBatchDuration();
+    Long getMaxCapturedDmlInBatch();
+
+    /**
+     * @return time of processing the last captured batch
+     */
+    long getLastBatchProcessingDuration();
+
+    /**
+     * @return number of captured DL during last mining session
+     */
+    int getLastCapturedDmlCount();
 
     /**
      * Maximum number of entries in Log Miner view to fetch. This is used to set the diapason of the SCN in mining query.
@@ -104,4 +104,55 @@ public interface LogMinerMetricsMXBean {
      * @param increment true to add, false to deduct
      */
     void changeSleepingTime(boolean increment);
+
+    void changeBatchSize(boolean increment);
+
+    /**
+     * this flag turns on recording of captured incremental changes. It creates an overhead on CPU and takes disk space
+     * @param doRecording true - record
+     */
+    void setRecordMiningHistory(boolean doRecording);
+
+    // record log mining history flag
+    boolean getRecordMiningHistory();
+
+    // *** following metrics work if RecordMiningHistory is true.
+
+    // number of records in temp mining history table. It fluctuates from 0 to 10_000
+    int getTempHistoryTableRecordsCounter();
+
+    // number of records in current mining history table.
+    int getCurrentHistoryTableRecordsCounter();
+
+    // total number of records in the all mining history tables.
+    long getTotalHistoryTableRecordsCounter();
+
+    // remaining capacity of the queue which contains mining history records to persist
+    int getRecordHistoryQueueCapacity();
+
+    // get queue limit
+    int getMiningHistoryQueueLimit();
+
+    // hours to keep transaction in the buffer before abandoning
+    int getHoursToKeepTransactionInBuffer();
+
+    // set hours to keep transaction in the buffer before abandoning
+    void setHoursToKeepTransactionInBuffer(int hours);
+
+    // ***************** end of RecordMiningHistory metrics
+
+    // returns max number of processed entries, captured from Log Miner view (DMLs, commits, rollbacks etc.) per second
+    long getMaxBatchProcessingThroughput();
+
+    // returns number of the last processed entries, captured from Log Miner view (DMLs, commits, rollbacks etc.) per second
+    long getLastBatchProcessingThroughput();
+
+    // returns average number of processed entries, captured from Log Miner view (DMLs, commits, rollbacks etc.) per second
+    long getAverageBatchProcessingThroughput();
+
+    // returns counter of registered network problems
+    long getNetworkConnectionProblemsCounter();
+
+    // reset metrics
+    void reset();
 }

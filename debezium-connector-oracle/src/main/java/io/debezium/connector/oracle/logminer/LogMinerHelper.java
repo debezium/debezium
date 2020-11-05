@@ -5,9 +5,11 @@
  */
 package io.debezium.connector.oracle.logminer;
 
+import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.CallableStatement;
 import java.sql.Connection;
+import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -15,6 +17,7 @@ import java.sql.Statement;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -29,7 +32,10 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnectorConfig;
+import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.util.Clock;
+import io.debezium.util.Metronome;
 
 /**
  * This class contains methods to configure and manage Log Miner utility
@@ -39,10 +45,35 @@ public class LogMinerHelper {
     private final static String UNKNOWN = "unknown";
     private final static Logger LOGGER = LoggerFactory.getLogger(LogMinerHelper.class);
 
-    private enum DATATYPE {
+    public enum DATATYPE {
         LONG,
         TIMESTAMP,
-        STRING
+        STRING,
+        FLOAT
+    }
+
+    private static Map<String, Connection> racFlushConnections = new HashMap<>();
+
+    static void instantiateFlushConnections(JdbcConfiguration config, Set<String> hosts) {
+        for (Connection conn : racFlushConnections.values()) {
+            if (conn != null) {
+                try {
+                    conn.close();
+                }
+                catch (SQLException e) {
+                    LOGGER.error("cannot close connection");
+                }
+            }
+        }
+        racFlushConnections = new HashMap<>();
+        for (String host : hosts) {
+            try {
+                racFlushConnections.put(host, createFlushConnection(config, host));
+            }
+            catch (SQLException e) {
+                LOGGER.error("cannot connect node {}", host);
+            }
+        }
     }
 
     /**
@@ -67,29 +98,54 @@ public class LogMinerHelper {
      */
     public static long getCurrentScn(Connection connection) throws SQLException {
         try (Statement statement = connection.createStatement();
-                ResultSet rs = statement.executeQuery(SqlUtils.CURRENT_SCN)) {
+                ResultSet rs = statement.executeQuery(SqlUtils.currentScnQuery())) {
 
             if (!rs.next()) {
                 throw new IllegalStateException("Couldn't get SCN");
             }
 
-            long currentScn = rs.getLong(1);
-            rs.close();
-            return currentScn;
+            return rs.getLong(1);
         }
     }
 
-    static void createAuditTable(Connection connection) throws SQLException {
-        String tableExists = (String) getSingleResult(connection, SqlUtils.AUDIT_TABLE_EXISTS, DATATYPE.STRING);
+    static void createFlushTable(Connection connection) throws SQLException {
+        String tableExists = (String) getSingleResult(connection, SqlUtils.tableExistsQuery(SqlUtils.LOGMNR_FLUSH_TABLE), DATATYPE.STRING);
         if (tableExists == null) {
-            executeCallableStatement(connection, SqlUtils.CREATE_AUDIT_TABLE);
+            executeCallableStatement(connection, SqlUtils.CREATE_FLUSH_TABLE);
         }
 
-        String recordExists = (String) getSingleResult(connection, SqlUtils.AUDIT_TABLE_RECORD_EXISTS, DATATYPE.STRING);
+        String recordExists = (String) getSingleResult(connection, SqlUtils.FLUSH_TABLE_NOT_EMPTY, DATATYPE.STRING);
         if (recordExists == null) {
-            executeCallableStatement(connection, SqlUtils.INSERT_AUDIT_TABLE);
+            executeCallableStatement(connection, SqlUtils.INSERT_FLUSH_TABLE);
             if (!connection.getAutoCommit()) {
                 connection.commit();
+            }
+        }
+    }
+
+    static void createLogMiningHistoryObjects(Connection connection, String historyTableName) throws SQLException {
+
+        String tableExists = (String) getSingleResult(connection, SqlUtils.tableExistsQuery(SqlUtils.LOGMNR_HISTORY_TEMP_TABLE), DATATYPE.STRING);
+        if (tableExists == null) {
+            executeCallableStatement(connection, SqlUtils.logMiningHistoryDdl(SqlUtils.LOGMNR_HISTORY_TEMP_TABLE));
+        }
+        tableExists = (String) getSingleResult(connection, SqlUtils.tableExistsQuery(historyTableName), DATATYPE.STRING);
+        if (tableExists == null) {
+            executeCallableStatement(connection, SqlUtils.logMiningHistoryDdl(historyTableName));
+        }
+        String sequenceExists = (String) getSingleResult(connection, SqlUtils.LOGMINING_HISTORY_SEQUENCE_EXISTS, DATATYPE.STRING);
+        if (sequenceExists == null) {
+            executeCallableStatement(connection, SqlUtils.CREATE_LOGMINING_HISTORY_SEQUENCE);
+        }
+    }
+
+    static void deleteOutdatedHistory(Connection connection, long retention) throws SQLException {
+        Set<String> tableNames = getMap(connection, SqlUtils.getHistoryTableNamesQuery(), "-1").keySet();
+        for (String tableName : tableNames) {
+            long hoursAgo = SqlUtils.parseRetentionFromName(tableName);
+            if (hoursAgo > retention) {
+                LOGGER.info("Deleting history table {}", tableName);
+                executeCallableStatement(connection, SqlUtils.dropHistoryTableStatement(tableName));
             }
         }
     }
@@ -101,27 +157,62 @@ public class LogMinerHelper {
      * Gradual querying helps to catch up faster after long delays in mining.
      *
      * @param connection container level database connection
-     * @param metrics MBean accessible metrics
      * @param startScn start SCN
-     * @return next SCN to mine to
+     * @param metrics MBean accessible metrics
+     * @return next SCN to mine up to
      * @throws SQLException if anything unexpected happens
      */
     static long getEndScn(Connection connection, long startScn, LogMinerMetrics metrics) throws SQLException {
         long currentScn = getCurrentScn(connection);
         metrics.setCurrentScn(currentScn);
-        int miningDiapason = metrics.getBatchSize();
 
-        // it is critical to flush LogWriter buffer
-        executeCallableStatement(connection, SqlUtils.UPDATE_AUDIT_TABLE + currentScn);
-        if (!connection.getAutoCommit()) {
-            connection.commit();
+        long topScnToMine = startScn + metrics.getBatchSize();
+
+        // adjust batch size
+        boolean topMiningScnInFarFuture = false;
+        if ((topScnToMine - currentScn) > LogMinerMetrics.DEFAULT_BATCH_SIZE) {
+            metrics.changeBatchSize(false);
+            topMiningScnInFarFuture = true;
+        }
+        if ((currentScn - topScnToMine) > LogMinerMetrics.DEFAULT_BATCH_SIZE) {
+            metrics.changeBatchSize(true);
         }
 
-        // adjust sleeping time to optimize DB impact and catchup faster when behind
-        boolean isNextScnCloseToDbCurrent = currentScn < (startScn + miningDiapason);
-        metrics.changeSleepingTime(isNextScnCloseToDbCurrent);
+        // adjust sleeping time to reduce DB impact
+        if (currentScn < topScnToMine) {
+            if (!topMiningScnInFarFuture) {
+                metrics.changeSleepingTime(true);
+            }
+            return currentScn;
+        }
+        else {
+            metrics.changeSleepingTime(false);
+            return topScnToMine;
+        }
+    }
 
-        return isNextScnCloseToDbCurrent ? currentScn : startScn + miningDiapason;
+    /**
+     * It is critical to flush LogWriter(s) buffer
+     *
+     * @param connection container level database connection
+     * @param config configuration
+     * @param isRac true if this is the RAC system
+     * @param racHosts set of RAC host
+     * @throws SQLException exception
+     */
+    static void flushLogWriter(Connection connection, JdbcConfiguration config,
+                               boolean isRac, Set<String> racHosts)
+            throws SQLException {
+        long currentScn = getCurrentScn(connection);
+        if (isRac) {
+            flushRacLogWriters(currentScn, config, racHosts);
+        }
+        else {
+            executeCallableStatement(connection, SqlUtils.UPDATE_FLUSH_TABLE + currentScn);
+            if (!connection.getAutoCommit()) {
+                connection.commit();
+            }
+        }
     }
 
     /**
@@ -153,10 +244,10 @@ public class LogMinerHelper {
      * @param isContinuousMining works < 19 version only
      * @throws SQLException if anything unexpected happens
      */
-    static void startOnlineMining(Connection connection, Long startScn, Long endScn,
-                                  OracleConnectorConfig.LogMiningStrategy strategy, boolean isContinuousMining)
+    static void startLogMining(Connection connection, Long startScn, Long endScn,
+                               OracleConnectorConfig.LogMiningStrategy strategy, boolean isContinuousMining)
             throws SQLException {
-        String statement = SqlUtils.getStartLogMinerStatement(startScn, endScn, strategy, isContinuousMining);
+        String statement = SqlUtils.startLogMinerStatement(startScn, endScn, strategy, isContinuousMining);
         executeCallableStatement(connection, statement);
         // todo dbms_logmnr.STRING_LITERALS_IN_STMT?
         // todo If the log file is corrupted/bad, logmnr will not be able to access it, we have to switch to another one?
@@ -170,10 +261,8 @@ public class LogMinerHelper {
      * @throws SQLException if anything unexpected happens
      */
     static Set<String> getCurrentRedoLogFiles(Connection connection, LogMinerMetrics metrics) throws SQLException {
-        String checkQuery = SqlUtils.CURRENT_REDO_LOG_NAME;
-
         Set<String> fileNames = new HashSet<>();
-        try (PreparedStatement st = connection.prepareStatement(checkQuery); ResultSet result = st.executeQuery()) {
+        try (PreparedStatement st = connection.prepareStatement(SqlUtils.currentRedoNameQuery()); ResultSet result = st.executeQuery()) {
             while (result.next()) {
                 fileNames.add(result.getString(1));
                 LOGGER.trace(" Current Redo log fileName: {} ", fileNames);
@@ -194,7 +283,7 @@ public class LogMinerHelper {
     static long getFirstOnlineLogScn(Connection connection) throws SQLException {
         LOGGER.trace("getting first scn of all online logs");
         Statement s = connection.createStatement();
-        ResultSet res = s.executeQuery(SqlUtils.OLDEST_FIRST_CHANGE);
+        ResultSet res = s.executeQuery(SqlUtils.oldestFirstChangeQuery());
         res.next();
         long firstScnOfOnlineLog = res.getLong(1);
         res.close();
@@ -239,7 +328,7 @@ public class LogMinerHelper {
      * @throws SQLException if anything unexpected happens
      */
     private static Map<String, String> getRedoLogStatus(Connection connection) throws SQLException {
-        return getMap(connection, SqlUtils.REDO_LOGS_STATUS, UNKNOWN);
+        return getMap(connection, SqlUtils.redoLogStatusQuery(), UNKNOWN);
     }
 
     /**
@@ -249,15 +338,74 @@ public class LogMinerHelper {
      */
     private static int getSwitchCount(Connection connection) {
         try {
-            Map<String, String> total = getMap(connection, SqlUtils.SWITCH_HISTORY_TOTAL_COUNT, UNKNOWN);
-            if (total != null && total.get("total") != null) {
-                return Integer.parseInt(total.get("total"));
+            Map<String, String> total = getMap(connection, SqlUtils.switchHistoryQuery(), UNKNOWN);
+            if (total != null && total.get("TOTAL") != null) {
+                return Integer.parseInt(total.get("TOTAL"));
             }
         }
         catch (Exception e) {
             LOGGER.error("Cannot get switch counter due to the {}", e);
         }
         return 0;
+    }
+
+    /**
+     * Oracle RAC has one LogWriter per node (instance), we have to flush them all
+     * We cannot use a query like from gv_instance view to get all the nodes, because not all nodes could be load balanced.
+     * We also cannot rely on connection factory, because it may return connection to the same instance multiple times
+     * Instead we are asking node ip list from configuration
+     */
+    private static void flushRacLogWriters(long currentScn, JdbcConfiguration config, Set<String> racHosts) {
+        Instant startTime = Instant.now();
+        if (racHosts.isEmpty()) {
+            throw new RuntimeException("No RAC node ip addresses were supplied in the configuration");
+        }
+
+        // todo: Ugly, but, using one factory.connect() in the loop, it may always connect the same node with badly configured load balancer
+        boolean errors = false;
+        for (String host : racHosts) {
+            try {
+                Connection conn = racFlushConnections.get(host);
+                if (conn == null) {
+                    LOGGER.warn("Connection to the node {} was not instantiated", host);
+                    errors = true;
+                    continue;
+                }
+                LOGGER.trace("Flushing Log Writer buffer of node {}", host);
+                executeCallableStatement(conn, SqlUtils.UPDATE_FLUSH_TABLE + currentScn);
+                conn.commit();
+            }
+            catch (Exception e) {
+                LOGGER.warn("Cannot flush Log Writer buffer of the node {} due to {}", host, e);
+                errors = true;
+            }
+        }
+
+        if (errors) {
+            instantiateFlushConnections(config, racHosts);
+            LOGGER.warn("Not all LogWriter buffers were flushed. Sleeping for 3 seconds to let Oracle do the flush.", racHosts);
+            Metronome metronome = Metronome.sleeper(Duration.ofMillis(3000), Clock.system());
+            try {
+                metronome.pause();
+            }
+            catch (InterruptedException e) {
+                LOGGER.warn("Metronome was interrupted");
+            }
+        }
+
+        LOGGER.trace("Flushing RAC Log Writers took {} ", Duration.between(startTime, Instant.now()));
+    }
+
+    // todo use pool
+    private static Connection createFlushConnection(JdbcConfiguration config, String host) throws SQLException {
+        final String user = config.getUser();
+        final String password = config.getPassword();
+        int port = config.getPort();
+        final String database = config.getDatabase();
+        final String url = "jdbc:oracle:thin:@" + host + ":" + port + "/" + database;
+        Connection conn = DriverManager.getConnection(url, user, password);
+        conn.setAutoCommit(false);
+        return conn;
     }
 
     /**
@@ -272,10 +420,8 @@ public class LogMinerHelper {
                 connection.setSessionToPdb(pdbName);
             }
 
-            final String key = "KEY";
-            String validateGlobalLogging = "SELECT '" + key + "', " + " SUPPLEMENTAL_LOG_DATA_ALL from V$DATABASE";
-            Map<String, String> globalLogging = getMap(connection.connection(false), validateGlobalLogging, UNKNOWN);
-            if ("no".equalsIgnoreCase(globalLogging.get(key))) {
+            Map<String, String> globalLogging = getMap(connection.connection(false), SqlUtils.supplementalLoggingCheckQuery(), UNKNOWN);
+            if ("no".equalsIgnoreCase(globalLogging.get("KEY"))) {
                 throw new RuntimeException("Supplemental logging was not set. Use command: ALTER DATABASE ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
             }
         }
@@ -292,7 +438,7 @@ public class LogMinerHelper {
      *
      * @param connection container level database connection
      */
-    static void endMining(Connection connection) {
+    public static void endMining(Connection connection) {
         String stopMining = SqlUtils.END_LOGMNR;
         try {
             executeCallableStatement(connection, stopMining);
@@ -308,54 +454,58 @@ public class LogMinerHelper {
     }
 
     /**
-     * This method substitutes CONTINUOUS_MINE functionality for online files only
+     * This method substitutes CONTINUOUS_MINE functionality
      * @param connection connection
      * @param lastProcessedScn current offset
      * @throws SQLException if anything unexpected happens
      */
-    static void setRedoLogFilesForMining(Connection connection, Long lastProcessedScn) throws SQLException {
+    // todo: check RAC resiliency
+    public static void setRedoLogFilesForMining(Connection connection, Long lastProcessedScn) throws SQLException {
 
-        Map<String, Long> logFilesForMining = getLogFilesForOffsetScn(connection, lastProcessedScn);
-        if (logFilesForMining.isEmpty()) {
-            throw new IllegalStateException("The online log files do not contain offset SCN: " + lastProcessedScn + ", re-snapshot is required.");
+        removeLogFilesFromMining(connection);
+
+        Map<String, Long> onlineLogFilesForMining = getOnlineLogFilesForOffsetScn(connection, lastProcessedScn);
+        Map<String, Long> archivedLogFilesForMining = getArchivedLogFilesForOffsetScn(connection, lastProcessedScn);
+
+        if (onlineLogFilesForMining.size() + archivedLogFilesForMining.size() == 0) {
+            throw new IllegalStateException("None of log files contains offset SCN: " + lastProcessedScn + ", re-snapshot is required.");
         }
 
-        // The following check seems to be problematic and removal of it does not appear to cause
-        // any detrimental impact to the connector's ability to stream changes. This was left as
-        // is but commented in case we find a reason for it to exist.
-        // int redoLogGroupSize = getRedoLogGroupSize(connection);
-        // if (logFilesForMining.size() == redoLogGroupSize) {
-        // throw new IllegalStateException("All online log files needed for mining the offset SCN: " + lastProcessedScn + ", re-snapshot is required.");
-        // }
+        List<String> logFilesNames = onlineLogFilesForMining.entrySet().stream().map(Map.Entry::getKey).collect(Collectors.toList());
+        // remove duplications
+        List<String> archivedLogFiles = archivedLogFilesForMining.entrySet().stream()
+                .filter(e -> !onlineLogFilesForMining.values().contains(e.getValue())).map(Map.Entry::getKey).collect(Collectors.toList());
+        logFilesNames.addAll(archivedLogFiles);
 
-        List<String> logFilesNamesForMining = logFilesForMining.entrySet().stream().map(Map.Entry::getKey).collect(Collectors.toList());
-
-        for (String file : logFilesNamesForMining) {
-            String addLogFileStatement = SqlUtils.getAddLogFileStatement("DBMS_LOGMNR.ADDFILE", file);
+        for (String file : logFilesNames) {
+            String addLogFileStatement = SqlUtils.addLogFileStatement("DBMS_LOGMNR.ADDFILE", file);
             executeCallableStatement(connection, addLogFileStatement);
             LOGGER.trace("add log file to the mining session = {}", file);
         }
 
-        LOGGER.debug("Last mined SCN: {}, Log file list to mine: {}\n", lastProcessedScn, logFilesForMining);
+        LOGGER.debug("Last mined SCN: {}, Log file list to mine: {}\n", lastProcessedScn, logFilesNames);
     }
 
     /**
-     * This method returns SCN as a watermark to abandon long lasting transactions.
+     * This method calculates SCN as a watermark to abandon long lasting transactions.
+     * The criteria is don't let offset scn go out of archives older given number of hours
      *
      * @param connection connection
-     * @param offsetScn current offset
-     * @return Optional last SCN in a redo log
-     * @throws SQLException if anything unexpected happens
+     * @param offsetScn current offset scn
+     * @param hoursToKeepTransaction hours to tolerate long transaction
+     * @return optional SCN as a watermark for abandonment
      */
-    static Optional<Long> getLastScnFromTheOldestOnlineRedo(Connection connection, Long offsetScn) throws SQLException {
-
-        Map<String, String> allOnlineRedoLogFiles = getMap(connection, SqlUtils.ALL_ONLINE_LOGS, "-1");
-        Map<String, Long> logFilesToMine = getLogFilesForOffsetScn(connection, offsetScn);
-
-        LOGGER.debug("Redo log size = {}, needed for mining files size = {}", allOnlineRedoLogFiles.size(), logFilesToMine.size());
-        if (allOnlineRedoLogFiles.size() - logFilesToMine.size() <= 1) {
-            List<Long> lastScnsInRedoLogToMine = logFilesToMine.entrySet().stream().map(Map.Entry::getValue).collect(Collectors.toList());
-            return lastScnsInRedoLogToMine.stream().min(Long::compareTo);
+    public static Optional<Long> getLastScnToAbandon(Connection connection, Long offsetScn, int hoursToKeepTransaction) {
+        try {
+            String query = SqlUtils.diffInDaysQuery(offsetScn);
+            Float diffInDays = (Float) getSingleResult(connection, query, DATATYPE.FLOAT);
+            if (diffInDays != null && (diffInDays * 24) > hoursToKeepTransaction) {
+                return Optional.of(offsetScn);
+            }
+        }
+        catch (SQLException e) {
+            LOGGER.error("Cannot calculate days difference due to {}", e);
+            return Optional.of(offsetScn);
         }
         return Optional.empty();
     }
@@ -376,18 +526,47 @@ public class LogMinerHelper {
      * @return size
      */
     private static int getRedoLogGroupSize(Connection connection) throws SQLException {
-        return getMap(connection, SqlUtils.ALL_ONLINE_LOGS, "-1").size();
+        return getMap(connection, SqlUtils.allOnlineLogsQuery(), "-1").size();
     }
 
     /**
      * This method returns all online log files, starting from one which contains offset SCN and ending with one containing largest SCN
      * 18446744073709551615 on Ora 19c is the max value of the nextScn in the current redo todo replace all Long with BigInteger for SCN
      */
-    private static Map<String, Long> getLogFilesForOffsetScn(Connection connection, Long offsetScn) throws SQLException {
-        Map<String, String> redoLogFiles = getMap(connection, SqlUtils.ALL_ONLINE_LOGS, "-1");
+    public static Map<String, Long> getOnlineLogFilesForOffsetScn(Connection connection, Long offsetScn) throws SQLException {
+        Map<String, String> redoLogFiles = getMap(connection, SqlUtils.allOnlineLogsQuery(), "-1");
         return redoLogFiles.entrySet().stream()
                 .filter(entry -> new BigInteger(entry.getValue()).longValue() > offsetScn || new BigInteger(entry.getValue()).longValue() == -1).collect(Collectors
                         .toMap(Map.Entry::getKey, e -> new BigInteger(e.getValue()).longValue() == -1 ? Long.MAX_VALUE : new BigInteger(e.getValue()).longValue()));
+    }
+
+    /**
+     * This method returns all archived log files for one day, containing given offset scn
+     * @param connection    connection
+     * @param offsetScn     offset scn
+     * @return              Map of archived files
+     * @throws SQLException if something happens
+     */
+    public static Map<String, Long> getArchivedLogFilesForOffsetScn(Connection connection, Long offsetScn) throws SQLException {
+        Map<String, String> redoLogFiles = getMap(connection, SqlUtils.oneDayArchivedLogsQuery(offsetScn), "-1");
+        return redoLogFiles.entrySet().stream().collect(
+                Collectors.toMap(Map.Entry::getKey, e -> new BigDecimal(e.getValue()).longValue() == -1 ? Long.MAX_VALUE : new BigDecimal(e.getValue()).longValue()));
+    }
+
+    /**
+     * This method removes all added log files from mining
+     * @param conn connection
+     * @throws SQLException something happened
+     */
+    public static void removeLogFilesFromMining(Connection conn) throws SQLException {
+        try (PreparedStatement ps = conn.prepareStatement(SqlUtils.FILES_FOR_MINING);
+                ResultSet result = ps.executeQuery()) {
+            while (result.next()) {
+                String fileName = result.getString(1);
+                executeCallableStatement(conn, SqlUtils.deleteLogFileStatement(fileName));
+                LOGGER.debug("File {} was removed from mining", fileName);
+            }
+        }
     }
 
     private static void executeCallableStatement(Connection connection, String statement) throws SQLException {
@@ -397,7 +576,7 @@ public class LogMinerHelper {
         }
     }
 
-    private static Map<String, String> getMap(Connection connection, String query, String nullReplacement) throws SQLException {
+    public static Map<String, String> getMap(Connection connection, String query, String nullReplacement) throws SQLException {
         Map<String, String> result = new LinkedHashMap<>();
         try (
                 PreparedStatement statement = connection.prepareStatement(query);
@@ -411,7 +590,7 @@ public class LogMinerHelper {
         }
     }
 
-    private static Object getSingleResult(Connection connection, String query, DATATYPE type) throws SQLException {
+    public static Object getSingleResult(Connection connection, String query, DATATYPE type) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement(query);
                 ResultSet rs = statement.executeQuery()) {
             if (rs.next()) {
@@ -422,6 +601,8 @@ public class LogMinerHelper {
                         return rs.getTimestamp(1);
                     case STRING:
                         return rs.getString(1);
+                    case FLOAT:
+                        return rs.getFloat(1);
                 }
             }
             return null;

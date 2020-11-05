@@ -72,6 +72,15 @@ public class OracleChangeRecordValueConverter extends JdbcValueConverters {
             .appendFraction(ChronoField.NANO_OF_SECOND, 0, 9, false)
             .optionalEnd()
             .toFormatter();
+    private static final DateTimeFormatter TIMESTAMP_AM_PM_SHORT_FORMATTER = new DateTimeFormatterBuilder()
+            .parseCaseInsensitive()
+            .appendPattern("dd-MMM-yy hh.mm.ss")
+            .optionalStart()
+            .appendPattern(".")
+            .appendFraction(ChronoField.NANO_OF_SECOND, 0, 9, false)
+            .optionalEnd()
+            .appendPattern(" a")
+            .toFormatter();
     private static final DateTimeFormatter TIMESTAMP_TZ_FORMATTER = new DateTimeFormatterBuilder()
             .parseCaseInsensitive()
             .appendPattern("yyyy-MM-dd HH:mm:ss")
@@ -212,11 +221,18 @@ public class OracleChangeRecordValueConverter extends JdbcValueConverters {
 
         // todo make it better
         String dateText;
+        LocalDateTime dateTime;
         if (value instanceof String) {
             String valueString = (String) value;
             if (valueString.toLowerCase().startsWith("to_timestamp")) {
                 dateText = valueString.substring("to_timestamp".length() + 2, valueString.length() - 2);
-                LocalDateTime dateTime = LocalDateTime.from(TIMESTAMP_FORMATTER.parse(dateText.trim()));
+                if (dateText.indexOf(" AM") > 0 || dateText.indexOf(" PM") > 0) {
+                    // todo remove this formatter after ensuring NLS formats are set properly
+                    dateTime = LocalDateTime.from(TIMESTAMP_AM_PM_SHORT_FORMATTER.parse(dateText.trim()));
+                }
+                else {
+                    dateTime = LocalDateTime.from(TIMESTAMP_FORMATTER.parse(dateText.trim()));
+                }
                 // todo: DBZ-137 this originally converted to ZoneId.systemDefault() but this should be GMT
                 // this is so that this behavior is compatible with the Xstreams implementation
                 return dateTime.atZone(ZoneId.of("GMT")).toInstant().toEpochMilli() * 1000; // timestamp(6) is converted as microTimestamp

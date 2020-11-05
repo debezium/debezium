@@ -94,6 +94,43 @@ public class OracleDmlParserTest {
     }
 
     @Test
+    public void shouldParseTimestampFormats() throws Exception {
+        String createStatement = IoUtil.read(IoUtil.getResourceAsStream("ddl/create_table.sql", null, getClass(), null, null));
+        ddlParser.parse(createStatement, tables);
+        String format1 = "TO_TIMESTAMP('2020-09-22 00:09:37.302000')";
+        String format2 = "TO_TIMESTAMP('2020-09-22 00:09:37.')";
+        String format3 = "TO_TIMESTAMP('2020-09-22 00:09:37')";
+        String format4 = "TO_TIMESTAMP('22-SEP-20 12.09.37 AM')";
+        String format5 = "TO_TIMESTAMP('22-SEP-20 12.09.37 PM')";
+        String format6 = "TO_TIMESTAMP('29-SEP-20 06.02.24.777000 PM')";
+        String format7 = "TO_TIMESTAMP('2020-09-22 00:09:37.0')";
+
+        parseTimestamp(format1, false);
+        parseTimestamp(format2, true);
+        parseTimestamp(format3, true);
+        parseTimestamp(format4, true);
+        parseTimestamp(format5, false);
+        parseTimestamp(format6, false);
+        parseTimestamp(format7, true);
+    }
+
+    private void parseTimestamp(String format, boolean validateTimestamp) {
+        String dml = "update \"" + FULL_TABLE_NAME + "\" a set a.\"col1\" = '9', a.col2 = 'diFFerent', a.col3 = 'anotheR', a.col4 = '123', a.col6 = 5.2, " +
+                "a.col8 = " + format + ", a.col10 = " + CLOB_DATA + ", a.col11 = null, a.col12 = '1' " +
+                "where a.ID = 5 and a.COL1 = 6 and a.\"COL2\" = 'text' " +
+                "and a.COL3 = 'text' and a.COL4 IS NULL and a.\"COL5\" IS NULL and a.COL6 IS NULL " +
+                "and a.COL8 = " + format + " and a.col11 is null;";
+
+        LogMinerDmlEntry record = sqlDmlParser.parse(dml, tables, "1");
+        assertThat(record.getNewValues()).isNotEmpty();
+        assertThat(record.getOldValues()).isNotEmpty();
+
+        if (validateTimestamp) {
+            assertThat(record.getNewValues().get(7).getColumnData()).isEqualTo(1600758577000000L);
+        }
+    }
+
+    @Test
     public void shouldParseAliasInsert() throws Exception {
         String createStatement = IoUtil.read(IoUtil.getResourceAsStream("ddl/create_table.sql", null, getClass(), null, null));
         ddlParser.parse(createStatement, tables);

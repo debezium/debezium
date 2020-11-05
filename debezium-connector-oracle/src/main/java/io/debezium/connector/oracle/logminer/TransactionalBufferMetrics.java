@@ -22,22 +22,26 @@ import io.debezium.metrics.Metrics;
  */
 @ThreadSafe
 public class TransactionalBufferMetrics extends Metrics implements TransactionalBufferMetricsMXBean {
+
+    private final static long MILLIS_PER_SECOND = 1000L;
+
     private final AtomicLong oldestScn = new AtomicLong();
     private final AtomicLong committedScn = new AtomicLong();
-    private final AtomicReference<Duration> lagFromTheSource = new AtomicReference<>();
+    private final AtomicLong offsetScn = new AtomicLong();
     private final AtomicInteger activeTransactions = new AtomicInteger();
     private final AtomicLong rolledBackTransactions = new AtomicLong();
     private final AtomicLong committedTransactions = new AtomicLong();
-    private final AtomicLong capturedDmlCounter = new AtomicLong();
+    private final AtomicLong registeredDmlCounter = new AtomicLong();
     private final AtomicLong committedDmlCounter = new AtomicLong();
+    private final AtomicLong lastCommitDuration = new AtomicLong();
+    private final AtomicLong maxCommitDuration = new AtomicLong();
     private final AtomicInteger commitQueueCapacity = new AtomicInteger();
+    private final AtomicReference<Duration> lagFromTheSource = new AtomicReference<>();
     private final AtomicReference<Duration> maxLagFromTheSource = new AtomicReference<>();
     private final AtomicReference<Duration> minLagFromTheSource = new AtomicReference<>();
-    private final AtomicReference<Duration> averageLagsFromTheSource = new AtomicReference<>();
     private final AtomicReference<Set<String>> abandonedTransactionIds = new AtomicReference<>();
     private final AtomicReference<Set<String>> rolledBackTransactionIds = new AtomicReference<>();
     private final Instant startTime;
-    private final static long MILLIS_PER_SECOND = 1000L;
     private final AtomicLong timeDifference = new AtomicLong();
     private final AtomicInteger errorCounter = new AtomicInteger();
     private final AtomicInteger warningCounter = new AtomicInteger();
@@ -49,6 +53,7 @@ public class TransactionalBufferMetrics extends Metrics implements Transactional
         oldestScn.set(-1);
         committedScn.set(-1);
         timeDifference.set(0);
+        offsetScn.set(0);
         reset();
     }
 
@@ -59,6 +64,10 @@ public class TransactionalBufferMetrics extends Metrics implements Transactional
 
     public void setCommittedScn(Long scn) {
         committedScn.set(scn);
+    }
+
+    public void setOffsetScn(Long scn) {
+        offsetScn.set(scn);
     }
 
     public void setTimeDifference(AtomicLong timeDifference) {
@@ -75,13 +84,6 @@ public class TransactionalBufferMetrics extends Metrics implements Transactional
             }
             if (minLagFromTheSource.get().toMillis() > lagFromTheSource.get().toMillis()) {
                 minLagFromTheSource.set(lagFromTheSource.get());
-            }
-
-            if (averageLagsFromTheSource.get().isZero()) {
-                averageLagsFromTheSource.set(lagFromTheSource.get());
-            }
-            else {
-                averageLagsFromTheSource.set(averageLagsFromTheSource.get().plus(lagFromTheSource.get()).dividedBy(2));
             }
         }
     }
@@ -100,8 +102,8 @@ public class TransactionalBufferMetrics extends Metrics implements Transactional
         committedTransactions.incrementAndGet();
     }
 
-    void incrementCapturedDmlCounter() {
-        capturedDmlCounter.incrementAndGet();
+    void incrementRegisteredDmlCounter() {
+        registeredDmlCounter.incrementAndGet();
     }
 
     void incrementCommittedDmlCounter(int counter) {
@@ -117,6 +119,13 @@ public class TransactionalBufferMetrics extends Metrics implements Transactional
     void addRolledBackTransactionId(String transactionId) {
         if (transactionId != null) {
             rolledBackTransactionIds.get().add(transactionId);
+        }
+    }
+
+    void setLastCommitDuration(Long lastDuration) {
+        lastCommitDuration.set(lastDuration);
+        if (lastDuration > maxCommitDuration.get()) {
+            maxCommitDuration.set(lastDuration);
         }
     }
 
@@ -156,6 +165,11 @@ public class TransactionalBufferMetrics extends Metrics implements Transactional
     }
 
     @Override
+    public Long getOffsetScn() {
+        return offsetScn.get();
+    }
+
+    @Override
     public int getNumberOfActiveTransactions() {
         return activeTransactions.get();
     }
@@ -177,14 +191,8 @@ public class TransactionalBufferMetrics extends Metrics implements Transactional
     }
 
     @Override
-    public long getCapturedDmlThroughput() {
-        long timeSpent = Duration.between(startTime, Instant.now()).isZero() ? 1 : Duration.between(startTime, Instant.now()).toMillis();
-        return committedDmlCounter.get() * MILLIS_PER_SECOND / timeSpent;
-    }
-
-    @Override
-    public long getCapturedDmlCount() {
-        return capturedDmlCounter.longValue();
+    public long getRegisteredDmlCount() {
+        return registeredDmlCounter.longValue();
     }
 
     @Override
@@ -200,11 +208,6 @@ public class TransactionalBufferMetrics extends Metrics implements Transactional
     @Override
     public long getMinLagFromSource() {
         return minLagFromTheSource.get().toMillis();
-    }
-
-    @Override
-    public long getAverageLagFromSource() {
-        return averageLagsFromTheSource.get().toMillis();
     }
 
     @Override
@@ -241,15 +244,22 @@ public class TransactionalBufferMetrics extends Metrics implements Transactional
         this.commitQueueCapacity.set(commitQueueCapacity);
     }
 
+    public Long getLastCommitDuration() {
+        return lastCommitDuration.get();
+    }
+
+    public Long getMaxCommitDuration() {
+        return maxCommitDuration.get();
+    }
+
     @Override
     public void reset() {
         maxLagFromTheSource.set(Duration.ZERO);
         minLagFromTheSource.set(Duration.ZERO);
-        averageLagsFromTheSource.set(Duration.ZERO);
         activeTransactions.set(0);
         rolledBackTransactions.set(0);
         committedTransactions.set(0);
-        capturedDmlCounter.set(0);
+        registeredDmlCounter.set(0);
         committedDmlCounter.set(0);
         abandonedTransactionIds.set(new HashSet<>());
         rolledBackTransactionIds.set(new HashSet<>());
@@ -265,15 +275,17 @@ public class TransactionalBufferMetrics extends Metrics implements Transactional
         return "TransactionalBufferMetrics{" +
                 "oldestScn=" + oldestScn.get() +
                 ", committedScn=" + committedScn.get() +
+                ", offsetScn=" + offsetScn.get() +
                 ", lagFromTheSource=" + lagFromTheSource.get() +
                 ", activeTransactions=" + activeTransactions.get() +
                 ", rolledBackTransactions=" + rolledBackTransactions.get() +
                 ", committedTransactions=" + committedTransactions.get() +
-                ", capturedDmlCounter=" + capturedDmlCounter.get() +
+                ", lastCommitDuration=" + lastCommitDuration +
+                ", maxCommitDuration=" + maxCommitDuration +
+                ", registeredDmlCounter=" + registeredDmlCounter.get() +
                 ", committedDmlCounter=" + committedDmlCounter.get() +
                 ", maxLagFromTheSource=" + maxLagFromTheSource.get() +
                 ", minLagFromTheSource=" + minLagFromTheSource.get() +
-                ", averageLagsFromTheSource=" + averageLagsFromTheSource.get() +
                 ", abandonedTransactionIds=" + abandonedTransactionIds.get() +
                 ", errorCounter=" + errorCounter.get() +
                 ", warningCounter=" + warningCounter.get() +

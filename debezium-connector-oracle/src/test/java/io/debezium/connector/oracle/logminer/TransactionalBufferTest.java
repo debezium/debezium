@@ -104,14 +104,14 @@ public class TransactionalBufferTest {
 
     @Test
     public void testIsNotEmptyWhenTransactionIsRegistered() {
-        transactionalBuffer.registerCommitCallback(TRANSACTION_ID, SCN, Instant.now(), "", (timestamp, smallestScn, commitScn, counter) -> {
+        transactionalBuffer.registerCommitCallback(TRANSACTION_ID, SCN, Instant.now(), (timestamp, smallestScn, commitScn, counter) -> {
         });
         assertThat(transactionalBuffer.isEmpty()).isEqualTo(false);
     }
 
     @Test
     public void testIsNotEmptyWhenTransactionIsCommitting() {
-        transactionalBuffer.registerCommitCallback(TRANSACTION_ID, SCN, Instant.now(), "", (timestamp, smallestScn, commitScn, counter) -> Thread.sleep(1000));
+        transactionalBuffer.registerCommitCallback(TRANSACTION_ID, SCN, Instant.now(), (timestamp, smallestScn, commitScn, counter) -> Thread.sleep(1000));
         offsetContext = new OracleOffsetContext(connectorConfig, SCN.longValue(), SCN.longValue(), (LcrPosition) null, false, true, new TransactionContext());
         transactionalBuffer.commit(TRANSACTION_ID, SCN.add(BigDecimal.ONE), offsetContext, TIMESTAMP, () -> true, MESSAGE);
         assertThat(transactionalBuffer.isEmpty()).isEqualTo(false);
@@ -120,7 +120,7 @@ public class TransactionalBufferTest {
     @Test
     public void testIsEmptyWhenTransactionIsCommitted() throws InterruptedException {
         CountDownLatch commitLatch = new CountDownLatch(1);
-        transactionalBuffer.registerCommitCallback(TRANSACTION_ID, SCN, Instant.now(), "", (timestamp, smallestScn, commitScn, counter) -> commitLatch.countDown());
+        transactionalBuffer.registerCommitCallback(TRANSACTION_ID, SCN, Instant.now(), (timestamp, smallestScn, commitScn, counter) -> commitLatch.countDown());
         offsetContext = new OracleOffsetContext(connectorConfig, SCN.longValue(), SCN.longValue(), (LcrPosition) null, false, true, new TransactionContext());
         transactionalBuffer.commit(TRANSACTION_ID, SCN.add(BigDecimal.ONE), offsetContext, TIMESTAMP, () -> true, MESSAGE);
         commitLatch.await();
@@ -130,7 +130,7 @@ public class TransactionalBufferTest {
 
     @Test
     public void testIsEmptyWhenTransactionIsRolledBack() {
-        transactionalBuffer.registerCommitCallback(TRANSACTION_ID, SCN, Instant.now(), "", (timestamp, smallestScn, commitScn, counter) -> {
+        transactionalBuffer.registerCommitCallback(TRANSACTION_ID, SCN, Instant.now(), (timestamp, smallestScn, commitScn, counter) -> {
         });
         transactionalBuffer.rollback(TRANSACTION_ID, "");
         assertThat(transactionalBuffer.isEmpty()).isEqualTo(true);
@@ -139,9 +139,9 @@ public class TransactionalBufferTest {
 
     @Test
     public void testNonEmptyFirstTransactionIsRolledBack() {
-        transactionalBuffer.registerCommitCallback(TRANSACTION_ID, SCN, Instant.now(), "insert", (timestamp, smallestScn, commitScn, counter) -> {
+        transactionalBuffer.registerCommitCallback(TRANSACTION_ID, SCN, Instant.now(), (timestamp, smallestScn, commitScn, counter) -> {
         });
-        transactionalBuffer.registerCommitCallback(OTHER_TRANSACTION_ID, OTHER_SCN, Instant.now(), "", (timestamp, smallestScn, commitScn, counter) -> {
+        transactionalBuffer.registerCommitCallback(OTHER_TRANSACTION_ID, OTHER_SCN, Instant.now(), (timestamp, smallestScn, commitScn, counter) -> {
         });
         transactionalBuffer.rollback(TRANSACTION_ID, "");
         assertThat(transactionalBuffer.isEmpty()).isEqualTo(false);
@@ -152,9 +152,9 @@ public class TransactionalBufferTest {
 
     @Test
     public void testNonEmptySecondTransactionIsRolledBack() {
-        transactionalBuffer.registerCommitCallback(TRANSACTION_ID, SCN, Instant.now(), "", (timestamp, smallestScn, commitScn, counter) -> {
+        transactionalBuffer.registerCommitCallback(TRANSACTION_ID, SCN, Instant.now(), (timestamp, smallestScn, commitScn, counter) -> {
         });
-        transactionalBuffer.registerCommitCallback(OTHER_TRANSACTION_ID, OTHER_SCN, Instant.now(), "", (timestamp, smallestScn, commitScn, counter) -> {
+        transactionalBuffer.registerCommitCallback(OTHER_TRANSACTION_ID, OTHER_SCN, Instant.now(), (timestamp, smallestScn, commitScn, counter) -> {
         });
         transactionalBuffer.rollback(OTHER_TRANSACTION_ID, "");
         assertThat(transactionalBuffer.isEmpty()).isEqualTo(false);
@@ -167,7 +167,7 @@ public class TransactionalBufferTest {
     public void testCalculateScnWhenTransactionIsCommitted() throws InterruptedException {
         CountDownLatch commitLatch = new CountDownLatch(1);
         AtomicReference<BigDecimal> smallestScnContainer = new AtomicReference<>();
-        transactionalBuffer.registerCommitCallback(TRANSACTION_ID, SCN, Instant.now(), "", (timestamp, smallestScn, commitScn, counter) -> {
+        transactionalBuffer.registerCommitCallback(TRANSACTION_ID, SCN, Instant.now(), (timestamp, smallestScn, commitScn, counter) -> {
             smallestScnContainer.set(smallestScn);
             commitLatch.countDown();
         });
@@ -186,11 +186,11 @@ public class TransactionalBufferTest {
     public void testCalculateScnWhenFirstTransactionIsCommitted() throws InterruptedException {
         CountDownLatch commitLatch = new CountDownLatch(1);
         AtomicReference<BigDecimal> smallestScnContainer = new AtomicReference<>();
-        transactionalBuffer.registerCommitCallback(TRANSACTION_ID, SCN, Instant.now(), "", (timestamp, smallestScn, commitScn, counter) -> {
+        transactionalBuffer.registerCommitCallback(TRANSACTION_ID, SCN, Instant.now(), (timestamp, smallestScn, commitScn, counter) -> {
             smallestScnContainer.set(smallestScn);
             commitLatch.countDown();
         });
-        transactionalBuffer.registerCommitCallback(OTHER_TRANSACTION_ID, OTHER_SCN, Instant.now(), "", (timestamp, smallestScn, commitScn, counter) -> {
+        transactionalBuffer.registerCommitCallback(OTHER_TRANSACTION_ID, OTHER_SCN, Instant.now(), (timestamp, smallestScn, commitScn, counter) -> {
         });
         assertThat(transactionalBuffer.getLargestScn()).isEqualTo(OTHER_SCN); // before commit
         offsetContext = new OracleOffsetContext(connectorConfig, SCN.longValue(), SCN.longValue(), null, false, true, new TransactionContext());
@@ -205,11 +205,11 @@ public class TransactionalBufferTest {
 
     @Test
     public void testCalculateScnWhenSecondTransactionIsCommitted() throws InterruptedException {
-        transactionalBuffer.registerCommitCallback(TRANSACTION_ID, SCN, Instant.now(), "", (timestamp, smallestScn, commitScn, counter) -> {
+        transactionalBuffer.registerCommitCallback(TRANSACTION_ID, SCN, Instant.now(), (timestamp, smallestScn, commitScn, counter) -> {
         });
         CountDownLatch commitLatch = new CountDownLatch(1);
         AtomicReference<BigDecimal> smallestScnContainer = new AtomicReference<>();
-        transactionalBuffer.registerCommitCallback(OTHER_TRANSACTION_ID, OTHER_SCN, Instant.now(), "", (timestamp, smallestScn, commitScn, counter) -> {
+        transactionalBuffer.registerCommitCallback(OTHER_TRANSACTION_ID, OTHER_SCN, Instant.now(), (timestamp, smallestScn, commitScn, counter) -> {
             smallestScnContainer.set(smallestScn);
             commitLatch.countDown();
         });
@@ -225,9 +225,9 @@ public class TransactionalBufferTest {
 
     @Test
     public void testResetLargestScn() {
-        transactionalBuffer.registerCommitCallback(TRANSACTION_ID, SCN, Instant.now(), "", (timestamp, smallestScn, commitScn, counter) -> {
+        transactionalBuffer.registerCommitCallback(TRANSACTION_ID, SCN, Instant.now(), (timestamp, smallestScn, commitScn, counter) -> {
         });
-        transactionalBuffer.registerCommitCallback(OTHER_TRANSACTION_ID, OTHER_SCN, Instant.now(), "", (timestamp, smallestScn, commitScn, counter) -> {
+        transactionalBuffer.registerCommitCallback(OTHER_TRANSACTION_ID, OTHER_SCN, Instant.now(), (timestamp, smallestScn, commitScn, counter) -> {
         });
         assertThat(transactionalBuffer.getLargestScn()).isEqualTo(OTHER_SCN); // before commit
         offsetContext = new OracleOffsetContext(connectorConfig, OTHER_SCN.longValue(), OTHER_SCN.longValue(), null, false, true, new TransactionContext());
@@ -242,7 +242,7 @@ public class TransactionalBufferTest {
 
     @Test
     public void testAbandoningOneTransaction() {
-        transactionalBuffer.registerCommitCallback(TRANSACTION_ID, SCN, Instant.now(), "", (timestamp, smallestScn, commitScn, counter) -> {
+        transactionalBuffer.registerCommitCallback(TRANSACTION_ID, SCN, Instant.now(), (timestamp, smallestScn, commitScn, counter) -> {
         });
         transactionalBuffer.abandonLongTransactions(SCN.longValue());
         assertThat(transactionalBuffer.isEmpty()).isEqualTo(true);
@@ -251,9 +251,9 @@ public class TransactionalBufferTest {
 
     @Test
     public void testAbandoningTransactionHavingAnotherOne() {
-        transactionalBuffer.registerCommitCallback(TRANSACTION_ID, SCN, Instant.now(), "", (timestamp, smallestScn, commitScn, counter) -> {
+        transactionalBuffer.registerCommitCallback(TRANSACTION_ID, SCN, Instant.now(), (timestamp, smallestScn, commitScn, counter) -> {
         });
-        transactionalBuffer.registerCommitCallback(OTHER_TRANSACTION_ID, OTHER_SCN, Instant.now(), "", (timestamp, smallestScn, commitScn, counter) -> {
+        transactionalBuffer.registerCommitCallback(OTHER_TRANSACTION_ID, OTHER_SCN, Instant.now(), (timestamp, smallestScn, commitScn, counter) -> {
         });
         transactionalBuffer.abandonLongTransactions(SCN.longValue());
         assertThat(transactionalBuffer.isEmpty()).isEqualTo(false);
@@ -262,61 +262,14 @@ public class TransactionalBufferTest {
 
     @Test
     public void testTransactionDump() {
-        transactionalBuffer.registerCommitCallback(TRANSACTION_ID, SCN, Instant.now(), SQL_ONE, (timestamp, smallestScn, commitScn, counter) -> {
+        transactionalBuffer.registerCommitCallback(TRANSACTION_ID, SCN, Instant.now(), (timestamp, smallestScn, commitScn, counter) -> {
         });
-        transactionalBuffer.registerCommitCallback(OTHER_TRANSACTION_ID, OTHER_SCN, Instant.now(), SQL_ONE, (timestamp, smallestScn, commitScn, counter) -> {
+        transactionalBuffer.registerCommitCallback(OTHER_TRANSACTION_ID, OTHER_SCN, Instant.now(), (timestamp, smallestScn, commitScn, counter) -> {
         });
-        transactionalBuffer.registerCommitCallback(OTHER_TRANSACTION_ID, OTHER_SCN, Instant.now(), SQL_TWO, (timestamp, smallestScn, commitScn, counter) -> {
+        transactionalBuffer.registerCommitCallback(OTHER_TRANSACTION_ID, OTHER_SCN, Instant.now(), (timestamp, smallestScn, commitScn, counter) -> {
         });
-        assertThat(transactionalBuffer.toString()).contains(SQL_ONE);
-        assertThat(transactionalBuffer.toString()).contains(SQL_TWO);
-    }
-
-    @Test
-    public void testDuplicatedRedoSql() {
-
-        assertThat(transactionalBuffer.getLargestScn().equals(BigDecimal.ZERO));
-
-        final String insertIntoATable = "insert into a table";
-        final String anotherInsertIntoATable = "another insert into a table";
-        final String duplicatedInsertIntoATable = "duplicated insert into a table";
-
-        transactionalBuffer.registerCommitCallback(TRANSACTION_ID, SCN, Instant.now(), insertIntoATable, (timestamp, smallestScn, commitScn, counter) -> {
-        });
-        transactionalBuffer.registerCommitCallback(TRANSACTION_ID, OTHER_SCN, Instant.now(), anotherInsertIntoATable, (timestamp, smallestScn, commitScn, counter) -> {
-        });
-        assertThat(transactionalBuffer.getLargestScn().equals(OTHER_SCN));
-        assertThat(transactionalBuffer.toString().contains(insertIntoATable));
-        assertThat(transactionalBuffer.toString().contains(anotherInsertIntoATable));
-        transactionalBuffer.rollback(TRANSACTION_ID, "");
-
-        // duplications are OK in different transactions
-        transactionalBuffer.registerCommitCallback(TRANSACTION_ID, SCN, Instant.now(), duplicatedInsertIntoATable, (timestamp, smallestScn, commitScn, counter) -> {
-        });
-        transactionalBuffer.registerCommitCallback(OTHER_TRANSACTION_ID, SCN, Instant.now(), duplicatedInsertIntoATable, (timestamp, smallestScn, commitScn, counter) -> {
-        });
-        assertThat(transactionalBuffer.toString().indexOf(duplicatedInsertIntoATable) != transactionalBuffer.toString().lastIndexOf(duplicatedInsertIntoATable));
-        transactionalBuffer.rollback(TRANSACTION_ID, "");
-        transactionalBuffer.rollback(OTHER_TRANSACTION_ID, "");
-
-        // duplications are NOT OK in a transactions for different SCNs if they are sequential
-        transactionalBuffer.registerCommitCallback(TRANSACTION_ID, SCN, Instant.now(), duplicatedInsertIntoATable, (timestamp, smallestScn, commitScn, counter) -> {
-        });
-        transactionalBuffer.registerCommitCallback(TRANSACTION_ID, OTHER_SCN, Instant.now(), duplicatedInsertIntoATable, (timestamp, smallestScn, commitScn, counter) -> {
-        });
-        assertThat(transactionalBuffer.toString().indexOf(duplicatedInsertIntoATable) == transactionalBuffer.toString().lastIndexOf(duplicatedInsertIntoATable));
-        transactionalBuffer.rollback(TRANSACTION_ID, "");
-
-        // duplications are OK in a transactions for different SCNs if they are NOT sequential
-        transactionalBuffer.registerCommitCallback(TRANSACTION_ID, SCN, Instant.now(), duplicatedInsertIntoATable, (timestamp, smallestScn, commitScn, counter) -> {
-        });
-        transactionalBuffer.registerCommitCallback(TRANSACTION_ID, OTHER_SCN, Instant.now(), insertIntoATable, (timestamp, smallestScn, commitScn, counter) -> {
-        });
-        transactionalBuffer.registerCommitCallback(TRANSACTION_ID, LARGEST_SCN, Instant.now(), duplicatedInsertIntoATable,
-                (timestamp, smallestScn, commitScn, counter) -> {
-                });
-        assertThat(transactionalBuffer.toString().indexOf(duplicatedInsertIntoATable) != transactionalBuffer.toString().lastIndexOf(duplicatedInsertIntoATable));
-        transactionalBuffer.rollback(TRANSACTION_ID, "");
+        assertThat(transactionalBuffer.toString()).contains(String.valueOf(SCN));
+        assertThat(transactionalBuffer.toString()).contains(String.valueOf(OTHER_SCN));
     }
 
     @Test
@@ -354,7 +307,7 @@ public class TransactionalBufferTest {
     }
 
     private void commitTransaction(TransactionalBuffer.CommitCallback commitCallback) {
-        transactionalBuffer.registerCommitCallback(TRANSACTION_ID, SCN, Instant.now(), "", commitCallback);
+        transactionalBuffer.registerCommitCallback(TRANSACTION_ID, SCN, Instant.now(), commitCallback);
         offsetContext = new OracleOffsetContext(connectorConfig, SCN.longValue(), SCN.longValue(), null, false, true, new TransactionContext());
         transactionalBuffer.commit(TRANSACTION_ID, SCN.add(BigDecimal.ONE), offsetContext, TIMESTAMP, () -> true, MESSAGE);
     }

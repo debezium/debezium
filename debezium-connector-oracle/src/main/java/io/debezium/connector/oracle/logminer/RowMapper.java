@@ -46,6 +46,12 @@ public class RowMapper {
     private static final int SEG_OWNER = 8;
     private static final int OPERATION = 9;
     private static final int USERNAME = 10;
+    // todo: add these for recording
+    // private static final int ROW_ID = 9;
+    // private static final int SESSION_NUMBER = 10;
+    // private static final int SERIAL_NUMBER = 11;
+    // private static final int RS_ID = 12;
+    // private static final int SSN = 12;
 
     public static String getOperation(TransactionalBufferMetrics metrics, ResultSet rs) {
         try {
@@ -129,21 +135,37 @@ public class RowMapper {
 
     /**
      * It constructs REDO_SQL. If REDO_SQL  is in a few lines, it truncates after first 40_000 characters
+     * It also records Log Miner history info if isDml is true
+     *
      * @param metrics metrics
      * @param rs result set
-     * @return REDO_SQL
+     * @param isDml flag indicating if operation code is a DML
+     * @param historyRecorder history recorder
+     * @param scn scn
+     * @param tableName table name
+     * @param segOwner segment owner
+     * @param operationCode operation code
+     * @param changeTime time of change
+     * @param txId transaction ID
+     * @return the redo SQL
      */
-    public static String getSqlRedo(TransactionalBufferMetrics metrics, ResultSet rs) {
+    public static String getSqlRedo(TransactionalBufferMetrics metrics, ResultSet rs, boolean isDml,
+                                    LogMinerHistoryRecorder historyRecorder, BigDecimal scn, String tableName,
+                                    String segOwner, int operationCode, Timestamp changeTime, String txId) {
         int lobLimitCounter = 9; // todo : decide on approach ( XStream chunk option) and Lob limit
         StringBuilder result = new StringBuilder(4000);
         try {
-            String redo_sql = rs.getString(SQL_REDO);
-            if (redo_sql == null) {
+            String redoSql = rs.getString(SQL_REDO);
+            if (redoSql == null) {
                 return null;
             }
-            result = new StringBuilder(redo_sql);
+            result = new StringBuilder(redoSql);
 
             int csf = rs.getInt(CSF);
+            if (isDml) {
+                historyRecorder.insertIntoTempTable(scn, tableName, segOwner, operationCode, changeTime, txId, csf, redoSql);
+            }
+
             // 0 - indicates SQL_REDO is contained within the same row
             // 1 - indicates that either SQL_REDO is greater than 4000 bytes in size and is continued in
             // the next row returned by the ResultSet
@@ -155,6 +177,9 @@ public class RowMapper {
                 }
                 result.append(rs.getString(SQL_REDO));
                 csf = rs.getInt(CSF);
+                if (isDml) {
+                    historyRecorder.insertIntoTempTable(scn, tableName, segOwner, operationCode, changeTime, txId, csf, rs.getString(SQL_REDO));
+                }
             }
 
         }

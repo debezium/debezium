@@ -50,12 +50,13 @@ class LogMinerQueryResultProcessor {
     private long currentOffsetScn = 0;
     private long currentOffsetCommitScn = 0;
     private long stuckScnCounter = 0;
+    private LogMinerHistoryRecorder historyRecorder;
 
     LogMinerQueryResultProcessor(ChangeEventSource.ChangeEventSourceContext context, LogMinerMetrics metrics,
                                  TransactionalBuffer transactionalBuffer, SimpleDmlParser dmlParser,
                                  OracleOffsetContext offsetContext, OracleDatabaseSchema schema,
                                  EventDispatcher<TableId> dispatcher, TransactionalBufferMetrics transactionalBufferMetrics,
-                                 String catalogName, Clock clock) {
+                                 String catalogName, Clock clock, LogMinerHistoryRecorder historyRecorder) {
         this.context = context;
         this.metrics = metrics;
         this.transactionalBuffer = transactionalBuffer;
@@ -66,6 +67,7 @@ class LogMinerQueryResultProcessor {
         this.transactionalBufferMetrics = transactionalBufferMetrics;
         this.catalogName = catalogName;
         this.clock = clock;
+        this.historyRecorder = historyRecorder;
     }
 
     /**
@@ -77,9 +79,6 @@ class LogMinerQueryResultProcessor {
         int dmlCounter = 0;
         int commitCounter = 0;
         int rollbackCounter = 0;
-        Duration cumulativeCommitTime = Duration.ZERO;
-        Duration cumulativeParseTime = Duration.ZERO;
-        Duration cumulativeOtherTime = Duration.ZERO;
         Instant startTime = Instant.now();
         while (true) {
             try {
@@ -92,10 +91,7 @@ class LogMinerQueryResultProcessor {
                 return 0;
             }
 
-            Instant iterationStart = Instant.now();
-
             BigDecimal scn = RowMapper.getScn(transactionalBufferMetrics, resultSet);
-            String redo_sql = RowMapper.getSqlRedo(transactionalBufferMetrics, resultSet);
             String tableName = RowMapper.getTableName(transactionalBufferMetrics, resultSet);
             String segOwner = RowMapper.getSegOwner(transactionalBufferMetrics, resultSet);
             int operationCode = RowMapper.getOperationCode(transactionalBufferMetrics, resultSet);
@@ -103,11 +99,17 @@ class LogMinerQueryResultProcessor {
             String txId = RowMapper.getTransactionId(transactionalBufferMetrics, resultSet);
             String operation = RowMapper.getOperation(transactionalBufferMetrics, resultSet);
             String userName = RowMapper.getUsername(transactionalBufferMetrics, resultSet);
+            boolean isDml = false;
+            if (operationCode == RowMapper.INSERT || operationCode == RowMapper.UPDATE || operationCode == RowMapper.DELETE) {
+                isDml = true;
+            }
+            String redoSql = RowMapper.getSqlRedo(transactionalBufferMetrics, resultSet, isDml, historyRecorder, scn, tableName, segOwner, operationCode, changeTime,
+                    txId);
 
             LOGGER.trace("scn={}, operationCode={}, operation={}, table={}, segOwner={}, userName={}", scn, operationCode, operation, tableName, segOwner, userName);
 
-            String logMessage = String.format("transactionId = %s, SCN= %s, table_name= %s, segOwner= %s, operationCode=%s, offsetSCN= %s, " +
-                    " commitOffsetSCN= %s", txId, scn, tableName, segOwner, operationCode, offsetContext.getScn(), offsetContext.getCommitScn());
+            String logMessage = String.format("transactionId=%s, SCN=%s, table_name=%s, segOwner=%s, operationCode=%s, offsetSCN=%s, " +
+                    " commitOffsetSCN=%s", txId, scn, tableName, segOwner, operationCode, offsetContext.getScn(), offsetContext.getCommitScn());
 
             if (scn == null) {
                 LogMinerHelper.logWarn(transactionalBufferMetrics, "Scn is null for {}", logMessage);
@@ -116,16 +118,21 @@ class LogMinerQueryResultProcessor {
 
             // Commit
             if (operationCode == RowMapper.COMMIT) {
+                if (transactionalBuffer.isTransactionRegistered(txId)) {
+                    historyRecorder.insertIntoTempTable(scn, tableName, segOwner, operationCode, changeTime, txId, 0, redoSql);
+                }
                 if (transactionalBuffer.commit(txId, scn, offsetContext, changeTime, context, logMessage)) {
                     LOGGER.trace("COMMIT, {}", logMessage);
                     commitCounter++;
-                    cumulativeCommitTime = cumulativeCommitTime.plus(Duration.between(iterationStart, Instant.now()));
                 }
                 continue;
             }
 
             // Rollback
             if (operationCode == RowMapper.ROLLBACK) {
+                if (transactionalBuffer.isTransactionRegistered(txId)) {
+                    historyRecorder.insertIntoTempTable(scn, tableName, segOwner, operationCode, changeTime, txId, 0, redoSql);
+                }
                 if (transactionalBuffer.rollback(txId, logMessage)) {
                     LOGGER.trace("ROLLBACK, {}", logMessage);
                     rollbackCounter++;
@@ -136,28 +143,26 @@ class LogMinerQueryResultProcessor {
             // DDL
             if (operationCode == RowMapper.DDL) {
                 // todo: DDL operations are not yet supported during streaming while using Log Miner.
-                LOGGER.info("DDL: {}, REDO_SQL: {}", logMessage, redo_sql);
+                historyRecorder.insertIntoTempTable(scn, tableName, segOwner, operationCode, changeTime, txId, 0, redoSql);
+                LOGGER.info("DDL: {}, REDO_SQL: {}", logMessage, redoSql);
                 continue;
             }
 
             // MISSING_SCN
             if (operationCode == RowMapper.MISSING_SCN) {
+                historyRecorder.insertIntoTempTable(scn, tableName, segOwner, operationCode, changeTime, txId, 0, redoSql);
                 LogMinerHelper.logWarn(transactionalBufferMetrics, "Missing SCN,  {}", logMessage);
                 continue;
             }
 
             // DML
             if (operationCode == RowMapper.INSERT || operationCode == RowMapper.DELETE || operationCode == RowMapper.UPDATE) {
-                LOGGER.trace("DML,  {}, sql {}", logMessage, redo_sql);
+                LOGGER.trace("DML,  {}, sql {}", logMessage, redoSql);
                 dmlCounter++;
-                metrics.incrementCapturedDmlCount();
-                iterationStart = Instant.now();
-                LogMinerDmlEntry dmlEntry = dmlParser.parse(redo_sql, schema.getTables(), txId);
-                cumulativeParseTime = cumulativeParseTime.plus(Duration.between(iterationStart, Instant.now()));
-                iterationStart = Instant.now();
+                LogMinerDmlEntry dmlEntry = dmlParser.parse(redoSql, schema.getTables(), txId);
 
-                if (dmlEntry == null || redo_sql == null) {
-                    LOGGER.trace("Following statement was not parsed: {}, details: {}", redo_sql, logMessage);
+                if (dmlEntry == null || redoSql == null) {
+                    LOGGER.trace("Following statement was not parsed: {}, details: {}", redoSql, logMessage);
                     continue;
                 }
 
@@ -166,7 +171,7 @@ class LogMinerQueryResultProcessor {
                         && dmlEntry.getOldValues().size() == dmlEntry.getNewValues().size()
                         && dmlEntry.getNewValues().containsAll(dmlEntry.getOldValues())) {
                     LOGGER.trace("Following DML was skipped, " +
-                            "most likely because of ignored excluded column change: {}, details: {}", redo_sql, logMessage);
+                            "most likely because of ignored blacklisted column change: {}, details: {}", redoSql, logMessage);
                     continue;
                 }
 
@@ -178,7 +183,7 @@ class LogMinerQueryResultProcessor {
 
                 try {
                     TableId tableId = RowMapper.getTableId(catalogName, resultSet);
-                    transactionalBuffer.registerCommitCallback(txId, scn, changeTime.toInstant(), redo_sql, (timestamp, smallestScn, commitScn, counter) -> {
+                    transactionalBuffer.registerCommitCallback(txId, scn, changeTime.toInstant(), (timestamp, smallestScn, commitScn, counter) -> {
                         // update SCN in offset context only if processed SCN less than SCN among other transactions
                         if (smallestScn == null || scn.compareTo(smallestScn) < 0) {
                             offsetContext.setScn(scn.longValue());
@@ -196,7 +201,6 @@ class LogMinerQueryResultProcessor {
                         dispatcher.dispatchDataChangeEvent(tableId,
                                 new LogMinerChangeRecordEmitter(offsetContext, dmlEntry, table, clock));
                     });
-                    cumulativeOtherTime = cumulativeOtherTime.plus(Duration.between(iterationStart, Instant.now()));
 
                 }
                 catch (Exception e) {
@@ -204,36 +208,43 @@ class LogMinerQueryResultProcessor {
                 }
             }
         }
-        metrics.setProcessedCapturedBatchDuration(Duration.between(startTime, Instant.now()));
+
         if (dmlCounter > 0 || commitCounter > 0 || rollbackCounter > 0) {
+
+            Duration totalTime = Duration.between(startTime, Instant.now());
+            metrics.setLastCapturedDmlCount(dmlCounter);
+            metrics.setLastDurationOfBatchProcessing(totalTime);
+
             warnStuckScn();
             currentOffsetScn = offsetContext.getScn();
             if (offsetContext.getCommitScn() != null) {
                 currentOffsetCommitScn = offsetContext.getCommitScn();
             }
-            LOGGER.debug("{} DMLs, {} Commits, {} Rollbacks. Millis - (total:{}, commit:{}, parse:{}, other:{}). " +
+            LOGGER.debug("{} DMLs, {} Commits, {} Rollbacks. Processed in {} millis. " +
                     "Lag:{}. Offset scn:{}. Offset commit scn:{}. Active transactions:{}. Sleep time:{}",
-                    dmlCounter, commitCounter, rollbackCounter, (Duration.between(startTime, Instant.now()).toMillis()),
-                    cumulativeCommitTime.toMillis(), cumulativeParseTime.toMillis(), cumulativeOtherTime.toMillis(),
+                    dmlCounter, commitCounter, rollbackCounter, totalTime.toMillis(),
                     transactionalBufferMetrics.getLagFromSource(), offsetContext.getScn(), offsetContext.getCommitScn(),
                     transactionalBufferMetrics.getNumberOfActiveTransactions(), metrics.getMillisecondToSleepBetweenMiningQuery());
         }
+
+        historyRecorder.doBulkHistoryInsert();
         return dmlCounter;
     }
 
     /**
      * This method is warning if a long running transaction is discovered and could be abandoned in the future.
-     * The criteria is the offset SCN remains the same in five mining cycles
+     * The criteria is the offset SCN remains the same in 25 mining cycles
      */
     private void warnStuckScn() {
         if (offsetContext != null && offsetContext.getCommitScn() != null) {
             if (currentOffsetScn == offsetContext.getScn() && currentOffsetCommitScn != offsetContext.getCommitScn()) {
                 stuckScnCounter++;
                 // logWarn only once
-                if (stuckScnCounter == 5) {
+                if (stuckScnCounter == 25) {
                     LogMinerHelper.logWarn(transactionalBufferMetrics,
-                            "Offset SCN {} did not change in five mining cycles, hence the oldest transaction was not committed. Offset commit SCN: {}", currentOffsetScn,
-                            offsetContext.getCommitScn());
+                            "Offset SCN {} is not changing. It indicates long transaction(s). " +
+                                    "Offset commit SCN: {}",
+                            currentOffsetScn, offsetContext.getCommitScn());
                     transactionalBufferMetrics.incrementScnFreezeCounter();
                 }
             }
