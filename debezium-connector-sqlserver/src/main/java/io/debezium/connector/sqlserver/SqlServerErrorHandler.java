@@ -30,6 +30,8 @@ public class SqlServerErrorHandler extends ErrorHandler {
                         || throwable.getMessage().contains("Connection reset")
                         || throwable.getMessage().contains("SHUTDOWN is in progress")
                         || throwable.getMessage()
-                                .startsWith("An insufficient number of arguments were supplied for the procedure or function cdc.fn_cdc_get_all_changes_"));
+                                .startsWith("An insufficient number of arguments were supplied for the procedure or function cdc.fn_cdc_get_all_changes_")
+                        || throwable.getMessage()
+                                .endsWith("was deadlocked on lock resources with another process and has been chosen as the deadlock victim. Rerun the transaction."));
     }
 }
