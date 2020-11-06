@@ -211,7 +211,6 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                         dispatcher.dispatchTransactionCommittedEvent(offsetContext);
                     }
                     maybeWarnAboutGrowingWalBacklog(true);
-                    return;
                 }
                 // DML event
                 else {

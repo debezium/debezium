@@ -21,7 +21,7 @@ public class ConnectorConfiguration {
     private final ObjectNode configNode;
 
     protected ConnectorConfiguration() {
-        ObjectMapper mapper = new ObjectMapper();
+        final ObjectMapper mapper = new ObjectMapper();
         this.configNode = mapper.createObjectNode();
         this.configNode.put("tasks.max", 1);
     }

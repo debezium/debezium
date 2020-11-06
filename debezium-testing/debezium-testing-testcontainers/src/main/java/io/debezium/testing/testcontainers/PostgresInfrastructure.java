@@ -5,6 +5,7 @@
  */
 package io.debezium.testing.testcontainers;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Stream;
 
@@ -23,7 +24,7 @@ public class PostgresInfrastructure {
     protected static final String POSTGRES_DEFAULT_IMAGE = "postgres:9.6.19";
     protected static final String POSTGRES_DEFAULT_DEBEZIUM_IMAGE = "debezium/example-postgres:1.3";
 
-    protected static Map<String, PostgresInfrastructure> postgresInfrastructures;
+    protected static final Map<String, PostgresInfrastructure> postgresInfrastructures = new HashMap<>();
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PostgresInfrastructure.class);
 
@@ -54,7 +55,7 @@ public class PostgresInfrastructure {
         if (postgresInfrastructures.containsKey(postgresImage)) {
             return postgresInfrastructures.get(postgresImage);
         }
-        PostgresInfrastructure infrastructure = new PostgresInfrastructure(postgresImage);
+        final PostgresInfrastructure infrastructure = new PostgresInfrastructure(postgresImage);
         postgresInfrastructures.put(postgresImage, infrastructure);
         return infrastructure;
     }

@@ -20,6 +20,7 @@ import org.testcontainers.containers.Container;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
+import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.embedded.EmbeddedEngine;
@@ -51,11 +52,13 @@ public class PostgresShutdownIT extends AbstractConnectorTest {
     private static final String SETUP_TABLES_STMT = CREATE_TABLES_STMT + INSERT_STMT;
 
     private PostgresInfrastructure infrastructure;
+    private String oldContainerPort;
 
     @Before
     public void setUp() {
         infrastructure = PostgresInfrastructure.getDebeziumPostgresInfrastructure();
         infrastructure.startContainer();
+        oldContainerPort = System.getProperty("database.port", "5432");
         System.setProperty("database.port", String.valueOf(infrastructure.getPostgresContainer().getMappedPort(5432)));
         try {
             TestHelper.dropAllSchemas();
@@ -72,7 +75,7 @@ public class PostgresShutdownIT extends AbstractConnectorTest {
         TestHelper.dropDefaultReplicationSlot();
         TestHelper.dropPublication();
         infrastructure.getPostgresContainer().stop();
-        System.setProperty("database.port", "5432");
+        System.setProperty("database.port", oldContainerPort);
     }
 
     @Test
@@ -93,36 +96,34 @@ public class PostgresShutdownIT extends AbstractConnectorTest {
                 .with(DatabaseHeartbeatImpl.HEARTBEAT_ACTION_QUERY, "UPDATE s1.heartbeat SET ts=NOW();");
 
         Testing.Print.enable();
-        String initialHeartbeat = TestHelper.create().queryAndMap("SELECT ts FROM s1.heartbeat;", rs -> {
-            rs.next();
-            return rs.getString("ts");
-        });
+        PostgresConnection postgresConnection = TestHelper.create();
+        String initialHeartbeat = postgresConnection.queryAndMap(
+                "SELECT ts FROM s1.heartbeat;",
+                postgresConnection.singleResultMapper(rs -> rs.getString("ts"), "Could not fetch keepalive info"));
         start(PostgresConnector.class, configBuilder.build());
         assertConnectorIsRunning();
 
         waitForSnapshotToBeCompleted("postgres", TestHelper.TEST_SERVER);
         waitForStreamingRunning("postgres", TestHelper.TEST_SERVER);
 
-        System.out.println("Waiting for heartbeats...");
+        logger.info("Waiting for heartbeats...");
         Awaitility.await()
                 .pollInterval(250, TimeUnit.MILLISECONDS)
-                .atMost(10, TimeUnit.SECONDS)
-                .until(() -> !initialHeartbeat.equals(TestHelper.create().queryAndMap("SELECT ts FROM s1.heartbeat;", rs -> {
-                    rs.next();
-                    return rs.getString("ts");
-                })));
-        System.out.println("INTIAL Heartbeat: " + initialHeartbeat + " ; CURRENT heartbeat: "
-                + TestHelper.create().queryAndMap("SELECT ts FROM s1.heartbeat;", rs -> {
-                    rs.next();
-                    return rs.getString("ts");
-                }));
+                .atMost(5 * TestHelper.waitTimeForRecords(), TimeUnit.SECONDS)
+                .until(() -> !initialHeartbeat.equals(postgresConnection.queryAndMap(
+                        "SELECT ts FROM s1.heartbeat;",
+                        postgresConnection.singleResultMapper(rs -> rs.getString("ts"), "Could not fetch keepalive info"))));
+        logger.info("INTIAL Heartbeat: " + initialHeartbeat + " ; CURRENT heartbeat: "
+                + postgresConnection.queryAndMap(
+                        "SELECT ts FROM s1.heartbeat;",
+                        postgresConnection.singleResultMapper(rs -> rs.getString("ts"), "Could not fetch keepalive info")));
 
-        System.out.println("Execute Postgres shutdown...");
+        logger.info("Execute Postgres shutdown...");
         Container.ExecResult result = infrastructure.getPostgresContainer()
                 .execInContainer("su", "-", "postgres", "-c", "/usr/lib/postgresql/11/bin/pg_ctl -m fast -D /var/lib/postgresql/data stop");
-        System.out.println(result.toString());
+        logger.info(result.toString());
 
-        System.out.println("Waiting for Postgres to shutdown...");
+        logger.info("Waiting for Postgres to shutdown...");
         waitForPostgresShutdown();
 
         assertFalse(isStreamingRunning("postgres", TestHelper.TEST_SERVER));
@@ -131,7 +132,7 @@ public class PostgresShutdownIT extends AbstractConnectorTest {
     private void waitForPostgresShutdown() {
         Awaitility.await()
                 .pollInterval(200, TimeUnit.MILLISECONDS)
-                .atMost(2, TimeUnit.MINUTES)
+                .atMost(60 * TestHelper.waitTimeForRecords(), TimeUnit.SECONDS)
                 .until(() -> !infrastructure.getPostgresContainer().isRunning());
     }
 

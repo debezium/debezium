@@ -93,6 +93,7 @@ public abstract class AbstractConnectorTest implements Testing {
     public TestRule skipTestRule = new SkipTestRule();
 
     protected static final Path OFFSET_STORE_PATH = Testing.Files.createTestingPath("file-connector-offsets.txt").toAbsolutePath();
+    private static final String TEST_PROPERTY_PREFIX = "debezium.test.";
 
     private ExecutorService executor;
     protected EmbeddedEngine engine;
@@ -730,7 +731,7 @@ public abstract class AbstractConnectorTest implements Testing {
                 Testing.print(" - topic:'" + k + "'; # of events = " + v.size());
             });
             Testing.print("Records:");
-            records.forEach(record -> AbstractConnectorTest.this.print(record));
+            records.forEach(AbstractConnectorTest.this::print);
         }
     }
 
@@ -765,7 +766,7 @@ public abstract class AbstractConnectorTest implements Testing {
                 break;
             }
         }
-        return consumedLines.isEmpty() ? false : true;
+        return !consumedLines.isEmpty();
     }
 
     /**
@@ -1025,13 +1026,17 @@ public abstract class AbstractConnectorTest implements Testing {
         Assertions.assertThat(offset.get("transaction_id")).isEqualTo(expectedTxId);
     }
 
+    public static int waitTimeForRecords() {
+        return Integer.parseInt(System.getProperty(TEST_PROPERTY_PREFIX + "records.waittime", "2"));
+    }
+
     public static void waitForSnapshotToBeCompleted(String connector, String server) throws InterruptedException {
         final MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
 
         Awaitility.await()
                 .alias("Streaming was not started on time")
                 .pollInterval(100, TimeUnit.MILLISECONDS)
-                .atMost(60, TimeUnit.SECONDS)
+                .atMost(waitTimeForRecords() * 30, TimeUnit.SECONDS)
                 .ignoreException(InstanceNotFoundException.class)
                 .until(() -> {
                     boolean snapshotCompleted = (boolean) mbeanServer
@@ -1045,16 +1050,13 @@ public abstract class AbstractConnectorTest implements Testing {
         waitForStreamingRunning(connector, server, "streaming");
     }
 
-    public static void waitForStreamingRunning(String connector, String server, String contextName) throws InterruptedException {
-        final MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
-
+    public static void waitForStreamingRunning(String connector, String server, String contextName) {
         Awaitility.await()
                 .alias("Streaming was not started on time")
                 .pollInterval(100, TimeUnit.MILLISECONDS)
-                .atMost(60, TimeUnit.SECONDS)
+                .atMost(waitTimeForRecords() * 30, TimeUnit.SECONDS)
                 .ignoreException(InstanceNotFoundException.class)
-                .until(() -> (boolean) mbeanServer
-                        .getAttribute(getStreamingMetricsObjectName(connector, server, contextName), "Connected"));
+                .until(() -> isStreamingRunning(connector, server, contextName));
     }
 
     public static boolean isStreamingRunning(String connector, String server) {
