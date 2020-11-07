@@ -1877,19 +1877,6 @@ public interface Configuration {
             configValuesByFieldName.put(field.name(), new ConfigValue(field.name()));
         });
 
-        // If any dependents don't exist ...
-        fields.forEachMissingDependent(missingDepedent -> {
-            ConfigValue undefinedConfigValue = new ConfigValue(missingDepedent);
-            undefinedConfigValue.addErrorMessage(missingDepedent + " is referred in the dependents, but not defined.");
-            undefinedConfigValue.visible(false);
-            configValuesByFieldName.put(missingDepedent, undefinedConfigValue);
-        });
-
-        // Now validate each top-level field ...
-        fields.forEachTopLevelField(field -> {
-            field.validate(this, fields::fieldWithName, configValuesByFieldName);
-        });
-
         return configValuesByFieldName;
     }
 
