@@ -273,34 +273,31 @@ public class MySqlDefaultValueConverter {
 
         s = s.trim();
 
+        // clean first dash
+        s = replaceFirstNonNumericSubstring(s, 0, '-');
+        // clean second dash
+        s = replaceFirstNonNumericSubstring(s, s.indexOf('-') + 1, '-');
+        // clean dividing space
+        s = replaceFirstNonNumericSubstring(s, s.indexOf('-', s.indexOf('-') + 1) + 1, ' ');
+        if (s.indexOf(' ') != -1) {
+            // clean first colon
+            s = replaceFirstNonNumericSubstring(s, s.indexOf(' ') + 1, ':');
+            if (s.indexOf(':') != -1) {
+                // clean second colon
+                s = replaceFirstNonNumericSubstring(s, s.indexOf(':') + 1, ':');
+            }
+        }
+
         final int MAX_MONTH = 12;
         final int MAX_DAY = 31;
 
         // Parse the date
         int firstDash = s.indexOf('-');
         int secondDash = s.indexOf('-', firstDash + 1);
-
-        int dividingStart = -1;
-        int dividingEnd = -1;
-        boolean hasDividing = false;
-        for (int i = secondDash + 1; i < s.length(); i++) {
-            if (!Character.isDigit(s.charAt(i))) {
-                dividingStart = i;
-                hasDividing = true;
-                break;
-            }
-        }
-        if (hasDividing) {
-            for (int i = dividingStart; i < s.length(); i++) {
-                if (Character.isDigit(s.charAt(i))) {
-                    break;
-                }
-                dividingEnd = i;
-            }
-        }
+        int dividingSpace = s.indexOf(' ');
 
         // Parse the time
-        int firstColon = s.indexOf(':', dividingEnd + 1);
+        int firstColon = s.indexOf(':', dividingSpace + 1);
         int secondColon = s.indexOf(':', firstColon + 1);
         int period = s.indexOf('.', secondColon + 1);
 
@@ -317,8 +314,8 @@ public class MySqlDefaultValueConverter {
         if (firstDash > 0 && secondDash > firstDash) {
             year = Integer.parseInt(s.substring(0, firstDash));
             month = Integer.parseInt(s.substring(firstDash + 1, secondDash));
-            if (hasDividing) {
-                day = Integer.parseInt(s.substring(secondDash + 1, dividingStart));
+            if (dividingSpace != -1) {
+                day = Integer.parseInt(s.substring(secondDash + 1, dividingSpace));
             }
             else {
                 day = Integer.parseInt(s.substring(secondDash + 1, len));
@@ -333,12 +330,12 @@ public class MySqlDefaultValueConverter {
         }
 
         // Get the time. Hour, minute, second and colons are all optional
-        if (hasDividing && dividingEnd < len - 1) {
+        if (dividingSpace != -1 && dividingSpace < len - 1) {
             if (firstColon == -1) {
-                hour = Integer.parseInt(s.substring(dividingEnd + 1, len));
+                hour = Integer.parseInt(s.substring(dividingSpace + 1, len));
             }
             else {
-                hour = Integer.parseInt(s.substring(dividingEnd + 1, firstColon));
+                hour = Integer.parseInt(s.substring(dividingSpace + 1, firstColon));
                 if (firstColon < len - 1) {
                     if (secondColon == -1) {
                         minute = Integer.parseInt(s.substring(firstColon + 1, len));
@@ -367,6 +364,23 @@ public class MySqlDefaultValueConverter {
         }
 
         return cleanedTimestamp.toString();
+    }
+
+    /**
+     * Replace the first non-numeric substring
+     *
+     * @param s the original string
+     * @param startIndex the beginning index, inclusive
+     * @param c the new character
+     * @return
+     */
+    private String replaceFirstNonNumericSubstring(String s, int startIndex, char c) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(s.substring(0, startIndex));
+
+        String rest = s.substring(startIndex);
+        sb.append(rest.replaceFirst("[^\\d]+", Character.toString(c)));
+        return sb.toString();
     }
 
     public ColumnEditor setColumnDefaultValue(ColumnEditor columnEditor) {

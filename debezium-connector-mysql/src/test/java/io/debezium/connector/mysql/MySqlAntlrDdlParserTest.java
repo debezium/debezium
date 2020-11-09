@@ -2559,14 +2559,22 @@ public class MySqlAntlrDdlParserTest {
                 "ts_col08 TIMESTAMP DEFAULT '2020-01-02 03:04'," +
                 "ts_col09 TIMESTAMP DEFAULT '2020-01-02 03:004'," +
                 "ts_col10 TIMESTAMP DEFAULT '2020-01-02 03:04:05'," +
-                "ts_col11 TIMESTAMP DEFAULT '2020-01-02 03:04:05.6'," +
+                "ts_col11 TIMESTAMP(6) DEFAULT '2020-01-02 03:04:05.123456'," +
                 "ts_col12 TIMESTAMP DEFAULT '2020-01-02 03:04:05.'," +
                 "ts_col13 TIMESTAMP DEFAULT '2020-01-02:03:04:05'," +
                 "ts_col14 TIMESTAMP DEFAULT '2020-01-02-03:04:05'," +
                 "ts_col15 TIMESTAMP DEFAULT '2020-01-02--03:04:05'," +
                 "ts_col16 TIMESTAMP DEFAULT '2020-01-02--03:004:0005'," +
                 "ts_col17 TIMESTAMP DEFAULT '02020-0001-00002--03:004:0005'," +
-                "ts_col18 TIMESTAMP DEFAULT '1970-01-01:00:00:001');";
+                "ts_col18 TIMESTAMP DEFAULT '1970-01-01:00:00:001'," +
+                "ts_col19 TIMESTAMP DEFAULT '2020-01-02 03!@#.$:{}()[]^04!@#.$:{}()[]^05'," +
+                "ts_col20 TIMESTAMP DEFAULT '2020-01-02 03::04'," +
+                "ts_col21 TIMESTAMP DEFAULT '2020-01-02 03::04.'," +
+                "ts_col22 TIMESTAMP DEFAULT '2020-01-02 03.04'," +
+                "ts_col23 TIMESTAMP DEFAULT '2020#01#02 03.04'," +
+                "ts_col24 TIMESTAMP DEFAULT '2020##01--02^03.04'," +
+                "ts_col25 TIMESTAMP DEFAULT '2020-01-02  03::04'" +
+                ");";
         parser.parse(ddl, tables);
 
         Table table = tables.forTable(new TableId(null, null, "my_table"));
@@ -2591,7 +2599,7 @@ public class MySqlAntlrDdlParserTest {
         assertThat(table.columnWithName("ts_col10").hasDefaultValue()).isEqualTo(true);
         assertThat(table.columnWithName("ts_col10").defaultValue()).isEqualTo(toIsoString("2020-01-02 03:04:05"));
         assertThat(table.columnWithName("ts_col11").hasDefaultValue()).isEqualTo(true);
-        assertThat(table.columnWithName("ts_col11").defaultValue()).isEqualTo(toIsoString("2020-01-02 03:04:05.6"));
+        assertThat(table.columnWithName("ts_col11").defaultValue()).isEqualTo(toIsoString("2020-01-02 03:04:05.123456"));
         assertThat(table.columnWithName("ts_col12").hasDefaultValue()).isEqualTo(true);
         assertThat(table.columnWithName("ts_col12").defaultValue()).isEqualTo(toIsoString("2020-01-02 03:04:05"));
         assertThat(table.columnWithName("ts_col13").hasDefaultValue()).isEqualTo(true);
@@ -2606,6 +2614,20 @@ public class MySqlAntlrDdlParserTest {
         assertThat(table.columnWithName("ts_col17").defaultValue()).isEqualTo(toIsoString("2020-01-02 03:04:05"));
         assertThat(table.columnWithName("ts_col18").hasDefaultValue()).isEqualTo(true);
         assertThat(table.columnWithName("ts_col18").defaultValue()).isEqualTo(toIsoString("1970-01-01 00:00:01"));
+        assertThat(table.columnWithName("ts_col19").hasDefaultValue()).isEqualTo(true);
+        assertThat(table.columnWithName("ts_col19").defaultValue()).isEqualTo(toIsoString("2020-01-02 03:04:05"));
+        assertThat(table.columnWithName("ts_col20").hasDefaultValue()).isEqualTo(true);
+        assertThat(table.columnWithName("ts_col20").defaultValue()).isEqualTo(toIsoString("2020-01-02 03:04:00"));
+        assertThat(table.columnWithName("ts_col21").hasDefaultValue()).isEqualTo(true);
+        assertThat(table.columnWithName("ts_col21").defaultValue()).isEqualTo(toIsoString("2020-01-02 03:04:00"));
+        assertThat(table.columnWithName("ts_col22").hasDefaultValue()).isEqualTo(true);
+        assertThat(table.columnWithName("ts_col22").defaultValue()).isEqualTo(toIsoString("2020-01-02 03:04:00"));
+        assertThat(table.columnWithName("ts_col23").hasDefaultValue()).isEqualTo(true);
+        assertThat(table.columnWithName("ts_col23").defaultValue()).isEqualTo(toIsoString("2020-01-02 03:04:00"));
+        assertThat(table.columnWithName("ts_col24").hasDefaultValue()).isEqualTo(true);
+        assertThat(table.columnWithName("ts_col24").defaultValue()).isEqualTo(toIsoString("2020-01-02 03:04:00"));
+        assertThat(table.columnWithName("ts_col25").hasDefaultValue()).isEqualTo(true);
+        assertThat(table.columnWithName("ts_col25").defaultValue()).isEqualTo(toIsoString("2020-01-02 03:04:00"));
 
         final String alter1 = "ALTER TABLE my_table ADD ts_col TIMESTAMP DEFAULT '2020-01-02';";
 
