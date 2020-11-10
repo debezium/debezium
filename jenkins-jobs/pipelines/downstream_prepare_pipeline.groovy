@@ -44,6 +44,7 @@ pipeline {
                         --images="${STRZ_IMAGES}"                                   \\
                         --registry="quay.io" --organisation="${QUAY_ORGANISATION}"  \\
                         --dest-creds="${QUAY_USERNAME}:${QUAY_PASSWORD}"            \\
+                        --deployment-desc="${STRZ_RESOURCES_DEPLOYMENT_DESCRIPTOR}" \\
                         --img-output="${WORKSPACE}/published_images.txt"            
                     '''
                     zip(archive: true, zipFile: 'amq-streams-install-examples.zip', dir: 'strimzi')
