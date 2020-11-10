@@ -42,7 +42,7 @@ pipeline {
                 script {
                     env.STRZ_RESOURCES = "${env.WORKSPACE}/strimzi/install/cluster-operator"
                 }
-                copyArtifacts projectName: 'downstream-strimzi-prepare-job', filter: 'amq-streams-install-examples.zip', selector: lastSuccessful()
+                copyArtifacts projectName: 'ocp-downstream-strimzi-prepare-job', filter: 'amq-streams-install-examples.zip', selector: lastSuccessful()
                 unzip zipFile: 'amq-streams-install-examples.zip', dir: 'strimzi'
             }
         }
