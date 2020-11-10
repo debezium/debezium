@@ -6,12 +6,16 @@
 package io.debezium.relational;
 
 import static org.fest.assertions.Assertions.assertThat;
+import static org.junit.Assert.assertEquals;
 
 import java.sql.Types;
+import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.Before;
 import org.junit.Test;
+
+import io.debezium.doc.FixFor;
 
 public class TableEditorTest {
 
@@ -47,14 +51,16 @@ public class TableEditorTest {
         assertThat(table.primaryKeyColumnNames()).isEmpty();
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
+    @FixFor("DBZ-2580")
     public void shouldNotAllowAddingPrimaryKeyColumnWhenNotFound() {
         editor.tableId(id);
+        editor.setPrimaryKeyNames("C1", "WOOPS");
         Column c1 = columnEditor.name("C1").type("VARCHAR").jdbcType(Types.VARCHAR).length(10).position(1).create();
         Column c2 = columnEditor.name("C2").type("NUMBER").jdbcType(Types.NUMERIC).length(5).position(1).create();
         Column c3 = columnEditor.name("C3").type("DATE").jdbcType(Types.DATE).position(1).create();
         editor.addColumns(c1, c2, c3);
-        editor.setPrimaryKeyNames("C1", "WOOPS");
+        assertEquals(Arrays.asList("C1"), editor.create().primaryKeyColumnNames());
     }
 
     @Test
