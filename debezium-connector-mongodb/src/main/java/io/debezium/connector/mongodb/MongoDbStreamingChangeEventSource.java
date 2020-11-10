@@ -79,33 +79,58 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
 
     @Override
     public void execute(ChangeEventSourceContext context) throws InterruptedException {
-        // Starts a thread for each replica-set and executes the streaming process
-        final int threads = replicaSets.replicaSetCount();
+        final List<ReplicaSet> validReplicaSets = replicaSets.validReplicaSets();
+
+        try {
+            if (validReplicaSets.size() == 1) {
+                // Streams the replica-set changes in the current thread
+                streamChangesForReplicaSet(context, validReplicaSets.get(0));
+            }
+            else if (validReplicaSets.size() > 1) {
+                // Starts a thread for each replica-set and executes the streaming process
+                streamChangesForReplicaSets(context, validReplicaSets);
+            }
+        }
+        finally {
+            taskContext.getConnectionContext().shutdown();
+        }
+    }
+
+    private void streamChangesForReplicaSet(ChangeEventSourceContext context, ReplicaSet replicaSet) {
+        MongoPrimary primaryClient = null;
+        try {
+            primaryClient = establishConnectionToPrimary(replicaSet);
+            if (primaryClient != null) {
+                final AtomicReference<MongoPrimary> primaryReference = new AtomicReference<>(primaryClient);
+                primaryClient.execute("read from oplog on '" + replicaSet + "'", primary -> {
+                    readOplog(primary, primaryReference.get(), replicaSet, context);
+                });
+            }
+        }
+        catch (Throwable t) {
+            LOGGER.error("Streaming for replica set {} failed", replicaSet.replicaSetName(), t);
+            errorHandler.setProducerThrowable(t);
+        }
+        finally {
+            if (primaryClient != null) {
+                primaryClient.stop();
+            }
+        }
+    }
+
+    private void streamChangesForReplicaSets(ChangeEventSourceContext context, List<ReplicaSet> replicaSets) {
+        final int threads = replicaSets.size();
         final ExecutorService executor = Threads.newFixedThreadPool(MongoDbConnector.class, taskContext.serverName(), "replicator-streaming", threads);
         final CountDownLatch latch = new CountDownLatch(threads);
 
         LOGGER.info("Starting {} thread(s) to stream changes for replica sets: {}", threads, replicaSets);
-        replicaSets.validReplicaSets().forEach(replicaSet -> {
+
+        replicaSets.forEach(replicaSet -> {
             executor.submit(() -> {
-                MongoPrimary primaryClient = null;
                 try {
-                    primaryClient = establishConnectionToPrimary(replicaSet);
-                    if (primaryClient != null) {
-                        final AtomicReference<MongoPrimary> primaryReference = new AtomicReference<>(primaryClient);
-                        primaryClient.execute("read from oplog on '" + replicaSet + "'", primary -> {
-                            readOplog(primary, primaryReference.get(), replicaSet, context);
-                        });
-                    }
-                }
-                catch (Throwable t) {
-                    LOGGER.error("Streaming for replica set {} failed", replicaSet.replicaSetName(), t);
-                    errorHandler.setProducerThrowable(t);
+                    streamChangesForReplicaSet(context, replicaSet);
                 }
                 finally {
-                    if (primaryClient != null) {
-                        primaryClient.stop();
-                    }
-
                     latch.countDown();
                 }
             });
@@ -119,13 +144,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
             Thread.currentThread().interrupt();
         }
 
-        // Shutdown the executor and cleanup connections
-        try {
-            executor.shutdown();
-        }
-        finally {
-            taskContext.getConnectionContext().shutdown();
-        }
+        executor.shutdown();
     }
 
     private MongoPrimary establishConnectionToPrimary(ReplicaSet replicaSet) {

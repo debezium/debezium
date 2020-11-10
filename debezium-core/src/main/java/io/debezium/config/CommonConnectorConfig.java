@@ -390,6 +390,15 @@ public abstract class CommonConnectorConfig {
             .withValidation(Field::isNonNegativeInteger)
             .withDefault(DEFAULT_QUERY_FETCH_SIZE);
 
+    public static final Field SNAPSHOT_MAX_THREADS = Field.create("snapshot.max.threads")
+            .withDisplayName("Snapshot maximum threads")
+            .withType(Type.INT)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDefault(1)
+            .withValidation(Field::isPositiveInteger)
+            .withDescription("The maximum number of threads used to perform the snapshot.  Defaults to 1.");
+
     protected static final ConfigDefinition CONFIG_DEFINITION = ConfigDefinition.editor()
             .connector(
                     EVENT_PROCESSING_FAILURE_HANDLING_MODE,
@@ -401,6 +410,7 @@ public abstract class CommonConnectorConfig {
                     SNAPSHOT_DELAY_MS,
                     SNAPSHOT_MODE_TABLES,
                     SNAPSHOT_FETCH_SIZE,
+                    SNAPSHOT_MAX_THREADS,
                     RETRIABLE_RESTART_WAIT,
                     QUERY_FETCH_SIZE)
             .events(
@@ -422,6 +432,7 @@ public abstract class CommonConnectorConfig {
     private final Duration snapshotDelayMs;
     private final Duration retriableRestartWait;
     private final int snapshotFetchSize;
+    private final int snapshotMaxThreads;
     private final Integer queryFetchSize;
     private final SourceInfoStructMaker<? extends AbstractSourceInfo> sourceInfoStructMaker;
     private final boolean sanitizeFieldNames;
@@ -441,6 +452,7 @@ public abstract class CommonConnectorConfig {
         this.snapshotDelayMs = Duration.ofMillis(config.getLong(SNAPSHOT_DELAY_MS));
         this.retriableRestartWait = Duration.ofMillis(config.getLong(RETRIABLE_RESTART_WAIT));
         this.snapshotFetchSize = config.getInteger(SNAPSHOT_FETCH_SIZE, defaultSnapshotFetchSize);
+        this.snapshotMaxThreads = config.getInteger(SNAPSHOT_MAX_THREADS);
         this.queryFetchSize = config.getInteger(QUERY_FETCH_SIZE);
         this.sourceInfoStructMaker = getSourceInfoStructMaker(Version.parse(config.getString(SOURCE_STRUCT_MAKER_VERSION)));
         this.sanitizeFieldNames = config.getBoolean(SANITIZE_FIELD_NAMES) || isUsingAvroConverter(config);
@@ -498,6 +510,10 @@ public abstract class CommonConnectorConfig {
 
     public int getSnapshotFetchSize() {
         return snapshotFetchSize;
+    }
+
+    public int getSnapshotMaxThreads() {
+        return snapshotMaxThreads;
     }
 
     public int getQueryFetchSize() {
