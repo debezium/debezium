@@ -1,0 +1,23 @@
+name: Formatting Check
+on:
+  pull_request:
+    branches: [ master ]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up JDK
+        uses: actions/setup-java@v1.3.0
+        with:
+          java-version: "14"
+
+      - uses: actions/cache@v1
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+      - name: Run formatting and import order checks
+        run: mvn clean install -DskipTests=true -DskipITs=true -Dformat.formatter.goal=validate -Dformat.imports.goal=check

@@ -1,0 +1,15 @@
+name: Commit message format check
+on: [ pull_request ]
+
+jobs:
+  build:
+    name: Commit message
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v1
+      - name: Commit messages in format DBZ-xxx
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          ! git log --format='format:%s' refs/remotes/origin/$BASE_REF.. | tail -n +2 | grep -Ev '^(DBZ-[[:digit:]]+)|(\[release\])|(\[jenkins-jobs\]) '
