@@ -45,6 +45,17 @@ which means the terminal's standard input and output are attached to the contain
 `--link zookeeper:zookeeper`:: Tells the container that it can find ZooKeeper in the `zookeeper` container,
 which is running on the same Docker host.
 
+ifdef::community[]
+[NOTE]
+====
+For Podman use the below command
+[source,shell,options="nowrap",subs="+attributes"]
+----
+$ sudo podman run -it --rm --name kafka --pod dbz debezium/kafka:{debezium-docker-label}
+----
+====
+endif::community[]
+
 [NOTE]
 ====
 In this tutorial, you will always connect to Kafka from within a Docker container.

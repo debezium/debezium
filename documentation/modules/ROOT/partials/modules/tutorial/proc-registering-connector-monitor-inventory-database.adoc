@@ -104,6 +104,17 @@ Otherwise, you might see an error like the following:
 endif::[]
 --
 
+ifdef::community[]
+[NOTE]
+====
+For Podman use the below command
+[source,shell,options="nowrap",subs="+attributes"]
+----
+$ curl -i -X POST -H "Accept:application/json" -H "Content-Type:application/json" localhost:8083/connectors/ -d '{ "name": "inventory-connector", "config": { "connector.class": "io.debezium.connector.mysql.MySqlConnector", "tasks.max": "1", "database.hostname": "0.0.0.0", "database.port": "3306", "database.user": "debezium", "database.password": "dbz", "database.server.id": "184054", "database.server.name": "dbserver1", "database.include.list": "inventory", "database.history.kafka.bootstrap.servers": "0.0.0.0:9092", "database.history.kafka.topic": "dbhistory.inventory" } }'
+----
+====
+endif::community[]
+
 . Verify that `inventory-connector` is included in the list of connectors:
 +
 --

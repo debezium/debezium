@@ -22,6 +22,18 @@ Docker stops each container.
 Because you used the `--rm` option when you started them, Docker also removes them.
 --
 
+ifdef::community[]
+[NOTE]
+====
+For Podman use the below command
+[source,shell,options="nowrap",subs="+attributes"]
+----
+$ sudo podman pod kill dbz
+$ sudo podman pod rm dbz
+----
+====
+endif::community[]
+
 . Verify that all of the processes have stopped and have been removed:
 +
 --

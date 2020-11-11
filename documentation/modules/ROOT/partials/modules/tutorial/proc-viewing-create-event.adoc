@@ -29,6 +29,15 @@ Without this option, `watch-topic` would only show the events recorded after you
 Specifies that the output should include the event's key.
 In this case, this contains the row's primary key.
 
+[NOTE]
+====
+For Podman use the below command
+[source,shell,options="nowrap",subs="+attributes"]
+----
+$ sudo podman run -it --rm --name watcher --pod dbz debezium/kafka:{debezium-docker-label} watch-topic -a -k dbserver1.inventory.customers
+----
+====
+
 The `watch-topic` utility returns the event records from the `customers` table.
 There are four events, one for each row in the table.
 Each event is formatted in JSON, because that is how you configured the Kafka Connect service.

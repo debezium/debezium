@@ -28,6 +28,18 @@ which means the terminal's standard input and output are attached to the contain
 This enables other containers (and applications outside of the container) to communicate with ZooKeeper.
 --
 
+ifdef::community[]
+[NOTE]
+====
+For Podman use the below commands
+[source,shell,options="nowrap",subs="+attributes"]
+----
+$ sudo podman pod create --name=dbz --publish "9092,3306,8083"
+$ sudo podman run -it --rm --name zookeeper --pod dbz debezium/zookeeper:{debezium-docker-label}
+----
+====
+endif::community[]
+
 . Verify that ZooKeeper started and is listening on port `2181`.
 +
 --

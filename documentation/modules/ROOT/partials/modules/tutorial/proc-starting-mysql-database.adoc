@@ -31,6 +31,17 @@ which means the terminal's standard input and output are attached to the contain
 `-e MYSQL_ROOT_PASSWORD=debezium -e MYSQL_USER=mysqluser -e MYSQL_PASSWORD=mysqlpw`:: Creates a user and password that has the minimum privileges required by the {prodname} MySQL connector.
 --
 
+ifdef::community[]
+[NOTE]
+====
+For Podman use the below command
+[source,shell,options="nowrap",subs="+attributes"]
+----
+$ sudo podman run -it --rm --name mysql --pod dbz -e MYSQL_ROOT_PASSWORD=debezium -e MYSQL_USER=mysqluser -e MYSQL_PASSWORD=mysqlpw debezium/example-mysql:{debezium-docker-label}
+----
+====
+endif::community[]
+
 . Verify that the MySQL server starts.
 +
 --
