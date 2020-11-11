@@ -1341,6 +1341,15 @@ Only alphanumeric characters and underscores should be used.
 `xstream` uses the Oracle XStreams API.
 `logminer` uses the native Oracle LogMiner API.
 
+|[[oracle-property-database-rac]]<<oracle-property-database-rac, `database.rac`>>
+|false
+|A toggle whether to enable Oracle RAC support.
+
+|[[oracle-property-database-rac-nodes-ip]]<<oracle-property-database-rac-nodes-ip, `database.rac.nodes`>>
+|
+|A comma-separated list of RAC node host names or addresses.
+This field is only applicable if `database.rac` is set to `true`.
+
 |[[oracle-property-database-history-kafka-topic]]<<oracle-property-database-history-kafka-topic, `database.history.kafka.topic`>>
 |
 |The full name of the Kafka topic where the connector will store the database schema history.
@@ -1476,5 +1485,14 @@ See {link-prefix}:{link-avro-serialization}#avro-naming[Avro naming] for more de
 |When set to `true` {prodname} generates events with transaction boundaries and enriches data events envelope with transaction metadata.
 
 See {link-prefix}:{link-oracle-connector}#oracle-transaction-metadata[Transaction Metadata] for additional details.
+
+|[[oracle-property-log-mining-record-history]]<<oracle-property-log-mining-record-history, `log.mining.record.history`>>
+|`false`
+|Toggle whether log mining results are captured in the log mining history table.
+
+|[[oracle-property-database-history-retention-hours]]<<oracle-property-database-history-retention-hours, `database.history.retention.hours`>>
+|`4`
+|The number of hours to retain entries in log mining history table.
+This option requires `log.mining.record.history` to be `true` for it to have any impact.
 
 |===
