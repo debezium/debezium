@@ -34,6 +34,7 @@ create table add_test(col1 varchar(255), col2 int, col3 int);
 create table blob_test(id int, col1 blob(45));
 CREATE TABLE `user_account` ( `id1` bigint(20) unsigned NOT NULL DEFAULT nextval(`useraccount`.`user_account_id_seq`));
 create table žluťoučký (kůň int);
+create table column_names_as_aggr_funcs(min varchar(100), max varchar(100), sum varchar(100), count varchar(100));
 #end
 #begin
 -- Rename table
