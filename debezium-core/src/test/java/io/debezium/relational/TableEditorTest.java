@@ -6,10 +6,8 @@
 package io.debezium.relational;
 
 import static org.fest.assertions.Assertions.assertThat;
-import static org.junit.Assert.assertEquals;
 
 import java.sql.Types;
-import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.Before;
@@ -51,7 +49,7 @@ public class TableEditorTest {
         assertThat(table.primaryKeyColumnNames()).isEmpty();
     }
 
-    @Test
+    @Test(expected = IllegalArgumentException.class)
     @FixFor("DBZ-2580")
     public void shouldNotAllowAddingPrimaryKeyColumnWhenNotFound() {
         editor.tableId(id);
@@ -60,7 +58,7 @@ public class TableEditorTest {
         Column c2 = columnEditor.name("C2").type("NUMBER").jdbcType(Types.NUMERIC).length(5).position(1).create();
         Column c3 = columnEditor.name("C3").type("DATE").jdbcType(Types.DATE).position(1).create();
         editor.addColumns(c1, c2, c3);
-        assertEquals(Arrays.asList("C1"), editor.create().primaryKeyColumnNames());
+        editor.create();
     }
 
     @Test

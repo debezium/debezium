@@ -13,12 +13,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 class TableEditorImpl implements TableEditor {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(TableEditorImpl.class);
 
     private TableId id;
     private LinkedHashMap<String, Column> sortedColumns = new LinkedHashMap<>();
@@ -106,7 +101,8 @@ class TableEditorImpl implements TableEditor {
             this.pkColumnNames.removeIf(pkColumnName -> {
                 final boolean pkColumnDoesNotExists = !hasColumnWithName(pkColumnName);
                 if (pkColumnDoesNotExists) {
-                    LOGGER.warn("The column \"" + pkColumnName + "\" is referenced as PRIMARY KEY, but a matching column is not defined in table \"" + tableId() + "\"!");
+                    throw new IllegalArgumentException(
+                            "The column \"" + pkColumnName + "\" is referenced as PRIMARY KEY, but a matching column is not defined in table \"" + tableId() + "\"!");
                 }
                 return pkColumnDoesNotExists;
             });
