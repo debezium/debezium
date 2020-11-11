@@ -32,6 +32,17 @@ This enables applications outside of the container to use Kafka Connect's REST A
 `--link zookeeper:zookeeper --link kafka:kafka --link mysql:mysql`:: Links the container to the containers that are running ZooKeeper, Kafka, and the MySQL server.
 --
 
+ifdef::community[]
+[NOTE]
+====
+For Podman use the below command
+[source,shell,options="nowrap",subs="+attributes"]
+----
+$ sudo podman run -it --rm --name connect --pod dbz -e GROUP_ID=1 -e CONFIG_STORAGE_TOPIC=my_connect_configs -e OFFSET_STORAGE_TOPIC=my_connect_offsets -e STATUS_STORAGE_TOPIC=my_connect_statuses debezium/connect:{debezium-docker-label}
+----
+====
+endif::community[]
+
 . Verify that Kafka Connect started and is ready to accept connections.
 +
 --

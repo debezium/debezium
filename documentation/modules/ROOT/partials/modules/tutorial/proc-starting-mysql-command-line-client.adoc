@@ -28,6 +28,17 @@ which means the terminal's standard input and output are attached to the contain
 `--link mysql`:: Links the container to the `mysql` container.
 --
 
+ifdef::community[]
+[NOTE]
+====
+For Podman use the below command
+[source,shell,options="nowrap",subs="+attributes"]
+----
+$ sudo podman run -it --rm --name mysqlterm --pod dbz --rm mysql:5.7 sh -c 'exec mysql -h 0.0.0.0 -uroot -pdebezium'
+----
+====
+endif::community[]
+
 . Verify that the MySQL command line client started.
 +
 --
