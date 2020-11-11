@@ -177,7 +177,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withType(Type.BOOLEAN)
             .withWidth(Width.SHORT)
             .withImportance(Importance.HIGH)
-            .withDefault("false")
+            .withDefault(false)
             .withDescription("Flag to record Log Mining history");
 
     public static final Field LOG_MINING_HISTORY_RETENTION = Field.create("database.history.retention.hours")
@@ -185,7 +185,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withType(Type.STRING)
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
-            .withDefault("4")
+            .withDefault(4)
             .withDescription("Hours to keep Log Mining history");
 
     public static final Field RAC_SYSTEM = Field.create("database.rac")
@@ -193,15 +193,15 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withType(Type.BOOLEAN)
             .withWidth(Width.SHORT)
             .withImportance(Importance.HIGH)
-            .withDefault("false")
+            .withDefault(false)
             .withDescription("Flag to if it is RAC system");
 
-    public static final Field RAC_NODE_NAMES = Field.create("database.rac.nodes.ip")
-            .withDisplayName("Oracle RAC nodes ip")
+    public static final Field RAC_NODES = Field.create("database.rac.nodes")
+            .withDisplayName("Oracle RAC nodes")
             .withType(Type.STRING)
             .withWidth(Width.SHORT)
             .withImportance(Importance.HIGH)
-            .withDescription("RAC nodes which are balanced to connect the application");
+            .withDescription("A comma-separated list of RAC node hostnames or ip addresses");
 
     /**
      * The set of {@link Field}s defined as part of this configuration.
@@ -240,7 +240,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             RECORD_LOG_MINING_HISTORY,
             LOG_MINING_HISTORY_RETENTION,
             RAC_SYSTEM,
-            RAC_NODE_NAMES,
+            RAC_NODES,
             CommonConnectorConfig.EVENT_PROCESSING_FAILURE_HANDLING_MODE);
 
     private final String databaseName;
@@ -304,7 +304,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                 CommonConnectorConfig.EVENT_PROCESSING_FAILURE_HANDLING_MODE);
         Field.group(config, "Connector", CommonConnectorConfig.POLL_INTERVAL_MS, CommonConnectorConfig.MAX_BATCH_SIZE,
                 CommonConnectorConfig.MAX_QUEUE_SIZE, CommonConnectorConfig.SNAPSHOT_DELAY_MS, CommonConnectorConfig.SNAPSHOT_FETCH_SIZE,
-                SNAPSHOT_ENHANCEMENT_TOKEN, RECORD_LOG_MINING_HISTORY, LOG_MINING_HISTORY_RETENTION, RAC_SYSTEM, RAC_NODE_NAMES);
+                SNAPSHOT_ENHANCEMENT_TOKEN, RECORD_LOG_MINING_HISTORY, LOG_MINING_HISTORY_RETENTION, RAC_SYSTEM, RAC_NODES);
 
         return config;
     }
@@ -681,22 +681,31 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     }
 
     /**
-     * @return flag if mining history will be recorded
+     * @return whether log mining history is recorded
      */
-    public Boolean recordLogMiningHistory() {
+    public Boolean isLogMiningHistoryRecorded() {
         return getConfig().getBoolean(RECORD_LOG_MINING_HISTORY);
     }
 
-    public long logMinerHistoryRetention() {
-        return Long.parseLong(getConfig().getString(LOG_MINING_HISTORY_RETENTION));
+    /**
+     * @return the number of hours log mining history is retained if history is recorded
+     */
+    public long getLogMinerHistoryRetentionHours() {
+        return getConfig().getLong(LOG_MINING_HISTORY_RETENTION);
     }
 
+    /**
+     * @return whether Oracle is using RAC
+     */
     public Boolean isRacSystem() {
         return getConfig().getBoolean(RAC_SYSTEM);
     }
 
-    public Set<String> racNodeNames() {
-        String nodes = getConfig().getString(RAC_NODE_NAMES);
+    /**
+     * @return set of node hosts or ip addresses used in Oracle RAC
+     */
+    public Set<String> getRacNodes() {
+        String nodes = getConfig().getString(RAC_NODES);
         return Strings.setOf(nodes, String::new);
     }
 
@@ -707,6 +716,9 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         return getConfig().getString(SNAPSHOT_ENHANCEMENT_TOKEN);
     }
 
+    /**
+     * @return whether continuous log mining is enabled
+     */
     public boolean isContinuousMining() {
         return getConfig().getBoolean(CONTINUOUS_MINE);
     }

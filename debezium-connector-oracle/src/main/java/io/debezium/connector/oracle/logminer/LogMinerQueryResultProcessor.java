@@ -119,7 +119,7 @@ class LogMinerQueryResultProcessor {
             // Commit
             if (operationCode == RowMapper.COMMIT) {
                 if (transactionalBuffer.isTransactionRegistered(txId)) {
-                    historyRecorder.insertIntoTempTable(scn, tableName, segOwner, operationCode, changeTime, txId, 0, redoSql);
+                    historyRecorder.record(scn, tableName, segOwner, operationCode, changeTime, txId, 0, redoSql);
                 }
                 if (transactionalBuffer.commit(txId, scn, offsetContext, changeTime, context, logMessage)) {
                     LOGGER.trace("COMMIT, {}", logMessage);
@@ -131,7 +131,7 @@ class LogMinerQueryResultProcessor {
             // Rollback
             if (operationCode == RowMapper.ROLLBACK) {
                 if (transactionalBuffer.isTransactionRegistered(txId)) {
-                    historyRecorder.insertIntoTempTable(scn, tableName, segOwner, operationCode, changeTime, txId, 0, redoSql);
+                    historyRecorder.record(scn, tableName, segOwner, operationCode, changeTime, txId, 0, redoSql);
                 }
                 if (transactionalBuffer.rollback(txId, logMessage)) {
                     LOGGER.trace("ROLLBACK, {}", logMessage);
@@ -143,14 +143,14 @@ class LogMinerQueryResultProcessor {
             // DDL
             if (operationCode == RowMapper.DDL) {
                 // todo: DDL operations are not yet supported during streaming while using Log Miner.
-                historyRecorder.insertIntoTempTable(scn, tableName, segOwner, operationCode, changeTime, txId, 0, redoSql);
+                historyRecorder.record(scn, tableName, segOwner, operationCode, changeTime, txId, 0, redoSql);
                 LOGGER.info("DDL: {}, REDO_SQL: {}", logMessage, redoSql);
                 continue;
             }
 
             // MISSING_SCN
             if (operationCode == RowMapper.MISSING_SCN) {
-                historyRecorder.insertIntoTempTable(scn, tableName, segOwner, operationCode, changeTime, txId, 0, redoSql);
+                historyRecorder.record(scn, tableName, segOwner, operationCode, changeTime, txId, 0, redoSql);
                 LogMinerHelper.logWarn(transactionalBufferMetrics, "Missing SCN,  {}", logMessage);
                 continue;
             }
@@ -171,7 +171,7 @@ class LogMinerQueryResultProcessor {
                         && dmlEntry.getOldValues().size() == dmlEntry.getNewValues().size()
                         && dmlEntry.getNewValues().containsAll(dmlEntry.getOldValues())) {
                     LOGGER.trace("Following DML was skipped, " +
-                            "most likely because of ignored blacklisted column change: {}, details: {}", redoSql, logMessage);
+                            "most likely because of ignored excluded column change: {}, details: {}", redoSql, logMessage);
                     continue;
                 }
 
@@ -227,7 +227,7 @@ class LogMinerQueryResultProcessor {
                     transactionalBufferMetrics.getNumberOfActiveTransactions(), metrics.getMillisecondToSleepBetweenMiningQuery());
         }
 
-        historyRecorder.doBulkHistoryInsert();
+        historyRecorder.flush();
         return dmlCounter;
     }
 

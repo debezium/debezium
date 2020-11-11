@@ -28,6 +28,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -66,19 +67,20 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
     private final OracleOffsetContext offsetContext;
     private final SimpleDmlParser dmlParser;
     private final String catalogName;
-    private OracleConnectorConfig connectorConfig;
-    private TransactionalBufferMetrics transactionalBufferMetrics;
-    private LogMinerMetrics logMinerMetrics;
-    private TransactionalBuffer transactionalBuffer;
+    private final boolean isRac;
+    private final Set<String> racHosts = new HashSet<>();
+    private final JdbcConfiguration jdbcConfiguration;
     private final OracleConnectorConfig.LogMiningStrategy strategy;
     private final OracleTaskContext taskContext;
     private final ErrorHandler errorHandler;
     private final boolean isContinuousMining;
+
+    private OracleConnectorConfig connectorConfig;
+    private TransactionalBufferMetrics transactionalBufferMetrics;
+    private LogMinerMetrics logMinerMetrics;
+    private TransactionalBuffer transactionalBuffer;
     private long startScn;
     private long endScn;
-    private boolean isRac;
-    private Set<String> racHosts;
-    private final JdbcConfiguration jdbcConfiguration;
 
     public LogMinerStreamingChangeEventSource(OracleConnectorConfig connectorConfig, OracleOffsetContext offsetContext,
                                               OracleConnection jdbcConnection, EventDispatcher<TableId> dispatcher,
@@ -98,12 +100,13 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
         this.errorHandler = errorHandler;
         this.taskContext = taskContext;
         this.jdbcConfiguration = JdbcConfiguration.adapt(connectorConfig.getConfig().subset("database.", true));
-        if (connectorConfig.recordLogMiningHistory()) {
-            logMinerMetrics.setRecordMiningHistory(true);
-        }
         this.isRac = connectorConfig.isRacSystem();
-        racHosts = connectorConfig.racNodeNames().stream().map(String::toUpperCase).collect(Collectors.toSet());
-        if (isRac) {
+
+        if (connectorConfig.isLogMiningHistoryRecorded()) {
+            this.logMinerMetrics.setRecordMiningHistory(true);
+        }
+        if (this.isRac) {
+            this.racHosts.addAll(connectorConfig.getRacNodes().stream().map(String::toUpperCase).collect(Collectors.toSet()));
             instantiateFlushConnections(jdbcConfiguration, racHosts);
         }
     }
@@ -150,7 +153,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
 
             // todo: why can't OracleConnection be used rather than a Factory+JdbcConfiguration?
             LogMinerHistoryRecorder historyRecorder = new LogMinerHistoryRecorder(logMinerMetrics, jdbcConfiguration,
-                    connectorConfig.logMinerHistoryRetention());
+                    connectorConfig.getLogMinerHistoryRetentionHours());
 
             LogMinerQueryResultProcessor processor = new LogMinerQueryResultProcessor(context, logMinerMetrics, transactionalBuffer,
                     dmlParser, offsetContext, schema, dispatcher, transactionalBufferMetrics, catalogName, clock, historyRecorder);
@@ -220,20 +223,6 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
             }
         }
         catch (Throwable e) {
-            // todo: i think this is unnecessary but pulled in to be reviewed
-            /*
-             * if (SqlUtils.connectionProblem(e)) {
-             * logWarn(transactionalBufferMetrics, "Disconnection occurred. {} ", e.toString());
-             * logMinerMetrics.incrementNetworkConnectionProblemsCounter();
-             * metronome = Metronome.sleeper(Duration.ofMillis(3000), clock);
-             * try {
-             * metronome.pause();
-             * } catch (InterruptedException ie) {
-             * LOGGER.error("Cannot pause metronome: {}", ie);
-             * }
-             * continue;
-             * }
-             */
             logError(transactionalBufferMetrics, "Mining session stopped due to the {} ", e.toString());
             errorHandler.setProducerThrowable(e);
         }
@@ -273,21 +262,4 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
     public void commitOffset(Map<String, ?> offset) {
         // nothing to do
     }
-
-    // todo: brough tin for review, but has already been ported to error-handler retriable stuff
-    /*
-     * private boolean connectionProblem(Throwable e) {
-     * if (e.getMessage() == null || e.getCause() == null) {
-     * return false;
-     * }
-     * return e.getMessage().startsWith("ORA-03135") || // connection lost contact
-     * e.getMessage().startsWith("ORA-12543") || // TNS:destination host unreachable
-     * e.getMessage().startsWith("ORA-00604") || // error occurred at recursive SQL level 1
-     * e.getMessage().startsWith("ORA-01089") || // Oracle immediate shutdown in progress
-     * e.getCause() instanceof IOException ||
-     * e instanceof SQLRecoverableException ||
-     * e.getMessage().toUpperCase().startsWith("NO MORE DATA TO READ FROM SOCKET") ||
-     * e.getCause().getCause() instanceof NetException;
-     * }
-     */
 }

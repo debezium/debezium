@@ -113,46 +113,80 @@ public interface LogMinerMetricsMXBean {
      */
     void setRecordMiningHistory(boolean doRecording);
 
-    // record log mining history flag
+    /**
+     * this flag indicates whether log mining is being recorded by {@link HistoryRecorder}
+     */
     boolean getRecordMiningHistory();
+
+    /**
+     * This represents the maximum number of entries processed per second from LogMiner sessions.
+     * Entries include things such as DMLs, commits, rollbacks, etc.
+     *
+     * @return the maximum number of entries processed per second from LogMiner sessions
+     */
+    long getMaxBatchProcessingThroughput();
+
+    /**
+     * This represents the average number of entries processed per second from LogMiner sessions.
+     * Entries include things such as DMLs, commits, rollbacks, etc.
+     *
+     * @return the average number of entries per second from LogMiner sessions
+     */
+    long getAverageBatchProcessingThroughput();
+
+    /**
+     * This represents the number of entries processed per second in the last LogMiner session.
+     * Entries include things such as DMLs, commits, rollbacks, etc.
+     *
+     * @return the number of entries processed per second from last LogMiner session
+     */
+    long getLastBatchProcessingThroughput();
+
+    /**
+     * @return the number of connection problems detected
+     */
+    long getNetworkConnectionProblemsCounter();
+
+    /**
+     * Resets metrics.
+     */
+    void reset();
 
     // *** following metrics work if RecordMiningHistory is true.
 
-    // number of records in temp mining history table. It fluctuates from 0 to 10_000
+    /**
+     * @return the number of records buffered by the {@link HistoryRecorder}
+     */
     int getTempHistoryTableRecordsCounter();
 
-    // number of records in current mining history table.
+    /**
+     * @return the number of records flushed and maintained by the {@link HistoryRecorder}
+     */
     int getCurrentHistoryTableRecordsCounter();
 
-    // total number of records in the all mining history tables.
+    /**
+     * @return the number of records written in total by the {@link HistoryRecorder}
+     */
     long getTotalHistoryTableRecordsCounter();
 
-    // remaining capacity of the queue which contains mining history records to persist
+    /**
+     * @return the remaining capacity of the {@link HistoryRecorder} buffer
+     */
     int getRecordHistoryQueueCapacity();
 
-    // get queue limit
+    /**
+     * @return the maximum capacity of the {@link HistoryRecorder} buffer
+     */
     int getMiningHistoryQueueLimit();
 
-    // hours to keep transaction in the buffer before abandoning
+    /**
+     * @return the number of hours to keep transaction in buffer before abandoning
+     */
     int getHoursToKeepTransactionInBuffer();
 
-    // set hours to keep transaction in the buffer before abandoning
+    /**
+     * Set the number of hours to retain transaction in buffer prior to abandoning
+     * @param hours the number of hours
+     */
     void setHoursToKeepTransactionInBuffer(int hours);
-
-    // ***************** end of RecordMiningHistory metrics
-
-    // returns max number of processed entries, captured from Log Miner view (DMLs, commits, rollbacks etc.) per second
-    long getMaxBatchProcessingThroughput();
-
-    // returns number of the last processed entries, captured from Log Miner view (DMLs, commits, rollbacks etc.) per second
-    long getLastBatchProcessingThroughput();
-
-    // returns average number of processed entries, captured from Log Miner view (DMLs, commits, rollbacks etc.) per second
-    long getAverageBatchProcessingThroughput();
-
-    // returns counter of registered network problems
-    long getNetworkConnectionProblemsCounter();
-
-    // reset metrics
-    void reset();
 }

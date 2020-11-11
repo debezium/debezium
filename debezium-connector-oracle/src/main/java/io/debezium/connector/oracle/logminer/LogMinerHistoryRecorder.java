@@ -88,8 +88,8 @@ public class LogMinerHistoryRecorder implements HistoryRecorder, AutoCloseable {
      * todo check if set "_optimizer_gather_stats_on_conventional_dml"=FALSE will eliminate occasional ORA-01438
      */
     @Override
-    public void insertIntoTempTable(BigDecimal scn, String tableName, String segOwner, int operationCode, Timestamp changeTime,
-                                    String transactionId, int csf, String redoSql) {
+    public void record(BigDecimal scn, String tableName, String segOwner, int operationCode, Timestamp changeTime,
+                       String transactionId, int csf, String redoSql) {
         if (metrics.getRecordMiningHistory() && executor != null) {
             executor.execute(() -> {
                 try {
@@ -144,7 +144,7 @@ public class LogMinerHistoryRecorder implements HistoryRecorder, AutoCloseable {
      * This approach helps in possible performance degradation of inserting into a large table record by record.
      */
     @Override
-    public void doBulkHistoryInsert() {
+    public void flush() {
         if (metrics.getRecordMiningHistory() && executor != null) {
             executor.execute(() -> {
                 Instant now = Instant.now();

@@ -9,7 +9,6 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.CallableStatement;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -43,6 +42,7 @@ import io.debezium.util.Metronome;
 public class LogMinerHelper {
 
     private final static String UNKNOWN = "unknown";
+    private static final String TOTAL = "TOTAL";
     private final static Logger LOGGER = LoggerFactory.getLogger(LogMinerHelper.class);
 
     public enum DATATYPE {
@@ -52,16 +52,16 @@ public class LogMinerHelper {
         FLOAT
     }
 
-    private static Map<String, Connection> racFlushConnections = new HashMap<>();
+    private static Map<String, OracleConnection> racFlushConnections = new HashMap<>();
 
     static void instantiateFlushConnections(JdbcConfiguration config, Set<String> hosts) {
-        for (Connection conn : racFlushConnections.values()) {
+        for (OracleConnection conn : racFlushConnections.values()) {
             if (conn != null) {
                 try {
                     conn.close();
                 }
                 catch (SQLException e) {
-                    LOGGER.error("cannot close connection");
+                    LOGGER.warn("Cannot close exist RAC flush connection", e);
                 }
             }
         }
@@ -71,7 +71,7 @@ public class LogMinerHelper {
                 racFlushConnections.put(host, createFlushConnection(config, host));
             }
             catch (SQLException e) {
-                LOGGER.error("cannot connect node {}", host);
+                LOGGER.error("Cannot connect to RAC node {}", host, e);
             }
         }
     }
@@ -339,12 +339,12 @@ public class LogMinerHelper {
     private static int getSwitchCount(Connection connection) {
         try {
             Map<String, String> total = getMap(connection, SqlUtils.switchHistoryQuery(), UNKNOWN);
-            if (total != null && total.get("TOTAL") != null) {
-                return Integer.parseInt(total.get("TOTAL"));
+            if (total != null && total.get(TOTAL) != null) {
+                return Integer.parseInt(total.get(TOTAL));
             }
         }
         catch (Exception e) {
-            LOGGER.error("Cannot get switch counter due to the {}", e);
+            LOGGER.error("Cannot get switch counter", e);
         }
         return 0;
     }
@@ -365,14 +365,14 @@ public class LogMinerHelper {
         boolean errors = false;
         for (String host : racHosts) {
             try {
-                Connection conn = racFlushConnections.get(host);
+                OracleConnection conn = racFlushConnections.get(host);
                 if (conn == null) {
                     LOGGER.warn("Connection to the node {} was not instantiated", host);
                     errors = true;
                     continue;
                 }
                 LOGGER.trace("Flushing Log Writer buffer of node {}", host);
-                executeCallableStatement(conn, SqlUtils.UPDATE_FLUSH_TABLE + currentScn);
+                executeCallableStatement(conn.connection(), SqlUtils.UPDATE_FLUSH_TABLE + currentScn);
                 conn.commit();
             }
             catch (Exception e) {
@@ -397,15 +397,11 @@ public class LogMinerHelper {
     }
 
     // todo use pool
-    private static Connection createFlushConnection(JdbcConfiguration config, String host) throws SQLException {
-        final String user = config.getUser();
-        final String password = config.getPassword();
-        int port = config.getPort();
-        final String database = config.getDatabase();
-        final String url = "jdbc:oracle:thin:@" + host + ":" + port + "/" + database;
-        Connection conn = DriverManager.getConnection(url, user, password);
-        conn.setAutoCommit(false);
-        return conn;
+    private static OracleConnection createFlushConnection(JdbcConfiguration config, String host) throws SQLException {
+        JdbcConfiguration hostConfig = JdbcConfiguration.adapt(config.edit().with(JdbcConfiguration.DATABASE, host).build());
+        OracleConnection connection = new OracleConnection(hostConfig, () -> LogMinerHelper.class.getClassLoader());
+        connection.setAutoCommit(false);
+        return connection;
     }
 
     /**
@@ -502,12 +498,12 @@ public class LogMinerHelper {
             if (diffInDays != null && (diffInDays * 24) > hoursToKeepTransaction) {
                 return Optional.of(offsetScn);
             }
+            return Optional.empty();
         }
         catch (SQLException e) {
             LOGGER.error("Cannot calculate days difference due to {}", e);
             return Optional.of(offsetScn);
         }
-        return Optional.empty();
     }
 
     static void logWarn(TransactionalBufferMetrics metrics, String format, Object... args) {

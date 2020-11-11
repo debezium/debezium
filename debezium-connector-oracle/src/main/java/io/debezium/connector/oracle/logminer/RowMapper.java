@@ -163,7 +163,7 @@ public class RowMapper {
 
             int csf = rs.getInt(CSF);
             if (isDml) {
-                historyRecorder.insertIntoTempTable(scn, tableName, segOwner, operationCode, changeTime, txId, csf, redoSql);
+                historyRecorder.record(scn, tableName, segOwner, operationCode, changeTime, txId, csf, redoSql);
             }
 
             // 0 - indicates SQL_REDO is contained within the same row
@@ -178,7 +178,7 @@ public class RowMapper {
                 result.append(rs.getString(SQL_REDO));
                 csf = rs.getInt(CSF);
                 if (isDml) {
-                    historyRecorder.insertIntoTempTable(scn, tableName, segOwner, operationCode, changeTime, txId, csf, rs.getString(SQL_REDO));
+                    historyRecorder.record(scn, tableName, segOwner, operationCode, changeTime, txId, csf, rs.getString(SQL_REDO));
                 }
             }
 

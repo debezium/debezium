@@ -34,7 +34,7 @@ public interface TransactionalBufferMetricsMXBean {
     long getCommitThroughput();
 
     /**
-     * exposes total number of registered DMLs
+     * Exposes total number of registered DML operations
      *
      * @return registered DML count
      */
@@ -62,6 +62,8 @@ public interface TransactionalBufferMetricsMXBean {
     Long getCommittedScn();
 
     /**
+     * Get the offset SCN
+     *
      * @return offset SCN
      */
     Long getOffsetScn();
@@ -109,7 +111,7 @@ public interface TransactionalBufferMetricsMXBean {
     int getCommitQueueCapacity();
 
     /**
-     * action to reset some metrics
+     * Reset metrics
      */
     void reset();
 
