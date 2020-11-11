@@ -163,7 +163,7 @@ pipeline {
             junit '**/target/failsafe-reports/*.xml'
 
             mail to: 'jcechace@redhat.com', subject: "Debezium OpenShift test run #${BUILD_NUMBER} finished", body: """
-OpenShift interoperability test run ${BUILD_URL} finished with result: ${currentBuild.result}
+OpenShift interoperability test run ${BUILD_URL} finished with result: ${currentBuild.currentResult}
 """
         }
         success {
