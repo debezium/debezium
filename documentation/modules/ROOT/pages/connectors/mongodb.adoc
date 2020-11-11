@@ -137,7 +137,7 @@ If an offset can be found and it still exists in the oplog, then the task immedi
 
 However, if no offset is found or if the oplog no longer contains that position, the task must first obtain the current state of the replica set contents by performing a _snapshot_.
 This process starts by recording the current position of the oplog and recording that as the offset (along with a flag that denotes a snapshot has been started).
-The task will then proceed to copy each collection, spawning as many threads as possible (up to the value of the `initial.sync.max.threads` configuration property) to perform this work in parallel.
+The task will then proceed to copy each collection, spawning as many threads as possible (up to the value of the `snapshot.max.threads` configuration property) to perform this work in parallel.
 The connector will record a separate _read event_ for each document it sees, and that read event will contain the object's identifier, the complete state of the object, and _source_ information about the MongoDB replica set where the object was found.
 The source information will also include a flag that denotes the event was produced during a snapshot.
 
@@ -1154,7 +1154,7 @@ Must not be used with `collection.include.list`.
 |`1`
 |The maximum number of tasks that should be created for this connector. The MongoDB connector will attempt to use a separate task for each replica set, so the default is acceptable when using the connector with a single MongoDB replica set. When using the connector with a MongoDB sharded cluster, we recommend specifying a value that is equal to or more than the number of shards in the cluster, so that the work for each replica set can be distributed by Kafka Connect.
 
-|[[mongodb-property-initial-sync-max-threads]]<<mongodb-property-initial-sync-max-threads, `initial.sync{zwsp}.max.threads`>>
+|[[mongodb-property-snapshot-max-threads]]<<mongodb-property-snapshot-max-threads, `snapshot{zwsp}.max.threads`>>
 |`1`
 |Positive integer value that specifies the maximum number of threads used to perform an intial sync of the collections in a replica set. Defaults to 1.
 
