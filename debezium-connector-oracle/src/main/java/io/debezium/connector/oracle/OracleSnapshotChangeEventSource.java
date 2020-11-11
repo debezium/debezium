@@ -187,10 +187,10 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
             return Optional.of(rs.getLong(1));
         }
         catch (SQLException e) {
-            if (e.getMessage().startsWith("ORA-08180")) {
+            if (e.getErrorCode() == 8180) {
                 // DBZ-1446 In this use case we actually do not want to propagate the exception but
                 // rather return an empty optional value allowing the current SCN to take prior.
-                LOGGER.debug("No latest table SCN could be resolved, defaulting to current SCN");
+                LOGGER.info("No latest table SCN could be resolved, defaulting to current SCN");
                 return Optional.empty();
             }
             throw e;
