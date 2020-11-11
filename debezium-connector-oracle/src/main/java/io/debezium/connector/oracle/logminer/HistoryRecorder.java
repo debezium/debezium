@@ -8,10 +8,23 @@ package io.debezium.connector.oracle.logminer;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
 
+import io.debezium.common.annotation.Incubating;
+import io.debezium.jdbc.JdbcConfiguration;
+
 /**
- * Allows the ability to record Oracle LogMiner entries for debugging and playback.
+ * This interface defines how a custom recorder can be supplied to record LogMiner results.
  */
+@Incubating
 public interface HistoryRecorder {
+    /**
+     * Prepares the history recorder
+     *
+     * @param metrics the log miner jmx metrics
+     * @param jdbcConfiguration the jdbc configuration
+     * @param retentionHours the history retention hours
+     */
+    void prepare(LogMinerMetrics metrics, JdbcConfiguration jdbcConfiguration, long retentionHours);
+
     /**
      * Records the LogMiner entry.
      *
@@ -31,4 +44,9 @@ public interface HistoryRecorder {
      * Flushes the LogMiner history captured by the recorder.
      */
     void flush();
+
+    /**
+     * Closes the LogMiner history recorder.
+     */
+    void close();
 }

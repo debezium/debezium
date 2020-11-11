@@ -150,7 +150,7 @@ public class RowMapper {
      * @return the redo SQL
      */
     public static String getSqlRedo(TransactionalBufferMetrics metrics, ResultSet rs, boolean isDml,
-                                    LogMinerHistoryRecorder historyRecorder, BigDecimal scn, String tableName,
+                                    HistoryRecorder historyRecorder, BigDecimal scn, String tableName,
                                     String segOwner, int operationCode, Timestamp changeTime, String txId) {
         int lobLimitCounter = 9; // todo : decide on approach ( XStream chunk option) and Lob limit
         StringBuilder result = new StringBuilder(4000);

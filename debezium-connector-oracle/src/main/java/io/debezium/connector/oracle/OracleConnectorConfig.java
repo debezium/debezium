@@ -20,7 +20,10 @@ import io.debezium.config.Field;
 import io.debezium.config.Field.ValidationOutput;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SourceInfoStructMaker;
+import io.debezium.connector.oracle.logminer.HistoryRecorder;
+import io.debezium.connector.oracle.logminer.NeverHistoryRecorder;
 import io.debezium.connector.oracle.xstream.LcrPosition;
+import io.debezium.connector.oracle.xstream.OracleVersion;
 import io.debezium.document.Document;
 import io.debezium.function.Predicates;
 import io.debezium.heartbeat.Heartbeat;
@@ -34,8 +37,6 @@ import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.history.HistoryRecordComparator;
 import io.debezium.relational.history.KafkaDatabaseHistory;
 import io.debezium.util.Strings;
-
-import oracle.streams.XStreamUtility;
 
 /**
  * Connector configuration for Oracle.
@@ -172,13 +173,13 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withImportance(Importance.HIGH)
             .withDescription("A token to replace on snapshot predicate template");
 
-    public static final Field RECORD_LOG_MINING_HISTORY = Field.create("log.mining.record.history")
-            .withDisplayName("Record Log Mining history")
-            .withType(Type.BOOLEAN)
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.HIGH)
-            .withDefault(false)
-            .withDescription("Flag to record Log Mining history");
+    public static final Field LOG_MINING_HISTORY_RECORDER_CLASS = Field.create("log.mining.history.recorder.class")
+            .withDisplayName("Log Mining History Recorder Class")
+            .withType(Type.STRING)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .withInvisibleRecommender()
+            .withDescription("Allows connector deployment to capture log mining results");
 
     public static final Field LOG_MINING_HISTORY_RETENTION = Field.create("database.history.retention.hours")
             .withDisplayName("Log Mining history retention")
@@ -237,7 +238,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             CONNECTOR_ADAPTER,
             LOG_MINING_STRATEGY,
             SNAPSHOT_ENHANCEMENT_TOKEN,
-            RECORD_LOG_MINING_HISTORY,
+            LOG_MINING_HISTORY_RECORDER_CLASS,
             LOG_MINING_HISTORY_RETENTION,
             RAC_SYSTEM,
             RAC_NODES,
@@ -252,6 +253,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final OracleVersion oracleVersion;
     private final String schemaName;
     private final Tables.ColumnNameFilter columnFilter;
+    private final HistoryRecorder logMiningHistoryRecorder;
 
     public OracleConnectorConfig(Configuration config) {
         super(OracleConnector.class, config, config.getString(SERVER_NAME), new SystemTablesPredicate(), x -> x.schema() + "." + x.table(), true);
@@ -265,10 +267,18 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.schemaName = toUpperCase(config.getString(SCHEMA_NAME));
         String blacklistedColumns = toUpperCase(config.getString(RelationalDatabaseConnectorConfig.COLUMN_BLACKLIST));
         this.columnFilter = getColumnNameFilter(blacklistedColumns);
+        this.logMiningHistoryRecorder = resolveLogMiningHistoryRecorder(config);
     }
 
     private static String toUpperCase(String property) {
         return property == null ? null : property.toUpperCase();
+    }
+
+    private static HistoryRecorder resolveLogMiningHistoryRecorder(Configuration config) {
+        if (!config.hasKey(LOG_MINING_HISTORY_RECORDER_CLASS.name())) {
+            return new NeverHistoryRecorder();
+        }
+        return config.getInstance(LOG_MINING_HISTORY_RECORDER_CLASS, HistoryRecorder.class);
     }
 
     protected Tables.ColumnNameFilter getColumnNameFilter(String excludedColumnPatterns) {
@@ -304,7 +314,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                 CommonConnectorConfig.EVENT_PROCESSING_FAILURE_HANDLING_MODE);
         Field.group(config, "Connector", CommonConnectorConfig.POLL_INTERVAL_MS, CommonConnectorConfig.MAX_BATCH_SIZE,
                 CommonConnectorConfig.MAX_QUEUE_SIZE, CommonConnectorConfig.SNAPSHOT_DELAY_MS, CommonConnectorConfig.SNAPSHOT_FETCH_SIZE,
-                SNAPSHOT_ENHANCEMENT_TOKEN, RECORD_LOG_MINING_HISTORY, LOG_MINING_HISTORY_RETENTION, RAC_SYSTEM, RAC_NODES);
+                SNAPSHOT_ENHANCEMENT_TOKEN, LOG_MINING_HISTORY_RECORDER_CLASS, LOG_MINING_HISTORY_RETENTION, RAC_SYSTEM, RAC_NODES);
 
         return config;
     }
@@ -365,59 +375,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
             }
         };
-    }
-
-    public static enum OracleVersion implements EnumeratedValue {
-
-        V11("11"),
-        V12Plus("12+");
-
-        private final String version;
-
-        private OracleVersion(String version) {
-            this.version = version;
-        }
-
-        @Override
-        public String getValue() {
-            return version;
-        }
-
-        public int getPosVersion() {
-            switch (version) {
-                case "11":
-                    return XStreamUtility.POS_VERSION_V1;
-                case "12+":
-                    return XStreamUtility.POS_VERSION_V2;
-                default:
-                    return XStreamUtility.POS_VERSION_V2;
-            }
-        }
-
-        public static OracleVersion parse(String value) {
-            if (value == null) {
-                return null;
-            }
-            value = value.trim();
-
-            for (OracleVersion option : OracleVersion.values()) {
-                if (option.getValue().equalsIgnoreCase(value)) {
-                    return option;
-                }
-            }
-
-            return null;
-        }
-
-        public static OracleVersion parse(String value, String defaultValue) {
-            OracleVersion option = parse(value);
-
-            if (option == null && defaultValue != null) {
-                option = parse(defaultValue);
-            }
-
-            return option;
-        }
     }
 
     /**
@@ -684,7 +641,14 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
      * @return whether log mining history is recorded
      */
     public Boolean isLogMiningHistoryRecorded() {
-        return getConfig().getBoolean(RECORD_LOG_MINING_HISTORY);
+        return logMiningHistoryRecorder != null;
+    }
+
+    /**
+     * @return the log mining history recorder implementation, may be null
+     */
+    public HistoryRecorder getLogMiningHistoryRecorder() {
+        return logMiningHistoryRecorder;
     }
 
     /**

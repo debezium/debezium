@@ -50,13 +50,13 @@ class LogMinerQueryResultProcessor {
     private long currentOffsetScn = 0;
     private long currentOffsetCommitScn = 0;
     private long stuckScnCounter = 0;
-    private LogMinerHistoryRecorder historyRecorder;
+    private HistoryRecorder historyRecorder;
 
     LogMinerQueryResultProcessor(ChangeEventSource.ChangeEventSourceContext context, LogMinerMetrics metrics,
                                  TransactionalBuffer transactionalBuffer, SimpleDmlParser dmlParser,
                                  OracleOffsetContext offsetContext, OracleDatabaseSchema schema,
                                  EventDispatcher<TableId> dispatcher, TransactionalBufferMetrics transactionalBufferMetrics,
-                                 String catalogName, Clock clock, LogMinerHistoryRecorder historyRecorder) {
+                                 String catalogName, Clock clock, HistoryRecorder historyRecorder) {
         this.context = context;
         this.metrics = metrics;
         this.transactionalBuffer = transactionalBuffer;
