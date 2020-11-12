@@ -18,9 +18,11 @@ import static org.junit.Assert.fail;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -29,10 +31,12 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import org.apache.kafka.common.config.Config;
 import org.apache.kafka.common.config.ConfigDef;
+import org.apache.kafka.common.config.ConfigValue;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.errors.DataException;
@@ -69,6 +73,7 @@ import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.embedded.EmbeddedEngine;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.heartbeat.Heartbeat;
+import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.junit.EqualityCheck;
 import io.debezium.junit.SkipWhenDatabaseVersion;
@@ -150,6 +155,54 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         Config validateConfig = new PostgresConnector().validate(config.asMap());
         validateConfig.configValues().forEach(configValue -> assertTrue("Unexpected error for: " + configValue.name(),
                 configValue.errorMessages().isEmpty()));
+    }
+
+    @Test
+    public void shouldNotStartWithInvalidSlotConfigAndUserRoles() throws Exception {
+        // Start with a clean slate and create database objects
+        TestHelper.dropAllSchemas();
+        TestHelper.dropPublication();
+        TestHelper.dropDefaultReplicationSlot();
+        TestHelper.executeDDL("postgres_create_tables.ddl");
+        TestHelper.execute("CREATE USER badboy WITH PASSWORD 'failing';", "GRANT ALL PRIVILEGES ON DATABASE postgres TO badboy;");
+
+        Configuration config = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
+                .with(PostgresConnectorConfig.SLOT_NAME, ReplicationConnection.Builder.DEFAULT_SLOT_NAME)
+                .build();
+
+        start(PostgresConnector.class, config);
+        waitForStreamingRunning();
+
+        Configuration failingConfig = TestHelper.defaultConfig()
+                .with("name", "failingPGConnector")
+                .with(PostgresConnectorConfig.DATABASE_CONFIG_PREFIX + JdbcConfiguration.USER, "badboy")
+                .with(PostgresConnectorConfig.DATABASE_CONFIG_PREFIX + JdbcConfiguration.PASSWORD, "failing")
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
+                .with(PostgresConnectorConfig.SLOT_NAME, ReplicationConnection.Builder.DEFAULT_SLOT_NAME)
+                .build();
+        List<ConfigValue> validatedConfig = new PostgresConnector().validate(failingConfig.asMap()).configValues();
+        Map<String, ConfigValue> results = validatedConfig.stream().collect(Collectors.toMap(ConfigValue::name, o -> o));
+
+        assertFalse("Expected error on \"slot.name\" property did not happen!", results.get("slot.name").errorMessages().isEmpty());
+        assertFalse("Expected error on \"database.user\" property did not happen!", results.get("database.user").errorMessages().isEmpty());
+        assertEquals(
+                "Postgres roles LOGIN and REPLICATION are not assigned to user: badboy",
+                results.get("database.user").errorMessages().get(0));
+        assertEquals(
+                "Slot name \"" + ReplicationConnection.Builder.DEFAULT_SLOT_NAME
+                        + "\" already exists and is active. Choose a unique name or stop the other process occupying the slot.",
+                results.get("slot.name").errorMessages().get(0));
+
+        final List<String> invalidProperties = Arrays.asList("database.user", "slot.name");
+        validatedConfig.forEach(
+                configValue -> {
+                    if (!invalidProperties.contains(configValue.name())) {
+                        assertTrue("Unexpected error for \"" + configValue.name() + "\": " + configValue.errorMessages(), configValue.errorMessages().isEmpty());
+                    }
+                });
+
+        stopConnector();
     }
 
     @Test
