@@ -561,7 +561,13 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
             .withDescription("The name of the Postgres logical decoding plugin installed on the server. " +
-                    "Supported values are '" + LogicalDecoder.DECODERBUFS.getValue() + "' and '" + LogicalDecoder.WAL2JSON.getValue() + "'. " +
+                    "Supported values are '" + LogicalDecoder.DECODERBUFS.getValue()
+                    + "', '" + LogicalDecoder.WAL2JSON.getValue()
+                    + "', '" + LogicalDecoder.PGOUTPUT.getValue()
+                    + "', '" + LogicalDecoder.WAL2JSON_STREAMING.getValue()
+                    + "', '" + LogicalDecoder.WAL2JSON_RDS.getValue()
+                    + "' and '" + LogicalDecoder.WAL2JSON_RDS_STREAMING.getValue()
+                    + "'. " +
                     "Defaults to '" + LogicalDecoder.DECODERBUFS.getValue() + "'.");
 
     public static final Field SLOT_NAME = Field.create("slot.name")
