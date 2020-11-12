@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.BooleanSupplier;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.IntSupplier;
 import java.util.function.LongSupplier;
@@ -107,6 +108,14 @@ public final class Field {
          */
         public Field[] asArray() {
             return fieldsByName.values().toArray(new Field[fieldsByName.size()]);
+        }
+
+        /**
+         * Call the supplied function for each of this set's fields.
+         * @param consumer the function; may not be null
+         */
+        public void forEachTopLevelField(Consumer<Field> consumer) {
+            fieldsByName.values().forEach(consumer);
         }
 
         /**
@@ -365,14 +374,14 @@ public final class Field {
                 for (int i = 0; i != fields.length; ++i) {
                     Field f = fields[i];
                     configDef.define(f.name(), f.type(), f.defaultValue(), null, f.importance(), f.description(),
-                            groupName, i + 1, f.width(), f.displayName(), null, null);
+                            groupName, i + 1, f.width(), f.displayName());
                 }
             }
             else {
                 for (int i = 0; i != fields.length; ++i) {
                     Field f = fields[i];
                     configDef.define(f.name(), f.type(), f.defaultValue(), null, f.importance(), f.description(),
-                            null, 1, f.width(), f.displayName(), null, null);
+                            null, 1, f.width(), f.displayName());
                 }
             }
         }

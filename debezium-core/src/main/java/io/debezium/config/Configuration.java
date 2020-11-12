@@ -1877,6 +1877,11 @@ public interface Configuration {
             configValuesByFieldName.put(field.name(), new ConfigValue(field.name()));
         });
 
+        // Now validate each top-level field ...
+        fields.forEachTopLevelField(field -> {
+            field.validate(this, fields::fieldWithName, configValuesByFieldName);
+        });
+
         return configValuesByFieldName;
     }
 
