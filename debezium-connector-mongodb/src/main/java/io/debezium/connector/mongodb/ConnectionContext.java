@@ -156,10 +156,6 @@ public class ConnectionContext implements AutoCloseable {
         return config.getInteger(MongoDbConnectorConfig.MAX_FAILED_CONNECTIONS);
     }
 
-    public int maxNumberOfCopyThreads() {
-        return config.getInteger(MongoDbConnectorConfig.MAX_COPY_THREADS);
-    }
-
     /**
      * Obtain a client that will repeated try to obtain a client to the primary node of the replica set, waiting (and using
      * this context's back-off strategy) if required until the primary becomes available.

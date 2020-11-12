@@ -97,7 +97,7 @@
         <version.jmh>1.21</version.jmh>
         <version.mockito>3.0.0</version.mockito>
         <version.awaitility>4.0.1</version.awaitility>
-        <version.testcontainers>1.12.5</version.testcontainers>
+        <version.testcontainers>1.14.3</version.testcontainers>
         <version.jsonpath>2.4.0</version.jsonpath>
 
         <!-- Maven Plugins -->

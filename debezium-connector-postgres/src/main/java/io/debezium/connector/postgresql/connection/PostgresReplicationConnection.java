@@ -272,7 +272,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
      * 4. actually start the streamer
      * <p>
      * This method takes care of all of these and this method queries for a default starting position
-     * If you know where you are starting from you should call {@link #startStreaming(Long)}, this method
+     * If you know where you are starting from you should call {@link #startStreaming(Lsn, WalPositionLocator)}, this method
      * delegates to that method
      *
      * @return

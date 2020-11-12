@@ -273,7 +273,7 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
 
         // go through the list of columns from the message to figure out if any of them are new or have changed their type based
         // on what we have in the table metadata....
-        return columns.stream().filter(message -> {
+        return columns.stream().anyMatch(message -> {
             String columnName = message.getName();
             Column column = table.columnWithName(columnName);
             if (column == null) {
@@ -317,7 +317,7 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
                 }
             }
             return false;
-        }).findFirst().isPresent();
+        });
     }
 
     private boolean hasMissingUntoastedColumns(Table table, List<ReplicationMessage.Column> columns) {

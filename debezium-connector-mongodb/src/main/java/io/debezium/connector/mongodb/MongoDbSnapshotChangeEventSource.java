@@ -346,15 +346,15 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
 
         final List<CollectionId> collections = determineDataCollectionsToBeSnapshotted(primaryClient.collections()).collect(Collectors.toList());
         snapshotProgressListener.monitoredDataCollectionsDetermined(collections);
-        if (connectionContext.maxNumberOfCopyThreads() > 1) {
-            // Since multiple copy threads are to be used, create a thread pool and initiate the copy.
-            // The current thread will wait until the copy threads either have completed or an error occurred.
-            final int numThreads = Math.min(collections.size(), connectionContext.maxNumberOfCopyThreads());
+        if (connectorConfig.getSnapshotMaxThreads() > 1) {
+            // Since multiple snapshot threads are to be used, create a thread pool and initiate the snapshot.
+            // The current thread will wait until the snapshot threads either have completed or an error occurred.
+            final int numThreads = Math.min(collections.size(), connectorConfig.getSnapshotMaxThreads());
             final Queue<CollectionId> collectionsToCopy = new ConcurrentLinkedQueue<>(collections);
 
-            final String copyThreadName = "copy-" + (replicaSet.hasReplicaSetName() ? replicaSet.replicaSetName() : "main");
-            final ExecutorService copyThreads = Threads.newFixedThreadPool(MongoDbConnector.class, taskContext.serverName(),
-                    copyThreadName, connectionContext.maxNumberOfCopyThreads());
+            final String snapshotThreadName = "snapshot-" + (replicaSet.hasReplicaSetName() ? replicaSet.replicaSetName() : "main");
+            final ExecutorService snapshotThreads = Threads.newFixedThreadPool(MongoDbConnector.class, taskContext.serverName(),
+                    snapshotThreadName, connectorConfig.getSnapshotMaxThreads());
             final CountDownLatch latch = new CountDownLatch(numThreads);
             final AtomicBoolean aborted = new AtomicBoolean(false);
             final AtomicInteger threadCounter = new AtomicInteger(0);
@@ -363,8 +363,8 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
                     Strings.join(", ", collections));
 
             for (int i = 0; i < numThreads; ++i) {
-                copyThreads.submit(() -> {
-                    taskContext.configureLoggingContext(replicaSet.replicaSetName() + "-sync" + threadCounter.incrementAndGet());
+                snapshotThreads.submit(() -> {
+                    taskContext.configureLoggingContext(replicaSet.replicaSetName() + "-snapshot" + threadCounter.incrementAndGet());
                     try {
                         CollectionId id = null;
                         while (!aborted.get() && (id = collectionsToCopy.poll()) != null) {
@@ -404,10 +404,10 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
                 aborted.set(true);
             }
 
-            copyThreads.shutdown();
+            snapshotThreads.shutdown();
         }
         else {
-            // Only 1 thread should be used for copying collections.
+            // Only 1 thread should be used for snapshotting collections.
             // In this use case since the replica-set snapshot is already in a separate thread, there is not
             // a real reason to spawn additional threads but instead just run within the current thread.
             for (Iterator<CollectionId> it = collections.iterator(); it.hasNext();) {

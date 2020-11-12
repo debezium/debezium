@@ -130,7 +130,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.COLLECTION_BLACKLIST);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.COLLECTION_EXCLUDE_LIST);
-        assertNoConfigurationErrors(result, MongoDbConnectorConfig.MAX_COPY_THREADS);
+        assertNoConfigurationErrors(result, MongoDbConnectorConfig.SNAPSHOT_MAX_THREADS);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.MAX_QUEUE_SIZE);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.MAX_BATCH_SIZE);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.POLL_INTERVAL_MS);
@@ -167,7 +167,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.COLLECTION_BLACKLIST);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.COLLECTION_EXCLUDE_LIST);
-        assertNoConfigurationErrors(result, MongoDbConnectorConfig.MAX_COPY_THREADS);
+        assertNoConfigurationErrors(result, MongoDbConnectorConfig.SNAPSHOT_MAX_THREADS);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.MAX_QUEUE_SIZE);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.MAX_BATCH_SIZE);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.POLL_INTERVAL_MS);

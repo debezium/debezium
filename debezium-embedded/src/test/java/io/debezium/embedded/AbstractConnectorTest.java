@@ -31,6 +31,7 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import javax.management.InstanceNotFoundException;
+import javax.management.JMException;
 import javax.management.MBeanServer;
 import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
@@ -92,6 +93,7 @@ public abstract class AbstractConnectorTest implements Testing {
     public TestRule skipTestRule = new SkipTestRule();
 
     protected static final Path OFFSET_STORE_PATH = Testing.Files.createTestingPath("file-connector-offsets.txt").toAbsolutePath();
+    private static final String TEST_PROPERTY_PREFIX = "debezium.test.";
 
     private ExecutorService executor;
     protected EmbeddedEngine engine;
@@ -183,7 +185,7 @@ public abstract class AbstractConnectorTest implements Testing {
                 }
             }
             if (callback != null) {
-                callback.accept(engine != null ? engine.isRunning() : false);
+                callback.accept(engine != null && engine.isRunning());
             }
         }
         finally {
@@ -353,7 +355,7 @@ public abstract class AbstractConnectorTest implements Testing {
             engine.run();
         });
         try {
-            if (!latch.await(1000, TimeUnit.SECONDS)) {
+            if (!latch.await(5, TimeUnit.MINUTES)) {
                 // maybe it takes more time to start up, so just log a warning and continue
                 logger.warn("The connector did not finish starting its task(s) or complete in the expected amount of time");
             }
@@ -729,7 +731,7 @@ public abstract class AbstractConnectorTest implements Testing {
                 Testing.print(" - topic:'" + k + "'; # of events = " + v.size());
             });
             Testing.print("Records:");
-            records.forEach(record -> AbstractConnectorTest.this.print(record));
+            records.forEach(AbstractConnectorTest.this::print);
         }
     }
 
@@ -764,7 +766,7 @@ public abstract class AbstractConnectorTest implements Testing {
                 break;
             }
         }
-        return consumedLines.isEmpty() ? false : true;
+        return !consumedLines.isEmpty();
     }
 
     /**
@@ -1024,13 +1026,17 @@ public abstract class AbstractConnectorTest implements Testing {
         Assertions.assertThat(offset.get("transaction_id")).isEqualTo(expectedTxId);
     }
 
+    public static int waitTimeForRecords() {
+        return Integer.parseInt(System.getProperty(TEST_PROPERTY_PREFIX + "records.waittime", "2"));
+    }
+
     public static void waitForSnapshotToBeCompleted(String connector, String server) throws InterruptedException {
         final MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
 
         Awaitility.await()
                 .alias("Streaming was not started on time")
                 .pollInterval(100, TimeUnit.MILLISECONDS)
-                .atMost(60, TimeUnit.SECONDS)
+                .atMost(waitTimeForRecords() * 30, TimeUnit.SECONDS)
                 .ignoreException(InstanceNotFoundException.class)
                 .until(() -> {
                     boolean snapshotCompleted = (boolean) mbeanServer
@@ -1044,20 +1050,28 @@ public abstract class AbstractConnectorTest implements Testing {
         waitForStreamingRunning(connector, server, "streaming");
     }
 
-    public static void waitForStreamingRunning(String connector, String server, String contextName) throws InterruptedException {
-        final MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
-
+    public static void waitForStreamingRunning(String connector, String server, String contextName) {
         Awaitility.await()
                 .alias("Streaming was not started on time")
                 .pollInterval(100, TimeUnit.MILLISECONDS)
-                .atMost(60, TimeUnit.SECONDS)
+                .atMost(waitTimeForRecords() * 30, TimeUnit.SECONDS)
                 .ignoreException(InstanceNotFoundException.class)
-                .until(() -> {
-                    boolean connected = (boolean) mbeanServer
-                            .getAttribute(getStreamingMetricsObjectName(connector, server, contextName), "Connected");
+                .until(() -> isStreamingRunning(connector, server, contextName));
+    }
 
-                    return connected;
-                });
+    public static boolean isStreamingRunning(String connector, String server) {
+        return isStreamingRunning(connector, server, "streaming");
+    }
+
+    public static boolean isStreamingRunning(String connector, String server, String contextName) {
+        final MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
+
+        try {
+            return (boolean) mbeanServer.getAttribute(getStreamingMetricsObjectName(connector, server, contextName), "Connected");
+        }
+        catch (JMException ignored) {
+        }
+        return false;
     }
 
     public static ObjectName getSnapshotMetricsObjectName(String connector, String server) throws MalformedObjectNameException {

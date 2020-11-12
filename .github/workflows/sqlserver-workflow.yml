@@ -1,0 +1,46 @@
+name: Build SQL Server Connector
+
+on:
+  push:
+    paths:
+      - 'support/checkstyle/**'
+      - 'support/ide-configs/**'
+      - 'support/revapi/**'
+      - 'debezium-api/**'
+      - 'debezium-ddl-parser/**'
+      - 'debezium-assembly-descriptors/**'
+      - 'debezium-core/**'
+      - 'debezium-embedded/**'
+      - 'debezium-connector-sqlserver/**'
+      - 'debezium-microbenchmark/**'
+      - 'debezium-e2e-benchmark/**'
+      - 'debezium-scripting/**'
+  pull_request:
+    paths:
+      - 'support/checkstyle/**'
+      - 'support/ide-configs/**'
+      - 'support/revapi/**'
+      - 'debezium-api/**'
+      - 'debezium-ddl-parser/**'
+      - 'debezium-assembly-descriptors/**'
+      - 'debezium-core/**'
+      - 'debezium-embedded/**'
+      - 'debezium-connector-sqlserver/**'
+      - 'debezium-microbenchmark/**'
+      - 'debezium-e2e-benchmark/**'
+      - 'debezium-scripting/**'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Cache local Maven repository
+        uses: actions/cache@v2
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+      - name: Check changes in Debezium Connector SQL Server
+        run: mvn clean install -B -pl debezium-connector-sqlserver -am -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
