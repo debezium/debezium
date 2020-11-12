@@ -4,7 +4,8 @@
 
 -- Create and populate our products using a single insert with many rows
 CREATE TABLE Products (
-  id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  PRIMARY KEY (id),
+  id INTEGER NOT NULL AUTO_INCREMENT,
   name VARCHAR(255) NOT NULL,
   description VARCHAR(512),
   weight FLOAT
