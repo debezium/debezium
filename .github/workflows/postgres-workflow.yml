@@ -46,4 +46,4 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-
       - name: Check changes in Debezium Connector Postgres
-        run: mvn clean install -B -pl debezium-connector-postgres -am -P${{ matrix.postgres-plugin }} -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+        run: mvn clean install -B -pl debezium-connector-postgres -am -P${{ matrix.postgres-plugin }} -Ddebezium.test.records.waittime=5 -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
