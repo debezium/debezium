@@ -1038,12 +1038,8 @@ public abstract class AbstractConnectorTest implements Testing {
                 .pollInterval(100, TimeUnit.MILLISECONDS)
                 .atMost(waitTimeForRecords() * 30, TimeUnit.SECONDS)
                 .ignoreException(InstanceNotFoundException.class)
-                .until(() -> {
-                    boolean snapshotCompleted = (boolean) mbeanServer
-                            .getAttribute(getSnapshotMetricsObjectName(connector, server), "SnapshotCompleted");
-
-                    return snapshotCompleted;
-                });
+                .until(() -> (boolean) mbeanServer
+                        .getAttribute(getSnapshotMetricsObjectName(connector, server), "SnapshotCompleted"));
     }
 
     public static void waitForStreamingRunning(String connector, String server) throws InterruptedException {

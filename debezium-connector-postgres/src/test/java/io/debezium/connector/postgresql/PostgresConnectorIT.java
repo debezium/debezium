@@ -1686,7 +1686,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
                         }
                         return ret;
                     });
-            assertEquals(snapshotCompleteState, Collections.singletonList("complete"));
+            assertEquals(Collections.singletonList("complete"), snapshotCompleteState);
         }
     }
 
