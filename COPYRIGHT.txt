@@ -186,6 +186,7 @@ Robert Hana
 Roman Kuchar
 Sagar Rao
 Sahan Dilshan
+Sergei Morozov
 René Kerner
 Rich O'Connell
 Robert Coup
@@ -215,9 +216,11 @@ Tom Bentley
 Tomaz Lemos Fernandes
 Tony Rizko
 Tova Cohen
+Vadzim Ramanenka
 Vasily Ulianko
 Vedit Firat Arig
 Victor Xiang
+Yiming Liu
 Wang-Yu-Chao
 Wei Wu
 WenZe Hu
@@ -225,4 +228,5 @@ William Pursell
 Willie Cheong
 Wout Scheepers
 Yang Yang
+Zhenhua Wang
 志飞 张
