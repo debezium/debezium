@@ -75,17 +75,19 @@ public class PostgresConnector extends SourceConnector {
 
     @Override
     public Config validate(Map<String, String> connectorConfigs) {
-        PostgresConnectorConfig config = new PostgresConnectorConfig(Configuration.from(connectorConfigs));
+        final PostgresConnectorConfig config = new PostgresConnectorConfig(Configuration.from(connectorConfigs));
 
         // First, validate all of the individual fields, which is easy since don't make any of the fields invisible ...
-        Map<String, ConfigValue> results = config.validate();
+        final Map<String, ConfigValue> results = config.validate();
 
         // Get the config values for each of the connection-related fields ...
-        ConfigValue hostnameValue = results.get(PostgresConnectorConfig.HOSTNAME.name());
-        ConfigValue portValue = results.get(PostgresConnectorConfig.PORT.name());
-        ConfigValue databaseValue = results.get(PostgresConnectorConfig.DATABASE_NAME.name());
-        ConfigValue userValue = results.get(PostgresConnectorConfig.USER.name());
-        ConfigValue passwordValue = results.get(PostgresConnectorConfig.PASSWORD.name());
+        final ConfigValue hostnameResult = results.get(PostgresConnectorConfig.HOSTNAME.name());
+        final ConfigValue portResult = results.get(PostgresConnectorConfig.PORT.name());
+        final ConfigValue databaseNameResult = results.get(PostgresConnectorConfig.DATABASE_NAME.name());
+        final ConfigValue userResult = results.get(PostgresConnectorConfig.USER.name());
+        final ConfigValue passwordResult = results.get(PostgresConnectorConfig.PASSWORD.name());
+        final ConfigValue slotNameResult = results.get(PostgresConnectorConfig.SLOT_NAME.name());
+        final ConfigValue pluginNameResult = results.get(PostgresConnectorConfig.PLUGIN_NAME.name());
         final String passwordStringValue = config.getConfig().getString(PostgresConnectorConfig.PASSWORD);
 
         if (Strings.isNullOrEmpty(passwordStringValue)) {
@@ -93,22 +95,58 @@ public class PostgresConnector extends SourceConnector {
         }
 
         // If there are no errors on any of these ...
-        if (hostnameValue.errorMessages().isEmpty()
-                && portValue.errorMessages().isEmpty()
-                && userValue.errorMessages().isEmpty()
-                && passwordValue.errorMessages().isEmpty()
-                && databaseValue.errorMessages().isEmpty()) {
+        if (hostnameResult.errorMessages().isEmpty()
+                && portResult.errorMessages().isEmpty()
+                && userResult.errorMessages().isEmpty()
+                && passwordResult.errorMessages().isEmpty()
+                && databaseNameResult.errorMessages().isEmpty()
+                && slotNameResult.errorMessages().isEmpty()
+                && pluginNameResult.errorMessages().isEmpty()) {
             // Try to connect to the database ...
             try (PostgresConnection connection = new PostgresConnection(config.jdbcConfig())) {
                 try {
+                    // check connection
                     connection.execute("SELECT version()");
                     logger.info("Successfully tested connection for {} with user '{}'", connection.connectionString(),
                             connection.username());
+                    // check server wal_level
+                    final String walLevel = connection.queryAndMap(
+                            "SHOW wal_level",
+                            connection.singleResultMapper(rs -> rs.getString("wal_level"), "Could not fetch wal_level"));
+                    if (!"logical".equals(walLevel)) {
+                        final String errorMessage = "Postgres server wal_level property must be \"logical\" but is: " + walLevel;
+                        logger.error(errorMessage);
+                        hostnameResult.addErrorMessage(errorMessage);
+                    }
+                    // check user for LOGIN and REPLICATION roles
+                    if (!connection.queryAndMap(
+                            "SELECT rolcanlogin, rolreplication FROM pg_roles WHERE rolname = current_user",
+                            connection.singleResultMapper(rs -> rs.getBoolean("rolcanlogin") && rs.getBoolean("rolreplication"), "Could not fetch roles"))) {
+                        final String errorMessage = "Postgres roles LOGIN and REPLICATION are not assigned to user: " + connection.username();
+                        logger.error(errorMessage);
+                        userResult.addErrorMessage(errorMessage);
+                    }
+                    // check replication slot
+                    final String slotName = config.slotName();
+                    if (connection.prepareQueryAndMap(
+                            "SELECT * FROM pg_replication_slots WHERE slot_name = ?",
+                            statement -> statement.setString(1, slotName),
+                            rs -> {
+                                if (rs.next()) {
+                                    return rs.getBoolean("active");
+                                }
+                                return false;
+                            })) {
+                        final String errorMessage = "Slot name \"" + slotName
+                                + "\" already exists and is active. Choose a unique name or stop the other process occupying the slot.";
+                        logger.error(errorMessage);
+                        slotNameResult.addErrorMessage(errorMessage);
+                    }
                 }
                 catch (SQLException e) {
-                    logger.info("Failed testing connection for {} with user '{}'", connection.connectionString(),
-                            connection.username());
-                    hostnameValue.addErrorMessage("Unable to connect: " + e.getMessage());
+                    logger.error("Failed testing connection for {} with user '{}': {}", connection.connectionString(),
+                            connection.username(), e.getLocalizedMessage());
+                    hostnameResult.addErrorMessage("Error while validating connector config: " + e.getLocalizedMessage());
                 }
             }
         }

@@ -321,15 +321,15 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
 
     @Override
     public Optional<SlotCreationResult> createReplicationSlot() throws SQLException {
-        // note that some of these options are only supported in pg94+, additionally
-        // the options are not yet exported by the jdbc api wrapper, therefore, we just do this ourselves
-        // but eventually this should be moved back to the jdbc API
+        // note that some of these options are only supported in Postgres 9.4+, additionally
+        // the options are not yet exported by the jdbc api wrapper, therefore, we just do
+        // this ourselves but eventually this should be moved back to the jdbc API
         // see https://github.com/pgjdbc/pgjdbc/issues/1305
 
         LOGGER.debug("Creating new replication slot '{}' for plugin '{}'", slotName, plugin);
         String tempPart = "";
-        // Exported snapshots are supported in PostgreSQL 9.4+
-        Boolean canExportSnapshot = pgConnection().haveMinimumServerVersion(ServerVersion.v9_4);
+        // Exported snapshots are supported in Postgres 9.4+
+        boolean canExportSnapshot = pgConnection().haveMinimumServerVersion(ServerVersion.v9_4);
         if ((dropSlotOnClose || exportSnapshot) && !canExportSnapshot) {
             LOGGER.warn("A slot marked as temporary or with an exported snapshot was created, " +
                     "but not on a supported version of Postgres, ignoring!");
@@ -350,8 +350,8 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                     plugin.getPostgresPluginName());
             LOGGER.info("Creating replication slot with command {}", createCommand);
             stmt.execute(createCommand);
-            // when we are in pg94+, we can parse the slot creation info, otherwise, it returns
-            // nothing
+            // when we are in Postgres 9.4+, we can parse the slot creation info,
+            // otherwise, it returns nothing
             if (canExportSnapshot) {
                 this.slotCreationInfo = parseSlotCreation(stmt.getResultSet());
             }
@@ -375,11 +375,11 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                 return new SlotCreationResult(slotName, startPoint, snapName, pluginName);
             }
             else {
-                throw new ConnectException("expected response to create_replication_slot");
+                throw new ConnectException("No replication slot found");
             }
         }
         catch (SQLException ex) {
-            throw new ConnectException("unable to parse create_replication_slot", ex);
+            throw new ConnectException("Unable to parse create_replication_slot response", ex);
         }
     }
 
