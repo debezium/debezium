@@ -1345,7 +1345,7 @@ Only alphanumeric characters and underscores should be used.
 |false
 |A toggle whether to enable Oracle RAC support.
 
-|[[oracle-property-database-rac-nodes-ip]]<<oracle-property-database-rac-nodes-ip, `database.rac.nodes`>>
+|[[oracle-property-database-rac-nodes]]<<oracle-property-database-rac-nodes, `database.rac.nodes`>>
 |
 |A comma-separated list of RAC node host names or addresses.
 This field is only applicable if `database.rac` is set to `true`.
@@ -1486,9 +1486,9 @@ See {link-prefix}:{link-avro-serialization}#avro-naming[Avro naming] for more de
 
 See {link-prefix}:{link-oracle-connector}#oracle-transaction-metadata[Transaction Metadata] for additional details.
 
-|[[oracle-property-log-mining-record-history]]<<oracle-property-log-mining-record-history, `log.mining.record.history`>>
-|`false`
-|Toggle whether log mining results are captured in the log mining history table.
+|[[oracle-property-log-mining-history-recorder-class]]<<oracle-property-log-mining-history-recorder-class, `log.mining.history.recorder.class`>>
+|
+|The fully qualified class name to an implementation of `HistoryReader` to be used during LogMining streaming.
 
 |[[oracle-property-database-history-retention-hours]]<<oracle-property-database-history-retention-hours, `database.history.retention.hours`>>
 |`4`
