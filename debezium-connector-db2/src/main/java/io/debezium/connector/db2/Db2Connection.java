@@ -40,7 +40,7 @@ import io.debezium.util.BoundedConcurrentHashMap;
  */
 public class Db2Connection extends JdbcConnection {
 
-    private static final String GET_DATABASE_NAME = "SELECT CURRENT_SERVER FROM SYSIBM.SYSDUMMY1"; // DB2
+    private static final String GET_DATABASE_NAME = "SELECT CURRENT SERVER FROM SYSIBM.SYSDUMMY1"; // DB2
 
     private static Logger LOGGER = LoggerFactory.getLogger(Db2Connection.class);
 
