@@ -145,8 +145,8 @@ public class PostgresConnector extends SourceConnector {
                 }
                 catch (SQLException e) {
                     logger.error("Failed testing connection for {} with user '{}': {}", connection.connectionString(),
-                            connection.username(), e.getLocalizedMessage());
-                    hostnameResult.addErrorMessage("Error while validating connector config: " + e.getLocalizedMessage());
+                            connection.username(), e.getMessage());
+                    hostnameResult.addErrorMessage("Error while validating connector config: " + e.getMessage());
                 }
             }
         }
