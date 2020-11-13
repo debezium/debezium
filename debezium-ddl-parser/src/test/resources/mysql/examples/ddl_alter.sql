@@ -4,6 +4,7 @@ alter table ship_class add column ship_spec varchar(150) first, add somecol int 
 alter table t3 add column (c2 decimal(10, 2) comment 'comment`' null, c3 enum('abc', 'cba', 'aaa')), add index t3_i1 using btree (c2) comment 'some index';
 alter table t3 add column (c4 decimal(10, 2) comment 'comment`' null), add index t3_i2 using btree (c4) comment 'some index';
 alter table t2 add constraint t2_pk_constraint primary key (1c), alter column `_` set default 1;
+alter table t2 drop constraint t2_pk_constraint;
 alter table ship_class change column somecol col_for_del tinyint first;
 alter table ship_class drop col_for_del;
 alter table t3 drop index t3_i1;
