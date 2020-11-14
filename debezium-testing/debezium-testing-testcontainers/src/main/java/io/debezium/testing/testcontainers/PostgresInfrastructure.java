@@ -15,6 +15,7 @@ import org.testcontainers.containers.Network;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.containers.output.Slf4jLogConsumer;
 import org.testcontainers.lifecycle.Startables;
+import org.testcontainers.utility.DockerImageName;
 
 /**
  * Postgres Testcontainers infrastructure handling.
@@ -33,8 +34,11 @@ public class PostgresInfrastructure {
     private final PostgreSQLContainer<?> postgresContainer;
 
     private PostgresInfrastructure(String postgresImageName) {
+        DockerImageName postgresDockerImageName = DockerImageName.parse(postgresImageName)
+                .asCompatibleSubstituteFor("postgres");
+
         this.postgresImageName = postgresImageName;
-        postgresContainer = new PostgreSQLContainer<>(postgresImageName)
+        postgresContainer = new PostgreSQLContainer<>(postgresDockerImageName)
                 .withNetwork(network)
                 .withDatabaseName("postgres")
                 .withUsername("postgres")
