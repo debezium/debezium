@@ -39,6 +39,7 @@ import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy;
 import org.testcontainers.images.builder.ImageFromDockerfile;
 import org.testcontainers.lifecycle.Startables;
 import org.testcontainers.shaded.com.google.common.collect.ImmutableMap;
+import org.testcontainers.utility.DockerImageName;
 
 import com.jayway.jsonpath.JsonPath;
 
@@ -49,10 +50,13 @@ import com.jayway.jsonpath.JsonPath;
  */
 public class ApicurioRegistryTest {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(ApicurioRegistryTest.class);
+
     private static final String DEBEZIUM_VERSION = "1.2.3.Final";
     private static final String APICURIO_VERSION = "1.3.0.Final";
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(ApicurioRegistryTest.class);
+    private static final DockerImageName POSTGRES_DOCKER_IMAGE_NAME = DockerImageName.parse("debezium/postgres:11")
+            .asCompatibleSubstituteFor("postgres");
 
     private static Network network = Network.newNetwork();
 
@@ -64,7 +68,7 @@ public class ApicurioRegistryTest {
     private static KafkaContainer kafkaContainer = new KafkaContainer()
             .withNetwork(network);
 
-    public static PostgreSQLContainer<?> postgresContainer = new PostgreSQLContainer<>("debezium/postgres:11")
+    public static PostgreSQLContainer<?> postgresContainer = new PostgreSQLContainer<>(POSTGRES_DOCKER_IMAGE_NAME)
             .withNetwork(network)
             .withNetworkAliases("postgres");
 

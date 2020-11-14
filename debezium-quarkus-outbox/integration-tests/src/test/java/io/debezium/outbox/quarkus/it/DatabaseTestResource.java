@@ -11,6 +11,7 @@ import java.util.Map;
 
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
+import org.testcontainers.utility.DockerImageName;
 
 import io.quarkus.test.common.QuarkusTestResourceLifecycleManager;
 
@@ -23,13 +24,15 @@ public class DatabaseTestResource implements QuarkusTestResourceLifecycleManager
     private static final String POSTGRES_PASSWORD = "postgres";
     private static final String POSTGRES_DBNAME = "postgres";
     private static final String POSTGRES_IMAGE = "debezium/postgres:9.6";
+    private static final DockerImageName POSTGRES_DOCKER_IMAGE_NAME = DockerImageName.parse(POSTGRES_IMAGE)
+            .asCompatibleSubstituteFor("postgres");
 
     private static PostgreSQLContainer<?> container;
 
     @Override
     public Map<String, String> start() {
         try {
-            container = new PostgreSQLContainer<>(POSTGRES_IMAGE)
+            container = new PostgreSQLContainer<>(POSTGRES_DOCKER_IMAGE_NAME)
                     .waitingFor(Wait.forLogMessage(".*database system is ready to accept connections.*", 2))
                     .withUsername(POSTGRES_USER)
                     .withPassword(POSTGRES_PASSWORD)
