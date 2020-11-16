@@ -1489,6 +1489,6 @@ See {link-prefix}:{link-oracle-connector}#oracle-transaction-metadata[Transactio
 |[[oracle-property-database-history-retention-hours]]<<oracle-property-database-history-retention-hours, `database.history.retention.hours`>>
 |`4`
 |The number of hours to retain entries in log mining history table.
-This option requires `log.mining.record.history` to be `true` for it to have any impact.
+This option requires must be set to non-zero to have any impact.
 
 |===
