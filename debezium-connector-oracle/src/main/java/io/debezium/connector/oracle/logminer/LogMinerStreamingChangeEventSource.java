@@ -28,7 +28,6 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Duration;
-import java.time.Instant;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
@@ -53,6 +52,7 @@ import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.relational.TableId;
 import io.debezium.util.Clock;
 import io.debezium.util.Metronome;
+import io.debezium.util.Stopwatch;
 
 /**
  * A {@link StreamingChangeEventSource} based on Oracle's LogMiner utility.
@@ -61,6 +61,8 @@ import io.debezium.util.Metronome;
 public class LogMinerStreamingChangeEventSource implements StreamingChangeEventSource {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(LogMinerStreamingChangeEventSource.class);
+
+    private static final int LOG_MINING_VIEW_FETCH_SIZE = 10_000;
 
     private final OracleConnection jdbcConnection;
     private final EventDispatcher<TableId> dispatcher;
@@ -153,6 +155,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                             .prepareStatement(SqlUtils.logMinerContentsQuery(connectorConfig.getSchemaName(), jdbcConnection.username(), schema))) {
                         Set<String> currentRedoLogFiles = getCurrentRedoLogFiles(connection, logMinerMetrics);
 
+                        Stopwatch stopwatch = Stopwatch.reusable();
                         while (context.isRunning()) {
                             endScn = getEndScn(connection, startScn, logMinerMetrics);
                             flushLogWriter(connection, jdbcConfiguration, isRac, racHosts);
@@ -176,12 +179,12 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
 
                             startLogMining(connection, startScn, endScn, strategy, isContinuousMining);
 
-                            Instant startTime = Instant.now();
-                            miningView.setFetchSize(10_000);
+                            stopwatch.start();
+                            miningView.setFetchSize(LOG_MINING_VIEW_FETCH_SIZE);
                             miningView.setLong(1, startScn);
                             miningView.setLong(2, endScn);
                             try (ResultSet rs = miningView.executeQuery()) {
-                                Duration lastDurationOfBatchCapturing = Duration.between(startTime, Instant.now());
+                                Duration lastDurationOfBatchCapturing = stopwatch.stop().durations().statistics().getTotal();
                                 logMinerMetrics.setLastDurationOfBatchCapturing(lastDurationOfBatchCapturing);
                                 processor.processResult(rs);
 
@@ -237,6 +240,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
 
     private void registerLogMinerMetrics() {
         logMinerMetrics = new LogMinerMetrics(taskContext);
+        logMinerMetrics.register(LOGGER);
         if (connectorConfig.isLogMiningHistoryRecorded()) {
             logMinerMetrics.setRecordMiningHistory(true);
         }

@@ -183,7 +183,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
     public static final Field LOG_MINING_HISTORY_RETENTION = Field.create("database.history.retention.hours")
             .withDisplayName("Log Mining history retention")
-            .withType(Type.STRING)
+            .withType(Type.LONG)
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
             .withDefault(4)
@@ -197,7 +197,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withDefault(false)
             .withDescription("Flag to if it is RAC system");
 
-    public static final Field RAC_NODES = Field.create("database.rac.nodes")
+    public static final Field RAC_NODES = Field.create("rac.nodes")
             .withDisplayName("Oracle RAC nodes")
             .withType(Type.STRING)
             .withWidth(Width.SHORT)
@@ -641,7 +641,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
      * @return whether log mining history is recorded
      */
     public Boolean isLogMiningHistoryRecorded() {
-        return logMiningHistoryRecorder != null;
+        return getLogMinerHistoryRetentionHours() > 0;
     }
 
     /**
@@ -662,7 +662,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
      * @return whether Oracle is using RAC
      */
     public Boolean isRacSystem() {
-        return getConfig().getBoolean(RAC_SYSTEM);
+        return !getRacNodes().isEmpty();
     }
 
     /**

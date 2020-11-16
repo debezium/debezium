@@ -328,7 +328,6 @@ public class SqlUtils {
 
         StringJoiner tableNames = new StringJoiner(",");
         tables.forEach(table -> tableNames.add("'" + table + "'"));
-        // todo: discuss with Andrey about partition tables here
         return " AND table_name IN (" + tableNames + ") ";
     }
 }

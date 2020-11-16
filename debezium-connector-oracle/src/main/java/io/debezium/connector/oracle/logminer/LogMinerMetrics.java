@@ -25,7 +25,6 @@ import io.debezium.metrics.Metrics;
 public class LogMinerMetrics extends Metrics implements LogMinerMetricsMXBean {
 
     public final static int DEFAULT_BATCH_SIZE = 20_000;
-    public final static int RECORD_HISTORY_QUEUE_CAPACITY = 10_000;
 
     private final static int MAX_SLEEP_TIME = 3_000;
     private final static int DEFAULT_SLEEP_TIME = 1_000;
@@ -57,10 +56,6 @@ public class LogMinerMetrics extends Metrics implements LogMinerMetricsMXBean {
     private final AtomicInteger millisecondToSleepBetweenMiningQuery = new AtomicInteger();
 
     private final AtomicBoolean recordMiningHistory = new AtomicBoolean();
-    private final AtomicInteger tempHistoryTableRecordsCounter = new AtomicInteger();
-    private final AtomicInteger currentHistoryTableRecordsCounter = new AtomicInteger();
-    private final AtomicLong totalHistoryTableRecordsCounter = new AtomicLong();
-    private final AtomicInteger recordHistoryQueueCapacity = new AtomicInteger();
     private final AtomicInteger hoursToKeepTransaction = new AtomicInteger();
     private final AtomicLong networkConnectionProblemsCounter = new AtomicLong();
 
@@ -72,11 +67,9 @@ public class LogMinerMetrics extends Metrics implements LogMinerMetricsMXBean {
         // millisecondToSleepBetweenMiningQuery.set(DEFAULT_SLEEP_TIME);
 
         currentScn.set(-1);
-        recordHistoryQueueCapacity.set(RECORD_HISTORY_QUEUE_CAPACITY);
         currentLogFileName = new AtomicReference<>();
         redoLogStatus = new AtomicReference<>();
         switchCounter.set(0);
-        totalHistoryTableRecordsCounter.set(0);
 
         reset();
     }
@@ -89,8 +82,6 @@ public class LogMinerMetrics extends Metrics implements LogMinerMetricsMXBean {
         maxDurationOfFetchingQuery.set(Duration.ZERO);
         lastDurationOfFetchingQuery.set(Duration.ZERO);
         logMinerQueryCount.set(0);
-        tempHistoryTableRecordsCounter.set(0);
-        currentHistoryTableRecordsCounter.set(0);
         hoursToKeepTransaction.set(DEFAULT_HOURS_TO_KEEP_TRANSACTION);
         maxBatchProcessingDuration.set(Duration.ZERO);
         totalDurationOfFetchingQuery.set(Duration.ZERO);
@@ -146,30 +137,6 @@ public class LogMinerMetrics extends Metrics implements LogMinerMetricsMXBean {
         if (getLastBatchProcessingThroughput() > maxBatchProcessingThroughput.get()) {
             maxBatchProcessingThroughput.set(getLastBatchProcessingThroughput());
         }
-    }
-
-    public void incrementTempHistoryTableRecordsCounter() {
-        tempHistoryTableRecordsCounter.incrementAndGet();
-    }
-
-    public void incrementCurrentHistoryTableRecordsCounter() {
-        currentHistoryTableRecordsCounter.getAndAdd(tempHistoryTableRecordsCounter.get());
-    }
-
-    public void incrementTotalHistoryTableRecordsCounter() {
-        totalHistoryTableRecordsCounter.getAndAdd(currentHistoryTableRecordsCounter.get());
-    }
-
-    public void setRecordHistoryQueueCapacity(int capacity) {
-        recordHistoryQueueCapacity.set(capacity);
-    }
-
-    public void resetTempHistoryTableRecordsCounter() {
-        tempHistoryTableRecordsCounter.set(0);
-    }
-
-    public void resetCurrentHistoryTableRecordsCounter() {
-        currentHistoryTableRecordsCounter.set(0);
     }
 
     public void incrementNetworkConnectionProblemsCounter() {
@@ -264,34 +231,6 @@ public class LogMinerMetrics extends Metrics implements LogMinerMetricsMXBean {
     }
 
     @Override
-    public int getTempHistoryTableRecordsCounter() {
-        return tempHistoryTableRecordsCounter.get();
-    }
-
-    @Override
-    public int getCurrentHistoryTableRecordsCounter() {
-        return currentHistoryTableRecordsCounter.get();
-    }
-
-    @Override
-    public long getTotalHistoryTableRecordsCounter() {
-        if (totalHistoryTableRecordsCounter.get() == 0) {
-            return currentHistoryTableRecordsCounter.get();
-        }
-        return totalHistoryTableRecordsCounter.get();
-    }
-
-    @Override
-    public int getRecordHistoryQueueCapacity() {
-        return recordHistoryQueueCapacity.get();
-    }
-
-    @Override
-    public int getMiningHistoryQueueLimit() {
-        return RECORD_HISTORY_QUEUE_CAPACITY;
-    }
-
-    @Override
     public int getHoursToKeepTransactionInBuffer() {
         return hoursToKeepTransaction.get();
     }
@@ -374,10 +313,6 @@ public class LogMinerMetrics extends Metrics implements LogMinerMetricsMXBean {
                 ", batchSize=" + batchSize +
                 ", millisecondToSleepBetweenMiningQuery=" + millisecondToSleepBetweenMiningQuery +
                 ", recordMiningHistory=" + recordMiningHistory +
-                ", tempHistoryTableRecordsCounter=" + tempHistoryTableRecordsCounter +
-                ", currentHistoryTableRecordsCounter=" + currentHistoryTableRecordsCounter +
-                ", totalHistoryTableRecordsCounter=" + totalHistoryTableRecordsCounter +
-                ", recordHistoryQueueCapacity=" + recordHistoryQueueCapacity +
                 ", hoursToKeepTransaction=" + hoursToKeepTransaction +
                 ", networkConnectionProblemsCounter" + networkConnectionProblemsCounter +
                 '}';

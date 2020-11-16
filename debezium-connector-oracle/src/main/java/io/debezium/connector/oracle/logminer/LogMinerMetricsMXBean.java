@@ -155,31 +155,6 @@ public interface LogMinerMetricsMXBean {
     // *** following metrics work if RecordMiningHistory is true.
 
     /**
-     * @return the number of records buffered by the {@link HistoryRecorder}
-     */
-    int getTempHistoryTableRecordsCounter();
-
-    /**
-     * @return the number of records flushed and maintained by the {@link HistoryRecorder}
-     */
-    int getCurrentHistoryTableRecordsCounter();
-
-    /**
-     * @return the number of records written in total by the {@link HistoryRecorder}
-     */
-    long getTotalHistoryTableRecordsCounter();
-
-    /**
-     * @return the remaining capacity of the {@link HistoryRecorder} buffer
-     */
-    int getRecordHistoryQueueCapacity();
-
-    /**
-     * @return the maximum capacity of the {@link HistoryRecorder} buffer
-     */
-    int getMiningHistoryQueueLimit();
-
-    /**
      * @return the number of hours to keep transaction in buffer before abandoning
      */
     int getHoursToKeepTransactionInBuffer();

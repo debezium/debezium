@@ -5,7 +5,6 @@
  */
 package io.debezium.connector.oracle.logminer;
 
-import static io.debezium.connector.oracle.logminer.LogMinerMetrics.RECORD_HISTORY_QUEUE_CAPACITY;
 import static org.fest.assertions.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
@@ -121,40 +120,11 @@ public class LogMinerMetricsTest {
         metrics.setRecordMiningHistory(true);
         assertThat(metrics.getRecordMiningHistory()).isTrue();
 
-        assertThat(metrics.getRecordHistoryQueueCapacity()).isEqualTo(RECORD_HISTORY_QUEUE_CAPACITY);
-        metrics.setRecordHistoryQueueCapacity(100);
-        assertThat(metrics.getRecordHistoryQueueCapacity()).isEqualTo(100);
-
-        assertThat(metrics.getTempHistoryTableRecordsCounter()).isEqualTo(0);
-        metrics.incrementTempHistoryTableRecordsCounter();
-        metrics.incrementTempHistoryTableRecordsCounter();
-        metrics.incrementTempHistoryTableRecordsCounter();
-        assertThat(metrics.getTempHistoryTableRecordsCounter()).isEqualTo(3);
-
-        assertThat(metrics.getTotalHistoryTableRecordsCounter()).isEqualTo(0);
-        assertThat(metrics.getCurrentHistoryTableRecordsCounter()).isEqualTo(0);
-        metrics.incrementCurrentHistoryTableRecordsCounter();
-        assertThat(metrics.getCurrentHistoryTableRecordsCounter()).isEqualTo(3);
-
-        metrics.incrementTotalHistoryTableRecordsCounter();
-        assertThat(metrics.getTotalHistoryTableRecordsCounter()).isEqualTo(3);
-
         metrics.setHoursToKeepTransactionInBuffer(3);
         assertThat(metrics.getHoursToKeepTransactionInBuffer()).isEqualTo(3);
 
         metrics.incrementNetworkConnectionProblemsCounter();
         assertThat(metrics.getNetworkConnectionProblemsCounter()).isEqualTo(1);
-
-        assertThat(metrics.getMiningHistoryQueueLimit()).isEqualTo(RECORD_HISTORY_QUEUE_CAPACITY);
-
-        metrics.resetTempHistoryTableRecordsCounter();
-        metrics.incrementTempHistoryTableRecordsCounter();
-        assertThat(metrics.getTempHistoryTableRecordsCounter()).isEqualTo(1);
-        metrics.resetTempHistoryTableRecordsCounter();
-        assertThat(metrics.getTempHistoryTableRecordsCounter()).isEqualTo(0);
-
-        metrics.resetCurrentHistoryTableRecordsCounter();
-        assertThat(metrics.getCurrentHistoryTableRecordsCounter()).isEqualTo(0);
 
         metrics.setBatchSize(5000);
         metrics.changeBatchSize(true);

@@ -15,7 +15,7 @@ import io.debezium.jdbc.JdbcConfiguration;
  * This interface defines how a custom recorder can be supplied to record LogMiner results.
  */
 @Incubating
-public interface HistoryRecorder {
+public interface HistoryRecorder extends AutoCloseable {
     /**
      * Prepares the history recorder
      *
@@ -44,9 +44,4 @@ public interface HistoryRecorder {
      * Flushes the LogMiner history captured by the recorder.
      */
     void flush();
-
-    /**
-     * Closes the LogMiner history recorder.
-     */
-    void close();
 }

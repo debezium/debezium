@@ -61,7 +61,7 @@ public class LogMinerHelper {
                     conn.close();
                 }
                 catch (SQLException e) {
-                    LOGGER.warn("Cannot close exist RAC flush connection", e);
+                    LOGGER.warn("Cannot close existing RAC flush connection", e);
                 }
             }
         }
