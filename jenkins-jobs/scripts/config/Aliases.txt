@@ -52,3 +52,8 @@ victorxiang30,Victor Xiang
 AndreyIg,Andrey Ignatenko
 eric-weaver,Eric Weaver
 karamel,Michael Wang
+alisator,Alisa Houskova
+ani-sha,Anisha Mohanty
+vanhoale,Hoa Le
+mans2singh,Mans Singh
+Hussain,Mohamed Pudukulathan

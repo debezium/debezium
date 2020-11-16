@@ -2,6 +2,64 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 1.4.0.Alpha2
+November 16th 2020 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12351542)
+
+### New features since 1.4.0.Alpha1
+
+* Move testcontainers changes on DebeziumContainer from UI PoC backend to Debezium main repo [DBZ-2602](https://issues.jboss.org/browse/DBZ-2602)
+* Add ability to map new name for the fields and headers [DBZ-2606](https://issues.jboss.org/browse/DBZ-2606)
+* Add close call to the Snapshotter interface [DBZ-2608](https://issues.jboss.org/browse/DBZ-2608)
+* Overriding Character Set Mapping [DBZ-2673](https://issues.jboss.org/browse/DBZ-2673)
+* Support PostgreSQL connector retry when database is restarted [DBZ-2685](https://issues.jboss.org/browse/DBZ-2685)
+* Cassandra connector documentation typos [DBZ-2701](https://issues.jboss.org/browse/DBZ-2701)
+* Fix typo in converters doc [DBZ-2717](https://issues.jboss.org/browse/DBZ-2717)
+* Add tests for DBZ-2617: PG connector does not enter FAILED state on failing heartbeats [DBZ-2724](https://issues.jboss.org/browse/DBZ-2724)
+* DBZ-2662 Control ChangeEventQueue by the size in bytes [DBZ-2662](https://issues.jboss.org/browse/DBZ-2662)
+
+
+### Breaking changes since 1.4.0.Alpha1
+
+None
+
+
+### Fixes since 1.4.0.Alpha1
+
+* Oracle throw "no snapshot found based on specified time" when running flashback query [DBZ-1446](https://issues.jboss.org/browse/DBZ-1446)
+* Exception when PK definition precedes column definition [DBZ-2580](https://issues.jboss.org/browse/DBZ-2580)
+* Patroni can't stop PostgreSQL when Debezium is streaming [DBZ-2617](https://issues.jboss.org/browse/DBZ-2617)
+* ChangeRecord informations don't connect with the TableSchema [DBZ-2679](https://issues.jboss.org/browse/DBZ-2679)
+* MySQL connector fails on a zero date [DBZ-2682](https://issues.jboss.org/browse/DBZ-2682)
+* Oracle LogMiner doesn't support partition tables [DBZ-2683](https://issues.jboss.org/browse/DBZ-2683)
+* DB2 doesn't start reliably in OCP  [DBZ-2693](https://issues.jboss.org/browse/DBZ-2693)
+* Dropped columns cause NPE in SqlServerConnector [DBZ-2716](https://issues.jboss.org/browse/DBZ-2716)
+* Timestamp default value in 'yyyy-mm-dd' format fails MySQL connector [DBZ-2726](https://issues.jboss.org/browse/DBZ-2726)
+* Connection timeout on write should retry [DBZ-2727](https://issues.jboss.org/browse/DBZ-2727)
+* No viable alternative at input error on "min" column [DBZ-2738](https://issues.jboss.org/browse/DBZ-2738)
+* SQLServer CI error in SqlServerConnectorIT.whenCaptureInstanceExcludesColumnsAndColumnsRenamedExpectNoErrors:1473 [DBZ-2747](https://issues.jboss.org/browse/DBZ-2747)
+* debezium-connector-db2: DB2 SQL Error: SQLCODE=-206 on DB2 for z/OS [DBZ-2755](https://issues.jboss.org/browse/DBZ-2755)
+* no viable alternative at input 'alter table `order` drop CONSTRAINT' [DBZ-2760](https://issues.jboss.org/browse/DBZ-2760)
+* Tests are failing on macos [DBZ-2762](https://issues.jboss.org/browse/DBZ-2762)
+
+
+### Other changes since 1.4.0.Alpha1
+
+* Move CI to Github Actions for all repositories [DBZ-1720](https://issues.jboss.org/browse/DBZ-1720)
+* Privileges missing from setup in documentation - Oracle LogMiner connector [DBZ-2628](https://issues.jboss.org/browse/DBZ-2628)
+* Add validation that replication slot doesn't exist [DBZ-2637](https://issues.jboss.org/browse/DBZ-2637)
+* Update OpenJDK Quality Outreach jobs [DBZ-2638](https://issues.jboss.org/browse/DBZ-2638)
+* Re-unify monitoring content in the operations/monitoring.adoc file [DBZ-2659](https://issues.jboss.org/browse/DBZ-2659)
+* Pull oracle specific changes for reading table column metadata into debezium-core [DBZ-2690](https://issues.jboss.org/browse/DBZ-2690)
+* Intermittent test failure on CI - PostgresConnectorIT#shouldRegularlyFlushLsnWithTxMonitoring [DBZ-2704](https://issues.jboss.org/browse/DBZ-2704)
+* Topic routing doc formatting fix [DBZ-2708](https://issues.jboss.org/browse/DBZ-2708)
+* Re-unify logging content in the operations/logging.adoc file [DBZ-2721](https://issues.jboss.org/browse/DBZ-2721)
+* Incorporate Oracle LogMiner implementation updates [DBZ-2729](https://issues.jboss.org/browse/DBZ-2729)
+* Upgrade Vitess docker image to Vitess 8.0.0 [DBZ-2749](https://issues.jboss.org/browse/DBZ-2749)
+* Intermittent SQL Server test failure on CI - SqlServerConnectorIT [DBZ-2625](https://issues.jboss.org/browse/DBZ-2625)
+* Change initial.sync.max.threads to snapshot.max.threads [DBZ-2742](https://issues.jboss.org/browse/DBZ-2742)
+
+
+
 ## 1.4.0.Alpha1
 October 22nd, 2020 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12350728)
 

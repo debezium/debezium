@@ -10,6 +10,7 @@ Alex Soto
 Alexander Iskuskov
 Alexander Kovryga
 Alexander Schwartz
+Alisa Houskova
 Amit Sela
 Anders Engström
 Andrea Cosentino
@@ -20,6 +21,7 @@ Andrew Tongen
 Andrey Ignatenko
 Andrey Pustovetov
 Andy Teijelo
+Anisha Mohanty
 Anton Kondratev
 Anton Martynov
 Arik Cohen
@@ -28,6 +30,7 @@ artiship
 Ashhar Hasan
 Attila Szucs
 Aykut Farsak
+Babur Duisenov
 Balázs Németh
 Barry LaFond
 Bartosz Miedlar
@@ -91,6 +94,7 @@ Grzegorz Kołakowski
 Jan Hendrik Dolling
 Hans-Peter Grahsl
 Henryk Konsek
+Hoa Le
 Horia Chiorean
 Hossein Torabi
 Ian Axelrod
@@ -145,6 +149,7 @@ Lukas Krejci
 Lukasz Korzeniowski
 lyidataminr
 Maciej Bryński
+Mans Singh
 MaoXiang Pan
 Marc Zbyszynski
 Mario Mueller
@@ -159,6 +164,7 @@ Michael Wang
 Mickaël Isaert
 Mike Graham
 Mincong Huang
+Mohamed Pudukulathan
 Moira Tagle
 Muhammad Sufyian
 Nathan Mills
@@ -221,6 +227,7 @@ Tomaz Lemos Fernandes
 Tony Rizko
 Tova Cohen
 Travis Elnicky
+Vadzim Ramanenka
 Vasily Ulianko
 Vedit Firat Arig
 Victor Xiang
