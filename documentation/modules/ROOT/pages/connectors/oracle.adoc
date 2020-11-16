@@ -1341,14 +1341,10 @@ Only alphanumeric characters and underscores should be used.
 `xstream` uses the Oracle XStreams API.
 `logminer` uses the native Oracle LogMiner API.
 
-|[[oracle-property-database-rac]]<<oracle-property-database-rac, `database.rac`>>
-|false
-|A toggle whether to enable Oracle RAC support.
-
-|[[oracle-property-database-rac-nodes]]<<oracle-property-database-rac-nodes, `database.rac.nodes`>>
+|[[oracle-property-rac-nodes]]<<oracle-property-rac-nodes, `rac.nodes`>>
 |
 |A comma-separated list of RAC node host names or addresses.
-This field is only applicable if `database.rac` is set to `true`.
+This field is required to enable Oracle RAC support.
 
 |[[oracle-property-database-history-kafka-topic]]<<oracle-property-database-history-kafka-topic, `database.history.kafka.topic`>>
 |
