@@ -23,6 +23,7 @@ import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
+import io.debezium.util.Testing;
 
 /**
  * @author Chris Cranford
@@ -184,7 +185,7 @@ public class PostgresMetricsIT extends AbstractRecordsProducerTest {
         Thread.sleep(Duration.ofSeconds(2).toMillis());
 
         // Check streaming metrics
-        System.out.println("****ASSERTIONS****");
+        Testing.print("****ASSERTIONS****");
         Assertions.assertThat(mBeanServer.getAttribute(getStreamingMetricsObjectName(), "Connected")).isEqualTo(true);
         Assertions.assertThat(mBeanServer.getAttribute(getStreamingMetricsObjectName(), "TotalNumberOfEventsSeen")).isEqualTo(2L);
         // todo: this does not seem to be populated?
@@ -213,7 +214,7 @@ public class PostgresMetricsIT extends AbstractRecordsProducerTest {
         Awaitility.await()
                 .alias("MBean attribute was not an expected value")
                 .pollInterval(100, TimeUnit.MILLISECONDS)
-                .atMost(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS)
+                .atMost(TestHelper.waitTimeForRecords() * 5, TimeUnit.SECONDS)
                 .ignoreException(InstanceNotFoundException.class)
                 .until(() -> {
                     long value = (long) mBeanServer.getAttribute(getStreamingMetricsObjectName(), "CurrentQueueSizeInBytes");
@@ -223,7 +224,7 @@ public class PostgresMetricsIT extends AbstractRecordsProducerTest {
         Awaitility.await()
                 .alias("MBean attribute was not an expected value")
                 .pollInterval(100, TimeUnit.MILLISECONDS)
-                .atMost(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS)
+                .atMost(TestHelper.waitTimeForRecords() * 5, TimeUnit.SECONDS)
                 .ignoreException(InstanceNotFoundException.class)
                 .until(() -> {
                     int value = (int) mBeanServer.getAttribute(getStreamingMetricsObjectName(), "QueueRemainingCapacity");
@@ -259,7 +260,7 @@ public class PostgresMetricsIT extends AbstractRecordsProducerTest {
         Awaitility.await()
                 .alias("MBean attribute was not an expected value")
                 .pollInterval(100, TimeUnit.MILLISECONDS)
-                .atMost(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS)
+                .atMost(TestHelper.waitTimeForRecords() * 5, TimeUnit.SECONDS)
                 .ignoreException(InstanceNotFoundException.class)
                 .until(() -> {
                     long value = (long) mBeanServer.getAttribute(getStreamingMetricsObjectName(), "CurrentQueueSizeInBytes");
@@ -269,7 +270,7 @@ public class PostgresMetricsIT extends AbstractRecordsProducerTest {
         Awaitility.await()
                 .alias("MBean attribute was not an expected value")
                 .pollInterval(100, TimeUnit.MILLISECONDS)
-                .atMost(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS)
+                .atMost(TestHelper.waitTimeForRecords() * 5, TimeUnit.SECONDS)
                 .ignoreException(InstanceNotFoundException.class)
                 .until(() -> {
                     int value = (int) mBeanServer.getAttribute(getStreamingMetricsObjectName(), "QueueRemainingCapacity");
