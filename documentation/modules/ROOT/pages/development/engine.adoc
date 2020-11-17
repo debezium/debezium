@@ -109,8 +109,6 @@ Here's an example of code that configures and runs an embedded {link-prefix}:{li
                 System.out.println(record);
             }).build()
         ) {
-        Executors.newSingleThreadExecutor().execute(engine);
-    
         // Run the engine asynchronously ...
         ExecutorService executor = Executors.newSingleThreadExecutor();
         executor.execute(engine);
