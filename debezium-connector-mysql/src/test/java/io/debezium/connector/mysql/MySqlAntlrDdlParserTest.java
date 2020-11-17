@@ -2378,6 +2378,18 @@ public class MySqlAntlrDdlParserTest {
     }
 
     @Test
+    @FixFor("DBZ-2743")
+    public void parseRenameUserStatements() {
+        String ddl = "RENAME USER jeffrey@localhost TO jeff@127.0.0.2;"
+                + "RENAME USER JeffRey@127.0.0.1 TO JeffRey2@127.0.0.2;"
+                + "RENAME USER JeffRey@127.0.0.1 TO JeffRey2@'test.localdomain';"
+                + "RENAME USER JeffRey@2001:db8:3c4d:15::1a2f:1a2b TO JeffRey2@2001:0db8:3c4d:0015:0000:0000:1a2f:1a2b;"
+                + "RENAME USER JeffRey@127.0.0.1 TO JeffRey2@::ffff:192.0.2.128;";
+        parser.parse(ddl, tables);
+        assertThat(tables.size()).isEqualTo(0);
+    }
+
+    @Test
     @FixFor("DBZ-530")
     public void parsePartitionReorganize() {
         String ddl = "CREATE TABLE flat_view_request_log (id INT NOT NULL, myvalue INT DEFAULT -10, PRIMARY KEY (`id`));"

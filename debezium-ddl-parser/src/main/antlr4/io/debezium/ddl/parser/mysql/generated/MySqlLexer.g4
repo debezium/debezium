@@ -1215,12 +1215,161 @@ ID:                                  ID_LITERAL;
 REVERSE_QUOTE_ID:                    '`' ~'`'+ '`';
 STRING_USER_NAME:                    (
                                        SQUOTA_STRING | DQUOTA_STRING 
-                                       | BQUOTA_STRING | ID_LITERAL
+                                       | BQUOTA_STRING | ID_LITERAL | ID_LITERAL_LOWERCASE
                                      ) '@' 
                                      (
                                        SQUOTA_STRING | DQUOTA_STRING 
-                                       | BQUOTA_STRING | ID_LITERAL
+                                       | BQUOTA_STRING | ID_LITERAL | IP_LITERAL
                                      );
+// DBZ-2743
+ID_LITERAL_LOWERCASE:       [a-z_$0-9]*?[a-z_$]+?[a-z_$0-9]*;
+
+IP_LITERAL: IP_V6_ADDRESS | IP_V4_ADDRESS
+   ;
+
+/// IPv6address    =                            6( H16 ":" ) LS32///                /                       "::" 5( H16 ":" ) LS32///                / [               H16 ] "::" 4( H16 ":" ) LS32///                / [ *1( H16 ":" ) H16 ] "::" 3( H16 ":" ) LS32///                / [ *2( H16 ":" ) H16 ] "::" 2( H16 ":" ) LS32///                / [ *3( H16 ":" ) H16 ] "::"    H16 ":"   LS32///                / [ *4( H16 ":" ) H16 ] "::"              LS32///                / [ *5( H16 ":" ) H16 ] "::"              H16///                / [ *6( H16 ":" ) H16 ] "::"
+IP_V6_ADDRESS
+   : H16 ':' H16 ':' H16 ':' H16 ':' H16 ':' H16 ':' LS32
+   | '::' H16 ':' H16 ':' H16 ':' H16 ':' H16 ':' LS32
+   | H16? '::' H16 ':' H16 ':' H16 ':' H16 ':' LS32
+   | ((H16 ':')? H16)? '::' H16 ':' H16 ':' H16 ':' LS32
+   | (((H16 ':')? H16 ':')? H16)? '::' H16 ':' H16 ':' LS32
+   | ((((H16 ':')? H16 ':')? H16 ':')? H16)? '::' H16 ':' LS32
+   | (((((H16 ':')? H16 ':')? H16 ':')? H16 ':')? H16)? '::' LS32
+   | ((((((H16 ':')? H16 ':')? H16 ':')? H16 ':')? H16 ':')? H16)? '::' H16
+   | (((((((H16 ':')? H16 ':')? H16 ':')? H16 ':')? H16 ':')? H16 ':')? H16)? '::'
+   ;
+
+/// H16            = 1*4HEXDIG
+H16
+   : HEXDIG HEXDIG HEXDIG HEXDIG
+   | HEXDIG HEXDIG HEXDIG
+   | HEXDIG HEXDIG
+   | HEXDIG
+   ;
+
+/// LS32           = ( H16 ":" H16 ) / IPv4address
+LS32
+   : H16 ':' H16
+   | IP_V4_ADDRESS
+   ;
+
+HEXDIG
+   : DIGIT
+   | (A | B | C | D | E | F)
+   ;
+
+/// IPv4address    = dec-octet "." dec-octet "." dec-octet "." dec-octet
+IP_V4_ADDRESS
+   : DEC_OCTET '.' DEC_OCTET '.' DEC_OCTET '.' DEC_OCTET
+   ;
+
+/// dec-octet      = DIGIT                 ; 0-9///                / %x31-39 DIGIT         ; 10-99///                / "1" 2DIGIT            ; 100-199///                / "2" %x30-34 DIGIT     ; 200-249///                / "25" %x30-35          ; 250-255
+DEC_OCTET
+   : D1 DIGIT DIGIT
+   | D2 (D0 | D1 | D2 | D3 | D4) DIGIT
+   | D2 D5 (D0 | D1 | D2 | D3 | D4 | D5)
+   | NON_ZERO_DIGIT DIGIT
+   | DIGIT
+   ;
+
+DIGIT
+   : D0
+   | NON_ZERO_DIGIT
+   ;
+
+NON_ZERO_DIGIT
+   : D1
+   | D2
+   | D3
+   | D4
+   | D5
+   | D6
+   | D7
+   | D8
+   | D9
+   ;
+D0
+   : ZERO_DECIMAL
+   ;
+
+
+D1
+   : ONE_DECIMAL
+   ;
+
+
+D2
+   : TWO_DECIMAL
+   ;
+
+
+D3
+   : '3'
+   ;
+
+
+D4
+   : '4'
+   ;
+
+
+D5
+   : '5'
+   ;
+
+
+D6
+   : '6'
+   ;
+
+
+D7
+   : '7'
+   ;
+
+
+D8
+   : '8'
+   ;
+
+
+D9
+   : '9'
+   ;
+
+
+A
+   : [aA]
+   ;
+
+
+B
+   : [bB]
+   ;
+
+
+C
+   : [cC]
+   ;
+
+
+D
+   : [dD]
+   ;
+
+
+E
+   : [eE]
+   ;
+
+
+F
+   : [fF]
+   ;
+
+// END DBZ-2743
+
 LOCAL_ID:                            '@'
                                 (
                                   [A-Z0-9._$]+ 
