@@ -48,7 +48,7 @@ which is running on the same Docker host.
 ifdef::community[]
 [NOTE]
 ====
-For Podman use the below command
+If you use Podman, run the following command:
 [source,shell,options="nowrap",subs="+attributes"]
 ----
 $ sudo podman run -it --rm --name kafka --pod dbz debezium/kafka:{debezium-docker-label}
