@@ -34,7 +34,7 @@ which means the terminal's standard input and output are attached to the contain
 ifdef::community[]
 [NOTE]
 ====
-For Podman use the below command
+If you use Podman, run the following command:
 [source,shell,options="nowrap",subs="+attributes"]
 ----
 $ sudo podman run -it --rm --name mysql --pod dbz -e MYSQL_ROOT_PASSWORD=debezium -e MYSQL_USER=mysqluser -e MYSQL_PASSWORD=mysqlpw debezium/example-mysql:{debezium-docker-label}

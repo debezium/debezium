@@ -25,7 +25,7 @@ Because you used the `--rm` option when you started them, Docker also removes th
 ifdef::community[]
 [NOTE]
 ====
-For Podman use the below command
+If you use Podman, run the following command:
 [source,shell,options="nowrap",subs="+attributes"]
 ----
 $ sudo podman pod kill dbz
