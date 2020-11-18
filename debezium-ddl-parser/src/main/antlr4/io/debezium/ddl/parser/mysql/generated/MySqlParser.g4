@@ -2071,7 +2071,7 @@ dataType
       )
       lengthOneDimension? BINARY?
       ((CHARACTER SET | CHARSET) charsetName)?
-      (COLLATE collationName)?                                      #stringDataType
+      (COLLATE collationName | BINARY)?                             #stringDataType
     | NATIONAL typeName=(VARCHAR | CHARACTER)
       lengthOneDimension? BINARY?                                   #nationalStringDataType
     | NCHAR typeName=VARCHAR
