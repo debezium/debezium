@@ -1886,6 +1886,10 @@ For `read_uncommitted` there are no data consistency guarantees at all (some dat
 |`2048`
 |Positive integer value that specifies the maximum size of each batch of events that should be processed during each iteration of this connector. Defaults to 2048.
 
+|[[sqlserver-property-max-queue-size-in-bytes]]<<sqlserver-property-max-queue-size-in-bytes, `max.queue.size.in.bytes`>>
+|`0`
+|Long value for the maximum size in bytes of the blocking queue. The feature is disabled by default, it will be active if it's set with a positive long value.
+
 |[[sqlserver-property-heartbeat-interval-ms]]<<sqlserver-property-heartbeat-interval-ms, `heartbeat.interval{zwsp}.ms`>>
 |`0`
 |Controls how frequently heartbeat messages are sent. +
