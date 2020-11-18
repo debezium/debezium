@@ -978,6 +978,11 @@ the offset will be flushed every time.
 |`2048`
 |The maximum number of change events to dequeue each time.
 
+|[[cassandra-property-max-queue-size-in-bytes]]<<cassandra-property-max-queue-size-in-bytes, `max.queue.size.in.bytes`>>
+|`0`
+|Long value for the maximum size in bytes of the blocking queue. The feature is disabled by default, it will be active if it's set with a positive long value.
+
+
 |[[cassandra-property-poll-interval-ms]]<<cassandra-property-poll-interval-ms, `poll.interval.ms`>>
 |`1000`
 |Positive integer value that specifies the number of milliseconds the commit log processor should wait during each iteration for new change events to appear in the queue. Defaults to 1000 milliseconds, or 1 second.
