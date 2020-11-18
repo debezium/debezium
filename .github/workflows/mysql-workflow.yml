@@ -1,4 +1,4 @@
-name: Build MYSQL Connector
+name: Build MySQL Connector
 
 on:
   push:
