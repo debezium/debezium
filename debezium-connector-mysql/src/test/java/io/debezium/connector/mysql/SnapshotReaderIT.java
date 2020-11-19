@@ -347,12 +347,14 @@ public class SnapshotReaderIT {
 
     @Test
     public void shouldCreateSnapshotOfSingleDatabaseUsingReadEvents() throws Exception {
-        config = simpleConfig().with(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, "connector_(.*)_" + DATABASE.getIdentifier()).build();
+        config = simpleConfig()
+                .with(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, "connector_(.*)_" + DATABASE.getIdentifier())
+                .with(MySqlConnectorConfig.SNAPSHOT_EVENTS_AS_INSERTS, false)
+                .build();
         context = new MySqlTaskContext(config, new Filters.Builder(config).build());
         context.start();
         reader = new SnapshotReader("snapshot", context);
         reader.uponCompletion(completed::countDown);
-        reader.generateReadEvents();
 
         // Start the snapshot ...
         reader.start();

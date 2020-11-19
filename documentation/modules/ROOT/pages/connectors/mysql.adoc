@@ -2332,6 +2332,10 @@ For each table that you specify, also specify another configuration property: `s
  +
 A possible use case for setting these properties is large, append-only tables. You can specify a `SELECT` statement that sets a specific point for where to start a snapshot, or where to resume a snapshot if a previous snapshot was interrupted.
 
+|[[mysql-property-snapshot-events-as-inserts]]<<mysql-property-snapshot-events-as-inserts, `snapshot.events{zwsp}.as{zwsp}.inserts`>>
+|`true`
+|Controls whether or not to mark snapshot events as insert events (`"op": "c"`). If disabled, the Debezium default of marking snapshot events as reads (`"op": "r"`) will be used.
+
 |[[mysql-property-min-row-count-to-stream-results]]<<mysql-property-min-row-count-to-stream-results, `min.row.count.to{zwsp}.stream.results`>>
 |`1000`
 |During a snapshot, the connector queries each table for which the connector is configured to capture changes. The connector uses each query result to produce a read event that contains data for all rows in that table. This property determines whether the MySQL connector puts results for a table into memory, which is fast but requires large amounts of memory, or streams the results, which can be slower but work for very large tables. The setting of this property specifies the minimum number of rows a table must contain before the connector streams results. +

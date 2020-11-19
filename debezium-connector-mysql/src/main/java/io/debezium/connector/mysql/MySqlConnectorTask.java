@@ -69,7 +69,7 @@ public final class MySqlConnectorTask extends BaseSourceTask {
         try {
             // Get the offsets for our partition ...
             boolean startWithSnapshot = false;
-            boolean snapshotEventsAreInserts = true;
+            boolean snapshotEventsAsInserts = config.getBoolean(MySqlConnectorConfig.SNAPSHOT_EVENTS_AS_INSERTS);
             Map<String, String> partition = Collect.hashMapOf(SourceInfo.SERVER_PARTITION_KEY, serverName);
             Map<String, ?> offsets = getRestartOffset(context.offsetStorageReader().offset(partition));
             final SourceInfo source;
@@ -188,7 +188,7 @@ public final class MySqlConnectorTask extends BaseSourceTask {
             if (startWithSnapshot) {
                 // We're supposed to start with a snapshot, so set that up ...
                 SnapshotReader snapshotReader = new SnapshotReader("snapshot", taskContext);
-                if (snapshotEventsAreInserts) {
+                if (snapshotEventsAsInserts) {
                     snapshotReader.generateInsertEvents();
                 }
 
