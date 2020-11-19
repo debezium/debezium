@@ -1491,8 +1491,8 @@ See {link-prefix}:{link-oracle-connector}#oracle-transaction-metadata[Transactio
 |The fully qualified class name to an implementation of `HistoryReader` to be used during LogMining streaming.
 
 |[[oracle-property-database-history-retention-hours]]<<oracle-property-database-history-retention-hours, `database.history.retention.hours`>>
-|`4`
+|`0`
 |The number of hours to retain entries in log mining history table.
-This option requires must be set to non-zero to have any impact.
+When set to `0`, log mining history is is disabled.
 
 |===
