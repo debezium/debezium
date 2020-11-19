@@ -186,8 +186,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withType(Type.LONG)
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
-            .withDefault(4)
-            .withDescription("Hours to keep Log Mining history");
+            .withDefault(0)
+            .withDescription("Hours to keep Log Mining history.  By default, no history is retained.");
 
     public static final Field RAC_SYSTEM = Field.create("database.rac")
             .withDisplayName("Oracle RAC")
