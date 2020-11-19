@@ -133,9 +133,13 @@ public class SqlServerConnectionIT {
                     + "    tinyint_column tinyint default (255),"
                     + "    bit_column bit default(1),"
                     + "    decimal_column decimal(20,5) default (100.12345),"
+                    + "    decimal_mismatch_default numeric(10,5) default 200.1,"
                     + "    numeric_column numeric(10,3) default (200.123),"
+                    + "    numeric_mismatch_default numeric(10,3) default 200.1,"
                     + "    money_column money default (922337203685477.58),"
+                    + "    money_mismatch_default money default 922337203685477,"
                     + "    smallmoney_column smallmoney default (214748.3647),"
+                    + "    smallmoney_mismatch_default smallmoney default 922337203685477,"
                     + "    float_column float default (1.2345e2),"
                     + "    real_column real default (1.2345e3),"
                     + "    date_column date default ('2019-02-03'),"
@@ -180,7 +184,8 @@ public class SqlServerConnectionIT {
             // and issue a test call to a CDC wrapper function
             Thread.sleep(5_000); // Need to wait to make sure the min_lsn is available
             List<String> capturedColumns = Arrays.asList("int_no_default_not_null", "int_no_default", "bigint_column", "int_column", "smallint_column", "tinyint_column",
-                    "bit_column", "decimal_column", "numeric_column", "money_column", "smallmoney_column", "float_column", "real_column",
+                    "bit_column", "decimal_column", "decimal_mismatch_default", "numeric_column", "numeric_mismatch_default", "money_column", "money_mismatch_default",
+                    "smallmoney_column", "smallmoney_mismatch_default", "float_column", "real_column",
                     "date_column", "datetime_column", "datetime2_column", "datetime2_0_column", "datetime2_1_column", "datetime2_2_column", "datetime2_3_column",
                     "datetime2_4_column", "datetime2_5_column", "datetime2_6_column", "datetime2_7_column", "datetimeoffset_column", "smalldatetime_column",
                     "time_column", "time_0_column", "time_1_column", "time_2_column", "time_3_column", "time_4_column", "time_5_column", "time_6_column",
@@ -199,10 +204,15 @@ public class SqlServerConnectionIT {
             assertColumnHasDefaultValue(table, "smallint_column", (short) 32767);
             assertColumnHasDefaultValue(table, "tinyint_column", (short) 255);
             assertColumnHasDefaultValue(table, "bit_column", true);
+            // The expected BugDecimal must have the correct scale.
             assertColumnHasDefaultValue(table, "decimal_column", new BigDecimal("100.12345"));
+            assertColumnHasDefaultValue(table, "decimal_mismatch_default", new BigDecimal("200.10000"));
             assertColumnHasDefaultValue(table, "numeric_column", new BigDecimal("200.123"));
-            assertColumnHasDefaultValue(table, "money_column", new BigDecimal("922337203685477.58"));
+            assertColumnHasDefaultValue(table, "numeric_mismatch_default", new BigDecimal("200.100"));
+            assertColumnHasDefaultValue(table, "money_column", new BigDecimal("922337203685477.5800"));
+            assertColumnHasDefaultValue(table, "money_mismatch_default", new BigDecimal("922337203685477.0000"));
             assertColumnHasDefaultValue(table, "smallmoney_column", new BigDecimal("214748.3647"));
+            assertColumnHasDefaultValue(table, "smallmoney_mismatch_default", new BigDecimal("922337203685477.0000"));
             assertColumnHasDefaultValue(table, "float_column", 123.45);
             assertColumnHasDefaultValue(table, "real_column", 1234.5f);
             assertColumnHasDefaultValue(table, "date_column", 17930);
@@ -268,6 +278,15 @@ public class SqlServerConnectionIT {
         Column column = table.columnWithName(columnName);
         Assertions.assertThat(column.hasDefaultValue()).isTrue();
         Assertions.assertThat(column.defaultValue()).isEqualTo(expectedValue);
+        if (expectedValue instanceof BigDecimal) {
+            // safe cast as we know the expectedValue and column.defaultValue are equal
+            BigDecimal columnValue = (BigDecimal) column.defaultValue();
+            BigDecimal expectedBigDecimal = (BigDecimal) expectedValue;
+            Assertions.assertThat(column.scale().isPresent()).isTrue();
+            int columnScale = column.scale().get();
+            Assertions.assertThat(columnScale).isEqualTo(columnValue.scale());
+            Assertions.assertThat(columnValue.scale()).isEqualTo(expectedBigDecimal.scale());
+        }
     }
 
 }

@@ -7,6 +7,7 @@
 package io.debezium.connector.sqlserver;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Collections;
@@ -103,7 +104,12 @@ class SqlServerDefaultValueConverter {
             // So we can set any number here;
             final Field field = new Field(column.name(), -1, schema);
             final ValueConverter valueConverter = valueConverters.converter(column, field);
-            return valueConverter.convert(defaultValue);
+            Object result = valueConverter.convert(defaultValue);
+            if ((result instanceof BigDecimal) && column.scale().isPresent() && column.scale().get() > ((BigDecimal) result).scale()) {
+                // Note that as the scale is increased only, the rounding is more cosmetic.
+                result = ((BigDecimal) result).setScale(column.scale().get(), RoundingMode.HALF_EVEN);
+            }
+            return result;
         }
         return defaultValue;
     }
