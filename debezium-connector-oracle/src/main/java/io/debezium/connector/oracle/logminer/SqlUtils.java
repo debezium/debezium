@@ -203,8 +203,11 @@ public class SqlUtils {
                 " AND SEG_OWNER = '" + schemaName.toUpperCase() + "' " +
                 buildTableInPredicate(whiteListTableNames) +
                 " AND SCN >= ? AND SCN < ? " +
-                // todo: check with Andrey why they haven't incorporated operation_code 5 here yet?
-                " OR (OPERATION_CODE IN (5,7,34,36) AND USERNAME NOT IN ('SYS','SYSTEM','" + logMinerUser.toUpperCase() + "'))" + sorting; // todo username = schemaName?
+                // Capture DDL and MISSING_SCN rows only hwne not performed by SYS, SYSTEM, and LogMiner user
+                " OR (OPERATION_CODE IN (5,34) AND USERNAME NOT IN ('SYS','SYSTEM','" + logMinerUser.toUpperCase() + "')) " +
+                // Capture all COMMIT and ROLLBACK operations performed by the database
+                " OR (OPERATION_CODE IN (7,36)) " +
+                sorting; // todo username = schemaName?
     }
 
     static String addLogFileStatement(String option, String fileName) {
