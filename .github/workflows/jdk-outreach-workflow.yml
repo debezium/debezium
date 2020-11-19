@@ -10,7 +10,7 @@ jobs:
       matrix:
         java:
           - "15"
-          - 16.0.0-ea.20
+          - 16.0.0-ea.24
     name: SQL Server - Java ${{ matrix.java }}
     steps:
       - uses: actions/checkout@v2
