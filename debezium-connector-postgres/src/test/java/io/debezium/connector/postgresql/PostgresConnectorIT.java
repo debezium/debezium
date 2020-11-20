@@ -1540,6 +1540,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-2094")
+    @SkipWhenDecoderPluginNameIs(value = SkipWhenDecoderPluginNameIs.DecoderPluginName.WAL2JSON, reason = "No need for db write to complete catch-up phase")
     public void shouldResumeStreamingFromSlotPositionForCustomSnapshot() throws Exception {
         TestHelper.execute(SETUP_TABLES_STMT);
         // Perform an regular snapshot
@@ -1591,6 +1592,76 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         // Validate the rest of the records are from the snapshot
         VerifyRecord.isValidRead(s1recs.get(1), PK_FIELD, 1);
         VerifyRecord.isValidRead(s1recs.get(2), PK_FIELD, 2);
+        VerifyRecord.isValidRead(s2recs.get(1), PK_FIELD, 1);
+        VerifyRecord.isValidRead(s2recs.get(2), PK_FIELD, 2);
+
+        TestHelper.assertNoOpenTransactions();
+    }
+
+    @Test
+    @FixFor("DBZ-2772")
+    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.WAL2JSON, reason = "Requires db write to complete catch-up phase")
+    public void shouldResumeStreamingFromSlotPositionForCustomSnapshotWal2Json() throws Exception {
+        Testing.Print.enable();
+        TestHelper.execute(SETUP_TABLES_STMT);
+        // Perform an regular snapshot
+        Configuration config = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.CUSTOM.getValue())
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE_CLASS, CustomStartFromStreamingTestSnapshot.class.getName())
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
+                .build();
+        start(PostgresConnector.class, config);
+        assertConnectorIsRunning();
+        waitForStreamingRunning();
+
+        SourceRecords actualRecords = consumeRecordsByTopic(2);
+        List<SourceRecord> s1recs = actualRecords.recordsForTopic(topicName("s1.a"));
+        List<SourceRecord> s2recs = actualRecords.recordsForTopic(topicName("s2.a"));
+        assertThat(s1recs.size()).isEqualTo(1);
+        assertThat(s2recs.size()).isEqualTo(1);
+        VerifyRecord.isValidRead(s1recs.get(0), PK_FIELD, 1);
+        VerifyRecord.isValidRead(s2recs.get(0), PK_FIELD, 1);
+
+        stopConnector();
+        assertConnectorNotRunning();
+        // Insert records while connector is stopped
+        TestHelper.execute(INSERT_STMT);
+
+        // Perform catch up streaming and resnapshot everything
+        config = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.CUSTOM.getValue())
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE_CLASS, CustomStartFromStreamingTestSnapshot.class.getName())
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
+                .build();
+        start(PostgresConnector.class, config);
+        assertConnectorIsRunning();
+
+        // Catch-up streaming might wait for a LSN after the one already process, typically for wal2json
+        // It is thus necessary to write a record to increase LSN and trigger end of catchup phase
+        // This looks like an issue for plug-in(s) that sends whole TX as a single record
+        waitForStreamingRunning();
+        TestHelper.execute("INSERT INTO s1.a (pk, aa) VALUES (1000, 1)");
+
+        waitForSnapshotToBeCompleted();
+
+        // Expect duplicate records from the snapshot and while streaming is running
+        actualRecords = consumeRecordsByTopic(7);
+
+        s1recs = actualRecords.recordsForTopic(topicName("s1.a"));
+        s2recs = actualRecords.recordsForTopic(topicName("s2.a"));
+        assertThat(s1recs.size()).isEqualTo(4);
+        assertThat(s2recs.size()).isEqualTo(3);
+
+        // Validate the first record is from streaming
+        VerifyRecord.isValidInsert(s1recs.get(0), PK_FIELD, 2);
+        VerifyRecord.isValidInsert(s2recs.get(0), PK_FIELD, 2);
+
+        // Validate the catch-up complete write
+        VerifyRecord.isValidInsert(s1recs.get(1), PK_FIELD, 1000);
+
+        // Validate the rest of the records are from the snapshot
+        VerifyRecord.isValidRead(s1recs.get(2), PK_FIELD, 1);
+        VerifyRecord.isValidRead(s1recs.get(3), PK_FIELD, 2);
         VerifyRecord.isValidRead(s2recs.get(1), PK_FIELD, 1);
         VerifyRecord.isValidRead(s2recs.get(2), PK_FIELD, 2);
 
