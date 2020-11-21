@@ -1,3 +1,6 @@
+// Category: debezium-using
+// Type: assembly
+// ModuleID: debezium-connector-for-sql-server
 [id="debezium-connector-for-sql-server"]
 = {prodname} connector for SQL Server
 
@@ -18,11 +21,28 @@ Want to help us further hone and improve it? link:/docs/contribute/[Learn how].
 toc::[]
 endif::community[]
 
-{prodname}'s SQL Server Connector can monitor and record the row-level changes in the schemas of a SQL Server database.
+The {prodname} SQL Server connector captures row-level changes that occur in the schemas of a SQL Server database.
 
-The first time it connects to a SQL Server database/cluster, it reads a consistent snapshot of all of the schemas.
-When that snapshot is complete, the connector continuously streams the changes that were committed to SQL Server and generates corresponding insert, update and delete events.
-All of the events for each table are recorded in a separate Kafka topic, where they can be easily consumed by applications and services.
+ifdef::product[]
+Fore details about using the {prodname} SQL Server connector, see following topics: 
+
+* xref:overview-of-debezium-sql-server-connector[]
+* xref:how-debezium-sql-server-connectors-work[]
+* xref:descriptions-of-debezium-sql-server-connector-data-change-events[]
+* xref:how-debezium-SQL Server-connectors-map-data-types[]
+* xref:setting-up-sql-server-for-use-with-the-debezium-sql-server-connector[]
+* xref:deploying-debezium-sql-server-connectors[]
+* xref:Monitoring {prodname} SQL Server connector performance[]
+* xref:how-debezium-postgresql-connectors-handle-faults-and-problems[]
+
+endif::product[]
+
+The first time that the {prodname} SQL Server connector connects to a SQL Server database or cluster, it takes a consistent snapshot of the schemas in the database.
+After the initial snapshot is complete, the connector continuously captures row-level changes for `INSERT`, `UPDATE`, or `DELETE` operations that are committed to tracked SQL Server databases. 
+The connector produces events for each data change operation, and streams them to Kafka topics. 
+The connector streams all of the events for a table to a dedicated Kafka topic.
+Applications and services can then consume data change event records from that topic.
+
 
 // Type: concept
 // Title: Overview of {prodname} SQL Server connector 
@@ -30,23 +50,29 @@ All of the events for each table are recorded in a separate Kafka topic, where t
 [[sqlserver-overview]]
 == Overview
 
-The functionality of the connector is based upon https://docs.microsoft.com/en-us/sql/relational-databases/track-changes/about-change-data-capture-sql-server?view=sql-server-2017[change data capture] feature provided by SQL Server Standard (https://blogs.msdn.microsoft.com/sqlreleaseservices/sql-server-2016-service-pack-1-sp1-released/[since SQL Server 2016 SP1]) or Enterprise edition.
-Using this mechanism a SQL Server capture process monitors all databases and tables the user is interested in and stores the changes into specifically created _CDC_ tables that have stored procedure facade.
+The {prodname} SQL Server connector is based on the https://docs.microsoft.com/en-us/sql/relational-databases/track-changes/about-change-data-capture-sql-server?view=sql-server-2017[change data capture] 
+feature that is available in https://blogs.msdn.microsoft.com/sqlreleaseservices/sql-server-2016-service-pack-1-sp1-released/[SQL Server 2016 Service Pack 1 (SP1) and later] Standard edition or Enterprise edition.
+The SQL Server capture process monitors designated databases and tables, and stores the changes into specifically created _change tables_ that have stored procedure facades.
 
-The database operator must https://docs.microsoft.com/en-us/sql/relational-databases/track-changes/enable-and-disable-change-data-capture-sql-server?view=sql-server-2017[enable] _CDC_ for the table(s) that should be captured by the connector.
-The connector then produces a _change event_ for every row-level insert, update, and delete operation that was published via the _CDC API_, recording all the change events for each table in a separate Kafka topic.
-The client applications read the Kafka topics that correspond to the database tables they're interested in following, and react to every row-level event it sees in those topics.
+To enable the {prodname} SQL Server connector to capture change event records for database operations, 
+you must first enable change data capture on the SQL Server database. 
+CDC must be enabled on both the database and on each table that you want to track.
+After you set up CDC on the source database, the connector can capture row-level `INSERT`, `UPDATE`, and `DELETE` operations  
+that occur in the database.
+The connector writes event records for each source table to a Kafka topic especially dedicated to that table.
+One topic exists for each tracked table.
+Client applications read the Kafka topics for the database tables that they follow, and can respond to the row-level events they they consume from those topics.
 
-The database operator normally enables _CDC_ in the mid-life of a database an/or table.
-This means that the connector does not have the complete history of all changes that have been made to the database.
-Therefore, when the SQL Server connector first connects to a particular SQL Server database, it starts by performing a _consistent snapshot_ of each of the database schemas.
-After the connector completes the snapshot, it continues streaming changes from the exact point at which the snapshot was made.
-This way, we start with a consistent view of all of the data, yet continue reading without having lost any of the changes made while the snapshot was taking place.
+The first time that the connector connects to a SQL Server database or cluster, it takes a consistent snapshot of the schemas for all tables for which it is configured to capture changes,
+and streams this state to Kafka.
+After the snapshot is complete, the connector continuously captures subsequent row-level changes that occur.
+By first establishing a consistent view of all of the data, the connector can continue reading without having lost any of the changes that were made while the snapshot was taking place.
 
-The connector is also tolerant of failures.
-As the connector reads changes and produces events, it records the position in the database log (_LSN / Log Sequence Number_), that is associated with _CDC_ record, with each event.
-If the connector stops for any reason (including communication failures, network problems, or crashes), upon restart it simply continues reading the _CDC_ tables where it last left off.
-This includes snapshots: if the snapshot was not completed when the connector is stopped, upon restart it begins a new snapshot.
+The {prodname} SQL Server connector is tolerant of failures.
+As the connector reads changes and produces events, it records the position in the database log (_LSN / Log Sequence Number_) for each event.
+If the connector stops for any reason (including communication failures, network problems, or crashes), after a restart the connector resumes reading the SQL Server _CDC_ tables from the last point that it read.
+Fault tolerance also applies to snapshots. 
+That is, if the connector stops during a snapshot, the connector begins a news snapshot when it restarts.
 
 // Type: assembly
 // ModuleID: how-debezium-sql-server-connectors-work
@@ -54,46 +80,62 @@ This includes snapshots: if the snapshot was not completed when the connector is
 [[how-the-sqlserver-connector-works]]
 == How the SQL Server connector works
 
+To optimally configure and run a {prodname} SQL Server connector, it is helpful to understand how the connector performs snapshots, streams change events, determines Kafka topic names, and uses metadata. 
+ifdef::product[]
+For details about how the connector works, see the following sections: 
+
+* xref:how-debezium-sql-server-connectors-perform-database-snapshots[]
+* xref:how-the-debezium-sql-server-connector-reads-change-data-tables[]
+* xref:default-names-of-kafka-topics-that-receive-debezium-sql-server-change-event-records[]
+* xref:how-the-debezium-SQL Server connector-uses-the-schema-change-topic[]
+* xref:descriptions-of-debezium-sql-server-connector-data-change-events[]
+* xref:debezium-sql-server-connector-generated-events-that-represent-transaction-boundaries[]
+* xref:how-debezium-SQL Server-connectors-map-data-types[]
+endif::product[]
+
 // Type: concept
 // ModuleID: how-debezium-sql-server-connectors-perform-database-snapshots
 // Title: How {prodname} SQL Server connectors perform database snapshots
 [[sqlserver-snapshots]]
 === Snapshots
 
-SQL Server CDC is not designed to store the complete history of database changes.
-It is thus necessary that {prodname} establishes the baseline of current database content and streams it to the Kafka.
-This is achieved via a process called snapshotting.
+SQL Server CDC is not designed to store a complete history of database changes.
+For the {prodname} SQL Server connector to establish a baseline for the current state of the database, 
+it uses a process called _snapshotting_.
 
-By default (snapshotting mode *initial*) the connector will upon the first startup perform an initial _consistent snapshot_ of the database
-(meaning the structure and data within any tables to be captured as per the connector's filter configuration).
+You can configure how the connector creates snapshots.
+By default, the connector's snapshot mode is set to `initial`. 
+Based on this `initial` snapshot mode, the first time that the connector starts, it performs an initial _consistent snapshot_ of the database.
+This initial snapshot captures the structure and data for any tables that match the criteria defined by the `include` and `exclude` properties that are configured for the connector (for example, `table.include.list`, `column.include.list`, `table.exclude.list`, and so forth).
 
-Each snapshot consists of the following steps:
+When the connector creates a snapshot, it completes the following tasks:
 
-1. Determine the tables to be captured
-2. Obtain a lock on each of the monitored tables to ensure that no structural changes can occur to any of the tables.
+1. Determines the tables to be captured.
+2. Obtains a lock on each of the monitored tables to ensure that no structural changes can occur to any of the tables.
 The level of the lock is determined by `snapshot.isolation.mode` configuration option.
-3. Read the maximum LSN ("log sequence number") position in the server's transaction log.
-4. Capture the structure of all relevant tables.
-5. Optionally release the locks obtained in step 2, i.e. the locks are held usually only for a short period of time.
-6. Scan all of the relevant database tables and schemas as valid at the LSN position read in step 3, and generate a `READ` event for each row and write that event to the appropriate table-specific Kafka topic.
-7. Record the successful completion of the snapshot in the connector offsets.
+3. Reads the maximum log sequence number (LSN) position in the server's transaction log.
+4. Captures the structure of all relevant tables.
+5. Releases the locks obtained in Step 2, if necessary. In most cases, locks are held for only a short period of time.
+6. Scans all of the relevant database tables and schemas based on the LSN position that it read in Step 3, generates a `READ` event for each row, and writes the events to the Kafka topic for the table.
+7. Records the successful completion of the snapshot in the connector offsets.
+
 
 // Type: concept
 // ModuleID: how-the-debezium-sql-server-connector-reads-change-data-tables
 // Title: How {prodname} SQL Server connectors read change data tables
 === Reading the change data tables
 
-Upon first start-up, the connector takes a structural snapshot of the structure of the captured tables
-and persists this information in its internal database history topic.
-Then the connector identifies a change table for each of the source tables and executes the main loop
+When the connector first starts, it takes a structural snapshot of the structure of the captured tables
+and persists this information to its internal database history topic.
+The connector then identifies a change table for each source table, and completes the following steps.
 
-1. For each change table read all changes that were created between last stored maximum LSN and current maximum LSN
-2. Order the read changes incrementally according to commit LSN and change LSN.
-This ensures that the changes are replayed by {prodname} in the same order as were made to the database.
-3. Pass commit and change LSNs as offsets to Kafka Connect.
-4. Store the maximum LSN and repeat the loop.
+1. For each change table, the connector read all of the changes that were created between the last stored maximum LSN and the current maximum LSN.
+2. The connector sorts the changes that it reads in ascending order, based on the values of their commit LSN and change LSN.
+This sorting ensures that the changes are replayed by {prodname} in the order in which they occurred in the database.
+3. The connector passes the commit and change LSNs as offsets to Kafka Connect.
+4. The connector store the maximum LSN and restarts the process from Step 1.
 
-After a restart, the connector will resume from the offset (commit and change LSNs) where it left off before.
+After a restart, the connector resumes processing from the last offset (commit and change LSNs) that it read.
 
 The connector is able to detect whether CDC is enabled or disabled for included source tables and adjust its behavior.
 
@@ -103,9 +145,16 @@ The connector is able to detect whether CDC is enabled or disabled for included 
 [[sqlserver-topic-names]]
 === Topic names
 
-The SQL Server connector writes events for all insert, update, and delete operations on a single table to a single Kafka topic. The name of the Kafka topics always takes the form _serverName_._schemaName_._tableName_, where _serverName_ is the logical name of the connector as specified with the `database.server.name` configuration property, _schemaName_ is the name of the schema where the operation occurred, and _tableName_ is the name of the database table on which the operation occurred.
+The SQL Server connector writes events for all `INSERT`, `UPDATE`, and `DELETE` operations on a single table to a single Kafka topic. 
+The name of the Kafka topics always takes the form _serverName_._schemaName_._tableName_.
 
-For example, consider a SQL Server installation with an `inventory` database that contains four tables: `products`, `products_on_hand`, `customers`, and `orders` in schema `dbo`. If the connector monitoring this database were given a logical server name of `fulfillment`, then the connector would produce events on these four Kafka topics:
+* _serverName_ is the logical name of the connector as specified with the `database.server.name` configuration property.
+* _schemaName_ is the name of the database schema where the operation occurred.
+* _tableName_ is the name of the database table in which the operation occurred.
+
+For example, suppose that `fulfillment` is the logical server name in the configuration for a connector that is capturing changes in a SQL Server installation.
+The server has an `inventory` database with the schema name `dbo`, and the database contains tables with the names `products`, `products_on_hand`, `customers`, and `orders`. 
+The connector would stream records to the following Kafka topics: 
 
 * `fulfillment.dbo.products`
 * `fulfillment.dbo.products_on_hand`
@@ -117,14 +166,17 @@ For example, consider a SQL Server installation with an `inventory` database tha
 // Title: How the {prodname} SQL Server connector uses the schema change topic
 === Schema change topic
 
-For a table for which CDC is enabled, the {prodname} SQL Server connector stores the history of schema changes to that table in a database history topic. This topic reflects an internal connector state and you should not use it. If your application needs to track schema changes, there is a public schema change topic. The name of the schema change topic is the same as the logical server name specified in the connector configuration.
-
+For each table for which CDC is enabled, the {prodname} SQL Server connector stores a history of schema changes in a database history topic. 
+This topic reflects an internal connector state and you should not use it directly. 
+If your application needs to track schema changes, there is a public schema change topic. 
+The name of the schema change topic is the same as the logical server name specified in the connector configuration.
+//The connector writes all of these events to a Kafka topic named <serverName> where serverName is the name of the connector as specified in the database.server.name configuration property. 
 [WARNING]
 ====
 The format of messages that a connector emits to its schema change topic is in an incubating state and can change without notice.
 ====
 
-{prodname} emits a message to the schema change topic when:
+{prodname} emits a message to the schema change topic when the following events occur:
 
 * You enable CDC for a table. 
 * You disable CDC for a table.
@@ -273,7 +325,8 @@ a|Describes the kind of change. The value is one of the following:
 
 |===
 
-In messages to the schema change topic, the key is the name of the database that contains the schema change. In the following example, the `payload` field contains the key:
+In messages that the connector sends to the schema change topic, the key is the name of the database that contains the schema change. 
+In the following example, the `payload` field contains the key:
 
 [source,json,indent=0,subs="+attributes"]
 ----
@@ -295,6 +348,7 @@ In messages to the schema change topic, the key is the name of the database that
   }
 }
 ----
+
 // Type: assembly
 // ModuleID: descriptions-of-debezium-sql-server-connector-data-change-events
 // Title: Descriptions of {prodname} SQL Server connector data change events
@@ -357,6 +411,12 @@ The SQL Server connector ensures that all Kafka Connect schema names adhere to t
 
 This can lead to unexpected conflicts if the logical server name, a database name, or a table name contains invalid characters, and the only characters that distinguish names from one another are invalid and thus replaced with underscores.
 ====
+
+ifdef::product[]
+For details about change events, see the following topics:
+* xref:about-keys-in-debezium-sql-server-change-events[]
+* xref:about-values-in-debezium-sql-server-change-events[] 
+endif::product[]
 
 // Type: concept
 // ModuleID: about-keys-in-debezium-sql-server-change-events
@@ -445,6 +505,7 @@ Although the `column.exclude.list` and `column.include.list` connector configura
 If the table does not have a primary or unique key, then the change event's key is null. This makes sense since the rows in a table without a primary or unique key constraint cannot be uniquely identified.
 ====
 endif::community[]
+
 
 // Type: concept
 // ModuleID: about-values-in-debezium-sql-server-change-events
@@ -894,18 +955,20 @@ When a row is deleted, the _delete_ event value still works with log compaction,
 [[sqlserver-transaction-metadata]]
 === Transaction metadata
 
-{prodname} can generate events that represents tranaction boundaries and that enrich data change event messages.
+{prodname} can generate events that represent transaction boundaries and that enrich data change event messages. 
 
-{prodname} generates events for every transaction `BEGIN` and `END`.
-Every event contains
+Database transactions are represented by a statement block that is enclosed between the `BEGIN` and `END` keywords. 
+{prodname} generates transaction boundary events for the `BEGIN` and `END` delimiters in every transaction. 
+Transaction boundary events contain the following fields: 
 
-* `status` - `BEGIN` or `END`
-* `id` - string representation of unique transaction identifier
-* `event_count` (for `END` events) - total number of events emmitted by the transaction
-* `data_collections` (for `END` events) - an array of pairs of `data_collection` and `event_count` that provides number of events emitted by changes originating from given data collection
+`status`:: `BEGIN` or `END`
+`id`:: String representation of unique transaction identifier.
+`event_count` (for `END` events):: Total number of events emitted by the transaction.
+`data_collections` (for `END` events):: An array of pairs of `data_collection` and `event_count` that provides the number of events emitted by changes originating from given data collection.
 
-Following is an example of what a message looks like:
+The following example shows a typical transaction boundary message:
 
+.Example: SQL Server connector transaction boundary event
 [source,json,indent=0,subs="+attributes"]
 ----
 {
@@ -935,14 +998,14 @@ Following is an example of what a message looks like:
 The transaction events are written to the topic named `<database.server.name>.transaction`.
 
 ==== Change data event enrichment
-When transaction metadata is enabled the data message `Envelope` is enriched with a new `transaction` field.
+When transaction metadata is enabled, the data message `Envelope` is enriched with a new `transaction` field.
 This field provides information about every event in the form of a composite of fields:
 
-* `id` - string representation of unique transaction identifier
-* `total_order` - the absolute position of the event among all events generated by the transaction
-* `data_collection_order` - the per-data collection position of the event among all events that were emitted by the transaction
+`id`:: String representation of unique transaction identifier
+`total_order`:: The absolute position of the event among all events generated by the transaction
+`data_collection_order`:: The per-data collection position of the event among all events that were emitted by the transaction
 
-Following is an example of what a message looks like:
+The following example shows what a typical message looks like:
 
 [source,json,indent=0,subs="+attributes"]
 ----
@@ -966,21 +1029,34 @@ Following is an example of what a message looks like:
 ----
 
 // Type: reference
-// ModuleID: how-the-debezium-SQL Server-connectors-map-data-types
-// Title: How the {prodname} SQL Server connectors map data types
+// ModuleID: how-debezium-SQL Server-connectors-map-data-types
+// Title: How {prodname} SQL Server connectors map data types
 [[sqlserver-data-types]]
 === Data type mappings
 
-As described above, the SQL Server connector represents the changes to rows with events that are structured like the table in which the row exist.
-The event contains a field for each column value, and how that value is represented in the event depends on the SQL data type of the column. This section describes this mapping.
+The {prodname} SQL Server connector represents changes to table row data by producing events that are structured like the table in which the row exists.
+Each event contains fields to represent the column values for the row. 
+The way in which an event represents the column values for an operation depends on the SQL data type of the column. 
+In the event, the connector maps the fields for each SQL Server data type to both a _literal type_ and a _semantic type_. 
+
+The connector can map SQL Server data types to both _literal_ and _semantic_ types.
+Literal type:: Describes how the value is literally represented by using Kafka Connect schema types, namely `INT8`, `INT16`, `INT32`, `INT64`, `FLOAT32`, `FLOAT64`, `BOOLEAN`, `STRING`, `BYTES`, `ARRAY`, `MAP`, and `STRUCT`.
+Semantic type:: Describes how the Kafka Connect schema captures the _meaning_ of the field using the name of the Kafka Connect schema for the field.
+
+ifdef::product[]
+For more information about data type mappings, see the following sections:
+* xref:sqlserver-basic-values[]
+* xref:sqlserver-temporal-values[]
+* xref:sqlserver-decimal-values[]
+* xref:sqlserver-timestamp-values[]
+endif::product[]
 
 [id="sql-server-basic-values"]
 ==== Basic types
 
-The following table describes how the connector maps each of the SQL Server data types to a _literal type_ and _semantic type_ within the events' fields.
-Here, the _literal type_ describes how the value is literally represented using Kafka Connect schema types, namely `INT8`, `INT16`, `INT32`, `INT64`, `FLOAT32`, `FLOAT64`, `BOOLEAN`, `STRING`, `BYTES`, `ARRAY`, `MAP`, and `STRUCT`.
-The _semantic type_ describes how the Kafka Connect schema captures the _meaning_ of the field using the name of the Kafka Connect schema for the field.
+The following table shows how the connector maps basic SQL Server data types.
 
+.Data type mappings used by the SQL Server connector 
 [cols="30%a,25%a,45%a",options="header"]
 |===
 |SQL Server data type
@@ -1213,19 +1289,51 @@ The `connect.decimal.precision` schema parameter contains an integer that repres
 [[setting-up-sqlserver]]
 == Setting up SQL Server
 
-Before using the SQL Server connector to monitor the changes committed on SQL Server, first enable _CDC_ on a monitored database.
-Please bear in mind that _CDC_ cannot be enabled for the `primary` database.
+For {prodname} to capture change events from SQL Server tables, a SQL Server administrator with the necessary privileges must first run a query to enable CDC on the database. 
+The administrator must then enable CDC for each table to be tracked.   
+
+For details about setting up SQL Server for use with the {prodname} connector, see the following sections:
+
+ifdef::product[]
+* xref:enabling-cdc-on the-sql-server-database[]
+* xref:enabling-cdc-on-a-sql-server-table[]
+* xref:verifying-debezium-connector-access-to-the-cdc-table[]
+* xref:debezium-sql-server-connector-on-azure[]
+endif::product[]
+
+After CDC is applied, it captures all of the `INSERT`, `UPDATE`, and `DELETE` operations that are committed to tracked tables.
+The {prodname} connector can then capture these events and emit them to Kafka topics.
 
 // Type: procedure
 // ModuleID: enabling-cdc-on the-sql-server-database
 === Enabling CDC on the SQL Server database
 
+Before you can enable CDC for a table, you must enable it for the SQL Server database.
+A SQL Server administrator enables CDC by running a system stored procedure. 
+System stored procedures can be run by using SQL Server Management Studio, or by using Transact-SQL.
+
+.Prerequisites
+* You are a member of the _sysadmin_ fixed server role for the SQL Server.
+* You are a db_owner of the database. 
+* The SQL Server Agent is running.  
+
+NOTE: The SQL Server CDC feature tracks changes to user-created tables only. You cannot enable CDC on the SQL Server `master` database.
+
+.Procedure
+
+. From the *View* menu in SQL Server Management Studio, click *Template Explorer*.
+. In the *Template Browser*, expand *SQL Server Templates*.
+. Expand *Change Data Capture > Configuration* and then click *Enable Database for CDC*.  
+. In the template, replace the database name in the `USE` statement with the name of the database that you want to enable for CDC.
+. Run the stored procedure `sys.sp_cdc_enable_db` to enable the database for CDC.
++
+After the database is enabled for CDC, a schema with the name ‘cdc’ is created, along with a CDC user, metadata tables, and other system objects.
++
+The following example shows how to enable CDC for the database `MyDB`:
++
 .Example: Enabling a SQL Server database for the CDC template
 [source,sql]
 ----
--- ====
--- Enable Database for CDC template
--- ====
 USE MyDB
 GO
 EXEC sys.sp_cdc_enable_db
@@ -1236,52 +1344,98 @@ GO
 // ModuleID: enabling-cdc-on-a-sql-server-table
 === Enabling CDC on a SQL Server table
 
-Then enable _CDC_ for each table that you plan to monitor.
+A SQL Server administrator must enable change data capture on the source tables that you want to track.
+The database must already be enabled for CDC.
+To enable CDC on a table, a SQL Server administrator runs the stored procedure `sys.sp_cdc_enable_table` for the table.
+The stored procedures can be run by using SQL Server Management Studio, or by using Transact-SQL.
+SQL Server CDC must be enabled for every table that you want to track. 
 
+.Prerequisites
+* CDC is enabled on the SQL Server database.
+* The SQL Server Agent is running.  
+* You are a member of the `db_owner` fixed database role for the database. 
+
+.Procedure
+. From the *View* menu in SQL Server Management Studio, click *Template Explorer*.
+. In the *Template Browser*, expand *SQL Server Templates*.
+. Expand *Change Data Capture > Configuration*, and then click *Enable Table Specifying Filegroup Option*.  
+. In the template, replace the table name in the `USE` statement with the name of the table that you want to track.
+. Run the stored procedure `sys.sp_cdc_enable_table`.
++ 
+The following example shows how to enable CDC for the table `MyTable`:
++
+.Example: Enabling CDC for a SQL Server table
 [source,sql]
 ----
--- ====
--- Enable a Table Specifying Filegroup Option Template
--- ====
 USE MyDB
 GO
 
 EXEC sys.sp_cdc_enable_table
 @source_schema = N'dbo',
-@source_name   = N'MyTable',
-@role_name     = N'MyRole',
-@filegroup_name = N'MyDB_CT',
+@source_name   = N'MyTable', //<.>
+@role_name     = N'MyRole',  //<.>
+@filegroup_name = N'MyDB_CT',//<.>
 @supports_net_changes = 0
 GO
 ----
+<.> Specifies the name of the table that you want to track.
+<.> Specifies a role `MyRole` to which you can add users to whom you want to grant `SELECT` permission on the captured columns of the source table. 
+Users in the `sysadmin` or `db_owner` role also have access to the specified change tables. Set the value of `@role_name` to `NULL`, to allow only members in the `sysadmin` or `db_owner` to have full access to captured information.
+<.> Specifies the `filegroup` where SQL Server places the change table for the captured table. 
+The named `filegroup` must already exist. 
+It is best not to locate change tables in the same `filegroup` that you use for source tables.
+
 
 // Type: procedure
 // ModuleID: verifying-debezium-connector-access-to-the-cdc-table
-=== Verifying that the user has access to the CDC table
+=== Verifying that the user has access to the _CDC_ table
 
-Verify that the user have access to the _CDC_ table.
+A SQL Server administrator can run a system stored procedure to query a database or table to retrieve its CDC configuration information.
+The stored procedures can be run by using SQL Server Management Studio, or by using Transact-SQL.
+
+.Prerequisites
+* You have `SELECT` permission on all of the captured columns of the capture instance. 
+Members of the `db_owner` database role can view information for all of the defined capture instances.
+* You have membership in any gating roles that are defined for the table information that the query includes. 
+
+.Procedure
+
+. From the *View* menu in SQL Server Management Studio, click *Object Explorer*.
+. From the Object Explorer, expand *Databases*, and then expand your database object, for example, *MyDB*. 
+. Expand *Programmability > Stored Procedures > System Stored Procedures*.
+. Run the `sys.sp_cdc_help_change_data_capture` stored procedure to query the table.
++
+Queries should not return empty results.
++
+The following example runs the stored precedure `sys.sp_cdc_help_change_data_capture` on the database `MyDB`:
++
+.Example: Querying a table for CDC configuration information
 [source, sql]
 ----
--- ====
--- Verify the user of the connector have access, this query should not have empty result
--- ====
-
+USE MyDB;
+GO
 EXEC sys.sp_cdc_help_change_data_capture
 GO
 ----
-If the result is empty then please make sure that the user has privileges to access both the capture instance and _CDC_ tables.
++
+The query returns configuration information for each table in the database that is enabled for CDC and that contains change data that the caller is authorized to access.
+If the result is empty, verify that the user has privileges to access both the capture instance and the _CDC_ tables.
 
+// Type: concept
+// ModuleID: debezium-sql-server-connector-on-azure
 [[sqlserver-on-azure]]
 === SQL Server on Azure
 
-The SQL Server plug-in has not been tested with SQL Server on Azure.
-We welcome any feedback from a user to try the plug-in with database in managed environments.
+The {prodname} SQL Server connector has not been tested with SQL Server on Azure.
 
 ifdef::community[]
+We welcome any feedback from users who try the connector with SQL Server databases in managed environments.
+
+
 [[sqlserver-always-on-replica]]
 === SQL Server Always On
 
-The SQL Server plug-in can capture changes from an Always On read-only replica.
+The SQL Server connector can capture changes from an Always On read-only replica.
 A few pre-requisities are necessary to be fulfilled:
 
 * Change data capture is configured and enabled on the primary node.
@@ -1294,15 +1448,20 @@ When {prodname} detects this configuration option then it will:
 ** commit the (read-only) transaction in every execution of the streaming query loop, as this is necessary to get the latest view on CDC data
 endif::community[]
 
-
-
 ifdef::product[]
 // Type: assembly
-// ModuleID: deploying-and-managing-debezium-connectors
-== Deploying and managing {prodname} SQL Server connectors
+// ModuleID: deploying-and-managing-debezium-sql-server-connectors
+== Deployment and management of {prodname} SQL Server connectors
+
+For details about deploying and managing SQL Server connectors, see the following sections:
+
+* xref:deploying-debezium-sql-server-connectors[]
+* xref:refreshing-capture-tables-after-a-schema-change[]
+* xref:monitoring-debezium-sql-server-connector-performance[]
+
 endif::product[]
 
-// Type: procedure
+// Type: assembly
 // ModuleID: deploying-debezium-sql-server-connectors
 // Title: Deploying the SQL Server connector
 [[sqlserver-deploying-a-connector]]
@@ -1314,10 +1473,20 @@ Restart your Kafka Connect process to pick up the new JAR files.
 
 If you are working with immutable containers, see link:https://hub.docker.com/r/debezium/[{prodname}'s container images] for Zookeeper, Kafka, SQL Server and Kafka Connect with the SQL Server connector already installed and ready to run. You can also xref:operations/openshift.adoc[run {prodname} on Kubernetes and OpenShift].
 endif::community[]
+For details about deploying the {prodname} SQL Server connector, see the following topics:
+
+* xref:installing-debezium-mysql-connectors[]
+* xref:debezium-sql-server-connector-configuration-example[]
+* xref:adding-sql-server-connector-configuration-to-kafka-connect[]
+* xref:descriptions-of-debezium-sql-server-connector-configuration-properties[]
 
 ifdef::product[]
 To deploy a {prodname} SQL Server connector, install the {prodname} SQL Server connector archive, configure the connector, and start the connector by adding its configuration to Kafka Connect. 
 
+// Type: procedure
+// Title: Installing {prodname} SQL Server connectors
+[id="installing-debezium-mysql-connectors"]
+==== Installing
 To install the SQL Server connector, follow the procedures in {LinkDebeziumInstallOpenShift}[{NameDebeziumInstallOpenShift}]. The main steps are:
 
 . Use link:https://access.redhat.com/products/red-hat-amq#streams[Red Hat AMQ Streams] to set up Apache Kafka and Kafka Connect on OpenShift. AMQ Streams offers operators and images that bring Kafka to OpenShift. 
@@ -1346,17 +1515,21 @@ For more information about the deployment process, and deploying connectors with
 * {LinkDebeziumInstallRHEL}[{NameDebeziumInstallRHEL}]
 endif::product[]
 
+
+// Type: concept
+// ModuleID: debezium-sql-server-connector-configuration-example
+// Title: {prodname} SQL Server connector configuration example
 [[sqlserver-example-configuration]]
-=== Example configuration
+==== Example configuration
 
 To use the connector to produce change events for a particular SQL Server database or cluster:
 
 . Enable the {link-prefix}:{link-sqlserver-connector}#setting-up-sqlserver[CDC on SQL Server] to publish the _CDC_ events in the database.
 . Create a configuration file for the SQL Server connector.
 
-When the connector starts, it will grab a consistent snapshot of the schemas in your SQL Server database and start streaming changes, producing events for every inserted, updated, and deleted row.
-You can also choose to produce events for a subset of the schemas and tables.
-Optionally ignore, mask, or truncate columns that are sensitive, too large, or not needed.
+When the connector starts, it will create a consistent snapshot of the schemas in your SQL Server database and start streaming changes, producing change event records for every row in which data was inserted, updated, or deleted.
+Optionally, you can configure the connector to produce change events for a subset of the schemas and tables in a database.
+For example you can ignore, mask, or truncate columns that contain sensitive data, that are larger than a specified size, or that you do not need.
 
 ifdef::community[]
 Following is an example of the configuration for a connector instance that monitors a SQL Server server at port 1433 on 192.168.99.100, which we logically name `fullfillment`.
@@ -1395,8 +1568,8 @@ Typically, you configure the {prodname} SQL Server connector in a `.json` file u
 endif::community[]
 
 ifdef::product[]
-Following is an example of the configuration for a connector instance that monitors a SQL Server server at port 1433 on 192.168.99.100, which we logically name `fullfillment`.
-Typically, you configure the {prodname} SQL Server connector in a `.yaml` file using the configuration properties available for the connector.
+The following example shows the configuration for a connector instance with the logical name `fullfillment` that monitors a SQL Server server at port 1433 on 192.168.99.100.
+Typically, you configure the {prodname} SQL Server connector in a `.yaml` file in which you assign values to the configuration properties that are available for the connector.
 
 [source,yaml,options="nowrap"]
 ----
@@ -1470,7 +1643,7 @@ This configuration can be sent via POST to a running Kafka Connect service, whic
 // ModuleID: adding-sql-server-connector-configuration-to-kafka-connect
 //Title: Adding SQL Server connector configuration to Kafka Connect
 [[sqlserver-adding-connector-configuration]]
-=== Adding connector configuration
+==== Adding connector configuration
 
 ifdef::community[]
 To run a {prodname} SQL Server connector, create a connector configuration and add the configuration to your Kafka Connect cluster. 
@@ -1490,7 +1663,9 @@ To run a {prodname} SQL Server connector, create a connector configuration and a
 endif::community[]
 
 ifdef::product[]
-You can use a provided {prodname} container to deploy a {prodname} SQL Server connector. In this procedure, you build a custom Kafka Connect container image for {prodname}, configure the {prodname} connector as needed, and then add your connector configuration to your Kafka Connect environment. 
+You can use a provided {prodname} container to deploy a {prodname} SQL Server connector. 
+In this procedure, you build a custom Kafka Connect container image for {prodname}, configure the {prodname} connector as needed, 
+and then add your connector configuration to your Kafka Connect environment. 
 
 .Prerequisites
 
@@ -1533,7 +1708,7 @@ Before Kafka Connect starts running the connector, Kafka Connect loads any third
 
 .. Point to the new container image. Do one of the following:
 +
-* Edit the `spec.image` property of the `KafkaConnector` custom resource. If set, this property overrides the `STRIMZI_DEFAULT_KAFKA_CONNECT_IMAGE` variable in the Cluster Operator. For example:
+* Edit the `spec.image` property of the `KafkaConnector` custom resource. If this property is set, it overrides the `STRIMZI_DEFAULT_KAFKA_CONNECT_IMAGE` variable in the Cluster Operator. For example:
 +
 [source,yaml,subs="+attributes"]
 ----
@@ -1579,11 +1754,12 @@ endif::product[]
 
 When the connector starts, it {link-prefix}:{link-sqlserver-connector}#sqlserver-snapshots[performs a consistent snapshot] of the SQL Server databases that the connector is configured for. The connector then starts generating data change events for row-level operations and streaming change event records to Kafka topics. 
 
+
 // Type: reference
 // ModuleID: descriptions-of-debezium-sql-server-connector-configuration-properties
-// Title: Description of {prodname} SQL Server connector configuration properties
+// Title: Descriptions of {prodname} SQL Server connector configuration properties
 [[sqlserver-connector-properties]]
-=== Connector properties
+==== Connector properties
 
 The following configuration properties are _required_ unless a default value is available.
 
@@ -1636,7 +1812,7 @@ Only alphanumeric characters and underscores should be used.
 
 |[[sqlserver-property-database-history-kafka-bootstrap-servers]]<<sqlserver-property-database-history-kafka-bootstrap-servers, `database.history{zwsp}.kafka.bootstrap{zwsp}.servers`>>
 |
-|A list of host/port pairs that the connector will use for establishing an initial connection to the Kafka cluster.
+|A list of host and port pairs that the connector will use for establishing an initial connection to the Kafka cluster.
 This connection is used for retrieving database schema history previously stored by the connector, and for writing each DDL statement read from the source database. This should point to the same Kafka cluster used by the Kafka Connect process.
 
 |[[sqlserver-property-table-whitelist]]
@@ -1792,10 +1968,6 @@ For `read_uncommitted` there are no data consistency guarantees at all (some dat
 |`2048`
 |Positive integer value that specifies the maximum size of each batch of events that should be processed during each iteration of this connector. Defaults to 2048.
 
-|[[sqlserver-property-max-queue-size-in-bytes]]<<sqlserver-property-max-queue-size-in-bytes, `max.queue.size.in.bytes`>>
-|`0`
-|Long value for the maximum size in bytes of the blocking queue. The feature is disabled by default, it will be active if it's set with a positive long value.
-
 |[[sqlserver-property-heartbeat-interval-ms]]<<sqlserver-property-heartbeat-interval-ms, `heartbeat.interval{zwsp}.ms`>>
 |`0`
 |Controls how frequently heartbeat messages are sent. +
@@ -1900,80 +2072,90 @@ database.history.consumer.ssl.key.password=test1234
 
 Be sure to consult the {link-kafka-docs}.html[Kafka documentation] for all of the configuration properties for Kafka producers and consumers. (The SQL Server connector does use the {link-kafka-docs}.html#newconsumerconfigs[new consumer].)
 
+
 // Type: assembly
-// ModuleID: updates-to-refresh-capture-tables-after-a-schema-change
-// Title: Updates required to refresh capture tables after a schema change 
+// ModuleID: refreshing-capture-tables-after-a-schema-change
+// Title: URefreshing capture tables after a schema change 
 [[sqlserver-schema-evolution]]
 === Database schema evolution
 
-{prodname} is able to capture schema changes over time.
-Due to the way CDC is implemented in SQL Server, it is necessary to work in co-operation with a database operator in order to ensure the connector continues to produce data change events when the schema is updated.
+When change data capture is enabled for a SQL Server table, as changes occur in the table, event records are persisted to a capture table on the server.
+If you introduce a change in the structure of the source table change, for example, by adding a new column, that change is not dynamically reflected in the change table.
+For as long as the capture table continues to use the outdated schema, the {prodname} connector is unable to emit data change events for the table correctly.
+You must intervene to refresh the capture table to enable the connector to resume processing change events.   
+ 
+Because of the way that CDC is implemented in SQL Server, you cannot use {prodname} to update capture tables.
+To refresh capture tables, one must be a SQL Server database operator with elevated privileges can.
+As a {prodname} user, you must coordinate tasks with the SQL Server database operator to complete the schema refresh and restore streaming to Kafka topics.    
 
-As was already mentioned before, {prodname} uses SQL Server's change data capture functionality.
-This means that SQL Server creates a capture table that contains all changes executed on the source table.
-Unfortunately, the capture table is static and needs to be updated when the source table structure changes.
-This update is not done by the connector itself but must be executed by an operator with elevated privileges.
+You can use one of the following methods to update capture tables after a schema change:
 
-There are generally two procedures how to execute the schema change:
+* xref:cold-schema-updates[]. In cold schema updates, capture tables are updated after you stop {prodname}.
+* xref:hot-schema-updates[]. In hot schema updates, capture tables are updated while {prodname} is running.
 
-* cold - this is executed when {prodname} is stopped
-* hot - executed while {prodname} is running
-
-Both approaches have their own advantages and disadvantages.
+There are advantages and disadvantages to using each type of procedure.
 
 [WARNING]
 ====
-In both cases, it is critically important to execute the procedure completely before a new schema update on the same source table is made.
-It is thus recommended to execute all DDLs in a single batch so the procedure is done only once.
+Whether you use the hot or cold update method, you must complete the entire schema update process before you apply subsequent schema updates on the same source table.
+The best practice is to execute all DDLs in a single batch so the procedure can be run only once.
 ====
 
 [NOTE]
 ====
-Not all schema changes are supported when CDC is enabled for a source table.
-One such exception identified is renaming a column or changing its type, SQL Server will not allow executing the operation.
+Some schema changes are not supported on source tables that have CDC enabled.
+For example, if CDC is enabled on a table, SQL Server does not allow you to change the schema of the table if you renamed one of its columns or changed the column type.
 ====
 
 [NOTE]
 ====
-Although not required by SQL Server's CDC mechanism itself, a new capture instance must be created when altering a column from `NULL` to `NOT NULL` or vice versa.
-This is required so that the SQL Server connector can pick up that changed information.
-Otherwise, emitted change events will have the `optional` value for the corresponding field (`true` or `false`) set to match the original value.
+After you change a column in a source table from `NULL` to `NOT NULL` or vice versa, the SQL Server connector cannot correctly capture the changed information until after you create a new capture instance.
+If you do not create a new capture table after a change to the column designation, change event records that the connector emits do not correctly indicate whether the column is optional.
+That is, columns that were previously defined as optional (or `NULL`) continue to be, despite now being defined as `NOT NULL`. 
+Similarly, columns that had been defined as required (`NOT NULL`), retain that designation, although they are now defined as `NULL`.
 ====
 
 // Type: procedure
 // ModuleID: debezium-sql-server-connector-running-a-cold-update-after-a-schema-change
 // Title: Running a cold update after a schema change 
-==== Cold schema update
+[id="cold-schema-updates"]
+==== Cold schema updates
 
-This is the safest procedure but might not be feasible for applications with high-availability requirements.
-The operator should follow this sequence of steps
+Cold schema updates provide the safest method for updating capture tables, but cold updates might not be feasible for use with applications that require high-availability.
 
-1. Suspend the application that generates the database records
-2. Wait for {prodname} to stream all unstreamed changes
-3. Stop the connector
-4. Apply all changes to the source table schema
-5. Create a new capture table for the update source table using `sys.sp_cdc_enable_table` procedure with a unique value for parameter `@capture_instance`
-6. Resume the application
-7. Start the connector
-8. When {prodname} starts streaming from the new capture table it is possible to drop the old one using `sys.sp_cdc_disable_table` stored procedure with parameter `@capture_instance` set to the old capture instance name
+.Prerequisites
+* You are a SQL Server database operator with elevated privileges.
+
+.Procedure
+
+1. Suspend the application that generates the database records.
+2. Wait for {prodname} to stream all unstreamed changes.
+3. Stop the connector.
+4. Apply all changes to the source table schema.
+5. Create a new capture table for the update source table using `sys.sp_cdc_enable_table` procedure with a unique value for parameter `@capture_instance`.
+6. Resume the application.
+7. Start the connector.
+8. When {prodname} starts streaming from the new capture table it is possible to drop the old one using `sys.sp_cdc_disable_table` stored procedure with parameter `@capture_instance` set to the old capture instance name.
 
 // Type: procedure
 // ModuleID: debezium-sql-server-connector-running-a-cold-update-after-a-schema-change
 // Title: Running a cold update after a schema change 
-==== Hot schema update
+==== Hot schema updates
 
-The hot schema update does not require any downtime in application and data processing.
-The procedure itself is also much simpler than in case of cold schema update
+The procedure for completing a hot schema updates is simpler than the procedure for running a cold schema update, 
+and you can complete it without requiring any downtime in application and data processing.
+However, with hot schema updates, there is a potential processing gap after you update the schema in the source database, 
+and before you create the new capture instance.
+During that interval, change events continue to be captured by the old instance of the change table, Q
+and the change data that is saved to the old table retains the structure of the earlier schema.
+So, for example, if you added a new column to a source table, change events that are produced before the new capture table is ready, do not contain a field for the new column.
+If your application does not tolerate such a transition period, it is best to use the cold schema update procedure.
 
-1. Apply all changes to the source table schema
-2. Create a new capture table for the update source table using `sys.sp_cdc_enable_table` procedure with a unique value for parameter `@capture_instance`
-3. When {prodname} starts streaming from the new capture table it is possible to drop the old one using `sys.sp_cdc_disable_table` stored procedure with parameter `@capture_instance` set to the old capture instance name
+.Procedure
+1. Apply all changes to the source table schema.
+2. Create a new capture table for the update source table by running the `sys.sp_cdc_enable_table` stored procedure with a unique value for the parameter `@capture_instance`.
+3. When {prodname} starts streaming from the new capture table, you can drop the old capture table by running the `sys.sp_cdc_disable_table` stored procedure with the parameter `@capture_instance` set to the old capture instance name.
 
-The hot schema update has one drawback.
-There is a period of time between the database schema update and creating the new capture instance.
-All changes that will arrive during this period are captured by the old instance with the old structure.
-For instance this means that in case of a newly added column any change event produced during this time will not yet contain a field for that new column.
-If your application does not tolerate such a transition period we recommend to follow the cold schema update.
 
 .Example: Running a hot schema update after a database schema change 
 ifdef::community[]
@@ -1982,7 +2164,6 @@ Let's deploy the SQL Server based https://github.com/debezium/debezium-examples/
 In the following example, a column `phone_number` is added to the `customers` table.
 
 . Type the following command to start the database shell:
-+
 [source,shell]
 ----
 docker-compose -f docker-compose-sqlserver.yaml exec sqlserver bash -c '/opt/mssql-tools/bin/sqlcmd -U sa -P $SA_PASSWORD -d testDB'
@@ -1998,31 +2179,30 @@ The following example shows how to complete a hot schema update in the change ta
 
 endif::product[]
 
-. Modify the source table schema.
+. Modify the schema of the `customers` source table by running the following query to add the `phone_number` field:
 +
 [source,sql]
 ----
-
 ALTER TABLE customers ADD phone_number VARCHAR(32);
 ----
 
-. Create the new capture instance.
+. Create the new capture instance by running the `sys.sp_cdc_enable_table` stored procedure.
 +
-[source.sql]
+[source,sql]
 ----
 EXEC sys.sp_cdc_enable_table @source_schema = 'dbo', @source_name = 'customers', @role_name = NULL, @supports_net_changes = 0, @capture_instance = 'dbo_customers_v2';
 GO
 ----
 
-. Insert new data.
-+
+. Insert new data into the `customers` table by running the following query:
 [source,sql]
++
 ----
 INSERT INTO customers(first_name,last_name,email,phone_number) VALUES ('John','Doe','john.doe@example.com', '+1-555-123456');
 GO
 ----
 +
-The Kafka Connect log reports messages similar to the following:
+The Kafka Connect log reports on configuration updates through entries similar to the following message:
 +
 [source,shell]
 ----
@@ -2032,7 +2212,7 @@ connect_1    | 2019-01-17 10:11:14,924 INFO   ||  Schema will be changed for Cha
 connect_1    | 2019-01-17 10:11:33,719 INFO   ||  Migrating schema to ChangeTable [captureInstance=dbo_customers_v2, sourceTableId=testDB.dbo.customers, changeTableId=testDB.cdc.dbo_customers_v2_CT, startLsn=00000025:00000ef8:0048, changeTableObjectId=1749581271, stopLsn=NULL]   [io.debezium.connector.sqlserver.SqlServerStreamingChangeEventSource]
 ----
 +
-Eventually, there is a new field in the schema and value of the messages written to the Kafka topic.
+Eventually, the `phone_number` field is added to the schema and its value appears in messages written to the Kafka topic.
 +
 [source,json]
 ----
@@ -2052,7 +2232,7 @@ Eventually, there is a new field in the schema and value of the messages written
     },
 ----
 
-. Drop the old capture instance.
+. Drop the old capture instance by running the `sys.sp_cdc_disable_table` stored procedure. 
 +
 [source,sql]
 ----
@@ -2066,19 +2246,20 @@ GO
 [[sqlserver-monitoring]]
 === Monitoring
 
-The {prodname} SQL Server connector has three metric types in addition to the built-in support for JMX metrics that Zookeeper, Kafka, and Kafka Connect have.
+The {prodname} SQL Server connector provides three types of metrics that are in addition to the built-in support for JMX metrics that Zookeeper, Kafka, and Kafka Connect provide.
+The connector provides the following metrics:
+ 
+* <<sqlserver-snapshot-metrics, snapshot metrics>>; for monitoring the connector when performing snapshots.
+* <<sqlserver-streaming-metrics, streaming metrics>>; for monitoring the connector when reading CDC table data.
+* <<sqlserver-schema-history-metrics, schema history metrics>>; for monitoring the status of the connector's schema history.
 
-* <<sqlserver-snapshot-metrics, snapshot metrics>>; for monitoring the connector when performing snapshots
-* <<sqlserver-streaming-metrics, streaming metrics>>; for monitoring the connector when reading CDC table data
-* <<sqlserver-schema-history-metrics, schema history metrics>>; for monitoring the status of the connector's schema history
-
-Please refer to the {link-prefix}:{link-debezium-monitoring}[monitoring documentation] for details of how to expose these metrics via JMX.
+For information about how to expose the preceding metrics through JMX, see the {link-prefix}:{link-debezium-monitoring}[{prodname} monitoring documentation].
 
 // Type: reference
 // ModuleID: debezium-sql-server-connector-snapshot-metrics
 // Title: {prodname} SQL Server connector snapshot metrics
 [[sqlserver-snapshot-metrics]]
-==== Snapshot metrics
+==== Snapshot Metrics
 
 The *MBean* is `debezium.sql_server:type=connector-metrics,context=snapshot,server=_<database.server.name>_`.
 
@@ -2087,8 +2268,8 @@ include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-snapshot-
 // Type: reference
 // ModuleID: debezium-sql-server-connector-streaming-metrics
 // Title: {prodname} SQL Server connector streaming metrics
-[[sqlserver-streaming-metrics]]
-==== Streaming metrics
+[sqlserver-streaming-metrics]]
+==== Streaming Metrics
 
 The *MBean* is `debezium.sql_server:type=connector-metrics,context=streaming,server=_<database.server.name>_`.
 
@@ -2098,7 +2279,7 @@ include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-streaming
 // ModuleID: debezium-sql-server-connector-schema-history-metrics
 // Title: {prodname} SQL Server connector schema history metrics
 [[sqlserver-schema-history-metrics]]
-==== Schema history metrics
+==== Schema History Metrics
 
 The *MBean* is `debezium.sql_server:type=connector-metrics,context=schema-history,server=_<database.server.name>_`.
 
