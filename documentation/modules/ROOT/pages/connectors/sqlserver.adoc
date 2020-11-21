@@ -24,7 +24,7 @@ endif::community[]
 The {prodname} SQL Server connector captures row-level changes that occur in the schemas of a SQL Server database.
 
 ifdef::product[]
-Fore details about using the {prodname} SQL Server connector, see following topics: 
+For details about the {prodname} SQL Server connector and its use, see following topics: 
 
 * xref:overview-of-debezium-sql-server-connector[]
 * xref:how-debezium-sql-server-connectors-work[]
