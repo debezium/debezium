@@ -11,7 +11,7 @@ pipelineJob('release-deploy-snapshots') {
     }
 
     triggers {
-        cron('H 03 * * 1-5')
+        cron('0 */6 * * *')
     }
 
     parameters {
