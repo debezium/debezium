@@ -98,7 +98,7 @@ public class TypeRegistry {
     private final Map<String, PostgresType> nameToType = new HashMap<>();
     private final Map<Integer, PostgresType> oidToType = new HashMap<>();
 
-    private final PostgresConnection connection;
+    private PostgresConnection connection;
 
     private int geometryOid = Integer.MIN_VALUE;
     private int geographyOid = Integer.MIN_VALUE;
@@ -112,9 +112,7 @@ public class TypeRegistry {
     private int citextArrayOid = Integer.MIN_VALUE;
     private int ltreeArrayOid = Integer.MIN_VALUE;
 
-    public TypeRegistry(PostgresConnection connection) {
-        this.connection = connection;
-        prime();
+    public TypeRegistry() {
     }
 
     private void addType(PostgresType type) {
@@ -299,7 +297,9 @@ public class TypeRegistry {
     /**
      * Prime the {@link TypeRegistry} with all existing database types
      */
-    private void prime() {
+    public void prime(PostgresConnection connection) {
+        this.connection = connection;
+
         Connection pgConnection = null;
         try {
             pgConnection = connection.connection();

@@ -10,12 +10,15 @@ import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static io.debezium.relational.RelationalDatabaseConnectorConfig.SCHEMA_BLACKLIST;
 import static io.debezium.relational.RelationalDatabaseConnectorConfig.SCHEMA_EXCLUDE_LIST;
 import static org.fest.assertions.Assertions.assertThat;
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.util.Arrays;
+import java.util.List;
 import java.util.stream.IntStream;
 
 import org.apache.kafka.connect.data.Decimal;
@@ -40,6 +43,7 @@ import io.debezium.data.geometry.Point;
 import io.debezium.doc.FixFor;
 import io.debezium.junit.SkipTestRule;
 import io.debezium.junit.SkipWhenDatabaseVersion;
+import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchema;
@@ -367,6 +371,91 @@ public class PostgresSchemaIT {
             // After refreshing w/ toastable column refresh enabled, we should have only the 'toasted' column in the cache
             schema.refresh(connection, tableId, true);
             assertThat(schema.getToastableColumnsForTableId(tableId)).containsOnly("toasted");
+        }
+    }
+
+    @Test
+    public void shouldProperlyGetDefaultColumnValues() throws Exception {
+        String ddl = "DROP TABLE IF EXISTS default_column_test; CREATE TABLE default_column_test (" +
+                "pk SERIAL, " +
+                "bigint BIGINT default 9223372036854775807, " +
+                "bit_as_boolean BIT(1) default B'1', " +
+                "bit BIT(2) default B'11', " +
+                "varbit VARBIT(5) default B'110', " +
+                "boolean BOOLEAN not null default TRUE, " +
+                // box
+                // bytea
+                "char CHAR(10) default 'abcd', " +
+                "varchar VARCHAR(100) default 'abcde', " +
+                // cidr
+                // date
+                "double float8 default 123456789.1234567890123, " +
+                // inet
+                "integer INT default 2147483647, " +
+                // interval
+                "json JSON default '{}', " +
+                "jsonb JSONB default '{}', " +
+                // line
+                // lseg
+                // macaddr
+                // macaddr8
+                // money
+                "numeric NUMERIC(10, 5) default 12345.67891, " +
+                // path
+                // pg_lsn
+                // point
+                // polygon
+                "real FLOAT4 default 1234567890.5, " +
+                "smallint INT2 default 32767, " +
+                "text TEXT default 'asdf', " +
+                // time
+                // time with time zone
+                // timestamp
+                // timestamp with time zone
+                // tsquery
+                // tsvector
+                // txid_snapshot
+                // uuid
+                "xml XML default '<foo>bar</foo>'" +
+                ");";
+
+        PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig().build());
+        schema = TestHelper.getSchema(config);
+
+        try (PostgresConnection connection = TestHelper.createWithTypeRegistry()) {
+            connection.execute(ddl);
+            schema.refresh(connection, false);
+
+            List<Column> columns = tableFor("public.default_column_test").columns();
+            assertColumnDefault("bigint", 9223372036854775807l, columns);
+            assertColumnDefault("bit_as_boolean", true, columns);
+            assertColumnDefault("bit", new byte[]{ 3 }, columns);
+            assertColumnDefault("varbit", new byte[]{ 6 }, columns);
+            assertColumnDefault("boolean", true, columns);
+            assertColumnDefault("char", "abcd", columns);
+            assertColumnDefault("varchar", "abcde", columns);
+            assertColumnDefault("double", 123456789.1234567890123, columns);
+            assertColumnDefault("integer", 2147483647, columns);
+            assertColumnDefault("json", "{}", columns);
+            assertColumnDefault("jsonb", "{}", columns);
+            assertColumnDefault("numeric", new BigDecimal("12345.67891"), columns);
+            assertColumnDefault("real", 1234567890.5f, columns);
+            assertColumnDefault("smallint", (short) 32767, columns);
+            assertColumnDefault("text", "asdf", columns);
+            assertColumnDefault("xml", "<foo>bar</foo>", columns);
+        }
+    }
+
+    private void assertColumnDefault(String columnName, Object expectedDefault, List<Column> columns) {
+        Column column = columns.stream().filter(c -> c.name().equals(columnName)).findFirst().get();
+
+        if (expectedDefault instanceof byte[]) {
+            byte[] expectedBytes = (byte[]) expectedDefault;
+            byte[] defaultBytes = (byte[]) column.defaultValue();
+            assertArrayEquals(expectedBytes, defaultBytes);
+        }
+        else {
+            assertTrue(column.defaultValue().equals(expectedDefault));
         }
     }
 

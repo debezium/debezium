@@ -17,6 +17,7 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Duration;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -117,7 +118,13 @@ public final class TestHelper {
      * @return the PostgresConnection instance; never null
      */
     public static PostgresConnection createWithTypeRegistry() {
-        return new PostgresConnection(defaultJdbcConfig(), true);
+        PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig().build());
+        TypeRegistry typeRegistry = new TypeRegistry();
+
+        return new PostgresConnection(
+                defaultJdbcConfig(),
+                typeRegistry,
+                getPostgresValueConverter(typeRegistry, config));
     }
 
     /**
@@ -185,9 +192,11 @@ public final class TestHelper {
     }
 
     public static TypeRegistry getTypeRegistry() {
-        try (final PostgresConnection connection = new PostgresConnection(defaultJdbcConfig(), true)) {
-            return connection.getTypeRegistry();
+        TypeRegistry typeRegistry = new TypeRegistry();
+        try (final PostgresConnection connection = new PostgresConnection(defaultJdbcConfig(), typeRegistry, null)) {
+            // Creating the connection primes the type registry.
         }
+        return typeRegistry;
     }
 
     public static PostgresSchema getSchema(PostgresConnectorConfig config) {
@@ -198,8 +207,8 @@ public final class TestHelper {
         return new PostgresSchema(
                 config,
                 typeRegistry,
-                Charset.forName("UTF-8"),
-                PostgresTopicSelector.create(config));
+                PostgresTopicSelector.create(config),
+                getPostgresValueConverter(typeRegistry, config));
     }
 
     protected static Set<String> schemaNames() throws SQLException {
@@ -360,4 +369,18 @@ public final class TestHelper {
                 });
     }
 
+    private static PostgresValueConverter getPostgresValueConverter(TypeRegistry typeRegistry, PostgresConnectorConfig config) {
+        return new PostgresValueConverter(
+                Charset.forName("UTF-8"),
+                config.getDecimalMode(),
+                config.getTemporalPrecisionMode(),
+                ZoneOffset.UTC,
+                null,
+                config.includeUnknownDatatypes(),
+                typeRegistry,
+                config.hStoreHandlingMode(),
+                config.binaryHandlingMode(),
+                config.intervalHandlingMode(),
+                config.toastedValuePlaceholder());
+    }
 }

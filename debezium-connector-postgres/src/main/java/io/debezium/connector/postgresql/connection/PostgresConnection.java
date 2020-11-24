@@ -28,6 +28,7 @@ import io.debezium.annotation.VisibleForTesting;
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig;
 import io.debezium.connector.postgresql.PostgresType;
+import io.debezium.connector.postgresql.PostgresValueConverter;
 import io.debezium.connector.postgresql.TypeRegistry;
 import io.debezium.connector.postgresql.spi.SlotState;
 import io.debezium.jdbc.JdbcConfiguration;
@@ -62,6 +63,7 @@ public class PostgresConnection extends JdbcConnection {
     private static final Duration PAUSE_BETWEEN_REPLICATION_SLOT_RETRIEVAL_ATTEMPTS = Duration.ofSeconds(2);
 
     private final TypeRegistry typeRegistry;
+    private final PostgresDefaultValueConverter defaultValueConverter;
 
     /**
      * Creates a Postgres connection using the supplied configuration.
@@ -69,11 +71,17 @@ public class PostgresConnection extends JdbcConnection {
      * Usually only one such connection per connector is needed.
      *
      * @param config {@link Configuration} instance, may not be null.
-     * @param provideTypeRegistry {@code true} if type registry should be created
+     * @param typeRegistry {@link TypeRegistry} the type registry to bind to this connection.
+     * @param valueConverter {@link PostgresValueConverter} a postgres value converter.
      */
-    public PostgresConnection(Configuration config, boolean provideTypeRegistry) {
+    public PostgresConnection(Configuration config, TypeRegistry typeRegistry, PostgresValueConverter valueConverter) {
         super(config, FACTORY, PostgresConnection::validateServerVersion, PostgresConnection::defaultSettings);
-        this.typeRegistry = provideTypeRegistry ? new TypeRegistry(this) : null;
+        this.typeRegistry = typeRegistry;
+        this.defaultValueConverter = new PostgresDefaultValueConverter(valueConverter);
+
+        if (this.typeRegistry != null) {
+            this.typeRegistry.prime(this);
+        }
     }
 
     /**
@@ -83,7 +91,7 @@ public class PostgresConnection extends JdbcConnection {
      * @param config {@link Configuration} instance, may not be null.
      */
     public PostgresConnection(Configuration config) {
-        this(config, false);
+        this(config, null, null);
     }
 
     /**
@@ -499,13 +507,22 @@ public class PostgresConnection extends JdbcConnection {
                 column.scale(nativeType.getDefaultScale());
             }
 
+            final String defaultValue = columnMetadata.getString(13);
+            if (defaultValue != null) {
+                getDefaultValue(column.create(), defaultValue).ifPresent(column::defaultValue);
+            }
+
             return Optional.of(column);
         }
 
         return Optional.empty();
     }
 
-    public TypeRegistry getTypeRegistry() {
+    protected Optional<Object> getDefaultValue(Column column, String defaultValue) {
+        return defaultValueConverter.parseDefaultValue(column, defaultValue);
+    }
+
+    private TypeRegistry getTypeRegistry() {
         Objects.requireNonNull(typeRegistry, "Connection does not provide type registry");
         return typeRegistry;
     }

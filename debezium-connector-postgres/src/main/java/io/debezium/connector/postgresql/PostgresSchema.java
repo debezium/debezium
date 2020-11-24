@@ -6,9 +6,7 @@
 
 package io.debezium.connector.postgresql;
 
-import java.nio.charset.Charset;
 import java.sql.SQLException;
-import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -57,10 +55,10 @@ public class PostgresSchema extends RelationalDatabaseSchema {
      *
      * @param config the connector configuration, which is presumed to be valid
      */
-    protected PostgresSchema(PostgresConnectorConfig config, TypeRegistry typeRegistry, Charset databaseCharset,
-                             TopicSelector<TableId> topicSelector) {
+    protected PostgresSchema(PostgresConnectorConfig config, TypeRegistry typeRegistry,
+                             TopicSelector<TableId> topicSelector, PostgresValueConverter valueConverter) {
         super(config, topicSelector, new Filters(config).tableFilter(),
-                new Filters(config).columnFilter(), getTableSchemaBuilder(config, typeRegistry, databaseCharset), false,
+                new Filters(config).columnFilter(), getTableSchemaBuilder(config, valueConverter), false,
                 config.getKeyMapper());
 
         this.typeRegistry = typeRegistry;
@@ -69,20 +67,7 @@ public class PostgresSchema extends RelationalDatabaseSchema {
         this.readToastableColumns = config.skipRefreshSchemaOnMissingToastableData();
     }
 
-    private static TableSchemaBuilder getTableSchemaBuilder(PostgresConnectorConfig config, TypeRegistry typeRegistry, Charset databaseCharset) {
-        PostgresValueConverter valueConverter = new PostgresValueConverter(
-                databaseCharset,
-                config.getDecimalMode(),
-                config.getTemporalPrecisionMode(),
-                ZoneOffset.UTC,
-                null,
-                config.includeUnknownDatatypes(),
-                typeRegistry,
-                config.hStoreHandlingMode(),
-                config.binaryHandlingMode(),
-                config.intervalHandlingMode(),
-                config.toastedValuePlaceholder());
-
+    private static TableSchemaBuilder getTableSchemaBuilder(PostgresConnectorConfig config, PostgresValueConverter valueConverter) {
         return new TableSchemaBuilder(valueConverter, SchemaNameAdjuster.create(LOGGER), config.customConverterRegistry(), config.getSourceInfoStructMaker().schema(),
                 config.getSanitizeFieldNames());
     }
