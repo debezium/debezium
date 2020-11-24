@@ -151,11 +151,12 @@ The connector is able to detect whether CDC is enabled or disabled for included 
 === Topic names
 
 The SQL Server connector writes events for all `INSERT`, `UPDATE`, and `DELETE` operations for a specific table to a single Kafka topic. 
-By default, the names of the Kafka topics take the form _serverName_._schemaName_._tableName_.
+By default, the Kafka topic name takes the form _serverName_._schemaName_._tableName_.
+The following list provides definitions for the components of the default name: 
 
-* _serverName_ is the logical name of the connector as specified with the `database.server.name` configuration property.
-* _schemaName_ is the name of the database schema where the operation occurred.
-* _tableName_ is the name of the database table in which the operation occurred.
+_serverName_:: The logical name of the connector, as specified by the `database.server.name` configuration property.
+_schemaName_:: The name of the database schema in which the change event occurred.
+_tableName_:: The name of the database table in which the change event occurred.
 
 For example, suppose that `fulfillment` is the logical server name in the configuration for a connector that is capturing changes in a SQL Server installation.
 The server has an `inventory` database with the schema name `dbo`, and the database contains tables with the names `products`, `products_on_hand`, `customers`, and `orders`. 
@@ -166,6 +167,11 @@ The connector would stream records to the following Kafka topics:
 * `fulfillment.dbo.customers`
 * `fulfillment.dbo.orders`
 
+If the default topic name do not meet your requirements, you can configure custom topic names.
+To configure custom topic names, you specify regular expressions in the logical topic routing SMT. 
+For more information about using the logical topic routing SMT to customize topic naming, see {link-prefix}:{link-topic-routing}#topic-routing[Topic routing].  
+
+ 
 // Type: concept
 // ModuleID: how-the-debezium-SQL Server connector-uses-the-schema-change-topic
 // Title: How the {prodname} SQL Server connector uses the schema change topic
@@ -178,7 +184,7 @@ The connector writes all of these events to a Kafka topic named `<serverName>`, 
 
 [WARNING]
 ====
-The format of messages that a connector emits to its schema change topic is in an incubating state and can change without notice.
+The format of the messages that a connector emits to its schema change topic is in an incubating state and can change without notice.
 ====
 
 {prodname} emits a message to the schema change topic when the following events occur:
