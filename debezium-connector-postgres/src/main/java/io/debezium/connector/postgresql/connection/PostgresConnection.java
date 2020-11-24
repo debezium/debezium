@@ -70,6 +70,7 @@ public class PostgresConnection extends JdbcConnection {
     private static final Duration PAUSE_BETWEEN_REPLICATION_SLOT_RETRIEVAL_ATTEMPTS = Duration.ofSeconds(2);
 
     private final TypeRegistry typeRegistry;
+    private final PostgresDefaultValueConverter defaultValueConverter;
 
     /**
      * Creates a Postgres connection using the supplied configuration.
@@ -82,6 +83,7 @@ public class PostgresConnection extends JdbcConnection {
     public PostgresConnection(Configuration config, boolean provideTypeRegistry) {
         super(config, FACTORY, PostgresConnection::validateServerVersion, PostgresConnection::defaultSettings);
         this.typeRegistry = provideTypeRegistry ? new TypeRegistry(this) : null;
+        this.defaultValueConverter = new PostgresDefaultValueConverter(null);
     }
 
     /**
@@ -507,10 +509,19 @@ public class PostgresConnection extends JdbcConnection {
                 column.scale(nativeType.getDefaultScale());
             }
 
+            final String defaultValue = columnMetadata.getString(13);
+            if (defaultValue != null) {
+                getDefaultValue(column.create(), defaultValue).ifPresent(column::defaultValue);
+            }
+
             return Optional.of(column);
         }
 
         return Optional.empty();
+    }
+
+    protected Optional<Object> getDefaultValue(Column column, String defaultValue) {
+        return defaultValueConverter.parseDefaultValue(column, defaultValue);
     }
 
     public TypeRegistry getTypeRegistry() {
