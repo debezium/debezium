@@ -105,6 +105,7 @@ public abstract class AbstractConnectorTest implements Testing {
     private JsonConverter valueJsonConverter = new JsonConverter();
     private JsonDeserializer keyJsonDeserializer = new JsonDeserializer();
     private JsonDeserializer valueJsonDeserializer = new JsonDeserializer();
+    private boolean skipAvroValidation = false;
 
     @Rule
     public TestRule logTestName = new TestLogger(logger);
@@ -438,7 +439,7 @@ public abstract class AbstractConnectorTest implements Testing {
                     print(record);
                 }
                 if (assertRecords) {
-                    VerifyRecord.isValid(record);
+                    VerifyRecord.isValid(record, skipAvroValidation);
                 }
             }
             else {
@@ -767,6 +768,14 @@ public abstract class AbstractConnectorTest implements Testing {
             }
         }
         return !consumedLines.isEmpty();
+    }
+
+    /**
+     * Disable record validation using Avro converter.
+     * Introduced to workaround https://github.com/confluentinc/schema-registry/issues/1693
+     */
+    protected void skipAvroValidation() {
+        skipAvroValidation = true;
     }
 
     /**
