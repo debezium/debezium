@@ -104,4 +104,5 @@ alter user 'user'@'%' identified with 'mysql_native_password' as '*2470C0C06DEE4
     require none password expire default account unlock password_lock_time 2;
 alter user 'user'@'%' identified with 'mysql_native_password' as '*2470C0C06DEE42FD1618BB99005ADCA2EC9D1E19'
     require none password expire default account unlock password_lock_time unbounded;
+rename user user1@100.200.1.1 to user2@100.200.1.2;
 #end
