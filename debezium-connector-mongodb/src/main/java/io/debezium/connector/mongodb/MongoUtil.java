@@ -16,8 +16,8 @@ import java.util.regex.Pattern;
 
 import org.bson.Document;
 
-import com.mongodb.MongoClient;
 import com.mongodb.ServerAddress;
+import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
@@ -323,6 +323,10 @@ public class MongoUtil {
 
     protected static String toString(List<ServerAddress> addresses) {
         return Strings.join(ADDRESS_DELIMITER, addresses);
+    }
+
+    protected static ServerAddress getPrimaryAddress(MongoClient client) {
+        return new ServerAddress(client.getClusterDescription().getServerDescriptions().get(0).getPrimary());
     }
 
     private MongoUtil() {

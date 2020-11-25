@@ -13,8 +13,7 @@ import org.bson.json.JsonMode;
 import org.bson.json.JsonWriterSettings;
 
 import com.mongodb.BasicDBObject;
-import com.mongodb.DBCollection;
-import com.mongodb.MongoClient;
+import com.mongodb.MongoClientSettings;
 
 /**
  * A class responsible for serialization of message keys and values to MongoDB compatible JSON
@@ -27,6 +26,8 @@ class JsonSerialization {
     @FunctionalInterface
     public static interface Transformer extends Function<Document, String> {
     }
+
+    private static final String ID_FIELD_NAME = "_id";
 
     /**
      * Common settings for writing JSON strings using a compact JSON format
@@ -51,7 +52,7 @@ class JsonSerialization {
     private final Transformer transformer;
 
     public JsonSerialization() {
-        final Encoder<Document> encoder = MongoClient.getDefaultCodecRegistry().get(Document.class);
+        final Encoder<Document> encoder = MongoClientSettings.getDefaultCodecRegistry().get(Document.class);
         transformer = (doc) -> doc.toJson(COMPACT_JSON_SETTINGS, encoder);
     }
 
@@ -60,7 +61,7 @@ class JsonSerialization {
             return null;
         }
         // The serialized value is in format {"_": xxx} so we need to remove the starting dummy field name and closing brace
-        final String keyValue = new BasicDBObject("_", document.get(DBCollection.ID_FIELD_NAME)).toJson(SIMPLE_JSON_SETTINGS);
+        final String keyValue = new BasicDBObject("_", document.get(ID_FIELD_NAME)).toJson(SIMPLE_JSON_SETTINGS);
         final int start = 6;
         final int end = keyValue.length() - 1;
         if (!(end > start)) {

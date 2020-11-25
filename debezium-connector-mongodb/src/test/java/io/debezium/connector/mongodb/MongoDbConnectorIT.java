@@ -1198,8 +1198,10 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         // Set up the replication context for connections ...
         context = new MongoDbTaskContext(config);
 
-        primary().executeBlocking("Try SSL connection", mongo -> {
-            mongo.getDatabase("dbit");
+        final MongoPrimary primary = primary();
+        primary.executeBlocking("Try SSL connection", mongo -> {
+            primary.stop();
+            mongo.getDatabase("dbit").listCollectionNames().first();
         });
     }
 
