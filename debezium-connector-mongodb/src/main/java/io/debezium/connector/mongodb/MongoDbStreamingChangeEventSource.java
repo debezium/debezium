@@ -25,9 +25,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.mongodb.CursorType;
-import com.mongodb.MongoClient;
 import com.mongodb.ServerAddress;
 import com.mongodb.client.FindIterable;
+import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.model.Filters;
@@ -167,7 +167,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         final BsonTimestamp oplogStart = rsOffsetContext.lastOffsetTimestamp();
         final OptionalLong txOrder = rsOffsetContext.lastOffsetTxOrder();
 
-        final ServerAddress primaryAddress = primary.getAddress();
+        final ServerAddress primaryAddress = MongoUtil.getPrimaryAddress(primary);
         LOGGER.info("Reading oplog for '{}' primary {} starting at {}", replicaSet, primaryAddress, oplogStart);
 
         // Include none of the cluster-internal operations and only those events since the previous timestamp
@@ -276,7 +276,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                 AtomicReference<ServerAddress> address = new AtomicReference<>();
                 try {
                     oplogContext.getPrimary().executeBlocking("conn", mongoClient -> {
-                        ServerAddress currentPrimary = mongoClient.getAddress();
+                        ServerAddress currentPrimary = MongoUtil.getPrimaryAddress(mongoClient);
                         address.set(currentPrimary);
                     });
                 }

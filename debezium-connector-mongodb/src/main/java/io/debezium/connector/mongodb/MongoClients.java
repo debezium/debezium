@@ -6,15 +6,15 @@
 package io.debezium.connector.mongodb;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
 
-import com.mongodb.MongoClient;
-import com.mongodb.MongoClientOptions;
+import com.mongodb.MongoClientSettings;
 import com.mongodb.MongoCredential;
 import com.mongodb.ServerAddress;
+import com.mongodb.client.MongoClient;
 
 import io.debezium.annotation.ThreadSafe;
 
@@ -40,8 +40,7 @@ public class MongoClients {
      * Configures and builds a ConnectionPool.
      */
     public static class Builder {
-        private final List<MongoCredential> credentials = new CopyOnWriteArrayList<>();
-        private final MongoClientOptions.Builder optionBuilder = MongoClientOptions.builder();
+        private final MongoClientSettings.Builder settingsBuilder = MongoClientSettings.builder();
 
         /**
          * Add the given {@link MongoCredential} for use when creating clients.
@@ -51,7 +50,7 @@ public class MongoClients {
          */
         public Builder withCredential(MongoCredential credential) {
             if (credential != null) {
-                credentials.add(credential);
+                settingsBuilder.credential(credential);
             }
             return this;
         }
@@ -61,8 +60,8 @@ public class MongoClients {
          *
          * @return the option builder; never null
          */
-        public MongoClientOptions.Builder options() {
-            return optionBuilder;
+        public MongoClientSettings.Builder settings() {
+            return settingsBuilder;
         }
 
         /**
@@ -71,20 +70,16 @@ public class MongoClients {
          * @return the new client pool; never null
          */
         public MongoClients build() {
-            return new MongoClients(optionBuilder.build(), credentials);
+            return new MongoClients(settingsBuilder);
         }
     }
 
     private final Map<ServerAddress, MongoClient> directConnections = new ConcurrentHashMap<>();
     private final Map<List<ServerAddress>, MongoClient> connections = new ConcurrentHashMap<>();
-    private final List<MongoCredential> credentials = new CopyOnWriteArrayList<>();
-    private final MongoClientOptions options;
+    private final MongoClientSettings.Builder settings;
 
-    private MongoClients(MongoClientOptions options, List<MongoCredential> credentials) {
-        this.options = options;
-        if (credentials != null) {
-            credentials.forEach(this.credentials::add);
-        }
+    private MongoClients(MongoClientSettings.Builder settings) {
+        this.settings = settings;
     }
 
     /**
@@ -193,10 +188,12 @@ public class MongoClients {
     }
 
     protected MongoClient directConnection(ServerAddress address) {
-        return new MongoClient(address, credentials, options);
+        settings.applyToClusterSettings(builder -> builder.hosts(Collections.singletonList(address)));
+        return com.mongodb.client.MongoClients.create(settings.build());
     }
 
     protected MongoClient connection(List<ServerAddress> addresses) {
-        return new MongoClient(addresses, credentials, options);
+        settings.applyToClusterSettings(builder -> builder.hosts(addresses));
+        return com.mongodb.client.MongoClients.create(settings.build());
     }
 }

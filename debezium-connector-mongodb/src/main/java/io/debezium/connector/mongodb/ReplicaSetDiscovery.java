@@ -7,17 +7,17 @@ package io.debezium.connector.mongodb;
 
 import java.util.HashSet;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.mongodb.MongoClient;
 import com.mongodb.MongoException;
 import com.mongodb.MongoInterruptedException;
-import com.mongodb.ReplicaSetStatus;
+import com.mongodb.client.MongoClient;
+import com.mongodb.connection.ClusterDescription;
 
 import io.debezium.annotation.ThreadSafe;
-import io.debezium.util.Strings;
 
 /**
  * A component that monitors a single replica set or the set of replica sets that make up the shards in a sharded cluster.
@@ -83,12 +83,12 @@ public class ReplicaSetDiscovery {
         }
         if (replicaSetSpecs.isEmpty()) {
             // The addresses may be a replica set ...
-            ReplicaSetStatus rsStatus = client.getReplicaSetStatus();
+            final ClusterDescription clusterDescription = client.getClusterDescription();
             logger.info("Checking current members of replica set at {}", seedAddresses);
-            if (rsStatus != null) {
+            if (clusterDescription != null) {
                 // This is a replica set ...
-                String addressStr = Strings.join(",", client.getServerAddressList());
-                String replicaSetName = rsStatus.getName();
+                String addressStr = clusterDescription.getServerDescriptions().stream().map(x -> x.getAddress().toString()).collect(Collectors.joining(","));
+                String replicaSetName = clusterDescription.getServerDescriptions().get(0).getSetName();
                 replicaSetSpecs.add(new ReplicaSet(addressStr, replicaSetName, null));
             }
             else {
