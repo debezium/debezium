@@ -5,7 +5,8 @@
  */
 package io.debezium.connector.mongodb;
 
-import static io.debezium.connector.mongodb.MongoDbSchema.COMPACT_JSON_SETTINGS;
+import static io.debezium.connector.mongodb.JsonSerialization.COMPACT_JSON_SETTINGS;
+import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.fail;
 
@@ -13,6 +14,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashSet;
@@ -45,8 +48,6 @@ import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.InsertOneOptions;
-import com.mongodb.util.JSON;
-import com.mongodb.util.JSONSerializers;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
@@ -333,8 +334,8 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         Testing.debug("Update event: " + updateRecord);
         Struct insertKey = (Struct) insertRecord.key();
         Struct updateKey = (Struct) updateRecord.key();
-        String insertId = JSON.parse(insertKey.getString("id")).toString();
-        String updateId = JSON.parse(updateKey.getString("id")).toString();
+        String insertId = toObjectId(insertKey.getString("id")).toString();
+        String updateId = toObjectId(updateKey.getString("id")).toString();
         assertThat(insertId).isEqualTo(id.get());
         assertThat(updateId).isEqualTo(id.get());
 
@@ -364,7 +365,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         Testing.debug("Delete event: " + deleteRecord);
         Testing.debug("Tombstone event: " + tombStoneRecord);
         Struct deleteKey = (Struct) deleteRecord.key();
-        String deleteId = JSON.parse(deleteKey.getString("id")).toString();
+        String deleteId = toObjectId(deleteKey.getString("id")).toString();
         assertThat(deleteId).isEqualTo(id.get());
     }
 
@@ -1348,7 +1349,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         final Struct value = (Struct) deleteRecord.value();
 
         assertThat(key.schema()).isSameAs(deleteRecord.keySchema());
-        assertThat(key.get("id")).isEqualTo("{ \"$oid\" : \"" + objId + "\"}");
+        assertThat(key.get("id")).isEqualTo(formatObjectId(objId));
 
         assertThat(value.schema()).isSameAs(deleteRecord.valueSchema());
         // assertThat(value.getString(Envelope.FieldName.BEFORE)).isNull();
@@ -1402,7 +1403,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         final Struct value = (Struct) deleteRecord.value();
 
         assertThat(key.schema()).isSameAs(deleteRecord.keySchema());
-        assertThat(key.get("id")).isEqualTo(JSONSerializers.getStrict().serialize(objId));
+        assertThat(key.get("id")).isEqualTo(formatObjectId(objId));
 
         Document patchObj = Document.parse(value.getString(MongoDbFieldName.PATCH));
         patchObj.remove("$v");
@@ -1455,7 +1456,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         final Struct value = (Struct) deleteRecord.value();
 
         assertThat(key.schema()).isSameAs(deleteRecord.keySchema());
-        assertThat(key.get("id")).isEqualTo(JSONSerializers.getStrict().serialize(objId));
+        assertThat(key.get("id")).isEqualTo(formatObjectId(objId));
 
         assertThat(value.schema()).isSameAs(deleteRecord.valueSchema());
         assertThat(value.getString(Envelope.FieldName.AFTER)).isNull();
@@ -1470,7 +1471,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         final SourceRecord tombstoneRecord = records.allRecordsInOrder().get(1);
         final Struct tombstoneKey = (Struct) tombstoneRecord.key();
         assertThat(tombstoneKey.schema()).isSameAs(tombstoneRecord.keySchema());
-        assertThat(tombstoneKey.get("id")).isEqualTo(JSONSerializers.getStrict().serialize(objId));
+        assertThat(tombstoneKey.get("id")).isEqualTo(formatObjectId(objId));
         assertThat(tombstoneRecord.value()).isNull();
         assertThat(tombstoneRecord.valueSchema()).isNull();
     }
@@ -1514,7 +1515,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         final Struct value = (Struct) record.value();
 
         assertThat(key.schema()).isSameAs(record.keySchema());
-        assertThat(key.get("id")).isEqualTo(JSONSerializers.getStrict().serialize(objId));
+        assertThat(key.get("id")).isEqualTo(formatObjectId(objId));
 
         assertThat(value.schema()).isSameAs(record.valueSchema());
         assertThat(value.getString(Envelope.FieldName.AFTER)).isNull();
@@ -1581,13 +1582,14 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
 
         assertSourceRecordKeyFieldIsEqualTo(sourceRecords.get(0), "id", "2147483657");
         assertSourceRecordKeyFieldIsEqualTo(sourceRecords.get(1), "id", "\"123\"");
-        assertSourceRecordKeyFieldIsEqualTo(sourceRecords.get(2), "id", "{ \"company\" : 32 , \"dept\" : \"home improvement\"}");
+        assertSourceRecordKeyFieldIsEqualTo(sourceRecords.get(2), "id", "{\"company\": 32,\"dept\": \"home improvement\"}");
         // that's actually not what https://docs.mongodb.com/manual/reference/mongodb-extended-json/#date suggests;
         // seems JsonSerializers is not fully compliant with that description
-        assertSourceRecordKeyFieldIsEqualTo(sourceRecords.get(3), "id", "{ \"$date\" : " + cal.getTime().getTime() + "}");
+        assertSourceRecordKeyFieldIsEqualTo(sourceRecords.get(3), "id",
+                "{\"$date\": \"" + ZonedDateTime.ofInstant(Instant.ofEpochMilli(cal.getTimeInMillis()), ZoneId.of("Z")).format(ISO_OFFSET_DATE_TIME) + "\"}");
 
         if (decimal128Supported) {
-            assertSourceRecordKeyFieldIsEqualTo(sourceRecords.get(4), "id", "{ \"$numberDecimal\" : \"123.45678\"}");
+            assertSourceRecordKeyFieldIsEqualTo(sourceRecords.get(4), "id", "{\"$numberDecimal\": \"123.45678\"}");
         }
     }
 
@@ -1627,7 +1629,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         final Struct key = (Struct) record.key();
         final Struct value = (Struct) record.value();
         assertThat(key.schema()).isSameAs(record.keySchema());
-        assertThat(key.get("id")).isEqualTo("{ \"$oid\" : \"" + objId + "\"}");
+        assertThat(key.get("id")).isEqualTo(formatObjectId(objId));
 
         assertThat(value.schema()).isSameAs(record.valueSchema());
 
@@ -1758,7 +1760,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
             VerifyRecord.isValid(record);
 
             final Struct key = (Struct) record.key();
-            final ObjectId id = (ObjectId) (JSON.parse(key.getString("id")));
+            final ObjectId id = toObjectId(key.getString("id"));
             foundIds.add(id);
             if (record.value() != null) {
                 final Struct value = (Struct) record.value();
@@ -1896,7 +1898,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         final Struct value = (Struct) deleteRecord.value();
 
         assertThat(key.schema()).isSameAs(deleteRecord.keySchema());
-        assertThat(key.get("id")).isEqualTo(JSONSerializers.getStrict().serialize(objId));
+        assertThat(key.get("id")).isEqualTo(formatObjectId(objId));
 
         Document patchObj = Document.parse(value.getString(MongoDbFieldName.PATCH));
         patchObj.remove("$v");
@@ -1906,6 +1908,10 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         assertThat(patchObj.toJson(COMPACT_JSON_SETTINGS)).isEqualTo(updateObj.toJson(COMPACT_JSON_SETTINGS));
         assertThat(value.getString(Envelope.FieldName.OPERATION)).isEqualTo(Operation.UPDATE.code());
         assertThat(value.getInt64(Envelope.FieldName.TIMESTAMP)).isGreaterThanOrEqualTo(timestamp.toEpochMilli());
+    }
+
+    private String formatObjectId(ObjectId objId) {
+        return "{\"$oid\": \"" + objId + "\"}";
     }
 
     private void insertDocuments(String dbName, String collectionName, Document... documents) {
@@ -1938,5 +1944,9 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
             Document filter = Document.parse("{\"_id\": {\"$oid\": \"" + objectId + "\"}}");
             coll.deleteOne(filter);
         });
+    }
+
+    private ObjectId toObjectId(String oid) {
+        return new ObjectId(oid.substring(10, oid.length() - 2));
     }
 }
