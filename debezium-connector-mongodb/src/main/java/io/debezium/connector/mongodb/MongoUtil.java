@@ -23,7 +23,10 @@ import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.MongoIterable;
+import com.mongodb.connection.ClusterDescription;
+import com.mongodb.connection.ServerDescription;
 
+import io.debezium.DebeziumException;
 import io.debezium.function.BlockingConsumer;
 import io.debezium.util.Strings;
 
@@ -330,7 +333,15 @@ public class MongoUtil {
     }
 
     protected static ServerAddress getPrimaryAddress(MongoClient client) {
-        return new ServerAddress(client.getClusterDescription().getServerDescriptions().get(0).getPrimary());
+        final ClusterDescription clusterDescription = client.getClusterDescription();
+        if (clusterDescription == null) {
+            throw new DebeziumException("Unable to read cluster description from MongoDB connection");
+        }
+        final List<ServerDescription> serverDescriptions = clusterDescription.getServerDescriptions();
+        if (serverDescriptions == null || serverDescriptions.size() == 0) {
+            throw new DebeziumException("Unable to read server descriptions from MongoDB connection, got '" + serverDescriptions + "'");
+        }
+        return new ServerAddress(serverDescriptions.get(0).getPrimary());
     }
 
     private MongoUtil() {
