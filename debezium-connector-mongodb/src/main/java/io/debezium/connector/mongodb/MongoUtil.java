@@ -15,6 +15,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.bson.Document;
+import org.bson.types.Binary;
 
 import com.mongodb.ServerAddress;
 import com.mongodb.client.MongoClient;
@@ -230,7 +231,10 @@ public class MongoUtil {
         if (!oplogEvent.containsKey("txnNumber")) {
             return null;
         }
-        final String lsid = oplogEvent.get("lsid", Document.class).get("id", UUID.class).toString();
+        final Document lsidDoc = oplogEvent.get("lsid", Document.class);
+        final Object id = lsidDoc.get("id");
+        // MongoDB 4.2 returns Binary instead of UUID
+        final String lsid = (id instanceof Binary) ? UUID.nameUUIDFromBytes(((Binary) id).getData()).toString() : ((UUID) id).toString();
         final Long txnNumber = oplogEvent.getLong("txnNumber");
         return lsid + ":" + txnNumber;
     }
