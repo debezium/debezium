@@ -337,8 +337,7 @@ public class SqlServerConnectionIT {
                             "real_no_default_not_null",
                             "real_no_default",
                             "real_default_null",
-                            "real_column"
-                    );
+                            "real_column");
 
             SqlServerChangeTable changeTable = new SqlServerChangeTable(new TableId("testDB", "dbo", "table_with_defaults"),
                     null, 0, null, null, capturedColumns);

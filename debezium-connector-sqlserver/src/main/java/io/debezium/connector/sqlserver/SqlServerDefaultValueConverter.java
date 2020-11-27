@@ -183,7 +183,8 @@ class SqlServerDefaultValueConverter {
         final String value = v.replaceAll("^[\\(]+|[\\)]+$", ""); // trim leading and trailing parenthesis
         if ("NULL".equalsIgnoreCase(value)) {
             return null;
-        } else {
+        }
+        else {
             return mapper.parse(value);
         }
     }
