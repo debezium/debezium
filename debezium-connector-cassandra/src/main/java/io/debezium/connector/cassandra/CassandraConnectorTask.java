@@ -192,7 +192,6 @@ public class CassandraConnectorTask {
 
         void start() {
             executorService = Executors.newFixedThreadPool(processors.size());
-            LOGGER.info("Starting processor group {}", getName());
             for (AbstractProcessor processor : processors) {
                 Runnable runnable = () -> {
                     try {
@@ -216,7 +215,7 @@ public class CassandraConnectorTask {
         void terminate() throws Exception {
             stopProcessors();
             LOGGER.info("Terminating processor group {}", getName());
-            if (!executorService.isShutdown()) {
+            if (executorService != null && !executorService.isShutdown()) {
                 executorService.shutdown();
                 if (!executorService.awaitTermination(1, TimeUnit.SECONDS)) {
                     executorService.shutdownNow();
