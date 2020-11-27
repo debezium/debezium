@@ -250,6 +250,131 @@ public class SqlServerConnectionIT {
         }
     }
 
+    @Test
+    @FixFor("DBZ-2698")
+    public void shouldProperlyGetDefaultColumnNullValues() throws Exception {
+        try (SqlServerConnection connection = TestHelper.adminConnection()) {
+            connection.connect();
+            connection.execute("CREATE DATABASE testDB");
+            connection.execute("USE testDB");
+        }
+
+        try (SqlServerConnection connection = TestHelper.testConnection()) {
+            connection.connect();
+            // NOTE: you cannot enable CDC on master
+            TestHelper.enableDbCdc(connection, "testDB");
+
+            // create table if exists
+            String sql = "IF EXISTS (select 1 from sys.objects where name = 'table_with_defaults' and type = 'u')\n"
+                    + "DROP TABLE testTable\n"
+                    + "CREATE TABLE testDB.dbo.table_with_defaults ("
+                    + "    int_no_default_not_null int not null,"
+                    + "    int_no_default int,"
+                    + "    int_default_null int default null,"
+                    + "    int_column int default (2147483647),"
+
+                    + "    bigint_no_default_not_null bigint not null,"
+                    + "    bigint_no_default bigint,"
+                    + "    bigint_default_null bigint default null,"
+                    + "    bigint_column bigint default (3147483648),"
+
+                    + "    smallint_no_default_not_null smallint not null,"
+                    + "    smallint_no_default smallint,"
+                    + "    smallint_default_null smallint default null,"
+                    + "    smallint_column smallint default (32767),"
+
+                    + "    tinyint_no_default_not_null tinyint not null,"
+                    + "    tinyint_no_default tinyint,"
+                    + "    tinyint_default_null tinyint default null,"
+                    + "    tinyint_column tinyint default (255),"
+
+                    + "    float_no_default_not_null float not null,"
+                    + "    float_no_default float,"
+                    + "    float_default_null float default null,"
+                    + "    float_column float default (1.2345e2),"
+
+                    + "    real_no_default_not_null real not null,"
+                    + "    real_no_default real,"
+                    + "    real_default_null real default null,"
+                    + "    real_column real default (1.2345e3),"
+                    + ");";
+
+            connection.execute(sql);
+
+            // then enable CDC and wrapper functions
+            TestHelper.enableTableCdc(connection, "table_with_defaults");
+            // insert some data
+
+            // and issue a test call to a CDC wrapper function
+            Thread.sleep(5_000); // Need to wait to make sure the min_lsn is available
+            List<String> capturedColumns = Arrays
+                    .asList(
+                            "int_no_default_not_null",
+                            "int_no_default",
+                            "int_default_null",
+                            "int_column",
+
+                            "bigint_no_default_not_null",
+                            "bigint_no_default",
+                            "bigint_default_null",
+                            "bigint_column",
+
+                            "smallint_no_default_not_null",
+                            "smallint_no_default",
+                            "smallint_default_null",
+                            "smallint_column",
+
+                            "tinyint_no_default_not_null",
+                            "tinyint_no_default",
+                            "tinyint_default_null",
+                            "tinyint_column",
+
+                            "float_no_default_not_null",
+                            "float_no_default",
+                            "float_default_null",
+                            "float_column",
+
+                            "real_no_default_not_null",
+                            "real_no_default",
+                            "real_default_null",
+                            "real_column");
+
+            SqlServerChangeTable changeTable = new SqlServerChangeTable(new TableId("testDB", "dbo", "table_with_defaults"),
+                    null, 0, null, null, capturedColumns);
+            Table table = connection.getTableSchemaFromTable(changeTable);
+
+            assertColumnHasNotDefaultValue(table, "int_no_default_not_null");
+            assertColumnHasDefaultValue(table, "int_no_default", null);
+            assertColumnHasDefaultValue(table, "int_default_null", null);
+            assertColumnHasDefaultValue(table, "int_column", 2147483647);
+
+            assertColumnHasNotDefaultValue(table, "bigint_no_default_not_null");
+            assertColumnHasDefaultValue(table, "bigint_no_default", null);
+            assertColumnHasDefaultValue(table, "bigint_default_null", null);
+            assertColumnHasDefaultValue(table, "bigint_column", 3147483648L);
+
+            assertColumnHasNotDefaultValue(table, "smallint_no_default_not_null");
+            assertColumnHasDefaultValue(table, "smallint_no_default", null);
+            assertColumnHasDefaultValue(table, "smallint_default_null", null);
+            assertColumnHasDefaultValue(table, "smallint_column", (short) 32767);
+
+            assertColumnHasNotDefaultValue(table, "tinyint_no_default_not_null");
+            assertColumnHasDefaultValue(table, "tinyint_no_default", null);
+            assertColumnHasDefaultValue(table, "tinyint_default_null", null);
+            assertColumnHasDefaultValue(table, "tinyint_column", (short) 255);
+
+            assertColumnHasNotDefaultValue(table, "float_no_default_not_null");
+            assertColumnHasDefaultValue(table, "float_no_default", null);
+            assertColumnHasDefaultValue(table, "float_default_null", null);
+            assertColumnHasDefaultValue(table, "float_column", 123.45);
+
+            assertColumnHasNotDefaultValue(table, "real_no_default_not_null");
+            assertColumnHasDefaultValue(table, "real_no_default", null);
+            assertColumnHasDefaultValue(table, "real_default_null", null);
+            assertColumnHasDefaultValue(table, "real_column", 1234.5f);
+        }
+    }
+
     private long toMillis(OffsetDateTime datetime) {
         return datetime.toInstant().toEpochMilli();
     }
