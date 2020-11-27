@@ -1642,7 +1642,7 @@ checksumTable
 
 optimizeTable
     : OPTIMIZE actionOption=(NO_WRITE_TO_BINLOG | LOCAL)?
-      TABLE tables
+      (TABLE | TABLES) tables
     ;
 
 repairTable
