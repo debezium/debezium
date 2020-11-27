@@ -82,7 +82,7 @@ class SqlServerDefaultValueConverter {
         try {
             Object rawDefaultValue = mapper.parse(defaultValue);
             Object convertedDefaultValue = convertDefaultValue(rawDefaultValue, column);
-            return Optional.of(convertedDefaultValue);
+            return Optional.ofNullable(convertedDefaultValue);
         }
         catch (Exception e) {
             LOGGER.warn("Cannot parse column default value '{}' to type '{}'. Expression evaluation is not supported.", defaultValue, dataType);
@@ -118,10 +118,10 @@ class SqlServerDefaultValueConverter {
         final Map<String, DefaultValueMapper> result = new HashMap<>();
 
         // Exact numbers
-        result.put("bigint", v -> Long.parseLong(v.substring(2, v.length() - 3))); // Sample value: ((3147483648.))
-        result.put("int", v -> Integer.parseInt(v.substring(2, v.length() - 2))); // Sample value: ((2147483647))
-        result.put("smallint", v -> Short.parseShort(v.substring(2, v.length() - 2))); // Sample value: ((32767))
-        result.put("tinyint", v -> Short.parseShort(v.substring(2, v.length() - 2))); // Sample value: ((255))
+        result.put("bigint", v -> nullableDefaultValueMapper(v, value -> Long.parseLong(value.replaceAll("(\\.)$", "")))); // Sample value: ((3147483648.))
+        result.put("int", v -> nullableDefaultValueMapper(v, Integer::parseInt)); // Sample value: ((2147483647))
+        result.put("smallint", v -> nullableDefaultValueMapper(v, Short::parseShort)); // Sample value: ((32767))
+        result.put("tinyint", v -> nullableDefaultValueMapper(v, Short::parseShort)); // Sample value: ((255))
         result.put("bit", v -> v.equals("((1))")); // Either ((1)) or ((0))
         result.put("decimal", v -> new BigDecimal(v.substring(2, v.length() - 2))); // Sample value: ((100.12345))
         result.put("numeric", v -> new BigDecimal(v.substring(2, v.length() - 2))); // Sample value: ((100.12345))
@@ -129,8 +129,8 @@ class SqlServerDefaultValueConverter {
         result.put("smallmoney", v -> new BigDecimal(v.substring(2, v.length() - 2))); // Sample value: ((214748.3647))
 
         // Approximate numerics
-        result.put("float", v -> Double.parseDouble(v.substring(2, v.length() - 2))); // Sample value: ((1.2345000000000000e+003))
-        result.put("real", v -> Float.parseFloat(v.substring(2, v.length() - 2))); // Sample value: ((1.2345000000000000e+003))
+        result.put("float", v -> nullableDefaultValueMapper(v, Double::parseDouble)); // Sample value: ((1.2345000000000000e+003))
+        result.put("real", v -> nullableDefaultValueMapper(v, Float::parseFloat)); // Sample value: ((1.2345000000000000e+003))
 
         // Date and time
         result.put("date", v -> { // Sample value: ('2019-02-03')
@@ -177,5 +177,15 @@ class SqlServerDefaultValueConverter {
 
         // Other data types, such as cursor, xml or uniqueidentifier, have been omitted.
         return result;
+    }
+
+    public static Object nullableDefaultValueMapper(String v, DefaultValueMapper mapper) throws Exception {
+        final String value = v.replaceAll("^[\\(]+|[\\)]+$", ""); // trim leading and trailing parenthesis
+        if ("NULL".equalsIgnoreCase(value)) {
+            return null;
+        }
+        else {
+            return mapper.parse(value);
+        }
     }
 }
