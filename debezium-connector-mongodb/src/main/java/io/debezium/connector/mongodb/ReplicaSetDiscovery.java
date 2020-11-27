@@ -6,6 +6,7 @@
 package io.debezium.connector.mongodb;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -16,6 +17,7 @@ import com.mongodb.MongoException;
 import com.mongodb.MongoInterruptedException;
 import com.mongodb.client.MongoClient;
 import com.mongodb.connection.ClusterDescription;
+import com.mongodb.connection.ServerDescription;
 
 import io.debezium.annotation.ThreadSafe;
 
@@ -87,9 +89,15 @@ public class ReplicaSetDiscovery {
             logger.info("Checking current members of replica set at {}", seedAddresses);
             if (clusterDescription != null) {
                 // This is a replica set ...
-                String addressStr = clusterDescription.getServerDescriptions().stream().map(x -> x.getAddress().toString()).collect(Collectors.joining(","));
-                String replicaSetName = clusterDescription.getServerDescriptions().get(0).getSetName();
-                replicaSetSpecs.add(new ReplicaSet(addressStr, replicaSetName, null));
+                final List<ServerDescription> serverDescriptions = clusterDescription.getServerDescriptions();
+                if (serverDescriptions == null || serverDescriptions.size() == 0) {
+                    logger.warn("Server descriptions not available, got '{}'", serverDescriptions);
+                }
+                else {
+                    String addressStr = serverDescriptions.stream().map(x -> x.getAddress().toString()).collect(Collectors.joining(","));
+                    String replicaSetName = serverDescriptions.get(0).getSetName();
+                    replicaSetSpecs.add(new ReplicaSet(addressStr, replicaSetName, null));
+                }
             }
             else {
                 logger.debug("Found standalone MongoDB replica set at {}", seedAddresses);
