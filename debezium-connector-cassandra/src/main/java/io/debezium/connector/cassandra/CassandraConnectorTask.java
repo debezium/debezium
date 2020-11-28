@@ -6,7 +6,6 @@
 package io.debezium.connector.cassandra;
 
 import java.io.FileInputStream;
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -93,25 +92,27 @@ public class CassandraConnectorTask {
     }
 
     private void stopAll() throws Exception {
+        LOGGER.info("Stopping Cassandra Connector Task ...");
         if (processorGroup != null) {
             processorGroup.terminate();
-            LOGGER.info("Stopped processor group");
+            LOGGER.info("Terminated processor group.");
         }
 
         if (httpServer != null) {
             httpServer.stop();
-            LOGGER.info("Stopped HTTP server");
+            LOGGER.info("Stopped HTTP server.");
         }
 
         if (jmxReporter != null) {
             jmxReporter.stop();
-            LOGGER.info("Stopped JMX reporter");
+            LOGGER.info("Stopped JMX reporter.");
         }
 
         if (taskContext != null) {
             taskContext.cleanUp();
-            LOGGER.info("Cleaned up Cassandra connector task context");
+            LOGGER.info("Cleaned up Cassandra connector task context.");
         }
+        LOGGER.info("Stopped Cassandra Connector Task.");
     }
 
     private void initHttpServer() {
@@ -129,15 +130,22 @@ public class CassandraConnectorTask {
         contextHandler.addServlet(new ServletHolder(new HealthCheckServlet(registerHealthCheck())), "/health");
     }
 
-    private void initProcessorGroup() throws IOException {
-        processorGroup = new ProcessorGroup("Cassandra Connector Task");
-        processorGroup.addProcessor(new SchemaProcessor(taskContext));
-        processorGroup.addProcessor(new CommitLogProcessor(taskContext));
-        processorGroup.addProcessor(new SnapshotProcessor(taskContext));
-        processorGroup.addProcessor(new QueueProcessor(taskContext));
-        if (taskContext.getCassandraConnectorConfig().postProcessEnabled()) {
-            processorGroup.addProcessor(new CommitLogPostProcessor(taskContext));
+    private void initProcessorGroup() throws Exception {
+        try {
+            processorGroup = new ProcessorGroup();
+            processorGroup.addProcessor(new SchemaProcessor(taskContext));
+            processorGroup.addProcessor(new CommitLogProcessor(taskContext));
+            processorGroup.addProcessor(new SnapshotProcessor(taskContext));
+            processorGroup.addProcessor(new QueueProcessor(taskContext));
+            if (taskContext.getCassandraConnectorConfig().postProcessEnabled()) {
+                processorGroup.addProcessor(new CommitLogPostProcessor(taskContext));
+            }
         }
+        catch (Exception e) {
+            LOGGER.error("Failed to initiate Processor Group.", e);
+            throw e;
+        }
+        LOGGER.info("Initiated Processor Group.");
     }
 
     private void initJmxReporter(String domain) {
@@ -164,12 +172,10 @@ public class CassandraConnectorTask {
      * will be signaled to stop as well.
      */
     public static class ProcessorGroup {
-        private final String name;
         private final Set<AbstractProcessor> processors;
         private ExecutorService executorService;
 
-        ProcessorGroup(String name) {
-            this.name = name;
+        ProcessorGroup() {
             this.processors = new HashSet<>();
         }
 
@@ -180,10 +186,6 @@ public class CassandraConnectorTask {
                 }
             }
             return true;
-        }
-
-        public String getName() {
-            return name;
         }
 
         void addProcessor(AbstractProcessor processor) {
@@ -199,12 +201,12 @@ public class CassandraConnectorTask {
                         processor.start();
                     }
                     catch (Exception e) {
-                        LOGGER.error("Encountered exception while running {}; stopping all processors in {}", processor.getName(), getName(), e);
+                        LOGGER.error("Encountered exception while running {}; stopping all processors.", processor.getName(), e);
                         try {
                             stopProcessors();
                         }
                         catch (Exception e2) {
-                            LOGGER.error("Encountered exceptions while stopping all processors in {}", getName(), e2);
+                            LOGGER.error("Encountered exceptions while stopping all processors", e2);
                         }
                     }
                 };
@@ -213,13 +215,19 @@ public class CassandraConnectorTask {
         }
 
         void terminate() throws Exception {
-            stopProcessors();
-            LOGGER.info("Terminating processor group {}", getName());
-            if (executorService != null && !executorService.isShutdown()) {
-                executorService.shutdown();
-                if (!executorService.awaitTermination(1, TimeUnit.SECONDS)) {
-                    executorService.shutdownNow();
+            LOGGER.info("Terminating processor group ...");
+            try {
+                stopProcessors();
+                if (executorService != null && !executorService.isShutdown()) {
+                    executorService.shutdown();
+                    if (!executorService.awaitTermination(1, TimeUnit.SECONDS)) {
+                        executorService.shutdownNow();
+                    }
                 }
+            }
+            catch (Exception e) {
+                LOGGER.error("Failed to terminate processor group.", e);
+                throw e;
             }
         }
 

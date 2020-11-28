@@ -17,8 +17,7 @@ public class CassandraConnectorTaskTest {
 
     @Test(timeout = 60000)
     public void testProcessorGroup() throws Exception {
-        CassandraConnectorTask.ProcessorGroup processorGroup = new CassandraConnectorTask.ProcessorGroup("ProcessorGroup");
-        assertEquals("ProcessorGroup", processorGroup.getName());
+        CassandraConnectorTask.ProcessorGroup processorGroup = new CassandraConnectorTask.ProcessorGroup();
         AtomicInteger running = new AtomicInteger(0);
         AtomicInteger iteration = new AtomicInteger(0);
         AbstractProcessor processor1 = new AbstractProcessor("processor1", 100) {

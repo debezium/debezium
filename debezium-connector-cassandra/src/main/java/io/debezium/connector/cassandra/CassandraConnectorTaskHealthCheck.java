@@ -41,7 +41,7 @@ public class CassandraConnectorTaskHealthCheck extends HealthCheck {
 
     private String getMessage() throws JsonProcessingException {
         Map<String, Boolean> health = new HashMap<>();
-        health.put(processorGroup.getName(), processorGroup.isRunning());
+        health.put(processorGroup.getClass().getName(), processorGroup.isRunning());
         health.put(cassandraClient.getClass().getName(), cassandraClient.isQueryable());
         return mapper.writeValueAsString(health);
     }
