@@ -77,7 +77,7 @@ They are not committed at the time that a change event occurs.
 As a result, following an outage, duplicate events might be generated.
 
 Fault tolerance also applies to snapshots. 
-That is, if the connector stops during a snapshot, the connector begins a news snapshot when it restarts.
+That is, if the connector stops during a snapshot, the connector begins a new snapshot when it restarts.
 
 // Type: assembly
 // ModuleID: how-debezium-sql-server-connectors-work
