@@ -39,7 +39,8 @@ public class ReplicaSetDiscovery {
      */
     public static final String ADMIN_DATABASE_NAME = "admin";
 
-    private final Logger logger = LoggerFactory.getLogger(getClass());
+    private static final Logger LOGGER = LoggerFactory.getLogger(ReplicaSetDiscovery.class);
+
     private final MongoDbTaskContext context;
     private final String seedAddresses;
 
@@ -67,7 +68,7 @@ public class ReplicaSetDiscovery {
         String shardsCollection = "shards";
         try {
             MongoUtil.onCollectionDocuments(client, CONFIG_DATABASE_NAME, shardsCollection, doc -> {
-                logger.info("Checking shard details from configuration replica set {}", seedAddresses);
+                LOGGER.info("Checking shard details from configuration replica set {}", seedAddresses);
                 String shardName = doc.getString("_id");
                 String hostStr = doc.getString("host");
                 String replicaSetName = MongoUtil.replicaSetUsedIn(hostStr);
@@ -75,23 +76,23 @@ public class ReplicaSetDiscovery {
             });
         }
         catch (MongoInterruptedException e) {
-            logger.error("Interrupted while reading the '{}' collection in the '{}' database: {}",
+            LOGGER.error("Interrupted while reading the '{}' collection in the '{}' database: {}",
                     shardsCollection, CONFIG_DATABASE_NAME, e.getMessage(), e);
             Thread.currentThread().interrupt();
         }
         catch (MongoException e) {
-            logger.error("Error while reading the '{}' collection in the '{}' database: {}",
+            LOGGER.error("Error while reading the '{}' collection in the '{}' database: {}",
                     shardsCollection, CONFIG_DATABASE_NAME, e.getMessage(), e);
         }
         if (replicaSetSpecs.isEmpty()) {
             // The addresses may be a replica set ...
             final ClusterDescription clusterDescription = client.getClusterDescription();
-            logger.info("Checking current members of replica set at {}", seedAddresses);
+            LOGGER.info("Checking current members of replica set at {}", seedAddresses);
             if (clusterDescription != null) {
                 // This is a replica set ...
                 final List<ServerDescription> serverDescriptions = clusterDescription.getServerDescriptions();
                 if (serverDescriptions == null || serverDescriptions.size() == 0) {
-                    logger.warn("Server descriptions not available, got '{}'", serverDescriptions);
+                    LOGGER.warn("Server descriptions not available, got '{}'", serverDescriptions);
                 }
                 else {
                     String addressStr = serverDescriptions.stream().map(x -> x.getAddress().toString()).collect(Collectors.joining(","));
@@ -100,7 +101,7 @@ public class ReplicaSetDiscovery {
                 }
             }
             else {
-                logger.debug("Found standalone MongoDB replica set at {}", seedAddresses);
+                LOGGER.debug("Found standalone MongoDB replica set at {}", seedAddresses);
                 // We aren't connecting to it as a replica set (likely not using auto-discovery of members),
                 // but we can't monitor standalone servers unless they really are replica sets. We already know
                 // that we're not connected to a config server replica set, so any replica set name from the seed addresses
@@ -115,7 +116,7 @@ public class ReplicaSetDiscovery {
         }
         if (replicaSetSpecs.isEmpty()) {
             // Without a replica set name, we can't do anything ...
-            logger.error(
+            LOGGER.error(
                     "Found no replica sets at {}, so there is nothing to monitor and no connector tasks will be started. Check seed addresses in connector configuration.",
                     seedAddresses);
         }

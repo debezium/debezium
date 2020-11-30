@@ -44,7 +44,8 @@ public class ConnectionContext implements AutoCloseable {
      */
     private static final Duration PAUSE_AFTER_ERROR = Duration.ofMillis(500);
 
-    private final Logger logger = LoggerFactory.getLogger(getClass());
+    private static final Logger LOGGER = LoggerFactory.getLogger(ConnectionContext.class);
+
     protected final Configuration config;
     protected final MongoClients pool;
     protected final ReplicaSets replicaSets;
@@ -110,7 +111,7 @@ public class ConnectionContext implements AutoCloseable {
     }
 
     protected Logger logger() {
-        return logger;
+        return LOGGER;
     }
 
     public MongoClients clients() {
@@ -150,7 +151,7 @@ public class ConnectionContext implements AutoCloseable {
             return Duration.ofMillis(config.getLong(MongoDbConnectorConfig.MONGODB_POLL_INTERVAL_MS));
         }
         if (config.hasKey(MongoDbConnectorConfig.POLL_INTERVAL_SEC.name())) {
-            logger.warn("The option `mongodb.poll.interval.sec` is deprecated. Use `mongodb.poll.interval.ms` instead.");
+            LOGGER.warn("The option `mongodb.poll.interval.sec` is deprecated. Use `mongodb.poll.interval.ms` instead.");
         }
         return Duration.ofSeconds(config.getInteger(MongoDbConnectorConfig.POLL_INTERVAL_SEC));
     }
