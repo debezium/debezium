@@ -27,6 +27,7 @@ import com.codahale.metrics.servlets.HealthCheckServlet;
 import com.codahale.metrics.servlets.MetricsServlet;
 import com.codahale.metrics.servlets.PingServlet;
 
+import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
 import io.debezium.connector.cassandra.exceptions.CassandraConnectorConfigException;
 import io.debezium.connector.cassandra.network.BuildInfoServlet;
@@ -130,7 +131,7 @@ public class CassandraConnectorTask {
         contextHandler.addServlet(new ServletHolder(new HealthCheckServlet(registerHealthCheck())), "/health");
     }
 
-    private void initProcessorGroup() throws Exception {
+    private void initProcessorGroup() {
         try {
             processorGroup = new ProcessorGroup();
             processorGroup.addProcessor(new SchemaProcessor(taskContext));
@@ -142,8 +143,7 @@ public class CassandraConnectorTask {
             }
         }
         catch (Exception e) {
-            LOGGER.error("Failed to initiate Processor Group.", e);
-            throw e;
+            throw new DebeziumException("Failed to initiate Processor Group.", e);
         }
         LOGGER.info("Initiated Processor Group.");
     }
@@ -214,7 +214,7 @@ public class CassandraConnectorTask {
             }
         }
 
-        void terminate() throws Exception {
+        void terminate() {
             LOGGER.info("Terminating processor group ...");
             try {
                 stopProcessors();
@@ -226,8 +226,7 @@ public class CassandraConnectorTask {
                 }
             }
             catch (Exception e) {
-                LOGGER.error("Failed to terminate processor group.", e);
-                throw e;
+                throw new DebeziumException("Failed to terminate processor group.", e);
             }
         }
 
