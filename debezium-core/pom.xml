@@ -48,6 +48,20 @@
             <artifactId>jackson-datatype-jsr310</artifactId>
         </dependency>
 
+        <!-- OpenTracing Integration, Strimiz version is not aligned with Quarkus -->
+        <dependency>
+            <groupId>io.opentracing</groupId>
+            <artifactId>opentracing-api</artifactId>
+            <version>${version.opentracing.strimzi}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.opentracing</groupId>
+            <artifactId>opentracing-util</artifactId>
+            <version>${version.opentracing.strimzi}</version>
+            <scope>provided</scope>
+        </dependency>
+
         <!-- Testing -->
         <dependency>
             <groupId>org.slf4j</groupId>

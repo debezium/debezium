@@ -63,6 +63,12 @@ public class DebeziumOutboxConfig {
     @ConfigItem
     public DebeziumOutboxConfigPayload payload;
 
+    /**
+     * Outbox OpenTracing configurable attributes
+     */
+    @ConfigItem
+    public DebeziumOutboxConfigOpenTracingSpan openTracingSpan;
+
     @ConfigGroup
     public static class DebeziumOutboxConfigId {
         /**
@@ -186,5 +192,20 @@ public class DebeziumOutboxConfig {
          */
         @ConfigItem
         public Optional<String> converter;
+    }
+
+    @ConfigGroup
+    public static class DebeziumOutboxConfigOpenTracingSpan {
+        /**
+         * The column name.
+         */
+        @ConfigItem(defaultValue = "openTracingSpan")
+        public String name;
+
+        /**
+         * The column definition.
+         */
+        @ConfigItem
+        public Optional<String> columnDefinition;
     }
 }

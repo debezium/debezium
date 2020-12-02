@@ -84,6 +84,9 @@
         <!-- Quarkus -->
         <quarkus.version>1.7.1.Final</quarkus.version>
 
+        <!-- Tracing -->
+        <version.opentracing.strimzi>0.33.0</version.opentracing.strimzi>
+
         <!-- HTTP client -->
         <version.okhttp>4.8.1</version.okhttp>
 
