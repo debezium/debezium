@@ -65,6 +65,21 @@ public class MySqlAntlrDdlParserTest {
     }
 
     @Test
+    @FixFor("DBZ-2821")
+    public void shouldAllowCharacterVarying() {
+        String ddl = "CREATE TABLE char_table (c1 CHAR VARYING(10), c2 CHARACTER VARYING(10), c3 NCHAR VARYING(10))";
+        parser.parse(ddl, tables);
+        assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
+        assertThat(tables.size()).isEqualTo(1);
+
+        Table table = tables.forTable(null, null, "char_table");
+        assertThat(table.columns()).hasSize(3);
+        assertThat(table.columnWithName("c1").jdbcType()).isEqualTo(Types.VARCHAR);
+        assertThat(table.columnWithName("c2").jdbcType()).isEqualTo(Types.VARCHAR);
+        assertThat(table.columnWithName("c3").jdbcType()).isEqualTo(Types.NVARCHAR);
+    }
+
+    @Test
     @FixFor("DBZ-2670")
     public void shouldAllowNonAsciiIdentifiers() {
         String ddl = "create table žluťoučký (kůň int);";
