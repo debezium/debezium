@@ -162,12 +162,11 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
     }
 
     protected static Response executeGETRequestSuccessfully(Request request) {
-        try (final Response response = executeGETRequest(request)) {
-            if (!response.isSuccessful()) {
-                handleFailedResponse(response);
-            }
-            return response;
+        final Response response = executeGETRequest(request);
+        if (!response.isSuccessful()) {
+            handleFailedResponse(response);
         }
+        return response;
     }
 
     public boolean connectorIsNotRegistered(String connectorName) {
