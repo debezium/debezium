@@ -2069,6 +2069,7 @@ dataType
       CHAR | CHARACTER | VARCHAR | TINYTEXT | TEXT | MEDIUMTEXT | LONGTEXT
        | NCHAR | NVARCHAR
       )
+      VARYING?
       lengthOneDimension? BINARY?
       ((CHARACTER SET | CHARSET) charsetName)?
       (COLLATE collationName | BINARY)?                             #stringDataType
