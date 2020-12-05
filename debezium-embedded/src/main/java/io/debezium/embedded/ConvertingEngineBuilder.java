@@ -90,7 +90,7 @@ public class ConvertingEngineBuilder<R> implements Builder<R> {
                             }
 
                             @Override
-                            public void markBatchFinished() {
+                            public void markBatchFinished() throws InterruptedException {
                                 committer.markBatchFinished();
                             }
                         }));

@@ -9,34 +9,46 @@ import static org.fest.assertions.Assertions.assertThat;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.common.config.ConfigDef;
+import org.apache.kafka.connect.connector.Task;
 import org.apache.kafka.connect.file.FileStreamSourceConnector;
+import org.apache.kafka.connect.runtime.WorkerConfig;
 import org.apache.kafka.connect.runtime.standalone.StandaloneConfig;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.apache.kafka.connect.storage.OffsetBackingStore;
 import org.apache.kafka.connect.transforms.Transformation;
+import org.apache.kafka.connect.util.Callback;
 import org.fest.assertions.Assertions;
 import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
+import io.debezium.connector.simple.SimpleSourceConnector;
 import io.debezium.doc.FixFor;
 import io.debezium.engine.ChangeEvent;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.engine.RecordChangeEvent;
 import io.debezium.engine.format.ChangeEventFormat;
 import io.debezium.engine.format.Json;
+import io.debezium.engine.spi.OffsetCommitPolicy;
 import io.debezium.util.Collect;
 import io.debezium.util.LoggingContext;
 import io.debezium.util.Testing;
@@ -88,6 +100,84 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
                 .with(FileStreamSourceConnector.FILE_CONFIG, TEST_FILE_PATH)
                 .with(FileStreamSourceConnector.TOPIC_CONFIG, "topicX")
                 .build();
+    }
+
+    @Test
+    public void interruptedTaskShutsDown() throws Exception {
+
+        Configuration config = Configuration.create()
+                .with(EmbeddedEngine.ENGINE_NAME, "testing-connector")
+                .with(EmbeddedEngine.CONNECTOR_CLASS, InterruptedConnector.class)
+                .with(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH)
+                .with(EmbeddedEngine.OFFSET_FLUSH_INTERVAL_MS, 0)
+                .with(EmbeddedEngine.OFFSET_STORAGE, InterruptingOffsetStore.class)
+                .build();
+
+        CountDownLatch firstLatch = new CountDownLatch(1);
+
+        engine = EmbeddedEngine.create()
+                .using(config)
+                .notifying((records, committer) -> {
+                })
+                .using(this.getClass().getClassLoader())
+                .using((success, message, error) -> {
+                    if (error != null) {
+                        logger.error("Error while shutting down", error);
+                    }
+                    firstLatch.countDown();
+                })
+                .build();
+
+        ExecutorService exec = Executors.newFixedThreadPool(1);
+        exec.execute(() -> {
+            LoggingContext.forConnector(getClass().getSimpleName(), "", "engine");
+            engine.run();
+        });
+
+        firstLatch.await(5000, TimeUnit.MILLISECONDS);
+        assertThat(firstLatch.getCount()).isEqualTo(0);
+    }
+
+    @Test
+    public void interruptedOffsetCommitShutsDown() throws Exception {
+
+        Configuration config = Configuration.create()
+                .with(SimpleSourceConnector.BATCH_COUNT, 1)
+                .with(EmbeddedEngine.ENGINE_NAME, "testing-connector")
+                .with(EmbeddedEngine.CONNECTOR_CLASS, SimpleSourceConnector.class)
+                .with(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH)
+                .with(EmbeddedEngine.OFFSET_STORAGE, InterruptingOffsetStore.class)
+                .build();
+
+        CountDownLatch firstLatch = new CountDownLatch(1);
+
+        engine = EmbeddedEngine.create()
+                .using(config)
+                .using(OffsetCommitPolicy.always())
+                .notifying((records, committer) -> {
+
+                    for (SourceRecord record : records) {
+                        committer.markProcessed(record);
+                    }
+                    committer.markBatchFinished();
+                })
+                .using(this.getClass().getClassLoader())
+                .using((success, message, error) -> {
+                    if (error != null) {
+                        logger.error("Error while shutting down", error);
+                    }
+                    firstLatch.countDown();
+                })
+                .build();
+
+        ExecutorService exec = Executors.newFixedThreadPool(1);
+        exec.execute(() -> {
+            LoggingContext.forConnector(getClass().getSimpleName(), "", "engine");
+            engine.run();
+        });
+
+        firstLatch.await(5000, TimeUnit.MILLISECONDS);
+        assertThat(firstLatch.getCount()).isEqualTo(0);
     }
 
     @Test
@@ -409,5 +499,70 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
             ++nextConsumedLineNumber;
         },
                 false);
+    }
+}
+
+class InterruptedConnector extends SimpleSourceConnector {
+
+    @Override
+    public Class<? extends Task> taskClass() {
+        return InterruptedTask.class;
+    }
+}
+
+class InterruptedTask extends SimpleSourceConnector.SimpleConnectorTask {
+
+    @Override
+    public List<SourceRecord> poll() throws InterruptedException {
+        throw new InterruptedException();
+    }
+}
+
+class InterruptingOffsetStore implements OffsetBackingStore {
+
+    @Override
+    public void start() {
+    }
+
+    @Override
+    public void stop() {
+    }
+
+    @Override
+    public Future<Map<ByteBuffer, ByteBuffer>> get(Collection<ByteBuffer> collection) {
+        // called by the offset reader. return null for no offsets stored.
+        return new CompletableFuture<Map<ByteBuffer, ByteBuffer>>() {
+            @Override
+            public Map<ByteBuffer, ByteBuffer> get(long timeout, TimeUnit unit) {
+                return new HashMap<ByteBuffer, ByteBuffer>();
+            }
+
+            @Override
+            public Map<ByteBuffer, ByteBuffer> get() {
+                return new HashMap<ByteBuffer, ByteBuffer>();
+            }
+        };
+    }
+
+    /**
+     * Implementation that throws InterruptedException when offset commits are called.
+     */
+    @Override
+    public Future<Void> set(Map<ByteBuffer, ByteBuffer> map, Callback<Void> callback) {
+        return new CompletableFuture<Void>() {
+            @Override
+            public Void get() throws InterruptedException {
+                throw new InterruptedException();
+            }
+
+            @Override
+            public Void get(long timeout, TimeUnit unit) throws InterruptedException {
+                throw new InterruptedException();
+            }
+        };
+    }
+
+    @Override
+    public void configure(WorkerConfig workerConfig) {
     }
 }
