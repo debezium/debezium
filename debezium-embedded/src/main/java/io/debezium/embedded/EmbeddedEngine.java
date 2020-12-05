@@ -844,6 +844,10 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
                                 succeed("Connector '" + connectorClassName + "' completed normally.");
                             }
                         }
+                        catch (InterruptedException e) {
+                            LOGGER.debug("Interrupted while committing offsets");
+                            Thread.currentThread().interrupt();
+                        }
                         catch (Throwable t) {
                             fail("Error while trying to stop the task and commit the offsets", t);
                         }
@@ -899,7 +903,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
             }
 
             @Override
-            public synchronized void markBatchFinished() {
+            public synchronized void markBatchFinished() throws InterruptedException {
                 maybeFlush(offsetWriter, offsetCommitPolicy, commitTimeout, task);
             }
         };
@@ -914,7 +918,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
      * @param task the task which produced the records for which the offsets have been committed
      */
     protected void maybeFlush(OffsetStorageWriter offsetWriter, OffsetCommitPolicy policy, Duration commitTimeout,
-                              SourceTask task) {
+                              SourceTask task) throws InterruptedException {
         // Determine if we need to commit to offset storage ...
         long timeSinceLastCommitMillis = clock.currentTimeInMillis() - timeOfLastCommitMillis;
         if (policy.performCommit(recordsSinceLastCommit, Duration.ofMillis(timeSinceLastCommitMillis))) {
@@ -929,7 +933,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
      * @param commitTimeout the timeout to wait for commit results
      * @param task the task which produced the records for which the offsets have been committed
      */
-    protected void commitOffsets(OffsetStorageWriter offsetWriter, Duration commitTimeout, SourceTask task) {
+    protected void commitOffsets(OffsetStorageWriter offsetWriter, Duration commitTimeout, SourceTask task) throws InterruptedException {
         long started = clock.currentTimeInMillis();
         long timeout = started + commitTimeout.toMillis();
         if (!offsetWriter.beginFlush()) {
@@ -951,6 +955,14 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
         catch (InterruptedException e) {
             LOGGER.warn("Flush of {} offsets interrupted, cancelling", this);
             offsetWriter.cancelFlush();
+
+            if (this.runningThread.get() == Thread.currentThread()) {
+                // this thread is still set as the running thread -> we were not interrupted
+                // due the stop() call -> probably someone else called the interrupt on us ->
+                // -> we should raise the interrupt flag
+                Thread.currentThread().interrupt();
+                throw e;
+            }
         }
         catch (ExecutionException e) {
             LOGGER.error("Flush of {} offsets threw an unexpected exception: ", this, e);
