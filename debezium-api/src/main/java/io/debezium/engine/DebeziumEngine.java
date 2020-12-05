@@ -120,7 +120,7 @@ public interface DebeziumEngine<R> extends Runnable, Closeable {
          * <p>
          * Should be called when a batch of records is finished being processed.
          */
-        void markBatchFinished();
+        void markBatchFinished() throws InterruptedException;
     }
 
     /**
