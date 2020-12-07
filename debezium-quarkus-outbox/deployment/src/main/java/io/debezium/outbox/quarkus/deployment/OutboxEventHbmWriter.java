@@ -50,7 +50,7 @@ public class OutboxEventHbmWriter {
         entityType.getAttributes().add(createTypeAttribute(config));
         entityType.getAttributes().add(createTimestampAttribute(config));
         entityType.getAttributes().add(createPayloadAttribute(config, outboxEventEntityBuildItem));
-        entityType.getAttributes().add(createOpenTracingSpanAttribute(config));
+        entityType.getAttributes().add(createTracingSpanAttribute(config));
 
         return mapping;
     }
@@ -183,18 +183,18 @@ public class OutboxEventHbmWriter {
         return attribute;
     }
 
-    private static JaxbHbmBasicAttributeType createOpenTracingSpanAttribute(DebeziumOutboxConfig config) {
+    private static JaxbHbmBasicAttributeType createTracingSpanAttribute(DebeziumOutboxConfig config) {
         final JaxbHbmBasicAttributeType attribute = new JaxbHbmBasicAttributeType();
-        attribute.setName(EventDispatcher.OPENTRACING_SPAN);
+        attribute.setName(EventDispatcher.TRACING_SPAN_CONTEXT);
         attribute.setNotNull(false);
         attribute.setTypeAttribute("string");
 
         final JaxbHbmColumnType column = new JaxbHbmColumnType();
-        column.setName(config.openTracingSpan.name);
+        column.setName(config.tracingSpan.name);
         column.setLength(256);
 
-        if (config.openTracingSpan.columnDefinition.isPresent()) {
-            column.setSqlType(config.openTracingSpan.columnDefinition.get());
+        if (config.tracingSpan.columnDefinition.isPresent()) {
+            column.setSqlType(config.tracingSpan.columnDefinition.get());
         }
 
         attribute.getColumnOrFormula().add(column);
