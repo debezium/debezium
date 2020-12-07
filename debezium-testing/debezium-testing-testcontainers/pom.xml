@@ -45,6 +45,10 @@
       <groupId>org.testcontainers</groupId>
       <artifactId>postgresql</artifactId>
     </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>mongodb</artifactId>
+    </dependency>
 
     <dependency>
       <groupId>org.easytesting</groupId>
