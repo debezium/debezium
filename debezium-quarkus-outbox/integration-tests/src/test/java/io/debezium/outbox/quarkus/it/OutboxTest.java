@@ -63,7 +63,8 @@ public class OutboxTest {
     public void firedEventGetsPersistedInOutboxTable() {
         myService.doSomething();
 
-        Query q = entityManager.createNativeQuery("SELECT CAST(id as varchar), aggregateId, aggregateType, type, timestamp, payload, openTracingSpan FROM OutboxEvent");
+        Query q = entityManager
+                .createNativeQuery("SELECT CAST(id as varchar), aggregateId, aggregateType, type, timestamp, payload, tracingspancontext FROM OutboxEvent");
         Object[] row = (Object[]) q.getSingleResult();
 
         assertNotNull(UUID.fromString((String) row[0]));

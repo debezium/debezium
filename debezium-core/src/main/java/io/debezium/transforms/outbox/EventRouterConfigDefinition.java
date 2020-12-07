@@ -13,6 +13,7 @@ import org.apache.kafka.common.config.ConfigDef;
 import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
+import io.debezium.transforms.tracing.ActivateTracingSpan;
 
 /**
  * Debezium Outbox Transform configuration definition
@@ -265,6 +266,10 @@ public class EventRouterConfigDefinition {
                 config,
                 "Debezium",
                 OPERATION_INVALID_BEHAVIOR);
+        Field.group(
+                config,
+                "Tracing",
+                ActivateTracingSpan.TRACING_SPAN_CONTEXT_FIELD, ActivateTracingSpan.TRACING_OPERATION_NAME, ActivateTracingSpan.TRACING_CONTEXT_FIELD_REQUIRED);
         return config;
     }
 

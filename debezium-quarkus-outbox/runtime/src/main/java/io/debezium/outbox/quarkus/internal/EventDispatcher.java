@@ -24,6 +24,7 @@ import io.opentracing.Span;
 import io.opentracing.Tracer;
 import io.opentracing.Tracer.SpanBuilder;
 import io.opentracing.propagation.Format;
+import io.opentracing.tag.Tags;
 
 /**
  * An application-scope component that is responsible for observing
@@ -36,15 +37,15 @@ import io.opentracing.propagation.Format;
 @ApplicationScoped
 public class EventDispatcher {
 
-    private static final String OPENTRACING_OPERATION_NAME = "io.debezium.outbox.send";
+    private static final String OPERATION_NAME = "outbox-write";
     private static final String TIMESTAMP = "timestamp";
     private static final String PAYLOAD = "payload";
     private static final String TYPE = "type";
     private static final String AGGREGATE_ID = "aggregateId";
     private static final String AGGREGATE_TYPE = "aggregateType";
-    public static final String OPENTRACING_SPAN = "openTracingSpan";
+    public static final String TRACING_SPAN_CONTEXT = "tracingspancontext";
 
-    private static final String TRACING_PREFIX = "outbox.";
+    private static final String TRACING_COMPONENT = "debezium";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(EventDispatcher.class);
 
@@ -70,19 +71,21 @@ public class EventDispatcher {
     public void onExportedEvent(@Observes ExportedEvent<?, ?> event) {
         LOGGER.debug("An exported event was found for type {}", event.getType());
 
-        final SpanBuilder spanBuilder = tracer.buildSpan(OPENTRACING_OPERATION_NAME);
+        final SpanBuilder spanBuilder = tracer.buildSpan(OPERATION_NAME);
         final DebeziumTextMap exportedSpanData = new DebeziumTextMap();
 
         final Span parentSpan = tracer.activeSpan();
         if (parentSpan != null) {
             spanBuilder.asChildOf(parentSpan);
         }
-        spanBuilder.withTag(TRACING_PREFIX + AGGREGATE_TYPE, event.getAggregateType())
-                .withTag(TRACING_PREFIX + AGGREGATE_ID, event.getAggregateId().toString())
-                .withTag(TRACING_PREFIX + TYPE, event.getAggregateType())
-                .withTag(TRACING_PREFIX + TIMESTAMP, event.getTimestamp().toString());
+        spanBuilder.withTag(AGGREGATE_TYPE, event.getAggregateType())
+                .withTag(AGGREGATE_ID, event.getAggregateId().toString())
+                .withTag(TYPE, event.getAggregateType())
+                .withTag(TIMESTAMP, event.getTimestamp().toString());
 
         try (final Scope outboxSpanScope = spanBuilder.startActive(true)) {
+
+            Tags.COMPONENT.set(outboxSpanScope.span(), TRACING_COMPONENT);
             tracer.inject(outboxSpanScope.span().context(),
                     Format.Builtin.TEXT_MAP, exportedSpanData);
 
@@ -93,7 +96,7 @@ public class EventDispatcher {
             dataMap.put(TYPE, event.getType());
             dataMap.put(PAYLOAD, event.getPayload());
             dataMap.put(TIMESTAMP, event.getTimestamp());
-            dataMap.put(OPENTRACING_SPAN, exportedSpanData.export());
+            dataMap.put(TRACING_SPAN_CONTEXT, exportedSpanData.export());
 
             // Unwrap to Hibernate session and save
             Session session = entityManager.unwrap(Session.class);

@@ -34,6 +34,7 @@ import io.debezium.time.NanoTimestamp;
 import io.debezium.time.Timestamp;
 import io.debezium.transforms.SmtManager;
 import io.debezium.transforms.outbox.EventRouterConfigDefinition.AdditionalField;
+import io.debezium.transforms.tracing.ActivateTracingSpan;
 
 /**
  * Debezium Outbox Transform Event Router
@@ -50,6 +51,7 @@ public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R
     private final ExtractField<R> afterExtractor = new ExtractField.Value<>();
     private final RegexRouter<R> regexRouter = new RegexRouter<>();
     private EventRouterConfigDefinition.InvalidOperationBehavior invalidOperationBehavior;
+    private final ActivateTracingSpan<R> tracingSmt = new ActivateTracingSpan<>();
 
     private String fieldEventId;
     private String fieldEventKey;
@@ -72,6 +74,8 @@ public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R
 
     @Override
     public R apply(R r) {
+        tracingSmt.apply(r);
+
         // Ignoring tombstones
         if (r.value() == null) {
             LOGGER.debug("Tombstone message ignored. Message key: \"{}\"", r.key());
@@ -257,10 +261,15 @@ public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R
 
     @Override
     public void close() {
+        tracingSmt.close();
     }
 
     @Override
     public void configure(Map<String, ?> configMap) {
+        tracingSmt.configure(configMap);
+        if (!configMap.containsKey(ActivateTracingSpan.TRACING_CONTEXT_FIELD_REQUIRED.name())) {
+            tracingSmt.setRequireContextField(true);
+        }
         final Configuration config = Configuration.from(configMap);
         smtManager = new SmtManager<>(config);
 

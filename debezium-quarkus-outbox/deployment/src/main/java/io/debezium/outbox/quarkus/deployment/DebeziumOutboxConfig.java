@@ -7,6 +7,7 @@ package io.debezium.outbox.quarkus.deployment;
 
 import java.util.Optional;
 
+import io.debezium.outbox.quarkus.internal.EventDispatcher;
 import io.quarkus.runtime.annotations.ConfigGroup;
 import io.quarkus.runtime.annotations.ConfigItem;
 import io.quarkus.runtime.annotations.ConfigPhase;
@@ -64,10 +65,10 @@ public class DebeziumOutboxConfig {
     public DebeziumOutboxConfigPayload payload;
 
     /**
-     * Outbox OpenTracing configurable attributes
+     * Outbox Tracing configurable attributes
      */
     @ConfigItem
-    public DebeziumOutboxConfigOpenTracingSpan openTracingSpan;
+    public DebeziumOutboxConfigTracingSpan tracingSpan;
 
     @ConfigGroup
     public static class DebeziumOutboxConfigId {
@@ -195,11 +196,11 @@ public class DebeziumOutboxConfig {
     }
 
     @ConfigGroup
-    public static class DebeziumOutboxConfigOpenTracingSpan {
+    public static class DebeziumOutboxConfigTracingSpan {
         /**
          * The column name.
          */
-        @ConfigItem(defaultValue = "openTracingSpan")
+        @ConfigItem(defaultValue = EventDispatcher.TRACING_SPAN_CONTEXT)
         public String name;
 
         /**
