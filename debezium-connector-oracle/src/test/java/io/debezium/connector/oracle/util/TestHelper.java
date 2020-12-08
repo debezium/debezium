@@ -90,9 +90,12 @@ public class TestHelper {
         jdbcConfiguration.forEach(
                 (field, value) -> builder.with(OracleConnectorConfig.DATABASE_CONFIG_PREFIX + field, value));
 
+        if (adapter().equals(OracleConnectorConfig.ConnectorAdapter.XSTREAM)) {
+            builder.with(OracleConnectorConfig.XSTREAM_SERVER_NAME, "dbzxout");
+        }
+
         return builder.with(OracleConnectorConfig.SERVER_NAME, SERVER_NAME)
                 .with(OracleConnectorConfig.PDB_NAME, "ORCLPDB1")
-                .with(OracleConnectorConfig.XSTREAM_SERVER_NAME, "dbzxout")
                 .with(OracleConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
                 .with(OracleConnectorConfig.SCHEMA_NAME, SCHEMA_USER)
                 .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)

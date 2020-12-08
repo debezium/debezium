@@ -112,7 +112,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withType(Type.STRING)
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.HIGH)
-            .withValidation(Field::isRequired)
+            .withValidation(OracleConnectorConfig::validateOutServerName)
             .withDescription("Name of the XStream Out server to connect to.");
 
     public static final Field SNAPSHOT_MODE = Field.create("snapshot.mode")
@@ -723,6 +723,13 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         }
 
         // Everything checks out ok.
+        return 0;
+    }
+
+    public static int validateOutServerName(Configuration config, Field field, ValidationOutput problems) {
+        if (ConnectorAdapter.XSTREAM.equals(ConnectorAdapter.parse(config.getString(XSTREAM_SERVER_NAME)))) {
+            return Field.isRequired(config, field, problems);
+        }
         return 0;
     }
 }
