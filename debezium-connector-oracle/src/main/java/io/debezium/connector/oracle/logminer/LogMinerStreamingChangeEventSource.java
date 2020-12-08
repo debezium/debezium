@@ -133,8 +133,8 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                 createFlushTable(connection);
 
                 if (!isContinuousMining && startScn < getFirstOnlineLogScn(connection)) {
-                    LOGGER.error("Online REDO LOG files do not contain the offset scn {}", startScn);
-                    throw new DebeziumException("Online REDO LOG files do not contain the offset scn.  Please perform a new snapshot.");
+                    LOGGER.error("Online REDO LOG files or Archive files do not contain the offset scn {}", startScn);
+                    throw new DebeziumException("Online REDO LOG files or Archive files do not contain the offset scn.  Please perform a new snapshot.");
                 }
 
                 setNlsSessionParameters(jdbcConnection);

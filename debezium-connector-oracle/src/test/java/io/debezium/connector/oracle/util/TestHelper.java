@@ -205,6 +205,53 @@ public class TestHelper {
         return jdbcConnection;
     }
 
+    public static void forceLogfileSwitch() {
+        Configuration config = adminConfig().build();
+        Configuration jdbcConfig = config.subset("database.", true);
+
+        OracleConnection jdbcConnection = new OracleConnection(jdbcConfig, TestHelper.class::getClassLoader);
+        try {
+            jdbcConnection.resetSessionToCdb();
+            jdbcConnection.execute("ALTER SYSTEM SWITCH LOGFILE");
+            jdbcConnection.close();
+        }
+        catch (SQLException e) {
+            throw new RuntimeException("Failed to switch logfile", e);
+        }
+    }
+
+    public static int getNumberOfOnlineLogGroups() {
+        Configuration config = adminConfig().build();
+        Configuration jdbcConfig = config.subset("database.", true);
+
+        OracleConnection jdbcConnection = new OracleConnection(jdbcConfig, TestHelper.class::getClassLoader);
+        try {
+            jdbcConnection.resetSessionToCdb();
+            return jdbcConnection.queryAndMap("SELECT COUNT(GROUP#) FROM V$LOG", rs -> {
+                rs.next();
+                return rs.getInt(1);
+            });
+        }
+        catch (SQLException e) {
+            throw new RuntimeException("Failed to get redo log groups", e);
+        }
+        finally {
+            try {
+                jdbcConnection.close();
+            }
+            catch (SQLException e) {
+                // ignored
+            }
+        }
+    }
+
+    public static void forceFlushOfRedoLogsToArchiveLogs() {
+        int groups = getNumberOfOnlineLogGroups();
+        for (int i = 0; i < groups; ++i) {
+            forceLogfileSwitch();
+        }
+    }
+
     public static void dropTable(OracleConnection connection, String table) {
         try {
             connection.execute("DROP TABLE " + table);

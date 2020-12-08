@@ -128,7 +128,9 @@ public class SqlUtils {
     }
 
     static String oldestFirstChangeQuery() {
-        return String.format("SELECT MIN(FIRST_CHANGE#) FROM %s", LOG_VIEW);
+        return String.format(
+                "SELECT MIN(FIRST_CHANGE#) FROM (SELECT MIN(FIRST_CHANGE#) AS FIRST_CHANGE# FROM %s UNION SELECT MIN(FIRST_CHANGE#) AS FIRST_CHANGE# FROM %s)", LOG_VIEW,
+                ARCHIVED_LOG_VIEW);
     }
 
     public static String allOnlineLogsQuery() {

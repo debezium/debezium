@@ -34,6 +34,7 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.OracleConnectorConfig.SnapshotMode;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIs;
+import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope;
 import io.debezium.data.VariableScaleDecimal;
@@ -1051,6 +1052,63 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         after = ((Struct) stream.value()).getStruct(Envelope.FieldName.AFTER);
         assertThat(after.getInt32("ID")).isEqualTo(2);
         assertThat(after.get("AMOUNT_")).isEqualTo(VariableScaleDecimal.fromLogical(after.schema().field("AMOUNT_").schema(), BigDecimal.valueOf(23456.78d)));
+    }
+
+    @Test
+    @FixFor("DBZ-2825")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "Tests archive log support for LogMiner only")
+    public void testArchiveLogScnBoundariesAreIncluded() throws Exception {
+        // Drop table if it exists
+        TestHelper.dropTable(connection, "alog_test");
+
+        final String ddl = "CREATE TABLE alog_test (id numeric, name varchar2(50), primary key(id))";
+        connection.execute(ddl);
+        connection.execute("GRANT SELECT ON debezium.alog_test TO " + TestHelper.getConnectorUserName());
+        connection.execute("ALTER TABLE debezium.alog_test ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
+        connection.commit();
+
+        // Insert a snapshot record
+        connection.execute("INSERT INTO debezium.alog_test (id, name) VALUES (1, 'Test')");
+        connection.commit();
+
+        // start connector and take snapshot
+        final Configuration config = TestHelper.defaultConfig()
+                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM.ALOG_TEST")
+                .build();
+        start(OracleConnector.class, config);
+        assertConnectorIsRunning();
+
+        waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+        // Validate snapshot record
+        final SourceRecords snapshotRecords = consumeRecordsByTopic(1);
+        assertThat(snapshotRecords.recordsForTopic("server1.DEBEZIUM.ALOG_TEST").size()).isEqualTo(1);
+        SourceRecord record = snapshotRecords.recordsForTopic("server1.DEBEZIUM.ALOG_TEST").get(0);
+        Struct after = (Struct) ((Struct) record.value()).get(Envelope.FieldName.AFTER);
+        assertThat(after.get("ID")).isEqualTo(BigDecimal.valueOf(1));
+        assertThat(after.get("NAME")).isEqualTo("Test");
+
+        // stop the connector
+        stopConnector();
+
+        // Force flush of all redo logs to archive logs
+        TestHelper.forceFlushOfRedoLogsToArchiveLogs();
+
+        // Start connector and wait for streaming
+        start(OracleConnector.class, config);
+        waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+        // Insert record for streaming
+        connection.execute("INSERT INTO debezium.alog_test (id, name) values (2, 'Home')");
+        connection.execute("COMMIT");
+
+        // Validate streaming record
+        final SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic("server1.DEBEZIUM.ALOG_TEST").size()).isEqualTo(1);
+        record = records.recordsForTopic("server1.DEBEZIUM.ALOG_TEST").get(0);
+        after = (Struct) ((Struct) record.value()).get(Envelope.FieldName.AFTER);
+        assertThat(after.get("ID")).isEqualTo(BigDecimal.valueOf(2));
+        assertThat(after.get("NAME")).isEqualTo("Home");
     }
 
     private void verifyHeartbeatRecord(SourceRecord heartbeat) {
