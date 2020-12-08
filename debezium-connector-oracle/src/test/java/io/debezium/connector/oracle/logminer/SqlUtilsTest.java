@@ -131,7 +131,7 @@ public class SqlUtilsTest {
                 "transaction_id VARCHAR2(50 CHAR), " +
                 "csf NUMBER(19,0), " +
                 "redo_sql VARCHAR2(4000 CHAR)" +
-                ") nologging tablespace LOGMINER_TBS";
+                ") nologging";
         assertThat(expected.equals(result)).isTrue();
 
         result = SqlUtils.oneDayArchivedLogsQuery(10L);

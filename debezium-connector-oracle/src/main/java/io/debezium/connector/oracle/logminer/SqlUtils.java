@@ -77,7 +77,7 @@ public class SqlUtils {
     // since this is only used during streaming to flush redo log buffer, accept this change?
     static final String LOGMNR_FLUSH_TABLE = "LOG_MINING_FLUSH";
     static final String FLUSH_TABLE_NOT_EMPTY = "SELECT '1' AS ONE FROM " + LOGMNR_FLUSH_TABLE;
-    static final String CREATE_FLUSH_TABLE = "CREATE TABLE " + LOGMNR_FLUSH_TABLE + "(LAST_SCN NUMBER(19,0)) TABLESPACE LOGMINER_TBS";
+    static final String CREATE_FLUSH_TABLE = "CREATE TABLE " + LOGMNR_FLUSH_TABLE + "(LAST_SCN NUMBER(19,0))";
     static final String INSERT_FLUSH_TABLE = "INSERT INTO " + LOGMNR_FLUSH_TABLE + " VALUES(0)";
     static final String UPDATE_FLUSH_TABLE = "UPDATE " + LOGMNR_FLUSH_TABLE + " SET LAST_SCN =";
 
@@ -248,7 +248,7 @@ public class SqlUtils {
                 "csf NUMBER(19,0), " +
                 "redo_sql VARCHAR2(4000 CHAR)" +
                 // "capture_time TIMESTAMP(6)" +
-                ") nologging tablespace LOGMINER_TBS";
+                ") nologging";
     }
 
     static String truncateTableStatement(String tableName) {
