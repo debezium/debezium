@@ -727,7 +727,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     }
 
     public static int validateOutServerName(Configuration config, Field field, ValidationOutput problems) {
-        if (ConnectorAdapter.XSTREAM.equals(ConnectorAdapter.parse(config.getString(XSTREAM_SERVER_NAME)))) {
+        if (ConnectorAdapter.XSTREAM.equals(ConnectorAdapter.parse(config.getString(CONNECTOR_ADAPTER)))) {
             return Field.isRequired(config, field, problems);
         }
         return 0;
