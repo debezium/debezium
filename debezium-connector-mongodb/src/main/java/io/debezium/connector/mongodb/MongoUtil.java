@@ -341,7 +341,8 @@ public class MongoUtil {
         if (serverDescriptions == null || serverDescriptions.size() == 0) {
             throw new DebeziumException("Unable to read server descriptions from MongoDB connection, got '" + serverDescriptions + "'");
         }
-        return new ServerAddress(serverDescriptions.get(0).getPrimary());
+        ServerAddress serverAddress = serverDescriptions.get(0).getAddress();
+        return new ServerAddress(serverAddress.getHost(), serverAddress.getPort());
     }
 
     private MongoUtil() {
