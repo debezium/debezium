@@ -91,7 +91,7 @@
         <version.okhttp>4.8.1</version.okhttp>
 
         <!-- Scripting -->
-        <version.groovy>3.0.2</version.groovy>
+        <version.groovy>3.0.7</version.groovy>
         <version.graalvm.js>20.0.0</version.graalvm.js>
 
         <!-- Testing -->
