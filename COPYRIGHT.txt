@@ -61,6 +61,7 @@ David Jerome
 David Leibovic
 David Szabo
 Deepak Barr
+Denis Andrejew
 Denis Mikhaylov
 Dennis Campagna
 Dennis Persson
@@ -114,6 +115,7 @@ Jan Uyttenhove
 Jaromir Hamala
 Javier Holguera
 Jeremy Finzel
+Jeremy Ford
 jinguangyang
 Jiri Pechanec
 Johan Rhedin
@@ -220,6 +222,7 @@ Syed Muhammad Sufyian
 Tautvydas Januskevicius
 Taylor Rolison
 Theofanis Despoudis
+Thierry De Leeuw
 Thomas Deblock
 Thomas Prelle
 Tom Bentley
