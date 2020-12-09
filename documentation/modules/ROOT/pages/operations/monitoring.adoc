@@ -91,7 +91,7 @@ The value is used to specify the JVM parameter `-Dzookeeper.jmx.log4j.disable=$J
 
 // Category: debezium-using
 // Type: reference
-// ModuleID: debezium-kafka-jmx-environment-variables"]
+// ModuleID: debezium-kafka-jmx-environment-variables
 [id="kafka-jmx-environment-variables"]
 === Kafka JMX environment variables
 
@@ -113,7 +113,7 @@ The default options are:
 
 // Category: debezium-using
 // Type: reference
-// ModuleID: debezium-kafka-connect-jmx-environment-variables"]
+// ModuleID: debezium-kafka-connect-jmx-environment-variables
 [id="kafka-connect-jmx-environment-variables"]
 === Kafka Connect JMX environment variables
 
@@ -135,7 +135,7 @@ The default options are:
 ifdef::product[]
 // Category: debezium-using
 // Type: concept
-// ModuleID: monitoring-debezium-on-openshift"]
+// ModuleID: monitoring-debezium-on-openshift
 == Monitoring {prodname} on OpenShift
 
 If you are using {prodname} on OpenShift, you can obtain JMX metrics by opening a JMX port on `9999`.
