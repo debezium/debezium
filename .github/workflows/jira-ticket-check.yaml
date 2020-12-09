@@ -1,0 +1,32 @@
+name: 'Add Jira Tickets on Pull Request'
+on:
+  pull_request:
+    types:
+      - opened
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      - name: Fetch Ticket Details
+        id: get-message
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          export MESSAGE="See ticket(s) for this pull request ";
+          JIRA_ISSUES="https://issues.redhat.com/browse";
+          for ISSUE_NO in $(git log --format='format:%s' refs/remotes/origin/$BASE_REF.. | tail -n +2 | grep -E '(DBZ-[[:digit:]]+)'); do
+            pattern="(DBZ-[[:digit:]]+)";
+            if [[ $ISSUE_NO =~ $pattern ]]; then
+              JIRA_ISSUE_LINK="$JIRA_ISSUES"/"${ISSUE_NO}";
+              MESSAGE+=" [$ISSUE_NO]($JIRA_ISSUE_LINK) ";
+            fi
+          done
+          echo ::set-output name=MESSAGE::$MESSAGE
+      - name: Attach a Comment with Ticket Details
+        uses: NejcZdovc/comment-pr@v1
+        env:
+          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+        with:
+          message: "${{steps.get-message.outputs.MESSAGE}}"
