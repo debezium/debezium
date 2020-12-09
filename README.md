@@ -13,6 +13,9 @@ Licensed under the [Apache License, Version 2.0](http://www.apache.org/licenses/
 
 Debezium is an open source project that provides a low latency data streaming platform for change data capture (CDC).
 
+_Note, Dec. 2020: We're moving away from a model of a shared incubator repo, instead there'll be dedicated repos for each incubating and/or community-led connector.
+The Oracle connector is the last remaining connector in this repository, which will be renamed accordingly soon._
+
 This repository contains incubating connectors and modules which are in an **early stage of their development**.
 You are encouraged to explore these connectors and test them, but typically they are not recommended yet for production usage.
 E.g. the format of emitted messages may change, specific features may not be implemented yet etc.
@@ -22,32 +25,6 @@ Once connectors are deemed mature enough, they may be promoted into the Debezium
 ## Building Debezium Incubator Modules
 
 Please see the [README.md](https://github.com/debezium/debezium#building-debezium) in the main repository for general instructions on building Debezium from source (prerequisites, usage of Docker etc).
-
-### Building the Cassandra 3.x connector
-
-In order to build the Cassandra connector you'll need JDK 8 because Cassandra 3.x
-doesn't support Java versions above Java 8. That also means dependencies like
-`debezium-core` have to be built as Java 8 bytecode version 52.0 as well,
-either by compiling it with Java 8 or specifying Java 8 bytecode generation
-on newer versions of Java.
-
-Then the Cassandra connector can be built like so:
-
-    $ mvn clean install -am -pl debezium-connector-cassandra
-    
-If you have multiple Java installation on your machine you can select the correct
-version by setting JAVA_HOME env var:
-
-    $ JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64 mvn clean install -am -pl debezium-connector-cassandra
-
-### Building and testing the Db2 connector
-
-Running `mvn install` will compile all code and run the unit and integration tests. If there are any compile problems or any of the unit tests fail, the build will stop immediately. Otherwise, the command will continue to create the module's artifacts, create the Docker image with DB2 and custom scripts, start the Docker container, run the integration tests, stop the container (even if there are integration test failures), and run checkstyle on the code. If there are still no problems, the build will then install the module's artifacts into the local Maven repository.
-
-An *integration test* is a JUnit test class named `*IT.java` or `IT*.java` that uses a DB2 database server running in a custom Docker container based upon the [ibmcom/db2](https://hub.docker.com/r/ibmcom/db2) Docker image maintained by the DB2 team. The build will automatically start the DB2 container before the integration tests are run and automatically stop and remove it after all of the integration tests complete (regardless of whether they succeed or fail). All databases used in the integration tests are defined and populated using `*.sql` files and `*.sh` scripts in the `src/test/docker/db2-cdc-docker` directory, which are copied into the Docker image and run by DB2 upon startup. Multiple test methods within a single integration test class can reuse the same database, but generally each integration test class should use its own dedicated database(s).
-
-
-You should always default to using `mvn install`, especially prior to committing changes to Git. However, there are a few situations where you may want to run a different Maven command. For details on running individual tests or inspecting the Db2 database for debugging continue reading [here](debezium-connector-db2/README.md).
 
 ### Building the Oracle connector
 
