@@ -17,7 +17,7 @@ pipelineJob('release-debezium-upstream') {
         stringParam('DEBEZIUM_BRANCH', 'master', 'A branch from which Debezium is built')
         stringParam(
                 'DEBEZIUM_ADDITIONAL_REPOSITORIES',
-                'incubator#github.com/debezium/debezium-incubator.git#master vitess#github.com/debezium/debezium-connector-vitess#master',
+                'incubator#github.com/debezium/debezium-incubator.git#master db2#github.com/debezium/debezium-connector-db2#master vitess#github.com/debezium/debezium-connector-vitess#master',
                 'A space separated list of additional repositories from which Debezium incubating components are built (id#repo#branch)'
         )
         stringParam('IMAGES_REPOSITORY', 'github.com/debezium/docker-images.git', 'Repository from which Debezium images are built')
