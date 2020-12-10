@@ -60,11 +60,11 @@
 Tables are incrementally added to the Map during processing.
 Updates every 10,000 rows scanned and upon completing a table.
 
-|[[connectors-strm-metric-maxqueuesizeinbytes_{context}]]<<connectors-strm-metric-maxqueuesizeinbytes_{context}, `MaxQueueSizeInBytes`>>
+|[[connectors-strm-metric-maxqueuesizeinbytes_{context}]]<<connectors-snaps-metric-maxqueuesizeinbytes_{context}, `MaxQueueSizeInBytes`>>
 |`long`
 |The maximum buffer of the queue in bytes. It will be enabled if `max.queue.size.in.bytes` is passed with a positive long value.
 
-|[[connectors-strm-metric-currentqueuesizeinbytes_{context}]]<<connectors-strm-metric-currentqueuesizeinbytes_{context}, `CurrentQueueSizeInBytes`>>
+|[[connectors-strm-metric-currentqueuesizeinbytes_{context}]]<<connectors-snaps-metric-currentqueuesizeinbytes_{context}, `CurrentQueueSizeInBytes`>>
 |`long`
 |The current data of records in the queue in bytes.
 
