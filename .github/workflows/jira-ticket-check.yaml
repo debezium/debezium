@@ -27,6 +27,6 @@ jobs:
       - name: Attach a Comment with Ticket Details
         uses: NejcZdovc/comment-pr@v1
         env:
-          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+          GITHUB_TOKEN: ${{secrets.COMMENTER_TOKEN}}
         with:
           message: "${{steps.get-message.outputs.MESSAGE}}"
