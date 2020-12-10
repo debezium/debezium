@@ -58,7 +58,7 @@ you enable JMX by setting the appropriate environment variables when you start e
 
 // Category: debezium-using
 // Type: reference
-// ModuleID: debezium-zookeeper-jmx-environment-variables]
+// ModuleID: debezium-zookeeper-jmx-environment-variables
 [id="zookeeper-jmx-environment-variables"]
 === Zookeeper JMX environment variables
 
