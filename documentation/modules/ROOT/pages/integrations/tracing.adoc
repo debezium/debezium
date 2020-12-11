@@ -1,0 +1,101 @@
+[id="distributed-tracing"]
+= Distributed Tracing
+
+:toc:
+:toc-placement: macro
+:linkattrs:
+:icons: font
+:source-highlighter: highlight.js
+
+toc::[]
+
+== Overview
+
+Observability is an important aspect of microservice-oriented applications.
+One of the key ingeredients for observability is https://microservices.io/patterns/observability/distributed-tracing.html[distributed tracing].
+
+It is necessary to provide additional precautions when an application writes a record to a database that is later processed by Debezium.
+The active trace is effectively demarcated by the write to the database.
+If we want Debezium to join the larger scope application tracer we need to pass the trace metadata to Debezium.
+
+The tracing support is added to Debezium through https://opentracing.io/[OpenTracing] specification.
+It is also necessary to provide a client implementing the specification.
+Debezium was tested with https://www.jaegertracing.io/[Jaeger] implementation.
+
+[WARNING]
+====
+Neither specification JAR files nor Jaeger client are part of the Debezium Connect image.
+The user either needs to extend the image with them or can use the https://strimzi.io/[Strimzi] Kafka image.
+In that case, the tracing of Kafka producer and consumer is also available.
+
+See compose file of https://github.com/debezium/debezium-examples/tree/master/outbox[Outbox example].
+====
+
+== ActivateTracingSpan SMT
+
+The main implementation point of tracing in Debezium is `ActivateTracingSpan` SMT.
+In this case, the application writing to a database is responsible for providing tracing span context.
+The writer should have span context inject into `java.util.Properties` instance that is serialized then serialized and written to the database as a distinct field of the table.
+
+If the span context is not provided then the SMT will create a new span.
+In this case, Debezium operations together with metadata will be traced but will not be connected to business transaction traces to enable end-to-end testing.
+
+When this SMT is invoked with a message then it will:
+
+* extract parent span context if present in the message
+* create event `db-log-write` span context with the start timestamp set to the database log write timestamp
+* insert fields from `source` block into the span as *tags*
+* create processing `debezium-read` span as a child of `db-log-write` span with the start timestamp set to the processing time of the even
+* insert fields from envelope such as `op` into the processing span as *tags*
+* injects the processing span context into message headers
+
+=== Kafka Producer tracing
+
+Optionally it is possible to enable tracing at the Kafka producer level.
+If enabled then when the message is being written to the Kafka broker the producer will extract Debezium's processing span context from the Kafka message headers, create a new child span and record information about the write to the broker.
+Then it injects the new span into the message headers so a consumer of the message can restore the trace and resume end-to-end tracing.
+
+=== Configuration options
+
+[cols="65%a,>15%a,>20%"]
+|===
+|Configuration property
+|Type
+|Default
+
+|`tracing.span.context.field`::
+The name of the field containing span context. +
++
+_The sender must write the span context into the database column as a serialized instance of `java.util.Properties` with injected span context._
+|string
+|tracingspancontext
+
+|`tracing.operation.name`::
+The operation name representing the Debezium processing span. +
+|string
+|debezium-read
+
+|`tracing.with.context.field.only`::
+Only events that have serialized context field should be traced.
++
+_If set to `true` then tracing span will be created only for events with associated tracing span context field.
+If set to `false` then the tracing span is created for all incoming events regardless of having associated span context._
+|boolean
+|false
+
+|===
+
+== Outbox Extension
+
+Outbox extension provides the additional operations necessary for tracing context propagation out-of-the-box.
+It provides `tracingspancontext` field in an outbox table that is used as the vehicle to pass span context from service using the outbox extension to a Debezium connector.
+
+When an outbox even is emitted the extension will:
+
+* creates a new `outbox-write` span as a child of current active span
+* injects the span context into that `java.util.Properties` instance that is serialized into the `tracingspancontext` column
+* writes the record into the database
+
+== Event Router SMT
+
+Event Router acts as an Outbox Extension counterpart, executes the same steps as `ActivateTracingSpan` SMT, and is used instead of it.
