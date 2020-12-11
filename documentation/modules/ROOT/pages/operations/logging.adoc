@@ -23,7 +23,6 @@ This is often sufficient when the connector is operating normally,
 but may not be enough when the connector is behaving unexpectedly.
 In such cases, you can change the logging level so that the connector generates much more verbose log messages describing what the connector is doing and what it is not doing.
 
-// Category: debezium-using
 // Type: concept
 // ModuleID: debezium-logging-concepts
 // Title: {prodname} logging concepts
@@ -64,10 +63,9 @@ giving you even more control over what the log messages look like.
 To configure logging, you specify the desired level for each logger and the appender(s) where those log messages should be written. Since loggers are hierarchical, the configuration for the root logger serves as a default for all of the loggers below it, although you can override any child (or descendant) logger.
 
 
-// Category: debezium-using
 // Type: concept
-// ModuleID: understanding-debezium-logging
-// Title: Configuring the default {prodname} logging configuration
+// ModuleID: default-debezium-logging-configuration
+// Title: Default {prodname} logging configuration
 [id="understanding-default-logging-configuration"]
 == Understanding the default logging configuration
 
@@ -95,7 +93,7 @@ These log messages are written to the `stdout` appender.
 Unless you configure other loggers,
 all of the loggers that {prodname} uses inherit the `rootLogger` configuration.
 
-// Category: debezium-using
+
 // Type: assembly
 // ModuleID: configuring-debezium-logging
 // Title: Configuring {prodname} logging
@@ -114,11 +112,9 @@ There are other methods that you can use to configure {prodname} logging with Lo
 For more information, search for tutorials about setting up and using appenders to send log messages to specific destinations.
 ====
 
-// Category: debezium-using
 // Type: procedure
 // ModuleID: changing-the-debezium-logging-level
 // Title: Changing the {prodname} logging level
-
 [id="changing-logging-level"]
 === Changing the logging level
 
@@ -199,11 +195,10 @@ log4j.additivity.io.debezium.connector.mysql.BinlogReader=false
 ----
 --
 
-// Category: debezium-using
+
 // Type: procedure
 // ModuleID: adding-debezium-mapped-diagonstic-contexts
 // Title: Adding {prodname} mapped diagnostic contexts
-
 [id="adding-mapped-diagnostic-contexts"]
 === Adding mapped diagnostic contexts
 
