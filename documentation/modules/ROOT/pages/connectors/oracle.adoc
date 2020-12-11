@@ -1331,6 +1331,17 @@ The following configuration properties are _required_ unless a default value is 
 |
 |Name of the database to connect to. Must be the CDB name when working with the CDB + PDB model.
 
+|[[oracle-property-database-tablename-case-insensitive]]<<oracle-property-database-tablename-case-insensitive, `database.tablename.case.insensitive`>>
+|`false`
+|Enable support for case insensitive table names; set to `true` for Oracle 11g.
+
+|[[oracle-property-database-oracle-version]]<<oracle-property-database-oracle-version, `database.oracle.version`>>
+|`12+`
+|Specifies how to decode the Oracle SCN values.
+`11` should be used when connecting to Oracle 11 databases.
+`12+` (the default) should be used when connecting to Oracle 12 or later databases.
+This field is only applicable when using the Oracle XStreams connector adapter.
+
 |[[oracle-property-database-pdb-name]]<<oracle-property-database-pdb-name, `database.pdb.name`>>
 |
 |Name of the PDB to connect to, when working with the CDB + PDB model.
