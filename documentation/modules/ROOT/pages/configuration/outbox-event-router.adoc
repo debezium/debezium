@@ -349,4 +349,23 @@ a|Determines the behavior of the SMT when there is an `UPDATE` operation on the 
 
 All changes in an outbox table are expected to be `INSERT` operations. That is, an outbox table functions as a queue; updates to records in an outbox table are not allowed. The SMT automatically filters out `DELETE` operations on an outbox table. 
 
+|[[outbox-event-router-property-tracing-span-context-field]]<<outbox-event-router-property-tracing-span-context-field, `tracing.span.context.field`>>
+|`tracingspancontext`
+|Tracing
+|The name of the field containing tracing span context.
+
+|[[outbox-event-router-property-tracing-operation-name]]<<outbox-event-router-property-tracing-operation-name, `tracing.operation.name`>>
+|`debezium-read`
+|Tracing
+|The operation name representing the Debezium processing span.
+
+|[[outbox-event-router-property-tracing-with-context-field-only]]<<outbox-event-router-property-tracing-with-context-field-only, `tracing.with.context.field.only`>>
+|`false`
+|Tracing
+|When `true` only events that have serialized context field should be traced.
+
 |===
+
+== Distributed tracing
+The extension has support for the distributed tracing.
+See link:/documentation/reference/integrations/tracing[tracing documentation] for more details.
