@@ -101,6 +101,7 @@ public class EventDispatcher {
             // Unwrap to Hibernate session and save
             Session session = entityManager.unwrap(Session.class);
             session.save(OUTBOX_ENTITY_FULLNAME, dataMap);
+            session.setReadOnly(dataMap, true);
 
             // Remove entity if the configuration deems doing so, leaving useful
             // for debugging
