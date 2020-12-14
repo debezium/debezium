@@ -25,6 +25,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
+import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.rnorth.ducttape.unreliables.Unreliables;
@@ -39,9 +40,9 @@ import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy;
 import org.testcontainers.images.builder.ImageFromDockerfile;
 import org.testcontainers.lifecycle.Startables;
 import org.testcontainers.shaded.com.google.common.collect.ImmutableMap;
-import org.testcontainers.utility.DockerImageName;
 
 import com.jayway.jsonpath.JsonPath;
+import org.testcontainers.utility.DockerImageName;
 
 /**
  * An integration test verifying the Apicurio registry is interoperable with Debezium
@@ -54,8 +55,9 @@ public class ApicurioRegistryTest {
 
     private static final String DEBEZIUM_VERSION = "1.3.0.Final";
     private static final String APICURIO_VERSION = "1.3.2.Final";
+    private static final String POSTGRES_IMAGE = "debezium/postgres:11";
 
-    private static final DockerImageName POSTGRES_DOCKER_IMAGE_NAME = DockerImageName.parse("debezium/postgres:11")
+    private static final DockerImageName POSTGRES_DOCKER_IMAGE_NAME = DockerImageName.parse(POSTGRES_IMAGE)
             .asCompatibleSubstituteFor("postgres");
 
     private static Network network = Network.newNetwork();
@@ -268,5 +270,26 @@ public class ApicurioRegistryTest {
             }
         }
         return config;
+    }
+
+    @AfterClass
+    public static void stopContainers() {
+        try {
+            if (postgresContainer != null) {
+                postgresContainer.stop();
+            }
+            if (apicurioContainer != null) {
+                apicurioContainer.stop();
+            }
+            if (kafkaContainer != null) {
+                kafkaContainer.stop();
+            }
+            if (debeziumContainer != null) {
+                debeziumContainer.stop();
+            }
+        }
+        catch (Exception e) {
+            // ignored
+        }
     }
 }

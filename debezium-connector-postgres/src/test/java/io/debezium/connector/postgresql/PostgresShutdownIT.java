@@ -15,6 +15,8 @@ import org.awaitility.Awaitility;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.Container;
 
 import io.debezium.config.CommonConnectorConfig;
@@ -27,8 +29,10 @@ import io.debezium.embedded.EmbeddedEngine;
 import io.debezium.heartbeat.DatabaseHeartbeatImpl;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.JdbcConfiguration;
-import io.debezium.testing.testcontainers.PostgresInfrastructure;
 import io.debezium.util.Testing;
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.containers.output.Slf4jLogConsumer;
+import org.testcontainers.utility.DockerImageName;
 
 /**
  * Integration test for {@link PostgresConnector} using an {@link EmbeddedEngine} and Testcontainers infrastructure for when Postgres is shutdown during streaming
@@ -39,6 +43,11 @@ public class PostgresShutdownIT extends AbstractConnectorTest {
      * Specific tests that need to extend the initial DDL set should do it in a form of
      * TestHelper.execute(SETUP_TABLES_STMT + ADDITIONAL_STATEMENTS)
      */
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(PostgresShutdownIT.class);
+
+    private static final String POSTGRES_IMAGE = "debezium/example-postgres:1.3";
+
     private static final String INSERT_STMT = "INSERT INTO s1.a (aa) VALUES (1);" +
             "INSERT INTO s2.a (aa) VALUES (1);";
     private static final String CREATE_TABLES_STMT = "DROP SCHEMA IF EXISTS s1 CASCADE;" +
@@ -51,15 +60,23 @@ public class PostgresShutdownIT extends AbstractConnectorTest {
             "INSERT INTO s1.heartbeat (ts) VALUES (NOW());";
     private static final String SETUP_TABLES_STMT = CREATE_TABLES_STMT + INSERT_STMT;
 
-    private PostgresInfrastructure infrastructure;
+    private static final DockerImageName POSTGRES_DOCKER_IMAGE_NAME = DockerImageName.parse(POSTGRES_IMAGE)
+            .asCompatibleSubstituteFor("postgres");
+
+    public static PostgreSQLContainer<?> postgresContainer = new PostgreSQLContainer<>(POSTGRES_DOCKER_IMAGE_NAME)
+            .withDatabaseName("postgres")
+            .withUsername("postgres")
+            .withPassword("postgres")
+            .withLogConsumer(new Slf4jLogConsumer(LOGGER))
+            .withNetworkAliases("postgres");
+
     private String oldContainerPort;
 
     @Before
     public void setUp() {
-        infrastructure = PostgresInfrastructure.getDebeziumPostgresInfrastructure();
-        infrastructure.startContainer();
+        postgresContainer.start();
         oldContainerPort = System.getProperty("database.port", "5432");
-        System.setProperty("database.port", String.valueOf(infrastructure.getPostgresContainer().getMappedPort(5432)));
+        System.setProperty("database.port", String.valueOf(postgresContainer.getMappedPort(5432)));
         try {
             TestHelper.dropAllSchemas();
         }
@@ -74,7 +91,7 @@ public class PostgresShutdownIT extends AbstractConnectorTest {
         stopConnector();
         TestHelper.dropDefaultReplicationSlot();
         TestHelper.dropPublication();
-        infrastructure.getPostgresContainer().stop();
+        postgresContainer.stop();
         System.setProperty("database.port", oldContainerPort);
     }
 
@@ -88,7 +105,7 @@ public class PostgresShutdownIT extends AbstractConnectorTest {
             TestHelper.execute(INSERT_STMT);
         }
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
-                .with(CommonConnectorConfig.DATABASE_CONFIG_PREFIX + JdbcConfiguration.PORT, infrastructure.getPostgresContainer().getMappedPort(5432))
+                .with(CommonConnectorConfig.DATABASE_CONFIG_PREFIX + JdbcConfiguration.PORT, postgresContainer.getMappedPort(5432))
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.ALWAYS.getValue())
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, false)
                 .with(PostgresConnectorConfig.SCHEMA_INCLUDE_LIST, "s1")
@@ -119,7 +136,7 @@ public class PostgresShutdownIT extends AbstractConnectorTest {
                         postgresConnection.singleResultMapper(rs -> rs.getString("ts"), "Could not fetch keepalive info")));
 
         logger.info("Execute Postgres shutdown...");
-        Container.ExecResult result = infrastructure.getPostgresContainer()
+        Container.ExecResult result = postgresContainer
                 .execInContainer("su", "-", "postgres", "-c", "/usr/lib/postgresql/11/bin/pg_ctl -m fast -D /var/lib/postgresql/data stop");
         logger.info(result.toString());
 
@@ -133,7 +150,7 @@ public class PostgresShutdownIT extends AbstractConnectorTest {
         Awaitility.await()
                 .pollInterval(200, TimeUnit.MILLISECONDS)
                 .atMost(60 * TestHelper.waitTimeForRecords(), TimeUnit.SECONDS)
-                .until(() -> !infrastructure.getPostgresContainer().isRunning());
+                .until(() -> !postgresContainer.isRunning());
     }
 
 }

@@ -25,6 +25,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.awaitility.Awaitility;
+import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.rnorth.ducttape.unreliables.Unreliables;
@@ -36,19 +37,22 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.containers.output.Slf4jLogConsumer;
 import org.testcontainers.lifecycle.Startables;
 import org.testcontainers.shaded.com.google.common.collect.ImmutableMap;
-import org.testcontainers.utility.DockerImageName;
 
 import com.jayway.jsonpath.JsonPath;
 
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
+import org.testcontainers.utility.DockerImageName;
 
 public class DebeziumContainerTest {
 
+    private static final String DEBEZIUM_VERSION = "1.3.0.Final";
+    private static final String POSTGRES_IMAGE = "debezium/postgres:11";
+
     private static final Logger LOGGER = LoggerFactory.getLogger(DebeziumContainerTest.class);
 
-    private static final DockerImageName POSTGRES_DOCKER_IMAGE_NAME = DockerImageName.parse("debezium/postgres:11")
+    private static final DockerImageName POSTGRES_DOCKER_IMAGE_NAME = DockerImageName.parse(POSTGRES_IMAGE)
             .asCompatibleSubstituteFor("postgres");
 
     private static final Network network = Network.newNetwork();
@@ -60,7 +64,7 @@ public class DebeziumContainerTest {
             .withNetwork(network)
             .withNetworkAliases("postgres");
 
-    public static DebeziumContainer debeziumContainer = new DebeziumContainer("debezium/connect:1.1.1.Final")
+    public static DebeziumContainer debeziumContainer = new DebeziumContainer("debezium/connect:" + DEBEZIUM_VERSION)
             .withNetwork(network)
             .withKafka(kafkaContainer)
             .withLogConsumer(new Slf4jLogConsumer(LOGGER))
@@ -171,6 +175,24 @@ public class DebeziumContainerTest {
 
         try (Response response = client.newCall(request).execute()) {
             return response.body().string();
+        }
+    }
+
+    @AfterClass
+    public static void stopContainers() {
+        try {
+            if (postgresContainer != null) {
+                postgresContainer.stop();
+            }
+            if (kafkaContainer != null) {
+                kafkaContainer.stop();
+            }
+            if (debeziumContainer != null) {
+                debeziumContainer.stop();
+            }
+        }
+        catch (Exception e) {
+            // ignored
         }
     }
 }
