@@ -151,7 +151,7 @@ This can lead to unexpected conflicts if the logical server name, a schema name,
 
 [IMPORTANT]
 ====
-The key's `payload` will always be `null` at the moment, unless you override the table's primary key by setting the {link-prefix}:{link-vitess-connector}#vitess-property-message-key-columns[`message.key.columns` connector configuration property]. We will soon add support for extracting the primary key from Vitess change event, please track the link:https://issues.redhat.com/browse/DBZ-2578[ticket].
+The connector doesn't allow to name columns with the `@` prefix at the moment. For example, `age` is a valid column name, and `@age` is not. The reason is that Vitess vstreamer has a bug that would send events with anonymized column names (e.g. column name `age` is anonymized to `@1`). There's no easy way to differentiate between a legit column name with the `@` prefix, and the Vitess bug. See more discussion link:https://vitess.slack.com/archives/C0PQY0PTK/p1606817216038500[here].
 ====
 
 // Type: concept
@@ -875,12 +875,16 @@ You can choose to produce events for a subset of the schemas and tables. Optiona
     "connector.class": "io.debezium.connector.vitess.VitessConnector", // <2>
     "database.hostname": "192.168.99.100", // <3>
     "database.port": "15991", // <4>
-    "vitess.keyspace": "commerce", // <5>
-    "vitess.tablet.type": "MASTER", // <6>
-    "vitess.vtctld.host": "192.168.99.101", // <7>
-    "vitess.vtctld.port": "15999", // <8>
-    "database.server.name": "fullfillment", // <9>
-    "tasks.max": 1 // <10>
+    "database.user": "vitess", // <5>
+    "database.password": "vitess_password", // <6>
+    "vitess.keyspace": "commerce", // <7>
+    "vitess.tablet.type": "MASTER", // <8>
+    "vitess.vtctld.host": "192.168.99.101", // <9>
+    "vitess.vtctld.port": "15999", // <10>
+    "vitess.vtctld.user": "vitess", // <11>
+    "vitess.vtctld.password": "vitess_password", // <12>
+    "database.server.name": "fullfillment", // <13>
+    "tasks.max": 1 // <14>
   }
 }
 ----
@@ -888,12 +892,16 @@ You can choose to produce events for a subset of the schemas and tables. Optiona
 <2> The name of this Vitess connector class.
 <3> The address of the Vitess (VTGate's VStream) server.
 <4> The port number of the Vitess (VTGate's VStream) server.
-<5> The name of the keyspce (a.k.a database). Because no shard is specified, it reads change events from all shards in the keyspace.
-<6> The type of MySQL instance (MASTER OR REPLICA) to read change events from.
-<7> The address of the VTCtld server.
-<8> The port of the VTCtld server.
-<9> The logical name of the Vitess cluster, which forms a namespace and is used in all the names of the Kafka topics to which the connector writes, the Kafka Connect schema names, and the namespaces of the corresponding Avro schema when the Avro converter is used.
-<10> Only one task should operate at any one time.
+<5> The username of the Vitess database server (VTGate gRPC).
+<6> The password of the Vitess database server (VTGate gRPC).
+<7> The name of the keyspce (a.k.a database). Because no shard is specified, it reads change events from all shards in the keyspace.
+<8> The type of MySQL instance (MASTER OR REPLICA) to read change events from.
+<9> The address of the VTCtld server.
+<10> The port of the VTCtld server.
+<11> The username of the VTCtld server (VTCtld gRPC).
+<12> The password of the VTCtld database server (VTCtld gRPC).
+<13> The logical name of the Vitess cluster, which forms a namespace and is used in all the names of the Kafka topics to which the connector writes, the Kafka Connect schema names, and the namespaces of the corresponding Avro schema when the Avro converter is used.
+<14> Only one task should operate at any one time.
 
 See the {link-prefix}:{link-vitess-connector}#vitess-connector-properties[complete list of Vitess connector properties] that can be specified in these configurations.
 
@@ -1043,6 +1051,14 @@ The following configuration properties are _required_ unless a default value is 
 |_n/a_
 |An optional name of the shard from which to stream the changes. If not configured, in case of unsharded keyspace, the connector streams changes from the only shard, in case of sharded keyspace, the connector streams changes from all shards in the keyspace. We recommend not configuring it in order to stream from all shards in the keyspace because it has better support for reshard operation. If configured, for example, `-80`, the connector will stream changes from the `-80` shard.
 
+|[[vitess-property-database-user]]<<vitess-property-database-user, `vitess.database.user`>>
+|_n/a_
+|An optional username of the Vitess database server (VTGate). If not configured, unauthenticated VTGate gRPC is used.
+
+|[[vitess-property-database-password]]<<vitess-property-database-password, `vitess.database.password`>>
+|_n/a_
+|An optional password of the Vitess database server (VTGate). If not configured, unauthenticated VTGate gRPC is used.
+
 |[[vitess-property-vtctld-host]]<<vitess-property-vtctld-host, `vitess.vtctld.host`>>
 |
 |IP address or hostname of the VTCtld server.
@@ -1050,6 +1066,14 @@ The following configuration properties are _required_ unless a default value is 
 |[[vitess-property-vtctld-port]]<<vitess-property-vtctld-port, `vitess.vtctld.port`>>
 |`15999`
 |Integer port number of the VTCtld server.
+
+|[[vitess-property-vtctld-user]]<<vitess-property-vtctld-user, `vitess.vtctld.user`>>
+|_n/a_
+|An optional username of the VTCtld server. If not configured, unauthenticated VTCtld gRPC is used.
+
+|[[vitess-property-vtctld-password]]<<vitess-property-vtctld-password, `vitess.vtctld.password`>>
+|_n/a_
+|An optional password of the VTCtld server. If not configured, unauthenticated VTCtld gRPC is used.
 
 |[[vitess-property-tablet-type]]<<vitess-property-tablet-type, `vitess.tablet.type`>>
 |`MASTER`
@@ -1182,6 +1206,11 @@ In these cases, the error message has details about the problem and possibly a s
 When the connector is running, the Vitses server (VTGate) that it is connected to could become unavailable for any number of reasons. If this happens, the connector fails with an error and stops. When the server is available again, restart the connector.
 
 The Vitess connector externally stores the last processed offset in the form of a Vitess VGTID. After a connector restarts and connects to a server instance, the connector communicates with the server to continue streaming from that particular offset.
+
+[id="invalid-column-name-error"]
+=== Invalid column name error
+
+This error happens very rarely. If you receive an error with the message `Illegal prefix '@' for column: x, from schema: y, table: z`, and your table doesn't have such a column, it is a Vitess vstream link:https://vitess.slack.com/archives/C0PQY0PTK/p1606817216038500[bug] that caused by column renaming or column type change. It is a trasient error. You can restart the connector after a small backoff and it should resolve automatically.
 
 [id="vitess-kafka-connect-process-stops-gracefully"]
 === Kafka Connect process stops gracefully
