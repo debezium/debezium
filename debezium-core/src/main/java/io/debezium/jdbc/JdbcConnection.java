@@ -48,6 +48,7 @@ import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
+import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
 import io.debezium.relational.Tables.ColumnNameFilter;
@@ -1147,34 +1148,40 @@ public class JdbcConnection implements AutoCloseable {
 
         // Find regular and materialized views as they cannot be snapshotted
         final Set<TableId> viewIds = new HashSet<>();
-        try (final ResultSet rs = metadata.getTables(databaseCatalog, schemaNamePattern, null, new String[]{ "VIEW", "MATERIALIZED VIEW" })) {
+        final Set<TableId> tableIds = new HashSet<>();
+
+        int totalTables = 0;
+        try (final ResultSet rs = metadata.getTables(databaseCatalog, schemaNamePattern, null,
+                new String[]{ "VIEW", "MATERIALIZED VIEW", "TABLE" })) {
             while (rs.next()) {
                 final String catalogName = rs.getString(1);
                 final String schemaName = rs.getString(2);
                 final String tableName = rs.getString(3);
-                viewIds.add(new TableId(catalogName, schemaName, tableName));
+                final String tableType = rs.getString(4);
+                if ("TABLE".equals(tableType)) {
+                    totalTables++;
+                    TableId tableId = new TableId(catalogName, schemaName, tableName);
+                    if (tableFilter == null || tableFilter.isIncluded(tableId)) {
+                        tableIds.add(tableId);
+                    }
+                }
+                else {
+                    TableId tableId = new TableId(catalogName, schemaName, tableName);
+                    viewIds.add(tableId);
+                }
             }
         }
 
         Map<TableId, List<Column>> columnsByTable = new HashMap<>();
-        try (ResultSet columnMetadata = metadata.getColumns(databaseCatalog, schemaNamePattern, null, null)) {
-            while (columnMetadata.next()) {
-                String catalogName = columnMetadata.getString(1);
-                String schemaName = columnMetadata.getString(2);
-                String tableName = columnMetadata.getString(3);
-                TableId tableId = new TableId(catalogName, schemaName, tableName);
 
-                // exclude views and non-captured tables
-                if (viewIds.contains(tableId) ||
-                        (tableFilter != null && !tableFilter.isIncluded(tableId))) {
-                    continue;
-                }
-
-                // add all included columns
-                readTableColumn(columnMetadata, tableId, columnFilter).ifPresent(column -> {
-                    columnsByTable.computeIfAbsent(tableId, t -> new ArrayList<>())
-                            .add(column.create());
-                });
+        if (totalTables == tableIds.size() || config.getBoolean(RelationalDatabaseConnectorConfig.SNAPSHOT_FULL_COLUMN_SCAN_FORCE)) {
+            columnsByTable = getColumnsDetails(databaseCatalog, schemaNamePattern, null, tableFilter, columnFilter, metadata, viewIds);
+        }
+        else {
+            for (TableId includeTable : tableIds) {
+                Map<TableId, List<Column>> cols = getColumnsDetails(databaseCatalog, schemaNamePattern, includeTable.table(), tableFilter,
+                        columnFilter, metadata, viewIds);
+                columnsByTable.putAll(cols);
             }
         }
 
@@ -1195,6 +1202,34 @@ public class JdbcConnection implements AutoCloseable {
             tableIdsBefore.removeAll(columnsByTable.keySet());
             tableIdsBefore.forEach(tables::removeTable);
         }
+    }
+
+    private Map<TableId, List<Column>> getColumnsDetails(String databaseCatalog, String schemaNamePattern,
+                                                         String tableName, TableFilter tableFilter, ColumnNameFilter columnFilter, DatabaseMetaData metadata,
+                                                         final Set<TableId> viewIds)
+            throws SQLException {
+        Map<TableId, List<Column>> columnsByTable = new HashMap<>();
+        try (ResultSet columnMetadata = metadata.getColumns(databaseCatalog, schemaNamePattern, tableName, null)) {
+            while (columnMetadata.next()) {
+                String catalogName = columnMetadata.getString(1);
+                String schemaName = columnMetadata.getString(2);
+                String metaTableName = columnMetadata.getString(3);
+                TableId tableId = new TableId(catalogName, schemaName, metaTableName);
+
+                // exclude views and non-captured tables
+                if (viewIds.contains(tableId) ||
+                        (tableFilter != null && !tableFilter.isIncluded(tableId))) {
+                    continue;
+                }
+
+                // add all included columns
+                readTableColumn(columnMetadata, tableId, columnFilter).ifPresent(column -> {
+                    columnsByTable.computeIfAbsent(tableId, t -> new ArrayList<>())
+                            .add(column.create());
+                });
+            }
+        }
+        return columnsByTable;
     }
 
     /**
