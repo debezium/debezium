@@ -1210,7 +1210,7 @@ The Vitess connector externally stores the last processed offset in the form of 
 [id="invalid-column-name-error"]
 === Invalid column name error
 
-This error happens very rarely. If you receive an error with the message `Illegal prefix '@' for column: x, from schema: y, table: z`, and your table doesn't have such a column, it is a Vitess vstream link:https://vitess.slack.com/archives/C0PQY0PTK/p1606817216038500[bug] that caused by column renaming or column type change. It is a trasient error. You can restart the connector after a small backoff and it should resolve automatically.
+This error happens very rarely. If you receive an error with the message `Illegal prefix '@' for column: x, from schema: y, table: z`, and your table doesn't have such a column, it is a Vitess vstream link:https://vitess.slack.com/archives/C0PQY0PTK/p1606817216038500[bug] that is caused by column renaming or column type change. It is a transient error. You can restart the connector after a small backoff and it should resolve automatically.
 
 [id="vitess-kafka-connect-process-stops-gracefully"]
 === Kafka Connect process stops gracefully
