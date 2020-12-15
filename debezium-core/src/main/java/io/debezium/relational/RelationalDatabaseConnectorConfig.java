@@ -416,6 +416,16 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withDescription("A comma-separated list of regular expressions matching the database-specific data type names that "
                     + "adds the data type's original type and original length as parameters to the corresponding field schemas in the emitted change records.");
 
+    public static final Field SNAPSHOT_FULL_COLUMN_SCAN_FORCE = Field.create("snapshot.scan.all.columns.force")
+            .withDisplayName("Snapshot force scan all columns of all tables")
+            .withType(Type.BOOLEAN)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription("Restore pre 1.5 behavour and scan all tables to discover columns."
+                    + " If you are excluding one table then turning this on may improve performance."
+                    + " If you are excluding a lot of tables the default behavour should work well.")
+            .withDefault(false);
+
     protected static final ConfigDefinition CONFIG_DEFINITION = CommonConnectorConfig.CONFIG_DEFINITION.edit()
             .type(
                     SERVER_NAME)
@@ -444,7 +454,8 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
                     TRUNCATE_COLUMN,
                     INCLUDE_SCHEMA_CHANGES,
                     PROPAGATE_COLUMN_SOURCE_TYPE,
-                    PROPAGATE_DATATYPE_SOURCE_TYPE)
+                    PROPAGATE_DATATYPE_SOURCE_TYPE,
+                    SNAPSHOT_FULL_COLUMN_SCAN_FORCE)
             .create();
 
     private final RelationalTableFilters tableFilters;
@@ -521,6 +532,10 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
 
     public String columnIncludeList() {
         return getConfig().getFallbackStringProperty(COLUMN_INCLUDE_LIST, COLUMN_WHITELIST);
+    }
+
+    public Boolean isFullColummnScanRequired() {
+        return getConfig().getBoolean(SNAPSHOT_FULL_COLUMN_SCAN_FORCE);
     }
 
     private static int validateColumnExcludeList(Configuration config, Field field, Field.ValidationOutput problems) {
