@@ -1511,6 +1511,11 @@ See {link-prefix}:{link-oracle-connector}#oracle-transaction-metadata[Transactio
 |
 |The fully qualified class name to an implementation of `HistoryReader` to be used during LogMining streaming.
 
+|[[oracle-property-log-mining-archive-log-days]]<<oracle-property-log-mining-archive-log-days, `log.mining.archive.log.days`>>
+|`0`
+|The number of days in the past from SYSDATE to mine archive logs.
+Using the default `0` will mine all archive logs.
+
 |[[oracle-property-database-history-retention-hours]]<<oracle-property-database-history-retention-hours, `database.history.retention.hours`>>
 |`0`
 |The number of hours to retain entries in log mining history table.
