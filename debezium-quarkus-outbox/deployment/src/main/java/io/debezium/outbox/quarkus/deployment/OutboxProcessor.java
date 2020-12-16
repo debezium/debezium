@@ -10,6 +10,7 @@ import static io.debezium.outbox.quarkus.internal.OutboxConstants.OUTBOX_ENTITY_
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.List;
 
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
@@ -33,6 +34,8 @@ import io.quarkus.deployment.builditem.CombinedIndexBuildItem;
 import io.quarkus.deployment.builditem.FeatureBuildItem;
 import io.quarkus.deployment.builditem.GeneratedResourceBuildItem;
 import io.quarkus.deployment.builditem.nativeimage.ReflectiveClassBuildItem;
+import io.quarkus.hibernate.orm.deployment.PersistenceUnitDescriptorBuildItem;
+import io.quarkus.hibernate.orm.deployment.integration.HibernateOrmIntegrationStaticConfiguredBuildItem;
 
 /**
  * Quarkus deployment processor for the Debezium "outbox" extension.
@@ -57,7 +60,9 @@ public final class OutboxProcessor {
 
     @BuildStep
     public void produceOutboxBuildItem(CombinedIndexBuildItem index,
-                                       BuildProducer<OutboxEventEntityBuildItem> outboxEventEntityProducer) {
+                                       List<PersistenceUnitDescriptorBuildItem> persistenceUnitDescriptorBuildItems,
+                                       BuildProducer<OutboxEventEntityBuildItem> outboxEventEntityProducer,
+                                       BuildProducer<HibernateOrmIntegrationStaticConfiguredBuildItem> integrationConfiguredProducer) {
         final DotName exportedEvent = DotName.createSimple(ExportedEvent.class.getName());
 
         Type aggregateIdType = Type.create(DotName.createSimple(String.class.getName()), Type.Kind.CLASS);
@@ -122,6 +127,14 @@ public final class OutboxProcessor {
         LOGGER.infof("Binding Payload as '%s'.", payloadType.name().toString());
 
         outboxEventEntityProducer.produce(new OutboxEventEntityBuildItem(aggregateIdType, payloadType));
+
+        // We enable outbox events in *all* persistence units.
+        for (PersistenceUnitDescriptorBuildItem puDescriptor : persistenceUnitDescriptorBuildItems) {
+            integrationConfiguredProducer.produce(
+                    new HibernateOrmIntegrationStaticConfiguredBuildItem(DEBEZIUM_OUTBOX,
+                            puDescriptor.getPersistenceUnitName())
+                                    .setXmlMappingRequired(true));
+        }
     }
 
     @BuildStep
