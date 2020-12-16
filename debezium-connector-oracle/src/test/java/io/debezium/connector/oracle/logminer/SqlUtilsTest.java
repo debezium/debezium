@@ -48,17 +48,19 @@ public class SqlUtilsTest {
         result = SqlUtils.logMinerContentsQuery("DATABASE", "SCHEMA", schema);
         expected = "SELECT SCN, SQL_REDO, OPERATION_CODE, TIMESTAMP, XID, CSF, TABLE_NAME, SEG_OWNER, OPERATION, USERNAME  " +
                 "FROM V$LOGMNR_CONTENTS WHERE  OPERATION_CODE in (1,2,3,5)  AND SEG_OWNER = 'DATABASE'  AND SCN >= ? AND SCN < ?  " +
-                "OR (OPERATION_CODE IN (5,7,34,36) AND USERNAME NOT IN ('SYS','SYSTEM','SCHEMA'))ORDER BY SCN";
-        assertThat(expected.equals(result)).isTrue();
+                "OR (OPERATION_CODE IN (5,34) AND USERNAME NOT IN ('SYS','SYSTEM','SCHEMA')) " +
+                " OR (OPERATION_CODE IN (7,36)) ORDER BY SCN";
+        assertThat(result).isEqualTo(expected);
 
         tables.add(table1);
         tables.add(table2);
         result = SqlUtils.logMinerContentsQuery("DATABASE", "SCHEMA", schema);
         expected = "SELECT SCN, SQL_REDO, OPERATION_CODE, TIMESTAMP, XID, CSF, TABLE_NAME, SEG_OWNER, OPERATION, USERNAME  " +
                 "FROM V$LOGMNR_CONTENTS WHERE  OPERATION_CODE in (1,2,3,5)  " +
-                "AND SEG_OWNER = 'DATABASE'  AND TABLE_NAME IN ('table1','table2') AND SEG_NAME IN ('table1','table2')  " +
-                "AND SCN >= ? AND SCN < ?  OR (OPERATION_CODE IN (5,7,34,36) AND USERNAME NOT IN ('SYS','SYSTEM','SCHEMA'))ORDER BY SCN";
-        assertThat(expected.equals(result)).isTrue();
+                "AND SEG_OWNER = 'DATABASE'  AND table_name IN ('table1','table2')  " +
+                "AND SCN >= ? AND SCN < ?  OR (OPERATION_CODE IN (5,34) AND USERNAME NOT IN ('SYS','SYSTEM','SCHEMA')) " +
+                " OR (OPERATION_CODE IN (7,36)) ORDER BY SCN";
+        assertThat(result).isEqualTo(expected);
 
         result = SqlUtils.startLogMinerStatement(10L, 20L, OracleConnectorConfig.LogMiningStrategy.ONLINE_CATALOG, true);
         expected = "BEGIN sys.dbms_logmnr.start_logmnr(startScn => '10', endScn => '20', " +
