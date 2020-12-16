@@ -48,7 +48,8 @@ public class OracleDdlParserTest {
         Table table = tables.forTable(new TableId(null, null, TABLE_NAME));
 
         assertThat(tables.size()).isEqualTo(1);
-        assertThat(table.retrieveColumnNames()).containsExactly("ID", "COL1", "COL2", "COL3", "COL4", "COL5", "COL6", "COL8", "COL9", "COL10", "COL11", "COL12");
+        assertThat(table.retrieveColumnNames()).containsExactly("ID", "COL1", "COL2", "COL3", "COL4", "COL5", "COL6", "COL7", "COL8", "COL9", "COL10", "COL11", "COL12",
+                "COL13");
         // ID, primary key
         assertThat(table.columnWithName("ID").position()).isEqualTo(1);
         assertThat(table.isPrimaryKeyColumn("ID"));
@@ -65,9 +66,8 @@ public class OracleDdlParserTest {
         testColumn(table, "COL5", true, Types.NCHAR, "NCHAR", 1, 0, true, null);
         // float(126)
         testColumn(table, "COL6", true, Types.FLOAT, "FLOAT", 126, 0, true, null);
-        // todo: DBZ-137 removed
         // date
-        // testColumn(table, "COL7", true, Types.TIMESTAMP, "DATE", -1, null, true, null);
+        testColumn(table, "COL7", true, Types.TIMESTAMP, "DATE", -1, null, true, null);
         // timestamp
         testColumn(table, "COL8", true, Types.TIMESTAMP, "TIMESTAMP", 6, null, true, null);
         // blob
@@ -78,11 +78,14 @@ public class OracleDdlParserTest {
         testColumn(table, "col11", true, Types.STRUCT, "MDSYS.SDO_GEOMETRY", -1, null, true, null);
         // number(1,0)
         testColumn(table, "col12", true, Types.NUMERIC, "NUMBER", 1, 0, true, null);
+        // date
+        testColumn(table, "col13", false, Types.TIMESTAMP, "DATE", -1, null, false, null);
 
         String ddl = "alter table " + TABLE_NAME + " add (col21 varchar2(20), col22 number(19));";
         parser.parse(ddl, tables);
         Table alteredTable = tables.forTable(new TableId(null, null, TABLE_NAME));
-        assertThat(alteredTable.retrieveColumnNames()).containsExactly("ID", "COL1", "COL2", "COL3", "COL4", "COL5", "COL6", "COL8", "COL9", "COL10", "COL11", "COL12",
+        assertThat(alteredTable.retrieveColumnNames()).containsExactly("ID", "COL1", "COL2", "COL3", "COL4", "COL5", "COL6", "COL7", "COL8", "COL9", "COL10", "COL11",
+                "COL12", "COL13",
                 "COL21",
                 "COL22");
         // varchar2(255)
@@ -100,7 +103,8 @@ public class OracleDdlParserTest {
         ddl = "alter table " + TABLE_NAME + " add (col23 varchar2(20) not null);";
         parser.parse(ddl, tables);
         alteredTable = tables.forTable(new TableId(null, null, TABLE_NAME));
-        assertThat(alteredTable.retrieveColumnNames()).containsExactly("ID", "COL1", "COL2", "COL3", "COL4", "COL5", "COL6", "COL8", "COL9", "COL10", "COL11", "COL12",
+        assertThat(alteredTable.retrieveColumnNames()).containsExactly("ID", "COL1", "COL2", "COL3", "COL4", "COL5", "COL6", "COL7", "COL8", "COL9", "COL10", "COL11",
+                "COL12", "COL13",
                 "COL21",
                 "COL22", "COL23");
         testColumn(alteredTable, "COL23", false, Types.VARCHAR, "VARCHAR2", 20, null, false, null);
@@ -108,7 +112,8 @@ public class OracleDdlParserTest {
         ddl = "alter table " + TABLE_NAME + " drop (col22, col23);";
         parser.parse(ddl, tables);
         alteredTable = tables.forTable(new TableId(null, null, TABLE_NAME));
-        assertThat(alteredTable.retrieveColumnNames()).containsExactly("ID", "COL1", "COL2", "COL3", "COL4", "COL5", "COL6", "COL8", "COL9", "COL10", "COL11", "COL12",
+        assertThat(alteredTable.retrieveColumnNames()).containsExactly("ID", "COL1", "COL2", "COL3", "COL4", "COL5", "COL6", "COL7", "COL8", "COL9", "COL10", "COL11",
+                "COL12", "COL13",
                 "COL21");
 
         ddl = "drop table " + TABLE_NAME + ";";

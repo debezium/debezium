@@ -8,6 +8,7 @@ package io.debezium.connector.oracle;
 import static io.debezium.connector.oracle.util.TestHelper.TYPE_LENGTH_PARAMETER_KEY;
 import static io.debezium.connector.oracle.util.TestHelper.TYPE_NAME_PARAMETER_KEY;
 import static io.debezium.connector.oracle.util.TestHelper.TYPE_SCALE_PARAMETER_KEY;
+import static io.debezium.data.Envelope.FieldName.AFTER;
 import static junit.framework.TestCase.assertEquals;
 import static org.fest.assertions.Assertions.assertThat;
 import static org.fest.assertions.MapAssert.entry;
@@ -36,7 +37,6 @@ import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIs;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.util.TestHelper;
-import io.debezium.data.Envelope;
 import io.debezium.data.VariableScaleDecimal;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
@@ -172,7 +172,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         // read
         SourceRecord record1 = hyphenatedTableRecords.get(0);
         VerifyRecord.isValidRead(record1, "ID", 1);
-        Struct after1 = (Struct) ((Struct) record1.value()).get(Envelope.FieldName.AFTER);
+        Struct after1 = (Struct) ((Struct) record1.value()).get(AFTER);
         assertThat(after1.get("ID")).isEqualTo(1);
         assertThat(after1.get("C1")).isEqualTo(BigDecimal.valueOf(25L));
         assertThat(after1.get("C2")).isEqualTo("Test");
@@ -182,7 +182,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         // insert
         SourceRecord record2 = hyphenatedTableRecords.get(1);
         VerifyRecord.isValidInsert(record2, "ID", 2);
-        Struct after2 = (Struct) ((Struct) record2.value()).get(Envelope.FieldName.AFTER);
+        Struct after2 = (Struct) ((Struct) record2.value()).get(AFTER);
         assertThat(after2.get("ID")).isEqualTo(2);
         assertThat(after2.get("C1")).isEqualTo(BigDecimal.valueOf(50L));
         assertThat(after2.get("C2")).isEqualTo("Test2");
@@ -1024,7 +1024,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         final SourceRecord snapshot = snapshots.recordsForTopic("server1.DEBEZIUM.COLUMNS_TEST").get(0);
         VerifyRecord.isValidRead(snapshot, "ID", 1);
 
-        Struct after = ((Struct) snapshot.value()).getStruct(Envelope.FieldName.AFTER);
+        Struct after = ((Struct) snapshot.value()).getStruct(AFTER);
         assertThat(after.getInt32("ID")).isEqualTo(1);
         assertThat(after.get("AMOUNT_")).isEqualTo(VariableScaleDecimal.fromLogical(after.schema().field("AMOUNT_").schema(), BigDecimal.valueOf(12345.67d)));
 
@@ -1040,7 +1040,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         final SourceRecord stream = streams.recordsForTopic("server1.DEBEZIUM.COLUMNS_TEST").get(0);
         VerifyRecord.isValidInsert(stream, "ID", 2);
 
-        after = ((Struct) stream.value()).getStruct(Envelope.FieldName.AFTER);
+        after = ((Struct) stream.value()).getStruct(AFTER);
         assertThat(after.getInt32("ID")).isEqualTo(2);
         assertThat(after.get("AMOUNT_")).isEqualTo(VariableScaleDecimal.fromLogical(after.schema().field("AMOUNT_").schema(), BigDecimal.valueOf(23456.78d)));
     }
@@ -1075,7 +1075,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         final SourceRecords snapshotRecords = consumeRecordsByTopic(1);
         assertThat(snapshotRecords.recordsForTopic("server1.DEBEZIUM.ALOG_TEST").size()).isEqualTo(1);
         SourceRecord record = snapshotRecords.recordsForTopic("server1.DEBEZIUM.ALOG_TEST").get(0);
-        Struct after = (Struct) ((Struct) record.value()).get(Envelope.FieldName.AFTER);
+        Struct after = (Struct) ((Struct) record.value()).get(AFTER);
         assertThat(after.get("ID")).isEqualTo(BigDecimal.valueOf(1));
         assertThat(after.get("NAME")).isEqualTo("Test");
 
@@ -1097,9 +1097,62 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         final SourceRecords records = consumeRecordsByTopic(1);
         assertThat(records.recordsForTopic("server1.DEBEZIUM.ALOG_TEST").size()).isEqualTo(1);
         record = records.recordsForTopic("server1.DEBEZIUM.ALOG_TEST").get(0);
-        after = (Struct) ((Struct) record.value()).get(Envelope.FieldName.AFTER);
+        after = (Struct) ((Struct) record.value()).get(AFTER);
         assertThat(after.get("ID")).isEqualTo(BigDecimal.valueOf(2));
         assertThat(after.get("NAME")).isEqualTo("Home");
+    }
+
+    @Test
+    public void shouldConvertDatesSpecifiedAsStringInSQL() throws Exception {
+        try {
+            TestHelper.dropTable(connection, "orders");
+
+            final String ddl = "CREATE TABLE orders (" +
+                    "id NUMERIC(6), " +
+                    "order_date date not null," +
+                    "primary key(id))";
+
+            connection.execute(ddl);
+            connection.execute("GRANT SELECT ON debezium.orders TO " + TestHelper.getConnectorUserName());
+            connection.execute("ALTER TABLE debezium.orders ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
+
+            connection.execute("INSERT INTO debezium.orders VALUES (9, '22-FEB-2018')");
+            connection.execute("COMMIT");
+
+            final Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "debezium.orders")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertNoRecordsToConsume();
+
+            waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            final SourceRecords snapshotRecords = consumeRecordsByTopic(1);
+            final List<SourceRecord> snapshotOrders = snapshotRecords.recordsForTopic("server1.DEBEZIUM.ORDERS");
+            assertThat(snapshotOrders.size()).isEqualTo(1);
+
+            final Struct snapshotAfter = ((Struct) snapshotOrders.get(0).value()).getStruct(AFTER);
+            assertThat(snapshotAfter.get("ID")).isEqualTo(9);
+            assertThat(snapshotAfter.get("ORDER_DATE")).isEqualTo(1519257600000L);
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.execute("INSERT INTO debezium.orders VALUES (10, '22-FEB-2018')");
+            connection.execute("COMMIT");
+
+            final SourceRecords streamRecords = consumeRecordsByTopic(1);
+            final List<SourceRecord> orders = streamRecords.recordsForTopic("server1.DEBEZIUM.ORDERS");
+            assertThat(orders.size()).isEqualTo(1);
+
+            final Struct after = ((Struct) orders.get(0).value()).getStruct(AFTER);
+            assertThat(after.get("ID")).isEqualTo(10);
+            assertThat(after.get("ORDER_DATE")).isEqualTo(1519257600000L);
+        }
+        finally {
+            TestHelper.dropTable(connection, "orders");
+        }
     }
 
     private void verifyHeartbeatRecord(SourceRecord heartbeat) {

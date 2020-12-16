@@ -26,12 +26,12 @@ import io.debezium.connector.oracle.antlr.OracleDdlParser;
 import io.debezium.connector.oracle.antlr.OracleDmlParser;
 import io.debezium.connector.oracle.jsqlparser.SimpleDmlParser;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
-import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIs;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot.AdapterName;
 import io.debezium.connector.oracle.logminer.valueholder.LogMinerColumnValue;
 import io.debezium.connector.oracle.logminer.valueholder.LogMinerDmlEntry;
 import io.debezium.data.Envelope;
+import io.debezium.doc.FixFor;
 import io.debezium.relational.Tables;
 import io.debezium.util.IoUtil;
 
@@ -81,7 +81,9 @@ public class OracleDmlParserTest {
         ddlParser.parse(createStatement, tables);
 
         String dml = "update \"" + FULL_TABLE_NAME + "\" a set a.\"col1\" = '9', a.col2 = 'diFFerent', a.col3 = 'anotheR', a.col4 = '123', a.col6 = 5.2, " +
-                "a.col8 = TO_TIMESTAMP('2019-05-14 02:28:32.302000'), a.col10 = " + CLOB_DATA + ", a.col11 = null, a.col12 = '1' " +
+                "a.col8 = TO_TIMESTAMP('2019-05-14 02:28:32.302000'), a.col10 = " + CLOB_DATA + ", a.col11 = null, a.col12 = '1', " +
+                "a.col7 = TO_DATE('2018-02-22 00:00:00', 'YYYY-MM-DD HH24:MI:SS'), " +
+                "a.col13 = TO_DATE('2018-02-22 00:00:00', 'YYYY-MM-DD HH24:MI:SS') " +
                 "where a.ID = 5 and a.COL1 = 6 and a.\"COL2\" = 'text' " +
                 "and a.COL3 = 'text' and a.COL4 IS NULL and a.\"COL5\" IS NULL and a.COL6 IS NULL " +
                 "and a.COL8 = TO_TIMESTAMP('2019-05-14 02:28:32.') and a.col11 is null;";
@@ -95,7 +97,6 @@ public class OracleDmlParserTest {
     }
 
     @Test
-    @SkipWhenAdapterNameIs(value = SkipWhenAdapterNameIs.AdapterName.LOGMINER, reason = "Validation fails, will be fixed in DBZ-2784")
     public void shouldParseTimestampFormats() throws Exception {
         String createStatement = IoUtil.read(IoUtil.getResourceAsStream("ddl/create_table.sql", null, getClass(), null, null));
         ddlParser.parse(createStatement, tables);
@@ -116,6 +117,30 @@ public class OracleDmlParserTest {
         parseTimestamp(format7, true);
     }
 
+    @Test
+    @FixFor("DBZ-2784")
+    public void shouldParseDateFormats() throws Exception {
+        String createStatement = IoUtil.read(IoUtil.getResourceAsStream("ddl/create_table.sql", null, getClass(), null, null));
+        ddlParser.parse(createStatement, tables);
+
+        String format1 = "TO_DATE('2018-02-22 00:00:00', 'YYYY-MM-DD HH24:MI:SS')";
+        parseDate(format1, true);
+    }
+
+    private void parseDate(String format, boolean validateDate) {
+        String dml = "update \"" + FULL_TABLE_NAME + "\" a set a.\"col7\" = " + format + ", a.\"col13\" = " + format + " where a.ID = 1;";
+
+        LogMinerDmlEntry record = sqlDmlParser.parse(dml, tables, "1");
+        assertThat(record).isNotNull();
+        assertThat(record.getNewValues()).isNotEmpty();
+        assertThat(record.getOldValues()).isNotEmpty();
+
+        if (validateDate) {
+            assertThat(record.getNewValues().get(7).getColumnData()).isEqualTo(1519257600000L);
+            assertThat(record.getNewValues().get(13).getColumnData()).isEqualTo(1519257600000L);
+        }
+    }
+
     private void parseTimestamp(String format, boolean validateTimestamp) {
         String dml = "update \"" + FULL_TABLE_NAME + "\" a set a.\"col1\" = '9', a.col2 = 'diFFerent', a.col3 = 'anotheR', a.col4 = '123', a.col6 = 5.2, " +
                 "a.col8 = " + format + ", a.col10 = " + CLOB_DATA + ", a.col11 = null, a.col12 = '1' " +
@@ -128,7 +153,7 @@ public class OracleDmlParserTest {
         assertThat(record.getOldValues()).isNotEmpty();
 
         if (validateTimestamp) {
-            assertThat(record.getNewValues().get(7).getColumnData()).isEqualTo(1600758577000000L);
+            assertThat(record.getNewValues().get(8).getColumnData()).isEqualTo(1600733377000000L);
         }
     }
 
@@ -138,7 +163,7 @@ public class OracleDmlParserTest {
         ddlParser.parse(createStatement, tables);
 
         String dml = "insert into \"" + FULL_TABLE_NAME + "\" a (a.\"ID\",a.\"COL1\",a.\"COL2\",a.\"COL3\",a.\"COL4\",a.\"COL5\",a.\"COL6\",a.\"COL8\"," +
-                "a.\"COL9\",a.\"COL10\") values ('5','4','tExt','text',NULL,NULL,NULL,NULL,EMPTY_BLOB(),EMPTY_CLOB());";
+                "a.\"COL9\",a.\"COL10\",a.\"COL13\") values ('5','4','tExt','text',NULL,NULL,NULL,NULL,EMPTY_BLOB(),EMPTY_CLOB(),TO_DATE('2018-02-22 00:00:00', 'YYYY-MM-DD HH24:MI:SS'));";
         antlrDmlParser.parse(dml, tables);
         LogMinerDmlEntry record = antlrDmlParser.getDmlEntry();
         verifyInsert(record);
@@ -170,7 +195,9 @@ public class OracleDmlParserTest {
 
         String dml = "update \"" + FULL_TABLE_NAME
                 + "\" a set a.\"id\"=1, a.\"col1\" = '9', a.col2 = 'diFFerent', a.col3 = 'anotheR', a.col4 = '123', a.col5 = null, a.col6 = 5.2, " +
-                "a.col8 = TO_TIMESTAMP('2019-05-14 02:28:32.302000'), a.col9=null, a.col10 = " + CLOB_DATA + ", a.col11 = null, a.col12 = '1'";
+                "a.col8 = TO_TIMESTAMP('2019-05-14 02:28:32.302000'), a.col9=null, a.col10 = " + CLOB_DATA + ", a.col11 = null, a.col12 = '1', " +
+                "a.col7 = TO_DATE('2018-02-22 00:00:00', 'YYYY-MM-DD HH24:MI:SS'), " +
+                "a.col13 = TO_DATE('2018-02-22 00:00:00', 'YYYY-MM-DD HH24:MI:SS')";
 
         antlrDmlParser.parse(dml, tables);
         LogMinerDmlEntry record = antlrDmlParser.getDmlEntry();
@@ -224,15 +251,15 @@ public class OracleDmlParserTest {
         String dml = "update \"" + FULL_TABLE_NAME + "\" set \"col1\" = '9', col2 = 'diFFerent', col3 = 'anotheR', col4 = '123', col6 = '5.2', " +
                 "col8 = TO_TIMESTAMP('2019-05-14 02:28:32.302000'), col10='clob_', col12 = '1' " +
                 "where ID = 5 and COL1 = 6 and \"COL2\" = 'text' " +
-                "and COL3 = 'text' and COL4 IS NULL and \"COL5\" IS NULL and COL6 IS NULL " +
-                "and COL8 = TO_TIMESTAMP('2019-05-14 02:28:32') and col11 = " + SPATIAL_DATA + ";";
+                "and COL3 = 'text' and COL4 IS NULL and \"COL5\" IS NULL and COL6 IS NULL AND COL7 = TO_DATE('2018-02-22 00:00:00', 'YYYY-MM-DD HH24:MI:SS') " +
+                "and COL8 = TO_TIMESTAMP('2019-05-14 02:28:32') and col11 = " + SPATIAL_DATA + " and COL13 = TO_DATE('2018-02-22 00:00:00', 'YYYY-MM-DD HH24:MI:SS');";
 
         antlrDmlParser.parse(dml, tables);
         LogMinerDmlEntry record = antlrDmlParser.getDmlEntry();
         // verifyUpdate(record, true, true);
 
         record = sqlDmlParser.parse(dml, tables, "");
-        verifyUpdate(record, true, true, 9);
+        verifyUpdate(record, true, true, 11);
 
         dml = "update \"" + FULL_TABLE_NAME
                 + "\" set \"col1\" = '9', col2 = '$2a$10$aHo.lQk.YAkGl5AkXbjJhODBqwNLkqF94slP5oZ3boNzm0d04WnE2', col3 = NULL, col4 = '123', col6 = '5.2', " +
@@ -324,7 +351,7 @@ public class OracleDmlParserTest {
                 " where id = 6 and col1 = 2 and col2 = 'te\\xt' and col30 = 'tExt\\' and col4 is null and col5 is null " +
                 " and col6 is null and col8 is null and col9 is null and col10 is null and col11 is null and col21 is null";
         result = sqlDmlParser.parse(dml, tables, "");
-        assertThat(result.getNewValues().size() == 12).isTrue();
+        assertThat(result.getNewValues().size()).isEqualTo(14);
 
         dml = "update table1, \"" + FULL_TABLE_NAME + "\" set col1 = 3 " +
                 " where id = 6 and col1 = 2 and col2 = 'te\\xt' and col3 = 'tExt\\' and col4 is null and col5 is null " +
@@ -337,9 +364,9 @@ public class OracleDmlParserTest {
         // validate
         assertThat(record.getCommandType()).isEqualTo(Envelope.Operation.UPDATE);
         List<LogMinerColumnValue> newValues = record.getNewValues();
-        assertThat(newValues.size()).isEqualTo(12);
+        assertThat(newValues.size()).isEqualTo(14);
         String concatenatedNames = newValues.stream().map(LogMinerColumnValue::getColumnName).collect(Collectors.joining());
-        assertThat("IDCOL1COL2COL3COL4COL5COL6COL8COL9COL10COL11COL12".equals(concatenatedNames));
+        assertThat("IDCOL1COL2COL3COL4COL5COL6COL7COL8COL9COL10COL11COL12COL13".equals(concatenatedNames));
         for (LogMinerColumnValue newValue : newValues) {
             String columnName = newValue.getColumnName();
             switch (columnName) {
@@ -361,10 +388,14 @@ public class OracleDmlParserTest {
                     // assertThat(((Struct)newValue.getColumnData()).get("scale")).isEqualTo(1);
                     // assertThat(((byte[])((Struct)newValue.getColumnData()).get("value"))[0]).isEqualTo((byte) 52);
                     break;
+                case "COL7":
+                case "COL13":
+                    assertThat(newValue.getColumnData()).isInstanceOf(Long.class);
+                    assertThat(newValue.getColumnData()).isEqualTo(1519257600000L);
+                    break;
                 case "COL8":
                     assertThat(newValue.getColumnData()).isInstanceOf(Long.class);
-                    // todo: DBZ-137 value didn't account for values to be GMT.
-                    assertThat(newValue.getColumnData()).isEqualTo(1557800912302000L /* 1557826112302000L */);
+                    assertThat(newValue.getColumnData()).isEqualTo(1557800912302000L);
                     break;
                 case "COL10":
                     assertThat(newValue.getColumnData()).isInstanceOf(String.class);
@@ -417,8 +448,7 @@ public class OracleDmlParserTest {
                         break;
                     case "COL8":
                         assertThat(oldValue.getColumnData()).isInstanceOf(Long.class);
-                        // todo: DBZ-137 value didn't account for values to be GMT.
-                        assertThat(oldValue.getColumnData()).isEqualTo(1557800912000000L /* 1557826112000000L */);
+                        assertThat(oldValue.getColumnData()).isEqualTo(1557800912000000L);
                         break;
                     case "COL11":
                         if (checkGeometry) {
@@ -444,7 +474,7 @@ public class OracleDmlParserTest {
         assertThat(record.getCommandType()).isEqualTo(Envelope.Operation.CREATE);
 
         List<LogMinerColumnValue> newValues = record.getNewValues();
-        assertThat(newValues.size()).isEqualTo(12);
+        assertThat(newValues.size()).isEqualTo(14);
 
         Iterator<LogMinerColumnValue> iterator = newValues.iterator();
         assertThat(iterator.next().getColumnData()).isEqualTo(new BigDecimal(5));
@@ -471,8 +501,7 @@ public class OracleDmlParserTest {
             assertThat(oldValues.size()).isEqualTo(0);
         }
         else {
-            // todo: DBZ-137 should not include COL7 but column is included
-            assertThat(oldValues.size()).isEqualTo(12);
+            assertThat(oldValues.size()).isEqualTo(14);
             String concatenatedColumnNames = oldValues.stream().map(LogMinerColumnValue::getColumnName).collect(Collectors.joining());
             assertThat("IDCOL1COL2COL3COL4COL5COL6COL8COL9COL10COL11COL12".equals(concatenatedColumnNames));
 

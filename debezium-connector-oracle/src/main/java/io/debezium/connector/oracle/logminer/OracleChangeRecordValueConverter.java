@@ -233,12 +233,30 @@ public class OracleChangeRecordValueConverter extends JdbcValueConverters {
                 else {
                     dateTime = LocalDateTime.from(TIMESTAMP_FORMATTER.parse(dateText.trim()));
                 }
-                // todo: DBZ-137 this originally converted to ZoneId.systemDefault() but this should be GMT
-                // this is so that this behavior is compatible with the Xstreams implementation
-                return dateTime.atZone(ZoneId.of("GMT")).toInstant().toEpochMilli() * 1000; // timestamp(6) is converted as microTimestamp
+                return getDateTimeWithPrecision(column, dateTime);
+            }
+            else if (valueString.toLowerCase().startsWith("to_date")) {
+                dateText = valueString.substring("to_date".length() + 1, valueString.length() - 1);
+                String[] parts = dateText.split(",");
+                dateText = parts[0].trim().substring(1, parts[0].length() - 1);
+                dateTime = LocalDateTime.from(TIMESTAMP_FORMATTER.parse(dateText.trim()));
+                return getDateTimeWithPrecision(column, dateTime);
             }
         }
         return value;
+    }
+
+    private Object getDateTimeWithPrecision(Column column, LocalDateTime dateTime) {
+        if (adaptiveTimePrecisionMode || adaptiveTimeMicrosecondsPrecisionMode) {
+            if (getTimePrecision(column) <= 3) {
+                return dateTime.atZone(ZoneId.of("GMT")).toInstant().toEpochMilli();
+            }
+            if (getTimePrecision(column) <= 6) {
+                return dateTime.atZone(ZoneId.of("GMT")).toInstant().toEpochMilli() * 1_000;
+            }
+            return dateTime.atZone(ZoneId.of("GMT")).toInstant().toEpochMilli() * 1_000_000;
+        }
+        return dateTime.atZone(ZoneId.of("GMT")).toInstant().toEpochMilli();
     }
 
     private ValueConverter getNumericConverter(Column column, Field fieldDefn) {
