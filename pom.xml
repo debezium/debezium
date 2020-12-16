@@ -82,7 +82,7 @@
         <antlr.version>4.7.2</antlr.version>
 
         <!-- Quarkus -->
-        <quarkus.version>1.7.1.Final</quarkus.version>
+        <quarkus.version>1.11.0.Beta2</quarkus.version>
 
         <!-- Tracing -->
         <version.opentracing.strimzi>0.33.0</version.opentracing.strimzi>
