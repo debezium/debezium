@@ -2202,7 +2202,7 @@ endif::community[]
 After a source record is deleted, emitting a tombstone event (the default behavior) allows Kafka to completely delete all events that pertain to the key of the deleted row. 
 
 |[[mysql-property-message-key-columns]]<<mysql-property-message-key-columns, `message.key.columns`>>
-|_empty string_
+|_n/a_
 |A semicolon separated list of tables with regular expressions that match table column names. The connector maps values in matching columns to key fields in change event records that it sends to Kafka topics. This is useful when a table does not have a primary key, or when you want to order change event records in a Kafka topic according to a field that is not a primary key. +
  +
 Separate entries with semicolons. Insert a colon between the fully-qualified table name and its regular expression. The format (shown with spaces for clarity only) is: +
@@ -2396,7 +2396,7 @@ endif::community[]
 
 |[[mysql-property-skipped-operations]]<<mysql-property-skipped-operations, `skipped.operations`>>
 |
-|Comma-separated list of oplog operations to skip during streaming. Values that you can specify are: `c` for inserts, `u` for updates, `d` for deletes. By default, no operations are skipped.
+|Comma-separated list of oplog operations to skip during streaming. Values that you can specify are: `c` for inserts/create, `u` for updates, `d` for deletes. By default, no operations are skipped.
 
 |===
 

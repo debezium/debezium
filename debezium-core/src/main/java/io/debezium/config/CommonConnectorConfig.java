@@ -379,7 +379,7 @@ public abstract class CommonConnectorConfig {
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withValidation(CommonConnectorConfig::validateSkippedOperation)
-            .withDescription("The comma-separated list of operations to skip during streaming, defined as: 'i' for inserts; 'u' for updates; 'd' for deletes. "
+            .withDescription("The comma-separated list of operations to skip during streaming, defined as: 'c' for inserts/create; 'u' for updates; 'd' for deletes. "
                     + "By default, no operations will be skipped.");
 
     public static final Field BINARY_HANDLING_MODE = Field.create("binary.handling.mode")
