@@ -1944,7 +1944,7 @@ Fully-qualified data type names are of the form _schemaName_._tableName_._typeNa
 See {link-prefix}:{link-sqlserver-connector}#sqlserver-data-types[SQL Server data types] for the list of SQL Server-specific data type names.
 
 |[[sqlserver-property-message-key-columns]]<<sqlserver-property-message-key-columns, `message.key.columns`>>
-|_empty string_
+|_n/a_
 | A semi-colon list of regular expressions that match fully-qualified tables and columns to map a primary key. +
 Each item (regular expression) must match the fully-qualified `<fully-qualified table>:<a comma-separated list of columns>` representing the custom key. +
 Fully-qualified tables could be defined as _schemaName_._tableName_.

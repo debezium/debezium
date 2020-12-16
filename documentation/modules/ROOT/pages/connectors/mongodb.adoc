@@ -1256,7 +1256,7 @@ endif::community[]
 |[[mongodb-property-skipped-operations]]<<mongodb-property-skipped-operations, `skipped.operations`>>
 |
 | comma-separated list of oplog operations that will be skipped during streaming.
-The operations include: `i` for inserts, `u` for updates, and `d` for deletes.
+The operations include: `c` for inserts/create, `u` for updates, and `d` for deletes.
 By default, no operations are skipped.
 
 |[[mongodb-property-snapshot-collection-filter-overrides]]<<mongodb-property-snapshot-collection-filter-overrides, `snapshot.collection.filter.overrides`>>
