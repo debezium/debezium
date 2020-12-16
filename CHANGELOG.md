@@ -2,6 +2,42 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 1.4.0.CR1
+December 16th 2020 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12352696)
+
+### New features since 1.4.0.Beta1
+
+* Documentation of the Logminer implementation needs improvement [DBZ-2799](https://issues.jboss.org/browse/DBZ-2799)
+* Update Vitess Connector documentation [DBZ-2854](https://issues.jboss.org/browse/DBZ-2854)
+* Add Cassandra to tutorial Compose set-up [DBZ-1463](https://issues.jboss.org/browse/DBZ-1463)
+* Add support for Vitess gRPC static authentication [DBZ-2852](https://issues.jboss.org/browse/DBZ-2852)
+
+
+### Breaking changes since 1.4.0.Beta1
+
+None
+
+
+### Fixes since 1.4.0.Beta1
+
+* Document "database.oracle.version" option [DBZ-2603](https://issues.jboss.org/browse/DBZ-2603)
+* Remove link in MySQL docs section that points to the same section [DBZ-2710](https://issues.jboss.org/browse/DBZ-2710)
+* Oracle schema history events fail on partitioned table [DBZ-2841](https://issues.jboss.org/browse/DBZ-2841)
+* outbox extension emits UPDATE events when delete is disabled [DBZ-2847](https://issues.jboss.org/browse/DBZ-2847)
+
+
+### Other changes since 1.4.0.Beta1
+
+* Move Cassandra connector to separate repository [DBZ-2636](https://issues.jboss.org/browse/DBZ-2636)
+* Invalid column name should fail connector with meaningful message [DBZ-2836](https://issues.jboss.org/browse/DBZ-2836)
+* Fix typos in downstream ModuleID declarations in monitoring.adoc [DBZ-2838](https://issues.jboss.org/browse/DBZ-2838)
+* Duplicate anchor ID in partials/ref-connector-monitoring-snapshot-metrics.adoc [DBZ-2839](https://issues.jboss.org/browse/DBZ-2839)
+* Fix additional typo in ModuleID declaration in monitoring.adoc [DBZ-2843](https://issues.jboss.org/browse/DBZ-2843)
+* Edit modularization annotations in logging.adoc [DBZ-2846](https://issues.jboss.org/browse/DBZ-2846)
+* Update Groovy version to 3.0.7 [DBZ-2850](https://issues.jboss.org/browse/DBZ-2850)
+
+
+
 ## 1.4.0.Beta1
 December 9th 2020 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12352306)
 
