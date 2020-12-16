@@ -127,10 +127,14 @@ public class SqlUtils {
         return String.format("SELECT CURRENT_SCN FROM %s", DATABASE_VIEW);
     }
 
-    static String oldestFirstChangeQuery() {
-        return String.format(
-                "SELECT MIN(FIRST_CHANGE#) FROM (SELECT MIN(FIRST_CHANGE#) AS FIRST_CHANGE# FROM %s UNION SELECT MIN(FIRST_CHANGE#) AS FIRST_CHANGE# FROM %s)", LOG_VIEW,
-                ARCHIVED_LOG_VIEW);
+    static String oldestFirstChangeQuery(long archiveLogDays) {
+        if (archiveLogDays > 0) {
+            return String.format("SELECT MIN(FIRST_CHANGE#) FROM (SELECT MIN(FIRST_CHANGE#) AS FIRST_CHANGE# FROM %s " +
+                    "UNION SELECT MIN(FIRST_CHANGE#) AS FIRST_CHANGE# FROM %s " +
+                    "WHERE FIRST_TIME >= SYSDATE - %d)", LOG_VIEW, ARCHIVED_LOG_VIEW, archiveLogDays);
+        }
+        return String.format("SELECT MIN(FIRST_CHANGE#) FROM (SELECT MIN(FIRST_CHANGE#) AS FIRST_CHANGE# FROM %s " +
+                "UNION SELECT MIN(FIRST_CHANGE#) AS FIRST_CHANGE# FROM %s)", LOG_VIEW, ARCHIVED_LOG_VIEW);
     }
 
     public static String allOnlineLogsQuery() {
@@ -141,15 +145,21 @@ public class SqlUtils {
     }
 
     /**
-     * Hardcoded retention policy = SYSDATE -1
+     * Obtain the query to be used to fetch archive logs.
      *
      * @param scn oldest scn to search for
+     * @param archiveLogDays number of past days that archive logs will be mined
      * @return query
      */
-    public static String oneDayArchivedLogsQuery(Long scn) {
+    public static String archiveLogsQuery(Long scn, long archiveLogDays) {
+        if (archiveLogDays > 0) {
+            return String.format("SELECT NAME AS FILE_NAME, NEXT_CHANGE# AS NEXT_CHANGE FROM %s " +
+                    " WHERE NAME IS NOT NULL AND FIRST_TIME >= SYSDATE - %d AND ARCHIVED = 'YES' " +
+                    " AND STATUS = 'A' AND NEXT_CHANGE# > %s ORDER BY 2", ARCHIVED_LOG_VIEW, archiveLogDays, scn);
+        }
         return String.format("SELECT NAME AS FILE_NAME, NEXT_CHANGE# AS NEXT_CHANGE FROM %s " +
-                " WHERE NAME IS NOT NULL AND FIRST_TIME >= SYSDATE - 1 AND ARCHIVED = 'YES' " +
-                " AND STATUS = 'A' AND NEXT_CHANGE# > %s ORDER BY 2", ARCHIVED_LOG_VIEW, scn);
+                "WHERE NAME IS NOT NULL AND ARCHIVED = 'YES' " +
+                "AND STATUS = 'A' AND NEXT_CHANGE# > %s ORDER BY 2", ARCHIVED_LOG_VIEW, scn);
     }
 
     // ***** log miner methods ***

@@ -107,7 +107,7 @@ public class SqlUtilsTest {
         expected = "SELECT CURRENT_SCN FROM V$DATABASE";
         assertThat(expected.equals(result)).isTrue();
 
-        result = SqlUtils.oldestFirstChangeQuery();
+        result = SqlUtils.oldestFirstChangeQuery(0L);
         expected = "SELECT MIN(FIRST_CHANGE#) FROM V$LOG";
         assertThat(expected.equals(result)).isTrue();
 
@@ -136,7 +136,13 @@ public class SqlUtilsTest {
                 ") nologging";
         assertThat(expected.equals(result)).isTrue();
 
-        result = SqlUtils.oneDayArchivedLogsQuery(10L);
+        result = SqlUtils.archiveLogsQuery(10L, 0L);
+        expected = "SELECT NAME AS FILE_NAME, NEXT_CHANGE# AS NEXT_CHANGE FROM V$ARCHIVED_LOG " +
+                " WHERE NAME IS NOT NULL AND ARCHIVED = 'YES' " +
+                " AND STATUS = 'A' AND NEXT_CHANGE# > 10 ORDER BY 2";
+        assertThat(expected.equals(result)).isTrue();
+
+        result = SqlUtils.archiveLogsQuery(10L, 1L);
         expected = "SELECT NAME AS FILE_NAME, NEXT_CHANGE# AS NEXT_CHANGE FROM V$ARCHIVED_LOG " +
                 " WHERE NAME IS NOT NULL AND FIRST_TIME >= SYSDATE - 1 AND ARCHIVED = 'YES' " +
                 " AND STATUS = 'A' AND NEXT_CHANGE# > 10 ORDER BY 2";

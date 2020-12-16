@@ -277,13 +277,14 @@ public class LogMinerHelper {
      * This method fetches the oldest SCN from online redo log files
      *
      * @param connection container level database connection
+     * @param archiveLogDays the number of past days archive logs are mined
      * @return oldest SCN from online redo log
      * @throws SQLException if anything unexpected happens
      */
-    static long getFirstOnlineLogScn(Connection connection) throws SQLException {
+    static long getFirstOnlineLogScn(Connection connection, long archiveLogDays) throws SQLException {
         LOGGER.trace("getting first scn of all online logs");
         Statement s = connection.createStatement();
-        ResultSet res = s.executeQuery(SqlUtils.oldestFirstChangeQuery());
+        ResultSet res = s.executeQuery(SqlUtils.oldestFirstChangeQuery(archiveLogDays));
         res.next();
         long firstScnOfOnlineLog = res.getLong(1);
         res.close();
@@ -453,15 +454,16 @@ public class LogMinerHelper {
      * This method substitutes CONTINUOUS_MINE functionality
      * @param connection connection
      * @param lastProcessedScn current offset
+     * @param archiveLogDays the number of past days that archive logs will be mined
      * @throws SQLException if anything unexpected happens
      */
     // todo: check RAC resiliency
-    public static void setRedoLogFilesForMining(Connection connection, Long lastProcessedScn) throws SQLException {
+    public static void setRedoLogFilesForMining(Connection connection, Long lastProcessedScn, long archiveLogDays) throws SQLException {
 
         removeLogFilesFromMining(connection);
 
         Map<String, Long> onlineLogFilesForMining = getOnlineLogFilesForOffsetScn(connection, lastProcessedScn);
-        Map<String, Long> archivedLogFilesForMining = getArchivedLogFilesForOffsetScn(connection, lastProcessedScn);
+        Map<String, Long> archivedLogFilesForMining = getArchivedLogFilesForOffsetScn(connection, lastProcessedScn, archiveLogDays);
 
         if (onlineLogFilesForMining.size() + archivedLogFilesForMining.size() == 0) {
             throw new IllegalStateException("None of log files contains offset SCN: " + lastProcessedScn + ", re-snapshot is required.");
@@ -538,13 +540,14 @@ public class LogMinerHelper {
 
     /**
      * This method returns all archived log files for one day, containing given offset scn
-     * @param connection    connection
-     * @param offsetScn     offset scn
-     * @return              Map of archived files
-     * @throws SQLException if something happens
+     * @param connection     connection
+     * @param offsetScn      offset scn
+     * @param archiveLogDays number of past days that archive logs will be mined
+     * @return               Map of archived files
+     * @throws SQLException  if something happens
      */
-    public static Map<String, Long> getArchivedLogFilesForOffsetScn(Connection connection, Long offsetScn) throws SQLException {
-        Map<String, String> redoLogFiles = getMap(connection, SqlUtils.oneDayArchivedLogsQuery(offsetScn), "-1");
+    public static Map<String, Long> getArchivedLogFilesForOffsetScn(Connection connection, Long offsetScn, long archiveLogDays) throws SQLException {
+        Map<String, String> redoLogFiles = getMap(connection, SqlUtils.archiveLogsQuery(offsetScn, archiveLogDays), "-1");
         return redoLogFiles.entrySet().stream().collect(
                 Collectors.toMap(Map.Entry::getKey, e -> new BigDecimal(e.getValue()).longValue() == -1 ? Long.MAX_VALUE : new BigDecimal(e.getValue()).longValue()));
     }
