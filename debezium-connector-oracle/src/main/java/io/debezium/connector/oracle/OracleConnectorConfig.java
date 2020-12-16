@@ -55,7 +55,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withType(Type.STRING)
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.HIGH)
-            .withValidation(Field::isRequired)
+            .withValidation(OracleConnectorConfig::requiredWhenNoUrl)
             .withDescription("Resolvable hostname or IP address of the Oracle database server.");
 
     public static final Field PORT = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.PORT)
@@ -204,6 +204,15 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withImportance(Importance.HIGH)
             .withDescription("A comma-separated list of RAC node hostnames or ip addresses");
 
+    public static final Field URL = Field.create(DATABASE_CONFIG_PREFIX + "url")
+            .withDisplayName("Complete JDBC URL")
+            .withType(Type.STRING)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.HIGH)
+            .withValidation(OracleConnectorConfig::requiredWhenNoHostname)
+            .withDescription("Complete JDBC URL as an alternative to specifying hostname, port and database provided "
+                    + "as a way to support alternative connection scenarios.");
+
     /**
      * The set of {@link Field}s defined as part of this configuration.
      */
@@ -242,7 +251,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             LOG_MINING_HISTORY_RETENTION,
             RAC_SYSTEM,
             RAC_NODES,
-            CommonConnectorConfig.EVENT_PROCESSING_FAILURE_HANDLING_MODE);
+            CommonConnectorConfig.EVENT_PROCESSING_FAILURE_HANDLING_MODE,
+            URL);
 
     private final String databaseName;
     private final String pdbName;
@@ -298,7 +308,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         ConfigDef config = new ConfigDef();
 
         Field.group(config, "Oracle", HOSTNAME, PORT, USER, PASSWORD, SERVER_NAME, DATABASE_NAME, PDB_NAME,
-                XSTREAM_SERVER_NAME, SNAPSHOT_MODE, CONNECTOR_ADAPTER, LOG_MINING_STRATEGY);
+                XSTREAM_SERVER_NAME, SNAPSHOT_MODE, CONNECTOR_ADAPTER, LOG_MINING_STRATEGY, URL);
         Field.group(config, "History Storage", KafkaDatabaseHistory.BOOTSTRAP_SERVERS,
                 KafkaDatabaseHistory.TOPIC, KafkaDatabaseHistory.RECOVERY_POLL_ATTEMPTS,
                 KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS, HistorizedRelationalDatabaseConnectorConfig.DATABASE_HISTORY);
@@ -728,6 +738,24 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
     public static int validateOutServerName(Configuration config, Field field, ValidationOutput problems) {
         if (ConnectorAdapter.XSTREAM.equals(ConnectorAdapter.parse(config.getString(CONNECTOR_ADAPTER)))) {
+            return Field.isRequired(config, field, problems);
+        }
+        return 0;
+    }
+
+    public static int requiredWhenNoUrl(Configuration config, Field field, ValidationOutput problems) {
+
+        // Validates that the field is required but only when an URL field is not present
+        if (config.getString(URL) == null) {
+            return Field.isRequired(config, field, problems);
+        }
+        return 0;
+    }
+
+    public static int requiredWhenNoHostname(Configuration config, Field field, ValidationOutput problems) {
+
+        // Validates that the field is required but only when an URL field is not present
+        if (config.getString(HOSTNAME) == null) {
             return Field.isRequired(config, field, problems);
         }
         return 0;
