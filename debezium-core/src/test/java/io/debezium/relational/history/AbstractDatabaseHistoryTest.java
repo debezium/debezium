@@ -15,10 +15,10 @@ import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.relational.Tables;
-import io.debezium.relational.ddl.DdlParserSql2003;
-import io.debezium.relational.ddl.LegacyDdlParser;
 import io.debezium.util.Collect;
 import io.debezium.util.Testing;
+import io.debezium.util.parser.DdlParserSql2003;
+import io.debezium.util.parser.LegacyDdlParser;
 
 /**
  * @author Randall Hauch

@@ -3,16 +3,17 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.relational.ddl;
+package io.debezium.util.parser;
 
 import java.sql.Types;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
 import io.debezium.annotation.Immutable;
+import io.debezium.relational.ddl.DataType;
+import io.debezium.relational.ddl.DataTypeBuilder;
 import io.debezium.text.ParsingException;
-import io.debezium.text.TokenStream;
-import io.debezium.text.TokenStream.Marker;
+import io.debezium.util.parser.TokenStream.Marker;
 
 /**
  * A parser for data type grammars that produces one {@link DataTypePattern} for a grammar, where the {@link DataTypePattern} can

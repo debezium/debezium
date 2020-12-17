@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.relational.ddl;
+package io.debezium.util.parser;
 
 import java.math.BigDecimal;
 import java.util.Collection;
@@ -25,12 +25,14 @@ import io.debezium.relational.SystemVariables;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
+import io.debezium.relational.ddl.AbstractDdlParser;
+import io.debezium.relational.ddl.DdlParser;
+import io.debezium.relational.ddl.DdlParserListener;
 import io.debezium.relational.ddl.DdlParserListener.TableCreatedEvent;
 import io.debezium.text.MultipleParsingExceptions;
 import io.debezium.text.ParsingException;
 import io.debezium.text.Position;
-import io.debezium.text.TokenStream;
-import io.debezium.text.TokenStream.Marker;
+import io.debezium.util.parser.TokenStream.Marker;
 
 /**
  * A parser for DDL statements.

@@ -12,7 +12,9 @@ import java.sql.Types;
 import org.junit.Before;
 import org.junit.Test;
 
-import io.debezium.text.TokenStream;
+import io.debezium.util.parser.DataTypeParser;
+import io.debezium.util.parser.DdlTokenizer;
+import io.debezium.util.parser.TokenStream;
 
 public class DataTypeParserTest {
 

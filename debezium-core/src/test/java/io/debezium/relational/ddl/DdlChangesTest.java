@@ -13,6 +13,8 @@ import org.junit.Test;
 
 import io.debezium.relational.Tables;
 import io.debezium.relational.ddl.DdlParserListener.EventType;
+import io.debezium.util.parser.DdlParserSql2003;
+import io.debezium.util.parser.LegacyDdlParser;
 
 public class DdlChangesTest {
 

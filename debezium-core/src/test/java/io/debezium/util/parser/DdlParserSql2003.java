@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.relational.ddl;
+package io.debezium.util.parser;
 
 import java.sql.Types;
 import java.util.ArrayList;
@@ -15,9 +15,9 @@ import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.TableEditor;
 import io.debezium.relational.TableId;
+import io.debezium.relational.ddl.DataType;
 import io.debezium.text.ParsingException;
-import io.debezium.text.TokenStream;
-import io.debezium.text.TokenStream.Marker;
+import io.debezium.util.parser.TokenStream.Marker;
 
 /**
  * A parser for DDL statements.

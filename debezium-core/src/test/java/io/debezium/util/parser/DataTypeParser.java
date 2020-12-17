@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.relational.ddl;
+package io.debezium.util.parser;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -13,10 +13,10 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
 import io.debezium.annotation.ThreadSafe;
-import io.debezium.relational.ddl.DataTypeGrammarParser.DataTypePattern;
+import io.debezium.relational.ddl.DataType;
 import io.debezium.text.ParsingException;
-import io.debezium.text.TokenStream;
-import io.debezium.text.TokenStream.Marker;
+import io.debezium.util.parser.DataTypeGrammarParser.DataTypePattern;
+import io.debezium.util.parser.TokenStream.Marker;
 
 /**
  * A parser of SQL data types. Callers set up a parser and register patterns that describe the possible lists of data type tokens,
