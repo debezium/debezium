@@ -3,14 +3,14 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.relational.ddl;
+package io.debezium.util.parser;
 
 import io.debezium.text.ParsingException;
 import io.debezium.text.Position;
-import io.debezium.text.TokenStream.CharacterStream;
-import io.debezium.text.TokenStream.Token;
-import io.debezium.text.TokenStream.Tokenizer;
-import io.debezium.text.TokenStream.Tokens;
+import io.debezium.util.parser.TokenStream.CharacterStream;
+import io.debezium.util.parser.TokenStream.Token;
+import io.debezium.util.parser.TokenStream.Tokenizer;
+import io.debezium.util.parser.TokenStream.Tokens;
 
 /**
  * A {@link Tokenizer} that is specialized for tokenizing DDL streams.

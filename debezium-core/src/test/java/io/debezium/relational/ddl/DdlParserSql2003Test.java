@@ -17,6 +17,8 @@ import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
+import io.debezium.util.parser.DdlParserSql2003;
+import io.debezium.util.parser.LegacyDdlParser;
 
 public class DdlParserSql2003Test {
 

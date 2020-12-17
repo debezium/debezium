@@ -29,11 +29,11 @@ import io.debezium.config.Configuration;
 import io.debezium.doc.FixFor;
 import io.debezium.kafka.KafkaCluster;
 import io.debezium.relational.Tables;
-import io.debezium.relational.ddl.DdlParserSql2003;
-import io.debezium.relational.ddl.LegacyDdlParser;
 import io.debezium.text.ParsingException;
 import io.debezium.util.Collect;
 import io.debezium.util.Testing;
+import io.debezium.util.parser.DdlParserSql2003;
+import io.debezium.util.parser.LegacyDdlParser;
 
 /**
  * @author Randall Hauch

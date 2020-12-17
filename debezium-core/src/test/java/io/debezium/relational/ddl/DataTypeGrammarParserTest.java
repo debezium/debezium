@@ -10,8 +10,10 @@ import static org.fest.assertions.Assertions.assertThat;
 import org.junit.Before;
 import org.junit.Test;
 
-import io.debezium.relational.ddl.DataTypeGrammarParser.DataTypePattern;
-import io.debezium.text.TokenStream;
+import io.debezium.util.parser.DataTypeGrammarParser;
+import io.debezium.util.parser.DataTypeGrammarParser.DataTypePattern;
+import io.debezium.util.parser.DdlTokenizer;
+import io.debezium.util.parser.TokenStream;
 
 /**
  * @author Randall Hauch

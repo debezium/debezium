@@ -3,10 +3,9 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.text;
+package io.debezium.util.parser;
 
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.NoSuchElementException;
@@ -17,331 +16,13 @@ import java.util.function.LongConsumer;
 import io.debezium.annotation.Immutable;
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.function.BooleanConsumer;
+import io.debezium.text.ParsingException;
+import io.debezium.text.Position;
+import io.debezium.text.XmlCharacters;
 import io.debezium.util.Strings;
 
 /**
- * A foundation for basic parsers that tokenize input content and allows parsers to easily access and use those tokens. A
- * {@link TokenStream} object literally represents the stream of {@link Token} objects that each represent a word, symbol, comment
- * or other lexically-relevant piece of information. This simple framework makes it very easy to create a parser that walks
- * through (or "consumes") the tokens in the order they appear and do something useful with that content (usually creating another
- * representation of the content, such as some domain-specific Abstract Syntax Tree or object model).
- *
- * <h3>The parts</h3>
- * <p>
- * This simple framework consists of a couple of pieces that fit together to do the whole job of parsing input content.
- * <p>
- * The {@link Tokenizer} is responsible for consuming the character-level input content and constructing {@link Token} objects for
- * the different words, symbols, or other meaningful elements contained in the content. Each Token object is a simple object that
- * records the character(s) that make up the token's value, but it does this in a very lightweight and efficient way by pointing
- * to the original character stream. Each token can be assigned a parser-specific integral <i>token type</i> that may make it
- * easier to do quickly figure out later in the process what kind of information each token represents. The general idea is to
- * keep the Tokenizer logic very simple, and very often {@link Tokenizer}s will merely look for the different kinds of characters
- * (e.g., symbols, letters, digits, etc.) as well as things like quoted strings and comments. However, {@link Tokenizer}s are
- * never called by the parser, but instead are always given to the TokenStream that then calls the Tokenizer at the appropriate
- * time.
- * <p>
- * The {@link TokenStream} is supplied the input content, a Tokenizer implementation, and a few options. Its job is to prepare the
- * content for processing, call the Tokenizer implementation to create the series of Token objects, and then provide an interface
- * for walking through and consuming the tokens. This interface makes it possible to discover the value and type of the current
- * token, and consume the current token and move to the next token. Plus, the interface has been designed to make the code that
- * works with the tokens to be as readable as possible.
- * <p>
- * The final component in this framework is the <b>Parser</b>. The parser is really any class that takes as input the content to
- * be parsed and that outputs some meaningful information. The parser will do this by defining the Tokenizer, constructing a
- * TokenStream object, and then using the TokenStream to walk through the sequence of Tokens and produce some meaningful
- * representation of the content. Parsers can create instances of some object model, or they can create a domain-specific Abstract
- * Syntax Tree representation.
- * <p>
- * The benefit of breaking the responsibility along these lines is that the TokenStream implementation is able to encapsulate
- * quite a bit of very tedious and very useful functionality, while still allowing a lot of flexibility as to what makes up the
- * different tokens. It also makes the parser very easy to write and read (and thus maintain), without placing very many
- * restrictions on how that logic is to be defined. Plus, because the TokenStream takes responsibility for tracking the positions
- * of every token (including line and column numbers), it can automatically produce meaningful errors.
- *
- * <h3>Consuming tokens</h3>
- * <p>
- * A parser works with the tokens on the TokenStream using a variety of methods:
- * <ul>
- * <li>The {@link #start()} method must be called before any of the other methods. It performs initialization and tokenization,
- * and
- * prepares the internal state by finding the first token and setting an internal <i>current token</i> reference.</li>
- * <li>The {@link #hasNext()} method can be called repeatedly to determine if there is another token after the <i>current
- * token</i>. This is often useful when an unknown number of tokens is to be processed, and behaves very similarly to the
- * {@link Iterator#hasNext()} method.</li>
- * <li>The {@link #consume()} method returns the {@link Token#value() value} of the <i>current token</i> and moves the <i>current
- * token</i> pointer to the next available token.</li>
- * <li>The {@link #consume(String)} and {@link #consume(char)} methods look at the <i>current token</i> and ensure the token's
- * {@link Token#value() value} matches the value supplied as a method parameter, or they throw a {@link ParsingException} if the
- * values don't match. The {@link #consume(int)} method works similarly, except that it attempts to match the token's
- * {@link Token#type() type}. And, the {@link #consume(String, String...)} is a convenience method that is equivalent to calling
- * {@link #consume(String)} for each of the arguments.</li>
- * <li>The {@link #canConsume(String)} and {@link #canConsume(char)} methods look at the <i>current token</i> and check whether
- * the token's {@link Token#value() value} matches the value supplied as a method parameter. If there is a match, the method
- * advances the <i>current token</i> reference and returns true. Otherwise, the <i>current token</i> does not match and the method
- * returns false without advancing the <i>current token</i> reference or throwing a ParsingException. Similarly, the
- * {@link #canConsume(int)} method checks the token's {@link Token#type() type} rather than the value, consuming the token and
- * returning true if there is a match, or just returning false if there is no match. The {@link #canConsume(String, String...)}
- * method determines whether all of the supplied values can be consumed in the given order.</li>
- * <li>The {@link #matches(String)} and {@link #matches(char)} methods look at the <i>current token</i> and check whether the
- * token's {@link Token#value() value} matches the value supplied as a method parameter. The method then returns whether there was
- * a match, but does <i>not</i> advance the <i>current token</i> pointer. Similarly, the {@link #matches(int)} method checks the
- * token's {@link Token#type() type} rather than the value. The {@link #matches(String, String...)} method is a convenience method
- * that is equivalent to calling {@link #matches(String)} for each of the arguments, and the {@link #matches(int, int...)} method
- * is a convenience method that is equivalent to calling {@link #matches(int)} for each of the arguments.</li>
- * </ul>
- * <li>The {@link #matchesAnyOf(String, String...)} methods look at the <i>current token</i> and check whether the token's
- * {@link Token#value() value} matches at least one of the values supplied as method parameters. The method then returns whether
- * there was a match, but does <i>not</i> advance the <i>current token</i> pointer. Similarly, the
- * {@link #matchesAnyOf(int, int...)} method checks the token's {@link Token#type() type} rather than the value.</li>
- * </ul>
- * </p>
- * <p>
- * With these methods, it's very easy to create a parser that looks at the current token to decide what to do, and then consume
- * that token, and repeat this process.
- * </p>
- * <h3>Example parser</h3>
- * <p>
- * Here is an example of a very simple parser that parses very simple and limited SQL <code>SELECT</code> and <code>DELETE</code>
- * statements, such as <code>SELECT * FROM Customers</code> or
- * <code>SELECT Name, StreetAddress AS Address, City, Zip FROM Customers</code> or
- * <code>DELETE FROM Customers WHERE Zip=12345</code>:
- *
- * <pre>
- * public class SampleSqlSelectParser {
- *     public List&lt;Statement&gt; parse( String ddl ) {
- *         TokenStream tokens = new TokenStream(ddl, new SqlTokenizer(), false);
- *         List&lt;Statement&gt; statements = new LinkedList&lt;Statement&gt;();
- *         token.start();
- *         while (tokens.hasNext()) {
- *             if (tokens.matches(&quot;SELECT&quot;)) {
- *                 statements.add(parseSelect(tokens));
- *             } else {
- *                 statements.add(parseDelete(tokens));
- *             }
- *         }
- *         return statements;
- *     }
- *
- *     protected Select parseSelect( TokenStream tokens ) throws ParsingException {
- *         tokens.consume(&quot;SELECT&quot;);
- *         List&lt;Column&gt; columns = parseColumns(tokens);
- *         tokens.consume(&quot;FROM&quot;);
- *         String tableName = tokens.consume();
- *         return new Select(tableName, columns);
- *     }
- *
- *     protected List&lt;Column&gt; parseColumns( TokenStream tokens ) throws ParsingException {
- *         List&lt;Column&gt; columns = new LinkedList&lt;Column&gt;();
- *         if (tokens.matches('*')) {
- *             tokens.consume(); // leave the columns empty to signal wildcard
- *         } else {
- *             // Read names until we see a ','
- *             do {
- *                 String columnName = tokens.consume();
- *                 if (tokens.canConsume(&quot;AS&quot;)) {
- *                     String columnAlias = tokens.consume();
- *                     columns.add(new Column(columnName, columnAlias));
- *                 } else {
- *                     columns.add(new Column(columnName, null));
- *                 }
- *             } while (tokens.canConsume(','));
- *         }
- *         return columns;
- *     }
- *
- *     protected Delete parseDelete( TokenStream tokens ) throws ParsingException {
- *         tokens.consume(&quot;DELETE&quot;, &quot;FROM&quot;);
- *         String tableName = tokens.consume();
- *         tokens.consume(&quot;WHERE&quot;);
- *         String lhs = tokens.consume();
- *         tokens.consume('=');
- *         String rhs = tokens.consume();
- *         return new Delete(tableName, new Criteria(lhs, rhs));
- *     }
- *  }
- *  public abstract class Statement { ... }
- *  public class Query extends Statement { ... }
- *  public class Delete extends Statement { ... }
- *  public class Column { ... }
- * </pre>
- *
- * This example shows an idiomatic way of writing a parser that is stateless and thread-safe. The <code>parse(...)</code> method
- * takes the input as a parameter, and returns the domain-specific representation that resulted from the parsing. All other
- * methods are utility methods that simply encapsulate common logic or make the code more readable.
- * <p>
- * In the example, the <code>parse(...)</code> first creates a TokenStream object (using a Tokenizer implementation that is not
- * shown), and then loops as long as there are more tokens to read. As it loops, if the next token is "SELECT", the parser calls
- * the <code>parseSelect(...)</code> method which immediately consumes a "SELECT" token, the names of the columns separated by
- * commas (or a '*' if there all columns are to be selected), a "FROM" token, and the name of the table being queried. The
- * <code>parseSelect(...)</code> method returns a <code>Select</code> object, which then added to the list of statements in the
- * <code>parse(...)</code> method. The parser handles the "DELETE" statements in a similar manner.
- *
- * <h3>Case sensitivity</h3>
- * <p>
- * Very often grammars to not require the case of keywords to match. This can make parsing a challenge, because all combinations
- * of case need to be used. The TokenStream framework provides a very simple solution that requires no more effort than providing
- * a boolean parameter to the constructor.
- * <p>
- * When a <code>false</code> value is provided for the the <code>caseSensitive</code> parameter, the TokenStream performs all
- * matching operations as if each token's value were in uppercase only. This means that the arguments supplied to the
- * <code>match(...)</code>, <code>canConsume(...)</code>, and <code>consume(...)</code> methods should be upper-cased. Note that
- * the <i>actual value</i> of each token remains the <i>actual</i> case as it appears in the input.
- * <p>
- * Of course, when the TokenStream is created with a <code>true</code> value for the <code>caseSensitive</code> parameter, the
- * matching is performed using the <i>actual</i> value as it appears in the input content
- *
- * <h3>Whitespace</h3>
- * <p>
- * Many grammars are independent of lines breaks or whitespace, allowing a lot of flexibility when writing the content. The
- * TokenStream framework makes it very easy to ignore line breaks and whitespace. To do so, the Tokenizer implementation must
- * simply not include the line break character sequences and whitespace in the token ranges. Since none of the tokens contain
- * whitespace, the parser never has to deal with them.
- * <p>
- * Of course, many parsers will require that some whitespace be included. For example, whitespace within a quoted string may be
- * needed by the parser. In this case, the Tokenizer should simply include the whitespace characters in the tokens.
- *
- * <h3>Writing a Tokenizer</h3>
- * <p>
- * Each parser will likely have its own {@link Tokenizer} implementation that contains the parser-specific logic about how to
- * break the content into token objects. Generally, the easiest way to do this is to simply iterate through the character sequence
- * passed into the {@link Tokenizer#tokenize(TokenStream.CharacterStream, TokenStream.Tokens) tokenize(...)} method, and use a
- * switch statement to decide what to do.
- * <p>
- * Here is the code for a very basic Tokenizer implementation that ignores whitespace, line breaks and Java-style (multi-line and
- * end-of-line) comments, while constructing single tokens for each quoted string.
- *
- * <pre>
- * public class BasicTokenizer implements Tokenizer {
- *     public void tokenize(CharacterStream input,
- *                          Tokens tokens)
- *             throws ParsingException {
- *         while (input.hasNext()) {
- *             char c = input.next();
- *             switch (c) {
- *                 case ' ':
- *                 case '\t':
- *                 case '\n':
- *                 case '\r':
- *                     // Just skip these whitespace characters ...
- *                     break;
- *                 case '-':
- *                 case '(':
- *                 case ')':
- *                 case '{':
- *                 case '}':
- *                 case '*':
- *                 case ',':
- *                 case ';':
- *                 case '+':
- *                 case '%':
- *                 case '?':
- *                 case '$':
- *                 case '[':
- *                 case ']':
- *                 case '!':
- *                 case '<':
- *                 case '>':
- *                 case '|':
- *                 case '=':
- *                 case ':':
- *                     tokens.addToken(input.index(), input.index() + 1, SYMBOL);
- *                     break;
- *                 case '.':
- *                     tokens.addToken(input.index(), input.index() + 1, DECIMAL);
- *                     break;
- *                 case '\"':
- *                     int startIndex = input.index();
- *                     Position startingPosition = input.position();
- *                     boolean foundClosingQuote = false;
- *                     while (input.hasNext()) {
- *                         c = input.next();
- *                         if (c == '\\' && input.isNext('"')) {
- *                             c = input.next(); // consume the ' character since it is escaped
- *                         } else if (c == '"') {
- *                             foundClosingQuote = true;
- *                             break;
- *                         }
- *                     }
- *                     if (!foundClosingQuote) {
- *                         throw new ParsingException(startingPosition, "No matching closing double quote found");
- *                     }
- *                     int endIndex = input.index() + 1; // beyond last character read
- *                     tokens.addToken(startIndex, endIndex, DOUBLE_QUOTED_STRING);
- *                     break;
- *                 case '\'':
- *                     startIndex = input.index();
- *                     startingPosition = input.position();
- *                     foundClosingQuote = false;
- *                     while (input.hasNext()) {
- *                         c = input.next();
- *                         if (c == '\\' && input.isNext('\'')) {
- *                             c = input.next(); // consume the ' character since it is escaped
- *                         } else if (c == '\'') {
- *                             foundClosingQuote = true;
- *                             break;
- *                         }
- *                     }
- *                     if (!foundClosingQuote) {
- *                         throw new ParsingException(startingPosition, "No matching closing single quote found");
- *                     }
- *                     endIndex = input.index() + 1; // beyond last character read
- *                     tokens.addToken(startIndex, endIndex, SINGLE_QUOTED_STRING);
- *                     break;
- *                 case '/':
- *                     startIndex = input.index();
- *                     if (input.isNext('/')) {
- *                         // End-of-line comment ...
- *                         boolean foundLineTerminator = false;
- *                         while (input.hasNext()) {
- *                             c = input.next();
- *                             if (c == '\n' || c == '\r') {
- *                                 foundLineTerminator = true;
- *                                 break;
- *                             }
- *                         }
- *                         endIndex = input.index(); // the token won't include the '\n' or '\r' character(s)
- *                         if (!foundLineTerminator) ++endIndex; // must point beyond last char
- *                         if (c == '\r' && input.isNext('\n')) input.next();
- *                         if (useComments) {
- *                             tokens.addToken(startIndex, endIndex, COMMENT);
- *                         }
- *                     } else if (input.isNext('*')) {
- *                         // Multi-line comment ...
- *                         while (input.hasNext() && !input.isNext('*', '/')) {
- *                             c = input.next();
- *                         }
- *                         if (input.hasNext()) input.next(); // consume the '*'
- *                         if (input.hasNext()) input.next(); // consume the '/'
- *                         if (useComments) {
- *                             endIndex = input.index() + 1; // the token will include the '/' and '*' characters
- *                             tokens.addToken(startIndex, endIndex, COMMENT);
- *                         }
- *                     } else {
- *                         // just a regular slash ...
- *                         tokens.addToken(startIndex, startIndex + 1, SYMBOL);
- *                     }
- *                     break;
- *                 default:
- *                     startIndex = input.index();
- *                     // Read until another whitespace/symbol/decimal/slash is found
- *                     while (input.hasNext() && !(input.isNextWhitespace() || input.isNextAnyOf("/.-(){}*,;+%?$[]!<>|=:"))) {
- *                         c = input.next();
- *                     }
- *                     endIndex = input.index() + 1; // beyond last character that was included
- *                     tokens.addToken(startIndex, endIndex, WORD);
- *             }
- *         }
- *     }
- * }
- * </pre>
- *
- * {@link Tokenizer}s with exactly this behavior can actually be created using the {@link #basicTokenizer(boolean)} method. So
- * while this very basic implementation is not meant to be used in all situations, it may be useful in some situations.
- * </p>
- *
- * @author Randall Hauch
- * @author Horia Chiorean
- * @author Daniel Kelleher
+ * A copy of {@link io.debezium.text.TokenStream} class that provides additional methods necessary for test parser.
  */
 @NotThreadSafe
 public class TokenStream {
@@ -562,6 +243,95 @@ public class TokenStream {
      */
     public Position nextPosition() {
         return currentToken().position();
+    }
+
+    /**
+     * Convert the value of this token to an integer, return it, and move to the next token.
+     *
+     * @return the current token's value, converted to an integer
+     * @throws ParsingException if there is no such token to consume, or if the token cannot be converted to an integer
+     * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
+     */
+    public int consumeInteger() throws ParsingException, IllegalStateException {
+        if (completed) {
+            throwNoMoreContent();
+        }
+        // Get the value from the current token ...
+        String value = currentToken().value().toUpperCase();
+        try {
+            List<Token> newTokens = new ArrayList<>();
+            int ePos = value.indexOf("E");
+            // Scientific format, need to identify mantissa and exponent and put it back to stream
+            if (ePos != -1) {
+                String mantissa = value.substring(0, ePos);
+                newTokens.add(new CaseInsensitiveToken(currentToken().startIndex() + ePos, currentToken().startIndex() + ePos + 1, DdlTokenizer.WORD,
+                        currentToken().position()));
+                // Number is in format xxxEyyy
+                if (ePos != value.length() - 1) {
+                    newTokens.add(
+                            new CaseInsensitiveToken(currentToken().startIndex() + ePos + 1, currentToken().endIndex(), DdlTokenizer.WORD, currentToken().position()));
+                }
+                value = mantissa;
+            }
+            int result = Integer.parseInt(value);
+            moveToNextToken(newTokens);
+            return result;
+        }
+        catch (NumberFormatException e) {
+            Position position = currentToken().position();
+            throw new ParsingException(position,
+                    "Expecting integer at line " + position.line() + ", column " + position.column() + " but found '" + value + "'");
+        }
+    }
+
+    /**
+     * Convert the value of this token to a long, return it, and move to the next token.
+     *
+     * @return the current token's value, converted to an integer
+     * @throws ParsingException if there is no such token to consume, or if the token cannot be converted to a long
+     * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
+     */
+    public long consumeLong() throws ParsingException, IllegalStateException {
+        if (completed) {
+            throwNoMoreContent();
+        }
+        // Get the value from the current token ...
+        String value = currentToken().value();
+        try {
+            long result = Long.parseLong(value);
+            moveToNextToken();
+            return result;
+        }
+        catch (NumberFormatException e) {
+            Position position = currentToken().position();
+            throw new ParsingException(position,
+                    "Expecting long at line " + position.line() + ", column " + position.column() + " but found '" + value + "'");
+        }
+    }
+
+    /**
+     * Convert the value of this token to an integer, return it, and move to the next token.
+     *
+     * @return the current token's value, converted to an integer
+     * @throws ParsingException if there is no such token to consume, or if the token cannot be converted to an integer
+     * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
+     */
+    public boolean consumeBoolean() throws ParsingException, IllegalStateException {
+        if (completed) {
+            throwNoMoreContent();
+        }
+        // Get the value from the current token ...
+        String value = currentToken().value();
+        try {
+            boolean result = Boolean.parseBoolean(value);
+            moveToNextToken();
+            return result;
+        }
+        catch (NumberFormatException e) {
+            Position position = currentToken().position();
+            throw new ParsingException(position,
+                    "Expecting boolean at line " + position.line() + ", column " + position.column() + " but found '" + value + "'");
+        }
     }
 
     /**
