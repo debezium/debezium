@@ -27,9 +27,11 @@ public class ParsingErrorListener extends BaseErrorListener {
 
     private Collection<ParsingException> errors = new ArrayList<>();
     private final BiFunction<ParsingException, Collection<ParsingException>, Collection<ParsingException>> accumulateError;
+    private final String parsedDdl;
 
-    public ParsingErrorListener(BiFunction<ParsingException, Collection<ParsingException>, Collection<ParsingException>> accumulateError) {
+    public ParsingErrorListener(String parsedDdl, BiFunction<ParsingException, Collection<ParsingException>, Collection<ParsingException>> accumulateError) {
         this.accumulateError = accumulateError;
+        this.parsedDdl = parsedDdl;
     }
 
     /**
@@ -37,7 +39,8 @@ public class ParsingErrorListener extends BaseErrorListener {
      */
     @Override
     public void syntaxError(Recognizer<?, ?> recognizer, Object offendingSymbol, int line, int charPositionInLine, String msg, RecognitionException e) {
-        accumulateError.apply(new ParsingException(new Position(0, line, charPositionInLine), msg, e), errors);
+        final String errorMessage = "DDL statement couldn't be parsed. Please open a Jira issue with the statement '" + parsedDdl + "'\n" + msg;
+        accumulateError.apply(new ParsingException(new Position(0, line, charPositionInLine), errorMessage, e), errors);
     }
 
     public Collection<ParsingException> getErrors() {
