@@ -74,7 +74,7 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
         // remove default console output printing error listener
         parser.removeErrorListener(ConsoleErrorListener.INSTANCE);
 
-        ParsingErrorListener parsingErrorListener = new ParsingErrorListener(AbstractDdlParser::accumulateParsingFailure);
+        ParsingErrorListener parsingErrorListener = new ParsingErrorListener(ddlContent, AbstractDdlParser::accumulateParsingFailure);
         parser.addErrorListener(parsingErrorListener);
 
         ParseTree parseTree = parseTree(parser);
