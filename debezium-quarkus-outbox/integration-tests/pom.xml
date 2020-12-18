@@ -36,12 +36,6 @@
                 <scope>test</scope>
             </dependency>
 
-            <dependency>
-                <groupId>io.debezium</groupId>
-                <artifactId>debezium-testing-testcontainers</artifactId>
-                <version>${project.version}</version>
-                <scope>test</scope>
-            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -99,11 +93,6 @@
         <dependency>
             <groupId>io.debezium</groupId>
             <artifactId>debezium-quarkus-outbox-deployment</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>io.debezium</groupId>
-            <artifactId>debezium-testing-testcontainers</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>

@@ -36,7 +36,6 @@ import org.testcontainers.containers.KafkaContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.containers.output.Slf4jLogConsumer;
-import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy;
 import org.testcontainers.images.builder.ImageFromDockerfile;
 import org.testcontainers.lifecycle.Startables;
 import org.testcontainers.shaded.com.google.common.collect.ImmutableMap;
@@ -54,7 +53,6 @@ public class ApicurioRegistryTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(ApicurioRegistryTest.class);
 
     private static final String DEBEZIUM_VERSION = "1.3.0.Final";
-    private static final String APICURIO_VERSION = "1.3.2.Final";
     private static final String POSTGRES_IMAGE = "debezium/postgres:11";
 
     private static final DockerImageName POSTGRES_DOCKER_IMAGE_NAME = DockerImageName.parse(POSTGRES_IMAGE)
@@ -62,10 +60,9 @@ public class ApicurioRegistryTest {
 
     private static Network network = Network.newNetwork();
 
-    private static GenericContainer<?> apicurioContainer = new GenericContainer<>("apicurio/apicurio-registry-mem:" + APICURIO_VERSION)
-            .withNetwork(network)
-            .withExposedPorts(8080)
-            .waitingFor(new LogMessageWaitStrategy().withRegEx(".*apicurio-registry-app.*started in.*"));
+    private static final ApicurioRegistryContainer APICURIO_REGISTRY_CONTAINER = ApicurioRegistryContainer.getApicurioRegistryContainer();
+
+    private static final GenericContainer<?> apicurioContainer = APICURIO_REGISTRY_CONTAINER.getApicurioContainer().withNetwork(network);
 
     private static KafkaContainer kafkaContainer = new KafkaContainer()
             .withNetwork(network);
@@ -74,18 +71,11 @@ public class ApicurioRegistryTest {
             .withNetwork(network)
             .withNetworkAliases("postgres");
 
-    public static ImageFromDockerfile apicurioDebeziumImage = new ImageFromDockerfile()
-            .withDockerfileFromBuilder(builder -> builder
-                    .from("debezium/connect:" + DEBEZIUM_VERSION)
-                    .env("KAFKA_CONNECT_DEBEZIUM_DIR", "$KAFKA_CONNECT_PLUGINS_DIR/debezium-connector-postgres")
-                    .env("APICURIO_VERSION", APICURIO_VERSION)
-                    .run("cd $KAFKA_CONNECT_DEBEZIUM_DIR && curl https://repo1.maven.org/maven2/io/apicurio/apicurio-registry-distro-connect-converter/$APICURIO_VERSION/apicurio-registry-distro-connect-converter-$APICURIO_VERSION-converter.tar.gz | tar xzv")
-                    .build());
-
-    public static DebeziumContainer debeziumContainer = new DebeziumContainer(apicurioDebeziumImage)
+    public static DebeziumContainer debeziumContainer = new DebeziumContainer("debezium/connect:" + DEBEZIUM_VERSION)
             .withNetwork(network)
             .withKafka(kafkaContainer)
             .withLogConsumer(new Slf4jLogConsumer(LOGGER))
+            .enableApicurioConverters()
             .dependsOn(kafkaContainer);
 
     @BeforeClass
