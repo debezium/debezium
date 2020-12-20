@@ -13,7 +13,6 @@ import javax.enterprise.event.Observes;
 import javax.inject.Inject;
 
 import org.awaitility.Awaitility;
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
 
 import io.debezium.server.DebeziumServer;
@@ -21,6 +20,7 @@ import io.debezium.server.TestDatabase;
 import io.debezium.server.events.ConnectorCompletedEvent;
 import io.debezium.server.events.ConnectorStartedEvent;
 import io.debezium.util.Testing;
+import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 
 import software.amazon.awssdk.auth.credentials.ProfileCredentialsProvider;
@@ -39,25 +39,18 @@ import software.amazon.awssdk.services.kinesis.model.ShardIteratorType;
  * @author Jiri Pechanec
  */
 @QuarkusTest
+@QuarkusTestResource(TestDatabase.class)
 public class KinesisIT {
 
     private static final int MESSAGE_COUNT = 4;
     // The stream of this name must exist and be empty
     private static final String STREAM_NAME = "testc.inventory.customers";
 
-    protected static TestDatabase db = null;
     protected static KinesisClient kinesis = null;
 
     {
         Testing.Files.delete(KinesisTestConfigSource.OFFSET_STORE_PATH);
         Testing.Files.createTestingFile(KinesisTestConfigSource.OFFSET_STORE_PATH);
-    }
-
-    @AfterAll
-    static void stop() {
-        if (db != null) {
-            db.stop();
-        }
     }
 
     @Inject
@@ -68,9 +61,6 @@ public class KinesisIT {
                 .region(Region.of(KinesisTestConfigSource.KINESIS_REGION))
                 .credentialsProvider(ProfileCredentialsProvider.create("default"))
                 .build();
-
-        db = new TestDatabase();
-        db.start();
     }
 
     void connectorCompleted(@Observes ConnectorCompletedEvent event) throws Exception {

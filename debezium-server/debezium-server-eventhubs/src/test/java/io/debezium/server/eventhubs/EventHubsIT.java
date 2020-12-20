@@ -32,6 +32,7 @@ import io.debezium.server.TestDatabase;
 import io.debezium.server.events.ConnectorCompletedEvent;
 import io.debezium.server.events.ConnectorStartedEvent;
 import io.debezium.util.Testing;
+import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 
 /**
@@ -41,6 +42,7 @@ import io.quarkus.test.junit.QuarkusTest;
  * @author Abhishek Gupta
  */
 @QuarkusTest
+@QuarkusTestResource(TestDatabase.class)
 public class EventHubsIT {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(EventHubsIT.class);
@@ -48,7 +50,6 @@ public class EventHubsIT {
     private static final int MESSAGE_COUNT = 4;
     private static final String CONSUMER_GROUP = "$Default";
 
-    protected static TestDatabase db = null;
     protected static EventHubProducerClient producer = null;
     protected static EventHubConsumerClient consumer = null;
 
@@ -59,9 +60,6 @@ public class EventHubsIT {
 
     @AfterAll
     static void stop() {
-        if (db != null) {
-            db.stop();
-        }
         if (producer != null) {
             producer.close();
         }
@@ -78,8 +76,6 @@ public class EventHubsIT {
                 EventHubsTestConfigSource.getEventHubsConnectionString(), EventHubsTestConfigSource.getEventHubsName());
 
         producer = new EventHubClientBuilder().connectionString(finalConnectionString).buildProducerClient();
-        db = new TestDatabase();
-        db.start();
     }
 
     void connectorCompleted(@Observes ConnectorCompletedEvent event) throws Exception {

@@ -35,6 +35,7 @@ import io.debezium.server.TestDatabase;
 import io.debezium.server.events.ConnectorCompletedEvent;
 import io.debezium.server.events.ConnectorStartedEvent;
 import io.debezium.util.Testing;
+import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 
 /**
@@ -43,6 +44,7 @@ import io.quarkus.test.junit.QuarkusTest;
  * @author Jiri Pechanec
  */
 @QuarkusTest
+@QuarkusTestResource(TestDatabase.class)
 public class PubSubIT {
 
     private static final int MESSAGE_COUNT = 4;
@@ -50,7 +52,6 @@ public class PubSubIT {
     private static final String STREAM_NAME = "testc.inventory.customers";
     private static final String SUBSCRIPTION_NAME = "testsubs";
 
-    protected static TestDatabase db = null;
     protected static Subscriber subscriber;
     private static ProjectSubscriptionName subscriptionName = ProjectSubscriptionName.of(ServiceOptions.getDefaultProjectId(), SUBSCRIPTION_NAME);
 
@@ -61,9 +62,6 @@ public class PubSubIT {
 
     @AfterAll
     static void stop() throws IOException {
-        if (db != null) {
-            db.stop();
-        }
         if (subscriber != null) {
             subscriber.stopAsync();
             subscriber.awaitTerminated();
@@ -102,8 +100,6 @@ public class PubSubIT {
         subscriber = Subscriber.newBuilder(subscriptionName, new TestMessageReceiver()).build();
         subscriber.startAsync().awaitRunning();
 
-        db = new TestDatabase();
-        db.start();
     }
 
     void connectorCompleted(@Observes ConnectorCompletedEvent event) throws Exception {
