@@ -12,12 +12,12 @@ import javax.inject.Inject;
 
 import org.awaitility.Awaitility;
 import org.fest.assertions.Assertions;
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
 
 import io.debezium.server.events.ConnectorCompletedEvent;
 import io.debezium.server.events.ConnectorStartedEvent;
 import io.debezium.util.Testing;
+import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 
 /**
@@ -26,32 +26,22 @@ import io.quarkus.test.junit.QuarkusTest;
  * @author Jiri Pechanec
  */
 @QuarkusTest
+@QuarkusTestResource(TestDatabase.class)
 public class DebeziumServerIT {
 
     private static final int MESSAGE_COUNT = 4;
-    protected static TestDatabase db = null;
+    @Inject
+    DebeziumServer server;
 
     {
         Testing.Files.delete(TestConfigSource.OFFSET_STORE_PATH);
     }
-
-    @AfterAll
-    static void stop() {
-        if (db != null) {
-            db.stop();
-        }
-    }
-
-    @Inject
-    DebeziumServer server;
 
     void setupDependencies(@Observes ConnectorStartedEvent event) {
         if (!TestConfigSource.isItTest()) {
             return;
         }
 
-        db = new TestDatabase();
-        db.start();
     }
 
     void connectorCompleted(@Observes ConnectorCompletedEvent event) throws Exception {

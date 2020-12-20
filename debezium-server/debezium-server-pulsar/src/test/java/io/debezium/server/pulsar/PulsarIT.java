@@ -19,7 +19,6 @@ import org.apache.pulsar.client.api.Message;
 import org.apache.pulsar.client.api.PulsarClient;
 import org.apache.pulsar.client.api.Schema;
 import org.awaitility.Awaitility;
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
 
 import io.debezium.server.DebeziumServer;
@@ -28,6 +27,7 @@ import io.debezium.server.TestDatabase;
 import io.debezium.server.events.ConnectorCompletedEvent;
 import io.debezium.server.events.ConnectorStartedEvent;
 import io.debezium.util.Testing;
+import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 
 /**
@@ -36,28 +36,20 @@ import io.quarkus.test.junit.QuarkusTest;
  * @author Jiri Pechanec
  */
 @QuarkusTest
+@QuarkusTestResource(TestDatabase.class)
 public class PulsarIT {
 
     private static final int MESSAGE_COUNT = 4;
     private static final String TOPIC_NAME = "testc.inventory.customers";
 
-    protected static TestDatabase db = null;
     protected static PulsarClient pulsarClient;
+    @Inject
+    DebeziumServer server;
 
     {
         Testing.Files.delete(TestConfigSource.OFFSET_STORE_PATH);
         Testing.Files.createTestingFile(PulsarTestConfigSource.OFFSET_STORE_PATH);
     }
-
-    @AfterAll
-    static void stop() throws IOException {
-        if (db != null) {
-            db.stop();
-        }
-    }
-
-    @Inject
-    DebeziumServer server;
 
     void setupDependencies(@Observes ConnectorStartedEvent event) throws IOException {
         Testing.Print.enable();
@@ -66,8 +58,6 @@ public class PulsarIT {
                 .serviceUrl(PulsarTestConfigSource.getServiceUrl())
                 .build();
 
-        db = new TestDatabase();
-        db.start();
     }
 
     void connectorCompleted(@Observes ConnectorCompletedEvent event) throws Exception {
