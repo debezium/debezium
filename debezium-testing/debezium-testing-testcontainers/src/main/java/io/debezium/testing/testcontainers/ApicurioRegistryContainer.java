@@ -5,11 +5,11 @@ import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy;
 
 public class ApicurioRegistryContainer extends GenericContainer<ApicurioRegistryContainer> {
 
-    private static final String APICURIO_VERSION = "1.3.2.Final" ;
+    private static final String DEBEZIUM_VERSION = DebeziumContainer.getDebeziumStableVersion();
     private static GenericContainer<?> apicurioContainer;
 
     private ApicurioRegistryContainer() {
-        apicurioContainer = new GenericContainer<>("apicurio/apicurio-registry-mem:" + APICURIO_VERSION)
+        apicurioContainer = new GenericContainer<>("apicurio/apicurio-registry-mem:" + DEBEZIUM_VERSION)
                 .withExposedPorts(8080)
                 .waitingFor(new LogMessageWaitStrategy().withRegEx(".*apicurio-registry-app.*started in.*"));
     }

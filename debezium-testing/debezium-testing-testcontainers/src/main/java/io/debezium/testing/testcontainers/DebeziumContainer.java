@@ -5,11 +5,17 @@
  */
 package io.debezium.testing.testcontainers;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.URL;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.awaitility.Awaitility;
 import org.testcontainers.containers.GenericContainer;
@@ -27,6 +33,8 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
+
+import javax.net.ssl.HttpsURLConnection;
 
 /**
  * Debezium Container main class.
@@ -284,5 +292,41 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
         Awaitility.await()
                 .atMost(waitTimeForRecords() * 5, TimeUnit.SECONDS)
                 .until(() -> getConnectorTaskState(connectorName, taskNumber) == status);
+    }
+
+    public static String getDebeziumStableVersion() {
+        String DEBEZIUM_VERSION = "";
+        try {
+            URL url = new URL("https://hub.docker.com/v2/repositories/debezium/connect/tags/");
+            HttpsURLConnection httpsURLConnection = (HttpsURLConnection) url.openConnection();
+            httpsURLConnection.setRequestMethod("GET");
+
+            int responseCode = httpsURLConnection.getResponseCode();
+
+            if (responseCode == HttpsURLConnection.HTTP_OK) {
+                BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(httpsURLConnection.getInputStream()));
+                String content;
+                StringBuilder response = new StringBuilder();
+
+                while ((content = bufferedReader.readLine()) != null) {
+                    response.append(content);
+                }
+
+                Pattern pattern = Pattern.compile("\\d.\\d.\\d.Final");
+                Matcher matcher = pattern.matcher(response);
+
+                List<String> STABLE_VERSION_LIST = new ArrayList<>();
+
+                while(matcher.find()) {
+                    STABLE_VERSION_LIST.add(matcher.group());
+                }
+
+                Collections.sort(STABLE_VERSION_LIST);
+                DEBEZIUM_VERSION = STABLE_VERSION_LIST.get(STABLE_VERSION_LIST.size()-1);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return DEBEZIUM_VERSION;
     }
 }
