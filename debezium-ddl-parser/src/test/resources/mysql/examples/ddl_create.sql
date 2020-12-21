@@ -236,6 +236,9 @@ CREATE TABLE `tab1` (
   mi MIDDLEINT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 #end
+-- Comments
+-- SELECT V_PAYABLE_AMT, DIS_ADJUST_TOTAL_PAYABLE;
+--	SELECT V_PAYABLE_AMT, DIS_ADJUST_TOTAL_PAYABLE;
 #begin
 -- Create procedure
 -- The default value for local variables in a DECLARE statement should be an expression
