@@ -26,14 +26,14 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.doc.FixFor;
 import io.debezium.kafka.KafkaCluster;
 import io.debezium.relational.Tables;
+import io.debezium.relational.ddl.DdlParser;
 import io.debezium.text.ParsingException;
 import io.debezium.util.Collect;
 import io.debezium.util.Testing;
-import io.debezium.util.parser.DdlParserSql2003;
-import io.debezium.util.parser.LegacyDdlParser;
 
 /**
  * @author Randall Hauch
@@ -130,8 +130,8 @@ public class KafkaDatabaseHistoryTest {
         // Calling it another time to ensure we can work with the DB history topic already existing
         history.initializeStorage();
 
-        LegacyDdlParser recoveryParser = new DdlParserSql2003();
-        LegacyDdlParser ddlParser = new DdlParserSql2003();
+        DdlParser recoveryParser = new MySqlAntlrDdlParser();
+        DdlParser ddlParser = new MySqlAntlrDdlParser();
         ddlParser.setCurrentSchema("db1"); // recover does this, so we need to as well
         Tables tables1 = new Tables();
         Tables tables2 = new Tables();
@@ -148,7 +148,7 @@ public class KafkaDatabaseHistoryTest {
         setLogPosition(10);
         String ddl = "CREATE TABLE foo ( name VARCHAR(255) NOT NULL PRIMARY KEY); \n" +
                 "CREATE TABLE customers ( id INTEGER NOT NULL PRIMARY KEY, name VARCHAR(100) NOT NULL ); \n" +
-                "CREATE TABLE products ( productId INTEGER NOT NULL PRIMARY KEY, desc VARCHAR(255) NOT NULL); \n";
+                "CREATE TABLE products ( productId INTEGER NOT NULL PRIMARY KEY, description VARCHAR(255) NOT NULL); \n";
         history.record(source, position, "db1", ddl);
 
         // Parse the DDL statement 3x and each time update a different Tables object ...

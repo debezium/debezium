@@ -11,22 +11,20 @@ import static org.junit.Assert.fail;
 import org.junit.Before;
 import org.junit.Test;
 
+import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.relational.Tables;
 import io.debezium.relational.ddl.DdlParserListener.EventType;
-import io.debezium.util.parser.DdlParserSql2003;
-import io.debezium.util.parser.LegacyDdlParser;
 
 public class DdlChangesTest {
 
     private DdlChanges changes;
-    private LegacyDdlParser parser;
+    private DdlParser parser;
     private Tables tables;
 
     @Before
     public void beforeEach() {
-        changes = new DdlChanges();
-        parser = new DdlParserSql2003();
-        parser.addListener(changes);
+        parser = new MySqlAntlrDdlParser();
+        changes = parser.getDdlChanges();
         tables = new Tables();
     }
 

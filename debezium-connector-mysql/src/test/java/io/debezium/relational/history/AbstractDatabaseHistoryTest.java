@@ -14,11 +14,11 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.relational.Tables;
+import io.debezium.relational.ddl.DdlParser;
 import io.debezium.util.Collect;
 import io.debezium.util.Testing;
-import io.debezium.util.parser.DdlParserSql2003;
-import io.debezium.util.parser.LegacyDdlParser;
 
 /**
  * @author Randall Hauch
@@ -36,11 +36,11 @@ public abstract class AbstractDatabaseHistoryTest {
     protected Tables t3;
     protected Tables t4;
     protected Tables all;
-    protected LegacyDdlParser parser;
+    protected DdlParser parser;
 
     @Before
     public void beforeEach() {
-        parser = new DdlParserSql2003();
+        parser = new MySqlAntlrDdlParser();
         tables = new Tables();
         t0 = new Tables();
         t1 = new Tables();
@@ -94,8 +94,8 @@ public abstract class AbstractDatabaseHistoryTest {
     @Test
     public void shouldRecordChangesAndRecoverToVariousPoints() {
         record(01, 0, "CREATE TABLE foo ( first VARCHAR(22) NOT NULL );", all, t3, t2, t1, t0);
-        record(23, 1, "CREATE TABLE\\nperson ( name VARCHAR(22) NOT NULL );", all, t3, t2, t1);
-        record(30, 2, "CREATE TABLE address\\n( street VARCHAR(22) NOT NULL );", all, t3, t2);
+        record(23, 1, "CREATE TABLE\nnperson ( name VARCHAR(22) NOT NULL );", all, t3, t2, t1);
+        record(30, 2, "CREATE TABLE address\n( street VARCHAR(22) NOT NULL );", all, t3, t2);
         record(32, 3, "ALTER TABLE address ADD city VARCHAR(22) NOT NULL;", all, t3);
 
         // Testing.Print.enable();
