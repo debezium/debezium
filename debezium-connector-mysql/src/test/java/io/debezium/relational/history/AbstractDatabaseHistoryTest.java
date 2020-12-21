@@ -94,7 +94,7 @@ public abstract class AbstractDatabaseHistoryTest {
     @Test
     public void shouldRecordChangesAndRecoverToVariousPoints() {
         record(01, 0, "CREATE TABLE foo ( first VARCHAR(22) NOT NULL );", all, t3, t2, t1, t0);
-        record(23, 1, "CREATE TABLE\nnperson ( name VARCHAR(22) NOT NULL );", all, t3, t2, t1);
+        record(23, 1, "CREATE TABLE\nperson ( name VARCHAR(22) NOT NULL );", all, t3, t2, t1);
         record(30, 2, "CREATE TABLE address\n( street VARCHAR(22) NOT NULL );", all, t3, t2);
         record(32, 3, "ALTER TABLE address ADD city VARCHAR(22) NOT NULL;", all, t3);
 
