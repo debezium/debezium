@@ -36,7 +36,6 @@ import org.testcontainers.containers.KafkaContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.containers.output.Slf4jLogConsumer;
-import org.testcontainers.images.builder.ImageFromDockerfile;
 import org.testcontainers.lifecycle.Startables;
 import org.testcontainers.shaded.com.google.common.collect.ImmutableMap;
 
@@ -52,7 +51,7 @@ public class ApicurioRegistryTest {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ApicurioRegistryTest.class);
 
-    private static final String DEBEZIUM_VERSION = "1.3.0.Final";
+    private static final String DEBEZIUM_VERSION = DebeziumContainer.getDebeziumStableVersion();
     private static final String POSTGRES_IMAGE = "debezium/postgres:11";
 
     private static final DockerImageName POSTGRES_DOCKER_IMAGE_NAME = DockerImageName.parse(POSTGRES_IMAGE)

@@ -47,7 +47,7 @@ import org.testcontainers.utility.DockerImageName;
 
 public class DebeziumContainerTest {
 
-    private static final String DEBEZIUM_VERSION = "1.3.0.Final";
+    private static final String DEBEZIUM_VERSION = DebeziumContainer.getDebeziumStableVersion();
     private static final String POSTGRES_IMAGE = "debezium/postgres:11";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DebeziumContainerTest.class);
