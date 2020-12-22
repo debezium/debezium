@@ -51,9 +51,7 @@
     <properties>
         <!-- Instruct the build to use only UTF-8 encoding for source code -->
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <maven.compiler.source>1.8</maven.compiler.source>
-        <maven.compiler.target>1.8</maven.compiler.target>
-        <release>8</release>
+        <maven.compiler.release>8</maven.compiler.release>
 
         <!-- Kafka and it's dependencies MUST reflect what the Kafka version uses -->
         <version.kafka>2.6.0</version.kafka>
@@ -1045,20 +1043,6 @@
                     </plugin>
                 </plugins>
             </build>
-        </profile>
-        <profile>
-            <id>jdk11</id>
-            <activation>
-                <jdk>11</jdk>
-            </activation>
-            <properties>
-                <modules.argline>--illegal-access=permit</modules.argline>
-                <!-- When using this profile the following warning pops up,
-                [WARNING] bootstrap class path not set in conjunction with -source 8 -->
-                <maven.compiler.source>11</maven.compiler.source>
-                <maven.compiler.target>11</maven.compiler.target>
-                <release>11</release>
-            </properties>
         </profile>
     </profiles>
 </project>
