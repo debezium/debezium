@@ -14,6 +14,7 @@ on:
       - 'debezium-microbenchmark/**'
       - 'debezium-e2e-benchmark/**'
       - 'debezium-scripting/**'
+      - 'pom.xml'
   pull_request:
     paths:
       - 'support/checkstyle/**'
@@ -27,6 +28,7 @@ on:
       - 'debezium-microbenchmark/**'
       - 'debezium-e2e-benchmark/**'
       - 'debezium-scripting/**'
+      - 'pom.xml'
 
 jobs:
   build:
