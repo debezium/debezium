@@ -1380,7 +1380,7 @@ Note: Depending on the `_hashAlgorithm_` used, the `_salt_` selected and the act
 |`precise`
 | Specifies how the connector should handle floating point values for `NUMBER`, `DECIMAL` and `NUMERIC` columns: `precise` (the default) represents them precisely using `java.math.BigDecimal` values represented in change events in a binary form; or `double` represents them using `double` values, which may result in a loss of precision but will be far easier to use. `string` option encodes values as formatted string which is easy to consume but a semantic information about the real type is lost. See <<decimal-values>>.
 
-|[[oracle-property-event-processing-failure-handling-mode]]<<oracle-property-event-processing-failure-handling-mode, `event.processing{zwsp}.failure.handling.mode`>>
+|[[oracle-property-event-processing-failure-handling-mode]]<<oracle-property-event-processing-failure-handling-mode, `event.processing.failure.handling.mode`>>
 |`fail`
 | Specifies how the connector should react to exceptions during processing of events.
 `fail` will propagate the exception (indicating the offset of the problematic event), causing the connector to stop. +
