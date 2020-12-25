@@ -120,7 +120,7 @@ public class SqlUtils {
     }
 
     static String supplementalLoggingCheckQuery() {
-        return String.format("SELECT 'KEY', SUPPLEMENTAL_LOG_DATA_ALL FROM %s", DATABASE_VIEW);
+        return String.format("SELECT 'KEY', SUPPLEMENTAL_LOG_DATA_MIN FROM %s", DATABASE_VIEW);
     }
 
     static String currentScnQuery() {
