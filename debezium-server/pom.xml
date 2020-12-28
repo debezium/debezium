@@ -89,6 +89,11 @@
                 <version>${version.pulsar}</version>
             </dependency>
             <dependency>
+                <groupId>org.apache.pulsar</groupId>
+                <artifactId>pulsar-io-debezium-core</artifactId>
+                <version>${version.pulsar}</version>
+            </dependency>
+            <dependency>
                 <groupId>com.azure</groupId>
                 <artifactId>azure-messaging-eventhubs</artifactId>
                 <version>${version.eventhubs}</version>
