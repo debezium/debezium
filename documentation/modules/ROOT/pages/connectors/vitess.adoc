@@ -1170,6 +1170,11 @@ The following _advanced_ configuration properties have defaults that work in mos
 |`1000`
 |Positive integer value that specifies the number of milliseconds the connector should wait for new change events to appear before it starts processing a batch of events. Defaults to 1000 milliseconds, or 1 second.
 
+|[[vitess-property-sanitize-field-names]]<<vitess-property-sanitize-field-names, `sanitize.field.names`>>
+|`true` if connector configuration sets the `key.converter` or `value.converter` property to the Avro converter. +
+`false` if not.
+|Indicates whether field names are sanitized to adhere to {link-prefix}:{link-avro-serialization}#avro-naming[Avro naming requirements].
+
 |===
 
 [id="vitess-pass-through-properties"]
