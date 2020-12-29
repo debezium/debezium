@@ -462,13 +462,23 @@ public class BinlogReader extends AbstractReader {
             }
             catch (AuthenticationException e) {
                 throw new ConnectException("Failed to authenticate to the MySQL database at " +
-                        connectionContext.hostname() + ":" + connectionContext.port() + " with user '" + connectionContext.username() + "'", e);
+                        connectionContext.hostname() + ":" + connectionContext.port() + " with user '" + connectionContext.username() + "'",
+                        sanitizeAuthenticationException(e));
             }
             catch (Throwable e) {
                 throw new ConnectException("Unable to connect to the MySQL database at " +
                         connectionContext.hostname() + ":" + connectionContext.port() + " with user '" + connectionContext.username() + "': " + e.getMessage(), e);
             }
         }
+    }
+
+    static AuthenticationException sanitizeAuthenticationException(AuthenticationException e) {
+        String sanitizedError = e.getMessage()
+                .replaceAll("[^\\P{Cc}\t\r\n]", "");
+        AuthenticationException sanitized = new AuthenticationException(sanitizedError,
+                e.getErrorCode(), e.getSqlState());
+        sanitized.setStackTrace(e.getStackTrace());
+        return sanitized;
     }
 
     protected void rewindBinaryLogClient(BinlogPosition position) {
