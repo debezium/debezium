@@ -37,6 +37,19 @@ public class LogInterceptor extends AppenderSkeleton {
         }
     }
 
+    public LogInterceptor(Class<?> clazz) {
+        try {
+            final Field field = Log4jLoggerAdapter.class.getDeclaredField("logger");
+            field.setAccessible(true);
+
+            Logger logger = (Logger) field.get(LoggerFactory.getLogger(clazz));
+            logger.addAppender(this);
+        }
+        catch (Exception e) {
+            throw new RuntimeException("Failed to obtain Log4j logger for log interceptor.");
+        }
+    }
+
     @Override
     protected void append(LoggingEvent loggingEvent) {
         this.events.add(loggingEvent);
