@@ -17,6 +17,7 @@ import java.util.regex.Pattern;
 
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.SchemaBuilder;
+import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
 import io.debezium.data.SpecialValueDecimal;
@@ -287,6 +288,11 @@ public class OracleValueConverters extends JdbcValueConverters {
         // the value (e.g. 4.4444 -> 4.444400)
         if (data instanceof BigDecimal) {
             data = withScaleAdjustedIfNeeded(column, (BigDecimal) data);
+        }
+
+        if (data instanceof Struct) {
+            SpecialValueDecimal value = VariableScaleDecimal.toLogical((Struct) data);
+            return value.getDecimalValue().orElse(null);
         }
 
         return super.convertDecimal(column, fieldDefn, data);

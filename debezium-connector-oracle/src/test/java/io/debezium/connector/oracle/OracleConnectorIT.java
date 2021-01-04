@@ -36,6 +36,7 @@ import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIs;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope;
+import io.debezium.data.VariableScaleDecimal;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
@@ -1000,6 +1001,56 @@ public class OracleConnectorIT extends AbstractConnectorTest {
                 // ignored
             }
         }
+    }
+
+    @Test
+    @FixFor("DBZ-2849")
+    public void shouldAvroSerializeColumnsWithSpecialCharacters() throws Exception {
+        // Setup environment
+        TestHelper.dropTable(connection, "columns_test");
+        connection.execute("CREATE TABLE columns_test (id NUMERIC(6), amount$ number not null, primary key(id))");
+        connection.execute("GRANT SELECT ON debezium.columns_test to " + TestHelper.getConnectorUserName());
+        connection.execute("ALTER TABLE debezium.columns_test ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
+
+        // Insert a record for snapshot
+        connection.execute("INSERT INTO debezium.columns_test (id, amount$) values (1, 12345.67)");
+        connection.commit();
+
+        // Start connector
+        final Configuration config = TestHelper.defaultConfig()
+                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM.COLUMNS_TEST")
+                .with(OracleConnectorConfig.SANITIZE_FIELD_NAMES, "true")
+                .build();
+        start(OracleConnector.class, config);
+        assertConnectorIsRunning();
+
+        waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+        final SourceRecords snapshots = consumeRecordsByTopic(1);
+        assertThat(snapshots.recordsForTopic("server1.DEBEZIUM.COLUMNS_TEST").size()).isEqualTo(1);
+
+        final SourceRecord snapshot = snapshots.recordsForTopic("server1.DEBEZIUM.COLUMNS_TEST").get(0);
+        VerifyRecord.isValidRead(snapshot, "ID", 1);
+
+        Struct after = ((Struct) snapshot.value()).getStruct(Envelope.FieldName.AFTER);
+        assertThat(after.getInt32("ID")).isEqualTo(1);
+        assertThat(after.get("AMOUNT_")).isEqualTo(VariableScaleDecimal.fromLogical(after.schema().field("AMOUNT_").schema(), BigDecimal.valueOf(12345.67d)));
+
+        waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+        // Insert a record for streaming
+        connection.execute("INSERT INTO debezium.columns_test (id, amount$) values (2, 23456.78)");
+        connection.commit();
+
+        final SourceRecords streams = consumeRecordsByTopic(1);
+        assertThat(streams.recordsForTopic("server1.DEBEZIUM.COLUMNS_TEST").size()).isEqualTo(1);
+
+        final SourceRecord stream = streams.recordsForTopic("server1.DEBEZIUM.COLUMNS_TEST").get(0);
+        VerifyRecord.isValidInsert(stream, "ID", 2);
+
+        after = ((Struct) stream.value()).getStruct(Envelope.FieldName.AFTER);
+        assertThat(after.getInt32("ID")).isEqualTo(2);
+        assertThat(after.get("AMOUNT_")).isEqualTo(VariableScaleDecimal.fromLogical(after.schema().field("AMOUNT_").schema(), BigDecimal.valueOf(23456.78d)));
     }
 
     private void verifyHeartbeatRecord(SourceRecord heartbeat) {
