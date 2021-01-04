@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.oracle;
 
+import java.time.Duration;
 import java.util.Set;
 import java.util.function.Predicate;
 
@@ -211,15 +212,15 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withImportance(Importance.HIGH)
             .withValidation(OracleConnectorConfig::requiredWhenNoHostname)
             .withDescription("Complete JDBC URL as an alternative to specifying hostname, port and database provided "
-                    + "as a way to support alternative connection scenarios.");
+                     + "as a way to support alternative connection scenarios.");
 
-    public static final Field LOG_MINING_ARCHIVE_LOG_DAYS = Field.create("log.mining.archive.log.days")
-            .withDisplayName("Log Mining Archive Log Days")
+    public static final Field LOG_MINING_ARCHIVE_LOG_HOURS = Field.create("log.mining.archive.log.hours")
+            .withDisplayName("Log Mining Archive Log Hours")
             .withType(Type.LONG)
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDefault(0)
-            .withDescription("The number of days in the past from SYSDATE to mine archive logs.  Using 0 mines all available archive logs");
+            .withDescription("The number of hours in the past from SYSDATE to mine archive logs.  Using 0 mines all available archive logs");
 
     /**
      * The set of {@link Field}s defined as part of this configuration.
@@ -261,7 +262,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             RAC_NODES,
             CommonConnectorConfig.EVENT_PROCESSING_FAILURE_HANDLING_MODE,
             URL,
-            LOG_MINING_ARCHIVE_LOG_DAYS);
+            LOG_MINING_ARCHIVE_LOG_HOURS);
 
     private final String databaseName;
     private final String pdbName;
@@ -334,7 +335,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         Field.group(config, "Connector", CommonConnectorConfig.POLL_INTERVAL_MS, CommonConnectorConfig.MAX_BATCH_SIZE,
                 CommonConnectorConfig.MAX_QUEUE_SIZE, CommonConnectorConfig.SNAPSHOT_DELAY_MS, CommonConnectorConfig.SNAPSHOT_FETCH_SIZE,
                 SNAPSHOT_ENHANCEMENT_TOKEN, LOG_MINING_HISTORY_RECORDER_CLASS, LOG_MINING_HISTORY_RETENTION, RAC_SYSTEM, RAC_NODES,
-                LOG_MINING_ARCHIVE_LOG_DAYS);
+                    LOG_MINING_ARCHIVE_LOG_HOURS);
 
         return config;
     }
@@ -708,10 +709,10 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     }
 
     /**
-     * @return the number of days the archive logs are scanned for log mining
+     * @return the duration that archive logs are scanned for log mining
      */
-    public long getLogMiningArchiveLogDays() {
-        return getConfig().getLong(LOG_MINING_ARCHIVE_LOG_DAYS);
+    public Duration getLogMiningArchiveLogHours() {
+        return Duration.ofHours(getConfig().getLong(LOG_MINING_ARCHIVE_LOG_HOURS));
     }
 
     /**

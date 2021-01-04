@@ -85,7 +85,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
     private TransactionalBuffer transactionalBuffer;
     private long startScn;
     private long endScn;
-    private long archiveLogDays;
+    private Duration archiveLogHours;
 
     public LogMinerStreamingChangeEventSource(OracleConnectorConfig connectorConfig, OracleOffsetContext offsetContext,
                                               OracleConnection jdbcConnection, EventDispatcher<TableId> dispatcher,
@@ -110,7 +110,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
             this.racHosts.addAll(connectorConfig.getRacNodes().stream().map(String::toUpperCase).collect(Collectors.toSet()));
             instantiateFlushConnections(jdbcConfiguration, racHosts);
         }
-        this.archiveLogDays = connectorConfig.getLogMiningArchiveLogDays();
+        this.archiveLogHours = connectorConfig.getLogMiningArchiveLogHours();
     }
 
     /**
@@ -134,15 +134,14 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                 startScn = offsetContext.getScn();
                 createFlushTable(connection);
 
-                if (!isContinuousMining && startScn < getFirstOnlineLogScn(connection, archiveLogDays)) {
-                    LOGGER.error("Online REDO LOG files or Archive files do not contain the offset scn {}", startScn);
-                    throw new DebeziumException("Online REDO LOG files or Archive files do not contain the offset scn.  Please perform a new snapshot.");
+                if (!isContinuousMining && startScn < getFirstOnlineLogScn(connection, archiveLogHours)) {
+                    throw new DebeziumException("Online REDO LOG files or archive log files do not contain the offset scn " + startScn + ".  Please perform a new snapshot.");
                 }
 
                 setNlsSessionParameters(jdbcConnection);
                 checkSupplementalLogging(jdbcConnection, connectorConfig.getPdbName());
 
-                initializeRedoLogsForMining(connection, false, archiveLogDays);
+                initializeRedoLogsForMining(connection, false, archiveLogHours);
 
                 HistoryRecorder historyRecorder = connectorConfig.getLogMiningHistoryRecorder();
                 try {
@@ -173,7 +172,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                                 // At this point we use a new mining session
                                 endMining(connection);
 
-                                initializeRedoLogsForMining(connection, true, archiveLogDays);
+                                initializeRedoLogsForMining(connection, true, archiveLogHours);
 
                                 abandonOldTransactionsIfExist(connection);
                                 currentRedoLogFiles = getCurrentRedoLogFiles(connection, logMinerMetrics);
@@ -275,13 +274,13 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
         startScn = endScn;
     }
 
-    private void initializeRedoLogsForMining(Connection connection, boolean postEndMiningSession, long archiveLogDays) throws SQLException {
+    private void initializeRedoLogsForMining(Connection connection, boolean postEndMiningSession, Duration archiveLogHours) throws SQLException {
         if (!postEndMiningSession) {
             if (OracleConnectorConfig.LogMiningStrategy.CATALOG_IN_REDO.equals(strategy)) {
                 buildDataDictionary(connection);
             }
             if (!isContinuousMining) {
-                setRedoLogFilesForMining(connection, startScn, archiveLogDays);
+                setRedoLogFilesForMining(connection, startScn, archiveLogHours);
             }
         }
         else {
@@ -289,7 +288,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                 if (OracleConnectorConfig.LogMiningStrategy.CATALOG_IN_REDO.equals(strategy)) {
                     buildDataDictionary(connection);
                 }
-                setRedoLogFilesForMining(connection, startScn, archiveLogDays);
+                setRedoLogFilesForMining(connection, startScn, archiveLogHours);
             }
         }
     }
