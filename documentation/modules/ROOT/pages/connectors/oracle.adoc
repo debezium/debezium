@@ -1156,6 +1156,29 @@ The following shows an example JSON request for registering an instance of the {
 }
 ----
 
+When using a more complex Oracle deployment or needing to use TNS names, then a raw JDBC url can be provided instead of a single hostname-port pair. Here is a similar example but that just passes the raw jdbc url:
+
+[source,json,indent=0]
+----
+{
+    "name": "inventory-connector",
+    "config": {
+        "connector.class" : "io.debezium.connector.oracle.OracleConnector",
+        "tasks.max" : "1",
+        "database.server.name" : "server1",
+        "database.user" : "c##xstrm",
+        "database.password" : "xs",
+        "database.url": "jdbc:oracle:thin:@(DESCRIPTION=(ADDRESS_LIST=(LOAD_BALANCE=OFF)(FAILOVER=ON)(ADDRESS=(PROTOCOL=TCP)(HOST=<oracle ip 1>)(PORT=1521))(ADDRESS=(PROTOCOL=TCP)(HOST=<oracle ip 2>)(PORT=1521)))(CONNECT_DATA=SERVICE_NAME=)(SERVER=DEDICATED)))",
+        "database.dbname" : "ORCLCDB",
+        "database.pdb.name" : "ORCLPDB1",
+        "database.out.server.name" : "dbzxout",
+        "database.history.kafka.bootstrap.servers" : "kafka:9092",
+        "database.history.kafka.topic": "schema-changes.inventory"
+    }
+}
+----
+
+
 [[selecting-the-adapter]]
 == Selecting the adapter
 
@@ -1331,6 +1354,10 @@ The following configuration properties are _required_ unless a default value is 
 |[[oracle-property-database-dbname]]<<oracle-property-database-dbname, `database.dbname`>>
 |
 |Name of the database to connect to. Must be the CDB name when working with the CDB + PDB model.
+
+|[[oracle-property-database-url]]<<oracle-property-database-url, `database.url`>>
+|
+|Raw database jdbc url. This property can be used when more flexibility is needed and can support raw TNS names or RAC connection strings.
 
 |[[oracle-property-database-tablename-case-insensitive]]<<oracle-property-database-tablename-case-insensitive, `database.tablename.case.insensitive`>>
 |`false`
