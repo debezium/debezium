@@ -1102,6 +1102,7 @@ LASTVAL:                             'LASTVAL';
 NEXTVAL:                             'NEXTVAL';
 SETVAL:                              'SETVAL';
 PREVIOUS:                            'PREVIOUS';
+PERSISTENT:                          'PERSISTENT'; // Same as STORED for MySQL
 
 // Operators
 // Operators. Assigns
