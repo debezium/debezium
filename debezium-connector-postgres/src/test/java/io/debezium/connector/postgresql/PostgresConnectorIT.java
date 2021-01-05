@@ -185,10 +185,6 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         Map<String, ConfigValue> results = validatedConfig.stream().collect(Collectors.toMap(ConfigValue::name, o -> o));
 
         assertFalse("Expected error on \"slot.name\" property did not happen!", results.get("slot.name").errorMessages().isEmpty());
-        assertFalse("Expected error on \"database.user\" property did not happen!", results.get("database.user").errorMessages().isEmpty());
-        assertEquals(
-                "Postgres roles LOGIN and REPLICATION are not assigned to user: badboy",
-                results.get("database.user").errorMessages().get(0));
         assertEquals(
                 "Slot name \"" + ReplicationConnection.Builder.DEFAULT_SLOT_NAME
                         + "\" already exists and is active. Choose a unique name or stop the other process occupying the slot.",
