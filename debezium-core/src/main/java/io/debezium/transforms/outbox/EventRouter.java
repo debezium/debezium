@@ -116,8 +116,8 @@ public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R
         Long timestamp = getEventTimestampMs(debeziumEventValue, eventStruct);
         Object eventId = eventStruct.get(fieldEventId);
         Object payload = eventStruct.get(fieldPayload);
-        Object payloadId = eventStruct.get(fieldPayloadId);
         final Field fallbackPayloadIdField = eventValueSchema.field(fieldPayloadId);
+        Object payloadId = fallbackPayloadIdField != null ? eventStruct.get(fieldPayloadId) : null;
 
         final Field eventIdField = eventValueSchema.field(fieldEventId);
         if (eventIdField == null) {
