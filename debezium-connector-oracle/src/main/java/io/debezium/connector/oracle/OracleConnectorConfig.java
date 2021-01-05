@@ -711,7 +711,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     /**
      * @return the duration that archive logs are scanned for log mining
      */
-    public Duration getLogMiningArchiveLogHours() {
+    public Duration getLogMiningArchiveLogRetention() {
         return Duration.ofHours(getConfig().getLong(LOG_MINING_ARCHIVE_LOG_HOURS));
     }
 

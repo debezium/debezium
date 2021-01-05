@@ -127,11 +127,11 @@ public class SqlUtils {
         return String.format("SELECT CURRENT_SCN FROM %s", DATABASE_VIEW);
     }
 
-    static String oldestFirstChangeQuery(Duration archiveLogHours) {
-        if (!archiveLogHours.isNegative() && !archiveLogHours.isZero()) {
+    static String oldestFirstChangeQuery(Duration archiveLogRetention) {
+        if (!archiveLogRetention.isNegative() && !archiveLogRetention.isZero()) {
             return String.format("SELECT MIN(FIRST_CHANGE#) FROM (SELECT MIN(FIRST_CHANGE#) AS FIRST_CHANGE# FROM %s " +
                     "UNION SELECT MIN(FIRST_CHANGE#) AS FIRST_CHANGE# FROM %s " +
-                    "WHERE FIRST_TIME >= SYSDATE - (%d/24))", LOG_VIEW, ARCHIVED_LOG_VIEW, archiveLogHours.toHours());
+                    "WHERE FIRST_TIME >= SYSDATE - (%d/24))", LOG_VIEW, ARCHIVED_LOG_VIEW, archiveLogRetention.toHours());
         }
         return String.format("SELECT MIN(FIRST_CHANGE#) FROM (SELECT MIN(FIRST_CHANGE#) AS FIRST_CHANGE# FROM %s " +
                 "UNION SELECT MIN(FIRST_CHANGE#) AS FIRST_CHANGE# FROM %s)", LOG_VIEW, ARCHIVED_LOG_VIEW);
@@ -148,14 +148,14 @@ public class SqlUtils {
      * Obtain the query to be used to fetch archive logs.
      *
      * @param scn oldest scn to search for
-     * @param archiveLogHours duration archive logs will be mined
+     * @param archiveLogRetention duration archive logs will be mined
      * @return query
      */
-    public static String archiveLogsQuery(Long scn, Duration archiveLogHours) {
-        if (!archiveLogHours.isNegative() && !archiveLogHours.isZero()) {
+    public static String archiveLogsQuery(Long scn, Duration archiveLogRetention) {
+        if (!archiveLogRetention.isNegative() && !archiveLogRetention.isZero()) {
             return String.format("SELECT NAME AS FILE_NAME, NEXT_CHANGE# AS NEXT_CHANGE FROM %s " +
                     " WHERE NAME IS NOT NULL AND FIRST_TIME >= SYSDATE - (%d/24) AND ARCHIVED = 'YES' " +
-                    " AND STATUS = 'A' AND NEXT_CHANGE# > %s ORDER BY 2", ARCHIVED_LOG_VIEW, archiveLogHours.toHours(), scn);
+                    " AND STATUS = 'A' AND NEXT_CHANGE# > %s ORDER BY 2", ARCHIVED_LOG_VIEW, archiveLogRetention.toHours(), scn);
         }
         return String.format("SELECT NAME AS FILE_NAME, NEXT_CHANGE# AS NEXT_CHANGE FROM %s " +
                 "WHERE NAME IS NOT NULL AND ARCHIVED = 'YES' " +

@@ -209,11 +209,9 @@ public class TestHelper {
         Configuration config = adminConfig().build();
         Configuration jdbcConfig = config.subset("database.", true);
 
-        OracleConnection jdbcConnection = new OracleConnection(jdbcConfig, TestHelper.class::getClassLoader);
-        try {
+        try(OracleConnection jdbcConnection = new OracleConnection(jdbcConfig, TestHelper.class::getClassLoader)) {
             jdbcConnection.resetSessionToCdb();
             jdbcConnection.execute("ALTER SYSTEM SWITCH LOGFILE");
-            jdbcConnection.close();
         }
         catch (SQLException e) {
             throw new RuntimeException("Failed to switch logfile", e);
@@ -224,8 +222,7 @@ public class TestHelper {
         Configuration config = adminConfig().build();
         Configuration jdbcConfig = config.subset("database.", true);
 
-        OracleConnection jdbcConnection = new OracleConnection(jdbcConfig, TestHelper.class::getClassLoader);
-        try {
+        try(OracleConnection jdbcConnection = new OracleConnection(jdbcConfig, TestHelper.class::getClassLoader)) {
             jdbcConnection.resetSessionToCdb();
             return jdbcConnection.queryAndMap("SELECT COUNT(GROUP#) FROM V$LOG", rs -> {
                 rs.next();
@@ -234,14 +231,6 @@ public class TestHelper {
         }
         catch (SQLException e) {
             throw new RuntimeException("Failed to get redo log groups", e);
-        }
-        finally {
-            try {
-                jdbcConnection.close();
-            }
-            catch (SQLException e) {
-                // ignored
-            }
         }
     }
 
