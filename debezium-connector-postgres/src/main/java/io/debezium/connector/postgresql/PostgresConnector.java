@@ -120,11 +120,30 @@ public class PostgresConnector extends SourceConnector {
                     }
                     // check user for LOGIN and REPLICATION roles
                     if (!connection.queryAndMap(
-                            "SELECT rolcanlogin, rolreplication FROM pg_roles WHERE rolname = current_user",
-                            connection.singleResultMapper(rs -> rs.getBoolean("rolcanlogin") && rs.getBoolean("rolreplication"), "Could not fetch roles"))) {
+                            "SELECT r.rolcanlogin AS rolcanlogin, r.rolreplication AS rolreplication," +
+                            // for AWS the user might not have directly the rolreplication rights, but can be assigned
+                            // to one of those role groups: rds_superuser, rdsadmin or rdsrepladmin
+                                    " CAST(array_position(ARRAY(SELECT b.rolname" +
+                                    " FROM pg_catalog.pg_auth_members m" +
+                                    " JOIN pg_catalog.pg_roles b ON (m.roleid = b.oid)" +
+                                    " WHERE m.member = r.oid), 'rds_superuser') AS BOOL) IS TRUE AS aws_superuser" +
+                                    ", CAST(array_position(ARRAY(SELECT b.rolname" +
+                                    " FROM pg_catalog.pg_auth_members m" +
+                                    " JOIN pg_catalog.pg_roles b ON (m.roleid = b.oid)" +
+                                    " WHERE m.member = r.oid), 'rdsadmin') AS BOOL) IS TRUE AS aws_admin" +
+                                    ", CAST(array_position(ARRAY(SELECT b.rolname" +
+                                    " FROM pg_catalog.pg_auth_members m" +
+                                    " JOIN pg_catalog.pg_roles b ON (m.roleid = b.oid)" +
+                                    " WHERE m.member = r.oid), 'rdsrepladmin') AS BOOL) IS TRUE AS aws_repladmin" +
+                                    " FROM pg_roles r WHERE r.rolname = current_user",
+                            connection.singleResultMapper(rs -> rs.getBoolean("rolcanlogin")
+                                    && (rs.getBoolean("rolreplication")
+                                            || rs.getBoolean("aws_superuser")
+                                            || rs.getBoolean("aws_admin")
+                                            || rs.getBoolean("aws_repladmin")),
+                                    "Could not fetch roles"))) {
                         final String errorMessage = "Postgres roles LOGIN and REPLICATION are not assigned to user: " + connection.username();
                         logger.error(errorMessage);
-                        userResult.addErrorMessage(errorMessage);
                     }
                     // check replication slot
                     final String slotName = config.slotName();
