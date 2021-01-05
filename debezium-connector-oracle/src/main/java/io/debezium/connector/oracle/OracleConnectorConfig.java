@@ -212,7 +212,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withImportance(Importance.HIGH)
             .withValidation(OracleConnectorConfig::requiredWhenNoHostname)
             .withDescription("Complete JDBC URL as an alternative to specifying hostname, port and database provided "
-                     + "as a way to support alternative connection scenarios.");
+                    + "as a way to support alternative connection scenarios.");
 
     public static final Field LOG_MINING_ARCHIVE_LOG_HOURS = Field.create("log.mining.archive.log.hours")
             .withDisplayName("Log Mining Archive Log Hours")
@@ -335,7 +335,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         Field.group(config, "Connector", CommonConnectorConfig.POLL_INTERVAL_MS, CommonConnectorConfig.MAX_BATCH_SIZE,
                 CommonConnectorConfig.MAX_QUEUE_SIZE, CommonConnectorConfig.SNAPSHOT_DELAY_MS, CommonConnectorConfig.SNAPSHOT_FETCH_SIZE,
                 SNAPSHOT_ENHANCEMENT_TOKEN, LOG_MINING_HISTORY_RECORDER_CLASS, LOG_MINING_HISTORY_RETENTION, RAC_SYSTEM, RAC_NODES,
-                    LOG_MINING_ARCHIVE_LOG_HOURS);
+                LOG_MINING_ARCHIVE_LOG_HOURS);
 
         return config;
     }
