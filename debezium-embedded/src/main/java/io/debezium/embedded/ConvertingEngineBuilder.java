@@ -33,7 +33,7 @@ import io.debezium.engine.format.SerializationFormat;
 import io.debezium.engine.spi.OffsetCommitPolicy;
 
 /**
- * A builder that creates a decorator around {@link EmbbeddedEngine} that is responsible for the conversion
+ * A builder that creates a decorator around {@link EmbeddedEngine} that is responsible for the conversion
  * to the final format.
  *
  * @author Jiri Pechanec
@@ -45,6 +45,9 @@ public class ConvertingEngineBuilder<R> implements Builder<R> {
     private static final String VALUE_CONVERTER_PREFIX = "value.converter";
     private static final String FIELD_CLASS = "class";
     private static final String TOPIC_NAME = "debezium";
+
+    private static final String CONFLUENT_SCHEMA_REGISTRY_URL_CONFIG = "schema.registry.url";
+    private static final String APICURIO_SCHEMA_REGISTRY_URL_CONFIG = "apicurio.registry.url";
 
     private final Builder<SourceRecord> delegate;
     private final Class<? extends SerializationFormat<?>> formatKey;
@@ -187,16 +190,31 @@ public class ConvertingEngineBuilder<R> implements Builder<R> {
         converterConfig = commonConverterConfig.edit().with(converterConfig).build();
 
         if (isFormat(format, Json.class)) {
-            converterConfig = converterConfig.edit().withDefault(FIELD_CLASS, "org.apache.kafka.connect.json.JsonConverter").build();
+            if (converterConfig.hasKey(APICURIO_SCHEMA_REGISTRY_URL_CONFIG)) {
+                converterConfig = converterConfig.edit().withDefault(FIELD_CLASS, "io.apicurio.registry.utils.converter.ExtJsonConverter").build();
+            }
+            else {
+                converterConfig = converterConfig.edit().withDefault(FIELD_CLASS, "org.apache.kafka.connect.json.JsonConverter").build();
+            }
         }
         else if (isFormat(format, CloudEvents.class)) {
             converterConfig = converterConfig.edit().withDefault(FIELD_CLASS, "io.debezium.converters.CloudEventsConverter").build();
         }
         else if (isFormat(format, Avro.class)) {
-            converterConfig = converterConfig.edit().withDefault(FIELD_CLASS, "io.confluent.connect.avro.AvroConverter").build();
+            if (converterConfig.hasKey(APICURIO_SCHEMA_REGISTRY_URL_CONFIG)) {
+                converterConfig = converterConfig.edit().withDefault(FIELD_CLASS, "io.apicurio.registry.utils.converter.AvroConverter").build();
+            }
+            else if (converterConfig.hasKey(CONFLUENT_SCHEMA_REGISTRY_URL_CONFIG)) {
+                converterConfig = converterConfig.edit().withDefault(FIELD_CLASS, "io.confluent.connect.avro.AvroConverter").build();
+            }
         }
         else if (isFormat(format, Protobuf.class)) {
-            converterConfig = converterConfig.edit().withDefault(FIELD_CLASS, "io.confluent.connect.protobuf.ProtobufConverter").build();
+            if (converterConfig.hasKey(APICURIO_SCHEMA_REGISTRY_URL_CONFIG)) {
+                converterConfig = converterConfig.edit().withDefault(FIELD_CLASS, "io.apicurio.registry.utils.serde.ProtobufSerde").build();
+            }
+            else if (converterConfig.hasKey(CONFLUENT_SCHEMA_REGISTRY_URL_CONFIG)) {
+                converterConfig = converterConfig.edit().withDefault(FIELD_CLASS, "io.confluent.connect.protobuf.ProtobufConverter").build();
+            }
         }
         else {
             throw new DebeziumException("Converter '" + format.getSimpleName() + "' is not supported");
