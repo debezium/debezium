@@ -10,6 +10,7 @@ import static org.mockito.Mockito.mock;
 
 import java.io.IOException;
 import java.sql.SQLRecoverableException;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
@@ -65,16 +66,16 @@ public class SqlUtilsTest {
         result = SqlUtils.startLogMinerStatement(10L, 20L, OracleConnectorConfig.LogMiningStrategy.ONLINE_CATALOG, true);
         expected = "BEGIN sys.dbms_logmnr.start_logmnr(startScn => '10', endScn => '20', " +
                 "OPTIONS => DBMS_LOGMNR.DICT_FROM_ONLINE_CATALOG  + DBMS_LOGMNR.CONTINUOUS_MINE  + DBMS_LOGMNR.NO_ROWID_IN_STMT);END;";
-        assertThat(expected.equals(result)).isTrue();
+        assertThat(result).isEqualTo(expected);
 
         result = SqlUtils.startLogMinerStatement(10L, 20L, OracleConnectorConfig.LogMiningStrategy.CATALOG_IN_REDO, false);
         expected = "BEGIN sys.dbms_logmnr.start_logmnr(startScn => '10', endScn => '20', " +
                 "OPTIONS => DBMS_LOGMNR.DICT_FROM_REDO_LOGS + DBMS_LOGMNR.DDL_DICT_TRACKING  + DBMS_LOGMNR.NO_ROWID_IN_STMT);END;";
-        assertThat(expected.equals(result)).isTrue();
+        assertThat(result).isEqualTo(expected);
 
         result = SqlUtils.truncateTableStatement("table_name");
         expected = "TRUNCATE TABLE table_name";
-        assertThat(expected.equals(result)).isTrue();
+        assertThat(result).isEqualTo(expected);
 
         result = SqlUtils.diffInDaysQuery(123L);
         expected = "select sysdate - CAST(scn_to_timestamp(123) as date) from dual";
@@ -84,7 +85,7 @@ public class SqlUtilsTest {
 
         result = SqlUtils.bulkHistoryInsertStmt("table_name");
         expected = "INSERT  /*+ APPEND */ INTO table_name SELECT * FROM LOG_MINING_TEMP";
-        assertThat(expected.equals(result)).isTrue();
+        assertThat(result).isEqualTo(expected);
 
         result = SqlUtils.redoLogStatusQuery();
         expected = "SELECT F.MEMBER, R.STATUS FROM V$LOGFILE F, V$LOG R WHERE F.GROUP# = R.GROUP# ORDER BY 2";
@@ -93,34 +94,34 @@ public class SqlUtilsTest {
         result = SqlUtils.switchHistoryQuery();
         expected = "SELECT 'TOTAL', COUNT(1) FROM V$ARCHIVED_LOG WHERE FIRST_TIME > TRUNC(SYSDATE)" +
                 " AND DEST_ID IN (SELECT DEST_ID FROM V$ARCHIVE_DEST_STATUS WHERE STATUS='VALID' AND TYPE='LOCAL')";
-        assertThat(expected.equals(result)).isTrue();
+        assertThat(result).isEqualTo(expected);
 
         result = SqlUtils.currentRedoNameQuery();
         expected = "SELECT F.MEMBER FROM V$LOG LOG, V$LOGFILE F  WHERE LOG.GROUP#=F.GROUP# AND LOG.STATUS='CURRENT'";
-        assertThat(expected.equals(result)).isTrue();
+        assertThat(result).isEqualTo(expected);
 
         result = SqlUtils.supplementalLoggingCheckQuery();
         expected = "SELECT 'KEY', SUPPLEMENTAL_LOG_DATA_ALL FROM V$DATABASE";
-        assertThat(expected.equals(result)).isTrue();
+        assertThat(result).isEqualTo(expected);
 
         result = SqlUtils.currentScnQuery();
         expected = "SELECT CURRENT_SCN FROM V$DATABASE";
-        assertThat(expected.equals(result)).isTrue();
+        assertThat(result).isEqualTo(expected);
 
-        result = SqlUtils.oldestFirstChangeQuery(0L);
-        expected = "SELECT MIN(FIRST_CHANGE#) FROM V$LOG";
-        assertThat(expected.equals(result)).isTrue();
+        result = SqlUtils.oldestFirstChangeQuery(Duration.ofHours(0L));
+        expected = "SELECT MIN(FIRST_CHANGE#) FROM (SELECT MIN(FIRST_CHANGE#) AS FIRST_CHANGE# FROM V$LOG UNION SELECT MIN(FIRST_CHANGE#) AS FIRST_CHANGE# FROM V$ARCHIVED_LOG)";
+        assertThat(result).isEqualTo(expected);
 
         result = SqlUtils.allOnlineLogsQuery();
         expected = "SELECT MIN(F.MEMBER) AS FILE_NAME, L.NEXT_CHANGE# AS NEXT_CHANGE, F.GROUP# " +
                 " FROM V$LOG L, V$LOGFILE F " +
                 " WHERE F.GROUP# = L.GROUP# AND L.NEXT_CHANGE# > 0 " +
                 " GROUP BY F.GROUP#, L.NEXT_CHANGE# ORDER BY 3";
-        assertThat(expected.equals(result)).isTrue();
+        assertThat(result).isEqualTo(expected);
 
         result = SqlUtils.tableExistsQuery("table_name");
         expected = "SELECT '1' AS ONE FROM USER_TABLES WHERE TABLE_NAME = 'table_name'";
-        assertThat(expected.equals(result)).isTrue();
+        assertThat(result).isEqualTo(expected);
 
         result = SqlUtils.logMiningHistoryDdl("table_name");
         expected = "create  TABLE table_name(" +
@@ -134,31 +135,31 @@ public class SqlUtilsTest {
                 "csf NUMBER(19,0), " +
                 "redo_sql VARCHAR2(4000 CHAR)" +
                 ") nologging";
-        assertThat(expected.equals(result)).isTrue();
+        assertThat(result).isEqualTo(expected);
 
-        result = SqlUtils.archiveLogsQuery(10L, 0L);
+        result = SqlUtils.archiveLogsQuery(10L, Duration.ofHours(0L));
         expected = "SELECT NAME AS FILE_NAME, NEXT_CHANGE# AS NEXT_CHANGE FROM V$ARCHIVED_LOG " +
-                " WHERE NAME IS NOT NULL AND ARCHIVED = 'YES' " +
-                " AND STATUS = 'A' AND NEXT_CHANGE# > 10 ORDER BY 2";
-        assertThat(expected.equals(result)).isTrue();
+                "WHERE NAME IS NOT NULL AND ARCHIVED = 'YES' " +
+                "AND STATUS = 'A' AND NEXT_CHANGE# > 10 ORDER BY 2";
+        assertThat(result).isEqualTo(expected);
 
-        result = SqlUtils.archiveLogsQuery(10L, 1L);
+        result = SqlUtils.archiveLogsQuery(10L, Duration.ofHours(1L));
         expected = "SELECT NAME AS FILE_NAME, NEXT_CHANGE# AS NEXT_CHANGE FROM V$ARCHIVED_LOG " +
-                " WHERE NAME IS NOT NULL AND FIRST_TIME >= SYSDATE - 1 AND ARCHIVED = 'YES' " +
+                " WHERE NAME IS NOT NULL AND FIRST_TIME >= SYSDATE - (1/24) AND ARCHIVED = 'YES' " +
                 " AND STATUS = 'A' AND NEXT_CHANGE# > 10 ORDER BY 2";
-        assertThat(expected.equals(result)).isTrue();
+        assertThat(result).isEqualTo(expected);
 
         result = SqlUtils.deleteLogFileStatement("file_name");
         expected = "BEGIN SYS.DBMS_LOGMNR.REMOVE_LOGFILE(LOGFILENAME => 'file_name');END;";
-        assertThat(expected.equals(result)).isTrue();
+        assertThat(result).isEqualTo(expected);
 
         result = SqlUtils.getHistoryTableNamesQuery();
         expected = "SELECT TABLE_NAME, '1' FROM USER_TABLES WHERE TABLE_NAME LIKE 'LM_HIST_%'";
-        assertThat(expected.equals(result)).isTrue();
+        assertThat(result).isEqualTo(expected);
 
         result = SqlUtils.dropHistoryTableStatement("table_name");
         expected = "DROP TABLE TABLE_NAME PURGE";
-        assertThat(expected.equals(result)).isTrue();
+        assertThat(result).isEqualTo(expected);
 
     }
 

@@ -209,7 +209,7 @@ public class TestHelper {
         Configuration config = adminConfig().build();
         Configuration jdbcConfig = config.subset("database.", true);
 
-        try(OracleConnection jdbcConnection = new OracleConnection(jdbcConfig, TestHelper.class::getClassLoader)) {
+        try (OracleConnection jdbcConnection = new OracleConnection(jdbcConfig, TestHelper.class::getClassLoader)) {
             jdbcConnection.resetSessionToCdb();
             jdbcConnection.execute("ALTER SYSTEM SWITCH LOGFILE");
         }
@@ -222,7 +222,7 @@ public class TestHelper {
         Configuration config = adminConfig().build();
         Configuration jdbcConfig = config.subset("database.", true);
 
-        try(OracleConnection jdbcConnection = new OracleConnection(jdbcConfig, TestHelper.class::getClassLoader)) {
+        try (OracleConnection jdbcConnection = new OracleConnection(jdbcConfig, TestHelper.class::getClassLoader)) {
             jdbcConnection.resetSessionToCdb();
             return jdbcConnection.queryAndMap("SELECT COUNT(GROUP#) FROM V$LOG", rs -> {
                 rs.next();
