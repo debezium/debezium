@@ -1103,6 +1103,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
+    @FixFor("DBZ-2784")
     public void shouldConvertDatesSpecifiedAsStringInSQL() throws Exception {
         try {
             TestHelper.dropTable(connection, "orders");
@@ -1144,7 +1145,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
             final SourceRecords streamRecords = consumeRecordsByTopic(1);
             final List<SourceRecord> orders = streamRecords.recordsForTopic("server1.DEBEZIUM.ORDERS");
-            assertThat(orders.size()).isEqualTo(1);
+            assertThat(orders).hasSize(1);
 
             final Struct after = ((Struct) orders.get(0).value()).getStruct(AFTER);
             assertThat(after.get("ID")).isEqualTo(10);

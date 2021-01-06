@@ -59,6 +59,7 @@ public class OracleChangeRecordValueConverter extends JdbcValueConverters {
 
     private static final Pattern INTERVAL_DAY_SECOND_PATTERN = Pattern.compile("([+\\-])?(\\d+) (\\d+):(\\d+):(\\d+).(\\d+)");
     private static final Logger LOGGER = LoggerFactory.getLogger(OracleChangeRecordValueConverter.class);
+    private static final ZoneId GMT_ZONE_ID = ZoneId.of("GMT");
 
     private static final DateTimeFormatter DATE_FORMATTER = new DateTimeFormatterBuilder()
             .parseCaseInsensitive()
@@ -90,6 +91,9 @@ public class OracleChangeRecordValueConverter extends JdbcValueConverters {
             .optionalEnd()
             .appendPattern(" XXX")
             .toFormatter();
+
+    private static final Pattern TO_TIMESTAMP = Pattern.compile("TO_TIMESTAMP\\('(.*)'\\)", Pattern.CASE_INSENSITIVE);
+    private static final Pattern TO_DATE = Pattern.compile("TO_DATE\\('(.*)',[ ]*'(.*)'\\)", Pattern.CASE_INSENSITIVE);
 
     private final JdbcConnection connection;
 
@@ -218,14 +222,11 @@ public class OracleChangeRecordValueConverter extends JdbcValueConverters {
      * @return the converted value;
      */
     private Object convertToLocalDateTime(Column column, Field fieldDefn, Object value) {
-
-        // todo make it better
-        String dateText;
-        LocalDateTime dateTime;
         if (value instanceof String) {
-            String valueString = (String) value;
-            if (valueString.toLowerCase().startsWith("to_timestamp")) {
-                dateText = valueString.substring("to_timestamp".length() + 2, valueString.length() - 2);
+            LocalDateTime dateTime;
+            final Matcher toTimestampMatcher = TO_TIMESTAMP.matcher((String) value);
+            if (toTimestampMatcher.matches()) {
+                String dateText = toTimestampMatcher.group(1);
                 if (dateText.indexOf(" AM") > 0 || dateText.indexOf(" PM") > 0) {
                     // todo remove this formatter after ensuring NLS formats are set properly
                     dateTime = LocalDateTime.from(TIMESTAMP_AM_PM_SHORT_FORMATTER.parse(dateText.trim()));
@@ -235,11 +236,9 @@ public class OracleChangeRecordValueConverter extends JdbcValueConverters {
                 }
                 return getDateTimeWithPrecision(column, dateTime);
             }
-            else if (valueString.toLowerCase().startsWith("to_date")) {
-                dateText = valueString.substring("to_date".length() + 1, valueString.length() - 1);
-                String[] parts = dateText.split(",");
-                dateText = parts[0].trim().substring(1, parts[0].length() - 1);
-                dateTime = LocalDateTime.from(TIMESTAMP_FORMATTER.parse(dateText.trim()));
+            final Matcher toDateMatcher = TO_DATE.matcher((String) value);
+            if (toDateMatcher.matches()) {
+                dateTime = LocalDateTime.from(TIMESTAMP_FORMATTER.parse(toDateMatcher.group(1)));
                 return getDateTimeWithPrecision(column, dateTime);
             }
         }
@@ -249,14 +248,14 @@ public class OracleChangeRecordValueConverter extends JdbcValueConverters {
     private Object getDateTimeWithPrecision(Column column, LocalDateTime dateTime) {
         if (adaptiveTimePrecisionMode || adaptiveTimeMicrosecondsPrecisionMode) {
             if (getTimePrecision(column) <= 3) {
-                return dateTime.atZone(ZoneId.of("GMT")).toInstant().toEpochMilli();
+                return dateTime.atZone(GMT_ZONE_ID).toInstant().toEpochMilli();
             }
             if (getTimePrecision(column) <= 6) {
-                return dateTime.atZone(ZoneId.of("GMT")).toInstant().toEpochMilli() * 1_000;
+                return dateTime.atZone(GMT_ZONE_ID).toInstant().toEpochMilli() * 1_000;
             }
-            return dateTime.atZone(ZoneId.of("GMT")).toInstant().toEpochMilli() * 1_000_000;
+            return dateTime.atZone(GMT_ZONE_ID).toInstant().toEpochMilli() * 1_000_000;
         }
-        return dateTime.atZone(ZoneId.of("GMT")).toInstant().toEpochMilli();
+        return dateTime.atZone(GMT_ZONE_ID).toInstant().toEpochMilli();
     }
 
     private ValueConverter getNumericConverter(Column column, Field fieldDefn) {
