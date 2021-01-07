@@ -2,6 +2,47 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 1.4.0.Final
+Januaryr 7th 2021 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12352766)
+
+### New features since 1.4.0.CR1
+
+* Improve error reporting from DDL parser [DBZ-2366](https://issues.jboss.org/browse/DBZ-2366)
+* Support TNS Names and full RAC connection strings [DBZ-2859](https://issues.jboss.org/browse/DBZ-2859)
+* Add more comprehensible logs to FIELD event [DBZ-2873](https://issues.jboss.org/browse/DBZ-2873)
+
+
+### Breaking changes since 1.4.0.CR1
+
+None
+
+
+### Fixes since 1.4.0.CR1
+
+* AWS RDS has different role names which make connector validation fail [DBZ-2800](https://issues.jboss.org/browse/DBZ-2800)
+* Archive Log mining does not work with Logminer [DBZ-2825](https://issues.jboss.org/browse/DBZ-2825)
+* MySQL parser error for comments starting with tab [DBZ-2840](https://issues.jboss.org/browse/DBZ-2840)
+* Connector fails when using '$' sign in column name. [DBZ-2849](https://issues.jboss.org/browse/DBZ-2849)
+* Connection adapter not passed to Surefire tests [DBZ-2856](https://issues.jboss.org/browse/DBZ-2856)
+* Unsupported MariaDB syntax for generated columns [DBZ-2882](https://issues.jboss.org/browse/DBZ-2882)
+* SLF4J API should not be included in Oracle distirbution [DBZ-2890](https://issues.jboss.org/browse/DBZ-2890)
+* Vitess distro contains unaligned deps [DBZ-2892](https://issues.jboss.org/browse/DBZ-2892)
+* Changing base packages does not always trigger full builds [DBZ-2896](https://issues.jboss.org/browse/DBZ-2896)
+* LogMiner causes DataException when DATE field is specified as NOT NULL [DBZ-2784](https://issues.jboss.org/browse/DBZ-2784)
+
+
+### Other changes since 1.4.0.CR1
+
+* Remove LegacyDdlParser and related code [DBZ-2167](https://issues.jboss.org/browse/DBZ-2167)
+* Add MongoDB connector interface [DBZ-2808](https://issues.jboss.org/browse/DBZ-2808)
+* `sanitize.field.names` support for Vitess Connector [DBZ-2851](https://issues.jboss.org/browse/DBZ-2851)
+* Explicitly declare to Quarkus that ORM XML mapping is required for the outbox extension [DBZ-2860](https://issues.jboss.org/browse/DBZ-2860)
+* Upgrade MySQL JDBC driver to 8.0.21 [DBZ-2887](https://issues.jboss.org/browse/DBZ-2887)
+* Upgrade Guava library to 30.0 [DBZ-2888](https://issues.jboss.org/browse/DBZ-2888)
+* Avoid exception when payload id field not present [DBZ-2889](https://issues.jboss.org/browse/DBZ-2889)
+
+
+
 ## 1.4.0.CR1
 December 16th 2020 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12352696)
 
