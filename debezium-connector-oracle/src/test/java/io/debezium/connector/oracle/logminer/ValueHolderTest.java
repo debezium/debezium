@@ -71,7 +71,7 @@ public class ValueHolderTest {
         dmlEntryExpected.setTransactionId("transaction_id");
         dmlEntryExpected.setObjectName(TABLE_NAME);
         dmlEntryExpected.setObjectOwner(SCHEMA_NAME);
-        dmlEntryExpected.setScn(BigDecimal.ONE);
+        dmlEntryExpected.setScn(Scn.ONE);
         dmlEntryExpected.setSourceTime(new Timestamp(1000));
 
         String createStatement = IoUtil.read(IoUtil.getResourceAsStream("ddl/create_small_table.sql", null, getClass(), null, null));
@@ -82,7 +82,7 @@ public class ValueHolderTest {
 
         assertThat(dmlEntryParsed.equals(dmlEntryExpected)).isTrue();
         assertThat(dmlEntryExpected.getCommandType() == Envelope.Operation.CREATE).isTrue();
-        assertThat(dmlEntryExpected.getScn().equals(BigDecimal.ONE)).isTrue();
+        assertThat(dmlEntryExpected.getScn().equals(Scn.ONE)).isTrue();
         assertThat(dmlEntryExpected.getSourceTime().equals(new Timestamp(1000))).isTrue();
         assertThat(dmlEntryExpected.getTransactionId().equals("transaction_id")).isTrue();
         assertThat(dmlEntryExpected.getObjectOwner().equals(SCHEMA_NAME)).isTrue();

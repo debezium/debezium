@@ -5,7 +5,6 @@
  */
 package io.debezium.connector.oracle.logminer;
 
-import java.math.BigDecimal;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
@@ -113,13 +112,13 @@ public class RowMapper {
         }
     }
 
-    public static BigDecimal getScn(TransactionalBufferMetrics metrics, ResultSet rs) {
+    public static Scn getScn(TransactionalBufferMetrics metrics, ResultSet rs) {
         try {
-            return rs.getBigDecimal(SCN);
+            return new Scn(rs.getBigDecimal(SCN));
         }
         catch (SQLException e) {
             logError(metrics, e, "SCN");
-            return new BigDecimal(-1);
+            return Scn.INVALID;
         }
     }
 
@@ -150,7 +149,7 @@ public class RowMapper {
      * @return the redo SQL
      */
     public static String getSqlRedo(TransactionalBufferMetrics metrics, ResultSet rs, boolean isDml,
-                                    HistoryRecorder historyRecorder, BigDecimal scn, String tableName,
+                                    HistoryRecorder historyRecorder, Scn scn, String tableName,
                                     String segOwner, int operationCode, Timestamp changeTime, String txId) {
         int lobLimitCounter = 9; // todo : decide on approach ( XStream chunk option) and Lob limit
         StringBuilder result = new StringBuilder(4000);

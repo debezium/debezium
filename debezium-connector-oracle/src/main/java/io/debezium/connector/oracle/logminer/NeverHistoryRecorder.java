@@ -5,7 +5,6 @@
  */
 package io.debezium.connector.oracle.logminer;
 
-import java.math.BigDecimal;
 import java.sql.Timestamp;
 
 import io.debezium.jdbc.JdbcConfiguration;
@@ -21,7 +20,7 @@ public class NeverHistoryRecorder implements HistoryRecorder {
     }
 
     @Override
-    public void record(BigDecimal scn, String tableName, String segOwner, int operationCode, Timestamp changeTime,
+    public void record(Scn scn, String tableName, String segOwner, int operationCode, Timestamp changeTime,
                        String transactionId, int csf, String redoSql) {
     }
 

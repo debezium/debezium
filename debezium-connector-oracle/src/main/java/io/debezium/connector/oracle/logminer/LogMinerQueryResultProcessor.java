@@ -5,7 +5,6 @@
  */
 package io.debezium.connector.oracle.logminer;
 
-import java.math.BigDecimal;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
@@ -91,7 +90,7 @@ class LogMinerQueryResultProcessor {
                 return 0;
             }
 
-            BigDecimal scn = RowMapper.getScn(transactionalBufferMetrics, resultSet);
+            Scn scn = RowMapper.getScn(transactionalBufferMetrics, resultSet);
             String tableName = RowMapper.getTableName(transactionalBufferMetrics, resultSet);
             String segOwner = RowMapper.getSegOwner(transactionalBufferMetrics, resultSet);
             int operationCode = RowMapper.getOperationCode(transactionalBufferMetrics, resultSet);

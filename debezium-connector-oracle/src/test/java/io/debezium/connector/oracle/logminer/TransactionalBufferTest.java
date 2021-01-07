@@ -13,7 +13,6 @@ import static junit.framework.TestCase.assertTrue;
 import static org.fest.assertions.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
-import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
@@ -54,9 +53,9 @@ public class TransactionalBufferTest {
     private static final String SQL_ONE = "update table";
     private static final String SQL_TWO = "insert into table";
     private static final String MESSAGE = "OK";
-    private static final BigDecimal SCN = BigDecimal.ONE;
-    private static final BigDecimal OTHER_SCN = BigDecimal.TEN;
-    private static final BigDecimal LARGEST_SCN = BigDecimal.valueOf(100L);
+    private static final Scn SCN = Scn.ONE;
+    private static final Scn OTHER_SCN = Scn.fromLong(10L);
+    private static final Scn LARGEST_SCN = Scn.fromLong(100L);
     private static final Timestamp TIMESTAMP = new Timestamp(System.currentTimeMillis());
     private static final Configuration config = new Configuration() {
         @Override
@@ -113,7 +112,7 @@ public class TransactionalBufferTest {
     public void testIsNotEmptyWhenTransactionIsCommitting() {
         transactionalBuffer.registerCommitCallback(TRANSACTION_ID, SCN, Instant.now(), (timestamp, smallestScn, commitScn, counter) -> Thread.sleep(1000));
         offsetContext = new OracleOffsetContext(connectorConfig, SCN.longValue(), SCN.longValue(), (LcrPosition) null, false, true, new TransactionContext());
-        transactionalBuffer.commit(TRANSACTION_ID, SCN.add(BigDecimal.ONE), offsetContext, TIMESTAMP, () -> true, MESSAGE);
+        transactionalBuffer.commit(TRANSACTION_ID, SCN.add(Scn.ONE), offsetContext, TIMESTAMP, () -> true, MESSAGE);
         assertThat(transactionalBuffer.isEmpty()).isEqualTo(false);
     }
 
@@ -122,7 +121,7 @@ public class TransactionalBufferTest {
         CountDownLatch commitLatch = new CountDownLatch(1);
         transactionalBuffer.registerCommitCallback(TRANSACTION_ID, SCN, Instant.now(), (timestamp, smallestScn, commitScn, counter) -> commitLatch.countDown());
         offsetContext = new OracleOffsetContext(connectorConfig, SCN.longValue(), SCN.longValue(), (LcrPosition) null, false, true, new TransactionContext());
-        transactionalBuffer.commit(TRANSACTION_ID, SCN.add(BigDecimal.ONE), offsetContext, TIMESTAMP, () -> true, MESSAGE);
+        transactionalBuffer.commit(TRANSACTION_ID, SCN.add(Scn.ONE), offsetContext, TIMESTAMP, () -> true, MESSAGE);
         commitLatch.await();
         Thread.sleep(1000);
         assertThat(transactionalBuffer.isEmpty()).isEqualTo(true);
@@ -166,14 +165,14 @@ public class TransactionalBufferTest {
     @Test
     public void testCalculateScnWhenTransactionIsCommitted() throws InterruptedException {
         CountDownLatch commitLatch = new CountDownLatch(1);
-        AtomicReference<BigDecimal> smallestScnContainer = new AtomicReference<>();
+        AtomicReference<Scn> smallestScnContainer = new AtomicReference<>();
         transactionalBuffer.registerCommitCallback(TRANSACTION_ID, SCN, Instant.now(), (timestamp, smallestScn, commitScn, counter) -> {
             smallestScnContainer.set(smallestScn);
             commitLatch.countDown();
         });
         assertThat(transactionalBuffer.getLargestScn()).isEqualTo(SCN); // before commit
         offsetContext = new OracleOffsetContext(connectorConfig, SCN.longValue(), SCN.longValue(), null, false, true, new TransactionContext());
-        transactionalBuffer.commit(TRANSACTION_ID, SCN.add(BigDecimal.ONE), offsetContext, TIMESTAMP, () -> true, MESSAGE);
+        transactionalBuffer.commit(TRANSACTION_ID, SCN.add(Scn.ONE), offsetContext, TIMESTAMP, () -> true, MESSAGE);
         commitLatch.await();
         assertThat(transactionalBuffer.getLargestScn()).isEqualTo(SCN); // after commit
 
@@ -185,7 +184,7 @@ public class TransactionalBufferTest {
     @Test
     public void testCalculateScnWhenFirstTransactionIsCommitted() throws InterruptedException {
         CountDownLatch commitLatch = new CountDownLatch(1);
-        AtomicReference<BigDecimal> smallestScnContainer = new AtomicReference<>();
+        AtomicReference<Scn> smallestScnContainer = new AtomicReference<>();
         transactionalBuffer.registerCommitCallback(TRANSACTION_ID, SCN, Instant.now(), (timestamp, smallestScn, commitScn, counter) -> {
             smallestScnContainer.set(smallestScn);
             commitLatch.countDown();
@@ -194,7 +193,7 @@ public class TransactionalBufferTest {
         });
         assertThat(transactionalBuffer.getLargestScn()).isEqualTo(OTHER_SCN); // before commit
         offsetContext = new OracleOffsetContext(connectorConfig, SCN.longValue(), SCN.longValue(), null, false, true, new TransactionContext());
-        transactionalBuffer.commit(TRANSACTION_ID, SCN.add(BigDecimal.ONE), offsetContext, TIMESTAMP, () -> true, MESSAGE);
+        transactionalBuffer.commit(TRANSACTION_ID, SCN.add(Scn.ONE), offsetContext, TIMESTAMP, () -> true, MESSAGE);
         commitLatch.await();
         // after commit, it stays the same because OTHER_TRANSACTION_ID is not committed yet
         assertThat(transactionalBuffer.getLargestScn()).isEqualTo(OTHER_SCN);
@@ -208,14 +207,14 @@ public class TransactionalBufferTest {
         transactionalBuffer.registerCommitCallback(TRANSACTION_ID, SCN, Instant.now(), (timestamp, smallestScn, commitScn, counter) -> {
         });
         CountDownLatch commitLatch = new CountDownLatch(1);
-        AtomicReference<BigDecimal> smallestScnContainer = new AtomicReference<>();
+        AtomicReference<Scn> smallestScnContainer = new AtomicReference<>();
         transactionalBuffer.registerCommitCallback(OTHER_TRANSACTION_ID, OTHER_SCN, Instant.now(), (timestamp, smallestScn, commitScn, counter) -> {
             smallestScnContainer.set(smallestScn);
             commitLatch.countDown();
         });
         assertThat(transactionalBuffer.getLargestScn()).isEqualTo(OTHER_SCN); // before commit
         offsetContext = new OracleOffsetContext(connectorConfig, OTHER_SCN.longValue(), OTHER_SCN.longValue(), null, false, true, new TransactionContext());
-        transactionalBuffer.commit(OTHER_TRANSACTION_ID, OTHER_SCN.add(BigDecimal.ONE), offsetContext, TIMESTAMP, () -> true, MESSAGE);
+        transactionalBuffer.commit(OTHER_TRANSACTION_ID, OTHER_SCN.add(Scn.ONE), offsetContext, TIMESTAMP, () -> true, MESSAGE);
         commitLatch.await();
         assertThat(smallestScnContainer.get()).isEqualTo(SCN);
         // after committing OTHER_TRANSACTION_ID
@@ -235,7 +234,7 @@ public class TransactionalBufferTest {
         assertThat(transactionalBuffer.getLargestScn()).isEqualTo(OTHER_SCN); // after commit
 
         transactionalBuffer.resetLargestScn(null);
-        assertThat(transactionalBuffer.getLargestScn()).isEqualTo(BigDecimal.ZERO);
+        assertThat(transactionalBuffer.getLargestScn()).isEqualTo(Scn.ZERO);
         transactionalBuffer.resetLargestScn(OTHER_SCN.longValue());
         assertThat(transactionalBuffer.getLargestScn()).isEqualTo(OTHER_SCN);
     }
@@ -246,7 +245,7 @@ public class TransactionalBufferTest {
         });
         transactionalBuffer.abandonLongTransactions(SCN.longValue());
         assertThat(transactionalBuffer.isEmpty()).isEqualTo(true);
-        assertThat(transactionalBuffer.getLargestScn()).isEqualTo(BigDecimal.ZERO);
+        assertThat(transactionalBuffer.getLargestScn()).isEqualTo(Scn.ZERO);
     }
 
     @Test
@@ -309,6 +308,6 @@ public class TransactionalBufferTest {
     private void commitTransaction(TransactionalBuffer.CommitCallback commitCallback) {
         transactionalBuffer.registerCommitCallback(TRANSACTION_ID, SCN, Instant.now(), commitCallback);
         offsetContext = new OracleOffsetContext(connectorConfig, SCN.longValue(), SCN.longValue(), null, false, true, new TransactionContext());
-        transactionalBuffer.commit(TRANSACTION_ID, SCN.add(BigDecimal.ONE), offsetContext, TIMESTAMP, () -> true, MESSAGE);
+        transactionalBuffer.commit(TRANSACTION_ID, SCN.add(Scn.ONE), offsetContext, TIMESTAMP, () -> true, MESSAGE);
     }
 }

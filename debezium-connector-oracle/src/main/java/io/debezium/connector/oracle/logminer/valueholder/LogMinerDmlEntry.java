@@ -5,10 +5,10 @@
  */
 package io.debezium.connector.oracle.logminer.valueholder;
 
-import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.util.List;
 
+import io.debezium.connector.oracle.logminer.Scn;
 import io.debezium.data.Envelope;
 
 public interface LogMinerDmlEntry {
@@ -38,7 +38,7 @@ public interface LogMinerDmlEntry {
      * The actual SCN will be assigned after commit
      * @return it's value
      */
-    BigDecimal getScn();
+    Scn getScn();
 
     /**
      * @return transaction ID
@@ -64,7 +64,7 @@ public interface LogMinerDmlEntry {
      * sets scn obtained from a Log Miner entry
      * @param scn it's value
      */
-    void setScn(BigDecimal scn);
+    void setScn(Scn scn);
 
     /**
      * Sets table name

@@ -22,7 +22,6 @@ import static io.debezium.connector.oracle.logminer.LogMinerHelper.setNlsSession
 import static io.debezium.connector.oracle.logminer.LogMinerHelper.setRedoLogFilesForMining;
 import static io.debezium.connector.oracle.logminer.LogMinerHelper.startLogMining;
 
-import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -267,7 +266,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
     // TODO computing the largest scn in the buffer is a left-over from previous incarnations, remove it.
     // TODO We don't need to keep largestScn in the buffer at all. clean it
     private void updateStartScn() {
-        long nextStartScn = transactionalBuffer.getLargestScn().equals(BigDecimal.ZERO) ? endScn : transactionalBuffer.getLargestScn().longValue();
+        long nextStartScn = transactionalBuffer.getLargestScn().equals(Scn.ZERO) ? endScn : transactionalBuffer.getLargestScn().longValue();
         if (nextStartScn <= startScn) {
             // When system is idle, largest SCN may stay unchanged, move it forward then
             transactionalBuffer.resetLargestScn(endScn);

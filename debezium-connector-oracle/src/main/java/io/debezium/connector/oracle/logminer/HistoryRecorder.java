@@ -5,7 +5,6 @@
  */
 package io.debezium.connector.oracle.logminer;
 
-import java.math.BigDecimal;
 import java.sql.Timestamp;
 
 import io.debezium.common.annotation.Incubating;
@@ -37,7 +36,7 @@ public interface HistoryRecorder extends AutoCloseable {
      * @param csf the continuation sequence flag
      * @param redoSql the redo SQL that performed the operation
      */
-    void record(BigDecimal scn, String tableName, String segOwner, int operationCode, Timestamp changeTime,
+    void record(Scn scn, String tableName, String segOwner, int operationCode, Timestamp changeTime,
                 String transactionId, int csf, String redoSql);
 
     /**

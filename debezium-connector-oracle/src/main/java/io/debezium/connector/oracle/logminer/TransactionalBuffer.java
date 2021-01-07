@@ -5,7 +5,6 @@
  */
 package io.debezium.connector.oracle.logminer;
 
-import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
@@ -57,8 +56,8 @@ public final class TransactionalBuffer {
 
     // It holds the latest captured SCN.
     // This number tracks starting point for the next mining cycle.
-    private BigDecimal largestScn;
-    private BigDecimal lastCommittedScn;
+    private Scn largestScn;
+    private Scn lastCommittedScn;
 
     /**
      * Constructor to create a new instance.
@@ -80,8 +79,8 @@ public final class TransactionalBuffer {
         this.taskCounter = new AtomicInteger();
         this.errorHandler = errorHandler;
         this.metrics = metrics;
-        largestScn = BigDecimal.ZERO;
-        lastCommittedScn = BigDecimal.ZERO;
+        this.largestScn = Scn.ZERO;
+        this.lastCommittedScn = Scn.ZERO;
         this.abandonedTransactionIds = new HashSet<>();
         this.rolledBackTransactionIds = new HashSet<>();
     }
@@ -89,7 +88,7 @@ public final class TransactionalBuffer {
     /**
      * @return largest last SCN in the buffer among all transactions
      */
-    BigDecimal getLargestScn() {
+    Scn getLargestScn() {
         return largestScn;
     }
 
@@ -105,10 +104,10 @@ public final class TransactionalBuffer {
      */
     void resetLargestScn(Long value) {
         if (value != null) {
-            largestScn = new BigDecimal(value);
+            largestScn = Scn.fromLong(value);
         }
         else {
-            largestScn = BigDecimal.ZERO;
+            largestScn = Scn.ZERO;
         }
     }
 
@@ -120,7 +119,7 @@ public final class TransactionalBuffer {
      * @param changeTime    time of DML parsing completion
      * @param callback      callback to execute when transaction commits
      */
-    void registerCommitCallback(String transactionId, BigDecimal scn, Instant changeTime, CommitCallback callback) {
+    void registerCommitCallback(String transactionId, Scn scn, Instant changeTime, CommitCallback callback) {
         if (abandonedTransactionIds.contains(transactionId)) {
             LogMinerHelper.logWarn(metrics, "Captured DML for abandoned transaction {}, ignored", transactionId);
             return;
@@ -159,7 +158,7 @@ public final class TransactionalBuffer {
      * @param debugMessage  message
      * @return true if committed transaction is in the buffer, was not processed yet and processed now
      */
-    boolean commit(String transactionId, BigDecimal scn, OracleOffsetContext offsetContext, Timestamp timestamp,
+    boolean commit(String transactionId, Scn scn, OracleOffsetContext offsetContext, Timestamp timestamp,
                    ChangeEventSource.ChangeEventSourceContext context, String debugMessage) {
 
         Transaction transaction = transactions.get(transactionId);
@@ -171,7 +170,7 @@ public final class TransactionalBuffer {
 
         calculateLargestScn();
         transaction = transactions.remove(transactionId);
-        BigDecimal smallestScn = calculateSmallestScn();
+        Scn smallestScn = calculateSmallestScn();
 
         taskCounter.incrementAndGet();
         abandonedTransactionIds.remove(transactionId);
@@ -198,7 +197,7 @@ public final class TransactionalBuffer {
                     callback.execute(timestamp, smallestScn, scn, --counter);
                 }
 
-                lastCommittedScn = new BigDecimal(scn.longValue());
+                lastCommittedScn = Scn.fromLong(scn.longValue());
             }
             catch (InterruptedException e) {
                 LogMinerHelper.logError(metrics, "Thread interrupted during running", e);
@@ -262,8 +261,8 @@ public final class TransactionalBuffer {
      * @param thresholdScn the smallest SVN of any transaction to keep in the buffer. All others will be removed.
      */
     void abandonLongTransactions(Long thresholdScn) {
-        BigDecimal threshold = new BigDecimal(thresholdScn);
-        BigDecimal smallestScn = calculateSmallestScn();
+        Scn threshold = Scn.fromLong(thresholdScn);
+        Scn smallestScn = calculateSmallestScn();
         if (smallestScn == null) {
             // no transactions in the buffer
             return;
@@ -291,23 +290,23 @@ public final class TransactionalBuffer {
         return transactions.get(txId) != null;
     }
 
-    private BigDecimal calculateSmallestScn() {
-        BigDecimal scn = transactions.isEmpty() ? null
+    private Scn calculateSmallestScn() {
+        Scn scn = transactions.isEmpty() ? null
                 : transactions.values()
                         .stream()
                         .map(transaction -> transaction.firstScn)
-                        .min(BigDecimal::compareTo)
+                        .min(Scn::compareTo)
                         .orElseThrow(() -> new DataException("Cannot calculate smallest SCN"));
         metrics.setOldestScn(scn == null ? -1 : scn.longValue());
         return scn;
     }
 
     private void calculateLargestScn() {
-        largestScn = transactions.isEmpty() ? BigDecimal.ZERO
+        largestScn = transactions.isEmpty() ? Scn.ZERO
                 : transactions.values()
                         .stream()
                         .map(transaction -> transaction.lastScn)
-                        .max(BigDecimal::compareTo)
+                        .max(Scn::compareTo)
                         .orElseThrow(() -> new DataException("Cannot calculate largest SCN"));
     }
 
@@ -356,17 +355,17 @@ public final class TransactionalBuffer {
          * @param commitScn      commit SCN
          * @param callbackNumber number of the callback in the transaction
          */
-        void execute(Timestamp timestamp, BigDecimal smallestScn, BigDecimal commitScn, int callbackNumber) throws InterruptedException;
+        void execute(Timestamp timestamp, Scn smallestScn, Scn commitScn, int callbackNumber) throws InterruptedException;
     }
 
     @NotThreadSafe
     private static final class Transaction {
 
-        private final BigDecimal firstScn;
-        private BigDecimal lastScn;
+        private final Scn firstScn;
+        private Scn lastScn;
         private final List<CommitCallback> commitCallbacks;
 
-        private Transaction(BigDecimal firstScn) {
+        private Transaction(Scn firstScn) {
             this.firstScn = firstScn;
             this.commitCallbacks = new ArrayList<>();
             this.lastScn = firstScn;

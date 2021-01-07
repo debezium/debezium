@@ -5,11 +5,11 @@
  */
 package io.debezium.connector.oracle.logminer.valueholder;
 
-import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.util.List;
 import java.util.Objects;
 
+import io.debezium.connector.oracle.logminer.Scn;
 import io.debezium.data.Envelope;
 
 /**
@@ -25,7 +25,7 @@ public class LogMinerDmlEntryImpl implements LogMinerDmlEntry {
     private String objectName;
     private Timestamp sourceTime;
     private String transactionId;
-    private BigDecimal scn;
+    private Scn scn;
 
     public LogMinerDmlEntryImpl(Envelope.Operation commandType, List<LogMinerColumnValue> newLmColumnValues, List<LogMinerColumnValue> oldLmColumnValues) {
         this.commandType = commandType;
@@ -89,12 +89,12 @@ public class LogMinerDmlEntryImpl implements LogMinerDmlEntry {
     }
 
     @Override
-    public BigDecimal getScn() {
+    public Scn getScn() {
         return scn;
     }
 
     @Override
-    public void setScn(BigDecimal scn) {
+    public void setScn(Scn scn) {
         this.scn = scn;
     }
 
