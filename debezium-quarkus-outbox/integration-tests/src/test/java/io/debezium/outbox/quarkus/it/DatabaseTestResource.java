@@ -10,9 +10,10 @@ import java.util.Collections;
 import java.util.Map;
 
 import org.testcontainers.containers.PostgreSQLContainer;
-import io.quarkus.test.common.QuarkusTestResourceLifecycleManager;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.utility.DockerImageName;
+
+import io.quarkus.test.common.QuarkusTestResourceLifecycleManager;
 
 /**
  * @author Chris Cranford

@@ -43,28 +43,21 @@ import com.jayway.jsonpath.JsonPath;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
-import org.testcontainers.utility.DockerImageName;
 
 public class DebeziumContainerTest {
 
-    private static final String DEBEZIUM_VERSION = DebeziumContainer.getDebeziumStableVersion();
-    private static final String POSTGRES_IMAGE = "debezium/postgres:11";
-
     private static final Logger LOGGER = LoggerFactory.getLogger(DebeziumContainerTest.class);
-
-    private static final DockerImageName POSTGRES_DOCKER_IMAGE_NAME = DockerImageName.parse(POSTGRES_IMAGE)
-            .asCompatibleSubstituteFor("postgres");
 
     private static final Network network = Network.newNetwork();
 
     private static final KafkaContainer kafkaContainer = new KafkaContainer()
             .withNetwork(network);
 
-    public static PostgreSQLContainer<?> postgresContainer = new PostgreSQLContainer<>(POSTGRES_DOCKER_IMAGE_NAME)
+    public static PostgreSQLContainer<?> postgresContainer = new PostgreSQLContainer<>(ImageNames.POSTGRES_DOCKER_IMAGE_NAME)
             .withNetwork(network)
             .withNetworkAliases("postgres");
 
-    public static DebeziumContainer debeziumContainer = new DebeziumContainer("debezium/connect:" + DEBEZIUM_VERSION)
+    public static DebeziumContainer debeziumContainer = DebeziumContainer.latestStable()
             .withNetwork(network)
             .withKafka(kafkaContainer)
             .withLogConsumer(new Slf4jLogConsumer(LOGGER))
@@ -152,7 +145,7 @@ public class DebeziumContainerTest {
         List<ConsumerRecord<String, String>> allRecords = new ArrayList<>();
 
         Unreliables.retryUntilTrue(10, TimeUnit.SECONDS, () -> {
-            consumer.poll(Duration.ofMillis(50).toMillis())
+            consumer.poll(Duration.ofMillis(50))
                     .iterator()
                     .forEachRemaining(allRecords::add);
 
