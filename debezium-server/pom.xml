@@ -93,6 +93,12 @@
                 <artifactId>azure-messaging-eventhubs</artifactId>
                 <version>${version.eventhubs}</version>
             </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
+                <artifactId>debezium-testing-testcontainers</artifactId>
+                <version>${project.version}</version>
+                <scope>test</scope>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 

@@ -85,5 +85,10 @@
       <artifactId>json-path</artifactId>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-test-common</artifactId>
+      <version>${quarkus.version}</version>
+    </dependency>
   </dependencies>
 </project>

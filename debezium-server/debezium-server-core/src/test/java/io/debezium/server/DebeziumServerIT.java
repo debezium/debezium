@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 
 import io.debezium.server.events.ConnectorCompletedEvent;
 import io.debezium.server.events.ConnectorStartedEvent;
+import io.debezium.testing.testcontainers.PostgresTestResourceLifecycleManager;
 import io.debezium.util.Testing;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
@@ -26,7 +27,7 @@ import io.quarkus.test.junit.QuarkusTest;
  * @author Jiri Pechanec
  */
 @QuarkusTest
-@QuarkusTestResource(TestDatabase.class)
+@QuarkusTestResource(PostgresTestResourceLifecycleManager.class)
 public class DebeziumServerIT {
 
     private static final int MESSAGE_COUNT = 4;

@@ -16,9 +16,9 @@ import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 
 import io.debezium.server.DebeziumServer;
-import io.debezium.server.TestDatabase;
 import io.debezium.server.events.ConnectorCompletedEvent;
 import io.debezium.server.events.ConnectorStartedEvent;
+import io.debezium.testing.testcontainers.PostgresTestResourceLifecycleManager;
 import io.debezium.util.Testing;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
@@ -39,7 +39,7 @@ import software.amazon.awssdk.services.kinesis.model.ShardIteratorType;
  * @author Jiri Pechanec
  */
 @QuarkusTest
-@QuarkusTestResource(TestDatabase.class)
+@QuarkusTestResource(PostgresTestResourceLifecycleManager.class)
 public class KinesisIT {
 
     private static final int MESSAGE_COUNT = 4;

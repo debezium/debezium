@@ -11,7 +11,7 @@ import java.util.Map;
 import org.apache.kafka.connect.runtime.standalone.StandaloneConfig;
 
 import io.debezium.server.TestConfigSource;
-import io.debezium.server.TestDatabase;
+import io.debezium.testing.testcontainers.PostgresTestResourceLifecycleManager;
 
 public class EventHubsTestConfigSource extends TestConfigSource {
 
@@ -34,11 +34,11 @@ public class EventHubsTestConfigSource extends TestConfigSource {
         eventHubsTest.put("debezium.source." + StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG,
                 OFFSET_STORE_PATH.toAbsolutePath().toString());
         eventHubsTest.put("debezium.source.offset.flush.interval.ms", "0");
-        eventHubsTest.put("debezium.source.database.hostname", TestDatabase.POSTGRES_HOST);
-        eventHubsTest.put("debezium.source.database.port", Integer.toString(TestDatabase.POSTGRES_PORT));
-        eventHubsTest.put("debezium.source.database.user", TestDatabase.POSTGRES_USER);
-        eventHubsTest.put("debezium.source.database.password", TestDatabase.POSTGRES_PASSWORD);
-        eventHubsTest.put("debezium.source.database.dbname", TestDatabase.POSTGRES_DBNAME);
+        eventHubsTest.put("debezium.source.database.hostname", PostgresTestResourceLifecycleManager.POSTGRES_HOST);
+        eventHubsTest.put("debezium.source.database.port", Integer.toString(PostgresTestResourceLifecycleManager.POSTGRES_PORT));
+        eventHubsTest.put("debezium.source.database.user", PostgresTestResourceLifecycleManager.POSTGRES_USER);
+        eventHubsTest.put("debezium.source.database.password", PostgresTestResourceLifecycleManager.POSTGRES_PASSWORD);
+        eventHubsTest.put("debezium.source.database.dbname", PostgresTestResourceLifecycleManager.POSTGRES_DBNAME);
         eventHubsTest.put("debezium.source.database.server.name", "testc");
         eventHubsTest.put("debezium.source.schema.include.list", "inventory");
         eventHubsTest.put("debezium.source.table.include.list", "inventory.customers");
