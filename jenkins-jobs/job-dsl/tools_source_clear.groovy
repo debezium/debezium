@@ -34,7 +34,7 @@ freeStyleJob('tools-debezium-source-clear') {
         stringParam('PRODUCT_VERSION', '', "Product version")
         stringParam('SOURCE_TAG', "", "Tagged version of source code to scan")
         booleanParam('BINARY', false, "Scan binary artifacts")
-        stringParam('PLUGINS', "mysql postgres mongodb sqlserver", "The plugins whose binaries should be scanned")
+        stringParam('PLUGINS', "mysql postgres mongodb sqlserver oracle db2 vitess", "The plugins whose binaries should be scanned")
     }
 
     steps {
