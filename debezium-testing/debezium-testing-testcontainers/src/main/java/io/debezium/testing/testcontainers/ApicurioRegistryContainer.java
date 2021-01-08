@@ -1,3 +1,8 @@
+/*
+ * Copyright Debezium Authors.
+ *
+ * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
+ */
 package io.debezium.testing.testcontainers;
 
 import org.testcontainers.containers.GenericContainer;
@@ -6,19 +11,14 @@ import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy;
 public class ApicurioRegistryContainer extends GenericContainer<ApicurioRegistryContainer> {
 
     private static final String DEBEZIUM_VERSION = DebeziumContainer.getDebeziumStableVersion();
-    private static GenericContainer<?> apicurioContainer;
+    private static final Integer APICURIO_PORT = 8080;
 
-    private ApicurioRegistryContainer() {
-        apicurioContainer = new GenericContainer<>("apicurio/apicurio-registry-mem:" + DEBEZIUM_VERSION)
-                .withExposedPorts(8080)
-                .waitingFor(new LogMessageWaitStrategy().withRegEx(".*apicurio-registry-app.*started in.*"));
-    }
+    public ApicurioRegistryContainer() {
+        super("apicurio/apicurio-registry-mem:" + DEBEZIUM_VERSION);
 
-    public static ApicurioRegistryContainer getApicurioRegistryContainer() {
-        return new ApicurioRegistryContainer();
-    }
+        this.waitStrategy = new LogMessageWaitStrategy()
+                .withRegEx(".*apicurio-registry-app.*started in.*");
 
-    public GenericContainer<?> getApicurioContainer() {
-        return apicurioContainer;
+        addExposedPort(APICURIO_PORT);
     }
 }

@@ -12,10 +12,11 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import javax.net.ssl.HttpsURLConnection;
 
 import org.awaitility.Awaitility;
 import org.testcontainers.containers.GenericContainer;
@@ -34,12 +35,12 @@ import okhttp3.RequestBody;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
 
-import javax.net.ssl.HttpsURLConnection;
-
 /**
  * Debezium Container main class.
  */
 public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
+
+    private static final String DEBEZIUM_VERSION = DebeziumContainer.getDebeziumStableVersion();
 
     private static final int KAFKA_CONNECT_PORT = 8083;
     private static final String TEST_PROPERTY_PREFIX = "debezium.test.";
@@ -47,16 +48,14 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
     protected static final ObjectMapper MAPPER = new ObjectMapper();
     protected static final OkHttpClient CLIENT = new OkHttpClient();
 
-    public DebeziumContainer(final String containerImageName) {
+    private DebeziumContainer(final String containerImageName) {
         super(containerImageName);
 
         defaultConfig();
     }
 
-    public DebeziumContainer(final Future<String> image) {
-        super(image);
-
-        defaultConfig();
+    public static DebeziumContainer latestStable() {
+        return new DebeziumContainer("debezium/connect:" + DEBEZIUM_VERSION);
     }
 
     private void defaultConfig() {
@@ -72,7 +71,7 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
         withEnv("CONNECT_KEY_CONVERTER_SCHEMAS_ENABLE", "false");
         withEnv("CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE", "false");
 
-        withExposedPorts(8083);
+        withExposedPorts(KAFKA_CONNECT_PORT);
     }
 
     public DebeziumContainer withKafka(final KafkaContainer kafkaContainer) {
@@ -317,15 +316,16 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
 
                 List<String> STABLE_VERSION_LIST = new ArrayList<>();
 
-                while(matcher.find()) {
+                while (matcher.find()) {
                     STABLE_VERSION_LIST.add(matcher.group());
                 }
 
                 Collections.sort(STABLE_VERSION_LIST);
-                DEBEZIUM_VERSION = STABLE_VERSION_LIST.get(STABLE_VERSION_LIST.size()-1);
+                DEBEZIUM_VERSION = STABLE_VERSION_LIST.get(STABLE_VERSION_LIST.size() - 1);
             }
-        } catch (IOException e) {
-            e.printStackTrace();
+        }
+        catch (IOException e) {
+            throw new RuntimeException(e);
         }
         return DEBEZIUM_VERSION;
     }

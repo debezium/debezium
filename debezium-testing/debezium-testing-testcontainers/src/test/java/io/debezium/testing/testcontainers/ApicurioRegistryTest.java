@@ -31,7 +31,6 @@ import org.junit.Test;
 import org.rnorth.ducttape.unreliables.Unreliables;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.KafkaContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -40,7 +39,6 @@ import org.testcontainers.lifecycle.Startables;
 import org.testcontainers.shaded.com.google.common.collect.ImmutableMap;
 
 import com.jayway.jsonpath.JsonPath;
-import org.testcontainers.utility.DockerImageName;
 
 /**
  * An integration test verifying the Apicurio registry is interoperable with Debezium
@@ -51,26 +49,18 @@ public class ApicurioRegistryTest {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ApicurioRegistryTest.class);
 
-    private static final String DEBEZIUM_VERSION = DebeziumContainer.getDebeziumStableVersion();
-    private static final String POSTGRES_IMAGE = "debezium/postgres:11";
-
-    private static final DockerImageName POSTGRES_DOCKER_IMAGE_NAME = DockerImageName.parse(POSTGRES_IMAGE)
-            .asCompatibleSubstituteFor("postgres");
-
     private static Network network = Network.newNetwork();
 
-    private static final ApicurioRegistryContainer APICURIO_REGISTRY_CONTAINER = ApicurioRegistryContainer.getApicurioRegistryContainer();
-
-    private static final GenericContainer<?> apicurioContainer = APICURIO_REGISTRY_CONTAINER.getApicurioContainer().withNetwork(network);
+    private static final ApicurioRegistryContainer apicurioContainer = new ApicurioRegistryContainer().withNetwork(network);
 
     private static KafkaContainer kafkaContainer = new KafkaContainer()
             .withNetwork(network);
 
-    public static PostgreSQLContainer<?> postgresContainer = new PostgreSQLContainer<>(POSTGRES_DOCKER_IMAGE_NAME)
+    public static PostgreSQLContainer<?> postgresContainer = new PostgreSQLContainer<>(ImageNames.POSTGRES_DOCKER_IMAGE_NAME)
             .withNetwork(network)
             .withNetworkAliases("postgres");
 
-    public static DebeziumContainer debeziumContainer = new DebeziumContainer("debezium/connect:" + DEBEZIUM_VERSION)
+    public static DebeziumContainer debeziumContainer = DebeziumContainer.latestStable()
             .withNetwork(network)
             .withKafka(kafkaContainer)
             .withLogConsumer(new Slf4jLogConsumer(LOGGER))
@@ -227,7 +217,7 @@ public class ApicurioRegistryTest {
         List<ConsumerRecord<T, T>> allRecords = new ArrayList<>();
 
         Unreliables.retryUntilTrue(10, TimeUnit.SECONDS, () -> {
-            consumer.poll(Duration.ofMillis(50).toMillis())
+            consumer.poll(Duration.ofMillis(50))
                     .iterator()
                     .forEachRemaining(allRecords::add);
 
