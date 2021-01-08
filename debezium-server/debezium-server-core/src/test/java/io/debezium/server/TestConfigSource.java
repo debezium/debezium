@@ -12,6 +12,7 @@ import java.util.Map;
 import org.apache.kafka.connect.runtime.standalone.StandaloneConfig;
 import org.eclipse.microprofile.config.spi.ConfigSource;
 
+import io.debezium.testing.testcontainers.PostgresTestResourceLifecycleManager;
 import io.debezium.util.Testing;
 
 public class TestConfigSource implements ConfigSource {
@@ -31,11 +32,11 @@ public class TestConfigSource implements ConfigSource {
         integrationTest.put("debezium.source.connector.class", "io.debezium.connector.postgresql.PostgresConnector");
         integrationTest.put("debezium.source." + StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
         integrationTest.put("debezium.source.offset.flush.interval.ms", "0");
-        integrationTest.put("debezium.source.database.hostname", TestDatabase.POSTGRES_HOST);
-        integrationTest.put("debezium.source.database.port", Integer.toString(TestDatabase.POSTGRES_PORT));
-        integrationTest.put("debezium.source.database.user", TestDatabase.POSTGRES_USER);
-        integrationTest.put("debezium.source.database.password", TestDatabase.POSTGRES_PASSWORD);
-        integrationTest.put("debezium.source.database.dbname", TestDatabase.POSTGRES_DBNAME);
+        integrationTest.put("debezium.source.database.hostname", PostgresTestResourceLifecycleManager.POSTGRES_HOST);
+        integrationTest.put("debezium.source.database.port", Integer.toString(PostgresTestResourceLifecycleManager.POSTGRES_PORT));
+        integrationTest.put("debezium.source.database.user", PostgresTestResourceLifecycleManager.POSTGRES_USER);
+        integrationTest.put("debezium.source.database.password", PostgresTestResourceLifecycleManager.POSTGRES_PASSWORD);
+        integrationTest.put("debezium.source.database.dbname", PostgresTestResourceLifecycleManager.POSTGRES_DBNAME);
         integrationTest.put("debezium.source.database.server.name", "testc");
         integrationTest.put("debezium.source.schema.include.list", "inventory");
         integrationTest.put("debezium.source.table.include.list", "inventory.customers");

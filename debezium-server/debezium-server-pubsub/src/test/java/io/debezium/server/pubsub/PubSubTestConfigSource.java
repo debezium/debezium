@@ -11,7 +11,7 @@ import java.util.Map;
 import org.apache.kafka.connect.runtime.standalone.StandaloneConfig;
 
 import io.debezium.server.TestConfigSource;
-import io.debezium.server.TestDatabase;
+import io.debezium.testing.testcontainers.PostgresTestResourceLifecycleManager;
 
 public class PubSubTestConfigSource extends TestConfigSource {
 
@@ -23,11 +23,11 @@ public class PubSubTestConfigSource extends TestConfigSource {
         pubsubTest.put("debezium.source." + StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG,
                 OFFSET_STORE_PATH.toAbsolutePath().toString());
         pubsubTest.put("debezium.source.offset.flush.interval.ms", "0");
-        pubsubTest.put("debezium.source.database.hostname", TestDatabase.POSTGRES_HOST);
-        pubsubTest.put("debezium.source.database.port", Integer.toString(TestDatabase.POSTGRES_PORT));
-        pubsubTest.put("debezium.source.database.user", TestDatabase.POSTGRES_USER);
-        pubsubTest.put("debezium.source.database.password", TestDatabase.POSTGRES_PASSWORD);
-        pubsubTest.put("debezium.source.database.dbname", TestDatabase.POSTGRES_DBNAME);
+        pubsubTest.put("debezium.source.database.hostname", PostgresTestResourceLifecycleManager.POSTGRES_HOST);
+        pubsubTest.put("debezium.source.database.port", Integer.toString(PostgresTestResourceLifecycleManager.POSTGRES_PORT));
+        pubsubTest.put("debezium.source.database.user", PostgresTestResourceLifecycleManager.POSTGRES_USER);
+        pubsubTest.put("debezium.source.database.password", PostgresTestResourceLifecycleManager.POSTGRES_PASSWORD);
+        pubsubTest.put("debezium.source.database.dbname", PostgresTestResourceLifecycleManager.POSTGRES_DBNAME);
         pubsubTest.put("debezium.source.database.server.name", "testc");
         pubsubTest.put("debezium.source.schema.include.list", "inventory");
         pubsubTest.put("debezium.source.table.include.list", "inventory.customers");

@@ -3,13 +3,12 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.server;
+package io.debezium.testing.testcontainers;
 
 import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.junit.jupiter.api.Assertions;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 
@@ -18,7 +17,7 @@ import io.quarkus.test.common.QuarkusTestResourceLifecycleManager;
 /**
  * @author Jiri Pechanec
  */
-public class TestDatabase implements QuarkusTestResourceLifecycleManager {
+public class PostgresTestResourceLifecycleManager implements QuarkusTestResourceLifecycleManager {
 
     public static final String POSTGRES_USER = "postgres";
     public static final String POSTGRES_PASSWORD = "postgres";
@@ -36,12 +35,8 @@ public class TestDatabase implements QuarkusTestResourceLifecycleManager {
             .withStartupTimeout(Duration.ofSeconds(30));
 
     public Map<String, String> start() {
-        try {
-            container.start();
-        }
-        catch (Exception e) {
-            Assertions.fail(e);
-        }
+        container.start();
+
         Map<String, String> params = new ConcurrentHashMap<>();
         params.put("debezium.source.database.hostname", POSTGRES_HOST);
         params.put("debezium.source.database.port", container.getMappedPort(POSTGRES_PORT).toString());
