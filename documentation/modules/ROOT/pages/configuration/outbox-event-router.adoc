@@ -303,7 +303,7 @@ To specify an alias for the column, specify a trio with the alias as the third v
 
 The second value is the placement and it must always be `header` or `envelope`. 
 
-Configuration examples are in {link-prefix}:{link-outbox-event-router}#emitting-additional-fields-in-debezium-outbox-messages[emitting additional fields in {prodname} outbox messages].
+Configuration examples are in {link-prefix}:{link-outbox-event-router}#emitting-messages-with-additional-fields[emitting additional fields in {prodname} outbox messages].
 
 |[[outbox-event-router-property-table-field-event-schema-version]]<<outbox-event-router-property-table-field-event-schema-version, `table.field.event.schema.version`>>
 |
