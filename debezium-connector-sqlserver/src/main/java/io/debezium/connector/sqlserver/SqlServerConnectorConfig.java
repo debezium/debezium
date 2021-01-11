@@ -346,7 +346,8 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
                     SNAPSHOT_MODE,
                     SNAPSHOT_ISOLATION_MODE,
                     SOURCE_TIMESTAMP_MODE,
-                    MAX_LSN_OPTIMIZATION)
+                    MAX_LSN_OPTIMIZATION,
+                    BINARY_HANDLING_MODE)
             .excluding(
                     SCHEMA_WHITELIST,
                     SCHEMA_INCLUDE_LIST,
