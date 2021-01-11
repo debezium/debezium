@@ -13,6 +13,7 @@ import java.time.ZoneOffset;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.SchemaBuilder;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.data.SpecialValueDecimal;
 import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.jdbc.TemporalPrecisionMode;
@@ -47,8 +48,9 @@ public class SqlServerValueConverters extends JdbcValueConverters {
      * @param temporalPrecisionMode
      *            date/time value will be represented either as Connect datatypes or Debezium specific datatypes
      */
-    public SqlServerValueConverters(DecimalMode decimalMode, TemporalPrecisionMode temporalPrecisionMode) {
-        super(decimalMode, temporalPrecisionMode, ZoneOffset.UTC, null, null, null);
+    public SqlServerValueConverters(DecimalMode decimalMode, TemporalPrecisionMode temporalPrecisionMode,
+                                    CommonConnectorConfig.BinaryHandlingMode binaryMode) {
+        super(decimalMode, temporalPrecisionMode, ZoneOffset.UTC, null, null, binaryMode);
     }
 
     @Override

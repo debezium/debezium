@@ -1948,6 +1948,10 @@ See {link-prefix}:{link-sqlserver-connector}#sqlserver-data-types[SQL Server dat
 | A semi-colon list of regular expressions that match fully-qualified tables and columns to map a primary key. +
 Each item (regular expression) must match the fully-qualified `<fully-qualified table>:<a comma-separated list of columns>` representing the custom key. +
 Fully-qualified tables could be defined as _schemaName_._tableName_.
+
+|[[sqlserver-property-binary-handling-mode]]<<sqlserver-property-binary-handling-mode, `binary.handling.mode`>>
+|bytes
+|Specifies how binary (`binary`, `varbinary`) columns should be represented in change events, including: `bytes` represents binary data as byte array (default), `base64` represents binary data as base64-encoded String, `hex` represents binary data as hex-encoded (base16) String
 |===
 
 The following _advanced_ configuration properties have good defaults that will work in most situations and therefore rarely need to be specified in the connector's configuration.
