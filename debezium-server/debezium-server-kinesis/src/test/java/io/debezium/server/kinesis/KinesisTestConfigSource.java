@@ -11,25 +11,19 @@ import java.util.Map;
 import org.apache.kafka.connect.runtime.standalone.StandaloneConfig;
 
 import io.debezium.server.TestConfigSource;
-import io.debezium.testing.testcontainers.PostgresTestResourceLifecycleManager;
 
 public class KinesisTestConfigSource extends TestConfigSource {
 
     public static final String KINESIS_REGION = "eu-central-1";
 
-    final Map<String, String> kinesisTest = new HashMap<>();
-
     public KinesisTestConfigSource() {
+        Map<String, String> kinesisTest = new HashMap<>();
+
         kinesisTest.put("debezium.sink.type", "kinesis");
         kinesisTest.put("debezium.sink.kinesis.region", KINESIS_REGION);
         kinesisTest.put("debezium.source.connector.class", "io.debezium.connector.postgresql.PostgresConnector");
         kinesisTest.put("debezium.source." + StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
         kinesisTest.put("debezium.source.offset.flush.interval.ms", "0");
-        kinesisTest.put("debezium.source.database.hostname", PostgresTestResourceLifecycleManager.POSTGRES_HOST);
-        kinesisTest.put("debezium.source.database.port", Integer.toString(PostgresTestResourceLifecycleManager.POSTGRES_PORT));
-        kinesisTest.put("debezium.source.database.user", PostgresTestResourceLifecycleManager.POSTGRES_USER);
-        kinesisTest.put("debezium.source.database.password", PostgresTestResourceLifecycleManager.POSTGRES_PASSWORD);
-        kinesisTest.put("debezium.source.database.dbname", PostgresTestResourceLifecycleManager.POSTGRES_DBNAME);
         kinesisTest.put("debezium.source.database.server.name", "testc");
         kinesisTest.put("debezium.source.schema.include.list", "inventory");
         kinesisTest.put("debezium.source.table.include.list", "inventory.customers");

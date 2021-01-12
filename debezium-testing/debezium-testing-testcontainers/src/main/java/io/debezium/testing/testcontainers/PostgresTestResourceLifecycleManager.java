@@ -25,6 +25,7 @@ public class PostgresTestResourceLifecycleManager implements QuarkusTestResource
     public static final String POSTGRES_IMAGE = "debezium/example-postgres";
     public static final String POSTGRES_HOST = "localhost";
     public static final Integer POSTGRES_PORT = 5432;
+
     private final GenericContainer<?> container = new GenericContainer<>(POSTGRES_IMAGE)
             .waitingFor(Wait.forLogMessage(".*database system is ready to accept connections.*", 2))
             .withEnv("POSTGRES_USER", POSTGRES_USER)
@@ -34,6 +35,7 @@ public class PostgresTestResourceLifecycleManager implements QuarkusTestResource
             .withEnv("LANG", "en_US.utf8")
             .withStartupTimeout(Duration.ofSeconds(30));
 
+    @Override
     public Map<String, String> start() {
         container.start();
 
