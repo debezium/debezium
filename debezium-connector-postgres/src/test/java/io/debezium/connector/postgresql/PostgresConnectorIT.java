@@ -12,10 +12,12 @@ import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static junit.framework.TestCase.assertEquals;
 import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.sql.SQLException;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -315,6 +317,61 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         assertConnectorIsRunning();
 
         assertRecordsAfterInsert(2, 3, 3);
+    }
+
+    private Long getLastCommitLsn(SourceRecord record) {
+        assertTrue(record.value() instanceof Struct);
+        Struct source = ((Struct) record.value()).getStruct("source");
+        return source.getInt64("last_commit_lsn");
+    }
+
+    @Test
+    public void shouldHaveLastCommitLsn() throws InterruptedException {
+        TestHelper.execute(SETUP_TABLES_STMT);
+        start(PostgresConnector.class, TestHelper.defaultConfig()
+                .with(CommonConnectorConfig.SOURCE_STRUCT_MAKER_VERSION, Version.V2)
+                .with(PostgresConnectorConfig.PROVIDE_TRANSACTION_METADATA, true)
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.getValue())
+                .build());
+        assertConnectorIsRunning();
+
+        waitForAvailableRecords(100, TimeUnit.MILLISECONDS);
+        // there shouldn't be any snapshot records
+        assertNoRecordsToConsume();
+
+        // 3 * (BEGIN, 2 * data, END)
+        List<SourceRecord> records = new ArrayList<>();
+
+        final int n_inserts = 3;
+        for (int i = 0; i < n_inserts; ++i) {
+            TestHelper.execute(INSERT_STMT);
+        }
+
+        Awaitility.await("Skip empty transactions and find the data").atMost(Duration.ofSeconds(TestHelper.waitTimeForRecords() * 3)).until(() -> {
+            int n_transactions = 0;
+            while (n_transactions < n_inserts) {
+                final List<SourceRecord> candidate = consumeRecordsByTopic(2).allRecordsInOrder();
+                if (candidate.get(1).topic().contains("transaction")) {
+                    // empty transaction, should be skipped
+                    continue;
+                }
+                records.addAll(candidate);
+                records.addAll(consumeRecordsByTopic(2).allRecordsInOrder());
+                ++n_transactions;
+            }
+            return true;
+        });
+        assertEquals(4 * n_inserts, records.size());
+        Long second_transaction_lsn = getLastCommitLsn(records.get(5));
+        Long third_transaction_lsn = getLastCommitLsn(records.get(9));
+        assertEquals(second_transaction_lsn, getLastCommitLsn(records.get(6)));
+        assertEquals(third_transaction_lsn, getLastCommitLsn(records.get(10)));
+        assertNotNull(second_transaction_lsn);
+        assertNotNull(third_transaction_lsn);
+        assertTrue(second_transaction_lsn < third_transaction_lsn);
+        // now stop the connector
+        stopConnector();
+        assertNoRecordsToConsume();
     }
 
     @Test

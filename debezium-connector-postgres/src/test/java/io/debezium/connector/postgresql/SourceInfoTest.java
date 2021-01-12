@@ -73,6 +73,7 @@ public class SourceInfoTest {
                 .field("txId", Schema.OPTIONAL_INT64_SCHEMA)
                 .field("lsn", Schema.OPTIONAL_INT64_SCHEMA)
                 .field("xmin", Schema.OPTIONAL_INT64_SCHEMA)
+                .field("last_commit_lsn", Schema.OPTIONAL_INT64_SCHEMA)
                 .build();
 
         VerifyRecord.assertConnectSchemasAreEqual(null, source.struct().schema(), schema);

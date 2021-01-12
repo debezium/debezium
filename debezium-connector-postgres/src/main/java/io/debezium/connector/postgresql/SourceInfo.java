@@ -76,6 +76,7 @@ public final class SourceInfo extends BaseSourceInfo {
     public static final String XMIN_KEY = "xmin";
     public static final String LSN_KEY = "lsn";
     public static final String LAST_SNAPSHOT_RECORD_KEY = "last_snapshot_record";
+    public static final String LAST_COMMIT_LSN_KEY = "last_commit_lsn";
 
     private final String dbName;
 
@@ -85,6 +86,7 @@ public final class SourceInfo extends BaseSourceInfo {
     private Instant timestamp;
     private String schemaName;
     private String tableName;
+    private Lsn lastCommitLsn;
 
     protected SourceInfo(PostgresConnectorConfig connectorConfig) {
         super(connectorConfig);
@@ -101,8 +103,15 @@ public final class SourceInfo extends BaseSourceInfo {
      * @param txId the ID of the transaction that generated the transaction; may be null if this information is not available
      * @param tableId the table that should be included in the source info; may be null
      * @param xmin the xmin of the slot, may be null
+     * @param lastCommitLsn the position in the server WAL of the most recent commit.
      * @return this instance
      */
+    protected SourceInfo update(Lsn lsn, Instant commitTime, Long txId, TableId tableId, Long xmin, Lsn lastCommitLsn) {
+        update(lsn, commitTime, txId, tableId, xmin);
+        this.lastCommitLsn = lastCommitLsn;
+        return this;
+    }
+
     protected SourceInfo update(Lsn lsn, Instant commitTime, Long txId, TableId tableId, Long xmin) {
         this.lsn = lsn;
         if (commitTime != null) {
@@ -136,6 +145,10 @@ public final class SourceInfo extends BaseSourceInfo {
 
     public Long xmin() {
         return this.xmin;
+    }
+
+    public Lsn lastCommitLsn() {
+        return this.lastCommitLsn;
     }
 
     @Override
@@ -188,6 +201,9 @@ public final class SourceInfo extends BaseSourceInfo {
         }
         if (tableName != null) {
             sb.append(", table=").append(tableName);
+        }
+        if (lastCommitLsn != null) {
+            sb.append(", last_commit_lsn=").append(lastCommitLsn);
         }
         sb.append(']');
         return sb.toString();
