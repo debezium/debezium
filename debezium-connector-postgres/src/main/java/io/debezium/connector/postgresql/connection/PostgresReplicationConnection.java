@@ -83,6 +83,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
      * @param tableFilter               the tables to watch of the DB publication for logical replication; may not be null
      * @param publicationAutocreateMode the mode for publication autocreation; may not be null
      * @param plugin                    decoder matching the server side plug-in used for streaming changes; may not be null
+     * @param truncateHandlingMode      the mode for truncate handling; may not be null
      * @param dropSlotOnClose           whether the replication slot should be dropped once the connection is closed
      * @param statusUpdateInterval      the interval at which the replication connection should periodically send status
      * @param exportSnapshot            whether the replication should export a snapshot when created
@@ -99,6 +100,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                                           RelationalTableFilters tableFilter,
                                           PostgresConnectorConfig.AutoCreateMode publicationAutocreateMode,
                                           PostgresConnectorConfig.LogicalDecoder plugin,
+                                          PostgresConnectorConfig.TruncateHandlingMode truncateHandlingMode,
                                           boolean dropSlotOnClose,
                                           boolean exportSnapshot,
                                           boolean doSnapshot,
@@ -117,7 +119,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         this.dropSlotOnClose = dropSlotOnClose;
         this.statusUpdateInterval = statusUpdateInterval;
         this.exportSnapshot = exportSnapshot;
-        this.messageDecoder = plugin.messageDecoder(new MessageDecoderConfig(config, schema, publicationName, exportSnapshot, doSnapshot));
+        this.messageDecoder = plugin.messageDecoder(new MessageDecoderConfig(config, schema, publicationName, exportSnapshot, doSnapshot, truncateHandlingMode));
         this.typeRegistry = typeRegistry;
         this.streamParams = streamParams;
         this.slotCreationInfo = null;
@@ -626,6 +628,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         private RelationalTableFilters tableFilter;
         private PostgresConnectorConfig.AutoCreateMode publicationAutocreateMode = PostgresConnectorConfig.AutoCreateMode.ALL_TABLES;
         private PostgresConnectorConfig.LogicalDecoder plugin = PostgresConnectorConfig.LogicalDecoder.DECODERBUFS;
+        private PostgresConnectorConfig.TruncateHandlingMode truncateHandlingMode;
         private boolean dropSlotOnClose = DEFAULT_DROP_SLOT_ON_CLOSE;
         private Duration statusUpdateIntervalVal;
         private boolean exportSnapshot = DEFAULT_EXPORT_SNAPSHOT;
@@ -675,6 +678,13 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         }
 
         @Override
+        public Builder withTruncateHandlingMode(PostgresConnectorConfig.TruncateHandlingMode truncateHandlingMode) {
+            assert truncateHandlingMode != null;
+            this.truncateHandlingMode = truncateHandlingMode;
+            return this;
+        }
+
+        @Override
         public ReplicationConnectionBuilder dropSlotOnClose(final boolean dropSlotOnClose) {
             this.dropSlotOnClose = dropSlotOnClose;
             return this;
@@ -719,8 +729,8 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         @Override
         public ReplicationConnection build() {
             assert plugin != null : "Decoding plugin name is not set";
-            return new PostgresReplicationConnection(config, slotName, publicationName, tableFilter, publicationAutocreateMode, plugin, dropSlotOnClose, exportSnapshot,
-                    doSnapshot, statusUpdateIntervalVal, typeRegistry, slotStreamParams, schema);
+            return new PostgresReplicationConnection(config, slotName, publicationName, tableFilter, publicationAutocreateMode, plugin, truncateHandlingMode,
+                    dropSlotOnClose, exportSnapshot, doSnapshot, statusUpdateIntervalVal, typeRegistry, slotStreamParams, schema);
         }
 
         @Override

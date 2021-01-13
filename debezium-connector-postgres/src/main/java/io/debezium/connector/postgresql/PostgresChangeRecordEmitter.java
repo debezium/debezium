@@ -17,6 +17,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.postgresql.core.BaseConnection;
 
@@ -77,6 +78,8 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
                 return Operation.UPDATE;
             case DELETE:
                 return Operation.DELETE;
+            case TRUNCATE:
+                return Operation.TRUNCATE;
             default:
                 throw new IllegalArgumentException("Received event of unexpected command type: " + message.getOperation());
         }
@@ -86,6 +89,12 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
     public void emitChangeRecords(DataCollectionSchema schema, Receiver receiver) throws InterruptedException {
         schema = synchronizeTableSchema(schema);
         super.emitChangeRecords(schema, receiver);
+    }
+
+    @Override
+    protected void emitTruncateRecord(Receiver receiver, TableSchema tableSchema) throws InterruptedException {
+        Struct envelope = tableSchema.getEnvelopeSchema().truncate(getOffset().getSourceInfo(), getClock().currentTimeAsInstant());
+        receiver.changeRecord(tableSchema, Operation.TRUNCATE, null, envelope, getOffset(), null);
     }
 
     @Override

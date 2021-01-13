@@ -16,6 +16,7 @@ import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -27,6 +28,7 @@ import org.postgresql.replication.fluent.logical.ChainedLogicalStreamBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.connector.postgresql.PostgresConnectorConfig;
 import io.debezium.connector.postgresql.PostgresStreamingChangeEventSource.PgConnectionSupplier;
 import io.debezium.connector.postgresql.PostgresType;
 import io.debezium.connector.postgresql.TypeRegistry;
@@ -118,23 +120,6 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
             LOGGER.trace("Message Type: {}", type);
             final boolean candidateForSkipping = super.shouldMessageBeSkipped(buffer, lastReceivedLsn, startLsn, walPosition);
             switch (type) {
-                case TRUNCATE:
-                    // @formatter:off
-                    // For now we plan to gracefully skip TRUNCATE messages.
-                    // We may decide in the future that these may be emitted differently, see DBZ-1052.
-                    //
-                    // As of PG11, the Truncate message format is as described:
-                    // Byte Message Type (Always 'T')
-                    // Int32 number of relations described by the truncate message
-                    // Int8 flags for truncate; 1=CASCADE, 2=RESTART IDENTITY
-                    // Int32[] Array of number of relation ids
-                    //
-                    // In short this message tells us how many relations are impacted by the truncate
-                    // call, whether its cascaded or not and then all table relation ids involved.
-                    // It seems the protocol guarantees to send the most up-to-date `R` relation
-                    // messages for the tables prior to the `T` truncation message, even if in the
-                    // same session a `R` message was followed by an insert/update/delete message.
-                    // @formatter:on
                 case COMMIT:
                 case BEGIN:
                 case RELATION:
@@ -150,7 +135,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
                     LOGGER.trace("{} messages are always reprocessed", type);
                     return false;
                 default:
-                    // INSERT/UPDATE/DELETE/TYPE/ORIGIN
+                    // INSERT/UPDATE/DELETE/TRUNCATE/TYPE/ORIGIN
                     // These should be excluded based on the normal behavior, delegating to default method
                     return candidateForSkipping;
             }
@@ -195,6 +180,14 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
                 break;
             case DELETE:
                 decodeDelete(buffer, typeRegistry, processor);
+                break;
+            case TRUNCATE:
+                if (config.getTruncateHandlingMode() == PostgresConnectorConfig.TruncateHandlingMode.INCLUDE) {
+                    decodeTruncate(buffer, typeRegistry, processor);
+                }
+                else {
+                    LOGGER.trace("Message Type {} skipped, not processed.", messageType);
+                }
                 break;
             default:
                 LOGGER.trace("Message Type {} skipped, not processed.", messageType);
@@ -464,6 +457,77 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
                     transactionId,
                     columns,
                     null));
+        }
+    }
+
+    /**
+     * Callback handler for the 'T' truncate replication stream message.
+     *
+     * @param buffer       The replication stream buffer
+     * @param typeRegistry The postgres type registry
+     * @param processor    The replication message processor
+     */
+    private void decodeTruncate(ByteBuffer buffer, TypeRegistry typeRegistry, ReplicationMessageProcessor processor) throws SQLException, InterruptedException {
+        // As of PG11, the Truncate message format is as described:
+        // Byte Message Type (Always 'T')
+        // Int32 number of relations described by the truncate message
+        // Int8 flags for truncate; 1=CASCADE, 2=RESTART IDENTITY
+        // Int32[] Array of number of relation ids
+        //
+        // In short this message tells us how many relations are impacted by the truncate
+        // call, whether its cascaded or not and then all table relation ids involved.
+        // It seems the protocol guarantees to send the most up-to-date `R` relation
+        // messages for the tables prior to the `T` truncation message, even if in the
+        // same session a `R` message was followed by an insert/update/delete message.
+
+        int numberOfRelations = buffer.getInt();
+        int optionBits = buffer.get();
+        // ignored / unused
+        List<String> truncateOptions = getTruncateOptions(optionBits);
+        int[] relationIds = new int[numberOfRelations];
+        for (int i = 0; i < numberOfRelations; i++) {
+            relationIds[i] = buffer.getInt();
+        }
+
+        List<Table> tables = new ArrayList<>();
+        for (int relationId : relationIds) {
+            Optional<Table> resolvedTable = resolveRelation(relationId);
+            resolvedTable.ifPresent(tables::add);
+        }
+
+        if (LOGGER.isTraceEnabled()) {
+            LOGGER.trace("Event: {}, RelationIds: {}, OptionBits: {}", MessageType.TRUNCATE, Arrays.toString(relationIds), optionBits);
+        }
+
+        int noOfResolvedTables = tables.size();
+        for (int i = 0; i < noOfResolvedTables; i++) {
+            Table table = tables.get(i);
+            boolean lastTableInTruncate = (i + 1) == noOfResolvedTables;
+            processor.process(new PgOutputTruncateReplicationMessage(
+                    Operation.TRUNCATE,
+                    table.id().toDoubleQuotedString(),
+                    commitTimestamp,
+                    transactionId,
+                    lastTableInTruncate));
+        }
+    }
+
+    /**
+     * Convert truncate option bits to postgres syntax truncate options
+     *
+     * @param flag truncate option bits
+     * @return truncate flags
+     */
+    private List<String> getTruncateOptions(int flag) {
+        switch (flag) {
+            case 1:
+                return Collections.singletonList("CASCADE");
+            case 2:
+                return Collections.singletonList("RESTART IDENTITY");
+            case 3:
+                return Arrays.asList("RESTART IDENTITY", "CASCADE");
+            default:
+                return null;
         }
     }
 

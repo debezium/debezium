@@ -19,6 +19,7 @@ import static org.fest.assertions.Assertions.assertThat;
 import static org.fest.assertions.Fail.fail;
 import static org.fest.assertions.MapAssert.entry;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -83,7 +84,9 @@ import io.debezium.jdbc.JdbcConnection;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.junit.ConditionalFail;
+import io.debezium.junit.EqualityCheck;
 import io.debezium.junit.ShouldFailWhen;
+import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.relational.RelationalChangeRecordEmitter;
 import io.debezium.relational.RelationalDatabaseConnectorConfig.DecimalHandlingMode;
@@ -1881,9 +1884,11 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
-    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Tests specifically that pgoutput gracefully skips these messages")
-    public void shouldGracefullySkipTruncateMessages() throws Exception {
-        startConnector();
+    @SkipWhenDatabaseVersion(check = EqualityCheck.LESS_THAN, major = 11, reason = "TRUNCATE events only supported in PG11+ PGOUTPUT Plugin")
+    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Tests specifically that pgoutput handles TRUNCATE messages")
+    public void shouldProcessTruncateMessages() throws Exception {
+        startConnector(builder -> builder
+                .with(PostgresConnectorConfig.TRUNCATE_HANDLING_MODE, PostgresConnectorConfig.TruncateHandlingMode.INCLUDE));
         waitForStreamingToStart();
 
         consumer = testConsumer(1);
@@ -1893,10 +1898,60 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         assertEquals(TestHelper.topicName("public.test_table"), record.topic());
         VerifyRecord.isValidInsert(record, PK_FIELD, 2);
 
-        consumer.expects(0);
-        TestHelper.execute("TRUNCATE TABLE public.test_table;");
+        consumer.expects(1);
+        TestHelper.execute("TRUNCATE TABLE public.test_table RESTART IDENTITY CASCADE;");
         consumer.await(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS);
+
+        assertFalse(consumer.isEmpty());
+        SourceRecord truncateRecord = consumer.remove();
+        assertNotNull(truncateRecord);
+        VerifyRecord.isValidTruncate(truncateRecord);
         assertTrue(consumer.isEmpty());
+    }
+
+    @Test
+    @SkipWhenDatabaseVersion(check = EqualityCheck.LESS_THAN, major = 11, reason = "TRUNCATE events only supported in PG11+ PGOUTPUT Plugin")
+    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Tests specifically that pgoutput handled TRUNCATE these messages")
+    public void shouldProcessTruncateMessagesForMultipleTableTruncateStatement() throws Exception {
+        TestHelper.execute("CREATE TABLE test_table_2 (pk SERIAL, text TEXT, PRIMARY KEY(pk));");
+
+        startConnector(builder -> builder.with(PostgresConnectorConfig.TRUNCATE_HANDLING_MODE, PostgresConnectorConfig.TruncateHandlingMode.INCLUDE));
+        waitForStreamingToStart();
+
+        consumer = testConsumer(1);
+        executeAndWait("INSERT INTO test_table (text) values ('TRUNCATE TEST');");
+
+        SourceRecord record = consumer.remove();
+        assertEquals(TestHelper.topicName("public.test_table"), record.topic());
+        VerifyRecord.isValidInsert(record, PK_FIELD, 2);
+
+        executeAndWait("INSERT INTO test_table_2 (text) values ('TRUNCATE TEST 2');");
+
+        SourceRecord record_2 = consumer.remove();
+        assertEquals(TestHelper.topicName("public.test_table_2"), record_2.topic());
+        VerifyRecord.isValidInsert(record_2, PK_FIELD, 1);
+
+        consumer.expects(2);
+        TestHelper.execute("TRUNCATE TABLE public.test_table, public.test_table_2;");
+        consumer.await(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS);
+
+        assertFalse(consumer.isEmpty());
+
+        SourceRecord truncateRecord = consumer.remove();
+        assertNotNull(truncateRecord);
+        VerifyRecord.isValidTruncate(truncateRecord);
+
+        SourceRecord truncateRecord_2 = consumer.remove();
+        assertNotNull(truncateRecord_2);
+        VerifyRecord.isValidTruncate(truncateRecord_2);
+        assertTrue(consumer.isEmpty());
+
+        assertEquals(truncateRecord.sourceOffset().get("lsn_commit"), truncateRecord_2.sourceOffset().get("lsn_commit"));
+        assertEquals(truncateRecord.sourceOffset().get("lsn"), truncateRecord_2.sourceOffset().get("lsn"));
+        assertEquals(truncateRecord.sourceOffset().get("txId"), truncateRecord_2.sourceOffset().get("txId"));
+
+        consumer = testConsumer(1);
+        executeAndWait("INSERT INTO test_table (text) values ('TRUNCATE TEST');");
     }
 
     @Test
