@@ -1980,7 +1980,7 @@ The following configuration properties are _required_ unless a default value is 
 
 |[[mysql-property-database-user]]<<mysql-property-database-user, `database.user`>>
 |
-|Name of the MySQL database to use when connecting to the MySQL database server.
+|Name of the MySQL user to use when connecting to the MySQL database server.
 
 |[[mysql-property-database-password]]<<mysql-property-database-password, `database.password`>>
 |
