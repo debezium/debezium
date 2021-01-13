@@ -223,4 +223,5 @@ jobs:
           java-version: ${{ steps.jdk.outputs.version }}
           jdkFile: ${{ steps.jdk.outputs.file }}
       - name: Maven Build
-        run: mvn clean install -B -pl debezium-testing -am -amd -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+        run: mvn clean install -B -pl debezium-assembly-descriptors,debezium-core,debezium-testing -am -amd -Passembly -Dcheckstyle.skip=true -Dformat.skip=true -Drevapi.skip -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+
