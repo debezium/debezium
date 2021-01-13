@@ -153,6 +153,15 @@ public interface ReplicationConnection extends AutoCloseable {
         Builder withPlugin(final PostgresConnectorConfig.LogicalDecoder plugin);
 
         /**
+         * Sets the instance for the Truncate handling mode
+         *
+         * @param truncateHandlingMode Truncate handling mode, may not be null.
+         * @return this instance
+         * @see io.debezium.connector.postgresql.PostgresConnectorConfig.TruncateHandlingMode
+         */
+        Builder withTruncateHandlingMode(final PostgresConnectorConfig.TruncateHandlingMode truncateHandlingMode);
+
+        /**
          * Whether or not to drop the replication slot once the replication connection closes
          *
          * @param dropSlotOnClose true if the slot should be dropped once the connection is closed, false otherwise

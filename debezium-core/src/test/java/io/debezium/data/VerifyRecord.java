@@ -292,6 +292,22 @@ public class VerifyRecord {
     }
 
     /**
+     * Verify that the given {@link SourceRecord} is a {@link Operation#TRUNCATE TRUNCATE} record.
+     *
+     * @param record the source record; may not be null
+     */
+    public static void isValidTruncate(SourceRecord record) {
+        assertThat(record.key()).isNull();
+
+        assertThat(record.valueSchema()).isNotNull();
+        Struct value = (Struct) record.value();
+        assertThat(value).isNotNull();
+        assertThat(value.getString(FieldName.OPERATION)).isEqualTo(Operation.TRUNCATE.code());
+        assertThat(value.get(FieldName.BEFORE)).isNull();
+        assertThat(value.get(FieldName.AFTER)).isNull();
+    }
+
+    /**
      * Verify that the given {@link SourceRecord} is a valid tombstone, meaning it has a valid non-null key with key schema
      * but null value and value schema.
      *

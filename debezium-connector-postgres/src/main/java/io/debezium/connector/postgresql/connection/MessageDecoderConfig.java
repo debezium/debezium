@@ -6,6 +6,7 @@
 package io.debezium.connector.postgresql.connection;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.postgresql.PostgresConnectorConfig;
 import io.debezium.connector.postgresql.PostgresSchema;
 
 /**
@@ -20,13 +21,16 @@ public class MessageDecoderConfig {
     private final String publicationName;
     private final boolean exportedSnapshot;
     private final boolean doSnapshot;
+    private final PostgresConnectorConfig.TruncateHandlingMode truncateHandlingMode;
 
-    public MessageDecoderConfig(Configuration configuration, PostgresSchema schema, String publicationName, boolean exportedSnapshot, boolean doSnapshot) {
+    public MessageDecoderConfig(Configuration configuration, PostgresSchema schema, String publicationName, boolean exportedSnapshot, boolean doSnapshot,
+                                PostgresConnectorConfig.TruncateHandlingMode truncateHandlingMode) {
         this.configuration = configuration;
         this.schema = schema;
         this.publicationName = publicationName;
         this.exportedSnapshot = exportedSnapshot;
         this.doSnapshot = doSnapshot;
+        this.truncateHandlingMode = truncateHandlingMode;
     }
 
     public Configuration getConfiguration() {
@@ -48,4 +52,9 @@ public class MessageDecoderConfig {
     public boolean doSnapshot() {
         return doSnapshot;
     }
+
+    public PostgresConnectorConfig.TruncateHandlingMode getTruncateHandlingMode() {
+        return truncateHandlingMode;
+    }
+
 }

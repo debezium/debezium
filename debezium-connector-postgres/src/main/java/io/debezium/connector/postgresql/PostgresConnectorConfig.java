@@ -10,6 +10,7 @@ import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
@@ -359,6 +360,11 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             public String getPostgresPluginName() {
                 return getValue();
             }
+
+            @Override
+            public boolean supportsTruncate() {
+                return true;
+            }
         },
         DECODERBUFS("decoderbufs") {
             @Override
@@ -370,6 +376,11 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             public String getPostgresPluginName() {
                 return getValue();
             }
+
+            @Override
+            public boolean supportsTruncate() {
+                return false;
+            }
         },
         WAL2JSON_STREAMING("wal2json_streaming") {
             @Override
@@ -380,6 +391,11 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             @Override
             public String getPostgresPluginName() {
                 return "wal2json";
+            }
+
+            @Override
+            public boolean supportsTruncate() {
+                return false;
             }
 
             @Override
@@ -409,6 +425,11 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             }
 
             @Override
+            public boolean supportsTruncate() {
+                return false;
+            }
+
+            @Override
             public boolean hasUnchangedToastColumnMarker() {
                 return false;
             }
@@ -427,6 +448,11 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             @Override
             public String getPostgresPluginName() {
                 return "wal2json";
+            }
+
+            @Override
+            public boolean supportsTruncate() {
+                return false;
             }
 
             @Override
@@ -453,6 +479,11 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             @Override
             public String getPostgresPluginName() {
                 return "wal2json";
+            }
+
+            @Override
+            public boolean supportsTruncate() {
+                return false;
             }
 
             @Override
@@ -496,6 +527,48 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         }
 
         public abstract String getPostgresPluginName();
+
+        public abstract boolean supportsTruncate();
+    }
+
+    /**
+     * The set of predefined TruncateHandlingMode options or aliases
+     */
+    public enum TruncateHandlingMode implements EnumeratedValue {
+
+        /**
+         * Skip TRUNCATE messages
+         */
+        SKIP("skip"),
+
+        /**
+         * Handle & Include TRUNCATE messages
+         */
+        INCLUDE("include");
+
+        private final String value;
+
+        TruncateHandlingMode(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        public static TruncateHandlingMode parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+            for (TruncateHandlingMode truncateHandlingMode : TruncateHandlingMode.values()) {
+                if (truncateHandlingMode.getValue().equalsIgnoreCase(value)) {
+                    return truncateHandlingMode;
+                }
+            }
+            return null;
+        }
     }
 
     /**
@@ -829,6 +902,16 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     "When 'snapshot.mode' is set as custom, this setting must be set to specify a fully qualified class name to load (via the default class loader)."
                             + "This class must implement the 'Snapshotter' interface and is called on each app boot to determine whether to do a snapshot and how to build queries.");
 
+    public static final Field TRUNCATE_HANDLING_MODE = Field.create("truncate.handling.mode")
+            .withDisplayName("Truncate handling mode")
+            .withEnum(TruncateHandlingMode.class, TruncateHandlingMode.SKIP)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .withValidation(PostgresConnectorConfig::validateTruncateHandlingMode)
+            .withDescription("Specify how TRUNCATE operations are handled for change events (supported only on pg11+ pgoutput plugin), including: " +
+                    "'skip' to skip / ignore TRUNCATE events (default), " +
+                    "'include' to handle and include TRUNCATE events");
+
     public static final Field HSTORE_HANDLING_MODE = Field.create("hstore.handling.mode")
             .withDisplayName("HStore Handling")
             .withEnum(HStoreHandlingMode.class, HStoreHandlingMode.JSON)
@@ -912,6 +995,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     "the original value is a toasted value not provided by the database. " +
                     "If starts with 'hex:' prefix it is expected that the rest of the string repesents hexadecimally encoded octets.");
 
+    private final TruncateHandlingMode truncateHandlingMode;
     private final HStoreHandlingMode hStoreHandlingMode;
     private final IntervalHandlingMode intervalHandlingMode;
     private final SnapshotMode snapshotMode;
@@ -925,6 +1009,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                 x -> x.schema() + "." + x.table(),
                 DEFAULT_SNAPSHOT_FETCH_SIZE);
 
+        this.truncateHandlingMode = TruncateHandlingMode.parse(config.getString(PostgresConnectorConfig.TRUNCATE_HANDLING_MODE));
         String hstoreHandlingModeStr = config.getString(PostgresConnectorConfig.HSTORE_HANDLING_MODE);
         this.hStoreHandlingMode = HStoreHandlingMode.parse(hstoreHandlingModeStr);
         this.intervalHandlingMode = IntervalHandlingMode.parse(config.getString(PostgresConnectorConfig.INTERVAL_HANDLING_MODE));
@@ -982,6 +1067,10 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
 
     protected Duration statusUpdateInterval() {
         return Duration.ofMillis(getConfig().getLong(PostgresConnectorConfig.STATUS_UPDATE_INTERVAL_MS));
+    }
+
+    protected TruncateHandlingMode truncateHandlingMode() {
+        return truncateHandlingMode;
     }
 
     protected HStoreHandlingMode hStoreHandlingMode() {
@@ -1091,6 +1180,32 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             if (!name.matches("[a-z0-9_]{1,63}")) {
                 problems.accept(field, name, "Valid replication slot name must contain only digits, lowercase characters and underscores with length <= 63");
                 ++errors;
+            }
+        }
+        return errors;
+    }
+
+    private static int validateTruncateHandlingMode(Configuration config, Field field, Field.ValidationOutput problems) {
+        final String value = config.getString(field);
+        int errors = 0;
+        if (value != null) {
+            TruncateHandlingMode truncateHandlingMode = TruncateHandlingMode.parse(value);
+            if (truncateHandlingMode == null) {
+                List<String> validModes = Arrays.stream(TruncateHandlingMode.values()).map(TruncateHandlingMode::getValue).collect(Collectors.toList());
+                String message = String.format("Valid values for %s are %s, but got '%s'", field.name(), validModes, value);
+                problems.accept(field, value, message);
+                errors++;
+                return errors;
+            }
+            if (truncateHandlingMode == TruncateHandlingMode.INCLUDE) {
+                LogicalDecoder logicalDecoder = config.getInstance(PLUGIN_NAME, LogicalDecoder.class);
+                if (!logicalDecoder.supportsTruncate()) {
+                    String message = String.format(
+                            "%s '%s' is not supported with configuration %s '%s'",
+                            field.name(), truncateHandlingMode.getValue(), PLUGIN_NAME.name(), logicalDecoder.getValue());
+                    problems.accept(field, value, message);
+                    errors++;
+                }
             }
         }
         return errors;

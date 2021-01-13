@@ -53,6 +53,9 @@ public abstract class RelationalChangeRecordEmitter extends AbstractChangeRecord
             case DELETE:
                 emitDeleteRecord(receiver, tableSchema);
                 break;
+            case TRUNCATE:
+                emitTruncateRecord(receiver, tableSchema);
+                break;
             default:
                 throw new IllegalArgumentException("Unsupported operation: " + operation);
         }
@@ -136,6 +139,10 @@ public abstract class RelationalChangeRecordEmitter extends AbstractChangeRecord
 
         Struct envelope = tableSchema.getEnvelopeSchema().delete(oldValue, getOffset().getSourceInfo(), getClock().currentTimeAsInstant());
         receiver.changeRecord(tableSchema, Operation.DELETE, oldKey, envelope, getOffset(), null);
+    }
+
+    protected void emitTruncateRecord(Receiver receiver, TableSchema schema) throws InterruptedException {
+        throw new UnsupportedOperationException("TRUNCATE not supported");
     }
 
     /**
