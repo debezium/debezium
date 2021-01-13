@@ -1064,6 +1064,13 @@ public abstract class AbstractConnectorTest implements Testing {
                 .until(() -> isStreamingRunning(connector, server, contextName));
     }
 
+    public static void waitForConnectorShutdown(String connector, String server) {
+        Awaitility.await()
+                .pollInterval(200, TimeUnit.MILLISECONDS)
+                .atMost(waitTimeForRecords() * 30, TimeUnit.SECONDS)
+                .until(() -> !isStreamingRunning(connector, server));
+    }
+
     public static boolean isStreamingRunning(String connector, String server) {
         return isStreamingRunning(connector, server, "streaming");
     }

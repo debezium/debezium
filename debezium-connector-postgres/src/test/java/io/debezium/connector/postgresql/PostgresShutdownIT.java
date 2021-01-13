@@ -6,8 +6,6 @@
 
 package io.debezium.connector.postgresql;
 
-import static org.junit.Assert.assertFalse;
-
 import java.sql.SQLException;
 import java.util.concurrent.TimeUnit;
 
@@ -140,10 +138,11 @@ public class PostgresShutdownIT extends AbstractConnectorTest {
                 .execInContainer("su", "-", "postgres", "-c", "/usr/lib/postgresql/11/bin/pg_ctl -m fast -D /var/lib/postgresql/data stop");
         logger.info(result.toString());
 
-        logger.info("Waiting for Postgres to shutdown...");
+        logger.info("Waiting for Postgres to shut down...");
         waitForPostgresShutdown();
 
-        assertFalse(isStreamingRunning("postgres", TestHelper.TEST_SERVER));
+        logger.info("Waiting for connector to shut down...");
+        waitForConnectorShutdown("postgres", TestHelper.TEST_SERVER);
     }
 
     private void waitForPostgresShutdown() {
@@ -152,5 +151,4 @@ public class PostgresShutdownIT extends AbstractConnectorTest {
                 .atMost(60 * TestHelper.waitTimeForRecords(), TimeUnit.SECONDS)
                 .until(() -> !postgresContainer.isRunning());
     }
-
 }
