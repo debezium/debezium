@@ -1636,7 +1636,7 @@ The following configuration properties are _required_ unless a default value is 
 
 |`database.user`
 |
-|Name of the MySQL database to use when connecting to the MySQL database server.
+|Name of the MySQL user to use when connecting to the MySQL database server.
 
 |`database.password`
 |
