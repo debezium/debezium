@@ -18,6 +18,7 @@ import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.CommonConnectorConfig.EventProcessingFailureHandlingMode;
 import io.debezium.config.Configuration;
@@ -342,6 +343,35 @@ public class MySqlJdbcContext implements AutoCloseable {
         }
 
         return variables;
+    }
+
+    /**
+     * Read the MySQL default character sets for exisiting databases.
+     *
+     * @return the map of database names with their default character sets; never null
+     */
+    protected Map<String, String> readDatabaseCharsets() {
+        logger.debug("Reading default database charsets");
+        try {
+            start();
+            return jdbc.connect().queryAndMap("SELECT schema_name, default_character_set_name, default_collation_name FROM information_schema.schemata", rs -> {
+                final Map<String, String> charsets = new HashMap<>();
+                while (rs.next()) {
+                    String varName = rs.getString(1);
+                    String value = rs.getString(2);
+                    if (varName != null && value != null) {
+                        charsets.put(varName, value);
+                        logger.debug("\t{} = {}",
+                                Strings.pad(varName, 45, ' '),
+                                Strings.pad(value, 45, ' '));
+                    }
+                }
+                return charsets;
+            });
+        }
+        catch (SQLException e) {
+            throw new DebeziumException("Error reading default database charsets: " + e.getMessage(), e);
+        }
     }
 
     protected String setStatementFor(Map<String, String> variables) {
