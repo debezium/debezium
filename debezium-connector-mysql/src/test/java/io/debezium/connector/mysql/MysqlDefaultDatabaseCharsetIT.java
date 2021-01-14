@@ -21,9 +21,6 @@ import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.util.Testing;
 
-/**
- * @author luobo on 2018/6/8 14:16
- */
 public class MysqlDefaultDatabaseCharsetIT extends AbstractConnectorTest {
 
     private static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-connect.txt").toAbsolutePath();
