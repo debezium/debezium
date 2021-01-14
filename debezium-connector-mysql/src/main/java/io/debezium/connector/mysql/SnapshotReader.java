@@ -519,6 +519,7 @@ public class SnapshotReader extends AbstractReader {
                                     "DROP DATABASE IF EXISTS " + quote(missingDbName),
                                     this::enqueueSchemaChanges));
 
+                    final Map<String, String> databaseCharsets = connectionContext.readDatabaseCharsets();
                     // Now process all of our tables for each database ...
                     for (Map.Entry<String, List<TableId>> entry : createTablesMap.entrySet()) {
                         if (!isRunning()) {
@@ -527,7 +528,18 @@ public class SnapshotReader extends AbstractReader {
                         String dbName = entry.getKey();
                         // First drop, create, and then use the named database ...
                         schema.applyDdl(source, dbName, "DROP DATABASE IF EXISTS " + quote(dbName), this::enqueueSchemaChanges);
-                        schema.applyDdl(source, dbName, "CREATE DATABASE " + quote(dbName), this::enqueueSchemaChanges);
+
+                        final StringBuilder createDatabaseDddl = new StringBuilder("CREATE DATABASE " + quote(dbName));
+                        final String defaultDatabaseCharset = databaseCharsets.get(dbName);
+                        if (defaultDatabaseCharset != null) {
+                            logger.debug("Setting default charset '{}' for database '{}'", defaultDatabaseCharset, dbName);
+                            createDatabaseDddl.append(" CHARSET ").append(defaultDatabaseCharset);
+                        }
+                        else {
+                            logger.info("Default database charset for '{}' not found", dbName);
+                        }
+                        schema.applyDdl(source, dbName, createDatabaseDddl.toString(), this::enqueueSchemaChanges);
+
                         schema.applyDdl(source, dbName, "USE " + quote(dbName), this::enqueueSchemaChanges);
                         for (TableId tableId : entry.getValue()) {
                             if (!isRunning()) {
