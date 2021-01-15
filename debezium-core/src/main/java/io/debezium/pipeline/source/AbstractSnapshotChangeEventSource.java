@@ -64,7 +64,10 @@ public abstract class AbstractSnapshotChangeEventSource implements SnapshotChang
         }
 
         try {
-            return doExecute(context, ctx, snapshottingTask);
+            snapshotProgressListener.snapshotStarted();
+            SnapshotResult result = doExecute(context, ctx, snapshottingTask);
+            snapshotProgressListener.snapshotCompleted();
+            return result;
         }
         catch (InterruptedException e) {
             LOGGER.warn("Snapshot was interrupted before completion");
@@ -145,7 +148,8 @@ public abstract class AbstractSnapshotChangeEventSource implements SnapshotChang
      * Completes the snapshot, doing any required clean-up (resource disposal etc.).
      * @param snapshotContext snapshot context
      */
-    protected abstract void complete(SnapshotContext snapshotContext);
+    protected void complete(SnapshotContext snapshotContext) {
+    }
 
     /**
      * Mutable context which is populated in the course of snapshotting
