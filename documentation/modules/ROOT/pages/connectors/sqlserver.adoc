@@ -118,14 +118,16 @@ This initial snapshot captures the structure and data for any tables that match 
 When the connector creates a snapshot, it completes the following tasks:
 
 1. Determines the tables to be captured.
-2. Obtains a lock on each table for which CDC is enabled to ensure that no structural changes occur in the tables.
+2. Obtains a lock on the SQL Server tables for which CDC is enabled to prevent structural changes from occurring during creation of the snapshot.
 The level of the lock is determined by `snapshot.isolation.mode` configuration option.
 3. Reads the maximum log sequence number (LSN) position in the server's transaction log.
 4. Captures the structure of all relevant tables.
 5. Releases the locks obtained in Step 2, if necessary. In most cases, locks are held for only a short period of time.
-6. Scans all of the relevant database tables and schemas based on the LSN position that it read in Step 3, generates a `READ` event for each row, and writes the events to the Kafka topic for the table.
+6. Scans the SQL Server source tables and schemas to be captured based on the LSN position that was read in Step 3, generates a `READ` event for each row in the table, and writes the events to the Kafka topic for the table.
 7. Records the successful completion of the snapshot in the connector offsets.
 
+The resulting initial snapshot captures the current state of each row in the tables that are enabled for CDC.
+From this baseline state, the connector captures subsequent changes as they occur. 
 
 // Type: concept
 // ModuleID: how-the-debezium-sql-server-connector-reads-change-data-tables
@@ -720,7 +722,7 @@ The following example shows the value portion of a change event that the connect
       "event_serial_no": "1"
     },
     "op": "c", // <9>
-    "ts_ms": 1559729471739 <10>
+    "ts_ms": 1559729471739 // <10>
   }
 }
 ----
@@ -789,9 +791,11 @@ a|Mandatory string that describes the type of operation that caused the connecto
 
 |10
 |`ts_ms`
-a|Optional field that displays the time at which the connector processed the event. The time is based on the system clock in the JVM running the Kafka Connect task. +
+a| Optional field that displays the time at which the connector processed the event. 
+In the event message envelope, the time is based on the system clock in the JVM running the Kafka Connect task. +
  +
-In the `source` object, `ts_ms` indicates the time that the change was made in the database. By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
+In the `source` object, `ts_ms` indicates the time when a change was committed in the database. 
+By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
 
 |===
 
@@ -875,10 +879,11 @@ a|Mandatory string that describes the type of operation. In an _update_ event va
 
 |5
 |`ts_ms`
-a|Optional field that displays the time at which the connector processed the event. The time is based on the system clock in the JVM running the Kafka Connect task.  +
+a| Optional field that displays the time at which the connector processed the event. 
+In the event message envelope, the time is based on the system clock in the JVM running the Kafka Connect task. +
  +
-In the `source` object, `ts_ms` indicates the time that the change was made in the database. By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
-
+In the `source` object, `ts_ms` indicates the time when the change was committed to the database. 
+By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
 
 |===
 
@@ -955,9 +960,11 @@ a|Mandatory string that describes the type of operation. The `op` field value is
 
 |5
 |`ts_ms`
-a|Optional field that displays the time at which the connector processed the event. The time is based on the system clock in the JVM running the Kafka Connect task.  +
+a| Optional field that displays the time at which the connector processed the event. 
+In the event message envelope, the time is based on the system clock in the JVM running the Kafka Connect task. +
  +
-In the `source` object, `ts_ms` indicates the time that the change was made in the database. By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
+In the `source` object, `ts_ms` indicates the time that the change was made in the database. 
+By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
 
 |===
 
@@ -1965,12 +1972,12 @@ The following _advanced_ configuration properties have good defaults that will w
 |[[sqlserver-property-snapshot-mode]]<<sqlserver-property-snapshot-mode, `snapshot.mode`>>
 |_initial_
 |A mode for taking an initial snapshot of the structure and optionally data of captured tables.
-Once the snapshot is complete, the connector will continue reading change events from the database's redo logs. +
- +
-Supported values are: +
-`initial`: Takes a snapshot of structure and data of captured tables; useful if topics should be populated with a complete representation of the data from the captured tables. +
-`initial_only`: Takes a snapshot of structure and data like `initial` but instead does not transition into streaming changes once the snapshot has completed. +
-`schema_only`: Takes a snapshot of the structure of captured tables only; useful if only changes happening from now onwards should be propagated to topics.
+Once the snapshot is complete, the connector will continue reading change events from the database's redo logs. 
+The following values are supported: 
+
+* `initial`: Takes a snapshot of structure and data of captured tables; useful if topics should be populated with a complete representation of the data from the captured tables. +
+* `initial_only`: Takes a snapshot of structure and data like `initial` but instead does not transition into streaming changes once the snapshot has completed. +
+* `schema_only`: Takes a snapshot of the structure of captured tables only; useful if only changes happening from now onwards should be propagated to topics.
 
 |[[sqlserver-property-snapshot-include-collection-list]]<<sqlserver-property-snapshot-include-collection-list, `snapshot.include.collection.list`>>
 | All tables specified in `table.include.list`
@@ -1979,14 +1986,20 @@ Supported values are: +
 |[[sqlserver-property-snapshot-isolation-mode]]<<sqlserver-property-snapshot-isolation-mode, `snapshot.isolation{zwsp}.mode`>>
 |_repeatable_read_
 |Mode to control which transaction isolation level is used and how long the connector locks tables that are designated for capture.
-There are five possible values: `read_uncommitted`, `read_committed`, `repeatable_read`, `snapshot`, and `exclusive` (
-in fact, `exclusive` mode uses repeatable read isolation level, however, it takes the exclusive lock on all tables
+The following values are supported:
+
+* `read_uncommitted`
+* `read_committed`
+* `repeatable_read`
+* `snapshot`
+* `exclusive` (`exclusive` mode uses repeatable read isolation level, however, it takes the exclusive lock on all tables
 to be read). +
 
-It is worth documenting that `snapshot`, `read_committed` and `read_uncommitted` modes do not prevent other
-transactions from updating table rows during initial snapshot, while `exclusive` and `repeatable_read` do. +
+The `snapshot`, `read_committed` and `read_uncommitted` modes do not prevent other
+transactions from updating table rows during initial snapshot. 
+The `exclusive` and `repeatable_read` modes do prevent concurrent updates. +
 
-Another aspect is data consistency. Only `exclusive` and `snapshot` modes guarantee full consistency, that is, initial
+Mode choice also affects data consistency. Only `exclusive` and `snapshot` modes guarantee full consistency, that is, initial
 snapshot and streaming logs constitute a linear history.
 In case of `repeatable_read` and `read_committed` modes, it might happen that, for instance, a record added appears
 twice - once in initial snapshot and once in streaming phase. Nonetheless, that consistency level should do for
@@ -1995,9 +2008,11 @@ For `read_uncommitted` there are no data consistency guarantees at all (some dat
 
 |[[sqlserver-property-source-timestamp-mode]]<<sqlserver-property-source-timestamp-mode, `source.timestamp{zwsp}.mode`>>
 |_commit_
-|String representing the criteria of the attached timestamp within the source record (ts_ms).
-`commit` will set the source timestamp to the instant where the record was committed in the database (default and current behavior).
-`processing` will set the source timestamp to the instant where the record was processed by {prodname}. This option could be used when either we want to set the top level `ts_ms` value here or when we want to skip the query to extract the timestamp of that LSN.
+a|String that represents the criteria of the attached timestamp within the source record (ts_ms).
+
+* `commit` (default) sets the source timestamp to the time when the record was committed to the database.
+* `processing` sets the source timestamp to the time when {prodname} accesses the record in the change table. 
+Use the `processing` option if you want {prodname] to set the top level `ts_ms` value, or if you want to avoid the additional cost of {prodname} querying the database to extract the LSN timestamps.
 
 |[[sqlserver-property-event-processing-failure-handling-mode]]<<sqlserver-property-event-processing-failure-handling-mode, `event.processing{zwsp}.failure.handling{zwsp}.mode`>>
 |`fail`
@@ -2082,7 +2097,10 @@ endif::community[]
 |
 | Timezone of the server.
 
-This is used to define the timezone of the transaction timestamp (ts_ms) retrieved from the server (which is actually not zoned). Default value is unset. Should only be specified when running on SQL Server 2014 or older and using different timezones for the database server and the JVM running the {prodname} connector. +
+This property defines the timezone of the transaction timestamp (`ts_ms`) that is retrieved from the server (which is actually not zoned). 
+By default, the value is unset. 
+Set a value for the property only when running on SQL Server 2014 or older, and the database server and the JVM running the {prodname} connector use different timezones. 
+
 When unset, default behavior is to use the timezone of the VM running the {prodname} connector. In this case, when running on on SQL Server 2014 or older and using different timezones on server and the connector, incorrect ts_ms values may be produced. +
 Possible values include "Z", "UTC", offset values like "+02:00", short zone ids like "CET", and long zone ids like "Europe/Paris".
 
