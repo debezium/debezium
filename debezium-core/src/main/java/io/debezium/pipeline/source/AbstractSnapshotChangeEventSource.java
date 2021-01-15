@@ -13,6 +13,7 @@ import java.util.stream.Stream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.ConfigurationDefaults;
 import io.debezium.pipeline.source.spi.SnapshotChangeEventSource;
@@ -63,28 +64,33 @@ public abstract class AbstractSnapshotChangeEventSource implements SnapshotChang
             throw new RuntimeException(e);
         }
 
+        boolean completedSuccessfully = true;
+
         try {
             snapshotProgressListener.snapshotStarted();
             SnapshotResult result = doExecute(context, ctx, snapshottingTask);
-            snapshotProgressListener.snapshotCompleted();
+
             return result;
         }
         catch (InterruptedException e) {
+            completedSuccessfully = false;
             LOGGER.warn("Snapshot was interrupted before completion");
-            snapshotProgressListener.snapshotAborted();
             throw e;
         }
-        catch (RuntimeException e) {
-            snapshotProgressListener.snapshotAborted();
-            throw e;
-        }
-        catch (Throwable t) {
-            snapshotProgressListener.snapshotAborted();
-            throw new RuntimeException(t);
+        catch (Exception t) {
+            completedSuccessfully = false;
+            throw new DebeziumException(t);
         }
         finally {
             LOGGER.info("Snapshot - Final stage");
             complete(ctx);
+
+            if (completedSuccessfully) {
+                snapshotProgressListener.snapshotCompleted();
+            }
+            else {
+                snapshotProgressListener.snapshotAborted();
+            }
         }
     }
 
@@ -146,6 +152,8 @@ public abstract class AbstractSnapshotChangeEventSource implements SnapshotChang
 
     /**
      * Completes the snapshot, doing any required clean-up (resource disposal etc.).
+     * The snapshot may have run successfully or have been aborted at this point.
+     *
      * @param snapshotContext snapshot context
      */
     protected void complete(SnapshotContext snapshotContext) {
