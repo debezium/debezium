@@ -93,7 +93,6 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
         Connection connection = null;
         try {
             LOGGER.info("Snapshot step 1 - Preparing");
-            snapshotProgressListener.snapshotStarted();
 
             if (previousOffset != null && previousOffset.isSnapshotRunning()) {
                 LOGGER.info("Previous snapshot was cancelled before completion; a new snapshot will be taken.");
@@ -144,7 +143,6 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
             }
 
             dispatcher.alwaysDispatchHeartbeatEvent(ctx.offset);
-            snapshotProgressListener.snapshotCompleted();
             return SnapshotResult.completed(ctx.offset);
         }
         finally {
@@ -423,12 +421,6 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
         statement.setFetchSize(fetchSize);
         return statement;
     }
-
-    /**
-     * Completes the snapshot, doing any required clean-up (resource disposal etc.).
-     * @param snapshotContext snapshot context
-     */
-    protected abstract void complete(SnapshotContext snapshotContext);
 
     private void rollbackTransaction(Connection connection) {
         if (connection != null) {

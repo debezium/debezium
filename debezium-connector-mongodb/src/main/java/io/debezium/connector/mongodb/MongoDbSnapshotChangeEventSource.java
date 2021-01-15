@@ -90,7 +90,6 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
         final MongoDbSnapshotContext mongoDbSnapshotContext = (MongoDbSnapshotContext) snapshotContext;
 
         LOGGER.info("Snapshot step 1 - Preparing");
-        snapshotProgressListener.snapshotStarted();
 
         if (previousOffset != null && previousOffset.isSnapshotRunning()) {
             LOGGER.info("Previous snapshot was cancelled before completion; a new snapshot will be taken.");
@@ -155,8 +154,6 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
             return SnapshotResult.aborted();
         }
 
-        snapshotProgressListener.snapshotCompleted();
-
         return SnapshotResult.completed(snapshotContext.offset);
     }
 
@@ -207,10 +204,6 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
     @Override
     protected SnapshotContext prepare(ChangeEventSourceContext sourceContext) throws Exception {
         return new MongoDbSnapshotContext();
-    }
-
-    @Override
-    protected void complete(SnapshotContext snapshotContext) {
     }
 
     private void snapshotReplicaSet(ChangeEventSourceContext sourceContext, MongoDbSnapshotContext ctx, ReplicaSet replicaSet) throws InterruptedException {
