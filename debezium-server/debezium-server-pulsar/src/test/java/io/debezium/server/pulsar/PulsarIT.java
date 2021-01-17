@@ -44,6 +44,7 @@ public class PulsarIT {
 
     protected static PulsarClient pulsarClient;
     @Inject
+    PulsarContainer pulsarContainer;
     DebeziumServer server;
 
     {
@@ -54,8 +55,10 @@ public class PulsarIT {
     void setupDependencies(@Observes ConnectorStartedEvent event) throws IOException {
         Testing.Print.enable();
 
+        pulsarContainer.start();
+
         pulsarClient = PulsarClient.builder()
-                .serviceUrl(PulsarTestConfigSource.getServiceUrl())
+                .serviceUrl(pulsarContainer.getPulsarServiceUrl())
                 .build();
 
     }
