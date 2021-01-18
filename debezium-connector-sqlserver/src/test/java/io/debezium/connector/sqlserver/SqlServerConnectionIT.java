@@ -15,7 +15,9 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
+import org.awaitility.Awaitility;
 import org.fest.assertions.Assertions;
 import org.junit.Before;
 import org.junit.Test;
@@ -276,7 +278,7 @@ public class SqlServerConnectionIT {
                     + "    bigint_no_default_not_null bigint not null,"
                     + "    bigint_no_default bigint,"
                     + "    bigint_default_null bigint default null,"
-                    + "    bigint_column bigint default (3147483648),"
+                    + "    bigint_column bigint default (3147483648.),"
 
                     + "    smallint_no_default_not_null smallint not null,"
                     + "    smallint_no_default smallint,"
@@ -306,7 +308,9 @@ public class SqlServerConnectionIT {
             // insert some data
 
             // and issue a test call to a CDC wrapper function
-            Thread.sleep(5_000); // Need to wait to make sure the min_lsn is available
+            Awaitility.await()
+                    .atMost(5, TimeUnit.SECONDS)
+                    .until(() -> connection.getMinLsn("table_with_defaults").isAvailable()); // Need to wait to make sure the min_lsn is available
             List<String> capturedColumns = Arrays
                     .asList(
                             "int_no_default_not_null",

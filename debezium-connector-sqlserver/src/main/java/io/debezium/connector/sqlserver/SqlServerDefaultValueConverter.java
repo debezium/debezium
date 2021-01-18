@@ -118,7 +118,8 @@ class SqlServerDefaultValueConverter {
         final Map<String, DefaultValueMapper> result = new HashMap<>();
 
         // Exact numbers
-        result.put("bigint", v -> nullableDefaultValueMapper(v, value -> Long.parseLong(value.replaceAll("(\\.)$", "")))); // Sample value: ((3147483648.))
+        result.put("bigint",
+                v -> nullableDefaultValueMapper(v, value -> Long.parseLong(value.charAt(value.length() - 1) == '.' ? value.substring(0, value.length() - 1) : value))); // Sample value: ((3147483648.))
         result.put("int", v -> nullableDefaultValueMapper(v, Integer::parseInt)); // Sample value: ((2147483647))
         result.put("smallint", v -> nullableDefaultValueMapper(v, Short::parseShort)); // Sample value: ((32767))
         result.put("tinyint", v -> nullableDefaultValueMapper(v, Short::parseShort)); // Sample value: ((255))
@@ -180,7 +181,9 @@ class SqlServerDefaultValueConverter {
     }
 
     public static Object nullableDefaultValueMapper(String v, DefaultValueMapper mapper) throws Exception {
-        final String value = v.replaceAll("^[\\(]+|[\\)]+$", ""); // trim leading and trailing parenthesis
+        int start = v.lastIndexOf("(") == -1 ? 0 : v.lastIndexOf("(") + 1;
+        int end = !v.contains(")") ? v.length() : v.indexOf(")");
+        final String value = v.substring(start, end); // trim leading and trailing parenthesis
         if ("NULL".equalsIgnoreCase(value)) {
             return null;
         }
