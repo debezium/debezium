@@ -40,7 +40,7 @@ import okhttp3.ResponseBody;
  */
 public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
 
-    private static final String DEBEZIUM_VERSION = DebeziumContainer.getDebeziumStableVersion();
+    private static final String DEBEZIUM_VERSION = DebeziumContainer.getStableVersion("https://hub.docker.com/v2/repositories/debezium/connect/tags/");
 
     private static final int KAFKA_CONNECT_PORT = 8083;
     private static final String TEST_PROPERTY_PREFIX = "debezium.test.";
@@ -293,10 +293,10 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
                 .until(() -> getConnectorTaskState(connectorName, taskNumber) == status);
     }
 
-    public static String getDebeziumStableVersion() {
-        String DEBEZIUM_VERSION = "";
+    public static String getStableVersion(String endpoint) {
+        String VERSION = "";
         try {
-            URL url = new URL("https://hub.docker.com/v2/repositories/debezium/connect/tags/");
+            URL url = new URL(endpoint);
             HttpsURLConnection httpsURLConnection = (HttpsURLConnection) url.openConnection();
             httpsURLConnection.setRequestMethod("GET");
 
@@ -321,12 +321,12 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
                 }
 
                 Collections.sort(STABLE_VERSION_LIST);
-                DEBEZIUM_VERSION = STABLE_VERSION_LIST.get(STABLE_VERSION_LIST.size() - 1);
+                VERSION = STABLE_VERSION_LIST.get(STABLE_VERSION_LIST.size() - 1);
             }
         }
         catch (IOException e) {
             throw new RuntimeException(e);
         }
-        return DEBEZIUM_VERSION;
+        return VERSION;
     }
 }
