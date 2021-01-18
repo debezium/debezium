@@ -50,7 +50,7 @@ public class SqlUtilsTest {
         expected = "SELECT SCN, SQL_REDO, OPERATION_CODE, TIMESTAMP, XID, CSF, TABLE_NAME, SEG_OWNER, OPERATION, USERNAME  " +
                 "FROM V$LOGMNR_CONTENTS WHERE  OPERATION_CODE in (1,2,3,5)  AND SEG_OWNER = 'DATABASE'  AND SCN >= ? AND SCN < ?  " +
                 "OR (OPERATION_CODE IN (5,34) AND USERNAME NOT IN ('SYS','SYSTEM','SCHEMA')) " +
-                " OR (OPERATION_CODE IN (7,36)) ORDER BY SCN";
+                " OR (OPERATION_CODE IN (7,36))";
         assertThat(result).isEqualTo(expected);
 
         tables.add(table1);
@@ -60,7 +60,7 @@ public class SqlUtilsTest {
                 "FROM V$LOGMNR_CONTENTS WHERE  OPERATION_CODE in (1,2,3,5)  " +
                 "AND SEG_OWNER = 'DATABASE'  AND table_name IN ('table1','table2')  " +
                 "AND SCN >= ? AND SCN < ?  OR (OPERATION_CODE IN (5,34) AND USERNAME NOT IN ('SYS','SYSTEM','SCHEMA')) " +
-                " OR (OPERATION_CODE IN (7,36)) ORDER BY SCN";
+                " OR (OPERATION_CODE IN (7,36))";
         assertThat(result).isEqualTo(expected);
 
         result = SqlUtils.startLogMinerStatement(10L, 20L, OracleConnectorConfig.LogMiningStrategy.ONLINE_CATALOG, true);

@@ -208,7 +208,6 @@ public class SqlUtils {
     static String logMinerContentsQuery(String schemaName, String logMinerUser, OracleDatabaseSchema schema) {
         List<String> whiteListTableNames = schema.tableIds().stream().map(TableId::table).collect(Collectors.toList());
 
-        String sorting = "ORDER BY SCN";
         // todo: add ROW_ID, SESSION#, SERIAL#, RS_ID, and SSN
         return "SELECT SCN, SQL_REDO, OPERATION_CODE, TIMESTAMP, XID, CSF, TABLE_NAME, SEG_OWNER, OPERATION, USERNAME " +
                 " FROM " + LOGMNR_CONTENTS_VIEW + " WHERE  OPERATION_CODE in (1,2,3,5) " + // 5 - DDL
@@ -218,8 +217,7 @@ public class SqlUtils {
                 // Capture DDL and MISSING_SCN rows only hwne not performed by SYS, SYSTEM, and LogMiner user
                 " OR (OPERATION_CODE IN (5,34) AND USERNAME NOT IN ('SYS','SYSTEM','" + logMinerUser.toUpperCase() + "')) " +
                 // Capture all COMMIT and ROLLBACK operations performed by the database
-                " OR (OPERATION_CODE IN (7,36)) " +
-                sorting; // todo username = schemaName?
+                " OR (OPERATION_CODE IN (7,36))"; // todo username = schemaName?
     }
 
     static String addLogFileStatement(String option, String fileName) {

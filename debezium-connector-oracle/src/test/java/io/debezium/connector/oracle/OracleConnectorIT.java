@@ -17,6 +17,7 @@ import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -1154,6 +1155,84 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         finally {
             TestHelper.dropTable(connection, "orders");
         }
+    }
+
+    @Test
+    @FixFor("DBZ-2920")
+    public void shouldStreamDdlThatExceeds4000() throws Exception {
+        TestHelper.dropTable(connection, "large_dml");
+
+        // Setup table
+        final String ddl = "CREATE TABLE large_dml (id NUMERIC(6), value varchar2(4000), value2 varchar2(4000), primary key(id))";
+        connection.execute(ddl);
+        connection.execute("GRANT SELECT ON debezium.large_dml TO " + TestHelper.getConnectorUserName());
+        connection.execute("ALTER TABLE debezium.large_dml ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
+
+        // Prepare snapshot record
+        String largeValue = generateAlphaNumericStringColumn(4000);
+        String largeValue2 = generateAlphaNumericStringColumn(4000);
+        connection.execute("INSERT INTO large_dml (id, value, value2) values (1, '" + largeValue + "', '" + largeValue2 + "')");
+        connection.commit();
+
+        // Start connector
+        final Configuration config = TestHelper.defaultConfig()
+                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "debezium.large_dml")
+                .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .build();
+        start(OracleConnector.class, config);
+        assertNoRecordsToConsume();
+
+        // Verify snapshot
+        waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+        SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.topics()).hasSize(1);
+        assertThat(records.recordsForTopic("server1.DEBEZIUM.LARGE_DML")).hasSize(1);
+
+        Struct after = ((Struct) records.recordsForTopic("server1.DEBEZIUM.LARGE_DML").get(0).value()).getStruct(AFTER);
+        assertThat(after.get("ID")).isEqualTo(1);
+        assertThat(after.get("VALUE")).isEqualTo(largeValue);
+        assertThat(after.get("VALUE2")).isEqualTo(largeValue2);
+
+        // Prepare stream records
+        waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+        List<String> largeValues = new ArrayList<>();
+        List<String> largeValues2 = new ArrayList<>();
+        for (int i = 0; i < 10; ++i) {
+            System.out.println("Inserting row " + (2 + i));
+            largeValues.add(generateAlphaNumericStringColumn(4000));
+            largeValues2.add(generateAlphaNumericStringColumn(4000));
+            connection.execute("INSERT INTO large_dml (id, value, value2) values (" + (2 + i) + ", '" + largeValues.get(largeValues.size() - 1) + "', '"
+                    + largeValues2.get(largeValues2.size() - 1) + "')");
+        }
+        connection.commit();
+
+        // Verify stream
+        System.out.println("Consuming stream entries");
+        records = consumeRecordsByTopic(10);
+        assertThat(records.topics()).hasSize(1);
+        assertThat(records.recordsForTopic("server1.DEBEZIUM.LARGE_DML")).hasSize(10);
+
+        List<SourceRecord> entries = records.recordsForTopic("server1.DEBEZIUM.LARGE_DML");
+        for (int i = 0; i < 10; ++i) {
+            SourceRecord record = entries.get(i);
+            after = ((Struct) record.value()).getStruct(AFTER);
+            assertThat(after.get("ID")).isEqualTo(2 + i);
+            assertThat(after.get("VALUE")).isEqualTo(largeValues.get(i));
+            assertThat(after.get("VALUE2")).isEqualTo(largeValues2.get(i));
+        }
+
+        // Stop connector
+        stopConnector((r) -> TestHelper.dropTable(connection, "large_dml"));
+    }
+
+    private String generateAlphaNumericStringColumn(int size) {
+        final String alphaNumericString = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz";
+        final StringBuilder sb = new StringBuilder(size);
+        for (int i = 0; i < size; ++i) {
+            int index = (int) (alphaNumericString.length() * Math.random());
+            sb.append(alphaNumericString.charAt(index));
+        }
+        return sb.toString();
     }
 
     private void verifyHeartbeatRecord(SourceRecord heartbeat) {
