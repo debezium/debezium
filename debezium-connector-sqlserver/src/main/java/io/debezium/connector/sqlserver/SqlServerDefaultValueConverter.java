@@ -26,7 +26,6 @@ import io.debezium.jdbc.JdbcConnection;
 import io.debezium.relational.Column;
 import io.debezium.relational.ValueConverter;
 import io.debezium.util.HexConverter;
-
 import microsoft.sql.DateTimeOffset;
 
 /**
@@ -181,8 +180,8 @@ class SqlServerDefaultValueConverter {
     }
 
     public static Object nullableDefaultValueMapper(String v, DefaultValueMapper mapper) throws Exception {
-        int start = v.lastIndexOf("(") == -1 ? 0 : v.lastIndexOf("(") + 1;
-        int end = !v.contains(")") ? v.length() : v.indexOf(")");
+        int start = v.lastIndexOf('(') == -1 ? 0 : v.lastIndexOf('(') + 1;
+        int end = !v.contains(")") ? v.length() : v.indexOf(')');
         final String value = v.substring(start, end); // trim leading and trailing parenthesis
         if ("NULL".equalsIgnoreCase(value)) {
             return null;
