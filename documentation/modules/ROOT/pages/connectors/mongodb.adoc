@@ -716,7 +716,7 @@ All MongoDB connector events for a uniquely identified document have exactly the
 [[mongodb-transaction-metadata]]
 === Transaction Metadata
 
-{prodname} can generate events that represents tranaction metadata boundaries and enrich data messages.
+{prodname} can generate events that represents transaction metadata boundaries and enrich data messages.
 
 ==== Transaction boundaries
 {prodname} generates events for every transaction `BEGIN` and `END`.
