@@ -26,6 +26,6 @@ public class ApicurioRegistryContainer extends GenericContainer<ApicurioRegistry
     public static String getApicurioVersion() {
         String APICURIO_VERSION_TEST_PROPERTY = System.getProperty(TEST_PROPERTY_PREFIX + "apicurio.version");
         return APICURIO_VERSION_TEST_PROPERTY != null ? APICURIO_VERSION_TEST_PROPERTY
-                : DebeziumContainer.getStableVersion("https://hub.docker.com/v2/repositories/apicurio/apicurio-registry-mem/tags/");
+                : ContainerImageVersions.getStableVersion("apicurio/apicurio-registry-mem");
     }
 }

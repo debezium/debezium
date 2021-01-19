@@ -5,18 +5,10 @@
  */
 package io.debezium.testing.testcontainers;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.net.URL;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-import javax.net.ssl.HttpsURLConnection;
 
 import org.awaitility.Awaitility;
 import org.testcontainers.containers.GenericContainer;
@@ -40,7 +32,7 @@ import okhttp3.ResponseBody;
  */
 public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
 
-    private static final String DEBEZIUM_VERSION = DebeziumContainer.getStableVersion("https://hub.docker.com/v2/repositories/debezium/connect/tags/");
+    private static final String DEBEZIUM_VERSION = ContainerImageVersions.getStableVersion("debezium/connect");
 
     private static final int KAFKA_CONNECT_PORT = 8083;
     private static final String TEST_PROPERTY_PREFIX = "debezium.test.";
@@ -291,42 +283,5 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
         Awaitility.await()
                 .atMost(waitTimeForRecords() * 5, TimeUnit.SECONDS)
                 .until(() -> getConnectorTaskState(connectorName, taskNumber) == status);
-    }
-
-    public static String getStableVersion(String endpoint) {
-        String VERSION = "";
-        try {
-            URL url = new URL(endpoint);
-            HttpsURLConnection httpsURLConnection = (HttpsURLConnection) url.openConnection();
-            httpsURLConnection.setRequestMethod("GET");
-
-            int responseCode = httpsURLConnection.getResponseCode();
-
-            if (responseCode == HttpsURLConnection.HTTP_OK) {
-                BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(httpsURLConnection.getInputStream()));
-                String content;
-                StringBuilder response = new StringBuilder();
-
-                while ((content = bufferedReader.readLine()) != null) {
-                    response.append(content);
-                }
-
-                Pattern pattern = Pattern.compile("\\d.\\d.\\d.Final");
-                Matcher matcher = pattern.matcher(response);
-
-                List<String> STABLE_VERSION_LIST = new ArrayList<>();
-
-                while (matcher.find()) {
-                    STABLE_VERSION_LIST.add(matcher.group());
-                }
-
-                Collections.sort(STABLE_VERSION_LIST);
-                VERSION = STABLE_VERSION_LIST.get(STABLE_VERSION_LIST.size() - 1);
-            }
-        }
-        catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-        return VERSION;
     }
 }
