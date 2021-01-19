@@ -26,6 +26,7 @@ import io.debezium.jdbc.JdbcConnection;
 import io.debezium.relational.Column;
 import io.debezium.relational.ValueConverter;
 import io.debezium.util.HexConverter;
+
 import microsoft.sql.DateTimeOffset;
 
 /**

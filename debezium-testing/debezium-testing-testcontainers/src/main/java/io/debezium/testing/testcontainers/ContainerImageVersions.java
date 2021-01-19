@@ -41,14 +41,14 @@ public class ContainerImageVersions {
                 Pattern pattern = Pattern.compile("\\d.\\d.\\d.Final");
                 Matcher matcher = pattern.matcher(response);
 
-                List<String> STABLE_VERSION_LIST = new ArrayList<>();
+                List<String> stableVersionList = new ArrayList<>();
 
                 while (matcher.find()) {
-                    STABLE_VERSION_LIST.add(matcher.group());
+                    stableVersionList.add(matcher.group());
                 }
 
-                Collections.sort(STABLE_VERSION_LIST);
-                return STABLE_VERSION_LIST.get(STABLE_VERSION_LIST.size() - 1);
+                Collections.sort(stableVersionList);
+                return stableVersionList.get(stableVersionList.size() - 1);
             }
             else {
                 throw new RuntimeException("Couldn't obtain stable version for image " + image);
