@@ -1764,17 +1764,17 @@ The following configuration properties are _required_ unless a default value is 
 |
 |A list of host/port pairs that the connector uses to establish an initial connection to the Kafka cluster. This connection is used for retrieving database schema history previously stored by the connector, and for writing each DDL statement read from the source database. Each pair should point to the same Kafka cluster used by the {prodname} Kafka Connect process.
 
-|[[db2-property-table-whitelist]]
+|[[db2-property-table-include-list]]
 [[db2-property-table-include-list]]<<db2-property-table-include-list, `table.include.list`>>
 |
 |An optional, comma-separated list of regular expressions that match fully-qualified table identifiers for tables whose changes you want the connector to capture. Any table not included in the include list does not have its changes captured. Each identifier is of the form _schemaName_._tableName_. By default, the connector captures changes in every non-system table. Do not also set the `table.exclude.list` property.
 
-|[[db2-property-table-blacklist]]
+|[[db2-property-table-exclude-list]]
 [[db2-property-table-exclude-list]]<<db2-property-table-exclude-list, `table.exclude.list`>>
 |
 |An optional, comma-separated list of regular expressions that match fully-qualified table identifiers for tables whose changes you do not want the connector to capture. The connector captures changes in each non-system table that is not included in the exclude list. Each identifier is of the form _schemaName_._tableName_. Do not also set the `table.include.list` property.
 
-|[[db2-property-column-blacklist]]
+|[[db2-property-column-exclude-list]]
 [[db2-property-column-exclude-list]]<<db2-property-column-exclude-list, `column.exclude.list`>>
 |_empty string_
 |An optional, comma-separated list of regular expressions that match the fully-qualified names of columns to exclude from change event values.

@@ -1089,22 +1089,22 @@ The following configuration properties are _required_ unless a default value is 
 |
 |Logical name that identifies and provides a namespace for the particular Vitess database server or cluster in which {prodname} is capturing changes. Only alphanumeric characters and underscores should be used in the database server logical name. The logical name should be unique across all other connectors, since it is used as a topic name prefix for all Kafka topics that receive records from this connector.
 
-|[[vitess-property-table-whitelist]]
+|[[vitess-property-table-include-list]]
 [[vitess-property-table-include-list]]<<vitess-property-table-include-list, `table.include{zwsp}.list`>>
 |
 |An optional, comma-separated list of regular expressions that match fully-qualified table identifiers for tables whose changes you want to capture. Any table not included in `table.include.list` does not have its changes captured. Each identifier is of the form _keyspace_._tableName_. By default, the connector captures changes in every non-system table in each schema whose changes are being captured. Do not also set the `table.exclude.list` property.
 
-|[[vitess-property-table-blacklist]]
+|[[vitess-property-table-exclude-list]]
 [[vitess-property-table-exclude.list]]<<vitess-property-table-exclude.list, `table.exclude{zwsp}.list`>>
 |
 |An optional, comma-separated list of regular expressions that match fully-qualified table identifiers for tables whose changes you *do not* want to capture. Any table not included in `table.exclude.list` has it changes captured. Each identifier is of the form _keyspace_._tableName_. Do not also set the `table.include.list` property.
 
-|[[vitess-property-column-whitelist]]
+|[[vitess-property-column-include-list]]
 [[vitess-property-column-include-list]]<<vitess-property-column-include-list, `column.include{zwsp}.list`>>
 |
 |An optional, comma-separated list of regular expressions that match the fully-qualified names of columns that should be included in change event record values. Fully-qualified names for columns are of the form _keyspace_._tableName_._columnName_. Do not also set the `column.exclude.list` property.
 
-|[[vitess-property-column-blacklist]]
+|[[vitess-property-column-exclude-list]]
 [[vitess-property-column-exclude-list]]<<vitess-property-column-exclude-list, `column.exclude{zwsp}.list`>>
 |
 |An optional, comma-separated list of regular expressions that match the fully-qualified names of columns that should be excluded from change event record values. Fully-qualified names for columns are of the form _keyspace_._tableName_._columnName_. Do not also set the `column.include.list` property.

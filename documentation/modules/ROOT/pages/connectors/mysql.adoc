@@ -1736,7 +1736,7 @@ For details, see {link-prefix}:{link-mysql-connector}#mysql-connector-properties
     "database.password": "debezium-user-pw", // <6>
     "database.server.id": "184054", <7>
     "database.server.name": "fullfillment", // <8>
-    "database.whitelist": "inventory", // <9>
+    "database.include.list": "inventory", // <9>
     "database.history.kafka.bootstrap.servers": "kafka:9092", // <10>
     "database.history.kafka.topic": "dbhistory.fullfillment", // <11>
     "include.schema.changes": "true" // <12>
@@ -1780,7 +1780,7 @@ For details, see {link-prefix}:{link-mysql-connector}#mysql-connector-properties
       database.password: dbz
       database.server.id: 184054  // <5>
       database.server.name: dbserver1  // <5>
-      database.whitelist: inventory  // <6>
+      database.include.list: inventory  // <6>
       database.history.kafka.bootstrap.servers: my-cluster-kafka-bootstrap:9092  // <7>
       database.history.kafka.topic: schema-changes.inventory  // <7>
 ----
@@ -2003,31 +2003,31 @@ Only alphanumeric characters and underscores are allowed in this name.
 |
 |A list of host/port pairs that the connector uses for establishing an initial connection to the Kafka cluster. This connection is used for retrieving database schema history previously stored by the connector, and for writing each DDL statement read from the source database. Each pair should point to the same Kafka cluster used by the Kafka Connect process.
 
-|[[mysql-property-database-whitelist]]
+|[[mysql-property-database-include-list]]
 [[mysql-property-database-include-list]]<<mysql-property-database-include-list, `database.include.list`>>
 |_empty string_
 |An optional, comma-separated list of regular expressions that match the names of the databases for which to capture changes. The connector does not capture changes in any database whose name is not in `database.include.list`. By default, the connector captures changes in all databases. 
 Do not also set the `database.exclude.list` connector confiuration property.
 
-|[[mysql-property-database-blacklist]]
+|[[mysql-property-database-exclude-list]]
 [[mysql-property-database-exclude-list]]<<mysql-property-database-exclude-list, `database.exclude.list`>>
 |_empty string_
 |An optional, comma-separated list of regular expressions that match the names of databases for which you do not want to capture changes. The connector captures changes in any database whose name is not in the `database.exclude.list`. 
 Do not also set the `database.include.list` connector configuration property.
 
-|[[mysql-property-table-whitelist]]
+|[[mysql-property-table-include-list]]
 [[mysql-property-table-include-list]]<<mysql-property-table-include-list, `table.include.list`>>
 |_empty string_
 |An optional, comma-separated list of regular expressions that match fully-qualified table identifiers of tables whose changes you want to capture. The connector does not capture changes in any table not included in `table.include.list`. Each identifier is of the form _databaseName_._tableName_. By default, the connector captures changes in every non-system table in each database whose changes are being captured.
 Do not also specify the `table.exclude.list` connector configuration property.
 
-|[[mysql-property-table-blacklist]]
+|[[mysql-property-table-exclude-list]]
 [[mysql-property-table-exclude-list]]<<mysql-property-table-exclude-list, `table.exclude.list`>>
 |_empty string_
 |An optional, comma-separated list of regular expressions that match fully-qualified table identifiers for tables whose changes you do not want to capture. The connector captures changes in any table not included in `table.exclude.list`. Each identifier is of the form _databaseName_._tableName_.
 Do not also specify the `table.include.list` connector configuration property.
 
-|[[mysql-property-column-blacklist]]
+|[[mysql-property-column-exclude-list]]
 [[mysql-property-column-exclude-list]]<<mysql-property-column-exclude-list, `column.exclude.list`>>
 |_empty string_
 |An optional, comma-separated list of regular expressions that match the fully-qualified names of columns to exclude from change event record values. Fully-qualified names for columns are of the form _databaseName_._tableName_._columnName_.
