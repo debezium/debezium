@@ -1867,20 +1867,20 @@ Only alphanumeric characters and underscores should be used.
 |A list of host and port pairs that the connector will use for establishing an initial connection to the Kafka cluster.
 This connection is used for retrieving database schema history previously stored by the connector, and for writing each DDL statement read from the source database. This should point to the same Kafka cluster used by the Kafka Connect process.
 
-|[[sqlserver-property-table-whitelist]]
+|[[sqlserver-property-table-include-list]]
 [[sqlserver-property-table-include-list]]<<sqlserver-property-table-include-list, `table.include.list`>>
 |
 |An optional comma-separated list of regular expressions that match fully-qualified table identifiers for tables that you want {prodname} to capture; any table that is not included in `table.include.list` is excluded from capture. Each identifier is of the form _schemaName_._tableName_. 
 By default, the connector captures all non-system tables for the designated schemas.
 Must not be used with `table.exclude.list`.
 
-|[[sqlserver-property-table-blacklist]]
+|[[sqlserver-property-table-exclude-list]]
 [[sqlserver-property-table-exclude-list]]<<sqlserver-property-table-exclude-list, `table.exclude.list`>>
 |
 |An optional comma-separated list of regular expressions that match fully-qualified table identifiers for the tables that you want to exclude from being captured; {prodname} captures all tables that are not included in `table.exclude.list`.
 Each identifier is of the form _schemaName_._tableName_. Must not be used with `table.include.list`.
 
-|[[sqlserver-property-column-whitelist]]
+|[[sqlserver-property-column-include-list]]
 [[sqlserver-property-column-include-list]]<<sqlserver-property-column-include-list, `column.include.list`>>
 |_empty string_
 |An optional comma-separated list of regular expressions that match the fully-qualified names of columns that should be included in the change event message values.
@@ -1888,7 +1888,7 @@ Fully-qualified names for columns are of the form _schemaName_._tableName_._colu
 Note that primary key columns are always included in the event's key, even if not included in the value.
 Do not also set the `column.exclude.list` property.
 
-|[[sqlserver-property-column-blacklist]]
+|[[sqlserver-property-column-exclude-list]]
 [[sqlserver-property-column-exclude-list]]<<sqlserver-property-column-exclude-list, `column.exclude.list`>>
 |_empty string_
 |An optional comma-separated list of regular expressions that match the fully-qualified names of columns that should be excluded from change event message values.
