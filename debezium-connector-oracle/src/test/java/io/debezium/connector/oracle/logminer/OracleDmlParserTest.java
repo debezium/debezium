@@ -22,6 +22,7 @@ import org.junit.Test;
 import org.junit.rules.TestRule;
 import org.mockito.Mockito;
 
+import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.antlr.OracleDdlParser;
 import io.debezium.connector.oracle.antlr.OracleDmlParser;
 import io.debezium.connector.oracle.jsqlparser.SimpleDmlParser;
@@ -30,6 +31,7 @@ import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot.AdapterName;
 import io.debezium.connector.oracle.logminer.valueholder.LogMinerColumnValue;
 import io.debezium.connector.oracle.logminer.valueholder.LogMinerDmlEntry;
+import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
 import io.debezium.relational.Tables;
@@ -62,7 +64,7 @@ public class OracleDmlParserTest {
 
     @Before
     public void setUp() {
-        OracleChangeRecordValueConverter converters = new OracleChangeRecordValueConverter(null);
+        OracleChangeRecordValueConverter converters = new OracleChangeRecordValueConverter(new OracleConnectorConfig(TestHelper.defaultConfig().build()), null);
 
         ddlParser = new OracleDdlParser(true, CATALOG_NAME, SCHEMA_NAME);
         antlrDmlParser = new OracleDmlParser(true, CATALOG_NAME, SCHEMA_NAME, converters);

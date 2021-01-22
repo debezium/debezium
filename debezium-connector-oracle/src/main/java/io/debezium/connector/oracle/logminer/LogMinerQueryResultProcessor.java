@@ -158,10 +158,16 @@ class LogMinerQueryResultProcessor {
             if (operationCode == RowMapper.INSERT || operationCode == RowMapper.DELETE || operationCode == RowMapper.UPDATE) {
                 LOGGER.trace("DML,  {}, sql {}", logMessage, redoSql);
                 dmlCounter++;
-                switch(operationCode) {
-                    case RowMapper.INSERT: insertCounter++; break; 
-                    case RowMapper.UPDATE: updateCounter++; break; 
-                    case RowMapper.DELETE: deleteCounter++; break; 
+                switch (operationCode) {
+                    case RowMapper.INSERT:
+                        insertCounter++;
+                        break;
+                    case RowMapper.UPDATE:
+                        updateCounter++;
+                        break;
+                    case RowMapper.DELETE:
+                        deleteCounter++;
+                        break;
                 }
                 LogMinerDmlEntry dmlEntry = dmlParser.parse(redoSql, schema.getTables(), txId);
 

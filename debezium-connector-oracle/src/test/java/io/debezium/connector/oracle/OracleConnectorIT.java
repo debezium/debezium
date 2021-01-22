@@ -18,11 +18,13 @@ import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.data.Field;
+import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.AfterClass;
@@ -38,6 +40,7 @@ import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIs;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.util.TestHelper;
+import io.debezium.data.SchemaAndValueField;
 import io.debezium.data.VariableScaleDecimal;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
@@ -1154,6 +1157,77 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         }
         finally {
             TestHelper.dropTable(connection, "orders");
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-2733")
+    public void shouldConvertNumericAsStringDecimalHandlingMode() throws Exception {
+        TestHelper.dropTable(connection, "table_number_pk");
+        try {
+            final String ddl = "CREATE TABLE table_number_pk (id NUMBER, name varchar2(255), age number, primary key (id))";
+            connection.execute(ddl);
+            connection.execute("GRANT SELECT ON debezium.table_number_pk TO " + TestHelper.getConnectorUserName());
+            connection.execute("ALTER TABLE debezium.table_number_pk ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
+
+            // Insert snapshot record
+            connection.execute("INSERT INTO debezium.table_number_pk (id, name, age) values (1, 'Bob', 25)");
+            connection.execute("COMMIT");
+
+            final Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "debezium.table_number_pk")
+                    .with(OracleConnectorConfig.DECIMAL_HANDLING_MODE, "string")
+                    .build();
+
+            // Start connector
+            start(OracleConnector.class, config);
+            assertNoRecordsToConsume();
+            waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            // Read snapshot record & verify
+            SourceRecords records = consumeRecordsByTopic(1);
+            assertThat(records.recordsForTopic("server1.DEBEZIUM.TABLE_NUMBER_PK")).hasSize(1);
+
+            SourceRecord record = records.recordsForTopic("server1.DEBEZIUM.TABLE_NUMBER_PK").get(0);
+
+            List<SchemaAndValueField> expected = Arrays.asList(
+                    new SchemaAndValueField("ID", Schema.STRING_SCHEMA, "1"),
+                    new SchemaAndValueField("NAME", Schema.OPTIONAL_STRING_SCHEMA, "Bob"),
+                    new SchemaAndValueField("AGE", Schema.OPTIONAL_STRING_SCHEMA, "25"));
+            assertRecordSchemaAndValues(expected, record, AFTER);
+
+            // Wait for streaming to have begun
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            // Insert streaming record
+            connection.execute("INSERT INTO debezium.table_number_pk (id, name, age) values (2, 'Sue', 30)");
+            connection.execute("COMMIT");
+
+            // Read stream record & verify
+            records = consumeRecordsByTopic(1);
+            assertThat(records.recordsForTopic("server1.DEBEZIUM.TABLE_NUMBER_PK")).hasSize(1);
+
+            record = records.recordsForTopic("server1.DEBEZIUM.TABLE_NUMBER_PK").get(0);
+            expected = Arrays.asList(
+                    new SchemaAndValueField("ID", Schema.STRING_SCHEMA, "2"),
+                    new SchemaAndValueField("NAME", Schema.OPTIONAL_STRING_SCHEMA, "Sue"),
+                    new SchemaAndValueField("AGE", Schema.OPTIONAL_STRING_SCHEMA, "30"));
+            assertRecordSchemaAndValues(expected, record, AFTER);
+        }
+        finally {
+            TestHelper.dropTable(connection, "table_number_pk");
+        }
+    }
+
+    protected void assertRecordSchemaAndValues(List<SchemaAndValueField> expectedByColumn, SourceRecord record, String envelopeFieldName) {
+        Struct content = ((Struct) record.value()).getStruct(envelopeFieldName);
+        if (expectedByColumn == null) {
+            assertThat(content).isNull();
+        }
+        else {
+            assertThat(content).as("expected there to be content in Envelope under " + envelopeFieldName).isNotNull();
+            expectedByColumn.forEach(expected -> expected.assertFor(content));
         }
     }
 

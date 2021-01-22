@@ -95,7 +95,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
         this.clock = clock;
         this.schema = schema;
         this.offsetContext = offsetContext;
-        OracleChangeRecordValueConverter converters = new OracleChangeRecordValueConverter(jdbcConnection);
+        OracleChangeRecordValueConverter converters = new OracleChangeRecordValueConverter(connectorConfig, jdbcConnection);
         this.connectorConfig = connectorConfig;
         this.catalogName = (connectorConfig.getPdbName() != null) ? connectorConfig.getPdbName() : connectorConfig.getDatabaseName();
         this.dmlParser = new SimpleDmlParser(catalogName, connectorConfig.getSchemaName(), converters);

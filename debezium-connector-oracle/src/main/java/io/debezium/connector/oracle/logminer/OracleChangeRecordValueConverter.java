@@ -12,6 +12,7 @@ import java.sql.SQLException;
 import java.sql.Types;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
@@ -25,10 +26,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
+import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.data.SpecialValueDecimal;
 import io.debezium.data.VariableScaleDecimal;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.jdbc.JdbcValueConverters;
+import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.Column;
 import io.debezium.relational.ValueConverter;
 import io.debezium.time.Date;
@@ -97,7 +100,8 @@ public class OracleChangeRecordValueConverter extends JdbcValueConverters {
 
     private final JdbcConnection connection;
 
-    public OracleChangeRecordValueConverter(JdbcConnection connection) {
+    public OracleChangeRecordValueConverter(OracleConnectorConfig config, JdbcConnection connection) {
+        super(config.getDecimalMode(), TemporalPrecisionMode.ADAPTIVE, ZoneOffset.UTC, null, null, null);
         this.connection = connection;
     }
 
@@ -495,11 +499,16 @@ public class OracleChangeRecordValueConverter extends JdbcValueConverters {
             return null;
         }
         // TODO Need to handle special values, it is not supported in variable scale decimal
-        else if (data instanceof SpecialValueDecimal) {
-            return VariableScaleDecimal.fromLogical(fieldDefn.schema(), (SpecialValueDecimal) data);
+        if (decimalMode == DecimalMode.PRECISE) {
+            if (data instanceof SpecialValueDecimal) {
+                return VariableScaleDecimal.fromLogical(fieldDefn.schema(), (SpecialValueDecimal) data);
+            }
+            else if (data instanceof BigDecimal) {
+                return VariableScaleDecimal.fromLogical(fieldDefn.schema(), new SpecialValueDecimal((BigDecimal) data));
+            }
         }
-        else if (data instanceof BigDecimal) {
-            return VariableScaleDecimal.fromLogical(fieldDefn.schema(), new SpecialValueDecimal((BigDecimal) data));
+        else {
+            return data;
         }
         return handleUnknownData(column, fieldDefn, data);
     }
