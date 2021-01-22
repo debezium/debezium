@@ -184,7 +184,15 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
                 throw new IllegalStateException("Couldn't get latest table DDL SCN");
             }
 
-            return Optional.of(rs.getLong(1));
+            // Guard against LAST_DDL_TIME with value of 0.
+            // This case should be treated as if we were unable to determine a value for LAST_DDL_TIME.
+            // This forces later calculations to be based upon the current SCN.
+            Long latestDdlTime = rs.getLong(1);
+            if (latestDdlTime != null && latestDdlTime == 0L) {
+                return Optional.empty();
+            }
+
+            return Optional.of(latestDdlTime);
         }
         catch (SQLException e) {
             if (e.getErrorCode() == 8180) {
