@@ -51,6 +51,7 @@ public class SqlUtils {
     private static final String ARCHIVED_LOG_VIEW = "V$ARCHIVED_LOG";
     private static final String ARCHIVE_DEST_STATUS_VIEW = "V$ARCHIVE_DEST_STATUS";
     private static final String LOGMNR_CONTENTS_VIEW = "V$LOGMNR_CONTENTS";
+    private static final String ALL_LOG_GROUPS = "ALL_LOG_GROUPS";
 
     // log miner statements
     static final String BUILD_DICTIONARY = "BEGIN DBMS_LOGMNR_D.BUILD (options => DBMS_LOGMNR_D.STORE_IN_REDO_LOGS); END;";
@@ -119,8 +120,16 @@ public class SqlUtils {
         return String.format("SELECT F.MEMBER FROM %s LOG, %s F  WHERE LOG.GROUP#=F.GROUP# AND LOG.STATUS='CURRENT'", LOG_VIEW, LOGFILE_VIEW);
     }
 
-    static String supplementalLoggingCheckQuery() {
+    static String databaseSupplementalLoggingAllCheckQuery() {
+        return String.format("SELECT 'KEY', SUPPLEMENTAL_LOG_DATA_ALL FROM %s", DATABASE_VIEW);
+    }
+
+    static String databaseSupplementalLoggingMinCheckQuery() {
         return String.format("SELECT 'KEY', SUPPLEMENTAL_LOG_DATA_MIN FROM %s", DATABASE_VIEW);
+    }
+
+    static String tableSupplementalLoggingCheckQuery(TableId tableId) {
+        return String.format("SELECT 'KEY', LOG_GROUP_TYPE FROM %s WHERE OWNER = '%s' AND TABLE_NAME = '%s'", ALL_LOG_GROUPS, tableId.schema(), tableId.table());
     }
 
     static String currentScnQuery() {

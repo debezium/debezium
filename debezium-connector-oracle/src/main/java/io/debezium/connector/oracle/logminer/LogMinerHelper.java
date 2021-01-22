@@ -29,10 +29,13 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
 import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnectorConfig;
+import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.relational.TableId;
 import io.debezium.util.Clock;
 import io.debezium.util.Metronome;
 
@@ -406,20 +409,36 @@ public class LogMinerHelper {
     }
 
     /**
-     * This method checks if supplemental logging was set on the database level. This is critical check, cannot work if not.
+     * This method validates the supplemental logging configuration for the source database.
+     *
      * @param connection oracle connection on logminer level
      * @param pdbName pdb name
+     * @param schema oracle schema
      * @throws SQLException if anything unexpected happens
      */
-    static void checkSupplementalLogging(OracleConnection connection, String pdbName) throws SQLException {
+    static void checkSupplementalLogging(OracleConnection connection, String pdbName, OracleDatabaseSchema schema) throws SQLException {
         try {
             if (pdbName != null) {
                 connection.setSessionToPdb(pdbName);
             }
 
-            Map<String, String> globalLogging = getMap(connection.connection(false), SqlUtils.supplementalLoggingCheckQuery(), UNKNOWN);
-            if ("no".equalsIgnoreCase(globalLogging.get("KEY"))) {
-                throw new RuntimeException("Supplemental logging was not set. Use command: ALTER DATABASE ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
+            // Check if ALL supplemental logging is enabled at the database
+            Map<String, String> globalAll = getMap(connection.connection(false), SqlUtils.databaseSupplementalLoggingAllCheckQuery(), UNKNOWN);
+            if ("NO".equalsIgnoreCase(globalAll.get("KEY"))) {
+                // Check if MIN supplemental logging is enabled at the database
+                Map<String, String> globalMin = getMap(connection.connection(false), SqlUtils.databaseSupplementalLoggingMinCheckQuery(), UNKNOWN);
+                if ("NO".equalsIgnoreCase(globalMin.get("KEY"))) {
+                    throw new DebeziumException("Supplemental logging not properly configured.  Use: ALTER DATABASE ADD SUPPLEMENTAL LOG DATA");
+                }
+
+                // If ALL supplemental logging is not enabled, then each monitored table should be set to ALL COLUMNS
+                for (TableId tableId : schema.getTables().tableIds()) {
+                    Map<String, String> tableAll = getMap(connection.connection(false), SqlUtils.tableSupplementalLoggingCheckQuery(tableId), UNKNOWN);
+                    if (!"ALL COLUMN LOGGING".equalsIgnoreCase(tableAll.get("KEY"))) {
+                        throw new DebeziumException("Supplemental logging not configured for table " + tableId + ".  " +
+                                "Use command: ALTER TABLE " + tableId.schema() + "." + tableId.table() + " ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
+                    }
+                }
             }
         }
         finally {

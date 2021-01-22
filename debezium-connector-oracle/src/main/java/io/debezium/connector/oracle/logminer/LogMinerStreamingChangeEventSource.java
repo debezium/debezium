@@ -139,7 +139,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                 }
 
                 setNlsSessionParameters(jdbcConnection);
-                checkSupplementalLogging(jdbcConnection, connectorConfig.getPdbName());
+                checkSupplementalLogging(jdbcConnection, connectorConfig.getPdbName(), schema);
 
                 initializeRedoLogsForMining(connection, false, archiveLogRetention);
 

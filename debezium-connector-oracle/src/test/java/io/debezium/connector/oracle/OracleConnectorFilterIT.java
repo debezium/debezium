@@ -18,6 +18,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -110,6 +111,13 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
 
         initializeConnectorTestFramework();
         Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
+    }
+
+    @After
+    public void after() throws SQLException {
+        TestHelper.dropTable(adminConnection, "debezium2.table2");
+        TestHelper.dropTable(adminConnection, "debezium2.nopk");
+        adminConnection.execute("DROP USER debezium2");
     }
 
     @Test

@@ -63,6 +63,14 @@ public class SqlUtilsTest {
                 " OR (OPERATION_CODE IN (7,36))";
         assertThat(result).isEqualTo(expected);
 
+        result = SqlUtils.databaseSupplementalLoggingMinCheckQuery();
+        expected = "SELECT 'KEY', SUPPLEMENTAL_LOG_DATA_MIN FROM V$DATABASE";
+        assertThat(result).isEqualTo(expected);
+
+        result = SqlUtils.tableSupplementalLoggingCheckQuery(new TableId(null, "s", "t"));
+        expected = "SELECT 'KEY', LOG_GROUP_TYPE FROM ALL_LOG_GROUPS WHERE OWNER = 's' AND TABLE_NAME = 't'";
+        assertThat(result).isEqualTo(expected);
+
         result = SqlUtils.startLogMinerStatement(10L, 20L, OracleConnectorConfig.LogMiningStrategy.ONLINE_CATALOG, true);
         expected = "BEGIN sys.dbms_logmnr.start_logmnr(startScn => '10', endScn => '20', " +
                 "OPTIONS => DBMS_LOGMNR.DICT_FROM_ONLINE_CATALOG  + DBMS_LOGMNR.CONTINUOUS_MINE  + DBMS_LOGMNR.NO_ROWID_IN_STMT);END;";
@@ -100,7 +108,7 @@ public class SqlUtilsTest {
         expected = "SELECT F.MEMBER FROM V$LOG LOG, V$LOGFILE F  WHERE LOG.GROUP#=F.GROUP# AND LOG.STATUS='CURRENT'";
         assertThat(result).isEqualTo(expected);
 
-        result = SqlUtils.supplementalLoggingCheckQuery();
+        result = SqlUtils.databaseSupplementalLoggingAllCheckQuery();
         expected = "SELECT 'KEY', SUPPLEMENTAL_LOG_DATA_ALL FROM V$DATABASE";
         assertThat(result).isEqualTo(expected);
 
