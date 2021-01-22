@@ -14,20 +14,6 @@ ifdef::community[]
 
 toc::[]
 
-[NOTE]
-====
-This connector is in an incubating state. Exact semantics, configuration options and other features may change in future revisions, based on the feedback we receive. Please let us know if you encounter any problems.
-====
-endif::community[]
-
-
-ifdef::product[]
-[IMPORTANT]
-====
-The {prodname} Db2 connector is a Technology Preview feature. Technology Preview features are not supported with Red Hat production service-level agreements (SLAs) and might not be functionally complete; therefore, Red Hat does not recommend implementing any Technology Preview features in production environments. This Technology Preview feature provides early access to upcoming product innovations, enabling you to test functionality and provide feedback during the development process. For more information about support scope, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
-====
-endif::product[]
-
 {prodname}'s Db2 connector can capture row-level changes in the tables of a Db2 database. This connector is strongly inspired by the {prodname} implementation of SQL Server, which uses a SQL-based polling model that puts tables into "capture mode". When a table is in capture mode, the {prodname} Db2 connector generates and streams a change event for each row-level update to that table.
 
 A table that is in capture mode has an associated change-data table, which Db2 creates. For each change to a table that is in capture mode, Db2 adds data about that change to the table's associated change-data table. A change-data table contains an entry for each state of a row. It also has special entries for deletions. The {prodname} Db2 connector reads change events from change-data tables and emits the events to Kafka topics.
