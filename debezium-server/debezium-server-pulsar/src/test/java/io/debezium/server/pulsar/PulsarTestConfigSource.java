@@ -18,7 +18,7 @@ public class PulsarTestConfigSource extends TestConfigSource {
         Map<String, String> pulsarTest = new HashMap<>();
 
         pulsarTest.put("debezium.sink.type", "pulsar");
-        pulsarTest.put("debezium.sink.pulsar.client.serviceUrl", getServiceUrl());
+        pulsarTest.put("debezium.sink.pulsar.client.serviceUrl", "pulsar://localhost:" + PulsarTestResourceLifecycleManager.PULSAR_PORT);
         pulsarTest.put("debezium.source.connector.class", "io.debezium.connector.postgresql.PostgresConnector");
         pulsarTest.put("debezium.source." + StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG,
                 OFFSET_STORE_PATH.toAbsolutePath().toString());
@@ -28,9 +28,5 @@ public class PulsarTestConfigSource extends TestConfigSource {
         pulsarTest.put("debezium.source.table.include.list", "inventory.customers");
 
         config = pulsarTest;
-    }
-
-    public static String getServiceUrl() {
-        return "pulsar://localhost:" + System.getProperty("pulsar.port.native", "6650");
     }
 }

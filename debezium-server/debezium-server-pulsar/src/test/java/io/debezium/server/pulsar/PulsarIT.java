@@ -12,7 +12,6 @@ import java.util.List;
 import java.util.UUID;
 
 import javax.enterprise.event.Observes;
-import javax.inject.Inject;
 
 import org.apache.pulsar.client.api.Consumer;
 import org.apache.pulsar.client.api.Message;
@@ -21,7 +20,6 @@ import org.apache.pulsar.client.api.Schema;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 
-import io.debezium.server.DebeziumServer;
 import io.debezium.server.TestConfigSource;
 import io.debezium.server.events.ConnectorCompletedEvent;
 import io.debezium.server.events.ConnectorStartedEvent;
@@ -37,14 +35,13 @@ import io.quarkus.test.junit.QuarkusTest;
  */
 @QuarkusTest
 @QuarkusTestResource(PostgresTestResourceLifecycleManager.class)
+@QuarkusTestResource(PulsarTestResourceLifecycleManager.class)
 public class PulsarIT {
 
     private static final int MESSAGE_COUNT = 4;
     private static final String TOPIC_NAME = "testc.inventory.customers";
 
     protected static PulsarClient pulsarClient;
-    @Inject
-    DebeziumServer server;
 
     {
         Testing.Files.delete(TestConfigSource.OFFSET_STORE_PATH);
@@ -55,7 +52,7 @@ public class PulsarIT {
         Testing.Print.enable();
 
         pulsarClient = PulsarClient.builder()
-                .serviceUrl(PulsarTestConfigSource.getServiceUrl())
+                .serviceUrl(PulsarTestResourceLifecycleManager.getPulsarServiceUrl())
                 .build();
 
     }
