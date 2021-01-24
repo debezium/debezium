@@ -18,6 +18,7 @@
         <module>debezium-server-pubsub</module>
         <module>debezium-server-pulsar</module>
         <module>debezium-server-eventhubs</module>
+        <module>debezium-server-redis</module>
         <module>debezium-server-dist</module>
     </modules>
 
