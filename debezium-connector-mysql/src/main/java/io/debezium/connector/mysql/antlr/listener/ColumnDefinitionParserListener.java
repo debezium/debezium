@@ -13,6 +13,8 @@ import java.util.stream.Collectors;
 
 import org.antlr.v4.runtime.tree.ParseTreeListener;
 
+import com.mysql.cj.CharsetMapping;
+
 import io.debezium.antlr.AntlrDdlParser;
 import io.debezium.antlr.DataTypeResolver;
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
@@ -141,6 +143,7 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
 
     private void resolveColumnDataType(MySqlParser.DataTypeContext dataTypeContext) {
         String charsetName = null;
+        String collationName = null;
         DataType dataType = dataTypeResolver.resolveDataType(dataTypeContext);
 
         if (dataTypeContext instanceof MySqlParser.StringDataTypeContext) {
@@ -154,6 +157,15 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
 
             if (stringDataTypeContext.charsetName() != null) {
                 charsetName = stringDataTypeContext.charsetName().getText();
+            }
+            else if (stringDataTypeContext.collationName() != null) {
+                collationName = stringDataTypeContext.collationName().getText();
+                for (int index = 0; index < CharsetMapping.MAP_SIZE; index++) {
+                    if (collationName == CharsetMapping.COLLATION_INDEX_TO_COLLATION_NAME[index]) {
+                        charsetName = CharsetMapping.getMysqlCharsetNameForCollationIndex(index);
+                        break;
+                    }
+                }
             }
         }
         else if (dataTypeContext instanceof MySqlParser.LongVarcharDataTypeContext) {
