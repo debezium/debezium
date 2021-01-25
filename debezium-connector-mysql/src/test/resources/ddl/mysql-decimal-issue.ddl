@@ -15,7 +15,7 @@ CREATE TABLE connector_test.business_order_detail (
 
 
 CREATE DEFINER=`root`@`%` PROCEDURE `_Navicat_Temp_Stored_Proc`()
-BEGIN CREATE TEMPORARY TABLE temp1
+lbl:BEGIN CREATE TEMPORARY TABLE temp1
 SELECT
     SUM(round(case
                    when
