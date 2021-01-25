@@ -15,7 +15,6 @@ import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 
 import io.quarkus.test.common.QuarkusTestResourceLifecycleManager;
-import org.testcontainers.utility.MountableFile;
 
 public class PulsarTestResourceLifecycleManager implements QuarkusTestResourceLifecycleManager {
 
@@ -27,9 +26,8 @@ public class PulsarTestResourceLifecycleManager implements QuarkusTestResourceLi
     private static final GenericContainer<?> container = new GenericContainer<>(PULSAR_IMAGE)
             .withStartupTimeout(Duration.ofSeconds(90))
             .waitingFor(Wait.forLogMessage(".*messaging service is ready.*", 1))
-            .withCommand("/pulsar/bin/pulsar", "standalone")
-            .withCopyFileToContainer(MountableFile.forHostPath("/docker/conf/"), "/pulsar/conf")
-//            .withClasspathResourceMapping("/docker/conf/", "/pulsar/conf", BindMode.READ_ONLY)
+            .withCommand("bin/pulsar", "standalone")
+            .withClasspathResourceMapping("/docker/conf/", "/pulsar/conf", BindMode.READ_ONLY)
             .withExposedPorts(PULSAR_PORT, PULSAR_HTTP_PORT);
 
     @Override
@@ -55,6 +53,6 @@ public class PulsarTestResourceLifecycleManager implements QuarkusTestResourceLi
     }
 
     public static String getPulsarServiceUrl() {
-        return "pulsar://localhost:" + container.getExposedPorts().get(0);
+        return "pulsar://localhost:" + container.getMappedPort(PULSAR_PORT);
     }
 }

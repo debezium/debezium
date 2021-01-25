@@ -59,7 +59,7 @@ public class PulsarIT {
 
     void connectorCompleted(@Observes ConnectorCompletedEvent event) throws Exception {
         if (!event.isSuccess()) {
-            throw (Exception) event.getError().get();
+            throw new RuntimeException(event.getError().get());
         }
     }
 
