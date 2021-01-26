@@ -8,6 +8,7 @@ package io.debezium.connector.oracle;
 import static org.fest.assertions.Assertions.assertThat;
 
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -112,7 +113,7 @@ public class LogMinerHelperIT extends AbstractConnectorTest {
         // case 2: oldest scn = oldest in not cleared archive
         List<BigDecimal> oneDayArchivedNextScn = getOneDayArchivedLogNextScn(conn);
         long oldestArchivedScn = getOldestArchivedScn(oneDayArchivedNextScn);
-        Map<String, Long> archivedLogsForMining = LogMinerHelper.getArchivedLogFilesForOffsetScn(conn, oldestArchivedScn, Duration.ofHours(0L));
+        Map<String, BigInteger> archivedLogsForMining = LogMinerHelper.getArchivedLogFilesForOffsetScn(conn, oldestArchivedScn, Duration.ofHours(0L));
         assertThat(archivedLogsForMining.size() == (oneDayArchivedNextScn.size() - 1)).isTrue();
 
         archivedRedoFiles = LogMinerHelper.getMap(conn, SqlUtils.archiveLogsQuery(oldestArchivedScn - 1, Duration.ofHours(0L)), "-1");
@@ -126,8 +127,8 @@ public class LogMinerHelperIT extends AbstractConnectorTest {
         LogMinerHelper.setRedoLogFilesForMining(conn, oldestArchivedScn, Duration.ofHours(0L));
 
         // eliminate duplications
-        Map<String, Long> onlineLogFilesForMining = LogMinerHelper.getOnlineLogFilesForOffsetScn(conn, oldestArchivedScn);
-        Map<String, Long> archivedLogFilesForMining = LogMinerHelper.getArchivedLogFilesForOffsetScn(conn, oldestArchivedScn, Duration.ofHours(0L));
+        Map<String, BigInteger> onlineLogFilesForMining = LogMinerHelper.getOnlineLogFilesForOffsetScn(conn, oldestArchivedScn);
+        Map<String, BigInteger> archivedLogFilesForMining = LogMinerHelper.getArchivedLogFilesForOffsetScn(conn, oldestArchivedScn, Duration.ofHours(0L));
         List<String> archivedLogFiles = archivedLogFilesForMining.entrySet().stream()
                 .filter(e -> !onlineLogFilesForMining.values().contains(e.getValue())).map(Map.Entry::getKey).collect(Collectors.toList());
         int archivedLogFilesCount = archivedLogFiles.size();

@@ -5,7 +5,6 @@
  */
 package io.debezium.connector.oracle.logminer;
 
-import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.CallableStatement;
 import java.sql.Connection;
@@ -47,6 +46,9 @@ public class LogMinerHelper {
     private final static String UNKNOWN = "unknown";
     private static final String TOTAL = "TOTAL";
     private final static Logger LOGGER = LoggerFactory.getLogger(LogMinerHelper.class);
+
+    public final static String MAX_SCN_S = "1844674407370955161";
+    public final static BigInteger MAX_SCN_BI = new BigInteger(MAX_SCN_S);
 
     public enum DATATYPE {
         LONG,
@@ -481,8 +483,8 @@ public class LogMinerHelper {
 
         removeLogFilesFromMining(connection);
 
-        Map<String, Long> onlineLogFilesForMining = getOnlineLogFilesForOffsetScn(connection, lastProcessedScn);
-        Map<String, Long> archivedLogFilesForMining = getArchivedLogFilesForOffsetScn(connection, lastProcessedScn, archiveLogRetention);
+        Map<String, BigInteger> onlineLogFilesForMining = getOnlineLogFilesForOffsetScn(connection, lastProcessedScn);
+        Map<String, BigInteger> archivedLogFilesForMining = getArchivedLogFilesForOffsetScn(connection, lastProcessedScn, archiveLogRetention);
 
         if (onlineLogFilesForMining.size() + archivedLogFilesForMining.size() == 0) {
             throw new IllegalStateException("None of log files contains offset SCN: " + lastProcessedScn + ", re-snapshot is required.");
@@ -543,18 +545,21 @@ public class LogMinerHelper {
      * @return size
      */
     private static int getRedoLogGroupSize(Connection connection) throws SQLException {
-        return getMap(connection, SqlUtils.allOnlineLogsQuery(), "-1").size();
+        return getMap(connection, SqlUtils.allOnlineLogsQuery(), MAX_SCN_S).size();
     }
 
     /**
      * This method returns all online log files, starting from one which contains offset SCN and ending with one containing largest SCN
      * 18446744073709551615 on Ora 19c is the max value of the nextScn in the current redo todo replace all Long with BigInteger for SCN
      */
-    public static Map<String, Long> getOnlineLogFilesForOffsetScn(Connection connection, Long offsetScn) throws SQLException {
-        Map<String, String> redoLogFiles = getMap(connection, SqlUtils.allOnlineLogsQuery(), "-1");
+    public static Map<String, BigInteger> getOnlineLogFilesForOffsetScn(Connection connection, Long offsetScn) throws SQLException {
+
+        // TODO: Make offset a BigInteger and refactor upstream
+        BigInteger offsetScnBi = BigInteger.valueOf(offsetScn);
+        Map<String, String> redoLogFiles = getMap(connection, SqlUtils.allOnlineLogsQuery(), MAX_SCN_S);
         return redoLogFiles.entrySet().stream()
-                .filter(entry -> new BigInteger(entry.getValue()).longValue() > offsetScn || new BigInteger(entry.getValue()).longValue() == -1).collect(Collectors
-                        .toMap(Map.Entry::getKey, e -> new BigInteger(e.getValue()).longValue() == -1 ? Long.MAX_VALUE : new BigInteger(e.getValue()).longValue()));
+                .filter(entry -> new BigInteger(entry.getValue()).compareTo(offsetScnBi) >= 0 || new BigInteger(entry.getValue()).equals(MAX_SCN_BI)).collect(Collectors
+                        .toMap(Map.Entry::getKey, e -> new BigInteger(e.getValue()).equals(MAX_SCN_BI) ? MAX_SCN_BI : new BigInteger(e.getValue())));
     }
 
     /**
@@ -565,10 +570,10 @@ public class LogMinerHelper {
      * @return                Map of archived files
      * @throws SQLException   if something happens
      */
-    public static Map<String, Long> getArchivedLogFilesForOffsetScn(Connection connection, Long offsetScn, Duration archiveLogRetention) throws SQLException {
-        Map<String, String> redoLogFiles = getMap(connection, SqlUtils.archiveLogsQuery(offsetScn, archiveLogRetention), "-1");
+    public static Map<String, BigInteger> getArchivedLogFilesForOffsetScn(Connection connection, Long offsetScn, Duration archiveLogRetention) throws SQLException {
+        Map<String, String> redoLogFiles = getMap(connection, SqlUtils.archiveLogsQuery(offsetScn, archiveLogRetention), MAX_SCN_S);
         return redoLogFiles.entrySet().stream().collect(
-                Collectors.toMap(Map.Entry::getKey, e -> new BigDecimal(e.getValue()).longValue() == -1 ? Long.MAX_VALUE : new BigDecimal(e.getValue()).longValue()));
+                Collectors.toMap(Map.Entry::getKey, e -> new BigInteger(e.getValue()).equals(MAX_SCN_BI) ? MAX_SCN_BI : new BigInteger(e.getValue())));
     }
 
     /**
