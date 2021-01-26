@@ -160,8 +160,8 @@ class LogMinerQueryResultProcessor {
                 dmlCounter++;
                 switch(operationCode) {
                     case RowMapper.INSERT: insertCounter++; break; 
-                    case RowMapper.UPDATE: insertCounter++; break; 
-                    case RowMapper.DELETE: insertCounter++; break; 
+                    case RowMapper.UPDATE: updateCounter++; break; 
+                    case RowMapper.DELETE: deleteCounter++; break; 
                 }
                 LogMinerDmlEntry dmlEntry = dmlParser.parse(redoSql, schema.getTables(), txId);
 
