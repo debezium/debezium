@@ -75,7 +75,7 @@ class LogMinerQueryResultProcessor {
      * @return number of processed DMLs from the given resultSet
      */
     int processResult(ResultSet resultSet) {
-        int dmlCounter = 0;
+        int dmlCounter = 0, insertCounter = 0, updateCounter = 0, deleteCounter = 0;
         int commitCounter = 0;
         int rollbackCounter = 0;
         Instant startTime = Instant.now();
@@ -158,6 +158,11 @@ class LogMinerQueryResultProcessor {
             if (operationCode == RowMapper.INSERT || operationCode == RowMapper.DELETE || operationCode == RowMapper.UPDATE) {
                 LOGGER.trace("DML,  {}, sql {}", logMessage, redoSql);
                 dmlCounter++;
+                switch(operationCode) {
+                    case RowMapper.INSERT: insertCounter++; break; 
+                    case RowMapper.UPDATE: insertCounter++; break; 
+                    case RowMapper.DELETE: insertCounter++; break; 
+                }
                 LogMinerDmlEntry dmlEntry = dmlParser.parse(redoSql, schema.getTables(), txId);
 
                 if (dmlEntry == null || redoSql == null) {
@@ -219,9 +224,9 @@ class LogMinerQueryResultProcessor {
             if (offsetContext.getCommitScn() != null) {
                 currentOffsetCommitScn = offsetContext.getCommitScn();
             }
-            LOGGER.debug("{} DMLs, {} Commits, {} Rollbacks. Processed in {} millis. " +
+            LOGGER.debug("{} DMLs, {} Commits, {} Rollbacks, {} Inserts, {} Updates, {} Deletes. Processed in {} millis. " +
                     "Lag:{}. Offset scn:{}. Offset commit scn:{}. Active transactions:{}. Sleep time:{}",
-                    dmlCounter, commitCounter, rollbackCounter, totalTime.toMillis(),
+                    dmlCounter, insertCounter, updateCounter, deleteCounter, commitCounter, rollbackCounter, totalTime.toMillis(),
                     transactionalBufferMetrics.getLagFromSource(), offsetContext.getScn(), offsetContext.getCommitScn(),
                     transactionalBufferMetrics.getNumberOfActiveTransactions(), metrics.getMillisecondToSleepBetweenMiningQuery());
         }
