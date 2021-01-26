@@ -47,7 +47,7 @@ public class LogMinerHelper {
     private static final String TOTAL = "TOTAL";
     private final static Logger LOGGER = LoggerFactory.getLogger(LogMinerHelper.class);
 
-    public final static String MAX_SCN_S = "1844674407370955161";
+    public final static String MAX_SCN_S = "18446744073709551615";
     public final static BigInteger MAX_SCN_BI = new BigInteger(MAX_SCN_S);
 
     public enum DATATYPE {
