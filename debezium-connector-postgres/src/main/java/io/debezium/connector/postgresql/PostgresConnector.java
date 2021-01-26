@@ -36,7 +36,7 @@ import io.debezium.util.Strings;
  */
 public class PostgresConnector extends SourceConnector {
 
-    private Logger logger = LoggerFactory.getLogger(getClass());
+    private static final Logger LOGGER = LoggerFactory.getLogger(PostgresConnector.class);
     private Map<String, String> props;
 
     public PostgresConnector() {
@@ -91,7 +91,7 @@ public class PostgresConnector extends SourceConnector {
         final String passwordStringValue = config.getConfig().getString(PostgresConnectorConfig.PASSWORD);
 
         if (Strings.isNullOrEmpty(passwordStringValue)) {
-            logger.warn("The connection password is empty");
+            LOGGER.warn("The connection password is empty");
         }
 
         // If there are no errors on any of these ...
@@ -107,7 +107,7 @@ public class PostgresConnector extends SourceConnector {
                 try {
                     // check connection
                     connection.execute("SELECT version()");
-                    logger.info("Successfully tested connection for {} with user '{}'", connection.connectionString(),
+                    LOGGER.info("Successfully tested connection for {} with user '{}'", connection.connectionString(),
                             connection.username());
                     // check server wal_level
                     final String walLevel = connection.queryAndMap(
@@ -115,7 +115,7 @@ public class PostgresConnector extends SourceConnector {
                             connection.singleResultMapper(rs -> rs.getString("wal_level"), "Could not fetch wal_level"));
                     if (!"logical".equals(walLevel)) {
                         final String errorMessage = "Postgres server wal_level property must be \"logical\" but is: " + walLevel;
-                        logger.error(errorMessage);
+                        LOGGER.error(errorMessage);
                         hostnameResult.addErrorMessage(errorMessage);
                     }
                     // check user for LOGIN and REPLICATION roles
@@ -143,27 +143,11 @@ public class PostgresConnector extends SourceConnector {
                                             || rs.getBoolean("aws_repladmin")),
                                     "Could not fetch roles"))) {
                         final String errorMessage = "Postgres roles LOGIN and REPLICATION are not assigned to user: " + connection.username();
-                        logger.error(errorMessage);
-                    }
-                    // check replication slot
-                    final String slotName = config.slotName();
-                    if (connection.prepareQueryAndMap(
-                            "SELECT * FROM pg_replication_slots WHERE slot_name = ?",
-                            statement -> statement.setString(1, slotName),
-                            rs -> {
-                                if (rs.next()) {
-                                    return rs.getBoolean("active");
-                                }
-                                return false;
-                            })) {
-                        final String errorMessage = "Slot name \"" + slotName
-                                + "\" already exists and is active. Choose a unique name or stop the other process occupying the slot.";
-                        logger.error(errorMessage);
-                        slotNameResult.addErrorMessage(errorMessage);
+                        LOGGER.error(errorMessage);
                     }
                 }
                 catch (SQLException e) {
-                    logger.error("Failed testing connection for {} with user '{}': {}", connection.connectionString(),
+                    LOGGER.error("Failed testing connection for {} with user '{}': {}", connection.connectionString(),
                             connection.username(), e.getMessage());
                     hostnameResult.addErrorMessage("Error while validating connector config: " + e.getMessage());
                 }

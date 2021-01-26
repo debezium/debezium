@@ -18,11 +18,9 @@ import static org.junit.Assert.fail;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -31,7 +29,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import org.apache.kafka.common.config.Config;
@@ -182,15 +179,8 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
                 .with(PostgresConnectorConfig.SLOT_NAME, ReplicationConnection.Builder.DEFAULT_SLOT_NAME)
                 .build();
         List<ConfigValue> validatedConfig = new PostgresConnector().validate(failingConfig.asMap()).configValues();
-        Map<String, ConfigValue> results = validatedConfig.stream().collect(Collectors.toMap(ConfigValue::name, o -> o));
 
-        assertFalse("Expected error on \"slot.name\" property did not happen!", results.get("slot.name").errorMessages().isEmpty());
-        assertEquals(
-                "Slot name \"" + ReplicationConnection.Builder.DEFAULT_SLOT_NAME
-                        + "\" already exists and is active. Choose a unique name or stop the other process occupying the slot.",
-                results.get("slot.name").errorMessages().get(0));
-
-        final List<String> invalidProperties = Arrays.asList("database.user", "slot.name");
+        final List<String> invalidProperties = Collections.singletonList("database.user");
         validatedConfig.forEach(
                 configValue -> {
                     if (!invalidProperties.contains(configValue.name())) {
