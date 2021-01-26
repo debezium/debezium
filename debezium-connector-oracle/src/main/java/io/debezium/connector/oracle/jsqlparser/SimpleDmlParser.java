@@ -133,7 +133,7 @@ public class SimpleDmlParser {
 
         }
         catch (Throwable e) {
-            LOGGER.error("Cannot parse statement : {}, transaction: {}, due to the {}", dmlContent, txId, e.getMessage());
+            LOGGER.error("Cannot parse statement : {}, transaction: {}, due to the {}", dmlContent, txId, e.getMessage(), e);
             return null;
         }
 
