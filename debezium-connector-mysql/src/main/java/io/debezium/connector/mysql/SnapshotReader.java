@@ -533,20 +533,7 @@ public class SnapshotReader extends AbstractReader {
                         final StringBuilder createDatabaseDddl = new StringBuilder("CREATE DATABASE " + quote(dbName));
                         final DatabaseLocales defaultDatabaseLocales = databaseCharsets.get(dbName);
                         if (defaultDatabaseLocales != null) {
-                            if (defaultDatabaseLocales.charset != null) {
-                                logger.debug("Setting default charset '{}' for database '{}'", defaultDatabaseLocales.charset, dbName);
-                                createDatabaseDddl.append(" CHARSET ").append(defaultDatabaseLocales.charset);
-                            }
-                            else {
-                                logger.info("Default database charset for '{}' not found", dbName);
-                            }
-                            if (defaultDatabaseLocales.collation != null) {
-                                logger.debug("Setting default collation '{}' for database '{}'", defaultDatabaseLocales.collation, dbName);
-                                createDatabaseDddl.append(" COLLATE ").append(defaultDatabaseLocales.collation);
-                            }
-                            else {
-                                logger.info("Default database collation for '{}' not found", dbName);
-                            }
+                            defaultDatabaseLocales.appendToDdlStatement(dbName, createDatabaseDddl);
                         }
                         schema.applyDdl(source, dbName, createDatabaseDddl.toString(), this::enqueueSchemaChanges);
 
