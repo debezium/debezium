@@ -25,7 +25,6 @@ import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.document.Document;
 import io.debezium.function.Predicates;
-import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.relational.ColumnId;
 import io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
@@ -214,49 +213,11 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
         }
     }
 
-    public static final Field HOSTNAME = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.HOSTNAME)
-            .withDisplayName("Hostname")
-            .withType(Type.STRING)
-            .withWidth(Width.MEDIUM)
-            .withImportance(Importance.HIGH)
-            .withValidation(Field::isRequired)
-            .withDescription("Resolvable hostname or IP address of the SQL Server database server.");
-
-    public static final Field PORT = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.PORT)
-            .withDisplayName("Port")
-            .withType(Type.INT)
-            .withWidth(Width.SHORT)
-            .withDefault(DEFAULT_PORT)
-            .withImportance(Importance.HIGH)
-            .withValidation(Field::isInteger)
-            .withDescription("Port of the SQL Server database server.");
-
-    public static final Field USER = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.USER)
-            .withDisplayName("User")
-            .withType(Type.STRING)
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.HIGH)
-            .withValidation(Field::isRequired)
-            .withDescription("Name of the SQL Server database user to be used when connecting to the database.");
-
-    public static final Field PASSWORD = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.PASSWORD)
-            .withDisplayName("Password")
-            .withType(Type.PASSWORD)
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.HIGH)
-            .withDescription("Password of the SQL Server database user to be used when connecting to the database.");
+    public static final Field PORT = RelationalDatabaseConnectorConfig.PORT
+            .withDefault(DEFAULT_PORT);
 
     public static final Field SERVER_NAME = RelationalDatabaseConnectorConfig.SERVER_NAME
             .withValidation(CommonConnectorConfig::validateServerNameIsDifferentFromHistoryTopicName);
-
-    public static final Field DATABASE_NAME = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.DATABASE)
-            .withDisplayName("Database name")
-            .withType(Type.STRING)
-            .withWidth(Width.MEDIUM)
-            .withImportance(Importance.HIGH)
-            .withValidation(Field::isRequired)
-            .withDescription("The name of the database the connector should be monitoring. When working with a "
-                    + "multi-tenant set-up, must be set to the CDB name.");
 
     public static final Field INSTANCE = Field.create(DATABASE_CONFIG_PREFIX + SqlServerConnection.INSTANCE_NAME)
             .withDisplayName("Instance name")
