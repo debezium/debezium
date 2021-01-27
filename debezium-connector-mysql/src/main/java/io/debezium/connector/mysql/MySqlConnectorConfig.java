@@ -509,6 +509,8 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
      */
     protected static final int DEFAULT_SNAPSHOT_FETCH_SIZE = Integer.MIN_VALUE;
 
+    protected static final int DEFAULT_PORT = 3306;
+
     private static final String DATABASE_WHITELIST_NAME = "database.whitelist";
     private static final String DATABASE_INCLUDE_LIST_NAME = "database.include.list";
     private static final String DATABASE_BLACKLIST_NAME = "database.blacklist";
@@ -522,37 +524,8 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
      */
     private static final int DEFAULT_BINLOG_BUFFER_SIZE = 0;
 
-    public static final Field HOSTNAME = Field.create("database.hostname")
-            .withDisplayName("Hostname")
-            .withType(Type.STRING)
-            .withWidth(Width.MEDIUM)
-            .withImportance(Importance.HIGH)
-            .withValidation(Field::isRequired)
-            .withDescription("Resolvable hostname or IP address of the MySQL database server.");
-
-    public static final Field PORT = Field.create("database.port")
-            .withDisplayName("Port")
-            .withType(Type.INT)
-            .withWidth(Width.SHORT)
-            .withDefault(3306)
-            .withImportance(Importance.HIGH)
-            .withValidation(Field::isInteger)
-            .withDescription("Port of the MySQL database server.");
-
-    public static final Field USER = Field.create("database.user")
-            .withDisplayName("User")
-            .withType(Type.STRING)
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.HIGH)
-            .withValidation(Field::isRequired)
-            .withDescription("Name of the MySQL database user to be used when connecting to the database.");
-
-    public static final Field PASSWORD = Field.create("database.password")
-            .withDisplayName("Password")
-            .withType(Type.PASSWORD)
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.HIGH)
-            .withDescription("Password of the MySQL database user to be used when connecting to the database.");
+    public static final Field PORT = RelationalDatabaseConnectorConfig.PORT
+            .withDefault(DEFAULT_PORT);
 
     public static final Field ON_CONNECT_STATEMENTS = Field.create("database.initial.statements")
             .withDisplayName("Initial statements")

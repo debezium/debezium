@@ -23,6 +23,7 @@ import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.config.Field.ValidationOutput;
+import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.Key.CustomKeyMapper;
@@ -128,6 +129,45 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             return mode;
         }
     }
+
+    public static final Field HOSTNAME = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.HOSTNAME)
+            .withDisplayName("Hostname")
+            .withType(Type.STRING)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.HIGH)
+            .withValidation(Field::isRequired)
+            .withDescription("Resolvable hostname or IP address of the database server.");
+
+    public static final Field PORT = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.PORT)
+            .withDisplayName("Port")
+            .withType(Type.INT)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.HIGH)
+            .withValidation(Field::isInteger)
+            .withDescription("Port of the database server.");
+
+    public static final Field USER = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.USER)
+            .withDisplayName("User")
+            .withType(Type.STRING)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.HIGH)
+            .withValidation(Field::isRequired)
+            .withDescription("Name of the database user to be used when connecting to the database.");
+
+    public static final Field PASSWORD = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.PASSWORD)
+            .withDisplayName("Password")
+            .withType(Type.PASSWORD)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.HIGH)
+            .withDescription("Password of the database user to be used when connecting to the database.");
+
+    public static final Field DATABASE_NAME = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.DATABASE)
+            .withDisplayName("Database")
+            .withType(Type.STRING)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.HIGH)
+            .withValidation(Field::isRequired)
+            .withDescription("The name of the database the connector should be monitoring");
 
     public static final Field SERVER_NAME = Field.create(DATABASE_CONFIG_PREFIX + "server.name")
             .withDisplayName("Namespace")
