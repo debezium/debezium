@@ -13,8 +13,6 @@ import java.util.stream.Collectors;
 
 import org.antlr.v4.runtime.tree.ParseTreeListener;
 
-import com.mysql.cj.CharsetMapping;
-
 import io.debezium.antlr.AntlrDdlParser;
 import io.debezium.antlr.DataTypeResolver;
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
@@ -143,7 +141,6 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
 
     private void resolveColumnDataType(MySqlParser.DataTypeContext dataTypeContext) {
         String charsetName = null;
-        String collationName = null;
         DataType dataType = dataTypeResolver.resolveDataType(dataTypeContext);
 
         if (dataTypeContext instanceof MySqlParser.StringDataTypeContext) {
@@ -155,26 +152,13 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
                 columnEditor.length(length);
             }
 
-            if (stringDataTypeContext.charsetName() != null) {
-                charsetName = stringDataTypeContext.charsetName().getText();
-            }
-            else if (stringDataTypeContext.collationName() != null) {
-                collationName = stringDataTypeContext.collationName().getText();
-                for (int index = 0; index < CharsetMapping.MAP_SIZE; index++) {
-                    if (collationName == CharsetMapping.COLLATION_INDEX_TO_COLLATION_NAME[index]) {
-                        charsetName = CharsetMapping.getMysqlCharsetNameForCollationIndex(index);
-                        break;
-                    }
-                }
-            }
+            charsetName = parser.extractCharset(stringDataTypeContext.charsetName(), stringDataTypeContext.collationName());
         }
         else if (dataTypeContext instanceof MySqlParser.LongVarcharDataTypeContext) {
             // Same as StringDataTypeContext but without dimension handling
             MySqlParser.LongVarcharDataTypeContext longVarcharTypeContext = (MySqlParser.LongVarcharDataTypeContext) dataTypeContext;
 
-            if (longVarcharTypeContext.charsetName() != null) {
-                charsetName = longVarcharTypeContext.charsetName().getText();
-            }
+            charsetName = parser.extractCharset(longVarcharTypeContext.charsetName(), longVarcharTypeContext.collationName());
         }
         else if (dataTypeContext instanceof MySqlParser.NationalStringDataTypeContext) {
             MySqlParser.NationalStringDataTypeContext nationalStringDataTypeContext = (MySqlParser.NationalStringDataTypeContext) dataTypeContext;
