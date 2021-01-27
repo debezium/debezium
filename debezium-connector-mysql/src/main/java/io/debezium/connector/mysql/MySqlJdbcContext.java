@@ -48,7 +48,7 @@ public class MySqlJdbcContext implements AutoCloseable {
     protected static ConnectionFactory FACTORY = JdbcConnection.patternBasedFactory(MYSQL_CONNECTION_URL,
             JdbcConfiguration.PORT.withDefault(MySqlConnectorConfig.PORT.defaultValueAsString()));
 
-    protected final Logger logger = LoggerFactory.getLogger(getClass());
+    protected static final Logger logger = LoggerFactory.getLogger(MySqlJdbcContext.class);
     protected final Configuration config;
     protected final JdbcConnection jdbc;
     private final Map<String, String> originalSystemProperties = new HashMap<>();
@@ -445,12 +445,29 @@ public class MySqlJdbcContext implements AutoCloseable {
     }
 
     public static class DatabaseLocales {
-        public final String charset;
-        public final String collation;
+        private final String charset;
+        private final String collation;
 
         public DatabaseLocales(String charset, String collation) {
             this.charset = charset;
             this.collation = collation;
+        }
+
+        public void appendToDdlStatement(String dbName, StringBuilder ddl) {
+            if (charset != null) {
+                logger.debug("Setting default charset '{}' for database '{}'", charset, dbName);
+                ddl.append(" CHARSET ").append(charset);
+            }
+            else {
+                logger.info("Default database charset for '{}' not found", dbName);
+            }
+            if (collation != null) {
+                logger.debug("Setting default collation '{}' for database '{}'", collation, dbName);
+                ddl.append(" COLLATE ").append(collation);
+            }
+            else {
+                logger.info("Default database collation for '{}' not found", dbName);
+            }
         }
     }
 }
