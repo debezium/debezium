@@ -350,20 +350,22 @@ public class MySqlJdbcContext implements AutoCloseable {
      *
      * @return the map of database names with their default character sets; never null
      */
-    protected Map<String, String> readDatabaseCharsets() {
+    protected Map<String, DatabaseLocales> readDatabaseCollations() {
         logger.debug("Reading default database charsets");
         try {
             start();
             return jdbc.connect().queryAndMap("SELECT schema_name, default_character_set_name, default_collation_name FROM information_schema.schemata", rs -> {
-                final Map<String, String> charsets = new HashMap<>();
+                final Map<String, DatabaseLocales> charsets = new HashMap<>();
                 while (rs.next()) {
-                    String varName = rs.getString(1);
-                    String value = rs.getString(2);
-                    if (varName != null && value != null) {
-                        charsets.put(varName, value);
-                        logger.debug("\t{} = {}",
-                                Strings.pad(varName, 45, ' '),
-                                Strings.pad(value, 45, ' '));
+                    String dbName = rs.getString(1);
+                    String charset = rs.getString(2);
+                    String collation = rs.getString(3);
+                    if (dbName != null && (charset != null || collation != null)) {
+                        charsets.put(dbName, new DatabaseLocales(charset, collation));
+                        logger.debug("\t{} = {}, {}",
+                                Strings.pad(dbName, 45, ' '),
+                                Strings.pad(charset, 45, ' '),
+                                Strings.pad(collation, 45, ' '));
                     }
                 }
                 return charsets;
@@ -440,5 +442,15 @@ public class MySqlJdbcContext implements AutoCloseable {
             return sessionVariables.get(SSL_VERSION);
         }
         return null;
+    }
+
+    public static class DatabaseLocales {
+        public final String charset;
+        public final String collation;
+
+        public DatabaseLocales(String charset, String collation) {
+            this.charset = charset;
+            this.collation = collation;
+        }
     }
 }

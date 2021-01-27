@@ -142,9 +142,8 @@ public class MySqlAntlrDdlParserTest {
         assertThat(table.columnWithName("val1")).isNotNull();
         assertThat(table.columnWithName("val2")).isNotNull();
         assertThat(table.columnWithName("val1").charsetName()).isEqualTo("latin2");
-        assertThat(table.columnWithName("val2").charsetName()).isEqualTo("UTF8mb4");
+        assertThat(table.columnWithName("val2").charsetName()).isEqualTo("utf8mb4");
     }
-
 
     @Test
     @FixFor("DBZ-2130")

@@ -38,6 +38,7 @@ import org.apache.kafka.connect.source.SourceRecord;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.SnapshotRecord;
+import io.debezium.connector.mysql.MySqlJdbcContext.DatabaseLocales;
 import io.debezium.connector.mysql.RecordMakers.RecordsForTable;
 import io.debezium.data.Envelope;
 import io.debezium.function.BufferedBlockingConsumer;
@@ -519,7 +520,7 @@ public class SnapshotReader extends AbstractReader {
                                     "DROP DATABASE IF EXISTS " + quote(missingDbName),
                                     this::enqueueSchemaChanges));
 
-                    final Map<String, String> databaseCharsets = connectionContext.readDatabaseCharsets();
+                    final Map<String, DatabaseLocales> databaseCharsets = connectionContext.readDatabaseCollations();
                     // Now process all of our tables for each database ...
                     for (Map.Entry<String, List<TableId>> entry : createTablesMap.entrySet()) {
                         if (!isRunning()) {
@@ -530,13 +531,22 @@ public class SnapshotReader extends AbstractReader {
                         schema.applyDdl(source, dbName, "DROP DATABASE IF EXISTS " + quote(dbName), this::enqueueSchemaChanges);
 
                         final StringBuilder createDatabaseDddl = new StringBuilder("CREATE DATABASE " + quote(dbName));
-                        final String defaultDatabaseCharset = databaseCharsets.get(dbName);
-                        if (defaultDatabaseCharset != null) {
-                            logger.debug("Setting default charset '{}' for database '{}'", defaultDatabaseCharset, dbName);
-                            createDatabaseDddl.append(" CHARSET ").append(defaultDatabaseCharset);
-                        }
-                        else {
-                            logger.info("Default database charset for '{}' not found", dbName);
+                        final DatabaseLocales defaultDatabaseLocales = databaseCharsets.get(dbName);
+                        if (defaultDatabaseLocales != null) {
+                            if (defaultDatabaseLocales.charset != null) {
+                                logger.debug("Setting default charset '{}' for database '{}'", defaultDatabaseLocales.charset, dbName);
+                                createDatabaseDddl.append(" CHARSET ").append(defaultDatabaseLocales.charset);
+                            }
+                            else {
+                                logger.info("Default database charset for '{}' not found", dbName);
+                            }
+                            if (defaultDatabaseLocales.collation != null) {
+                                logger.debug("Setting default collation '{}' for database '{}'", defaultDatabaseLocales.collation, dbName);
+                                createDatabaseDddl.append(" COLLATE ").append(defaultDatabaseLocales.collation);
+                            }
+                            else {
+                                logger.info("Default database collation for '{}' not found", dbName);
+                            }
                         }
                         schema.applyDdl(source, dbName, createDatabaseDddl.toString(), this::enqueueSchemaChanges);
 
