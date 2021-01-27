@@ -22,6 +22,11 @@ endif::product[]
 
 The first time it connects to a PostgreSQL server or cluster, the connector takes a consistent snapshot of all schemas. After that snapshot is complete, the connector continuously captures row-level changes that insert, update, and delete database content and that were committed to a PostgreSQL database. The connector generates data change event records and streams them to Kafka topics. For each table, the default behavior is that the connector streams all generated events to a separate Kafka topic for that table. Applications and services consume data change event records from that topic. 
 
+[IMPORTANT]
+====
+{prodname} The connector currently supports databases versions higher or equal to 9.6, using lower versions may cause problems
+====
+
 ifdef::product[]
 Information and procedures for using a {prodname} PostgreSQL connector is organized as follows: 
 
