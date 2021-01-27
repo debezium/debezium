@@ -128,6 +128,15 @@ public class SqlServerConnection extends JdbcConnection {
     }
 
     /**
+     * Returns a JDBC connection string for the current configuration.
+     *
+     * @return a {@code String} where the variables in {@code urlPattern} are replaced with values from the configuration
+     */
+    public String connectionString() {
+        return connectionString(URL_PATTERN);
+    }
+
+    /**
      * Returns the query for obtaining the LSN-to-TIMESTAMP query. On SQL Server
      * 2016 and newer, the query will normalize the value to UTC. This means that
      * the {@link #SERVER_TIMEZONE_PROP_NAME} is not necessary to be given. The
