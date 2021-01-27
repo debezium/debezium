@@ -24,7 +24,7 @@ The first time it connects to a PostgreSQL server or cluster, the connector take
 
 [IMPORTANT]
 ====
-{prodname} The connector currently supports databases versions higher or equal to 9.6, using lower versions may cause problems
+{prodname}'s PostgreSQL connector only supports databases versions higher or equal to 9.6, using lower versions may cause problems
 ====
 
 ifdef::product[]
