@@ -113,7 +113,7 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
             final Long scn = (Long) offset.get(SourceInfo.SCN_KEY);
             // We can safely overwrite the message even if it was not processed. The watermarked will be set to the highest
             // (last) delivered value in a single step instead of incrementally
-            lcrMessage.set(new PositionAndScn(lcrPosition, (scn != null) ? convertScnToPosition(scn) : null));
+            sendPublishedPosition(lcrPosition, scn);
         }
     }
 
@@ -140,7 +140,11 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
         return xsOut;
     }
 
-    AtomicReference<PositionAndScn> getLcrMessage() {
-        return lcrMessage;
+    private void sendPublishedPosition(final LcrPosition lcrPosition, final Long scn) {
+        lcrMessage.set(new PositionAndScn(lcrPosition, (scn != null) ? convertScnToPosition(scn) : null));
+    }
+
+    PositionAndScn receivePublishedPosition() {
+        return lcrMessage.getAndSet(null);
     }
 }

@@ -5,8 +5,6 @@
  */
 package io.debezium.connector.oracle.xstream;
 
-import java.util.concurrent.atomic.AtomicReference;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,6 +16,7 @@ import io.debezium.pipeline.EventDispatcher;
 import io.debezium.relational.RelationalDatabaseSchema;
 import io.debezium.relational.TableId;
 import io.debezium.util.Clock;
+
 import oracle.streams.ChunkColumnValue;
 import oracle.streams.DDLLCR;
 import oracle.streams.LCR;
@@ -41,7 +40,6 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
     private final RelationalDatabaseSchema schema;
     private final OracleOffsetContext offsetContext;
     private final boolean tablenameCaseInsensitive;
-    private final AtomicReference<PositionAndScn> lcrMessage;
     private final XstreamStreamingChangeEventSource eventSource;
 
     public LcrEventHandler(ErrorHandler errorHandler, EventDispatcher<TableId> dispatcher, Clock clock, RelationalDatabaseSchema schema,
@@ -53,7 +51,6 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
         this.offsetContext = offsetContext;
         this.tablenameCaseInsensitive = tablenameCaseInsensitive;
         this.eventSource = eventSource;
-        this.lcrMessage = eventSource.getLcrMessage();
     }
 
     @Override
@@ -145,7 +142,7 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
             return;
         }
         try {
-            final PositionAndScn message = lcrMessage.getAndSet(null);
+            final PositionAndScn message = eventSource.receivePublishedPosition();
             if (message == null) {
                 return;
             }
