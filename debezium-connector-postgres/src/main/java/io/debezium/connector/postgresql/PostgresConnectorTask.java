@@ -57,6 +57,7 @@ public class PostgresConnectorTask extends BaseSourceTask {
     private volatile ChangeEventQueue<DataChangeEvent> queue;
     private volatile PostgresConnection jdbcConnection;
     private volatile PostgresConnection heartbeatConnection;
+    private volatile ReplicationConnection replicationConnection;
     private volatile PostgresSchema schema;
 
     @Override
@@ -112,7 +113,7 @@ public class PostgresConnectorTask extends BaseSourceTask {
                 snapshotter.init(connectorConfig, previousOffset.asOffsetState(), slotInfo);
             }
 
-            ReplicationConnection replicationConnection = null;
+            replicationConnection = null;
             SlotCreationResult slotCreatedInfo = null;
             if (snapshotter.shouldStream()) {
                 final boolean shouldExport = snapshotter.exportSnapshot();
@@ -265,6 +266,14 @@ public class PostgresConnectorTask extends BaseSourceTask {
 
     @Override
     protected void doStop() {
+        if (replicationConnection != null) {
+            try {
+                replicationConnection.close();
+            }
+            catch (Exception e) {
+                LOGGER.error("Error while closing replication connection on connector stop: " + e.getMessage());
+            }
+        }
         if (jdbcConnection != null) {
             jdbcConnection.close();
         }

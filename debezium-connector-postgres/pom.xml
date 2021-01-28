@@ -29,9 +29,8 @@
         <docker.skip>false</docker.skip>
         <docker.showLogs>true</docker.showLogs>
         <docker.initimage>ln -fs /usr/share/zoneinfo/US/Samoa /etc/localtime &amp;&amp; echo timezone=US/Samoa &gt;&gt; ${postgres.config.file}</docker.initimage>
-
         <protobuf.output.directory>${project.basedir}/generated-sources</protobuf.output.directory>
-
+        <assembly.profile.active>false</assembly.profile.active>
         <!-- We're tracking the API changes of the SPI. -->
         <revapi.skip>false</revapi.skip>
     </properties>
@@ -240,6 +239,8 @@
                         <database.dbname>${postgres.db.name}</database.dbname>
                         <plugin.name>${decoder.plugin.name}</plugin.name>
                         <skipLongRunningTests>${skipLongRunningTests}</skipLongRunningTests>
+                        <project.version>${project.version}</project.version>
+                        <assembly.profile.active>${assembly.profile.active}</assembly.profile.active>
                     </systemPropertyVariables>
                 </configuration>
             </plugin>
@@ -292,6 +293,9 @@
             <activation>
                 <activeByDefault>false</activeByDefault>
             </activation>
+            <properties>
+                <assembly.profile.active>true</assembly.profile.active>
+            </properties>
             <build>
                 <plugins>
                     <plugin>
