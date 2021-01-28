@@ -5,22 +5,26 @@
  */
 package io.debezium.connector.oracle.xstream;
 
+import java.util.concurrent.atomic.AtomicReference;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
 import io.debezium.connector.oracle.OracleOffsetContext;
+import io.debezium.connector.oracle.xstream.XstreamStreamingChangeEventSource.PositionAndScn;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.relational.RelationalDatabaseSchema;
 import io.debezium.relational.TableId;
 import io.debezium.util.Clock;
-
 import oracle.streams.ChunkColumnValue;
 import oracle.streams.DDLLCR;
 import oracle.streams.LCR;
 import oracle.streams.RowLCR;
 import oracle.streams.StreamsException;
 import oracle.streams.XStreamLCRCallbackHandler;
+import oracle.streams.XStreamOut;
 
 /**
  * Handler for Oracle DDL and DML events. Just forwards events to the {@link EventDispatcher}.
@@ -37,20 +41,28 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
     private final RelationalDatabaseSchema schema;
     private final OracleOffsetContext offsetContext;
     private final boolean tablenameCaseInsensitive;
+    private final AtomicReference<PositionAndScn> lcrMessage;
+    private final XstreamStreamingChangeEventSource eventSource;
 
     public LcrEventHandler(ErrorHandler errorHandler, EventDispatcher<TableId> dispatcher, Clock clock, RelationalDatabaseSchema schema,
-                           OracleOffsetContext offsetContext, boolean tablenameCaseInsensitive) {
+                           OracleOffsetContext offsetContext, boolean tablenameCaseInsensitive, XstreamStreamingChangeEventSource eventSource) {
         this.errorHandler = errorHandler;
         this.dispatcher = dispatcher;
         this.clock = clock;
         this.schema = schema;
         this.offsetContext = offsetContext;
         this.tablenameCaseInsensitive = tablenameCaseInsensitive;
+        this.eventSource = eventSource;
+        this.lcrMessage = eventSource.getLcrMessage();
     }
 
     @Override
     public void processLCR(LCR lcr) throws StreamsException {
         LOGGER.trace("Received LCR {}", lcr);
+
+        // First set watermark to flush messages seen
+        setWatermark();
+
         final LcrPosition lcrPosition = new LcrPosition(lcr.getPosition());
 
         // After a restart it may happen we get the event with the last processed LCR again
@@ -125,6 +137,43 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
         }
         else {
             return new TableId(sourceDatabaseName.toLowerCase(), lcr.getObjectOwner(), lcr.getObjectName().toLowerCase());
+        }
+    }
+
+    private void setWatermark() {
+        if (eventSource.getXsOut() == null) {
+            return;
+        }
+        try {
+            final PositionAndScn message = lcrMessage.getAndSet(null);
+            if (message == null) {
+                return;
+            }
+            LOGGER.debug("Recording offsets to Oracle");
+            if (message.position != null) {
+                if (LOGGER.isDebugEnabled()) {
+                    LOGGER.debug("Recording position {}", message.position);
+                }
+                eventSource.getXsOut().setProcessedLowWatermark(
+                        message.position.getRawPosition(),
+                        XStreamOut.DEFAULT_MODE);
+            }
+            else if (message.scn != null) {
+                if (LOGGER.isDebugEnabled()) {
+                    LOGGER.debug("Recording position with SCN {}", message.scn);
+                }
+                eventSource.getXsOut().setProcessedLowWatermark(
+                        message.scn,
+                        XStreamOut.DEFAULT_MODE);
+            }
+            else {
+                LOGGER.warn("Nothing in offsets could be recorded to Oracle");
+                return;
+            }
+            LOGGER.trace("Offsets recorded to Oracle");
+        }
+        catch (StreamsException e) {
+            throw new DebeziumException("Couldn't set processed low watermark", e);
         }
     }
 

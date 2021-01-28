@@ -6,6 +6,7 @@
 package io.debezium.connector.oracle.xstream;
 
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,6 +48,14 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
     private volatile XStreamOut xsOut;
     private final boolean tablenameCaseInsensitive;
     private final int posVersion;
+    /**
+     * A message box between thread that is informed about committed offsets and the XStream thread.
+     * When the last offset is committed its value is passed to the XStream thread and a watermark is
+     * set to signal which events were safely processed.
+     * This is important as setting watermark in a concurrent thread can lead to a deadlock due to an
+     * internal Oracle code locking.
+     */
+    private final AtomicReference<PositionAndScn> lcrMessage = new AtomicReference<>();
 
     public XstreamStreamingChangeEventSource(OracleConnectorConfig connectorConfig, OracleOffsetContext offsetContext, JdbcConnection jdbcConnection,
                                              EventDispatcher<TableId> dispatcher, ErrorHandler errorHandler, Clock clock, OracleDatabaseSchema schema) {
@@ -70,7 +79,7 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
             xsOut = XStreamOut.attach((OracleConnection) jdbcConnection.connection(), xStreamServerName,
                     startPosition, 1, 1, XStreamOut.DEFAULT_MODE);
 
-            LcrEventHandler handler = new LcrEventHandler(errorHandler, dispatcher, clock, schema, offsetContext, this.tablenameCaseInsensitive);
+            LcrEventHandler handler = new LcrEventHandler(errorHandler, dispatcher, clock, schema, offsetContext, this.tablenameCaseInsensitive, this);
 
             // 2. receive events while running
             while (context.isRunning()) {
@@ -99,35 +108,12 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
     @Override
     public void commitOffset(Map<String, ?> offset) {
         if (xsOut != null) {
-            try {
-                LOGGER.debug("Recording offsets to Oracle");
-                final LcrPosition lcrPosition = LcrPosition.valueOf((String) offset.get(SourceInfo.LCR_POSITION_KEY));
-                final Long scn = (Long) offset.get(SourceInfo.SCN_KEY);
-                if (lcrPosition != null) {
-                    if (LOGGER.isDebugEnabled()) {
-                        LOGGER.debug("Recording position {}", lcrPosition);
-                    }
-                    xsOut.setProcessedLowWatermark(
-                            lcrPosition.getRawPosition(),
-                            XStreamOut.DEFAULT_MODE);
-                }
-                else if (scn != null) {
-                    if (LOGGER.isDebugEnabled()) {
-                        LOGGER.debug("Recording position with SCN {}", scn);
-                    }
-                    xsOut.setProcessedLowWatermark(
-                            convertScnToPosition(scn),
-                            XStreamOut.DEFAULT_MODE);
-                }
-                else {
-                    LOGGER.warn("Nothing in offsets could be recorded to Oracle");
-                    return;
-                }
-                LOGGER.trace("Offsets recorded to Oracle");
-            }
-            catch (StreamsException e) {
-                throw new RuntimeException("Couldn't set processed low watermark", e);
-            }
+            LOGGER.debug("Sending message to request recording of offsets to Oracle");
+            final LcrPosition lcrPosition = LcrPosition.valueOf((String) offset.get(SourceInfo.LCR_POSITION_KEY));
+            final Long scn = (Long) offset.get(SourceInfo.SCN_KEY);
+            // We can safely overwrite the message even if it was not processed. The watermarked will be set to the highest
+            // (last) delivered value in a single step instead of incrementally
+            lcrMessage.set(new PositionAndScn(lcrPosition, (scn != null) ? convertScnToPosition(scn) : null));
         }
     }
 
@@ -138,5 +124,23 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
         catch (StreamsException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    public static class PositionAndScn {
+        public final LcrPosition position;
+        public final byte[] scn;
+
+        public PositionAndScn(LcrPosition position, byte[] scn) {
+            this.position = position;
+            this.scn = scn;
+        }
+    }
+
+    XStreamOut getXsOut() {
+        return xsOut;
+    }
+
+    AtomicReference<PositionAndScn> getLcrMessage() {
+        return lcrMessage;
     }
 }
