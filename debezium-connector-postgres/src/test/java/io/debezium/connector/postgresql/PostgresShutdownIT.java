@@ -44,8 +44,6 @@ public class PostgresShutdownIT extends AbstractConnectorTest {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PostgresShutdownIT.class);
 
-    private static final String POSTGRES_IMAGE = "debezium/example-postgres:1.3";
-
     private static final String INSERT_STMT = "INSERT INTO s1.a (aa) VALUES (1);" +
             "INSERT INTO s2.a (aa) VALUES (1);";
     private static final String CREATE_TABLES_STMT = "DROP SCHEMA IF EXISTS s1 CASCADE;" +
@@ -58,10 +56,10 @@ public class PostgresShutdownIT extends AbstractConnectorTest {
             "INSERT INTO s1.heartbeat (ts) VALUES (NOW());";
     private static final String SETUP_TABLES_STMT = CREATE_TABLES_STMT + INSERT_STMT;
 
-    private static final DockerImageName POSTGRES_DOCKER_IMAGE_NAME = DockerImageName.parse(POSTGRES_IMAGE)
+    private static final DockerImageName POSTGRES_DOCKER_IMAGE_NAME = DockerImageName.parse(DEFAULT_DEBEZIUM_POSTGRES_EXAMPLE_IMAGE)
             .asCompatibleSubstituteFor("postgres");
 
-    public static PostgreSQLContainer<?> postgresContainer = new PostgreSQLContainer<>(POSTGRES_DOCKER_IMAGE_NAME)
+    public static final PostgreSQLContainer<?> postgresContainer = new PostgreSQLContainer<>(POSTGRES_DOCKER_IMAGE_NAME)
             .withDatabaseName("postgres")
             .withUsername("postgres")
             .withPassword("postgres")
@@ -124,7 +122,7 @@ public class PostgresShutdownIT extends AbstractConnectorTest {
         logger.info("Waiting for heartbeats...");
         Awaitility.await()
                 .pollInterval(250, TimeUnit.MILLISECONDS)
-                .atMost(5 * TestHelper.waitTimeForRecords(), TimeUnit.SECONDS)
+                .atMost(5L * TestHelper.waitTimeForRecords(), TimeUnit.SECONDS)
                 .until(() -> !initialHeartbeat.equals(postgresConnection.queryAndMap(
                         "SELECT ts FROM s1.heartbeat;",
                         postgresConnection.singleResultMapper(rs -> rs.getString("ts"), "Could not fetch keepalive info"))));
@@ -147,8 +145,8 @@ public class PostgresShutdownIT extends AbstractConnectorTest {
 
     private void waitForPostgresShutdown() {
         Awaitility.await()
-                .pollInterval(200, TimeUnit.MILLISECONDS)
-                .atMost(60 * TestHelper.waitTimeForRecords(), TimeUnit.SECONDS)
+                .pollInterval(200L, TimeUnit.MILLISECONDS)
+                .atMost(60L * TestHelper.waitTimeForRecords(), TimeUnit.SECONDS)
                 .until(() -> !postgresContainer.isRunning());
     }
 }

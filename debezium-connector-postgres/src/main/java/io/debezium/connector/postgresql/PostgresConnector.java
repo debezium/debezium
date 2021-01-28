@@ -145,6 +145,30 @@ public class PostgresConnector extends SourceConnector {
                         final String errorMessage = "Postgres roles LOGIN and REPLICATION are not assigned to user: " + connection.username();
                         LOGGER.error(errorMessage);
                     }
+                    // check replication slot
+                    final String slotName = config.slotName();
+                    if (connection.prepareQueryAndMap(
+                            "SELECT slots.active AS slot_active" +
+                                    " FROM pg_replication_slots AS slots" +
+                                    " INNER JOIN pg_stat_activity AS connections" +
+                                    " ON slots.datoid=connections.datid AND slots.active_pid=connections.pid" +
+                                    " WHERE slots.slot_name = ?" +
+                                    " AND connections.application_name != ?",
+                            statement -> {
+                                statement.setString(1, slotName);
+                                statement.setString(2, "DBZ#" + config.getConfig().getString("name"));
+                            },
+                            rs -> {
+                                if (rs.next()) {
+                                    return rs.getBoolean("slot_active");
+                                }
+                                return false;
+                            })) {
+                        final String errorMessage = "Slot name \"" + slotName
+                                + "\" already exists and is active. Choose a unique name or stop the other process occupying the slot.";
+                        LOGGER.error(errorMessage);
+                        slotNameResult.addErrorMessage(errorMessage);
+                    }
                 }
                 catch (SQLException e) {
                     LOGGER.error("Failed testing connection for {} with user '{}': {}", connection.connectionString(),

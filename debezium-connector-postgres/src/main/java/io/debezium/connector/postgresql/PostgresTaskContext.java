@@ -104,7 +104,9 @@ public class PostgresTaskContext extends CdcSourceTaskContext {
                             "will be created after a connector restart, resulting in missed data change events.",
                     PostgresConnectorConfig.DROP_SLOT_ON_STOP.name());
         }
-        return ReplicationConnection.builder(config.jdbcConfig())
+
+        return ReplicationConnection.builder(
+                config.jdbcConfig().edit().with("ApplicationName", "DBZ#" + config.getConfig().getString("name")).build())
                 .withSlot(config.slotName())
                 .withPublication(config.publicationName())
                 .withTableFilter(config.getTableFilters())

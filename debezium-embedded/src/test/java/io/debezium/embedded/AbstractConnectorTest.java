@@ -11,7 +11,6 @@ import static org.junit.Assert.fail;
 import java.lang.management.ManagementFactory;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -94,6 +93,8 @@ public abstract class AbstractConnectorTest implements Testing {
 
     protected static final Path OFFSET_STORE_PATH = Testing.Files.createTestingPath("file-connector-offsets.txt").toAbsolutePath();
     private static final String TEST_PROPERTY_PREFIX = "debezium.test.";
+
+    protected static final String DEFAULT_DEBEZIUM_POSTGRES_EXAMPLE_IMAGE = "debezium/example-postgres:1.4";
 
     private ExecutorService executor;
     protected EmbeddedEngine engine;
@@ -943,7 +944,7 @@ public abstract class AbstractConnectorTest implements Testing {
      * @return the map of partitions to offsets; never null but possibly empty
      */
     protected <T> Map<String, Object> readLastCommittedOffset(Configuration config, Map<String, T> partition) {
-        return readLastCommittedOffsets(config, Arrays.asList(partition)).get(partition);
+        return readLastCommittedOffsets(config, Collections.singletonList(partition)).get(partition);
     }
 
     /**
@@ -1020,7 +1021,7 @@ public abstract class AbstractConnectorTest implements Testing {
         Assertions
                 .assertThat(end.getArray("data_collections").stream().map(x -> (Struct) x)
                         .collect(Collectors.toMap(x -> x.getString("data_collection"), x -> x.getInt64("event_count"))))
-                .isEqualTo(expectedPerTableCount.entrySet().stream().collect(Collectors.toMap(x -> x.getKey(), x -> x.getValue().longValue())));
+                .isEqualTo(expectedPerTableCount.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, x -> x.getValue().longValue())));
         Assertions.assertThat(offset.get("transaction_id")).isEqualTo(expectedTxId);
     }
 
@@ -1045,7 +1046,7 @@ public abstract class AbstractConnectorTest implements Testing {
         Awaitility.await()
                 .alias("Streaming was not started on time")
                 .pollInterval(100, TimeUnit.MILLISECONDS)
-                .atMost(waitTimeForRecords() * 30, TimeUnit.SECONDS)
+                .atMost(waitTimeForRecords() * 30L, TimeUnit.SECONDS)
                 .ignoreException(InstanceNotFoundException.class)
                 .until(() -> (boolean) mbeanServer
                         .getAttribute(getSnapshotMetricsObjectName(connector, server), "SnapshotCompleted"));
@@ -1059,7 +1060,7 @@ public abstract class AbstractConnectorTest implements Testing {
         Awaitility.await()
                 .alias("Streaming was not started on time")
                 .pollInterval(100, TimeUnit.MILLISECONDS)
-                .atMost(waitTimeForRecords() * 30, TimeUnit.SECONDS)
+                .atMost(waitTimeForRecords() * 30L, TimeUnit.SECONDS)
                 .ignoreException(InstanceNotFoundException.class)
                 .until(() -> isStreamingRunning(connector, server, contextName));
     }
@@ -1067,7 +1068,7 @@ public abstract class AbstractConnectorTest implements Testing {
     public static void waitForConnectorShutdown(String connector, String server) {
         Awaitility.await()
                 .pollInterval(200, TimeUnit.MILLISECONDS)
-                .atMost(waitTimeForRecords() * 30, TimeUnit.SECONDS)
+                .atMost(waitTimeForRecords() * 30L, TimeUnit.SECONDS)
                 .until(() -> !isStreamingRunning(connector, server));
     }
 
