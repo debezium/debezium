@@ -12,6 +12,7 @@ Alexander Kovryga
 Alexander Schwartz
 Alisa Houskova
 Amit Sela
+Aman Garg
 Anders Engström
 Andrea Cosentino
 Andreas Bergmeier
@@ -102,6 +103,7 @@ Hossein Torabi
 Ian Axelrod
 Igor Gabaydulin
 Ilia Bogdanov
+ismail Simsek
 Ivan Klass
 Ivan Kovbas
 Ivan Lorenz
@@ -175,6 +177,7 @@ Nathan Mills
 Navdeep Agarwal
 Nayana Hettiarachchi
 Nikhil Benesch
+Nishant Singh
 Olavi Mustanoja
 Omar Al-Safi
 Ori Popowski
@@ -204,6 +207,7 @@ René Kerner
 Rich O'Connell
 Robert Coup
 Ruslan Gibaiev
+siufay325
 Sairam Polavarapu
 Sanjay Kr Singh
 Sanne Grinovero
@@ -215,6 +219,7 @@ Sean Rooney
 Sergei Morozov
 Sherafudheen PM
 Shubham Rawat
+Shuguang Xiang
 Siddhant Agnihotry
 Stanley Shyiko
 Stathis Souris
@@ -232,6 +237,7 @@ Tomaz Lemos Fernandes
 Tony Rizko
 Tova Cohen
 Travis Elnicky
+Troy Gaines
 Vadzim Ramanenka
 Vasily Ulianko
 Vedit Firat Arig

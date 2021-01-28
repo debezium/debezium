@@ -2,8 +2,66 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 1.4.1.Final
+January 28th 2021 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12353181)
+
+### New features since 1.4.0.Final
+
+* Clarify information in Debezium connector for SQL Server doc [DBZ-2675](https://issues.jboss.org/browse/DBZ-2675)
+* Add support for binary.handling.mode to the SQL Server connector [DBZ-2912](https://issues.jboss.org/browse/DBZ-2912)
+* Use collation to get charset when charset is not set [DBZ-2922](https://issues.jboss.org/browse/DBZ-2922)
+* Additional logging for number and type of sql operations [DBZ-2980](https://issues.jboss.org/browse/DBZ-2980)
+* Retry on "The server failed to resume the transaction" [DBZ-2959](https://issues.jboss.org/browse/DBZ-2959)
+
+
+
+
+### Breaking changes since 1.4.0.Final
+
+None
+
+
+### Fixes since 1.4.0.Final
+
+* Debezium Connectors are failing while reading binlog: Unknown event type 100 [DBZ-2499](https://issues.jboss.org/browse/DBZ-2499)
+* Some column default values are not extracted correctly while reading table structure [DBZ-2698](https://issues.jboss.org/browse/DBZ-2698)
+* Supplemental logging is required for entire database rather than per monitored table [DBZ-2711](https://issues.jboss.org/browse/DBZ-2711)
+* Missing log file error when current SCN differs from snapshotted in Oracle connector and Logminer [DBZ-2855](https://issues.jboss.org/browse/DBZ-2855)
+* GitHub action for "Build Testing Workflow" is using old artifacts and not building missing dependencies [DBZ-2861](https://issues.jboss.org/browse/DBZ-2861)
+* Deadlock in the XStream handler and offset commiter call concurrently [DBZ-2891](https://issues.jboss.org/browse/DBZ-2891)
+* Sanitise DECIMAL string from VStream [DBZ-2906](https://issues.jboss.org/browse/DBZ-2906)
+* Vitess Connector download link missing on website [DBZ-2907](https://issues.jboss.org/browse/DBZ-2907)
+* DML statements longer than 4000 characters are incorrectly combined from V$LOGMNR_CONTENTS [DBZ-2920](https://issues.jboss.org/browse/DBZ-2920)
+* Default database charset is not recorded [DBZ-2921](https://issues.jboss.org/browse/DBZ-2921)
+* Instable test: PostgresConnectorIT#testCustomSnapshotterSnapshotCompleteLifecycleHook() [DBZ-2938](https://issues.jboss.org/browse/DBZ-2938)
+* Snapshot causes ORA-08181 exception [DBZ-2949](https://issues.jboss.org/browse/DBZ-2949)
+* Postgres connector config validation fails because current connector is occupying replication slot [DBZ-2952](https://issues.jboss.org/browse/DBZ-2952)
+* Labeled create procedure's body is not parsed [DBZ-2972](https://issues.jboss.org/browse/DBZ-2972)
+* Debezium swallows DML exception in certain cases [DBZ-2981](https://issues.jboss.org/browse/DBZ-2981)
+
+
+### Other changes since 1.4.0.Final
+
+* Migrate website build to Hugo [DBZ-575](https://issues.jboss.org/browse/DBZ-575)
+* Test binary/varbinary datatypes [DBZ-2174](https://issues.jboss.org/browse/DBZ-2174)
+* Implement Scn as a domain type [DBZ-2518](https://issues.jboss.org/browse/DBZ-2518)
+* Fix docs for message.key.columns and skipped.operations [DBZ-2572](https://issues.jboss.org/browse/DBZ-2572)
+* Upgrade to Apache Kafka Connect 2.6.1 [DBZ-2630](https://issues.jboss.org/browse/DBZ-2630)
+* Centralize postgres image name for test container tests [DBZ-2764](https://issues.jboss.org/browse/DBZ-2764)
+* Add missing connector options for Postgres connector [DBZ-2807](https://issues.jboss.org/browse/DBZ-2807)
+* Importing TestDatabase as QuarkusTestResource for IT tests [DBZ-2868](https://issues.jboss.org/browse/DBZ-2868)
+* Set up Pulsar via Testcontainers in PulsarIT [DBZ-2915](https://issues.jboss.org/browse/DBZ-2915)
+* Remove blacklist and whitelist from anchor link text in documentation [DBZ-2918](https://issues.jboss.org/browse/DBZ-2918)
+* Instable test: PostgresShutdownIT#shouldStopOnPostgresFastShutdown() [DBZ-2923](https://issues.jboss.org/browse/DBZ-2923)
+* Rename whitelist/blacklist configs in examples to include/exclude [DBZ-2925](https://issues.jboss.org/browse/DBZ-2925)
+* Misspelling in readme for db2 connector [DBZ-2940](https://issues.jboss.org/browse/DBZ-2940)
+* Fetch correct Apicurio version for ApicurioRegistryTest [DBZ-2945](https://issues.jboss.org/browse/DBZ-2945)
+* Incorrect link IDs in SQL Server connector snapshot metrics table [DBZ-2958](https://issues.jboss.org/browse/DBZ-2958)
+
+
+
 ## 1.4.0.Final
-Januaryr 7th 2021 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12352766)
+January 7th 2021 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12352766)
 
 ### New features since 1.4.0.CR1
 
