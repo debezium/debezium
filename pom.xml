@@ -66,6 +66,7 @@
         <version.netty>4.1.50.Final</version.netty>
         <!-- check new release version at https://github.com/confluentinc/schema-registry/releases -->
         <version.confluent.platform>5.5.1</version.confluent.platform>
+        <version.apicurio>1.3.2.Final</version.apicurio>
 
         <!-- Databases -->
         <version.postgresql.driver>42.2.14</version.postgresql.driver>
@@ -315,7 +316,11 @@
                 <artifactId>kafka-connect-avro-converter</artifactId>
                 <version>${version.confluent.platform}</version>
             </dependency>
-
+            <dependency>
+                <groupId>io.apicurio</groupId>
+                <artifactId>apicurio-registry-utils-converter</artifactId>
+                <version>${version.apicurio}</version>
+            </dependency>
             <dependency>
                 <groupId>org.antlr</groupId>
                 <artifactId>antlr4-runtime</artifactId>

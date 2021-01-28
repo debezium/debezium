@@ -38,6 +38,9 @@ public class TestConfigSource implements ConfigSource {
         integrationTest.put("debezium.source.schema.include.list", "inventory");
         integrationTest.put("debezium.source.table.include.list", "inventory.customers");
 
+        // integrationTest.put("debezium.format.key", Avro.class.getSimpleName().toLowerCase());
+        // integrationTest.put("debezium.format.value", Avro.class.getSimpleName().toLowerCase());
+
         unitTest.put("debezium.sink.type", "test");
         unitTest.put("debezium.source.connector.class", "org.apache.kafka.connect.file.FileStreamSourceConnector");
         unitTest.put("debezium.source." + StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());

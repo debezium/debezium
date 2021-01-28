@@ -35,6 +35,7 @@ import io.debezium.engine.DebeziumEngine.ChangeConsumer;
 import io.debezium.engine.format.Avro;
 import io.debezium.engine.format.Json;
 import io.debezium.engine.format.Protobuf;
+import io.debezium.testing.testcontainers.ApicurioTestResourceLifeCycleManager;
 import io.quarkus.runtime.Quarkus;
 import io.quarkus.runtime.ShutdownEvent;
 import io.quarkus.runtime.Startup;
@@ -128,6 +129,15 @@ public class DebeziumServer {
             props.setProperty(CommonConnectorConfig.TOMBSTONES_ON_DELETE.name(), Boolean.FALSE.toString());
         }
         props.setProperty("name", name);
+        if (keyFormat.getSimpleName().equals("Avro")) {
+            final String apicurioUrl = ApicurioTestResourceLifeCycleManager.getApicurioUrl();
+            // props.setProperty("debezium.format.key.apicurio.registry.url", apicurioUrl);
+            // props.setProperty("debezium.format.value.apicurio.registry.url", apicurioUrl);
+            props.setProperty("key.converter.apicurio.registry.url", apicurioUrl);
+            props.setProperty("value.converter.apicurio.registry.url", apicurioUrl);
+            props.setProperty("key.converter.apicurio.registry.global-id", "io.apicurio.registry.utils.serde.strategy.GetOrCreateIdStrategy");
+            props.setProperty("value.converter.apicurio.registry.global-id", "io.apicurio.registry.utils.serde.strategy.GetOrCreateIdStrategy");
+        }
         LOGGER.debug("Configuration for DebeziumEngine: {}", props);
 
         engine = DebeziumEngine.create(keyFormat, valueFormat)
