@@ -1272,7 +1272,6 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         List<String> largeValues = new ArrayList<>();
         List<String> largeValues2 = new ArrayList<>();
         for (int i = 0; i < 10; ++i) {
-            System.out.println("Inserting row " + (2 + i));
             largeValues.add(generateAlphaNumericStringColumn(4000));
             largeValues2.add(generateAlphaNumericStringColumn(4000));
             connection.execute("INSERT INTO large_dml (id, value, value2) values (" + (2 + i) + ", '" + largeValues.get(largeValues.size() - 1) + "', '"
@@ -1281,7 +1280,6 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         connection.commit();
 
         // Verify stream
-        System.out.println("Consuming stream entries");
         records = consumeRecordsByTopic(10);
         assertThat(records.topics()).hasSize(1);
         assertThat(records.recordsForTopic("server1.DEBEZIUM.LARGE_DML")).hasSize(10);
@@ -1297,6 +1295,50 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
         // Stop connector
         stopConnector((r) -> TestHelper.dropTable(connection, "large_dml"));
+    }
+
+    @Test
+    @FixFor("DBZ-2891")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.XSTREAM, reason = "Only applies to Xstreams")
+    public void shouldNotObserveDeadlockWhileStreamingWithXstream() throws Exception {
+        long oldPollTimeInMs = pollTimeoutInMs;
+        TestHelper.dropTable(connection, "deadlock_test");
+        try {
+            final String ddl = "CREATE TABLE deadlock_test (id numeric(9), name varchar2(50), primary key(id))";
+            connection.execute(ddl);
+            connection.execute("GRANT SELECT ON debezium.deadlock_test TO " + TestHelper.getConnectorUserName());
+            connection.execute("ALTER TABLE debezium.deadlock_test ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
+
+            // Set connector to poll very slowly
+            this.pollTimeoutInMs = TimeUnit.SECONDS.toMillis(20);
+
+            final Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "debezium.deadlock_test")
+                    .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                    .with(OracleConnectorConfig.MAX_QUEUE_SIZE, 2)
+                    .with(OracleConnectorConfig.MAX_BATCH_SIZE, 1)
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertNoRecordsToConsume();
+
+            waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            for (int i = 0; i < 10; ++i) {
+                connection.execute("INSERT INTO deadlock_test (id, name) values (" + i + ", 'Test " + i + "')");
+                connection.execute("COMMIT");
+            }
+
+            SourceRecords records = consumeRecordsByTopic(10, 24);
+            assertThat(records.topics()).hasSize(1);
+            assertThat(records.recordsForTopic("server1.DEBEZIUM.DEADLOCK_TEST")).hasSize(10);
+
+        }
+        finally {
+            // Reset poll time
+            this.pollTimeoutInMs = oldPollTimeInMs;
+            TestHelper.dropTable(connection, "deadlock_test");
+        }
     }
 
     private String generateAlphaNumericStringColumn(int size) {
