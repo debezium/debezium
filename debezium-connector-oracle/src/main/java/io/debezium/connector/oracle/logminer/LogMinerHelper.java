@@ -257,6 +257,21 @@ public class LogMinerHelper {
         LOGGER.trace("Starting log mining startScn={}, endScn={}, strategy={}, continuous={}", startScn, endScn, strategy, isContinuousMining);
         String statement = SqlUtils.startLogMinerStatement(startScn, endScn, strategy, isContinuousMining);
         executeCallableStatement(connection, statement);
+        try {
+            executeCallableStatement(connection, statement);
+        }
+        catch (SQLException e) {
+            // Check if we got ORA-01291 or ORA-01284
+            if (e.getErrorCode() == 1291) {
+                try {
+                    logLogMinerLogEntries(connection);
+                }
+                catch (SQLException e2) {
+                    LOGGER.error("Failed to capture logminer log entries", e2);
+                }
+            }
+            throw e;
+        }
         // todo dbms_logmnr.STRING_LITERALS_IN_STMT?
         // todo If the log file is corrupted/bad, logmnr will not be able to access it, we have to switch to another one?
     }
@@ -501,9 +516,9 @@ public class LogMinerHelper {
         logFilesNames.addAll(archivedLogFiles);
 
         for (String file : logFilesNames) {
+            LOGGER.trace("Adding log file {} to mining session", file);
             String addLogFileStatement = SqlUtils.addLogFileStatement("DBMS_LOGMNR.ADDFILE", file);
             executeCallableStatement(connection, addLogFileStatement);
-            LOGGER.trace("Adding log file {} to mining session", file);
         }
 
         LOGGER.debug("Last mined SCN: {}, Log file list to mine: {}\n", lastProcessedScn, logFilesNames);
@@ -574,6 +589,19 @@ public class LogMinerHelper {
         }
         LOGGER.trace("Online redo log {} with next change {} to be excluded.", entry.getKey(), entry.getValue());
         return false;
+    }
+
+    private static void logLogMinerLogEntries(Connection connection) throws SQLException {
+        LOGGER.debug("Log entries registered with Logminer are:");
+        try(PreparedStatement statement = connection.prepareStatement("SELECT * FROM V$LOGMNR_LOGS"); ResultSet rs = statement.executeQuery()) {
+            while(rs.next()) {
+                Long logId = rs.getLong("LOG_ID");
+                String fileName = rs.getString("FILENAME");
+                String info = rs.getString("INFO");
+                Long status = rs.getLong("STATUS");
+                LOGGER.debug("  id={}, fileName={}, info={}, status={}", logId, fileName, info, status);
+            }
+        }
     }
 
     /**
