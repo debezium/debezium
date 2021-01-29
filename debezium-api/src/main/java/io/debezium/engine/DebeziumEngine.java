@@ -121,6 +121,14 @@ public interface DebeziumEngine<R> extends Runnable, Closeable {
          * Should be called when a batch of records is finished being processed.
          */
         void markBatchFinished() throws InterruptedException;
+
+        /**
+         * Marks a record with updated source offsets as processed.
+         *
+         * @param record the record to commit
+         * @param sourceOffset the source offset to update the record with
+         */
+        void markProcessed(R record, Map<String, ?> sourceOffset) throws InterruptedException;
     }
 
     /**
