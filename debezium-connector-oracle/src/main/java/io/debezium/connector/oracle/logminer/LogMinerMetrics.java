@@ -13,8 +13,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.connector.common.CdcSourceTaskContext;
+import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.metrics.Metrics;
 
 /**
@@ -24,17 +28,8 @@ import io.debezium.metrics.Metrics;
 @ThreadSafe
 public class LogMinerMetrics extends Metrics implements LogMinerMetricsMXBean {
 
-    public final static int DEFAULT_BATCH_SIZE = 20_000;
-
-    private final static int MAX_SLEEP_TIME = 3_000;
-    private final static int DEFAULT_SLEEP_TIME = 1_000;
-    private final static int MIN_SLEEP_TIME = 0;
-
-    private final static int MIN_BATCH_SIZE = 1_000;
-    private final static int MAX_BATCH_SIZE = 100_000;
     private final static int DEFAULT_HOURS_TO_KEEP_TRANSACTION = 4;
-
-    private final static int SLEEP_TIME_INCREMENT = 200;
+    private static final Logger LOGGER = LoggerFactory.getLogger(LogMinerMetrics.class);
 
     private final AtomicLong currentScn = new AtomicLong();
     private final AtomicInteger logMinerQueryCount = new AtomicInteger();
@@ -59,25 +54,43 @@ public class LogMinerMetrics extends Metrics implements LogMinerMetricsMXBean {
     private final AtomicInteger hoursToKeepTransaction = new AtomicInteger();
     private final AtomicLong networkConnectionProblemsCounter = new AtomicLong();
 
-    LogMinerMetrics(CdcSourceTaskContext taskContext) {
-        super(taskContext, "log-miner");
+    // Constants for sliding window algorithm
+    private final int batchSizeMin;
+    private final int batchSizeMax;
+    private final int batchSizeDefault;
 
-        // todo: this was removed, is that accurate?
-        // batchSize.set(DEFAULT_BATCH_SIZE);
-        // millisecondToSleepBetweenMiningQuery.set(DEFAULT_SLEEP_TIME);
+    //constants for sleeping algorithm
+    private final int sleepTimeMin;
+    private final int sleepTimeMax;
+    private final int sleepTimeDefault;
+    private final int sleepTimeIncrement;
+    
+    LogMinerMetrics(CdcSourceTaskContext taskContext, OracleConnectorConfig connectorConfig) {
+        super(taskContext, "log-miner");
 
         currentScn.set(-1);
         currentLogFileName = new AtomicReference<>();
         redoLogStatus = new AtomicReference<>();
         switchCounter.set(0);
 
+        batchSizeDefault = connectorConfig.getLogMiningBatchSizeDefault();
+        batchSizeMin = connectorConfig.getLogMiningBatchSizeMin();
+        batchSizeMax = connectorConfig.getLogMiningBatchSizeMax();
+
+        sleepTimeDefault = connectorConfig.getLogMiningSleepTimeDefault();
+        sleepTimeMin = connectorConfig.getLogMiningSleepTimeMin();
+        sleepTimeMax = connectorConfig.getLogMiningSleepTimeMax();
+        sleepTimeIncrement = connectorConfig.getLogMiningSleepTimeIncrement();
+
         reset();
+        LOGGER.info("Logminer metrics initialized {}", this);
     }
 
     @Override
     public void reset() {
-        batchSize.set(DEFAULT_BATCH_SIZE);
-        millisecondToSleepBetweenMiningQuery.set(DEFAULT_SLEEP_TIME);
+
+        batchSize.set(batchSizeDefault);
+        millisecondToSleepBetweenMiningQuery.set(sleepTimeDefault);
         totalCapturedDmlCount.set(0);
         maxDurationOfFetchingQuery.set(Duration.ZERO);
         lastDurationOfFetchingQuery.set(Duration.ZERO);
@@ -90,7 +103,7 @@ public class LogMinerMetrics extends Metrics implements LogMinerMetricsMXBean {
         totalBatchProcessingDuration.set(Duration.ZERO);
         maxBatchProcessingThroughput.set(0);
         lastBatchProcessingDuration.set(Duration.ZERO);
-        networkConnectionProblemsCounter.set(0);
+        networkConnectionProblemsCounter.set(0);       
     }
 
     // setters
@@ -248,14 +261,14 @@ public class LogMinerMetrics extends Metrics implements LogMinerMetricsMXBean {
     // MBean accessible setters
     @Override
     public void setBatchSize(int size) {
-        if (size >= MIN_BATCH_SIZE && size <= MAX_BATCH_SIZE) {
+        if (size >= batchSizeMin && size <= batchSizeMax) {
             batchSize.set(size);
         }
     }
 
     @Override
     public void setMillisecondToSleepBetweenMiningQuery(Integer milliseconds) {
-        if (milliseconds != null && milliseconds >= MIN_SLEEP_TIME && milliseconds < MAX_SLEEP_TIME) {
+        if (milliseconds != null && milliseconds >= sleepTimeMin && milliseconds < sleepTimeMax) {
             millisecondToSleepBetweenMiningQuery.set(milliseconds);
         }
     }
@@ -263,20 +276,20 @@ public class LogMinerMetrics extends Metrics implements LogMinerMetricsMXBean {
     @Override
     public void changeSleepingTime(boolean increment) {
         int sleepTime = millisecondToSleepBetweenMiningQuery.get();
-        if (increment && sleepTime < MAX_SLEEP_TIME) {
-            millisecondToSleepBetweenMiningQuery.getAndAdd(SLEEP_TIME_INCREMENT);
+        if (increment && sleepTime < sleepTimeMax) {
+            millisecondToSleepBetweenMiningQuery.getAndAdd(sleepTimeIncrement);
         }
-        else if (sleepTime > MIN_SLEEP_TIME) {
-            millisecondToSleepBetweenMiningQuery.getAndAdd(-SLEEP_TIME_INCREMENT);
+        else if (sleepTime > sleepTimeMin) {
+            millisecondToSleepBetweenMiningQuery.getAndAdd(-sleepTimeIncrement);
         }
     }
 
     public void changeBatchSize(boolean increment) {
-        if (increment && batchSize.get() < MAX_BATCH_SIZE) {
-            batchSize.getAndAdd(MIN_BATCH_SIZE);
+        if (increment && batchSize.get() < batchSizeMax) {
+            batchSize.getAndAdd(batchSizeMin);
         }
-        else if (batchSize.get() > MIN_BATCH_SIZE) {
-            batchSize.getAndAdd(-MIN_BATCH_SIZE);
+        else if (batchSize.get() > batchSizeMin) {
+            batchSize.getAndAdd(-batchSizeMin);
         }
     }
 
@@ -315,6 +328,13 @@ public class LogMinerMetrics extends Metrics implements LogMinerMetricsMXBean {
                 ", recordMiningHistory=" + recordMiningHistory +
                 ", hoursToKeepTransaction=" + hoursToKeepTransaction +
                 ", networkConnectionProblemsCounter" + networkConnectionProblemsCounter +
+                ", batchSizeDefault=" + batchSizeDefault +
+                ", batchSizeMin=" + batchSizeMin +
+                ", batchSizeMax=" + batchSizeMax +
+                ", sleepTimeDefault=" + sleepTimeDefault +
+                ", sleepTimeMin=" + sleepTimeMin +
+                ", sleepTimeMax=" + sleepTimeMax + 
+                ", sleepTimeIncrement=" + sleepTimeIncrement +
                 '}';
     }
 }

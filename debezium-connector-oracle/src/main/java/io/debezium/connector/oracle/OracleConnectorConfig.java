@@ -50,6 +50,17 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     public static final String DATABASE_CONFIG_PREFIX = "database.";
 
     protected static final int DEFAULT_PORT = 1528;
+    
+    protected static final int DEFAULT_VIEW_FETCH_SIZE = 10_000;
+
+    protected final static int DEFAULT_BATCH_SIZE = 20_000;
+    protected final static int MIN_BATCH_SIZE = 1_000;
+    protected final static int MAX_BATCH_SIZE = 100_000;
+
+    protected final static int MAX_SLEEP_TIME = 3_000;
+    protected final static int DEFAULT_SLEEP_TIME = 1_000;
+    protected final static int MIN_SLEEP_TIME = 0;
+    protected final static int SLEEP_TIME_INCREMENT = 200;
 
     public static final Field PORT = RelationalDatabaseConnectorConfig.PORT
             .withDefault(DEFAULT_PORT);
@@ -188,6 +199,75 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withDefault(0)
             .withDescription("The number of hours in the past from SYSDATE to mine archive logs.  Using 0 mines all available archive logs");
 
+    public static final Field LOG_MINING_BATCH_SIZE_MIN = Field.create("log.mining.batch.size.min")
+            .withDisplayName("Minimum batch size for reading redo/archive logs.")
+            .withType(Type.LONG)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(MIN_BATCH_SIZE)
+            .withDescription(
+                    "The minimum SCN interval size that this connector will try to read from redo/archive logs. Active batch size will be also increased/decreased by this amount for tuning connector throughput when needed.");
+
+    public static final Field LOG_MINING_BATCH_SIZE_DEFAULT = Field.create("log.mining.batch.size.default")
+            .withDisplayName("Default batch size for reading redo/archive logs.")
+            .withType(Type.LONG)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(DEFAULT_BATCH_SIZE)
+            .withDescription("The starting SCN interval size that the connector will use for reading data from redo/archive logs.");
+
+    public static final Field LOG_MINING_BATCH_SIZE_MAX = Field.create("log.mining.batch.size.max")
+            .withDisplayName("Maximum batch size for reading redo/archive logs.")
+            .withType(Type.LONG)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(MAX_BATCH_SIZE)
+            .withDescription("The maximum SCN interval size that this connector will use when reading from redo/archive logs.");
+
+    public static final Field LOG_MINING_VIEW_FETCH_SIZE = Field.create("log.mining.view.fetch.size")
+            .withDisplayName("Number of content records that will be fetched.")
+            .withType(Type.LONG)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(DEFAULT_VIEW_FETCH_SIZE)
+            .withDescription("The number of content records that will be fetched from the log miner content view.");
+
+    public static final Field LOG_MINING_SLEEP_TIME_MIN = Field.create("log.mining.sleep.time.min")
+            .withDisplayName("Minimum sleep time in milliseconds when reading redo/archive logs.")
+            .withType(Type.LONG)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(MIN_SLEEP_TIME)
+            .withDescription(
+                    "The minimum amount of time that the connector will sleep after reading data from redo/archive logs and before starting reading data again. Value is in milliseconds.");
+
+    public static final Field LOG_MINING_SLEEP_TIME_DEFAULT = Field.create("log.mining.sleep.time.default")
+            .withDisplayName("Default sleep time in milliseconds when reading redo/archive logs.")
+            .withType(Type.LONG)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(DEFAULT_SLEEP_TIME)
+            .withDescription(
+                    "The amount of time that the connector will sleep after reading data from redo/archive logs and before starting reading data again. Value is in milliseconds.");
+
+    public static final Field LOG_MINING_SLEEP_TIME_MAX = Field.create("log.mining.sleep.time.max")
+            .withDisplayName("Maximum sleep time in milliseconds when reading redo/archive logs.")
+            .withType(Type.LONG)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(MAX_SLEEP_TIME)
+            .withDescription(
+                    "The maximum amount of time that the connector will sleep after reading data from redo/archive logs and before starting reading data again. Value is in milliseconds.");
+
+    public static final Field LOG_MINING_SLEEP_TIME_INCREMENT = Field.create("log.mining.sleep.time.increment")
+            .withDisplayName("The increment in sleep time in milliseconds used to tune auto-sleep behavior.")
+            .withType(Type.LONG)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(SLEEP_TIME_INCREMENT)
+            .withDescription(
+                    "The maximum amount of time that the connector will use to tune the optimal sleep time when reading data from logminer. Value is in milliseconds.");
+
     /**
      * The set of {@link Field}s defined as part of this configuration.
      */
@@ -228,7 +308,14 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             RAC_NODES,
             CommonConnectorConfig.EVENT_PROCESSING_FAILURE_HANDLING_MODE,
             URL,
-            LOG_MINING_ARCHIVE_LOG_HOURS);
+            LOG_MINING_ARCHIVE_LOG_HOURS,
+            LOG_MINING_BATCH_SIZE_DEFAULT,
+            LOG_MINING_BATCH_SIZE_MIN,
+            LOG_MINING_BATCH_SIZE_MAX,
+            LOG_MINING_SLEEP_TIME_DEFAULT,
+            LOG_MINING_SLEEP_TIME_MIN,
+            LOG_MINING_SLEEP_TIME_MAX,
+            LOG_MINING_SLEEP_TIME_INCREMENT);
 
     private final String databaseName;
     private final String pdbName;
@@ -302,7 +389,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         Field.group(config, "Connector", CommonConnectorConfig.POLL_INTERVAL_MS, CommonConnectorConfig.MAX_BATCH_SIZE,
                 CommonConnectorConfig.MAX_QUEUE_SIZE, CommonConnectorConfig.SNAPSHOT_DELAY_MS, CommonConnectorConfig.SNAPSHOT_FETCH_SIZE,
                 SNAPSHOT_ENHANCEMENT_TOKEN, LOG_MINING_HISTORY_RECORDER_CLASS, LOG_MINING_HISTORY_RETENTION, RAC_SYSTEM, RAC_NODES,
-                LOG_MINING_ARCHIVE_LOG_HOURS);
+                LOG_MINING_ARCHIVE_LOG_HOURS, LOG_MINING_BATCH_SIZE_DEFAULT, LOG_MINING_BATCH_SIZE_MIN, LOG_MINING_BATCH_SIZE_MAX,
+                LOG_MINING_SLEEP_TIME_DEFAULT, LOG_MINING_SLEEP_TIME_MIN, LOG_MINING_SLEEP_TIME_MAX, LOG_MINING_SLEEP_TIME_INCREMENT);
 
         return config;
     }
@@ -680,6 +768,70 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
      */
     public Duration getLogMiningArchiveLogRetention() {
         return Duration.ofHours(getConfig().getLong(LOG_MINING_ARCHIVE_LOG_HOURS));
+    }
+
+    /**
+     * 
+     * @return int The minimum SCN interval used when mining redo/archive logs
+     */
+    public int getLogMiningBatchSizeMin() {
+        return getConfig().getInteger(LOG_MINING_BATCH_SIZE_MIN);
+    }
+
+    /**
+     * 
+     * @return int Number of actual records that will be fetched from the log mining contents view
+     */
+    public int getLogMiningViewFetchSize() {
+        return getConfig().getInteger(LOG_MINING_VIEW_FETCH_SIZE);
+    }
+
+    /**
+     * 
+     * @return int The maximum SCN interval used when mining redo/archive logs
+     */
+    public int getLogMiningBatchSizeMax() {
+        return getConfig().getInteger(LOG_MINING_BATCH_SIZE_MAX);
+    }
+
+    /**
+     * 
+     * @return int The default SCN interval used when mining redo/archive logs
+     */
+    public int getLogMiningBatchSizeDefault() {
+        return getConfig().getInteger(LOG_MINING_BATCH_SIZE_DEFAULT);
+    }
+
+    /**
+     * 
+     * @return int The minimum sleep time used when mining redo/archive logs
+     */
+    public int getLogMiningSleepTimeMin() {
+        return getConfig().getInteger(LOG_MINING_SLEEP_TIME_MIN);
+    }
+
+    /**
+     * 
+     * @return int The maximum sleep time used when mining redo/archive logs
+     */
+    public int getLogMiningSleepTimeMax() {
+        return getConfig().getInteger(LOG_MINING_SLEEP_TIME_MAX);
+    }
+
+    /**
+     * 
+     * @return int The default sleep time used when mining redo/archive logs
+     */
+    public int getLogMiningSleepTimeDefault() {
+        return getConfig().getInteger(LOG_MINING_SLEEP_TIME_DEFAULT);
+    }
+
+    /**
+     * 
+     * @return int The increment in sleep time when doing auto-tuning while mining redo/archive logs
+     */
+    public int getLogMiningSleepTimeIncrement() {
+        return getConfig().getInteger(LOG_MINING_SLEEP_TIME_INCREMENT);
     }
 
     /**

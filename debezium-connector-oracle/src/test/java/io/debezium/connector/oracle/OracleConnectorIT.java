@@ -46,6 +46,7 @@ import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.heartbeat.Heartbeat;
+import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.util.Testing;
 
 /**
@@ -1316,7 +1317,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "debezium.deadlock_test")
                     .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                     .with(OracleConnectorConfig.MAX_QUEUE_SIZE, 2)
-                    .with(OracleConnectorConfig.MAX_BATCH_SIZE, 1)
+                    .with(RelationalDatabaseConnectorConfig.MAX_BATCH_SIZE, 1)
                     .build();
 
             start(OracleConnector.class, config);

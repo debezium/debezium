@@ -167,7 +167,7 @@ public class LogMinerHelper {
      * @return next SCN to mine up to
      * @throws SQLException if anything unexpected happens
      */
-    static long getEndScn(Connection connection, long startScn, LogMinerMetrics metrics) throws SQLException {
+    static long getEndScn(Connection connection, long startScn, LogMinerMetrics metrics, int defaultBatchSize) throws SQLException {
         long currentScn = getCurrentScn(connection);
         metrics.setCurrentScn(currentScn);
 
@@ -175,11 +175,11 @@ public class LogMinerHelper {
 
         // adjust batch size
         boolean topMiningScnInFarFuture = false;
-        if ((topScnToMine - currentScn) > LogMinerMetrics.DEFAULT_BATCH_SIZE) {
+        if ((topScnToMine - currentScn) > defaultBatchSize) {
             metrics.changeBatchSize(false);
             topMiningScnInFarFuture = true;
         }
-        if ((currentScn - topScnToMine) > LogMinerMetrics.DEFAULT_BATCH_SIZE) {
+        if ((currentScn - topScnToMine) > defaultBatchSize) {
             metrics.changeBatchSize(true);
         }
 

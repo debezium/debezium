@@ -19,7 +19,9 @@ import org.junit.Test;
 import org.junit.rules.TestRule;
 import org.mockito.Mockito;
 
+import io.debezium.config.Configuration;
 import io.debezium.connector.common.CdcSourceTaskContext;
+import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot.AdapterName;
@@ -28,6 +30,7 @@ import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot.AdapterName;
 public class LogMinerMetricsTest {
 
     private LogMinerMetrics metrics;
+    private OracleConnectorConfig connectorConfig;
 
     @Rule
     public TestRule skipRule = new SkipTestDependingOnAdapterNameRule();
@@ -37,7 +40,8 @@ public class LogMinerMetricsTest {
         CdcSourceTaskContext taskContext = mock(CdcSourceTaskContext.class);
         Mockito.when(taskContext.getConnectorName()).thenReturn("connector name");
         Mockito.when(taskContext.getConnectorType()).thenReturn("connector type");
-        metrics = new LogMinerMetrics(taskContext);
+        connectorConfig = new OracleConnectorConfig(Configuration.create().build());
+        metrics = new LogMinerMetrics(taskContext, connectorConfig);
     }
 
     @Test
@@ -50,9 +54,9 @@ public class LogMinerMetricsTest {
         assertThat(metrics.getCurrentScn()).isEqualTo(1000L);
 
         metrics.setBatchSize(10);
-        assertThat(metrics.getBatchSize() == LogMinerMetrics.DEFAULT_BATCH_SIZE).isTrue();
+        assertThat(metrics.getBatchSize() == connectorConfig.getLogMiningBatchSizeDefault()).isTrue();
         metrics.setBatchSize(1_000_000);
-        assertThat(metrics.getBatchSize()).isEqualTo(LogMinerMetrics.DEFAULT_BATCH_SIZE);
+        assertThat(metrics.getBatchSize()).isEqualTo(connectorConfig.getLogMiningBatchSizeDefault());
         metrics.setBatchSize(6000);
         assertThat(metrics.getBatchSize()).isEqualTo(6_000);
 

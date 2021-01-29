@@ -158,7 +158,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
 
                         Stopwatch stopwatch = Stopwatch.reusable();
                         while (context.isRunning()) {
-                            endScn = getEndScn(connection, startScn, logMinerMetrics);
+                            endScn = getEndScn(connection, startScn, logMinerMetrics, connectorConfig.getLogMiningBatchSizeDefault());
                             flushLogWriter(connection, jdbcConfiguration, isRac, racHosts);
 
                             pauseBetweenMiningSessions();
@@ -240,7 +240,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
     }
 
     private void registerLogMinerMetrics() {
-        logMinerMetrics = new LogMinerMetrics(taskContext);
+        logMinerMetrics = new LogMinerMetrics(taskContext, connectorConfig);
         logMinerMetrics.register(LOGGER);
         if (connectorConfig.isLogMiningHistoryRecorded()) {
             logMinerMetrics.setRecordMiningHistory(true);

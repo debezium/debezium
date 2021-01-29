@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.oracle;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
@@ -104,5 +105,51 @@ public class OracleConnectorConfigTest {
                         .with(OracleConnectorConfig.USER, "debezium")
                         .build());
         assertFalse(connectorConfig.getConfig().validateAndRecord(connectorConfig.ALL_FIELDS, LOGGER::error));
+    }
+
+    @Test
+    public void validBatchDefaults() throws Exception {
+
+        final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(
+                Configuration.create()
+                        .build());
+
+        assertEquals(connectorConfig.getConfig().getInteger(OracleConnectorConfig.LOG_MINING_BATCH_SIZE_DEFAULT), OracleConnectorConfig.DEFAULT_BATCH_SIZE);
+        assertEquals(connectorConfig.getConfig().getInteger(OracleConnectorConfig.LOG_MINING_BATCH_SIZE_MAX), OracleConnectorConfig.MAX_BATCH_SIZE);
+        assertEquals(connectorConfig.getConfig().getInteger(OracleConnectorConfig.LOG_MINING_BATCH_SIZE_MIN), OracleConnectorConfig.MIN_BATCH_SIZE);
+
+        assertEquals(connectorConfig.getLogMiningBatchSizeDefault(), OracleConnectorConfig.DEFAULT_BATCH_SIZE);
+        assertEquals(connectorConfig.getLogMiningBatchSizeMax(), OracleConnectorConfig.MAX_BATCH_SIZE);
+        assertEquals(connectorConfig.getLogMiningBatchSizeMin(), OracleConnectorConfig.MIN_BATCH_SIZE);
+    }
+
+    @Test
+    public void validSleepDefaults() throws Exception {
+
+        final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(
+                Configuration.create()
+                        .build());
+
+        assertEquals(connectorConfig.getConfig().getInteger(OracleConnectorConfig.LOG_MINING_SLEEP_TIME_DEFAULT), OracleConnectorConfig.DEFAULT_SLEEP_TIME);
+        assertEquals(connectorConfig.getConfig().getInteger(OracleConnectorConfig.LOG_MINING_SLEEP_TIME_MAX), OracleConnectorConfig.MAX_SLEEP_TIME);
+        assertEquals(connectorConfig.getConfig().getInteger(OracleConnectorConfig.LOG_MINING_SLEEP_TIME_MIN), OracleConnectorConfig.MIN_SLEEP_TIME);
+        assertEquals(connectorConfig.getConfig().getInteger(OracleConnectorConfig.LOG_MINING_SLEEP_TIME_INCREMENT), OracleConnectorConfig.SLEEP_TIME_INCREMENT);
+
+        assertEquals(connectorConfig.getLogMiningSleepTimeDefault(), OracleConnectorConfig.DEFAULT_SLEEP_TIME);
+        assertEquals(connectorConfig.getLogMiningSleepTimeMax(), OracleConnectorConfig.MAX_SLEEP_TIME);
+        assertEquals(connectorConfig.getLogMiningSleepTimeMin(), OracleConnectorConfig.MIN_SLEEP_TIME);
+        assertEquals(connectorConfig.getLogMiningSleepTimeIncrement(), OracleConnectorConfig.SLEEP_TIME_INCREMENT);
+    }
+
+    @Test
+    public void validViewFetchSizeDefaults() throws Exception {
+
+        final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(
+                Configuration.create()
+                        .build());
+
+        assertEquals(connectorConfig.getConfig().getInteger(OracleConnectorConfig.LOG_MINING_VIEW_FETCH_SIZE), OracleConnectorConfig.DEFAULT_VIEW_FETCH_SIZE);
+
+        assertEquals(connectorConfig.getLogMiningViewFetchSize(), OracleConnectorConfig.DEFAULT_VIEW_FETCH_SIZE);
     }
 }
