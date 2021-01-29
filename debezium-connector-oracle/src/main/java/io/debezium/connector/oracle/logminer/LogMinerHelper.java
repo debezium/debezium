@@ -290,11 +290,12 @@ public class LogMinerHelper {
      * @throws SQLException if anything unexpected happens
      */
     static long getFirstOnlineLogScn(Connection connection, Duration archiveLogRetention) throws SQLException {
-        LOGGER.trace("getting first scn of all online logs");
+        LOGGER.trace("Getting first scn of all online logs");
         Statement s = connection.createStatement();
         ResultSet res = s.executeQuery(SqlUtils.oldestFirstChangeQuery(archiveLogRetention));
         res.next();
         long firstScnOfOnlineLog = res.getLong(1);
+        LOGGER.trace("First SCN in online logs is {}", firstScnOfOnlineLog);
         res.close();
         return firstScnOfOnlineLog;
     }
@@ -502,7 +503,7 @@ public class LogMinerHelper {
         for (String file : logFilesNames) {
             String addLogFileStatement = SqlUtils.addLogFileStatement("DBMS_LOGMNR.ADDFILE", file);
             executeCallableStatement(connection, addLogFileStatement);
-            LOGGER.trace("add log file to the mining session = {}", file);
+            LOGGER.trace("Adding log file {} to mining session", file);
         }
 
         LOGGER.debug("Last mined SCN: {}, Log file list to mine: {}\n", lastProcessedScn, logFilesNames);
@@ -556,13 +557,23 @@ public class LogMinerHelper {
      * 18446744073709551615 on Ora 19c is the max value of the nextScn in the current redo todo replace all Long with BigInteger for SCN
      */
     public static Map<String, BigInteger> getOnlineLogFilesForOffsetScn(Connection connection, Long offsetScn) throws SQLException {
-
         // TODO: Make offset a BigInteger and refactor upstream
         BigInteger offsetScnBi = BigInteger.valueOf(offsetScn);
+        LOGGER.trace("Getting online redo logs for offset scn {}", offsetScnBi);
         Map<String, String> redoLogFiles = getMap(connection, SqlUtils.allOnlineLogsQuery(), MAX_SCN_S);
         return redoLogFiles.entrySet().stream()
-                .filter(entry -> new BigInteger(entry.getValue()).compareTo(offsetScnBi) >= 0 || new BigInteger(entry.getValue()).equals(MAX_SCN_BI)).collect(Collectors
+                .filter(entry -> filterRedoLogEntry(entry, offsetScnBi)).collect(Collectors
                         .toMap(Map.Entry::getKey, e -> new BigInteger(e.getValue()).equals(MAX_SCN_BI) ? MAX_SCN_BI : new BigInteger(e.getValue())));
+    }
+
+    private static boolean filterRedoLogEntry(Map.Entry<String, String> entry, BigInteger offsetScn) {
+        final BigInteger nextChangeNumber = new BigInteger(entry.getValue());
+        if (nextChangeNumber.compareTo(offsetScn) >= 0 || nextChangeNumber.equals(MAX_SCN_BI)) {
+            LOGGER.trace("Online redo log {} with next change {} to be added.", entry.getKey(), entry.getValue());
+            return true;
+        }
+        LOGGER.trace("Online redo log {} with next change {} to be excluded.", entry.getKey(), entry.getValue());
+        return false;
     }
 
     /**
@@ -575,6 +586,11 @@ public class LogMinerHelper {
      */
     public static Map<String, BigInteger> getArchivedLogFilesForOffsetScn(Connection connection, Long offsetScn, Duration archiveLogRetention) throws SQLException {
         Map<String, String> redoLogFiles = getMap(connection, SqlUtils.archiveLogsQuery(offsetScn, archiveLogRetention), MAX_SCN_S);
+        if (LOGGER.isTraceEnabled()) {
+            for (Map.Entry<String, String> entry : redoLogFiles.entrySet()) {
+                LOGGER.trace("Archive log {} with next change {} to be added.", entry.getKey(), entry.getValue());
+            }
+        }
         return redoLogFiles.entrySet().stream().collect(
                 Collectors.toMap(Map.Entry::getKey, e -> new BigInteger(e.getValue()).equals(MAX_SCN_BI) ? MAX_SCN_BI : new BigInteger(e.getValue())));
     }
