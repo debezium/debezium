@@ -91,6 +91,7 @@ public class LogMinerHelper {
      * @throws SQLException any exception
      */
     static void buildDataDictionary(Connection connection) throws SQLException {
+        LOGGER.trace("Building data dictionary");
         executeCallableStatement(connection, SqlUtils.BUILD_DICTIONARY);
     }
 
@@ -213,6 +214,7 @@ public class LogMinerHelper {
             flushRacLogWriters(currentScn, config, racHosts);
         }
         else {
+            LOGGER.trace("Updating {} with SCN {}", SqlUtils.LOGMNR_FLUSH_TABLE, currentScn);
             executeCallableStatement(connection, SqlUtils.UPDATE_FLUSH_TABLE + currentScn);
             if (!connection.getAutoCommit()) {
                 connection.commit();
@@ -252,6 +254,7 @@ public class LogMinerHelper {
     static void startLogMining(Connection connection, Long startScn, Long endScn,
                                OracleConnectorConfig.LogMiningStrategy strategy, boolean isContinuousMining)
             throws SQLException {
+        LOGGER.trace("Starting log mining startScn={}, endScn={}, strategy={}, continuous={}", startScn, endScn, strategy, isContinuousMining);
         String statement = SqlUtils.startLogMinerStatement(startScn, endScn, strategy, isContinuousMining);
         executeCallableStatement(connection, statement);
         // todo dbms_logmnr.STRING_LITERALS_IN_STMT?

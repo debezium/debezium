@@ -127,7 +127,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
             try (Connection connection = jdbcConnection.connection(false)) {
                 long databaseTimeMs = getTimeDifference(connection).toMillis();
 
-                LOGGER.trace("Current milliseconds {}, database time {}", System.currentTimeMillis(), databaseTimeMs);
+                LOGGER.trace("Current time {} ms, database difference {} ms", System.currentTimeMillis(), databaseTimeMs);
                 transactionalBufferMetrics.setTimeDifference(new AtomicLong(databaseTimeMs));
 
                 startScn = offsetContext.getScn();
@@ -170,6 +170,8 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                                 // This is the way to mitigate PGA leaks.
                                 // With one mining session, it grows and maybe there is another way to flush PGA.
                                 // At this point we use a new mining session
+                                LOGGER.trace("Ending log mining startScn={}, endScn={}, offsetContext.getScn={}, strategy={}, continuous={}",
+                                        startScn, endScn, offsetContext.getScn(), strategy, isContinuousMining);
                                 endMining(connection);
 
                                 initializeRedoLogsForMining(connection, true, archiveLogRetention);
@@ -192,6 +194,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                                 updateStartScn();
 
                                 if (transactionalBuffer.isEmpty()) {
+                                    LOGGER.debug("Transactional buffer empty, updating offset's SCN {}", startScn);
                                     offsetContext.setScn(startScn);
                                     transactionalBuffer.resetLargestScn(null);
                                 }
@@ -268,6 +271,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
     private void updateStartScn() {
         long nextStartScn = transactionalBuffer.getLargestScn().equals(Scn.ZERO) ? endScn : transactionalBuffer.getLargestScn().longValue();
         if (nextStartScn <= startScn) {
+            LOGGER.trace("Resetting largest SCN in transaction buffer to {}, nextStartScn={}, startScn={}", endScn, nextStartScn, startScn);
             // When system is idle, largest SCN may stay unchanged, move it forward then
             transactionalBuffer.resetLargestScn(endScn);
         }
