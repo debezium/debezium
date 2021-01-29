@@ -7,7 +7,9 @@ package io.debezium.embedded;
 
 import static org.fest.assertions.Assertions.assertThat;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
@@ -15,6 +17,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -323,6 +326,80 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
         }
         allLatch.await(5000, TimeUnit.MILLISECONDS);
         assertThat(allLatch.getCount()).isEqualTo(0);
+
+        // Stop the connector ...
+        stopConnector();
+    }
+
+    @Test
+    @FixFor("DBZ-2897")
+    public void shouldRunEngineWithConsumerSettingOffsets() throws Exception {
+        // Add initial content to the file ...
+        appendLinesToSource(NUMBER_OF_LINES);
+
+        final Properties props = new Properties();
+        props.setProperty("name", "debezium-engine");
+        props.setProperty("connector.class", "org.apache.kafka.connect.file.FileStreamSourceConnector");
+        props.setProperty(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
+        props.setProperty("offset.flush.interval.ms", "0");
+        props.setProperty("file", TEST_FILE_PATH.toAbsolutePath().toString());
+        props.setProperty("topic", "topicX");
+
+        String CUSTOM_SOURCE_OFFSET_PARTITION = "test_topic_partition1";
+
+        CountDownLatch firstLatch = new CountDownLatch(1);
+        CountDownLatch allLatch = new CountDownLatch(6);
+
+        // create an engine with our custom class
+        final DebeziumEngine<RecordChangeEvent<SourceRecord>> engine = DebeziumEngine.create(ChangeEventFormat.of(Connect.class))
+                .using(props)
+                .notifying((records, committer) -> {
+                    assertThat(records.size()).isGreaterThanOrEqualTo(NUMBER_OF_LINES);
+                    Integer groupCount = records.size() / NUMBER_OF_LINES;
+
+                    for (RecordChangeEvent<SourceRecord> r : records) {
+                        Map<String, Long> newSourceOffset = Collections.singletonMap(CUSTOM_SOURCE_OFFSET_PARTITION, 1L);
+                        logger.info(r.record().sourceOffset().toString());
+                        committer.markProcessed(r, newSourceOffset);
+                    }
+
+                    committer.markBatchFinished();
+                    firstLatch.countDown();
+                    for (int i = 0; i < groupCount; i++) {
+                        allLatch.countDown();
+                    }
+                })
+                .using(this.getClass().getClassLoader())
+                .build();
+
+        ExecutorService exec = Executors.newFixedThreadPool(1);
+        exec.execute(() -> {
+            LoggingContext.forConnector(getClass().getSimpleName(), "", "engine");
+            engine.run();
+        });
+
+        firstLatch.await(5000, TimeUnit.MILLISECONDS);
+        assertThat(firstLatch.getCount()).isEqualTo(0);
+
+        for (int i = 0; i < 5; i++) {
+            // Add a few more lines, and then verify they are consumed ...
+            appendLinesToSource(NUMBER_OF_LINES);
+            Thread.sleep(10);
+        }
+        allLatch.await(5000, TimeUnit.MILLISECONDS);
+        assertThat(allLatch.getCount()).isEqualTo(0);
+
+        boolean containsCustomPartition = false;
+        try (BufferedReader br = new BufferedReader(new FileReader(OFFSET_STORE_PATH.toString()))) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                logger.info(line);
+                if (line.contains(CUSTOM_SOURCE_OFFSET_PARTITION)) {
+                    containsCustomPartition = true;
+                }
+            }
+        }
+        assert containsCustomPartition;
 
         // Stop the connector ...
         stopConnector();

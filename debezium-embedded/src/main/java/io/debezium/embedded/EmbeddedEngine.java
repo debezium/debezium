@@ -906,6 +906,14 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
             public synchronized void markBatchFinished() throws InterruptedException {
                 maybeFlush(offsetWriter, offsetCommitPolicy, commitTimeout, task);
             }
+
+            @Override
+            public synchronized void markProcessed(SourceRecord record, Map<String, ?> sourceOffset) throws InterruptedException {
+                SourceRecord recordWithUpdatedOffsets = new SourceRecord(record.sourcePartition(), sourceOffset, record.topic(),
+                        record.kafkaPartition(), record.keySchema(), record.key(), record.valueSchema(), record.value(),
+                        record.timestamp(), record.headers());
+                markProcessed(recordWithUpdatedOffsets);
+            }
         };
     }
 
