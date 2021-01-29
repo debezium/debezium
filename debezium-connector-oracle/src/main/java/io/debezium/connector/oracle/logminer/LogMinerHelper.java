@@ -273,8 +273,8 @@ public class LogMinerHelper {
         try (PreparedStatement st = connection.prepareStatement(SqlUtils.currentRedoNameQuery()); ResultSet result = st.executeQuery()) {
             while (result.next()) {
                 fileNames.add(result.getString(1));
-                LOGGER.trace(" Current Redo log fileName: {} ", fileNames);
             }
+            LOGGER.trace(" Current Redo log fileNames: {} ", fileNames);
         }
 
         updateRedoLogMetrics(connection, metrics, fileNames);
