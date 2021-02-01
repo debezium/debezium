@@ -121,10 +121,10 @@ public class SqlUtilsTest {
         assertThat(result).isEqualTo(expected);
 
         result = SqlUtils.allOnlineLogsQuery();
-        expected = "SELECT MIN(F.MEMBER) AS FILE_NAME, L.NEXT_CHANGE# AS NEXT_CHANGE, F.GROUP# " +
+        expected = "SELECT MIN(F.MEMBER) AS FILE_NAME, L.NEXT_CHANGE# AS NEXT_CHANGE, F.GROUP#, L.FIRST_CHANGE# AS FIRST_CHANGE " +
                 " FROM V$LOG L, V$LOGFILE F " +
                 " WHERE F.GROUP# = L.GROUP# AND L.NEXT_CHANGE# > 0 " +
-                " GROUP BY F.GROUP#, L.NEXT_CHANGE# ORDER BY 3";
+                " GROUP BY F.GROUP#, L.NEXT_CHANGE#, L.FIRST_CHANGE# ORDER BY 3";
         assertThat(result).isEqualTo(expected);
 
         result = SqlUtils.tableExistsQuery("table_name");
@@ -146,13 +146,13 @@ public class SqlUtilsTest {
         assertThat(result).isEqualTo(expected);
 
         result = SqlUtils.archiveLogsQuery(10L, Duration.ofHours(0L));
-        expected = "SELECT NAME AS FILE_NAME, NEXT_CHANGE# AS NEXT_CHANGE FROM V$ARCHIVED_LOG " +
+        expected = "SELECT NAME AS FILE_NAME, NEXT_CHANGE# AS NEXT_CHANGE, FIRST_CHANGE# AS FIRST_CHANGE FROM V$ARCHIVED_LOG " +
                 "WHERE NAME IS NOT NULL AND ARCHIVED = 'YES' " +
                 "AND STATUS = 'A' AND NEXT_CHANGE# > 10 ORDER BY 2";
         assertThat(result).isEqualTo(expected);
 
         result = SqlUtils.archiveLogsQuery(10L, Duration.ofHours(1L));
-        expected = "SELECT NAME AS FILE_NAME, NEXT_CHANGE# AS NEXT_CHANGE FROM V$ARCHIVED_LOG " +
+        expected = "SELECT NAME AS FILE_NAME, NEXT_CHANGE# AS NEXT_CHANGE, FIRST_CHANGE# AS FIRST_CHANGE FROM V$ARCHIVED_LOG " +
                 " WHERE NAME IS NOT NULL AND FIRST_TIME >= SYSDATE - (1/24) AND ARCHIVED = 'YES' " +
                 " AND STATUS = 'A' AND NEXT_CHANGE# > 10 ORDER BY 2";
         assertThat(result).isEqualTo(expected);

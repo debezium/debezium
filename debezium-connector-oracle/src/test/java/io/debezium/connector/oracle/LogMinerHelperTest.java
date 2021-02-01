@@ -50,8 +50,8 @@ public class LogMinerHelperTest {
     public void logsWithRegularScns() throws Exception {
 
         mockRows = new String[][]{
-                new String[]{ "logfile1", "103400", "11" },
-                new String[]{ "logfile2", "103700", "12" }
+                new String[]{ "logfile1", "103400", "11", "103700" },
+                new String[]{ "logfile2", "103700", "12", "104000" }
         };
 
         Map<String, BigInteger> onlineLogs = LogMinerHelper.getOnlineLogFilesForOffsetScn(connection, 10L);
@@ -64,9 +64,9 @@ public class LogMinerHelperTest {
     public void excludeLogsBeforeOffsetScn() throws Exception {
 
         mockRows = new String[][]{
-                new String[]{ "logfile1", "103400", "11" },
-                new String[]{ "logfile2", "103700", "12" },
-                new String[]{ "logfile3", "500", "13" },
+                new String[]{ "logfile1", "103400", "11", "103700" },
+                new String[]{ "logfile2", "103700", "12", "104000" },
+                new String[]{ "logfile3", "500", "13", "103100" },
         };
 
         Map<String, BigInteger> onlineLogs = LogMinerHelper.getOnlineLogFilesForOffsetScn(connection, 600L);
@@ -78,9 +78,9 @@ public class LogMinerHelperTest {
     public void nullsHandledAsMaxScn() throws Exception {
 
         mockRows = new String[][]{
-                new String[]{ "logfile1", "103400", "11" },
-                new String[]{ "logfile2", "103700", "12" },
-                new String[]{ "logfile3", null, "13" },
+                new String[]{ "logfile1", "103400", "11", "103700" },
+                new String[]{ "logfile2", "103700", "12", "104000" },
+                new String[]{ "logfile3", null, "13", "103100" },
         };
 
         Map<String, BigInteger> onlineLogs = LogMinerHelper.getOnlineLogFilesForOffsetScn(connection, 600L);
@@ -92,9 +92,9 @@ public class LogMinerHelperTest {
     public void canHandleMaxScn() throws Exception {
 
         mockRows = new String[][]{
-                new String[]{ "logfile1", "103400", "11" },
-                new String[]{ "logfile2", "103700", "12" },
-                new String[]{ "logfile3", LogMinerHelper.MAX_SCN_S, "13" },
+                new String[]{ "logfile1", "103400", "11", "103700" },
+                new String[]{ "logfile2", "103700", "12", "104000" },
+                new String[]{ "logfile3", LogMinerHelper.MAX_SCN_S, "13", "104300" },
         };
 
         Map<String, BigInteger> onlineLogs = LogMinerHelper.getOnlineLogFilesForOffsetScn(connection, 600L);
@@ -109,9 +109,9 @@ public class LogMinerHelperTest {
         String scnLonger = "9295429630892703743";
 
         mockRows = new String[][]{
-                new String[]{ "logfile1", "103400", "11" },
-                new String[]{ "logfile2", "103700", "12" },
-                new String[]{ "logfile3", scnLonger, "13" },
+                new String[]{ "logfile1", "103400", "11", "103700" },
+                new String[]{ "logfile2", "103700", "12", "104000" },
+                new String[]{ "logfile3", scnLonger, "13", "104300" },
         };
 
         Map<String, BigInteger> onlineLogs = LogMinerHelper.getOnlineLogFilesForOffsetScn(connection, 600L);
@@ -153,9 +153,9 @@ public class LogMinerHelperTest {
     public void archiveNullsHandledAsMaxScn() throws Exception {
 
         mockRows = new String[][]{
-                new String[]{ "logfile1", "103400", "11" },
-                new String[]{ "logfile2", "103700", "12" },
-                new String[]{ "logfile3", null, "13" },
+                new String[]{ "logfile1", "103400", "11", "103700" },
+                new String[]{ "logfile2", "103700", "12", "104000" },
+                new String[]{ "logfile3", null, "13", "104300" },
         };
 
         Map<String, BigInteger> onlineLogs = LogMinerHelper.getArchivedLogFilesForOffsetScn(connection, 500L, Duration.ofDays(60));

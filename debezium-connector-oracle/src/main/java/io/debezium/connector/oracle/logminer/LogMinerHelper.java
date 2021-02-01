@@ -575,26 +575,39 @@ public class LogMinerHelper {
         // TODO: Make offset a BigInteger and refactor upstream
         BigInteger offsetScnBi = BigInteger.valueOf(offsetScn);
         LOGGER.trace("Getting online redo logs for offset scn {}", offsetScnBi);
-        Map<String, String> redoLogFiles = getMap(connection, SqlUtils.allOnlineLogsQuery(), MAX_SCN_S);
+        Map<String, ScnRange> redoLogFiles = new LinkedHashMap<>();
+        try (PreparedStatement s = connection.prepareStatement(SqlUtils.allOnlineLogsQuery())) {
+            try (ResultSet rs = s.executeQuery()) {
+                while (rs.next()) {
+                    ScnRange range = new ScnRange(rs.getString(4), defaultIfNull(rs.getString(2), MAX_SCN_S));
+                    redoLogFiles.put(rs.getString(1), range);
+                }
+            }
+        }
         return redoLogFiles.entrySet().stream()
                 .filter(entry -> filterRedoLogEntry(entry, offsetScnBi)).collect(Collectors
-                        .toMap(Map.Entry::getKey, e -> new BigInteger(e.getValue()).equals(MAX_SCN_BI) ? MAX_SCN_BI : new BigInteger(e.getValue())));
+                        .toMap(Map.Entry::getKey, entry -> resolveNextChangeFromScnRange(entry.getValue().getNextChange())));
     }
 
-    private static boolean filterRedoLogEntry(Map.Entry<String, String> entry, BigInteger offsetScn) {
-        final BigInteger nextChangeNumber = new BigInteger(entry.getValue());
+    private static boolean filterRedoLogEntry(Map.Entry<String, ScnRange> entry, BigInteger offsetScn) {
+        final BigInteger nextChangeNumber = new BigInteger(entry.getValue().getNextChange());
         if (nextChangeNumber.compareTo(offsetScn) >= 0 || nextChangeNumber.equals(MAX_SCN_BI)) {
-            LOGGER.trace("Online redo log {} with next change {} to be added.", entry.getKey(), entry.getValue());
+            LOGGER.trace("Online redo log {} with SCN range {} to {} to be added.", entry.getKey(), entry.getValue().getFirstChange(), entry.getValue().getNextChange());
             return true;
         }
-        LOGGER.trace("Online redo log {} with next change {} to be excluded.", entry.getKey(), entry.getValue());
+        LOGGER.trace("Online redo log {} with SCN range {} to {} to be excluded.", entry.getKey(), entry.getValue().getFirstChange(), entry.getValue().getNextChange());
         return false;
+    }
+
+    private static BigInteger resolveNextChangeFromScnRange(String nextChangeValue) {
+        final BigInteger value = new BigInteger(nextChangeValue);
+        return value.equals(MAX_SCN_BI) ? MAX_SCN_BI : value;
     }
 
     private static void logLogMinerLogEntries(Connection connection) throws SQLException {
         LOGGER.debug("Log entries registered with Logminer are:");
-        try(PreparedStatement statement = connection.prepareStatement("SELECT * FROM V$LOGMNR_LOGS"); ResultSet rs = statement.executeQuery()) {
-            while(rs.next()) {
+        try (PreparedStatement statement = connection.prepareStatement("SELECT * FROM V$LOGMNR_LOGS"); ResultSet rs = statement.executeQuery()) {
+            while (rs.next()) {
                 Long logId = rs.getLong("LOG_ID");
                 String fileName = rs.getString("FILENAME");
                 String info = rs.getString("INFO");
@@ -613,14 +626,18 @@ public class LogMinerHelper {
      * @throws SQLException   if something happens
      */
     public static Map<String, BigInteger> getArchivedLogFilesForOffsetScn(Connection connection, Long offsetScn, Duration archiveLogRetention) throws SQLException {
-        Map<String, String> redoLogFiles = getMap(connection, SqlUtils.archiveLogsQuery(offsetScn, archiveLogRetention), MAX_SCN_S);
-        if (LOGGER.isTraceEnabled()) {
-            for (Map.Entry<String, String> entry : redoLogFiles.entrySet()) {
-                LOGGER.trace("Archive log {} with next change {} to be added.", entry.getKey(), entry.getValue());
+        final Map<String, String> redoLogFiles = new LinkedHashMap<>();
+        try (PreparedStatement s = connection.prepareStatement(SqlUtils.archiveLogsQuery(offsetScn, archiveLogRetention))) {
+            try (ResultSet rs = s.executeQuery()) {
+                while (rs.next()) {
+                    if (LOGGER.isTraceEnabled()) {
+                        LOGGER.trace("Archive log {} with SCN range {} to {} to be added.", rs.getString(1), rs.getString(3), rs.getString(2));
+                    }
+                    redoLogFiles.put(rs.getString(1), defaultIfNull(rs.getString(2), MAX_SCN_S));
+                }
             }
         }
-        return redoLogFiles.entrySet().stream().collect(
-                Collectors.toMap(Map.Entry::getKey, e -> new BigInteger(e.getValue()).equals(MAX_SCN_BI) ? MAX_SCN_BI : new BigInteger(e.getValue())));
+        return redoLogFiles.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> resolveNextChangeFromScnRange(e.getValue())));
     }
 
     /**
@@ -676,6 +693,31 @@ public class LogMinerHelper {
                 }
             }
             return null;
+        }
+    }
+
+    private static String defaultIfNull(String value, String replacement) {
+        return value != null ? value : replacement;
+    }
+
+    /**
+     * Holds the first and next change number range for a log entry.
+     */
+    private static class ScnRange {
+        private final String firstChange;
+        private final String nextChange;
+
+        public ScnRange(String firstChange, String nextChange) {
+            this.firstChange = firstChange;
+            this.nextChange = nextChange;
+        }
+
+        public String getFirstChange() {
+            return firstChange;
+        }
+
+        public String getNextChange() {
+            return nextChange;
         }
     }
 }

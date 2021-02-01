@@ -147,10 +147,10 @@ public class SqlUtils {
     }
 
     public static String allOnlineLogsQuery() {
-        return String.format("SELECT MIN(F.MEMBER) AS FILE_NAME, L.NEXT_CHANGE# AS NEXT_CHANGE, F.GROUP# " +
+        return String.format("SELECT MIN(F.MEMBER) AS FILE_NAME, L.NEXT_CHANGE# AS NEXT_CHANGE, F.GROUP#, L.FIRST_CHANGE# AS FIRST_CHANGE " +
                 " FROM %s L, %s F " +
                 " WHERE F.GROUP# = L.GROUP# AND L.NEXT_CHANGE# > 0 " +
-                " GROUP BY F.GROUP#, L.NEXT_CHANGE# ORDER BY 3", LOG_VIEW, LOGFILE_VIEW);
+                " GROUP BY F.GROUP#, L.NEXT_CHANGE#, L.FIRST_CHANGE# ORDER BY 3", LOG_VIEW, LOGFILE_VIEW);
     }
 
     /**
@@ -162,11 +162,11 @@ public class SqlUtils {
      */
     public static String archiveLogsQuery(Long scn, Duration archiveLogRetention) {
         if (!archiveLogRetention.isNegative() && !archiveLogRetention.isZero()) {
-            return String.format("SELECT NAME AS FILE_NAME, NEXT_CHANGE# AS NEXT_CHANGE FROM %s " +
+            return String.format("SELECT NAME AS FILE_NAME, NEXT_CHANGE# AS NEXT_CHANGE, FIRST_CHANGE# AS FIRST_CHANGE FROM %s " +
                     " WHERE NAME IS NOT NULL AND FIRST_TIME >= SYSDATE - (%d/24) AND ARCHIVED = 'YES' " +
                     " AND STATUS = 'A' AND NEXT_CHANGE# > %s ORDER BY 2", ARCHIVED_LOG_VIEW, archiveLogRetention.toHours(), scn);
         }
-        return String.format("SELECT NAME AS FILE_NAME, NEXT_CHANGE# AS NEXT_CHANGE FROM %s " +
+        return String.format("SELECT NAME AS FILE_NAME, NEXT_CHANGE# AS NEXT_CHANGE, FIRST_CHANGE# AS FIRST_CHANGE FROM %s " +
                 "WHERE NAME IS NOT NULL AND ARCHIVED = 'YES' " +
                 "AND STATUS = 'A' AND NEXT_CHANGE# > %s ORDER BY 2", ARCHIVED_LOG_VIEW, scn);
     }
