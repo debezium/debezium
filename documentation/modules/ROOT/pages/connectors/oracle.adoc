@@ -1355,6 +1355,11 @@ The following configuration properties are _required_ unless a default value is 
 |
 |Name of the database to connect to. Must be the CDB name when working with the CDB + PDB model.
 
+||[[oracle-property-database-schema]]<<oracle-property-database-schema, `database.schema`>>
+|
+|Name of the schema that the connector intends to monitor.
+This field is required only when using the `logminer` adapter.
+
 |[[oracle-property-database-url]]<<oracle-property-database-url, `database.url`>>
 |
 |Raw database jdbc url. This property can be used when more flexibility is needed and can support raw TNS names or RAC connection strings.
