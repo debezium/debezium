@@ -1549,3 +1549,24 @@ Using the default `0` will mine all archive logs.
 When set to `0`, log mining history is is disabled.
 
 |===
+
+[[oracle-when-things-go-wrong]]
+== Behavior when things go wrong
+
+{prodname} is a distributed system that captures all changes in multiple upstream databases; it never misses or loses an event.
+When the system is operating normally or being managed carefully then {prodname} provides _exactly once_ delivery of every change event record.
+
+If a fault does happen then the system does not lose any events.
+However, while it is recovering from the fault, it might repeat some chang events.
+In these abnormal situations, {prodname}, like Kafka, provides _at least once_ delivery of change events.
+
+The rest of this section describes how {prodname} handles various kinds of faults and problems.
+
+[id="oracle-cannot-reference-overflow-table"]
+=== ORA-25191 - Cannot reference overflow table of an index-organized table
+
+Oracle may issue this error during the snapshot phase when encountering an index-organized table (IOT).
+An IOT table is like a traditional table but it offers a variety of performance benefits.
+First verify that the appropriate grants have been applied to the base table that the IOT is associated with.
+If the error persists, make sure the SQL that is being executed is against the appropriate table; this likely will require adjustments to the connector's table include/exclude lists.
+
