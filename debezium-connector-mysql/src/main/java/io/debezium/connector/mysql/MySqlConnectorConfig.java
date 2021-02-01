@@ -657,6 +657,7 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withWidth(Width.LONG)
             .withImportance(Importance.HIGH)
             .withDependents(TABLE_INCLUDE_LIST_NAME)
+            .withValidation(Field::isListOfRegex)
             .withDescription("The databases for which changes are to be captured");
 
     /**
@@ -670,6 +671,7 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withImportance(Importance.LOW)
             .withInvisibleRecommender()
             .withDependents(TABLE_INCLUDE_LIST_NAME)
+            .withValidation(Field::isListOfRegex)
             .withDescription("The databases for which changes are to be captured (deprecated, use \"" + DATABASE_INCLUDE_LIST.name() + "\" instead)");
 
     /**
@@ -678,10 +680,10 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
      */
     public static final Field DATABASE_EXCLUDE_LIST = Field.create(DATABASE_EXCLUDE_LIST_NAME)
             .withDisplayName("Exclude Databases")
-            .withType(Type.STRING)
+            .withType(Type.LIST)
             .withWidth(Width.LONG)
             .withImportance(Importance.MEDIUM)
-            .withValidation(MySqlConnectorConfig::validateDatabaseExcludeList)
+            .withValidation(Field::isListOfRegex, MySqlConnectorConfig::validateDatabaseExcludeList)
             .withInvisibleRecommender()
             .withDescription("A comma-separated list of regular expressions that match database names to be excluded from monitoring");
 
@@ -691,10 +693,10 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
     @Deprecated
     public static final Field DATABASE_BLACKLIST = Field.create(DATABASE_BLACKLIST_NAME)
             .withDisplayName("Deprecated: Exclude Databases")
-            .withType(Type.STRING)
+            .withType(Type.LIST)
             .withWidth(Width.LONG)
             .withImportance(Importance.LOW)
-            .withValidation(MySqlConnectorConfig::validateDatabaseExcludeList)
+            .withValidation(Field::isListOfRegex, MySqlConnectorConfig::validateDatabaseExcludeList)
             .withInvisibleRecommender()
             .withDescription("A comma-separated list of regular expressions that match database names to be excluded from monitoring (deprecated, use \""
                     + DATABASE_EXCLUDE_LIST.name() + "\" instead)");
