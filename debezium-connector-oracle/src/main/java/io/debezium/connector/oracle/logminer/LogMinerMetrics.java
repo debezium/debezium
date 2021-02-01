@@ -103,7 +103,7 @@ public class LogMinerMetrics extends Metrics implements LogMinerMetricsMXBean {
         totalBatchProcessingDuration.set(Duration.ZERO);
         maxBatchProcessingThroughput.set(0);
         lastBatchProcessingDuration.set(Duration.ZERO);
-        networkConnectionProblemsCounter.set(0);       
+        networkConnectionProblemsCounter.set(0);
     }
 
     // setters
