@@ -277,19 +277,29 @@ public class LogMinerMetrics extends Metrics implements LogMinerMetricsMXBean {
     public void changeSleepingTime(boolean increment) {
         int sleepTime = millisecondToSleepBetweenMiningQuery.get();
         if (increment && sleepTime < sleepTimeMax) {
-            millisecondToSleepBetweenMiningQuery.getAndAdd(sleepTimeIncrement);
+            sleepTime = millisecondToSleepBetweenMiningQuery.addAndGet(sleepTimeIncrement);
         }
         else if (sleepTime > sleepTimeMin) {
-            millisecondToSleepBetweenMiningQuery.getAndAdd(-sleepTimeIncrement);
+            sleepTime = millisecondToSleepBetweenMiningQuery.addAndGet(-sleepTimeIncrement);
         }
+
+        LOGGER.debug("Updating sleep time window. Sleep time {}. Min sleep time {}. Max sleep time {}.", sleepTime, sleepTimeMin, sleepTimeMax);
     }
 
     public void changeBatchSize(boolean increment) {
-        if (increment && batchSize.get() < batchSizeMax) {
-            batchSize.getAndAdd(batchSizeMin);
+        
+        int currentBatchSize = batchSize.get();
+        if (increment && currentBatchSize < batchSizeMax) {
+            currentBatchSize = batchSize.addAndGet(batchSizeMin);
         }
-        else if (batchSize.get() > batchSizeMin) {
-            batchSize.getAndAdd(-batchSizeMin);
+        else if (currentBatchSize > batchSizeMin) {
+            currentBatchSize = batchSize.addAndGet(-batchSizeMin);
+        }
+
+        if (currentBatchSize == batchSizeMax) {
+            LOGGER.info("LogMiner is now using the maximum batch size {}. This could be indicative of large SCN gaps", currentBatchSize);
+        } else {
+            LOGGER.debug("Updating batch size window. Batch size {}. Min batch size {}. Max batch size {}.", currentBatchSize, batchSizeMin, batchSizeMax);
         }
     }
 
