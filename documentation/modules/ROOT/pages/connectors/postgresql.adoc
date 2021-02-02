@@ -14,10 +14,10 @@ ifdef::community[]
 
 toc::[]
 
-{prodname}'s PostgreSQL connector captures row-level changes in the schemas of a PostgreSQL database. PostgreSQL versions 9.6, 10, 11, and 12 are supported. 
+{prodname}'s PostgreSQL connector captures row-level changes in the schemas of a PostgreSQL database. PostgreSQL versions 9.6, 10, 11, 12 and 13 are supported. 
 endif::community[]
 ifdef::product[]
-{prodname}'s PostgreSQL connector captures row-level changes in the schemas of a PostgreSQL database. PostgreSQL versions 10, 11, and 12 are supported. 
+{prodname}'s PostgreSQL connector captures row-level changes in the schemas of a PostgreSQL database. PostgreSQL versions 10, 11, 12 and 13 are supported. 
 endif::product[]
 
 The first time it connects to a PostgreSQL server or cluster, the connector takes a consistent snapshot of all schemas. After that snapshot is complete, the connector continuously captures row-level changes that insert, update, and delete database content and that were committed to a PostgreSQL database. The connector generates data change event records and streams them to Kafka topics. For each table, the default behavior is that the connector streams all generated events to a separate Kafka topic for that table. Applications and services consume data change event records from that topic. 
@@ -103,6 +103,14 @@ Details are in the following topics:
 * xref:debezium-postgresql-connector-generated-events-that-represent-transaction-boundaries[]
 
 endif::product[]
+
+// Type: concept
+// ModuleID: creating-debezium-postgresql-user
+// Title: Security for PostgreSQL connector
+[[postgresql-security]]
+=== Security
+
+See the link:https://www.postgresql.org/docs/current/logical-replication-security.html[Logical Replication Security] guide for details, but in general the {prodname} user needs to have `replication` privileges. It is possible to just provide the user with `superuser` privileges but that allows the user complete control of the PostgreSQL instance. Instead create the {prodname} user with `replication` privileges and add SELECT privileges on the table(s) as well as CREATE privileges on the database.
 
 // Type: concept
 // ModuleID: how-debezium-postgresql-connectors-perform-database-snapshots
@@ -1749,6 +1757,11 @@ az postgres server configuration set --resource-group mygroup --server-name myse
 
 az postgres server restart --resource-group mygroup --name myserver
 ```
+
+[[postgresql-on-crunchybridge]]
+==== PostgreSQL on CrunchyBridge
+
+It is possible to use {prodname} with link:https://crunchybridge.com/[CrunchyBridge]; logical replication is already turned on. The `pgoutput` plugin is available. You will have to create a replication user and provide correct privileges.
 
 [IMPORTANT]
 ====
