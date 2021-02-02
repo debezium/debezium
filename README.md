@@ -1,6 +1,5 @@
 [![License](http://img.shields.io/:license-apache%202.0-brightgreen.svg)](http://www.apache.org/licenses/LICENSE-2.0.html)
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/io.debezium/debezium-incubator-parent/badge.svg)](http://search.maven.org/#search%7Cga%7C1%7Cg%3A%22io.debezium%22)
-[![Build Status](https://travis-ci.com/debezium/debezium-incubator.svg?branch=master)](https://travis-ci.com/debezium/debezium-incubator/)
 [![User chat](https://img.shields.io/badge/chat-users-brightgreen.svg)](https://gitter.im/debezium/user)
 [![Developer chat](https://img.shields.io/badge/chat-devs-brightgreen.svg)](https://gitter.im/debezium/dev)
 [![Google Group](https://img.shields.io/:mailing%20list-debezium-brightgreen.svg)](https://groups.google.com/forum/#!forum/debezium)
@@ -30,6 +29,8 @@ Please see the [README.md](https://github.com/debezium/debezium#building-debeziu
 
 **Note:** The Debezium Oracle connector currently exclusively uses the XStream API for ingesting change events from the Oracle database; using this API in production requires to have a license for the Golden Gate product.
 We're going to explore alternatives to XStream which may be friendly in terms of licensing.
+
+Building this connector first requires the main [debezium](https://github.com/debezium/debezium) code repository to be built locally using `mvn clean install`.
 
 In order to build the Debezium Oracle connector, the following prerequisites must be met:
 
