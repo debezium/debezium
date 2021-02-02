@@ -30,7 +30,7 @@ Please see the [README.md](https://github.com/debezium/debezium#building-debeziu
 **Note:** The Debezium Oracle connector currently exclusively uses the XStream API for ingesting change events from the Oracle database; using this API in production requires to have a license for the Golden Gate product.
 We're going to explore alternatives to XStream which may be friendly in terms of licensing.
 
-Building Oracle connector first requires [Debezium](https://github.com/debezium/debezium) to be built locally using `mvn clean install`.
+Building this connector first requires the main [debezium](https://github.com/debezium/debezium) code repository to be built locally using `mvn clean install`.
 
 In order to build the Debezium Oracle connector, the following prerequisites must be met:
 
