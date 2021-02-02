@@ -110,7 +110,7 @@ endif::product[]
 [[postgresql-security]]
 === Security
 
-See link:https://www.postgresql.org/docs/current/logical-replication-security.html for details, but in general the debezium user needs to have `replication` privileges. It is possible to just provide the user with `superuser` privileges but that allows the user complete control of the PostgreSQL instance. Instead create the the debezium user with `replication` privileges and add SELECT privileges on the table(s) as well as CREATE privileges on the database.
+See link:https://www.postgresql.org/docs/current/logical-replication-security.html for details, but in general the {prodname} user needs to have `replication` privileges. It is possible to just provide the user with `superuser` privileges but that allows the user complete control of the PostgreSQL instance. Instead create the {prodname} user with `replication` privileges and add SELECT privileges on the table(s) as well as CREATE privileges on the database.
 
 // Type: concept
 // ModuleID: how-debezium-postgresql-connectors-perform-database-snapshots
@@ -1761,7 +1761,7 @@ az postgres server restart --resource-group mygroup --name myserver
 [[postgresql-on-crunchybridge]]
 ==== PostgreSQL on CrunchyBridge
 
-It is possible to use {prodname} with link:https://crunchybridge.com/, logical replication is already turned on. The `pgoutput` plugin is available. You will have to create a replication user and provide correct privileges
+It is possible to use {prodname} with link:https://crunchybridge.com/[CrunchyBridge], logical replication is already turned on. The `pgoutput` plugin is available. You will have to create a replication user and provide correct privileges
 
 
 [IMPORTANT]
