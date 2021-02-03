@@ -79,7 +79,7 @@ public class DebeziumContainerTest {
                 .atMost(Duration.ofSeconds(30))
                 .untilAsserted(
                         () -> {
-                            String status = executeHttpRequest(debeziumContainer.getConnectorStatusURI("my-connector-1"));
+                            String status = executeHttpRequest(debeziumContainer.getConnectorStatusUri("my-connector-1"));
 
                             assertThat(JsonPath.<String> read(status, "$.name")).isEqualTo("my-connector-1");
                             assertThat(JsonPath.<String> read(status, "$.connector.state")).isEqualTo("RUNNING");
