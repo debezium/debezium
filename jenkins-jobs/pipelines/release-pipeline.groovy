@@ -39,6 +39,7 @@ VERSION_TAG = "v$RELEASE_VERSION"
 VERSION_PARTS = RELEASE_VERSION.split('\\.')
 VERSION_MAJOR_MINOR = "${VERSION_PARTS[0]}.${VERSION_PARTS[1]}"
 IMAGE_TAG = VERSION_MAJOR_MINOR
+CANDIDATE_BRANCH="candidate-$RELEASE_VERSION"
 
 POSTGRES_TAGS = ['9.6', '9.6-alpine', '10', '10-alpine', '11', '11-alpine', '12', '12-alpine']
 CONNECTORS_PER_VERSION = [
@@ -49,7 +50,8 @@ CONNECTORS_PER_VERSION = [
     '1.1' : ['mongodb', 'mysql', 'postgres', 'sqlserver', 'oracle', 'cassandra', 'db2'],
     '1.2' : ['mongodb', 'mysql', 'postgres', 'sqlserver', 'oracle', 'cassandra', 'db2'],
     '1.3' : ['mongodb', 'mysql', 'postgres', 'sqlserver', 'oracle', 'cassandra', 'db2'],
-    '1.4' : ['mongodb', 'mysql', 'postgres', 'sqlserver', 'oracle', 'cassandra', 'db2', 'vitess']
+    '1.4' : ['mongodb', 'mysql', 'postgres', 'sqlserver', 'oracle', 'cassandra', 'db2', 'vitess'],
+    '1.5' : ['mongodb', 'mysql', 'postgres', 'sqlserver', 'oracle', 'cassandra', 'db2', 'vitess']
 ]
 
 CONNECTORS = CONNECTORS_PER_VERSION[VERSION_MAJOR_MINOR]
@@ -334,18 +336,20 @@ node('Slave') {
 
         stage('Prepare release') {
             dir(DEBEZIUM_DIR) {
+                sh "git checkout -b $CANDIDATE_BRANCH"
                 sh "mvn clean install -DskipTests -DskipITs"
             }
-            STAGING_REPO_ID = mvnRelease(DEBEZIUM_DIR, DEBEZIUM_REPOSITORY, DEBEZIUM_BRANCH)
+            STAGING_REPO_ID = mvnRelease(DEBEZIUM_DIR, DEBEZIUM_REPOSITORY, CANDIDATE_BRANCH)
             ADDITIONAL_REPOSITORIES.each { id, repo ->
                 dir(id) {
+                    sh "git checkout -b $CANDIDATE_BRANCH"
                     modifyFile("pom.xml") {
                         it.replaceFirst('<version>.+</version>\n    </parent>', "<version>$RELEASE_VERSION</version>\n    </parent>")
                     }
                     sh "git commit -a -m '[release] Stable parent $RELEASE_VERSION for release'"
                     sh "mvn clean install -DskipTests -DskipITs${id == 'incubator' ? ' -Poracle' : ''}"
                 }
-                ADDITIONAL_REPOSITORIES[id].mavenRepoId = mvnRelease(id, repo.git, repo.branch, "-Dversion.debezium=$RELEASE_VERSION${id == 'incubator' ? ' -Poracle' : ''}")
+                ADDITIONAL_REPOSITORIES[id].mavenRepoId = mvnRelease(id, repo.git, CANDIDATE_BRANCH, "-Dversion.debezium=$RELEASE_VERSION${id == 'incubator' ? ' -Poracle' : ''}")
                 dir(id) {
                     modifyFile("pom.xml") {
                         it.replaceFirst('<version>.+</version>\n    </parent>', "<version>$DEVELOPMENT_VERSION</version>\n    </parent>")
@@ -569,6 +573,35 @@ node('Slave') {
                 }
             }
         }
+
+        stage('Merge candidates to the master') {
+            dir(DEBEZIUM_DIR) {
+                withCredentials([usernamePassword(credentialsId: GIT_CREDENTIALS_ID, passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USERNAME')]) {
+                    sh """
+                       git pull --rebase $DEBEZIUM_REPOSITORY $CANDIDATE_BRANCH && \\
+                       git checkout master && \\
+                       git rebase $CANDIDATE_BRANCH && \\
+                       git push https://\${GIT_USERNAME}:\${GIT_PASSWORD}@$DEBEZIUM_REPOSITORY HEAD:$DEBEZIUM_BRANCH && \\
+                       git push --delete https://\${GIT_USERNAME}:\${GIT_PASSWORD}@$DEBEZIUM_REPOSITORY $CANDIDATE_BRANCH
+                    """
+                }
+            }
+            ADDITIONAL_REPOSITORIES.each { id, repo ->
+                dir(id) {
+                    sh "git pull --rebase $CANDIDATE_BRANCH && git checkout master && git rebase $CANDIDATE_BRANCH"
+                        withCredentials([usernamePassword(credentialsId: GIT_CREDENTIALS_ID, passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USERNAME')]) {
+                            sh """
+                               git pull --rebase ${repo.git} $CANDIDATE_BRANCH && \\
+                               git checkout master && \\
+                               git rebase $CANDIDATE_BRANCH && \\
+                               git push https://\${GIT_USERNAME}:\${GIT_PASSWORD}@${repo.git} HEAD:${repo.branch} && \\
+                               git push --delete https://\${GIT_USERNAME}:\${GIT_PASSWORD}@${repo.git} $CANDIDATE_BRANCH
+                            """
+                    }
+                }
+            }
+        }
+
     } finally {
         mail to: 'jpechane@redhat.com', subject: "${JOB_NAME} run #${BUILD_NUMBER} finished", body: "Run ${BUILD_URL} finished with result: ${currentBuild.currentResult}"
     }
