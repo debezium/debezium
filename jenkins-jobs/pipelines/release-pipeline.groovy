@@ -75,7 +75,7 @@ LOCAL_MAVEN_REPO = "$HOME_DIR/.m2/repository"
 withCredentials([usernamePassword(credentialsId: JIRA_CREDENTIALS_ID, passwordVariable: 'PASSWORD', usernameVariable: 'USERNAME')]) {
     JIRA_USERNAME = USERNAME
     JIRA_PASSWORD = PASSWORD
-    JIRA_BASE_URL = "https://issues.jboss.org/rest/api/2"
+    JIRA_BASE_URL = "https://issues.redhat.com/rest/api/2"
 }
 
 JIRA_PROJECT = 'DBZ'
