@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.connector.mysql;
+package io.debezium.connector.mysql.legacy;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -24,6 +24,8 @@ import io.debezium.config.CommonConnectorConfig.EventProcessingFailureHandlingMo
 import io.debezium.config.Configuration;
 import io.debezium.config.Configuration.Builder;
 import io.debezium.config.Field;
+import io.debezium.connector.mysql.GtidSet;
+import io.debezium.connector.mysql.MySqlConnectorConfig;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
@@ -295,7 +297,7 @@ public class MySqlJdbcContext implements AutoCloseable {
         return result.get();
     }
 
-    protected String connectionString() {
+    public String connectionString() {
         return jdbc.connectionString(MYSQL_CONNECTION_URL);
     }
 
@@ -315,7 +317,7 @@ public class MySqlJdbcContext implements AutoCloseable {
      *
      * @return the system variables that are related to server character sets; never null
      */
-    protected Map<String, String> readMySqlSystemVariables() {
+    public Map<String, String> readMySqlSystemVariables() {
         // Read the system variables from the MySQL instance and get the current database name ...
         logger.debug("Reading MySQL system variables");
         return querySystemVariables(SQL_SHOW_SYSTEM_VARIABLES);
@@ -434,7 +436,7 @@ public class MySqlJdbcContext implements AutoCloseable {
      *
      * @return the session variables that are related to sessions ssl version
      */
-    protected String getSessionVariableForSslVersion() {
+    public String getSessionVariableForSslVersion() {
         final String SSL_VERSION = "Ssl_version";
         logger.debug("Reading MySQL Session variable for Ssl Version");
         Map<String, String> sessionVariables = querySystemVariables(SQL_SHOW_SESSION_VARIABLE_SSL_VERSION);

@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.connector.mysql;
+package io.debezium.connector.mysql.legacy;
 
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -20,7 +20,7 @@ import io.debezium.util.Collect;
 /**
  * @author Randall Hauch
  */
-class BinlogReaderMetrics extends PipelineMetrics implements BinlogReaderMetricsMXBean {
+public class BinlogReaderMetrics extends PipelineMetrics implements BinlogReaderMetricsMXBean {
 
     private final BinaryLogClient client;
     private final BinaryLogClientStatistics stats;

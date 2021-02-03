@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.connector.mysql;
+package io.debezium.connector.mysql.legacy;
 
 import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static io.debezium.junit.EqualityCheck.LESS_THAN_OR_EQUAL;
@@ -35,8 +35,11 @@ import org.junit.Test;
 
 import io.debezium.config.CommonConnectorConfig.EventProcessingFailureHandlingMode;
 import io.debezium.config.Configuration;
-import io.debezium.connector.mysql.AbstractReader.AcceptAllPredicate;
+import io.debezium.connector.mysql.MySQLConnection;
+import io.debezium.connector.mysql.MySqlConnectorConfig;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
+import io.debezium.connector.mysql.UniqueDatabase;
+import io.debezium.connector.mysql.legacy.AbstractReader.AcceptAllPredicate;
 import io.debezium.data.Envelope;
 import io.debezium.data.KeyValueStore;
 import io.debezium.data.KeyValueStore.Collection;

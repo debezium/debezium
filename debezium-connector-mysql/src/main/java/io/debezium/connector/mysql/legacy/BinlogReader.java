@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.connector.mysql;
+package io.debezium.connector.mysql.legacy;
 
 import static io.debezium.util.Strings.isNullOrEmpty;
 
@@ -69,8 +69,16 @@ import com.github.shyiko.mysql.binlog.network.SSLSocketFactory;
 
 import io.debezium.config.CommonConnectorConfig.EventProcessingFailureHandlingMode;
 import io.debezium.config.Configuration;
+import io.debezium.connector.mysql.EventDataDeserializationExceptionData;
+import io.debezium.connector.mysql.GtidSet;
+import io.debezium.connector.mysql.HaltingPredicate;
+import io.debezium.connector.mysql.MySqlConnector;
+import io.debezium.connector.mysql.MySqlConnectorConfig;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
-import io.debezium.connector.mysql.RecordMakers.RecordsForTable;
+import io.debezium.connector.mysql.RowDeserializers;
+import io.debezium.connector.mysql.SourceInfo;
+import io.debezium.connector.mysql.StopEventDataDeserializer;
+import io.debezium.connector.mysql.legacy.RecordMakers.RecordsForTable;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.function.BlockingConsumer;
 import io.debezium.heartbeat.Heartbeat;
