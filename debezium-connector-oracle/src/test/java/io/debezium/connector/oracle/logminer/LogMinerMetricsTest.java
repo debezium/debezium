@@ -65,11 +65,11 @@ public class LogMinerMetricsTest {
         assertThat(metrics.getMillisecondToSleepBetweenMiningQuery()).isEqualTo(1200);
         metrics.changeSleepingTime(false);
         assertThat(metrics.getMillisecondToSleepBetweenMiningQuery()).isEqualTo(1000);
-        metrics.setMillisecondToSleepBetweenMiningQuery(-1);
+        metrics.setMillisecondToSleepBetweenMiningQuery(-1L);
         assertThat(metrics.getMillisecondToSleepBetweenMiningQuery()).isEqualTo(1000);
-        metrics.setMillisecondToSleepBetweenMiningQuery(4000);
+        metrics.setMillisecondToSleepBetweenMiningQuery(4000L);
         assertThat(metrics.getMillisecondToSleepBetweenMiningQuery()).isEqualTo(1000);
-        metrics.setMillisecondToSleepBetweenMiningQuery(2000);
+        metrics.setMillisecondToSleepBetweenMiningQuery(2000L);
         assertThat(metrics.getMillisecondToSleepBetweenMiningQuery()).isEqualTo(2000);
 
         metrics.setLastDurationOfBatchCapturing(Duration.ofMillis(100));
