@@ -2183,6 +2183,7 @@ defaultValue
     : NULL_LITERAL
     | unaryOperator? constant
     | currentTimestamp (ON UPDATE currentTimestamp)?
+    | '(' expression ')'
     | (LASTVAL | NEXTVAL) '(' fullId ')' // MariaDB
     | '(' (PREVIOUS | NEXT) VALUE FOR fullId ')' // MariaDB
     ;
