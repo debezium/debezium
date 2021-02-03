@@ -14,7 +14,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
+import java.util.OptionalLong;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -406,7 +406,7 @@ public class MySqlConnection extends JdbcConnection {
         }
     }
 
-    public Optional<Long> getEstimatedTableSize(TableId tableId) {
+    public OptionalLong getEstimatedTableSize(TableId tableId) {
         try {
             // Choose how we create statements based on the # of rows.
             // This is approximate and less accurate then COUNT(*),
@@ -414,15 +414,15 @@ public class MySqlConnection extends JdbcConnection {
             execute("USE `" + tableId.catalog() + "`;");
             return queryAndMap("SHOW TABLE STATUS LIKE '" + tableId.table() + "';", rs -> {
                 if (rs.next()) {
-                    return Optional.of((rs.getLong(5)));
+                    return OptionalLong.of((rs.getLong(5)));
                 }
-                return Optional.empty();
+                return OptionalLong.empty();
             });
         }
         catch (SQLException e) {
             LOGGER.debug("Error while getting number of rows in table {}: {}", tableId, e.getMessage(), e);
         }
-        return Optional.empty();
+        return OptionalLong.empty();
     }
 
     /**

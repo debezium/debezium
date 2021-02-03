@@ -14,6 +14,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.Optional;
+import java.util.OptionalLong;
 import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -379,7 +380,7 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
             return;
         }
         LOGGER.info("\t For table '{}' using select statement: '{}'", table.id(), selectStatement.get());
-        final Optional<Long> rowCount = rowCountForTable(table.id());
+        final OptionalLong rowCount = rowCountForTable(table.id());
 
         try (Statement statement = readTableStatement(rowCount);
                 ResultSet rs = statement.executeQuery(selectStatement.get())) {
@@ -405,7 +406,7 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
                     if (logTimer.expired()) {
                         long stop = clock.currentTimeInMillis();
                         if (rowCount.isPresent()) {
-                            LOGGER.info("\t Exported {} of {} records for table '{}' after {}", rows, rowCount.get(),
+                            LOGGER.info("\t Exported {} of {} records for table '{}' after {}", rows, rowCount.getAsLong(),
                                     table.id(), Strings.duration(stop - exportStart));
                         }
                         else {
@@ -439,8 +440,8 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
     /**
      * If connector is able to provide statistics-based number of records per table.
      */
-    protected Optional<Long> rowCountForTable(TableId tableId) {
-        return Optional.empty();
+    protected OptionalLong rowCountForTable(TableId tableId) {
+        return OptionalLong.empty();
     }
 
     private Timer getTableScanLogTimer() {
@@ -504,7 +505,7 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
     /**
      * Allow per-connector query creation to override for best database performance depending on the table size.
      */
-    protected Statement readTableStatement(Optional<Long> tableSize) throws SQLException {
+    protected Statement readTableStatement(OptionalLong tableSize) throws SQLException {
         int fetchSize = connectorConfig.getSnapshotFetchSize();
         Statement statement = jdbcConnection.connection().createStatement(); // the default cursor is FORWARD_ONLY
         statement.setFetchSize(fetchSize);

@@ -19,6 +19,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.OptionalLong;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -440,14 +441,14 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
     }
 
     @Override
-    protected Optional<Long> rowCountForTable(TableId tableId) {
+    protected OptionalLong rowCountForTable(TableId tableId) {
         return connection.getEstimatedTableSize(tableId);
     }
 
     @Override
-    protected Statement readTableStatement(Optional<Long> rowCount) throws SQLException {
+    protected Statement readTableStatement(OptionalLong rowCount) throws SQLException {
         final long largeTableRowCount = connectorConfig.rowCountForLargeTable();
-        if (!rowCount.isPresent() || largeTableRowCount == 0 || rowCount.get() <= largeTableRowCount) {
+        if (!rowCount.isPresent() || largeTableRowCount == 0 || rowCount.getAsLong() <= largeTableRowCount) {
             return super.readTableStatement(rowCount);
         }
         return createStatementWithLargeResultSet();
