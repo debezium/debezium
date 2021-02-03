@@ -1557,7 +1557,7 @@ When set to `0`, log mining history is is disabled.
 When the system is operating normally or being managed carefully then {prodname} provides _exactly once_ delivery of every change event record.
 
 If a fault does happen then the system does not lose any events.
-However, while it is recovering from the fault, it might repeat some chang events.
+However, while it is recovering from the fault, it might repeat some change events.
 In these abnormal situations, {prodname}, like Kafka, provides _at least once_ delivery of change events.
 
 The rest of this section describes how {prodname} handles various kinds of faults and problems.
@@ -1566,7 +1566,16 @@ The rest of this section describes how {prodname} handles various kinds of fault
 === ORA-25191 - Cannot reference overflow table of an index-organized table
 
 Oracle may issue this error during the snapshot phase when encountering an index-organized table (IOT).
-An IOT table is like a traditional table but it offers a variety of performance benefits.
-First verify that the appropriate grants have been applied to the base table that the IOT is associated with.
-If the error persists, make sure the SQL that is being executed is against the appropriate table; this likely will require adjustments to the connector's table include/exclude lists.
+This error means that the connector has attempted to execute an operation that must be executed against the parent index-organized table that contains the specified overflow table.
 
+To resolve this, the IOT name used in the SQL operation should be replaced with the parent index-organized table name.
+To determine the parent index-organized table name, use the following SQL:
+
+```
+SELECT IOT_NAME
+  FROM DBA_TABLES
+ WHERE OWNER='<tablespace-owner>'
+   AND TABLE_NAME='<iot-table-name-that-failed>'
+```
+
+The connector's `table.include.list` or `table.exclude.list` configuration options should then be adjusted to explicitly include or exclude the appropriate tables to avoid the connector from attempting to monitor the child index-organized table.
