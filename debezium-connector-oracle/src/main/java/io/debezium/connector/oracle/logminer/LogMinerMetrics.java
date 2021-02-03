@@ -234,8 +234,8 @@ public class LogMinerMetrics extends Metrics implements LogMinerMetricsMXBean {
     }
 
     @Override
-    public Integer getMillisecondToSleepBetweenMiningQuery() {
-        return millisecondToSleepBetweenMiningQuery.intValue();
+    public long getMillisecondToSleepBetweenMiningQuery() {
+        return millisecondToSleepBetweenMiningQuery.get();
     }
 
     @Override

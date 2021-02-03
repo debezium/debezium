@@ -91,7 +91,7 @@ public interface LogMinerMetricsMXBean {
     /**
      * @return number of milliseconds for connector to sleep before fetching another batch from the Log Miner view
      */
-    Integer getMillisecondToSleepBetweenMiningQuery();
+    long getMillisecondToSleepBetweenMiningQuery();
 
     /**
      * sets number of milliseconds for connector to sleep before fetching another batch from the Log Miner view
