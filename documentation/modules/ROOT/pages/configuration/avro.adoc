@@ -13,13 +13,6 @@
 
 toc::[]
 
-ifdef::product[]
-[IMPORTANT]
-====
-Using Avro to serialize record keys and values is a Technology Preview feature. Technology Preview features are not supported with Red Hat production service-level agreements (SLAs) and might not be functionally complete; therefore, Red Hat does not recommend implementing any Technology Preview features in production environments. This Technology Preview feature provides early access to upcoming product innovations, enabling you to test functionality and provide feedback during the development process. For more information about support scope, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
-====
-endif::product[]
-
 A {prodname} connector works in the Kafka Connect framework to capture each row-level change in a database by generating a change event record. For each change event record, the {prodname} connector does the following: 
 
 . Applies configured transformations
