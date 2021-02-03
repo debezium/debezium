@@ -137,7 +137,7 @@ public class PubSubChangeConsumer extends BaseChangeConsumer implements Debezium
                 pubsubMessage.setData(ByteString.copyFromUtf8((String) record.value()));
             }
             else if (record.value() instanceof byte[]) {
-                pubsubMessage.setData(ByteString.copyFrom((byte[]) record.key()));
+                pubsubMessage.setData(ByteString.copyFrom((byte[]) record.value()));
             }
 
             deliveries.add(publisher.publish(pubsubMessage.build()));
