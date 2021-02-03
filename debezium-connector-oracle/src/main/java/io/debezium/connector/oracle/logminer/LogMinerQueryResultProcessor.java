@@ -232,7 +232,7 @@ class LogMinerQueryResultProcessor {
             }
             LOGGER.debug("{} DMLs, {} Commits, {} Rollbacks, {} Inserts, {} Updates, {} Deletes. Processed in {} millis. " +
                     "Lag:{}. Offset scn:{}. Offset commit scn:{}. Active transactions:{}. Sleep time:{}",
-                    dmlCounter, insertCounter, updateCounter, deleteCounter, commitCounter, rollbackCounter, totalTime.toMillis(),
+                    dmlCounter, commitCounter, rollbackCounter, insertCounter, updateCounter, deleteCounter, totalTime.toMillis(),
                     transactionalBufferMetrics.getLagFromSource(), offsetContext.getScn(), offsetContext.getCommitScn(),
                     transactionalBufferMetrics.getNumberOfActiveTransactions(), metrics.getMillisecondToSleepBetweenMiningQuery());
         }
