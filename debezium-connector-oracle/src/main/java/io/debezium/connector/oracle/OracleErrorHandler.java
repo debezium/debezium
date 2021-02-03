@@ -34,6 +34,7 @@ public class OracleErrorHandler extends ErrorHandler {
                 throwable.getMessage().startsWith("ORA-12543") || // TNS:destination host unreachable
                 throwable.getMessage().startsWith("ORA-00604") || // error occurred at recursive SQL level 1
                 throwable.getMessage().startsWith("ORA-01089") || // Oracle immediate shutdown in progress
+                throwable.getMessage().startsWith("ORA-01333") || // Failed to establish LogMiner dictionary
                 throwable.getCause() instanceof IOException ||
                 throwable instanceof SQLRecoverableException ||
                 throwable.getMessage().toUpperCase().startsWith("NO MORE DATA TO READ FROM SOCKET") ||
