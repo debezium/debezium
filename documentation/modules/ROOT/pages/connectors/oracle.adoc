@@ -1578,4 +1578,4 @@ SELECT IOT_NAME
    AND TABLE_NAME='<iot-table-name-that-failed>'
 ```
 
-The connector's `table.include.list` or `table.exclude.list` configuration options should then be adjusted to explicitly include or exclude the appropriate tables to avoid the connector from attempting to monitor the child index-organized table.
+The connector's `table.include.list` or `table.exclude.list` configuration options should then be adjusted to explicitly include or exclude the appropriate tables to avoid the connector from attempting to capture changes from the child index-organized table.
