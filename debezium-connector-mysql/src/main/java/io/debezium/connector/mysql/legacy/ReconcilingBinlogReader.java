@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.connector.mysql;
+package io.debezium.connector.mysql.legacy;
 
 import static io.debezium.connector.mysql.SourceInfo.BINLOG_FILENAME_OFFSET_KEY;
 import static io.debezium.connector.mysql.SourceInfo.BINLOG_POSITION_OFFSET_KEY;
@@ -19,6 +19,8 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.connector.mysql.HaltingPredicate;
+import io.debezium.connector.mysql.SourceInfo;
 import io.debezium.document.Document;
 
 /**

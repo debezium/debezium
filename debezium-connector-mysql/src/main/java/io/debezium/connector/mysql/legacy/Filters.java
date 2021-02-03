@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.connector.mysql;
+package io.debezium.connector.mysql.legacy;
 
 import java.util.Map;
 import java.util.Set;
@@ -11,6 +11,8 @@ import java.util.function.Predicate;
 
 import io.debezium.annotation.Immutable;
 import io.debezium.config.Configuration;
+import io.debezium.connector.mysql.MySqlConnectorConfig;
+import io.debezium.connector.mysql.SourceInfo;
 import io.debezium.relational.Selectors;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables.ColumnNameFilter;
@@ -40,7 +42,7 @@ public class Filters {
             "mysql.rds_replication_status",
             "mysql.rds_sysinfo");
 
-    protected static boolean isBuiltInDatabase(String databaseName) {
+    public static boolean isBuiltInDatabase(String databaseName) {
         if (databaseName == null) {
             return false;
         }

@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.connector.mysql;
+package io.debezium.connector.mysql.legacy;
 
 import static org.fest.assertions.Assertions.assertThat;
 
@@ -11,6 +11,8 @@ import java.sql.SQLException;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.Test;
+
+import io.debezium.connector.mysql.MySqlConnectorConfig;
 
 /**
  * @author Randall Hauch

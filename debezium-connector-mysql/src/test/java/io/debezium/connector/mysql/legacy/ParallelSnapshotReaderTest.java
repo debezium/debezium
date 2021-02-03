@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.connector.mysql;
+package io.debezium.connector.mysql.legacy;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -21,7 +21,8 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.Assert;
 import org.junit.Test;
 
-import io.debezium.connector.mysql.ParallelSnapshotReader.ParallelHaltingPredicate;
+import io.debezium.connector.mysql.SourceInfo;
+import io.debezium.connector.mysql.legacy.ParallelSnapshotReader.ParallelHaltingPredicate;
 
 /**
  * @author Moira Tagle

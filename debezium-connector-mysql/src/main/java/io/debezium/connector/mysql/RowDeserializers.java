@@ -45,7 +45,7 @@ import com.github.shyiko.mysql.binlog.io.ByteArrayInputStream;
  *
  * @author Randall Hauch
  */
-class RowDeserializers {
+public class RowDeserializers {
 
     /**
      * A specialization of {@link DeleteRowsEventDataDeserializer} that converts MySQL {@code DATE}, {@code TIME},

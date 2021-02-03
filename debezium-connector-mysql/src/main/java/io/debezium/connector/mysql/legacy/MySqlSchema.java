@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.connector.mysql;
+package io.debezium.connector.mysql.legacy;
 
 import java.util.Collection;
 import java.util.Map;
@@ -19,8 +19,12 @@ import io.debezium.DebeziumException;
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.config.CommonConnectorConfig.EventProcessingFailureHandlingMode;
 import io.debezium.config.Configuration;
+import io.debezium.connector.mysql.MySqlConnector;
+import io.debezium.connector.mysql.MySqlConnectorConfig;
 import io.debezium.connector.mysql.MySqlConnectorConfig.BigIntUnsignedHandlingMode;
 import io.debezium.connector.mysql.MySqlSystemVariables.MySqlScope;
+import io.debezium.connector.mysql.MySqlValueConverters;
+import io.debezium.connector.mysql.SourceInfo;
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.document.Document;
 import io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode;
@@ -167,7 +171,7 @@ public class MySqlSchema extends RelationalDatabaseSchema {
                 });
     }
 
-    protected HistoryRecordComparator historyComparator() {
+    public HistoryRecordComparator historyComparator() {
         return this.historyComparator;
     }
 
@@ -289,7 +293,7 @@ public class MySqlSchema extends RelationalDatabaseSchema {
     /**
      * Discard any currently-cached schemas and rebuild them using the filters.
      */
-    protected void refreshSchemas() {
+    public void refreshSchemas() {
         clearSchemas();
         // Create TableSchema instances for any existing table ...
         this.tableIds().forEach(id -> {
