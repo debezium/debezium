@@ -51,46 +51,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
     protected static final int DEFAULT_PORT = 1528;
 
-    public static final Field HOSTNAME = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.HOSTNAME)
-            .withDisplayName("Hostname")
-            .withType(Type.STRING)
-            .withWidth(Width.MEDIUM)
-            .withImportance(Importance.HIGH)
-            .withValidation(OracleConnectorConfig::requiredWhenNoUrl)
-            .withDescription("Resolvable hostname or IP address of the Oracle database server.");
-
-    public static final Field PORT = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.PORT)
-            .withDisplayName("Port")
-            .withType(Type.INT)
-            .withWidth(Width.SHORT)
-            .withDefault(DEFAULT_PORT)
-            .withImportance(Importance.HIGH)
-            .withValidation(Field::isInteger)
-            .withDescription("Port of the Oracle database server.");
-
-    public static final Field USER = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.USER)
-            .withDisplayName("User")
-            .withType(Type.STRING)
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.HIGH)
-            .withValidation(Field::isRequired)
-            .withDescription("Name of the Oracle database user to be used when connecting to the database.");
-
-    public static final Field PASSWORD = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.PASSWORD)
-            .withDisplayName("Password")
-            .withType(Type.PASSWORD)
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.HIGH)
-            .withDescription("Password of the Oracle database user to be used when connecting to the database.");
-
-    public static final Field DATABASE_NAME = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.DATABASE)
-            .withDisplayName("Database name")
-            .withType(Type.STRING)
-            .withWidth(Width.MEDIUM)
-            .withImportance(Importance.HIGH)
-            .withValidation(Field::isRequired)
-            .withDescription("The name of the database the connector should be monitoring. When working with a "
-                    + "multi-tenant set-up, must be set to the CDB name.");
+    public static final Field PORT = RelationalDatabaseConnectorConfig.PORT
+            .withDefault(DEFAULT_PORT);
 
     public static final Field PDB_NAME = Field.create(DATABASE_CONFIG_PREFIX + "pdb.name")
             .withDisplayName("PDB name")
@@ -226,12 +188,12 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
      * The set of {@link Field}s defined as part of this configuration.
      */
     public static Field.Set ALL_FIELDS = Field.setOf(
-            HOSTNAME,
+            RelationalDatabaseConnectorConfig.HOSTNAME,
             PORT,
-            USER,
-            PASSWORD,
+            RelationalDatabaseConnectorConfig.USER,
+            RelationalDatabaseConnectorConfig.PASSWORD,
             SERVER_NAME,
-            DATABASE_NAME,
+            RelationalDatabaseConnectorConfig.DATABASE_NAME,
             PDB_NAME,
             XSTREAM_SERVER_NAME,
             SNAPSHOT_MODE,
@@ -317,7 +279,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     public static ConfigDef configDef() {
         ConfigDef config = new ConfigDef();
 
-        Field.group(config, "Oracle", HOSTNAME, PORT, USER, PASSWORD, SERVER_NAME, DATABASE_NAME, PDB_NAME,
+        Field.group(config, "Oracle", RelationalDatabaseConnectorConfig.HOSTNAME, PORT, RelationalDatabaseConnectorConfig.USER, RelationalDatabaseConnectorConfig.PASSWORD, SERVER_NAME, RelationalDatabaseConnectorConfig.DATABASE_NAME, PDB_NAME,
                 XSTREAM_SERVER_NAME, SNAPSHOT_MODE, CONNECTOR_ADAPTER, LOG_MINING_STRATEGY, URL);
         Field.group(config, "History Storage", KafkaDatabaseHistory.BOOTSTRAP_SERVERS,
                 KafkaDatabaseHistory.TOPIC, KafkaDatabaseHistory.RECOVERY_POLL_ATTEMPTS,
