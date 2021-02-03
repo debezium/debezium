@@ -565,11 +565,6 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
 
     protected static final int DEFAULT_PORT = 3306;
 
-    private static final String DATABASE_WHITELIST_NAME = "database.whitelist";
-    private static final String DATABASE_INCLUDE_LIST_NAME = "database.include.list";
-    private static final String DATABASE_BLACKLIST_NAME = "database.blacklist";
-    private static final String DATABASE_EXCLUDE_LIST_NAME = "database.exclude.list";
-
     /**
      * Default size of the binlog buffer used for examining transactions and
      * deciding whether to propagate them or not. A size of 0 disables the buffer,

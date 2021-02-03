@@ -200,7 +200,6 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
 
     @Override
     protected void determineSnapshotOffset(RelationalSnapshotContext ctx) throws Exception {
-        // TODO forced snapshot
         if (previousOffset != null) {
             ctx.offset = previousOffset;
             tryStartingSnapshot(ctx);
