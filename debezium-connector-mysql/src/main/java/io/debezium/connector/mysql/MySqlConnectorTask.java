@@ -80,7 +80,7 @@ public class MySqlConnectorTask extends BaseSourceTask {
 
         validateBinlogConfiguration(connectorConfig);
 
-        final MySqlOffsetContext previousOffset = (MySqlOffsetContext) getPreviousOffset(new MySqlOffsetContext.Loader(connectorConfig));
+        MySqlOffsetContext previousOffset = (MySqlOffsetContext) getPreviousOffset(new MySqlOffsetContext.Loader(connectorConfig));
         if (previousOffset == null) {
             LOGGER.info("No previous offset found");
         }
@@ -90,7 +90,10 @@ public class MySqlConnectorTask extends BaseSourceTask {
         this.schema = new MySqlDatabaseSchema(connectorConfig, valueConverters, topicSelector, schemaNameAdjuster, tableIdCaseInsensitive);
 
         validateAndLoadDatabaseHistory(connectorConfig, previousOffset, schema);
-        validateSnapshotFeasibility(connectorConfig, previousOffset);
+        // If the binlog position is not available it is necessary to reexecute snapshot
+        if (validateSnapshotFeasibility(connectorConfig, previousOffset)) {
+            previousOffset = null;
+        }
 
         taskContext = new MySqlTaskContext(connectorConfig, schema);
 
@@ -232,6 +235,7 @@ public class MySqlConnectorTask extends BaseSourceTask {
                 final GtidSet knownServerSet = availableGtidSet.retainAll(config.gtidSourceFilter());
                 final GtidSet gtidSetToReplicate = connection.subtractGtidSet(knownServerSet, gtidSet);
                 final GtidSet purgedGtidSet = connection.purgedGtidSet();
+                LOGGER.info("Server has already purged {} GTIDs", purgedGtidSet);
                 final GtidSet nonPurgedGtidSetToReplicate = connection.subtractGtidSet(gtidSetToReplicate, purgedGtidSet);
                 LOGGER.info("GTIDs known by the server but not processed yet {}, for replication are available only {}", gtidSetToReplicate, nonPurgedGtidSetToReplicate);
                 if (!gtidSetToReplicate.equals(nonPurgedGtidSetToReplicate)) {
@@ -302,7 +306,7 @@ public class MySqlConnectorTask extends BaseSourceTask {
         return false;
     }
 
-    private void validateSnapshotFeasibility(MySqlConnectorConfig config, MySqlOffsetContext offset) {
+    private boolean validateSnapshotFeasibility(MySqlConnectorConfig config, MySqlOffsetContext offset) {
         if (offset != null) {
             if (offset.isSnapshotRunning()) {
                 // The last offset was an incomplete snapshot and now the snapshot was disabled
@@ -318,6 +322,12 @@ public class MySqlConnectorTask extends BaseSourceTask {
                     if (!config.getSnapshotMode().shouldSnapshotOnDataError()) {
                         throw new DebeziumException("The connector is trying to read binlog starting at " + offset.getSource() + ", but this is no longer "
                                 + "available on the server. Reconfigure the connector to use a snapshot when needed.");
+                    }
+                    else {
+                        LOGGER.warn(
+                                "The connector is trying to read binlog starting at '{}', but this is no longer available on the server. Forcing the snapshot execution as it is allowed by the configuration.",
+                                offset.getSource());
+                        return true;
                     }
                 }
             }
@@ -335,5 +345,6 @@ public class MySqlConnectorTask extends BaseSourceTask {
                 }
             }
         }
+        return false;
     }
 }
