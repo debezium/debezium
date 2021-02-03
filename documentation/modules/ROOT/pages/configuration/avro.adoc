@@ -13,20 +13,31 @@
 
 toc::[]
 
-A {prodname} connector works in the Kafka Connect framework to capture each row-level change in a database by generating a change event record. For each change event record, the {prodname} connector does the following: 
+A {prodname} connector works in the Kafka Connect framework to capture each row-level change in a database by generating a change event record. 
+For each change event record, the {prodname} connector completes the following actions: 
 
-. Applies configured transformations
-. Serializes the record key and value into a binary form by using the configured link:https://kafka.apache.org/documentation/#connect_running[Kafka Connect converters]
-. Writes the record to the correct Kafka topic
+. Applies configured transformations.
+. Serializes the record key and value into a binary form by using the configured link:https://kafka.apache.org/documentation/#connect_running[Kafka Connect converters].
+. Writes the record to the correct Kafka topic.
 
-You can specify converters for each individual {prodname} connector instance. Kafka Connect provides a JSON converter that serializes the record keys and values into JSON documents. The default behavior is that the JSON converter includes the record's message schema, which makes each record very verbose. The {link-prefix}:{link-tutorial}[{name-tutorial}] shows what the records look like when both payload and schemas are included. If you want records to be serialized with JSON, consider setting the following connector configuration properties to `false`: 
+You can specify converters for each individual {prodname} connector instance. 
+Kafka Connect provides a JSON converter that serializes the record keys and values into JSON documents. 
+The default behavior is that the JSON converter includes the record's message schema, which makes each record very verbose. 
+The {link-prefix}:{link-tutorial}[{name-tutorial}] shows what the records look like when both payload and schemas are included. 
+If you want records to be serialized with JSON, consider setting the following connector configuration properties to `false`: 
 
 * `key.converter.schemas.enable`
 * `value.converter.schemas.enable`
 
 Setting these properties to `false` excludes the verbose schema information from each record. 
 
-Alternatively, you can serialize the record keys and values by using https://avro.apache.org/[Apache Avro]. The Avro binary format is compact and efficient. Avro schemas make it possible to ensure that each record has the correct structure. Avro's schema evolution mechanism enables schemas to evolve. This is essential for {prodname} connectors, which dynamically generate each record's schema to match the structure of the database table that was changed. Over time, change event records written to the same Kafka topic might have different versions of the same schema. Avro serialization makes it easier for change event record consumers to adapt to a changing record schema.
+Alternatively, you can serialize the record keys and values by using https://avro.apache.org/[Apache Avro]. 
+The Avro binary format is compact and efficient. 
+Avro schemas make it possible to ensure that each record has the correct structure. 
+Avro's schema evolution mechanism enables schemas to evolve. 
+This is essential for {prodname} connectors, which dynamically generate each record's schema to match the structure of the database table that was changed. 
+Over time, change event records written to the same Kafka topic might have different versions of the same schema. 
+Avro serialization makes it easier for the consumers of change event records to adapt to a changing record schema.
 
 ifdef::community[]
 To use Apache Avro serialization, you must deploy a schema registry that manages Avro message schemas and their versions. 
@@ -47,27 +58,32 @@ The link:https://github.com/Apicurio/apicurio-registry[{registry}] open-source p
 endif::community[]
 
 ifdef::product[]
-{LinkServiceRegistryGetStart}[{registry-name-full}] provides several components that work with Avro:
+{LinkServiceRegistryGetStart}[{registry-name-full}] provides the following components that work with Avro:
 endif::product[]
 
-* An Avro converter that you can specify in {prodname} connector configurations. This converter maps Kafka Connect schemas to Avro schemas. The converter then uses the Avro schemas to serialize the record keys and values into Avro's compact binary form.
+* An Avro converter that you can specify in {prodname} connector configurations. 
+This converter maps Kafka Connect schemas to Avro schemas. 
+The converter then uses the Avro schemas to serialize the record keys and values into Avro's compact binary form.
 
 * An API and schema registry that tracks:
 +
-** Avro schemas that are used in Kafka topics
-** Where the Avro converter sends the generated Avro schemas
+** Avro schemas that are used in Kafka topics.
+** Where the Avro converter sends the generated Avro schemas.
 
 +
-Since the Avro schemas are stored in this registry, each record needs to contain only a tiny _schema identifier_.
+Because the Avro schemas are stored in this registry, each record needs to contain only a tiny _schema identifier_.
 This makes each record even smaller. For an I/O bound system like Kafka, this means more total throughput for producers and consumers.
 
-* Avro _Serdes_ (serializers and deserializers) for Kafka producers and consumers. Kafka consumer applications that you write to consume change event records can use Avro Serdes to deserialize the change event records.
+* Avro _Serdes_ (serializers and deserializers) for Kafka producers and consumers. 
+Kafka consumer applications that you write to consume change event records can use Avro Serdes to deserialize the change event records.
 
 To use the {registry} with {prodname}, add {registry} converters and their dependencies to the Kafka Connect container image that you are using for running a {prodname} connector.
 
 [NOTE]
 ====
-The {registry} project also provides a JSON converter. This converter combines the advantage of less verbose messages with human-readable JSON. Messages do not contain the schema information themselves, but only a schema ID.
+The {registry} project also provides a JSON converter. 
+This converter combines the advantage of less verbose messages with human-readable JSON. 
+Messages do not contain the schema information themselves, but only a schema ID.
 ====
 
 // Type: concept
@@ -75,7 +91,7 @@ The {registry} project also provides a JSON converter. This converter combines t
 [id="overview-of-deploying-a-debezium-connector-that-uses-avro-serialization"]
 == Deployment overview
 
-To deploy a {prodname} connector that uses Avro serialization, there are three main tasks: 
+To deploy a {prodname} connector that uses Avro serialization, you must complete three main tasks: 
 
 ifdef::community[]
 . Deploy an link:https://github.com/Apicurio/apicurio-registry[{registry-name-full}] instance.
@@ -114,7 +130,8 @@ ifdef::community[]
 In your environment, you might want to use a provided {prodname} container image to deploy {prodname} connectors that use Avro serialization. Follow the procedure here to do that. In this procedure, you enable Apicurio converters on the {prodname} Kafka Connect container image, and configure the {prodname} connector to use the Avro converter.
 endif::community[]
 ifdef::product[]
-In your environment, you might want to use a provided {prodname} container to deploy {prodname} connectors that use Avro serialization. Follow the procedure here to do that. In this procedure, you build a custom Kafka Connect container image for {prodname}, and you configure the {prodname} connector to use the Avro converter.
+In your environment, you might want to use a provided {prodname} container to deploy {prodname} connectors that use Avro serialization. 
+Complete the following procedure to build a custom Kafka Connect container image for {prodname}, and configure the {prodname} connector to use the Avro converter.
 endif::product[]
 
 .Prerequisites
@@ -127,7 +144,7 @@ endif::product[]
 ifdef::community[]
 . Deploy an instance of {registry}. 
 +
-The following example uses a non-production, in-memory, {registry}  instance:
+The following example uses a non-production, in-memory, {registry} instance:
 +
 [source,subs="attributes+"]
 ----
@@ -167,7 +184,8 @@ ifdef::product[]
 * Setting up AMQ Streams storage
 * Installing {registry}
 
-. Extract the {prodname} connector archive(s) to create a directory structure for the connector plug-in(s). If you downloaded and extracted the archive for each {prodname} connector, the structure looks like this:
+. Extract the {prodname} connector archives to create a directory structure for the connector plug-ins. 
+If you downloaded and extracted the archives for multiple {prodname} connectors, the resulting directory structure looks like the one in the following example:
 +
 [subs=+macros]
 ----
@@ -189,11 +207,13 @@ pass:quotes[*tree ./my-plugins/*]
 .. Extract the archive into the desired {prodname} connector directory.
 
 +
-To configure more than one type of {prodname} connector to use Avro serialization, extract the archive into the directory for each relevant connector type. While this duplicates the files, it removes the possibility of conflicting dependencies.
+To configure more than one type of {prodname} connector to use Avro serialization, extract the archive into the directory for each relevant connector type. 
+Although extracting the archive to each directory duplicates the files, by doing so you remove the possibility of conflicting dependencies.
 
 . Create and publish a custom image for running {prodname} connectors that are configured to use the Avro converter:
 
-.. Create a new `Dockerfile` by using `{DockerKafkaConnect}` as the base image. In the following example, you would replace _my-plugins_ with the name of your plug-ins directory:
+.. Create a new `Dockerfile` by using `{DockerKafkaConnect}` as the base image. 
+In the following example, replace _my-plugins_ with the name of your plug-ins directory:
 +
 [subs=+macros]
 ----
@@ -211,11 +231,13 @@ Before Kafka Connect starts running the connector, Kafka Connect loads any third
 
 .. Push your custom image to your container registry, for example:
 +
-`docker push debezium-container-with-avro:latest`
+`docker push _<myregistry.io>_/debezium-container-with-avro:latest`
 
 .. Point to the new container image. Do one of the following:
 +
-* Edit the `KafkaConnect.spec.image` property of the `KafkaConnect` custom resource. If set, this property overrides the `STRIMZI_DEFAULT_KAFKA_CONNECT_IMAGE` variable in the Cluster Operator. For example:
+* Edit the `KafkaConnect.spec.image` property of the `KafkaConnect` custom resource. 
+If set, this property overrides the `STRIMZI_DEFAULT_KAFKA_CONNECT_IMAGE` variable in the Cluster Operator. 
+For example:
 +
 [source,yaml,subs=attributes+]
 ----
@@ -230,7 +252,8 @@ spec:
 +
 * In the `install/cluster-operator/050-Deployment-strimzi-cluster-operator.yaml` file, edit the `STRIMZI_DEFAULT_KAFKA_CONNECT_IMAGE` variable to point to the new container image and reinstall the Cluster Operator. If you edit this file you will need to apply it to your OpenShift cluster.
 
-. Deploy each {prodname} connector that is configured to use the Avro converter. For each {prodname} connector:  
+. Deploy each {prodname} connector that is configured to use the Avro converter. 
+For each {prodname} connector:  
 
 .. Create a {prodname} connector instance. The following `inventory-connector.yaml` file example creates a `KafkaConnector` custom resource that defines a MySQL connector instance that is configured to use the Avro converter:
 +
@@ -269,7 +292,8 @@ spec:
 +
 This registers `inventory-connector` and the connector starts to run against the `inventory` database.
 
-. Verify that the connector was created and has started to track changes in the specified database. You can verify the connector instance by watching the Kafka Connect log output as, for example, `inventory-connector` starts.
+. Verify that the connector was created and has started to track changes in the specified database. 
+You can verify the connector instance by watching the Kafka Connect log output as, for example, `inventory-connector` starts.
 
 .. Display the Kafka Connect log output:
 +
@@ -278,7 +302,8 @@ This registers `inventory-connector` and the connector starts to run against the
 oc logs $(oc get pods -o name -l strimzi.io/name=my-connect-cluster-connect)
 ----
 
-.. Review the log output to verify that the initial snapshot has been executed. You should see something like the following lines: 
+.. Review the log output to verify that the initial snapshot has been executed. 
+You should see something like the following lines: 
 +
 [source,shell,options="nowrap"]
 ----
@@ -323,7 +348,8 @@ ifdef::community[]
 [id="confluent-schema-registry"]
 == Confluent Schema Registry
 
-There is an alternative https://github.com/confluentinc/schema-registry[schema registry] implementation provided by Confluent. The configuration is slightly different.
+There is an alternative https://github.com/confluentinc/schema-registry[schema registry] implementation provided by Confluent. 
+The configuration is slightly different.
 
 . In your {prodname} connector configuration, specify the following properties:
 +
@@ -399,7 +425,8 @@ As stated in the Avro link:https://avro.apache.org/docs/current/spec.html#names[
 
 {prodname} uses the column's name as the basis for the corresponding Avro field.
 This can lead to problems during serialization if the column name does not also adhere to the Avro naming rules.
-Each {prodname} connector provides a configuration property, `sanitize.field.names` that you can set to `true` if you have columns that do not adhere to Avro rules for names. Setting `sanitize.field.names` to `true` allows serialization of non-conformant fields without having to actually modify your schema.
+Each {prodname} connector provides a configuration property, `sanitize.field.names` that you can set to `true` if you have columns that do not adhere to Avro rules for names. 
+Setting `sanitize.field.names` to `true` allows serialization of non-conformant fields without having to actually modify your schema.
 
 ifdef::community[]
 == Getting More Information
