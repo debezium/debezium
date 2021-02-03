@@ -75,7 +75,7 @@ for input in ${EXTRA_LIBS}; do
 
     curl -OJs ${lib}
     if [[ "${lib}" =~ ^.*\.zip$ ]] ; then
-        unzip -d ${dest} \*.zip && rm *.zip
+        unzip -od ${dest} \*.zip && rm *.zip
     else
         mv *.jar ${dest}
     fi
