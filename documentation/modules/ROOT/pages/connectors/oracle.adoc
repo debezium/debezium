@@ -1423,35 +1423,35 @@ Based on the used hash function referential integrity is kept while data is pseu
 The hash is automatically shortened to the length of the column.
 
 |[[oracle-property-log-mining-batch-size-min]]<<oracle-property-log-mining-batch-size-min, `log.mining.batch.size.min`>>
-|1000
+|`1000`
 |The minimum SCN interval size that this connector will try to read from redo/archive logs. Active batch size will be also increased/decreased by this amount for tuning connector throughput when needed.
 
 |[[oracle-property-log-mining-batch-size-max]]<<oracle-property-log-mining-batch-size-max, `log.mining.batch.size.max`>>
-|100000
+|`100000`
 |The maximum SCN interval size that this connector will use when reading from redo/archive logs.
 
 |[[oracle-property-log-mining-batch-size-default]]<<oracle-property-log-mining-batch-size-default, `log.mining.batch.size.default`>>
-|20000
+|`20000`
 |The starting SCN interval size that the connector will use for reading data from redo/archive logs.
 
 |[[oracle-property-log-mining-sleep-time-min-ms]]<<oracle-property-log-mining-sleep-time-min-ms, `log.mining.sleep.time.min.ms`>>
-|0
+|`0`
 |The minimum amount of time that the connector will sleep after reading data from redo/archive logs and before starting reading data again. Value is in milliseconds.
 
 |[[oracle-property-log-mining-sleep-time-max-ms]]<<oracle-property-log-mining-sleep-time-max-ms, `log.mining.sleep.time.max.ms`>>
-|3000
+|`3000`
 |The maximum amount of time that the connector will sleep after reading data from redo/archive logs and before starting reading data again. Value is in milliseconds.
 
 |[[oracle-property-log-mining-sleep-time-default-ms]]<<oracle-property-log-mining-sleep-time-default-ms, `log.mining.sleep.time.default.ms`>>
-|1000
+|`1000`
 |The starting amount of time that the connector will sleep after reading data from redo/archive logs and before starting reading data again. Value is in milliseconds.
 
 |[[oracle-property-log-mining-sleep-time-increment-ms]]<<oracle-property-log-mining-sleep-time-increment-ms, `log.mining.sleep.time.increment.ms`>>
-|200
+|`200`
 |The maximum amount of time up or down that the connector will use to tune the optimal sleep time when reading data from logminer. Value is in milliseconds.
 
 |[[oracle-property-log-mining-view-fetch-size]]<<oracle-property-log-mining-view-fetch-size, `log.mining.view.fetch.size`>>
-|10000
+|`10000`
 |The number of content records that will be fetched from the log miner content view.
 
 
