@@ -48,7 +48,7 @@ public class LogMinerMetrics extends Metrics implements LogMinerMetricsMXBean {
     private final AtomicInteger switchCounter = new AtomicInteger();
 
     private final AtomicInteger batchSize = new AtomicInteger();
-    private final AtomicInteger millisecondToSleepBetweenMiningQuery = new AtomicInteger();
+    private final AtomicLong millisecondToSleepBetweenMiningQuery = new AtomicLong();
 
     private final AtomicBoolean recordMiningHistory = new AtomicBoolean();
     private final AtomicInteger hoursToKeepTransaction = new AtomicInteger();
@@ -59,12 +59,12 @@ public class LogMinerMetrics extends Metrics implements LogMinerMetricsMXBean {
     private final int batchSizeMax;
     private final int batchSizeDefault;
 
-    //constants for sleeping algorithm
-    private final int sleepTimeMin;
-    private final int sleepTimeMax;
-    private final int sleepTimeDefault;
-    private final int sleepTimeIncrement;
-    
+    // constants for sleeping algorithm
+    private final long sleepTimeMin;
+    private final long sleepTimeMax;
+    private final long sleepTimeDefault;
+    private final long sleepTimeIncrement;
+
     LogMinerMetrics(CdcSourceTaskContext taskContext, OracleConnectorConfig connectorConfig) {
         super(taskContext, "log-miner");
 
@@ -77,10 +77,10 @@ public class LogMinerMetrics extends Metrics implements LogMinerMetricsMXBean {
         batchSizeMin = connectorConfig.getLogMiningBatchSizeMin();
         batchSizeMax = connectorConfig.getLogMiningBatchSizeMax();
 
-        sleepTimeDefault = connectorConfig.getLogMiningSleepTimeDefault();
-        sleepTimeMin = connectorConfig.getLogMiningSleepTimeMin();
-        sleepTimeMax = connectorConfig.getLogMiningSleepTimeMax();
-        sleepTimeIncrement = connectorConfig.getLogMiningSleepTimeIncrement();
+        sleepTimeDefault = connectorConfig.getLogMiningSleepTimeDefault().toMillis();
+        sleepTimeMin = connectorConfig.getLogMiningSleepTimeMin().toMillis();
+        sleepTimeMax = connectorConfig.getLogMiningSleepTimeMax().toMillis();
+        sleepTimeIncrement = connectorConfig.getLogMiningSleepTimeIncrement().toMillis();
 
         reset();
         LOGGER.info("Logminer metrics initialized {}", this);
@@ -235,7 +235,7 @@ public class LogMinerMetrics extends Metrics implements LogMinerMetricsMXBean {
 
     @Override
     public Integer getMillisecondToSleepBetweenMiningQuery() {
-        return millisecondToSleepBetweenMiningQuery.get();
+        return millisecondToSleepBetweenMiningQuery.intValue();
     }
 
     @Override
@@ -275,7 +275,7 @@ public class LogMinerMetrics extends Metrics implements LogMinerMetricsMXBean {
 
     @Override
     public void changeSleepingTime(boolean increment) {
-        int sleepTime = millisecondToSleepBetweenMiningQuery.get();
+        long sleepTime = millisecondToSleepBetweenMiningQuery.get();
         if (increment && sleepTime < sleepTimeMax) {
             sleepTime = millisecondToSleepBetweenMiningQuery.addAndGet(sleepTimeIncrement);
         }

@@ -57,10 +57,10 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     protected final static int MIN_BATCH_SIZE = 1_000;
     protected final static int MAX_BATCH_SIZE = 100_000;
 
-    protected final static int MAX_SLEEP_TIME = 3_000;
-    protected final static int DEFAULT_SLEEP_TIME = 1_000;
-    protected final static int MIN_SLEEP_TIME = 0;
-    protected final static int SLEEP_TIME_INCREMENT = 200;
+    protected final static int MAX_SLEEP_TIME_MS = 3_000;
+    protected final static int DEFAULT_SLEEP_TIME_MS = 1_000;
+    protected final static int MIN_SLEEP_TIME_MS = 0;
+    protected final static int SLEEP_TIME_INCREMENT_MS = 200;
 
     public static final Field PORT = RelationalDatabaseConnectorConfig.PORT
             .withDefault(DEFAULT_PORT);
@@ -232,39 +232,39 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withDefault(DEFAULT_VIEW_FETCH_SIZE)
             .withDescription("The number of content records that will be fetched from the log miner content view.");
 
-    public static final Field LOG_MINING_SLEEP_TIME_MIN = Field.create("log.mining.sleep.time.min")
+    public static final Field LOG_MINING_SLEEP_TIME_MIN_MS = Field.create("log.mining.sleep.time.min.ms")
             .withDisplayName("Minimum sleep time in milliseconds when reading redo/archive logs.")
             .withType(Type.LONG)
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
-            .withDefault(MIN_SLEEP_TIME)
+            .withDefault(MIN_SLEEP_TIME_MS)
             .withDescription(
                     "The minimum amount of time that the connector will sleep after reading data from redo/archive logs and before starting reading data again. Value is in milliseconds.");
 
-    public static final Field LOG_MINING_SLEEP_TIME_DEFAULT = Field.create("log.mining.sleep.time.default")
+    public static final Field LOG_MINING_SLEEP_TIME_DEFAULT_MS = Field.create("log.mining.sleep.time.default.ms")
             .withDisplayName("Default sleep time in milliseconds when reading redo/archive logs.")
             .withType(Type.LONG)
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
-            .withDefault(DEFAULT_SLEEP_TIME)
+            .withDefault(DEFAULT_SLEEP_TIME_MS)
             .withDescription(
                     "The amount of time that the connector will sleep after reading data from redo/archive logs and before starting reading data again. Value is in milliseconds.");
 
-    public static final Field LOG_MINING_SLEEP_TIME_MAX = Field.create("log.mining.sleep.time.max")
+    public static final Field LOG_MINING_SLEEP_TIME_MAX_MS = Field.create("log.mining.sleep.time.max.ms")
             .withDisplayName("Maximum sleep time in milliseconds when reading redo/archive logs.")
             .withType(Type.LONG)
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
-            .withDefault(MAX_SLEEP_TIME)
+            .withDefault(MAX_SLEEP_TIME_MS)
             .withDescription(
                     "The maximum amount of time that the connector will sleep after reading data from redo/archive logs and before starting reading data again. Value is in milliseconds.");
 
-    public static final Field LOG_MINING_SLEEP_TIME_INCREMENT = Field.create("log.mining.sleep.time.increment")
+    public static final Field LOG_MINING_SLEEP_TIME_INCREMENT_MS = Field.create("log.mining.sleep.time.increment.ms")
             .withDisplayName("The increment in sleep time in milliseconds used to tune auto-sleep behavior.")
             .withType(Type.LONG)
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
-            .withDefault(SLEEP_TIME_INCREMENT)
+            .withDefault(SLEEP_TIME_INCREMENT_MS)
             .withDescription(
                     "The maximum amount of time that the connector will use to tune the optimal sleep time when reading data from logminer. Value is in milliseconds.");
 
@@ -312,10 +312,10 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             LOG_MINING_BATCH_SIZE_DEFAULT,
             LOG_MINING_BATCH_SIZE_MIN,
             LOG_MINING_BATCH_SIZE_MAX,
-            LOG_MINING_SLEEP_TIME_DEFAULT,
-            LOG_MINING_SLEEP_TIME_MIN,
-            LOG_MINING_SLEEP_TIME_MAX,
-            LOG_MINING_SLEEP_TIME_INCREMENT);
+            LOG_MINING_SLEEP_TIME_DEFAULT_MS,
+            LOG_MINING_SLEEP_TIME_MIN_MS,
+            LOG_MINING_SLEEP_TIME_MAX_MS,
+            LOG_MINING_SLEEP_TIME_INCREMENT_MS);
 
     private final String databaseName;
     private final String pdbName;
@@ -390,7 +390,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                 CommonConnectorConfig.MAX_QUEUE_SIZE, CommonConnectorConfig.SNAPSHOT_DELAY_MS, CommonConnectorConfig.SNAPSHOT_FETCH_SIZE,
                 SNAPSHOT_ENHANCEMENT_TOKEN, LOG_MINING_HISTORY_RECORDER_CLASS, LOG_MINING_HISTORY_RETENTION, RAC_SYSTEM, RAC_NODES,
                 LOG_MINING_ARCHIVE_LOG_HOURS, LOG_MINING_BATCH_SIZE_DEFAULT, LOG_MINING_BATCH_SIZE_MIN, LOG_MINING_BATCH_SIZE_MAX,
-                LOG_MINING_SLEEP_TIME_DEFAULT, LOG_MINING_SLEEP_TIME_MIN, LOG_MINING_SLEEP_TIME_MAX, LOG_MINING_SLEEP_TIME_INCREMENT);
+                LOG_MINING_SLEEP_TIME_DEFAULT_MS, LOG_MINING_SLEEP_TIME_MIN_MS, LOG_MINING_SLEEP_TIME_MAX_MS, LOG_MINING_SLEEP_TIME_INCREMENT_MS);
 
         return config;
     }
@@ -806,32 +806,32 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
      * 
      * @return int The minimum sleep time used when mining redo/archive logs
      */
-    public int getLogMiningSleepTimeMin() {
-        return getConfig().getInteger(LOG_MINING_SLEEP_TIME_MIN);
+    public Duration getLogMiningSleepTimeMin() {
+        return Duration.ofMillis(getConfig().getInteger(LOG_MINING_SLEEP_TIME_MIN_MS));
     }
 
     /**
      * 
      * @return int The maximum sleep time used when mining redo/archive logs
      */
-    public int getLogMiningSleepTimeMax() {
-        return getConfig().getInteger(LOG_MINING_SLEEP_TIME_MAX);
+    public Duration getLogMiningSleepTimeMax() {
+        return Duration.ofMillis(getConfig().getInteger(LOG_MINING_SLEEP_TIME_MAX_MS));
     }
 
     /**
      * 
      * @return int The default sleep time used when mining redo/archive logs
      */
-    public int getLogMiningSleepTimeDefault() {
-        return getConfig().getInteger(LOG_MINING_SLEEP_TIME_DEFAULT);
+    public Duration getLogMiningSleepTimeDefault() {
+        return Duration.ofMillis(getConfig().getInteger(LOG_MINING_SLEEP_TIME_DEFAULT_MS));
     }
 
     /**
      * 
      * @return int The increment in sleep time when doing auto-tuning while mining redo/archive logs
      */
-    public int getLogMiningSleepTimeIncrement() {
-        return getConfig().getInteger(LOG_MINING_SLEEP_TIME_INCREMENT);
+    public Duration getLogMiningSleepTimeIncrement() {
+        return Duration.ofMillis(getConfig().getInteger(LOG_MINING_SLEEP_TIME_INCREMENT_MS));
     }
 
     /**
