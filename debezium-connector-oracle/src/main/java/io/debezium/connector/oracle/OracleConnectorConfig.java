@@ -54,6 +54,10 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     public static final Field PORT = RelationalDatabaseConnectorConfig.PORT
             .withDefault(DEFAULT_PORT);
 
+    public static final Field HOSTNAME = RelationalDatabaseConnectorConfig.HOSTNAME
+            .withNoValidation()
+            .withValidation(OracleConnectorConfig::requiredWhenNoUrl);
+
     public static final Field PDB_NAME = Field.create(DATABASE_CONFIG_PREFIX + "pdb.name")
             .withDisplayName("PDB name")
             .withType(Type.STRING)
@@ -188,7 +192,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
      * The set of {@link Field}s defined as part of this configuration.
      */
     public static Field.Set ALL_FIELDS = Field.setOf(
-            RelationalDatabaseConnectorConfig.HOSTNAME,
+            HOSTNAME,
             PORT,
             RelationalDatabaseConnectorConfig.USER,
             RelationalDatabaseConnectorConfig.PASSWORD,
@@ -279,7 +283,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     public static ConfigDef configDef() {
         ConfigDef config = new ConfigDef();
 
-        Field.group(config, "Oracle", RelationalDatabaseConnectorConfig.HOSTNAME, PORT, RelationalDatabaseConnectorConfig.USER, RelationalDatabaseConnectorConfig.PASSWORD, SERVER_NAME, RelationalDatabaseConnectorConfig.DATABASE_NAME, PDB_NAME,
+        Field.group(config, "Oracle", HOSTNAME, PORT, RelationalDatabaseConnectorConfig.USER,
+                RelationalDatabaseConnectorConfig.PASSWORD, SERVER_NAME, RelationalDatabaseConnectorConfig.DATABASE_NAME, PDB_NAME,
                 XSTREAM_SERVER_NAME, SNAPSHOT_MODE, CONNECTOR_ADAPTER, LOG_MINING_STRATEGY, URL);
         Field.group(config, "History Storage", KafkaDatabaseHistory.BOOTSTRAP_SERVERS,
                 KafkaDatabaseHistory.TOPIC, KafkaDatabaseHistory.RECOVERY_POLL_ATTEMPTS,
