@@ -119,6 +119,12 @@ public class SchemaChangeEvent {
                 + ", type=" + type + "]";
     }
 
+    /**
+     * Type describing the content of the event.
+     * CREATE, ALTER, DROP - corresponds to table operations
+     * DATABASE - an event common to the database, like CREATE/DROP DATABASE or SET...
+     * RAW - the event that contains only raw SQL statement not processed by the parser
+     */
     public static enum SchemaChangeEventType {
         CREATE,
         ALTER,
