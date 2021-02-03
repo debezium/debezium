@@ -46,8 +46,8 @@ import net.sf.jsqlparser.statement.update.Update;
 
 /**
  * This class does parsing of simple DML: insert, update, delete.
- * Log Miner supplies very simple syntax , that this parser should be sufficient to parse those.
- * It does no support joins, merge, sub-selects and other complicated cases, which should be OK for Log Miner case
+ * LogMiner supplies very simple syntax , that this parser should be sufficient to parse those.
+ * It does no support joins, merge, sub-selects and other complicated cases, which should be OK for LogMiner case
  */
 public class SimpleDmlParser {
 

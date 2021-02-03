@@ -53,7 +53,7 @@ public class SqlUtils {
     private static final String LOGMNR_CONTENTS_VIEW = "V$LOGMNR_CONTENTS";
     private static final String ALL_LOG_GROUPS = "ALL_LOG_GROUPS";
 
-    // log miner statements
+    // LogMiner statements
     static final String BUILD_DICTIONARY = "BEGIN DBMS_LOGMNR_D.BUILD (options => DBMS_LOGMNR_D.STORE_IN_REDO_LOGS); END;";
     static final String CURRENT_TIMESTAMP = "SELECT CURRENT_TIMESTAMP FROM DUAL";
     static final String END_LOGMNR = "BEGIN SYS.DBMS_LOGMNR.END_LOGMNR(); END;";
@@ -171,9 +171,9 @@ public class SqlUtils {
                 "AND STATUS = 'A' AND NEXT_CHANGE# > %s ORDER BY 2", ARCHIVED_LOG_VIEW, scn);
     }
 
-    // ***** log miner methods ***
+    // ***** LogMiner methods ***
     /**
-     * This returns statement to build log miner view for online redo log files
+     * This returns statement to build LogMiner view for online redo log files
      * @param startScn mine from
      * @param endScn mine till
      * @param strategy Log Mining strategy
@@ -199,7 +199,7 @@ public class SqlUtils {
     }
 
     /**
-     * This is the query from the log miner view to get changes. Columns of the view we using are:
+     * This is the query from the LogMiner view to get changes. Columns of the view we using are:
      * NOTE. Currently we do not capture changes from other schemas
      * SCN - The SCN at which a change was made
      * COMMIT_SCN - The SCN at which a change was committed

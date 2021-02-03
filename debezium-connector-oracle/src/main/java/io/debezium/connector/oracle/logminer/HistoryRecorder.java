@@ -18,7 +18,7 @@ public interface HistoryRecorder extends AutoCloseable {
     /**
      * Prepares the history recorder
      *
-     * @param metrics the log miner jmx metrics
+     * @param metrics the LogMiner jmx metrics
      * @param jdbcConfiguration the jdbc configuration
      * @param retentionHours the history retention hours
      */

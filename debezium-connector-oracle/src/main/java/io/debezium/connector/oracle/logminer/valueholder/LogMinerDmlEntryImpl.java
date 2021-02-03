@@ -13,7 +13,7 @@ import io.debezium.connector.oracle.logminer.Scn;
 import io.debezium.data.Envelope;
 
 /**
- * This class holds one parsed DML Log Miner record details
+ * This class holds one parsed DML LogMiner record details
  *
  */
 public class LogMinerDmlEntryImpl implements LogMinerDmlEntry {

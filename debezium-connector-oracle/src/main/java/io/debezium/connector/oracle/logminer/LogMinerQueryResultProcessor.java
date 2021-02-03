@@ -71,7 +71,7 @@ class LogMinerQueryResultProcessor {
 
     /**
      * This method does all the job
-     * @param resultSet the info from Log Miner view
+     * @param resultSet the info from LogMiner view
      * @return number of processed DMLs from the given resultSet
      */
     int processResult(ResultSet resultSet) {
@@ -141,7 +141,7 @@ class LogMinerQueryResultProcessor {
 
             // DDL
             if (operationCode == RowMapper.DDL) {
-                // todo: DDL operations are not yet supported during streaming while using Log Miner.
+                // todo: DDL operations are not yet supported during streaming while using LogMiner.
                 historyRecorder.record(scn, tableName, segOwner, operationCode, changeTime, txId, 0, redoSql);
                 LOGGER.info("DDL: {}, REDO_SQL: {}", logMessage, redoSql);
                 continue;

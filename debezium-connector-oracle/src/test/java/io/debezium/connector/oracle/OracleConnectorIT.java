@@ -696,7 +696,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-800")
-    @SkipWhenAdapterNameIs(value = SkipWhenAdapterNameIs.AdapterName.LOGMINER, reason = "Log Miner does not yet support DDL during streaming")
+    @SkipWhenAdapterNameIs(value = SkipWhenAdapterNameIs.AdapterName.LOGMINER, reason = "LogMiner does not yet support DDL during streaming")
     public void shouldReceiveHeartbeatAlsoWhenChangingTableIncludeListTables() throws Exception {
         TestHelper.dropTable(connection, "debezium.dbz800a");
         TestHelper.dropTable(connection, "debezium.dbz800b");

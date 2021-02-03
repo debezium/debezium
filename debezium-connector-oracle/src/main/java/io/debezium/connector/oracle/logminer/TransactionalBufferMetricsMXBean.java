@@ -76,14 +76,14 @@ public interface TransactionalBufferMetricsMXBean {
     long getLagFromSource();
 
     /**
-     * This is to get max value of the time difference between logging of source DB records into redo log and capturing it by Log Miner
+     * This is to get max value of the time difference between logging of source DB records into redo log and capturing it by LogMiner
      *
      * @return value in milliseconds
      */
     long getMaxLagFromSource();
 
     /**
-     * This is to get min value of the time difference between logging of source DB records into redo log and capturing it by Log Miner
+     * This is to get min value of the time difference between logging of source DB records into redo log and capturing it by LogMiner
      *
      * @return value in milliseconds
      */

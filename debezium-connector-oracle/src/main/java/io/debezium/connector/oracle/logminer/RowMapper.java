@@ -134,7 +134,7 @@ public class RowMapper {
 
     /**
      * It constructs REDO_SQL. If REDO_SQL  is in a few lines, it truncates after first 40_000 characters
-     * It also records Log Miner history info if isDml is true
+     * It also records LogMiner history info if isDml is true
      *
      * @param metrics metrics
      * @param rs result set
@@ -189,7 +189,7 @@ public class RowMapper {
     }
 
     private static void logError(TransactionalBufferMetrics metrics, SQLException e, String s) {
-        LogMinerHelper.logError(metrics, "Cannot get {}. This entry from log miner will be lost due to the {}", s, e);
+        LogMinerHelper.logError(metrics, "Cannot get {}. This entry from LogMiner will be lost due to the {}", s, e);
     }
 
     public static TableId getTableId(String catalogName, ResultSet rs) throws SQLException {

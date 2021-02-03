@@ -604,14 +604,14 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     public enum LogMiningStrategy implements EnumeratedValue {
 
         /**
-         * This strategy uses Log Miner with data dictionary in online catalog.
+         * This strategy uses LogMiner with data dictionary in online catalog.
          * This option will not capture DDL , but acts fast on REDO LOG switch events
          * This option does not use CONTINUOUS_MINE option
          */
         ONLINE_CATALOG("online_catalog"),
 
         /**
-         * This strategy uses Log Miner with data dictionary in REDO LOG files.
+         * This strategy uses LogMiner with data dictionary in REDO LOG files.
          * This option will capture DDL, but will develop some lag on REDO LOG switch event and will eventually catch up
          * This option does not use CONTINUOUS_MINE option
          * This is default value

@@ -43,18 +43,18 @@ public interface LogMinerMetricsMXBean {
     long getTotalCapturedDmlCount();
 
     /**
-     * @return average duration of Log Miner view query
+     * @return average duration of LogMiner view query
      */
     Long getMaxDurationOfFetchingQuery();
 
     /**
-     * Log Miner view query returns number of captured DML , Commit and Rollback. This is what we call a batch.
+     * LogMiner view query returns number of captured DML , Commit and Rollback. This is what we call a batch.
      * @return duration of the last batch fetching
      */
     Long getLastDurationOfFetchingQuery();
 
     /**
-     * Log Miner view query returns number of captured DML , Commit and Rollback. This is what we call a batch.
+     * LogMiner view query returns number of captured DML , Commit and Rollback. This is what we call a batch.
      * @return number of all processed batches
      */
     long getFetchingQueryCount();
@@ -75,26 +75,26 @@ public interface LogMinerMetricsMXBean {
     int getLastCapturedDmlCount();
 
     /**
-     * Maximum number of entries in Log Miner view to fetch. This is used to set the diapason of the SCN in mining query.
+     * Maximum number of entries in LogMiner view to fetch. This is used to set the diapason of the SCN in mining query.
      * If difference between "start SCN" and "end SCN" to mine exceeds this limit, end SCN will be set to "start SCN" + batchSize
      * @return the limit
      */
     int getBatchSize();
 
     /**
-     * this gives ability to manipulate number of entries in Log Miner view to fetch.
+     * this gives ability to manipulate number of entries in LogMiner view to fetch.
      * It has limits to prevent abnormal values
      * @param size limit
      */
     void setBatchSize(int size);
 
     /**
-     * @return number of milliseconds for connector to sleep before fetching another batch from the Log Miner view
+     * @return number of milliseconds for connector to sleep before fetching another batch from the LogMiner view
      */
     long getMillisecondToSleepBetweenMiningQuery();
 
     /**
-     * sets number of milliseconds for connector to sleep before fetching another batch from the Log Miner view
+     * sets number of milliseconds for connector to sleep before fetching another batch from the LogMiner view
      * @param milliseconds to sleep
      */
     void setMillisecondToSleepBetweenMiningQuery(Integer milliseconds);

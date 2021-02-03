@@ -25,7 +25,7 @@ import io.debezium.text.ParsingException;
  * For the original query:
  * update debezium set test = '7' where test1 = '6' (let's assume we have 3 records with such value)
  *
- * logMiner with supply:
+ * LogMiner with supply:
  *
  * update "debezium" set "TEST" = '7' where "DUMMY" = '1' and "TEST" = '2' and "TEST1" = '6' and "TEST2" = '1'
  * update "debezium" set "TEST" = '7' where "DUMMY" = '2' and "TEST" = '2' and "TEST1" = '6' and "TEST2" = '1'

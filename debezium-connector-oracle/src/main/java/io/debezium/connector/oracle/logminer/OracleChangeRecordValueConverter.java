@@ -56,7 +56,7 @@ import oracle.sql.TIMESTAMPTZ;
 
 /**
  * This class is used as a value converter by the DML parser.
- * todo this class is a replica of OracleValueConverters which is used by XStream and Logminer for snapshot mode
+ * todo this class is a replica of OracleValueConverters which is used by XStream and LogMiner for snapshot mode
  */
 public class OracleChangeRecordValueConverter extends JdbcValueConverters {
 

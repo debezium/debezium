@@ -39,7 +39,7 @@ import io.debezium.util.Clock;
 import io.debezium.util.Metronome;
 
 /**
- * This class contains methods to configure and manage Log Miner utility
+ * This class contains methods to configure and manage LogMiner utility
  */
 public class LogMinerHelper {
 
@@ -87,7 +87,7 @@ public class LogMinerHelper {
      * This call may take time, which leads to delay in delivering incremental changes.
      * With this option the lag between source database and dispatching event fluctuates.
      *
-     * @param connection connection to the database as log miner user (connection to the container)
+     * @param connection connection to the database as LogMiner user (connection to the container)
      * @throws SQLException any exception
      */
     static void buildDataDictionary(Connection connection) throws SQLException {
@@ -158,7 +158,7 @@ public class LogMinerHelper {
 
     /**
      * This method returns next SCN for mining  and also updates MBean metrics
-     * We use a configurable limit, because the larger mining range, the slower query from Log Miner content view.
+     * We use a configurable limit, because the larger mining range, the slower query from LogMiner content view.
      * In addition capturing unlimited number of changes can blow up Java heap.
      * Gradual querying helps to catch up faster after long delays in mining.
      *
@@ -267,7 +267,7 @@ public class LogMinerHelper {
                     logLogMinerLogEntries(connection);
                 }
                 catch (SQLException e2) {
-                    LOGGER.error("Failed to capture logminer log entries", e2);
+                    LOGGER.error("Failed to capture LogMiner log entries", e2);
                 }
             }
             throw e;
@@ -432,7 +432,7 @@ public class LogMinerHelper {
     /**
      * This method validates the supplemental logging configuration for the source database.
      *
-     * @param connection oracle connection on logminer level
+     * @param connection oracle connection on LogMiner level
      * @param pdbName pdb name
      * @param schema oracle schema
      * @throws SQLException if anything unexpected happens
@@ -470,7 +470,7 @@ public class LogMinerHelper {
     }
 
     /**
-     * This call completes log miner session.
+     * This call completes LogMiner session.
      * Complete gracefully.
      *
      * @param connection container level database connection
@@ -482,10 +482,10 @@ public class LogMinerHelper {
         }
         catch (SQLException e) {
             if (e.getMessage().toUpperCase().contains("ORA-01307")) {
-                LOGGER.info("Log Miner session was already closed");
+                LOGGER.info("LogMiner session was already closed");
             }
             else {
-                LOGGER.error("Cannot close Log Miner session gracefully: {}", e);
+                LOGGER.error("Cannot close LogMiner session gracefully: {}", e);
             }
         }
     }
@@ -605,7 +605,7 @@ public class LogMinerHelper {
     }
 
     private static void logLogMinerLogEntries(Connection connection) throws SQLException {
-        LOGGER.debug("Log entries registered with Logminer are:");
+        LOGGER.debug("Log entries registered with LogMiner are:");
         try (PreparedStatement statement = connection.prepareStatement("SELECT * FROM V$LOGMNR_LOGS"); ResultSet rs = statement.executeQuery()) {
             while (rs.next()) {
                 Long logId = rs.getLong("LOG_ID");

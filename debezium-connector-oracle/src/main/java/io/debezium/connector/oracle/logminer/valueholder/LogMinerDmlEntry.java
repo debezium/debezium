@@ -33,7 +33,7 @@ public interface LogMinerDmlEntry {
     Envelope.Operation getCommandType();
 
     /**
-     * the scn obtained from a Log Miner entry.
+     * the scn obtained from a LogMiner entry.
      * This SCN is not a final SCN, just a candidate.
      * The actual SCN will be assigned after commit
      * @return it's value
@@ -61,7 +61,7 @@ public interface LogMinerDmlEntry {
     Timestamp getSourceTime();
 
     /**
-     * sets scn obtained from a Log Miner entry
+     * sets scn obtained from a LogMiner entry
      * @param scn it's value
      */
     void setScn(Scn scn);

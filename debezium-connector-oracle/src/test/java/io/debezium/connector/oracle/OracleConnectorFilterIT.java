@@ -121,7 +121,7 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
     }
 
     @Test
-    @SkipWhenAdapterNameIs(value = SkipWhenAdapterNameIs.AdapterName.LOGMINER, reason = "Log Miner does not support DDL during streaming")
+    @SkipWhenAdapterNameIs(value = SkipWhenAdapterNameIs.AdapterName.LOGMINER, reason = "LogMiner does not support DDL during streaming")
     public void shouldApplyTableWhitelistConfiguration() throws Exception {
         Configuration config = TestHelper.defaultConfig()
                 .with(
@@ -175,7 +175,7 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
     }
 
     @Test
-    @SkipWhenAdapterNameIs(value = SkipWhenAdapterNameIs.AdapterName.LOGMINER, reason = "Log Miner does not support DDL during streaming")
+    @SkipWhenAdapterNameIs(value = SkipWhenAdapterNameIs.AdapterName.LOGMINER, reason = "LogMiner does not support DDL during streaming")
     public void shouldApplyTableIncludeListConfiguration() throws Exception {
         Configuration config = TestHelper.defaultConfig()
                 .with(
@@ -229,7 +229,7 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
     }
 
     @Test
-    @SkipWhenAdapterNameIs(value = SkipWhenAdapterNameIs.AdapterName.LOGMINER, reason = "Log Miner does not support DDL during streaming")
+    @SkipWhenAdapterNameIs(value = SkipWhenAdapterNameIs.AdapterName.LOGMINER, reason = "LogMiner does not support DDL during streaming")
     public void shouldApplyTableBlacklistConfiguration() throws Exception {
         Configuration config = TestHelper.defaultConfig()
                 .with(
@@ -283,7 +283,7 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
     }
 
     @Test
-    @SkipWhenAdapterNameIs(value = SkipWhenAdapterNameIs.AdapterName.LOGMINER, reason = "Log Miner does not support DDL during streaming")
+    @SkipWhenAdapterNameIs(value = SkipWhenAdapterNameIs.AdapterName.LOGMINER, reason = "LogMiner does not support DDL during streaming")
     public void shouldApplyTableExcludeListConfiguration() throws Exception {
         Configuration config = TestHelper.defaultConfig()
                 .with(
