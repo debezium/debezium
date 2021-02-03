@@ -65,6 +65,21 @@ public class MySqlAntlrDdlParserTest {
     }
 
     @Test
+    @FixFor("DBZ-3020")
+    public void shouldProcessExpressionWithDefault() {
+        String ddl = "create table rack_shelf_bin ( id int unsigned not null auto_increment unique primary key, bin_volume decimal(20, 4) default (bin_len * bin_width * bin_height));";
+        parser.parse(ddl, tables);
+        assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
+        assertThat(tables.size()).isEqualTo(1);
+
+        Table table = tables.forTable(null, null, "rack_shelf_bin");
+        assertThat(table.columns()).hasSize(2);
+        // The default value is computed for column dynamically so we set default to null
+        assertThat(table.columnWithName("bin_volume").hasDefaultValue()).isTrue();
+        assertThat(table.columnWithName("bin_volume").defaultValue()).isNull();
+    }
+
+    @Test
     @FixFor("DBZ-2821")
     public void shouldAllowCharacterVarying() {
         String ddl = "CREATE TABLE char_table (c1 CHAR VARYING(10), c2 CHARACTER VARYING(10), c3 NCHAR VARYING(10))";

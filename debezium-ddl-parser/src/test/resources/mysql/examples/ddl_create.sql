@@ -38,6 +38,7 @@ CREATE TABLE staff (PRIMARY KEY (staff_num), staff_num INT(5) NOT NULL, first_na
 create table column_names_as_aggr_funcs(min varchar(100), max varchar(100), sum varchar(100), count varchar(100));
 CREATE TABLE char_table (c1 CHAR VARYING(10), c2 CHARACTER VARYING(10), c3 NCHAR VARYING(10));
 CREATE TABLE generated_persistent(id int NOT NULL AUTO_INCREMENT, ip_hash char(64) AS (SHA2(CONCAT(`token`, COALESCE(`ip`, "")), 256)) PERSISTENT, persistent int, PRIMARY KEY (`id`), UNIQUE KEY `token_and_ip_hash` (`ip_hash`)) ENGINE=InnoDB;
+create table rack_shelf_bin ( id int unsigned not null auto_increment unique primary key, bin_volume decimal(20, 4) default (bin_len * bin_width * bin_height));
 #end
 #begin
 -- Rename table
