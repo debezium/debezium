@@ -42,3 +42,5 @@ SELECT 'Aleem' UNION ALL SELECT 'Latif' UNION ALL SELECT 'Mughal';
 insert into t values ('кириллица', 2, 3);
 insert INTO `wptests_posts` (`post_author`, `post_date`, `post_date_gmt`, `post_content`, `post_content_filtered`, `post_title`, `post_excerpt`, `post_status`, `post_type`, `comment_status`, `ping_status`, `post_password`, `post_name`, `to_ping`, `pinged`, `post_modified`, `post_modified_gmt`, `post_parent`, `menu_order`, `post_mime_type`, `guid`) VALUES (7, '2016-09-06 16:49:51', '2016-09-06 16:49:51', '', '', 'صورة', '', 'inherit', 'attachment', 'open', 'closed', '', '%d8%b5%d9%88%d8%b1%d8%a9', '', '', '2016-09-06 16:49:51', '2016-09-06 16:49:51', 0, 0, 'image/jpeg', '');
 #end
+insert into sql_log values(retGUID,log_type,log_text,0,0,current_user,now());
+insert into sql_log values(retGUID,log_type,log_text,0,0,current_user(),now());
