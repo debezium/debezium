@@ -50,7 +50,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     public static final String DATABASE_CONFIG_PREFIX = "database.";
 
     protected static final int DEFAULT_PORT = 1528;
-    
+
     protected static final int DEFAULT_VIEW_FETCH_SIZE = 10_000;
 
     protected final static int DEFAULT_BATCH_SIZE = 20_000;
