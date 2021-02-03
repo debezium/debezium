@@ -18,8 +18,8 @@ import org.apache.kafka.connect.errors.ConnectException;
 
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.config.Configuration;
-import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SnapshotRecord;
+import io.debezium.connector.common.BaseSourceInfo;
 import io.debezium.data.Envelope;
 import io.debezium.document.Document;
 import io.debezium.relational.TableId;
@@ -95,7 +95,7 @@ import io.debezium.util.Collect;
  * @author Randall Hauch
  */
 @NotThreadSafe
-final class SourceInfo extends AbstractSourceInfo {
+public final class SourceInfo extends BaseSourceInfo {
 
     // Avro Schema doesn't allow "-" to be included as field name, use "_" instead.
     // Ref https://issues.apache.org/jira/browse/AVRO-838.
@@ -134,7 +134,7 @@ final class SourceInfo extends AbstractSourceInfo {
     private int restartRowsToSkip = 0;
     private boolean inTransaction = false;
     private long serverId = 0;
-    private long binlogTimestampSeconds = 0;
+    private Instant sourceTime = null;
     private long threadId = -1L;
     private final Map<String, String> sourcePartition;
     private boolean lastSnapshot = true;
@@ -146,12 +146,14 @@ final class SourceInfo extends AbstractSourceInfo {
     private String tableExcludeList;
     private Set<TableId> tableIds;
     private String databaseName;
+    private final boolean legacy;
 
     public SourceInfo(MySqlConnectorConfig connectorConfig) {
         super(connectorConfig);
 
         this.sourcePartition = Collect.hashMapOf(SERVER_PARTITION_KEY, connectorConfig.getLogicalName());
         this.tableIds = new HashSet<>();
+        this.legacy = connectorConfig.legacy();
     }
 
     /**
@@ -272,8 +274,8 @@ final class SourceInfo extends AbstractSourceInfo {
         if (rowsToSkip != 0) {
             map.put(BINLOG_ROW_IN_EVENT_OFFSET_KEY, rowsToSkip);
         }
-        if (binlogTimestampSeconds != 0) {
-            map.put(TIMESTAMP_KEY, binlogTimestampSeconds);
+        if (sourceTime != null) {
+            map.put(TIMESTAMP_KEY, sourceTime.getEpochSecond());
         }
         if (isSnapshotInEffect()) {
             map.put(SNAPSHOT_KEY, true);
@@ -396,7 +398,11 @@ final class SourceInfo extends AbstractSourceInfo {
      * @param timestampInSeconds the timestamp in <em>seconds</em> found within the binary log file
      */
     public void setBinlogTimestampSeconds(long timestampInSeconds) {
-        this.binlogTimestampSeconds = timestampInSeconds;
+        this.sourceTime = Instant.ofEpochSecond(timestampInSeconds);
+    }
+
+    public void setSourceTime(Instant timestamp) {
+        sourceTime = timestamp;
     }
 
     /**
@@ -642,6 +648,7 @@ final class SourceInfo extends AbstractSourceInfo {
     String table() {
         return tableIds.isEmpty() ? null
                 : tableIds.stream()
+                        .filter(x -> x != null)
                         .map(TableId::table)
                         .collect(Collectors.joining(","));
     }
@@ -663,7 +670,7 @@ final class SourceInfo extends AbstractSourceInfo {
     }
 
     long getBinlogTimestampSeconds() {
-        return binlogTimestampSeconds;
+        return (sourceTime == null) ? 0 : sourceTime.getEpochSecond();
     }
 
     int getCurrentRowNumber() {
@@ -848,19 +855,29 @@ final class SourceInfo extends AbstractSourceInfo {
 
     @Override
     protected Instant timestamp() {
-        return Instant.ofEpochSecond(getBinlogTimestampSeconds());
+        return sourceTime;
     }
 
     @Override
     protected SnapshotRecord snapshot() {
-        if (isSnapshotInEffect()) {
-            return SnapshotRecord.TRUE;
+        if (legacy) {
+            if (isSnapshotInEffect()) {
+                return SnapshotRecord.TRUE;
+            }
+            return SnapshotRecord.FALSE;
         }
-        return SnapshotRecord.FALSE;
+        return super.snapshot();
     }
 
     @Override
     protected String database() {
-        return tableIds.isEmpty() ? databaseName : tableIds.iterator().next().catalog();
+        if (tableIds == null || tableIds.isEmpty()) {
+            return databaseName;
+        }
+        final TableId tableId = tableIds.iterator().next();
+        if (tableId == null) {
+            return databaseName;
+        }
+        return tableId.catalog();
     }
 }

@@ -40,6 +40,7 @@ import io.debezium.connector.mysql.MySQLConnection.MySqlVersion;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotLockingMode;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
+import io.debezium.connector.mysql.legacy.Filters;
 import io.debezium.converters.CloudEventsConverterTest;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
@@ -455,6 +456,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
             }
         }
 
+        // Testing.Print.enable();
         // And consume the one insert ...
         records = consumeRecordsByTopic(1);
         assertThat(records.recordsForTopic(DATABASE.topicForTable("products")).size()).isEqualTo(1);
@@ -462,7 +464,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         inserts = records.recordsForTopic(DATABASE.topicForTable("products"));
         assertInsert(inserts.get(0), "id", 1001);
 
-        // Testing.print("*** Done with simple insert");
+        Testing.print("*** Done with simple insert");
 
         // ---------------------------------------------------------------------------------------------------------------
         // Changing the primary key of a row should result in 3 events: INSERT, DELETE, and TOMBSTONE
@@ -955,7 +957,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
             }
         }
 
-        SourceRecords records = consumeRecordsByTopic(16);
+        SourceRecords records = consumeRecordsByTopic(15);
         final List<SourceRecord> migrationTestRecords = records.recordsForTopic(DATABASE.topicForTable("migration_test"));
         assertThat(migrationTestRecords.size()).isEqualTo(1);
         final SourceRecord record = migrationTestRecords.get(0);
@@ -1495,6 +1497,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // Start the connector ...
         start(MySqlConnector.class, config);
 
+        // Testing.Print.enable();
         // ---------------------------------------------------------------------------------------------------------------
         // Consume all of the events due to startup and initialization of the database
         // ---------------------------------------------------------------------------------------------------------------
@@ -2222,7 +2225,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
     }
 
     private void waitForStreamingRunning(String serverName) throws InterruptedException {
-        waitForStreamingRunning("mysql", serverName, "binlog");
+        waitForStreamingRunning("mysql", serverName, "streaming");
     }
 
     private List<SourceRecord> recordsForTopicForRoProductsTable(SourceRecords records) {
@@ -2243,6 +2246,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // ---------------------------------------------------------------------------------------------------------------
         // Consume all of the events due to startup and initialization of the database
         // ---------------------------------------------------------------------------------------------------------------
+        // Testing.Print.enable();
         SourceRecords records = consumeRecordsByTopic(INITIAL_EVENT_COUNT); // 6 DDL changes
         assertThat(records.recordsForTopic(DATABASE.topicForTable("orders")).size()).isEqualTo(5);
 
@@ -2270,7 +2274,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
                 connection.execute("UPDATE orders SET quantity=5 WHERE order_number=10004");
             }
         }
-        records = consumeRecordsByTopic(5);
+        records = consumeRecordsByTopic(1);
         updates = records.recordsForTopic(DATABASE.topicForTable("orders"));
         assertThat(updates.size()).isEqualTo(1);
 

@@ -6,6 +6,7 @@
 package io.debezium.pipeline;
 
 import java.time.temporal.ChronoUnit;
+import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -260,27 +261,33 @@ public class EventDispatcher<T extends DataCollectionId> {
     }
 
     public void dispatchSchemaChangeEvent(T dataCollectionId, SchemaChangeEventEmitter schemaChangeEventEmitter) throws InterruptedException {
-        if (!filter.isIncluded(dataCollectionId)) {
-            LOGGER.trace("Filtering schema change event for {}", dataCollectionId);
-            return;
+        if (dataCollectionId != null && !filter.isIncluded(dataCollectionId)) {
+            if (historizedSchema == null || historizedSchema.storeOnlyMonitoredTables()) {
+                LOGGER.trace("Filtering schema change event for {}", dataCollectionId);
+                return;
+            }
         }
-
         schemaChangeEventEmitter.emitSchemaChangeEvent(new SchemaChangeEventReceiver());
     }
 
-    public void dispatchSchemaChangeEvent(List<T> dataCollectionIds, SchemaChangeEventEmitter schemaChangeEventEmitter) throws InterruptedException {
+    public void dispatchSchemaChangeEvent(Collection<T> dataCollectionIds, SchemaChangeEventEmitter schemaChangeEventEmitter) throws InterruptedException {
         boolean anyNonfilteredEvent = false;
-        for (T dataCollectionId : dataCollectionIds) {
-            if (filter.isIncluded(dataCollectionId)) {
-                anyNonfilteredEvent = true;
-                break;
+        if (dataCollectionIds == null || dataCollectionIds.isEmpty()) {
+            anyNonfilteredEvent = true;
+        }
+        else {
+            for (T dataCollectionId : dataCollectionIds) {
+                if (filter.isIncluded(dataCollectionId)) {
+                    anyNonfilteredEvent = true;
+                    break;
+                }
             }
         }
         if (!anyNonfilteredEvent) {
-            if (LOGGER.isTraceEnabled()) {
+            if (historizedSchema == null || historizedSchema.storeOnlyMonitoredTables()) {
                 LOGGER.trace("Filtering schema change event for {}", dataCollectionIds);
+                return;
             }
-            return;
         }
 
         schemaChangeEventEmitter.emitSchemaChangeEvent(new SchemaChangeEventReceiver());

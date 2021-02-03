@@ -15,7 +15,8 @@ import com.github.shyiko.mysql.binlog.event.Event;
 import com.github.shyiko.mysql.binlog.event.EventType;
 import com.github.shyiko.mysql.binlog.event.QueryEventData;
 
-import io.debezium.connector.mysql.BinlogReader.BinlogPosition;
+import io.debezium.connector.mysql.MySqlStreamingChangeEventSource.BinlogPosition;
+import io.debezium.pipeline.source.spi.ChangeEventSource.ChangeEventSourceContext;
 
 /**
  * This class represents a look-ahead buffer that allows Debezium to accumulate binlog events and decide
@@ -47,8 +48,9 @@ class EventBuffer {
 
     private final int capacity;
     private final Queue<Event> buffer;
-    private final BinlogReader reader;
+    private final MySqlStreamingChangeEventSource streamingChangeEventSource;
     private boolean txStarted = false;
+    private final ChangeEventSourceContext changeEventSourceContext;
 
     /**
      * Contains the position of the first event that has not fit into the buffer.
@@ -61,10 +63,11 @@ class EventBuffer {
      */
     private BinlogPosition forwardTillPosition;
 
-    public EventBuffer(int capacity, BinlogReader reader) {
+    public EventBuffer(int capacity, MySqlStreamingChangeEventSource streamingChangeEventSource, ChangeEventSourceContext changeEventSourceContext) {
         this.capacity = capacity;
         this.buffer = new ArrayBlockingQueue<>(capacity);
-        this.reader = reader;
+        this.streamingChangeEventSource = streamingChangeEventSource;
+        this.changeEventSourceContext = changeEventSourceContext;
     }
 
     /**
@@ -80,12 +83,12 @@ class EventBuffer {
         // buffer was full and the end of the TX; in this case there's nothing to do
         // besides directly emitting the events
         if (isReplayingEventsBeyondBufferCapacity()) {
-            reader.handleEvent(event);
+            streamingChangeEventSource.handleEvent(event);
             return;
         }
 
         if (event.getHeader().getEventType() == EventType.QUERY) {
-            QueryEventData command = reader.unwrapData(event);
+            QueryEventData command = streamingChangeEventSource.unwrapData(event);
             LOGGER.debug("Received query command: {}", event);
             String sql = command.getSql().trim();
             if (sql.equalsIgnoreCase("BEGIN")) {
@@ -114,7 +117,7 @@ class EventBuffer {
      */
     private boolean isReplayingEventsBeyondBufferCapacity() {
         if (forwardTillPosition != null) {
-            if (forwardTillPosition.equals(reader.getCurrentBinlogPosition())) {
+            if (forwardTillPosition.equals(streamingChangeEventSource.getCurrentBinlogPosition())) {
                 forwardTillPosition = null;
             }
             return true;
@@ -141,9 +144,9 @@ class EventBuffer {
     }
 
     private void switchToBufferFullMode() {
-        largeTxNotBufferedPosition = reader.getCurrentBinlogPosition();
+        largeTxNotBufferedPosition = streamingChangeEventSource.getCurrentBinlogPosition();
         LOGGER.info("Buffer full, will need to re-read part of the transaction from binlog from {}", largeTxNotBufferedPosition);
-        reader.getMetrics().onLargeTransaction();
+        streamingChangeEventSource.getMetrics().onLargeTransaction();
         // Position for TABLE_MAP is not stored by com.github.shyiko.mysql.binlog.BinaryLogClient.updateClientBinlogFilenameAndPosition(Event)
         if (buffer.peek().getHeader().getEventType() == EventType.TABLE_MAP) {
             buffer.remove();
@@ -159,7 +162,7 @@ class EventBuffer {
             addToBuffer(event);
         }
         else {
-            reader.handleEvent(event);
+            streamingChangeEventSource.handleEvent(event);
         }
     }
 
@@ -192,16 +195,16 @@ class EventBuffer {
         }
         LOGGER.debug("Executing events from buffer");
         for (Event e : buffer) {
-            reader.handleEvent(e);
+            streamingChangeEventSource.handleEvent(e);
         }
         LOGGER.debug("Executing events from binlog that have not fit into buffer");
         if (isInBufferFullMode()) {
-            forwardTillPosition = reader.getCurrentBinlogPosition();
-            reader.rewindBinaryLogClient(largeTxNotBufferedPosition);
+            forwardTillPosition = streamingChangeEventSource.getCurrentBinlogPosition();
+            streamingChangeEventSource.rewindBinaryLogClient(changeEventSourceContext, largeTxNotBufferedPosition);
         }
-        reader.getMetrics().onCommittedTransaction();
+        streamingChangeEventSource.getMetrics().onCommittedTransaction();
         if (!wellFormed) {
-            reader.getMetrics().onNotWellFormedTransaction();
+            streamingChangeEventSource.getMetrics().onNotWellFormedTransaction();
         }
         clear();
     }
@@ -213,9 +216,9 @@ class EventBuffer {
             LOGGER.warn("Rollback requested but TX was not started before");
             wellFormed = false;
         }
-        reader.getMetrics().onRolledBackTransaction();
+        streamingChangeEventSource.getMetrics().onRolledBackTransaction();
         if (!wellFormed) {
-            reader.getMetrics().onNotWellFormedTransaction();
+            streamingChangeEventSource.getMetrics().onNotWellFormedTransaction();
         }
         clear();
     }

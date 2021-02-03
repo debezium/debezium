@@ -11,6 +11,7 @@ import java.util.function.Supplier;
 
 import org.apache.kafka.connect.source.SourceTask;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.schema.DataCollectionId;
 import io.debezium.util.Clock;
 import io.debezium.util.LoggingContext;
@@ -48,6 +49,19 @@ public class CdcSourceTaskContext {
      */
     public LoggingContext.PreviousContext configureLoggingContext(String contextName) {
         return LoggingContext.forConnector(connectorType, connectorName, contextName);
+    }
+
+    /**
+     * Run the supplied function in the temporary connector MDC context, and when complete always return the MDC context to its
+     * state before this method was called.
+     *
+     * @param connectorConfig the configuration of the connector; may not be null
+     * @param contextName the name of the context; may not be null
+     * @param operation the function to run in the new MDC context; may not be null
+     * @throws IllegalArgumentException if any of the parameters are null
+     */
+    public void temporaryLoggingContext(CommonConnectorConfig connectorConfig, String contextName, Runnable operation) {
+        LoggingContext.temporarilyForConnector("MySQL", connectorConfig.getLogicalName(), contextName, operation);
     }
 
     /**

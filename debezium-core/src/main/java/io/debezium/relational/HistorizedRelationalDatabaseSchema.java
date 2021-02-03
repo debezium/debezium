@@ -28,7 +28,7 @@ import io.debezium.schema.TopicSelector;
 public abstract class HistorizedRelationalDatabaseSchema extends RelationalDatabaseSchema
         implements HistorizedDatabaseSchema<TableId> {
 
-    private final DatabaseHistory databaseHistory;
+    protected final DatabaseHistory databaseHistory;
     private boolean recoveredTables;
 
     protected HistorizedRelationalDatabaseSchema(HistorizedRelationalDatabaseConnectorConfig config, TopicSelector<TableId> topicSelector,
@@ -92,5 +92,9 @@ public abstract class HistorizedRelationalDatabaseSchema extends RelationalDatab
     @Override
     public boolean tableInformationComplete() {
         return recoveredTables;
+    }
+
+    public boolean storeOnlyMonitoredTables() {
+        return databaseHistory.storeOnlyMonitoredTables();
     }
 }

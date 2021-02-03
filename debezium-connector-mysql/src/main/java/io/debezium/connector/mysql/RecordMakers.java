@@ -41,7 +41,7 @@ import io.debezium.util.SchemaNameAdjuster;
 public class RecordMakers {
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
-    private final MySqlSchema schema;
+    private final MySqlDatabaseSchema schema;
     private final SourceInfo source;
     private final TopicSelector<TableId> topicSelector;
     private final boolean emitTombstoneOnDelete;
@@ -67,7 +67,7 @@ public class RecordMakers {
      *                      from the base offset.
      * @see MySqlConnectorTask#getRestartOffset(Map)
      */
-    public RecordMakers(MySqlSchema schema, SourceInfo source, TopicSelector<TableId> topicSelector,
+    public RecordMakers(MySqlDatabaseSchema schema, SourceInfo source, TopicSelector<TableId> topicSelector,
                         boolean emitTombstoneOnDelete, Map<String, ?> restartOffset) {
         this.schema = schema;
         this.source = source;

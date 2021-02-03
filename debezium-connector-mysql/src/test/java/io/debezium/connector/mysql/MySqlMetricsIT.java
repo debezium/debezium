@@ -122,7 +122,7 @@ public class MySqlMetricsIT extends AbstractConnectorTest {
                         .build());
 
         assertSnapshotMetrics();
-        assertNoStreamingMetricsExist();
+        assertStreamingMetricsExist();
     }
 
     @Test
@@ -189,6 +189,16 @@ public class MySqlMetricsIT extends AbstractConnectorTest {
         }
     }
 
+    private void assertStreamingMetricsExist() throws Exception {
+        final MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
+        try {
+            mBeanServer.getAttribute(getStreamingMetricsObjectName(), "TotalNumberOfEventsSeen");
+        }
+        catch (InstanceNotFoundException e) {
+            Assert.fail("Streaming Metrics should exist");
+        }
+    }
+
     private void assertSnapshotMetrics() throws Exception {
         final MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
 
@@ -245,7 +255,7 @@ public class MySqlMetricsIT extends AbstractConnectorTest {
     }
 
     private ObjectName getStreamingMetricsObjectName() throws MalformedObjectNameException {
-        return getStreamingMetricsObjectName("mysql", SERVER_NAME, "binlog");
+        return getStreamingMetricsObjectName("mysql", SERVER_NAME, "streaming");
     }
 
     private void waitForSnapshotToBeCompleted() throws InterruptedException {
@@ -253,6 +263,6 @@ public class MySqlMetricsIT extends AbstractConnectorTest {
     }
 
     private void waitForStreamingToStart() throws InterruptedException {
-        waitForStreamingRunning("mysql", SERVER_NAME, "binlog");
+        waitForStreamingRunning("mysql", SERVER_NAME, "streaming");
     }
 }

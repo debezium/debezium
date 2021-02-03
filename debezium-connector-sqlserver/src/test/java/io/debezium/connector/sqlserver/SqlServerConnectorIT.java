@@ -2513,5 +2513,15 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         public void initializeStorage() {
             delegate.initializeStorage();
         }
+
+        @Override
+        public boolean storeOnlyMonitoredTables() {
+            return false;
+        }
+
+        @Override
+        public boolean skipUnparseableDdlStatements() {
+            return false;
+        }
     }
 }

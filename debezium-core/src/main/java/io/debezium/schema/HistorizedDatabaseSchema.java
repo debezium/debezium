@@ -5,7 +5,10 @@
  */
 package io.debezium.schema;
 
+import java.util.Collection;
+
 import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.relational.TableId;
 
 /**
  * A database schema that is historized, i.e. it undergoes schema changes and can be recovered from a persistent schema
@@ -18,9 +21,26 @@ import io.debezium.pipeline.spi.OffsetContext;
  */
 public interface HistorizedDatabaseSchema<I extends DataCollectionId> extends DatabaseSchema<I> {
 
+    @FunctionalInterface
+    public static interface SchemaChangeEventConsumer {
+
+        void consume(SchemaChangeEvent event, Collection<TableId> tableIds);
+
+        static SchemaChangeEventConsumer NOOP = (x, y) -> {
+        };
+    }
+
     void applySchemaChange(SchemaChangeEvent schemaChange);
+
+    default void applySchemaChange(SchemaChangeEvent schemaChange, SchemaChangeEventConsumer schemaEventConsumer) {
+        applySchemaChange(schemaChange);
+    }
 
     void recover(OffsetContext offset);
 
     void initializeStorage();
+
+    default boolean storeOnlyMonitoredTables() {
+        return false;
+    }
 }

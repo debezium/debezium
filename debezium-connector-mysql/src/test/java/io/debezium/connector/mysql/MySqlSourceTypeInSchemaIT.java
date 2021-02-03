@@ -168,7 +168,7 @@ public class MySqlSourceTypeInSchemaIT extends AbstractConnectorTest {
 
         // Start the connector ...
         start(MySqlConnector.class, config);
-        waitForStreamingRunning("mysql", DATABASE.getServerName(), "binlog");
+        waitForStreamingRunning("mysql", DATABASE.getServerName(), "streaming");
 
         // ---------------------------------------------------------------------------------------------------------------
         // Consume all of the events due to startup and initialization of the database
