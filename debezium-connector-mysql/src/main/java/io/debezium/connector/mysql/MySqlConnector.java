@@ -21,7 +21,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
-import io.debezium.jdbc.JdbcConnection;
+import io.debezium.connector.mysql.MySqlConnection.MySqlConnectionConfiguration;
 import io.debezium.util.Strings;
 
 /**
@@ -36,8 +36,11 @@ import io.debezium.util.Strings;
  */
 public class MySqlConnector extends SourceConnector {
 
+    public static final String IMPLEMENTATION_PROP = "internal.implementation";
+    private static final String LEGACY_IMPLEMENTATION = "legacy";
+
     private Logger logger = LoggerFactory.getLogger(getClass());
-    private Map<String, String> props;
+    private Map<String, String> properties;
 
     public MySqlConnector() {
     }
@@ -48,23 +51,35 @@ public class MySqlConnector extends SourceConnector {
     }
 
     @Override
-    public Class<? extends Task> taskClass() {
-        return MySqlConnectorTask.class;
+    public void start(Map<String, String> props) {
+        this.properties = Collections.unmodifiableMap(new HashMap<>(props));
     }
 
     @Override
-    public void start(Map<String, String> props) {
-        this.props = props;
+    public Class<? extends Task> taskClass() {
+        final String implementation = properties.get(IMPLEMENTATION_PROP);
+        if (isLegacy(implementation)) {
+            logger.warn("Legacy MySQL connector implementation is enabled");
+            return io.debezium.connector.mysql.legacy.MySqlConnectorTask.class;
+        }
+        return io.debezium.connector.mysql.MySqlConnectorTask.class;
+    }
+
+    static boolean isLegacy(final String implementation) {
+        return LEGACY_IMPLEMENTATION.equals(implementation);
     }
 
     @Override
     public List<Map<String, String>> taskConfigs(int maxTasks) {
-        return props == null ? Collections.emptyList() : Collections.singletonList(new HashMap<String, String>(props));
+        if (maxTasks > 1) {
+            throw new IllegalArgumentException("Only a single connector task may be started");
+        }
+
+        return Collections.singletonList(properties);
     }
 
     @Override
     public void stop() {
-        this.props = null;
     }
 
     @Override
@@ -94,20 +109,20 @@ public class MySqlConnector extends SourceConnector {
                 && portValue.errorMessages().isEmpty()
                 && userValue.errorMessages().isEmpty()) {
             // Try to connect to the database ...
-            try (MySqlJdbcContext jdbcContext = new MySqlJdbcContext(new MySqlConnectorConfig(config))) {
-                jdbcContext.start();
-                JdbcConnection mysql = jdbcContext.jdbc();
+            final MySqlConnectionConfiguration connectionConfig = new MySqlConnectionConfiguration(config);
+            try (MySqlConnection connection = new MySqlConnection(connectionConfig)) {
                 try {
-                    mysql.execute("SELECT version()");
-                    logger.info("Successfully tested connection for {} with user '{}'", jdbcContext.connectionString(), mysql.username());
+                    connection.connect();
+                    connection.execute("SELECT version()");
+                    logger.info("Successfully tested connection for {} with user '{}'", connection.connectionString(), connectionConfig.username());
                 }
                 catch (SQLException e) {
-                    logger.info("Failed testing connection for {} with user '{}'", jdbcContext.connectionString(), mysql.username());
+                    logger.info("Failed testing connection for {} with user '{}'", connection.connectionString(), connectionConfig.username());
                     hostnameValue.addErrorMessage("Unable to connect: " + e.getMessage());
                 }
-                finally {
-                    jdbcContext.shutdown();
-                }
+            }
+            catch (SQLException e) {
+                logger.error("Unexpected error shutting down the database connection", e);
             }
         }
         return new Config(new ArrayList<>(results.values()));

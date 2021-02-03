@@ -54,8 +54,8 @@ import io.debezium.util.Testing;
 @SkipWhenDatabaseVersion(check = LESS_THAN, major = 5, minor = 6, reason = "DDL uses fractional second data types, not supported until MySQL 5.6")
 public class MysqlDefaultValueIT extends AbstractConnectorTest {
 
-    // 4 meta events (set character_set etc.) and then 15 tables with 3 events each (drop DDL, create DDL, insert)
-    private static final int EVENT_COUNT = 4 + 15 * 3;
+    // 4 meta events (set character_set etc.) and then 14 tables with 3 events each (drop DDL, create DDL, insert)
+    private static final int EVENT_COUNT = 4 + 14 * 3;
 
     private static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-connect.txt").toAbsolutePath();
     private final UniqueDatabase DATABASE = new UniqueDatabase("myServer1", "default_value")

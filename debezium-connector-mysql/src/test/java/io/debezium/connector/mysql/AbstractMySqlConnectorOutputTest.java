@@ -20,6 +20,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.GtidSet.UUIDSet;
+import io.debezium.connector.mysql.legacy.MySqlJdbcContext;
 import io.debezium.data.VerifyRecord.RecordValueComparator;
 import io.debezium.embedded.ConnectorOutputTest;
 import io.debezium.util.Stopwatch;

@@ -40,6 +40,10 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
 
     protected static final String SCHEMA_INCLUDE_LIST_NAME = "schema.include.list";
     protected static final String SCHEMA_EXCLUDE_LIST_NAME = "schema.exclude.list";
+    protected static final String DATABASE_WHITELIST_NAME = "database.whitelist";
+    protected static final String DATABASE_INCLUDE_LIST_NAME = "database.include.list";
+    protected static final String DATABASE_BLACKLIST_NAME = "database.blacklist";
+    protected static final String DATABASE_EXCLUDE_LIST_NAME = "database.exclude.list";
     protected static final String TABLE_BLACKLIST_NAME = "table.blacklist";
     protected static final String TABLE_EXCLUDE_LIST_NAME = "table.exclude.list";
     protected static final String TABLE_WHITELIST_NAME = "table.whitelist";
@@ -49,6 +53,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     public static final String TABLE_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG = "\"table.include.list\" or \"table.whitelist\" is already specified";
     public static final String COLUMN_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG = "\"column.include.list\" or \"column.whitelist\" is already specified";
     public static final String SCHEMA_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG = "\"schema.include.list\" or \"schema.whitelist\" is already specified";
+    protected static final String DATABASE_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG = "\"database.include.list\" is already specified";
 
     /**
      * The set of predefined DecimalHandlingMode options or aliases.
@@ -218,7 +223,6 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withWidth(Width.LONG)
             .withImportance(Importance.MEDIUM)
             .withValidation(Field::isListOfRegex, RelationalDatabaseConnectorConfig::validateTableExcludeList)
-            .withInvisibleRecommender()
             .withDescription("A comma-separated list of regular expressions that match the fully-qualified names of tables to be excluded from monitoring");
 
     /**
@@ -389,6 +393,52 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withInvisibleRecommender()
             .withDescription("The schemas for which events must not be captured (deprecated, use \"" + SCHEMA_EXCLUDE_LIST.name() + "\" instead)");
 
+    /**
+     * A comma-separated list of regular expressions that match database names to be monitored.
+     * Must not be used with {@link #DATABASE_BLACKLIST}.
+     */
+    public static final Field DATABASE_INCLUDE_LIST = Field.create(DATABASE_INCLUDE_LIST_NAME)
+            .withDisplayName("Include Databases")
+            .withType(Type.LIST)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.HIGH)
+            .withDependents(TABLE_INCLUDE_LIST_NAME, TABLE_WHITELIST_NAME)
+            .withValidation(Field::isListOfRegex)
+            .withDescription("The databases for which changes are to be captured");
+
+    @Deprecated
+    public static final Field DATABASE_WHITELIST = Field.create(DATABASE_WHITELIST_NAME)
+            .withDisplayName("Deprecated: Include Databases")
+            .withType(Type.LIST)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.LOW)
+            .withValidation(Field::isListOfRegex)
+            .withInvisibleRecommender()
+            .withDescription("The databases for which changes are to be captured (deprecated, use \"" + DATABASE_INCLUDE_LIST.name() + "\" instead)");
+
+    /**
+     * A comma-separated list of regular expressions that match database names to be excluded from monitoring.
+     * Must not be used with {@link #DATABASE_INCLUDE_LIST}.
+     */
+    public static final Field DATABASE_EXCLUDE_LIST = Field.create(DATABASE_EXCLUDE_LIST_NAME)
+            .withDisplayName("Exclude Databases")
+            .withType(Type.LIST)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.MEDIUM)
+            .withValidation(Field::isListOfRegex, RelationalDatabaseConnectorConfig::validateDatabaseExcludeList)
+            .withDescription("A comma-separated list of regular expressions that match database names to be excluded from monitoring");
+
+    @Deprecated
+    public static final Field DATABASE_BLACKLIST = Field.create(DATABASE_BLACKLIST_NAME)
+            .withDisplayName("Deprecated: Exclude Databases")
+            .withType(Type.LIST)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.LOW)
+            .withValidation(Field::isListOfRegex, RelationalDatabaseConnectorConfig::validateDatabaseExcludeList)
+            .withInvisibleRecommender()
+            .withDescription("A comma-separated list of regular expressions that match database names to be excluded from monitoring (deprecated, use \""
+                    + DATABASE_EXCLUDE_LIST.name() + "\" instead)");
+
     public static final Field TIME_PRECISION_MODE = Field.create("time.precision.mode")
             .withDisplayName("Time Precision")
             .withEnum(TemporalPrecisionMode.class, TemporalPrecisionMode.ADAPTIVE)
@@ -558,6 +608,14 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
         return getConfig().getFallbackStringProperty(SCHEMA_INCLUDE_LIST, SCHEMA_WHITELIST);
     }
 
+    public String databaseExcludeList() {
+        return getConfig().getFallbackStringProperty(DATABASE_EXCLUDE_LIST, DATABASE_BLACKLIST);
+    }
+
+    public String databaseIncludeList() {
+        return getConfig().getFallbackStringProperty(DATABASE_INCLUDE_LIST, DATABASE_WHITELIST);
+    }
+
     public String tableExcludeList() {
         return getConfig().getFallbackStringProperty(TABLE_EXCLUDE_LIST, TABLE_BLACKLIST);
     }
@@ -637,6 +695,16 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
 
         if (includeList != null && excludeList != null) {
             problems.accept(SCHEMA_EXCLUDE_LIST, excludeList, SCHEMA_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG);
+            return 1;
+        }
+        return 0;
+    }
+
+    private static int validateDatabaseExcludeList(Configuration config, Field field, ValidationOutput problems) {
+        String includeList = config.getString(DATABASE_INCLUDE_LIST);
+        String excludeList = config.getString(DATABASE_EXCLUDE_LIST);
+        if (includeList != null && excludeList != null) {
+            problems.accept(DATABASE_EXCLUDE_LIST, excludeList, DATABASE_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG);
             return 1;
         }
         return 0;

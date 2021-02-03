@@ -123,7 +123,7 @@ public class UniqueDatabase {
         return String.format("%s.%s", databaseName, tableName);
     }
 
-    protected String getServerName() {
+    public String getServerName() {
         return serverName;
     }
 
@@ -202,7 +202,8 @@ public class UniqueDatabase {
                 .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, getDatabaseName())
                 .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
-                .with(MySqlConnectorConfig.BUFFER_SIZE_FOR_BINLOG_READER, 10_000);
+                .with(MySqlConnectorConfig.BUFFER_SIZE_FOR_BINLOG_READER, 10_000)
+                .with("internal.implementation", "new");
 
         if (dbHistoryPath != null) {
             builder.with(FileDatabaseHistory.FILE_PATH, dbHistoryPath);

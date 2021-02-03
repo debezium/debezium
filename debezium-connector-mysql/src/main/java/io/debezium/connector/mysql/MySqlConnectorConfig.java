@@ -8,6 +8,8 @@ package io.debezium.connector.mysql;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.util.Random;
+import java.util.Set;
+import java.util.function.Predicate;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
@@ -17,31 +19,39 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.config.CommonConnectorConfig;
+import io.debezium.config.ConfigDefinition;
 import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.config.Field.ValidationOutput;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SourceInfoStructMaker;
-import io.debezium.heartbeat.Heartbeat;
+import io.debezium.document.Document;
+import io.debezium.function.Predicates;
 import io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode;
 import io.debezium.jdbc.TemporalPrecisionMode;
+import io.debezium.relational.ColumnId;
+import io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
+import io.debezium.relational.TableId;
+import io.debezium.relational.Tables.ColumnNameFilter;
+import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.history.DatabaseHistory;
+import io.debezium.relational.history.HistoryRecordComparator;
 import io.debezium.relational.history.KafkaDatabaseHistory;
+import io.debezium.util.Collect;
 
 /**
  * The configuration properties.
  */
-public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
+public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorConfig {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MySqlConnectorConfig.class);
-    protected static final String DATABASE_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG = "\"database.include.list\" or \"database.whitelist\" is already specified";
 
     /**
      * The set of predefined BigIntUnsignedHandlingMode options or aliases.
      */
-    public enum BigIntUnsignedHandlingMode implements EnumeratedValue {
+    public static enum BigIntUnsignedHandlingMode implements EnumeratedValue {
         /**
          * Represent {@code BIGINT UNSIGNED} values as precise {@link BigDecimal} values, which are
          * represented in change events in a binary form. This is precise but difficult to use.
@@ -118,19 +128,19 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
         /**
          * Perform a snapshot when it is needed.
          */
-        WHEN_NEEDED("when_needed", true),
+        WHEN_NEEDED("when_needed", true, true, true, false, true),
 
         /**
          * Perform a snapshot only upon initial startup of a connector.
          */
-        INITIAL("initial", true),
+        INITIAL("initial", true, true, true, false, false),
 
         /**
          * Perform a snapshot of only the database schemas (without data) and then begin reading the binlog.
          * This should be used with care, but it is very useful when the change event consumers need only the changes
          * from the point in time the snapshot is made (and doesn't care about any state or changes prior to this point).
          */
-        SCHEMA_ONLY("schema_only", false),
+        SCHEMA_ONLY("schema_only", true, false, true, false, false),
 
         /**
          * Perform a snapshot of only the database schemas (without data) and then begin reading the binlog at the current binlog position.
@@ -138,25 +148,34 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
          * This recovery option should be used with care as it assumes there have been no schema changes since the connector last stopped,
          * otherwise some events during the gap may be processed with an incorrect schema and corrupted.
          */
-        SCHEMA_ONLY_RECOVERY("schema_only_recovery", false),
+        SCHEMA_ONLY_RECOVERY("schema_only_recovery", true, false, true, true, false),
 
         /**
          * Never perform a snapshot and only read the binlog. This assumes the binlog contains all the history of those
          * databases and tables that will be captured.
          */
-        NEVER("never", false),
+        NEVER("never", false, false, true, false, false),
 
         /**
          * Perform a snapshot and then stop before attempting to read the binlog.
          */
-        INITIAL_ONLY("initial_only", true);
+        INITIAL_ONLY("initial_only", true, true, false, false, false);
 
         private final String value;
+        private final boolean includeSchema;
         private final boolean includeData;
+        private final boolean shouldStream;
+        private final boolean shouldSnapshotOnSchemaError;
+        private final boolean shouldSnapshotOnDataError;
 
-        private SnapshotMode(String value, boolean includeData) {
+        private SnapshotMode(String value, boolean includeSchema, boolean includeData, boolean shouldStream, boolean shouldSnapshotOnSchemaError,
+                             boolean shouldSnapshotOnDataError) {
             this.value = value;
+            this.includeSchema = includeSchema;
             this.includeData = includeData;
+            this.shouldStream = shouldStream;
+            this.shouldSnapshotOnSchemaError = shouldSnapshotOnSchemaError;
+            this.shouldSnapshotOnDataError = shouldSnapshotOnDataError;
         }
 
         @Override
@@ -165,11 +184,46 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
         }
 
         /**
+         * Whether this snapshotting mode should include the schema.
+         */
+        public boolean includeSchema() {
+            return includeSchema;
+        }
+
+        /**
          * Whether this snapshotting mode should include the actual data or just the
          * schema of captured tables.
          */
         public boolean includeData() {
             return includeData;
+        }
+
+        /**
+         * Whether the snapshot mode is followed by streaming.
+         */
+        public boolean shouldStream() {
+            return shouldStream;
+        }
+
+        /**
+         * Whether the schema can be recovered if database history is corrupted.
+         */
+        public boolean shouldSnapshotOnSchemaError() {
+            return shouldSnapshotOnSchemaError;
+        }
+
+        /**
+         * Whether the snapshot should be re-executed when there is a gap in data stream.
+         */
+        public boolean shouldSnapshotOnDataError() {
+            return shouldSnapshotOnDataError;
+        }
+
+        /**
+         * Whether the snapshot should be executed.
+         */
+        public boolean shouldSnapshot() {
+            return includeSchema || includeData;
         }
 
         /**
@@ -621,60 +675,6 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withDescription("JDBC Driver class name used to connect to the MySQL database server.");
 
     /**
-     * A comma-separated list of regular expressions that match database names to be monitored.
-     * Must not be used with {@link #DATABASE_BLACKLIST}.
-     */
-    public static final Field DATABASE_INCLUDE_LIST = Field.create(DATABASE_INCLUDE_LIST_NAME)
-            .withDisplayName("Include Databases")
-            .withType(Type.LIST)
-            .withWidth(Width.LONG)
-            .withImportance(Importance.HIGH)
-            .withDependents(TABLE_INCLUDE_LIST_NAME)
-            .withValidation(Field::isListOfRegex)
-            .withDescription("The databases for which changes are to be captured");
-
-    /**
-     * Old, backwards-compatible "whitelist" property.
-     */
-    @Deprecated
-    public static final Field DATABASE_WHITELIST = Field.create(DATABASE_WHITELIST_NAME)
-            .withDisplayName("Deprecated: Include Databases")
-            .withType(Type.LIST)
-            .withWidth(Width.LONG)
-            .withImportance(Importance.LOW)
-            .withInvisibleRecommender()
-            .withDependents(TABLE_INCLUDE_LIST_NAME)
-            .withValidation(Field::isListOfRegex)
-            .withDescription("The databases for which changes are to be captured (deprecated, use \"" + DATABASE_INCLUDE_LIST.name() + "\" instead)");
-
-    /**
-     * A comma-separated list of regular expressions that match database names to be excluded from monitoring.
-     * Must not be used with {@link #DATABASE_INCLUDE_LIST}.
-     */
-    public static final Field DATABASE_EXCLUDE_LIST = Field.create(DATABASE_EXCLUDE_LIST_NAME)
-            .withDisplayName("Exclude Databases")
-            .withType(Type.LIST)
-            .withWidth(Width.LONG)
-            .withImportance(Importance.MEDIUM)
-            .withValidation(Field::isListOfRegex, MySqlConnectorConfig::validateDatabaseExcludeList)
-            .withInvisibleRecommender()
-            .withDescription("A comma-separated list of regular expressions that match database names to be excluded from monitoring");
-
-    /**
-     * Old, backwards-compatible "blacklist" property.
-     */
-    @Deprecated
-    public static final Field DATABASE_BLACKLIST = Field.create(DATABASE_BLACKLIST_NAME)
-            .withDisplayName("Deprecated: Exclude Databases")
-            .withType(Type.LIST)
-            .withWidth(Width.LONG)
-            .withImportance(Importance.LOW)
-            .withValidation(Field::isListOfRegex, MySqlConnectorConfig::validateDatabaseExcludeList)
-            .withInvisibleRecommender()
-            .withDescription("A comma-separated list of regular expressions that match database names to be excluded from monitoring (deprecated, use \""
-                    + DATABASE_EXCLUDE_LIST.name() + "\" instead)");
-
-    /**
      * A comma-separated list of regular expressions that match source UUIDs in the GTID set used to find the binlog
      * position in the MySQL server. Only the GTID ranges that have sources matching one of these include patterns will
      * be used.
@@ -685,7 +685,7 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withType(Type.LIST)
             .withWidth(Width.LONG)
             .withImportance(Importance.HIGH)
-            .withDependents(TABLE_INCLUDE_LIST_NAME)
+            .withDependents(TABLE_INCLUDE_LIST_NAME, TABLE_WHITELIST_NAME)
             .withDescription("The source UUIDs used to include GTID ranges when determine the starting position in the MySQL server's binlog.");
 
     /**
@@ -915,80 +915,121 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
                             "false - delegates the implicit conversion to the database" +
                             "true - (the default) Debezium makes the conversion");
 
+    private static final ConfigDefinition CONFIG_DEFINITION = HistorizedRelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
+            .name("MySQL")
+            .excluding(
+                    SCHEMA_WHITELIST,
+                    SCHEMA_INCLUDE_LIST,
+                    SCHEMA_BLACKLIST,
+                    SCHEMA_EXCLUDE_LIST,
+                    RelationalDatabaseConnectorConfig.SERVER_NAME,
+                    RelationalDatabaseConnectorConfig.TIME_PRECISION_MODE,
+                    RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN)
+            .type(
+                    HOSTNAME,
+                    PORT,
+                    USER,
+                    PASSWORD,
+                    SERVER_NAME,
+                    ON_CONNECT_STATEMENTS,
+                    SERVER_ID,
+                    SERVER_ID_OFFSET,
+                    SSL_MODE,
+                    SSL_KEYSTORE,
+                    SSL_KEYSTORE_PASSWORD,
+                    SSL_TRUSTSTORE,
+                    SSL_TRUSTSTORE_PASSWORD,
+                    JDBC_DRIVER)
+            .connector(
+                    CONNECTION_TIMEOUT_MS,
+                    KEEP_ALIVE,
+                    KEEP_ALIVE_INTERVAL_MS,
+                    SNAPSHOT_MODE,
+                    SNAPSHOT_LOCKING_MODE,
+                    SNAPSHOT_NEW_TABLES,
+                    BIGINT_UNSIGNED_HANDLING_MODE,
+                    TIME_PRECISION_MODE,
+                    ENABLE_TIME_ADJUSTER)
+            .events(
+                    INCLUDE_SQL_QUERY,
+                    TABLE_IGNORE_BUILTIN,
+                    DATABASE_INCLUDE_LIST,
+                    DATABASE_EXCLUDE_LIST,
+                    GTID_SOURCE_INCLUDES,
+                    GTID_SOURCE_EXCLUDES,
+                    GTID_SOURCE_FILTER_DML_EVENTS,
+                    BUFFER_SIZE_FOR_BINLOG_READER,
+                    EVENT_DESERIALIZATION_FAILURE_HANDLING_MODE,
+                    INCONSISTENT_SCHEMA_HANDLING_MODE)
+            .create();
+
+    protected static ConfigDef configDef() {
+        return CONFIG_DEFINITION.configDef();
+    }
+
     /**
      * The set of {@link Field}s defined as part of this configuration.
      */
-    public static Field.Set ALL_FIELDS = Field.setOf(USER, PASSWORD, HOSTNAME, PORT, ON_CONNECT_STATEMENTS, SERVER_ID, SERVER_ID_OFFSET,
-            SERVER_NAME,
-            CONNECTION_TIMEOUT_MS, KEEP_ALIVE, KEEP_ALIVE_INTERVAL_MS,
-            CommonConnectorConfig.MAX_QUEUE_SIZE,
-            CommonConnectorConfig.MAX_BATCH_SIZE,
-            CommonConnectorConfig.POLL_INTERVAL_MS,
-            BUFFER_SIZE_FOR_BINLOG_READER, Heartbeat.HEARTBEAT_INTERVAL,
-            Heartbeat.HEARTBEAT_TOPICS_PREFIX, DATABASE_HISTORY, INCLUDE_SCHEMA_CHANGES, INCLUDE_SQL_QUERY,
-            TABLE_WHITELIST, TABLE_INCLUDE_LIST, TABLE_BLACKLIST, TABLE_EXCLUDE_LIST, TABLES_IGNORE_BUILTIN,
-            DATABASE_WHITELIST, DATABASE_INCLUDE_LIST, DATABASE_BLACKLIST, DATABASE_EXCLUDE_LIST,
-            COLUMN_BLACKLIST, COLUMN_EXCLUDE_LIST, COLUMN_INCLUDE_LIST, MSG_KEY_COLUMNS,
-            RelationalDatabaseConnectorConfig.MASK_COLUMN_WITH_HASH,
-            RelationalDatabaseConnectorConfig.MASK_COLUMN,
-            RelationalDatabaseConnectorConfig.TRUNCATE_COLUMN,
-            SNAPSHOT_MODE, SNAPSHOT_NEW_TABLES, SNAPSHOT_LOCKING_MODE, SNAPSHOT_EVENTS_AS_INSERTS,
-            RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE,
-            GTID_SOURCE_INCLUDES, GTID_SOURCE_EXCLUDES,
-            GTID_SOURCE_FILTER_DML_EVENTS,
-            GTID_NEW_CHANNEL_POSITION,
-            TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE,
-            SSL_MODE, SSL_KEYSTORE, SSL_KEYSTORE_PASSWORD,
-            SSL_TRUSTSTORE, SSL_TRUSTSTORE_PASSWORD, JDBC_DRIVER,
-            BIGINT_UNSIGNED_HANDLING_MODE,
-            EVENT_DESERIALIZATION_FAILURE_HANDLING_MODE,
-            CommonConnectorConfig.EVENT_PROCESSING_FAILURE_HANDLING_MODE,
-            INCONSISTENT_SCHEMA_HANDLING_MODE,
-            CommonConnectorConfig.SNAPSHOT_DELAY_MS,
-            CommonConnectorConfig.SNAPSHOT_FETCH_SIZE,
-            CommonConnectorConfig.TOMBSTONES_ON_DELETE, ENABLE_TIME_ADJUSTER,
-            CommonConnectorConfig.SOURCE_STRUCT_MAKER_VERSION,
-            CommonConnectorConfig.SKIPPED_OPERATIONS,
-            BINARY_HANDLING_MODE);
+    public static Field.Set ALL_FIELDS = Field.setOf(CONFIG_DEFINITION.all());
 
-    /**
-     * The set of {@link Field}s that are included in the {@link #configDef() configuration definition}. This includes
-     * all fields defined in this class (though some are always invisible since they are not to be exposed to the user interface)
-     * plus several that are specific to the {@link KafkaDatabaseHistory} class, since history is always stored in Kafka
-     * when run via the user interface.
-     */
-    protected static Field.Set EXPOSED_FIELDS = ALL_FIELDS.with(KafkaDatabaseHistory.BOOTSTRAP_SERVERS,
-            KafkaDatabaseHistory.TOPIC,
-            KafkaDatabaseHistory.RECOVERY_POLL_ATTEMPTS,
-            KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS,
-            DatabaseHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS,
-            DatabaseHistory.STORE_ONLY_MONITORED_TABLES_DDL,
-            DatabaseHistory.DDL_FILTER);
+    protected static Field.Set EXPOSED_FIELDS = ALL_FIELDS;
 
+    protected static final Set<String> BUILT_IN_DB_NAMES = Collect.unmodifiableSet("mysql", "performance_schema", "sys", "information_schema");
+
+    private final Configuration config;
+    private final SnapshotMode snapshotMode;
     private final SnapshotLockingMode snapshotLockingMode;
     private final GtidNewChannelPosition gitIdNewChannelPosition;
     private final SnapshotNewTables snapshotNewTables;
     private final TemporalPrecisionMode temporalPrecisionMode;
     private final Duration connectionTimeout;
+    private final Predicate<String> gtidSourceFilter;
+    private final ColumnNameFilter columnFilter;
+    private final EventProcessingFailureHandlingMode inconsistentSchemaFailureHandlingMode;
+    private final Predicate<String> ddlFilter;
+    private final boolean legacy;
 
     public MySqlConnectorConfig(Configuration config) {
         super(
+                MySqlConnector.class,
                 config,
                 config.getString(SERVER_NAME),
-                null, // TODO whitelist handling is still done locally here
-                null,
-                DEFAULT_SNAPSHOT_FETCH_SIZE);
+                TableFilter.fromPredicate(MySqlConnectorConfig::isNotBuiltInTable),
+                true);
 
+        this.config = config;
+        this.legacy = MySqlConnector.isLegacy(config.getString(io.debezium.connector.mysql.MySqlConnector.IMPLEMENTATION_PROP));
         this.temporalPrecisionMode = TemporalPrecisionMode.parse(config.getString(TIME_PRECISION_MODE));
+        this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE), SNAPSHOT_MODE.defaultValueAsString());
         this.snapshotLockingMode = SnapshotLockingMode.parse(config.getString(SNAPSHOT_LOCKING_MODE), SNAPSHOT_LOCKING_MODE.defaultValueAsString());
 
-        String gitIdNewChannelPosition = config.getString(MySqlConnectorConfig.GTID_NEW_CHANNEL_POSITION);
+        final String gitIdNewChannelPosition = config.getString(MySqlConnectorConfig.GTID_NEW_CHANNEL_POSITION);
         this.gitIdNewChannelPosition = GtidNewChannelPosition.parse(gitIdNewChannelPosition, MySqlConnectorConfig.GTID_NEW_CHANNEL_POSITION.defaultValueAsString());
 
-        String snapshotNewTables = config.getString(MySqlConnectorConfig.SNAPSHOT_NEW_TABLES);
+        final String snapshotNewTables = config.getString(MySqlConnectorConfig.SNAPSHOT_NEW_TABLES);
         this.snapshotNewTables = SnapshotNewTables.parse(snapshotNewTables, MySqlConnectorConfig.SNAPSHOT_NEW_TABLES.defaultValueAsString());
 
+        final String inconsistentSchemaFailureHandlingMode = config.getString(MySqlConnectorConfig.INCONSISTENT_SCHEMA_HANDLING_MODE);
+        this.inconsistentSchemaFailureHandlingMode = EventProcessingFailureHandlingMode.parse(inconsistentSchemaFailureHandlingMode);
+
         this.connectionTimeout = Duration.ofMillis(config.getLong(MySqlConnectorConfig.CONNECTION_TIMEOUT_MS));
+
+        // Set up the GTID filter ...
+        final String gtidSetIncludes = config.getString(MySqlConnectorConfig.GTID_SOURCE_INCLUDES);
+        final String gtidSetExcludes = config.getString(MySqlConnectorConfig.GTID_SOURCE_EXCLUDES);
+        this.gtidSourceFilter = gtidSetIncludes != null ? Predicates.includesUuids(gtidSetIncludes)
+                : (gtidSetExcludes != null ? Predicates.excludesUuids(gtidSetExcludes) : null);
+
+        if (columnIncludeList() != null) {
+            this.columnFilter = getColumnIncludeNameFilter(columnIncludeList());
+        }
+        else {
+            this.columnFilter = getColumnExcludeNameFilter(columnExcludeList());
+        }
+
+        // Set up the DDL filter
+        final String ddlFilter = config.getString(DatabaseHistory.DDL_FILTER);
+        this.ddlFilter = (ddlFilter != null) ? Predicates.includes(ddlFilter) : (x -> false);
     }
 
     public SnapshotLockingMode getSnapshotLockingMode() {
@@ -1001,34 +1042,6 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
 
     public SnapshotNewTables getSnapshotNewTables() {
         return snapshotNewTables;
-    }
-
-    protected static ConfigDef configDef() {
-        ConfigDef config = new ConfigDef();
-        Field.group(config, "MySQL", HOSTNAME, PORT, USER, PASSWORD, ON_CONNECT_STATEMENTS, SERVER_NAME, SERVER_ID, SERVER_ID_OFFSET,
-                SSL_MODE, SSL_KEYSTORE, SSL_KEYSTORE_PASSWORD, SSL_TRUSTSTORE, SSL_TRUSTSTORE_PASSWORD, JDBC_DRIVER, CommonConnectorConfig.SKIPPED_OPERATIONS);
-        Field.group(config, "History Storage", KafkaDatabaseHistory.BOOTSTRAP_SERVERS,
-                KafkaDatabaseHistory.TOPIC, KafkaDatabaseHistory.RECOVERY_POLL_ATTEMPTS,
-                KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS, DATABASE_HISTORY,
-                DatabaseHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, DatabaseHistory.DDL_FILTER,
-                DatabaseHistory.STORE_ONLY_MONITORED_TABLES_DDL);
-        Field.group(config, "Events", INCLUDE_SCHEMA_CHANGES, INCLUDE_SQL_QUERY, TABLES_IGNORE_BUILTIN,
-                DATABASE_WHITELIST, DATABASE_INCLUDE_LIST, TABLE_WHITELIST, TABLE_INCLUDE_LIST,
-                COLUMN_BLACKLIST, COLUMN_EXCLUDE_LIST, COLUMN_INCLUDE_LIST, TABLE_BLACKLIST, TABLE_EXCLUDE_LIST,
-                DATABASE_BLACKLIST, DATABASE_EXCLUDE_LIST, MSG_KEY_COLUMNS,
-                RelationalDatabaseConnectorConfig.MASK_COLUMN_WITH_HASH,
-                RelationalDatabaseConnectorConfig.MASK_COLUMN,
-                RelationalDatabaseConnectorConfig.TRUNCATE_COLUMN,
-                RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE,
-                GTID_SOURCE_INCLUDES, GTID_SOURCE_EXCLUDES, GTID_SOURCE_FILTER_DML_EVENTS, GTID_NEW_CHANNEL_POSITION, BUFFER_SIZE_FOR_BINLOG_READER,
-                Heartbeat.HEARTBEAT_INTERVAL, Heartbeat.HEARTBEAT_TOPICS_PREFIX, EVENT_DESERIALIZATION_FAILURE_HANDLING_MODE,
-                CommonConnectorConfig.EVENT_PROCESSING_FAILURE_HANDLING_MODE, INCONSISTENT_SCHEMA_HANDLING_MODE,
-                CommonConnectorConfig.TOMBSTONES_ON_DELETE, CommonConnectorConfig.SOURCE_STRUCT_MAKER_VERSION);
-        Field.group(config, "Connector", CONNECTION_TIMEOUT_MS, KEEP_ALIVE, KEEP_ALIVE_INTERVAL_MS, CommonConnectorConfig.MAX_QUEUE_SIZE,
-                CommonConnectorConfig.MAX_BATCH_SIZE, CommonConnectorConfig.POLL_INTERVAL_MS,
-                SNAPSHOT_MODE, SNAPSHOT_LOCKING_MODE, SNAPSHOT_NEW_TABLES, SNAPSHOT_EVENTS_AS_INSERTS, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE,
-                BIGINT_UNSIGNED_HANDLING_MODE, SNAPSHOT_DELAY_MS, SNAPSHOT_FETCH_SIZE, ENABLE_TIME_ADJUSTER, BINARY_HANDLING_MODE);
-        return config;
     }
 
     private static int validateGtidNewChannelPositionNotSet(Configuration config, Field field, ValidationOutput problems) {
@@ -1060,16 +1073,6 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
                     EventProcessingFailureHandlingMode.OBSOLETE_NAME_FOR_SKIP_FAILURE_HANDLING,
                     INCONSISTENT_SCHEMA_HANDLING_MODE.name(),
                     EventProcessingFailureHandlingMode.SKIP.getValue());
-        }
-        return 0;
-    }
-
-    private static int validateDatabaseExcludeList(Configuration config, Field field, ValidationOutput problems) {
-        String includeList = config.getFallbackStringProperty(DATABASE_INCLUDE_LIST, DATABASE_WHITELIST);
-        String excludeList = config.getFallbackStringProperty(DATABASE_EXCLUDE_LIST, DATABASE_BLACKLIST);
-        if (includeList != null && excludeList != null) {
-            problems.accept(DATABASE_EXCLUDE_LIST, excludeList, DATABASE_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG);
-            return 1;
         }
         return 0;
     }
@@ -1163,7 +1166,129 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
         return temporalPrecisionMode;
     }
 
+    public SnapshotMode getSnapshotMode() {
+        return snapshotMode;
+    }
+
     public Duration getConnectionTimeout() {
         return connectionTimeout;
+    }
+
+    public EventProcessingFailureHandlingMode inconsistentSchemaFailureHandlingMode() {
+        return inconsistentSchemaFailureHandlingMode;
+    }
+
+    public String hostname() {
+        return config.getString(HOSTNAME);
+    }
+
+    public int port() {
+        return config.getInteger(PORT);
+    }
+
+    public String username() {
+        return config.getString(USER);
+    }
+
+    public String password() {
+        return config.getString(PASSWORD);
+    }
+
+    public long serverId() {
+        return config.getLong(SERVER_ID);
+    }
+
+    public SecureConnectionMode sslMode() {
+        final String mode = config.getString(MySqlConnectorConfig.SSL_MODE);
+        return SecureConnectionMode.parse(mode);
+    }
+
+    public boolean sslModeEnabled() {
+        return sslMode() != SecureConnectionMode.DISABLED;
+    }
+
+    public int bufferSizeForStreamingChangeEventSource() {
+        return config.getInteger(MySqlConnectorConfig.BUFFER_SIZE_FOR_BINLOG_READER);
+    }
+
+    /**
+     * Get the predicate function that will return {@code true} if a GTID source is to be included, or {@code false} if
+     * a GTID source is to be excluded.
+     *
+     * @return the GTID source predicate function; never null
+     */
+    public Predicate<String> gtidSourceFilter() {
+        return gtidSourceFilter;
+    }
+
+    public boolean includeSchemaChangeRecords() {
+        return config.getBoolean(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES);
+    }
+
+    public boolean includeSqlQuery() {
+        return config.getBoolean(MySqlConnectorConfig.INCLUDE_SQL_QUERY);
+    }
+
+    public long rowCountForLargeTable() {
+        return config.getLong(MySqlConnectorConfig.ROW_COUNT_FOR_STREAMING_RESULT_SETS);
+    }
+
+    @Override
+    protected HistoryRecordComparator getHistoryRecordComparator() {
+        return new HistoryRecordComparator() {
+            @Override
+            protected boolean isPositionAtOrBefore(Document recorded, Document desired) {
+                return SourceInfo.isPositionAtOrBefore(recorded, desired, gtidSourceFilter);
+            }
+        };
+    }
+
+    private static ColumnNameFilter getColumnExcludeNameFilter(String excludedColumnPatterns) {
+        return new ColumnNameFilter() {
+
+            Predicate<ColumnId> delegate = Predicates.excludes(excludedColumnPatterns, ColumnId::toString);
+
+            @Override
+            public boolean matches(String catalogName, String schemaName, String tableName, String columnName) {
+                // ignore database name as it's not relevant here
+                return delegate.test(new ColumnId(new TableId(catalogName, null, tableName), columnName));
+            }
+        };
+    }
+
+    private static ColumnNameFilter getColumnIncludeNameFilter(String excludedColumnPatterns) {
+        return new ColumnNameFilter() {
+
+            Predicate<ColumnId> delegate = Predicates.includes(excludedColumnPatterns, ColumnId::toString);
+
+            @Override
+            public boolean matches(String catalogName, String schemaName, String tableName, String columnName) {
+                // ignore database name as it's not relevant here
+                return delegate.test(new ColumnId(new TableId(catalogName, null, tableName), columnName));
+            }
+        };
+    }
+
+    public ColumnNameFilter getColumnFilter() {
+        return columnFilter;
+    }
+
+    public static boolean isBuiltInDatabase(String databaseName) {
+        if (databaseName == null) {
+            return false;
+        }
+        return BUILT_IN_DB_NAMES.contains(databaseName.toLowerCase());
+    }
+
+    public static boolean isNotBuiltInTable(TableId id) {
+        return !isBuiltInDatabase(id.catalog());
+    }
+
+    public Predicate<String> getDdlFilter() {
+        return ddlFilter;
+    }
+
+    boolean legacy() {
+        return legacy;
     }
 }

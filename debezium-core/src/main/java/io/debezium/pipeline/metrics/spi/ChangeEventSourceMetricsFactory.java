@@ -47,4 +47,8 @@ public interface ChangeEventSourceMetricsFactory {
      */
     <T extends CdcSourceTaskContext> StreamingChangeEventSourceMetrics getStreamingMetrics(T taskContext, ChangeEventQueueMetrics changeEventQueueMetrics,
                                                                                            EventMetadataProvider eventMetadataProvider);
+
+    default boolean connectionMetricHandledByCoordinator() {
+        return true;
+    }
 }

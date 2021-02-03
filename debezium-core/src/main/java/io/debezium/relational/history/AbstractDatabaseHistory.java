@@ -34,6 +34,7 @@ public abstract class AbstractDatabaseHistory implements DatabaseHistory {
     protected Configuration config;
     private HistoryRecordComparator comparator = HistoryRecordComparator.INSTANCE;
     private boolean skipUnparseableDDL;
+    private boolean storeOnlyMonitoredTablesDdl;
     private Function<String, Optional<Pattern>> ddlFilter = (x -> Optional.empty());
     private DatabaseHistoryListener listener = DatabaseHistoryListener.NOOP;
     private boolean useCatalogBeforeSchema;
@@ -47,6 +48,7 @@ public abstract class AbstractDatabaseHistory implements DatabaseHistory {
         this.config = config;
         this.comparator = comparator != null ? comparator : HistoryRecordComparator.INSTANCE;
         this.skipUnparseableDDL = config.getBoolean(DatabaseHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS);
+        this.storeOnlyMonitoredTablesDdl = config.getBoolean(DatabaseHistory.STORE_ONLY_MONITORED_TABLES_DDL);
 
         final String ddlFilter = config.getString(DatabaseHistory.DDL_FILTER);
         this.ddlFilter = (ddlFilter != null) ? Predicates.matchedBy(ddlFilter) : this.ddlFilter;
@@ -85,7 +87,7 @@ public abstract class AbstractDatabaseHistory implements DatabaseHistory {
                 Array tableChanges = recovered.tableChanges();
                 String ddl = recovered.ddl();
 
-                if (tableChanges != null) {
+                if (tableChanges != null && !tableChanges.isEmpty()) {
                     TableChanges changes = tableChangesSerializer.deserialize(tableChanges, useCatalogBeforeSchema);
                     for (TableChange entry : changes) {
                         if (entry.getType() == TableChangeType.CREATE || entry.getType() == TableChangeType.ALTER) {
@@ -143,5 +145,15 @@ public abstract class AbstractDatabaseHistory implements DatabaseHistory {
 
     @Override
     public void initializeStorage() {
+    }
+
+    @Override
+    public boolean storeOnlyMonitoredTables() {
+        return storeOnlyMonitoredTablesDdl;
+    }
+
+    @Override
+    public boolean skipUnparseableDdlStatements() {
+        return skipUnparseableDDL;
     }
 }

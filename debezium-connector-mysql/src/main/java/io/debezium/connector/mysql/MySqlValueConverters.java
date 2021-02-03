@@ -103,7 +103,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
      * @param temporal the temporal instance to adjust; may not be null
      * @return the possibly adjusted temporal instance; never null
      */
-    protected static Temporal adjustTemporal(Temporal temporal) {
+    public static Temporal adjustTemporal(Temporal temporal) {
         if (temporal.isSupported(ChronoField.YEAR)) {
             int year = temporal.get(ChronoField.YEAR);
             if (0 <= year && year <= 69) {
@@ -132,9 +132,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
      */
     public MySqlValueConverters(DecimalMode decimalMode, TemporalPrecisionMode temporalPrecisionMode, BigIntUnsignedMode bigIntUnsignedMode,
                                 BinaryHandlingMode binaryMode) {
-        this(decimalMode, temporalPrecisionMode, bigIntUnsignedMode, binaryMode, x -> x, (message, exception) -> {
-            throw new DebeziumException(message, exception);
-        });
+        this(decimalMode, temporalPrecisionMode, bigIntUnsignedMode, binaryMode, x -> x, MySqlValueConverters::defaultParsingErrorHandler);
     }
 
     /**
@@ -860,5 +858,9 @@ public class MySqlValueConverters extends JdbcValueConverters {
             return true;
         }
         return false;
+    }
+
+    public static void defaultParsingErrorHandler(String message, Exception exception) {
+        throw new DebeziumException(message, exception);
     }
 }
