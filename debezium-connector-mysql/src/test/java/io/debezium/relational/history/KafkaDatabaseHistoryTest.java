@@ -118,7 +118,7 @@ public class KafkaDatabaseHistoryTest {
         testHistoryTopicContent(topicName, false);
     }
 
-    private void testHistoryTopicContent(String topicName, boolean skipUnparseableDDL) {
+    private Configuration startHistory(String topicName, boolean skipUnparseableDDL) {
         // Start up the history ...
         Configuration config = Configuration.create()
                 .with(KafkaDatabaseHistory.BOOTSTRAP_SERVERS, kafka.brokerList())
@@ -134,10 +134,10 @@ public class KafkaDatabaseHistoryTest {
                 .with(KafkaDatabaseHistory.consumerConfigPropertyName(
                         ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG),
                         50000)
-                .with(KafkaDatabaseHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, skipUnparseableDDL)
-                .with(KafkaDatabaseHistory.INTERNAL_CONNECTOR_CLASS, "org.apache.kafka.connect.source.SourceConnector")
-                .with(KafkaDatabaseHistory.INTERNAL_CONNECTOR_ID, "dbz-test")
-                .build();
+                    .with(KafkaDatabaseHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, skipUnparseableDDL)
+                    .with(KafkaDatabaseHistory.INTERNAL_CONNECTOR_CLASS, "org.apache.kafka.connect.source.SourceConnector")
+                    .with(KafkaDatabaseHistory.INTERNAL_CONNECTOR_ID, "dbz-test")
+                    .build();
         history.configure(config, null, DatabaseHistoryMetrics.NOOP, true);
         history.start();
 
@@ -148,6 +148,12 @@ public class KafkaDatabaseHistoryTest {
 
         // Calling it another time to ensure we can work with the DB history topic already existing
         history.initializeStorage();
+
+        return config;
+    }
+
+    private void testHistoryTopicContent(String topicName, boolean skipUnparseableDDL) {
+        Configuration config = startHistory(topicName, skipUnparseableDDL);
 
         DdlParser recoveryParser = new MySqlAntlrDdlParser();
         DdlParser ddlParser = new MySqlAntlrDdlParser();
@@ -332,6 +338,14 @@ public class KafkaDatabaseHistoryTest {
     }
 
     @Test
+    public void testEmptyHistoryExists() {
+        String topicName = "exists-schema-changes";
+        // Start up the history ...
+        startHistory(topicName, true);
+        assertTrue(history.exists());
+    }
+
+    @Test
     @FixFor("DBZ-1886")
     public void differentiateStorageExistsFromHistoryExists() {
         String topicName = "differentiate-storage-exists-schema-changes";
@@ -355,7 +369,6 @@ public class KafkaDatabaseHistoryTest {
         history.initializeStorage();
         assertTrue(history.storageExists());
 
-        assertFalse(history.exists());
         history.start();
         setLogPosition(0);
         String ddl = "CREATE TABLE foo ( name VARCHAR(255) NOT NULL PRIMARY KEY); \n" +
