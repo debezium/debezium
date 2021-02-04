@@ -107,7 +107,7 @@ class PostgresDefaultValueConverter {
         return defaultValue;
     }
 
-    private Map<String, DefaultValueMapper> createDefaultValueMappers() {
+    private static Map<String, DefaultValueMapper> createDefaultValueMappers() {
         final Map<String, DefaultValueMapper> result = new HashMap<>();
 
         result.put("bit", v -> {
