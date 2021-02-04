@@ -180,7 +180,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                                 currentRedoLogFiles = getCurrentRedoLogFiles(connection, logMinerMetrics);
                             }
 
-                            startLogMining(connection, startScn, endScn, strategy, isContinuousMining);
+                            startLogMining(jdbcConnection, startScn, endScn, strategy, isContinuousMining);
 
                             stopwatch.start();
                             miningView.setFetchSize(LOG_MINING_VIEW_FETCH_SIZE);

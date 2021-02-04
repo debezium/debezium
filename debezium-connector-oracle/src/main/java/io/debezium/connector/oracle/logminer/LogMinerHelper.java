@@ -252,13 +252,13 @@ public class LogMinerHelper {
      * @param isContinuousMining works < 19 version only
      * @throws SQLException if anything unexpected happens
      */
-    static void startLogMining(Connection connection, Long startScn, Long endScn,
+    static void startLogMining(OracleConnection connection, Long startScn, Long endScn,
                                OracleConnectorConfig.LogMiningStrategy strategy, boolean isContinuousMining)
             throws SQLException {
         LOGGER.trace("Starting log mining startScn={}, endScn={}, strategy={}, continuous={}", startScn, endScn, strategy, isContinuousMining);
         String statement = SqlUtils.startLogMinerStatement(startScn, endScn, strategy, isContinuousMining);
         try {
-            executeCallableStatement(connection, statement);
+            executeCallableStatement(connection.connection(), statement);
         }
         catch (SQLException e) {
             // Capture database state before throwing exception
@@ -603,7 +603,7 @@ public class LogMinerHelper {
      *
      * @param connection the database connection
      */
-    private static void logDatabaseState(Connection connection) {
+    private static void logDatabaseState(OracleConnection connection) {
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("Configured redo logs are:");
             try {
@@ -650,8 +650,8 @@ public class LogMinerHelper {
      * @param query the query to execute
      * @throws SQLException thrown if an exception occurs performing a SQL operation
      */
-    private static void logQueryResults(Connection connection, String query) throws SQLException {
-        try (PreparedStatement s = connection.prepareStatement(query); ResultSet rs = s.executeQuery()) {
+    private static void logQueryResults(OracleConnection connection, String query) throws SQLException {
+        connection.query(query, rs -> {
             int columns = rs.getMetaData().getColumnCount();
             List<String> columnNames = new ArrayList<>();
             for (int index = 1; index <= columns; ++index) {
@@ -665,7 +665,7 @@ public class LogMinerHelper {
                 }
                 LOGGER.debug("{}", columnValues);
             }
-        }
+        });
     }
 
     /**
