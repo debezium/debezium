@@ -2,6 +2,52 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 1.5.0.Alpha1
+February 4th 2021 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12351487)
+
+### New features since 1.4.1.Final
+
+* Support emitting TRUNCATE events in PostgreSQL pgoutput plugin [DBZ-2382](https://issues.jboss.org/browse/DBZ-2382)
+* Migrate DebeziumContainer enhancements for DBZ-2950 and DBZ-2952 into main repository [DBZ-3024](https://issues.jboss.org/browse/DBZ-3024)
+* Implement meta tags [DBZ-2620](https://issues.jboss.org/browse/DBZ-2620)
+* Improve performance for very large postgres schemas [DBZ-2575](https://issues.jboss.org/browse/DBZ-2575)
+
+
+### Breaking changes since 1.4.1.Final
+
+* Move MySQL connector to base framework [DBZ-1865](https://issues.jboss.org/browse/DBZ-1865)
+
+
+### Fixes since 1.4.1.Final
+
+* Extra connectors are not buildable unless main Debezium is built locally [DBZ-2901](https://issues.jboss.org/browse/DBZ-2901)
+* java.sql.SQLException: ORA-01333: failed to establish Logminer Dictionary [DBZ-2939](https://issues.jboss.org/browse/DBZ-2939)
+* Add support for connector/task lifecycle ops to UI backend [DBZ-2951](https://issues.jboss.org/browse/DBZ-2951)
+* Cassandra CDC failed to deserialize list<UserType> column correct [DBZ-2974](https://issues.jboss.org/browse/DBZ-2974)
+* Debezium Oracle Connector will appear stuck on large SCN jumps [DBZ-2982](https://issues.jboss.org/browse/DBZ-2982)
+* Invalid regex patterns should fail validation when validation database.include/exclude.list properties for MySQL connector [DBZ-3008](https://issues.jboss.org/browse/DBZ-3008)
+* Fix repository config for Jenkis snapshot deployment [DBZ-3011](https://issues.jboss.org/browse/DBZ-3011)
+* Unable to parse non-constant SIGNAL option value [DBZ-3018](https://issues.jboss.org/browse/DBZ-3018)
+* Cannot parse expression in DEFAULT column definition [DBZ-3020](https://issues.jboss.org/browse/DBZ-3020)
+* Key being used as value in pubsub batch handler  [DBZ-3037](https://issues.jboss.org/browse/DBZ-3037)
+
+
+### Other changes since 1.4.1.Final
+
+* Improved resiliency of release process against OSS failures [DBZ-2274](https://issues.jboss.org/browse/DBZ-2274)
+* Pull up HOSTNAME, PORT, DATABASE_NAME, USER and PASSWORD to RelationalDatabaseConnectorConfig [DBZ-2420](https://issues.jboss.org/browse/DBZ-2420)
+* Db2 Connector doesn't declare database related config options [DBZ-2424](https://issues.jboss.org/browse/DBZ-2424)
+* Fix build status badge in README files [DBZ-2802](https://issues.jboss.org/browse/DBZ-2802)
+* Merge and complete web components PR [DBZ-2804](https://issues.jboss.org/browse/DBZ-2804)
+* IBM Db2 Connector promoted to GA [DBZ-2814](https://issues.jboss.org/browse/DBZ-2814)
+* Document several Oracle frequently encountered problems [DBZ-2970](https://issues.jboss.org/browse/DBZ-2970)
+* No syntax highlighting on website listings [DBZ-2978](https://issues.jboss.org/browse/DBZ-2978)
+* Admonition icons missing [DBZ-2986](https://issues.jboss.org/browse/DBZ-2986)
+* Improve logging for Logminer adapter [DBZ-2999](https://issues.jboss.org/browse/DBZ-2999)
+* CI build not required for changes in README files  [DBZ-3012](https://issues.jboss.org/browse/DBZ-3012)
+
+
+
 ## 1.4.1.Final
 January 28th 2021 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12353181)
 

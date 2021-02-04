@@ -55,6 +55,7 @@ Collin Van Dyck
 Cory Harper
 Cyril Scetbon
 Daan Roosen
+Dave Cramer
 Dave Cumberland
 David Chen
 David Feinblum
@@ -159,12 +160,14 @@ MaoXiang Pan
 Marc Zbyszynski
 Mario Mueller
 Mariusz Strzelecki
+Martin Sillence
 martper2
 Matt Beary
 Matteo Capitanio
 Mathieu Rozieres
 Matthias Wessendorf
 Max Kaplan
+Martín Pérez
 Melissa Winstanley
 Michael Wang
 Mickaël Isaert
@@ -175,7 +178,9 @@ Moira Tagle
 Muhammad Sufyian
 Nathan Mills
 Navdeep Agarwal
+Naveen Kumar KR
 Nayana Hettiarachchi
+Nick Murray
 Nikhil Benesch
 Nishant Singh
 Olavi Mustanoja
