@@ -16,6 +16,15 @@ toc::[]
 
 endif::community[]
 
+[WARNING]
+====
+The MySQL connector has been rewritten (link:https://issues.redhat.com/browse/DBZ-1865[DBZ-1865]) to the standard framework starting with *1.5.0.Alpha* release.
+The connector behaviour is almost in parity with the original one.
+The only feature that was dropped (and will be re-introduced later in a different form) is the *experimental* parallel snapshotting (link:https://issues.redhat.com/browse/DBZ-175[DBZ-175]).
+
+If you depend on a missing feature or you hit another difference in behaviour (please log a link:https://issues.redhat.com/browse/DBZ[Jira issue]) then you can use the legacy implementation by setting `internal.implementation=legacy` config option.
+====
+
 MySQL has a binary log (binlog) that records all operations in the order in which they are committed to the database. This includes changes to table schemas as well as changes to the data in tables. MySQL uses the binlog for replication and recovery.
 
 The {prodname} MySQL connector reads the binlog, produces change events for row-level `INSERT`, `UPDATE`, and `DELETE` operations, and emits the change events to Kafka topics. Client applications read those Kafka topics.
