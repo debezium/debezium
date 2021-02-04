@@ -16,13 +16,14 @@ toc::[]
 
 endif::community[]
 
-[WARNING]
+[NOTE]
 ====
-The MySQL connector has been rewritten (link:https://issues.redhat.com/browse/DBZ-1865[DBZ-1865]) to the standard framework starting with *1.5.0.Alpha* release.
-The connector behaviour is almost in parity with the original one.
-The only feature that was dropped (and will be re-introduced later in a different form) is the *experimental* parallel snapshotting (link:https://issues.redhat.com/browse/DBZ-175[DBZ-175]).
+A new capturing implementation for the Debezium MySQL connector has been created as of the starting with *1.5.0.Alpha* release (link:https://issues.redhat.com/browse/DBZ-1865[DBZ-1865]),
+based on the common connector framework used by all the other Kafka Connect connectors of Debezium. 
+The connector behaviour is almost in parity with previous implementation,
+with the exception of the *experimental* parallel snapshotting feature (link:https://issues.redhat.com/browse/DBZ-175[DBZ-175]), which isn't available with the new implementation yet and which is planned to be re-introduced later in a different form.
 
-If you depend on a missing feature or you hit another difference in behaviour (please log a link:https://issues.redhat.com/browse/DBZ[Jira issue]) then you can use the legacy implementation by setting `internal.implementation=legacy` config option.
+If you encounter any issues with the new MySQL connector implementation, please log a link:https://issues.redhat.com/browse/DBZ[Jira issue]; in this case, you can use the legacy implementation by setting the `internal.implementation=legacy` connector configuration option.
 ====
 
 MySQL has a binary log (binlog) that records all operations in the order in which they are committed to the database. This includes changes to table schemas as well as changes to the data in tables. MySQL uses the binlog for replication and recovery.
