@@ -65,6 +65,31 @@ public class MySqlAntlrDdlParserTest {
     }
 
     @Test
+    @FixFor("DBZ-3023")
+    public void shouldProcessDefaultCharsetForTable() {
+        parser.parse("SET character_set_server='latin2'", tables);
+        parser.parse("CREATE SCHEMA IF NOT EXISTS `database2`", tables);
+        parser.parse("CREATE SCHEMA IF NOT EXISTS `database1` CHARACTER SET='windows-1250'", tables);
+        parser.parse("CREATE TABLE IF NOT EXISTS `database1`.`table1` (\n"
+                + "`created` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,\n"
+                + "`x1` VARCHAR NOT NULL\n"
+                + ") CHARACTER SET = DEFAULT;", tables);
+        parser.parse("CREATE TABLE IF NOT EXISTS `database2`.`table2` (\n"
+                + "`created` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,\n"
+                + "`x1` VARCHAR NOT NULL\n"
+                + ") CHARACTER SET = DEFAULT;", tables);
+        assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
+        assertThat(tables.size()).isEqualTo(2);
+
+        Table table = tables.forTable("database1", null, "table1");
+        assertThat(table.columns()).hasSize(2);
+        assertThat(table.columnWithName("x1").charsetName()).isEqualTo("windows-1250");
+        table = tables.forTable("database2", null, "table2");
+        assertThat(table.columns()).hasSize(2);
+        assertThat(table.columnWithName("x1").charsetName()).isEqualTo("latin2");
+    }
+
+    @Test
     @FixFor("DBZ-3020")
     public void shouldProcessExpressionWithDefault() {
         String ddl = "create table rack_shelf_bin ( id int unsigned not null auto_increment unique primary key, bin_volume decimal(20, 4) default (bin_len * bin_width * bin_height));";
