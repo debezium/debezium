@@ -15,6 +15,7 @@ import java.sql.Statement;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -260,15 +261,8 @@ public class LogMinerHelper {
             executeCallableStatement(connection, statement);
         }
         catch (SQLException e) {
-            // Check if we got ORA-01291 or ORA-01284
-            if (e.getErrorCode() == 1291) {
-                try {
-                    logLogMinerLogEntries(connection);
-                }
-                catch (SQLException e2) {
-                    LOGGER.error("Failed to capture LogMiner log entries", e2);
-                }
-            }
+            // Capture database state before throwing exception
+            logDatabaseState(connection);
             throw e;
         }
         // todo dbms_logmnr.STRING_LITERALS_IN_STMT?
@@ -603,15 +597,73 @@ public class LogMinerHelper {
         return value.equals(MAX_SCN_BI) ? MAX_SCN_BI : value;
     }
 
-    private static void logLogMinerLogEntries(Connection connection) throws SQLException {
-        LOGGER.debug("Log entries registered with LogMiner are:");
-        try (PreparedStatement statement = connection.prepareStatement("SELECT * FROM V$LOGMNR_LOGS"); ResultSet rs = statement.executeQuery()) {
+    /**
+     * Helper method that will dump the state of various critical tables used by the LogMiner implementation
+     * to derive state about which logs are to be mined and processed by the Oracle LogMiner session.
+     *
+     * @param connection the database connection
+     */
+    private static void logDatabaseState(Connection connection) {
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("Configured redo logs are:");
+            try {
+                logQueryResults(connection, "SELECT * FROM V$LOGFILE");
+            }
+            catch (SQLException e) {
+                LOGGER.debug("Failed to obtain redo log table entries", e);
+            }
+            LOGGER.debug("Available archive logs are:");
+            try {
+                logQueryResults(connection, "SELECT * FROM V$ARCHIVED_LOG");
+            }
+            catch (SQLException e) {
+                LOGGER.debug("Failed to obtain archive log table entries", e);
+            }
+            LOGGER.debug("Available logs are:");
+            try {
+                logQueryResults(connection, "SELECT * FROM V$LOG");
+            }
+            catch (SQLException e) {
+                LOGGER.debug("Failed to obtain log table entries", e);
+            }
+            LOGGER.debug("Log history last 24 hours:");
+            try {
+                logQueryResults(connection, "SELECT * FROM V$LOG_HISTORY WHERE FIRST_TIME >= SYSDATE - 1");
+            }
+            catch (SQLException e) {
+                LOGGER.debug("Failed to obtain log history", e);
+            }
+            LOGGER.debug("Log entries registered with LogMiner are:");
+            try {
+                logQueryResults(connection, "SELECT * FROM V$LOGMNR_LOGS");
+            }
+            catch (SQLException e) {
+                LOGGER.debug("Failed to obtain registered logs with LogMiner", e);
+            }
+        }
+    }
+
+    /**
+     * Helper method that dumps the result set of an arbitrary SQL query to the connector's logs.
+     *
+     * @param connection the database connection
+     * @param query the query to execute
+     * @throws SQLException thrown if an exception occurs performing a SQL operation
+     */
+    private static void logQueryResults(Connection connection, String query) throws SQLException {
+        try (PreparedStatement s = connection.prepareStatement(query); ResultSet rs = s.executeQuery()) {
+            int columns = rs.getMetaData().getColumnCount();
+            List<String> columnNames = new ArrayList<>();
+            for (int index = 1; index <= columns; ++index) {
+                columnNames.add(rs.getMetaData().getColumnName(index));
+            }
+            LOGGER.debug("{}", columnNames);
             while (rs.next()) {
-                Long logId = rs.getLong("LOG_ID");
-                String fileName = rs.getString("FILENAME");
-                String info = rs.getString("INFO");
-                Long status = rs.getLong("STATUS");
-                LOGGER.debug("  id={}, fileName={}, info={}, status={}", logId, fileName, info, status);
+                List<Object> columnValues = new ArrayList<>();
+                for (int index = 1; index <= columns; ++index) {
+                    columnValues.add(rs.getObject(index));
+                }
+                LOGGER.debug("{}", columnValues);
             }
         }
     }
