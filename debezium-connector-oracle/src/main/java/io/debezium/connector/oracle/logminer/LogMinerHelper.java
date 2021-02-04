@@ -256,7 +256,6 @@ public class LogMinerHelper {
             throws SQLException {
         LOGGER.trace("Starting log mining startScn={}, endScn={}, strategy={}, continuous={}", startScn, endScn, strategy, isContinuousMining);
         String statement = SqlUtils.startLogMinerStatement(startScn, endScn, strategy, isContinuousMining);
-        executeCallableStatement(connection, statement);
         try {
             executeCallableStatement(connection, statement);
         }
