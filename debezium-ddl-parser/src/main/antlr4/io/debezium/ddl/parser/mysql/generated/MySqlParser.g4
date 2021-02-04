@@ -627,7 +627,7 @@ alterSpecification
     | DROP indexFormat=(INDEX | KEY) ifExists? uid                  #alterByDropIndex
     | RENAME indexFormat=(INDEX | KEY) uid TO uid                   #alterByRenameIndex
     | ALTER INDEX uid (VISIBLE | INVISIBLE)                         #alterByAlterIndexVisibility
-    | DROP FOREIGN KEY uid                                          #alterByDropForeignKey
+    | DROP FOREIGN KEY uid ifExists?                                #alterByDropForeignKey // ifExists is MariaDB-specific
     | DISABLE KEYS                                                  #alterByDisableKeys
     | ENABLE KEYS                                                   #alterByEnableKeys
     | RENAME renameFormat=(TO | AS)? (uid | fullId)                 #alterByRename
@@ -640,11 +640,11 @@ alterSpecification
     | IMPORT TABLESPACE                                             #alterByImportTablespace
     | FORCE                                                         #alterByForce
     | validationFormat=(WITHOUT | WITH) VALIDATION                  #alterByValidate
-    | ADD PARTITION
+    | ADD PARTITION ifNotExists?
         '('
           partitionDefinition (',' partitionDefinition)*
-        ')'                                                         #alterByAddPartition
-    | DROP PARTITION uidList                                        #alterByDropPartition
+        ')'                                                         #alterByAddPartition // ifNotExists is MariaDB-specific
+    | DROP PARTITION ifExists? uidList                              #alterByDropPartition // ifExists is MariaDB-specific
     | DISCARD PARTITION (uidList | ALL) TABLESPACE                  #alterByDiscardPartition
     | IMPORT PARTITION (uidList | ALL) TABLESPACE                   #alterByImportPartition
     | TRUNCATE PARTITION (uidList | ALL)                            #alterByTruncatePartition
