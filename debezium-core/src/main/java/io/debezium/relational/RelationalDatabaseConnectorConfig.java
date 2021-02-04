@@ -456,12 +456,12 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withDescription("A comma-separated list of regular expressions matching the database-specific data type names that "
                     + "adds the data type's original type and original length as parameters to the corresponding field schemas in the emitted change records.");
 
-    public static final Field SNAPSHOT_FULL_COLUMN_SCAN_FORCE = Field.create("snapshot.scan.all.columns.force")
+    public static final Field SNAPSHOT_FULL_COLUMN_SCAN_FORCE = Field.createInternal("snapshot.scan.all.columns.force")
             .withDisplayName("Snapshot force scan all columns of all tables")
             .withType(Type.BOOLEAN)
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
-            .withDescription("Restore pre 1.5 behavour and scan all tables to discover columns."
+            .withDescription("Restore pre 1.5 behaviour and scan all tables to discover columns."
                     + " If you are excluding one table then turning this on may improve performance."
                     + " If you are excluding a lot of tables the default behavour should work well.")
             .withDefault(false);
@@ -589,6 +589,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
         return 0;
     }
 
+    @Override
     public boolean isSchemaChangesHistoryEnabled() {
         return getConfig().getBoolean(INCLUDE_SCHEMA_CHANGES);
     }
