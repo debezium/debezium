@@ -141,16 +141,16 @@ public class LogMinerHelperIT extends AbstractConnectorTest {
     public void shouldCalculateAbandonTransactions() throws Exception {
         Map<String, String> redoLogFiles = LogMinerHelper.getMap(conn, SqlUtils.allOnlineLogsQuery(), "-1");
         Long oldestOnlineScn = getOldestOnlineScn(redoLogFiles);
-        Optional<Long> abandonWatermark = LogMinerHelper.getLastScnToAbandon(conn, oldestOnlineScn, 1);
+        Optional<Long> abandonWatermark = LogMinerHelper.getLastScnToAbandon(conn, oldestOnlineScn, Duration.ofHours(1));
         assertThat(abandonWatermark.isPresent()).isTrue();
 
         long currentScn = LogMinerHelper.getCurrentScn(conn);
-        abandonWatermark = LogMinerHelper.getLastScnToAbandon(conn, currentScn, 1);
+        abandonWatermark = LogMinerHelper.getLastScnToAbandon(conn, currentScn, Duration.ofHours(1));
         assertThat(abandonWatermark.isPresent()).isFalse();
 
         List<BigDecimal> oneDayArchivedNextScn = getOneDayArchivedLogNextScn(conn);
         long oldestArchivedScn = getOldestArchivedScn(oneDayArchivedNextScn);
-        abandonWatermark = LogMinerHelper.getLastScnToAbandon(conn, oldestArchivedScn, 1);
+        abandonWatermark = LogMinerHelper.getLastScnToAbandon(conn, oldestArchivedScn, Duration.ofHours(1));
         assertThat(abandonWatermark.isPresent()).isTrue();
 
         long twoHoursAgoScn;
@@ -166,16 +166,16 @@ public class LogMinerHelperIT extends AbstractConnectorTest {
         assertThat(Math.round(diffInDays * 24) == 2).isTrue();
 
         diffInDays += 0.6F; // + 4 hours
-        abandonWatermark = LogMinerHelper.getLastScnToAbandon(conn, twoHoursAgoScn, Math.round(diffInDays * 24));
+        abandonWatermark = LogMinerHelper.getLastScnToAbandon(conn, twoHoursAgoScn, Duration.ofHours(Math.round(diffInDays * 24)));
         assertThat(abandonWatermark.isPresent()).isFalse();
 
-        abandonWatermark = LogMinerHelper.getLastScnToAbandon(conn, twoHoursAgoScn, 1);
+        abandonWatermark = LogMinerHelper.getLastScnToAbandon(conn, twoHoursAgoScn, Duration.ofHours(1));
         assertThat(abandonWatermark.isPresent()).isTrue();
 
-        abandonWatermark = LogMinerHelper.getLastScnToAbandon(conn, twoHoursAgoScn, 2);
+        abandonWatermark = LogMinerHelper.getLastScnToAbandon(conn, twoHoursAgoScn, Duration.ofHours(2));
         assertThat(abandonWatermark.isPresent()).isTrue();
 
-        abandonWatermark = LogMinerHelper.getLastScnToAbandon(conn, twoHoursAgoScn, 3);
+        abandonWatermark = LogMinerHelper.getLastScnToAbandon(conn, twoHoursAgoScn, Duration.ofHours(3));
         assertThat(abandonWatermark.isPresent()).isFalse();
     }
 

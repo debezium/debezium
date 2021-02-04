@@ -13,7 +13,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 
-import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestRule;
@@ -25,27 +24,26 @@ import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot.AdapterName;
+import io.debezium.doc.FixFor;
 
 @SkipWhenAdapterNameIsNot(value = AdapterName.LOGMINER)
 public class LogMinerMetricsTest {
 
-    private LogMinerMetrics metrics;
-    private OracleConnectorConfig connectorConfig;
-
     @Rule
     public TestRule skipRule = new SkipTestDependingOnAdapterNameRule();
 
-    @Before
-    public void before() {
+    private CdcSourceTaskContext getSourceTaskContext() {
         CdcSourceTaskContext taskContext = mock(CdcSourceTaskContext.class);
         Mockito.when(taskContext.getConnectorName()).thenReturn("connector name");
         Mockito.when(taskContext.getConnectorType()).thenReturn("connector type");
-        connectorConfig = new OracleConnectorConfig(Configuration.create().build());
-        metrics = new LogMinerMetrics(taskContext, connectorConfig);
+        return taskContext;
     }
 
     @Test
     public void testMetrics() {
+        CdcSourceTaskContext taskContext = getSourceTaskContext();
+        final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(Configuration.create().build());
+        LogMinerMetrics metrics = new LogMinerMetrics(taskContext, connectorConfig);
 
         metrics.setLastCapturedDmlCount(1);
         assertThat(metrics.getTotalCapturedDmlCount() == 1).isTrue();
@@ -124,9 +122,6 @@ public class LogMinerMetricsTest {
         metrics.setRecordMiningHistory(true);
         assertThat(metrics.getRecordMiningHistory()).isTrue();
 
-        metrics.setHoursToKeepTransactionInBuffer(3);
-        assertThat(metrics.getHoursToKeepTransactionInBuffer()).isEqualTo(3);
-
         metrics.incrementNetworkConnectionProblemsCounter();
         assertThat(metrics.getNetworkConnectionProblemsCounter()).isEqualTo(1);
 
@@ -137,4 +132,13 @@ public class LogMinerMetricsTest {
         assertThat(metrics.getBatchSize()).isEqualTo(5000);
     }
 
+    @Test
+    @FixFor("DBZ-2754")
+    public void testCustomTransactionRetention() throws Exception {
+        CdcSourceTaskContext taskContext = getSourceTaskContext();
+        Configuration config = Configuration.create().with(OracleConnectorConfig.LOG_MINING_TRANSACTION_RETENTION, 3).build();
+        OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
+        LogMinerMetrics metrics = new LogMinerMetrics(taskContext, connectorConfig);
+        assertThat(metrics.getHoursToKeepTransactionInBuffer()).isEqualTo(3);
+    }
 }

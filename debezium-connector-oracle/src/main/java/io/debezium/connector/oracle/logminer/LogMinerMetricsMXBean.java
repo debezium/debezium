@@ -158,10 +158,4 @@ public interface LogMinerMetricsMXBean {
      * @return the number of hours to keep transaction in buffer before abandoning
      */
     int getHoursToKeepTransactionInBuffer();
-
-    /**
-     * Set the number of hours to retain transaction in buffer prior to abandoning
-     * @param hours the number of hours
-     */
-    void setHoursToKeepTransactionInBuffer(int hours);
 }

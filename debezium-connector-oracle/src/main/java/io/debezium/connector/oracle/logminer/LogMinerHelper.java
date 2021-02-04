@@ -523,14 +523,14 @@ public class LogMinerHelper {
      *
      * @param connection connection
      * @param offsetScn current offset scn
-     * @param hoursToKeepTransaction hours to tolerate long transaction
+     * @param transactionRetention duration to tolerate long running transactions
      * @return optional SCN as a watermark for abandonment
      */
-    public static Optional<Long> getLastScnToAbandon(Connection connection, Long offsetScn, int hoursToKeepTransaction) {
+    public static Optional<Long> getLastScnToAbandon(Connection connection, Long offsetScn, Duration transactionRetention) {
         try {
             String query = SqlUtils.diffInDaysQuery(offsetScn);
             Float diffInDays = (Float) getSingleResult(connection, query, DATATYPE.FLOAT);
-            if (diffInDays != null && (diffInDays * 24) > hoursToKeepTransaction) {
+            if (diffInDays != null && (diffInDays * 24) > transactionRetention.toHours()) {
                 return Optional.of(offsetScn);
             }
             return Optional.empty();

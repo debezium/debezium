@@ -5,15 +5,21 @@
  */
 package io.debezium.connector.oracle;
 
+import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+
+import java.time.Duration;
+import java.util.Arrays;
 
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
+import io.debezium.config.Field;
+import io.debezium.doc.FixFor;
 
 public class OracleConnectorConfigTest {
 
@@ -151,5 +157,28 @@ public class OracleConnectorConfigTest {
         assertEquals(connectorConfig.getConfig().getInteger(OracleConnectorConfig.LOG_MINING_VIEW_FETCH_SIZE), OracleConnectorConfig.DEFAULT_VIEW_FETCH_SIZE);
 
         assertEquals(connectorConfig.getLogMiningViewFetchSize(), OracleConnectorConfig.DEFAULT_VIEW_FETCH_SIZE);
+    }
+
+    @Test
+    @FixFor("DBZ-2754")
+    public void validTransactionRetentionDefaults() throws Exception {
+        final Configuration config = Configuration.create().build();
+        final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
+        assertThat(connectorConfig.getLogMiningTransactionRetention()).isEqualTo(Duration.ofHours(OracleConnectorConfig.DEFAULT_TRANSACTION_RETENTION));
+    }
+
+    @Test
+    @FixFor("DBZ-2754")
+    public void testTransactionRetention() throws Exception {
+        final Field transactionRetentionField = OracleConnectorConfig.LOG_MINING_TRANSACTION_RETENTION;
+
+        Configuration config = Configuration.create().with(transactionRetentionField, 3).build();
+        assertThat(config.validateAndRecord(Arrays.asList(transactionRetentionField), LOGGER::error)).isTrue();
+
+        OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
+        assertThat(connectorConfig.getLogMiningTransactionRetention()).isEqualTo(Duration.ofHours(3));
+
+        config = Configuration.create().with(transactionRetentionField, 0).build();
+        assertThat(config.validateAndRecord(Arrays.asList(transactionRetentionField), LOGGER::error)).isFalse();
     }
 }

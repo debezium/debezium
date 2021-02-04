@@ -82,6 +82,8 @@ public class LogMinerMetrics extends Metrics implements LogMinerMetricsMXBean {
         sleepTimeMax = connectorConfig.getLogMiningSleepTimeMax().toMillis();
         sleepTimeIncrement = connectorConfig.getLogMiningSleepTimeIncrement().toMillis();
 
+        hoursToKeepTransaction.set(Long.valueOf(connectorConfig.getLogMiningTransactionRetention().toHours()).intValue());
+
         reset();
         LOGGER.info("Logminer metrics initialized {}", this);
     }
@@ -95,7 +97,6 @@ public class LogMinerMetrics extends Metrics implements LogMinerMetricsMXBean {
         maxDurationOfFetchingQuery.set(Duration.ZERO);
         lastDurationOfFetchingQuery.set(Duration.ZERO);
         logMinerQueryCount.set(0);
-        hoursToKeepTransaction.set(DEFAULT_HOURS_TO_KEEP_TRANSACTION);
         maxBatchProcessingDuration.set(Duration.ZERO);
         totalDurationOfFetchingQuery.set(Duration.ZERO);
         lastCapturedDmlCount.set(0);
@@ -307,13 +308,6 @@ public class LogMinerMetrics extends Metrics implements LogMinerMetricsMXBean {
     @Override
     public void setRecordMiningHistory(boolean doRecording) {
         recordMiningHistory.set(doRecording);
-    }
-
-    @Override
-    public void setHoursToKeepTransactionInBuffer(int hours) {
-        if (hours > 0 && hours <= 48) {
-            hoursToKeepTransaction.set(hours);
-        }
     }
 
     @Override

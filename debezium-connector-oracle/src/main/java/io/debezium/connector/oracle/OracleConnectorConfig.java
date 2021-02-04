@@ -62,6 +62,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     protected final static int MIN_SLEEP_TIME_MS = 0;
     protected final static int SLEEP_TIME_INCREMENT_MS = 200;
 
+    protected final static int DEFAULT_TRANSACTION_RETENTION = 4;
+
     public static final Field PORT = RelationalDatabaseConnectorConfig.PORT
             .withDefault(DEFAULT_PORT);
 
@@ -166,6 +168,15 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withImportance(Importance.MEDIUM)
             .withDefault(0)
             .withDescription("Hours to keep Log Mining history.  By default, no history is retained.");
+
+    public static final Field LOG_MINING_TRANSACTION_RETENTION = Field.create("log.mining.transaction.retention.hours")
+            .withDisplayName("Log Mining long running transaction retention")
+            .withType(Type.LONG)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDefault(DEFAULT_TRANSACTION_RETENTION)
+            .withValidation(OracleConnectorConfig::isPositiveNonZeroInteger)
+            .withDescription("Hours to keep long running transactions in transaction buffer between log mining sessions.");
 
     public static final Field RAC_SYSTEM = Field.create("database.rac")
             .withDisplayName("Oracle RAC")
@@ -390,7 +401,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                 CommonConnectorConfig.MAX_QUEUE_SIZE, CommonConnectorConfig.SNAPSHOT_DELAY_MS, CommonConnectorConfig.SNAPSHOT_FETCH_SIZE,
                 SNAPSHOT_ENHANCEMENT_TOKEN, LOG_MINING_HISTORY_RECORDER_CLASS, LOG_MINING_HISTORY_RETENTION, RAC_SYSTEM, RAC_NODES,
                 LOG_MINING_ARCHIVE_LOG_HOURS, LOG_MINING_BATCH_SIZE_DEFAULT, LOG_MINING_BATCH_SIZE_MIN, LOG_MINING_BATCH_SIZE_MAX,
-                LOG_MINING_SLEEP_TIME_DEFAULT_MS, LOG_MINING_SLEEP_TIME_MIN_MS, LOG_MINING_SLEEP_TIME_MAX_MS, LOG_MINING_SLEEP_TIME_INCREMENT_MS);
+                LOG_MINING_SLEEP_TIME_DEFAULT_MS, LOG_MINING_SLEEP_TIME_MIN_MS, LOG_MINING_SLEEP_TIME_MAX_MS, LOG_MINING_SLEEP_TIME_INCREMENT_MS,
+                LOG_MINING_TRANSACTION_RETENTION);
 
         return config;
     }
@@ -835,6 +847,13 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     }
 
     /**
+     * @return the duration for which long running transactions are permitted in the transaction buffer between log switches
+     */
+    public Duration getLogMiningTransactionRetention() {
+        return Duration.ofHours(getConfig().getInteger(LOG_MINING_TRANSACTION_RETENTION));
+    }
+
+    /**
      * Validate the time.precision.mode configuration.
      *
      * If {@code adaptive} is specified, this option has the potential to cause overflow which is why the
@@ -896,5 +915,14 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             return Field.isRequired(config, field, problems);
         }
         return 0;
+    }
+
+    public static int isPositiveNonZeroInteger(Configuration config, Field field, ValidationOutput problems) {
+        Integer value = config.getInteger(field);
+        if (value == 0) {
+            problems.accept(field, value, "The value must be non-zero.");
+            return 1;
+        }
+        return Field.isPositiveInteger(config, field, problems);
     }
 }

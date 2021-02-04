@@ -257,7 +257,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
     }
 
     private void abandonOldTransactionsIfExist(Connection connection) {
-        Optional<Long> lastScnToAbandonTransactions = getLastScnToAbandon(connection, offsetContext.getScn(), logMinerMetrics.getHoursToKeepTransactionInBuffer());
+        Optional<Long> lastScnToAbandonTransactions = getLastScnToAbandon(connection, offsetContext.getScn(), connectorConfig.getLogMiningTransactionRetention());
         lastScnToAbandonTransactions.ifPresent(thresholdScn -> {
             logWarn(transactionalBufferMetrics, "All transactions with first SCN <= {} will be abandoned, offset: {}", thresholdScn, offsetContext.getScn());
             transactionalBuffer.abandonLongTransactions(thresholdScn);
