@@ -141,7 +141,7 @@ class PostgresDefaultValueConverter {
         return result;
     }
 
-    private String extractDefault(String defaultValue) {
+    private static String extractDefault(String defaultValue) {
         // Values are either "raw", such as `1234`, or "type casted", such as `'9223372036854775807'::bigint`.
         // If the value does NOT contain a single quote it is assumed to be a raw value. Otherwise the value is
         // extracted from inside the single quotes.
