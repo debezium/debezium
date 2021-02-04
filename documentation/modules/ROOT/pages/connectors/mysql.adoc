@@ -324,7 +324,7 @@ If the connector fails, stops, or is rebalanced while performing the _initial sn
 If the connector stops for long enough, MySQL could purge old binlog files and the connector's position would be lost. If the position is lost, the connector reverts to the _initial snapshot_ for its starting position. For more tips on troubleshooting the {prodname} MySQL connector, see {link-prefix}:{link-mysql-connector}#mysql-when-things-go-wrong[behavior when things go wrong].
 
 Global read locks not allowed::
-Some environments do not allow global read locks. If the {prodname} MySQL connector detects that global read locks are not permitted, the connector uses table-level locks instead and performs a snapshot with this method. This requires the database user for the {prodname} connector to have `LOCK_TABLES` privileges. 
+Some environments do not allow global read locks. If the {prodname} MySQL connector detects that global read locks are not permitted, the connector uses table-level locks instead and performs a snapshot with this method. This requires the database user for the {prodname} connector to have `LOCK TABLES` privileges. 
 +
 .Workflow for performing an initial snapshot with table-level locks
 [cols="1,9",options="header",subs="+attributes"]
@@ -1404,7 +1404,7 @@ mysql> GRANT SELECT, RELOAD, SHOW DATABASES, REPLICATION SLAVE, REPLICATION CLIE
 +
 The table below describes the permissions. 
 +
-IMPORTANT: If using a hosted option such as Amazon RDS or Amazon Aurora that does not allow a global read lock, table-level locks are used to create the _consistent snapshot_. In this case, you need to also grant `LOCK_TABLES` permissions to the user that you create. See {link-prefix}:{link-mysql-connector}#mysql-snapshots[snapshots] for more details.
+IMPORTANT: If using a hosted option such as Amazon RDS or Amazon Aurora that does not allow a global read lock, table-level locks are used to create the _consistent snapshot_. In this case, you need to also grant `LOCK TABLES` permissions to the user that you create. See {link-prefix}:{link-mysql-connector}#mysql-snapshots[snapshots] for more details.
 
 . Finalize the user's permissions:
 +
