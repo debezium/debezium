@@ -213,7 +213,7 @@ public class OracleConnection extends JdbcConnection {
                            ColumnNameFilter columnFilter, boolean removeTablesNotFoundInJdbc)
             throws SQLException {
 
-        super.readSchema(tables, null, schemaNamePattern, null, columnFilter, removeTablesNotFoundInJdbc);
+        super.readSchema(tables, null, schemaNamePattern, tableFilter, columnFilter, removeTablesNotFoundInJdbc);
 
         Set<TableId> tableIds = tables.tableIds().stream().filter(x -> schemaNamePattern.equals(x.schema())).collect(Collectors.toSet());
 
