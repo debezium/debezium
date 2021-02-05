@@ -230,6 +230,11 @@ public class OracleConnection extends JdbcConnection {
         }
     }
 
+    @Override
+    public List<String> readTableUniqueIndices(DatabaseMetaData metadata, TableId id) throws SQLException {
+        return super.readTableUniqueIndices(metadata, id.toDoubleQuoted());
+    }
+
     private void overrideOracleSpecificColumnTypes(Tables tables, TableId tableId, TableId tableIdWithCatalog) {
         TableEditor editor = tables.editTable(tableId);
         editor.tableId(tableIdWithCatalog);

@@ -1342,6 +1342,31 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         }
     }
 
+    @Test
+    @FixFor("DBZ-3057")
+    public void shouldReadTableUniqueIndicesWithCharactersThatRequireExplicitQuotes() throws Exception {
+        final String TABLE_NAME = "debezium.\"#T70_Sid:582003931_1_ConnConne\"";
+        try {
+            TestHelper.dropTable(connection, TABLE_NAME);
+
+            final String ddl = "CREATE GLOBAL TEMPORARY TABLE " + TABLE_NAME + " (id number, name varchar2(50))";
+            connection.execute(ddl);
+            connection.execute("GRANT SELECT ON " + TABLE_NAME + " TO " + TestHelper.getConnectorUserName());
+
+            final Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.SNAPSHOT_MODE, OracleConnectorConfig.SnapshotMode.INITIAL)
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+        }
+        finally {
+            TestHelper.dropTable(connection, TABLE_NAME);
+        }
+    }
+
     private String generateAlphaNumericStringColumn(int size) {
         final String alphaNumericString = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz";
         final StringBuilder sb = new StringBuilder(size);
