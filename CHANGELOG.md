@@ -29,7 +29,9 @@ February 4th 2021 [Detailed release notes](https://issues.redhat.com/secure/Rele
 * Fix repository config for Jenkis snapshot deployment [DBZ-3011](https://issues.jboss.org/browse/DBZ-3011)
 * Unable to parse non-constant SIGNAL option value [DBZ-3018](https://issues.jboss.org/browse/DBZ-3018)
 * Cannot parse expression in DEFAULT column definition [DBZ-3020](https://issues.jboss.org/browse/DBZ-3020)
-* Key being used as value in pubsub batch handler  [DBZ-3037](https://issues.jboss.org/browse/DBZ-3037)
+* Key being used as value in pubsub batch handler [DBZ-3037](https://issues.jboss.org/browse/DBZ-3037)
+* Table creation DDL with `CHARACTER SET = DEFAULT` causes MySQL connector failure [DBZ-3023](https://issues.jboss.org/browse/DBZ-3023)
+* Missing some MariaDB existence predicates in ALTER TABLE [DBZ-3039](https://issues.jboss.org/browse/DBZ-3039)
 
 
 ### Other changes since 1.4.1.Final
@@ -44,7 +46,9 @@ February 4th 2021 [Detailed release notes](https://issues.redhat.com/secure/Rele
 * No syntax highlighting on website listings [DBZ-2978](https://issues.jboss.org/browse/DBZ-2978)
 * Admonition icons missing [DBZ-2986](https://issues.jboss.org/browse/DBZ-2986)
 * Improve logging for Logminer adapter [DBZ-2999](https://issues.jboss.org/browse/DBZ-2999)
-* CI build not required for changes in README files  [DBZ-3012](https://issues.jboss.org/browse/DBZ-3012)
+* CI build not required for changes in README files [DBZ-3012](https://issues.jboss.org/browse/DBZ-3012)
+* Execute ZZZGtidSetIT as the last test [DBZ-3047](https://issues.jboss.org/browse/DBZ-3047)
+* Capture and report LogMiner state when mining session fails to start [DBZ-3055](https://issues.jboss.org/browse/DBZ-3055)
 
 
 
