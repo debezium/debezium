@@ -779,6 +779,24 @@ Depending on the write load of a table, when a Cassandra connector is stopped fo
 
 If a Cassandra table temporarily disables CDC and then re-enables it again after some time, it must be re-bootstrapped. To re-bootstrap an individual table, you can manually remove the recorded offset line corresponding to that table from snapshot_offset.properties file.
 
+==== Use case example after generating your Debezium Cassandra .jar with dependencies connector (ref. DBZ-3046)
+
+Note: Using a Cassandra 3 node cluster with GossipingPropertyFileSnitch, ubuntu 16.04, Java 8, Cassandra 3.11 and Kafka 2.12-2.60 & Debezium Cassandra 1.4.0Final
+
+1) log4j.properties file required:
+the log4j.properties file can be found within the KAFKA tar (2.12-2.6.0) under /config directory.
+
+2) Java command used:
+Running it from a created folder e.g. $ /opt/debezium/plugin
+java -cp "./*:./" io.debezium.connector.cassandra.CassandraConnectorTask config.properties -Dlog4j.configuration=file:///opt/debezium/plugin/log4j.properties
+
+Keep in a directory together the debezium cassandra .jar, debezium cassandra .properties file (in this case named config.properties) and the log4j.properties file (found in kafka tar distribution). Also here keep the slighly modified cassandra.yaml (in order to make it work with underlying cassandra cluster using the GossipingPropertyFileSnitch).
+
+3) Using GossipinPropertyFileSnitch cassandra cluster is not posible if the debezium cassandra connector is not tricked using a modified and separated cassandra.yaml file. Copy the cassandra.yaml from your cluster deployment using GossipinPropertyFileSnitch and modify the snitch parameter to "SimpleSnitch" and pass this file in the debezium cassandra .properties file using (cassandra.config=/path/to/modified/yaml). Keep this modified cassandra.yaml file also in the same directory e.g (/opt/debezium/plugin).
+
+4) CDC and CommitLog cassandra.yaml parameters:
+Follow cdc parameters as per documentation and if you want the connector to find the table(s) for snapshot, lower the following to see the kafka topic polulated. commitlog_segment=1 and commitlog_total_space_in_mb=2 will help to make work the connector with a cassandra with low traffic (after edit it according to your needs).
+
 [[cassandra-deploying-a-connector]]
 == Deploying A Connector
 
