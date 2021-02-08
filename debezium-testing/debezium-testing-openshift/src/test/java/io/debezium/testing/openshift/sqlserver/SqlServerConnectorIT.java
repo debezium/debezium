@@ -5,6 +5,7 @@
  */
 package io.debezium.testing.openshift.sqlserver;
 
+import static io.debezium.testing.openshift.assertions.KafkaAssertions.awaitAssert;
 import static io.debezium.testing.openshift.tools.ConfigProperties.DATABASE_SQLSERVER_DBZ_DBNAME;
 import static io.debezium.testing.openshift.tools.ConfigProperties.DATABASE_SQLSERVER_DBZ_PASSWORD;
 import static io.debezium.testing.openshift.tools.ConfigProperties.DATABASE_SQLSERVER_DBZ_USERNAME;
@@ -29,7 +30,6 @@ import io.debezium.testing.openshift.tools.databases.sqlserver.SqlServerControll
 import io.debezium.testing.openshift.tools.databases.sqlserver.SqlServerDeployer;
 import io.debezium.testing.openshift.tools.kafka.ConnectorConfigBuilder;
 
-import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 
@@ -49,7 +49,6 @@ public class SqlServerConnectorIT extends ConnectorTestBase {
 
     private static SqlServerDeployer dbDeployer;
     private static SqlServerController dbController;
-    private static OkHttpClient httpClient = new OkHttpClient();
     private static ConnectorFactories connectorFactories = new ConnectorFactories();
     private static ConnectorConfigBuilder connectorConfig;
     private static String connectorName;
@@ -101,7 +100,7 @@ public class SqlServerConnectorIT extends ConnectorTestBase {
     @Test
     @Order(2)
     public void shouldCreateKafkaTopics() {
-        assertTopicsExist(
+        assertions.assertTopicsExist(
                 connectorName + ".dbo.customers",
                 connectorName + ".dbo.orders",
                 connectorName + ".dbo.products",
@@ -112,7 +111,7 @@ public class SqlServerConnectorIT extends ConnectorTestBase {
     @Order(3)
     public void shouldContainRecordsInCustomersTopic() throws IOException {
         kafkaConnectController.waitForSqlServerSnapshot(connectorName);
-        awaitAssert(() -> assertRecordsCount(connectorName + ".dbo.customers", 4));
+        awaitAssert(() -> assertions.assertRecordsCount(connectorName + ".dbo.customers", 4));
     }
 
     //
@@ -120,8 +119,8 @@ public class SqlServerConnectorIT extends ConnectorTestBase {
     @Order(4)
     public void shouldStreamChanges() throws SQLException {
         insertCustomer("Tom", "Tester", "tom@test.com");
-        awaitAssert(() -> assertRecordsCount(connectorName + ".dbo.customers", 5));
-        awaitAssert(() -> assertRecordsContain(connectorName + ".dbo.customers", "tom@test.com"));
+        awaitAssert(() -> assertions.assertRecordsCount(connectorName + ".dbo.customers", 5));
+        awaitAssert(() -> assertions.assertRecordsContain(connectorName + ".dbo.customers", "tom@test.com"));
     }
 
     @Test
@@ -129,15 +128,15 @@ public class SqlServerConnectorIT extends ConnectorTestBase {
     public void shouldBeDown() throws SQLException, IOException {
         kafkaConnectController.undeployConnector(connectorName);
         insertCustomer("Jerry", "Tester", "jerry@test.com");
-        awaitAssert(() -> assertRecordsCount(connectorName + ".dbo.customers", 5));
+        awaitAssert(() -> assertions.assertRecordsCount(connectorName + ".dbo.customers", 5));
     }
 
     @Test
     @Order(6)
     public void shouldResumeStreamingAfterRedeployment() throws IOException, InterruptedException {
         kafkaConnectController.deployConnector(connectorName, connectorConfig);
-        awaitAssert(() -> assertRecordsCount(connectorName + ".dbo.customers", 6));
-        awaitAssert(() -> assertRecordsContain(connectorName + ".dbo.customers", "jerry@test.com"));
+        awaitAssert(() -> assertions.assertRecordsCount(connectorName + ".dbo.customers", 6));
+        awaitAssert(() -> assertions.assertRecordsContain(connectorName + ".dbo.customers", "jerry@test.com"));
     }
 
     @Test
@@ -146,7 +145,7 @@ public class SqlServerConnectorIT extends ConnectorTestBase {
         operatorController.disable();
         kafkaConnectController.destroy();
         insertCustomer("Nibbles", "Tester", "nibbles@test.com");
-        awaitAssert(() -> assertRecordsCount(connectorName + ".dbo.customers", 6));
+        awaitAssert(() -> assertions.assertRecordsCount(connectorName + ".dbo.customers", 6));
     }
 
     @Test
@@ -154,7 +153,7 @@ public class SqlServerConnectorIT extends ConnectorTestBase {
     public void shouldResumeStreamingAfterCrash() throws InterruptedException {
         operatorController.enable();
         kafkaConnectController.waitForConnectCluster();
-        awaitAssert(() -> assertMinimalRecordsCount(connectorName + ".dbo.customers", 7));
-        awaitAssert(() -> assertRecordsContain(connectorName + ".dbo.customers", "nibbles@test.com"));
+        awaitAssert(() -> assertions.assertMinimalRecordsCount(connectorName + ".dbo.customers", 7));
+        awaitAssert(() -> assertions.assertRecordsContain(connectorName + ".dbo.customers", "nibbles@test.com"));
     }
 }
