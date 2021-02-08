@@ -5,6 +5,7 @@
  */
 package io.debezium.testing.openshift.mongodb;
 
+import static io.debezium.testing.openshift.assertions.KafkaAssertions.awaitAssert;
 import static io.debezium.testing.openshift.tools.ConfigProperties.DATABASE_MONGO_DBZ_DBNAME;
 import static io.debezium.testing.openshift.tools.ConfigProperties.DATABASE_MONGO_DBZ_LOGIN_DBNAME;
 import static io.debezium.testing.openshift.tools.ConfigProperties.DATABASE_MONGO_DBZ_PASSWORD;
@@ -30,7 +31,6 @@ import io.debezium.testing.openshift.tools.databases.mongodb.MongoDatabaseClient
 import io.debezium.testing.openshift.tools.databases.mongodb.MongoDeployer;
 import io.debezium.testing.openshift.tools.kafka.ConnectorConfigBuilder;
 
-import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 
@@ -50,7 +50,6 @@ public class MongoConnectorIT extends ConnectorTestBase {
 
     private static MongoDeployer dbDeployer;
     private static MongoController dbController;
-    private static OkHttpClient httpClient = new OkHttpClient();
     private static ConnectorFactories connectorFactories = new ConnectorFactories();
     private static ConnectorConfigBuilder connectorConfig;
     private static String connectorName;
@@ -70,6 +69,9 @@ public class MongoConnectorIT extends ConnectorTestBase {
         connectorName = CONNECTOR_NAME + "-" + id;
         connectorConfig = connectorFactories.mongo()
                 .put("mongodb.name", connectorName);
+        if (ConfigProperties.DEPLOY_SERVICE_REGISTRY) {
+            connectorConfig.addApicurioAvroSupport(registryController.getRegistryApiAddress());
+        }
         kafkaConnectController.deployConnector(connectorName, connectorConfig);
     }
 
@@ -107,7 +109,7 @@ public class MongoConnectorIT extends ConnectorTestBase {
     @Test
     @Order(2)
     public void shouldCreateKafkaTopics() {
-        assertTopicsExist(
+        assertions.assertTopicsExist(
                 connectorName + ".inventory.customers",
                 connectorName + ".inventory.orders",
                 connectorName + ".inventory.products");
@@ -117,15 +119,15 @@ public class MongoConnectorIT extends ConnectorTestBase {
     @Order(3)
     public void shouldContainRecordsInCustomersTopic() throws IOException {
         kafkaConnectController.waitForMongoSnapshot(connectorName);
-        awaitAssert(() -> assertRecordsCount(connectorName + ".inventory.customers", 4));
+        awaitAssert(() -> assertions.assertRecordsCount(connectorName + ".inventory.customers", 4));
     }
 
     @Test
     @Order(4)
     public void shouldStreamChanges() {
         insertCustomer("Tom", "Tester", "tom@test.com");
-        awaitAssert(() -> assertRecordsCount(connectorName + ".inventory.customers", 5));
-        awaitAssert(() -> assertRecordsContain(connectorName + ".inventory.customers", "tom@test.com"));
+        awaitAssert(() -> assertions.assertRecordsCount(connectorName + ".inventory.customers", 5));
+        awaitAssert(() -> assertions.assertRecordsContain(connectorName + ".inventory.customers", "tom@test.com"));
     }
 
     @Test
@@ -133,15 +135,15 @@ public class MongoConnectorIT extends ConnectorTestBase {
     public void shouldBeDown() throws IOException {
         kafkaConnectController.undeployConnector(connectorName);
         insertCustomer("Jerry", "Tester", "jerry@test.com");
-        awaitAssert(() -> assertRecordsCount(connectorName + ".inventory.customers", 5));
+        awaitAssert(() -> assertions.assertRecordsCount(connectorName + ".inventory.customers", 5));
     }
 
     @Test
     @Order(6)
     public void shouldResumeStreamingAfterRedeployment() throws IOException, InterruptedException {
         kafkaConnectController.deployConnector(connectorName, connectorConfig);
-        awaitAssert(() -> assertRecordsCount(connectorName + ".inventory.customers", 6));
-        awaitAssert(() -> assertRecordsContain(connectorName + ".inventory.customers", "jerry@test.com"));
+        awaitAssert(() -> assertions.assertRecordsCount(connectorName + ".inventory.customers", 6));
+        awaitAssert(() -> assertions.assertRecordsContain(connectorName + ".inventory.customers", "jerry@test.com"));
     }
 
     @Test
@@ -150,7 +152,7 @@ public class MongoConnectorIT extends ConnectorTestBase {
         operatorController.disable();
         kafkaConnectController.destroy();
         insertCustomer("Nibbles", "Tester", "nibbles@test.com");
-        awaitAssert(() -> assertRecordsCount(connectorName + ".inventory.customers", 6));
+        awaitAssert(() -> assertions.assertRecordsCount(connectorName + ".inventory.customers", 6));
     }
 
     @Test
@@ -158,7 +160,7 @@ public class MongoConnectorIT extends ConnectorTestBase {
     public void shouldResumeStreamingAfterCrash() throws InterruptedException {
         operatorController.enable();
         kafkaConnectController.waitForConnectCluster();
-        awaitAssert(() -> assertMinimalRecordsCount(connectorName + ".inventory.customers", 7));
-        awaitAssert(() -> assertRecordsContain(connectorName + ".inventory.customers", "nibbles@test.com"));
+        awaitAssert(() -> assertions.assertMinimalRecordsCount(connectorName + ".inventory.customers", 7));
+        awaitAssert(() -> assertions.assertRecordsContain(connectorName + ".inventory.customers", "nibbles@test.com"));
     }
 }
