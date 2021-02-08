@@ -534,12 +534,14 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         consumer.expects(1);
         TestHelper.execute("ALTER TABLE test_table DROP CONSTRAINT test_table_pkey CASCADE;");
         statement = "INSERT INTO test_table (pk, text) VALUES (4, 'no_pk_and_full');";
-        assertInsert(statement, 4, Collections.singletonList(new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "no_pk_and_full")));
+        assertInsert(statement, Arrays.asList(new SchemaAndValueField("pk", SchemaBuilder.INT32_SCHEMA, 4),
+                new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "no_pk_and_full")));
 
         consumer.expects(1);
         TestHelper.execute("ALTER TABLE test_table REPLICA IDENTITY DEFAULT;");
         statement = "INSERT INTO test_table (pk, text) VALUES (5, 'no_pk_and_default');";
-        assertInsert(statement, 5, Collections.singletonList(new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "no_pk_and_default")));
+        assertInsert(statement, Arrays.asList(new SchemaAndValueField("pk", SchemaBuilder.INT32_SCHEMA, 5),
+                new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "no_pk_and_default")));
     }
 
     @Test
@@ -2653,6 +2655,38 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                 entry(TYPE_NAME_PARAMETER_KEY, "FLOAT4"),
                 entry(TYPE_LENGTH_PARAMETER_KEY, "8"),
                 entry(TYPE_SCALE_PARAMETER_KEY, "8"));
+    }
+
+    @Test
+    @FixFor({ "DBZ-3074" })
+    public void shouldMaintainPrimaryKeyOrderOnSchemaChange() throws Exception {
+        startConnector();
+        consumer = testConsumer(1);
+        executeAndWait("CREATE TABLE test_should_maintain_primary_key_order(b INTEGER, d INTEGER, c INTEGER, a INTEGER, val INTEGER, PRIMARY KEY (b, d, c, a));" +
+                "INSERT INTO test_should_maintain_primary_key_order VALUES (1, 2, 3, 4, 5);");
+
+        SourceRecord record = consumer.remove();
+        assertEquals(1, ((Struct) record.value()).getStruct("after").getInt32("b").intValue());
+
+        List<Field> fields = record.keySchema().fields();
+        String[] expectedFieldOrder = new String[]{ "b", "d", "c", "a" };
+
+        for (int i = 0; i < fields.size(); i++) {
+            assertEquals("Key field names should in order", expectedFieldOrder[i], fields.get(i).name());
+        }
+
+        // Alter the table to trigger a schema change event. Validate that the new schema maintains the primary key order.
+        consumer.expects(1);
+        executeAndWait("ALTER TABLE test_should_maintain_primary_key_order ADD COLUMN val2 INTEGER;" +
+                "INSERT INTO test_should_maintain_primary_key_order VALUES (10, 11, 12, 13, 14, 15);");
+
+        record = consumer.remove();
+        assertEquals(10, ((Struct) record.value()).getStruct("after").getInt32("b").intValue());
+
+        fields = record.keySchema().fields();
+        for (int i = 0; i < fields.size(); i++) {
+            assertEquals("Key field names should in order", expectedFieldOrder[i], fields.get(i).name());
+        }
     }
 
     private void assertHeartBeatRecordInserted() {

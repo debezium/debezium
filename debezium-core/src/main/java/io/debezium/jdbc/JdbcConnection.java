@@ -1276,7 +1276,7 @@ public class JdbcConnection implements AutoCloseable {
         return Optional.empty();
     }
 
-    protected List<String> readPrimaryKeyNames(DatabaseMetaData metadata, TableId id) throws SQLException {
+    public List<String> readPrimaryKeyNames(DatabaseMetaData metadata, TableId id) throws SQLException {
         final List<String> pkColumnNames = new ArrayList<>();
         try (ResultSet rs = metadata.getPrimaryKeys(id.catalog(), id.schema(), id.table())) {
             while (rs.next()) {
