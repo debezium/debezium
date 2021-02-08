@@ -5,15 +5,24 @@
  */
 package io.debezium.testing.openshift.tools.kafka;
 
+import static java.util.concurrent.TimeUnit.MINUTES;
+
 import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.testing.openshift.tools.OpenShiftUtils;
+import io.debezium.testing.openshift.tools.WaitConditions;
+import io.debezium.testing.openshift.tools.YAML;
+import io.fabric8.kubernetes.client.dsl.NonNamespaceOperation;
+import io.fabric8.kubernetes.client.dsl.Resource;
 import io.fabric8.openshift.client.OpenShiftClient;
 import io.strimzi.api.kafka.Crds;
+import io.strimzi.api.kafka.KafkaTopicList;
+import io.strimzi.api.kafka.model.DoneableKafkaTopic;
 import io.strimzi.api.kafka.model.Kafka;
+import io.strimzi.api.kafka.model.KafkaTopic;
 import io.strimzi.api.kafka.model.status.ListenerAddress;
 import io.strimzi.api.kafka.model.status.ListenerStatus;
 
@@ -52,11 +61,31 @@ public class KafkaController {
         return address.getHost() + ":" + address.getPort();
     }
 
+    public KafkaTopic deployTopic(String yamlPath) throws InterruptedException {
+        LOGGER.info("Deploying Kafka topic from " + yamlPath);
+        KafkaTopic topic = topicOperation().createOrReplace(YAML.fromResource(yamlPath, KafkaTopic.class));
+        return waitForKafkaTopic(topic.getMetadata().getName());
+    }
+
     /**
      * Undeploy this Kafka cluster by deleted related KafkaConnect CR
      * @return true if the CR was found and deleted
      */
     public boolean undeployCluster() {
         return Crds.kafkaOperation(ocp).delete(kafka);
+    }
+
+    /**
+     * Waits until topic is properly deployed.
+     * @param name name of the topic
+     * @throws InterruptedException on wait error
+     * @throws IllegalArgumentException when deployment doesn't use custom resources
+     */
+    public KafkaTopic waitForKafkaTopic(String name) throws InterruptedException {
+        return topicOperation().withName(name).waitUntilCondition(WaitConditions::kafkaReadyCondition, 5, MINUTES);
+    }
+
+    private NonNamespaceOperation<KafkaTopic, KafkaTopicList, DoneableKafkaTopic, Resource<KafkaTopic, DoneableKafkaTopic>> topicOperation() {
+        return Crds.topicOperation(ocp).inNamespace(project);
     }
 }
