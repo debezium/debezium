@@ -73,7 +73,7 @@ public class MongoDatabaseClient implements DatabaseClient<MongoClient, RuntimeE
 
     public void execute(String database, String collection, Commands<MongoCollection<Document>, RuntimeException> commands) {
         execute(database, db -> {
-            MongoCollection col = db.getCollection(collection);
+            MongoCollection<Document> col = db.getCollection(collection);
             commands.execute(col);
         });
     }
