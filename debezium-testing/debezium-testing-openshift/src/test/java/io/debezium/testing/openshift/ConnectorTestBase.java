@@ -5,41 +5,33 @@
  */
 package io.debezium.testing.openshift;
 
-import static io.debezium.testing.openshift.tools.WaitConditions.scaled;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.awaitility.Awaitility.await;
-
-import java.time.Duration;
-import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
-import java.util.Set;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
-import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.apache.kafka.clients.consumer.ConsumerRecords;
-import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.apache.kafka.common.serialization.StringDeserializer;
-import org.awaitility.core.ThrowingRunnable;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.testing.openshift.assertions.AvroKafkaAssertions;
+import io.debezium.testing.openshift.assertions.KafkaAssertions;
+import io.debezium.testing.openshift.assertions.PlainKafkaAssertions;
 import io.debezium.testing.openshift.tools.ConfigProperties;
 import io.debezium.testing.openshift.tools.kafka.KafkaConnectController;
 import io.debezium.testing.openshift.tools.kafka.KafkaController;
 import io.debezium.testing.openshift.tools.kafka.KafkaDeployer;
 import io.debezium.testing.openshift.tools.kafka.OperatorController;
+import io.debezium.testing.openshift.tools.registry.RegistryController;
+import io.debezium.testing.openshift.tools.registry.RegistryDeployer;
 import io.fabric8.kubernetes.client.Config;
 import io.fabric8.kubernetes.client.ConfigBuilder;
 import io.fabric8.openshift.client.DefaultOpenShiftClient;
 import io.fabric8.openshift.client.OpenShiftClient;
+
+import okhttp3.OkHttpClient;
 
 /**
  * @author Jakub Cechacek
@@ -47,17 +39,32 @@ import io.fabric8.openshift.client.OpenShiftClient;
 public abstract class ConnectorTestBase {
     private static final Logger LOGGER = LoggerFactory.getLogger(ConnectorTestBase.class);
 
+    protected static OpenShiftClient ocp;
+    protected static TestUtils testUtils;
+    protected static OkHttpClient httpClient = new OkHttpClient();
+    protected static KafkaAssertions assertions;
+
+    // Kafka resources
     public static final String KAFKA = "/kafka-resources/010-kafka.yaml";
     public static final String KAFKA_CONNECT_S2I_LOGGING = "/kafka-resources/020-kafka-connect-logging.yaml";
     public static final String KAFKA_CONNECT_S2I = "/kafka-resources/021-kafka-connect.yaml";
 
+    // Service registry resources
+    public static final String REGISTRY_DEPLOYMENT_PATH = "/registry-resources/030-registry-streams.yaml";
+    public static final String REGISTRY_STORAGE_TOPIC_PATH = "/registry-resources/010-storage-topic.yaml";
+    public static final String REGISTRY_ID_TOPIC_PATH = "/registry-resources/020-global-id-topic.yaml";
+
     protected static Properties KAFKA_CONSUMER_PROPS = new Properties();
-    protected static OpenShiftClient ocp;
-    protected static TestUtils testUtils;
+
+    // Kafka Control
     protected static KafkaDeployer kafkaDeployer;
     protected static KafkaController kafkaController;
     protected static KafkaConnectController kafkaConnectController;
     protected static OperatorController operatorController;
+
+    // Registry Control
+    protected static RegistryDeployer registryDeployer;
+    protected static RegistryController registryController;
 
     @BeforeAll
     public static void setup() throws InterruptedException {
@@ -69,6 +76,22 @@ public abstract class ConnectorTestBase {
                 .build();
         ocp = new DefaultOpenShiftClient(cfg);
         testUtils = new TestUtils();
+
+        deployKafkaCluster();
+        initKafkaConsumerProps();
+
+        if (ConfigProperties.DEPLOY_SERVICE_REGISTRY) {
+            // deploy registry
+            registryDeployer = new RegistryDeployer(ConfigProperties.OCP_PROJECT_REGISTRY, ocp, httpClient, kafkaController);
+            registryController = registryDeployer.deployRegistry(REGISTRY_DEPLOYMENT_PATH, REGISTRY_STORAGE_TOPIC_PATH, REGISTRY_ID_TOPIC_PATH);
+            assertions = new AvroKafkaAssertions(KAFKA_CONSUMER_PROPS);
+        }
+        else {
+            assertions = new PlainKafkaAssertions(KAFKA_CONSUMER_PROPS);
+        }
+    }
+
+    private static void deployKafkaCluster() throws InterruptedException {
         kafkaDeployer = new KafkaDeployer(ConfigProperties.OCP_PROJECT_DBZ, ocp);
 
         operatorController = kafkaDeployer.getOperator();
@@ -98,14 +121,10 @@ public abstract class ConnectorTestBase {
         kafkaConnectController.allowServiceAccess();
         kafkaConnectController.exposeApi();
         kafkaConnectController.exposeMetrics();
-
-        initKafkaConsumerProps();
     }
 
     private static void initKafkaConsumerProps() {
         KAFKA_CONSUMER_PROPS.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaController.getKafkaBootstrapAddress());
-        KAFKA_CONSUMER_PROPS.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-        KAFKA_CONSUMER_PROPS.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         KAFKA_CONSUMER_PROPS.put(ConsumerConfig.GROUP_ID_CONFIG, "DEBEZIUM_IT_01");
         KAFKA_CONSUMER_PROPS.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
         KAFKA_CONSUMER_PROPS.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
@@ -116,54 +135,4 @@ public abstract class ConnectorTestBase {
         ocp.close();
     }
 
-    protected void assertTopicsExist(String... names) {
-        try (Consumer<String, String> consumer = new KafkaConsumer<>(KAFKA_CONSUMER_PROPS)) {
-            await().atMost(scaled(2), TimeUnit.MINUTES).untilAsserted(() -> {
-                Set<String> topics = consumer.listTopics().keySet();
-                assertThat(topics).contains(names);
-            });
-        }
-    }
-
-    protected void awaitAssert(long timeout, TimeUnit unit, ThrowingRunnable assertion) {
-        await()
-                .pollDelay(2, TimeUnit.SECONDS)
-                .atMost(timeout, unit)
-                .untilAsserted(assertion);
-    }
-
-    protected void awaitAssert(ThrowingRunnable assertion) {
-        awaitAssert(scaled(1), TimeUnit.MINUTES, assertion);
-    }
-
-    protected void assertRecordsCount(String topic, int count) {
-        try (Consumer<String, String> consumer = new KafkaConsumer<>(KAFKA_CONSUMER_PROPS)) {
-            consumer.subscribe(Collections.singleton(topic));
-            ConsumerRecords<String, String> records = consumer.poll(Duration.of(10, ChronoUnit.SECONDS).toMillis());
-            consumer.seekToBeginning(consumer.assignment());
-            assertThat(records.count()).withFailMessage("Expecting topic '%s' to have <%d> messages but it had <%d>.", topic, count, records.count()).isEqualTo(count);
-        }
-    }
-
-    protected void assertMinimalRecordsCount(String topic, int count) {
-        try (Consumer<String, String> consumer = new KafkaConsumer<>(KAFKA_CONSUMER_PROPS)) {
-            consumer.subscribe(Collections.singleton(topic));
-            ConsumerRecords<String, String> records = consumer.poll(Duration.of(10, ChronoUnit.SECONDS).toMillis());
-            consumer.seekToBeginning(consumer.assignment());
-            assertThat(
-                    records.count()).withFailMessage("Expecting topic '%s' to have  at least <%d> messages but it had <%d>.", topic, count, records.count())
-                            .isGreaterThanOrEqualTo(count);
-        }
-    }
-
-    protected void assertRecordsContain(String topic, String content) {
-        try (Consumer<String, String> consumer = new KafkaConsumer<>(KAFKA_CONSUMER_PROPS)) {
-            consumer.subscribe(Collections.singleton(topic));
-            consumer.seekToBeginning(consumer.assignment());
-            ConsumerRecords<String, String> records = consumer.poll(Duration.of(10, ChronoUnit.SECONDS).toMillis());
-            long matchingCount = StreamSupport.stream(records.records(topic).spliterator(), false).filter(r -> r.value().contains(content)).count();
-            assertThat(matchingCount).withFailMessage("Topic '%s' doesn't have message containing <%s>.", topic, content).isGreaterThan(0);
-
-        }
-    }
 }

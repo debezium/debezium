@@ -5,6 +5,7 @@
  */
 package io.debezium.testing.openshift.postgresql;
 
+import static io.debezium.testing.openshift.assertions.KafkaAssertions.awaitAssert;
 import static io.debezium.testing.openshift.tools.ConfigProperties.DATABASE_POSTGRESQL_DBZ_DBNAME;
 import static io.debezium.testing.openshift.tools.ConfigProperties.DATABASE_POSTGRESQL_PASSWORD;
 import static io.debezium.testing.openshift.tools.ConfigProperties.DATABASE_POSTGRESQL_USERNAME;
@@ -29,7 +30,6 @@ import io.debezium.testing.openshift.tools.databases.SqlDatabaseController;
 import io.debezium.testing.openshift.tools.databases.postgresql.PostgreSqlDeployer;
 import io.debezium.testing.openshift.tools.kafka.ConnectorConfigBuilder;
 
-import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 
@@ -49,7 +49,6 @@ public class PostgreSqlConnectorIT extends ConnectorTestBase {
 
     private static PostgreSqlDeployer dbDeployer;
     private static SqlDatabaseController dbController;
-    private static OkHttpClient httpClient = new OkHttpClient();
     private static ConnectorFactories connectorFactories = new ConnectorFactories();
     private static ConnectorConfigBuilder connectorConfig;
     private static String connectorName;
@@ -68,6 +67,9 @@ public class PostgreSqlConnectorIT extends ConnectorTestBase {
         connectorName = CONNECTOR_NAME + "-" + id;
         connectorConfig = connectorFactories.postgresql()
                 .put("database.server.name", connectorName);
+        if (ConfigProperties.DEPLOY_SERVICE_REGISTRY) {
+            connectorConfig.addApicurioAvroSupport(registryController.getRegistryApiAddress());
+        }
         kafkaConnectController.deployConnector(connectorName, connectorConfig);
         Class.forName("org.postgresql.Driver");
     }
@@ -101,7 +103,7 @@ public class PostgreSqlConnectorIT extends ConnectorTestBase {
     @Test
     @Order(2)
     public void shouldCreateKafkaTopics() {
-        assertTopicsExist(
+        assertions.assertTopicsExist(
                 connectorName + ".inventory.customers",
                 connectorName + ".inventory.orders",
                 connectorName + ".inventory.products",
@@ -112,15 +114,15 @@ public class PostgreSqlConnectorIT extends ConnectorTestBase {
     @Order(3)
     public void shouldContainRecordsInCustomersTopic() throws IOException {
         kafkaConnectController.waitForPostgreSqlSnapshot(connectorName);
-        awaitAssert(() -> assertRecordsCount(connectorName + ".inventory.customers", 4));
+        awaitAssert(() -> assertions.assertRecordsCount(connectorName + ".inventory.customers", 4));
     }
 
     @Test
     @Order(4)
     public void shouldStreamChanges() throws SQLException {
         insertCustomer("Tom", "Tester", "tom@test.com");
-        awaitAssert(() -> assertRecordsCount(connectorName + ".inventory.customers", 5));
-        awaitAssert(() -> assertRecordsContain(connectorName + ".inventory.customers", "tom@test.com"));
+        awaitAssert(() -> assertions.assertRecordsCount(connectorName + ".inventory.customers", 5));
+        awaitAssert(() -> assertions.assertRecordsContain(connectorName + ".inventory.customers", "tom@test.com"));
     }
 
     @Test
@@ -128,15 +130,15 @@ public class PostgreSqlConnectorIT extends ConnectorTestBase {
     public void shouldBeDown() throws SQLException, IOException {
         kafkaConnectController.undeployConnector(connectorName);
         insertCustomer("Jerry", "Tester", "jerry@test.com");
-        awaitAssert(() -> assertRecordsCount(connectorName + ".inventory.customers", 5));
+        awaitAssert(() -> assertions.assertRecordsCount(connectorName + ".inventory.customers", 5));
     }
 
     @Test
     @Order(6)
     public void shouldResumeStreamingAfterRedeployment() throws IOException, InterruptedException {
         kafkaConnectController.deployConnector(connectorName, connectorConfig);
-        awaitAssert(() -> assertRecordsCount(connectorName + ".inventory.customers", 6));
-        awaitAssert(() -> assertRecordsContain(connectorName + ".inventory.customers", "jerry@test.com"));
+        awaitAssert(() -> assertions.assertRecordsCount(connectorName + ".inventory.customers", 6));
+        awaitAssert(() -> assertions.assertRecordsContain(connectorName + ".inventory.customers", "jerry@test.com"));
     }
 
     @Test
@@ -145,7 +147,7 @@ public class PostgreSqlConnectorIT extends ConnectorTestBase {
         operatorController.disable();
         kafkaConnectController.destroy();
         insertCustomer("Nibbles", "Tester", "nibbles@test.com");
-        awaitAssert(() -> assertRecordsCount(connectorName + ".inventory.customers", 6));
+        awaitAssert(() -> assertions.assertRecordsCount(connectorName + ".inventory.customers", 6));
     }
 
     @Test
@@ -153,7 +155,7 @@ public class PostgreSqlConnectorIT extends ConnectorTestBase {
     public void shouldResumeStreamingAfterCrash() throws InterruptedException {
         operatorController.enable();
         kafkaConnectController.waitForConnectCluster();
-        awaitAssert(() -> assertMinimalRecordsCount(connectorName + ".inventory.customers", 7));
-        awaitAssert(() -> assertRecordsContain(connectorName + ".inventory.customers", "nibbles@test.com"));
+        awaitAssert(() -> assertions.assertMinimalRecordsCount(connectorName + ".inventory.customers", 7));
+        awaitAssert(() -> assertions.assertRecordsContain(connectorName + ".inventory.customers", "nibbles@test.com"));
     }
 }
