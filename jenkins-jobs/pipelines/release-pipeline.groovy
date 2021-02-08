@@ -578,7 +578,7 @@ node('Slave') {
             dir(DEBEZIUM_DIR) {
                 withCredentials([usernamePassword(credentialsId: GIT_CREDENTIALS_ID, passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USERNAME')]) {
                     sh """
-                       git pull --rebase $DEBEZIUM_REPOSITORY $CANDIDATE_BRANCH && \\
+                       git pull --rebase https://\${GIT_USERNAME}:\${GIT_PASSWORD}@$DEBEZIUM_REPOSITORY $CANDIDATE_BRANCH && \\
                        git checkout master && \\
                        git rebase $CANDIDATE_BRANCH && \\
                        git push https://\${GIT_USERNAME}:\${GIT_PASSWORD}@$DEBEZIUM_REPOSITORY HEAD:$DEBEZIUM_BRANCH && \\
