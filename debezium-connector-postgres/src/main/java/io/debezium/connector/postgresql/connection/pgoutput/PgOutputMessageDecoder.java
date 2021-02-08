@@ -260,18 +260,20 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
 
         // Perform several out-of-bands database metadata queries
         Map<String, Boolean> columnOptionality;
-        Set<String> primaryKeyColumns;
+        List<String> primaryKeyColumns;
         try (final PostgresConnection connection = new PostgresConnection(config.getConfiguration())) {
             final DatabaseMetaData databaseMetadata = connection.connection().getMetaData();
+            final TableId tableId = new TableId(null, schemaName, tableName);
             columnOptionality = getTableColumnOptionalityFromDatabase(databaseMetadata, schemaName, tableName);
-            primaryKeyColumns = getTablePrimaryKeyColumnNamesFromDatabase(databaseMetadata, schemaName, tableName);
+            primaryKeyColumns = connection.readPrimaryKeyNames(databaseMetadata, tableId);
             if (primaryKeyColumns == null || primaryKeyColumns.isEmpty()) {
                 LOGGER.warn("Primary keys are not defined for table '{}', defaulting to unique indices", tableName);
-                primaryKeyColumns = new HashSet<>(connection.readTableUniqueIndices(databaseMetadata, new TableId(null, schemaName, tableName)));
+                primaryKeyColumns = connection.readTableUniqueIndices(databaseMetadata, tableId);
             }
         }
 
         List<ColumnMetaData> columns = new ArrayList<>();
+        Set<String> columnNames = new HashSet<>();
         for (short i = 0; i < columnCount; ++i) {
             byte flags = buffer.get();
             String columnName = Strings.unquoteIdentifierPart(readString(buffer));
@@ -288,9 +290,27 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
             }
 
             columns.add(new ColumnMetaData(columnName, postgresType, key, optional, attypmod));
+            columnNames.add(columnName);
         }
 
-        Table table = resolveRelationFromMetadata(new PgOutputRelationMetaData(relationId, schemaName, tableName, columns));
+        // Remove any PKs that do not exist as part of this this relation message. This can occur when issuing
+        // multiple schema changes in sequence since the lookup of primary keys is an out-of-band procedure, without
+        // any logical linkage or context to the point in time the relation message was emitted.
+        //
+        // Example DDL:
+        // ALTER TABLE changepk.test_table DROP COLUMN pk2; -- <- relation message #1
+        // ALTER TABLE changepk.test_table ADD COLUMN pk3 SERIAL; -- <- relation message #2
+        // ALTER TABLE changepk.test_table ADD PRIMARY KEY(newpk,pk3); -- <- relation message #3
+        //
+        // Consider the above schema changes. There's a possible temporal ordering where the messages arrive
+        // in the replication slot data stream at time `t0`, `t1`, and `t2`. It then takes until `t10` for _this_ method
+        // to start processing message #1. At `t10` invoking `connection.readPrimaryKeyNames()` returns the new
+        // primary key column, 'pk3', defined by message #3. We must remove this primary key column that came
+        // "from the future" (with temporal respect to the current relate message #1) as a best effort attempt
+        // to reflect the actual primary key state at time `t0`.
+        primaryKeyColumns.retainAll(columnNames);
+
+        Table table = resolveRelationFromMetadata(new PgOutputRelationMetaData(relationId, schemaName, tableName, columns, primaryKeyColumns));
         config.getSchema().applySchemaChangesForTable(relationId, table);
     }
 
@@ -310,20 +330,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
         return columnOptionality;
     }
 
-    private Set<String> getTablePrimaryKeyColumnNamesFromDatabase(DatabaseMetaData databaseMetadata, String schemaName, String tableName) {
-        Set<String> primaryKeyColumns = new HashSet<>();
-        try (ResultSet resultSet = databaseMetadata.getPrimaryKeys(null, schemaName, tableName)) {
-            while (resultSet.next()) {
-                primaryKeyColumns.add(resultSet.getString("COLUMN_NAME"));
-            }
-        }
-        catch (SQLException e) {
-            LOGGER.warn("Failed to read table {}.{} primary keys", schemaName, tableName);
-        }
-        return primaryKeyColumns;
-    }
-
-    private boolean isColumnInPrimaryKey(String schemaName, String tableName, String columnName, Set<String> primaryKeyColumns) {
+    private boolean isColumnInPrimaryKey(String schemaName, String tableName, String columnName, List<String> primaryKeyColumns) {
         // todo (DBZ-766) - Discuss this logic with team as there may be a better way to handle this
         // Personally I think its sufficient enough to resolve the PK based on the out-of-bands call
         // and should any test fail due to this it should be rewritten or excluded from the pgoutput
@@ -549,7 +556,6 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
      * @return table based on a prior replication relation message
      */
     private Table resolveRelationFromMetadata(PgOutputRelationMetaData metadata) {
-        List<String> pkColumnNames = new ArrayList<>();
         List<io.debezium.relational.Column> columns = new ArrayList<>();
         for (ColumnMetaData columnMetadata : metadata.getColumns()) {
             ColumnEditor editor = io.debezium.relational.Column.editor()
@@ -562,15 +568,11 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
                     .scale(columnMetadata.getScale());
 
             columns.add(editor.create());
-
-            if (columnMetadata.isKey()) {
-                pkColumnNames.add(columnMetadata.getColumnName());
-            }
         }
 
         Table table = Table.editor()
                 .addColumns(columns)
-                .setPrimaryKeyNames(pkColumnNames)
+                .setPrimaryKeyNames(metadata.getPrimaryKeyNames())
                 .tableId(metadata.getTableId())
                 .create();
 
