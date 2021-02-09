@@ -517,7 +517,36 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
     @Test
     @FixFor("DBZ-1029")
+    @SkipWhenDecoderPluginNameIs(value = PGOUTPUT, reason = "Decoder synchronizes all schema columns when processing relation messages")
     public void shouldReceiveChangesForInsertsIndependentOfReplicaIdentity() throws Exception {
+        // insert statement should not be affected by replica identity settings in any way
+
+        startConnector();
+
+        TestHelper.execute("ALTER TABLE test_table REPLICA IDENTITY DEFAULT;");
+        String statement = "INSERT INTO test_table (text) VALUES ('pk_and_default');";
+        assertInsert(statement, 2, Collections.singletonList(new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "pk_and_default")));
+
+        consumer.expects(1);
+        TestHelper.execute("ALTER TABLE test_table REPLICA IDENTITY FULL;");
+        statement = "INSERT INTO test_table (text) VALUES ('pk_and_full');";
+        assertInsert(statement, 3, Collections.singletonList(new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "pk_and_full")));
+
+        consumer.expects(1);
+        TestHelper.execute("ALTER TABLE test_table DROP CONSTRAINT test_table_pkey CASCADE;");
+        statement = "INSERT INTO test_table (pk, text) VALUES (4, 'no_pk_and_full');";
+        assertInsert(statement, 4, Collections.singletonList(new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "no_pk_and_full")));
+
+        consumer.expects(1);
+        TestHelper.execute("ALTER TABLE test_table REPLICA IDENTITY DEFAULT;");
+        statement = "INSERT INTO test_table (pk, text) VALUES (5, 'no_pk_and_default');";
+        assertInsert(statement, 5, Collections.singletonList(new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "no_pk_and_default")));
+    }
+
+    @Test
+    @FixFor("DBZ-1029")
+    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Decoder synchronizes all schema columns when processing relation messages")
+    public void shouldReceiveChangesForInsertsIndependentOfReplicaIdentityWhenSchemaChanged() throws Exception {
         // insert statement should not be affected by replica identity settings in any way
 
         startConnector();
