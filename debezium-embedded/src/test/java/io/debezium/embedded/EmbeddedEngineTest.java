@@ -399,7 +399,7 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
                 }
             }
         }
-        assert containsCustomPartition;
+        assertThat(containsCustomPartition).isTrue();
 
         // Stop the connector ...
         stopConnector();
