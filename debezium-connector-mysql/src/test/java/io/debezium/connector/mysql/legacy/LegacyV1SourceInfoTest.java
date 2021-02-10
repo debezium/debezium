@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.connector.mysql;
+package io.debezium.connector.mysql.legacy;
 
 import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.assertEquals;
@@ -25,6 +25,8 @@ import org.junit.Test;
 import io.confluent.connect.avro.AvroData;
 import io.debezium.config.CommonConnectorConfig.Version;
 import io.debezium.config.Configuration;
+import io.debezium.connector.mysql.Module;
+import io.debezium.connector.mysql.MySqlConnectorConfig;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.document.Document;
@@ -154,6 +156,80 @@ public class LegacyV1SourceInfoTest {
         assertThat(source.binlogPosition()).isEqualTo(100);
         assertThat(source.rowsToSkipUponRestart()).isEqualTo(5);
         assertThat(source.isSnapshotInEffect()).isTrue();
+    }
+
+    @Test
+    public void shouldRecoverSourceInfoFromOffsetWithFilterData() {
+        final String databaseWhitelist = "a,b";
+        final String tableWhitelist = "c.foo,d.bar,d.baz";
+        Map<String, String> offset = offset(10, 10);
+        offset.put(SourceInfo.DATABASE_INCLUDE_LIST_KEY, databaseWhitelist);
+        offset.put(SourceInfo.TABLE_INCLUDE_LIST_KEY, tableWhitelist);
+
+        sourceWith(offset);
+        assertThat(source.hasFilterInfo()).isTrue();
+        assertEquals(databaseWhitelist, source.getDatabaseIncludeList());
+        assertEquals(tableWhitelist, source.getTableIncludeList());
+        // confirm other filter info is null
+        assertThat(source.getDatabaseExcludeList()).isNull();
+        assertThat(source.getTableExcludeList()).isNull();
+    }
+
+    @Test
+    public void shouldRecoverSourceInfoFromOffsetWithFilterDataOld() {
+        final String databaseWhitelist = "a,b";
+        final String tableWhitelist = "c.foo,d.bar,d.baz";
+        Map<String, String> offset = offset(10, 10);
+        offset.put(SourceInfo.DATABASE_WHITELIST_KEY, databaseWhitelist);
+        offset.put(SourceInfo.TABLE_WHITELIST_KEY, tableWhitelist);
+
+        sourceWith(offset);
+        assertThat(source.hasFilterInfo()).isTrue();
+        assertEquals(databaseWhitelist, source.getDatabaseIncludeList());
+        assertEquals(tableWhitelist, source.getTableIncludeList());
+        // confirm other filter info is null
+        assertThat(source.getDatabaseExcludeList()).isNull();
+        assertThat(source.getTableExcludeList()).isNull();
+    }
+
+    @Test
+    public void setOffsetFilterFromFilter() {
+        final String databaseBlacklist = "a,b";
+        final String tableBlacklist = "c.foo, d.bar, d.baz";
+        Map<String, String> offset = offset(10, 10);
+
+        sourceWith(offset);
+        assertThat(!source.hasFilterInfo());
+
+        final Configuration configuration = Configuration.create()
+                .with(MySqlConnectorConfig.DATABASE_EXCLUDE_LIST, databaseBlacklist)
+                .with(MySqlConnectorConfig.TABLE_EXCLUDE_LIST, tableBlacklist)
+                .build();
+        source.setFilterDataFromConfig(configuration);
+
+        assertThat(source.hasFilterInfo()).isTrue();
+        assertEquals(databaseBlacklist, source.getDatabaseExcludeList());
+        assertEquals(tableBlacklist, source.getTableExcludeList());
+    }
+
+    @Test
+    public void setOffsetFilterFromFilterOld() {
+        final String databaseBlacklist = "a,b";
+        final String tableBlacklist = "c.foo, d.bar, d.baz";
+        Map<String, String> offset = offset(10, 10);
+
+        sourceWith(offset);
+        assertThat(!source.hasFilterInfo());
+
+        final Configuration configuration = Configuration.create()
+                .with(MySqlConnectorConfig.DATABASE_BLACKLIST, databaseBlacklist)
+                .with(MySqlConnectorConfig.TABLE_BLACKLIST, tableBlacklist)
+                .build();
+        source.setFilterDataFromConfig(configuration);
+
+        assertThat(source.hasFilterInfo()).isTrue();
+        assertEquals(databaseBlacklist, source.getDatabaseExcludeList());
+        assertEquals(tableBlacklist, source.getTableExcludeList());
     }
 
     @Test

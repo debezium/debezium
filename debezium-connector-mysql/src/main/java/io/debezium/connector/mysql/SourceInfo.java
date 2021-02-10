@@ -111,14 +111,6 @@ public final class SourceInfo extends BaseSourceInfo {
     public static final String TIMESTAMP_KEY = "ts_sec";
     public static final String THREAD_KEY = "thread";
     public static final String QUERY_KEY = "query";
-    public static final String DATABASE_WHITELIST_KEY = "database_whitelist";
-    public static final String DATABASE_INCLUDE_LIST_KEY = "database_include_list";
-    public static final String DATABASE_BLACKLIST_KEY = "database_blacklist";
-    public static final String DATABASE_EXCLUDE_LIST_KEY = "database_exclude_list";
-    public static final String TABLE_WHITELIST_KEY = "table_whitelist";
-    public static final String TABLE_INCLUDE_LIST_KEY = "table_include_list";
-    public static final String TABLE_BLACKLIST_KEY = "table_blacklist";
-    public static final String TABLE_EXCLUDE_LIST_KEY = "table_exclude_list";
     public static final String RESTART_PREFIX = "RESTART_";
 
     private String currentGtidSet;
@@ -280,12 +272,6 @@ public final class SourceInfo extends BaseSourceInfo {
         if (isSnapshotInEffect()) {
             map.put(SNAPSHOT_KEY, true);
         }
-        if (hasFilterInfo()) {
-            map.put(DATABASE_INCLUDE_LIST_KEY, databaseIncludeList);
-            map.put(DATABASE_EXCLUDE_LIST_KEY, databaseExcludeList);
-            map.put(TABLE_INCLUDE_LIST_KEY, tableIncludeList);
-            map.put(TABLE_EXCLUDE_LIST_KEY, tableExcludeList);
-        }
         return map;
     }
 
@@ -428,7 +414,6 @@ public final class SourceInfo extends BaseSourceInfo {
     public void markLastSnapshot(Configuration config) {
         this.lastSnapshot = true;
         this.nextSnapshot = false;
-        maybeSetFilterDataFromConfig(config);
     }
 
     /**
@@ -437,67 +422,6 @@ public final class SourceInfo extends BaseSourceInfo {
     public void completeSnapshot() {
         this.lastSnapshot = false;
         this.nextSnapshot = false;
-    }
-
-    /**
-     * Set the filter data for the offset from the given {@link Configuration}
-     * @param config the configuration
-     */
-    public void setFilterDataFromConfig(Configuration config) {
-        this.databaseIncludeList = config.getFallbackStringProperty(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, MySqlConnectorConfig.DATABASE_WHITELIST);
-        this.databaseExcludeList = config.getFallbackStringProperty(MySqlConnectorConfig.DATABASE_EXCLUDE_LIST, MySqlConnectorConfig.DATABASE_BLACKLIST);
-        this.tableIncludeList = config.getFallbackStringProperty(MySqlConnectorConfig.TABLE_INCLUDE_LIST, MySqlConnectorConfig.TABLE_WHITELIST);
-        this.tableExcludeList = config.getFallbackStringProperty(MySqlConnectorConfig.TABLE_EXCLUDE_LIST, MySqlConnectorConfig.TABLE_BLACKLIST);
-    }
-
-    /**
-     * Set filter data from config if and only if parallel snapshotting of new tables is turned on
-     * @param config the configuration.
-     */
-    public void maybeSetFilterDataFromConfig(Configuration config) {
-        if (config.getString(MySqlConnectorConfig.SNAPSHOT_NEW_TABLES).equals(
-                MySqlConnectorConfig.SnapshotNewTables.PARALLEL.getValue())) {
-            setFilterDataFromConfig(config);
-        }
-        else {
-            if (hasFilterInfo()) {
-                // Connector has filter info but snapshot.new.tables is disabled. Filter info should be unset.
-                this.databaseIncludeList = null;
-                this.databaseExcludeList = null;
-                this.tableIncludeList = null;
-                this.tableExcludeList = null;
-            }
-        }
-    }
-
-    /**
-     * @return true if this offset has filter info, false otherwise.
-     */
-    public boolean hasFilterInfo() {
-        /*
-         * There are 2 possible cases for us not having filter info.
-         * 1. The connector does not use a filter. Creating a filter in such a connector could never add any tables.
-         * 2. The initial snapshot occurred in a version of Debezium that did not store the filter information in the
-         * offsets / the connector was not configured to store filter information.
-         */
-        return databaseIncludeList != null || databaseExcludeList != null ||
-                tableIncludeList != null || tableExcludeList != null;
-    }
-
-    public String getDatabaseIncludeList() {
-        return databaseIncludeList;
-    }
-
-    public String getDatabaseExcludeList() {
-        return databaseExcludeList;
-    }
-
-    public String getTableIncludeList() {
-        return tableIncludeList;
-    }
-
-    public String getTableExcludeList() {
-        return tableExcludeList;
     }
 
     /**
@@ -520,42 +444,7 @@ public final class SourceInfo extends BaseSourceInfo {
             this.restartEventsToSkip = longOffsetValue(sourceOffset, EVENTS_TO_SKIP_OFFSET_KEY);
             nextSnapshot = booleanOffsetValue(sourceOffset, SNAPSHOT_KEY);
             lastSnapshot = nextSnapshot;
-            if (sourceOffset.containsKey(DATABASE_INCLUDE_LIST_KEY)) {
-                this.databaseIncludeList = (String) sourceOffset.get(DATABASE_INCLUDE_LIST_KEY);
-            }
-            else {
-                this.databaseIncludeList = (String) sourceOffset.get(DATABASE_WHITELIST_KEY);
-            }
-            if (sourceOffset.containsKey(DATABASE_EXCLUDE_LIST_KEY)) {
-                this.databaseExcludeList = (String) sourceOffset.get(DATABASE_EXCLUDE_LIST_KEY);
-            }
-            else {
-                this.databaseExcludeList = (String) sourceOffset.get(DATABASE_BLACKLIST_KEY);
-            }
-            if (sourceOffset.containsKey(TABLE_INCLUDE_LIST_KEY)) {
-                this.tableIncludeList = (String) sourceOffset.get(TABLE_INCLUDE_LIST_KEY);
-            }
-            else {
-                this.tableIncludeList = (String) sourceOffset.get(TABLE_WHITELIST_KEY);
-            }
-            if (sourceOffset.containsKey(TABLE_EXCLUDE_LIST_KEY)) {
-                this.tableExcludeList = (String) sourceOffset.get(TABLE_EXCLUDE_LIST_KEY);
-            }
-            else {
-                this.tableExcludeList = (String) sourceOffset.get(TABLE_BLACKLIST_KEY);
-            }
         }
-    }
-
-    public static boolean offsetsHaveFilterInfo(Map<String, ?> sourceOffset) {
-        return sourceOffset != null && (sourceOffset.containsKey(DATABASE_BLACKLIST_KEY) ||
-                sourceOffset.containsKey(DATABASE_EXCLUDE_LIST_KEY) ||
-                sourceOffset.containsKey(DATABASE_WHITELIST_KEY) ||
-                sourceOffset.containsKey(DATABASE_INCLUDE_LIST_KEY) ||
-                sourceOffset.containsKey(TABLE_BLACKLIST_KEY) ||
-                sourceOffset.containsKey(TABLE_EXCLUDE_LIST_KEY) ||
-                sourceOffset.containsKey(TABLE_WHITELIST_KEY) ||
-                sourceOffset.containsKey(TABLE_INCLUDE_LIST_KEY));
     }
 
     private long longOffsetValue(Map<String, ?> values, String key) {
