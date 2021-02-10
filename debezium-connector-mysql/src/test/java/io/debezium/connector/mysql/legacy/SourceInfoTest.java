@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.connector.mysql;
+package io.debezium.connector.mysql.legacy;
 
 import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.assertEquals;
@@ -23,13 +23,15 @@ import org.junit.Before;
 import org.junit.Test;
 
 import io.confluent.connect.avro.AvroData;
-import io.debezium.config.CommonConnectorConfig.Version;
 import io.debezium.config.Configuration;
+import io.debezium.connector.AbstractSourceInfoStructMaker;
+import io.debezium.connector.mysql.Module;
+import io.debezium.connector.mysql.MySqlConnectorConfig;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.document.Document;
 
-public class LegacyV1SourceInfoTest {
+public class SourceInfoTest {
 
     private static int avroSchemaCacheSize = 1000;
     private static final AvroData avroData = new AvroData(avroSchemaCacheSize);
@@ -46,7 +48,6 @@ public class LegacyV1SourceInfoTest {
     public void beforeEach() {
         source = new SourceInfo(new MySqlConnectorConfig(Configuration.create()
                 .with(MySqlConnectorConfig.SERVER_NAME, "server")
-                .with(MySqlConnectorConfig.SOURCE_STRUCT_MAKER_VERSION, Version.V1)
                 .build()));
         inTxn = false;
         positionOfBeginEvent = 0L;
@@ -154,6 +155,103 @@ public class LegacyV1SourceInfoTest {
         assertThat(source.binlogPosition()).isEqualTo(100);
         assertThat(source.rowsToSkipUponRestart()).isEqualTo(5);
         assertThat(source.isSnapshotInEffect()).isTrue();
+    }
+
+    @Test
+    public void shouldRecoverSourceInfoFromOffsetWithFilterDataOld() {
+        final String databaseWhitelist = "a,b";
+        final String tableWhitelist = "c.foo,d.bar,d.baz";
+        Map<String, String> offset = offset(10, 10);
+        offset.put(SourceInfo.DATABASE_WHITELIST_KEY, databaseWhitelist);
+        offset.put(SourceInfo.TABLE_WHITELIST_KEY, tableWhitelist);
+
+        sourceWith(offset);
+        assertThat(source.hasFilterInfo()).isTrue();
+        assertEquals(databaseWhitelist, source.getDatabaseIncludeList());
+        assertEquals(tableWhitelist, source.getTableIncludeList());
+        // confirm other filter info is null
+        assertThat(source.getDatabaseExcludeList()).isNull();
+        assertThat(source.getTableExcludeList()).isNull();
+    }
+
+    @Test
+    public void shouldRecoverSourceInfoFromOffsetWithFilterData() {
+        final String databaseWhitelist = "a,b";
+        final String tableWhitelist = "c.foo,d.bar,d.baz";
+        Map<String, String> offset = offset(10, 10);
+        offset.put(SourceInfo.DATABASE_INCLUDE_LIST_KEY, databaseWhitelist);
+        offset.put(SourceInfo.TABLE_INCLUDE_LIST_KEY, tableWhitelist);
+
+        sourceWith(offset);
+        assertThat(source.hasFilterInfo()).isTrue();
+        assertEquals(databaseWhitelist, source.getDatabaseIncludeList());
+        assertEquals(tableWhitelist, source.getTableIncludeList());
+        // confirm other filter info is null
+        assertThat(source.getDatabaseExcludeList()).isNull();
+        assertThat(source.getTableExcludeList()).isNull();
+    }
+
+    @Test
+    public void setOffsetFilterFromFilterOld() {
+        final String databaseBlacklist = "a,b";
+        final String tableBlacklist = "c.foo, d.bar, d.baz";
+        Map<String, String> offset = offset(10, 10);
+
+        sourceWith(offset);
+        assertThat(!source.hasFilterInfo());
+
+        final Configuration configuration = Configuration.create()
+                .with(MySqlConnectorConfig.DATABASE_BLACKLIST, databaseBlacklist)
+                .with(MySqlConnectorConfig.TABLE_BLACKLIST, tableBlacklist)
+                .build();
+        source.setFilterDataFromConfig(configuration);
+
+        assertThat(source.hasFilterInfo()).isTrue();
+        assertEquals(databaseBlacklist, source.getDatabaseExcludeList());
+        assertEquals(tableBlacklist, source.getTableExcludeList());
+    }
+
+    @Test
+    public void setOffsetFilterFromFilter() {
+        final String databaseBlacklist = "a,b";
+        final String tableBlacklist = "c.foo, d.bar, d.baz";
+        Map<String, String> offset = offset(10, 10);
+
+        sourceWith(offset);
+        assertThat(!source.hasFilterInfo());
+
+        final Configuration configuration = Configuration.create()
+                .with(MySqlConnectorConfig.DATABASE_EXCLUDE_LIST, databaseBlacklist)
+                .with(MySqlConnectorConfig.TABLE_EXCLUDE_LIST, tableBlacklist)
+                .build();
+        source.setFilterDataFromConfig(configuration);
+
+        assertThat(source.hasFilterInfo()).isTrue();
+        assertEquals(databaseBlacklist, source.getDatabaseExcludeList());
+        assertEquals(tableBlacklist, source.getTableExcludeList());
+    }
+
+    @Test
+    public void shouldRecoverSourceInfoFromOffsetWithoutFilterDataIfSnapshotNewTablesIsOff() {
+        final String databaseIncludeList = "a,b";
+        final String tableIncludeList = "c.foo,d.bar,d.baz";
+        Map<String, String> offset = offset(10, 10);
+        offset.put(SourceInfo.DATABASE_INCLUDE_LIST_KEY, databaseIncludeList);
+        offset.put(SourceInfo.TABLE_INCLUDE_LIST_KEY, tableIncludeList);
+
+        sourceWith(offset);
+        assertThat(source.hasFilterInfo()).isTrue();
+
+        final Configuration configuration = Configuration.create()
+                .with(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, databaseIncludeList)
+                .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, tableIncludeList)
+                .with(MySqlConnectorConfig.SNAPSHOT_NEW_TABLES, MySqlConnectorConfig.SnapshotNewTables.OFF)
+                .build();
+        source.maybeSetFilterDataFromConfig(configuration);
+
+        assertThat(source.hasFilterInfo()).isFalse();
+        assertThat(source.getDatabaseIncludeList()).isNull();
+        assertThat(source.getTableIncludeList()).isNull();
     }
 
     @Test
@@ -445,8 +543,8 @@ public class LegacyV1SourceInfoTest {
     protected SourceInfo sourceWith(Map<String, String> offset) {
         source = new SourceInfo(new MySqlConnectorConfig(Configuration.create()
                 .with(MySqlConnectorConfig.SERVER_NAME, SERVER_NAME)
-                .with(MySqlConnectorConfig.SOURCE_STRUCT_MAKER_VERSION, Version.V1)
                 .build()));
+        source.databaseEvent("mysql");
         source.setOffset(offset);
         return source;
     }
@@ -591,21 +689,21 @@ public class LegacyV1SourceInfoTest {
     public void shouldHaveTimestamp() {
         sourceWith(offset(100, 5, true));
         source.setBinlogTimestampSeconds(1_024);
-        source.databaseEvent(null);
-        assertThat(source.struct().get("ts_sec")).isEqualTo(1_024L);
+        source.databaseEvent("mysql");
+        assertThat(source.struct().get("ts_ms")).isEqualTo(1_024_000L);
     }
 
     @Test
     public void versionIsPresent() {
         sourceWith(offset(100, 5, true));
-        source.databaseEvent(null);
+        source.databaseEvent("mysql");
         assertThat(source.struct().getString(SourceInfo.DEBEZIUM_VERSION_KEY)).isEqualTo(Module.version());
     }
 
     @Test
     public void connectorIsPresent() {
         sourceWith(offset(100, 5, true));
-        source.databaseEvent(null);
+        source.databaseEvent("mysql");
         assertThat(source.struct().getString(SourceInfo.DEBEZIUM_CONNECTOR_KEY)).isEqualTo(Module.name());
     }
 
@@ -613,19 +711,19 @@ public class LegacyV1SourceInfoTest {
     public void schemaIsCorrect() {
         final Schema schema = SchemaBuilder.struct()
                 .name("io.debezium.connector.mysql.Source")
-                .field("version", Schema.OPTIONAL_STRING_SCHEMA)
-                .field("connector", Schema.OPTIONAL_STRING_SCHEMA)
+                .field("version", Schema.STRING_SCHEMA)
+                .field("connector", Schema.STRING_SCHEMA)
                 .field("name", Schema.STRING_SCHEMA)
+                .field("ts_ms", Schema.INT64_SCHEMA)
+                .field("snapshot", AbstractSourceInfoStructMaker.SNAPSHOT_RECORD_SCHEMA)
+                .field("db", Schema.STRING_SCHEMA)
+                .field("table", Schema.OPTIONAL_STRING_SCHEMA)
                 .field("server_id", Schema.INT64_SCHEMA)
-                .field("ts_sec", Schema.INT64_SCHEMA)
                 .field("gtid", Schema.OPTIONAL_STRING_SCHEMA)
                 .field("file", Schema.STRING_SCHEMA)
                 .field("pos", Schema.INT64_SCHEMA)
                 .field("row", Schema.INT32_SCHEMA)
-                .field("snapshot", SchemaBuilder.bool().optional().defaultValue(false).build())
                 .field("thread", Schema.OPTIONAL_INT64_SCHEMA)
-                .field("db", Schema.OPTIONAL_STRING_SCHEMA)
-                .field("table", Schema.OPTIONAL_STRING_SCHEMA)
                 .field("query", Schema.OPTIONAL_STRING_SCHEMA)
                 .build();
         VerifyRecord.assertConnectSchemasAreEqual(null, source.schema(), schema);
