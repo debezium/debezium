@@ -21,4 +21,4 @@ jobs:
           ${{ runner.os }}-maven-
 
     - name: Run formatting and import order checks
-      run: mvn clean install -DskipTests=true -DskipITs=true -Dformat.formatter.goal=validate -Dformat.imports.goal=check
+      run: mvn clean install -DskipTests=true -DskipITs=true -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
