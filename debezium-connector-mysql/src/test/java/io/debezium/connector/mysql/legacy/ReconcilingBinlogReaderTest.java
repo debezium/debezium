@@ -14,8 +14,6 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.Assert;
 import org.junit.Test;
 
-import io.debezium.connector.mysql.SourceInfo;
-
 /**
  * @author Moira Tagle
  */

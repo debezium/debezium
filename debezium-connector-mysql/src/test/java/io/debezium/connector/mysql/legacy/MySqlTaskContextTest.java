@@ -22,7 +22,6 @@ import io.debezium.connector.mysql.MySqlConnectorConfig;
 import io.debezium.connector.mysql.MySqlConnectorConfig.GtidNewChannelPosition;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
-import io.debezium.connector.mysql.SourceInfo;
 import io.debezium.doc.FixFor;
 import io.debezium.document.Document;
 import io.debezium.relational.history.FileDatabaseHistory;

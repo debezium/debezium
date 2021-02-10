@@ -5,10 +5,6 @@
  */
 package io.debezium.connector.mysql.legacy;
 
-import static io.debezium.connector.mysql.SourceInfo.BINLOG_FILENAME_OFFSET_KEY;
-import static io.debezium.connector.mysql.SourceInfo.BINLOG_POSITION_OFFSET_KEY;
-import static io.debezium.connector.mysql.SourceInfo.GTID_SET_KEY;
-
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -20,7 +16,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.mysql.HaltingPredicate;
-import io.debezium.connector.mysql.SourceInfo;
 import io.debezium.document.Document;
 
 /**
@@ -143,10 +138,10 @@ public class ReconcilingBinlogReader implements Reader {
         unifiedReader.context.loadHistory(getLeadingReader().context.source());
         unifiedReader.context.source().setFilterDataFromConfig(unifiedReader.context.config());
         Map<String, ?> keyedOffset = reconcilingReader.getLastOffset() == null ? getLeadingReader().getLastOffset() : reconcilingReader.getLastOffset();
-        unifiedReader.context.source().setCompletedGtidSet((String) keyedOffset.get(GTID_SET_KEY));
+        unifiedReader.context.source().setCompletedGtidSet((String) keyedOffset.get(SourceInfo.GTID_SET_KEY));
         unifiedReader.context.source()
-                .setBinlogStartPoint((String) keyedOffset.get(BINLOG_FILENAME_OFFSET_KEY),
-                        (Long) keyedOffset.get(BINLOG_POSITION_OFFSET_KEY));
+                .setBinlogStartPoint((String) keyedOffset.get(SourceInfo.BINLOG_FILENAME_OFFSET_KEY),
+                        (Long) keyedOffset.get(SourceInfo.BINLOG_POSITION_OFFSET_KEY));
         // note: this seems to dupe -one- event in my tests.
         // I don't totally understand why that's happening (that is, I don't understand
         // why the lastOffset seems to be before the actual last record) but this seems
