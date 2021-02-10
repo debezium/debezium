@@ -31,7 +31,7 @@ import io.debezium.util.Strings;
  */
 public class SqlServerConnector extends SourceConnector {
 
-    private Logger logger = LoggerFactory.getLogger(getClass());
+    private static final Logger LOGGER = LoggerFactory.getLogger(SqlServerConnector.class);
 
     private Map<String, String> properties;
 
@@ -84,7 +84,7 @@ public class SqlServerConnector extends SourceConnector {
         final String passwordStringValue = config.getString(SqlServerConnectorConfig.PASSWORD);
 
         if (Strings.isNullOrEmpty(passwordStringValue)) {
-            logger.warn("The connection password is empty");
+            LOGGER.debug("The connection password is empty");
         }
 
         // If there are no errors on any of these ...
@@ -97,17 +97,22 @@ public class SqlServerConnector extends SourceConnector {
             try (SqlServerConnection connection = new SqlServerConnection(sqlServerConfig.jdbcConfig(), Clock.system(),
                     sqlServerConfig.getSourceTimestampMode(), null)) {
                 // SqlServerConnection will try retrieving database, no need to run another query.
-                logger.info("Successfully tested connection for {} with user '{}'", connection.connectionString(),
+                LOGGER.debug("Successfully tested connection for {} with user '{}'", connection.connectionString(),
                         connection.username());
             }
             catch (Throwable e) {
-                logger.info("Failed testing connection for {} with user '{}'", sqlServerConfig.jdbcConfig(),
+                LOGGER.debug("Failed testing connection for {} with user '{}'", sqlServerConfig.jdbcConfig(),
                         userValue);
-                hostnameValue.addErrorMessage("Unable to connect: " + e.getMessage());
-                portValue.addErrorMessage("Unable to connect: " + e.getMessage());
-                databaseValue.addErrorMessage("Unable to connect: " + e.getMessage());
-                userValue.addErrorMessage("Unable to connect: " + e.getMessage());
-                passwordValue.addErrorMessage("Unable to connect: " + e.getMessage());
+                hostnameValue.addErrorMessage("Unable to connect. Check this and other connection properties. Error: "
+                        + e.getMessage());
+                portValue.addErrorMessage("Unable to connect. Check this and other connection properties. Error: "
+                        + e.getMessage());
+                databaseValue.addErrorMessage("Unable to connect. Check this and other connection properties. Error: "
+                        + e.getMessage());
+                userValue.addErrorMessage("Unable to connect. Check this and other connection properties. Error: "
+                        + e.getMessage());
+                passwordValue.addErrorMessage("Unable to connect. Check this and other connection properties. Error: "
+                        + e.getMessage());
             }
         }
         return new Config(new ArrayList<>(results.values()));
