@@ -76,7 +76,6 @@ import io.debezium.connector.mysql.MySqlConnector;
 import io.debezium.connector.mysql.MySqlConnectorConfig;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
 import io.debezium.connector.mysql.RowDeserializers;
-import io.debezium.connector.mysql.SourceInfo;
 import io.debezium.connector.mysql.StopEventDataDeserializer;
 import io.debezium.connector.mysql.legacy.RecordMakers.RecordsForTable;
 import io.debezium.data.Envelope.Operation;

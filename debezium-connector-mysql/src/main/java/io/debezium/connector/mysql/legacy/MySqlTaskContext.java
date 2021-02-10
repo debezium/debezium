@@ -22,7 +22,6 @@ import io.debezium.connector.mysql.MySqlConnectorConfig.GtidNewChannelPosition;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
 import io.debezium.connector.mysql.MySqlSystemVariables;
 import io.debezium.connector.mysql.MySqlTopicSelector;
-import io.debezium.connector.mysql.SourceInfo;
 import io.debezium.function.Predicates;
 import io.debezium.relational.TableId;
 import io.debezium.relational.history.DatabaseHistory;
