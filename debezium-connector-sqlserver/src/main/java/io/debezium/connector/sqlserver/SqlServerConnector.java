@@ -5,9 +5,6 @@
  */
 package io.debezium.connector.sqlserver;
 
-import io.debezium.config.Configuration;
-import io.debezium.util.Clock;
-import io.debezium.util.Strings;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -21,6 +18,10 @@ import org.apache.kafka.connect.connector.Task;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import io.debezium.config.Configuration;
+import io.debezium.util.Clock;
+import io.debezium.util.Strings;
 
 /**
  * The main connector class used to instantiate configuration and execution classes
@@ -70,7 +71,7 @@ public class SqlServerConnector extends SourceConnector {
     @Override
     public Config validate(Map<String, String> connectorConfigs) {
         Configuration config = Configuration.from(connectorConfigs);
-        SqlServerConnectorConfig sqlServerConfig  = new SqlServerConnectorConfig(config);
+        SqlServerConnectorConfig sqlServerConfig = new SqlServerConnectorConfig(config);
         // First, validate all of the individual fields, which is easy since don't make any of the fields invisible ...
         Map<String, ConfigValue> results = config.validate(SqlServerConnectorConfig.ALL_FIELDS);
 
@@ -88,20 +89,20 @@ public class SqlServerConnector extends SourceConnector {
 
         // If there are no errors on any of these ...
         if (hostnameValue.errorMessages().isEmpty()
-            && portValue.errorMessages().isEmpty()
-            && userValue.errorMessages().isEmpty()
-            && passwordValue.errorMessages().isEmpty()
-            && databaseValue.errorMessages().isEmpty()) {
+                && portValue.errorMessages().isEmpty()
+                && userValue.errorMessages().isEmpty()
+                && passwordValue.errorMessages().isEmpty()
+                && databaseValue.errorMessages().isEmpty()) {
             // Try to connect to the database ...
             try (SqlServerConnection connection = new SqlServerConnection(sqlServerConfig.jdbcConfig(), Clock.system(),
-                sqlServerConfig.getSourceTimestampMode(), null)) {
+                    sqlServerConfig.getSourceTimestampMode(), null)) {
                 // SqlServerConnection will try retrieving database, no need to run another query.
                 logger.info("Successfully tested connection for {} with user '{}'", connection.connectionString(),
-                    connection.username());
+                        connection.username());
             }
             catch (Throwable e) {
                 logger.info("Failed testing connection for {} with user '{}'", sqlServerConfig.jdbcConfig(),
-                    userValue);
+                        userValue);
                 hostnameValue.addErrorMessage("Unable to connect: " + e.getMessage());
                 portValue.addErrorMessage("Unable to connect: " + e.getMessage());
                 databaseValue.addErrorMessage("Unable to connect: " + e.getMessage());
