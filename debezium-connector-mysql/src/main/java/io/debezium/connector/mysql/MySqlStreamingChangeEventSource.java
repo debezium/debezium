@@ -9,7 +9,6 @@ import static io.debezium.util.Strings.isNullOrEmpty;
 
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.Serializable;
 import java.security.GeneralSecurityException;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
@@ -19,18 +18,16 @@ import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.sql.SQLException;
 import java.time.Duration;
-import java.time.Instant;
-import java.util.BitSet;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Function;
 import java.util.function.Predicate;
 
 import javax.net.ssl.KeyManager;
@@ -73,7 +70,6 @@ import io.debezium.config.CommonConnectorConfig.EventProcessingFailureHandlingMo
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlConnectorConfig.GtidNewChannelPosition;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
-import io.debezium.connector.mysql.RecordMakers.RecordsForTable;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.function.BlockingConsumer;
 import io.debezium.pipeline.ErrorHandler;
@@ -100,7 +96,6 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
     private static final String KEEPALIVE_THREAD_NAME = "blc-keepalive";
 
     private final boolean recordSchemaChangesInSourceRecords;
-    private final RecordMakers recordMakers;
     private final SourceInfo source;
     private final EnumMap<EventType, BlockingConsumer<Event>> eventHandlers = new EnumMap<>(EventType.class);
     private final BinaryLogClient client;
@@ -184,6 +179,11 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
         }
     }
 
+    @FunctionalInterface
+    private static interface BinlogChangeEmitter<T> {
+        void emit(TableId tableId, T data) throws InterruptedException;
+    }
+
     public MySqlStreamingChangeEventSource(MySqlConnectorConfig connectorConfig, MySqlOffsetContext offsetContext, MySqlConnection connection,
                                            EventDispatcher<TableId> dispatcher, ErrorHandler errorHandler, Clock clock,
                                            MySqlTaskContext taskContext, MySqlStreamingChangeEventSourceMetrics metrics) {
@@ -199,7 +199,6 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
         this.metrics = metrics;
 
         source = this.offsetContext.getSource();
-        recordMakers = new RecordMakers(taskContext.getSchema(), source, taskContext.getTopicSelector(), connectorConfig.isEmitTombstoneOnDelete(), null);
         recordSchemaChangesInSourceRecords = connectorConfig.includeSchemaChangeRecords();
         eventDeserializationFailureHandlingMode = connectorConfig.getEventProcessingFailureHandlingMode();
         inconsistentSchemaHandlingMode = connectorConfig.inconsistentSchemaFailureHandlingMode();
@@ -462,7 +461,7 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
     /**
      * Handle the supplied event with a {@link RotateEventData} that signals the logs are being rotated. This means that either
      * the server was restarted, or the binlog has transitioned to a new file. In either case, subsequent table numbers will be
-     * different than those seen to this point, so we need to {@link RecordMakers#clear() discard the cache of record makers}.
+     * different than those seen to this point.
      *
      * @param event the database change data event to be processed; may not be null
      */
@@ -470,7 +469,7 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
         LOGGER.debug("Rotating logs: {}", event);
         RotateEventData command = unwrapData(event);
         assert command != null;
-        recordMakers.clear();
+        taskContext.getSchema().clearTableMappings();
     }
 
     /**
@@ -623,7 +622,7 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
         String databaseName = metadata.getDatabase();
         String tableName = metadata.getTable();
         TableId tableId = new TableId(databaseName, null, tableName);
-        if (recordMakers.assign(tableNumber, tableId)) {
+        if (taskContext.getSchema().assignTableNumber(tableNumber, tableId)) {
             LOGGER.debug("Received update table metadata event: {}", event);
         }
         else {
@@ -680,48 +679,8 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
      * @throws InterruptedException if this thread is interrupted while blocking
      */
     protected void handleInsert(Event event) throws InterruptedException {
-        if (skipEvent) {
-            // We can skip this because we should already be at least this far ...
-            LOGGER.info("Skipping previously processed row event: {}", event);
-            return;
-        }
-        if (ignoreDmlEventByGtidSource) {
-            LOGGER.debug("Skipping DML event because this GTID source is filtered: {}", event);
-            return;
-        }
-        WriteRowsEventData write = unwrapData(event);
-        long tableNumber = write.getTableId();
-        BitSet includedColumns = write.getIncludedColumns();
-        RecordsForTable recordMaker = recordMakers.forTable(tableNumber, includedColumns, record -> eventDispatcher
-                .dispatchDataChangeEvent(recordMakers.getTableIdFromTableNumber(tableNumber), new MySqlChangeRecordEmitter(offsetContext, Operation.CREATE, record)));
-        if (recordMaker != null) {
-            List<Serializable[]> rows = write.getRows();
-            final Instant ts = clock.currentTimeAsInstant();
-            int count = 0;
-            int numRows = rows.size();
-            if (startingRowNumber < numRows) {
-                for (int row = startingRowNumber; row != numRows; ++row) {
-                    count += recordMaker.create(rows.get(row), ts, row, numRows);
-                }
-                if (LOGGER.isDebugEnabled()) {
-                    if (startingRowNumber != 0) {
-                        LOGGER.debug("Recorded {} insert record(s) for last {} row(s) in event: {}",
-                                count, numRows - startingRowNumber, event);
-                    }
-                    else {
-                        LOGGER.debug("Recorded {} insert record(s) for event: {}", count, event);
-                    }
-                }
-            }
-            else {
-                // All rows were previously processed ...
-                LOGGER.debug("Skipping previously processed insert event: {}", event);
-            }
-        }
-        else {
-            informAboutUnknownTableIfRequired(event, recordMakers.getTableIdFromTableNumber(tableNumber), "insert row");
-        }
-        startingRowNumber = 0;
+        handleChange(event, "insert", WriteRowsEventData.class, x -> taskContext.getSchema().getTableId(x.getTableId()), WriteRowsEventData::getRows,
+                (tableId, row) -> eventDispatcher.dispatchDataChangeEvent(tableId, new MySqlChangeRecordEmitter(offsetContext, clock, Operation.CREATE, null, row)));
     }
 
     /**
@@ -731,52 +690,9 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
      * @throws InterruptedException if this thread is interrupted while blocking
      */
     protected void handleUpdate(Event event) throws InterruptedException {
-        if (skipEvent) {
-            // We can skip this because we should already be at least this far ...
-            LOGGER.debug("Skipping previously processed row event: {}", event);
-            return;
-        }
-        if (ignoreDmlEventByGtidSource) {
-            LOGGER.debug("Skipping DML event because this GTID source is filtered: {}", event);
-            return;
-        }
-        UpdateRowsEventData update = unwrapData(event);
-        long tableNumber = update.getTableId();
-        BitSet includedColumns = update.getIncludedColumns();
-        RecordsForTable recordMaker = recordMakers.forTable(tableNumber, includedColumns,
-                record -> eventDispatcher.dispatchDataChangeEvent(recordMakers.getTableIdFromTableNumber(tableNumber),
-                        new MySqlChangeRecordEmitter(offsetContext, Operation.UPDATE, record)));
-        if (recordMaker != null) {
-            List<Entry<Serializable[], Serializable[]>> rows = update.getRows();
-            final Instant ts = clock.currentTimeAsInstant();
-            int count = 0;
-            int numRows = rows.size();
-            if (startingRowNumber < numRows) {
-                for (int row = startingRowNumber; row != numRows; ++row) {
-                    Map.Entry<Serializable[], Serializable[]> changes = rows.get(row);
-                    Serializable[] before = changes.getKey();
-                    Serializable[] after = changes.getValue();
-                    count += recordMaker.update(before, after, ts, row, numRows);
-                }
-                if (LOGGER.isDebugEnabled()) {
-                    if (startingRowNumber != 0) {
-                        LOGGER.debug("Recorded {} update record(s) for last {} row(s) in event: {}",
-                                count, numRows - startingRowNumber, event);
-                    }
-                    else {
-                        LOGGER.debug("Recorded {} update record(s) for event: {}", count, event);
-                    }
-                }
-            }
-            else {
-                // All rows were previously processed ...
-                LOGGER.debug("Skipping previously processed update event: {}", event);
-            }
-        }
-        else {
-            informAboutUnknownTableIfRequired(event, recordMakers.getTableIdFromTableNumber(tableNumber), "update row");
-        }
-        startingRowNumber = 0;
+        handleChange(event, "update", UpdateRowsEventData.class, x -> taskContext.getSchema().getTableId(x.getTableId()), UpdateRowsEventData::getRows,
+                (tableId, row) -> eventDispatcher.dispatchDataChangeEvent(tableId,
+                        new MySqlChangeRecordEmitter(offsetContext, clock, Operation.UPDATE, row.getKey(), row.getValue())));
     }
 
     /**
@@ -786,47 +702,51 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
      * @throws InterruptedException if this thread is interrupted while blocking
      */
     protected void handleDelete(Event event) throws InterruptedException {
+        handleChange(event, "delete", DeleteRowsEventData.class, x -> taskContext.getSchema().getTableId(x.getTableId()), DeleteRowsEventData::getRows,
+                (tableId, row) -> eventDispatcher.dispatchDataChangeEvent(tableId, new MySqlChangeRecordEmitter(offsetContext, clock, Operation.DELETE, row, null)));
+    }
+
+    private <T extends EventData, U> void handleChange(Event event, String changeType, Class<T> eventDataClass, Function<T, TableId> tableIdProvider,
+                                                       Function<T, List<U>> rowsProvider, BinlogChangeEmitter<U> changeEmitter)
+            throws InterruptedException {
         if (skipEvent) {
             // We can skip this because we should already be at least this far ...
-            LOGGER.debug("Skipping previously processed row event: {}", event);
+            LOGGER.info("Skipping previously processed row event: {}", event);
             return;
         }
         if (ignoreDmlEventByGtidSource) {
             LOGGER.debug("Skipping DML event because this GTID source is filtered: {}", event);
             return;
         }
-        DeleteRowsEventData deleted = unwrapData(event);
-        long tableNumber = deleted.getTableId();
-        BitSet includedColumns = deleted.getIncludedColumns();
-        RecordsForTable recordMaker = recordMakers.forTable(tableNumber, includedColumns,
-                record -> eventDispatcher.dispatchDataChangeEvent(recordMakers.getTableIdFromTableNumber(tableNumber),
-                        new MySqlChangeRecordEmitter(offsetContext, Operation.DELETE, record)));
-        if (recordMaker != null) {
-            List<Serializable[]> rows = deleted.getRows();
-            final Instant ts = clock.currentTimeAsInstant();
+        final T data = unwrapData(event);
+        final TableId tableId = tableIdProvider.apply(data);
+        final List<U> rows = rowsProvider.apply(data);
+
+        if (tableId != null && taskContext.getSchema().schemaFor(tableId) != null) {
             int count = 0;
             int numRows = rows.size();
             if (startingRowNumber < numRows) {
                 for (int row = startingRowNumber; row != numRows; ++row) {
-                    count += recordMaker.delete(rows.get(row), ts, row, numRows);
+                    changeEmitter.emit(tableId, rows.get(row));
+                    count++;
                 }
                 if (LOGGER.isDebugEnabled()) {
                     if (startingRowNumber != 0) {
-                        LOGGER.debug("Recorded {} delete record(s) for last {} row(s) in event: {}",
-                                count, numRows - startingRowNumber, event);
+                        LOGGER.debug("Emited {} {} record(s) for last {} row(s) in event: {}",
+                                count, changeType, numRows - startingRowNumber, event);
                     }
                     else {
-                        LOGGER.debug("Recorded {} delete record(s) for event: {}", count, event);
+                        LOGGER.debug("Emited {} {} record(s) for event: {}", count, changeType, event);
                     }
                 }
             }
             else {
                 // All rows were previously processed ...
-                LOGGER.debug("Skipping previously processed delete event: {}", event);
+                LOGGER.debug("Skipping previously processed {} event: {}", changeType, event);
             }
         }
         else {
-            informAboutUnknownTableIfRequired(event, recordMakers.getTableIdFromTableNumber(tableNumber), "delete row");
+            informAboutUnknownTableIfRequired(event, tableId, changeType + " row");
         }
         startingRowNumber = 0;
     }

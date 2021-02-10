@@ -5,102 +5,51 @@
  */
 package io.debezium.connector.mysql;
 
-import java.time.Instant;
-import java.util.Map;
-
-import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.Struct;
-import org.apache.kafka.connect.header.ConnectHeaders;
-import org.apache.kafka.connect.source.SourceRecord;
+import java.io.Serializable;
 
 import io.debezium.data.Envelope;
-import io.debezium.pipeline.spi.ChangeRecordEmitter;
+import io.debezium.data.Envelope.Operation;
 import io.debezium.pipeline.spi.OffsetContext;
-import io.debezium.pipeline.txmetadata.TransactionContext;
-import io.debezium.schema.DataCollectionId;
-import io.debezium.schema.DataCollectionSchema;
+import io.debezium.relational.RelationalChangeRecordEmitter;
+import io.debezium.util.Clock;
 
 /**
  * Emits change data.
  *
  * @author Jiri Pechanec
  */
-public class MySqlChangeRecordEmitter implements ChangeRecordEmitter {
+public class MySqlChangeRecordEmitter extends RelationalChangeRecordEmitter {
 
     private final Envelope.Operation operation;
-    private final SourceRecord record;
     private final OffsetContext offset;
+    private final Object[] before;
+    private final Object[] after;
 
-    public MySqlChangeRecordEmitter(OffsetContext offset, Envelope.Operation operation, SourceRecord record) {
+    public MySqlChangeRecordEmitter(OffsetContext offset, Clock clock, Envelope.Operation operation, Serializable[] before, Serializable[] after) {
+        super(offset, clock);
         this.offset = offset;
         this.operation = operation;
-        this.record = record;
-    }
-
-    @Override
-    public void emitChangeRecords(DataCollectionSchema schema, Receiver receiver) throws InterruptedException {
-        final Struct value = (Struct) record.value();
-        if (value == null) {
-            return;
-        }
-        final String op = value.getString(Envelope.FieldName.OPERATION);
-        receiver.changeRecord(schema, Envelope.Operation.forCode(op), record.key(), value, new OffsetContext() {
-
-            @Override
-            public Map<String, ?> getPartition() {
-                return record.sourcePartition();
-            }
-
-            @Override
-            public Map<String, ?> getOffset() {
-                return record.sourceOffset();
-            }
-
-            @Override
-            public Schema getSourceInfoSchema() {
-                return value.getStruct("source").schema();
-            }
-
-            @Override
-            public Struct getSourceInfo() {
-                return value.getStruct("source");
-            }
-
-            @Override
-            public boolean isSnapshotRunning() {
-                return false;
-            }
-
-            @Override
-            public void markLastSnapshotRecord() {
-            }
-
-            @Override
-            public void preSnapshotStart() {
-            }
-
-            @Override
-            public void preSnapshotCompletion() {
-            }
-
-            @Override
-            public void postSnapshotCompletion() {
-            }
-
-            @Override
-            public void event(DataCollectionId collectionId, Instant timestamp) {
-            }
-
-            @Override
-            public TransactionContext getTransactionContext() {
-                // TODO Remove with RecordMakers rewrite
-                return null;
-            }
-        }, (ConnectHeaders) record.headers());
+        this.before = before;
+        this.after = after;
     }
 
     @Override
     public OffsetContext getOffset() {
         return offset;
+    }
+
+    @Override
+    protected Operation getOperation() {
+        return operation;
+    }
+
+    @Override
+    protected Object[] getOldColumnValues() {
+        return before != null ? before : null;
+    }
+
+    @Override
+    protected Object[] getNewColumnValues() {
+        return after != null ? after : null;
     }
 }

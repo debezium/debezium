@@ -7,6 +7,7 @@ package io.debezium.connector.mysql;
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -27,6 +28,7 @@ import io.debezium.relational.RelationalTableFilters;
 import io.debezium.relational.SystemVariables;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
+import io.debezium.relational.TableSchema;
 import io.debezium.relational.TableSchemaBuilder;
 import io.debezium.relational.Tables;
 import io.debezium.relational.ddl.DdlChanges;
@@ -72,6 +74,7 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
     private final DdlParser ddlParser;
     private final RelationalTableFilters filters;
     private final DdlChanges ddlChanges;
+    private final Map<Long, TableId> tableIdsByTableNumber = new HashMap<>();
 
     /**
      * Create a schema component given the supplied {@link MySqlConnectorConfig MySQL connector configuration}.
@@ -290,5 +293,42 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
     @Override
     public boolean storeOnlyMonitoredTables() {
         return databaseHistory.storeOnlyMonitoredTables();
+    }
+
+    /**
+     * Assign the given table number to the table with the specified {@link TableId table ID}.
+     *
+     * @param tableNumber the table number found in binlog events
+     * @param id the identifier for the corresponding table
+     * @return {@code true} if the assignment was successful, or {@code false} if the table is currently excluded in the
+     *         connector's configuration
+     */
+    public boolean assignTableNumber(long tableNumber, TableId id) {
+        final TableSchema tableSchema = schemaFor(id);
+        if (tableSchema == null) {
+            return false;
+        }
+
+        tableIdsByTableNumber.put(tableNumber, id);
+        return true;
+    }
+
+    /**
+     * Return the table id associated with MySQL-specific table number.
+     *
+     * @param tableNumber
+     * @return the table id or null if not known
+     */
+    public TableId getTableId(long tableNumber) {
+        return tableIdsByTableNumber.get(tableNumber);
+    }
+
+    /**
+     * Clear all of the table mappings. This should be done when the logs are rotated, since in that a different table
+     * numbering scheme will be used by all subsequent TABLE_MAP binlog events.
+     */
+    public void clearTableMappings() {
+        LOGGER.debug("Clearing table number mappings");
+        tableIdsByTableNumber.clear();
     }
 }
