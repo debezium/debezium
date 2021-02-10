@@ -31,7 +31,6 @@ import io.debezium.connector.mysql.Module;
 import io.debezium.connector.mysql.MySqlConnector;
 import io.debezium.connector.mysql.MySqlConnectorConfig;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
-import io.debezium.connector.mysql.RecordMakers;
 import io.debezium.connector.mysql.SourceInfo;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.schema.TopicSelector;
