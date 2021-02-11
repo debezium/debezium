@@ -326,7 +326,10 @@ final class SourceInfo extends BaseSourceInfo {
      * @param gtidFilter the predicate function that will return {@code true} if a GTID source is to be included, or
      *            {@code false} if a GTID source is to be excluded; may be null if no filtering is to be done
      * @return {@code true} if the recorded position is at or before the desired position; or {@code false} otherwise
+     * 
+     * Moved to {@link MySqlConnectorConfig#getHistoryRecordComparator}
      */
+    @Deprecated
     public static boolean isPositionAtOrBefore(Document recorded, Document desired, Predicate<String> gtidFilter) {
         String recordedGtidSetStr = recorded.getString(MySqlOffsetContext.GTID_SET_KEY);
         String desiredGtidSetStr = desired.getString(MySqlOffsetContext.GTID_SET_KEY);
