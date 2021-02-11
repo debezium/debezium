@@ -42,6 +42,10 @@ public class LogMinerMetrics extends Metrics implements LogMinerMetricsMXBean {
     private final AtomicReference<Duration> totalBatchProcessingDuration = new AtomicReference<>();
     private final AtomicReference<Duration> lastBatchProcessingDuration = new AtomicReference<>();
     private final AtomicReference<Duration> maxBatchProcessingDuration = new AtomicReference<>();
+    private final AtomicReference<Duration> totalParseTime = new AtomicReference<>();
+    private final AtomicReference<Duration> totalStartLogMiningSession = new AtomicReference<>();
+    private final AtomicReference<Duration> totalProcessingTime = new AtomicReference<>();
+    private final AtomicReference<Duration> totalResultSetNextTime = new AtomicReference<>();
     private final AtomicLong maxBatchProcessingThroughput = new AtomicLong();
     private final AtomicReference<String[]> currentLogFileName;
     private final AtomicReference<String[]> redoLogStatus;
@@ -105,6 +109,10 @@ public class LogMinerMetrics extends Metrics implements LogMinerMetricsMXBean {
         maxBatchProcessingThroughput.set(0);
         lastBatchProcessingDuration.set(Duration.ZERO);
         networkConnectionProblemsCounter.set(0);
+        totalParseTime.set(Duration.ZERO);
+        totalStartLogMiningSession.set(Duration.ZERO);
+        totalProcessingTime.set(Duration.ZERO);
+        totalResultSetNextTime.set(Duration.ZERO);
     }
 
     // setters
@@ -259,6 +267,37 @@ public class LogMinerMetrics extends Metrics implements LogMinerMetricsMXBean {
         return networkConnectionProblemsCounter.get();
     }
 
+    @Override
+    public long getTotalParseTime() {
+        return totalParseTime.get().toMillis();
+    }
+
+    public void addCurrentParseTime(Duration currentParseTime) {
+        totalParseTime.accumulateAndGet(currentParseTime, Duration::plus);
+    }
+
+    @Override
+    public long getTotalMiningSessionStartTime() {
+        return totalStartLogMiningSession.get().toMillis();
+    }
+
+    public void addCurrentMiningSessionStart(Duration currentStartLogMiningSession) {
+        totalStartLogMiningSession.accumulateAndGet(currentStartLogMiningSession, Duration::plus);
+    }
+
+    @Override
+    public long getTotalProcessingTime() {
+        return totalProcessingTime.get().toMillis();
+    }
+
+    public void addCurrentProcessingTime(Duration processingTime) {
+        totalProcessingTime.accumulateAndGet(processingTime, Duration::plus);
+    }
+
+    public void addCurrentResultSetNext(Duration currentNextTime) {
+        totalResultSetNextTime.accumulateAndGet(currentNextTime, Duration::plus);
+    }
+
     // MBean accessible setters
     @Override
     public void setBatchSize(int size) {
@@ -340,6 +379,10 @@ public class LogMinerMetrics extends Metrics implements LogMinerMetricsMXBean {
                 ", sleepTimeMin=" + sleepTimeMin +
                 ", sleepTimeMax=" + sleepTimeMax +
                 ", sleepTimeIncrement=" + sleepTimeIncrement +
+                ", totalParseTime=" + totalParseTime +
+                ", totalStartLogMiningSession=" + totalStartLogMiningSession +
+                ", totalProcessTime=" + totalProcessingTime +
+                ", totalResultSetNextTime=" + totalResultSetNextTime +
                 '}';
     }
 }

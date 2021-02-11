@@ -19,7 +19,7 @@ import io.debezium.data.Envelope;
 /**
  * @author Chris Cranford
  */
-public class FastDmlParser {
+public class LogMinerDmlParser {
 
     private static final String SINGLE_QUOTE = "'";
     private static final String NULL = "NULL";
@@ -39,14 +39,15 @@ public class FastDmlParser {
      * @return the parsed DML entry record or {@code null} if the SQL was not parsed
      */
     public LogMinerDmlEntry parse(String sql) {
-        if (sql.startsWith(INSERT_INTO)) {
-            return parseInsert(sql);
-        }
-        else if (sql.startsWith(UPDATE)) {
-            return parseUpdate(sql);
-        }
-        else if (sql.startsWith(DELETE)) {
-            return parseDelete(sql);
+        if (sql != null && sql.length() > 0) {
+            switch (sql.charAt(0)) {
+                case 'i':
+                    return parseInsert(sql);
+                case 'u':
+                    return parseUpdate(sql);
+                case 'd':
+                    return parseDelete(sql);
+            }
         }
         return null;
     }

@@ -10,8 +10,13 @@ import static io.debezium.util.NumberConversions.BYTE_FALSE;
 import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.sql.Types;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
+import java.time.temporal.ChronoField;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -49,6 +54,30 @@ import oracle.sql.TIMESTAMPTZ;
 public class OracleValueConverters extends JdbcValueConverters {
 
     private static final Pattern INTERVAL_DAY_SECOND_PATTERN = Pattern.compile("([+\\-])?(\\d+) (\\d+):(\\d+):(\\d+).(\\d+)");
+
+    private static final ZoneId GMT_ZONE_ID = ZoneId.of("GMT");
+
+    private static final DateTimeFormatter TIMESTAMP_FORMATTER = new DateTimeFormatterBuilder()
+            .parseCaseInsensitive()
+            .appendPattern("yyyy-MM-dd HH:mm:ss")
+            .optionalStart()
+            .appendPattern(".")
+            .appendFraction(ChronoField.NANO_OF_SECOND, 0, 9, false)
+            .optionalEnd()
+            .toFormatter();
+
+    private static final DateTimeFormatter TIMESTAMP_AM_PM_SHORT_FORMATTER = new DateTimeFormatterBuilder()
+            .parseCaseInsensitive()
+            .appendPattern("dd-MMM-yy hh.mm.ss")
+            .optionalStart()
+            .appendPattern(".")
+            .appendFraction(ChronoField.NANO_OF_SECOND, 0, 9, false)
+            .optionalEnd()
+            .appendPattern(" a")
+            .toFormatter();
+
+    private static final Pattern TO_TIMESTAMP = Pattern.compile("TO_TIMESTAMP\\('(.*)'\\)", Pattern.CASE_INSENSITIVE);
+    private static final Pattern TO_DATE = Pattern.compile("TO_DATE\\('(.*)',[ ]*'(.*)'\\)", Pattern.CASE_INSENSITIVE);
 
     private final OracleConnection connection;
 
@@ -99,6 +128,7 @@ public class OracleValueConverters extends JdbcValueConverters {
 
             // a negative scale means rounding, e.g. NUMBER(10, -2) would be rounded to hundreds
             if (scale <= 0) {
+                // todo: DBZ-3078 LogMiner checked scale=0 && column.length() = 1 and returned SchemaBuilder.bool(), review impact.
                 int width = column.length() - scale;
 
                 if (width < 3) {
@@ -107,7 +137,7 @@ public class OracleValueConverters extends JdbcValueConverters {
                 else if (width < 5) {
                     return SchemaBuilder.int16();
                 }
-                // todo: DBZ-137 this was changed and caused issues with datatype tests, reverted for now.
+                // todo: DBZ-3078 This was reverted as of DBZ-137 but LogMiner streaming used this, review impact.
                 // else if (width < 10 || (width == 10 && scale == 0)) {
                 else if (width < 10) {
                     return SchemaBuilder.int32();
@@ -121,6 +151,7 @@ public class OracleValueConverters extends JdbcValueConverters {
             return super.schemaBuilder(column);
         }
         else {
+            // todo: DBZ-3078 LogMiner streaming assumed VariableScaleDecimal.builder(), review impact.
             return variableScaleSchema(column);
         }
     }
@@ -151,6 +182,7 @@ public class OracleValueConverters extends JdbcValueConverters {
             case Types.NUMERIC:
                 return getNumericConverter(column, fieldDefn);
             case Types.FLOAT:
+                // todo: DBZ-3078 LogMiner used getFloatConverter here, review impact.
                 // todo: DBZ-137 is there a reason why floats need to be converted to doubles rather than var-scales?
                 // return data -> convertDouble(column, fieldDefn, data);
                 return data -> convertVariableScale(column, fieldDefn, data);
@@ -170,6 +202,9 @@ public class OracleValueConverters extends JdbcValueConverters {
         if (data instanceof BigDecimal) {
             return ((BigDecimal) data).floatValue();
         }
+        if (data instanceof String) {
+            return Float.parseFloat((String) data);
+        }
         return convertVariableScale(column, fieldDefn, data);
     }
 
@@ -178,6 +213,7 @@ public class OracleValueConverters extends JdbcValueConverters {
             Integer scale = column.scale().get();
 
             if (scale <= 0) {
+                // todo DBZ-3078 LogMiner used scale == 0 && column.length() == 1 to return convertBoolean, review impact.
                 int width = column.length() - scale;
 
                 if (width < 3) {
@@ -186,6 +222,7 @@ public class OracleValueConverters extends JdbcValueConverters {
                 else if (width < 5) {
                     return data -> convertNumericAsSmallInt(column, fieldDefn, data);
                 }
+                // todo: DBZ-3078 this was a thing for LogMiner streaming, review impact.
                 // todo: DBZ-137 this was changed and caused issues with datatype tests, reverted for now.
                 // else if (width < 10 || (width == 10 && scale == 0)) {
                 else if (width < 10) {
@@ -283,12 +320,20 @@ public class OracleValueConverters extends JdbcValueConverters {
             }
         }
 
+        if (data instanceof String) {
+            // In the case when the value is of String, convert it to a BigDecimal so that we can then
+            // aptly apply the scale adjustment below.
+            data = toBigDecimal(column, fieldDefn, data);
+        }
+
         // adjust scale to column's scale if the column's scale is larger than the one from
         // the value (e.g. 4.4444 -> 4.444400)
         if (data instanceof BigDecimal) {
             data = withScaleAdjustedIfNeeded(column, (BigDecimal) data);
         }
 
+        // todo: DBZ-3078 can this now be removed?
+        // Perhaps this was added to support the double converter invocation?
         if (data instanceof Struct) {
             SpecialValueDecimal value = VariableScaleDecimal.toLogical((Struct) data);
             return value.getDecimalValue().orElse(null);
@@ -365,9 +410,11 @@ public class OracleValueConverters extends JdbcValueConverters {
      */
     @Override
     protected Object convertBoolean(Column column, Field fieldDefn, Object data) {
-
         if (data instanceof BigDecimal) {
             return ((BigDecimal) data).byteValue() == 0 ? Boolean.FALSE : Boolean.TRUE;
+        }
+        if (data instanceof String) {
+            return Byte.parseByte((String) data) == 0 ? Boolean.FALSE : Boolean.TRUE;
         }
         return super.convertBoolean(column, fieldDefn, data);
     }
@@ -442,17 +489,65 @@ public class OracleValueConverters extends JdbcValueConverters {
         if (data instanceof Long) {
             return data;
         }
+        if (data instanceof String) {
+            return resolveTimestampString(column, fieldDefn, (String) data);
+        }
         return super.convertTimestampToEpochMicros(column, fieldDefn, fromOracleTimeClasses(column, data));
     }
 
     @Override
     protected Object convertTimestampToEpochMillis(Column column, Field fieldDefn, Object data) {
+        if (data instanceof String) {
+            return resolveTimestampString(column, fieldDefn, (String) data);
+        }
         return super.convertTimestampToEpochMillis(column, fieldDefn, fromOracleTimeClasses(column, data));
     }
 
     @Override
     protected Object convertTimestampToEpochNanos(Column column, Field fieldDefn, Object data) {
+        if (data instanceof String) {
+            return resolveTimestampString(column, fieldDefn, (String) data);
+        }
         return super.convertTimestampToEpochNanos(column, fieldDefn, fromOracleTimeClasses(column, data));
+    }
+
+    private Object resolveTimestampString(Column column, Field fieldDefn, String data) {
+        LocalDateTime dateTime;
+
+        final Matcher toTimestampMatcher = TO_TIMESTAMP.matcher(data);
+        if (toTimestampMatcher.matches()) {
+            String dateText = toTimestampMatcher.group(1);
+            if (dateText.indexOf(" AM") > 0 || dateText.indexOf(" PM") > 0) {
+                dateTime = LocalDateTime.from(TIMESTAMP_AM_PM_SHORT_FORMATTER.parse(dateText.trim()));
+            }
+            else {
+                dateTime = LocalDateTime.from(TIMESTAMP_FORMATTER.parse(dateText.trim()));
+            }
+            Object value = getDateTimeWithPrecision(column, dateTime);
+            return value;
+        }
+
+        final Matcher toDateMatcher = TO_DATE.matcher(data);
+        if (toDateMatcher.matches()) {
+            dateTime = LocalDateTime.from(TIMESTAMP_FORMATTER.parse(toDateMatcher.group(1)));
+            return getDateTimeWithPrecision(column, dateTime);
+        }
+
+        // Unable to resolve
+        return null;
+    }
+
+    private Object getDateTimeWithPrecision(Column column, LocalDateTime dateTime) {
+        if (adaptiveTimePrecisionMode || adaptiveTimeMicrosecondsPrecisionMode) {
+            if (getTimePrecision(column) <= 3) {
+                return dateTime.atZone(GMT_ZONE_ID).toInstant().toEpochMilli();
+            }
+            if (getTimePrecision(column) <= 6) {
+                return dateTime.atZone(GMT_ZONE_ID).toInstant().toEpochMilli() * 1_000;
+            }
+            return dateTime.atZone(GMT_ZONE_ID).toInstant().toEpochMilli() * 1_000_000;
+        }
+        return dateTime.atZone(GMT_ZONE_ID).toInstant().toEpochMilli();
     }
 
     @Override

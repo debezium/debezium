@@ -148,6 +148,21 @@ public interface LogMinerMetricsMXBean {
     long getNetworkConnectionProblemsCounter();
 
     /**
+     * @return the total number of milliseconds used to parse DDL/DML statements
+     */
+    long getTotalParseTime();
+
+    /**
+     * @return the total number of milliseconds spent starting a log mining session
+     */
+    long getTotalMiningSessionStartTime();
+
+    /**
+     * @return the total number of milliseconds spent mining and processing results
+     */
+    long getTotalProcessingTime();
+
+    /**
      * Resets metrics.
      */
     void reset();

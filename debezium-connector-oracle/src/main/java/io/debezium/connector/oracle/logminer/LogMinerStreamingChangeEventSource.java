@@ -25,6 +25,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
@@ -40,7 +41,6 @@ import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OracleOffsetContext;
 import io.debezium.connector.oracle.OracleTaskContext;
-import io.debezium.connector.oracle.jsqlparser.SimpleDmlParser;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
@@ -58,6 +58,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
 
     private static final Logger LOGGER = LoggerFactory.getLogger(LogMinerStreamingChangeEventSource.class);
 
+    // TODO: change this to use MAX_QUEUE_SIE as the default
     private static final int LOG_MINING_VIEW_FETCH_SIZE = 10_000;
 
     private final OracleConnection jdbcConnection;
@@ -65,7 +66,6 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
     private final Clock clock;
     private final OracleDatabaseSchema schema;
     private final OracleOffsetContext offsetContext;
-    private final SimpleDmlParser dmlParser;
     private final String catalogName;
     private final boolean isRac;
     private final Set<String> racHosts = new HashSet<>();
@@ -90,10 +90,8 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
         this.clock = clock;
         this.schema = schema;
         this.offsetContext = offsetContext;
-        OracleChangeRecordValueConverter converters = new OracleChangeRecordValueConverter(connectorConfig, jdbcConnection);
         this.connectorConfig = connectorConfig;
         this.catalogName = (connectorConfig.getPdbName() != null) ? connectorConfig.getPdbName() : connectorConfig.getDatabaseName();
-        this.dmlParser = new SimpleDmlParser(catalogName, connectorConfig.getSchemaName(), converters);
         this.strategy = connectorConfig.getLogMiningStrategy();
         this.isContinuousMining = connectorConfig.isContinuousMining();
         this.errorHandler = errorHandler;
@@ -138,12 +136,14 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                 initializeRedoLogsForMining(jdbcConnection, false, archiveLogRetention);
 
                 HistoryRecorder historyRecorder = connectorConfig.getLogMiningHistoryRecorder();
+                Instant start = Instant.now();
                 try {
                     // todo: why can't OracleConnection be used rather than a Factory+JdbcConfiguration?
                     historyRecorder.prepare(logMinerMetrics, jdbcConfiguration, connectorConfig.getLogMinerHistoryRetentionHours());
 
-                    final LogMinerQueryResultProcessor processor = new LogMinerQueryResultProcessor(context, logMinerMetrics,
-                            transactionalBuffer, dmlParser, offsetContext, schema, dispatcher, catalogName, clock, historyRecorder);
+                    final LogMinerQueryResultProcessor processor = new LogMinerQueryResultProcessor(context, jdbcConnection,
+                            connectorConfig, logMinerMetrics, transactionalBuffer, offsetContext, schema, dispatcher,
+                            catalogName, clock, historyRecorder);
 
                     try (PreparedStatement miningView = jdbcConnection.connection()
                             .prepareStatement(SqlUtils.logMinerContentsQuery(connectorConfig.getSchemaName(), jdbcConnection.username(), schema))) {
@@ -173,7 +173,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                                 currentRedoLogFiles = getCurrentRedoLogFiles(jdbcConnection, logMinerMetrics);
                             }
 
-                            startLogMining(jdbcConnection, startScn, endScn, strategy, isContinuousMining);
+                            startLogMining(jdbcConnection, startScn, endScn, strategy, isContinuousMining, logMinerMetrics);
 
                             stopwatch.start();
                             miningView.setFetchSize(LOG_MINING_VIEW_FETCH_SIZE);
@@ -196,6 +196,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                 }
                 finally {
                     historyRecorder.close();
+                    logMinerMetrics.addCurrentProcessingTime(Duration.between(start, Instant.now()));
                 }
             }
             catch (Throwable t) {

@@ -246,15 +246,18 @@ public class LogMinerHelper {
      * @param endScn     the SCN to mine to
      * @param strategy this is about dictionary location
      * @param isContinuousMining works < 19 version only
+     * @param metrics log miner metrics
      * @throws SQLException if anything unexpected happens
      */
     static void startLogMining(OracleConnection connection, Long startScn, Long endScn,
-                               OracleConnectorConfig.LogMiningStrategy strategy, boolean isContinuousMining)
+                               OracleConnectorConfig.LogMiningStrategy strategy, boolean isContinuousMining, LogMinerMetrics metrics)
             throws SQLException {
         LOGGER.trace("Starting log mining startScn={}, endScn={}, strategy={}, continuous={}", startScn, endScn, strategy, isContinuousMining);
         String statement = SqlUtils.startLogMinerStatement(startScn, endScn, strategy, isContinuousMining);
         try {
+            Instant start = Instant.now();
             executeCallableStatement(connection, statement);
+            metrics.addCurrentMiningSessionStart(Duration.between(start, Instant.now()));
         }
         catch (SQLException e) {
             // Capture database state before throwing exception

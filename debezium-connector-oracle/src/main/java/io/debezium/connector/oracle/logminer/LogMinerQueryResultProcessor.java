@@ -14,13 +14,16 @@ import java.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.connector.oracle.OracleConnection;
+import io.debezium.connector.oracle.OracleConnectorConfig;
+import io.debezium.connector.oracle.OracleConnectorConfig.LogMiningDmlParser;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OracleOffsetContext;
 import io.debezium.connector.oracle.jsqlparser.SimpleDmlParser;
 import io.debezium.connector.oracle.logminer.valueholder.LogMinerDmlEntry;
 import io.debezium.data.Envelope;
 import io.debezium.pipeline.EventDispatcher;
-import io.debezium.pipeline.source.spi.ChangeEventSource;
+import io.debezium.pipeline.source.spi.ChangeEventSource.ChangeEventSourceContext;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.util.Clock;
@@ -35,10 +38,11 @@ import io.debezium.util.Clock;
  */
 class LogMinerQueryResultProcessor {
 
-    private final ChangeEventSource.ChangeEventSourceContext context;
+    private final ChangeEventSourceContext context;
     private final LogMinerMetrics metrics;
     private final TransactionalBuffer transactionalBuffer;
-    private final SimpleDmlParser dmlParser;
+    private final SimpleDmlParser legacyDmlParser;
+    private final LogMinerDmlParser dmlParser;
     private final OracleOffsetContext offsetContext;
     private final OracleDatabaseSchema schema;
     private final EventDispatcher<TableId> dispatcher;
@@ -51,15 +55,15 @@ class LogMinerQueryResultProcessor {
     private long stuckScnCounter = 0;
     private HistoryRecorder historyRecorder;
 
-    LogMinerQueryResultProcessor(ChangeEventSource.ChangeEventSourceContext context, LogMinerMetrics metrics,
-                                 TransactionalBuffer transactionalBuffer, SimpleDmlParser dmlParser,
+    LogMinerQueryResultProcessor(ChangeEventSourceContext context, OracleConnection jdbcConnection,
+                                 OracleConnectorConfig connectorConfig, LogMinerMetrics metrics,
+                                 TransactionalBuffer transactionalBuffer,
                                  OracleOffsetContext offsetContext, OracleDatabaseSchema schema,
                                  EventDispatcher<TableId> dispatcher,
                                  String catalogName, Clock clock, HistoryRecorder historyRecorder) {
         this.context = context;
         this.metrics = metrics;
         this.transactionalBuffer = transactionalBuffer;
-        this.dmlParser = dmlParser;
         this.offsetContext = offsetContext;
         this.schema = schema;
         this.dispatcher = dispatcher;
@@ -67,6 +71,16 @@ class LogMinerQueryResultProcessor {
         this.catalogName = catalogName;
         this.clock = clock;
         this.historyRecorder = historyRecorder;
+
+        if (connectorConfig.getLogMiningDmlParser().equals(LogMiningDmlParser.LEGACY)) {
+            OracleChangeRecordValueConverter converter = new OracleChangeRecordValueConverter(connectorConfig, jdbcConnection);
+            this.legacyDmlParser = new SimpleDmlParser(catalogName, connectorConfig.getSchemaName(), converter);
+            this.dmlParser = null;
+        }
+        else {
+            this.legacyDmlParser = null;
+            this.dmlParser = new LogMinerDmlParser();
+        }
     }
 
     /**
@@ -78,12 +92,16 @@ class LogMinerQueryResultProcessor {
         int dmlCounter = 0, insertCounter = 0, updateCounter = 0, deleteCounter = 0;
         int commitCounter = 0;
         int rollbackCounter = 0;
+        int rows = 0;
         Instant startTime = Instant.now();
-        while (true) {
+        while (context.isRunning()) {
             try {
+                Instant rsNextStart = Instant.now();
                 if (!resultSet.next()) {
                     break;
                 }
+                rows++;
+                metrics.addCurrentResultSetNext(Duration.between(rsNextStart, Instant.now()));
             }
             catch (SQLException e) {
                 LogMinerHelper.logError(transactionalBufferMetrics, "Closed resultSet");
@@ -169,7 +187,10 @@ class LogMinerQueryResultProcessor {
                         deleteCounter++;
                         break;
                 }
-                LogMinerDmlEntry dmlEntry = dmlParser.parse(redoSql, schema.getTables(), txId);
+
+                Instant parseStart = Instant.now();
+                LogMinerDmlEntry dmlEntry = parse(redoSql, txId);
+                metrics.addCurrentParseTime(Duration.between(parseStart, Instant.now()));
 
                 if (dmlEntry == null || redoSql == null) {
                     LOGGER.trace("Following statement was not parsed: {}, details: {}", redoSql, logMessage);
@@ -230,9 +251,9 @@ class LogMinerQueryResultProcessor {
             if (offsetContext.getCommitScn() != null) {
                 currentOffsetCommitScn = offsetContext.getCommitScn();
             }
-            LOGGER.debug("{} DMLs, {} Commits, {} Rollbacks, {} Inserts, {} Updates, {} Deletes. Processed in {} millis. " +
+            LOGGER.debug("{} Rows, {} DMLs, {} Commits, {} Rollbacks, {} Inserts, {} Updates, {} Deletes. Processed in {} millis. " +
                     "Lag:{}. Offset scn:{}. Offset commit scn:{}. Active transactions:{}. Sleep time:{}",
-                    dmlCounter, commitCounter, rollbackCounter, insertCounter, updateCounter, deleteCounter, totalTime.toMillis(),
+                    rows, dmlCounter, commitCounter, rollbackCounter, insertCounter, updateCounter, deleteCounter, totalTime.toMillis(),
                     transactionalBufferMetrics.getLagFromSource(), offsetContext.getScn(), offsetContext.getCommitScn(),
                     transactionalBufferMetrics.getNumberOfActiveTransactions(), metrics.getMillisecondToSleepBetweenMiningQuery());
         }
@@ -262,5 +283,12 @@ class LogMinerQueryResultProcessor {
                 stuckScnCounter = 0;
             }
         }
+    }
+
+    private LogMinerDmlEntry parse(String redoSql, String txId) {
+        if (this.legacyDmlParser != null) {
+            return legacyDmlParser.parse(redoSql, schema.getTables(), txId);
+        }
+        return dmlParser.parse(redoSql);
     }
 }

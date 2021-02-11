@@ -45,7 +45,7 @@ public class FastDmlParserTest {
     private final List<Integer> iterations = Arrays.asList(1000, 5000, 10000, 20000, 50000, 100000, 500000, 1000000);
 
     private SimpleDmlParser simpleDmlParser;
-    private FastDmlParser fastDmlParser;
+    private LogMinerDmlParser fastDmlParser;
 
     @Before
     public void beforeEach() throws Exception {
@@ -55,8 +55,8 @@ public class FastDmlParserTest {
         OracleChangeRecordValueConverter converters = new OracleChangeRecordValueConverter(connectorConfig, jdbcConnection);
         simpleDmlParser = new SimpleDmlParser(CATALOG_NAME, SCHEMA_NAME, converters);
 
-        // Create FastDmlParser
-        fastDmlParser = new FastDmlParser();
+        // Create LogMinerDmlParser
+        fastDmlParser = new LogMinerDmlParser();
     }
 
     // Oracle's generated SQL avoids common spacing patterns such as spaces between column values or values
