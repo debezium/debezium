@@ -349,7 +349,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
     @Override
     public boolean storageExists() {
         // Check if the topic exists in the list of all topics
-        try (KafkaConsumer<String, String> checkTopicConsumer = new KafkaConsumer<>(consumerConfig.asProperties());) {
+        try (KafkaConsumer<String, String> checkTopicConsumer = new KafkaConsumer<>(consumerConfig.asProperties())) {
             return checkTopicConsumer.listTopics().containsKey(topicName);
         }
     }
@@ -358,7 +358,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
     public boolean exists() {
         boolean exists = false;
         if (storageExists()) {
-            try (KafkaConsumer<String, String> historyConsumer = new KafkaConsumer<>(consumerConfig.asProperties());) {
+            try (KafkaConsumer<String, String> historyConsumer = new KafkaConsumer<>(consumerConfig.asProperties())) {
                 checkTopicSettings(topicName);
                 // check if the topic is empty
                 Set<TopicPartition> historyTopic = Collections.singleton(new TopicPartition(topicName, PARTITION));
@@ -376,7 +376,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
     }
 
     private void checkTopicSettings(String topicName) {
-        if (checkTopicSettingsExecutor == null) {
+        if (checkTopicSettingsExecutor == null || checkTopicSettingsExecutor.isShutdown()) {
             return;
         }
         checkTopicSettingsExecutor.execute(() -> {
