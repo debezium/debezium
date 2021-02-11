@@ -7,7 +7,6 @@ package io.debezium.embedded;
 
 import java.io.IOException;
 import java.time.Clock;
-import java.util.Map;
 import java.util.Properties;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -96,8 +95,13 @@ public class ConvertingEngineBuilder<R> implements Builder<R> {
                             }
 
                             @Override
-                            public void markProcessed(R record, Map<String, ?> sourceOffset) throws InterruptedException {
-                                committer.markProcessed(fromFormat.apply(record), sourceOffset);
+                            public void markProcessed(R record, DebeziumEngine.Offsets sourceOffsets) throws InterruptedException {
+                                committer.markProcessed(fromFormat.apply(record), sourceOffsets);
+                            }
+
+                            @Override
+                            public DebeziumEngine.Offsets buildOffsets() {
+                                return committer.buildOffsets();
                             }
                         }));
         return this;

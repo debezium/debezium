@@ -17,7 +17,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -358,9 +357,10 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
                     Integer groupCount = records.size() / NUMBER_OF_LINES;
 
                     for (RecordChangeEvent<SourceRecord> r : records) {
-                        Map<String, Long> newSourceOffset = Collections.singletonMap(CUSTOM_SOURCE_OFFSET_PARTITION, 1L);
+                        DebeziumEngine.Offsets offsets = committer.buildOffsets();
+                        offsets.set(CUSTOM_SOURCE_OFFSET_PARTITION, 1L);
                         logger.info(r.record().sourceOffset().toString());
-                        committer.markProcessed(r, newSourceOffset);
+                        committer.markProcessed(r, offsets);
                     }
 
                     committer.markBatchFinished();

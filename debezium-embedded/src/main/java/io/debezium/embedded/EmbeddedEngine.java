@@ -7,6 +7,7 @@ package io.debezium.embedded;
 
 import java.io.IOException;
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -908,13 +909,47 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
             }
 
             @Override
-            public synchronized void markProcessed(SourceRecord record, Map<String, ?> sourceOffset) throws InterruptedException {
-                SourceRecord recordWithUpdatedOffsets = new SourceRecord(record.sourcePartition(), sourceOffset, record.topic(),
+            public synchronized void markProcessed(SourceRecord record, DebeziumEngine.Offsets sourceOffsets) throws InterruptedException {
+                SourceRecordOffsets offsets = (SourceRecordOffsets) sourceOffsets;
+                SourceRecord recordWithUpdatedOffsets = new SourceRecord(record.sourcePartition(), offsets.getOffsets(), record.topic(),
                         record.kafkaPartition(), record.keySchema(), record.key(), record.valueSchema(), record.value(),
                         record.timestamp(), record.headers());
                 markProcessed(recordWithUpdatedOffsets);
             }
+
+            @Override
+            public DebeziumEngine.Offsets buildOffsets() {
+                return new SourceRecordOffsets();
+            }
         };
+    }
+
+    /**
+     * Implementation of {@link DebeziumEngine.Offsets} which can be used to construct a {@link SourceRecord}
+     * with its offsets.
+     */
+    protected class SourceRecordOffsets implements DebeziumEngine.Offsets {
+        private HashMap<String, Object> offsets = new HashMap<>();
+
+        /**
+         * Performs {@link HashMap#put(Object, Object)} on the offsets map.
+         *
+         * @param key key with which to put the value
+         * @param value value to be put with the key
+         */
+        @Override
+        public void set(String key, Object value) {
+            offsets.put(key, value);
+        }
+
+        /**
+         * Retrieves the offsets map.
+         *
+         * @return HashMap of the offsets
+         */
+        protected HashMap<String, Object> getOffsets() {
+            return offsets;
+        }
     }
 
     /**
