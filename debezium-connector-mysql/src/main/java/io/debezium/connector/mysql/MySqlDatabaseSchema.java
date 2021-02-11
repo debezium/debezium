@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mysql;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -218,7 +219,7 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
         return (table != null) ? Optional.of(table) : Optional.of(Table.editor().tableId(tableId).create());
     }
 
-    public List<SchemaChangeEvent> parseStreamingDdl(String ddlStatements, String databaseName, MySqlOffsetContext offset) {
+    public List<SchemaChangeEvent> parseStreamingDdl(String ddlStatements, String databaseName, MySqlOffsetContext offset, Instant sourceTime) {
         final List<SchemaChangeEvent> schemaChangeEvents = new ArrayList<>();
 
         LOGGER.debug("Processing streaming DDL '{}' for database '{}'", ddlStatements, databaseName);
@@ -255,14 +256,18 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
                 // the same order they were read for each _affected_ database, grouped together if multiple apply
                 // to the same _affected_ database...
                 ddlChanges.getEventsByDatabase((String dbName, List<Event> events) -> {
+                    final String sanitizedDbName = (dbName == null) ? "" : dbName;
                     if (acceptableDatabase(dbName)) {
-                        final String sanitizedDbName = (dbName == null) ? "" : dbName;
                         final Set<TableId> tableIds = new HashSet<>();
                         events.forEach(event -> {
                             final TableId tableId = getTableId(event);
                             if (tableId != null) {
                                 tableIds.add(tableId);
                             }
+                        });
+                        events.forEach(event -> {
+                            final TableId tableId = getTableId(event);
+                            offset.tableEvent(dbName, tableIds, sourceTime);
                             if (event instanceof TableCreatedEvent) {
                                 schemaChangeEvents
                                         .add(new SchemaChangeEvent(offset.getPartition(), offset.getOffset(), offset.getSourceInfo(),
@@ -284,21 +289,11 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
                                                 sanitizedDbName, null, event.statement(), (Table) null, SchemaChangeEventType.DATABASE, false));
                             }
                         });
-                        // final Struct source = schemaChange.getSource();
-                        // source.put(AbstractSourceInfo.DATABASE_NAME_KEY, sanitizedDbName);
-                        // final String tableNamesStr = tableIds.stream().map(TableId::table).collect(Collectors.joining(","));
-                        // if (!tableNamesStr.isEmpty()) {
-                        // source.put(AbstractSourceInfo.TABLE_NAME_KEY, tableNamesStr);
-                        // }
-                        // schemaEventConsumer.consume(new SchemaChangeEvent(schemaChange.getPartition(),
-                        // schemaChange.getOffset(), schemaChange.getSource(), sanitizedDbName,
-                        // schemaChange.getSchema(), schemaChange.getDdl(), Collections.emptySet(), SchemaChangeEventType.DATABASE,
-                        // schemaChange.isFromSnapshot()),
-                        // tableIds);
                     }
                 });
             }
             else if (acceptableDatabase(databaseName)) {
+                offset.databaseEvent(databaseName, sourceTime);
                 schemaChangeEvents
                         .add(new SchemaChangeEvent(offset.getPartition(), offset.getOffset(), offset.getSourceInfo(),
                                 databaseName, null, ddlStatements, (Table) null, SchemaChangeEventType.DATABASE, false));
