@@ -26,6 +26,7 @@ import io.confluent.connect.avro.AvroData;
 import io.debezium.config.Configuration;
 import io.debezium.connector.AbstractSourceInfoStructMaker;
 import io.debezium.connector.mysql.Module;
+import io.debezium.connector.mysql.MySqlConnector;
 import io.debezium.connector.mysql.MySqlConnectorConfig;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
@@ -48,6 +49,7 @@ public class SourceInfoTest {
     public void beforeEach() {
         source = new SourceInfo(new MySqlConnectorConfig(Configuration.create()
                 .with(MySqlConnectorConfig.SERVER_NAME, "server")
+                .with(MySqlConnector.IMPLEMENTATION_PROP, MySqlConnector.LEGACY_IMPLEMENTATION)
                 .build()));
         inTxn = false;
         positionOfBeginEvent = 0L;
@@ -543,6 +545,7 @@ public class SourceInfoTest {
     protected SourceInfo sourceWith(Map<String, String> offset) {
         source = new SourceInfo(new MySqlConnectorConfig(Configuration.create()
                 .with(MySqlConnectorConfig.SERVER_NAME, SERVER_NAME)
+                .with(MySqlConnector.IMPLEMENTATION_PROP, MySqlConnector.LEGACY_IMPLEMENTATION)
                 .build()));
         source.databaseEvent("mysql");
         source.setOffset(offset);

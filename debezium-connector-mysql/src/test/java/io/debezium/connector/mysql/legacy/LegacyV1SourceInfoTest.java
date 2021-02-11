@@ -26,6 +26,7 @@ import io.confluent.connect.avro.AvroData;
 import io.debezium.config.CommonConnectorConfig.Version;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.Module;
+import io.debezium.connector.mysql.MySqlConnector;
 import io.debezium.connector.mysql.MySqlConnectorConfig;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
@@ -49,6 +50,7 @@ public class LegacyV1SourceInfoTest {
         source = new SourceInfo(new MySqlConnectorConfig(Configuration.create()
                 .with(MySqlConnectorConfig.SERVER_NAME, "server")
                 .with(MySqlConnectorConfig.SOURCE_STRUCT_MAKER_VERSION, Version.V1)
+                .with(MySqlConnector.IMPLEMENTATION_PROP, MySqlConnector.LEGACY_IMPLEMENTATION)
                 .build()));
         inTxn = false;
         positionOfBeginEvent = 0L;
@@ -522,6 +524,7 @@ public class LegacyV1SourceInfoTest {
         source = new SourceInfo(new MySqlConnectorConfig(Configuration.create()
                 .with(MySqlConnectorConfig.SERVER_NAME, SERVER_NAME)
                 .with(MySqlConnectorConfig.SOURCE_STRUCT_MAKER_VERSION, Version.V1)
+                .with(MySqlConnector.IMPLEMENTATION_PROP, MySqlConnector.LEGACY_IMPLEMENTATION)
                 .build()));
         source.setOffset(offset);
         return source;
