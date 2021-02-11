@@ -33,6 +33,7 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Configuration.Builder;
 import io.debezium.connector.mysql.MySQLConnection;
+import io.debezium.connector.mysql.MySqlConnector;
 import io.debezium.connector.mysql.MySqlConnectorConfig;
 import io.debezium.connector.mysql.UniqueDatabase;
 import io.debezium.data.KeyValueStore;
@@ -102,7 +103,8 @@ public class SnapshotReaderIT {
                 .with(MySqlConnectorConfig.SNAPSHOT_LOCKING_MODE, MySqlConnectorConfig.SnapshotLockingMode.MINIMAL)
                 // Explicitly enable INCLUDE_SQL_QUERY connector option. For snapshots it should have no effect as
                 // source query should not included in snapshot events.
-                .with(MySqlConnectorConfig.INCLUDE_SQL_QUERY, true);
+                .with(MySqlConnectorConfig.INCLUDE_SQL_QUERY, true)
+                .with(MySqlConnector.IMPLEMENTATION_PROP, MySqlConnector.LEGACY_IMPLEMENTATION);
     }
 
     @Test

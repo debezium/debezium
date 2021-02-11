@@ -36,6 +36,7 @@ import org.junit.Test;
 import io.debezium.config.CommonConnectorConfig.EventProcessingFailureHandlingMode;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySQLConnection;
+import io.debezium.connector.mysql.MySqlConnector;
 import io.debezium.connector.mysql.MySqlConnectorConfig;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
 import io.debezium.connector.mysql.UniqueDatabase;
@@ -141,7 +142,8 @@ public class BinlogReaderIT {
                 .with(MySqlConnectorConfig.USER, "replicator")
                 .with(MySqlConnectorConfig.PASSWORD, "replpass")
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
-                .with(MySqlConnectorConfig.INCLUDE_SQL_QUERY, false);
+                .with(MySqlConnectorConfig.INCLUDE_SQL_QUERY, false)
+                .with(MySqlConnector.IMPLEMENTATION_PROP, MySqlConnector.LEGACY_IMPLEMENTATION);
     }
 
     @Test
