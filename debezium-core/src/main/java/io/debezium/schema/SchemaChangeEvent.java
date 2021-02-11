@@ -36,11 +36,7 @@ public class SchemaChangeEvent {
     public SchemaChangeEvent(Map<String, ?> partition, Map<String, ?> offset, Struct source, String database, String schema, String ddl, Table table,
                              SchemaChangeEventType type,
                              boolean isFromSnapshot) {
-        this(partition, offset, source, database, schema, ddl, table != null ? Collections.singleton(table) : null, type, isFromSnapshot);
-    }
-
-    public SchemaChangeEvent(Map<String, ?> partition, Map<String, ?> offset, Struct source, String database, String schema, String ddl, boolean isFromSnapshot) {
-        this(partition, offset, source, database, schema, ddl, Collections.emptySet(), SchemaChangeEventType.RAW, isFromSnapshot);
+        this(partition, offset, source, database, schema, ddl, table != null ? Collections.singleton(table) : Collections.emptySet(), type, isFromSnapshot);
     }
 
     public SchemaChangeEvent(Map<String, ?> partition, Map<String, ?> offset, Struct source, String database, String schema, String ddl, Set<Table> tables,
@@ -67,7 +63,6 @@ public class SchemaChangeEvent {
             case DROP:
                 tables.forEach(tableChanges::drop);
                 break;
-            case RAW:
             case DATABASE:
                 break;
         }
@@ -123,13 +118,11 @@ public class SchemaChangeEvent {
      * Type describing the content of the event.
      * CREATE, ALTER, DROP - corresponds to table operations
      * DATABASE - an event common to the database, like CREATE/DROP DATABASE or SET...
-     * RAW - the event that contains only raw SQL statement not processed by the parser
      */
     public static enum SchemaChangeEventType {
         CREATE,
         ALTER,
         DROP,
-        DATABASE,
-        RAW;
+        DATABASE;
     }
 }

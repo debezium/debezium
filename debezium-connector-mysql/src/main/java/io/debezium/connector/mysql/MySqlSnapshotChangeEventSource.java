@@ -15,6 +15,7 @@ import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -52,6 +53,7 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
     private final MySqlSnapshotChangeEventSourceMetrics metrics;
     private final MySqlOffsetContext previousOffset;
     private final MySqlDatabaseSchema databaseSchema;
+    private final List<SchemaChangeEvent> schemaEvents = new ArrayList<>();
 
     public MySqlSnapshotChangeEventSource(MySqlConnectorConfig connectorConfig, MySqlOffsetContext previousOffset, MySqlConnection connection,
                                           MySqlDatabaseSchema schema, EventDispatcher<TableId> dispatcher, Clock clock,
@@ -233,9 +235,12 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
         tryStartingSnapshot(ctx);
     }
 
-    private void addRawSchemaEvent(RelationalSnapshotContext snapshotContext, String database, String ddl) {
-        addRawSchemaChangeEvent(new SchemaChangeEvent(snapshotContext.offset.getPartition(),
-                snapshotContext.offset.getOffset(), snapshotContext.offset.getSourceInfo(), database, null, ddl, true));
+    private void addSchemaEvent(SchemaChangeEvent.SchemaChangeEventType type, RelationalSnapshotContext snapshotContext,
+                                String database, String ddl) {
+
+        schemaEvents.add(new SchemaChangeEvent(snapshotContext.offset.getPartition(),
+                snapshotContext.offset.getOffset(), snapshotContext.offset.getSourceInfo(), database, null, ddl,
+                databaseSchema.parseSnapshotDdl(ddl, database).orElse(null), type, true));
     }
 
     @Override
@@ -254,13 +259,13 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
         final Set<String> databases = tablesToRead.keySet();
 
         // Record default charset
-        addRawSchemaEvent(snapshotContext, "", connection.setStatementFor(connection.readMySqlCharsetSystemVariables()));
+        addSchemaEvent(SchemaChangeEvent.SchemaChangeEventType.DATABASE, snapshotContext, "", connection.setStatementFor(connection.readMySqlCharsetSystemVariables()));
 
         for (TableId tableId : capturedSchemaTables) {
             if (!sourceContext.isRunning()) {
                 throw new InterruptedException("Interrupted while emitting initial DROP TABLE events");
             }
-            addRawSchemaEvent(snapshotContext, tableId.catalog(), "DROP TABLE IF EXISTS " + quote(tableId));
+            addSchemaEvent(SchemaChangeEvent.SchemaChangeEventType.DROP, snapshotContext, tableId.catalog(), "DROP TABLE IF EXISTS " + quote(tableId));
         }
 
         final Map<String, DatabaseLocales> databaseCharsets = connection.readDatabaseCollations();
@@ -270,19 +275,19 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
             }
 
             LOGGER.info("Reading structure of database '{}'", database);
-            addRawSchemaEvent(snapshotContext, database, "DROP DATABASE IF EXISTS " + quote(database));
+            addSchemaEvent(SchemaChangeEvent.SchemaChangeEventType.DATABASE, snapshotContext, database, "DROP DATABASE IF EXISTS " + quote(database));
             final StringBuilder createDatabaseDddl = new StringBuilder("CREATE DATABASE " + quote(database));
             final DatabaseLocales defaultDatabaseLocales = databaseCharsets.get(database);
             if (defaultDatabaseLocales != null) {
                 defaultDatabaseLocales.appendToDdlStatement(database, createDatabaseDddl);
             }
-            addRawSchemaEvent(snapshotContext, database, createDatabaseDddl.toString());
-            addRawSchemaEvent(snapshotContext, database, "USE " + quote(database));
+            addSchemaEvent(SchemaChangeEvent.SchemaChangeEventType.DATABASE, snapshotContext, database, createDatabaseDddl.toString());
+            addSchemaEvent(SchemaChangeEvent.SchemaChangeEventType.DATABASE, snapshotContext, database, "USE " + quote(database));
 
             for (TableId tableId : tablesToRead.get(database)) {
                 connection.query("SHOW CREATE TABLE " + quote(tableId), rs -> {
                     if (rs.next()) {
-                        addRawSchemaEvent(snapshotContext, database, rs.getString(2));
+                        addSchemaEvent(SchemaChangeEvent.SchemaChangeEventType.CREATE, snapshotContext, database, rs.getString(2));
                     }
                 });
             }
@@ -486,5 +491,51 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
         public MySqlSnapshotContext() throws SQLException {
             super("");
         }
+    }
+
+    @Override
+    protected void createSchemaChangeEventsForTables(ChangeEventSourceContext sourceContext,
+                                                     RelationalSnapshotContext snapshotContext, SnapshottingTask snapshottingTask)
+            throws Exception {
+        tryStartingSnapshot(snapshotContext);
+
+        for (Iterator<SchemaChangeEvent> i = schemaEvents.iterator(); i.hasNext();) {
+            final SchemaChangeEvent event = i.next();
+            if (!sourceContext.isRunning()) {
+                throw new InterruptedException("Interrupted while processing raw event " + event);
+            }
+
+            if (databaseSchema.storeOnlyMonitoredTables() && event.getDatabase() != null && event.getDatabase().length() != 0
+                    && !connectorConfig.getTableFilters().databaseFilter().test(event.getDatabase())) {
+                LOGGER.debug("Skipping schema event as it belongs to a non-captured database: '{}'", event);
+                continue;
+            }
+
+            LOGGER.debug("Processing schema event {}", event);
+
+            final TableId tableId = event.getTables().isEmpty() ? null : event.getTables().iterator().next().id();
+            snapshotContext.offset.event(tableId, getClock().currentTime());
+
+            // If data are not snapshotted then the last schema change must set last snapshot flag
+            if (!snapshottingTask.snapshotData() && !i.hasNext()) {
+                snapshotContext.offset.markLastSnapshotRecord();
+            }
+            try {
+                dispatcher.dispatchSchemaChangeEvent(tableId, (receiver) -> {
+                    try {
+                        receiver.schemaChangeEvent(event);
+                    }
+                    catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
+                });
+            }
+            catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+
+        // Make schema available for snapshot source
+        databaseSchema.tableIds().forEach(x -> snapshotContext.tables.overwriteTable(databaseSchema.tableFor(x)));
     }
 }
