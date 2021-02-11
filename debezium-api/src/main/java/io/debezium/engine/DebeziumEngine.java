@@ -126,9 +126,31 @@ public interface DebeziumEngine<R> extends Runnable, Closeable {
          * Marks a record with updated source offsets as processed.
          *
          * @param record the record to commit
-         * @param sourceOffset the source offset to update the record with
+         * @param sourceOffsets the source offsets to update the record with
          */
-        void markProcessed(R record, Map<String, ?> sourceOffset) throws InterruptedException;
+        void markProcessed(R record, Offsets sourceOffsets) throws InterruptedException;
+
+        /**
+         * Builds a new instance of an object implementing the {@link Offsets} contract.
+         *
+         * @return the object implementing the {@link Offsets} contract
+         */
+        Offsets buildOffsets();
+    }
+
+    /**
+     * Contract that should be passed to {@link RecordCommitter#markProcessed(Object, Offsets)} for marking a record
+     * as processed with updated offsets.
+     */
+    public static interface Offsets {
+
+        /**
+         * Associates a key with a specific value, overwrites the value if the key is already present.
+         *
+         * @param key key with which to associate the value
+         * @param value value to be associated with the key
+         */
+        void set(String key, Object value);
     }
 
     /**
