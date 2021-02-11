@@ -26,6 +26,7 @@ pipelineJob('ocp-debezium-openshift-test') {
 //        TEST CONFIG
         stringParam('TEST_WAIT_SCALE', "1", "Wait time scaling factor")
         stringParam('TEST_VERSION_KAFKA', "", "Kafka version")
+        booleanParam('TEST_APICURIO_REGISTRY', false, 'Run tests with Apicurio Registry and Avro serialization')
     }
 
     definition {

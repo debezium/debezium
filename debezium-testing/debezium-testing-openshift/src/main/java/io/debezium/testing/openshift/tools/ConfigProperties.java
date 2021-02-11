@@ -74,7 +74,7 @@ public class ConfigProperties {
     public static final String DATABASE_DB2_CDC_SCHEMA = System.getProperty("test.database.db2.cdc.schema", "ASNCDC");
     public static final Optional<String> DATABASE_DB2_HOST = stringOptionalProperty("test.database.sqlserver.host");
 
-    public static final boolean TEST_AVRO_SERIALISATION = booleanProperty("test.avro.serialisation", "true");
+    public static final boolean TEST_AVRO_SERIALISATION = booleanProperty("test.avro.serialisation", "false");
     public static final boolean DEPLOY_SERVICE_REGISTRY = booleanProperty("test.registry.deploy", String.valueOf(TEST_AVRO_SERIALISATION));
 
     private static boolean booleanProperty(String key) {
