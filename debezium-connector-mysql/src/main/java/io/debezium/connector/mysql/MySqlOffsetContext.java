@@ -9,6 +9,7 @@ import java.time.Instant;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
@@ -219,6 +220,18 @@ public class MySqlOffsetContext implements OffsetContext {
     public void event(DataCollectionId tableId, Instant timestamp) {
         sourceInfo.setSourceTime(timestamp);
         sourceInfo.tableEvent((TableId) tableId);
+    }
+
+    public void databaseEvent(String database, Instant timestamp) {
+        sourceInfo.setSourceTime(timestamp);
+        sourceInfo.databaseEvent(database);
+        sourceInfo.tableEvent((TableId) null);
+    }
+
+    public void tableEvent(String database, Set<TableId> tableIds, Instant timestamp) {
+        sourceInfo.setSourceTime(timestamp);
+        sourceInfo.databaseEvent(database);
+        sourceInfo.tableEvent(tableIds);
     }
 
     @Override
