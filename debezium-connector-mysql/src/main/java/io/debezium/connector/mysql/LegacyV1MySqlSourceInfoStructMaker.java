@@ -23,7 +23,7 @@ public class LegacyV1MySqlSourceInfoStructMaker extends LegacyV1AbstractSourceIn
                 .name("io.debezium.connector.mysql.Source")
                 .field(AbstractSourceInfo.SERVER_NAME_KEY, Schema.STRING_SCHEMA)
                 .field(SourceInfo.SERVER_ID_KEY, Schema.INT64_SCHEMA)
-                .field(SourceInfo.TIMESTAMP_KEY, Schema.INT64_SCHEMA)
+                .field(MySqlOffsetContext.TIMESTAMP_KEY, Schema.INT64_SCHEMA)
                 .field(SourceInfo.GTID_KEY, Schema.OPTIONAL_STRING_SCHEMA)
                 .field(SourceInfo.BINLOG_FILENAME_OFFSET_KEY, Schema.STRING_SCHEMA)
                 .field(SourceInfo.BINLOG_POSITION_OFFSET_KEY, Schema.INT64_SCHEMA)
@@ -53,7 +53,7 @@ public class LegacyV1MySqlSourceInfoStructMaker extends LegacyV1AbstractSourceIn
         result.put(SourceInfo.BINLOG_FILENAME_OFFSET_KEY, sourceInfo.getCurrentBinlogFilename());
         result.put(SourceInfo.BINLOG_POSITION_OFFSET_KEY, sourceInfo.getCurrentBinlogPosition());
         result.put(SourceInfo.BINLOG_ROW_IN_EVENT_OFFSET_KEY, sourceInfo.getCurrentRowNumber());
-        result.put(SourceInfo.TIMESTAMP_KEY, sourceInfo.getBinlogTimestampSeconds());
+        result.put(MySqlOffsetContext.TIMESTAMP_KEY, sourceInfo.getBinlogTimestampSeconds());
         if (sourceInfo.isLastSnapshot()) {
             // if the snapshot is COMPLETED, then this will not happen.
             result.put(SourceInfo.SNAPSHOT_KEY, true);

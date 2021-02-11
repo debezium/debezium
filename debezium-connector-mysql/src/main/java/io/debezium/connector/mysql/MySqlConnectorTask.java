@@ -215,7 +215,7 @@ public class MySqlConnectorTask extends BaseSourceTask {
      * @return {@code true} if the server has the binlog coordinates, or {@code false} otherwise
      */
     protected boolean isBinlogAvailable(MySqlConnectorConfig config, MySqlOffsetContext offset) {
-        String gtidStr = offset.getSource().gtidSet();
+        String gtidStr = offset.gtidSet();
         if (gtidStr != null) {
             if (gtidStr.trim().isEmpty()) {
                 return true; // start at beginning ...

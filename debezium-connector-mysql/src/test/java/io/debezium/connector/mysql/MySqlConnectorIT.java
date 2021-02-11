@@ -674,11 +674,12 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         stopConnector();
 
         // Read the last committed offsets, and verify the binlog coordinates ...
-        SourceInfo persistedOffsetSource = new SourceInfo(new MySqlConnectorConfig(Configuration.create()
+        final MySqlOffsetContext.Loader loader = new MySqlOffsetContext.Loader(new MySqlConnectorConfig(Configuration.create()
                 .with(MySqlConnectorConfig.SERVER_NAME, config.getString(MySqlConnectorConfig.SERVER_NAME))
                 .build()));
-        Map<String, ?> lastCommittedOffset = readLastCommittedOffset(config, persistedOffsetSource.partition());
-        persistedOffsetSource.setOffset(lastCommittedOffset);
+        Map<String, ?> lastCommittedOffset = readLastCommittedOffset(config, loader.getPartition());
+        final MySqlOffsetContext offsetContext = (MySqlOffsetContext) loader.load(lastCommittedOffset);
+        final SourceInfo persistedOffsetSource = offsetContext.getSource();
         Testing.print("Position before inserts: " + positionBeforeInserts);
         Testing.print("Position after inserts:  " + positionAfterInserts);
         Testing.print("Offset: " + lastCommittedOffset);
@@ -702,7 +703,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
             // the replica is not the same server as the master, so it will have a different binlog filename and position ...
         }
         // Event number is 2 ...
-        assertThat(persistedOffsetSource.eventsToSkipUponRestart()).isEqualTo(2);
+        assertThat(offsetContext.eventsToSkipUponRestart()).isEqualTo(2);
         // GTID set should match the before-inserts GTID set ...
         // assertThat(persistedOffsetSource.gtidSet()).isEqualTo(positionBeforeInserts.gtidSet());
 

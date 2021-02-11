@@ -213,11 +213,11 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
             if (rs.next()) {
                 final String binlogFilename = rs.getString(1);
                 final long binlogPosition = rs.getLong(2);
-                offsetContext.getSource().setBinlogStartPoint(binlogFilename, binlogPosition);
+                offsetContext.setBinlogStartPoint(binlogFilename, binlogPosition);
                 if (rs.getMetaData().getColumnCount() > 4) {
                     // This column exists only in MySQL 5.6.5 or later ...
                     final String gtidSet = rs.getString(5); // GTID set, may be null, blank, or contain a GTID set
-                    offsetContext.getSource().setCompletedGtidSet(gtidSet);
+                    offsetContext.setCompletedGtidSet(gtidSet);
                     LOGGER.info("\t using binlog '{}' at position '{}' and gtid '{}'", binlogFilename, binlogPosition,
                             gtidSet);
                 }
