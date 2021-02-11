@@ -32,10 +32,6 @@ public interface HistorizedDatabaseSchema<I extends DataCollectionId> extends Da
 
     void applySchemaChange(SchemaChangeEvent schemaChange);
 
-    default void applySchemaChange(SchemaChangeEvent schemaChange, SchemaChangeEventConsumer schemaEventConsumer) {
-        applySchemaChange(schemaChange);
-    }
-
     void recover(OffsetContext offset);
 
     void initializeStorage();

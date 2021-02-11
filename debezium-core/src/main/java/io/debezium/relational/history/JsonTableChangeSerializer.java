@@ -166,7 +166,9 @@ public class JsonTableChangeSerializer implements TableChanges.TableChangesSeria
         if (type == TableChangeType.CREATE || type == TableChangeType.ALTER) {
             table = fromDocument(id, document.getDocument("table"));
         }
-
+        else {
+            table = Table.editor().tableId(id).create();
+        }
         return new TableChange(type, table);
     }
 }

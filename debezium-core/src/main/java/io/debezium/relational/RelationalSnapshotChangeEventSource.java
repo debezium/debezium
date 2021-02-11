@@ -15,9 +15,7 @@ import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.Optional;
 import java.util.OptionalLong;
-import java.util.Queue;
 import java.util.Set;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -65,11 +63,9 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
     private final OffsetContext previousOffset;
     private final JdbcConnection jdbcConnection;
     private final HistorizedRelationalDatabaseSchema schema;
-    private final EventDispatcher<TableId> dispatcher;
+    protected final EventDispatcher<TableId> dispatcher;
     protected final Clock clock;
     private final SnapshotProgressListener snapshotProgressListener;
-
-    private final Queue<SchemaChangeEvent> rawEvents = new LinkedBlockingQueue<>();
 
     public RelationalSnapshotChangeEventSource(RelationalDatabaseConnectorConfig connectorConfig,
                                                OffsetContext previousOffset, JdbcConnection jdbcConnection, HistorizedRelationalDatabaseSchema schema,
@@ -128,12 +124,7 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
             if (snapshottingTask.snapshotSchema()) {
                 LOGGER.info("Snapshot step 6 - Persisting schema history");
 
-                if (rawEvents.isEmpty()) {
-                    createSchemaChangeEventsForTables(context, ctx, snapshottingTask);
-                }
-                else {
-                    createSchemaChangeEventsForRawEvents(context, ctx, snapshottingTask);
-                }
+                createSchemaChangeEventsForTables(context, ctx, snapshottingTask);
 
                 // if we've been interrupted before, the TX rollback will cause any locks to be released
                 releaseSchemaSnapshotLocks(ctx);
@@ -249,7 +240,7 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
      */
     protected abstract void releaseSchemaSnapshotLocks(RelationalSnapshotContext snapshotContext) throws Exception;
 
-    private void createSchemaChangeEventsForTables(ChangeEventSourceContext sourceContext, RelationalSnapshotContext snapshotContext, SnapshottingTask snapshottingTask)
+    protected void createSchemaChangeEventsForTables(ChangeEventSourceContext sourceContext, RelationalSnapshotContext snapshotContext, SnapshottingTask snapshottingTask)
             throws Exception {
         tryStartingSnapshot(snapshotContext);
         for (Iterator<TableId> iterator = snapshotContext.capturedTables.iterator(); iterator.hasNext();) {
@@ -279,52 +270,6 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
                 });
             }
         }
-    }
-
-    private void createSchemaChangeEventsForRawEvents(ChangeEventSourceContext sourceContext, RelationalSnapshotContext snapshotContext,
-                                                      SnapshottingTask snapshottingTask)
-            throws Exception {
-        tryStartingSnapshot(snapshotContext);
-        while (!rawEvents.isEmpty()) {
-            final SchemaChangeEvent rawEvent = rawEvents.remove();
-
-            if (!sourceContext.isRunning()) {
-                throw new InterruptedException("Interrupted while processing raw event " + rawEvent);
-            }
-
-            if (schema.storeOnlyMonitoredTables() && rawEvent.getDatabase() != null && rawEvent.getDatabase().length() != 0
-                    && !connectorConfig.getTableFilters().databaseFilter().test(rawEvent.getDatabase())) {
-                LOGGER.debug("Skipping raw schema event as it belongs to a non-captured database: '{}'", rawEvent);
-                continue;
-            }
-
-            LOGGER.debug("Processing raw schema event {}", rawEvent);
-
-            schema.applySchemaChange(rawEvent, (event, tableIds) -> {
-                final TableId tableId = tableIds.isEmpty() ? null : tableIds.iterator().next();
-                snapshotContext.offset.event(tableId, getClock().currentTime());
-
-                // If data are not snapshotted then the last schema change must set last snapshot flag
-                if (!snapshottingTask.snapshotData() && !rawEvents.isEmpty()) {
-                    snapshotContext.offset.markLastSnapshotRecord();
-                }
-                try {
-                    dispatcher.dispatchSchemaChangeEvent(tableId, (receiver) -> {
-                        try {
-                            receiver.schemaChangeEvent(rawEvent);
-                        }
-                        catch (InterruptedException e) {
-                            Thread.currentThread().interrupt();
-                        }
-                    });
-                }
-                catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                }
-            });
-        }
-        // Make schema available for snapshot source
-        schema.tableIds().forEach(x -> snapshotContext.tables.overwriteTable(schema.tableFor(x)));
     }
 
     /**
@@ -543,9 +488,5 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
 
     protected Clock getClock() {
         return clock;
-    }
-
-    protected void addRawSchemaChangeEvent(SchemaChangeEvent event) {
-        rawEvents.add(event);
     }
 }

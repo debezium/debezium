@@ -570,25 +570,25 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
                     MySqlConnectorConfig.BUFFER_SIZE_FOR_BINLOG_READER.name());
         }
 
-        final SchemaChangeEvent schemaChangeEvent = new SchemaChangeEvent(offsetContext.getPartition(),
-                offsetContext.getOffset(), offsetContext.getSourceInfo(), command.getDatabase(), null, command.getSql(), false);
-        taskContext.getSchema().applySchemaChange(schemaChangeEvent, (newEvent, tableId) -> {
-            if (recordSchemaChangesInSourceRecords) {
-                try {
+        final List<SchemaChangeEvent> schemaChangeEvents = taskContext.getSchema().parseStreamingDdl(sql, command.getDatabase(), offsetContext);
+        if (recordSchemaChangesInSourceRecords) {
+            try {
+                for (SchemaChangeEvent schemaChangeEvent : schemaChangeEvents) {
+                    final TableId tableId = schemaChangeEvent.getTables().isEmpty() ? null : schemaChangeEvent.getTables().iterator().next().id();
                     eventDispatcher.dispatchSchemaChangeEvent(tableId, (receiver) -> {
                         try {
-                            receiver.schemaChangeEvent(newEvent);
+                            receiver.schemaChangeEvent(schemaChangeEvent);
                         }
                         catch (Exception e) {
                             throw new DebeziumException(e);
                         }
                     });
                 }
-                catch (InterruptedException e) {
-                    LOGGER.info("Processing interrupted");
-                }
             }
-        });
+            catch (InterruptedException e) {
+                LOGGER.info("Processing interrupted");
+            }
+        }
     }
 
     private void handleTransactionCompletion(Event event) {
