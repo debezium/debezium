@@ -983,6 +983,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
     private final EventProcessingFailureHandlingMode inconsistentSchemaFailureHandlingMode;
     private final Predicate<String> ddlFilter;
     private final boolean legacy;
+    private final SourceInfoStructMaker<? extends AbstractSourceInfo> sourceInfoStructMaker;
 
     public MySqlConnectorConfig(Configuration config) {
         super(
@@ -1025,6 +1026,8 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
         // Set up the DDL filter
         final String ddlFilter = config.getString(DatabaseHistory.DDL_FILTER);
         this.ddlFilter = (ddlFilter != null) ? Predicates.includes(ddlFilter) : (x -> false);
+
+        this.sourceInfoStructMaker = getSourceInfoStructMaker(Version.parse(config.getString(SOURCE_STRUCT_MAKER_VERSION)));
     }
 
     public SnapshotLockingMode getSnapshotLockingMode() {
@@ -1140,9 +1143,11 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
     protected SourceInfoStructMaker<? extends AbstractSourceInfo> getSourceInfoStructMaker(Version version) {
         switch (version) {
             case V1:
-                return new LegacyV1MySqlSourceInfoStructMaker(Module.name(), Module.version(), this);
+                return legacy ? new io.debezium.connector.mysql.legacy.LegacyV1MySqlSourceInfoStructMaker(Module.name(), Module.version(), this)
+                        : new LegacyV1MySqlSourceInfoStructMaker(Module.name(), Module.version(), this);
             default:
-                return new MySqlSourceInfoStructMaker(Module.name(), Module.version(), this);
+                return legacy ? new io.debezium.connector.mysql.legacy.MySqlSourceInfoStructMaker(Module.name(), Module.version(), this)
+                        : new MySqlSourceInfoStructMaker(Module.name(), Module.version(), this);
         }
     }
 
@@ -1408,5 +1413,11 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
 
     boolean legacy() {
         return legacy;
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public SourceInfoStructMaker<? extends AbstractSourceInfo> getSourceInfoStructMaker() {
+        return sourceInfoStructMaker;
     }
 }

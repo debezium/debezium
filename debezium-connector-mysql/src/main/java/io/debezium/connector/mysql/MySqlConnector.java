@@ -37,7 +37,7 @@ import io.debezium.util.Strings;
 public class MySqlConnector extends SourceConnector {
 
     public static final String IMPLEMENTATION_PROP = "internal.implementation";
-    private static final String LEGACY_IMPLEMENTATION = "legacy";
+    public static final String LEGACY_IMPLEMENTATION = "legacy";
 
     private Logger logger = LoggerFactory.getLogger(getClass());
     private Map<String, String> properties;
