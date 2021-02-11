@@ -150,6 +150,7 @@ pipeline {
                     -Dimage.fullname="${DBZ_CONNECT_IMAGE}" \\
                     -Dtest.ocp.pull.secret.paths="${SECRET_PATH}" \\
                     -Dtest.wait.scale="${TEST_WAIT_SCALE}" \\
+                    -Dtest.avro.serialisation="${TEST_APICURIO_REGISTRY}" \\
                     ${TEST_PROPERTY_VERSION_KAFKA}
                     '''
                 }
