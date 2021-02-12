@@ -152,7 +152,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
      * for an offset commit to complete.
      */
     public static final Field OFFSET_FLUSH_INTERVAL_MS = Field.create("offset.flush.interval.ms")
-            .withDescription("Interval at which to try committing offsets. The default is 1 minute.")
+            .withDescription("Interval at which to try committing offsets, given in milliseconds. Defaults to 1 minute (60,000 ms).")
             .withDefault(60000L)
             .withValidation(Field::isNonNegativeInteger);
 
@@ -161,9 +161,9 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
      * for an offset commit to complete.
      */
     public static final Field OFFSET_COMMIT_TIMEOUT_MS = Field.create("offset.flush.timeout.ms")
-            .withDescription("Maximum number of milliseconds to wait for records to flush and partition offset data to be"
+            .withDescription("Time to wait for records to flush and partition offset data to be"
                     + " committed to offset storage before cancelling the process and restoring the offset "
-                    + "data to be committed in a future attempt.")
+                    + "data to be committed in a future attempt, given in milliseconds. Defaults to 5 seconds (5000 ms).")
             .withDefault(5000L)
             .withValidation(Field::isPositiveInteger);
 
