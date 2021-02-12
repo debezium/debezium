@@ -626,7 +626,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     protected static final int DEFAULT_PORT = 5_432;
     protected static final int DEFAULT_SNAPSHOT_FETCH_SIZE = 10_240;
     protected static final int DEFAULT_MAX_RETRIES = 6;
-    protected static final Duration DEFAULT_RETRY_DELAY = Duration.ofSeconds(10);
 
     public static final Field PORT = RelationalDatabaseConnectorConfig.PORT
             .withDefault(DEFAULT_PORT);
@@ -773,9 +772,10 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withDisplayName("Retry delay")
             .withType(Type.LONG)
             .withImportance(Importance.LOW)
-            .withDefault(DEFAULT_RETRY_DELAY.toMillis())
+            .withDefault(Duration.ofSeconds(10).toMillis())
             .withValidation(Field::isInteger)
-            .withDescription("The number of milli-seconds to wait between retry attempts when the connector fails to connect to a replication slot.");
+            .withDescription(
+                    "Time to wait between retry attempts when the connector fails to connect to a replication slot, given in milliseconds. Defaults to 10 seconds (10,000 ms).");
 
     public static final Field ON_CONNECT_STATEMENTS = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.ON_CONNECT_STATEMENTS)
             .withDisplayName("Initial statements")
@@ -899,7 +899,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withDefault(10_000)
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
-            .withDescription("Frequency in milliseconds for sending replication connection status updates to the server. Defaults to 10 seconds (10000 ms).")
+            .withDescription("Frequency for sending replication connection status updates to the server, given in milliseconds. Defaults to 10 seconds (10,000 ms).")
             .withValidation(Field::isPositiveInteger);
 
     public static final Field TCP_KEEPALIVE = Field.create(DATABASE_CONFIG_PREFIX + "tcpKeepAlive")

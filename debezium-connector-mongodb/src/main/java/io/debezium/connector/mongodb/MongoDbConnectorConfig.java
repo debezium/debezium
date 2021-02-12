@@ -160,17 +160,17 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withImportance(Importance.MEDIUM)
             .withDefault(30)
             .withValidation(Field::isPositiveInteger)
-            .withDescription("(Deprecated, use mongodb.poll.interval.ms) Frequency in seconds to look for new, removed, " +
-                    "or changed replica sets. Defaults to 30 seconds.");
+            .withDescription(
+                    "(Deprecated, use mongodb.poll.interval.ms) Interval for looking for new, removed, or changed replica sets, given in seconds. Defaults to 30 seconds.");
 
     public static final Field MONGODB_POLL_INTERVAL_MS = Field.create("mongodb.poll.interval.ms")
             .withDisplayName("Replica membership poll interval (ms)")
             .withType(Type.LONG)
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
-            .withDefault(30000L)
+            .withDefault(30_000L)
             .withValidation(Field::isPositiveInteger)
-            .withDescription("Frequency in milliseconds to look for new, removed, or changed replica sets.  Defaults to 30000 milliseconds.");
+            .withDescription("Interval for looking for new, removed, or changed replica sets, given in milliseconds.  Defaults to 30 seconds (30,000 ms).");
 
     public static final Field SSL_ENABLED = Field.create("mongodb.ssl.enabled")
             .withDisplayName("Enable SSL connection to MongoDB")
@@ -209,7 +209,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withDefault(TimeUnit.SECONDS.toMillis(1))
             .withValidation(Field::isPositiveInteger)
             .withDescription(
-                    "The initial delay when trying to reconnect to a primary after a connection cannot be made or when no primary is available. Defaults to 1 second (1000 ms).");
+                    "The initial delay when trying to reconnect to a primary after a connection cannot be made or when no primary is available, given in milliseconds. Defaults to 1 second (1,000 ms).");
 
     public static final Field CONNECT_BACKOFF_MAX_DELAY_MS = Field.create("connect.backoff.max.delay.ms")
             .withDisplayName("Maximum delay before reconnection (ms)")
@@ -219,7 +219,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withDefault(TimeUnit.SECONDS.toMillis(120))
             .withValidation(Field::isPositiveInteger)
             .withDescription(
-                    "The maximum delay when trying to reconnect to a primary after a connection cannot be made or when no primary is available. Defaults to 120 second (120,000 ms).");
+                    "The maximum delay when trying to reconnect to a primary after a connection cannot be made or when no primary is available, given in milliseconds. Defaults to 120 second (120,000 ms).");
 
     public static final Field MAX_FAILED_CONNECTIONS = Field.create("connect.max.attempts")
             .withDisplayName("Connection attempt limit")
@@ -401,16 +401,16 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withType(Type.INT)
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
-            .withDefault(10000)
-            .withDescription("The connection timeout in milliseconds");
+            .withDefault(10_000)
+            .withDescription("The connection timeout, given in milliseconds. Defaults to 10 seconds (10,000 ms).");
 
     public static final Field SERVER_SELECTION_TIMEOUT_MS = Field.create("mongodb.server.selection.timeout.ms")
             .withDisplayName("Server selection timeout MS")
             .withType(Type.INT)
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
-            .withDefault(30000)
-            .withDescription("The server selection timeout in milliseconds");
+            .withDefault(30_000)
+            .withDescription("The server selection timeout, given in milliseconds. Defaults to 10 seconds (10,000 ms).");
 
     public static final Field SOCKET_TIMEOUT_MS = Field.create("mongodb.socket.timeout.ms")
             .withDisplayName("Socket timeout MS")
@@ -418,7 +418,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDefault(0)
-            .withDescription("The socket timeout in milliseconds");
+            .withDescription("The socket timeout, given in milliseconds. Defaults to 0 ms.");
 
     protected static final Field TASK_ID = Field.create("mongodb.task.id")
             .withDescription("Internal use only")

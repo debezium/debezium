@@ -290,8 +290,7 @@ public abstract class CommonConnectorConfig {
             .withType(Type.LONG)
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
-            .withDescription(
-                    "Frequency in milliseconds to wait for new change events to appear after receiving no events. Defaults to " + DEFAULT_POLL_INTERVAL_MILLIS + "ms.")
+            .withDescription("Time to wait for new change events to appear after receiving no events, given in milliseconds. Defaults to 500 ms.")
             .withDefault(DEFAULT_POLL_INTERVAL_MILLIS)
             .withValidation(Field::isPositiveInteger);
 
@@ -310,7 +309,7 @@ public abstract class CommonConnectorConfig {
             .withType(Type.LONG)
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.LOW)
-            .withDescription("The number of milliseconds to delay before a snapshot will begin.")
+            .withDescription("A delay period before a snapshot will begin, given in milliseconds. Defaults to 0 ms.")
             .withDefault(0L)
             .withValidation(Field::isNonNegativeLong);
 
