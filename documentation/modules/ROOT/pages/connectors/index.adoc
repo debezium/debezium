@@ -1,6 +1,6 @@
 = Connectors
 
-{prodname}'s goal is to build up a library of connectors that capture changes from a variety of DBMSes and produce events with very similar structures, making it far easier for your applications to consume and respond to the events regardless of where the changes originated.
+{prodname}'s goal is to build up a library of connectors that capture changes from a variety of database management systems and produce events with very similar structures, making it far easier for your applications to consume and respond to the events regardless of where the changes originated.
 
 We currently have the following connectors:
 
@@ -9,7 +9,7 @@ We currently have the following connectors:
 * xref:connectors/postgresql.adoc[PostgreSQL]
 * xref:connectors/sqlserver.adoc[SQL Server]
 * xref:connectors/oracle.adoc[Oracle] (Incubating)
-* xref:connectors/db2.adoc[Db2] (Incubating)
+* xref:connectors/db2.adoc[Db2]
 * xref:connectors/cassandra.adoc[Cassandra] (Incubating)
 * xref:connectors/vitess.adoc[Vitess] (Incubating)
 
