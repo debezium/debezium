@@ -193,8 +193,8 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
         return skipViews;
     }
 
-    public void signalSetVariable(String variableName, String variableValue, ParserRuleContext ctx) {
-        signalSetVariable(variableName, variableValue, getText(ctx));
+    public void signalSetVariable(String variableName, String variableValue, int order, ParserRuleContext ctx) {
+        signalSetVariable(variableName, variableValue, order, getText(ctx));
     }
 
     public void signalUseDatabase(ParserRuleContext ctx) {

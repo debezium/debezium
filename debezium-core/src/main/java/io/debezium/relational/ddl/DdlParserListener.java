@@ -324,12 +324,14 @@ public interface DdlParserListener {
         private final String variableName;
         private final String value;
         private final String databaseName;
+        private final int order;
 
-        public SetVariableEvent(String variableName, String value, String currentDatabaseName, String ddlStatement) {
+        public SetVariableEvent(String variableName, String value, String currentDatabaseName, int order, String ddlStatement) {
             super(EventType.SET_VARIABLE, ddlStatement);
             this.variableName = variableName;
             this.value = value;
             this.databaseName = currentDatabaseName;
+            this.order = order;
         }
 
         /**
@@ -346,6 +348,14 @@ public interface DdlParserListener {
          */
         public String variableValue() {
             return value;
+        }
+
+        /**
+         * In case of multiple vars set in the same SET statement the order of the variable in the statement.
+         * @return the variable order
+         */
+        public int order() {
+            return order;
         }
 
         public Optional<String> databaseName() {
