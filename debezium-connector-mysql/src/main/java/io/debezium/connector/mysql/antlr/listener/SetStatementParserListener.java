@@ -82,7 +82,7 @@ public class SetStatementParserListener extends MySqlParserBaseListener {
             }
 
             // Signal that the variable was set ...
-            parser.signalSetVariable(variableName, value, ctx);
+            parser.signalSetVariable(variableName, value, i, ctx);
         }
         super.enterSetVariable(ctx);
     }

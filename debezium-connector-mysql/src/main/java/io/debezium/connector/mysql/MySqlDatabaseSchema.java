@@ -12,7 +12,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 
 import org.apache.kafka.connect.data.Schema;
@@ -34,6 +33,7 @@ import io.debezium.relational.ddl.DdlChanges;
 import io.debezium.relational.ddl.DdlChanges.DatabaseStatementStringConsumer;
 import io.debezium.relational.ddl.DdlParser;
 import io.debezium.relational.ddl.DdlParserListener.Event;
+import io.debezium.relational.ddl.DdlParserListener.SetVariableEvent;
 import io.debezium.relational.ddl.DdlParserListener.TableAlteredEvent;
 import io.debezium.relational.ddl.DdlParserListener.TableCreatedEvent;
 import io.debezium.relational.ddl.DdlParserListener.TableDroppedEvent;
@@ -186,43 +186,18 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
         }
     }
 
-    public Optional<Table> parseSnapshotDdl(String ddlStatements, String databaseName) {
+    public List<SchemaChangeEvent> parseSnapshotDdl(String ddlStatements, String databaseName, MySqlOffsetContext offset, Instant sourceTime) {
         LOGGER.debug("Processing snapshot DDL '{}' for database '{}'", ddlStatements, databaseName);
-
-        if (ignoredQueryStatements.contains(ddlStatements)) {
-            return Optional.empty();
-        }
-
-        try {
-            this.ddlChanges.reset();
-            this.ddlParser.setCurrentSchema(databaseName);
-            this.ddlParser.parse(ddlStatements, tables());
-        }
-        catch (ParsingException | MultipleParsingExceptions e) {
-            if (databaseHistory.skipUnparseableDdlStatements()) {
-                LOGGER.warn("Ignoring unparseable DDL statement '{}': {}", ddlStatements, e);
-            }
-            else {
-                throw e;
-            }
-        }
-
-        final Set<TableId> changes = tables().drainChanges();
-
-        // For snapshot we can guarantee at most one change so no need for grouping
-        if (changes.size() == 0) {
-            return Optional.empty();
-        }
-        final TableId tableId = changes.iterator().next();
-        final Table table = tableFor(tableId);
-
-        return (table != null) ? Optional.of(table) : Optional.of(Table.editor().tableId(tableId).create());
+        return parseDdl(ddlStatements, databaseName, offset, sourceTime, true);
     }
 
     public List<SchemaChangeEvent> parseStreamingDdl(String ddlStatements, String databaseName, MySqlOffsetContext offset, Instant sourceTime) {
-        final List<SchemaChangeEvent> schemaChangeEvents = new ArrayList<>();
-
         LOGGER.debug("Processing streaming DDL '{}' for database '{}'", ddlStatements, databaseName);
+        return parseDdl(ddlStatements, databaseName, offset, sourceTime, false);
+    }
+
+    private List<SchemaChangeEvent> parseDdl(String ddlStatements, String databaseName, MySqlOffsetContext offset, Instant sourceTime, boolean snapshot) {
+        final List<SchemaChangeEvent> schemaChangeEvents = new ArrayList<>();
 
         if (ignoredQueryStatements.contains(ddlStatements)) {
             return schemaChangeEvents;
@@ -241,7 +216,7 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
                 throw e;
             }
         }
-        final Set<TableId> changes = tables().drainChanges();
+
         // No need to send schema events or store DDL if no table has changed
         if (!databaseHistory.storeOnlyMonitoredTables() || isGlobalSetVariableStatement(ddlStatements, databaseName) || ddlChanges.anyMatch(filters)) {
 
@@ -268,25 +243,26 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
                         events.forEach(event -> {
                             final TableId tableId = getTableId(event);
                             offset.tableEvent(dbName, tableIds, sourceTime);
+                            // For SET with multpile parameters
                             if (event instanceof TableCreatedEvent) {
-                                schemaChangeEvents
-                                        .add(new SchemaChangeEvent(offset.getPartition(), offset.getOffset(), offset.getSourceInfo(),
-                                                sanitizedDbName, null, event.statement(), tableFor(tableId), SchemaChangeEventType.CREATE, false));
+                                emitChangeEvent(offset, schemaChangeEvents, sanitizedDbName, event, tableId, SchemaChangeEventType.CREATE, snapshot);
                             }
                             else if (event instanceof TableAlteredEvent || event instanceof TableIndexCreatedEvent || event instanceof TableIndexDroppedEvent) {
-                                schemaChangeEvents
-                                        .add(new SchemaChangeEvent(offset.getPartition(), offset.getOffset(), offset.getSourceInfo(),
-                                                sanitizedDbName, null, event.statement(), tableFor(tableId), SchemaChangeEventType.ALTER, false));
+                                emitChangeEvent(offset, schemaChangeEvents, sanitizedDbName, event, tableId, SchemaChangeEventType.ALTER, snapshot);
                             }
                             else if (event instanceof TableDroppedEvent) {
-                                schemaChangeEvents
-                                        .add(new SchemaChangeEvent(offset.getPartition(), offset.getOffset(), offset.getSourceInfo(),
-                                                sanitizedDbName, null, event.statement(), (Table) null, SchemaChangeEventType.DROP, false));
+                                emitChangeEvent(offset, schemaChangeEvents, sanitizedDbName, event, tableId, SchemaChangeEventType.DROP, snapshot);
+                            }
+                            else if (event instanceof SetVariableEvent) {
+                                // SET statement with multiple variable emits event for each variable. We want to emit only
+                                // one change event
+                                final SetVariableEvent varEvent = (SetVariableEvent) event;
+                                if (varEvent.order() == 0) {
+                                    emitChangeEvent(offset, schemaChangeEvents, sanitizedDbName, event, tableId, SchemaChangeEventType.DATABASE, snapshot);
+                                }
                             }
                             else {
-                                schemaChangeEvents
-                                        .add(new SchemaChangeEvent(offset.getPartition(), offset.getOffset(), offset.getSourceInfo(),
-                                                sanitizedDbName, null, event.statement(), (Table) null, SchemaChangeEventType.DATABASE, false));
+                                emitChangeEvent(offset, schemaChangeEvents, sanitizedDbName, event, tableId, SchemaChangeEventType.DATABASE, snapshot);
                             }
                         });
                     }
@@ -296,14 +272,20 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
                 offset.databaseEvent(databaseName, sourceTime);
                 schemaChangeEvents
                         .add(new SchemaChangeEvent(offset.getPartition(), offset.getOffset(), offset.getSourceInfo(),
-                                databaseName, null, ddlStatements, (Table) null, SchemaChangeEventType.DATABASE, false));
+                                databaseName, null, ddlStatements, (Table) null, SchemaChangeEventType.DATABASE, snapshot));
             }
         }
         else {
             LOGGER.debug("Changes for DDL '{}' were filtered and not recorded in database history", ddlStatements);
         }
-
         return schemaChangeEvents;
+    }
+
+    private void emitChangeEvent(MySqlOffsetContext offset, List<SchemaChangeEvent> schemaChangeEvents,
+                                 final String sanitizedDbName, Event event, TableId tableId, SchemaChangeEvent.SchemaChangeEventType type,
+                                 boolean snapshot) {
+        schemaChangeEvents.add(new SchemaChangeEvent(offset.getPartition(), offset.getOffset(), offset.getSourceInfo(),
+                sanitizedDbName, null, event.statement(), tableId != null ? tableFor(tableId) : null, type, snapshot));
     }
 
     private boolean acceptableDatabase(final String databaseName) {

@@ -235,12 +235,9 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
         tryStartingSnapshot(ctx);
     }
 
-    private void addSchemaEvent(SchemaChangeEvent.SchemaChangeEventType type, RelationalSnapshotContext snapshotContext,
-                                String database, String ddl) {
-
-        schemaEvents.add(new SchemaChangeEvent(snapshotContext.offset.getPartition(),
-                snapshotContext.offset.getOffset(), snapshotContext.offset.getSourceInfo(), database, null, ddl,
-                databaseSchema.parseSnapshotDdl(ddl, database).orElse(null), type, true));
+    private void addSchemaEvent(RelationalSnapshotContext snapshotContext, String database, String ddl) {
+        schemaEvents.addAll(databaseSchema.parseSnapshotDdl(ddl, database, (MySqlOffsetContext) snapshotContext.offset,
+                clock.currentTimeAsInstant()));
     }
 
     @Override
@@ -259,13 +256,13 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
         final Set<String> databases = tablesToRead.keySet();
 
         // Record default charset
-        addSchemaEvent(SchemaChangeEvent.SchemaChangeEventType.DATABASE, snapshotContext, "", connection.setStatementFor(connection.readMySqlCharsetSystemVariables()));
+        addSchemaEvent(snapshotContext, "", connection.setStatementFor(connection.readMySqlCharsetSystemVariables()));
 
         for (TableId tableId : capturedSchemaTables) {
             if (!sourceContext.isRunning()) {
                 throw new InterruptedException("Interrupted while emitting initial DROP TABLE events");
             }
-            addSchemaEvent(SchemaChangeEvent.SchemaChangeEventType.DROP, snapshotContext, tableId.catalog(), "DROP TABLE IF EXISTS " + quote(tableId));
+            addSchemaEvent(snapshotContext, tableId.catalog(), "DROP TABLE IF EXISTS " + quote(tableId));
         }
 
         final Map<String, DatabaseLocales> databaseCharsets = connection.readDatabaseCollations();
@@ -275,19 +272,19 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
             }
 
             LOGGER.info("Reading structure of database '{}'", database);
-            addSchemaEvent(SchemaChangeEvent.SchemaChangeEventType.DATABASE, snapshotContext, database, "DROP DATABASE IF EXISTS " + quote(database));
+            addSchemaEvent(snapshotContext, database, "DROP DATABASE IF EXISTS " + quote(database));
             final StringBuilder createDatabaseDddl = new StringBuilder("CREATE DATABASE " + quote(database));
             final DatabaseLocales defaultDatabaseLocales = databaseCharsets.get(database);
             if (defaultDatabaseLocales != null) {
                 defaultDatabaseLocales.appendToDdlStatement(database, createDatabaseDddl);
             }
-            addSchemaEvent(SchemaChangeEvent.SchemaChangeEventType.DATABASE, snapshotContext, database, createDatabaseDddl.toString());
-            addSchemaEvent(SchemaChangeEvent.SchemaChangeEventType.DATABASE, snapshotContext, database, "USE " + quote(database));
+            addSchemaEvent(snapshotContext, database, createDatabaseDddl.toString());
+            addSchemaEvent(snapshotContext, database, "USE " + quote(database));
 
             for (TableId tableId : tablesToRead.get(database)) {
                 connection.query("SHOW CREATE TABLE " + quote(tableId), rs -> {
                     if (rs.next()) {
-                        addSchemaEvent(SchemaChangeEvent.SchemaChangeEventType.CREATE, snapshotContext, database, rs.getString(2));
+                        addSchemaEvent(snapshotContext, database, rs.getString(2));
                     }
                 });
             }
