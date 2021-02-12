@@ -104,13 +104,6 @@ public interface TransactionalBufferMetricsMXBean {
     Set<String> getRolledBackTransactionIds();
 
     /**
-     * Gets commit queue capacity. As the queue fills up, this reduces to zero
-     *
-     * @return the commit queue capacity
-     */
-    int getCommitQueueCapacity();
-
-    /**
      * Reset metrics
      */
     void reset();

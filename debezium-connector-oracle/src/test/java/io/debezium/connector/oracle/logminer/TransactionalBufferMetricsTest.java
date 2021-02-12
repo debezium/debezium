@@ -148,9 +148,5 @@ public class TransactionalBufferMetricsTest {
 
         metrics.setOffsetScn(10L);
         assertThat(metrics.getOldestScn() == 10).isTrue();
-
-        metrics.setCommitQueueCapacity(1000);
-        assertThat(metrics.getCommitQueueCapacity()).isEqualTo(1000);
-
     }
 }

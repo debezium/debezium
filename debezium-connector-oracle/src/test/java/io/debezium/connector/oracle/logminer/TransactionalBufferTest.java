@@ -7,9 +7,6 @@ package io.debezium.connector.oracle.logminer;
 
 import static io.debezium.config.CommonConnectorConfig.DEFAULT_MAX_BATCH_SIZE;
 import static io.debezium.config.CommonConnectorConfig.DEFAULT_MAX_QUEUE_SIZE;
-import static junit.framework.TestCase.assertNotSame;
-import static junit.framework.TestCase.assertSame;
-import static junit.framework.TestCase.assertTrue;
 import static org.fest.assertions.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
@@ -19,7 +16,6 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.After;
@@ -27,12 +23,14 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestRule;
+import org.mockito.Mockito;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.oracle.OracleConnector;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleOffsetContext;
+import io.debezium.connector.oracle.OracleTaskContext;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot.AdapterName;
@@ -72,6 +70,7 @@ public class TransactionalBufferTest {
     private static final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
     private static OracleOffsetContext offsetContext;
 
+    private OracleTaskContext taskContext;
     private ErrorHandler errorHandler;
     private TransactionalBuffer transactionalBuffer;
     private TransactionalBufferMetrics metrics;
@@ -88,10 +87,15 @@ public class TransactionalBufferTest {
                 .maxQueueSize(DEFAULT_MAX_QUEUE_SIZE)
                 .build();
         errorHandler = new ErrorHandler(OracleConnector.class, SERVER_NAME, queue);
-        metrics = mock(TransactionalBufferMetrics.class);
+
+        taskContext = mock(OracleTaskContext.class);
+        Mockito.when(taskContext.getConnectorName()).thenReturn("connector name");
+        Mockito.when(taskContext.getConnectorType()).thenReturn("connector type");
+
         dispatcher = mock(EventDispatcher.class);
-        transactionalBuffer = new TransactionalBuffer(SERVER_NAME, errorHandler, metrics,
-                DEFAULT_MAX_QUEUE_SIZE);
+
+        transactionalBuffer = new TransactionalBuffer(taskContext, errorHandler);
+        metrics = transactionalBuffer.getMetrics();
     }
 
     @After
@@ -108,14 +112,6 @@ public class TransactionalBufferTest {
     public void testIsNotEmptyWhenTransactionIsRegistered() {
         transactionalBuffer.registerCommitCallback(TRANSACTION_ID, SCN, Instant.now(), (timestamp, smallestScn, commitScn, counter) -> {
         });
-        assertThat(transactionalBuffer.isEmpty()).isEqualTo(false);
-    }
-
-    @Test
-    public void testIsNotEmptyWhenTransactionIsCommitting() {
-        transactionalBuffer.registerCommitCallback(TRANSACTION_ID, SCN, Instant.now(), (timestamp, smallestScn, commitScn, counter) -> Thread.sleep(1000));
-        offsetContext = new OracleOffsetContext(connectorConfig, SCN.longValue(), SCN.longValue(), (LcrPosition) null, false, true, new TransactionContext());
-        transactionalBuffer.commit(TRANSACTION_ID, SCN.add(Scn.ONE), offsetContext, TIMESTAMP, () -> true, MESSAGE, dispatcher);
         assertThat(transactionalBuffer.isEmpty()).isEqualTo(false);
     }
 
@@ -246,7 +242,8 @@ public class TransactionalBufferTest {
     public void testAbandoningOneTransaction() {
         transactionalBuffer.registerCommitCallback(TRANSACTION_ID, SCN, Instant.now(), (timestamp, smallestScn, commitScn, counter) -> {
         });
-        transactionalBuffer.abandonLongTransactions(SCN.longValue());
+        offsetContext = new OracleOffsetContext(connectorConfig, SCN.longValue(), SCN.longValue(), (LcrPosition) null, false, true, new TransactionContext());
+        transactionalBuffer.abandonLongTransactions(SCN.longValue(), offsetContext);
         assertThat(transactionalBuffer.isEmpty()).isEqualTo(true);
         assertThat(transactionalBuffer.getLargestScn()).isEqualTo(Scn.ZERO);
     }
@@ -257,7 +254,7 @@ public class TransactionalBufferTest {
         });
         transactionalBuffer.registerCommitCallback(OTHER_TRANSACTION_ID, OTHER_SCN, Instant.now(), (timestamp, smallestScn, commitScn, counter) -> {
         });
-        transactionalBuffer.abandonLongTransactions(SCN.longValue());
+        transactionalBuffer.abandonLongTransactions(SCN.longValue(), offsetContext);
         assertThat(transactionalBuffer.isEmpty()).isEqualTo(false);
         assertThat(transactionalBuffer.getLargestScn()).isEqualTo(OTHER_SCN);
     }
@@ -272,40 +269,6 @@ public class TransactionalBufferTest {
         });
         assertThat(transactionalBuffer.toString()).contains(String.valueOf(SCN));
         assertThat(transactionalBuffer.toString()).contains(String.valueOf(OTHER_SCN));
-    }
-
-    @Test
-    public void testCommitQueueOverflowProcessedOnCaller() throws InterruptedException {
-        Thread mainThread = Thread.currentThread();
-        int commitQueueCapacity = 10;
-        transactionalBuffer = new TransactionalBuffer(SERVER_NAME, errorHandler, metrics,
-                commitQueueCapacity);
-        int transactionToCommitCount = commitQueueCapacity + 1;
-        CountDownLatch countDownLatch = new CountDownLatch(transactionToCommitCount + 1);
-        for (int i = 0; i <= commitQueueCapacity; i++) {
-            commitTransaction((timestamp, smallestScn, commitScn, counter) -> {
-                assertNotSame(mainThread, Thread.currentThread());
-                TimeUnit.MILLISECONDS.sleep(100);
-                countDownLatch.countDown();
-            });
-        }
-        // Commit one more over the capacity. This should process in the test thread, applying backpressure
-        // to the caller
-        commitTransaction((timestamp, smallestScn, commitScn, counter) -> {
-            assertSame(mainThread, Thread.currentThread());
-            countDownLatch.countDown();
-        });
-
-        TimeUnit.SECONDS.sleep(2);
-
-        // Commit one more over the capacity. After delay, the executor had time to recover and empty its queue
-        // This should go back to processing in the executor thread
-        commitTransaction((timestamp, smallestScn, commitScn, counter) -> {
-            assertNotSame(mainThread, Thread.currentThread());
-            countDownLatch.countDown();
-        });
-
-        assertTrue(countDownLatch.await(10, TimeUnit.SECONDS));
     }
 
     private void commitTransaction(TransactionalBuffer.CommitCallback commitCallback) {

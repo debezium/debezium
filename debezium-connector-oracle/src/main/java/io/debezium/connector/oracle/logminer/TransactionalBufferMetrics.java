@@ -35,7 +35,6 @@ public class TransactionalBufferMetrics extends Metrics implements Transactional
     private final AtomicLong committedDmlCounter = new AtomicLong();
     private final AtomicLong lastCommitDuration = new AtomicLong();
     private final AtomicLong maxCommitDuration = new AtomicLong();
-    private final AtomicInteger commitQueueCapacity = new AtomicInteger();
     private final AtomicReference<Duration> lagFromTheSource = new AtomicReference<>();
     private final AtomicReference<Duration> maxLagFromTheSource = new AtomicReference<>();
     private final AtomicReference<Duration> minLagFromTheSource = new AtomicReference<>();
@@ -235,15 +234,6 @@ public class TransactionalBufferMetrics extends Metrics implements Transactional
         return scnFreezeCounter.get();
     }
 
-    @Override
-    public int getCommitQueueCapacity() {
-        return commitQueueCapacity.get();
-    }
-
-    void setCommitQueueCapacity(int commitQueueCapacity) {
-        this.commitQueueCapacity.set(commitQueueCapacity);
-    }
-
     public Long getLastCommitDuration() {
         return lastCommitDuration.get();
     }
@@ -267,7 +257,6 @@ public class TransactionalBufferMetrics extends Metrics implements Transactional
         errorCounter.set(0);
         warningCounter.set(0);
         scnFreezeCounter.set(0);
-        commitQueueCapacity.set(0);
     }
 
     @Override
@@ -290,7 +279,6 @@ public class TransactionalBufferMetrics extends Metrics implements Transactional
                 ", errorCounter=" + errorCounter.get() +
                 ", warningCounter=" + warningCounter.get() +
                 ", scnFreezeCounter=" + scnFreezeCounter.get() +
-                ", commitQueueCapacity=" + commitQueueCapacity.get() +
                 '}';
     }
 }

@@ -15,45 +15,35 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Supplier;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.kafka.connect.errors.DataException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.NotThreadSafe;
-import io.debezium.connector.oracle.OracleConnector;
 import io.debezium.connector.oracle.OracleOffsetContext;
+import io.debezium.connector.oracle.OracleTaskContext;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.ChangeEventSource;
-import io.debezium.util.Threads;
 
 /**
+ * Buffer that stores transactions and related callbacks that will be executed when a transaction commits or discarded
+ * when a transaction has been rolled back.
+ *
  * @author Andrey Pustovetov
- * <p>
- * Transactional buffer is designed to register callbacks, to execute them when transaction commits and to clear them
- * when transaction rollbacks.
  */
 @NotThreadSafe
-public final class TransactionalBuffer {
+public final class TransactionalBuffer implements AutoCloseable {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(TransactionalBuffer.class);
 
     private final Map<String, Transaction> transactions;
-    private final ExecutorService executor;
-    private final AtomicInteger taskCounter;
     private final ErrorHandler errorHandler;
-    private final Supplier<Integer> commitQueueCapacity;
-    private TransactionalBufferMetrics metrics;
     private final Set<String> abandonedTransactionIds;
     private final Set<String> rolledBackTransactionIds;
+    private final TransactionalBufferMetrics metrics;
 
     // It holds the latest captured SCN.
     // This number tracks starting point for the next mining cycle.
@@ -63,27 +53,27 @@ public final class TransactionalBuffer {
     /**
      * Constructor to create a new instance.
      *
-     * @param logicalName           logical name
-     * @param errorHandler          logError handler
-     * @param metrics               metrics MBean
-     * @param inCommitQueueCapacity commit queue capacity. On overflow, caller runs task
+     * @param taskContext the task context
+     * @param errorHandler the connector error handler
      */
-    TransactionalBuffer(String logicalName, ErrorHandler errorHandler, TransactionalBufferMetrics metrics, int inCommitQueueCapacity) {
+    TransactionalBuffer(OracleTaskContext taskContext, ErrorHandler errorHandler) {
         this.transactions = new HashMap<>();
-        final BlockingQueue<Runnable> workQueue = new ArrayBlockingQueue<>(inCommitQueueCapacity);
-        executor = new ThreadPoolExecutor(1, 1,
-                Integer.MAX_VALUE, TimeUnit.MILLISECONDS,
-                workQueue,
-                Threads.threadFactory(OracleConnector.class, logicalName, "transactional-buffer", true, false),
-                new ThreadPoolExecutor.CallerRunsPolicy());
-        commitQueueCapacity = workQueue::remainingCapacity;
-        this.taskCounter = new AtomicInteger();
         this.errorHandler = errorHandler;
-        this.metrics = metrics;
         this.largestScn = Scn.ZERO;
         this.lastCommittedScn = Scn.ZERO;
         this.abandonedTransactionIds = new HashSet<>();
         this.rolledBackTransactionIds = new HashSet<>();
+
+        // create metrics and register them
+        this.metrics = new TransactionalBufferMetrics(taskContext);
+        this.metrics.register(LOGGER);
+    }
+
+    /**
+     * @return the transactional buffer's metrics
+     */
+    TransactionalBufferMetrics getMetrics() {
+        return metrics;
     }
 
     /**
@@ -148,8 +138,8 @@ public final class TransactionalBuffer {
     }
 
     /**
-     * If the commit executor queue is full, back-pressure will be applied by letting execution of the callback
-     * be performed by the calling thread.
+     * Commits a transaction by looking up the transaction in the buffer and if exists, all registered callbacks
+     * will be executed in chronological order, emitting events for each followed by a transaction commit event.
      *
      * @param transactionId transaction identifier
      * @param scn           SCN of the commit.
@@ -174,7 +164,6 @@ public final class TransactionalBuffer {
         transaction = transactions.remove(transactionId);
         Scn smallestScn = calculateSmallestScn();
 
-        taskCounter.incrementAndGet();
         abandonedTransactionIds.remove(transactionId);
 
         // On the restarting connector, we start from SCN in the offset. There is possibility to commit a transaction(s) which were already committed.
@@ -189,43 +178,43 @@ public final class TransactionalBuffer {
 
         List<CommitCallback> commitCallbacks = transaction.commitCallbacks;
         LOGGER.trace("COMMIT, {}, smallest SCN: {}, largest SCN {}", debugMessage, smallestScn, largestScn);
-        executor.execute(() -> {
-            try {
-                int counter = commitCallbacks.size();
-                for (CommitCallback callback : commitCallbacks) {
-                    if (!context.isRunning()) {
-                        return;
-                    }
-                    callback.execute(timestamp, smallestScn, scn, --counter);
-                }
-
-                lastCommittedScn = Scn.fromLong(scn.longValue());
-
-                if (!commitCallbacks.isEmpty()) {
-                    dispatcher.dispatchTransactionCommittedEvent(offsetContext);
-                }
-            }
-            catch (InterruptedException e) {
-                LogMinerHelper.logError(metrics, "Thread interrupted during running", e);
-                Thread.currentThread().interrupt();
-            }
-            catch (Exception e) {
-                errorHandler.setProducerThrowable(e);
-            }
-            finally {
-                metrics.incrementCommittedTransactions();
-                metrics.setActiveTransactions(transactions.size());
-                metrics.incrementCommittedDmlCounter(commitCallbacks.size());
-                metrics.setCommittedScn(scn.longValue());
-                metrics.setOffsetScn(offsetContext.getScn());
-                metrics.setCommitQueueCapacity(commitQueueCapacity.get());
-                metrics.setLastCommitDuration(Duration.between(start, Instant.now()).toMillis());
-                taskCounter.decrementAndGet();
-            }
-        });
-        metrics.setCommitQueueCapacity(commitQueueCapacity.get());
+        commit(context, offsetContext, start, commitCallbacks, timestamp, smallestScn, scn, dispatcher);
 
         return true;
+    }
+
+    private void commit(ChangeEventSource.ChangeEventSourceContext context, OracleOffsetContext offsetContext, Instant start,
+                        List<CommitCallback> commitCallbacks, Timestamp timestamp, Scn smallestScn, Scn scn, EventDispatcher<?> dispatcher) {
+        try {
+            int counter = commitCallbacks.size();
+            for (CommitCallback callback : commitCallbacks) {
+                if (!context.isRunning()) {
+                    return;
+                }
+                callback.execute(timestamp, smallestScn, scn, --counter);
+            }
+
+            lastCommittedScn = Scn.fromLong(scn.longValue());
+
+            if (!commitCallbacks.isEmpty()) {
+                dispatcher.dispatchTransactionCommittedEvent(offsetContext);
+            }
+        }
+        catch (InterruptedException e) {
+            LogMinerHelper.logError(metrics, "Thread interrupted during running", e);
+            Thread.currentThread().interrupt();
+        }
+        catch (Exception e) {
+            errorHandler.setProducerThrowable(e);
+        }
+        finally {
+            metrics.incrementCommittedTransactions();
+            metrics.setActiveTransactions(transactions.size());
+            metrics.incrementCommittedDmlCounter(commitCallbacks.size());
+            metrics.setCommittedScn(scn.longValue());
+            metrics.setOffsetScn(offsetContext.getScn());
+            metrics.setLastCommitDuration(Duration.between(start, Instant.now()).toMillis());
+        }
     }
 
     /**
@@ -265,8 +254,10 @@ public final class TransactionalBuffer {
      * In case of an abandonment, all DMLs/Commits/Rollbacks for this transaction will be ignored
      *
      * @param thresholdScn the smallest SVN of any transaction to keep in the buffer. All others will be removed.
+     * @param offsetContext the offset context
      */
-    void abandonLongTransactions(Long thresholdScn) {
+    void abandonLongTransactions(Long thresholdScn, OracleOffsetContext offsetContext) {
+        LogMinerHelper.logWarn(metrics, "All transactions with first SCN <= {} will be abandoned, offset: {}", thresholdScn, offsetContext.getScn());
         Scn threshold = Scn.fromLong(thresholdScn);
         Scn smallestScn = calculateSmallestScn();
         if (smallestScn == null) {
@@ -322,7 +313,16 @@ public final class TransactionalBuffer {
      * @return {@code true} if buffer is empty, otherwise {@code false}
      */
     boolean isEmpty() {
-        return transactions.isEmpty() && taskCounter.get() == 0;
+        return transactions.isEmpty();
+    }
+
+    /**
+     * Set the database time difference.
+     *
+     * @param difference the time difference in milliseconds
+     */
+    void setDatabaseTimeDifference(long difference) {
+        metrics.setTimeDifference(new AtomicLong(difference));
     }
 
     @Override
@@ -332,19 +332,13 @@ public final class TransactionalBuffer {
         return result.toString();
     }
 
-    /**
-     * Closes buffer.
-     */
-    void close() {
+    @Override
+    public void close() {
         transactions.clear();
-        executor.shutdown();
-        try {
-            if (!executor.awaitTermination(1000L, TimeUnit.MILLISECONDS)) {
-                executor.shutdownNow();
-            }
-        }
-        catch (InterruptedException e) {
-            LogMinerHelper.logError(metrics, "Thread interrupted during shutdown", e);
+
+        if (this.metrics != null) {
+            // if metrics registered, unregister them
+            this.metrics.unregister(LOGGER);
         }
     }
 

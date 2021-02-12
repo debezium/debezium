@@ -54,7 +54,7 @@ class LogMinerQueryResultProcessor {
     LogMinerQueryResultProcessor(ChangeEventSource.ChangeEventSourceContext context, LogMinerMetrics metrics,
                                  TransactionalBuffer transactionalBuffer, SimpleDmlParser dmlParser,
                                  OracleOffsetContext offsetContext, OracleDatabaseSchema schema,
-                                 EventDispatcher<TableId> dispatcher, TransactionalBufferMetrics transactionalBufferMetrics,
+                                 EventDispatcher<TableId> dispatcher,
                                  String catalogName, Clock clock, HistoryRecorder historyRecorder) {
         this.context = context;
         this.metrics = metrics;
@@ -63,7 +63,7 @@ class LogMinerQueryResultProcessor {
         this.offsetContext = offsetContext;
         this.schema = schema;
         this.dispatcher = dispatcher;
-        this.transactionalBufferMetrics = transactionalBufferMetrics;
+        this.transactionalBufferMetrics = transactionalBuffer.getMetrics();
         this.catalogName = catalogName;
         this.clock = clock;
         this.historyRecorder = historyRecorder;
