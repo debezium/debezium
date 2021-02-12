@@ -6,23 +6,21 @@
 package io.debezium.connector.mysql;
 
 import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.kafka.common.config.Config;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigValue;
 import org.apache.kafka.connect.connector.Task;
-import org.apache.kafka.connect.source.SourceConnector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.common.RelationalBaseSourceConnector;
 import io.debezium.connector.mysql.MySqlConnection.MySqlConnectionConfiguration;
-import io.debezium.util.Strings;
+import io.debezium.relational.RelationalDatabaseConnectorConfig;
 
 /**
  * A Kafka Connect source connector that creates tasks that read the MySQL binary log and generate the corresponding
@@ -34,7 +32,7 @@ import io.debezium.util.Strings;
  *
  * @author Randall Hauch
  */
-public class MySqlConnector extends SourceConnector {
+public class MySqlConnector extends RelationalBaseSourceConnector {
 
     public static final String IMPLEMENTATION_PROP = "internal.implementation";
     public static final String LEGACY_IMPLEMENTATION = "legacy";
@@ -88,43 +86,23 @@ public class MySqlConnector extends SourceConnector {
     }
 
     @Override
-    public Config validate(Map<String, String> connectorConfigs) {
-        Configuration config = Configuration.from(connectorConfigs);
-
-        // First, validate all of the individual fields, which is easy since don't make any of the fields invisible ...
-        Map<String, ConfigValue> results = config.validate(MySqlConnectorConfig.EXPOSED_FIELDS);
-
-        // Get the config values for each of the connection-related fields ...
-        ConfigValue hostnameValue = results.get(MySqlConnectorConfig.HOSTNAME.name());
-        ConfigValue portValue = results.get(MySqlConnectorConfig.PORT.name());
-        ConfigValue userValue = results.get(MySqlConnectorConfig.USER.name());
-        final String passwordValue = config.getString(MySqlConnectorConfig.PASSWORD);
-
-        if (Strings.isNullOrEmpty(passwordValue)) {
-            logger.warn("The connection password is empty");
-        }
-
-        // If there are no errors on any of these ...
-        if (hostnameValue.errorMessages().isEmpty()
-                && portValue.errorMessages().isEmpty()
-                && userValue.errorMessages().isEmpty()) {
-            // Try to connect to the database ...
-            final MySqlConnectionConfiguration connectionConfig = new MySqlConnectionConfiguration(config);
-            try (MySqlConnection connection = new MySqlConnection(connectionConfig)) {
-                try {
-                    connection.connect();
-                    connection.execute("SELECT version()");
-                    logger.info("Successfully tested connection for {} with user '{}'", connection.connectionString(), connectionConfig.username());
-                }
-                catch (SQLException e) {
-                    logger.info("Failed testing connection for {} with user '{}'", connection.connectionString(), connectionConfig.username());
-                    hostnameValue.addErrorMessage("Unable to connect: " + e.getMessage());
-                }
+    protected void validateConnection(Map<String, ConfigValue> configValues, Configuration config) {
+        ConfigValue hostnameValue = configValues.get(RelationalDatabaseConnectorConfig.HOSTNAME.name());
+        // Try to connect to the database ...
+        final MySqlConnectionConfiguration connectionConfig = new MySqlConnectionConfiguration(config);
+        try (MySqlConnection connection = new MySqlConnection(connectionConfig)) {
+            try {
+                connection.connect();
+                connection.execute("SELECT version()");
+                logger.info("Successfully tested connection for {} with user '{}'", connection.connectionString(), connectionConfig.username());
             }
             catch (SQLException e) {
-                logger.error("Unexpected error shutting down the database connection", e);
+                logger.info("Failed testing connection for {} with user '{}'", connection.connectionString(), connectionConfig.username());
+                hostnameValue.addErrorMessage("Unable to connect: " + e.getMessage());
             }
         }
-        return new Config(new ArrayList<>(results.values()));
+        catch (SQLException e) {
+            logger.error("Unexpected error shutting down the database connection", e);
+        }
     }
 }
