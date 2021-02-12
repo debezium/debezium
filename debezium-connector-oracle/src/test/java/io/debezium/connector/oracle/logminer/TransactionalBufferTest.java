@@ -39,6 +39,7 @@ import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot.AdapterName;
 import io.debezium.connector.oracle.xstream.LcrPosition;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
+import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.txmetadata.TransactionContext;
 
 /**
@@ -74,6 +75,7 @@ public class TransactionalBufferTest {
     private ErrorHandler errorHandler;
     private TransactionalBuffer transactionalBuffer;
     private TransactionalBufferMetrics metrics;
+    private EventDispatcher<?> dispatcher;
 
     @Rule
     public TestRule skipRule = new SkipTestDependingOnAdapterNameRule();
@@ -87,6 +89,7 @@ public class TransactionalBufferTest {
                 .build();
         errorHandler = new ErrorHandler(OracleConnector.class, SERVER_NAME, queue);
         metrics = mock(TransactionalBufferMetrics.class);
+        dispatcher = mock(EventDispatcher.class);
         transactionalBuffer = new TransactionalBuffer(SERVER_NAME, errorHandler, metrics,
                 DEFAULT_MAX_QUEUE_SIZE);
     }
@@ -112,7 +115,7 @@ public class TransactionalBufferTest {
     public void testIsNotEmptyWhenTransactionIsCommitting() {
         transactionalBuffer.registerCommitCallback(TRANSACTION_ID, SCN, Instant.now(), (timestamp, smallestScn, commitScn, counter) -> Thread.sleep(1000));
         offsetContext = new OracleOffsetContext(connectorConfig, SCN.longValue(), SCN.longValue(), (LcrPosition) null, false, true, new TransactionContext());
-        transactionalBuffer.commit(TRANSACTION_ID, SCN.add(Scn.ONE), offsetContext, TIMESTAMP, () -> true, MESSAGE);
+        transactionalBuffer.commit(TRANSACTION_ID, SCN.add(Scn.ONE), offsetContext, TIMESTAMP, () -> true, MESSAGE, dispatcher);
         assertThat(transactionalBuffer.isEmpty()).isEqualTo(false);
     }
 
@@ -121,7 +124,7 @@ public class TransactionalBufferTest {
         CountDownLatch commitLatch = new CountDownLatch(1);
         transactionalBuffer.registerCommitCallback(TRANSACTION_ID, SCN, Instant.now(), (timestamp, smallestScn, commitScn, counter) -> commitLatch.countDown());
         offsetContext = new OracleOffsetContext(connectorConfig, SCN.longValue(), SCN.longValue(), (LcrPosition) null, false, true, new TransactionContext());
-        transactionalBuffer.commit(TRANSACTION_ID, SCN.add(Scn.ONE), offsetContext, TIMESTAMP, () -> true, MESSAGE);
+        transactionalBuffer.commit(TRANSACTION_ID, SCN.add(Scn.ONE), offsetContext, TIMESTAMP, () -> true, MESSAGE, dispatcher);
         commitLatch.await();
         Thread.sleep(1000);
         assertThat(transactionalBuffer.isEmpty()).isEqualTo(true);
@@ -172,7 +175,7 @@ public class TransactionalBufferTest {
         });
         assertThat(transactionalBuffer.getLargestScn()).isEqualTo(SCN); // before commit
         offsetContext = new OracleOffsetContext(connectorConfig, SCN.longValue(), SCN.longValue(), null, false, true, new TransactionContext());
-        transactionalBuffer.commit(TRANSACTION_ID, SCN.add(Scn.ONE), offsetContext, TIMESTAMP, () -> true, MESSAGE);
+        transactionalBuffer.commit(TRANSACTION_ID, SCN.add(Scn.ONE), offsetContext, TIMESTAMP, () -> true, MESSAGE, dispatcher);
         commitLatch.await();
         assertThat(transactionalBuffer.getLargestScn()).isEqualTo(SCN); // after commit
 
@@ -193,7 +196,7 @@ public class TransactionalBufferTest {
         });
         assertThat(transactionalBuffer.getLargestScn()).isEqualTo(OTHER_SCN); // before commit
         offsetContext = new OracleOffsetContext(connectorConfig, SCN.longValue(), SCN.longValue(), null, false, true, new TransactionContext());
-        transactionalBuffer.commit(TRANSACTION_ID, SCN.add(Scn.ONE), offsetContext, TIMESTAMP, () -> true, MESSAGE);
+        transactionalBuffer.commit(TRANSACTION_ID, SCN.add(Scn.ONE), offsetContext, TIMESTAMP, () -> true, MESSAGE, dispatcher);
         commitLatch.await();
         // after commit, it stays the same because OTHER_TRANSACTION_ID is not committed yet
         assertThat(transactionalBuffer.getLargestScn()).isEqualTo(OTHER_SCN);
@@ -214,7 +217,7 @@ public class TransactionalBufferTest {
         });
         assertThat(transactionalBuffer.getLargestScn()).isEqualTo(OTHER_SCN); // before commit
         offsetContext = new OracleOffsetContext(connectorConfig, OTHER_SCN.longValue(), OTHER_SCN.longValue(), null, false, true, new TransactionContext());
-        transactionalBuffer.commit(OTHER_TRANSACTION_ID, OTHER_SCN.add(Scn.ONE), offsetContext, TIMESTAMP, () -> true, MESSAGE);
+        transactionalBuffer.commit(OTHER_TRANSACTION_ID, OTHER_SCN.add(Scn.ONE), offsetContext, TIMESTAMP, () -> true, MESSAGE, dispatcher);
         commitLatch.await();
         assertThat(smallestScnContainer.get()).isEqualTo(SCN);
         // after committing OTHER_TRANSACTION_ID
@@ -230,7 +233,7 @@ public class TransactionalBufferTest {
         });
         assertThat(transactionalBuffer.getLargestScn()).isEqualTo(OTHER_SCN); // before commit
         offsetContext = new OracleOffsetContext(connectorConfig, OTHER_SCN.longValue(), OTHER_SCN.longValue(), null, false, true, new TransactionContext());
-        transactionalBuffer.commit(OTHER_TRANSACTION_ID, OTHER_SCN, offsetContext, TIMESTAMP, () -> true, MESSAGE);
+        transactionalBuffer.commit(OTHER_TRANSACTION_ID, OTHER_SCN, offsetContext, TIMESTAMP, () -> true, MESSAGE, dispatcher);
         assertThat(transactionalBuffer.getLargestScn()).isEqualTo(OTHER_SCN); // after commit
 
         transactionalBuffer.resetLargestScn(null);
@@ -308,6 +311,6 @@ public class TransactionalBufferTest {
     private void commitTransaction(TransactionalBuffer.CommitCallback commitCallback) {
         transactionalBuffer.registerCommitCallback(TRANSACTION_ID, SCN, Instant.now(), commitCallback);
         offsetContext = new OracleOffsetContext(connectorConfig, SCN.longValue(), SCN.longValue(), null, false, true, new TransactionContext());
-        transactionalBuffer.commit(TRANSACTION_ID, SCN.add(Scn.ONE), offsetContext, TIMESTAMP, () -> true, MESSAGE);
+        transactionalBuffer.commit(TRANSACTION_ID, SCN.add(Scn.ONE), offsetContext, TIMESTAMP, () -> true, MESSAGE, dispatcher);
     }
 }

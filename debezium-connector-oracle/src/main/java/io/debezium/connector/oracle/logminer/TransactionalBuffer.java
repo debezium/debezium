@@ -31,6 +31,7 @@ import io.debezium.annotation.NotThreadSafe;
 import io.debezium.connector.oracle.OracleConnector;
 import io.debezium.connector.oracle.OracleOffsetContext;
 import io.debezium.pipeline.ErrorHandler;
+import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.ChangeEventSource;
 import io.debezium.util.Threads;
 
@@ -156,10 +157,11 @@ public final class TransactionalBuffer {
      * @param timestamp     commit timestamp
      * @param context       context to check that source is running
      * @param debugMessage  message
+     * @param dispatcher    event dispatcher
      * @return true if committed transaction is in the buffer, was not processed yet and processed now
      */
     boolean commit(String transactionId, Scn scn, OracleOffsetContext offsetContext, Timestamp timestamp,
-                   ChangeEventSource.ChangeEventSourceContext context, String debugMessage) {
+                   ChangeEventSource.ChangeEventSourceContext context, String debugMessage, EventDispatcher dispatcher) {
 
         Transaction transaction = transactions.get(transactionId);
         if (transaction == null) {
@@ -198,6 +200,10 @@ public final class TransactionalBuffer {
                 }
 
                 lastCommittedScn = Scn.fromLong(scn.longValue());
+
+                if (!commitCallbacks.isEmpty()) {
+                    dispatcher.dispatchTransactionCommittedEvent(offsetContext);
+                }
             }
             catch (InterruptedException e) {
                 LogMinerHelper.logError(metrics, "Thread interrupted during running", e);

@@ -120,7 +120,7 @@ class LogMinerQueryResultProcessor {
                 if (transactionalBuffer.isTransactionRegistered(txId)) {
                     historyRecorder.record(scn, tableName, segOwner, operationCode, changeTime, txId, 0, redoSql);
                 }
-                if (transactionalBuffer.commit(txId, scn, offsetContext, changeTime, context, logMessage)) {
+                if (transactionalBuffer.commit(txId, scn, offsetContext, changeTime, context, logMessage, dispatcher)) {
                     LOGGER.trace("COMMIT, {}", logMessage);
                     commitCounter++;
                 }
