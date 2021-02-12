@@ -16,11 +16,11 @@ import org.apache.kafka.common.config.Config;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigValue;
 import org.apache.kafka.connect.connector.Task;
-import org.apache.kafka.connect.source.SourceConnector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.common.RelationalBaseSourceConnector;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.util.Strings;
 
@@ -34,7 +34,7 @@ import io.debezium.util.Strings;
  *
  * @author Randall Hauch
  */
-public class MySqlConnector extends SourceConnector {
+public class MySqlConnector extends RelationalBaseSourceConnector {
 
     private Logger logger = LoggerFactory.getLogger(getClass());
     private Map<String, String> props;
@@ -111,5 +111,9 @@ public class MySqlConnector extends SourceConnector {
             }
         }
         return new Config(new ArrayList<>(results.values()));
+    }
+
+    @Override
+    protected void validateConnection(Map<String, ConfigValue> configValues, Configuration config) {
     }
 }
