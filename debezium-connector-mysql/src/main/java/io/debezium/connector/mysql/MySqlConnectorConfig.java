@@ -737,7 +737,8 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
             .withType(Type.INT)
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
-            .withDescription("Maximum time in milliseconds to wait after trying to connect to the database before timing out.")
+            .withDescription(
+                    "Maximum time to wait after trying to connect to the database before timing out (given in milliseconds). Defaults to 30 seconds (30,000 ms).")
             .withDefault(30 * 1000)
             .withValidation(Field::isPositiveInteger);
 
@@ -755,7 +756,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
             .withType(Type.LONG)
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
-            .withDescription("Interval in milliseconds to wait for connection checking if keep alive thread is used.")
+            .withDescription("Interval for connection checking if keep alive thread is used (given in milliseconds) Defaults to 1 minute (60,000 ms).")
             .withDefault(Duration.ofMinutes(1).toMillis())
             .withValidation(Field::isPositiveInteger);
 
