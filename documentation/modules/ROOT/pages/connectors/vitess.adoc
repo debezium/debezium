@@ -12,7 +12,7 @@
 
 toc::[]
 
-{prodname}'s Vitess connector captures row-level changes in the shards of a Vitess link:https://vitess.io/docs/concepts/keyspace/[keyspace]. Vitess version 8 is supported.
+{prodname}'s Vitess connector captures row-level changes in the shards of a Vitess link:https://vitess.io/docs/concepts/keyspace/[keyspace]. Vitess version {link-prefix}:{link-vitess-connector}#limitations-with-earlier-vitess-versions[8.0.0], 9.0.0 are supported.
 
 The connector does not support snapshot feature at the moment. The first time it connects to a Vitess cluster, it starts from the current VGTID location of the keyspace and continuously captures row-level changes that insert, update, and delete database content and that were committed to a Vitess keyspace. The connector generates data change event records and streams them to Kafka topics. For each table, the default behavior is that the connector streams all generated events to a separate Kafka topic for that table. Applications and services consume data change event records from that topic.
 
@@ -1242,3 +1242,10 @@ As the connector generates change events, the Kafka Connect framework records th
 If the connector is gracefully stopped, the database can continue to be used. Any changes are recorded in the Vitess binlog. When the connector restarts, it resumes streaming changes where it left off. That is, it generates change event records for all database changes that were made while the connector was stopped.
 
 A properly configured Kafka cluster is able to handle massive throughput. Kafka Connect is written according to Kafka best practices, and given enough resources a Kafka Connect connector can also handle very large numbers of database change events. Because of this, after being stopped for a while, when a {prodname} connector restarts, it is very likely to catch up with the database changes that were made while it was stopped. How quickly this happens depends on the capabilities and performance of Kafka and the volume of changes being made to the data in Vitess.
+
+[id="limitations-with-earlier-vitess-versions"]
+=== Limitations with earlier Vitess versions
+
+.Vitess 8.0.0
+
+* Due to a minor Vitess padding issue (which is fixed in Vitess 9.0.0), decimal values with a precision that is greater than or equal to 13 will cause extra whitespaces in front of the number. E.g. if the column type is `decimal(13,4)` in the table definition, the value `-1.2300` becomes `"-        1.2300"`, and the value `1.2300` becomes `"        1.2300"`.
