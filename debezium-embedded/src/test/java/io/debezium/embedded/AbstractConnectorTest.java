@@ -1052,7 +1052,7 @@ public abstract class AbstractConnectorTest implements Testing {
     }
 
     public static void waitForStreamingRunning(String connector, String server) throws InterruptedException {
-        waitForStreamingRunning(connector, server, "streaming");
+        waitForStreamingRunning(connector, server, getStreamingNamespace());
     }
 
     public static void waitForStreamingRunning(String connector, String server, String contextName) {
@@ -1072,7 +1072,7 @@ public abstract class AbstractConnectorTest implements Testing {
     }
 
     public static boolean isStreamingRunning(String connector, String server) {
-        return isStreamingRunning(connector, server, "streaming");
+        return isStreamingRunning(connector, server, getStreamingNamespace());
     }
 
     public static boolean isStreamingRunning(String connector, String server, String contextName) {
@@ -1091,10 +1091,14 @@ public abstract class AbstractConnectorTest implements Testing {
     }
 
     public static ObjectName getStreamingMetricsObjectName(String connector, String server) throws MalformedObjectNameException {
-        return getStreamingMetricsObjectName(connector, server, "streaming");
+        return getStreamingMetricsObjectName(connector, server, getStreamingNamespace());
     }
 
     public static ObjectName getStreamingMetricsObjectName(String connector, String server, String context) throws MalformedObjectNameException {
         return new ObjectName("debezium." + connector + ":type=connector-metrics,context=" + context + ",server=" + server);
+    }
+
+    protected static String getStreamingNamespace() {
+        return System.getProperty("test.streaming.metrics.namespace", "streaming");
     }
 }

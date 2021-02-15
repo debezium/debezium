@@ -271,11 +271,7 @@ public class MySqlMetricsIT extends AbstractConnectorTest {
         waitForStreamingRunning("mysql", SERVER_NAME, getStreamingNamespace());
     }
 
-    private String getStreamingNamespace() {
-        return isLegacy() ? "binlog" : "streaming";
-    }
-
-    protected boolean isLegacy() {
+    protected static boolean isLegacy() {
         return MySqlConnector.LEGACY_IMPLEMENTATION.equals(System.getProperty(MySqlConnector.IMPLEMENTATION_PROP, "new"));
     }
 }
