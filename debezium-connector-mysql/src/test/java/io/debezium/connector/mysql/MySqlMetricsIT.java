@@ -122,7 +122,12 @@ public class MySqlMetricsIT extends AbstractConnectorTest {
                         .build());
 
         assertSnapshotMetrics();
-        assertStreamingMetricsExist();
+        if (isLegacy()) {
+            assertNoStreamingMetricsExist();
+        }
+        else {
+            assertStreamingMetricsExist();
+        }
     }
 
     @Test
@@ -255,7 +260,7 @@ public class MySqlMetricsIT extends AbstractConnectorTest {
     }
 
     private ObjectName getStreamingMetricsObjectName() throws MalformedObjectNameException {
-        return getStreamingMetricsObjectName("mysql", SERVER_NAME, "streaming");
+        return getStreamingMetricsObjectName("mysql", SERVER_NAME, getStreamingNamespace());
     }
 
     private void waitForSnapshotToBeCompleted() throws InterruptedException {
@@ -263,6 +268,14 @@ public class MySqlMetricsIT extends AbstractConnectorTest {
     }
 
     private void waitForStreamingToStart() throws InterruptedException {
-        waitForStreamingRunning("mysql", SERVER_NAME, "streaming");
+        waitForStreamingRunning("mysql", SERVER_NAME, getStreamingNamespace());
+    }
+
+    private String getStreamingNamespace() {
+        return isLegacy() ? "binlog" : "streaming";
+    }
+
+    protected boolean isLegacy() {
+        return MySqlConnector.LEGACY_IMPLEMENTATION.equals(System.getProperty(MySqlConnector.IMPLEMENTATION_PROP, "new"));
     }
 }
