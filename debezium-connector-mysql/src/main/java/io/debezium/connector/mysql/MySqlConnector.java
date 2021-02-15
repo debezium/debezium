@@ -105,4 +105,9 @@ public class MySqlConnector extends RelationalBaseSourceConnector {
             logger.error("Unexpected error shutting down the database connection", e);
         }
     }
+
+    @Override
+    protected Map<String, ConfigValue> validateAllFields(Configuration config) {
+        return config.validate(MySqlConnectorConfig.ALL_FIELDS);
+    }
 }

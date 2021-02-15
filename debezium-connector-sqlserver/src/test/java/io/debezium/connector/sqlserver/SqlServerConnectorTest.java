@@ -37,7 +37,7 @@ public class SqlServerConnectorTest {
 
         Config validated = connector.validate(config);
         for (ConfigValue value : validated.configValues()) {
-            if (config.containsKey(value.name())) {
+            if (value.name().equals(SqlServerConnectorConfig.HOSTNAME.name())) {
                 assertThat(value.errorMessages().get(0).startsWith("Unable to connect:"));
             }
         }

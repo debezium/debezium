@@ -31,7 +31,7 @@ public abstract class RelationalBaseSourceConnector extends SourceConnector {
         Configuration config = Configuration.from(connectorConfigs);
 
         // Validate all of the individual fields, which is easy since don't make any of the fields invisible ...
-        Map<String, ConfigValue> results = config.validate(RelationalDatabaseConnectorConfig.ALL_FIELDS);
+        Map<String, ConfigValue> results = validateAllFields(config);
 
         // Get the config values for each of the connection-related fields ...
         ConfigValue hostnameValue = results.get(RelationalDatabaseConnectorConfig.HOSTNAME.name());
@@ -59,4 +59,6 @@ public abstract class RelationalBaseSourceConnector extends SourceConnector {
      * Validates connection to database.
      */
     protected abstract void validateConnection(Map<String, ConfigValue> configValues, Configuration config);
+
+    protected abstract Map<String, ConfigValue> validateAllFields(Configuration config);
 }
