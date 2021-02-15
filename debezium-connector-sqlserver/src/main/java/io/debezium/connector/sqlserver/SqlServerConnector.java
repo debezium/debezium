@@ -5,7 +5,6 @@
  */
 package io.debezium.connector.sqlserver;
 
-import java.sql.SQLException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -84,11 +83,16 @@ public class SqlServerConnector extends RelationalBaseSourceConnector {
             LOGGER.debug("Successfully tested connection for {} with user '{}'", connection.connectionString(),
                     connection.username());
         }
-        catch (SQLException e) {
+        catch (Exception e) {
             LOGGER.debug("Failed testing connection for {} with user '{}'", config.withMaskedPasswords(),
                     userValue);
             hostnameValue.addErrorMessage("Unable to connect. Check this and other connection properties. Error: "
                     + e.getMessage());
         }
+    }
+
+    @Override
+    protected Map<String, ConfigValue> validateAllFields(Configuration config) {
+        return config.validate(SqlServerConnectorConfig.ALL_FIELDS);
     }
 }
