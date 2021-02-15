@@ -85,7 +85,7 @@ public class MySqlConnectorTask extends BaseSourceTask {
             LOGGER.info("No previous offset found");
         }
 
-        final boolean tableIdCaseInsensitive = !"0".equals(connection.readMySqlSystemVariables().get(MySqlSystemVariables.LOWER_CASE_TABLE_NAMES));
+        final boolean tableIdCaseInsensitive = connection.isTableIdCaseSensitive();
 
         this.schema = new MySqlDatabaseSchema(connectorConfig, valueConverters, topicSelector, schemaNameAdjuster, tableIdCaseInsensitive);
 
@@ -273,12 +273,13 @@ public class MySqlConnectorTask extends BaseSourceTask {
         return found;
     }
 
-    private MySqlOffsetContext initialOffsetContext(MySqlConnectorConfig config) {
-        return new MySqlOffsetContext(config, false, false, new SourceInfo(config));
-    }
-
     private boolean validateAndLoadDatabaseHistory(MySqlConnectorConfig config, MySqlOffsetContext offset, MySqlDatabaseSchema schema) {
         if (offset == null) {
+            if (config.getSnapshotMode().shouldSnapshotOnSchemaError()) {
+                // We are in schema only recovery mode, use the existing binlog position
+                // would like to also verify binlog position exists, but it defaults to 0 which is technically valid
+                throw new DebeziumException("Could not find existing binlog information while attempting schema only recovery snapshot");
+            }
             LOGGER.info("Connector started for the first time, database history recovery will not be executed");
             schema.initializeStorage();
             return false;

@@ -203,7 +203,7 @@ public class UniqueDatabase {
                 .with(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, getDatabaseName())
                 .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
                 .with(MySqlConnectorConfig.BUFFER_SIZE_FOR_BINLOG_READER, 10_000)
-                .with("internal.implementation", "new");
+                .with(MySqlConnector.IMPLEMENTATION_PROP, System.getProperty(MySqlConnector.IMPLEMENTATION_PROP, "new"));
 
         if (dbHistoryPath != null) {
             builder.with(FileDatabaseHistory.FILE_PATH, dbHistoryPath);

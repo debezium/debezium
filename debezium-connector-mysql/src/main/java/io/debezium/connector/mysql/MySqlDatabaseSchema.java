@@ -78,6 +78,7 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
     private final RelationalTableFilters filters;
     private final DdlChanges ddlChanges;
     private final Map<Long, TableId> tableIdsByTableNumber = new HashMap<>();
+    private boolean storageInitialiationExecuted = false;
 
     /**
      * Create a schema component given the supplied {@link MySqlConnectorConfig MySQL connector configuration}.
@@ -354,5 +355,15 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
     public void clearTableMappings() {
         LOGGER.debug("Clearing table number mappings");
         tableIdsByTableNumber.clear();
+    }
+
+    @Override
+    public void initializeStorage() {
+        super.initializeStorage();
+        storageInitialiationExecuted = true;
+    }
+
+    public boolean isStorageInitializationExecuted() {
+        return storageInitialiationExecuted;
     }
 }

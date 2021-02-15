@@ -171,6 +171,20 @@ public class MySQLConnection extends JdbcConnection {
         return versionString;
     }
 
+    public boolean isTableIdCaseSensitive() {
+        String caseString;
+        try {
+            caseString = connect().queryAndMap("SHOW GLOBAL VARIABLES LIKE '" + MySqlSystemVariables.LOWER_CASE_TABLE_NAMES + "'", rs -> {
+                rs.next();
+                return rs.getString(2);
+            });
+        }
+        catch (SQLException e) {
+            throw new IllegalStateException("Couldn't obtain MySQL Server version comment", e);
+        }
+        return !"0".equals(caseString);
+    }
+
     public DatabaseDifferences databaseAsserts() {
         if (databaseAsserts == null) {
             if (getMySqlVersion() == MySqlVersion.MYSQL_8) {

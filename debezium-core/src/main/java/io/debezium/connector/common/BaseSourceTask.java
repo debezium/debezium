@@ -10,6 +10,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -28,6 +29,7 @@ import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.util.Clock;
 import io.debezium.util.ElapsedTimeStrategy;
 import io.debezium.util.Metronome;
+import io.debezium.util.Strings;
 
 /**
  * Base class for Debezium's CDC {@link SourceTask} implementations. Provides functionality common to all connectors,
@@ -38,6 +40,8 @@ import io.debezium.util.Metronome;
 public abstract class BaseSourceTask extends SourceTask {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(BaseSourceTask.class);
+    private static final long INITIAL_POLL_PERIOD_IN_MILLIS = TimeUnit.SECONDS.toMillis(5);
+    private static final long MAX_POLL_PERIOD_IN_MILLIS = TimeUnit.HOURS.toMillis(1);
 
     protected static enum State {
         RUNNING,
@@ -72,6 +76,20 @@ public abstract class BaseSourceTask extends SourceTask {
     private volatile Map<String, ?> lastOffset;
 
     private Duration retriableRestartWait;
+
+    private final ElapsedTimeStrategy pollOutputDelay;
+    private final Clock clock = Clock.system();
+    private long recordCounter = 0L;
+    private long previousOutputMillis = 0L;
+
+    protected BaseSourceTask() {
+        // Use exponential delay to log the progress frequently at first, but the quickly tapering off to once an hour...
+        pollOutputDelay = ElapsedTimeStrategy.exponential(clock, INITIAL_POLL_PERIOD_IN_MILLIS, MAX_POLL_PERIOD_IN_MILLIS);
+
+        // Initial our poll output delay logic ...
+        pollOutputDelay.hasElapsed();
+        previousOutputMillis = clock.currentTimeInMillis();
+    }
 
     @Override
     public final void start(Map<String, String> props) {
@@ -133,11 +151,39 @@ public abstract class BaseSourceTask extends SourceTask {
         }
 
         try {
-            return doPoll();
+            final List<SourceRecord> records = doPoll();
+            logStatistics(records);
+            return records;
         }
         catch (RetriableException e) {
             stop(true);
             throw e;
+        }
+    }
+
+    void logStatistics(final List<SourceRecord> records) {
+        if (records == null) {
+            return;
+        }
+        int batchSize = records.size();
+        recordCounter += batchSize;
+        if (batchSize > 0) {
+            SourceRecord lastRecord = records.get(batchSize - 1);
+            lastOffset = lastRecord.sourceOffset();
+            if (pollOutputDelay.hasElapsed()) {
+                // We want to record the status ...
+                long millisSinceLastOutput = clock.currentTimeInMillis() - previousOutputMillis;
+                try {
+                    if (LOGGER.isInfoEnabled()) {
+                        LOGGER.info("{} records sent during previous {}, last recorded offset: {}", recordCounter,
+                                Strings.duration(millisSinceLastOutput), lastOffset);
+                    }
+                }
+                finally {
+                    recordCounter = 0;
+                    previousOutputMillis += millisSinceLastOutput;
+                }
+            }
         }
     }
 
