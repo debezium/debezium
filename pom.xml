@@ -165,6 +165,9 @@
 
         <!-- Skip the API checks by default. Let the modules opt in. -->
         <revapi.skip>true</revapi.skip>
+
+        <!-- Which Maven Central infra should be used -->
+        <release.endpoint>https://s01.oss.sonatype.org/</release.endpoint>
     </properties>
 
     <modules>
@@ -191,7 +194,7 @@
       <repository>
         <id>ossrh</id>
         <name>Sonatype Staging Repository</name>
-        <url>https://oss.sonatype.org/service/local/staging/deploy/maven2</url>
+        <url>${release.endpoint}/service/local/staging/deploy/maven2</url>
       </repository>
       <snapshotRepository>
         <id>ossrh</id>
@@ -213,7 +216,7 @@
         <repository>
             <id>ossrh</id>
             <name>OSS Sonatype Nexus</name>
-            <url>https://oss.sonatype.org/content/groups/public/</url>
+            <url>${release.endpoint}/content/groups/public/</url>
             <releases>
                 <enabled>true</enabled>
                 <updatePolicy>never</updatePolicy>
@@ -759,7 +762,7 @@
                 <extensions>true</extensions>
                 <configuration>
                     <serverId>ossrh</serverId>
-                    <nexusUrl>https://oss.sonatype.org/</nexusUrl>
+                    <nexusUrl>${release.endpoint}</nexusUrl>
                     <autoReleaseAfterClose>false</autoReleaseAfterClose>
                 </configuration>
             </plugin>
