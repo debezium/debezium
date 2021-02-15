@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.oracle;
 
+import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -23,12 +24,15 @@ import org.junit.Test;
 import org.mockito.Mockito;
 
 import io.debezium.connector.oracle.logminer.LogMinerHelper;
+import io.debezium.doc.FixFor;
 
 public class LogMinerHelperTest {
 
-    private Connection connection = Mockito.mock(Connection.class);
+    private OracleConnection connection = Mockito.mock(OracleConnection.class);
     private int current;
     private String[][] mockRows;
+    private String maxScnStr;
+    private BigInteger maxScn;
 
     @Before
     public void beforeEach() throws Exception {
@@ -37,8 +41,16 @@ public class LogMinerHelperTest {
         mockRows = new String[][]{};
 
         ResultSet rs = Mockito.mock(ResultSet.class);
+        Connection conn = Mockito.mock(Connection.class);
+        Mockito.when(connection.connection()).thenReturn(conn);
+        Mockito.when(connection.connection(false)).thenReturn(conn);
+        Mockito.when(connection.getOracleVersion())
+                .thenReturn(OracleDatabaseVersion.parse("Oracle Database 12c Enterprise Edition Release 12.2.0.1.0 - 64bit Production"));
+        maxScnStr = LogMinerHelper.getDatabaseMaxScnValue(connection);
+        maxScn = new BigInteger(maxScnStr);
+
         PreparedStatement pstmt = Mockito.mock(PreparedStatement.class);
-        Mockito.when(connection.prepareStatement(anyString())).thenReturn(pstmt);
+        Mockito.when(conn.prepareStatement(anyString())).thenReturn(pstmt);
         Mockito.when(pstmt.executeQuery()).thenReturn(rs);
         Mockito.when(rs.next()).thenAnswer(it -> ++current > mockRows.length ? false : true);
         Mockito.when(rs.getString(anyInt())).thenAnswer(it -> {
@@ -85,7 +97,7 @@ public class LogMinerHelperTest {
 
         Map<String, BigInteger> onlineLogs = LogMinerHelper.getOnlineLogFilesForOffsetScn(connection, 600L);
         assertEquals(onlineLogs.size(), 3);
-        assertEquals(onlineLogs.get("logfile3"), LogMinerHelper.MAX_SCN_BI);
+        assertEquals(onlineLogs.get("logfile3"), maxScn);
     }
 
     @Test
@@ -94,12 +106,12 @@ public class LogMinerHelperTest {
         mockRows = new String[][]{
                 new String[]{ "logfile1", "103400", "11", "103700" },
                 new String[]{ "logfile2", "103700", "12", "104000" },
-                new String[]{ "logfile3", LogMinerHelper.MAX_SCN_S, "13", "104300" },
+                new String[]{ "logfile3", maxScnStr, "13", "104300" },
         };
 
         Map<String, BigInteger> onlineLogs = LogMinerHelper.getOnlineLogFilesForOffsetScn(connection, 600L);
         assertEquals(onlineLogs.size(), 3);
-        assertEquals(onlineLogs.get("logfile3"), LogMinerHelper.MAX_SCN_BI);
+        assertEquals(onlineLogs.get("logfile3"), maxScn);
     }
 
     @Test
@@ -160,7 +172,7 @@ public class LogMinerHelperTest {
 
         Map<String, BigInteger> onlineLogs = LogMinerHelper.getArchivedLogFilesForOffsetScn(connection, 500L, Duration.ofDays(60));
         assertEquals(onlineLogs.size(), 3);
-        assertEquals(onlineLogs.get("logfile3"), LogMinerHelper.MAX_SCN_BI);
+        assertEquals(onlineLogs.get("logfile3"), maxScn);
     }
 
     @Test
@@ -169,12 +181,12 @@ public class LogMinerHelperTest {
         mockRows = new String[][]{
                 new String[]{ "logfile1", "103400", "11" },
                 new String[]{ "logfile2", "103700", "12" },
-                new String[]{ "logfile3", LogMinerHelper.MAX_SCN_S, "13" },
+                new String[]{ "logfile3", maxScnStr, "13" },
         };
 
         Map<String, BigInteger> onlineLogs = LogMinerHelper.getArchivedLogFilesForOffsetScn(connection, 500L, Duration.ofDays(60));
         assertEquals(onlineLogs.size(), 3);
-        assertEquals(onlineLogs.get("logfile3"), LogMinerHelper.MAX_SCN_BI);
+        assertEquals(onlineLogs.get("logfile3"), maxScn);
     }
 
     @Test
@@ -192,5 +204,90 @@ public class LogMinerHelperTest {
         Map<String, BigInteger> onlineLogs = LogMinerHelper.getArchivedLogFilesForOffsetScn(connection, 500L, Duration.ofDays(60));
         assertEquals(onlineLogs.size(), 3);
         assertEquals(onlineLogs.get("logfile3"), new BigInteger(scnLonger));
+    }
+
+    @Test
+    @FixFor("DBZ-3001")
+    public void testOracleMaxScn() throws Exception {
+        final OracleConnection connection = Mockito.mock(OracleConnection.class);
+        final ResultSet rs = Mockito.mock(ResultSet.class);
+        final Connection conn = Mockito.mock(Connection.class);
+        Mockito.when(connection.connection()).thenReturn(conn);
+        Mockito.when(connection.connection(false)).thenReturn(conn);
+
+        // Test Oracle 11
+        String banner = "Oracle Database 11g Enterprise Edition Release 11.2.0.4.0 - 64bit Production";
+        Mockito.when(connection.getOracleVersion()).thenReturn(OracleDatabaseVersion.parse(banner));
+        assertThat(LogMinerHelper.getDatabaseMaxScnValue(connection)).isEqualTo("281474976710655");
+
+        // Test Oracle 12.1
+        banner = "Oracle Database 12c Enterprise Edition Release 12.1.0.0.0 - 64bit Production";
+        Mockito.when(connection.getOracleVersion()).thenReturn(OracleDatabaseVersion.parse(banner));
+        assertThat(LogMinerHelper.getDatabaseMaxScnValue(connection)).isEqualTo("281474976710655");
+
+        // Test Oracle 12.2
+        banner = "Oracle Database 12c Enterprise Edition Release 12.2.0.4.0 - 64bit Production";
+        Mockito.when(connection.getOracleVersion()).thenReturn(OracleDatabaseVersion.parse(banner));
+        assertThat(LogMinerHelper.getDatabaseMaxScnValue(connection)).isEqualTo("18446744073709551615");
+
+        // Test Oracle 18.0
+        banner = "Oracle Database 18c Enterprise Edition Release 18.0.0.0.0 - 64bit Production";
+        Mockito.when(connection.getOracleVersion()).thenReturn(OracleDatabaseVersion.parse(banner));
+        assertThat(LogMinerHelper.getDatabaseMaxScnValue(connection)).isEqualTo("18446744073709551615");
+
+        // Test Oracle 18.1
+        banner = "Oracle Database 18c Enterprise Edition Release 18.1.0.0.0 - 64bit Production";
+        Mockito.when(connection.getOracleVersion()).thenReturn(OracleDatabaseVersion.parse(banner));
+        assertThat(LogMinerHelper.getDatabaseMaxScnValue(connection)).isEqualTo("18446744073709551615");
+
+        // Test Oracle 18.2
+        banner = "Oracle Database 18c Enterprise Edition Release 18.0.0.0.0 - Production" + System.lineSeparator() + "Version 18.2.0.0.0";
+        Mockito.when(connection.getOracleVersion()).thenReturn(OracleDatabaseVersion.parse(banner));
+        assertThat(LogMinerHelper.getDatabaseMaxScnValue(connection)).isEqualTo("18446744073709551615");
+
+        // Test Oracle 19.0
+        banner = "Oracle Database 19c Enterprise Edition Release 19.0.0.0.0 - Production" + System.lineSeparator() + "Version 19.0.0.0.0";
+        Mockito.when(connection.getOracleVersion()).thenReturn(OracleDatabaseVersion.parse(banner));
+        assertThat(LogMinerHelper.getDatabaseMaxScnValue(connection)).isEqualTo("18446744073709551615");
+
+        // Test Oracle 19.1
+        banner = "Oracle Database 19c Enterprise Edition Release 19.0.0.0.0 - Production" + System.lineSeparator() + "Version 19.1.0.0.0";
+        Mockito.when(connection.getOracleVersion()).thenReturn(OracleDatabaseVersion.parse(banner));
+        assertThat(LogMinerHelper.getDatabaseMaxScnValue(connection)).isEqualTo("18446744073709551615");
+
+        // Test Oracle 19.2
+        banner = "Oracle Database 19c Enterprise Edition Release 19.0.0.0.0 - Production" + System.lineSeparator() + "Version 19.2.0.0.0";
+        Mockito.when(connection.getOracleVersion()).thenReturn(OracleDatabaseVersion.parse(banner));
+        assertThat(LogMinerHelper.getDatabaseMaxScnValue(connection)).isEqualTo("18446744073709551615");
+
+        // Test Oracle 19.3
+        banner = "Oracle Database 19c Enterprise Edition Release 19.0.0.0.0 - Production" + System.lineSeparator() + "Version 19.3.0.0.0";
+        Mockito.when(connection.getOracleVersion()).thenReturn(OracleDatabaseVersion.parse(banner));
+        assertThat(LogMinerHelper.getDatabaseMaxScnValue(connection)).isEqualTo("18446744073709551615");
+
+        // Test Oracle 19.4
+        banner = "Oracle Database 19c Enterprise Edition Release 19.0.0.0.0 - Production" + System.lineSeparator() + "Version 19.4.0.0.0";
+        Mockito.when(connection.getOracleVersion()).thenReturn(OracleDatabaseVersion.parse(banner));
+        assertThat(LogMinerHelper.getDatabaseMaxScnValue(connection)).isEqualTo("18446744073709551615");
+
+        // Test Oracle 19.5
+        banner = "Oracle Database 19c Enterprise Edition Release 19.0.0.0.0 - Production" + System.lineSeparator() + "Version 19.5.0.0.0";
+        Mockito.when(connection.getOracleVersion()).thenReturn(OracleDatabaseVersion.parse(banner));
+        assertThat(LogMinerHelper.getDatabaseMaxScnValue(connection)).isEqualTo("18446744073709551615");
+
+        // Test Oracle 19.6
+        banner = "Oracle Database 19c Enterprise Edition Release 19.0.0.0.0 - Production" + System.lineSeparator() + "Version 19.6.0.0.0";
+        Mockito.when(connection.getOracleVersion()).thenReturn(OracleDatabaseVersion.parse(banner));
+        assertThat(LogMinerHelper.getDatabaseMaxScnValue(connection)).isEqualTo("9295429630892703743");
+
+        // Test Oracle 19.7
+        banner = "Oracle Database 19c Enterprise Edition Release 19.0.0.0.0 - Production" + System.lineSeparator() + "Version 19.7.0.0.0";
+        Mockito.when(connection.getOracleVersion()).thenReturn(OracleDatabaseVersion.parse(banner));
+        assertThat(LogMinerHelper.getDatabaseMaxScnValue(connection)).isEqualTo("9295429630892703743");
+
+        // Test Oracle 21
+        banner = "Oracle Database 21c Enterprise Edition Release 21.0.0.0.0 - Production" + System.lineSeparator() + "Version 21.0.0.0.0";
+        Mockito.when(connection.getOracleVersion()).thenReturn(OracleDatabaseVersion.parse(banner));
+        assertThat(LogMinerHelper.getDatabaseMaxScnValue(connection)).isEqualTo("9295429630892703743");
     }
 }

@@ -9,7 +9,6 @@ import static org.fest.assertions.Assertions.assertThat;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -49,14 +48,14 @@ public class LogMinerHelperIT extends AbstractConnectorTest {
 
     private static OracleConnection connection;
     private static OracleConnection lmConnection;
-    private static Connection conn;
+    private static OracleConnection conn;
 
     @BeforeClass
     public static void beforeSuperClass() throws SQLException {
         connection = TestHelper.testConnection();
 
         lmConnection = TestHelper.testConnection();
-        conn = lmConnection.connection(false);
+        conn = lmConnection;
 
         lmConnection.resetSessionToCdb();
         LogMinerHelper.removeLogFilesFromMining(conn);
@@ -64,9 +63,6 @@ public class LogMinerHelperIT extends AbstractConnectorTest {
 
     @AfterClass
     public static void closeConnection() throws SQLException {
-        if (conn != null && !conn.isClosed()) {
-            conn.close();
-        }
         if (lmConnection != null && lmConnection.isConnected()) {
             lmConnection.close();
         }
@@ -156,7 +152,7 @@ public class LogMinerHelperIT extends AbstractConnectorTest {
         long twoHoursAgoScn;
         String scnQuery = "with minus_one as (select (systimestamp - INTERVAL '2' HOUR) as diff from dual) " +
                 "select timestamp_to_scn(diff) from minus_one";
-        try (PreparedStatement ps = conn.prepareStatement(scnQuery);
+        try (PreparedStatement ps = conn.connection(false).prepareStatement(scnQuery);
                 ResultSet rs = ps.executeQuery()) {
             rs.next();
             twoHoursAgoScn = rs.getBigDecimal(1).longValue();
@@ -203,9 +199,9 @@ public class LogMinerHelperIT extends AbstractConnectorTest {
         return oldestArchivedScn;
     }
 
-    private static int getNumberOfAddedLogFiles(Connection conn) throws SQLException {
+    private static int getNumberOfAddedLogFiles(OracleConnection conn) throws SQLException {
         int counter = 0;
-        try (PreparedStatement ps = conn.prepareStatement("select * from V$LOGMNR_LOGS");
+        try (PreparedStatement ps = conn.connection(false).prepareStatement("select * from V$LOGMNR_LOGS");
                 ResultSet result = ps.executeQuery()) {
             while (result.next()) {
                 counter++;
@@ -214,10 +210,10 @@ public class LogMinerHelperIT extends AbstractConnectorTest {
         return counter;
     }
 
-    private List<BigDecimal> getOneDayArchivedLogNextScn(Connection conn) throws SQLException {
+    private List<BigDecimal> getOneDayArchivedLogNextScn(OracleConnection conn) throws SQLException {
         List<BigDecimal> allArchivedNextScn = new ArrayList<>();
         try (
-                PreparedStatement st = conn.prepareStatement("SELECT NAME AS FILE_NAME, NEXT_CHANGE# AS NEXT_CHANGE FROM V$ARCHIVED_LOG " +
+                PreparedStatement st = conn.connection(false).prepareStatement("SELECT NAME AS FILE_NAME, NEXT_CHANGE# AS NEXT_CHANGE FROM V$ARCHIVED_LOG " +
                         " WHERE NAME IS NOT NULL AND FIRST_TIME >= SYSDATE - 1 AND ARCHIVED = 'YES' " +
                         " AND STATUS = 'A' ORDER BY 2");
                 ResultSet rs = st.executeQuery()) {

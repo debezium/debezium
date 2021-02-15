@@ -130,7 +130,7 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
 
     private long getCurrentScn(SnapshotContext ctx) throws SQLException {
         if (connectorConfig.getAdapter().equals(OracleConnectorConfig.ConnectorAdapter.LOG_MINER)) {
-            return LogMinerHelper.getCurrentScn(jdbcConnection.connection());
+            return LogMinerHelper.getCurrentScn(jdbcConnection);
         }
 
         try (Statement statement = jdbcConnection.connection().createStatement();

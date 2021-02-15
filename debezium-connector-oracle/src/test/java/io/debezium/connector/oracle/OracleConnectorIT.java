@@ -1372,6 +1372,14 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         }
     }
 
+    @Test
+    @FixFor("DBZ-3001")
+    public void shouldGetOracleDatabaseVersion() throws Exception {
+        OracleDatabaseVersion version = connection.getOracleVersion();
+        assertThat(version).isNotNull();
+        assertThat(version.getMajor()).isGreaterThan(0);
+    }
+
     private String generateAlphaNumericStringColumn(int size) {
         final String alphaNumericString = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz";
         final StringBuilder sb = new StringBuilder(size);

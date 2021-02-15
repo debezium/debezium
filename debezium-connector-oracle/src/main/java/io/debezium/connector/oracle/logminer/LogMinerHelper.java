@@ -7,7 +7,6 @@ package io.debezium.connector.oracle.logminer;
 
 import java.math.BigInteger;
 import java.sql.CallableStatement;
-import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -33,6 +32,7 @@ import io.debezium.DebeziumException;
 import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
+import io.debezium.connector.oracle.OracleDatabaseVersion;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.relational.TableId;
@@ -44,12 +44,12 @@ import io.debezium.util.Metronome;
  */
 public class LogMinerHelper {
 
-    private final static String UNKNOWN = "unknown";
+    private static final String UNKNOWN = "unknown";
     private static final String TOTAL = "TOTAL";
-    private final static Logger LOGGER = LoggerFactory.getLogger(LogMinerHelper.class);
-
-    public final static String MAX_SCN_S = "18446744073709551615";
-    public final static BigInteger MAX_SCN_BI = new BigInteger(MAX_SCN_S);
+    private static final String MAX_SCN_11_2 = "281474976710655";
+    private static final String MAX_SCN_12_2 = "18446744073709551615";
+    private static final String MAX_SCN_19_6 = "9295429630892703743";
+    private static final Logger LOGGER = LoggerFactory.getLogger(LogMinerHelper.class);
 
     public enum DATATYPE {
         LONG,
@@ -91,7 +91,7 @@ public class LogMinerHelper {
      * @param connection connection to the database as LogMiner user (connection to the container)
      * @throws SQLException any exception
      */
-    static void buildDataDictionary(Connection connection) throws SQLException {
+    static void buildDataDictionary(OracleConnection connection) throws SQLException {
         LOGGER.trace("Building data dictionary");
         executeCallableStatement(connection, SqlUtils.BUILD_DICTIONARY);
     }
@@ -103,8 +103,8 @@ public class LogMinerHelper {
      * @return current SCN
      * @throws SQLException if anything unexpected happens
      */
-    public static long getCurrentScn(Connection connection) throws SQLException {
-        try (Statement statement = connection.createStatement();
+    public static long getCurrentScn(OracleConnection connection) throws SQLException {
+        try (Statement statement = connection.connection(false).createStatement();
                 ResultSet rs = statement.executeQuery(SqlUtils.currentScnQuery())) {
 
             if (!rs.next()) {
@@ -115,7 +115,7 @@ public class LogMinerHelper {
         }
     }
 
-    static void createFlushTable(Connection connection) throws SQLException {
+    static void createFlushTable(OracleConnection connection) throws SQLException {
         String tableExists = (String) getSingleResult(connection, SqlUtils.tableExistsQuery(SqlUtils.LOGMNR_FLUSH_TABLE), DATATYPE.STRING);
         if (tableExists == null) {
             executeCallableStatement(connection, SqlUtils.CREATE_FLUSH_TABLE);
@@ -124,13 +124,11 @@ public class LogMinerHelper {
         String recordExists = (String) getSingleResult(connection, SqlUtils.FLUSH_TABLE_NOT_EMPTY, DATATYPE.STRING);
         if (recordExists == null) {
             executeCallableStatement(connection, SqlUtils.INSERT_FLUSH_TABLE);
-            if (!connection.getAutoCommit()) {
-                connection.commit();
-            }
+            connection.commit();
         }
     }
 
-    static void createLogMiningHistoryObjects(Connection connection, String historyTableName) throws SQLException {
+    static void createLogMiningHistoryObjects(OracleConnection connection, String historyTableName) throws SQLException {
 
         String tableExists = (String) getSingleResult(connection, SqlUtils.tableExistsQuery(SqlUtils.LOGMNR_HISTORY_TEMP_TABLE), DATATYPE.STRING);
         if (tableExists == null) {
@@ -146,7 +144,7 @@ public class LogMinerHelper {
         }
     }
 
-    static void deleteOutdatedHistory(Connection connection, long retention) throws SQLException {
+    static void deleteOutdatedHistory(OracleConnection connection, long retention) throws SQLException {
         Set<String> tableNames = getMap(connection, SqlUtils.getHistoryTableNamesQuery(), "-1").keySet();
         for (String tableName : tableNames) {
             long hoursAgo = SqlUtils.parseRetentionFromName(tableName);
@@ -169,7 +167,7 @@ public class LogMinerHelper {
      * @return next SCN to mine up to
      * @throws SQLException if anything unexpected happens
      */
-    static long getEndScn(Connection connection, long startScn, LogMinerMetrics metrics, int defaultBatchSize) throws SQLException {
+    static long getEndScn(OracleConnection connection, long startScn, LogMinerMetrics metrics, int defaultBatchSize) throws SQLException {
         long currentScn = getCurrentScn(connection);
         metrics.setCurrentScn(currentScn);
 
@@ -207,7 +205,7 @@ public class LogMinerHelper {
      * @param racHosts set of RAC host
      * @throws SQLException exception
      */
-    static void flushLogWriter(Connection connection, JdbcConfiguration config,
+    static void flushLogWriter(OracleConnection connection, JdbcConfiguration config,
                                boolean isRac, Set<String> racHosts)
             throws SQLException {
         long currentScn = getCurrentScn(connection);
@@ -217,9 +215,7 @@ public class LogMinerHelper {
         else {
             LOGGER.trace("Updating {} with SCN {}", SqlUtils.LOGMNR_FLUSH_TABLE, currentScn);
             executeCallableStatement(connection, SqlUtils.UPDATE_FLUSH_TABLE + currentScn);
-            if (!connection.getAutoCommit()) {
-                connection.commit();
-            }
+            connection.commit();
         }
     }
 
@@ -228,7 +224,7 @@ public class LogMinerHelper {
      * @param connection connection
      * @return the time difference as a {@link Duration}
      */
-    static Duration getTimeDifference(Connection connection) throws SQLException {
+    static Duration getTimeDifference(OracleConnection connection) throws SQLException {
         Timestamp dbCurrentMillis = (Timestamp) getSingleResult(connection, SqlUtils.CURRENT_TIMESTAMP, DATATYPE.TIMESTAMP);
         if (dbCurrentMillis == null) {
             return Duration.ZERO;
@@ -258,7 +254,7 @@ public class LogMinerHelper {
         LOGGER.trace("Starting log mining startScn={}, endScn={}, strategy={}, continuous={}", startScn, endScn, strategy, isContinuousMining);
         String statement = SqlUtils.startLogMinerStatement(startScn, endScn, strategy, isContinuousMining);
         try {
-            executeCallableStatement(connection.connection(), statement);
+            executeCallableStatement(connection, statement);
         }
         catch (SQLException e) {
             // Capture database state before throwing exception
@@ -276,9 +272,9 @@ public class LogMinerHelper {
      * @return full redo log file name(s), including path
      * @throws SQLException if anything unexpected happens
      */
-    static Set<String> getCurrentRedoLogFiles(Connection connection, LogMinerMetrics metrics) throws SQLException {
+    static Set<String> getCurrentRedoLogFiles(OracleConnection connection, LogMinerMetrics metrics) throws SQLException {
         Set<String> fileNames = new HashSet<>();
-        try (PreparedStatement st = connection.prepareStatement(SqlUtils.currentRedoNameQuery()); ResultSet result = st.executeQuery()) {
+        try (PreparedStatement st = connection.connection(false).prepareStatement(SqlUtils.currentRedoNameQuery()); ResultSet result = st.executeQuery()) {
             while (result.next()) {
                 fileNames.add(result.getString(1));
             }
@@ -297,15 +293,16 @@ public class LogMinerHelper {
      * @return oldest SCN from online redo log
      * @throws SQLException if anything unexpected happens
      */
-    static long getFirstOnlineLogScn(Connection connection, Duration archiveLogRetention) throws SQLException {
+    static long getFirstOnlineLogScn(OracleConnection connection, Duration archiveLogRetention) throws SQLException {
         LOGGER.trace("Getting first scn of all online logs");
-        Statement s = connection.createStatement();
-        ResultSet res = s.executeQuery(SqlUtils.oldestFirstChangeQuery(archiveLogRetention));
-        res.next();
-        long firstScnOfOnlineLog = res.getLong(1);
-        LOGGER.trace("First SCN in online logs is {}", firstScnOfOnlineLog);
-        res.close();
-        return firstScnOfOnlineLog;
+        try (Statement s = connection.connection(false).createStatement()) {
+            try (ResultSet rs = s.executeQuery(SqlUtils.oldestFirstChangeQuery(archiveLogRetention))) {
+                rs.next();
+                long firstScnOfOnlineLog = rs.getLong(1);
+                LOGGER.trace("First SCN in online logs is {}", firstScnOfOnlineLog);
+                return firstScnOfOnlineLog;
+            }
+        }
     }
 
     /**
@@ -324,7 +321,7 @@ public class LogMinerHelper {
      * @param fileNames name of current REDO LOG files
      * @param metrics current metrics
      */
-    private static void updateRedoLogMetrics(Connection connection, LogMinerMetrics metrics, Set<String> fileNames) {
+    private static void updateRedoLogMetrics(OracleConnection connection, LogMinerMetrics metrics, Set<String> fileNames) {
         try {
             // update metrics
             Map<String, String> logStatuses = getRedoLogStatus(connection);
@@ -345,7 +342,7 @@ public class LogMinerHelper {
      * @return REDO LOG statuses Map, where key is the REDO name and value is the status
      * @throws SQLException if anything unexpected happens
      */
-    private static Map<String, String> getRedoLogStatus(Connection connection) throws SQLException {
+    private static Map<String, String> getRedoLogStatus(OracleConnection connection) throws SQLException {
         return getMap(connection, SqlUtils.redoLogStatusQuery(), UNKNOWN);
     }
 
@@ -354,7 +351,7 @@ public class LogMinerHelper {
      * @param connection privileged connection
      * @return counter
      */
-    private static int getSwitchCount(Connection connection) {
+    private static int getSwitchCount(OracleConnection connection) {
         try {
             Map<String, String> total = getMap(connection, SqlUtils.switchHistoryQuery(), UNKNOWN);
             if (total != null && total.get(TOTAL) != null) {
@@ -390,7 +387,7 @@ public class LogMinerHelper {
                     continue;
                 }
                 LOGGER.trace("Flushing Log Writer buffer of node {}", host);
-                executeCallableStatement(conn.connection(), SqlUtils.UPDATE_FLUSH_TABLE + currentScn);
+                executeCallableStatement(conn, SqlUtils.UPDATE_FLUSH_TABLE + currentScn);
                 conn.commit();
             }
             catch (Exception e) {
@@ -437,17 +434,17 @@ public class LogMinerHelper {
             }
 
             // Check if ALL supplemental logging is enabled at the database
-            Map<String, String> globalAll = getMap(connection.connection(false), SqlUtils.databaseSupplementalLoggingAllCheckQuery(), UNKNOWN);
+            Map<String, String> globalAll = getMap(connection, SqlUtils.databaseSupplementalLoggingAllCheckQuery(), UNKNOWN);
             if ("NO".equalsIgnoreCase(globalAll.get("KEY"))) {
                 // Check if MIN supplemental logging is enabled at the database
-                Map<String, String> globalMin = getMap(connection.connection(false), SqlUtils.databaseSupplementalLoggingMinCheckQuery(), UNKNOWN);
+                Map<String, String> globalMin = getMap(connection, SqlUtils.databaseSupplementalLoggingMinCheckQuery(), UNKNOWN);
                 if ("NO".equalsIgnoreCase(globalMin.get("KEY"))) {
                     throw new DebeziumException("Supplemental logging not properly configured.  Use: ALTER DATABASE ADD SUPPLEMENTAL LOG DATA");
                 }
 
                 // If ALL supplemental logging is not enabled, then each monitored table should be set to ALL COLUMNS
                 for (TableId tableId : schema.getTables().tableIds()) {
-                    Map<String, String> tableAll = getMap(connection.connection(false), SqlUtils.tableSupplementalLoggingCheckQuery(tableId), UNKNOWN);
+                    Map<String, String> tableAll = getMap(connection, SqlUtils.tableSupplementalLoggingCheckQuery(tableId), UNKNOWN);
                     if (!"ALL COLUMN LOGGING".equalsIgnoreCase(tableAll.get("KEY"))) {
                         throw new DebeziumException("Supplemental logging not configured for table " + tableId + ".  " +
                                 "Use command: ALTER TABLE " + tableId.schema() + "." + tableId.table() + " ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
@@ -468,7 +465,7 @@ public class LogMinerHelper {
      *
      * @param connection container level database connection
      */
-    public static void endMining(Connection connection) {
+    public static void endMining(OracleConnection connection) {
         String stopMining = SqlUtils.END_LOGMNR;
         try {
             executeCallableStatement(connection, stopMining);
@@ -491,7 +488,7 @@ public class LogMinerHelper {
      * @throws SQLException if anything unexpected happens
      */
     // todo: check RAC resiliency
-    public static void setRedoLogFilesForMining(Connection connection, Long lastProcessedScn, Duration archiveLogRetention) throws SQLException {
+    public static void setRedoLogFilesForMining(OracleConnection connection, Long lastProcessedScn, Duration archiveLogRetention) throws SQLException {
 
         removeLogFilesFromMining(connection);
 
@@ -526,7 +523,7 @@ public class LogMinerHelper {
      * @param transactionRetention duration to tolerate long running transactions
      * @return optional SCN as a watermark for abandonment
      */
-    public static Optional<Long> getLastScnToAbandon(Connection connection, Long offsetScn, Duration transactionRetention) {
+    public static Optional<Long> getLastScnToAbandon(OracleConnection connection, Long offsetScn, Duration transactionRetention) {
         try {
             String query = SqlUtils.diffInDaysQuery(offsetScn);
             Float diffInDays = (Float) getSingleResult(connection, query, DATATYPE.FLOAT);
@@ -556,35 +553,58 @@ public class LogMinerHelper {
      * @param connection connection
      * @return size
      */
-    private static int getRedoLogGroupSize(Connection connection) throws SQLException {
-        return getMap(connection, SqlUtils.allOnlineLogsQuery(), MAX_SCN_S).size();
+    private static int getRedoLogGroupSize(OracleConnection connection) throws SQLException {
+        return getMap(connection, SqlUtils.allOnlineLogsQuery(), getDatabaseMaxScnValue(connection)).size();
+    }
+
+    /**
+     * Get the database maximum SCN value
+     *
+     * @param connection the oracle database connection
+     * @return the maximum scn value as a string value
+     */
+    public static String getDatabaseMaxScnValue(OracleConnection connection) {
+        OracleDatabaseVersion version = connection.getOracleVersion();
+        if ((version.getMajor() == 19 && version.getMaintenance() >= 6) || (version.getMajor() > 19)) {
+            return MAX_SCN_19_6;
+        }
+        else if ((version.getMajor() == 12 && version.getMaintenance() >= 2) || (version.getMajor() > 12)) {
+            return MAX_SCN_12_2;
+        }
+        else if ((version.getMajor() == 11 && version.getMaintenance() >= 2) || (version.getMajor() == 12 && version.getMaintenance() < 2)) {
+            return MAX_SCN_11_2;
+        }
+        throw new RuntimeException("Max SCN cannot be resolved for database version " + version);
     }
 
     /**
      * This method returns all online log files, starting from one which contains offset SCN and ending with one containing largest SCN
      * 18446744073709551615 on Ora 19c is the max value of the nextScn in the current redo todo replace all Long with BigInteger for SCN
      */
-    public static Map<String, BigInteger> getOnlineLogFilesForOffsetScn(Connection connection, Long offsetScn) throws SQLException {
+    public static Map<String, BigInteger> getOnlineLogFilesForOffsetScn(OracleConnection connection, Long offsetScn) throws SQLException {
         // TODO: Make offset a BigInteger and refactor upstream
         BigInteger offsetScnBi = BigInteger.valueOf(offsetScn);
         LOGGER.trace("Getting online redo logs for offset scn {}", offsetScnBi);
         Map<String, ScnRange> redoLogFiles = new LinkedHashMap<>();
-        try (PreparedStatement s = connection.prepareStatement(SqlUtils.allOnlineLogsQuery())) {
+
+        String maxScnStr = getDatabaseMaxScnValue(connection);
+        final BigInteger maxScn = new BigInteger(maxScnStr);
+        try (PreparedStatement s = connection.connection(false).prepareStatement(SqlUtils.allOnlineLogsQuery())) {
             try (ResultSet rs = s.executeQuery()) {
                 while (rs.next()) {
-                    ScnRange range = new ScnRange(rs.getString(4), defaultIfNull(rs.getString(2), MAX_SCN_S));
+                    ScnRange range = new ScnRange(rs.getString(4), defaultIfNull(rs.getString(2), maxScnStr));
                     redoLogFiles.put(rs.getString(1), range);
                 }
             }
         }
         return redoLogFiles.entrySet().stream()
-                .filter(entry -> filterRedoLogEntry(entry, offsetScnBi)).collect(Collectors
-                        .toMap(Map.Entry::getKey, entry -> resolveNextChangeFromScnRange(entry.getValue().getNextChange())));
+                .filter(entry -> filterRedoLogEntry(entry, offsetScnBi, maxScn)).collect(Collectors
+                        .toMap(Map.Entry::getKey, entry -> resolveNextChangeFromScnRange(entry.getValue().getNextChange(), maxScn)));
     }
 
-    private static boolean filterRedoLogEntry(Map.Entry<String, ScnRange> entry, BigInteger offsetScn) {
+    private static boolean filterRedoLogEntry(Map.Entry<String, ScnRange> entry, BigInteger offsetScn, BigInteger maxScn) {
         final BigInteger nextChangeNumber = new BigInteger(entry.getValue().getNextChange());
-        if (nextChangeNumber.compareTo(offsetScn) >= 0 || nextChangeNumber.equals(MAX_SCN_BI)) {
+        if (nextChangeNumber.compareTo(offsetScn) >= 0 || nextChangeNumber.equals(maxScn)) {
             LOGGER.trace("Online redo log {} with SCN range {} to {} to be added.", entry.getKey(), entry.getValue().getFirstChange(), entry.getValue().getNextChange());
             return true;
         }
@@ -592,9 +612,9 @@ public class LogMinerHelper {
         return false;
     }
 
-    private static BigInteger resolveNextChangeFromScnRange(String nextChangeValue) {
+    private static BigInteger resolveNextChangeFromScnRange(String nextChangeValue, BigInteger maxScn) {
         final BigInteger value = new BigInteger(nextChangeValue);
-        return value.equals(MAX_SCN_BI) ? MAX_SCN_BI : value;
+        return value.equals(maxScn) ? maxScn : value;
     }
 
     /**
@@ -676,19 +696,21 @@ public class LogMinerHelper {
      * @return                Map of archived files
      * @throws SQLException   if something happens
      */
-    public static Map<String, BigInteger> getArchivedLogFilesForOffsetScn(Connection connection, Long offsetScn, Duration archiveLogRetention) throws SQLException {
+    public static Map<String, BigInteger> getArchivedLogFilesForOffsetScn(OracleConnection connection, Long offsetScn, Duration archiveLogRetention) throws SQLException {
         final Map<String, String> redoLogFiles = new LinkedHashMap<>();
-        try (PreparedStatement s = connection.prepareStatement(SqlUtils.archiveLogsQuery(offsetScn, archiveLogRetention))) {
+        final String maxScnStr = getDatabaseMaxScnValue(connection);
+        final BigInteger maxScn = new BigInteger(maxScnStr);
+        try (PreparedStatement s = connection.connection(false).prepareStatement(SqlUtils.archiveLogsQuery(offsetScn, archiveLogRetention))) {
             try (ResultSet rs = s.executeQuery()) {
                 while (rs.next()) {
                     if (LOGGER.isTraceEnabled()) {
                         LOGGER.trace("Archive log {} with SCN range {} to {} to be added.", rs.getString(1), rs.getString(3), rs.getString(2));
                     }
-                    redoLogFiles.put(rs.getString(1), defaultIfNull(rs.getString(2), MAX_SCN_S));
+                    redoLogFiles.put(rs.getString(1), defaultIfNull(rs.getString(2), maxScnStr));
                 }
             }
         }
-        return redoLogFiles.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> resolveNextChangeFromScnRange(e.getValue())));
+        return redoLogFiles.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> resolveNextChangeFromScnRange(e.getValue(), maxScn)));
     }
 
     /**
@@ -696,8 +718,8 @@ public class LogMinerHelper {
      * @param conn connection
      * @throws SQLException something happened
      */
-    public static void removeLogFilesFromMining(Connection conn) throws SQLException {
-        try (PreparedStatement ps = conn.prepareStatement(SqlUtils.FILES_FOR_MINING);
+    public static void removeLogFilesFromMining(OracleConnection conn) throws SQLException {
+        try (PreparedStatement ps = conn.connection(false).prepareStatement(SqlUtils.FILES_FOR_MINING);
                 ResultSet result = ps.executeQuery()) {
             while (result.next()) {
                 String fileName = result.getString(1);
@@ -707,17 +729,17 @@ public class LogMinerHelper {
         }
     }
 
-    private static void executeCallableStatement(Connection connection, String statement) throws SQLException {
+    private static void executeCallableStatement(OracleConnection connection, String statement) throws SQLException {
         Objects.requireNonNull(statement);
-        try (CallableStatement s = connection.prepareCall(statement)) {
+        try (CallableStatement s = connection.connection(false).prepareCall(statement)) {
             s.execute();
         }
     }
 
-    public static Map<String, String> getMap(Connection connection, String query, String nullReplacement) throws SQLException {
+    public static Map<String, String> getMap(OracleConnection connection, String query, String nullReplacement) throws SQLException {
         Map<String, String> result = new LinkedHashMap<>();
         try (
-                PreparedStatement statement = connection.prepareStatement(query);
+                PreparedStatement statement = connection.connection(false).prepareStatement(query);
                 ResultSet rs = statement.executeQuery()) {
             while (rs.next()) {
                 String value = rs.getString(2);
@@ -728,8 +750,8 @@ public class LogMinerHelper {
         }
     }
 
-    public static Object getSingleResult(Connection connection, String query, DATATYPE type) throws SQLException {
-        try (PreparedStatement statement = connection.prepareStatement(query);
+    public static Object getSingleResult(OracleConnection connection, String query, DATATYPE type) throws SQLException {
+        try (PreparedStatement statement = connection.connection(false).prepareStatement(query);
                 ResultSet rs = statement.executeQuery()) {
             if (rs.next()) {
                 switch (type) {
