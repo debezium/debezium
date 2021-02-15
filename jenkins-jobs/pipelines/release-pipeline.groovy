@@ -67,7 +67,7 @@ DEBEZIUM_ADDITIONAL_REPOSITORIES.split().each {
 
 IMAGES = ['connect', 'connect-base', 'examples/mysql', 'examples/mysql-gtids', 'examples/postgres', 'examples/mongodb', 'kafka', 'server', 'zookeeper']
 MAVEN_CENTRAL = 'https://repo1.maven.org/maven2'
-STAGING_REPO = 'https://oss.sonatype.org/content/repositories'
+STAGING_REPO = 'https://s01.oss.sonatype.org/content/repositories'
 STAGING_REPO_ID = null
 ADDITIONAL_STAGING_REPO_ID = [:]
 LOCAL_MAVEN_REPO = "$HOME_DIR/.m2/repository"
@@ -565,6 +565,35 @@ node('Slave') {
                         } HEAD:$IMAGES_BRANCH
                             git tag $VERSION_TAG && git push https://\${GIT_USERNAME}:\${GIT_PASSWORD}@${IMAGES_REPOSITORY} $VERSION_TAG
                         """
+                    }
+                }
+            }
+        }
+        stage('Merge candidates to the master') {
+            if (!DRY_RUN) {
+                dir(DEBEZIUM_DIR) {
+                    withCredentials([usernamePassword(credentialsId: GIT_CREDENTIALS_ID, passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USERNAME')]) {
+                        sh """
+                           git pull --rebase https://\${GIT_USERNAME}:\${GIT_PASSWORD}@$DEBEZIUM_REPOSITORY $CANDIDATE_BRANCH && \\
+                           git checkout master && \\
+                           git rebase $CANDIDATE_BRANCH && \\
+                           git push https://\${GIT_USERNAME}:\${GIT_PASSWORD}@$DEBEZIUM_REPOSITORY HEAD:$DEBEZIUM_BRANCH && \\
+                           git push --delete https://\${GIT_USERNAME}:\${GIT_PASSWORD}@$DEBEZIUM_REPOSITORY $CANDIDATE_BRANCH
+                        """
+                    }
+                    ADDITIONAL_REPOSITORIES.each { id, repo ->
+                        dir(id) {
+                            sh "git pull --rebase $CANDIDATE_BRANCH && git checkout master && git rebase $CANDIDATE_BRANCH"
+                                withCredentials([usernamePassword(credentialsId: GIT_CREDENTIALS_ID, passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USERNAME')]) {
+                                    sh """
+                                       git pull --rebase ${repo.git} $CANDIDATE_BRANCH && \\
+                                       git checkout master && \\
+                                       git rebase $CANDIDATE_BRANCH && \\
+                                       git push https://\${GIT_USERNAME}:\${GIT_PASSWORD}@${repo.git} HEAD:${repo.branch} && \\
+                                       git push --delete https://\${GIT_USERNAME}:\${GIT_PASSWORD}@${repo.git} $CANDIDATE_BRANCH
+                                    """
+                            }
+                        }
                     }
                 }
             }
