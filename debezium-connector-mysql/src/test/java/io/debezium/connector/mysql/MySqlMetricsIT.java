@@ -10,6 +10,7 @@ import static org.fest.assertions.Assertions.assertThat;
 import java.lang.management.ManagementFactory;
 import java.nio.file.Path;
 import java.sql.Connection;
+import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 
 import javax.management.InstanceNotFoundException;
@@ -17,6 +18,7 @@ import javax.management.MBeanServer;
 import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
 
+import org.awaitility.Awaitility;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -251,6 +253,8 @@ public class MySqlMetricsIT extends AbstractConnectorTest {
         assertThat((Long) mBeanServer.getAttribute(getStreamingMetricsObjectName(), "TotalNumberOfEventsSeen"))
                 .isGreaterThanOrEqualTo(events);
 
+        Awaitility.await().atMost(Duration.ofMinutes(1)).until(() -> ((String[]) mBeanServer
+                .getAttribute(getStreamingMetricsObjectName(), "MonitoredTables")).length > 0);
         assertThat(mBeanServer.getAttribute(getStreamingMetricsObjectName(), "MonitoredTables"))
                 .isEqualTo(new String[]{ DATABASE.qualifiedTableName("simple") });
     }
