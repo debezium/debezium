@@ -139,6 +139,7 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
             }
             else {
                 LOGGER.info("Snapshot step 7 - Skipping snapshotting of data");
+                releaseDataSnapshotLocks(ctx);
                 ctx.offset.preSnapshotCompletion();
                 ctx.offset.postSnapshotCompletion();
             }
@@ -240,6 +241,12 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
      */
     protected abstract void releaseSchemaSnapshotLocks(RelationalSnapshotContext snapshotContext) throws Exception;
 
+    /**
+     * Releases all locks established in order to create a consistent data snapshot.
+     */
+    protected void releaseDataSnapshotLocks(RelationalSnapshotContext snapshotContext) throws Exception {
+    }
+
     protected void createSchemaChangeEventsForTables(ChangeEventSourceContext sourceContext, RelationalSnapshotContext snapshotContext, SnapshottingTask snapshottingTask)
             throws Exception {
         tryStartingSnapshot(snapshotContext);
@@ -258,7 +265,7 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
 
                 // If data are not snapshotted then the last schema change must set last snapshot flag
                 if (!snapshottingTask.snapshotData() && !iterator.hasNext()) {
-                    snapshotContext.offset.markLastSnapshotRecord();
+                    lastSnapshotRecord(snapshotContext);
                 }
                 dispatcher.dispatchSchemaChangeEvent(table.id(), (receiver) -> {
                     try {
@@ -297,6 +304,16 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
             createDataEventsForTable(sourceContext, snapshotContext, snapshotReceiver, snapshotContext.tables.forTable(tableId), tableOrder++, tableCount);
         }
 
+        try {
+            releaseDataSnapshotLocks(snapshotContext);
+        }
+        catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw e;
+        }
+        catch (Exception e) {
+            throw new DebeziumException(e);
+        }
         snapshotContext.offset.preSnapshotCompletion();
         snapshotReceiver.completeSnapshot();
         snapshotContext.offset.postSnapshotCompletion();
@@ -363,14 +380,13 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
                     }
 
                     if (snapshotContext.lastTable && snapshotContext.lastRecordInTable) {
-                        snapshotContext.offset.markLastSnapshotRecord();
+                        lastSnapshotRecord(snapshotContext);
                     }
                     dispatcher.dispatchSnapshotEvent(table.id(), getChangeRecordEmitter(snapshotContext, table.id(), row), snapshotReceiver);
                 }
             }
             else if (snapshotContext.lastTable) {
-                // if the last table does not contain any records we still need to mark the last processed event as the last one
-                snapshotContext.offset.markLastSnapshotRecord();
+                lastSnapshotRecord(snapshotContext);
             }
 
             LOGGER.info("\t Finished exporting {} records for table '{}'; total duration '{}'", rows,
@@ -380,6 +396,10 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
         catch (SQLException e) {
             throw new ConnectException("Snapshotting of table " + table.id() + " failed", e);
         }
+    }
+
+    protected void lastSnapshotRecord(RelationalSnapshotContext snapshotContext) {
+        snapshotContext.offset.markLastSnapshotRecord();
     }
 
     /**

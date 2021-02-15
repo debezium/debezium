@@ -425,6 +425,10 @@ public class MySqlConnection extends JdbcConnection {
         return OptionalLong.empty();
     }
 
+    public boolean isTableIdCaseSensitive() {
+        return !"0".equals(readMySqlSystemVariables().get(MySqlSystemVariables.LOWER_CASE_TABLE_NAMES));
+    }
+
     /**
      * Read the MySQL default character sets for exisiting databases.
      *

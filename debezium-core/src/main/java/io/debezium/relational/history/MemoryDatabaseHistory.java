@@ -46,7 +46,7 @@ public final class MemoryDatabaseHistory extends AbstractDatabaseHistory {
 
     @Override
     public boolean exists() {
-        return records != null;
+        return !records.isEmpty();
     }
 
     @Override

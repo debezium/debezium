@@ -14,6 +14,8 @@ import java.sql.Statement;
 import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -28,7 +30,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
-import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotLockingMode;
 import io.debezium.connector.mysql.legacy.MySqlJdbcContext.DatabaseLocales;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.spi.OffsetContext;
@@ -40,6 +41,7 @@ import io.debezium.relational.TableId;
 import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.schema.SchemaChangeEvent.SchemaChangeEventType;
 import io.debezium.util.Clock;
+import io.debezium.util.Collect;
 import io.debezium.util.Strings;
 
 public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEventSource {
@@ -49,11 +51,13 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
     private final MySqlConnectorConfig connectorConfig;
     private final MySqlConnection connection;
     private long globalLockAcquiredAt = -1;
+    private long tableLockAcquiredAt = -1;
     private final RelationalTableFilters filters;
     private final MySqlSnapshotChangeEventSourceMetrics metrics;
     private final MySqlOffsetContext previousOffset;
     private final MySqlDatabaseSchema databaseSchema;
     private final List<SchemaChangeEvent> schemaEvents = new ArrayList<>();
+    private Set<TableId> delayedSchemaSnapshotTables = Collections.emptySet();
 
     public MySqlSnapshotChangeEventSource(MySqlConnectorConfig connectorConfig, MySqlOffsetContext previousOffset, MySqlConnection connection,
                                           MySqlDatabaseSchema schema, EventDispatcher<TableId> dispatcher, Clock clock,
@@ -75,7 +79,7 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
         // found a previous offset and the earlier snapshot has completed
         if (previousOffset != null && !previousOffset.isSnapshotRunning()) {
             LOGGER.info("A previous offset indicating a completed snapshot has been found. Neither schema nor data will be snapshotted.");
-            snapshotSchema = false;
+            snapshotSchema = databaseSchema.isStorageInitializationExecuted();
             snapshotData = false;
         }
         else {
@@ -176,7 +180,7 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
         // Obtain read lock on all tables. This statement closes all open tables and locks all tables
         // for all databases with a global read lock, and it prevents ALL updates while we have this lock.
         // It also ensures that everything we do while we have this lock will be consistent.
-        if (connectorConfig.getSnapshotLockingMode() != MySqlConnectorConfig.SnapshotLockingMode.NONE) {
+        if (connectorConfig.getSnapshotLockingMode().usesLocking() && connectorConfig.useGlobalLock()) {
             try {
                 globalLock();
                 metrics.globalLockAcquired();
@@ -193,15 +197,76 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
 
     @Override
     protected void releaseSchemaSnapshotLocks(RelationalSnapshotContext snapshotContext) throws SQLException {
-        if (connectorConfig.getSnapshotLockingMode() == SnapshotLockingMode.MINIMAL) {
+        if (connectorConfig.getSnapshotLockingMode().usesMinimalLocking()) {
             if (isGloballyLocked()) {
                 globalUnlock();
+            }
+            if (isTablesLocked()) {
+                // We could not acquire a global read lock and instead had to obtain individual table-level read locks
+                // using 'FLUSH TABLE <tableName> WITH READ LOCK'. However, if we were to do this, the 'UNLOCK TABLES'
+                // would implicitly commit our active transaction, and this would break our consistent snapshot logic.
+                // Therefore, we cannot unlock the tables here!
+                // https://dev.mysql.com/doc/refman/5.7/en/flush.html
+                LOGGER.info("Tables were locked explicitly, but to get a consistent snapshot we cannot release the locks until we've read all tables.");
+            }
+        }
+    }
+
+    @Override
+    protected void releaseDataSnapshotLocks(RelationalSnapshotContext snapshotContext) throws Exception {
+        if (isGloballyLocked()) {
+            globalUnlock();
+        }
+        if (isTablesLocked()) {
+            tableUnlock();
+            if (!delayedSchemaSnapshotTables.isEmpty()) {
+                schemaEvents.clear();
+                createSchemaEventsForTables(snapshotContext, delayedSchemaSnapshotTables, false);
+
+                for (Iterator<SchemaChangeEvent> i = schemaEvents.iterator(); i.hasNext();) {
+                    final SchemaChangeEvent event = i.next();
+
+                    if (databaseSchema.storeOnlyMonitoredTables() && event.getDatabase() != null && event.getDatabase().length() != 0
+                            && !connectorConfig.getTableFilters().databaseFilter().test(event.getDatabase())) {
+                        LOGGER.debug("Skipping schema event as it belongs to a non-captured database: '{}'", event);
+                        continue;
+                    }
+
+                    LOGGER.debug("Processing schema event {}", event);
+
+                    final TableId tableId = event.getTables().isEmpty() ? null : event.getTables().iterator().next().id();
+                    snapshotContext.offset.event(tableId, getClock().currentTime());
+
+                    if (!i.hasNext()) {
+                        super.lastSnapshotRecord(snapshotContext);
+                    }
+
+                    try {
+                        dispatcher.dispatchSchemaChangeEvent(tableId, (receiver) -> {
+                            try {
+                                receiver.schemaChangeEvent(event);
+                            }
+                            catch (InterruptedException e) {
+                                Thread.currentThread().interrupt();
+                            }
+                        });
+                    }
+                    catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
+                }
+
+                // Make schema available for snapshot source
+                databaseSchema.tableIds().forEach(x -> snapshotContext.tables.overwriteTable(databaseSchema.tableFor(x)));
             }
         }
     }
 
     @Override
     protected void determineSnapshotOffset(RelationalSnapshotContext ctx) throws Exception {
+        if (!isGloballyLocked() && !isTablesLocked() && connectorConfig.getSnapshotLockingMode().usesLocking()) {
+            return;
+        }
         if (previousOffset != null) {
             ctx.offset = previousOffset;
             tryStartingSnapshot(ctx);
@@ -243,6 +308,23 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
     @Override
     protected void readTableStructure(ChangeEventSourceContext sourceContext, RelationalSnapshotContext snapshotContext) throws SQLException, InterruptedException {
         Set<TableId> capturedSchemaTables;
+        if (twoPhaseSchemaSnapshot()) {
+            // Capture schema of captured tables after they are locked
+            tableLock(snapshotContext);
+            try {
+                determineSnapshotOffset(snapshotContext);
+            }
+            catch (InterruptedException e) {
+                throw e;
+            }
+            catch (Exception e) {
+                throw new DebeziumException(e);
+            }
+            capturedSchemaTables = snapshotContext.capturedTables;
+            LOGGER.info("Table level locking is in place, the schema will be capture in two phases, now capturing: {}", capturedSchemaTables);
+            delayedSchemaSnapshotTables = Collect.minus(snapshotContext.capturedSchemaTables, snapshotContext.capturedTables);
+            LOGGER.info("Tables for delayed schema capture: {}", delayedSchemaSnapshotTables);
+        }
         if (databaseSchema.storeOnlyMonitoredTables()) {
             capturedSchemaTables = snapshotContext.capturedTables;
             LOGGER.info("Only monitored tables schema should be captured, capturing: {}", capturedSchemaTables);
@@ -281,14 +363,25 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
             addSchemaEvent(snapshotContext, database, createDatabaseDddl.toString());
             addSchemaEvent(snapshotContext, database, "USE " + quote(database));
 
-            for (TableId tableId : tablesToRead.get(database)) {
-                connection.query("SHOW CREATE TABLE " + quote(tableId), rs -> {
-                    if (rs.next()) {
-                        addSchemaEvent(snapshotContext, database, rs.getString(2));
-                    }
-                });
-            }
+            createSchemaEventsForTables(snapshotContext, tablesToRead.get(database), true);
         }
+    }
+
+    void createSchemaEventsForTables(RelationalSnapshotContext snapshotContext, final Collection<TableId> tablesToRead, final boolean firstPhase) throws SQLException {
+        for (TableId tableId : tablesToRead) {
+            if (firstPhase && delayedSchemaSnapshotTables.contains(tableId)) {
+                continue;
+            }
+            connection.query("SHOW CREATE TABLE " + quote(tableId), rs -> {
+                if (rs.next()) {
+                    addSchemaEvent(snapshotContext, tableId.catalog(), rs.getString(2));
+                }
+            });
+        }
+    }
+
+    private boolean twoPhaseSchemaSnapshot() {
+        return connectorConfig.getSnapshotLockingMode().usesLocking() && !isGloballyLocked();
     }
 
     @Override
@@ -418,6 +511,16 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
         return globalLockAcquiredAt != -1;
     }
 
+    private boolean isTablesLocked() {
+        return tableLockAcquiredAt != -1;
+    }
+
+    private void globalLock() throws SQLException {
+        LOGGER.info("Flush and obtain global read lock to prevent writes to database");
+        connection.executeWithoutCommitting(connectorConfig.getSnapshotLockingMode().getLockStatement());
+        globalLockAcquiredAt = clock.currentTimeInMillis();
+    }
+
     private void globalUnlock() throws SQLException {
         LOGGER.info("Releasing global read lock to enable MySQL writes");
         connection.executeWithoutCommitting("UNLOCK TABLES");
@@ -427,10 +530,37 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
         globalLockAcquiredAt = -1;
     }
 
-    private void globalLock() throws SQLException {
-        LOGGER.info("Flush and obtain global read lock to prevent writes to database");
-        connection.executeWithoutCommitting("FLUSH TABLES WITH READ LOCK");
-        globalLockAcquiredAt = clock.currentTimeInMillis();
+    private void tableLock(RelationalSnapshotContext snapshotContext) throws SQLException {
+        // ------------------------------------
+        // LOCK TABLES and READ BINLOG POSITION
+        // ------------------------------------
+        // We were not able to acquire the global read lock, so instead we have to obtain a read lock on each table.
+        // This requires different privileges than normal, and also means we can't unlock the tables without
+        // implicitly committing our transaction ...
+        if (!connection.userHasPrivileges("LOCK TABLES")) {
+            // We don't have the right privileges
+            throw new DebeziumException("User does not have the 'LOCK TABLES' privilege required to obtain a "
+                    + "consistent snapshot by preventing concurrent writes to tables.");
+        }
+        // We have the required privileges, so try to lock all of the tables we're interested in ...
+        LOGGER.info("Flush and obtain read lock for {} tables (preventing writes)", snapshotContext.capturedTables);
+        if (!snapshotContext.capturedTables.isEmpty()) {
+            final String tableList = snapshotContext.capturedTables.stream()
+                    .map(tid -> quote(tid))
+                    .collect(Collectors.joining(","));
+            connection.executeWithoutCommitting("FLUSH TABLES " + tableList + " WITH READ LOCK");
+        }
+        tableLockAcquiredAt = clock.currentTimeInMillis();
+        metrics.globalLockAcquired();
+    }
+
+    private void tableUnlock() throws SQLException {
+        LOGGER.info("Releasing table read lock to enable MySQL writes");
+        connection.executeWithoutCommitting("UNLOCK TABLES");
+        long lockReleased = clock.currentTimeInMillis();
+        metrics.globalLockReleased();
+        LOGGER.info("Writes to MySQL tables prevented for a total of {}", Strings.duration(lockReleased - tableLockAcquiredAt));
+        tableLockAcquiredAt = -1;
     }
 
     private String quote(String dbOrTableName) {
@@ -499,7 +629,7 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
         for (Iterator<SchemaChangeEvent> i = schemaEvents.iterator(); i.hasNext();) {
             final SchemaChangeEvent event = i.next();
             if (!sourceContext.isRunning()) {
-                throw new InterruptedException("Interrupted while processing raw event " + event);
+                throw new InterruptedException("Interrupted while processing event " + event);
             }
 
             if (databaseSchema.storeOnlyMonitoredTables() && event.getDatabase() != null && event.getDatabase().length() != 0
@@ -515,7 +645,7 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
 
             // If data are not snapshotted then the last schema change must set last snapshot flag
             if (!snapshottingTask.snapshotData() && !i.hasNext()) {
-                snapshotContext.offset.markLastSnapshotRecord();
+                lastSnapshotRecord(snapshotContext);
             }
             try {
                 dispatcher.dispatchSchemaChangeEvent(tableId, (receiver) -> {
@@ -535,4 +665,12 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
         // Make schema available for snapshot source
         databaseSchema.tableIds().forEach(x -> snapshotContext.tables.overwriteTable(databaseSchema.tableFor(x)));
     }
+
+    @Override
+    protected void lastSnapshotRecord(RelationalSnapshotContext snapshotContext) {
+        if (delayedSchemaSnapshotTables.isEmpty()) {
+            super.lastSnapshotRecord(snapshotContext);
+        }
+    }
+
 }

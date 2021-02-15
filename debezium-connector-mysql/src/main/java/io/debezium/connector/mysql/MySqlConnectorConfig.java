@@ -49,6 +49,13 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
     private static final Logger LOGGER = LoggerFactory.getLogger(MySqlConnectorConfig.class);
 
     /**
+     * It is not possible to test disabled global locking locally as regular MySQL build always
+     * provides global locking. So to bypass this limitation it is necessary to provide a backdoor
+     * to connector to disable it on its own.
+     */
+    static final String TEST_DISABLE_GLOBAL_LOCKING = "test.disable.global.locking";
+
+    /**
      * The set of predefined BigIntUnsignedHandlingMode options or aliases.
      */
     public static enum BigIntUnsignedHandlingMode implements EnumeratedValue {
@@ -368,6 +375,10 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
 
         public boolean usesMinimalLocking() {
             return value.equals(MINIMAL.value) || value.equals(MINIMAL_PERCONA.value);
+        }
+
+        public boolean usesLocking() {
+            return !value.equals(NONE.value);
         }
 
         /**
@@ -1413,6 +1424,13 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
 
     boolean legacy() {
         return legacy;
+    }
+
+    /**
+     * Intended for testing only
+     */
+    boolean useGlobalLock() {
+        return !"true".equals(TEST_DISABLE_GLOBAL_LOCKING);
     }
 
     @SuppressWarnings("unchecked")

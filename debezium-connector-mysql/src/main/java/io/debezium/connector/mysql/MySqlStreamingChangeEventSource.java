@@ -79,7 +79,6 @@ import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.relational.TableId;
 import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.util.Clock;
-import io.debezium.util.ElapsedTimeStrategy;
 import io.debezium.util.Metronome;
 import io.debezium.util.Strings;
 import io.debezium.util.Threads;
@@ -92,22 +91,16 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MySqlStreamingChangeEventSource.class);
 
-    private static final long INITIAL_POLL_PERIOD_IN_MILLIS = TimeUnit.SECONDS.toMillis(5);
-    private static final long MAX_POLL_PERIOD_IN_MILLIS = TimeUnit.HOURS.toMillis(1);
     private static final String KEEPALIVE_THREAD_NAME = "blc-keepalive";
 
-    private final boolean recordSchemaChangesInSourceRecords;
     private final EnumMap<EventType, BlockingConsumer<Event>> eventHandlers = new EnumMap<>(EventType.class);
     private final BinaryLogClient client;
     private final MySqlStreamingChangeEventSourceMetrics metrics;
     private final Clock clock;
-    private final ElapsedTimeStrategy pollOutputDelay;
     private final EventProcessingFailureHandlingMode eventDeserializationFailureHandlingMode;
     private final EventProcessingFailureHandlingMode inconsistentSchemaHandlingMode;
 
     private int startingRowNumber = 0;
-    private long recordCounter = 0L;
-    private long previousOutputMillis = 0L;
     private long initialEventsToSkip = 0L;
     private boolean skipEvent = false;
     private boolean ignoreDmlEventByGtidSource = false;
@@ -199,12 +192,8 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
         this.offsetContext = (offsetContext == null) ? MySqlOffsetContext.initial(connectorConfig) : offsetContext;
         this.metrics = metrics;
 
-        recordSchemaChangesInSourceRecords = connectorConfig.includeSchemaChangeRecords();
         eventDeserializationFailureHandlingMode = connectorConfig.getEventProcessingFailureHandlingMode();
         inconsistentSchemaHandlingMode = connectorConfig.inconsistentSchemaFailureHandlingMode();
-
-        // Use exponential delay to log the progress frequently at first, but the quickly tapering off to once an hour...
-        pollOutputDelay = ElapsedTimeStrategy.exponential(clock, INITIAL_POLL_PERIOD_IN_MILLIS, MAX_POLL_PERIOD_IN_MILLIS);
 
         // Set up the log reader ...
         client = taskContext.getBinaryLogClient();
@@ -887,10 +876,6 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
 
         // Only when we reach the first BEGIN event will we start to skip events ...
         skipEvent = false;
-
-        // Initial our poll output delay logic ...
-        pollOutputDelay.hasElapsed();
-        previousOutputMillis = clock.currentTimeInMillis();
 
         try {
             // Start the log reader, which starts background threads ...
