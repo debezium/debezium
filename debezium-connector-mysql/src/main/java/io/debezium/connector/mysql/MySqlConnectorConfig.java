@@ -1431,7 +1431,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
      * Intended for testing only
      */
     boolean useGlobalLock() {
-        return !"true".equals(TEST_DISABLE_GLOBAL_LOCKING);
+        return !"true".equals(config.getString(TEST_DISABLE_GLOBAL_LOCKING));
     }
 
     @SuppressWarnings("unchecked")

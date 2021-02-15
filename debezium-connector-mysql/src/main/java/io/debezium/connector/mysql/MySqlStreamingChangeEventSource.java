@@ -719,11 +719,11 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
                 }
                 if (LOGGER.isDebugEnabled()) {
                     if (startingRowNumber != 0) {
-                        LOGGER.debug("Emited {} {} record(s) for last {} row(s) in event: {}",
+                        LOGGER.debug("Emitted {} {} record(s) for last {} row(s) in event: {}",
                                 count, changeType, numRows - startingRowNumber, event);
                     }
                     else {
-                        LOGGER.debug("Emited {} {} record(s) for event: {}", count, changeType, event);
+                        LOGGER.debug("Emitted {} {} record(s) for event: {}", count, changeType, event);
                     }
                 }
                 offsetContext.changeEventCompleted();
