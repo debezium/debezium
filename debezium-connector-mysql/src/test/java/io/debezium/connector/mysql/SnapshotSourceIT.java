@@ -35,6 +35,7 @@ import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Configuration.Builder;
+import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
 import io.debezium.data.KeyValueStore;
 import io.debezium.data.KeyValueStore.Collection;
 import io.debezium.data.SchemaChangeHistory;
@@ -96,20 +97,35 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
 
     @Test
     public void shouldCreateSnapshotOfSingleDatabase() throws Exception {
-        snapshotOfSingleDatabase(true, false);
+        snapshotOfSingleDatabase(true, false, true);
     }
 
     @Test
     public void shouldCreateSnapshotOfSingleDatabaseWithoutGlobalLock() throws Exception {
-        snapshotOfSingleDatabase(false, false);
+        snapshotOfSingleDatabase(false, false, true);
     }
 
     @Test
     public void shouldCreateSnapshotOfSingleDatabaseWithoutGlobalLockAndStoreOnlyMonitoredTables() throws Exception {
-        snapshotOfSingleDatabase(false, true);
+        snapshotOfSingleDatabase(false, true, true);
     }
 
-    private void snapshotOfSingleDatabase(boolean useGlobalLock, boolean storeOnlyMonitoredTables) throws Exception {
+    @Test
+    public void shouldCreateSnapshotOfSingleDatabaseNoData() throws Exception {
+        snapshotOfSingleDatabase(true, false, false);
+    }
+
+    @Test
+    public void shouldCreateSnapshotOfSingleDatabaseWithoutGlobalLockNoData() throws Exception {
+        snapshotOfSingleDatabase(false, false, false);
+    }
+
+    @Test
+    public void shouldCreateSnapshotOfSingleDatabaseWithoutGlobalLockAndStoreOnlyMonitoredTablesNoData() throws Exception {
+        snapshotOfSingleDatabase(false, true, false);
+    }
+
+    private void snapshotOfSingleDatabase(boolean useGlobalLock, boolean storeOnlyMonitoredTables, boolean data) throws Exception {
         final LogInterceptor logInterceptor = new LogInterceptor();
 
         final Builder builder = simpleConfig()
@@ -122,6 +138,9 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
                     .with(MySqlConnectorConfig.TEST_DISABLE_GLOBAL_LOCKING, "true")
                     .with(DatabaseHistory.STORE_ONLY_MONITORED_TABLES_DDL, storeOnlyMonitoredTables);
         }
+        if (!data) {
+            builder.with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY);
+        }
         config = builder.build();
 
         // Start the connector ...
@@ -133,7 +152,7 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
         KeyValueStore store = KeyValueStore.createForTopicsBeginningWith(DATABASE.getServerName() + ".");
         SchemaChangeHistory schemaChanges = new SchemaChangeHistory(DATABASE.getServerName());
         final int schemaEventsCount = !useGlobalLock ? (storeOnlyMonitoredTables ? 8 : 14) : 0;
-        SourceRecords sourceRecords = consumeRecordsByTopic(schemaEventsCount + 9 + 4);
+        SourceRecords sourceRecords = consumeRecordsByTopic(schemaEventsCount + (data ? 9 + 4 : 0));
         for (Iterator<SourceRecord> i = sourceRecords.allRecordsInOrder().iterator(); i.hasNext();) {
             final SourceRecord record = i.next();
             VerifyRecord.isValid(record);
@@ -160,6 +179,10 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
         }
 
         assertThat(schemaChanges.recordCount()).isEqualTo(schemaEventsCount);
+
+        if (!data) {
+            return;
+        }
 
         // Check the records via the store ...
         assertThat(store.collectionCount()).isEqualTo(2);
@@ -601,15 +624,26 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
         // 14 schema changes
         SourceRecords sourceRecords = consumeRecordsByTopic(14 + 1);
         final List<SourceRecord> allRecords = sourceRecords.allRecordsInOrder();
-        allRecords.forEach(record -> {
-            if (!record.topic().startsWith("__debezium-heartbeat")) {
-                assertThat(record.sourceOffset().get("snapshot")).isEqualTo(true);
-                VerifyRecord.isValid(record);
-                VerifyRecord.hasNoSourceQuery(record);
-                store.add(record);
-                schemaChanges.add(record);
+        for (Iterator<SourceRecord> i = allRecords.subList(0, allRecords.size() - 1).iterator(); i.hasNext();) {
+            final SourceRecord record = i.next();
+            VerifyRecord.isValid(record);
+            VerifyRecord.hasNoSourceQuery(record);
+            store.add(record);
+            schemaChanges.add(record);
+            if (record.topic().startsWith("__debezium-heartbeat")) {
+                continue;
             }
-        });
+            final String snapshotSourceField = ((Struct) record.value()).getStruct("source").getString("snapshot");
+            if (i.hasNext()) {
+                final Object snapshotOffsetField = record.sourceOffset().get("snapshot");
+                assertThat(snapshotOffsetField).isEqualTo(true);
+                assertThat(snapshotSourceField).isEqualTo("true");
+            }
+            else {
+                assertThat(record.sourceOffset().get("snapshot")).isNull();
+                assertThat(snapshotSourceField).isEqualTo("last");
+            }
+        }
 
         SourceRecord heartbeatRecord = allRecords.get(allRecords.size() - 1);
 
@@ -622,7 +656,7 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
         // Check that heartbeat has arrived
         assertThat(heartbeatRecord.topic()).startsWith("__debezium-heartbeat");
         assertThat(heartbeatRecord).isNotNull();
-        assertThat(heartbeatRecord.sourceOffset().get("snapshot")).isNotEqualTo(true);
+        assertThat(heartbeatRecord.sourceOffset().get("snapshot")).isNull();
     }
 
     private long toMicroSeconds(String duration) {

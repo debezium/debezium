@@ -5,6 +5,12 @@
  */
 package io.debezium.connector.mysql;
 
+import java.util.function.Function;
+
+import org.apache.kafka.connect.source.SourceRecord;
+
+import io.debezium.connector.base.ChangeEventQueue;
+import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.ChangeEventSourceFactory;
@@ -24,10 +30,12 @@ public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory {
     private final Clock clock;
     private final MySqlTaskContext taskContext;
     private final MySqlStreamingChangeEventSourceMetrics streamingMetrics;
+    private final ChangeEventQueue<DataChangeEvent> queue;
 
     public MySqlChangeEventSourceFactory(MySqlConnectorConfig configuration, MySqlConnection connection,
                                          ErrorHandler errorHandler, EventDispatcher<TableId> dispatcher, Clock clock, MySqlDatabaseSchema schema,
-                                         MySqlTaskContext taskContext, MySqlStreamingChangeEventSourceMetrics streamingMetrics) {
+                                         MySqlTaskContext taskContext, MySqlStreamingChangeEventSourceMetrics streamingMetrics,
+                                         ChangeEventQueue<DataChangeEvent> queue) {
         this.configuration = configuration;
         this.connection = connection;
         this.errorHandler = errorHandler;
@@ -35,16 +43,23 @@ public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory {
         this.clock = clock;
         this.taskContext = taskContext;
         this.streamingMetrics = streamingMetrics;
+        this.queue = queue;
     }
 
     @Override
     public SnapshotChangeEventSource getSnapshotChangeEventSource(OffsetContext offsetContext, SnapshotProgressListener snapshotProgressListener) {
         return new MySqlSnapshotChangeEventSource(configuration, (MySqlOffsetContext) offsetContext, connection, taskContext.getSchema(), dispatcher, clock,
-                (MySqlSnapshotChangeEventSourceMetrics) snapshotProgressListener);
+                (MySqlSnapshotChangeEventSourceMetrics) snapshotProgressListener, record -> modifyAndFlushLastRecord(record));
+    }
+
+    private void modifyAndFlushLastRecord(Function<SourceRecord, SourceRecord> modify) throws InterruptedException {
+        queue.flushBuffer(dataChange -> new DataChangeEvent(modify.apply(dataChange.getRecord())));
+        queue.disableBuffering();
     }
 
     @Override
     public StreamingChangeEventSource getStreamingChangeEventSource(OffsetContext offsetContext) {
+        queue.disableBuffering();
         return new MySqlStreamingChangeEventSource(
                 configuration,
                 (MySqlOffsetContext) offsetContext,

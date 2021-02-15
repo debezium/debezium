@@ -144,6 +144,7 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
                 ctx.offset.postSnapshotCompletion();
             }
 
+            postSnapshot();
             dispatcher.alwaysDispatchHeartbeatEvent(ctx.offset);
             return SnapshotResult.completed(ctx.offset);
         }
@@ -508,5 +509,8 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
 
     protected Clock getClock() {
         return clock;
+    }
+
+    protected void postSnapshot() throws InterruptedException {
     }
 }
