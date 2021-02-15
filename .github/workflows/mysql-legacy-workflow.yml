@@ -45,4 +45,4 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-
       - name: Check changes in Debezium Connector MYSQL
-        run: 'mvn clean install -B -pl debezium-connector-mysql -am -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dtest.argline="-Dinternal.implementation=legacy"'
+        run: 'mvn clean install -B -pl debezium-connector-mysql -am -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dtest.argline="-Dinternal.implementation=legacy -Dtest.streaming.metrics.namespace=binlog"'
