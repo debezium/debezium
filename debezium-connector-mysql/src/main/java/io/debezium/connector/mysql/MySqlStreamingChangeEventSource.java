@@ -28,7 +28,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.Function;
 import java.util.function.Predicate;
 
 import javax.net.ssl.KeyManager;
@@ -691,8 +690,8 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
                 (tableId, row) -> eventDispatcher.dispatchDataChangeEvent(tableId, new MySqlChangeRecordEmitter(offsetContext, clock, Operation.DELETE, row, null)));
     }
 
-    private <T extends EventData, U> void handleChange(Event event, String changeType, Class<T> eventDataClass, Function<T, TableId> tableIdProvider,
-                                                       Function<T, List<U>> rowsProvider, BinlogChangeEmitter<U> changeEmitter)
+    private <T extends EventData, U> void handleChange(Event event, String changeType, Class<T> eventDataClass, TableIdProvider<T> tableIdProvider,
+                                                       RowsProvider<T, U> rowsProvider, BinlogChangeEmitter<U> changeEmitter)
             throws InterruptedException {
         if (skipEvent) {
             // We can skip this because we should already be at least this far ...
@@ -704,8 +703,8 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
             return;
         }
         final T data = unwrapData(event);
-        final TableId tableId = tableIdProvider.apply(data);
-        final List<U> rows = rowsProvider.apply(data);
+        final TableId tableId = tableIdProvider.getTableId(data);
+        final List<U> rows = rowsProvider.getRows(data);
 
         if (tableId != null && taskContext.getSchema().schemaFor(tableId) != null) {
             int count = 0;
@@ -1186,4 +1185,13 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
         }
     }
 
+    @FunctionalInterface
+    private interface TableIdProvider<E extends EventData> {
+        TableId getTableId(E data);
+    }
+
+    @FunctionalInterface
+    private interface RowsProvider<E extends EventData, U> {
+        List<U> getRows(E data);
+    }
 }
