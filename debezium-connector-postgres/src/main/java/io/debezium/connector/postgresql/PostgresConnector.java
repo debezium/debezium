@@ -134,4 +134,9 @@ public class PostgresConnector extends RelationalBaseSourceConnector {
             }
         }
     }
+
+    @Override
+    protected Map<String, ConfigValue> validateAllFields(Configuration config) {
+        return config.validate(PostgresConnectorConfig.ALL_FIELDS);
+    }
 }

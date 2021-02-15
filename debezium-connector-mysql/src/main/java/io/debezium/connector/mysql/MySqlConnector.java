@@ -116,4 +116,9 @@ public class MySqlConnector extends RelationalBaseSourceConnector {
     @Override
     protected void validateConnection(Map<String, ConfigValue> configValues, Configuration config) {
     }
+
+    @Override
+    protected Map<String, ConfigValue> validateAllFields(Configuration config) {
+        return config.validate(MySqlConnectorConfig.ALL_FIELDS);
+    }
 }
