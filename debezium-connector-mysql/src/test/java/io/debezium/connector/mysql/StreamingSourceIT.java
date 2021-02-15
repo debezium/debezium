@@ -124,7 +124,7 @@ public class StreamingSourceIT extends AbstractConnectorTest {
     private long getNumberOfEventsFiltered() {
         final MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
         try {
-            return (long) mbeanServer.getAttribute(getStreamingMetricsObjectName("mysql", DATABASE.getServerName()),
+            return (long) mbeanServer.getAttribute(getStreamingMetricsObjectName("mysql", DATABASE.getServerName(), "streaming"),
                     "NumberOfEventsFiltered");
         }
         catch (Exception e) {
@@ -135,7 +135,7 @@ public class StreamingSourceIT extends AbstractConnectorTest {
     private long getNumberOfSkippedEvents() {
         final MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
         try {
-            return (long) mbeanServer.getAttribute(getStreamingMetricsObjectName("mysql", DATABASE.getServerName()),
+            return (long) mbeanServer.getAttribute(getStreamingMetricsObjectName("mysql", DATABASE.getServerName(), "streaming"),
                     "NumberOfSkippedEvents");
         }
         catch (Exception e) {
@@ -149,7 +149,8 @@ public class StreamingSourceIT extends AbstractConnectorTest {
                 .with(MySqlConnectorConfig.PASSWORD, "replpass")
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
                 .with(MySqlConnectorConfig.INCLUDE_SQL_QUERY, false)
-                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NEVER);
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NEVER)
+                .with(MySqlConnector.IMPLEMENTATION_PROP, "new");
     }
 
     @Test
@@ -299,7 +300,7 @@ public class StreamingSourceIT extends AbstractConnectorTest {
 
         // Start the connector ...
         start(MySqlConnector.class, config);
-        waitForStreamingRunning("mysql", DATABASE.getServerName());
+        waitForStreamingRunning("mysql", DATABASE.getServerName(), "streaming");
 
         // Lets wait for at least 35 events to be filtered.
         final int expectedFilterCount = 35;
@@ -333,7 +334,7 @@ public class StreamingSourceIT extends AbstractConnectorTest {
 
         // Start the connector ...
         start(MySqlConnector.class, config);
-        waitForStreamingRunning("mysql", DATABASE.getServerName());
+        waitForStreamingRunning("mysql", DATABASE.getServerName(), "streaming");
 
         // Lets wait for at least 35 events to be filtered.
         final int expectedFilterCount = 35;
@@ -518,7 +519,7 @@ public class StreamingSourceIT extends AbstractConnectorTest {
         AtomicReference<Throwable> exception = new AtomicReference<>();
         start(MySqlConnector.class, config, (success, message, error) -> exception.set(error));
 
-        waitForStreamingRunning("mysql", DATABASE.getServerName());
+        waitForStreamingRunning("mysql", DATABASE.getServerName(), "streaming");
         assertThat(exception.get()).isNull();
     }
 
@@ -560,7 +561,7 @@ public class StreamingSourceIT extends AbstractConnectorTest {
             statement.executeUpdate("INSERT INTO customers VALUES (default,'John','Lazy','john.lazy@acme.com')");
         }
 
-        waitForStreamingRunning("mysql", DATABASE.getServerName());
+        waitForStreamingRunning("mysql", DATABASE.getServerName(), "streaming");
         stopConnector();
         final Throwable e = exception.get();
         if (e != null) {

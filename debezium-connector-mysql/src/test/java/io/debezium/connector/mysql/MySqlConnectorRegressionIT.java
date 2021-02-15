@@ -88,7 +88,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 .build();
         // Start the connector ...
         start(MySqlConnector.class, config);
-        waitForStreamingRunning("mysql", DATABASE.getServerName(), "streaming");
+        waitForStreamingRunning("mysql", DATABASE.getServerName(), getStreamingNamespace());
 
         // ---------------------------------------------------------------------------------------------------------------
         // Consume all of the events due to startup and initialization of the database
@@ -934,7 +934,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 .build();
         // Start the connector ...
         start(MySqlConnector.class, config);
-        waitForStreamingRunning("mysql", DATABASE.getServerName(), "streaming");
+        waitForStreamingRunning("mysql", DATABASE.getServerName(), getStreamingNamespace());
 
         // ---------------------------------------------------------------------------------------------------------------
         // Consume all of the events due to startup and initialization of the database

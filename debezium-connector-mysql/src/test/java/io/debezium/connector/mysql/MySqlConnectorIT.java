@@ -2226,7 +2226,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
     }
 
     private void waitForStreamingRunning(String serverName) throws InterruptedException {
-        waitForStreamingRunning("mysql", serverName, "streaming");
+        waitForStreamingRunning("mysql", serverName, getStreamingNamespace());
     }
 
     private List<SourceRecord> recordsForTopicForRoProductsTable(SourceRecords records) {
