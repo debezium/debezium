@@ -24,13 +24,19 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
+import io.debezium.connector.SnapshotRecord;
 import io.debezium.connector.mysql.legacy.MySqlJdbcContext.DatabaseLocales;
+import io.debezium.data.Envelope;
+import io.debezium.function.BlockingConsumer;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.relational.Column;
@@ -58,10 +64,12 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
     private final MySqlDatabaseSchema databaseSchema;
     private final List<SchemaChangeEvent> schemaEvents = new ArrayList<>();
     private Set<TableId> delayedSchemaSnapshotTables = Collections.emptySet();
+    private final BlockingConsumer<Function<SourceRecord, SourceRecord>> lastEventProcessor;
 
     public MySqlSnapshotChangeEventSource(MySqlConnectorConfig connectorConfig, MySqlOffsetContext previousOffset, MySqlConnection connection,
                                           MySqlDatabaseSchema schema, EventDispatcher<TableId> dispatcher, Clock clock,
-                                          MySqlSnapshotChangeEventSourceMetrics metrics) {
+                                          MySqlSnapshotChangeEventSourceMetrics metrics,
+                                          BlockingConsumer<Function<SourceRecord, SourceRecord>> lastEventProcessor) {
         super(connectorConfig, previousOffset, connection, schema, dispatcher, clock, metrics);
         this.connectorConfig = connectorConfig;
         this.connection = connection;
@@ -69,6 +77,7 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
         this.metrics = metrics;
         this.previousOffset = previousOffset;
         this.databaseSchema = schema;
+        this.lastEventProcessor = lastEventProcessor;
     }
 
     @Override
@@ -673,4 +682,17 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
         }
     }
 
+    @Override
+    protected void postSnapshot() throws InterruptedException {
+        // We cannot be sure that the last event as the last one
+        // - last table could be empty
+        // - data snapshot was not executed
+        // - the last table schema snaphsotted is not monitored and storing of monitored is disabled
+        lastEventProcessor.accept(record -> {
+            record.sourceOffset().remove(SourceInfo.SNAPSHOT_KEY);
+            ((Struct) record.value()).getStruct(Envelope.FieldName.SOURCE).put(SourceInfo.SNAPSHOT_KEY, SnapshotRecord.LAST.toString().toLowerCase());
+            return record;
+        });
+        super.postSnapshot();
+    }
 }

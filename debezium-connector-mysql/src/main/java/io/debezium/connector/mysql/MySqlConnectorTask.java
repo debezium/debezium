@@ -104,6 +104,7 @@ public class MySqlConnectorTask extends BaseSourceTask {
                 .maxQueueSize(connectorConfig.getMaxQueueSize())
                 .maxQueueSizeInBytes(connectorConfig.getMaxQueueSizeInBytes())
                 .loggingContextSupplier(() -> taskContext.configureLoggingContext(CONTEXT_NAME))
+                .buffering()
                 .build();
 
         errorHandler = new MySqlErrorHandler(connectorConfig.getLogicalName(), queue);
@@ -127,7 +128,7 @@ public class MySqlConnectorTask extends BaseSourceTask {
                 errorHandler,
                 MySqlConnector.class,
                 connectorConfig,
-                new MySqlChangeEventSourceFactory(connectorConfig, connection, errorHandler, dispatcher, clock, schema, taskContext, streamingMetrics),
+                new MySqlChangeEventSourceFactory(connectorConfig, connection, errorHandler, dispatcher, clock, schema, taskContext, streamingMetrics, queue),
                 new MySqlChangeEventSourceMetricsFactory(streamingMetrics),
                 dispatcher,
                 schema);

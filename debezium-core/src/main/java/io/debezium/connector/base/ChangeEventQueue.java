@@ -13,6 +13,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 import org.apache.kafka.connect.source.SourceRecord;
@@ -67,11 +68,13 @@ public class ChangeEventQueue<T> implements ChangeEventQueueMetrics {
     private final Supplier<PreviousContext> loggingContextSupplier;
     private AtomicLong currentQueueSizeInBytes = new AtomicLong(0);
     private Map<T, Long> objectMap = new ConcurrentHashMap<>();
+    private boolean buffering;
+    private T bufferedEvent;
 
     private volatile RuntimeException producerException;
 
     private ChangeEventQueue(Duration pollInterval, int maxQueueSize, int maxBatchSize, Supplier<LoggingContext.PreviousContext> loggingContextSupplier,
-                             long maxQueueSizeInBytes) {
+                             long maxQueueSizeInBytes, boolean buffering) {
         this.pollInterval = pollInterval;
         this.maxBatchSize = maxBatchSize;
         this.maxQueueSize = maxQueueSize;
@@ -79,6 +82,7 @@ public class ChangeEventQueue<T> implements ChangeEventQueueMetrics {
         this.metronome = Metronome.sleeper(pollInterval, Clock.SYSTEM);
         this.loggingContextSupplier = loggingContextSupplier;
         this.maxQueueSizeInBytes = maxQueueSizeInBytes;
+        this.buffering = buffering;
     }
 
     public static class Builder<T> {
@@ -88,6 +92,7 @@ public class ChangeEventQueue<T> implements ChangeEventQueueMetrics {
         private int maxBatchSize;
         private Supplier<LoggingContext.PreviousContext> loggingContextSupplier;
         private long maxQueueSizeInBytes;
+        private boolean buffering;
 
         public Builder<T> pollInterval(Duration pollInterval) {
             this.pollInterval = pollInterval;
@@ -114,8 +119,13 @@ public class ChangeEventQueue<T> implements ChangeEventQueueMetrics {
             return this;
         }
 
+        public Builder<T> buffering() {
+            this.buffering = true;
+            return this;
+        }
+
         public ChangeEventQueue<T> build() {
-            return new ChangeEventQueue<T>(pollInterval, maxQueueSize, maxBatchSize, loggingContextSupplier, maxQueueSizeInBytes);
+            return new ChangeEventQueue<T>(pollInterval, maxQueueSize, maxBatchSize, loggingContextSupplier, maxQueueSizeInBytes, buffering);
         }
     }
 
@@ -138,6 +148,42 @@ public class ChangeEventQueue<T> implements ChangeEventQueueMetrics {
             throw new InterruptedException();
         }
 
+        if (buffering) {
+            final T newEvent = record;
+            record = bufferedEvent;
+            bufferedEvent = newEvent;
+            if (record == null) {
+                // Can happen only for the first coming event
+                return;
+            }
+        }
+
+        doEnqueue(record);
+    }
+
+    /**
+     * Applies a function to the event and the buffer and adds it to the queue. Buffer is emptied.
+     * 
+     * @param recordModifier
+     * @throws InterruptedException
+     */
+    public void flushBuffer(Function<T, T> recordModifier) throws InterruptedException {
+        assert buffering : "Unsuported for queues with disabled buffering";
+        if (bufferedEvent != null) {
+            doEnqueue(recordModifier.apply(bufferedEvent));
+            bufferedEvent = null;
+        }
+    }
+
+    /**
+     * Disable buffering for the queue
+     */
+    public void disableBuffering() {
+        assert bufferedEvent == null : "Buffer must be flushed";
+        buffering = false;
+    }
+
+    protected void doEnqueue(T record) throws InterruptedException {
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("Enqueuing source record '{}'", record);
         }
