@@ -774,7 +774,8 @@ a|_n/a_
 
 |`JSON`
 |`STRING`
-a|_n/a_
+a|`io.debezium.data.Json` +
+Contains the string representation of a `JSON` document, array, or scalar.
 
 |`ENUM`
 |Unsupported yet
