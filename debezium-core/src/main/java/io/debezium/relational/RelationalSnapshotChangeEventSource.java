@@ -285,7 +285,7 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
      */
     protected abstract SchemaChangeEvent getCreateTableEvent(RelationalSnapshotContext snapshotContext, Table table) throws Exception;
 
-    private void createDataEvents(ChangeEventSourceContext sourceContext, RelationalSnapshotContext snapshotContext) throws InterruptedException {
+    private void createDataEvents(ChangeEventSourceContext sourceContext, RelationalSnapshotContext snapshotContext) throws Exception {
         SnapshotReceiver snapshotReceiver = dispatcher.getSnapshotChangeEventReceiver();
         tryStartingSnapshot(snapshotContext);
 
@@ -305,16 +305,7 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
             createDataEventsForTable(sourceContext, snapshotContext, snapshotReceiver, snapshotContext.tables.forTable(tableId), tableOrder++, tableCount);
         }
 
-        try {
-            releaseDataSnapshotLocks(snapshotContext);
-        }
-        catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw e;
-        }
-        catch (Exception e) {
-            throw new DebeziumException(e);
-        }
+        releaseDataSnapshotLocks(snapshotContext);
         snapshotContext.offset.preSnapshotCompletion();
         snapshotReceiver.completeSnapshot();
         snapshotContext.offset.postSnapshotCompletion();

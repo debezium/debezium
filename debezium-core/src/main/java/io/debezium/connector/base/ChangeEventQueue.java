@@ -68,6 +68,11 @@ public class ChangeEventQueue<T> implements ChangeEventQueueMetrics {
     private final Supplier<PreviousContext> loggingContextSupplier;
     private AtomicLong currentQueueSizeInBytes = new AtomicLong(0);
     private Map<T, Long> objectMap = new ConcurrentHashMap<>();
+    // Sometimes it is necessary to update the record before it is delivered depending on the content
+    // of the following record. In that cases the easiest solution is to provide a single cell buffer
+    // that will allow the modification of it during the explicit flush.
+    // Typical example is MySQL connector when sometimes it is impossible to detect when the record
+    // in process is the last one. In this case the snapshot flags are set during the explicit flush.
     private boolean buffering;
     private T bufferedEvent;
 
