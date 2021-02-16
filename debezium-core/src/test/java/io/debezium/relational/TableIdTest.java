@@ -5,11 +5,11 @@
  */
 package io.debezium.relational;
 
+import static org.fest.assertions.Assertions.assertThat;
+
 import org.junit.Test;
 
 import io.debezium.doc.FixFor;
-
-import static org.fest.assertions.Assertions.assertThat;
 
 public class TableIdTest {
 
