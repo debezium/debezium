@@ -21,6 +21,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.SingleThreadAccess;
+import io.debezium.annotation.ThreadSafe;
 import io.debezium.config.ConfigurationDefaults;
 import io.debezium.time.Temporals;
 import io.debezium.util.Clock;
@@ -56,6 +57,7 @@ import io.debezium.util.Threads.Timer;
  *            producers to the consumer, a custom type wrapping source records
  *            may be used.
  */
+@ThreadSafe
 public class ChangeEventQueue<T> implements ChangeEventQueueMetrics {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ChangeEventQueue.class);
@@ -69,6 +71,7 @@ public class ChangeEventQueue<T> implements ChangeEventQueueMetrics {
     private final Supplier<PreviousContext> loggingContextSupplier;
     private final AtomicLong currentQueueSizeInBytes = new AtomicLong(0);
     private final Map<T, Long> objectMap = new ConcurrentHashMap<>();
+
     // Sometimes it is necessary to update the record before it is delivered depending on the content
     // of the following record. In that cases the easiest solution is to provide a single cell buffer
     // that will allow the modification of it during the explicit flush.
@@ -76,6 +79,7 @@ public class ChangeEventQueue<T> implements ChangeEventQueueMetrics {
     // in process is the last one. In this case the snapshot flags are set during the explicit flush.
     @SingleThreadAccess("producer thread")
     private boolean buffering;
+
     @SingleThreadAccess("producer thread")
     private T bufferedEvent;
 
@@ -171,7 +175,7 @@ public class ChangeEventQueue<T> implements ChangeEventQueueMetrics {
 
     /**
      * Applies a function to the event and the buffer and adds it to the queue. Buffer is emptied.
-     * 
+     *
      * @param recordModifier
      * @throws InterruptedException
      */

@@ -10,8 +10,18 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+/**
+ * Denotes that the annotated element of a class that's meant for multi-threaded
+ * usage is accessed only by single thread and thus doesn't need to be guarded
+ * via synchronization or similar.
+ *
+ */
 @Target({ ElementType.FIELD, ElementType.METHOD })
 @Retention(RetentionPolicy.SOURCE)
 public @interface SingleThreadAccess {
+
+    /**
+     * Describes the thread accessing the annotated element.
+     */
     String value();
 }

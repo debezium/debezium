@@ -81,8 +81,10 @@ public abstract class BaseSourceTask extends SourceTask {
 
     private final ElapsedTimeStrategy pollOutputDelay;
     private final Clock clock = Clock.system();
+
     @SingleThreadAccess("polling thread")
     private long recordCounter = 0L;
+
     @SingleThreadAccess("polling thread")
     private Instant previousOutputInstant;
 

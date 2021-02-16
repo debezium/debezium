@@ -116,6 +116,7 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
     private final EventDispatcher<TableId> eventDispatcher;
     private final MySqlOffsetContext offsetContext;
     private final ErrorHandler errorHandler;
+
     @SingleThreadAccess("binlog client thread")
     private Instant eventTimestamp;
 
