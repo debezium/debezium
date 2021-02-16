@@ -447,11 +447,6 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
                     PROPAGATE_DATATYPE_SOURCE_TYPE)
             .create();
 
-    /**
-     * The set of {@link Field}s defined as part of this configuration.
-     */
-    public static Field.Set ALL_FIELDS = Field.setOf(CONFIG_DEFINITION.all());
-
     private final RelationalTableFilters tableFilters;
     private final TemporalPrecisionMode temporalPrecisionMode;
     private final KeyMapper keyMapper;
