@@ -773,7 +773,7 @@ a|_n/a_
 a|_n/a_
 
 |`JSON`
-|Unsupported yet
+|`STRING`
 a|_n/a_
 
 |`ENUM`
@@ -1245,3 +1245,4 @@ A properly configured Kafka cluster is able to handle massive throughput. Kafka 
 .Vitess 8.0.0
 
 * Due to a minor Vitess padding issue (which is fixed in Vitess 9.0.0), decimal values with a precision that is greater than or equal to 13 will cause extra whitespaces in front of the number. E.g. if the column type is `decimal(13,4)` in the table definition, the value `-1.2300` becomes `"-        1.2300"`, and the value `1.2300` becomes `"        1.2300"`.
+* Does not support the `JSON` column type
