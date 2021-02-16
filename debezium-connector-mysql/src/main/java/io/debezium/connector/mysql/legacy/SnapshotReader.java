@@ -110,17 +110,6 @@ public class SnapshotReader extends AbstractReader {
         return this;
     }
 
-    /**
-     * Set this reader's {@link #execute() execution} to produce a {@link io.debezium.data.Envelope.Operation#CREATE} event for
-     * each row.
-     *
-     * @return this object for method chaining; never null
-     */
-    public SnapshotReader generateInsertEvents() {
-        recorder = this::recordRowAsInsert;
-        return this;
-    }
-
     @Override
     protected void doInitialize() {
         metrics.register(logger);

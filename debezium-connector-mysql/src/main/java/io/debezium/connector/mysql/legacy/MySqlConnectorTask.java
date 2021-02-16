@@ -73,7 +73,6 @@ public final class MySqlConnectorTask extends BaseSourceTask {
         try {
             // Get the offsets for our partition ...
             boolean startWithSnapshot = false;
-            boolean snapshotEventsAsInserts = config.getBoolean(MySqlConnectorConfig.SNAPSHOT_EVENTS_AS_INSERTS);
             Map<String, String> partition = Collect.hashMapOf(SourceInfo.SERVER_PARTITION_KEY, serverName);
             Map<String, ?> offsets = getRestartOffset(context.offsetStorageReader().offset(partition));
             final SourceInfo source;
@@ -192,9 +191,8 @@ public final class MySqlConnectorTask extends BaseSourceTask {
             if (startWithSnapshot) {
                 // We're supposed to start with a snapshot, so set that up ...
                 SnapshotReader snapshotReader = new SnapshotReader("snapshot", taskContext);
-                if (snapshotEventsAsInserts) {
-                    snapshotReader.generateInsertEvents();
-                }
+
+                snapshotReader.generateReadEvents();
 
                 if (!taskContext.getConnectorConfig().getSnapshotDelay().isZero()) {
                     // Adding a timed blocking reader to delay the snapshot, can help to avoid initial rebalancing interruptions
