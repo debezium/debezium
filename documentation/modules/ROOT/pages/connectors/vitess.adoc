@@ -213,7 +213,7 @@ If the `database.server.name` connector configuration property has the value `Vi
 |The schema portion of the key specifies a Kafka Connect schema that describes what is in the key's `payload` portion.
 
 |2
-|`Vitess_server{zwsp}.commerce.customers{zwsp}.Key`
+|`Vitess_server.commerce.customers.Key`
 a|Name of the schema that defines the structure of the key's payload. This schema describes the structure of the primary key for the table that was changed. Key schema names have the format _connector-name_._keyspace-name_._table-name_.`Key`. In this example: +
 
 * `Vitess_server` is the name of the connector that generated this event. +
@@ -958,44 +958,44 @@ The *MBean* is `debezium.vitess:type=connector-metrics,context=streaming,server=
 |===
 |Attributes |Type |Description
 
-|[[connectors-strm-metric-millisecondssincelastevent]]<<connectors-strm-metric-millisecondssincelastevent, `MilliSecondsSinceLastEvent`>>
+|[[connectors-strm-metric-millisecondssincelastevent]]<<connectors-strm-metric-millisecondssincelastevent, `+MilliSecondsSinceLastEvent+`>>
 |`long`
 |The number of milliseconds since the connector has read and processed the most recent event.
 
-|[[connectors-strm-metric-totalnumberofeventsseen]]<<connectors-strm-metric-totalnumberofeventsseen, `TotalNumberOfEventsSeen`>>
+|[[connectors-strm-metric-totalnumberofeventsseen]]<<connectors-strm-metric-totalnumberofeventsseen, `+TotalNumberOfEventsSeen+`>>
 |`long`
 |The total number of events that this connector has seen since last started or reset.
 
-|[[connectors-strm-metric-numberofeventsfiltered]]<<connectors-strm-metric-numberofeventsfiltered, `NumberOfEventsFiltered`>>
+|[[connectors-strm-metric-numberofeventsfiltered]]<<connectors-strm-metric-numberofeventsfiltered, `+NumberOfEventsFiltered+`>>
 |`long`
 |The number of events that have been filtered by include/exclude list filtering rules configured on the connector.
 
-|[[connectors-strm-metric-queuetotalcapacity]]<<connectors-strm-metric-queuetotalcapacity, `QueueTotalCapacity`>>
+|[[connectors-strm-metric-queuetotalcapacity]]<<connectors-strm-metric-queuetotalcapacity, `+QueueTotalCapacity+`>>
 |`int`
 |The length the queue used to pass events between the streamer and the main Kafka Connect loop.
 
-|[[connectors-strm-metric-queueremainingcapacity]]<<connectors-strm-metric-queueremainingcapacity, `QueueRemainingCapacity`>>
+|[[connectors-strm-metric-queueremainingcapacity]]<<connectors-strm-metric-queueremainingcapacity, `+QueueRemainingCapacity+`>>
 |`int`
 |The free capacity of the queue used to pass events between the streamer and the main Kafka Connect loop.
 
-|[[connectors-strm-metric-connected]]<<connectors-strm-metric-connected, `Connected`>>
+|[[connectors-strm-metric-connected]]<<connectors-strm-metric-connected, `+Connected+`>>
 |`boolean`
 |Flag that denotes whether the connector is currently connected to the database server.
 
-|[[connectors-strm-metric-millisecondsbehindsource]]<<connectors-strm-metric-millisecondsbehindsource, `MilliSecondsBehindSource`>>
+|[[connectors-strm-metric-millisecondsbehindsource]]<<connectors-strm-metric-millisecondsbehindsource, `+MilliSecondsBehindSource+`>>
 |`long`
 |The number of milliseconds between the last change event's timestamp and the connector processing it.
 The values will incoporate any differences between the clocks on the machines where the database server and the connector are running.
 
-|[[connectors-strm-metric-numberofcommittedtransactions]]<<connectors-strm-metric-numberofcommittedtransactions, `NumberOfCommittedTransactions`>>
+|[[connectors-strm-metric-numberofcommittedtransactions]]<<connectors-strm-metric-numberofcommittedtransactions, `+NumberOfCommittedTransactions+`>>
 |`long`
 |The number of processed transactions that were committed.
 
-|[[connectors-strm-metric-maxqueuesizeinbytes]]<<connectors-strm-metric-maxqueuesizeinbytes, `MaxQueueSizeInBytes`>>
+|[[connectors-strm-metric-maxqueuesizeinbytes]]<<connectors-strm-metric-maxqueuesizeinbytes, `+MaxQueueSizeInBytes+`>>
 |`long`
 |The maximum buffer of the queue in bytes used to pass events between the streamer and the main Kafka Connect loop.
 
-|[[connectors-strm-metric-currentqueuesizeinbytes]]<<connectors-strm-metric-currentqueuesizeinbytes, `CurrentQueueSizeInBytes`>>
+|[[connectors-strm-metric-currentqueuesizeinbytes]]<<connectors-strm-metric-currentqueuesizeinbytes, `+CurrentQueueSizeInBytes+`>>
 |`long`
 |The current buffer of the queue in bytes used to pass events between the streamer and the main Kafka Connect loop.
 
@@ -1024,59 +1024,59 @@ The following configuration properties are _required_ unless a default value is 
 |Default
 |Description
 
-|[[vitess-property-name]]<<vitess-property-name, `name`>>
+|[[vitess-property-name]]<<vitess-property-name, `+name+`>>
 |
 |Unique name for the connector. Attempting to register again with the same name will fail. This property is required by all Kafka Connect connectors.
 
-|[[vitess-property-connector-class]]<<vitess-property-connector-class, `connector.class`>>
+|[[vitess-property-connector-class]]<<vitess-property-connector-class, `+connector.class+`>>
 |
 |The name of the Java class for the connector. Always use a value of `io.debezium.connector.vitess.VitessConnector` for the Vitess connector.
 
-|[[vitess-property-tasks-max]]<<vitess-property-tasks-max, `tasks.max`>>
+|[[vitess-property-tasks-max]]<<vitess-property-tasks-max, `+tasks.max+`>>
 |`1`
 |The maximum number of tasks that should be created for this connector. The Vitess connector always uses a single task and therefore does not use this value, so the default is always acceptable.
 
-|[[vitess-property-database-hostname]]<<vitess-property-database-hostname, `database.hostname`>>
+|[[vitess-property-database-hostname]]<<vitess-property-database-hostname, `+database.hostname+`>>
 |
 |IP address or hostname of the Vitess database server (VTGate).
 
-|[[vitess-property-database-port]]<<vitess-property-database-port, `database.port`>>
+|[[vitess-property-database-port]]<<vitess-property-database-port, `+database.port+`>>
 |`15991`
 |Integer port number of the Vitess database server (VTGate).
 
-|[[vitess-property-keyspace]]<<vitess-property-keyspace, `vitess.keyspace`>>
+|[[vitess-property-keyspace]]<<vitess-property-keyspace, `+vitess.keyspace+`>>
 |
 |The name of the keyspace from which to stream the changes.
 
-|[[vitess-property-shard]]<<vitess-property-shard, `vitess.shard`>>
+|[[vitess-property-shard]]<<vitess-property-shard, `+vitess.shard+`>>
 |_n/a_
 |An optional name of the shard from which to stream the changes. If not configured, in case of unsharded keyspace, the connector streams changes from the only shard, in case of sharded keyspace, the connector streams changes from all shards in the keyspace. We recommend not configuring it in order to stream from all shards in the keyspace because it has better support for reshard operation. If configured, for example, `-80`, the connector will stream changes from the `-80` shard.
 
-|[[vitess-property-database-user]]<<vitess-property-database-user, `vitess.database.user`>>
+|[[vitess-property-database-user]]<<vitess-property-database-user, `+vitess.database.user+`>>
 |_n/a_
 |An optional username of the Vitess database server (VTGate). If not configured, unauthenticated VTGate gRPC is used.
 
-|[[vitess-property-database-password]]<<vitess-property-database-password, `vitess.database.password`>>
+|[[vitess-property-database-password]]<<vitess-property-database-password, `+vitess.database.password+`>>
 |_n/a_
 |An optional password of the Vitess database server (VTGate). If not configured, unauthenticated VTGate gRPC is used.
 
-|[[vitess-property-vtctld-host]]<<vitess-property-vtctld-host, `vitess.vtctld.host`>>
+|[[vitess-property-vtctld-host]]<<vitess-property-vtctld-host, `+vitess.vtctld.host+`>>
 |
 |IP address or hostname of the VTCtld server.
 
-|[[vitess-property-vtctld-port]]<<vitess-property-vtctld-port, `vitess.vtctld.port`>>
+|[[vitess-property-vtctld-port]]<<vitess-property-vtctld-port, `+vitess.vtctld.port+`>>
 |`15999`
 |Integer port number of the VTCtld server.
 
-|[[vitess-property-vtctld-user]]<<vitess-property-vtctld-user, `vitess.vtctld.user`>>
+|[[vitess-property-vtctld-user]]<<vitess-property-vtctld-user, `+vitess.vtctld.user+`>>
 |_n/a_
 |An optional username of the VTCtld server. If not configured, unauthenticated VTCtld gRPC is used.
 
-|[[vitess-property-vtctld-password]]<<vitess-property-vtctld-password, `vitess.vtctld.password`>>
+|[[vitess-property-vtctld-password]]<<vitess-property-vtctld-password, `+vitess.vtctld.password+`>>
 |_n/a_
 |An optional password of the VTCtld server. If not configured, unauthenticated VTCtld gRPC is used.
 
-|[[vitess-property-tablet-type]]<<vitess-property-tablet-type, `vitess.tablet.type`>>
+|[[vitess-property-tablet-type]]<<vitess-property-tablet-type, `+vitess.tablet.type+`>>
 |`MASTER`
 |The type of Tablet (hence MySQL) from which to stream the changes: +
  +
@@ -1086,27 +1086,27 @@ The following configuration properties are _required_ unless a default value is 
  +
 `RDONLY`  represents streaming from the read-only slave MySQL instance.
 
-|[[vitess-property-database-server-name]]<<vitess-property-database-server-name, `database.server{zwsp}.name`>>
+|[[vitess-property-database-server-name]]<<vitess-property-database-server-name, `+database.server.name+`>>
 |
 |Logical name that identifies and provides a namespace for the particular Vitess database server or cluster in which {prodname} is capturing changes. Only alphanumeric characters and underscores should be used in the database server logical name. The logical name should be unique across all other connectors, since it is used as a topic name prefix for all Kafka topics that receive records from this connector.
 
-|[[vitess-property-table-include-list]]<<vitess-property-table-include-list, `table.include{zwsp}.list`>>
+|[[vitess-property-table-include-list]]<<vitess-property-table-include-list, `+table.include.list+`>>
 |
 |An optional, comma-separated list of regular expressions that match fully-qualified table identifiers for tables whose changes you want to capture. Any table not included in `table.include.list` does not have its changes captured. Each identifier is of the form _keyspace_._tableName_. By default, the connector captures changes in every non-system table in each schema whose changes are being captured. Do not also set the `table.exclude.list` property.
 
-|[[vitess-property-table-exclude.list]]<<vitess-property-table-exclude.list, `table.exclude{zwsp}.list`>>
+|[[vitess-property-table-exclude.list]]<<vitess-property-table-exclude.list, `+table.exclude.list+`>>
 |
 |An optional, comma-separated list of regular expressions that match fully-qualified table identifiers for tables whose changes you *do not* want to capture. Any table not included in `table.exclude.list` has it changes captured. Each identifier is of the form _keyspace_._tableName_. Do not also set the `table.include.list` property.
 
-|[[vitess-property-column-include-list]]<<vitess-property-column-include-list, `column.include{zwsp}.list`>>
+|[[vitess-property-column-include-list]]<<vitess-property-column-include-list, `+column.include.list+`>>
 |
 |An optional, comma-separated list of regular expressions that match the fully-qualified names of columns that should be included in change event record values. Fully-qualified names for columns are of the form _keyspace_._tableName_._columnName_. Do not also set the `column.exclude.list` property.
 
-|[[vitess-property-column-exclude-list]]<<vitess-property-column-exclude-list, `column.exclude{zwsp}.list`>>
+|[[vitess-property-column-exclude-list]]<<vitess-property-column-exclude-list, `+column.exclude.list+`>>
 |
 |An optional, comma-separated list of regular expressions that match the fully-qualified names of columns that should be excluded from change event record values. Fully-qualified names for columns are of the form _keyspace_._tableName_._columnName_. Do not also set the `column.include.list` property.
 
-|[[vitess-property-tombstones-on-delete]]<<vitess-property-tombstones-on-delete, `tombstones.on{zwsp}.delete`>>
+|[[vitess-property-tombstones-on-delete]]<<vitess-property-tombstones-on-delete, `+tombstones.on.delete+`>>
 |`true`
 | Controls whether a tombstone event should be generated after a _delete_ event. +
  +
@@ -1116,7 +1116,7 @@ The following configuration properties are _required_ unless a default value is 
  +
 After a _delete_ operation, emitting a tombstone event enables Kafka to delete all change event records that have the same key as the deleted row.
 
-|[[vitess-property-message-key-columns]]<<vitess-property-message-key-columns, `message.key{zwsp}.columns`>>
+|[[vitess-property-message-key-columns]]<<vitess-property-message-key-columns, `+message.key.columns+`>>
 |_empty string_
 |A semicolon separated list of tables with regular expressions that match table column names. The connector maps values in matching columns to key fields in change event records that it sends to Kafka topics. This is useful when a table does not have a primary key, or when you want to order change event records in a Kafka topic according to a field that is not a primary key. +
  +
@@ -1141,7 +1141,7 @@ The following _advanced_ configuration properties have defaults that work in mos
 |Default
 |Description
 
-|[[vitess-property-event-processing-failure-handling-mode]]<<vitess-property-event-processing-failure-handling-mode, `event.processing{zwsp}.failure.handling{zwsp}.mode`>>
+|[[vitess-property-event-processing-failure-handling-mode]]<<vitess-property-event-processing-failure-handling-mode, `+event.processing.failure.handling.mode+`>>
 |`fail`
 | Specifies how the connector should react to exceptions during processing of events: +
  +
@@ -1151,23 +1151,23 @@ The following _advanced_ configuration properties have defaults that work in mos
  +
 `skip` skips the problematic event and continues processing.
 
-|[[vitess-property-max-queue-size]]<<vitess-property-max-queue-size, `max.queue.size`>>
+|[[vitess-property-max-queue-size]]<<vitess-property-max-queue-size, `+max.queue.size+`>>
 |`20240`
 |Positive integer value for the maximum size of the blocking queue. The connector places change events received from streaming replication in the blocking queue before writing them to Kafka. This queue can provide backpressure when, for example, writing records to Kafka is slower that it should be or Kafka is not available.
 
-|[[vitess-property-max-batch-size]]<<vitess-property-max-batch-size, `max.batch.size`>>
+|[[vitess-property-max-batch-size]]<<vitess-property-max-batch-size, `+max.batch.size+`>>
 |`10240`
 |Positive integer value that specifies the maximum size of each batch of events that the connector processes.
 
-|[[vitess-property-max-queue-size-in-bytes]]<<vitess-property-max-queue-size-in-bytes, `max.queue.size.in.bytes`>>
+|[[vitess-property-max-queue-size-in-bytes]]<<vitess-property-max-queue-size-in-bytes, `+max.queue.size.in.bytes+`>>
 |`0`
 |Long value for the maximum size in bytes of the blocking queue. The feature is disabled by default, it will be active if it's set with a positive long value.
 
-|[[vitess-property-poll-interval-ms]]<<vitess-property-poll-interval-ms, `poll.interval.ms`>>
+|[[vitess-property-poll-interval-ms]]<<vitess-property-poll-interval-ms, `+poll.interval.ms+`>>
 |`1000`
 |Positive integer value that specifies the number of milliseconds the connector should wait for new change events to appear before it starts processing a batch of events. Defaults to 1000 milliseconds, or 1 second.
 
-|[[vitess-property-sanitize-field-names]]<<vitess-property-sanitize-field-names, `sanitize.field.names`>>
+|[[vitess-property-sanitize-field-names]]<<vitess-property-sanitize-field-names, `+sanitize.field.names+`>>
 |`true` if connector configuration sets the `key.converter` or `value.converter` property to the Avro converter. +
 `false` if not.
 |Indicates whether field names are sanitized to adhere to {link-prefix}:{link-avro-serialization}#avro-naming[Avro naming requirements].
