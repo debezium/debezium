@@ -20,6 +20,7 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.annotation.SingleThreadAccess;
 import io.debezium.config.ConfigurationDefaults;
 import io.debezium.time.Temporals;
 import io.debezium.util.Clock;
@@ -73,7 +74,9 @@ public class ChangeEventQueue<T> implements ChangeEventQueueMetrics {
     // that will allow the modification of it during the explicit flush.
     // Typical example is MySQL connector when sometimes it is impossible to detect when the record
     // in process is the last one. In this case the snapshot flags are set during the explicit flush.
+    @SingleThreadAccess("producer thread")
     private boolean buffering;
+    @SingleThreadAccess("producer thread")
     private T bufferedEvent;
 
     private volatile RuntimeException producerException;

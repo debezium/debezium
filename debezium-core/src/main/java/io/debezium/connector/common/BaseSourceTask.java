@@ -22,6 +22,7 @@ import org.apache.kafka.connect.source.SourceTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.annotation.SingleThreadAccess;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
@@ -80,7 +81,9 @@ public abstract class BaseSourceTask extends SourceTask {
 
     private final ElapsedTimeStrategy pollOutputDelay;
     private final Clock clock = Clock.system();
+    @SingleThreadAccess("polling thread")
     private long recordCounter = 0L;
+    @SingleThreadAccess("polling thread")
     private Instant previousOutputInstant;
 
     protected BaseSourceTask() {
