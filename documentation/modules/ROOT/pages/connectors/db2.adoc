@@ -1027,8 +1027,8 @@ The following table describes how the connector maps each of the Db2 data types 
 .Mappings for Db2 basic data types
 [cols="25%a,20%a,55%a",options="header"]
 |===
-|Db2 data type 
-|Literal type (schema type) 
+|Db2 data type
+|Literal type (schema type)
 |Semantic type (schema name) and Notes
 
 |`BOOLEAN`
@@ -1557,7 +1557,7 @@ apiVersion: {KafkaConnectApiVersion}
 |The connector’s configuration.
 
 |4
-|The database host, which is the address of the Db2 instance. 
+|The database host, which is the address of the Db2 instance.
 
 |5
 |The logical name of the Db2 instance/cluster, which forms a namespace and is used in the names of the Kafka topics to which the connector writes, the names of Kafka Connect schemas, and the namespaces of the corresponding Avro schema when the {link-prefix}:{link-avro-serialization}[Avro Connector] is used.
@@ -1580,7 +1580,7 @@ You can send this configuration with a `POST` command to a running Kafka Connect
 === Adding connector configuration
 
 ifdef::community[]
-To start running a Db2 connector, create a connector configuration and add the configuration to your Kafka Connect cluster. 
+To start running a Db2 connector, create a connector configuration and add the configuration to your Kafka Connect cluster.
 
 .Prerequisites
 
@@ -1602,7 +1602,7 @@ You can use a provided {prodname} container to deploy a {prodname} Db2 connector
 .Prerequisites
 
 * Podman or Docker is installed and you have sufficient rights to create and manage containers.
-* You installed the {prodname} Db2 connector archive. 
+* You installed the {prodname} Db2 connector archive.
 
 .Procedure
 
@@ -1750,18 +1750,15 @@ The following configuration properties are _required_ unless a default value is 
 |
 |A list of host/port pairs that the connector uses to establish an initial connection to the Kafka cluster. This connection is used for retrieving database schema history previously stored by the connector, and for writing each DDL statement read from the source database. Each pair should point to the same Kafka cluster used by the {prodname} Kafka Connect process.
 
-|[[db2-property-table-include-list]]
-[[db2-property-table-include-list]]<<db2-property-table-include-list, `table.include.list`>>
+|[[db2-property-table-include-list]]<<db2-property-table-include-list, `table.include.list`>>
 |
 |An optional, comma-separated list of regular expressions that match fully-qualified table identifiers for tables whose changes you want the connector to capture. Any table not included in the include list does not have its changes captured. Each identifier is of the form _schemaName_._tableName_. By default, the connector captures changes in every non-system table. Do not also set the `table.exclude.list` property.
 
-|[[db2-property-table-exclude-list]]
-[[db2-property-table-exclude-list]]<<db2-property-table-exclude-list, `table.exclude.list`>>
+|[[db2-property-table-exclude-list]]<<db2-property-table-exclude-list, `table.exclude.list`>>
 |
 |An optional, comma-separated list of regular expressions that match fully-qualified table identifiers for tables whose changes you do not want the connector to capture. The connector captures changes in each non-system table that is not included in the exclude list. Each identifier is of the form _schemaName_._tableName_. Do not also set the `table.include.list` property.
 
-|[[db2-property-column-exclude-list]]
-[[db2-property-column-exclude-list]]<<db2-property-column-exclude-list, `column.exclude.list`>>
+|[[db2-property-column-exclude-list]]<<db2-property-column-exclude-list, `column.exclude.list`>>
 |_empty string_
 |An optional, comma-separated list of regular expressions that match the fully-qualified names of columns to exclude from change event values.
 Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_.
