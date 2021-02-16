@@ -310,17 +310,11 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
         private final String field;
 
         /**
-         * The prefix for the new field name.
-         */
-        private final String prefix;
-
-        /**
          * The name for the outgoing attribute/field, e.g. "__op" or "__source_ts_ms" when the prefix is "__"
          */
         private final String newField;
 
         private FieldReference(String prefix, String field) {
-            this.prefix = prefix;
             String[] parts = NEW_FIELD_SEPARATOR.split(field);
             String[] splits = FIELD_SEPARATOR.split(parts[0]);
             this.field = splits.length == 1 ? splits[0] : splits[1];
