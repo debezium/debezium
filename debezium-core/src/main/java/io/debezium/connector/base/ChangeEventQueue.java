@@ -66,8 +66,8 @@ public class ChangeEventQueue<T> implements ChangeEventQueueMetrics {
     private final BlockingQueue<T> queue;
     private final Metronome metronome;
     private final Supplier<PreviousContext> loggingContextSupplier;
-    private AtomicLong currentQueueSizeInBytes = new AtomicLong(0);
-    private Map<T, Long> objectMap = new ConcurrentHashMap<>();
+    private final AtomicLong currentQueueSizeInBytes = new AtomicLong(0);
+    private final Map<T, Long> objectMap = new ConcurrentHashMap<>();
     // Sometimes it is necessary to update the record before it is delivered depending on the content
     // of the following record. In that cases the easiest solution is to provide a single cell buffer
     // that will allow the modification of it during the explicit flush.

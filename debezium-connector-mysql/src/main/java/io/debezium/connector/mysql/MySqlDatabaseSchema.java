@@ -198,7 +198,7 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
     }
 
     private List<SchemaChangeEvent> parseDdl(String ddlStatements, String databaseName, MySqlOffsetContext offset, Instant sourceTime, boolean snapshot) {
-        final List<SchemaChangeEvent> schemaChangeEvents = new ArrayList<>();
+        final List<SchemaChangeEvent> schemaChangeEvents = new ArrayList<>(3);
 
         if (ignoredQueryStatements.contains(ddlStatements)) {
             return schemaChangeEvents;

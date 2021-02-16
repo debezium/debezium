@@ -699,7 +699,8 @@ public class SourceInfoTest {
         }
 
         public PositionAssert isAt(Document otherPosition, Predicate<String> gtidFilter) {
-            if (SourceInfo.isPositionAtOrBefore(actual, otherPosition, gtidFilter)) {
+            final MySqlHistoryRecordComparator comparator = new MySqlHistoryRecordComparator(gtidFilter);
+            if (comparator.isPositionAtOrBefore(actual, otherPosition)) {
                 return this;
             }
             failIfCustomMessageIsSet();
@@ -719,7 +720,8 @@ public class SourceInfoTest {
         }
 
         public PositionAssert isAtOrBefore(Document otherPosition, Predicate<String> gtidFilter) {
-            if (SourceInfo.isPositionAtOrBefore(actual, otherPosition, gtidFilter)) {
+            final MySqlHistoryRecordComparator comparator = new MySqlHistoryRecordComparator(gtidFilter);
+            if (comparator.isPositionAtOrBefore(actual, otherPosition)) {
                 return this;
             }
             failIfCustomMessageIsSet();
@@ -731,7 +733,8 @@ public class SourceInfoTest {
         }
 
         public PositionAssert isAfter(Document otherPosition, Predicate<String> gtidFilter) {
-            if (!SourceInfo.isPositionAtOrBefore(actual, otherPosition, gtidFilter)) {
+            final MySqlHistoryRecordComparator comparator = new MySqlHistoryRecordComparator(gtidFilter);
+            if (!comparator.isPositionAtOrBefore(actual, otherPosition)) {
                 return this;
             }
             failIfCustomMessageIsSet();
