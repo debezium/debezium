@@ -324,7 +324,7 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
             String[] parts = NEW_FIELD_SEPARATOR.split(field);
             String[] splits = FIELD_SEPARATOR.split(parts[0]);
             this.field = splits.length == 1 ? splits[0] : splits[1];
-            this.struct = determineStruct(this.field);
+            this.struct = (splits.length == 1) ? determineStruct(this.field) : splits[0];
 
             if (parts.length == 1) {
                 this.newField = prefix + (splits.length == 1 ? this.field : this.struct + "_" + this.field);
