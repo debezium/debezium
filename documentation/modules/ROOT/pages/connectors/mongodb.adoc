@@ -311,7 +311,7 @@ Every change event that captures a change to the `customers` collection has the 
 |The schema portion of the key specifies a Kafka Connect schema that describes what is in the key's `payload` portion.
 
 |2
-|`fulfillment{zwsp}.inventory{zwsp}.customers{zwsp}.Key`
+|`fulfillment.inventory.customers.Key`
 a|Name of the schema that defines the structure of the key's payload. This schema describes the structure of the key for the document that was changed. Key schema names have the format _connector-name_._database-name_._collection-name_.`Key`. In this example: +
 
 * `fulfillment` is the name of the connector that generated this event. +
@@ -1072,99 +1072,99 @@ The following configuration properties are _required_ unless a default value is 
 |===
 |Property |Default |Description
 
-|[[mongodb-property-name]]<<mongodb-property-name, `name`>>
+|[[mongodb-property-name]]<<mongodb-property-name, `+name+`>>
 |
 |Unique name for the connector. Attempting to register again with the same name will fail. (This property is required by all Kafka Connect connectors.)
 
-|[[mongodb-property-connector-class]]<<mongodb-property-connector-class, `connector.class`>>
+|[[mongodb-property-connector-class]]<<mongodb-property-connector-class, `+connector.class+`>>
 |
 |The name of the Java class for the connector. Always use a value of `io.debezium.connector.mongodb.MongoDbConnector` for the MongoDB connector.
 
-|[[mongodb-property-mongodb-hosts]]<<mongodb-property-mongodb-hosts, `mongodb.hosts`>>
+|[[mongodb-property-mongodb-hosts]]<<mongodb-property-mongodb-hosts, `+mongodb.hosts+`>>
 |
 |The comma-separated list of hostname and port pairs (in the form 'host' or 'host:port') of the MongoDB servers in the replica set. The list can contain a single hostname and port pair. If `mongodb.members.auto.discover` is set to `false`, then the host and port pair should be prefixed with the replica set name (e.g., `rs0/localhost:27017`).
 
-|[[mongodb-property-mongodb-name]]<<mongodb-property-mongodb-name, `mongodb.name`>>
+|[[mongodb-property-mongodb-name]]<<mongodb-property-mongodb-name, `+mongodb.name+`>>
 |
 |A unique name that identifies the connector and/or MongoDB replica set or sharded cluster that this connector monitors. Each server should be monitored by at most one {prodname} connector, since this server name prefixes all persisted Kafka topics emanating from the MongoDB replica set or cluster.
 Only alphanumeric characters and underscores should be used.
 
-|[[mongodb-property-mongodb-user]]<<mongodb-property-mongodb-user, `mongodb.user`>>
+|[[mongodb-property-mongodb-user]]<<mongodb-property-mongodb-user, `+mongodb.user+`>>
 |
 |Name of the database user to be used when connecting to MongoDB. This is required only when MongoDB is configured to use authentication.
 
-|[[mongodb-property-mongodb-password]]<<mongodb-property-mongodb-password, `mongodb.password`>>
+|[[mongodb-property-mongodb-password]]<<mongodb-property-mongodb-password, `+mongodb.password+`>>
 |
 |Password to be used when connecting to MongoDB. This is required only when MongoDB is configured to use authentication.
 
-|[[mongodb-property-mongodb-authsource]]<<mongodb-property-mongodb-authsource, `mongodb.authsource`>>
+|[[mongodb-property-mongodb-authsource]]<<mongodb-property-mongodb-authsource, `+mongodb.authsource+`>>
 |`admin`
 |Database (authentication source) containing MongoDB credentials. This is required only when MongoDB is configured to use authentication with another authentication database than `admin`.
 
-|[[mongodb-property-mongodb-ssl-enabled]]<<mongodb-property-mongodb-ssl-enabled, `mongodb.ssl.enabled`>>
+|[[mongodb-property-mongodb-ssl-enabled]]<<mongodb-property-mongodb-ssl-enabled, `+mongodb.ssl.enabled+`>>
 |`false`
 |Connector will use SSL to connect to MongoDB instances.
 
-|[[mongodb-property-mongodb-ssl-invalid-hostname-allowed]]<<mongodb-property-mongodb-ssl-invalid-hostname-allowed, `mongodb.ssl.invalid{zwsp}.hostname.allowed`>>
+|[[mongodb-property-mongodb-ssl-invalid-hostname-allowed]]<<mongodb-property-mongodb-ssl-invalid-hostname-allowed, `+mongodb.ssl.invalid.hostname.allowed+`>>
 |`false`
 |When SSL is enabled this setting controls whether strict hostname checking is disabled during connection phase. If `true` the connection will not prevent man-in-the-middle attacks.
 
-|[[mongodb-property-database-include-list]]<<mongodb-property-database-include-list, `database.include{zwsp}.list`>>
+|[[mongodb-property-database-include-list]]<<mongodb-property-database-include-list, `+database.include.list+`>>
 |_empty string_
 |An optional comma-separated list of regular expressions that match database names to be monitored; any database name not included in `database.include.list` is excluded from monitoring. By default all databases are monitored.
 Must not be used with `database.exclude.list`.
 
-|[[mongodb-property-database-exclude-list]]<<mongodb-property-database-exclude-list, `database.exclude{zwsp}.list`>>
+|[[mongodb-property-database-exclude-list]]<<mongodb-property-database-exclude-list, `+database.exclude.list+`>>
 |_empty string_
 |An optional comma-separated list of regular expressions that match database names to be excluded from monitoring; any database name not included in `database.exclude.list` is monitored.
 Must not be used with `database.include.list`.
 
-|[[mongodb-property-collection-include-list]]<<mongodb-property-collection-include-list, `collection{zwsp}.include.list`>>
+|[[mongodb-property-collection-include-list]]<<mongodb-property-collection-include-list, `+collection.include.list+`>>
 |_empty string_
 |An optional comma-separated list of regular expressions that match fully-qualified namespaces for MongoDB collections to be monitored; any collection not included in `collection.include.list` is excluded from monitoring. Each identifier is of the form _databaseName_._collectionName_. By default the connector will monitor all collections except those in the `local` and `admin` databases.
 Must not be used with `collection.exclude.list`.
 
-|[[mongodb-property-collection-exclude-list]]<<mongodb-property-collection-exclude-list, `collection{zwsp}.exclude.list`>>
+|[[mongodb-property-collection-exclude-list]]<<mongodb-property-collection-exclude-list, `+collection.exclude.list+`>>
 |_empty string_
 |An optional comma-separated list of regular expressions that match fully-qualified namespaces for MongoDB collections to be excluded from monitoring; any collection not included in `collection.exclude.list` is monitored. Each identifier is of the form _databaseName_._collectionName_.
 Must not be used with `collection.include.list`.
 
-|[[mongodb-property-snapshot-mode]]<<mongodb-property-snapshot-mode, `snapshot.mode`>>
+|[[mongodb-property-snapshot-mode]]<<mongodb-property-snapshot-mode, `+snapshot.mode+`>>
 |`initial`
 |Specifies the criteria for running a snapshot upon startup of the connector. The default is *initial*, and specifies the connector reads a snapshot when either no offset is found or if the oplog no longer contains the previous offset. The *never* option specifies that the connector should never use snapshots, instead the connector should proceed to tail the log.
 
-|[[mongodb-property-snapshot-include-collection-list]]<<mongodb-property-snapshot-include-collection-list, `snapshot.include.collection.list`>>
+|[[mongodb-property-snapshot-include-collection-list]]<<mongodb-property-snapshot-include-collection-list, `+snapshot.include.collection.list+`>>
 | All collections specified in `collection.include.list`
 |An optional, comma-separated list of regular expressions that match names of schemas specified in `collection.include.list` for which you *want* to take the snapshot.
 
-|[[mongodb-property-field-exclude-list]]<<mongodb-property-field-exclude-list, `field.exclude{zwsp}.list`>>
+|[[mongodb-property-field-exclude-list]]<<mongodb-property-field-exclude-list, `+field.exclude.list+`>>
 |_empty string_
 |An optional comma-separated list of the fully-qualified names of fields that should be excluded from change event message values. Fully-qualified names for fields are of the form _databaseName_._collectionName_._fieldName_._nestedFieldName_, where _databaseName_ and _collectionName_ may contain the wildcard (*) which matches any characters.
 
-|[[mongodb-property-field-renames]]<<mongodb-property-field-renames, `field.renames`>>
+|[[mongodb-property-field-renames]]<<mongodb-property-field-renames, `+field.renames+`>>
 |_empty string_
 |An optional comma-separated list of the fully-qualified replacements of fields that should be used to rename fields in change event message values. Fully-qualified replacements for fields are of the form _databaseName_._collectionName_._fieldName_._nestedFieldName_:__newNestedFieldName__, where _databaseName_ and _collectionName_ may contain the wildcard (*) which matches any characters, the colon character (:) is used to determine rename mapping of field. The next field replacement is applied to the result of the previous field replacement in the list, so keep this in mind when renaming multiple fields that are in the same path.
 
-|[[mongodb-property-tasks-max]]<<mongodb-property-tasks-max, `tasks.max`>>
+|[[mongodb-property-tasks-max]]<<mongodb-property-tasks-max, `+tasks.max+`>>
 |`1`
 |The maximum number of tasks that should be created for this connector. The MongoDB connector will attempt to use a separate task for each replica set, so the default is acceptable when using the connector with a single MongoDB replica set. When using the connector with a MongoDB sharded cluster, we recommend specifying a value that is equal to or more than the number of shards in the cluster, so that the work for each replica set can be distributed by Kafka Connect.
 
-|[[mongodb-property-snapshot-max-threads]]<<mongodb-property-snapshot-max-threads, `snapshot{zwsp}.max.threads`>>
+|[[mongodb-property-snapshot-max-threads]]<<mongodb-property-snapshot-max-threads, `+snapshot.max.threads+`>>
 |`1`
 |Positive integer value that specifies the maximum number of threads used to perform an intial sync of the collections in a replica set. Defaults to 1.
 
-|[[mongodb-property-tombstones-on-delete]]<<mongodb-property-tombstones-on-delete, `tombstones.on{zwsp}.delete`>>
+|[[mongodb-property-tombstones-on-delete]]<<mongodb-property-tombstones-on-delete, `+tombstones.on.delete+`>>
 |`true`
 | Controls whether a tombstone event should be generated after a delete event. +
 When `true` the delete operations are represented by a delete event and a subsequent tombstone event. When `false` only a delete event is sent. +
 Emitting the tombstone event (the default behavior) allows Kafka to completely delete all events pertaining to the given key once the source record got deleted.
 
-|[[mongodb-property-snapshot-delay-ms]]<<mongodb-property-snapshot-delay-ms, `snapshot.delay.ms`>>
+|[[mongodb-property-snapshot-delay-ms]]<<mongodb-property-snapshot-delay-ms, `+snapshot.delay.ms+`>>
 |
 |An interval in milliseconds that the connector should wait before taking a snapshot after starting up; +
 Can be used to avoid snapshot interruptions when starting multiple connectors in a cluster, which may cause re-balancing of connectors.
 
-|[[mongodb-property-snapshot-fetch-size]]<<mongodb-property-snapshot-fetch-size, `snapshot.fetch.size`>>
+|[[mongodb-property-snapshot-fetch-size]]<<mongodb-property-snapshot-fetch-size, `+snapshot.fetch.size+`>>
 |`0`
 |Specifies the maximum number of documents that should be read in one go from each collection while taking a snapshot.
 The connector will read the collection contents in multiple batches of this size. +
@@ -1181,40 +1181,40 @@ The following _advanced_ configuration properties have good defaults that will w
 |Default
 |Description
 
-|[[mongodb-property-max-queue-size]]<<mongodb-property-max-queue-size, `max.queue.size`>>
+|[[mongodb-property-max-queue-size]]<<mongodb-property-max-queue-size, `+max.queue.size+`>>
 |`8192`
 |Positive integer value that specifies the maximum size of the blocking queue into which change events read from the database log are placed before they are written to Kafka. This queue can provide backpressure to the oplog reader when, for example, writes to Kafka are slower or if Kafka is not available. Events that appear in the queue are not included in the offsets periodically recorded by this connector. Defaults to 8192, and should always be larger than the maximum batch size specified in the `max.batch.size` property.
 
-|[[mongodb-property-max-batch-size]]<<mongodb-property-max-batch-size, `max.batch.size`>>
+|[[mongodb-property-max-batch-size]]<<mongodb-property-max-batch-size, `+max.batch.size+`>>
 |`2048`
 |Positive integer value that specifies the maximum size of each batch of events that should be processed during each iteration of this connector. Defaults to 2048.
 
-|[[mongodb-property-max-queue-size-in-bytes]]<<mongodb-property-max-queue-size-in-bytes, `max.queue.size.in.bytes`>>
+|[[mongodb-property-max-queue-size-in-bytes]]<<mongodb-property-max-queue-size-in-bytes, `+max.queue.size.in.bytes+`>>
 |`0`
 |Long value for the maximum size in bytes of the blocking queue. The feature is disabled by default, it will be active if it's set with a positive long value.
 
-|[[mongodb-property-poll-interval-ms]]<<mongodb-property-poll-interval-ms, `poll.interval.ms`>>
+|[[mongodb-property-poll-interval-ms]]<<mongodb-property-poll-interval-ms, `+poll.interval.ms+`>>
 |`1000`
 |Positive integer value that specifies the number of milliseconds the connector should wait during each iteration for new change events to appear. Defaults to 1000 milliseconds, or 1 second.
 
-|[[mongodb-property-connect-backoff-initial-delay-ms]]<<mongodb-property-connect-backoff-initial-delay-ms, `connect.backoff{zwsp}.initial.delay.ms`>>
+|[[mongodb-property-connect-backoff-initial-delay-ms]]<<mongodb-property-connect-backoff-initial-delay-ms, `+connect.backoff.initial.delay.ms+`>>
 |`1000`
 |Positive integer value that specifies the initial delay when trying to reconnect to a primary after the first failed connection attempt or when no primary is available. Defaults to 1 second (1000 ms).
 
-|[[mongodb-property-connect-backoff-max-delay-ms]]<<mongodb-property-connect-backoff-max-delay-ms, `connect.backoff{zwsp}.max.delay.ms`>>
+|[[mongodb-property-connect-backoff-max-delay-ms]]<<mongodb-property-connect-backoff-max-delay-ms, `+connect.backoff.max.delay.ms+`>>
 |`1000`
 |Positive integer value that specifies the maximum delay when trying to reconnect to a primary after repeated failed connection attempts or when no primary is available. Defaults to 120 seconds (120,000 ms).
 
-|[[mongodb-property-connect-max-attempts]]<<mongodb-property-connect-max-attempts, `connect.max{zwsp}.attempts`>>
+|[[mongodb-property-connect-max-attempts]]<<mongodb-property-connect-max-attempts, `+connect.max.attempts+`>>
 |`16`
 |Positive integer value that specifies the maximum number of failed connection attempts to a replica set primary before an exception occurs and task is aborted. Defaults to 16, which with the defaults for `connect.backoff.initial.delay.ms` and `connect.backoff.max.delay.ms` results in just over 20 minutes of attempts before failing.
 
-|[[mongodb-property-mongodb-members-auto-discover]]<<mongodb-property-mongodb-members-auto-discover, `mongodb.members{zwsp}.auto.discover`>>
+|[[mongodb-property-mongodb-members-auto-discover]]<<mongodb-property-mongodb-members-auto-discover, `+mongodb.members.auto.discover+`>>
 |`true`
 |Boolean value that specifies whether the addresses in 'mongodb.hosts' are seeds that should be used to discover all members of the cluster or replica set (`true`), or whether the address(es) in `mongodb.hosts` should be used as is (`false`). The default is `true` and should be used in all cases except where MongoDB is {link-prefix}:{link-mongodb-connector}#mongodb-replicaset[fronted by a proxy].
 
 ifdef::community[]
-|[[mongodb-property-source-struct-version]]<<mongodb-property-source-struct-version, `source.struct{zwsp}.version`>>
+|[[mongodb-property-source-struct-version]]<<mongodb-property-source-struct-version, `+source.struct.version+`>>
 |v2
 |Schema version for the `source` block in CDC events. {prodname} 0.10 introduced a few breaking +
 changes to the structure of the `source` block in order to unify the exposed structure across
@@ -1223,7 +1223,7 @@ By setting this option to `v1` the structure used in earlier versions can be pro
 Note that this setting is not recommended and is planned for removal in a future {prodname} version.
 endif::community[]
 
-|[[mongodb-property-heartbeat-interval-ms]]<<mongodb-property-heartbeat-interval-ms, `heartbeat.interval{zwsp}.ms`>>
+|[[mongodb-property-heartbeat-interval-ms]]<<mongodb-property-heartbeat-interval-ms, `+heartbeat.interval.ms+`>>
 |`0`
 |Controls how frequently heartbeat messages are sent. +
 This property contains an interval in milliseconds that defines how frequently the connector sends messages into a heartbeat topic.
@@ -1236,55 +1236,55 @@ This will cause the oplog files to be rotated out but connector will not notice 
 Set this parameter to `0` to not send heartbeat messages at all. +
 Disabled by default.
 
-|[[mongodb-property-heartbeat-topics-prefix]]<<mongodb-property-heartbeat-topics-prefix, `heartbeat.topics{zwsp}.prefix`>>
+|[[mongodb-property-heartbeat-topics-prefix]]<<mongodb-property-heartbeat-topics-prefix, `+heartbeat.topics.prefix+`>>
 |`__debezium-heartbeat`
 |Controls the naming of the topic to which heartbeat messages are sent. +
 The topic is named according to the pattern `<heartbeat.topics.prefix>.<server.name>`.
 
-|[[mongodb-property-sanitize-field-names]]<<mongodb-property-sanitize-field-names, `sanitize.field{zwsp}.names`>>
+|[[mongodb-property-sanitize-field-names]]<<mongodb-property-sanitize-field-names, `+sanitize.field.names+`>>
 |`true` when connector configuration explicitly specifies the `key.converter` or `value.converter` parameters to use Avro, otherwise defaults to `false`.
 |Whether field names are sanitized to adhere to Avro naming requirements.
 ifdef::community[]
 See {link-prefix}:{link-avro-serialization}#avro-naming[Avro naming] for more details.
 endif::community[]
 
-|[[mongodb-property-skipped-operations]]<<mongodb-property-skipped-operations, `skipped.operations`>>
+|[[mongodb-property-skipped-operations]]<<mongodb-property-skipped-operations, `+skipped.operations+`>>
 |
 | comma-separated list of oplog operations that will be skipped during streaming.
 The operations include: `c` for inserts/create, `u` for updates, and `d` for deletes.
 By default, no operations are skipped.
 
-|[[mongodb-property-snapshot-collection-filter-overrides]]<<mongodb-property-snapshot-collection-filter-overrides, `snapshot.collection.filter.overrides`>>
+|[[mongodb-property-snapshot-collection-filter-overrides]]<<mongodb-property-snapshot-collection-filter-overrides, `+snapshot.collection.filter.overrides+`>>
 |
-| Controls which collection items are included in snapshot. This property affects snapshots only. Specify a comma-separated list of collection names in the form _databaseName{zwsp}.collectionName_.
+| Controls which collection items are included in snapshot. This property affects snapshots only. Specify a comma-separated list of collection names in the form _databaseName.collectionName_.
 
-For each collection that you specify, also specify another configuration property: `snapshot{zwsp}.collection{zwsp}.filter{zwsp}.overrides{zwsp}._databaseName_._collectionName_`. For example, the name of the other configuration property might be: `snapshot{zwsp}.collection{zwsp}.filter{zwsp}.overrides{zwsp}.customers{zwsp}.orders`. Set this property to a valid filter expression that retrieves only the items that you want in the snapshot. When the connector performs a snapshot, it retrieves only the items that matches the filter expression.
+For each collection that you specify, also specify another configuration property: `snapshot.collection.filter.overrides._databaseName_._collectionName_`. For example, the name of the other configuration property might be: `snapshot.collection.filter.overrides.customers.orders`. Set this property to a valid filter expression that retrieves only the items that you want in the snapshot. When the connector performs a snapshot, it retrieves only the items that matches the filter expression.
 
 
-|[[mongodb-property-provide-transaction-metadata]]<<mongodb-property-provide-transaction-metadata, `provide.transaction{zwsp}.metadata`>>
+|[[mongodb-property-provide-transaction-metadata]]<<mongodb-property-provide-transaction-metadata, `+provide.transaction.metadata+`>>
 |`false`
 |When set to `true` {prodname} generates events with transaction boundaries and enriches data events envelope with transaction metadata.
 
 See {link-prefix}:{link-mongodb-connector}#mongodb-transaction-metadata[Transaction Metadata] for additional details.
 
-|[[mongodb-property-retriable-restart-connector-wait-ms]]<<mongodb-property-retriable-restart-connector-wait-ms, `retriable.restart{zwsp}.connector.wait.ms`>>
+|[[mongodb-property-retriable-restart-connector-wait-ms]]<<mongodb-property-retriable-restart-connector-wait-ms, `+retriable.restart.connector.wait.ms+`>>
 |10000 (10 seconds)
 |The number of milliseconds to wait before restarting a connector after a retriable error occurs.
 
-|[[mongodb-property-mongodb-poll-interval-ms]]<<mongodb-property-mongodb-poll-interval-ms, `mongodb.poll{zwsp}.interval.ms`>>
+|[[mongodb-property-mongodb-poll-interval-ms]]<<mongodb-property-mongodb-poll-interval-ms, `+mongodb.poll.interval.ms+`>>
 |`30000`
 |The interval in which the connector polls for new, removed, or changed replica sets.
 
-|[[mongodb-property-mongodb-connect-timeout-ms]]<<mongodb-property-mongodb-connect-timeout-ms, `mongodb.connect{zwsp}.timeout.ms`>>
+|[[mongodb-property-mongodb-connect-timeout-ms]]<<mongodb-property-mongodb-connect-timeout-ms, `+mongodb.connect.timeout.ms+`>>
 |10000 (10 seconds)
 |The number of milliseconds the driver will wait before a new connection attempt is aborted.
 
-|[[mongodb-property-mongodb-socket-timeout-ms]]<<mongodb-property-mongodb-socket-timeout-ms, `mongodb.socket{zwsp}.timeout.ms`>>
+|[[mongodb-property-mongodb-socket-timeout-ms]]<<mongodb-property-mongodb-socket-timeout-ms, `+mongodb.socket.timeout.ms+`>>
 |0
 |The number of milliseconds before a send/receive on the socket can take before a timeout occurs.
 A value of `0` disables this behavior.
 
-|[[mongodb-property-mongodb-server-selection-timeout-ms]]<<mongodb-property-mongodb-server-selection-timeout-ms, `mongodb.server{zwsp}.selection{zwsp}.timeout.ms`>>
+|[[mongodb-property-mongodb-server-selection-timeout-ms]]<<mongodb-property-mongodb-server-selection-timeout-ms, `+mongodb.server.selection.timeout.ms+`>>
 |30000 (30 seconds)
 |The number of milliseconds the driver will wait to select a server before it times out and throws an error.
 
