@@ -28,6 +28,7 @@ public class MySqlOffsetContext implements OffsetContext {
     public static final String EVENTS_TO_SKIP_OFFSET_KEY = "event";
     public static final String TIMESTAMP_KEY = "ts_sec";
     public static final String GTID_SET_KEY = "gtids";
+    public static final String NON_GTID_TRANSACTION_ID_FORMAT = "file=%s,pos=%s";
 
     private final Schema sourceInfoSchema;
     private final SourceInfo sourceInfo;
@@ -42,6 +43,7 @@ public class MySqlOffsetContext implements OffsetContext {
     private long restartEventsToSkip = 0;
     private long currentEventLengthInBytes = 0;
     private boolean inTransaction = false;
+    private String transactionId = null;
 
     public MySqlOffsetContext(MySqlConnectorConfig connectorConfig, boolean snapshot, boolean snapshotCompleted,
                               TransactionContext transactionContext, SourceInfo sourceInfo) {
@@ -147,6 +149,25 @@ public class MySqlOffsetContext implements OffsetContext {
     @Override
     public void postSnapshotCompletion() {
         sourceInfo.setSnapshot(SnapshotRecord.FALSE);
+    }
+
+    private void setTransactionId() {
+        // use GTID if it is available
+        if (sourceInfo.getCurrentGtid() != null) {
+            this.transactionId = sourceInfo.getCurrentGtid();
+        }
+        else {
+            this.transactionId = String.format(NON_GTID_TRANSACTION_ID_FORMAT,
+                    this.restartBinlogFilename, this.restartBinlogPosition);
+        }
+    }
+
+    private void resetTransactionId() {
+        transactionId = null;
+    }
+
+    public String getTransactionId() {
+        return this.transactionId;
     }
 
     public void setInitialSkips(long restartEventsToSkip, int restartRowsToSkip) {
@@ -312,6 +333,7 @@ public class MySqlOffsetContext implements OffsetContext {
         this.restartBinlogFilename = sourceInfo.binlogFilename();
         this.restartBinlogPosition = sourceInfo.binlogPosition();
         this.inTransaction = true;
+        setTransactionId();
     }
 
     public void commitTransaction() {
@@ -322,6 +344,7 @@ public class MySqlOffsetContext implements OffsetContext {
         this.restartEventsToSkip = 0;
         this.inTransaction = false;
         sourceInfo.setQuery(null);
+        resetTransactionId();
     }
 
     /**
@@ -418,6 +441,6 @@ public class MySqlOffsetContext implements OffsetContext {
                 + ", restartBinlogFilename=" + restartBinlogFilename + ", restartBinlogPosition="
                 + restartBinlogPosition + ", restartRowsToSkip=" + restartRowsToSkip + ", restartEventsToSkip="
                 + restartEventsToSkip + ", currentEventLengthInBytes=" + currentEventLengthInBytes + ", inTransaction="
-                + inTransaction + "]";
+                + inTransaction + ", transactionId=" + transactionId + "]";
     }
 }
