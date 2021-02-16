@@ -2110,7 +2110,7 @@ endif::community[]
  +
 `connect` always represents time and timestamp values using Kafka Connect's built-in representations for Time, Date, and Timestamp, which use millisecond precision regardless of the database columns' precision.
 
-|[[mysql-property-decimal-handling-mode]]<<mysql-property-decimal-handling-mode,`decimal.handling.mode+`>>
+|[[mysql-property-decimal-handling-mode]]<<mysql-property-decimal-handling-mode,`+decimal.handling.mode+`>>
 |`precise`
 |Specifies how the connector should handle values for `DECIMAL` and `NUMERIC` columns: +
  +
