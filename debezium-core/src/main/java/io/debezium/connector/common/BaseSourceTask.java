@@ -6,6 +6,7 @@
 package io.debezium.connector.common;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Collections;
 import java.util.List;
@@ -80,7 +81,7 @@ public abstract class BaseSourceTask extends SourceTask {
     private final ElapsedTimeStrategy pollOutputDelay;
     private final Clock clock = Clock.system();
     private long recordCounter = 0L;
-    private long previousOutputMillis = 0L;
+    private Instant previousOutputInstant;
 
     protected BaseSourceTask() {
         // Use exponential delay to log the progress frequently at first, but the quickly tapering off to once an hour...
@@ -88,7 +89,7 @@ public abstract class BaseSourceTask extends SourceTask {
 
         // Initial our poll output delay logic ...
         pollOutputDelay.hasElapsed();
-        previousOutputMillis = clock.currentTimeInMillis();
+        previousOutputInstant = clock.currentTimeAsInstant();
     }
 
     @Override
@@ -162,7 +163,7 @@ public abstract class BaseSourceTask extends SourceTask {
     }
 
     void logStatistics(final List<SourceRecord> records) {
-        if (records == null) {
+        if (records == null || !LOGGER.isInfoEnabled()) {
             return;
         }
         int batchSize = records.size();
@@ -172,17 +173,11 @@ public abstract class BaseSourceTask extends SourceTask {
             lastOffset = lastRecord.sourceOffset();
             if (pollOutputDelay.hasElapsed()) {
                 // We want to record the status ...
-                long millisSinceLastOutput = clock.currentTimeInMillis() - previousOutputMillis;
-                try {
-                    if (LOGGER.isInfoEnabled()) {
-                        LOGGER.info("{} records sent during previous {}, last recorded offset: {}", recordCounter,
-                                Strings.duration(millisSinceLastOutput), lastOffset);
-                    }
-                }
-                finally {
-                    recordCounter = 0;
-                    previousOutputMillis += millisSinceLastOutput;
-                }
+                final Instant currentTime = clock.currentTime();
+                LOGGER.info("{} records sent during previous {}, last recorded offset: {}", recordCounter,
+                        Strings.duration(Duration.between(previousOutputInstant, currentTime).toMillis()), lastOffset);
+                recordCounter = 0;
+                previousOutputInstant = currentTime;
             }
         }
     }

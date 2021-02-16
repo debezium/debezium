@@ -30,6 +30,10 @@ public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory {
     private final Clock clock;
     private final MySqlTaskContext taskContext;
     private final MySqlStreamingChangeEventSourceMetrics streamingMetrics;
+    // MySQL snapshot requires buffering to modify the last record in the snapshot as sometimes it is
+    // impossible to detect it till the snapshot is ended. Mainly when the last snapshotted table is empty.
+    // Based on the DBZ-3113 the code can change in the future and it will be handled not in MySQL
+    // but in the core shared code.
     private final ChangeEventQueue<DataChangeEvent> queue;
 
     public MySqlChangeEventSourceFactory(MySqlConnectorConfig configuration, MySqlConnection connection,

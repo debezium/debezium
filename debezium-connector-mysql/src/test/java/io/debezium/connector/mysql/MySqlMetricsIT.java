@@ -124,6 +124,9 @@ public class MySqlMetricsIT extends AbstractConnectorTest {
                         .build());
 
         assertSnapshotMetrics();
+        // The legacy implementation did not exposed streaming metrics when only snapshot was executed.
+        // All other connectors based on new framework exposes streaming metrics always so we are
+        // following the same behaviour in the new implementation
         if (isLegacy()) {
             assertNoStreamingMetricsExist();
         }

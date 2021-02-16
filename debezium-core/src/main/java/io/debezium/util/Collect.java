@@ -17,7 +17,6 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 
 /**
  * A set of utilities for more easily creating various kinds of collections.
@@ -288,9 +287,9 @@ public class Collect {
      * @param minuend the elements to be removed
      */
     public static <T> Set<T> minus(Set<T> subtrahend, Set<T> minuend) {
-        return subtrahend.stream()
-                .filter(x -> !minuend.contains(x))
-                .collect(Collectors.toSet());
+        final Set<T> r = new HashSet<T>(subtrahend);
+        r.removeAll(minuend);
+        return r;
     }
 
     private Collect() {

@@ -8,11 +8,11 @@ package io.debezium.connector.mysql;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.kafka.connect.data.Schema;
 import org.slf4j.Logger;
@@ -77,7 +77,7 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
     private final DdlParser ddlParser;
     private final RelationalTableFilters filters;
     private final DdlChanges ddlChanges;
-    private final Map<Long, TableId> tableIdsByTableNumber = new HashMap<>();
+    private final Map<Long, TableId> tableIdsByTableNumber = new ConcurrentHashMap<>();
     private boolean storageInitialiationExecuted = false;
 
     /**
@@ -244,7 +244,7 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
                         events.forEach(event -> {
                             final TableId tableId = getTableId(event);
                             offset.tableEvent(dbName, tableIds, sourceTime);
-                            // For SET with multpile parameters
+                            // For SET with multiple parameters
                             if (event instanceof TableCreatedEvent) {
                                 emitChangeEvent(offset, schemaChangeEvents, sanitizedDbName, event, tableId, SchemaChangeEventType.CREATE, snapshot);
                             }

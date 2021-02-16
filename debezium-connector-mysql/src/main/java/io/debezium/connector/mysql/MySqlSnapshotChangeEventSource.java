@@ -216,7 +216,7 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
                 // would implicitly commit our active transaction, and this would break our consistent snapshot logic.
                 // Therefore, we cannot unlock the tables here!
                 // https://dev.mysql.com/doc/refman/5.7/en/flush.html
-                LOGGER.info("Tables were locked explicitly, but to get a consistent snapshot we cannot release the locks until we've read all tables.");
+                LOGGER.warn("Tables were locked explicitly, but to get a consistent snapshot we cannot release the locks until we've read all tables.");
             }
         }
     }
@@ -250,19 +250,7 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
                         super.lastSnapshotRecord(snapshotContext);
                     }
 
-                    try {
-                        dispatcher.dispatchSchemaChangeEvent(tableId, (receiver) -> {
-                            try {
-                                receiver.schemaChangeEvent(event);
-                            }
-                            catch (InterruptedException e) {
-                                Thread.currentThread().interrupt();
-                            }
-                        });
-                    }
-                    catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                    }
+                    dispatcher.dispatchSchemaChangeEvent(tableId, (receiver) -> receiver.schemaChangeEvent(event));
                 }
 
                 // Make schema available for snapshot source
@@ -656,19 +644,7 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
             if (!snapshottingTask.snapshotData() && !i.hasNext()) {
                 lastSnapshotRecord(snapshotContext);
             }
-            try {
-                dispatcher.dispatchSchemaChangeEvent(tableId, (receiver) -> {
-                    try {
-                        receiver.schemaChangeEvent(event);
-                    }
-                    catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                    }
-                });
-            }
-            catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
+            dispatcher.dispatchSchemaChangeEvent(tableId, (receiver) -> receiver.schemaChangeEvent(event));
         }
 
         // Make schema available for snapshot source
