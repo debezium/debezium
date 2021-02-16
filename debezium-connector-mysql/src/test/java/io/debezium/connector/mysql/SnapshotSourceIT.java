@@ -306,10 +306,11 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
     }
 
     @Test
-    public void shouldCreateSnapshotOfSingleDatabaseUsingReadEvents() throws Exception {
+    public void shouldCreateSnapshotOfSingleDatabaseUsingInsertEvents() throws Exception {
         config = simpleConfig()
                 .with(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, "connector_(.*)_" + DATABASE.getIdentifier())
-                .with(MySqlConnectorConfig.SNAPSHOT_EVENTS_AS_INSERTS, false)
+                .with("transforms", "snapshotasinsert")
+                .with("transforms.snapshotasinsert.type", "io.debezium.connector.mysql.transforms.ReadToInsertEvent")
                 .build();
 
         // Start the connector ...
@@ -336,46 +337,46 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
         assertThat(store.collectionCount()).isEqualTo(9); // 2 databases
 
         Collection products = store.collection(DATABASE.getDatabaseName(), productsTableName());
-        assertThat(products.numberOfCreates()).isEqualTo(0);
+        assertThat(products.numberOfCreates()).isEqualTo(9);
         assertThat(products.numberOfUpdates()).isEqualTo(0);
         assertThat(products.numberOfDeletes()).isEqualTo(0);
-        assertThat(products.numberOfReads()).isEqualTo(9);
+        assertThat(products.numberOfReads()).isEqualTo(0);
         assertThat(products.numberOfTombstones()).isEqualTo(0);
         assertThat(products.numberOfKeySchemaChanges()).isEqualTo(1);
         assertThat(products.numberOfValueSchemaChanges()).isEqualTo(1);
 
         Collection products_on_hand = store.collection(DATABASE.getDatabaseName(), "products_on_hand");
-        assertThat(products_on_hand.numberOfCreates()).isEqualTo(0);
+        assertThat(products_on_hand.numberOfCreates()).isEqualTo(9);
         assertThat(products_on_hand.numberOfUpdates()).isEqualTo(0);
         assertThat(products_on_hand.numberOfDeletes()).isEqualTo(0);
-        assertThat(products_on_hand.numberOfReads()).isEqualTo(9);
+        assertThat(products_on_hand.numberOfReads()).isEqualTo(0);
         assertThat(products_on_hand.numberOfTombstones()).isEqualTo(0);
         assertThat(products_on_hand.numberOfKeySchemaChanges()).isEqualTo(1);
         assertThat(products_on_hand.numberOfValueSchemaChanges()).isEqualTo(1);
 
         Collection customers = store.collection(DATABASE.getDatabaseName(), "customers");
-        assertThat(customers.numberOfCreates()).isEqualTo(0);
+        assertThat(customers.numberOfCreates()).isEqualTo(4);
         assertThat(customers.numberOfUpdates()).isEqualTo(0);
         assertThat(customers.numberOfDeletes()).isEqualTo(0);
-        assertThat(customers.numberOfReads()).isEqualTo(4);
+        assertThat(customers.numberOfReads()).isEqualTo(0);
         assertThat(customers.numberOfTombstones()).isEqualTo(0);
         assertThat(customers.numberOfKeySchemaChanges()).isEqualTo(1);
         assertThat(customers.numberOfValueSchemaChanges()).isEqualTo(1);
 
         Collection orders = store.collection(DATABASE.getDatabaseName(), "orders");
-        assertThat(orders.numberOfCreates()).isEqualTo(0);
+        assertThat(orders.numberOfCreates()).isEqualTo(5);
         assertThat(orders.numberOfUpdates()).isEqualTo(0);
         assertThat(orders.numberOfDeletes()).isEqualTo(0);
-        assertThat(orders.numberOfReads()).isEqualTo(5);
+        assertThat(orders.numberOfReads()).isEqualTo(0);
         assertThat(orders.numberOfTombstones()).isEqualTo(0);
         assertThat(orders.numberOfKeySchemaChanges()).isEqualTo(1);
         assertThat(orders.numberOfValueSchemaChanges()).isEqualTo(1);
 
         Collection timetest = store.collection(DATABASE.getDatabaseName(), "dbz_342_timetest");
-        assertThat(timetest.numberOfCreates()).isEqualTo(0);
+        assertThat(timetest.numberOfCreates()).isEqualTo(1);
         assertThat(timetest.numberOfUpdates()).isEqualTo(0);
         assertThat(timetest.numberOfDeletes()).isEqualTo(0);
-        assertThat(timetest.numberOfReads()).isEqualTo(1);
+        assertThat(timetest.numberOfReads()).isEqualTo(0);
         assertThat(timetest.numberOfTombstones()).isEqualTo(0);
         assertThat(timetest.numberOfKeySchemaChanges()).isEqualTo(1);
         assertThat(timetest.numberOfValueSchemaChanges()).isEqualTo(1);
