@@ -66,6 +66,7 @@ import com.github.shyiko.mysql.binlog.network.SSLSocketFactory;
 import com.github.shyiko.mysql.binlog.network.ServerException;
 
 import io.debezium.DebeziumException;
+import io.debezium.annotation.SingleThreadAccess;
 import io.debezium.config.CommonConnectorConfig.EventProcessingFailureHandlingMode;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlConnectorConfig.GtidNewChannelPosition;
@@ -115,6 +116,7 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
     private final EventDispatcher<TableId> eventDispatcher;
     private final MySqlOffsetContext offsetContext;
     private final ErrorHandler errorHandler;
+    @SingleThreadAccess("binlog client thread")
     private Instant eventTimestamp;
 
     public static class BinlogPosition {
