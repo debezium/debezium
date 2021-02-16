@@ -1589,6 +1589,9 @@ The LogMiner adapter maintains an in-memory buffer of all running transactions.
 A long running transaction is not recommended as all DML operations that are part of the transaction will be buffered until a commit or rollback is detected.
 Any transaction that exceeds this configured value will be discarded entirely and no messages emitted for the operations that were part of the transaction.
 
+While this option allows the behavior to be configured on a case-by-case basis, we recognize this is less than ideal.
+We have plans to enhance this behavior in a future release, (see {link-prefix}:{jira-url}/browse/DBZ-3123[DBZ-3123]).
+
 |===
 
 [[oracle-when-things-go-wrong]]
