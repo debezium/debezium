@@ -548,11 +548,6 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
                     SNAPSHOT_FULL_COLUMN_SCAN_FORCE)
             .create();
 
-    /**
-     * The set of {@link Field}s defined as part of this configuration.
-     */
-    public static Field.Set ALL_FIELDS = Field.setOf(CONFIG_DEFINITION.all());
-
     private final RelationalTableFilters tableFilters;
     private final TemporalPrecisionMode temporalPrecisionMode;
     private final KeyMapper keyMapper;

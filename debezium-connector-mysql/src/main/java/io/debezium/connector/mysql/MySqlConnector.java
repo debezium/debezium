@@ -17,6 +17,7 @@ import org.apache.kafka.connect.connector.Task;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.annotation.Immutable;
 import io.debezium.config.Configuration;
 import io.debezium.connector.common.RelationalBaseSourceConnector;
 import io.debezium.connector.mysql.MySqlConnection.MySqlConnectionConfiguration;
@@ -37,7 +38,9 @@ public class MySqlConnector extends RelationalBaseSourceConnector {
     public static final String IMPLEMENTATION_PROP = "internal.implementation";
     public static final String LEGACY_IMPLEMENTATION = "legacy";
 
-    private Logger logger = LoggerFactory.getLogger(getClass());
+    private static final Logger LOGGER = LoggerFactory.getLogger(MySqlConnector.class);
+
+    @Immutable
     private Map<String, String> properties;
 
     public MySqlConnector() {
@@ -57,7 +60,7 @@ public class MySqlConnector extends RelationalBaseSourceConnector {
     public Class<? extends Task> taskClass() {
         final String implementation = properties.get(IMPLEMENTATION_PROP);
         if (isLegacy(implementation)) {
-            logger.warn("Legacy MySQL connector implementation is enabled");
+            LOGGER.warn("Legacy MySQL connector implementation is enabled");
             return io.debezium.connector.mysql.legacy.MySqlConnectorTask.class;
         }
         return io.debezium.connector.mysql.MySqlConnectorTask.class;
@@ -94,15 +97,15 @@ public class MySqlConnector extends RelationalBaseSourceConnector {
             try {
                 connection.connect();
                 connection.execute("SELECT version()");
-                logger.info("Successfully tested connection for {} with user '{}'", connection.connectionString(), connectionConfig.username());
+                LOGGER.info("Successfully tested connection for {} with user '{}'", connection.connectionString(), connectionConfig.username());
             }
             catch (SQLException e) {
-                logger.info("Failed testing connection for {} with user '{}'", connection.connectionString(), connectionConfig.username());
+                LOGGER.info("Failed testing connection for {} with user '{}'", connection.connectionString(), connectionConfig.username());
                 hostnameValue.addErrorMessage("Unable to connect: " + e.getMessage());
             }
         }
         catch (SQLException e) {
-            logger.error("Unexpected error shutting down the database connection", e);
+            LOGGER.error("Unexpected error shutting down the database connection", e);
         }
     }
 
