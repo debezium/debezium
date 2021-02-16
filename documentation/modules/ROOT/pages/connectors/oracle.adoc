@@ -1406,13 +1406,11 @@ This field is required to enable Oracle RAC support.
 |_initial_
 |A mode for taking an initial snapshot of the structure and optionally data of captured tables. Supported values are _initial_ (will take a snapshot of structure and data of captured tables; useful if topics should be populated with a complete representation of the data from the captured tables) and _schema_only_ (will take a snapshot of the structure of captured tables only; useful if only changes happening from now onwards should be propagated to topics). Once the snapshot is complete, the connector will continue reading change events from the database's redo logs.
 
-|[[oracle-property-table-include-list]]
-[[oracle-property-table-include-list]]<<oracle-property-table-include-list, `table.include.list`>>
+|[[oracle-property-table-include-list]]<<oracle-property-table-include-list, `table.include.list`>>
 |_empty string_
 |An optional comma-separated list of regular expressions that match fully-qualified table identifiers for tables to be monitored; any table not included in the include list will be excluded from monitoring. Each identifier is of the form _schemaName_._tableName_. By default the connector will monitor every non-system table in each monitored database. May not be used with `table.exclude.list`.
 
-|[[oracle-property-table-exclude-list]]
-[[oracle-property-table-exclude-list]]<<oracle-property-table-exclude-list, `table.exclude.list`>>
+|[[oracle-property-table-exclude-list]]<<oracle-property-table-exclude-list, `table.exclude.list`>>
 |_empty string_
 |An optional comma-separated list of regular expressions that match fully-qualified table identifiers for tables to be excluded from monitoring; any table not included in the exclude list will be monitored. Each identifier is of the form _schemaName_._tableName_. May not be used with `table.include.list`.
 

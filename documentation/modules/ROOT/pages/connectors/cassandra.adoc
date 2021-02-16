@@ -1004,8 +1004,7 @@ refreshing the cached Cassandra table schemas.
 |`false`
 |Whether deletion events should have a subsequent tombstone event (true) or not (false). It's important to note that in Cassandra, two events with the same key may be updating different columns of a given table. So this could potentially result in records being lost during compaction if they have not been consumed by the consumer yet. In other words, do NOT set this to true if you have Kafka compaction turned on.
 
-|[[cassandra-property-field-exclude-list]]
-[[cassandra-property-field-exclude-list]]<<cassandra-property-field-exclude-list, `field.exclude.list`>>
+|[[cassandra-property-field-exclude-list]]<<cassandra-property-field-exclude-list, `field.exclude.list`>>
 |
 |A comma-separated list of fully-qualified names of fields that should be excluded from change event message values. Fully-qualified names for fields are in the form keyspace_name>.<field_name>.<nested_field_name>.
 

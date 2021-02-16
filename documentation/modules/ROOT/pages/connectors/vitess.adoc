@@ -87,9 +87,9 @@ For example, suppose that `fulfillment` is the logical server name in the config
 
 The {prodname} Vitess connector generates a data change event for each row-level `INSERT`, `UPDATE`, and `DELETE` operation. Each event contains a key and a value. The structure of the key and the value depends on the table that was changed.
 
-{prodname} and Kafka Connect are designed around _continuous streams of event messages_. However, the structure of these events may change over time, which can be difficult for consumers to handle. To address this, each event contains the schema for its content or, if you are using a schema registry, a schema ID that a consumer can use to obtain the schema from the registry. This makes each event self-contained. 
+{prodname} and Kafka Connect are designed around _continuous streams of event messages_. However, the structure of these events may change over time, which can be difficult for consumers to handle. To address this, each event contains the schema for its content or, if you are using a schema registry, a schema ID that a consumer can use to obtain the schema from the registry. This makes each event self-contained.
 
-The following skeleton JSON shows the basic four parts of a change event. However, how you configure the Kafka Connect converter that you choose to use in your application determines the representation of these four parts in change events. A `schema` field is in a change event only when you configure the converter to produce it. Likewise, the event key and event payload are in a change event only if you configure a converter to produce it. If you use the JSON converter and you configure it to produce all four basic change event parts, change events have this structure: 
+The following skeleton JSON shows the basic four parts of a change event. However, how you configure the Kafka Connect converter that you choose to use in your application determines the representation of these four parts in change events. A `schema` field is in a change event only when you configure the converter to produce it. Likewise, the event key and event payload are in a change event only if you configure a converter to produce it. If you use the JSON converter and you configure it to produce all four basic change event parts, change events have this structure:
 
 [source,json,index=0]
 ----
@@ -100,7 +100,7 @@ The following skeleton JSON shows the basic four parts of a change event. Howeve
  "payload": { // <2>
    ...
  },
- "schema": { // <3> 
+ "schema": { // <3>
    ...
  },
  "payload": { // <4>
@@ -126,7 +126,7 @@ It is possible to override the table's primary key by setting the {link-prefix}:
 
 |3
 |`schema`
-|The second `schema` field is part of the event value. It specifies the Kafka Connect schema that describes what is in the event value's `payload` portion. In other words, the second `schema` describes the structure of the row that was changed. Typically, this schema contains nested schemas. 
+|The second `schema` field is part of the event value. It specifies the Kafka Connect schema that describes what is in the event value's `payload` portion. In other words, the second `schema` describes the structure of the row that was changed. Typically, this schema contains nested schemas.
 
 |4
 |`payload`
@@ -210,7 +210,7 @@ If the `database.server.name` connector configuration property has the value `Vi
 
 |1
 |`schema`
-|The schema portion of the key specifies a Kafka Connect schema that describes what is in the key's `payload` portion. 
+|The schema portion of the key specifies a Kafka Connect schema that describes what is in the key's `payload` portion.
 
 |2
 |`Vitess_server{zwsp}.commerce.customers{zwsp}.Key`
@@ -225,7 +225,7 @@ a|Name of the schema that defines the structure of the key's payload. This schem
 |Indicates whether the event key must contain a value in its `payload` field. In this example, a value in the key's payload is required. A value in the key's payload field is optional when a table does not have a primary key.
 
 |4
-|`fields` 
+|`fields`
 |Specifies each field that is expected in the `payload`, including each field's name, index, and schema.
 
 |5
@@ -250,9 +250,9 @@ If the table does not have a primary, then the change event's key is null. The r
 [[vitess-change-events-value]]
 === Change event values
 
-The value in a change event is a bit more complicated than the key. Like the key, the value has a `schema` section and a `payload` section. The `schema` section contains the schema that describes the `Envelope` structure of the `payload` section, including its nested fields. Change events for operations that create, update or delete data all have a value payload with an envelope structure. 
+The value in a change event is a bit more complicated than the key. Like the key, the value has a `schema` section and a `payload` section. The `schema` section contains the schema that describes the `Envelope` structure of the `payload` section, including its nested fields. Change events for operations that create, update or delete data all have a value payload with an envelope structure.
 
-Consider the same sample table that was used to show an example of a change event key: 
+Consider the same sample table that was used to show an example of a change event key:
 
 [source,sql,indent=0]
 ----
@@ -271,7 +271,7 @@ The emitted events for `UPDATE` and `DELETE` oeprations contain the previous val
 [[vitess-create-events]]
 === _create_ events
 
-The following example shows the value portion of a change event that the connector generates for an operation that creates data in the `customers` table: 
+The following example shows the value portion of a change event that the connector generates for an operation that creates data in the `customers` table:
 
 [source,json,options="nowrap",indent=0,subs="+attributes"]
 ----
@@ -436,7 +436,7 @@ The following example shows the value portion of a change event that the connect
 
 |1
 |`schema`
-|The value's schema, which describes the structure of the value's payload. A change event's value schema is the same in every change event that the connector generates for a particular table. 
+|The value's schema, which describes the structure of the value's payload. A change event's value schema is the same in every change event that the connector generates for a particular table.
 
 |2
 |`name`
@@ -471,7 +471,7 @@ a|An optional field that specifies the state of the row before the event occurre
 
 |8
 |`source`
-a|Mandatory field that describes the source metadata for the event. This field contains information that you can use to compare this event with other events, with regard to the origin of the events, the order in which the events occurred, and whether events were part of the same transaction. The source metadata includes: 
+a|Mandatory field that describes the source metadata for the event. This field contains information that you can use to compare this event with other events, with regard to the origin of the events, the order in which the events occurred, and whether events were part of the same transaction. The source metadata includes:
 
 * {prodname} version
 * Connector type and name
@@ -482,7 +482,7 @@ a|Mandatory field that describes the source metadata for the event. This field c
 
 |9
 |`op`
-a|Mandatory string that describes the type of operation that caused the connector to generate the event. In this example, `c` indicates that the operation created a row. Valid values are: 
+a|Mandatory string that describes the type of operation that caused the connector to generate the event. In this example, `c` indicates that the operation created a row. Valid values are:
 
 * `c` = create
 * `u` = update
@@ -500,7 +500,7 @@ In the `source` object, `ts_ms` indicates the time that the change was made in t
 [[vitess-update-events]]
 === _update_ events
 
-The value of a change event for an update in the sample `customers` table has the same schema as a _create_ event for that table. Likewise, the event value's payload has the same structure. However, the event value payload contains different values in an _update_ event. Here is an example of a change event value in an event that the connector generates for an update in the `customers` table: 
+The value of a change event for an update in the sample `customers` table has the same schema as a _create_ event for that table. Likewise, the event value's payload has the same structure. However, the event value payload contains different values in an _update_ event. Here is an example of a change event value in an event that the connector generates for an update in the `customers` table:
 
 [source,json,indent=0,options="nowrap",subs="+attributes"]
 ----
@@ -547,11 +547,11 @@ The value of a change event for an update in the sample `customers` table has th
 
 |2
 |`after`
-|An optional field that specifies the state of the row after the event occurred. In this example, the `first_name` value is now `Anne Marie`. 
+|An optional field that specifies the state of the row after the event occurred. In this example, the `first_name` value is now `Anne Marie`.
 
 |3
 |`source`
-a|Mandatory field that describes the source metadata for the event. The `source` field structure has the same fields as in a _create_ event, but some values are different. The source metadata includes: 
+a|Mandatory field that describes the source metadata for the event. The `source` field structure has the same fields as in a _create_ event, but some values are different. The source metadata includes:
 
 * {prodname} version
 * Connector type and name
@@ -580,7 +580,7 @@ Updating the columns for a row's primary key changes the value of the row's key.
 [[vitess-delete-events]]
 === _delete_ events
 
-The value in a _delete_ change event has the same `schema` portion as _create_ and _update_ events for the same table. The `payload` portion in a _delete_ event for the sample `customers` table looks like this:  
+The value in a _delete_ change event has the same `schema` portion as _create_ and _update_ events for the same table. The `payload` portion in a _delete_ event for the sample `customers` table looks like this:
 
 [source,json,indent=0,subs="+attributes"]
 ----
@@ -626,7 +626,7 @@ The value in a _delete_ change event has the same `schema` portion as _create_ a
 
 |3
 |`source`
-a|Mandatory field that describes the source metadata for the event. In a _delete_ event value, the `source` field structure is the same as for _create_ and _update_ events for the same table. Many `source` field values are also the same. In a _delete_ event value, the `ts_ms` and `lsn` field values, as well as other values, might have changed. But the `source` field in a _delete_ event value provides the same metadata: 
+a|Mandatory field that describes the source metadata for the event. In a _delete_ event value, the `source` field structure is the same as for _create_ and _update_ events for the same table. Many `source` field values are also the same. In a _delete_ event value, the `ts_ms` and `lsn` field values, as well as other values, might have changed. But the `source` field in a _delete_ event value provides the same metadata:
 
 * {prodname} version
 * Connector type and name
@@ -1089,23 +1089,19 @@ The following configuration properties are _required_ unless a default value is 
 |
 |Logical name that identifies and provides a namespace for the particular Vitess database server or cluster in which {prodname} is capturing changes. Only alphanumeric characters and underscores should be used in the database server logical name. The logical name should be unique across all other connectors, since it is used as a topic name prefix for all Kafka topics that receive records from this connector.
 
-|[[vitess-property-table-include-list]]
-[[vitess-property-table-include-list]]<<vitess-property-table-include-list, `table.include{zwsp}.list`>>
+|[[vitess-property-table-include-list]]<<vitess-property-table-include-list, `table.include{zwsp}.list`>>
 |
 |An optional, comma-separated list of regular expressions that match fully-qualified table identifiers for tables whose changes you want to capture. Any table not included in `table.include.list` does not have its changes captured. Each identifier is of the form _keyspace_._tableName_. By default, the connector captures changes in every non-system table in each schema whose changes are being captured. Do not also set the `table.exclude.list` property.
 
-|[[vitess-property-table-exclude-list]]
-[[vitess-property-table-exclude.list]]<<vitess-property-table-exclude.list, `table.exclude{zwsp}.list`>>
+|[[vitess-property-table-exclude.list]]<<vitess-property-table-exclude.list, `table.exclude{zwsp}.list`>>
 |
 |An optional, comma-separated list of regular expressions that match fully-qualified table identifiers for tables whose changes you *do not* want to capture. Any table not included in `table.exclude.list` has it changes captured. Each identifier is of the form _keyspace_._tableName_. Do not also set the `table.include.list` property.
 
-|[[vitess-property-column-include-list]]
-[[vitess-property-column-include-list]]<<vitess-property-column-include-list, `column.include{zwsp}.list`>>
+|[[vitess-property-column-include-list]]<<vitess-property-column-include-list, `column.include{zwsp}.list`>>
 |
 |An optional, comma-separated list of regular expressions that match the fully-qualified names of columns that should be included in change event record values. Fully-qualified names for columns are of the form _keyspace_._tableName_._columnName_. Do not also set the `column.exclude.list` property.
 
-|[[vitess-property-column-exclude-list]]
-[[vitess-property-column-exclude-list]]<<vitess-property-column-exclude-list, `column.exclude{zwsp}.list`>>
+|[[vitess-property-column-exclude-list]]<<vitess-property-column-exclude-list, `column.exclude{zwsp}.list`>>
 |
 |An optional, comma-separated list of regular expressions that match the fully-qualified names of columns that should be excluded from change event record values. Fully-qualified names for columns are of the form _keyspace_._tableName_._columnName_. Do not also set the `column.include.list` property.
 
@@ -1117,7 +1113,7 @@ The following configuration properties are _required_ unless a default value is 
  +
 `false` - only a _delete_ event is sent. +
  +
-After a _delete_ operation, emitting a tombstone event enables Kafka to delete all change event records that have the same key as the deleted row. 
+After a _delete_ operation, emitting a tombstone event enables Kafka to delete all change event records that have the same key as the deleted row.
 
 |[[vitess-property-message-key-columns]]<<vitess-property-message-key-columns, `message.key{zwsp}.columns`>>
 |_empty string_
@@ -1189,7 +1185,7 @@ Be sure to consult the {link-kafka-docs}.html[Kafka documentation] for all of th
 [[vitess-when-things-go-wrong]]
 == Behavior when things go wrong
 
-{prodname} is a distributed system that captures all changes in multiple upstream databases; it never misses or loses an event. When the system is operating normally or being managed carefully then {prodname} provides _exactly once_ delivery of every change event record. 
+{prodname} is a distributed system that captures all changes in multiple upstream databases; it never misses or loses an event. When the system is operating normally or being managed carefully then {prodname} provides _exactly once_ delivery of every change event record.
 
 If a fault does happen then the system does not lose any events. However, while it is recovering from the fault, it might repeat some change events. In these abnormal situations, {prodname}, like Kafka, provides _at least once_ delivery of change events.
 
@@ -1200,7 +1196,7 @@ The rest of this section describes how {prodname} handles various kinds of fault
 
 In the following situations, the connector fails when trying to start, reports an error/exception in the log, and stops running:
 
-* The connector's configuration is invalid. 
+* The connector's configuration is invalid.
 * The connector cannot successfully connect to Vitess by using the specified connection parameters.
 
 In these cases, the error message has details about the problem and possibly a suggested workaround. After you correct the configuration or address the Vitess problem, restart the connector.
