@@ -303,20 +303,12 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
     }
 
     @Override
-    protected void readTableStructure(ChangeEventSourceContext sourceContext, RelationalSnapshotContext snapshotContext) throws SQLException, InterruptedException {
+    protected void readTableStructure(ChangeEventSourceContext sourceContext, RelationalSnapshotContext snapshotContext) throws Exception {
         Set<TableId> capturedSchemaTables;
         if (twoPhaseSchemaSnapshot()) {
             // Capture schema of captured tables after they are locked
             tableLock(snapshotContext);
-            try {
-                determineSnapshotOffset(snapshotContext);
-            }
-            catch (InterruptedException e) {
-                throw e;
-            }
-            catch (Exception e) {
-                throw new DebeziumException(e);
-            }
+            determineSnapshotOffset(snapshotContext);
             capturedSchemaTables = snapshotContext.capturedTables;
             LOGGER.info("Table level locking is in place, the schema will be capture in two phases, now capturing: {}", capturedSchemaTables);
             delayedSchemaSnapshotTables = Collect.minus(snapshotContext.capturedSchemaTables, snapshotContext.capturedTables);

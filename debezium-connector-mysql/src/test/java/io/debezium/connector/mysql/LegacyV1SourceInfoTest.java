@@ -24,6 +24,7 @@ import org.junit.Test;
 import io.confluent.connect.avro.AvroData;
 import io.debezium.config.CommonConnectorConfig.Version;
 import io.debezium.config.Configuration;
+import io.debezium.connector.mysql.SourceInfoTest.PositionAssert;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.document.Document;
@@ -699,7 +700,8 @@ public class LegacyV1SourceInfoTest {
         }
 
         public PositionAssert isAt(Document otherPosition, Predicate<String> gtidFilter) {
-            if (SourceInfo.isPositionAtOrBefore(actual, otherPosition, gtidFilter)) {
+            final MySqlHistoryRecordComparator comparator = new MySqlHistoryRecordComparator(gtidFilter);
+            if (comparator.isPositionAtOrBefore(actual, otherPosition)) {
                 return this;
             }
             failIfCustomMessageIsSet();
@@ -719,7 +721,8 @@ public class LegacyV1SourceInfoTest {
         }
 
         public PositionAssert isAtOrBefore(Document otherPosition, Predicate<String> gtidFilter) {
-            if (SourceInfo.isPositionAtOrBefore(actual, otherPosition, gtidFilter)) {
+            final MySqlHistoryRecordComparator comparator = new MySqlHistoryRecordComparator(gtidFilter);
+            if (comparator.isPositionAtOrBefore(actual, otherPosition)) {
                 return this;
             }
             failIfCustomMessageIsSet();
@@ -731,7 +734,8 @@ public class LegacyV1SourceInfoTest {
         }
 
         public PositionAssert isAfter(Document otherPosition, Predicate<String> gtidFilter) {
-            if (!SourceInfo.isPositionAtOrBefore(actual, otherPosition, gtidFilter)) {
+            final MySqlHistoryRecordComparator comparator = new MySqlHistoryRecordComparator(gtidFilter);
+            if (!comparator.isPositionAtOrBefore(actual, otherPosition)) {
                 return this;
             }
             failIfCustomMessageIsSet();
