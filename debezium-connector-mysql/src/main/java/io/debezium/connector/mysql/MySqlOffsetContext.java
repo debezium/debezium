@@ -28,6 +28,7 @@ public class MySqlOffsetContext implements OffsetContext {
     public static final String EVENTS_TO_SKIP_OFFSET_KEY = "event";
     public static final String TIMESTAMP_KEY = "ts_sec";
     public static final String GTID_SET_KEY = "gtids";
+    public static final String NON_GTID_TRANSACTION_ID_FORMAT = "file=%s,pos=%s";
 
     private final Schema sourceInfoSchema;
     private final SourceInfo sourceInfo;
@@ -151,11 +152,13 @@ public class MySqlOffsetContext implements OffsetContext {
     }
 
     private void setTransactionId() {
+        // use GTID if it is available
         if (sourceInfo.getCurrentGtid() != null) {
             this.transactionId = sourceInfo.getCurrentGtid();
         }
         else {
-            this.transactionId = this.restartBinlogFilename + "_" + this.restartBinlogPosition;
+            this.transactionId = String.format(NON_GTID_TRANSACTION_ID_FORMAT,
+                    this.restartBinlogFilename, this.restartBinlogPosition);
         }
     }
 
