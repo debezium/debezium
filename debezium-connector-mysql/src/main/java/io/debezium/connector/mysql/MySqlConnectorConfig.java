@@ -881,15 +881,6 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
                     + "point, both old and new binlog readers will be momentarily halted and new binlog reader will start that will read the binlog for all "
                     + "configured tables. The parallel binlog reader will have a configured server id of 10000 + the primary binlog reader's server id.");
 
-    public static final Field SNAPSHOT_EVENTS_AS_INSERTS = Field.create("snapshot.events.as.inserts")
-            .withDisplayName("Mark initial table snapshot events as insert events (op 'c')")
-            .withType(Type.BOOLEAN)
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.MEDIUM)
-            .withDescription("Whether or not to mark snapshot events as normal inserts (op 'c'). If disabled, the standard functionality of emitting these records as"
-                    + " reads (op 'r') will be used.")
-            .withDefault(true);
-
     public static final Field TIME_PRECISION_MODE = RelationalDatabaseConnectorConfig.TIME_PRECISION_MODE
             .withEnum(TemporalPrecisionMode.class, TemporalPrecisionMode.ADAPTIVE_TIME_MICROSECONDS)
             .withValidation(MySqlConnectorConfig::validateTimePrecisionMode)

@@ -553,6 +553,7 @@ The value portion of a change event for a change to this table is described for:
 * <<mysql-primary-key-updates,Primary key updates>>
 * <<mysql-delete-events,_delete_ events>>
 * <<mysql-tombstone-events,Tombstone events>>
+* <<mysql-snapshot-events, Snapshot events>>
 
 // Type: continue
 [id="mysql-create-events"]
@@ -1013,6 +1014,19 @@ MySQL connector events are designed to work with link:{link-kafka-docs}/#compact
 [id="mysql-tombstone-events"]
 === Tombstone events
 When a row is deleted, the _delete_ event value still works with log compaction, because Kafka can remove all earlier messages that have that same key. However, for Kafka to remove all messages that have that same key, the message value must be `null`. To make this possible, after {prodname}’s MySQL connector emits a _delete_ event, the connector emits a special tombstone event that has the same key but a `null` value.
+
+// Type: continue
+[id="mysql-snapshot-events"]
+=== Snapshot events
+The MySql connector emits snapshot events using the "r" operation type (`READ`). In case you want the connector to emit snapshot events as "c" events (`CREATE`, as done incorrectly in earlier versions), this can be achieved using a Simple Message Transforms (SMT).
+Configure the Debezium ReadToInsertEvent SMT by adding the SMT configuration details to your connector’s configuration.
+
+An example of the configuration is
+
+----
+transforms=snapshotasinsert,...
+transforms.snapshotasinsert.type=io.debezium.connector.mysql.transforms.ReadToInsertEvent
+----
 
 // Type: reference
 // ModuleID: how-debezium-mysql-connectors-map-data-types
@@ -2326,10 +2340,6 @@ a|Controls whether and how long the connector holds the global MySQL read lock, 
 For each table that you specify, also specify another configuration property: `snapshot.select.statement.overrides._DB_NAME_._TABLE_NAME_`. For example, the name of the other configuration property might be:  `snapshot.select.statement.overrides.customers.orders`. Set this property to a `SELECT` statement that obtains only the rows that you want in the snapshot. When the connector performs a snapshot, it executes this `SELECT` statement to retrieve data from that table. +
  +
 A possible use case for setting these properties is large, append-only tables. You can specify a `SELECT` statement that sets a specific point for where to start a snapshot, or where to resume a snapshot if a previous snapshot was interrupted.
-
-|[[mysql-property-snapshot-events-as-inserts]]<<mysql-property-snapshot-events-as-inserts, `+snapshot.events.as.inserts+`>>
-|`true`
-|Controls whether or not to mark snapshot events as insert events (`"op": "c"`). If disabled, the Debezium default of marking snapshot events as reads (`"op": "r"`) will be used.
 
 |[[mysql-property-min-row-count-to-stream-results]]<<mysql-property-min-row-count-to-stream-results, `+min.row.count.to.stream.results+`>>
 |`1000`

@@ -131,7 +131,7 @@ public class SnapshotReaderIT {
         context.start();
         reader = new SnapshotReader("snapshot", context, useGlobalLock);
         reader.uponCompletion(completed::countDown);
-        reader.generateInsertEvents();
+        reader.generateReadEvents();
 
         // Start the snapshot ...
         reader.start();
@@ -164,28 +164,28 @@ public class SnapshotReaderIT {
         // Check the records via the store ...
         assertThat(store.collectionCount()).isEqualTo(5);
         Collection products = store.collection(DATABASE.getDatabaseName(), productsTableName());
-        assertThat(products.numberOfCreates()).isEqualTo(9);
+        assertThat(products.numberOfCreates()).isEqualTo(0);
         assertThat(products.numberOfUpdates()).isEqualTo(0);
         assertThat(products.numberOfDeletes()).isEqualTo(0);
-        assertThat(products.numberOfReads()).isEqualTo(0);
+        assertThat(products.numberOfReads()).isEqualTo(9);
         assertThat(products.numberOfTombstones()).isEqualTo(0);
         assertThat(products.numberOfKeySchemaChanges()).isEqualTo(1);
         assertThat(products.numberOfValueSchemaChanges()).isEqualTo(1);
 
         Collection products_on_hand = store.collection(DATABASE.getDatabaseName(), "products_on_hand");
-        assertThat(products_on_hand.numberOfCreates()).isEqualTo(9);
+        assertThat(products_on_hand.numberOfCreates()).isEqualTo(0);
         assertThat(products_on_hand.numberOfUpdates()).isEqualTo(0);
         assertThat(products_on_hand.numberOfDeletes()).isEqualTo(0);
-        assertThat(products_on_hand.numberOfReads()).isEqualTo(0);
+        assertThat(products_on_hand.numberOfReads()).isEqualTo(9);
         assertThat(products_on_hand.numberOfTombstones()).isEqualTo(0);
         assertThat(products_on_hand.numberOfKeySchemaChanges()).isEqualTo(1);
         assertThat(products_on_hand.numberOfValueSchemaChanges()).isEqualTo(1);
 
         Collection customers = store.collection(DATABASE.getDatabaseName(), "customers");
-        assertThat(customers.numberOfCreates()).isEqualTo(4);
+        assertThat(customers.numberOfCreates()).isEqualTo(0);
         assertThat(customers.numberOfUpdates()).isEqualTo(0);
         assertThat(customers.numberOfDeletes()).isEqualTo(0);
-        assertThat(customers.numberOfReads()).isEqualTo(0);
+        assertThat(customers.numberOfReads()).isEqualTo(4);
         assertThat(customers.numberOfTombstones()).isEqualTo(0);
         assertThat(customers.numberOfKeySchemaChanges()).isEqualTo(1);
         assertThat(customers.numberOfValueSchemaChanges()).isEqualTo(1);
@@ -205,19 +205,19 @@ public class SnapshotReaderIT {
         assertThat(customer.get("email")).isEqualTo("sally.thomas@acme.com");
 
         Collection orders = store.collection(DATABASE.getDatabaseName(), "orders");
-        assertThat(orders.numberOfCreates()).isEqualTo(5);
+        assertThat(orders.numberOfCreates()).isEqualTo(0);
         assertThat(orders.numberOfUpdates()).isEqualTo(0);
         assertThat(orders.numberOfDeletes()).isEqualTo(0);
-        assertThat(orders.numberOfReads()).isEqualTo(0);
+        assertThat(orders.numberOfReads()).isEqualTo(5);
         assertThat(orders.numberOfTombstones()).isEqualTo(0);
         assertThat(orders.numberOfKeySchemaChanges()).isEqualTo(1);
         assertThat(orders.numberOfValueSchemaChanges()).isEqualTo(1);
 
         Collection timetest = store.collection(DATABASE.getDatabaseName(), "dbz_342_timetest");
-        assertThat(timetest.numberOfCreates()).isEqualTo(1);
+        assertThat(timetest.numberOfCreates()).isEqualTo(0);
         assertThat(timetest.numberOfUpdates()).isEqualTo(0);
         assertThat(timetest.numberOfDeletes()).isEqualTo(0);
-        assertThat(timetest.numberOfReads()).isEqualTo(0);
+        assertThat(timetest.numberOfReads()).isEqualTo(1);
         assertThat(timetest.numberOfTombstones()).isEqualTo(0);
         assertThat(timetest.numberOfKeySchemaChanges()).isEqualTo(1);
         assertThat(timetest.numberOfValueSchemaChanges()).isEqualTo(1);
@@ -255,7 +255,7 @@ public class SnapshotReaderIT {
         context.start();
 
         reader = new SnapshotReader("snapshot", context, true);
-        reader.generateInsertEvents();
+        reader.generateReadEvents();
 
         if (!MySQLConnection.isPerconaServer()) {
             reader.start(); // Start the reader to avoid failure in the afterEach method.
@@ -345,16 +345,18 @@ public class SnapshotReaderIT {
         assertThat(orders).isNull();
     }
 
+    private String productsTableName() {
+        return context.isTableIdCaseInsensitive() ? "products" : "Products";
+    }
+
     @Test
-    public void shouldCreateSnapshotOfSingleDatabaseUsingReadEvents() throws Exception {
-        config = simpleConfig()
-                .with(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, "connector_(.*)_" + DATABASE.getIdentifier())
-                .with(MySqlConnectorConfig.SNAPSHOT_EVENTS_AS_INSERTS, false)
-                .build();
+    public void shouldCreateSnapshotOfSingleDatabaseWithSchemaChanges() throws Exception {
+        config = simpleConfig().with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true).build();
         context = new MySqlTaskContext(config, new Filters.Builder(config).build());
         context.start();
         reader = new SnapshotReader("snapshot", context);
         reader.uponCompletion(completed::countDown);
+        reader.generateReadEvents();
 
         // Start the snapshot ...
         reader.start();
@@ -375,13 +377,13 @@ public class SnapshotReaderIT {
         // The last poll should always return null ...
         assertThat(records).isNull();
 
-        // There should be no schema changes ...
-        assertThat(schemaChanges.recordCount()).isEqualTo(0);
+        // There should be 11 schema changes plus 1 SET statement ...
+        assertThat(schemaChanges.recordCount()).isEqualTo(14);
+        assertThat(schemaChanges.databaseCount()).isEqualTo(2);
+        assertThat(schemaChanges.databases()).containsOnly(DATABASE.getDatabaseName(), "");
 
         // Check the records via the store ...
-        assertThat(store.databases()).containsOnly(DATABASE.getDatabaseName(), OTHER_DATABASE.getDatabaseName()); // 2 databases
-        assertThat(store.collectionCount()).isEqualTo(9); // 2 databases
-
+        assertThat(store.collectionCount()).isEqualTo(5);
         Collection products = store.collection(DATABASE.getDatabaseName(), productsTableName());
         assertThat(products.numberOfCreates()).isEqualTo(0);
         assertThat(products.numberOfUpdates()).isEqualTo(0);
@@ -447,110 +449,6 @@ public class SnapshotReaderIT {
         }
     }
 
-    private String productsTableName() {
-        return context.isTableIdCaseInsensitive() ? "products" : "Products";
-    }
-
-    @Test
-    public void shouldCreateSnapshotOfSingleDatabaseWithSchemaChanges() throws Exception {
-        config = simpleConfig().with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true).build();
-        context = new MySqlTaskContext(config, new Filters.Builder(config).build());
-        context.start();
-        reader = new SnapshotReader("snapshot", context);
-        reader.uponCompletion(completed::countDown);
-        reader.generateInsertEvents();
-
-        // Start the snapshot ...
-        reader.start();
-
-        // Poll for records ...
-        // Testing.Print.enable();
-        List<SourceRecord> records = null;
-        KeyValueStore store = KeyValueStore.createForTopicsBeginningWith(DATABASE.getServerName() + ".");
-        SchemaChangeHistory schemaChanges = new SchemaChangeHistory(DATABASE.getServerName());
-        while ((records = reader.poll()) != null) {
-            records.forEach(record -> {
-                VerifyRecord.isValid(record);
-                VerifyRecord.hasNoSourceQuery(record);
-                store.add(record);
-                schemaChanges.add(record);
-            });
-        }
-        // The last poll should always return null ...
-        assertThat(records).isNull();
-
-        // There should be 11 schema changes plus 1 SET statement ...
-        assertThat(schemaChanges.recordCount()).isEqualTo(14);
-        assertThat(schemaChanges.databaseCount()).isEqualTo(2);
-        assertThat(schemaChanges.databases()).containsOnly(DATABASE.getDatabaseName(), "");
-
-        // Check the records via the store ...
-        assertThat(store.collectionCount()).isEqualTo(5);
-        Collection products = store.collection(DATABASE.getDatabaseName(), productsTableName());
-        assertThat(products.numberOfCreates()).isEqualTo(9);
-        assertThat(products.numberOfUpdates()).isEqualTo(0);
-        assertThat(products.numberOfDeletes()).isEqualTo(0);
-        assertThat(products.numberOfReads()).isEqualTo(0);
-        assertThat(products.numberOfTombstones()).isEqualTo(0);
-        assertThat(products.numberOfKeySchemaChanges()).isEqualTo(1);
-        assertThat(products.numberOfValueSchemaChanges()).isEqualTo(1);
-
-        Collection products_on_hand = store.collection(DATABASE.getDatabaseName(), "products_on_hand");
-        assertThat(products_on_hand.numberOfCreates()).isEqualTo(9);
-        assertThat(products_on_hand.numberOfUpdates()).isEqualTo(0);
-        assertThat(products_on_hand.numberOfDeletes()).isEqualTo(0);
-        assertThat(products_on_hand.numberOfReads()).isEqualTo(0);
-        assertThat(products_on_hand.numberOfTombstones()).isEqualTo(0);
-        assertThat(products_on_hand.numberOfKeySchemaChanges()).isEqualTo(1);
-        assertThat(products_on_hand.numberOfValueSchemaChanges()).isEqualTo(1);
-
-        Collection customers = store.collection(DATABASE.getDatabaseName(), "customers");
-        assertThat(customers.numberOfCreates()).isEqualTo(4);
-        assertThat(customers.numberOfUpdates()).isEqualTo(0);
-        assertThat(customers.numberOfDeletes()).isEqualTo(0);
-        assertThat(customers.numberOfReads()).isEqualTo(0);
-        assertThat(customers.numberOfTombstones()).isEqualTo(0);
-        assertThat(customers.numberOfKeySchemaChanges()).isEqualTo(1);
-        assertThat(customers.numberOfValueSchemaChanges()).isEqualTo(1);
-
-        Collection orders = store.collection(DATABASE.getDatabaseName(), "orders");
-        assertThat(orders.numberOfCreates()).isEqualTo(5);
-        assertThat(orders.numberOfUpdates()).isEqualTo(0);
-        assertThat(orders.numberOfDeletes()).isEqualTo(0);
-        assertThat(orders.numberOfReads()).isEqualTo(0);
-        assertThat(orders.numberOfTombstones()).isEqualTo(0);
-        assertThat(orders.numberOfKeySchemaChanges()).isEqualTo(1);
-        assertThat(orders.numberOfValueSchemaChanges()).isEqualTo(1);
-
-        Collection timetest = store.collection(DATABASE.getDatabaseName(), "dbz_342_timetest");
-        assertThat(timetest.numberOfCreates()).isEqualTo(1);
-        assertThat(timetest.numberOfUpdates()).isEqualTo(0);
-        assertThat(timetest.numberOfDeletes()).isEqualTo(0);
-        assertThat(timetest.numberOfReads()).isEqualTo(0);
-        assertThat(timetest.numberOfTombstones()).isEqualTo(0);
-        assertThat(timetest.numberOfKeySchemaChanges()).isEqualTo(1);
-        assertThat(timetest.numberOfValueSchemaChanges()).isEqualTo(1);
-        final List<Struct> timerecords = new ArrayList<>();
-        timetest.forEach(val -> {
-            timerecords.add(((Struct) val.value()).getStruct("after"));
-        });
-        Struct after = timerecords.get(0);
-        assertThat(after.get("c1")).isEqualTo(toMicroSeconds("PT517H51M04.78S"));
-        assertThat(after.get("c2")).isEqualTo(toMicroSeconds("-PT13H14M50S"));
-        assertThat(after.get("c3")).isEqualTo(toMicroSeconds("-PT733H0M0.001S"));
-        assertThat(after.get("c4")).isEqualTo(toMicroSeconds("-PT1H59M59.001S"));
-        assertThat(after.get("c5")).isEqualTo(toMicroSeconds("-PT838H59M58.999999S"));
-
-        // Make sure the snapshot completed ...
-        if (completed.await(10, TimeUnit.SECONDS)) {
-            // completed the snapshot ...
-            Testing.print("completed the snapshot");
-        }
-        else {
-            fail("failed to complete the snapshot within 10 seconds");
-        }
-    }
-
     @Test(expected = ConnectException.class)
     public void shouldCreateSnapshotSchemaOnlyRecovery_exception() throws Exception {
         config = simpleConfig().with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.SCHEMA_ONLY_RECOVERY).build();
@@ -558,7 +456,7 @@ public class SnapshotReaderIT {
         context.start();
         reader = new SnapshotReader("snapshot", context);
         reader.uponCompletion(completed::countDown);
-        reader.generateInsertEvents();
+        reader.generateReadEvents();
 
         // Start the snapshot ...
         reader.start();
@@ -588,7 +486,7 @@ public class SnapshotReaderIT {
         context.source().setBinlogStartPoint("binlog1", 555); // manually set for happy path testing
         reader = new SnapshotReader("snapshot", context);
         reader.uponCompletion(completed::countDown);
-        reader.generateInsertEvents();
+        reader.generateReadEvents();
 
         // Start the snapshot ...
         reader.start();
@@ -635,7 +533,7 @@ public class SnapshotReaderIT {
         context.start();
         reader = new SnapshotReader("snapshot", context);
         reader.uponCompletion(completed::countDown);
-        reader.generateInsertEvents();
+        reader.generateReadEvents();
         // Start the snapshot ...
         reader.start();
         // Poll for records ...
@@ -663,7 +561,7 @@ public class SnapshotReaderIT {
         context.start();
         reader = new SnapshotReader("snapshot", context);
         reader.uponCompletion(completed::countDown);
-        reader.generateInsertEvents();
+        reader.generateReadEvents();
         // Start the snapshot ...
         reader.start();
         // Poll for records ...
@@ -689,7 +587,7 @@ public class SnapshotReaderIT {
         context.start();
         reader = new SnapshotReader("snapshot", context);
         reader.uponCompletion(completed::countDown);
-        reader.generateInsertEvents();
+        reader.generateReadEvents();
         // Start the snapshot ...
         reader.start();
         // Poll for records ...
@@ -726,7 +624,7 @@ public class SnapshotReaderIT {
         context.start();
         reader = new SnapshotReader("snapshot", context);
         reader.uponCompletion(completed::countDown);
-        reader.generateInsertEvents();
+        reader.generateReadEvents();
 
         // Start the snapshot ...
         reader.start();
