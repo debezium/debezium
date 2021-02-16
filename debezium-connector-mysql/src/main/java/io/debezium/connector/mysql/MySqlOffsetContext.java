@@ -164,7 +164,7 @@ public class MySqlOffsetContext implements OffsetContext {
     }
 
     public String getTransactionId() {
-        return this.restartBinlogFilename;
+        return this.transactionId;
     }
 
     public void setInitialSkips(long restartEventsToSkip, int restartRowsToSkip) {
