@@ -112,6 +112,39 @@ endif::product[]
 
 See the link:https://www.postgresql.org/docs/current/logical-replication-security.html[Logical Replication Security] guide for details, but in general the {prodname} user needs to have `replication` privileges. It is possible to just provide the user with `superuser` privileges but that allows the user complete control of the PostgreSQL instance. Instead create the {prodname} user with `replication` privileges and add SELECT privileges on the table(s) as well as CREATE privileges on the database.
 
+If we are using the pgoutput plugin then security gets a bit more interesting.
+
+First we need to be able to create a publication. This requires the replication user to have create privileges in the database. Assuming the name of the database is postgres:
+
+`GRANT CREATE ON DATABASE postgres TO debezium;`
+
+Secondly pgoutput requires a publication. In order to add a table a publication the user needs to be the owner of said table. As mentioned above this is all trivial if the replication user has `superuser` privileges, however as mentioned this does open up the entire instance to the replication user. So how do we make the replication user an owner of the table?  PostgreSQL has a notion of groups. So lets say we have a table called customer that is owned by a user called test, we also have a user for {prodname} named debezium. This will be the replication user.
+
+First we create the group.
+
+`CREATE ROLE REPLICATION_GROUP`;
+
+now add the test user to that group;
+
+`GRANT REPLICATION_GROUP TO test`;
+
+and add the debezium user to the group
+
+`GRANT REPLICATION_GROUP TO debezium`;
+
+finally change the ownership of the customer table to REPLICATION_GROUP
+
+`ALTER TABLE CUSTOMER OWNER TO REPLICATION_GROUP`;
+
+Alternatively if we don't want to do this we can create the publication outside of debezium and then set
+
+`"publication.autocreate.mode": "filtered".` or `disabled`
+
+to stop {prodname} from attempting to add the table to the publication.
+
+Finally, In order to be able to copy the initial table data, the role used for the replication connection must have the SELECT privilege on a published table. This is fairly trivial and nothing is required if the debezium user is in the group that owns the table.
+
+
 // Type: concept
 // ModuleID: how-debezium-postgresql-connectors-perform-database-snapshots
 // Title: How {prodname} PostgreSQL connectors perform database snapshots
