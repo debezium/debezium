@@ -56,7 +56,8 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
     @Test
     public void transactionMetadataEnabled() throws InterruptedException, SQLException {
         config = DATABASE.defaultConfig()
-                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NEVER)
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.SCHEMA_ONLY)
+                .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
                 .with(MySqlConnectorConfig.PROVIDE_TRANSACTION_METADATA, true)
                 .with(MySqlConnector.IMPLEMENTATION_PROP, "new")
                 .build();
@@ -66,6 +67,7 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
         Testing.Debug.enable();
         assertConnectorIsRunning();
 
+        waitForSnapshotToBeCompleted("mysql", DATABASE.getServerName());
         try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());) {
             try (JdbcConnection connection = db.connect()) {
                 connection.setAutoCommit(false);
@@ -76,10 +78,10 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
 
         // BEGIN + 4 INSERT + END
         // Initial few records would have database history changes hence fetching 4+6 records
-        List<SourceRecord> records = consumeRecordsByTopic(10).allRecordsInOrder();
+        List<SourceRecord> records = consumeRecordsByTopic(1 + 4 + 1).allRecordsInOrder();
         String databaseName = DATABASE.getDatabaseName();
-        final String txId = assertBeginTransaction(records.get(4));
-        assertEndTransaction(records.get(9), txId, 4, Collect.hashMapOf(databaseName + ".products", 1,
+        final String txId = assertBeginTransaction(records.get(0));
+        assertEndTransaction(records.get(5), txId, 4, Collect.hashMapOf(databaseName + ".products", 1,
                 databaseName + ".customers", 2,
                 databaseName + ".orders", 1));
     }
