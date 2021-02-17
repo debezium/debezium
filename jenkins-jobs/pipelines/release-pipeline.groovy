@@ -9,6 +9,8 @@ if (
     !DEBEZIUM_ADDITIONAL_REPOSITORIES ||
     !IMAGES_REPOSITORY ||
     !IMAGES_BRANCH ||
+    !UI_REPOSITORY ||
+    !UI_BRANCH ||
     !POSTGRES_DECODER_REPOSITORY ||
     !POSTGRES_DECODER_BRANCH ||
     !MAVEN_CENTRAL_SYNC_TIMEOUT
@@ -31,6 +33,7 @@ GPG_DIR = 'gpg'
 
 DEBEZIUM_DIR = 'debezium'
 IMAGES_DIR = 'images'
+UI_DIR = 'ui'
 POSTGRES_DECODER_DIR = 'postgres-decoder'
 ORACLE_ARTIFACT_DIR = "$HOME_DIR/oracle-libs/12.2.0.1.0"
 ORACLE_ARTIFACT_VERSION = '12.2.0.1'
@@ -269,6 +272,14 @@ node('Slave') {
             ]
             )
             checkout([$class                           : 'GitSCM',
+                      branches                         : [[name: "*/$UI_BRANCH"]],
+                      doGenerateSubmoduleConfigurations: false,
+                      extensions                       : [[$class: 'RelativeTargetDirectory', relativeTargetDir: UI_DIR]],
+                      submoduleCfg                     : [],
+                      userRemoteConfigs                : [[url: "https://$UI_REPOSITORY", credentialsId: GIT_CREDENTIALS_ID]]
+            ]
+            )
+            checkout([$class                           : 'GitSCM',
                       branches                         : [[name: "*/$POSTGRES_DECODER_BRANCH"]],
                       doGenerateSubmoduleConfigurations: false,
                       extensions                       : [[$class: 'RelativeTargetDirectory', relativeTargetDir: POSTGRES_DECODER_DIR]],
@@ -409,6 +420,12 @@ node('Slave') {
                             .replaceFirst('MAVEN_REPO_CENTRAL="[^"]*"', "MAVEN_REPO_CENTRAL=\"$STAGING_REPO/$STAGING_REPO_ID/\"")
                             .replaceFirst('DEBEZIUM_VERSION=\\S+', "DEBEZIUM_VERSION=$RELEASE_VERSION")
                             .replaceFirst('SERVER_MD5=\\S+', "SERVER_MD5=$serverSum")
+                }
+            }
+            echo "Modifying UI Dockerfile"
+            dir("$IMAGES_DIR") {
+                modifyFile("ui/$IMAGE_TAG/Dockerfile") {
+                    it.replaceFirst('BRANCH=\\S+', "BRANCH=$VERSION_TAG")
                 }
             }
             dir("$IMAGES_DIR") {
@@ -599,6 +616,16 @@ node('Slave') {
                                     """
                             }
                         }
+                    }
+                }
+            }
+        }
+
+        stage('Debezium UI') {
+            if (!DRY_RUN) {
+                dir(UI_DIR) {
+                    withCredentials([usernamePassword(credentialsId: GIT_CREDENTIALS_ID, passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USERNAME')]) {
+                        sh "git tag $VERSION_TAG && git push \"https://\${GIT_USERNAME}:\${GIT_PASSWORD}@${UI_REPOSITORY}\" $VERSION_TAG"
                     }
                 }
             }

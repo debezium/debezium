@@ -24,6 +24,8 @@ pipelineJob('release-debezium-upstream') {
         stringParam('IMAGES_BRANCH', 'master', 'A branch from which Debezium images are built')
         stringParam('POSTGRES_DECODER_REPOSITORY', 'github.com/debezium/postgres-decoderbufs.git', 'Repository from which PostgreSQL decoder plugin is built')
         stringParam('POSTGRES_DECODER_BRANCH', 'master', 'A branch from which Debezium images are built PostgreSQL decoder plugin is built')
+        stringParam('UI_REPOSITORY', 'github.com/debezium/debezium-ui.git', 'Repository from which Debezium UI is built')
+        stringParam('UI_BRANCH', 'master', 'A branch from which Debezium UI is built')
         booleanParam('DRY_RUN', true, 'When checked the changes and artifacts are not pushed to repositories and registries')
         stringParam('MAVEN_CENTRAL_SYNC_TIMEOUT', '12', 'Timeout in hours to wait for artifacts being published in the Maven Central')
     }
