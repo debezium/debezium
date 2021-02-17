@@ -58,6 +58,7 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NEVER)
                 .with(MySqlConnectorConfig.PROVIDE_TRANSACTION_METADATA, true)
+                .with(MySqlConnector.IMPLEMENTATION_PROP, "new")
                 .build();
 
         start(MySqlConnector.class, config);
