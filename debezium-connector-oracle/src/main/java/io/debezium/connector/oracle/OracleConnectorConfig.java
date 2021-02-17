@@ -57,12 +57,12 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     protected final static int MIN_BATCH_SIZE = 1_000;
     protected final static int MAX_BATCH_SIZE = 100_000;
 
-    protected final static int MAX_SLEEP_TIME_MS = 3_000;
-    protected final static int DEFAULT_SLEEP_TIME_MS = 1_000;
-    protected final static int MIN_SLEEP_TIME_MS = 0;
-    protected final static int SLEEP_TIME_INCREMENT_MS = 200;
+    protected final static Duration MAX_SLEEP_TIME = Duration.ofMillis(3_000);
+    protected final static Duration DEFAULT_SLEEP_TIME = Duration.ofMillis(1_000);
+    protected final static Duration MIN_SLEEP_TIME = Duration.ZERO;
+    protected final static Duration SLEEP_TIME_INCREMENT = Duration.ofMillis(200);
 
-    protected final static int DEFAULT_TRANSACTION_RETENTION = 4;
+    protected final static Duration DEFAULT_TRANSACTION_RETENTION = Duration.ofHours(4);
 
     public static final Field PORT = RelationalDatabaseConnectorConfig.PORT
             .withDefault(DEFAULT_PORT);
@@ -174,7 +174,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withType(Type.LONG)
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
-            .withDefault(DEFAULT_TRANSACTION_RETENTION)
+            .withDefault(DEFAULT_TRANSACTION_RETENTION.toHours())
             .withValidation(OracleConnectorConfig::isPositiveNonZeroInteger)
             .withDescription("Hours to keep long running transactions in transaction buffer between log mining sessions.");
 
@@ -241,14 +241,14 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDefault(DEFAULT_VIEW_FETCH_SIZE)
-            .withDescription("The number of content records that will be fetched from the log miner content view.");
+            .withDescription("The number of content records that will be fetched from the LogMiner content view.");
 
     public static final Field LOG_MINING_SLEEP_TIME_MIN_MS = Field.create("log.mining.sleep.time.min.ms")
             .withDisplayName("Minimum sleep time in milliseconds when reading redo/archive logs.")
             .withType(Type.LONG)
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
-            .withDefault(MIN_SLEEP_TIME_MS)
+            .withDefault(MIN_SLEEP_TIME.toMillis())
             .withDescription(
                     "The minimum amount of time that the connector will sleep after reading data from redo/archive logs and before starting reading data again. Value is in milliseconds.");
 
@@ -257,7 +257,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withType(Type.LONG)
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
-            .withDefault(DEFAULT_SLEEP_TIME_MS)
+            .withDefault(DEFAULT_SLEEP_TIME.toMillis())
             .withDescription(
                     "The amount of time that the connector will sleep after reading data from redo/archive logs and before starting reading data again. Value is in milliseconds.");
 
@@ -266,7 +266,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withType(Type.LONG)
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
-            .withDefault(MAX_SLEEP_TIME_MS)
+            .withDefault(MAX_SLEEP_TIME.toMillis())
             .withDescription(
                     "The maximum amount of time that the connector will sleep after reading data from redo/archive logs and before starting reading data again. Value is in milliseconds.");
 
@@ -275,9 +275,9 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withType(Type.LONG)
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
-            .withDefault(SLEEP_TIME_INCREMENT_MS)
+            .withDefault(SLEEP_TIME_INCREMENT.toMillis())
             .withDescription(
-                    "The maximum amount of time that the connector will use to tune the optimal sleep time when reading data from logminer. Value is in milliseconds.");
+                    "The maximum amount of time that the connector will use to tune the optimal sleep time when reading data from LogMiner. Value is in milliseconds.");
 
     /**
      * The set of {@link Field}s defined as part of this configuration.
