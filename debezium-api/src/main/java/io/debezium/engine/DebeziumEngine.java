@@ -142,7 +142,7 @@ public interface DebeziumEngine<R> extends Runnable, Closeable {
      * Contract that should be passed to {@link RecordCommitter#markProcessed(Object, Offsets)} for marking a record
      * as processed with updated offsets.
      */
-    public static interface Offsets {
+    public interface Offsets {
 
         /**
          * Associates a key with a specific value, overwrites the value if the key is already present.
