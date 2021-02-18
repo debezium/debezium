@@ -10,8 +10,8 @@ import static io.debezium.connector.oracle.antlr.listener.ParserUtils.getTableNa
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import io.debezium.connector.oracle.OracleValueConverters;
 import io.debezium.connector.oracle.antlr.OracleDmlParser;
-import io.debezium.connector.oracle.logminer.OracleChangeRecordValueConverter;
 import io.debezium.connector.oracle.logminer.valueholder.LogMinerColumnValueImpl;
 import io.debezium.connector.oracle.logminer.valueholder.LogMinerColumnValueWrapper;
 import io.debezium.ddl.parser.oracle.generated.PlSqlParser;
@@ -28,7 +28,7 @@ abstract class BaseDmlParserListener<T> extends PlSqlParserBaseListener {
     protected String catalogName;
     protected String schemaName;
     protected Table table;
-    final OracleChangeRecordValueConverter converter;
+    final OracleValueConverters converter;
     String alias;
 
     protected OracleDmlParser parser;

@@ -12,8 +12,8 @@ import org.antlr.v4.runtime.tree.ParseTree;
 import io.debezium.antlr.AntlrDdlParser;
 import io.debezium.antlr.AntlrDdlParserListener;
 import io.debezium.antlr.DataTypeResolver;
+import io.debezium.connector.oracle.OracleValueConverters;
 import io.debezium.connector.oracle.antlr.listener.OracleDmlParserListener;
-import io.debezium.connector.oracle.logminer.OracleChangeRecordValueConverter;
 import io.debezium.connector.oracle.logminer.valueholder.LogMinerDmlEntry;
 import io.debezium.ddl.parser.oracle.generated.PlSqlLexer;
 import io.debezium.ddl.parser.oracle.generated.PlSqlParser;
@@ -27,10 +27,10 @@ public class OracleDmlParser extends AntlrDdlParser<PlSqlLexer, PlSqlParser> {
 
     protected final String catalogName;
     protected final String schemaName;
-    private final OracleChangeRecordValueConverter converter;
+    private final OracleValueConverters converter;
     private LogMinerDmlEntry dmlEntry;
 
-    public OracleDmlParser(boolean throwErrorsFromTreeWalk, final String catalogName, final String schemaName, OracleChangeRecordValueConverter converter) {
+    public OracleDmlParser(boolean throwErrorsFromTreeWalk, final String catalogName, final String schemaName, OracleValueConverters converter) {
         super(throwErrorsFromTreeWalk);
         this.catalogName = catalogName;
         this.schemaName = schemaName;
@@ -89,7 +89,7 @@ public class OracleDmlParser extends AntlrDdlParser<PlSqlLexer, PlSqlParser> {
         return null;
     }
 
-    public OracleChangeRecordValueConverter getConverters() {
+    public OracleValueConverters getConverters() {
         return converter;
     }
 }

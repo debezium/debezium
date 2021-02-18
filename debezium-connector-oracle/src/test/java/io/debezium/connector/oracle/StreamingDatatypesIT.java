@@ -16,7 +16,6 @@ import io.debezium.config.Configuration;
 import io.debezium.config.Configuration.Builder;
 import io.debezium.connector.oracle.OracleConnectorConfig.SnapshotMode;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
-import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIs;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.util.Testing;
 
@@ -25,7 +24,6 @@ import io.debezium.util.Testing;
  *
  * @author Jiri Pechanec
  */
-@SkipWhenAdapterNameIs(value = SkipWhenAdapterNameIs.AdapterName.LOGMINER, reason = "Implementation does not support creating/updating schema during streaming")
 public class StreamingDatatypesIT extends AbstractOracleDatatypesTest {
 
     @Rule
@@ -41,11 +39,12 @@ public class StreamingDatatypesIT extends AbstractOracleDatatypesTest {
         Configuration config = connectorConfig()
                 .build();
 
+        createTables();
+
         start(OracleConnector.class, config);
         assertConnectorIsRunning();
 
         waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
-        createTables();
     }
 
     protected Builder connectorConfig() {

@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.connector.oracle.jsqlparser;
+package io.debezium.connector.oracle.logminer.parser;
 
 import java.io.StringReader;
 import java.util.Collections;
@@ -15,8 +15,8 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.connector.oracle.OracleValueConverters;
 import io.debezium.connector.oracle.antlr.listener.ParserUtils;
-import io.debezium.connector.oracle.logminer.OracleChangeRecordValueConverter;
 import io.debezium.connector.oracle.logminer.valueholder.LogMinerColumnValue;
 import io.debezium.connector.oracle.logminer.valueholder.LogMinerColumnValueImpl;
 import io.debezium.connector.oracle.logminer.valueholder.LogMinerColumnValueWrapper;
@@ -49,12 +49,12 @@ import net.sf.jsqlparser.statement.update.Update;
  * LogMiner supplies very simple syntax , that this parser should be sufficient to parse those.
  * It does no support joins, merge, sub-selects and other complicated cases, which should be OK for LogMiner case
  */
-public class SimpleDmlParser {
+public class SimpleDmlParser implements DmlParser {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SimpleDmlParser.class);
     protected final String catalogName;
     protected final String schemaName;
-    private final OracleChangeRecordValueConverter converter;
+    private final OracleValueConverters converter;
     private final CCJSqlParserManager pm;
     private final Map<String, LogMinerColumnValueWrapper> newColumnValues = new LinkedHashMap<>();
     private final Map<String, LogMinerColumnValueWrapper> oldColumnValues = new LinkedHashMap<>();
@@ -67,19 +67,14 @@ public class SimpleDmlParser {
      * @param schemaName user name
      * @param converter value converter
      */
-    public SimpleDmlParser(String catalogName, String schemaName, OracleChangeRecordValueConverter converter) {
+    public SimpleDmlParser(String catalogName, String schemaName, OracleValueConverters converter) {
         this.catalogName = catalogName;
         this.schemaName = schemaName;
         this.converter = converter;
         pm = new CCJSqlParserManager();
     }
 
-    /**
-     * This parses a DML
-     * @param dmlContent DML
-     * @param tables debezium Tables
-     * @return parsed value holder class
-     */
+    @Override
     public LogMinerDmlEntry parse(String dmlContent, Tables tables, String txId) {
         try {
 
@@ -127,16 +122,12 @@ public class SimpleDmlParser {
 
             }
             else {
-                LOGGER.error("Operation {} is not supported yet", st);
-                return null;
+                throw new DmlParserException("Unexpected DML operation not supported");
             }
-
         }
         catch (Throwable e) {
-            LOGGER.error("Cannot parse statement : {}, transaction: {}, due to the {}", dmlContent, txId, e.getMessage(), e);
-            return null;
+            throw new DmlParserException("Cannot parse DML: " + dmlContent, e);
         }
-
     }
 
     private void initColumns(Tables tables, String tableName) {

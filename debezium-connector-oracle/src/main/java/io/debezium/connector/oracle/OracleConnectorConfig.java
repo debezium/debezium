@@ -202,7 +202,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withDescription("Complete JDBC URL as an alternative to specifying hostname, port and database provided "
                     + "as a way to support alternative connection scenarios.");
 
-    public static final Field LOG_MINING_DML_PARSER = Field.create("log.mining.dml.parser")
+    public static final Field LOG_MINING_DML_PARSER = Field.createInternal("log.mining.dml.parser")
             .withDisplayName("Log Mining DML parser implementation")
             .withEnum(LogMiningDmlParser.class, LogMiningDmlParser.FAST)
             .withWidth(Width.SHORT)

@@ -11,7 +11,7 @@ import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 
-import io.debezium.connector.oracle.logminer.OracleChangeRecordValueConverter;
+import io.debezium.connector.oracle.OracleValueConverters;
 import io.debezium.connector.oracle.logminer.valueholder.LogMinerColumnValueWrapper;
 import io.debezium.ddl.parser.oracle.generated.PlSqlParser;
 import io.debezium.relational.Column;
@@ -89,7 +89,7 @@ public class ParserUtils {
      * @return object as the result of this conversion. It could be null if converter cannot build the schema
      * or if converter or value are null
      */
-    public static Object convertValueToSchemaType(Column column, Object value, OracleChangeRecordValueConverter converters) {
+    public static Object convertValueToSchemaType(Column column, Object value, OracleValueConverters converters) {
         if (converters != null && value != null) {
             final SchemaBuilder schemaBuilder = converters.schemaBuilder(column);
             if (schemaBuilder == null) {

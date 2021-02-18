@@ -28,9 +28,11 @@ import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
 import io.debezium.data.SpecialValueDecimal;
 import io.debezium.data.VariableScaleDecimal;
 import io.debezium.jdbc.JdbcValueConverters;
+import io.debezium.jdbc.ResultReceiver;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.Column;
 import io.debezium.relational.ValueConverter;
+import io.debezium.time.Conversions;
 import io.debezium.time.Date;
 import io.debezium.time.MicroDuration;
 import io.debezium.time.ZonedTimestamp;
@@ -76,7 +78,21 @@ public class OracleValueConverters extends JdbcValueConverters {
             .appendPattern(" a")
             .toFormatter();
 
+    private static final DateTimeFormatter TIMESTAMP_TZ_FORMATTER = new DateTimeFormatterBuilder()
+            .parseCaseInsensitive()
+            .appendPattern("yyyy-MM-dd HH:mm:ss")
+            .optionalStart()
+            .appendPattern(".")
+            .appendFraction(ChronoField.NANO_OF_SECOND, 0, 9, false)
+            .optionalEnd()
+            .optionalStart()
+            .appendPattern(" ")
+            .optionalEnd()
+            .appendOffset("+HH:MM", "")
+            .toFormatter();
+
     private static final Pattern TO_TIMESTAMP = Pattern.compile("TO_TIMESTAMP\\('(.*)'\\)", Pattern.CASE_INSENSITIVE);
+    private static final Pattern TO_TIMESTAMP_TZ = Pattern.compile("TO_TIMESTAMP_TZ\\('(.*)'\\)", Pattern.CASE_INSENSITIVE);
     private static final Pattern TO_DATE = Pattern.compile("TO_DATE\\('(.*)',[ ]*'(.*)'\\)", Pattern.CASE_INSENSITIVE);
 
     private final OracleConnection connection;
@@ -115,7 +131,7 @@ public class OracleValueConverters extends JdbcValueConverters {
                 return SchemaBuilder.string();
             default: {
                 SchemaBuilder builder = super.schemaBuilder(column);
-                logger.info("JdbcValueConverters returned '{}' for column '{}'", builder.getClass().getName(), column.name());
+                logger.debug("JdbcValueConverters returned '{}' for column '{}'", builder.getClass().getName(), column.name());
                 return builder;
             }
         }
@@ -128,17 +144,17 @@ public class OracleValueConverters extends JdbcValueConverters {
 
             // a negative scale means rounding, e.g. NUMBER(10, -2) would be rounded to hundreds
             if (scale <= 0) {
-                // todo: DBZ-3078 LogMiner checked scale=0 && column.length() = 1 and returned SchemaBuilder.bool(), review impact.
                 int width = column.length() - scale;
-
-                if (width < 3) {
+                if (width == 1 && scale == 0) {
+                    // Boolean represented as Number(1,0)
+                    return SchemaBuilder.bool();
+                }
+                else if (width < 3) {
                     return SchemaBuilder.int8();
                 }
                 else if (width < 5) {
                     return SchemaBuilder.int16();
                 }
-                // todo: DBZ-3078 This was reverted as of DBZ-137 but LogMiner streaming used this, review impact.
-                // else if (width < 10 || (width == 10 && scale == 0)) {
                 else if (width < 10) {
                     return SchemaBuilder.int32();
                 }
@@ -151,7 +167,6 @@ public class OracleValueConverters extends JdbcValueConverters {
             return super.schemaBuilder(column);
         }
         else {
-            // todo: DBZ-3078 LogMiner streaming assumed VariableScaleDecimal.builder(), review impact.
             return variableScaleSchema(column);
         }
     }
@@ -182,9 +197,6 @@ public class OracleValueConverters extends JdbcValueConverters {
             case Types.NUMERIC:
                 return getNumericConverter(column, fieldDefn);
             case Types.FLOAT:
-                // todo: DBZ-3078 LogMiner used getFloatConverter here, review impact.
-                // todo: DBZ-137 is there a reason why floats need to be converted to doubles rather than var-scales?
-                // return data -> convertDouble(column, fieldDefn, data);
                 return data -> convertVariableScale(column, fieldDefn, data);
             case OracleTypes.TIMESTAMPTZ:
             case OracleTypes.TIMESTAMPLTZ:
@@ -198,33 +210,22 @@ public class OracleValueConverters extends JdbcValueConverters {
         return super.converter(column, fieldDefn);
     }
 
-    private Object getFloatConverter(Column column, Field fieldDefn, Object data) {
-        if (data instanceof BigDecimal) {
-            return ((BigDecimal) data).floatValue();
-        }
-        if (data instanceof String) {
-            return Float.parseFloat((String) data);
-        }
-        return convertVariableScale(column, fieldDefn, data);
-    }
-
     private ValueConverter getNumericConverter(Column column, Field fieldDefn) {
         if (column.scale().isPresent()) {
             Integer scale = column.scale().get();
 
             if (scale <= 0) {
-                // todo DBZ-3078 LogMiner used scale == 0 && column.length() == 1 to return convertBoolean, review impact.
                 int width = column.length() - scale;
-
+                if (width == 1 && scale == 0) {
+                    // Boolean represented as Number(1,0)
+                    return data -> convertBoolean(column, fieldDefn, data);
+                }
                 if (width < 3) {
                     return data -> convertNumericAsTinyInt(column, fieldDefn, data);
                 }
                 else if (width < 5) {
                     return data -> convertNumericAsSmallInt(column, fieldDefn, data);
                 }
-                // todo: DBZ-3078 this was a thing for LogMiner streaming, review impact.
-                // todo: DBZ-137 this was changed and caused issues with datatype tests, reverted for now.
-                // else if (width < 10 || (width == 10 && scale == 0)) {
                 else if (width < 10) {
                     return data -> convertNumericAsInteger(column, fieldDefn, data);
                 }
@@ -249,8 +250,40 @@ public class OracleValueConverters extends JdbcValueConverters {
         if (data instanceof CLOB) {
             return ((CLOB) data).toString();
         }
+        if (data instanceof String) {
+            String s = (String) data;
+            if (s.startsWith("UNISTR('") && s.endsWith("')")) {
+                return convertOracleUnistr(column, fieldDefn, s.substring(8, s.length() - 2));
+            }
+        }
 
         return super.convertString(column, fieldDefn, data);
+    }
+
+    private String convertOracleUnistr(Column column, Field fieldDefn, String data) {
+        if (data != null && data.length() > 0) {
+            StringBuilder result = new StringBuilder();
+            for (int i = 0; i < data.length(); ++i) {
+                char c = data.charAt(i);
+                if (c == '\\') {
+                    // handle special legacy parser use case where '\' is actually '\\', necessitated by JSqlParser
+                    // can safely be removed when SimpleDmlParser is retired
+                    if (data.charAt(i + 1) == '\\') {
+                        // advance by 1
+                        i += 1;
+                    }
+                    if (data.length() >= (i + 4)) {
+                        // Read next 4 character hex and convert to character.
+                        result.append(Character.toChars(Integer.parseInt(data.substring(i + 1, i + 5), 16)));
+                        i += 4;
+                        continue;
+                    }
+                }
+                result.append(c);
+            }
+            return result.toString();
+        }
+        return data;
     }
 
     @Override
@@ -291,6 +324,9 @@ public class OracleValueConverters extends JdbcValueConverters {
                 throw new RuntimeException("Couldn't convert value for column " + column.name(), e);
             }
         }
+        else if (data instanceof String) {
+            return Float.parseFloat((String) data);
+        }
 
         return super.convertFloat(column, fieldDefn, data);
     }
@@ -304,6 +340,9 @@ public class OracleValueConverters extends JdbcValueConverters {
             catch (SQLException e) {
                 throw new RuntimeException("Couldn't convert value for column " + column.name(), e);
             }
+        }
+        else if (data instanceof String) {
+            return Double.parseDouble((String) data);
         }
 
         return super.convertDouble(column, fieldDefn, data);
@@ -332,8 +371,9 @@ public class OracleValueConverters extends JdbcValueConverters {
             data = withScaleAdjustedIfNeeded(column, (BigDecimal) data);
         }
 
-        // todo: DBZ-3078 can this now be removed?
-        // Perhaps this was added to support the double converter invocation?
+        // When SimpleDmlParser is removed, the following block can be removed.
+        // This is necessitated by the fact SimpleDmlParser invokes the converters internally and
+        // won't be needed when that parser is no longer part of the source.
         if (data instanceof Struct) {
             SpecialValueDecimal value = VariableScaleDecimal.toLogical((Struct) data);
             return value.getDecimalValue().orElse(null);
@@ -523,8 +563,7 @@ public class OracleValueConverters extends JdbcValueConverters {
             else {
                 dateTime = LocalDateTime.from(TIMESTAMP_FORMATTER.parse(dateText.trim()));
             }
-            Object value = getDateTimeWithPrecision(column, dateTime);
-            return value;
+            return getDateTimeWithPrecision(column, dateTime);
         }
 
         final Matcher toDateMatcher = TO_DATE.matcher(data);
@@ -543,7 +582,7 @@ public class OracleValueConverters extends JdbcValueConverters {
                 return dateTime.atZone(GMT_ZONE_ID).toInstant().toEpochMilli();
             }
             if (getTimePrecision(column) <= 6) {
-                return dateTime.atZone(GMT_ZONE_ID).toInstant().toEpochMilli() * 1_000;
+                return Conversions.toEpochMicros(dateTime.atZone(GMT_ZONE_ID).toInstant());
             }
             return dateTime.atZone(GMT_ZONE_ID).toInstant().toEpochMilli() * 1_000_000;
         }
@@ -552,6 +591,13 @@ public class OracleValueConverters extends JdbcValueConverters {
 
     @Override
     protected Object convertTimestampWithZone(Column column, Field fieldDefn, Object data) {
+        if (data instanceof String) {
+            final Matcher toTimestampTzMatcher = TO_TIMESTAMP_TZ.matcher((String) data);
+            if (toTimestampTzMatcher.matches()) {
+                String dateText = toTimestampTzMatcher.group(1);
+                data = ZonedDateTime.from(TIMESTAMP_TZ_FORMATTER.parse(dateText.trim()));
+            }
+        }
         return super.convertTimestampWithZone(column, fieldDefn, fromOracleTimeClasses(column, data));
     }
 
@@ -562,23 +608,33 @@ public class OracleValueConverters extends JdbcValueConverters {
                 r.deliver(((Number) data).longValue());
             }
             else if (data instanceof INTERVALYM) {
-                final String interval = ((INTERVALYM) data).stringValue();
-                int sign = 1;
-                int start = 0;
-                if (interval.charAt(0) == '-') {
-                    sign = -1;
-                    start = 1;
-                }
-                for (int i = 1; i < interval.length(); i++) {
-                    if (interval.charAt(i) == '-') {
-                        final int year = sign * Integer.parseInt(interval.substring(start, i));
-                        final int month = sign * Integer.parseInt(interval.substring(i + 1, interval.length()));
-                        r.deliver(MicroDuration.durationMicros(year, month, 0, 0,
-                                0, 0, MicroDuration.DAYS_PER_MONTH_AVG));
-                    }
-                }
+                convertOracleIntervalYearMonth(data, r);
+            }
+            else if (data instanceof String) {
+                String value = (String) data;
+                // Example: TO_YMINTERVAL('-03-06')
+                INTERVALYM interval = new INTERVALYM(value.substring(15, value.length() - 2));
+                convertOracleIntervalYearMonth(interval, r);
             }
         });
+    }
+
+    private void convertOracleIntervalYearMonth(Object data, ResultReceiver r) {
+        final String interval = ((INTERVALYM) data).stringValue();
+        int sign = 1;
+        int start = 0;
+        if (interval.charAt(0) == '-') {
+            sign = -1;
+            start = 1;
+        }
+        for (int i = 1; i < interval.length(); i++) {
+            if (interval.charAt(i) == '-') {
+                final int year = sign * Integer.parseInt(interval.substring(start, i));
+                final int month = sign * Integer.parseInt(interval.substring(i + 1, interval.length()));
+                r.deliver(MicroDuration.durationMicros(year, month, 0, 0,
+                        0, 0, MicroDuration.DAYS_PER_MONTH_AVG));
+            }
+        }
     }
 
     protected Object convertIntervalDaySecond(Column column, Field fieldDefn, Object data) {
@@ -588,21 +644,31 @@ public class OracleValueConverters extends JdbcValueConverters {
                 r.deliver(((Number) data).longValue());
             }
             else if (data instanceof INTERVALDS) {
-                final String interval = ((INTERVALDS) data).stringValue();
-                final Matcher m = INTERVAL_DAY_SECOND_PATTERN.matcher(interval);
-                if (m.matches()) {
-                    final int sign = "-".equals(m.group(1)) ? -1 : 1;
-                    r.deliver(MicroDuration.durationMicros(
-                            0,
-                            0,
-                            sign * Integer.valueOf(m.group(2)),
-                            sign * Integer.valueOf(m.group(3)),
-                            sign * Integer.valueOf(m.group(4)),
-                            sign * Integer.valueOf(m.group(5)),
-                            sign * Integer.valueOf(Strings.pad(m.group(6), 6, '0')),
-                            MicroDuration.DAYS_PER_MONTH_AVG));
-                }
+                convertOracleIntervalDaySecond(data, r);
+            }
+            else if (data instanceof String) {
+                String value = (String) data;
+                // Exmaple: TO_DSINTERVAL('-001 02:03:04.56')
+                INTERVALDS interval = new INTERVALDS(value.substring(15, value.length() - 2));
+                convertOracleIntervalDaySecond(interval, r);
             }
         });
+    }
+
+    private void convertOracleIntervalDaySecond(Object data, ResultReceiver r) {
+        final String interval = ((INTERVALDS) data).stringValue();
+        final Matcher m = INTERVAL_DAY_SECOND_PATTERN.matcher(interval);
+        if (m.matches()) {
+            final int sign = "-".equals(m.group(1)) ? -1 : 1;
+            r.deliver(MicroDuration.durationMicros(
+                    0,
+                    0,
+                    sign * Integer.valueOf(m.group(2)),
+                    sign * Integer.valueOf(m.group(3)),
+                    sign * Integer.valueOf(m.group(4)),
+                    sign * Integer.valueOf(m.group(5)),
+                    sign * Integer.valueOf(Strings.pad(m.group(6), 6, '0')),
+                    MicroDuration.DAYS_PER_MONTH_AVG));
+        }
     }
 }

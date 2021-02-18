@@ -38,6 +38,7 @@ public class LogMinerMetrics extends Metrics implements LogMinerMetricsMXBean {
     private final AtomicInteger lastCapturedDmlCount = new AtomicInteger();
     private final AtomicReference<Duration> lastDurationOfFetchingQuery = new AtomicReference<>();
     private final AtomicLong maxCapturedDmlCount = new AtomicLong();
+    private final AtomicLong totalProcessedRows = new AtomicLong();
     private final AtomicReference<Duration> maxDurationOfFetchingQuery = new AtomicReference<>();
     private final AtomicReference<Duration> totalBatchProcessingDuration = new AtomicReference<>();
     private final AtomicReference<Duration> lastBatchProcessingDuration = new AtomicReference<>();
@@ -98,6 +99,7 @@ public class LogMinerMetrics extends Metrics implements LogMinerMetricsMXBean {
         batchSize.set(batchSizeDefault);
         millisecondToSleepBetweenMiningQuery.set(sleepTimeDefault);
         totalCapturedDmlCount.set(0);
+        totalProcessedRows.set(0);
         maxDurationOfFetchingQuery.set(Duration.ZERO);
         lastDurationOfFetchingQuery.set(Duration.ZERO);
         logMinerQueryCount.set(0);
@@ -192,17 +194,17 @@ public class LogMinerMetrics extends Metrics implements LogMinerMetricsMXBean {
     }
 
     @Override
-    public Long getLastDurationOfFetchingQuery() {
+    public Long getLastDurationOfFetchQueryInMilliseconds() {
         return lastDurationOfFetchingQuery.get() == null ? 0 : lastDurationOfFetchingQuery.get().toMillis();
     }
 
     @Override
-    public long getLastBatchProcessingDuration() {
+    public long getLastBatchProcessingTimeInMilliseconds() {
         return lastBatchProcessingDuration.get().toMillis();
     }
 
     @Override
-    public Long getMaxDurationOfFetchingQuery() {
+    public Long getMaxDurationOfFetchQueryInMilliseconds() {
         return maxDurationOfFetchingQuery.get() == null ? 0 : maxDurationOfFetchingQuery.get().toMillis();
     }
 
@@ -214,6 +216,16 @@ public class LogMinerMetrics extends Metrics implements LogMinerMetricsMXBean {
     @Override
     public int getLastCapturedDmlCount() {
         return lastCapturedDmlCount.get();
+    }
+
+    @Override
+    public long getTotalProcessedRows() {
+        return totalProcessedRows.get();
+    }
+
+    @Override
+    public long getTotalResultSetNextTimeInMilliseconds() {
+        return totalResultSetNextTime.get().toMillis();
     }
 
     @Override
@@ -268,7 +280,7 @@ public class LogMinerMetrics extends Metrics implements LogMinerMetricsMXBean {
     }
 
     @Override
-    public long getTotalParseTime() {
+    public long getTotalParseTimeInMilliseconds() {
         return totalParseTime.get().toMillis();
     }
 
@@ -277,7 +289,7 @@ public class LogMinerMetrics extends Metrics implements LogMinerMetricsMXBean {
     }
 
     @Override
-    public long getTotalMiningSessionStartTime() {
+    public long getTotalMiningSessionStartTimeInMilliseconds() {
         return totalStartLogMiningSession.get().toMillis();
     }
 
@@ -286,16 +298,20 @@ public class LogMinerMetrics extends Metrics implements LogMinerMetricsMXBean {
     }
 
     @Override
-    public long getTotalProcessingTime() {
+    public long getTotalProcessingTimeInMilliseconds() {
         return totalProcessingTime.get().toMillis();
     }
 
-    public void addCurrentProcessingTime(Duration processingTime) {
-        totalProcessingTime.accumulateAndGet(processingTime, Duration::plus);
+    public void setTotalProcessingTime(Duration processingTime) {
+        totalProcessingTime.set(processingTime);
     }
 
     public void addCurrentResultSetNext(Duration currentNextTime) {
         totalResultSetNextTime.accumulateAndGet(currentNextTime, Duration::plus);
+    }
+
+    public void addProcessedRows(Long rows) {
+        totalProcessedRows.getAndAdd(rows);
     }
 
     // MBean accessible setters
@@ -354,6 +370,7 @@ public class LogMinerMetrics extends Metrics implements LogMinerMetricsMXBean {
         return "LogMinerMetrics{" +
                 "currentScn=" + currentScn +
                 ", logMinerQueryCount=" + logMinerQueryCount +
+                ", totalProcessedRows=" + totalProcessedRows +
                 ", totalCapturedDmlCount=" + totalCapturedDmlCount +
                 ", totalDurationOfFetchingQuery=" + totalDurationOfFetchingQuery +
                 ", lastCapturedDmlCount=" + lastCapturedDmlCount +

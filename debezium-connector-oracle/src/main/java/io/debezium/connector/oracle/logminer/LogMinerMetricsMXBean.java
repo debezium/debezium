@@ -45,13 +45,13 @@ public interface LogMinerMetricsMXBean {
     /**
      * @return average duration of LogMiner view query
      */
-    Long getMaxDurationOfFetchingQuery();
+    Long getMaxDurationOfFetchQueryInMilliseconds();
 
     /**
      * LogMiner view query returns number of captured DML , Commit and Rollback. This is what we call a batch.
      * @return duration of the last batch fetching
      */
-    Long getLastDurationOfFetchingQuery();
+    Long getLastDurationOfFetchQueryInMilliseconds();
 
     /**
      * LogMiner view query returns number of captured DML , Commit and Rollback. This is what we call a batch.
@@ -67,7 +67,7 @@ public interface LogMinerMetricsMXBean {
     /**
      * @return time of processing the last captured batch
      */
-    long getLastBatchProcessingDuration();
+    long getLastBatchProcessingTimeInMilliseconds();
 
     /**
      * @return number of captured DL during last mining session
@@ -150,17 +150,27 @@ public interface LogMinerMetricsMXBean {
     /**
      * @return the total number of milliseconds used to parse DDL/DML statements
      */
-    long getTotalParseTime();
+    long getTotalParseTimeInMilliseconds();
 
     /**
      * @return the total number of milliseconds spent starting a log mining session
      */
-    long getTotalMiningSessionStartTime();
+    long getTotalMiningSessionStartTimeInMilliseconds();
 
     /**
      * @return the total number of milliseconds spent mining and processing results
      */
-    long getTotalProcessingTime();
+    long getTotalProcessingTimeInMilliseconds();
+
+    /**
+     * @return the total number of log miner rows processed.
+     */
+    long getTotalProcessedRows();
+
+    /**
+     * @return the total number of milliseconds spent iterating log miner results calling next.
+     */
+    long getTotalResultSetNextTimeInMilliseconds();
 
     /**
      * Resets metrics.

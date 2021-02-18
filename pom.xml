@@ -78,6 +78,7 @@
             <id>oracle</id>
             <modules>
                 <module>debezium-connector-oracle</module>
+                <module>debezium-microbenchmark-oracle</module>
             </modules>
         </profile>
     </profiles>

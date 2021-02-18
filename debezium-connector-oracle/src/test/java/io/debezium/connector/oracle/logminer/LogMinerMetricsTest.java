@@ -71,10 +71,10 @@ public class LogMinerMetricsTest {
         assertThat(metrics.getMillisecondToSleepBetweenMiningQuery()).isEqualTo(2000);
 
         metrics.setLastDurationOfBatchCapturing(Duration.ofMillis(100));
-        assertThat(metrics.getLastDurationOfFetchingQuery()).isEqualTo(100);
+        assertThat(metrics.getLastDurationOfFetchQueryInMilliseconds()).isEqualTo(100);
         metrics.setLastDurationOfBatchCapturing(Duration.ofMillis(200));
-        assertThat(metrics.getLastDurationOfFetchingQuery()).isEqualTo(200);
-        assertThat(metrics.getMaxDurationOfFetchingQuery()).isEqualTo(200);
+        assertThat(metrics.getLastDurationOfFetchQueryInMilliseconds()).isEqualTo(200);
+        assertThat(metrics.getMaxDurationOfFetchQueryInMilliseconds()).isEqualTo(200);
         assertThat(metrics.getFetchingQueryCount()).isEqualTo(2);
 
         metrics.setCurrentLogFileName(new HashSet<>(Arrays.asList("name", "name1")));
@@ -86,14 +86,14 @@ public class LogMinerMetricsTest {
 
         metrics.reset();
         metrics.setLastDurationOfBatchCapturing(Duration.ofMillis(1000));
-        assertThat(metrics.getLastDurationOfFetchingQuery()).isEqualTo(1000);
+        assertThat(metrics.getLastDurationOfFetchQueryInMilliseconds()).isEqualTo(1000);
         assertThat(metrics.getFetchingQueryCount()).isEqualTo(1);
 
         metrics.reset();
         metrics.setLastCapturedDmlCount(300);
         metrics.setLastDurationOfBatchProcessing(Duration.ofMillis(1000));
         assertThat(metrics.getLastCapturedDmlCount()).isEqualTo(300);
-        assertThat(metrics.getLastBatchProcessingDuration()).isEqualTo(1000);
+        assertThat(metrics.getLastBatchProcessingTimeInMilliseconds()).isEqualTo(1000);
         assertThat(metrics.getAverageBatchProcessingThroughput()).isGreaterThanOrEqualTo(300);
         assertThat(metrics.getMaxCapturedDmlInBatch()).isEqualTo(300);
         assertThat(metrics.getMaxBatchProcessingThroughput()).isEqualTo(300);

@@ -93,6 +93,7 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
             "  val_number_18_negative_scale number(16, -2), " +
             "  val_decimal decimal(10), " +
             "  val_numeric numeric(10), " +
+            "  val_number_1 number(1), " +
             "  primary key (id)" +
             ")";
 
@@ -172,7 +173,8 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
             new SchemaAndValueField("VAL_NUMBER_9_NEGATIVE_SCALE", Schema.OPTIONAL_INT32_SCHEMA, 9999_99990),
             new SchemaAndValueField("VAL_NUMBER_18_NEGATIVE_SCALE", Schema.OPTIONAL_INT64_SCHEMA, 999_99999_99999_99900L),
             new SchemaAndValueField("VAL_DECIMAL", Schema.OPTIONAL_INT64_SCHEMA, 99999_99999L),
-            new SchemaAndValueField("VAL_NUMERIC", Schema.OPTIONAL_INT64_SCHEMA, 99999_99999L));
+            new SchemaAndValueField("VAL_NUMERIC", Schema.OPTIONAL_INT64_SCHEMA, 99999_99999L),
+            new SchemaAndValueField("VAL_NUMBER_1", Schema.OPTIONAL_BOOLEAN_SCHEMA, true));
 
     private static final List<SchemaAndValueField> EXPECTED_TIME = Arrays.asList(
             new SchemaAndValueField("VAL_DATE", Timestamp.builder().optional().build(), 1522108800_000l),
@@ -461,7 +463,7 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
 
     protected static void insertIntTypes() throws SQLException {
         connection.execute(
-                "INSERT INTO debezium.type_int VALUES (1, 1, 22, 333, 4444, 5555, 99, 9999, 999999999, 999999999999999999, 94, 9949, 999999994, 999999999999999949, 9999999999, 9999999999)");
+                "INSERT INTO debezium.type_int VALUES (1, 1, 22, 333, 4444, 5555, 99, 9999, 999999999, 999999999999999999, 94, 9949, 999999994, 999999999999999949, 9999999999, 9999999999, 1)");
         connection.execute("COMMIT");
     }
 

@@ -20,11 +20,12 @@ import org.junit.Test;
 import org.junit.rules.TestRule;
 
 import io.debezium.connector.oracle.OracleConnectorConfig;
+import io.debezium.connector.oracle.OracleValueConverters;
 import io.debezium.connector.oracle.antlr.OracleDdlParser;
-import io.debezium.connector.oracle.jsqlparser.SimpleDmlParser;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot.AdapterName;
+import io.debezium.connector.oracle.logminer.parser.SimpleDmlParser;
 import io.debezium.connector.oracle.logminer.valueholder.LogMinerColumnValue;
 import io.debezium.connector.oracle.logminer.valueholder.LogMinerColumnValueImpl;
 import io.debezium.connector.oracle.logminer.valueholder.LogMinerColumnValueWrapper;
@@ -50,7 +51,7 @@ public class ValueHolderTest {
 
     @Before
     public void setUp() {
-        OracleChangeRecordValueConverter converters = new OracleChangeRecordValueConverter(new OracleConnectorConfig(TestHelper.defaultConfig().build()), null);
+        OracleValueConverters converters = new OracleValueConverters(new OracleConnectorConfig(TestHelper.defaultConfig().build()), null);
         ddlParser = new OracleDdlParser(true, CATALOG_NAME, SCHEMA_NAME);
         sqlDmlParser = new SimpleDmlParser(CATALOG_NAME, SCHEMA_NAME, converters);
         tables = new Tables();

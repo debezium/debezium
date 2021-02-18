@@ -19,7 +19,10 @@ import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleConnectorConfig.LogMiningDmlParser;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OracleOffsetContext;
-import io.debezium.connector.oracle.jsqlparser.SimpleDmlParser;
+import io.debezium.connector.oracle.OracleValueConverters;
+import io.debezium.connector.oracle.logminer.parser.DmlParser;
+import io.debezium.connector.oracle.logminer.parser.LogMinerDmlParser;
+import io.debezium.connector.oracle.logminer.parser.SimpleDmlParser;
 import io.debezium.connector.oracle.logminer.valueholder.LogMinerDmlEntry;
 import io.debezium.data.Envelope;
 import io.debezium.pipeline.EventDispatcher;
@@ -41,8 +44,7 @@ class LogMinerQueryResultProcessor {
     private final ChangeEventSourceContext context;
     private final LogMinerMetrics metrics;
     private final TransactionalBuffer transactionalBuffer;
-    private final SimpleDmlParser legacyDmlParser;
-    private final LogMinerDmlParser dmlParser;
+    private final DmlParser dmlParser;
     private final OracleOffsetContext offsetContext;
     private final OracleDatabaseSchema schema;
     private final EventDispatcher<TableId> dispatcher;
@@ -71,16 +73,15 @@ class LogMinerQueryResultProcessor {
         this.catalogName = catalogName;
         this.clock = clock;
         this.historyRecorder = historyRecorder;
+        this.dmlParser = resolveParser(connectorConfig, catalogName, jdbcConnection);
+    }
 
+    private static DmlParser resolveParser(OracleConnectorConfig connectorConfig, String catalogName, OracleConnection connection) {
         if (connectorConfig.getLogMiningDmlParser().equals(LogMiningDmlParser.LEGACY)) {
-            OracleChangeRecordValueConverter converter = new OracleChangeRecordValueConverter(connectorConfig, jdbcConnection);
-            this.legacyDmlParser = new SimpleDmlParser(catalogName, connectorConfig.getSchemaName(), converter);
-            this.dmlParser = null;
+            OracleValueConverters converter = new OracleValueConverters(connectorConfig, connection);
+            return new SimpleDmlParser(catalogName, connectorConfig.getSchemaName(), converter);
         }
-        else {
-            this.legacyDmlParser = null;
-            this.dmlParser = new LogMinerDmlParser();
-        }
+        return new LogMinerDmlParser();
     }
 
     /**
@@ -92,7 +93,7 @@ class LogMinerQueryResultProcessor {
         int dmlCounter = 0, insertCounter = 0, updateCounter = 0, deleteCounter = 0;
         int commitCounter = 0;
         int rollbackCounter = 0;
-        int rows = 0;
+        long rows = 0;
         Instant startTime = Instant.now();
         while (context.isRunning()) {
             try {
@@ -189,7 +190,7 @@ class LogMinerQueryResultProcessor {
                 }
 
                 Instant parseStart = Instant.now();
-                LogMinerDmlEntry dmlEntry = parse(redoSql, txId);
+                LogMinerDmlEntry dmlEntry = dmlParser.parse(redoSql, schema.getTables(), txId);
                 metrics.addCurrentParseTime(Duration.between(parseStart, Instant.now()));
 
                 if (dmlEntry == null || redoSql == null) {
@@ -240,9 +241,8 @@ class LogMinerQueryResultProcessor {
             }
         }
 
+        Duration totalTime = Duration.between(startTime, Instant.now());
         if (dmlCounter > 0 || commitCounter > 0 || rollbackCounter > 0) {
-
-            Duration totalTime = Duration.between(startTime, Instant.now());
             metrics.setLastCapturedDmlCount(dmlCounter);
             metrics.setLastDurationOfBatchProcessing(totalTime);
 
@@ -251,13 +251,15 @@ class LogMinerQueryResultProcessor {
             if (offsetContext.getCommitScn() != null) {
                 currentOffsetCommitScn = offsetContext.getCommitScn();
             }
-            LOGGER.debug("{} Rows, {} DMLs, {} Commits, {} Rollbacks, {} Inserts, {} Updates, {} Deletes. Processed in {} millis. " +
-                    "Lag:{}. Offset scn:{}. Offset commit scn:{}. Active transactions:{}. Sleep time:{}",
-                    rows, dmlCounter, commitCounter, rollbackCounter, insertCounter, updateCounter, deleteCounter, totalTime.toMillis(),
-                    transactionalBufferMetrics.getLagFromSource(), offsetContext.getScn(), offsetContext.getCommitScn(),
-                    transactionalBufferMetrics.getNumberOfActiveTransactions(), metrics.getMillisecondToSleepBetweenMiningQuery());
         }
 
+        LOGGER.debug("{} Rows, {} DMLs, {} Commits, {} Rollbacks, {} Inserts, {} Updates, {} Deletes. Processed in {} millis. " +
+                "Lag:{}. Offset scn:{}. Offset commit scn:{}. Active transactions:{}. Sleep time:{}",
+                rows, dmlCounter, commitCounter, rollbackCounter, insertCounter, updateCounter, deleteCounter, totalTime.toMillis(),
+                transactionalBufferMetrics.getLagFromSource(), offsetContext.getScn(), offsetContext.getCommitScn(),
+                transactionalBufferMetrics.getNumberOfActiveTransactions(), metrics.getMillisecondToSleepBetweenMiningQuery());
+
+        metrics.addProcessedRows(rows);
         historyRecorder.flush();
         return dmlCounter;
     }
@@ -283,12 +285,5 @@ class LogMinerQueryResultProcessor {
                 stuckScnCounter = 0;
             }
         }
-    }
-
-    private LogMinerDmlEntry parse(String redoSql, String txId) {
-        if (this.legacyDmlParser != null) {
-            return legacyDmlParser.parse(redoSql, schema.getTables(), txId);
-        }
-        return dmlParser.parse(redoSql);
     }
 }

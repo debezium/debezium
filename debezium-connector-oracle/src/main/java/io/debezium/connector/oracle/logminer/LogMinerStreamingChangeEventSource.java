@@ -136,7 +136,8 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                 initializeRedoLogsForMining(jdbcConnection, false, archiveLogRetention);
 
                 HistoryRecorder historyRecorder = connectorConfig.getLogMiningHistoryRecorder();
-                Instant start = Instant.now();
+
+                Duration processTime = Duration.ZERO;
                 try {
                     // todo: why can't OracleConnection be used rather than a Factory+JdbcConfiguration?
                     historyRecorder.prepare(logMinerMetrics, jdbcConfiguration, connectorConfig.getLogMinerHistoryRetentionHours());
@@ -145,16 +146,16 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                             connectorConfig, logMinerMetrics, transactionalBuffer, offsetContext, schema, dispatcher,
                             catalogName, clock, historyRecorder);
 
-                    try (PreparedStatement miningView = jdbcConnection.connection()
-                            .prepareStatement(SqlUtils.logMinerContentsQuery(connectorConfig.getSchemaName(), jdbcConnection.username(), schema))) {
+                    final String query = SqlUtils.logMinerContentsQuery(connectorConfig.getSchemaName(), jdbcConnection.username(), schema);
+                    try (PreparedStatement miningView = jdbcConnection.connection().prepareStatement(query, ResultSet.TYPE_FORWARD_ONLY,
+                            ResultSet.CONCUR_READ_ONLY, ResultSet.HOLD_CURSORS_OVER_COMMIT)) {
                         Set<String> currentRedoLogFiles = getCurrentRedoLogFiles(jdbcConnection, logMinerMetrics);
 
                         Stopwatch stopwatch = Stopwatch.reusable();
                         while (context.isRunning()) {
+                            Instant start = Instant.now();
                             endScn = getEndScn(jdbcConnection, startScn, logMinerMetrics, connectorConfig.getLogMiningBatchSizeDefault());
                             flushLogWriter(jdbcConnection, jdbcConfiguration, isRac, racHosts);
-
-                            pauseBetweenMiningSessions();
 
                             Set<String> possibleNewCurrentLogFile = getCurrentRedoLogFiles(jdbcConnection, logMinerMetrics);
                             if (!currentRedoLogFiles.equals(possibleNewCurrentLogFile)) {
@@ -177,6 +178,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
 
                             stopwatch.start();
                             miningView.setFetchSize(LOG_MINING_VIEW_FETCH_SIZE);
+                            miningView.setFetchDirection(ResultSet.FETCH_FORWARD);
                             miningView.setLong(1, startScn);
                             miningView.setLong(2, endScn);
                             try (ResultSet rs = miningView.executeQuery()) {
@@ -191,12 +193,16 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                                     offsetContext.setScn(startScn);
                                 }
                             }
+
+                            processTime = processTime.plus(Duration.between(start, Instant.now()));
+                            logMinerMetrics.setTotalProcessingTime(processTime);
+
+                            pauseBetweenMiningSessions();
                         }
                     }
                 }
                 finally {
                     historyRecorder.close();
-                    logMinerMetrics.addCurrentProcessingTime(Duration.between(start, Instant.now()));
                 }
             }
             catch (Throwable t) {
