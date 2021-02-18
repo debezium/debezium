@@ -19,10 +19,10 @@ import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
-import io.debezium.connector.mysql.MySQLConnection;
 import io.debezium.connector.mysql.MySqlConnector;
 import io.debezium.connector.mysql.MySqlConnectorConfig;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
+import io.debezium.connector.mysql.MySqlTestConnection;
 import io.debezium.connector.mysql.UniqueDatabase;
 import io.debezium.connector.mysql.legacy.BinlogReaderIT;
 import io.debezium.doc.FixFor;
@@ -68,7 +68,7 @@ public class ZZZGtidSetIT extends AbstractConnectorTest {
     }
 
     private boolean isGtidModeEnabled() throws SQLException {
-        try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName())) {
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
             return db.queryAndMap(
                     "SHOW GLOBAL VARIABLES LIKE 'GTID_MODE'",
                     rs -> {
@@ -130,7 +130,7 @@ public class ZZZGtidSetIT extends AbstractConnectorTest {
     }
 
     private void purgeDatabaseLogs() throws SQLException {
-        try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());) {
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName());) {
             try (JdbcConnection connection = db.connect()) {
                 connection.execute(
                         "FLUSH LOGS");
@@ -184,7 +184,7 @@ public class ZZZGtidSetIT extends AbstractConnectorTest {
 
         stopConnector();
 
-        try (MySQLConnection db = MySQLConnection.forTestDatabase(database.getDatabaseName())) {
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(database.getDatabaseName())) {
             db.execute(
                     "INSERT INTO customers VALUES(default,1,1,1)",
                     "INSERT INTO customers VALUES(default,2,2,2)");
@@ -194,7 +194,7 @@ public class ZZZGtidSetIT extends AbstractConnectorTest {
         records = consumeRecordsByTopic(2);
         stopConnector();
 
-        try (MySQLConnection db = MySQLConnection.forTestDatabase(database.getDatabaseName())) {
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(database.getDatabaseName())) {
             db.execute(
                     "INSERT INTO customers VALUES(default,3,3,3)",
                     "INSERT INTO customers VALUES(default,4,4,4)");
@@ -208,13 +208,13 @@ public class ZZZGtidSetIT extends AbstractConnectorTest {
         assertThat(records.ddlRecordsForDatabase(database.getDatabaseName()).size()).isEqualTo(11);
         stopConnector();
 
-        try (MySQLConnection db = MySQLConnection.forTestDatabase(database.getDatabaseName())) {
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(database.getDatabaseName())) {
             db.execute(
                     "INSERT INTO customers VALUES(default,5,5,5)",
                     "INSERT INTO customers VALUES(default,6,6,6)");
         }
         purgeDatabaseLogs();
-        try (MySQLConnection db = MySQLConnection.forTestDatabase(database.getDatabaseName())) {
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(database.getDatabaseName())) {
             db.execute(
                     "INSERT INTO customers VALUES(default,7,7,7)",
                     "INSERT INTO customers VALUES(default,8,8,8)");

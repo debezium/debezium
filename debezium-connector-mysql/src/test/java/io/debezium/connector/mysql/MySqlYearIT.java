@@ -76,7 +76,7 @@ public class MySqlYearIT extends AbstractConnectorTest {
 
         assertChangeRecordByDatabase();
 
-        try (final Connection conn = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName()).connection()) {
+        try (final Connection conn = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName()).connection()) {
             conn.createStatement().execute("INSERT INTO dbz_1143_year_test VALUES (\n" +
                     "    default,\n" +
                     "    '18',\n" +
@@ -126,7 +126,7 @@ public class MySqlYearIT extends AbstractConnectorTest {
 
         assertChangeRecordByConnector();
 
-        try (final Connection conn = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName()).connection()) {
+        try (final Connection conn = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName()).connection()) {
             conn.createStatement().execute("INSERT INTO dbz_1143_year_test VALUES (\n" +
                     "    default,\n" +
                     "    '18',\n" +

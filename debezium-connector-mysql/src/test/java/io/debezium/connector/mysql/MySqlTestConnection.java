@@ -18,7 +18,7 @@ import io.debezium.jdbc.JdbcConnection;
  *
  * @author Randall Hauch
  */
-public class MySQLConnection extends JdbcConnection {
+public class MySqlTestConnection extends JdbcConnection {
 
     public enum MySqlVersion {
         MYSQL_5_5,
@@ -36,8 +36,8 @@ public class MySQLConnection extends JdbcConnection {
      * @param databaseName the name of the test database
      * @return the MySQLConnection instance; never null
      */
-    public static MySQLConnection forTestDatabase(String databaseName) {
-        return new MySQLConnection(JdbcConfiguration.copy(Configuration.fromSystemProperties("database."))
+    public static MySqlTestConnection forTestDatabase(String databaseName) {
+        return new MySqlTestConnection(JdbcConfiguration.copy(Configuration.fromSystemProperties("database."))
                 .withDatabase(databaseName)
                 .with("useSSL", false)
                 .with("characterEncoding", "utf8")
@@ -50,13 +50,13 @@ public class MySQLConnection extends JdbcConnection {
      * @param urlProperties url properties
      * @return the MySQLConnection instance; never null
      */
-    public static MySQLConnection forTestDatabase(String databaseName, Map<String, Object> urlProperties) {
+    public static MySqlTestConnection forTestDatabase(String databaseName, Map<String, Object> urlProperties) {
         JdbcConfiguration.Builder builder = JdbcConfiguration.copy(Configuration.fromSystemProperties("database."))
                 .withDatabase(databaseName)
                 .with("useSSL", false)
                 .with("characterEncoding", "utf8");
         urlProperties.forEach(builder::with);
-        return new MySQLConnection(builder.build());
+        return new MySqlTestConnection(builder.build());
     }
 
     /**
@@ -67,8 +67,8 @@ public class MySQLConnection extends JdbcConnection {
      * @param password the password
      * @return the MySQLConnection instance; never null
      */
-    public static MySQLConnection forTestDatabase(String databaseName, String username, String password) {
-        return new MySQLConnection(JdbcConfiguration.copy(Configuration.fromSystemProperties("database."))
+    public static MySqlTestConnection forTestDatabase(String databaseName, String username, String password) {
+        return new MySqlTestConnection(JdbcConfiguration.copy(Configuration.fromSystemProperties("database."))
                 .withDatabase(databaseName)
                 .withUser(username)
                 .withPassword(password)
@@ -116,8 +116,8 @@ public class MySQLConnection extends JdbcConnection {
      *
      * @param config the configuration; may not be null
      */
-    public MySQLConnection(Configuration config) {
-        super(config, FACTORY, null, MySQLConnection::addDefaults);
+    public MySqlTestConnection(Configuration config) {
+        super(config, FACTORY, null, MySqlTestConnection::addDefaults);
     }
 
     public MySqlVersion getMySqlVersion() {

@@ -227,11 +227,11 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
                 .with(MySqlConnectorConfig.SNAPSHOT_LOCKING_MODE, MySqlConnectorConfig.SnapshotLockingMode.MINIMAL_PERCONA)
                 .build();
 
-        if (!MySQLConnection.isPerconaServer()) {
+        if (!MySqlTestConnection.isPerconaServer()) {
             return; // Skip these tests for non-Percona flavours of MySQL
         }
 
-        final MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());
+        final MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName());
         final JdbcConnection connection = db.connect();
         final CountDownLatch latch = new CountDownLatch(1);
         Thread t = new Thread() {
@@ -393,7 +393,7 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
     }
 
     private String productsTableName() throws SQLException {
-        try (final MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName())) {
+        try (final MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
             return db.isTableIdCaseSensitive() ? "products" : "Products";
         }
     }
@@ -515,7 +515,7 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
         start(MySqlConnector.class, config);
 
         try (
-                final MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());
+                final MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName());
                 final JdbcConnection connection = db.connect();
                 final Connection jdbc = connection.connection();
                 final Statement statement = jdbc.createStatement()) {

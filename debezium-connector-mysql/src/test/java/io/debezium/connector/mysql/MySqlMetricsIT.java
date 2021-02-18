@@ -107,7 +107,7 @@ public class MySqlMetricsIT extends AbstractConnectorTest {
     @Test
     public void testSnapshotOnlyMetrics() throws Exception {
         // Setup
-        try (Connection connection = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName()).connection()) {
+        try (Connection connection = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName()).connection()) {
             connection.createStatement().execute(INSERT1);
             connection.createStatement().execute(INSERT2);
         }
@@ -138,7 +138,7 @@ public class MySqlMetricsIT extends AbstractConnectorTest {
     @Test
     public void testSnapshotAndStreamingMetrics() throws Exception {
         // Setup
-        try (Connection connection = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName()).connection()) {
+        try (Connection connection = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName()).connection()) {
             connection.createStatement().execute(INSERT1);
             connection.createStatement().execute(INSERT2);
         }
@@ -238,7 +238,7 @@ public class MySqlMetricsIT extends AbstractConnectorTest {
         waitForStreamingToStart();
 
         // Insert new records and wait for them to become available
-        try (Connection connection = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName()).connection()) {
+        try (Connection connection = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName()).connection()) {
             connection.createStatement().execute(INSERT1);
             connection.createStatement().execute(INSERT2);
         }
