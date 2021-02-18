@@ -27,7 +27,7 @@ public class ConnectionIT implements Testing {
     @Ignore
     @Test
     public void shouldConnectToDefaultDatabase() throws SQLException {
-        try (MySQLConnection conn = MySQLConnection.forTestDatabase("mysql");) {
+        try (MySqlTestConnection conn = MySqlTestConnection.forTestDatabase("mysql");) {
             conn.connect();
         }
     }
@@ -36,7 +36,7 @@ public class ConnectionIT implements Testing {
     public void shouldDoStuffWithDatabase() throws SQLException {
         final UniqueDatabase DATABASE = new UniqueDatabase("readbinlog", "readbinlog_test");
         DATABASE.createAndInitialize();
-        try (MySQLConnection conn = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());) {
+        try (MySqlTestConnection conn = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName());) {
             conn.connect();
             // Set up the table as one transaction and wait to see the events ...
             conn.execute("DROP TABLE IF EXISTS person",
@@ -57,7 +57,7 @@ public class ConnectionIT implements Testing {
     @Ignore
     @Test
     public void shouldConnectToEmptyDatabase() throws SQLException {
-        try (MySQLConnection conn = MySQLConnection.forTestDatabase("emptydb");) {
+        try (MySqlTestConnection conn = MySqlTestConnection.forTestDatabase("emptydb");) {
             conn.connect();
         }
     }

@@ -5,7 +5,7 @@
  */
 package io.debezium.connector.mysql.junit;
 
-import io.debezium.connector.mysql.MySQLConnection;
+import io.debezium.connector.mysql.MySqlTestConnection;
 import io.debezium.junit.DatabaseVersionResolver;
 
 /**
@@ -16,7 +16,7 @@ import io.debezium.junit.DatabaseVersionResolver;
 public class MySqlDatabaseVersionResolver implements DatabaseVersionResolver {
 
     public DatabaseVersion getVersion() {
-        final String versionString = MySQLConnection.forTestDatabase("mysql").getMySqlVersionString();
+        final String versionString = MySqlTestConnection.forTestDatabase("mysql").getMySqlVersionString();
 
         final String[] tokens = versionString.split("\\.");
         if (tokens.length == 0) {

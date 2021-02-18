@@ -35,10 +35,10 @@ import org.junit.Test;
 
 import io.debezium.config.CommonConnectorConfig.EventProcessingFailureHandlingMode;
 import io.debezium.config.Configuration;
-import io.debezium.connector.mysql.MySQLConnection;
 import io.debezium.connector.mysql.MySqlConnector;
 import io.debezium.connector.mysql.MySqlConnectorConfig;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
+import io.debezium.connector.mysql.MySqlTestConnection;
 import io.debezium.connector.mysql.UniqueDatabase;
 import io.debezium.connector.mysql.legacy.AbstractReader.AcceptAllPredicate;
 import io.debezium.data.Envelope;
@@ -590,7 +590,7 @@ public class BinlogReaderIT {
         reader.start();
         reader.context.dbSchema().applyDdl(context.source(), DATABASE.getDatabaseName(), "DROP TABLE customers", null);
         try (
-                final MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());
+                final MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName());
                 final JdbcConnection connection = db.connect();
                 final Connection jdbc = connection.connection();
                 final Statement statement = jdbc.createStatement()) {

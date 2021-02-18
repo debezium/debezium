@@ -32,9 +32,9 @@ import org.junit.Test;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Configuration.Builder;
-import io.debezium.connector.mysql.MySQLConnection;
 import io.debezium.connector.mysql.MySqlConnector;
 import io.debezium.connector.mysql.MySqlConnectorConfig;
+import io.debezium.connector.mysql.MySqlTestConnection;
 import io.debezium.connector.mysql.UniqueDatabase;
 import io.debezium.data.KeyValueStore;
 import io.debezium.data.KeyValueStore.Collection;
@@ -262,12 +262,12 @@ public class SnapshotReaderIT {
         reader = new SnapshotReader("snapshot", context, true);
         reader.generateReadEvents();
 
-        if (!MySQLConnection.isPerconaServer()) {
+        if (!MySqlTestConnection.isPerconaServer()) {
             reader.start(); // Start the reader to avoid failure in the afterEach method.
             return; // Skip these tests for non-Percona flavours of MySQL
         }
 
-        MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());
+        MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName());
         Thread t = new Thread() {
             @Override
             public void run() {
