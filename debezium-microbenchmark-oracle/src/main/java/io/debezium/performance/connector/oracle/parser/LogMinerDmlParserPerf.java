@@ -53,12 +53,12 @@ public class LogMinerDmlParserPerf {
         private String insertStatement() {
             final StringBuilder sb = new StringBuilder("insert into \"DEBEZIUM\".\"TEST\"(\"ID\"");
             for (int i = 0; i < columnCount; ++i) {
-                sb.append(",").append("\"C").append(i).append("\"");
+                sb.append(",").append("\"COL").append(i).append("\"");
             }
             sb.append(") values (");
             sb.append("'").append(1).append("'");
             for (int i = 0; i < columnCount; ++i) {
-                sb.append(",").append("'V").append(i).append("'");
+                sb.append(",").append("'").append(getColumnValue(50)).append("'");
             }
             return sb.append(");").toString();
         }
@@ -66,11 +66,11 @@ public class LogMinerDmlParserPerf {
         private String updateStatement() {
             final StringBuilder sb = new StringBuilder("update \"DEBEZIUM\".\"TEST\" set \"ID\" = '1'");
             for (int i = 0; i < columnCount; ++i) {
-                sb.append(", \"C").append(i).append("\" = 'VAL").append(i).append("'");
+                sb.append(", \"COL").append(i).append("\" = '").append(getColumnValue(50)).append("'");
             }
             sb.append(" where \"ID\" = '1'");
             for (int i = 0; i < columnCount; ++i) {
-                sb.append(" and \"C").append(i).append("\" = 'V").append(i).append("'");
+                sb.append(" and \"COL").append(i).append("\" = '").append(getColumnValue(50)).append("'");
             }
             return sb.append(";").toString();
         }
@@ -78,9 +78,19 @@ public class LogMinerDmlParserPerf {
         private String deleteStatement() {
             final StringBuilder sb = new StringBuilder("delete from \"DEBEZIUM\".\"TEST\" where \"ID\" = '1'");
             for (int i = 0; i < columnCount; ++i) {
-                sb.append(" and \"C").append(i).append("\" = 'V").append(i).append("'");
+                sb.append(" and \"COL").append(i).append("\" = '").append(getColumnValue(50)).append("'");
             }
             return sb.append(";").toString();
+        }
+
+        private String getColumnValue(int length) {
+            String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ01234567890abcdefghijklmnopqrstuvwxyz";
+            StringBuilder sb = new StringBuilder(length);
+            for (int i = 0; i < length; ++i) {
+                int index = (int) (chars.length() * Math.random());
+                sb.append(chars.charAt(index));
+            }
+            return sb.toString();
         }
     }
 
