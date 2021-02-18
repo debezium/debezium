@@ -132,7 +132,6 @@ public class TransactionalBufferTest {
         });
         transactionalBuffer.rollback(TRANSACTION_ID, "");
         assertThat(transactionalBuffer.isEmpty()).isEqualTo(true);
-        assertThat(transactionalBuffer.getLargestScn()).isEqualTo(SCN);
     }
 
     @Test
@@ -143,7 +142,6 @@ public class TransactionalBufferTest {
         });
         transactionalBuffer.rollback(TRANSACTION_ID, "");
         assertThat(transactionalBuffer.isEmpty()).isEqualTo(false);
-        assertThat(transactionalBuffer.getLargestScn()).isEqualTo(OTHER_SCN);
         assertThat(transactionalBuffer.getRolledBackTransactionIds().contains(TRANSACTION_ID)).isTrue();
         assertThat(transactionalBuffer.getRolledBackTransactionIds().contains(OTHER_TRANSACTION_ID)).isFalse();
     }
@@ -156,7 +154,6 @@ public class TransactionalBufferTest {
         });
         transactionalBuffer.rollback(OTHER_TRANSACTION_ID, "");
         assertThat(transactionalBuffer.isEmpty()).isEqualTo(false);
-        assertThat(transactionalBuffer.getLargestScn()).isEqualTo(OTHER_SCN);
         assertThat(transactionalBuffer.getRolledBackTransactionIds().contains(TRANSACTION_ID)).isFalse();
         assertThat(transactionalBuffer.getRolledBackTransactionIds().contains(OTHER_TRANSACTION_ID)).isTrue();
     }
@@ -169,11 +166,9 @@ public class TransactionalBufferTest {
             smallestScnContainer.set(smallestScn);
             commitLatch.countDown();
         });
-        assertThat(transactionalBuffer.getLargestScn()).isEqualTo(SCN); // before commit
         offsetContext = new OracleOffsetContext(connectorConfig, SCN.longValue(), SCN.longValue(), null, false, true, new TransactionContext());
         transactionalBuffer.commit(TRANSACTION_ID, SCN.add(Scn.ONE), offsetContext, TIMESTAMP, () -> true, MESSAGE, dispatcher);
         commitLatch.await();
-        assertThat(transactionalBuffer.getLargestScn()).isEqualTo(SCN); // after commit
 
         assertThat(smallestScnContainer.get()).isNull();
 
@@ -190,12 +185,10 @@ public class TransactionalBufferTest {
         });
         transactionalBuffer.registerCommitCallback(OTHER_TRANSACTION_ID, OTHER_SCN, Instant.now(), (timestamp, smallestScn, commitScn, counter) -> {
         });
-        assertThat(transactionalBuffer.getLargestScn()).isEqualTo(OTHER_SCN); // before commit
         offsetContext = new OracleOffsetContext(connectorConfig, SCN.longValue(), SCN.longValue(), null, false, true, new TransactionContext());
         transactionalBuffer.commit(TRANSACTION_ID, SCN.add(Scn.ONE), offsetContext, TIMESTAMP, () -> true, MESSAGE, dispatcher);
         commitLatch.await();
         // after commit, it stays the same because OTHER_TRANSACTION_ID is not committed yet
-        assertThat(transactionalBuffer.getLargestScn()).isEqualTo(OTHER_SCN);
 
         assertThat(smallestScnContainer.get()).isEqualTo(OTHER_SCN);
         assertThat(transactionalBuffer.getRolledBackTransactionIds().isEmpty()).isTrue();
@@ -211,31 +204,12 @@ public class TransactionalBufferTest {
             smallestScnContainer.set(smallestScn);
             commitLatch.countDown();
         });
-        assertThat(transactionalBuffer.getLargestScn()).isEqualTo(OTHER_SCN); // before commit
         offsetContext = new OracleOffsetContext(connectorConfig, OTHER_SCN.longValue(), OTHER_SCN.longValue(), null, false, true, new TransactionContext());
         transactionalBuffer.commit(OTHER_TRANSACTION_ID, OTHER_SCN.add(Scn.ONE), offsetContext, TIMESTAMP, () -> true, MESSAGE, dispatcher);
         commitLatch.await();
         assertThat(smallestScnContainer.get()).isEqualTo(SCN);
         // after committing OTHER_TRANSACTION_ID
-        assertThat(transactionalBuffer.getLargestScn()).isEqualTo(OTHER_SCN);
         assertThat(transactionalBuffer.getRolledBackTransactionIds().isEmpty()).isTrue();
-    }
-
-    @Test
-    public void testResetLargestScn() {
-        transactionalBuffer.registerCommitCallback(TRANSACTION_ID, SCN, Instant.now(), (timestamp, smallestScn, commitScn, counter) -> {
-        });
-        transactionalBuffer.registerCommitCallback(OTHER_TRANSACTION_ID, OTHER_SCN, Instant.now(), (timestamp, smallestScn, commitScn, counter) -> {
-        });
-        assertThat(transactionalBuffer.getLargestScn()).isEqualTo(OTHER_SCN); // before commit
-        offsetContext = new OracleOffsetContext(connectorConfig, OTHER_SCN.longValue(), OTHER_SCN.longValue(), null, false, true, new TransactionContext());
-        transactionalBuffer.commit(OTHER_TRANSACTION_ID, OTHER_SCN, offsetContext, TIMESTAMP, () -> true, MESSAGE, dispatcher);
-        assertThat(transactionalBuffer.getLargestScn()).isEqualTo(OTHER_SCN); // after commit
-
-        transactionalBuffer.resetLargestScn(null);
-        assertThat(transactionalBuffer.getLargestScn()).isEqualTo(Scn.ZERO);
-        transactionalBuffer.resetLargestScn(OTHER_SCN.longValue());
-        assertThat(transactionalBuffer.getLargestScn()).isEqualTo(OTHER_SCN);
     }
 
     @Test
@@ -245,7 +219,6 @@ public class TransactionalBufferTest {
         offsetContext = new OracleOffsetContext(connectorConfig, SCN.longValue(), SCN.longValue(), (LcrPosition) null, false, true, new TransactionContext());
         transactionalBuffer.abandonLongTransactions(SCN.longValue(), offsetContext);
         assertThat(transactionalBuffer.isEmpty()).isEqualTo(true);
-        assertThat(transactionalBuffer.getLargestScn()).isEqualTo(Scn.ZERO);
     }
 
     @Test
@@ -256,7 +229,6 @@ public class TransactionalBufferTest {
         });
         transactionalBuffer.abandonLongTransactions(SCN.longValue(), offsetContext);
         assertThat(transactionalBuffer.isEmpty()).isEqualTo(false);
-        assertThat(transactionalBuffer.getLargestScn()).isEqualTo(OTHER_SCN);
     }
 
     @Test

@@ -186,12 +186,11 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                                     logMinerMetrics.setLastDurationOfBatchCapturing(lastDurationOfBatchCapturing);
                                     processor.processResult(rs);
 
-                                    updateStartScn(transactionalBuffer);
+                                    startScn = endScn;
 
                                     if (transactionalBuffer.isEmpty()) {
                                         LOGGER.debug("Transactional buffer empty, updating offset's SCN {}", startScn);
                                         offsetContext.setScn(startScn);
-                                        transactionalBuffer.resetLargestScn(null);
                                     }
                                 }
                             }
@@ -237,20 +236,8 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
         lastScnToAbandonTransactions.ifPresent(thresholdScn -> {
             transactionalBuffer.abandonLongTransactions(thresholdScn, offsetContext);
             offsetContext.setScn(thresholdScn);
-            updateStartScn(transactionalBuffer);
+            startScn = endScn;
         });
-    }
-
-    // TODO computing the largest scn in the buffer is a left-over from previous incarnations, remove it.
-    // TODO We don't need to keep largestScn in the buffer at all. clean it
-    private void updateStartScn(TransactionalBuffer transactionalBuffer) {
-        long nextStartScn = transactionalBuffer.getLargestScn().equals(Scn.ZERO) ? endScn : transactionalBuffer.getLargestScn().longValue();
-        if (nextStartScn <= startScn) {
-            LOGGER.trace("Resetting largest SCN in transaction buffer to {}, nextStartScn={}, startScn={}", endScn, nextStartScn, startScn);
-            // When system is idle, largest SCN may stay unchanged, move it forward then
-            transactionalBuffer.resetLargestScn(endScn);
-        }
-        startScn = endScn;
     }
 
     private void initializeRedoLogsForMining(Connection connection, boolean postEndMiningSession, Duration archiveLogRetention) throws SQLException {

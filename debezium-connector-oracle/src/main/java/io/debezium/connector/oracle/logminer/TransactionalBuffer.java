@@ -45,9 +45,6 @@ public final class TransactionalBuffer implements AutoCloseable {
     private final Set<String> rolledBackTransactionIds;
     private final TransactionalBufferMetrics metrics;
 
-    // It holds the latest captured SCN.
-    // This number tracks starting point for the next mining cycle.
-    private Scn largestScn;
     private Scn lastCommittedScn;
 
     /**
@@ -59,7 +56,6 @@ public final class TransactionalBuffer implements AutoCloseable {
     TransactionalBuffer(OracleTaskContext taskContext, ErrorHandler errorHandler) {
         this.transactions = new HashMap<>();
         this.errorHandler = errorHandler;
-        this.largestScn = Scn.ZERO;
         this.lastCommittedScn = Scn.ZERO;
         this.abandonedTransactionIds = new HashSet<>();
         this.rolledBackTransactionIds = new HashSet<>();
@@ -77,29 +73,10 @@ public final class TransactionalBuffer implements AutoCloseable {
     }
 
     /**
-     * @return largest last SCN in the buffer among all transactions
-     */
-    Scn getLargestScn() {
-        return largestScn;
-    }
-
-    /**
      * @return rolled back transactions
      */
     Set<String> getRolledBackTransactionIds() {
         return new HashSet<>(rolledBackTransactionIds);
-    }
-
-    /**
-     * Reset Largest SCN
-     */
-    void resetLargestScn(Long value) {
-        if (value != null) {
-            largestScn = Scn.fromLong(value);
-        }
-        else {
-            largestScn = Scn.ZERO;
-        }
     }
 
     /**
@@ -131,10 +108,6 @@ public final class TransactionalBuffer implements AutoCloseable {
         if (transaction != null) {
             transaction.commitCallbacks.add(callback);
         }
-
-        if (scn.compareTo(largestScn) > 0) {
-            largestScn = scn;
-        }
     }
 
     /**
@@ -153,15 +126,12 @@ public final class TransactionalBuffer implements AutoCloseable {
     boolean commit(String transactionId, Scn scn, OracleOffsetContext offsetContext, Timestamp timestamp,
                    ChangeEventSource.ChangeEventSourceContext context, String debugMessage, EventDispatcher dispatcher) {
 
-        Transaction transaction = transactions.get(transactionId);
+        Instant start = Instant.now();
+        Transaction transaction = transactions.remove(transactionId);
         if (transaction == null) {
             return false;
         }
 
-        Instant start = Instant.now();
-
-        calculateLargestScn();
-        transaction = transactions.remove(transactionId);
         Scn smallestScn = calculateSmallestScn();
 
         abandonedTransactionIds.remove(transactionId);
@@ -177,7 +147,7 @@ public final class TransactionalBuffer implements AutoCloseable {
         }
 
         List<CommitCallback> commitCallbacks = transaction.commitCallbacks;
-        LOGGER.trace("COMMIT, {}, smallest SCN: {}, largest SCN {}", debugMessage, smallestScn, largestScn);
+        LOGGER.trace("COMMIT, {}, smallest SCN: {}", debugMessage, smallestScn);
         commit(context, offsetContext, start, commitCallbacks, timestamp, smallestScn, scn, dispatcher);
 
         return true;
@@ -230,9 +200,7 @@ public final class TransactionalBuffer implements AutoCloseable {
         if (transaction != null) {
             LOGGER.debug("Transaction rolled back: {}", debugMessage);
 
-            calculateLargestScn(); // in case if largest SCN was in this transaction
             transactions.remove(transactionId);
-
             abandonedTransactionIds.remove(transactionId);
             rolledBackTransactionIds.add(transactionId);
 
@@ -275,7 +243,6 @@ public final class TransactionalBuffer implements AutoCloseable {
                         transaction.getValue().toString());
                 abandonedTransactionIds.add(transaction.getKey());
                 iter.remove();
-                calculateLargestScn();
 
                 metrics.addAbandonedTransactionId(transaction.getKey());
                 metrics.setActiveTransactions(transactions.size());
@@ -296,15 +263,6 @@ public final class TransactionalBuffer implements AutoCloseable {
                         .orElseThrow(() -> new DataException("Cannot calculate smallest SCN"));
         metrics.setOldestScn(scn == null ? -1 : scn.longValue());
         return scn;
-    }
-
-    private void calculateLargestScn() {
-        largestScn = transactions.isEmpty() ? Scn.ZERO
-                : transactions.values()
-                        .stream()
-                        .map(transaction -> transaction.lastScn)
-                        .max(Scn::compareTo)
-                        .orElseThrow(() -> new DataException("Cannot calculate largest SCN"));
     }
 
     /**
