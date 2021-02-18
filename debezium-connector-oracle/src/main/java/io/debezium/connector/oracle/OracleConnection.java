@@ -56,10 +56,13 @@ public class OracleConnection extends JdbcConnection {
     /**
      * The database version.
      */
-    private OracleDatabaseVersion databaseVersion;
+    private final OracleDatabaseVersion databaseVersion;
 
     public OracleConnection(Configuration config, Supplier<ClassLoader> classLoaderSupplier) {
         super(config, resolveConnectionFactory(config), classLoaderSupplier);
+
+        this.databaseVersion = resolveOracleDatabaseVersion();
+        LOGGER.info("Database Version: {}", databaseVersion.getBanner());
     }
 
     public void setSessionToPdb(String pdbName) {
@@ -107,10 +110,6 @@ public class OracleConnection extends JdbcConnection {
     }
 
     public OracleDatabaseVersion getOracleVersion() {
-        if (databaseVersion == null) {
-            databaseVersion = resolveOracleDatabaseVersion();
-            LOGGER.info("Database Version: {}", databaseVersion.getBanner());
-        }
         return databaseVersion;
     }
 
