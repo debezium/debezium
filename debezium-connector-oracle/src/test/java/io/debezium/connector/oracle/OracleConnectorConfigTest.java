@@ -136,15 +136,15 @@ public class OracleConnectorConfigTest {
                 Configuration.create()
                         .build());
 
-        assertEquals(connectorConfig.getConfig().getInteger(OracleConnectorConfig.LOG_MINING_SLEEP_TIME_DEFAULT_MS), OracleConnectorConfig.DEFAULT_SLEEP_TIME_MS);
-        assertEquals(connectorConfig.getConfig().getInteger(OracleConnectorConfig.LOG_MINING_SLEEP_TIME_MAX_MS), OracleConnectorConfig.MAX_SLEEP_TIME_MS);
-        assertEquals(connectorConfig.getConfig().getInteger(OracleConnectorConfig.LOG_MINING_SLEEP_TIME_MIN_MS), OracleConnectorConfig.MIN_SLEEP_TIME_MS);
-        assertEquals(connectorConfig.getConfig().getInteger(OracleConnectorConfig.LOG_MINING_SLEEP_TIME_INCREMENT_MS), OracleConnectorConfig.SLEEP_TIME_INCREMENT_MS);
+        assertEquals(connectorConfig.getConfig().getInteger(OracleConnectorConfig.LOG_MINING_SLEEP_TIME_DEFAULT_MS), OracleConnectorConfig.DEFAULT_SLEEP_TIME);
+        assertEquals(connectorConfig.getConfig().getInteger(OracleConnectorConfig.LOG_MINING_SLEEP_TIME_MAX_MS), OracleConnectorConfig.MAX_SLEEP_TIME);
+        assertEquals(connectorConfig.getConfig().getInteger(OracleConnectorConfig.LOG_MINING_SLEEP_TIME_MIN_MS), OracleConnectorConfig.MIN_SLEEP_TIME);
+        assertEquals(connectorConfig.getConfig().getInteger(OracleConnectorConfig.LOG_MINING_SLEEP_TIME_INCREMENT_MS), OracleConnectorConfig.SLEEP_TIME_INCREMENT);
 
-        assertEquals(connectorConfig.getLogMiningSleepTimeDefault().toMillis(), OracleConnectorConfig.DEFAULT_SLEEP_TIME_MS);
-        assertEquals(connectorConfig.getLogMiningSleepTimeMax().toMillis(), OracleConnectorConfig.MAX_SLEEP_TIME_MS);
-        assertEquals(connectorConfig.getLogMiningSleepTimeMin().toMillis(), OracleConnectorConfig.MIN_SLEEP_TIME_MS);
-        assertEquals(connectorConfig.getLogMiningSleepTimeIncrement().toMillis(), OracleConnectorConfig.SLEEP_TIME_INCREMENT_MS);
+        assertEquals(connectorConfig.getLogMiningSleepTimeDefault().toMillis(), OracleConnectorConfig.DEFAULT_SLEEP_TIME);
+        assertEquals(connectorConfig.getLogMiningSleepTimeMax().toMillis(), OracleConnectorConfig.MAX_SLEEP_TIME);
+        assertEquals(connectorConfig.getLogMiningSleepTimeMin().toMillis(), OracleConnectorConfig.MIN_SLEEP_TIME);
+        assertEquals(connectorConfig.getLogMiningSleepTimeIncrement().toMillis(), OracleConnectorConfig.SLEEP_TIME_INCREMENT);
     }
 
     @Test
@@ -164,7 +164,7 @@ public class OracleConnectorConfigTest {
     public void validTransactionRetentionDefaults() throws Exception {
         final Configuration config = Configuration.create().build();
         final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
-        assertThat(connectorConfig.getLogMiningTransactionRetention()).isEqualTo(Duration.ofHours(OracleConnectorConfig.DEFAULT_TRANSACTION_RETENTION));
+        assertThat(connectorConfig.getLogMiningTransactionRetention()).isEqualTo(OracleConnectorConfig.DEFAULT_TRANSACTION_RETENTION);
     }
 
     @Test
