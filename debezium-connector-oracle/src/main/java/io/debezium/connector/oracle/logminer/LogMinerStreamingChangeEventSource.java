@@ -58,9 +58,6 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
 
     private static final Logger LOGGER = LoggerFactory.getLogger(LogMinerStreamingChangeEventSource.class);
 
-    // TODO: change this to use MAX_QUEUE_SIE as the default
-    private static final int LOG_MINING_VIEW_FETCH_SIZE = 10_000;
-
     private final OracleConnection jdbcConnection;
     private final EventDispatcher<TableId> dispatcher;
     private final Clock clock;
@@ -177,7 +174,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                             startLogMining(jdbcConnection, startScn, endScn, strategy, isContinuousMining, logMinerMetrics);
 
                             stopwatch.start();
-                            miningView.setFetchSize(LOG_MINING_VIEW_FETCH_SIZE);
+                            miningView.setFetchSize(connectorConfig.getMaxQueueSize());
                             miningView.setFetchDirection(ResultSet.FETCH_FORWARD);
                             miningView.setLong(1, startScn);
                             miningView.setLong(2, endScn);
