@@ -36,7 +36,9 @@ import org.junit.rules.TestRule;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.OracleConnectorConfig.SnapshotMode;
+import io.debezium.connector.oracle.junit.RequireDatabaseOption;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
+import io.debezium.connector.oracle.junit.SkipTestDependingOnDatabaseOptionRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIs;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.util.TestHelper;
@@ -61,6 +63,8 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
     @Rule
     public final TestRule skipAdapterRule = new SkipTestDependingOnAdapterNameRule();
+    @Rule
+    public final TestRule skipOptionRule = new SkipTestDependingOnDatabaseOptionRule();
 
     private static OracleConnection connection;
 
@@ -957,6 +961,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-2683")
+    @RequireDatabaseOption("Partitioning")
     public void shouldSnapshotAndStreamChangesFromPartitionedTable() throws Exception {
         TestHelper.dropTable(connection, "players");
 
