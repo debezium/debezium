@@ -76,14 +76,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withDescription("Name of the pluggable database when working with a multi-tenant set-up. "
                     + "The CDB name must be given via " + DATABASE_NAME.name() + " in this case.");
 
-    public static final Field SCHEMA_NAME = Field.create(DATABASE_CONFIG_PREFIX + "schema")
-            .withDisplayName("Schema name")
-            .withType(Type.STRING)
-            .withWidth(Width.MEDIUM)
-            .withImportance(Importance.HIGH)
-            .withValidation(OracleConnectorConfig::validateDatabaseSchema)
-            .withDescription("Name of the connection user to the database ");
-
     public static final Field XSTREAM_SERVER_NAME = Field.create(DATABASE_CONFIG_PREFIX + "out.server.name")
             .withDisplayName("XStream out server name")
             .withType(Type.STRING)
@@ -314,7 +306,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             Heartbeat.HEARTBEAT_TOPICS_PREFIX,
             TABLENAME_CASE_INSENSITIVE,
             ORACLE_VERSION,
-            SCHEMA_NAME,
             CONNECTOR_ADAPTER,
             LOG_MINING_STRATEGY,
             SNAPSHOT_ENHANCEMENT_TOKEN,
@@ -341,7 +332,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
     private final boolean tablenameCaseInsensitive;
     private final OracleVersion oracleVersion;
-    private final String schemaName;
     private final Tables.ColumnNameFilter columnFilter;
     private final HistoryRecorder logMiningHistoryRecorder;
     private final Configuration jdbcConfig;
@@ -374,7 +364,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE));
         this.tablenameCaseInsensitive = config.getBoolean(TABLENAME_CASE_INSENSITIVE);
         this.oracleVersion = OracleVersion.parse(config.getString(ORACLE_VERSION));
-        this.schemaName = toUpperCase(config.getString(SCHEMA_NAME));
         String blacklistedColumns = toUpperCase(config.getString(RelationalDatabaseConnectorConfig.COLUMN_BLACKLIST));
         this.columnFilter = getColumnNameFilter(blacklistedColumns);
         this.logMiningHistoryRecorder = resolveLogMiningHistoryRecorder(config);
@@ -429,7 +418,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
         Field.group(config, "Oracle", HOSTNAME, PORT, RelationalDatabaseConnectorConfig.USER,
                 RelationalDatabaseConnectorConfig.PASSWORD, SERVER_NAME, RelationalDatabaseConnectorConfig.DATABASE_NAME, PDB_NAME,
-                XSTREAM_SERVER_NAME, SNAPSHOT_MODE, CONNECTOR_ADAPTER, LOG_MINING_STRATEGY, URL, TABLENAME_CASE_INSENSITIVE, ORACLE_VERSION, SCHEMA_NAME);
+                XSTREAM_SERVER_NAME, SNAPSHOT_MODE, CONNECTOR_ADAPTER, LOG_MINING_STRATEGY, URL, TABLENAME_CASE_INSENSITIVE, ORACLE_VERSION);
         Field.group(config, "History Storage", KafkaDatabaseHistory.BOOTSTRAP_SERVERS,
                 KafkaDatabaseHistory.TOPIC, KafkaDatabaseHistory.RECOVERY_POLL_ATTEMPTS,
                 KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS, HistorizedRelationalDatabaseConnectorConfig.DATABASE_HISTORY);
@@ -461,6 +450,10 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         return pdbName;
     }
 
+    public String getCatalogName() {
+        return pdbName != null ? pdbName : databaseName;
+    }
+
     public String getXoutServerName() {
         return xoutServerName;
     }
@@ -475,10 +468,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
     public OracleVersion getOracleVersion() {
         return oracleVersion;
-    }
-
-    public String getSchemaName() {
-        return schemaName;
     }
 
     public Tables.ColumnNameFilter getColumnFilter() {
@@ -941,19 +930,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     @Override
     public String getConnectorName() {
         return Module.name();
-    }
-
-    public static int validateDatabaseSchema(Configuration config, Field field, ValidationOutput problems) {
-        if (ConnectorAdapter.LOG_MINER.equals(ConnectorAdapter.parse(config.getString(CONNECTOR_ADAPTER)))) {
-            final String schemaName = config.getString(SCHEMA_NAME);
-            if (schemaName == null || schemaName.trim().length() == 0) {
-                problems.accept(SCHEMA_NAME, schemaName, "The '" + SCHEMA_NAME.name() + "' be provided when using the LogMiner connection adapter");
-                return 1;
-            }
-        }
-
-        // Everything checks out ok.
-        return 0;
     }
 
     public static int validateOutServerName(Configuration config, Field field, ValidationOutput problems) {

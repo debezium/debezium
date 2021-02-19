@@ -24,6 +24,7 @@ import org.junit.Test;
 import org.junit.rules.TestRule;
 import org.mockito.Mockito;
 
+import io.debezium.DebeziumException;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot.AdapterName;
@@ -171,7 +172,7 @@ public class RowMapperTest {
             tableId = RowMapper.getTableId("catalog", rs);
             fail("RowMapper should not have returned a TableId");
         }
-        catch (SQLException e) {
+        catch (DebeziumException e) {
             assertThat(tableId).isNull();
         }
     }
@@ -191,7 +192,7 @@ public class RowMapperTest {
             tableId = RowMapper.getTableId("catalog", rs);
             fail("RowMapper should not have returned a TableId");
         }
-        catch (SQLException e) {
+        catch (DebeziumException e) {
             assertThat(tableId).isNull();
         }
     }

@@ -15,6 +15,7 @@ import io.debezium.connector.oracle.logminer.valueholder.LogMinerColumnValueImpl
 import io.debezium.connector.oracle.logminer.valueholder.LogMinerDmlEntry;
 import io.debezium.connector.oracle.logminer.valueholder.LogMinerDmlEntryImpl;
 import io.debezium.data.Envelope;
+import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
 
 /**
@@ -70,7 +71,7 @@ public class LogMinerDmlParser implements DmlParser {
     private static final int WHERE_LENGTH = WHERE.length();
 
     @Override
-    public LogMinerDmlEntry parse(String sql, Tables tables, String txId) {
+    public LogMinerDmlEntry parse(String sql, Tables tables, TableId tableId, String txId) {
         if (sql != null && sql.length() > 0) {
             switch (sql.charAt(0)) {
                 case 'i':

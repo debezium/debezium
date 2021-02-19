@@ -49,7 +49,7 @@ class LogMinerQueryResultProcessor {
     private final OracleDatabaseSchema schema;
     private final EventDispatcher<TableId> dispatcher;
     private final TransactionalBufferMetrics transactionalBufferMetrics;
-    private final String catalogName;
+    private final OracleConnectorConfig connectorConfig;
     private final Clock clock;
     private final Logger LOGGER = LoggerFactory.getLogger(LogMinerQueryResultProcessor.class);
     private long currentOffsetScn = 0;
@@ -62,7 +62,7 @@ class LogMinerQueryResultProcessor {
                                  TransactionalBuffer transactionalBuffer,
                                  OracleOffsetContext offsetContext, OracleDatabaseSchema schema,
                                  EventDispatcher<TableId> dispatcher,
-                                 String catalogName, Clock clock, HistoryRecorder historyRecorder) {
+                                 Clock clock, HistoryRecorder historyRecorder) {
         this.context = context;
         this.metrics = metrics;
         this.transactionalBuffer = transactionalBuffer;
@@ -70,16 +70,16 @@ class LogMinerQueryResultProcessor {
         this.schema = schema;
         this.dispatcher = dispatcher;
         this.transactionalBufferMetrics = transactionalBuffer.getMetrics();
-        this.catalogName = catalogName;
         this.clock = clock;
         this.historyRecorder = historyRecorder;
-        this.dmlParser = resolveParser(connectorConfig, catalogName, jdbcConnection);
+        this.connectorConfig = connectorConfig;
+        this.dmlParser = resolveParser(connectorConfig, jdbcConnection);
     }
 
-    private static DmlParser resolveParser(OracleConnectorConfig connectorConfig, String catalogName, OracleConnection connection) {
+    private static DmlParser resolveParser(OracleConnectorConfig connectorConfig, OracleConnection connection) {
         if (connectorConfig.getLogMiningDmlParser().equals(LogMiningDmlParser.LEGACY)) {
             OracleValueConverters converter = new OracleValueConverters(connectorConfig, connection);
-            return new SimpleDmlParser(catalogName, connectorConfig.getSchemaName(), converter);
+            return new SimpleDmlParser(connectorConfig.getCatalogName(), converter);
         }
         return new LogMinerDmlParser();
     }
@@ -175,6 +175,11 @@ class LogMinerQueryResultProcessor {
 
             // DML
             if (operationCode == RowMapper.INSERT || operationCode == RowMapper.DELETE || operationCode == RowMapper.UPDATE) {
+                final TableId tableId = RowMapper.getTableId(connectorConfig.getCatalogName(), resultSet);
+                if (!connectorConfig.getTableFilters().dataCollectionFilter().isIncluded(tableId)) {
+                    continue;
+                }
+
                 LOGGER.trace("DML,  {}, sql {}", logMessage, redoSql);
                 dmlCounter++;
                 switch (operationCode) {
@@ -190,7 +195,7 @@ class LogMinerQueryResultProcessor {
                 }
 
                 Instant parseStart = Instant.now();
-                LogMinerDmlEntry dmlEntry = dmlParser.parse(redoSql, schema.getTables(), txId);
+                LogMinerDmlEntry dmlEntry = dmlParser.parse(redoSql, schema.getTables(), tableId, txId);
                 metrics.addCurrentParseTime(Duration.between(parseStart, Instant.now()));
 
                 if (dmlEntry == null || redoSql == null) {
@@ -214,7 +219,6 @@ class LogMinerQueryResultProcessor {
                 dmlEntry.setScn(scn);
 
                 try {
-                    TableId tableId = RowMapper.getTableId(catalogName, resultSet);
                     transactionalBuffer.registerCommitCallback(txId, scn, changeTime.toInstant(), (timestamp, smallestScn, commitScn, counter) -> {
                         // update SCN in offset context only if processed SCN less than SCN among other transactions
                         if (smallestScn == null || scn.compareTo(smallestScn) < 0) {

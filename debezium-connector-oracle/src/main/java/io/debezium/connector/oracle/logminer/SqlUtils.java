@@ -9,16 +9,16 @@ import java.io.IOException;
 import java.sql.SQLRecoverableException;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.Iterator;
 import java.util.List;
-import java.util.StringJoiner;
-import java.util.stream.Collectors;
+import java.util.regex.Pattern;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.oracle.OracleConnectorConfig;
-import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.relational.TableId;
+import io.debezium.util.Strings;
 
 import oracle.net.ns.NetException;
 
@@ -199,34 +199,111 @@ public class SqlUtils {
     }
 
     /**
-     * This is the query from the LogMiner view to get changes. Columns of the view we using are:
-     * NOTE. Currently we do not capture changes from other schemas
-     * SCN - The SCN at which a change was made
-     * COMMIT_SCN - The SCN at which a change was committed
-     * USERNAME - Name of the user who executed the transaction
-     * SQL_REDO Reconstructed SQL statement that is equivalent to the original SQL statement that made the change
-     * OPERATION_CODE - Number of the operation code.
-     * TABLE_NAME - Name of the modified table
-     * TIMESTAMP - Timestamp when the database change was made
+     * This is the query from the LogMiner view to get changes.
      *
-     * @param schemaName user name
+     * The query uses the following columns from the view:
+     * <pre>
+     * SCN - The SCN at which a change was made
+     * SQL_REDO Reconstructed SQL statement that is equivalent to the original SQL statement that made the change
+     * OPERATION_CODE - Number of the operation code
+     * TIMESTAMP - Timestamp when the database change was made
+     * XID - Transaction Identifier
+     * CSF - Continuation SQL flag, identifies rows that should be processed together as a single row (0=no,1=yes)
+     * TABLE_NAME - Name of the modified table
+     * SEG_OWNER - Schema/Tablespace name
+     * OPERATION - Database operation type
+     * USERNAME - Name of the user who executed the transaction
+     * </pre>
+     *
+     * @param connectorConfig the connector configuration
      * @param logMinerUser log mining session user name
-     * @param schema schema
      * @return the query
      */
-    static String logMinerContentsQuery(String schemaName, String logMinerUser, OracleDatabaseSchema schema) {
-        List<String> whiteListTableNames = schema.tableIds().stream().map(TableId::table).collect(Collectors.toList());
+    static String logMinerContentsQuery(OracleConnectorConfig connectorConfig, String logMinerUser) {
+        StringBuilder query = new StringBuilder();
+        query.append("SELECT SCN, SQL_REDO, OPERATION_CODE, TIMESTAMP, XID, CSF, TABLE_NAME, SEG_OWNER, OPERATION, USERNAME ");
+        query.append("FROM ").append(LOGMNR_CONTENTS_VIEW).append(" ");
+        query.append("WHERE OPERATION_CODE IN (1,2,3,5) ");
+        query.append("AND SCN >= ? ");
+        query.append("AND SCN < ? ");
+        query.append("AND TABLE_NAME != '").append(LOGMNR_FLUSH_TABLE).append("' ");
 
-        // todo: add ROW_ID, SESSION#, SERIAL#, RS_ID, and SSN
-        return "SELECT SCN, SQL_REDO, OPERATION_CODE, TIMESTAMP, XID, CSF, TABLE_NAME, SEG_OWNER, OPERATION, USERNAME " +
-                " FROM " + LOGMNR_CONTENTS_VIEW + " WHERE  OPERATION_CODE in (1,2,3,5) " + // 5 - DDL
-                " AND SEG_OWNER = '" + schemaName.toUpperCase() + "' " +
-                buildTableInPredicate(whiteListTableNames) +
-                " AND SCN >= ? AND SCN < ? " +
-                // Capture DDL and MISSING_SCN rows only hwne not performed by SYS, SYSTEM, and LogMiner user
-                " OR (OPERATION_CODE IN (5,34) AND USERNAME NOT IN ('SYS','SYSTEM','" + logMinerUser.toUpperCase() + "')) " +
-                // Capture all COMMIT and ROLLBACK operations performed by the database
-                " OR (OPERATION_CODE IN (7,36))"; // todo username = schemaName?
+        String schemaPredicate = buildSchemaPredicate(connectorConfig);
+        if (!Strings.isNullOrEmpty(schemaPredicate)) {
+            query.append("AND ").append(schemaPredicate).append(" ");
+        }
+
+        String tablePredicate = buildTablePredicate(connectorConfig);
+        if (!Strings.isNullOrEmpty(tablePredicate)) {
+            query.append("AND ").append(tablePredicate).append(" ");
+        }
+
+        query.append("OR (OPERATION_CODE IN (5,34) AND USERNAME NOT IN ('SYS','SYSTEM','").append(logMinerUser.toUpperCase()).append("')) ");
+        query.append("OR (OPERATION_CODE IN (7,36))");
+
+        return query.toString();
+    }
+
+    private static String buildSchemaPredicate(OracleConnectorConfig connectorConfig) {
+        StringBuilder predicate = new StringBuilder();
+        if (Strings.isNullOrEmpty(connectorConfig.schemaIncludeList())) {
+            if (!Strings.isNullOrEmpty(connectorConfig.schemaExcludeList())) {
+                List<Pattern> patterns = Strings.listOfRegex(connectorConfig.schemaExcludeList(), 0);
+                predicate.append("(").append(listOfPatternsToSql(patterns, "SEG_OWNER", true)).append(")");
+            }
+        }
+        else {
+            List<Pattern> patterns = Strings.listOfRegex(connectorConfig.schemaIncludeList(), 0);
+            predicate.append("(").append(listOfPatternsToSql(patterns, "SEG_OWNER", false)).append(")");
+        }
+        return predicate.toString();
+    }
+
+    private static String buildTablePredicate(OracleConnectorConfig connectorConfig) {
+        StringBuilder predicate = new StringBuilder();
+        if (Strings.isNullOrEmpty(connectorConfig.tableIncludeList())) {
+            if (!Strings.isNullOrEmpty(connectorConfig.tableExcludeList())) {
+                List<Pattern> patterns = Strings.listOfRegex(connectorConfig.tableExcludeList(), 0);
+                predicate.append("(").append(listOfPatternsToSql(patterns, "SEG_OWNER || '.' || TABLE_NAME", true)).append(")");
+            }
+        }
+        else {
+            List<Pattern> patterns = Strings.listOfRegex(connectorConfig.tableIncludeList(), 0);
+            predicate.append("(").append(listOfPatternsToSql(patterns, "SEG_OWNER || '.' || TABLE_NAME", false)).append(")");
+        }
+        return predicate.toString();
+    }
+
+    private static String listOfPatternsToSql(List<Pattern> patterns, String columnName, boolean applyNot) {
+        StringBuilder predicate = new StringBuilder();
+        for (Iterator<Pattern> i = patterns.iterator(); i.hasNext();) {
+            Pattern pattern = i.next();
+            if (applyNot) {
+                predicate.append("NOT ");
+            }
+            // NOTE: The REGEXP_LIKE operator was added in Oracle 10g (10.1.0.0.0)
+            final String text = resolveRegExpLikePattern(pattern);
+            predicate.append("REGEXP_LIKE(").append(columnName).append(",'").append(text).append("','i')");
+            if (i.hasNext()) {
+                // Exclude lists imply combining them via AND, Include lists imply combining them via OR?
+                predicate.append(applyNot ? " AND " : " OR ");
+            }
+        }
+        return predicate.toString();
+    }
+
+    private static String resolveRegExpLikePattern(Pattern pattern) {
+        // The REGEXP_LIKE operator acts identical to LIKE in that it automatically prepends/appends "%".
+        // We need to resolve our matches to be explicit with "^" and "$" if they don't already exist so
+        // that the LIKE aspect of the match doesn't mistakenly filter "DEBEZIUM2" when using "DEBEZIUM".
+        String text = pattern.pattern();
+        if (!text.startsWith("^")) {
+            text = "^" + text;
+        }
+        if (!text.endsWith("$")) {
+            text += "$";
+        }
+        return text;
     }
 
     static String addLogFileStatement(String option, String fileName) {
@@ -334,22 +411,5 @@ public class SqlUtils {
                 Integer.parseInt(tokens[5]), // hours
                 Integer.parseInt(tokens[6])); // minutes
         return Duration.between(recorded, LocalDateTime.now()).toHours();
-    }
-
-    /**
-     * This method builds table_name IN predicate, filtering out non whitelisted tables from Log Mining.
-     * It limits joining condition over 1000 tables, Oracle will throw exception in such predicate.
-     * @param tables white listed table names
-     * @return IN predicate or empty string if number of whitelisted tables exceeds 1000
-     */
-    private static String buildTableInPredicate(List<String> tables) {
-        if (tables.size() == 0 || tables.size() > 1000) {
-            LOGGER.warn(" Cannot apply {} whitelisted tables condition", tables.size());
-            return "";
-        }
-
-        StringJoiner tableNames = new StringJoiner(",");
-        tables.forEach(table -> tableNames.add("'" + table + "'"));
-        return " AND table_name IN (" + tableNames + ") ";
     }
 }

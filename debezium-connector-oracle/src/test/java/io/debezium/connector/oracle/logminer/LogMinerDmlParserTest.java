@@ -42,7 +42,7 @@ public class LogMinerDmlParserTest {
                 "('1','Acme',TO_TIMESTAMP('2020-02-01 00:00:00.'),Unsupported Type," +
                 "TO_DATE('2020-02-01 00:00:00', 'YYYY-MM-DD HH24:MI:SS'),Unsupported Type,NULL);";
 
-        LogMinerDmlEntry entry = fastDmlParser.parse(sql, null, null);
+        LogMinerDmlEntry entry = fastDmlParser.parse(sql, null, null, null);
         assertThat(entry.getCommandType()).isEqualTo(Operation.CREATE);
         assertThat(entry.getOldValues()).isEmpty();
         assertThat(entry.getNewValues()).hasSize(7);
@@ -72,7 +72,7 @@ public class LogMinerDmlParserTest {
                 "\"UT\" = Unsupported Type and \"DATE\" = TO_DATE('2020-02-01 00:00:00', 'YYYY-MM-DD HH24:MI:SS') and " +
                 "\"UT2\" = Unsupported Type and \"C1\" = NULL;";
 
-        LogMinerDmlEntry entry = fastDmlParser.parse(sql, null, null);
+        LogMinerDmlEntry entry = fastDmlParser.parse(sql, null, null, null);
         assertThat(entry.getCommandType()).isEqualTo(Operation.UPDATE);
         assertThat(entry.getOldValues()).hasSize(7);
         assertThat(entry.getOldValues().get(0).getColumnName()).isEqualTo("ID");
@@ -112,7 +112,7 @@ public class LogMinerDmlParserTest {
                 "where \"ID\" = '1' and \"NAME\" = 'Acme' and \"TS\" = TO_TIMESTAMP('2020-02-01 00:00:00.') and " +
                 "\"UT\" = Unsupported Type and \"DATE\" = TO_DATE('2020-02-01 00:00:00', 'YYYY-MM-DD HH24:MI:SS');";
 
-        LogMinerDmlEntry entry = fastDmlParser.parse(sql, null, null);
+        LogMinerDmlEntry entry = fastDmlParser.parse(sql, null, null, null);
         assertThat(entry.getCommandType()).isEqualTo(Operation.DELETE);
         assertThat(entry.getOldValues()).hasSize(5);
         assertThat(entry.getOldValues().get(0).getColumnName()).isEqualTo("ID");

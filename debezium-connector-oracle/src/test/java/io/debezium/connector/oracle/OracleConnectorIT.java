@@ -255,19 +255,6 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         continueStreamingAfterSnapshot(config);
     }
 
-    @Test
-    @FixFor("DBZ-2607")
-    @SkipWhenAdapterNameIs(value = SkipWhenAdapterNameIs.AdapterName.LOGMINER, reason = "Creates a backward compatibility regression")
-    public void shouldNotRequireDatabaseSchemaConfiguration() throws Exception {
-        final Map<String, ?> configMap = TestHelper.defaultConfig()
-                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.CUSTOMER")
-                .build()
-                .asMap();
-        configMap.remove(OracleConnectorConfig.SCHEMA_NAME.name());
-
-        continueStreamingAfterSnapshot(Configuration.from(configMap));
-    }
-
     private void continueStreamingAfterSnapshot(Configuration config) throws Exception {
         int expectedRecordCount = 0;
         connection.execute("INSERT INTO debezium.customer VALUES (1, 'Billie-Bob', 1234.56, TO_DATE('2018/02/22', 'yyyy-mm-dd'))");
@@ -658,7 +645,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
-    @SkipWhenAdapterNameIs(value = SkipWhenAdapterNameIs.AdapterName.LOGMINER, reason = "Seems to get caught in loop?")
+    @SkipWhenAdapterNameIs(value = SkipWhenAdapterNameIs.AdapterName.LOGMINER, reason = "LogMiner does not yet support DDL during streaming")
     public void shouldReadChangeStreamForTableCreatedWhileStreaming() throws Exception {
         TestHelper.dropTable(connection, "debezium.customer2");
 

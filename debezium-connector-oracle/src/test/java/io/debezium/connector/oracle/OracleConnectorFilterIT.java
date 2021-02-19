@@ -27,14 +27,13 @@ import org.junit.Test;
 import org.junit.rules.TestRule;
 
 import io.debezium.config.Configuration;
+import io.debezium.config.Field;
 import io.debezium.connector.oracle.OracleConnectorConfig.SnapshotMode;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
-import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIs;
-import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.VerifyRecord;
+import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
-import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.util.Testing;
 
 /**
@@ -121,174 +120,64 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
     }
 
     @Test
-    @SkipWhenAdapterNameIs(value = SkipWhenAdapterNameIs.AdapterName.LOGMINER, reason = "LogMiner does not support DDL during streaming")
     public void shouldApplyTableWhitelistConfiguration() throws Exception {
-        Configuration config = TestHelper.defaultConfig()
-                .with(
-                        RelationalDatabaseConnectorConfig.TABLE_WHITELIST,
-                        "DEBEZIUM2\\.TABLE2,DEBEZIUM\\.TABLE1,DEBEZIUM\\.TABLE3")
-                .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
-                .build();
-
-        start(OracleConnector.class, config);
-        assertConnectorIsRunning();
-
-        waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
-        waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
-
-        connection.execute("INSERT INTO debezium.table1 VALUES (1, 'Text-1')");
-        connection.execute("INSERT INTO debezium.table2 VALUES (2, 'Text-2')");
-        connection.execute("COMMIT");
-
-        String ddl = "CREATE TABLE debezium.table3 (" +
-                "  id NUMERIC(9, 0) NOT NULL, " +
-                "  name VARCHAR2(1000), " +
-                "  PRIMARY KEY (id)" +
-                ")";
-
-        connection.execute(ddl);
-        connection.execute("GRANT SELECT ON debezium.table3 TO c##xstrm");
-
-        connection.execute("INSERT INTO debezium.table3 VALUES (3, 'Text-3')");
-        connection.execute("COMMIT");
-
-        SourceRecords records = consumeRecordsByTopic(2);
-
-        List<SourceRecord> testTableRecords = records.recordsForTopic("server1.DEBEZIUM.TABLE1");
-        assertThat(testTableRecords).hasSize(1);
-
-        VerifyRecord.isValidInsert(testTableRecords.get(0), "ID", 1);
-        Struct after = (Struct) ((Struct) testTableRecords.get(0).value()).get("after");
-        assertThat(after.get("ID")).isEqualTo(1);
-        assertThat(after.get("NAME")).isEqualTo("Text-1");
-
-        testTableRecords = records.recordsForTopic("server1.DEBEZIUM.TABLE2");
-        assertThat(testTableRecords).isNull();
-
-        testTableRecords = records.recordsForTopic("server1.DEBEZIUM.TABLE3");
-        assertThat(testTableRecords).hasSize(1);
-
-        VerifyRecord.isValidInsert(testTableRecords.get(0), "ID", 3);
-        after = (Struct) ((Struct) testTableRecords.get(0).value()).get("after");
-        assertThat(after.get("ID")).isEqualTo(3);
-        assertThat(after.get("NAME")).isEqualTo("Text-3");
+        shouldApplyTableInclusionConfiguration(true);
     }
 
     @Test
-    @SkipWhenAdapterNameIs(value = SkipWhenAdapterNameIs.AdapterName.LOGMINER, reason = "LogMiner does not support DDL during streaming")
     public void shouldApplyTableIncludeListConfiguration() throws Exception {
-        Configuration config = TestHelper.defaultConfig()
-                .with(
-                        OracleConnectorConfig.TABLE_INCLUDE_LIST,
-                        "DEBEZIUM2\\.TABLE2,DEBEZIUM\\.TABLE1,DEBEZIUM\\.TABLE3")
-                .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
-                .build();
-
-        start(OracleConnector.class, config);
-        assertConnectorIsRunning();
-
-        waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
-        waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
-
-        connection.execute("INSERT INTO debezium.table1 VALUES (1, 'Text-1')");
-        connection.execute("INSERT INTO debezium.table2 VALUES (2, 'Text-2')");
-        connection.execute("COMMIT");
-
-        String ddl = "CREATE TABLE debezium.table3 (" +
-                "  id NUMERIC(9, 0) NOT NULL, " +
-                "  name VARCHAR2(1000), " +
-                "  PRIMARY KEY (id)" +
-                ")";
-
-        connection.execute(ddl);
-        connection.execute("GRANT SELECT ON debezium.table3 TO " + TestHelper.getConnectorUserName());
-        connection.execute("ALTER TABLE debezium.table3 ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
-        connection.execute("INSERT INTO debezium.table3 VALUES (3, 'Text-3')");
-        connection.execute("COMMIT");
-
-        SourceRecords records = consumeRecordsByTopic(2);
-
-        List<SourceRecord> testTableRecords = records.recordsForTopic("server1.DEBEZIUM.TABLE1");
-        assertThat(testTableRecords).hasSize(1);
-
-        VerifyRecord.isValidInsert(testTableRecords.get(0), "ID", 1);
-        Struct after = (Struct) ((Struct) testTableRecords.get(0).value()).get("after");
-        assertThat(after.get("ID")).isEqualTo(1);
-        assertThat(after.get("NAME")).isEqualTo("Text-1");
-
-        testTableRecords = records.recordsForTopic("server1.DEBEZIUM.TABLE2");
-        assertThat(testTableRecords).isNull();
-
-        testTableRecords = records.recordsForTopic("server1.DEBEZIUM.TABLE3");
-        assertThat(testTableRecords).hasSize(1);
-
-        VerifyRecord.isValidInsert(testTableRecords.get(0), "ID", 3);
-        after = (Struct) ((Struct) testTableRecords.get(0).value()).get("after");
-        assertThat(after.get("ID")).isEqualTo(3);
-        assertThat(after.get("NAME")).isEqualTo("Text-3");
+        shouldApplyTableInclusionConfiguration(false);
     }
 
     @Test
-    @SkipWhenAdapterNameIs(value = SkipWhenAdapterNameIs.AdapterName.LOGMINER, reason = "LogMiner does not support DDL during streaming")
     public void shouldApplyTableBlacklistConfiguration() throws Exception {
-        Configuration config = TestHelper.defaultConfig()
-                .with(
-                        OracleConnectorConfig.TABLE_BLACKLIST,
-                        "DEBEZIUM\\.TABLE2,DEBEZIUM\\.CUSTOMER.*")
-                .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
-                .build();
-
-        start(OracleConnector.class, config);
-        assertConnectorIsRunning();
-
-        waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
-        waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
-
-        connection.execute("INSERT INTO debezium.table1 VALUES (1, 'Text-1')");
-        connection.execute("INSERT INTO debezium.table2 VALUES (2, 'Text-2')");
-        connection.execute("COMMIT");
-
-        String ddl = "CREATE TABLE debezium.table3 (" +
-                "  id NUMERIC(9,0) NOT NULL, " +
-                "  name VARCHAR2(1000), " +
-                "  PRIMARY KEY (id)" +
-                ")";
-
-        connection.execute(ddl);
-        connection.execute("GRANT SELECT ON debezium.table3 TO  " + TestHelper.getConnectorUserName());
-
-        connection.execute("INSERT INTO debezium.table3 VALUES (3, 'Text-3')");
-        connection.execute("COMMIT");
-
-        SourceRecords records = consumeRecordsByTopic(2);
-
-        List<SourceRecord> testTableRecords = records.recordsForTopic("server1.DEBEZIUM.TABLE1");
-        assertThat(testTableRecords).hasSize(1);
-
-        VerifyRecord.isValidInsert(testTableRecords.get(0), "ID", 1);
-        Struct after = (Struct) ((Struct) testTableRecords.get(0).value()).get("after");
-        assertThat(after.get("ID")).isEqualTo(1);
-        assertThat(after.get("NAME")).isEqualTo("Text-1");
-
-        testTableRecords = records.recordsForTopic("server1.DEBEZIUM.TABLE2");
-        assertThat(testTableRecords).isNull();
-
-        testTableRecords = records.recordsForTopic("server1.DEBEZIUM.TABLE3");
-        assertThat(testTableRecords).hasSize(1);
-
-        VerifyRecord.isValidInsert(testTableRecords.get(0), "ID", 3);
-        after = (Struct) ((Struct) testTableRecords.get(0).value()).get("after");
-        assertThat(after.get("ID")).isEqualTo(3);
-        assertThat(after.get("NAME")).isEqualTo("Text-3");
+        shouldApplyTableExclusionsConfiguration(true);
     }
 
     @Test
-    @SkipWhenAdapterNameIs(value = SkipWhenAdapterNameIs.AdapterName.LOGMINER, reason = "LogMiner does not support DDL during streaming")
     public void shouldApplyTableExcludeListConfiguration() throws Exception {
+        shouldApplyTableExclusionsConfiguration(false);
+    }
+
+    @Test
+    @FixFor("DBZ-3009")
+    public void shouldApplySchemaAndTableWhitelistConfiguration() throws Exception {
+        shouldApplySchemaAndTableInclusionConfiguration(true);
+    }
+
+    @Test
+    @FixFor("DBZ-3009")
+    public void shouldApplySchemaAndTableIncludeListConfiguration() throws Exception {
+        shouldApplySchemaAndTableInclusionConfiguration(false);
+    }
+
+    @Test
+    @FixFor("DBZ-3009")
+    public void shouldApplySchemaAndTableBlacklistConfiguration() throws Exception {
+        shouldApplySchemaAndTableExclusionsConfiguration(true);
+    }
+
+    @Test
+    @FixFor("DBZ-3009")
+    public void shouldApplySchemaAndTableExcludeListConfiguration() throws Exception {
+        shouldApplySchemaAndTableExclusionsConfiguration(false);
+    }
+
+    private void shouldApplyTableInclusionConfiguration(boolean useLegacyOption) throws Exception {
+        Field option = OracleConnectorConfig.TABLE_INCLUDE_LIST;
+        if (useLegacyOption) {
+            option = OracleConnectorConfig.TABLE_WHITELIST;
+        }
+
+        boolean includeDdlChanges = true;
+        if (TestHelper.adapter().equals(OracleConnectorConfig.ConnectorAdapter.LOG_MINER)) {
+            // LogMiner currently does not support DDL changes during streaming phase
+            includeDdlChanges = false;
+        }
+
         Configuration config = TestHelper.defaultConfig()
-                .with(
-                        OracleConnectorConfig.TABLE_EXCLUDE_LIST,
-                        "DEBEZIUM\\.TABLE2,DEBEZIUM\\.CUSTOMER.*")
+                .with(OracleConnectorConfig.SCHEMA_INCLUDE_LIST, "DEBEZIUM")
+                .with(option, "DEBEZIUM2\\.TABLE2,DEBEZIUM\\.TABLE1,DEBEZIUM\\.TABLE3")
                 .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
                 .build();
 
@@ -302,19 +191,21 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
         connection.execute("INSERT INTO debezium.table2 VALUES (2, 'Text-2')");
         connection.execute("COMMIT");
 
-        String ddl = "CREATE TABLE debezium.table3 (" +
-                "  id NUMERIC(9,0) NOT NULL, " +
-                "  name VARCHAR2(1000), " +
-                "  PRIMARY KEY (id)" +
-                ")";
+        if (includeDdlChanges) {
+            String ddl = "CREATE TABLE debezium.table3 (" +
+                    "  id NUMERIC(9, 0) NOT NULL, " +
+                    "  name VARCHAR2(1000), " +
+                    "  PRIMARY KEY (id)" +
+                    ")";
 
-        connection.execute(ddl);
-        connection.execute("GRANT SELECT ON debezium.table3 TO  " + TestHelper.getConnectorUserName());
+            connection.execute(ddl);
+            connection.execute("GRANT SELECT ON debezium.table3 TO " + TestHelper.getConnectorUserName());
+            connection.execute("ALTER TABLE debezium.table3 ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
+            connection.execute("INSERT INTO debezium.table3 VALUES (3, 'Text-3')");
+            connection.execute("COMMIT");
+        }
 
-        connection.execute("INSERT INTO debezium.table3 VALUES (3, 'Text-3')");
-        connection.execute("COMMIT");
-
-        SourceRecords records = consumeRecordsByTopic(2);
+        SourceRecords records = consumeRecordsByTopic(includeDdlChanges ? 2 : 1);
 
         List<SourceRecord> testTableRecords = records.recordsForTopic("server1.DEBEZIUM.TABLE1");
         assertThat(testTableRecords).hasSize(1);
@@ -327,17 +218,229 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
         testTableRecords = records.recordsForTopic("server1.DEBEZIUM.TABLE2");
         assertThat(testTableRecords).isNull();
 
-        testTableRecords = records.recordsForTopic("server1.DEBEZIUM.TABLE3");
+        if (includeDdlChanges) {
+            testTableRecords = records.recordsForTopic("server1.DEBEZIUM.TABLE3");
+            assertThat(testTableRecords).hasSize(1);
+
+            VerifyRecord.isValidInsert(testTableRecords.get(0), "ID", 3);
+            after = (Struct) ((Struct) testTableRecords.get(0).value()).get("after");
+            assertThat(after.get("ID")).isEqualTo(3);
+            assertThat(after.get("NAME")).isEqualTo("Text-3");
+        }
+    }
+
+    private void shouldApplySchemaAndTableInclusionConfiguration(boolean useLegacyOption) throws Exception {
+        Field option = OracleConnectorConfig.TABLE_INCLUDE_LIST;
+        if (useLegacyOption) {
+            option = OracleConnectorConfig.TABLE_WHITELIST;
+        }
+
+        boolean includeDdlChanges = true;
+        if (TestHelper.adapter().equals(OracleConnectorConfig.ConnectorAdapter.LOG_MINER)) {
+            // LogMiner currently does not support DDL changes during streaming phase
+            includeDdlChanges = false;
+        }
+
+        Configuration config = TestHelper.defaultConfig()
+                .with(OracleConnectorConfig.SCHEMA_INCLUDE_LIST, "DEBEZIUM,DEBEZIUM2")
+                .with(option, "DEBEZIUM2\\.TABLE2,DEBEZIUM\\.TABLE1,DEBEZIUM\\.TABLE3")
+                .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                .build();
+
+        start(OracleConnector.class, config);
+        assertConnectorIsRunning();
+
+        waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+        waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+        connection.execute("INSERT INTO debezium.table1 VALUES (1, 'Text-1')");
+        connection.execute("INSERT INTO debezium.table2 VALUES (2, 'Text-2')");
+        connection.execute("INSERT INTO debezium2.table2 VALUES (1, 'Text2-1')");
+        connection.execute("COMMIT");
+
+        if (includeDdlChanges) {
+            String ddl = "CREATE TABLE debezium.table3 (" +
+                    "  id NUMERIC(9, 0) NOT NULL, " +
+                    "  name VARCHAR2(1000), " +
+                    "  PRIMARY KEY (id)" +
+                    ")";
+
+            connection.execute(ddl);
+            connection.execute("GRANT SELECT ON debezium.table3 TO " + TestHelper.getConnectorUserName());
+            connection.execute("ALTER TABLE debezium.table3 ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
+            connection.execute("INSERT INTO debezium.table3 VALUES (3, 'Text-3')");
+            connection.execute("COMMIT");
+        }
+
+        SourceRecords records = consumeRecordsByTopic(includeDdlChanges ? 3 : 2);
+
+        List<SourceRecord> testTableRecords = records.recordsForTopic("server1.DEBEZIUM.TABLE1");
         assertThat(testTableRecords).hasSize(1);
 
-        VerifyRecord.isValidInsert(testTableRecords.get(0), "ID", 3);
+        VerifyRecord.isValidInsert(testTableRecords.get(0), "ID", 1);
+        Struct after = (Struct) ((Struct) testTableRecords.get(0).value()).get("after");
+        assertThat(after.get("ID")).isEqualTo(1);
+        assertThat(after.get("NAME")).isEqualTo("Text-1");
+
+        testTableRecords = records.recordsForTopic("server1.DEBEZIUM.TABLE2");
+        assertThat(testTableRecords).isNull();
+
+        testTableRecords = records.recordsForTopic("server1.DEBEZIUM2.TABLE2");
+        assertThat(testTableRecords).hasSize(1);
+
+        VerifyRecord.isValidInsert(testTableRecords.get(0), "ID", 1);
         after = (Struct) ((Struct) testTableRecords.get(0).value()).get("after");
-        assertThat(after.get("ID")).isEqualTo(3);
-        assertThat(after.get("NAME")).isEqualTo("Text-3");
+        assertThat(after.get("ID")).isEqualTo(1);
+        assertThat(after.get("NAME")).isEqualTo("Text2-1");
+
+        if (includeDdlChanges) {
+            testTableRecords = records.recordsForTopic("server1.DEBEZIUM.TABLE3");
+            assertThat(testTableRecords).hasSize(1);
+
+            VerifyRecord.isValidInsert(testTableRecords.get(0), "ID", 3);
+            after = (Struct) ((Struct) testTableRecords.get(0).value()).get("after");
+            assertThat(after.get("ID")).isEqualTo(3);
+            assertThat(after.get("NAME")).isEqualTo("Text-3");
+        }
+    }
+
+    private void shouldApplyTableExclusionsConfiguration(boolean useLegacyOption) throws Exception {
+        Field option = OracleConnectorConfig.TABLE_EXCLUDE_LIST;
+        if (useLegacyOption) {
+            option = OracleConnectorConfig.TABLE_BLACKLIST;
+        }
+
+        boolean includeDdlChanges = true;
+        if (TestHelper.adapter().equals(OracleConnectorConfig.ConnectorAdapter.LOG_MINER)) {
+            // LogMiner currently does not support DDL changes during streaming phase
+            includeDdlChanges = false;
+        }
+
+        Configuration config = TestHelper.defaultConfig()
+                .with(OracleConnectorConfig.SCHEMA_INCLUDE_LIST, "DEBEZIUM")
+                .with(option, "DEBEZIUM\\.TABLE2,DEBEZIUM\\.CUSTOMER.*")
+                .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                .build();
+
+        start(OracleConnector.class, config);
+        assertConnectorIsRunning();
+
+        waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+        waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+        connection.execute("INSERT INTO debezium.table1 VALUES (1, 'Text-1')");
+        connection.execute("INSERT INTO debezium.table2 VALUES (2, 'Text-2')");
+        connection.execute("COMMIT");
+
+        if (includeDdlChanges) {
+            String ddl = "CREATE TABLE debezium.table3 (" +
+                    "  id NUMERIC(9,0) NOT NULL, " +
+                    "  name VARCHAR2(1000), " +
+                    "  PRIMARY KEY (id)" +
+                    ")";
+
+            connection.execute(ddl);
+            connection.execute("GRANT SELECT ON debezium.table3 TO  " + TestHelper.getConnectorUserName());
+
+            connection.execute("INSERT INTO debezium.table3 VALUES (3, 'Text-3')");
+            connection.execute("COMMIT");
+        }
+
+        SourceRecords records = consumeRecordsByTopic(includeDdlChanges ? 2 : 1);
+
+        List<SourceRecord> testTableRecords = records.recordsForTopic("server1.DEBEZIUM.TABLE1");
+        assertThat(testTableRecords).hasSize(1);
+
+        VerifyRecord.isValidInsert(testTableRecords.get(0), "ID", 1);
+        Struct after = (Struct) ((Struct) testTableRecords.get(0).value()).get("after");
+        assertThat(after.get("ID")).isEqualTo(1);
+        assertThat(after.get("NAME")).isEqualTo("Text-1");
+
+        testTableRecords = records.recordsForTopic("server1.DEBEZIUM.TABLE2");
+        assertThat(testTableRecords).isNull();
+
+        if (includeDdlChanges) {
+            testTableRecords = records.recordsForTopic("server1.DEBEZIUM.TABLE3");
+            assertThat(testTableRecords).hasSize(1);
+
+            VerifyRecord.isValidInsert(testTableRecords.get(0), "ID", 3);
+            after = (Struct) ((Struct) testTableRecords.get(0).value()).get("after");
+            assertThat(after.get("ID")).isEqualTo(3);
+            assertThat(after.get("NAME")).isEqualTo("Text-3");
+        }
+    }
+
+    private void shouldApplySchemaAndTableExclusionsConfiguration(boolean useLegacyOption) throws Exception {
+        Field option = OracleConnectorConfig.TABLE_EXCLUDE_LIST;
+        if (useLegacyOption) {
+            option = OracleConnectorConfig.TABLE_BLACKLIST;
+        }
+
+        boolean includeDdlChanges = true;
+        if (TestHelper.adapter().equals(OracleConnectorConfig.ConnectorAdapter.LOG_MINER)) {
+            // LogMiner currently does not support DDL changes during streaming phase
+            includeDdlChanges = false;
+        }
+
+        Configuration config = TestHelper.defaultConfig()
+                .with(OracleConnectorConfig.SCHEMA_EXCLUDE_LIST, "DEBEZIUM,SYS")
+                .with(option, "DEBEZIUM\\.TABLE2,DEBEZIUM\\.CUSTOMER.*")
+                .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                .build();
+
+        start(OracleConnector.class, config);
+        assertConnectorIsRunning();
+
+        waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+        waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+        connection.execute("INSERT INTO debezium.table1 VALUES (1, 'Text-1')");
+        connection.execute("INSERT INTO debezium.table2 VALUES (2, 'Text-2')");
+        connection.execute("INSERT INTO debezium2.table2 VALUES (1, 'Text2-1')");
+        connection.execute("COMMIT");
+
+        if (includeDdlChanges) {
+            String ddl = "CREATE TABLE debezium.table3 (" +
+                    "  id NUMERIC(9,0) NOT NULL, " +
+                    "  name VARCHAR2(1000), " +
+                    "  PRIMARY KEY (id)" +
+                    ")";
+
+            connection.execute(ddl);
+            connection.execute("GRANT SELECT ON debezium.table3 TO  " + TestHelper.getConnectorUserName());
+
+            connection.execute("INSERT INTO debezium.table3 VALUES (3, 'Text-3')");
+            connection.execute("COMMIT");
+        }
+
+        SourceRecords records = consumeRecordsByTopic(1);
+
+        List<SourceRecord> testTableRecords = records.recordsForTopic("server1.DEBEZIUM.TABLE1");
+        assertThat(testTableRecords).isNull();
+
+        testTableRecords = records.recordsForTopic("server1.DEBEZIUM.TABLE2");
+        assertThat(testTableRecords).isNull();
+
+        testTableRecords = records.recordsForTopic("server1.DEBEZIUM2.TABLE2");
+        assertThat(testTableRecords).hasSize(1);
+
+        VerifyRecord.isValidInsert(testTableRecords.get(0), "ID", 1);
+        Struct after = (Struct) ((Struct) testTableRecords.get(0).value()).get("after");
+        assertThat(after.get("ID")).isEqualTo(1);
+        assertThat(after.get("NAME")).isEqualTo("Text2-1");
+
+        if (includeDdlChanges) {
+            testTableRecords = records.recordsForTopic("server1.DEBEZIUM.TABLE3");
+            assertThat(testTableRecords).hasSize(1);
+
+            VerifyRecord.isValidInsert(testTableRecords.get(0), "ID", 3);
+            after = (Struct) ((Struct) testTableRecords.get(0).value()).get("after");
+            assertThat(after.get("ID")).isEqualTo(3);
+            assertThat(after.get("NAME")).isEqualTo("Text-3");
+        }
     }
 
     @Test
-    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER)
     public void shouldTakeTimeDifference() throws Exception {
         Testing.Print.enable();
         String stmt = "select current_timestamp from dual";

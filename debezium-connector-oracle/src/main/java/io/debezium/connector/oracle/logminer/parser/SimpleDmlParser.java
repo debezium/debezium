@@ -53,7 +53,6 @@ public class SimpleDmlParser implements DmlParser {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SimpleDmlParser.class);
     protected final String catalogName;
-    protected final String schemaName;
     private final OracleValueConverters converter;
     private final CCJSqlParserManager pm;
     private final Map<String, LogMinerColumnValueWrapper> newColumnValues = new LinkedHashMap<>();
@@ -64,18 +63,22 @@ public class SimpleDmlParser implements DmlParser {
     /**
      * Constructor
      * @param catalogName database name
-     * @param schemaName user name
      * @param converter value converter
      */
-    public SimpleDmlParser(String catalogName, String schemaName, OracleValueConverters converter) {
+    public SimpleDmlParser(String catalogName, OracleValueConverters converter) {
         this.catalogName = catalogName;
-        this.schemaName = schemaName;
         this.converter = converter;
         pm = new CCJSqlParserManager();
     }
 
-    @Override
-    public LogMinerDmlEntry parse(String dmlContent, Tables tables, String txId) {
+    /**
+     * This parses a DML
+     * @param dmlContent DML
+     * @param tables debezium Tables
+     * @param tableId the TableId for the log miner contents view row
+     * @return parsed value holder class
+     */
+    public LogMinerDmlEntry parse(String dmlContent, Tables tables, TableId tableId, String txId) {
         try {
 
             // If a table contains Spatial data type, DML input generates two entries in REDO LOG.
@@ -99,7 +102,7 @@ public class SimpleDmlParser implements DmlParser {
 
             Statement st = pm.parse(new StringReader(dmlContent));
             if (st instanceof Update) {
-                parseUpdate(tables, (Update) st);
+                parseUpdate(tables, tableId, (Update) st);
                 List<LogMinerColumnValue> actualNewValues = newColumnValues.values().stream()
                         .filter(LogMinerColumnValueWrapper::isProcessed).map(LogMinerColumnValueWrapper::getColumnValue).collect(Collectors.toList());
                 List<LogMinerColumnValue> actualOldValues = oldColumnValues.values().stream()
@@ -108,14 +111,14 @@ public class SimpleDmlParser implements DmlParser {
 
             }
             else if (st instanceof Insert) {
-                parseInsert(tables, (Insert) st);
+                parseInsert(tables, tableId, (Insert) st);
                 List<LogMinerColumnValue> actualNewValues = newColumnValues.values()
                         .stream().map(LogMinerColumnValueWrapper::getColumnValue).collect(Collectors.toList());
                 return new LogMinerDmlEntryImpl(Envelope.Operation.CREATE, actualNewValues, Collections.emptyList());
 
             }
             else if (st instanceof Delete) {
-                parseDelete(tables, (Delete) st);
+                parseDelete(tables, tableId, (Delete) st);
                 List<LogMinerColumnValue> actualOldValues = oldColumnValues.values()
                         .stream().map(LogMinerColumnValueWrapper::getColumnValue).collect(Collectors.toList());
                 return new LogMinerDmlEntryImpl(Envelope.Operation.DELETE, Collections.emptyList(), actualOldValues);
@@ -130,11 +133,13 @@ public class SimpleDmlParser implements DmlParser {
         }
     }
 
-    private void initColumns(Tables tables, String tableName) {
-        table = tables.forTable(catalogName, schemaName, tableName);
+    private void initColumns(Tables tables, TableId tableId, String tableName) {
+        if (!tableId.table().equals(tableName)) {
+            throw new ParsingException(null, "Resolved TableId expected table name '" + tableId.table() + "' but is '" + tableName + "'");
+        }
+        table = tables.forTable(tableId);
         if (table == null) {
-            TableId id = new TableId(catalogName, schemaName, tableName);
-            throw new ParsingException(null, "Trying to parse a table '" + id + "', which does not exist.");
+            throw new ParsingException(null, "Trying to parse a table '" + tableId + "', which does not exist.");
         }
         for (int i = 0; i < table.columns().size(); i++) {
             Column column = table.columns().get(i);
@@ -147,13 +152,13 @@ public class SimpleDmlParser implements DmlParser {
     }
 
     // this parses simple statement with only one table
-    private void parseUpdate(Tables tables, Update st) throws JSQLParserException {
+    private void parseUpdate(Tables tables, TableId tableId, Update st) throws JSQLParserException {
         int tableCount = st.getTables().size();
         if (tableCount > 1 || tableCount == 0) {
             throw new JSQLParserException("DML includes " + tableCount + " tables");
         }
         net.sf.jsqlparser.schema.Table parseTable = st.getTables().get(0);
-        initColumns(tables, ParserUtils.stripeQuotes(parseTable.getName()));
+        initColumns(tables, tableId, ParserUtils.stripeQuotes(parseTable.getName()));
 
         List<net.sf.jsqlparser.schema.Column> columns = st.getColumns();
         Alias alias = parseTable.getAlias();
@@ -171,8 +176,8 @@ public class SimpleDmlParser implements DmlParser {
         }
     }
 
-    private void parseInsert(Tables tables, Insert st) {
-        initColumns(tables, ParserUtils.stripeQuotes(st.getTable().getName()));
+    private void parseInsert(Tables tables, TableId tableId, Insert st) {
+        initColumns(tables, tableId, ParserUtils.stripeQuotes(st.getTable().getName()));
         Alias alias = st.getTable().getAlias();
         aliasName = alias == null ? "" : alias.getName().trim();
 
@@ -189,8 +194,8 @@ public class SimpleDmlParser implements DmlParser {
         oldColumnValues.clear();
     }
 
-    private void parseDelete(Tables tables, Delete st) {
-        initColumns(tables, ParserUtils.stripeQuotes(st.getTable().getName()));
+    private void parseDelete(Tables tables, TableId tableId, Delete st) {
+        initColumns(tables, tableId, ParserUtils.stripeQuotes(st.getTable().getName()));
         Alias alias = st.getTable().getAlias();
         aliasName = alias == null ? "" : alias.getName().trim();
 

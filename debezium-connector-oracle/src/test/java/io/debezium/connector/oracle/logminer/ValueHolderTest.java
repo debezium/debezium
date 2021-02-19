@@ -33,6 +33,7 @@ import io.debezium.connector.oracle.logminer.valueholder.LogMinerDmlEntry;
 import io.debezium.connector.oracle.logminer.valueholder.LogMinerDmlEntryImpl;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope;
+import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
 import io.debezium.util.IoUtil;
 
@@ -45,6 +46,7 @@ public class ValueHolderTest {
     private SimpleDmlParser sqlDmlParser;
     private Tables tables;
     private static final String FULL_TABLE_NAME = SCHEMA_NAME + "\".\"" + TABLE_NAME;
+    private static final TableId TABLE_ID = TableId.parse(CATALOG_NAME + "." + SCHEMA_NAME + "." + TABLE_NAME);
 
     @Rule
     public TestRule skipRule = new SkipTestDependingOnAdapterNameRule();
@@ -53,7 +55,7 @@ public class ValueHolderTest {
     public void setUp() {
         OracleValueConverters converters = new OracleValueConverters(new OracleConnectorConfig(TestHelper.defaultConfig().build()), null);
         ddlParser = new OracleDdlParser(true, CATALOG_NAME, SCHEMA_NAME);
-        sqlDmlParser = new SimpleDmlParser(CATALOG_NAME, SCHEMA_NAME, converters);
+        sqlDmlParser = new SimpleDmlParser(CATALOG_NAME, converters);
         tables = new Tables();
     }
 
@@ -81,7 +83,7 @@ public class ValueHolderTest {
         ddlParser.parse(createStatement, tables);
 
         String dml = "insert into \"" + FULL_TABLE_NAME + "\"  (\"column1\",\"column2\") values ('5','Text');";
-        LogMinerDmlEntry dmlEntryParsed = sqlDmlParser.parse(dml, tables, "1");
+        LogMinerDmlEntry dmlEntryParsed = sqlDmlParser.parse(dml, tables, TABLE_ID, "1");
 
         assertThat(dmlEntryParsed.equals(dmlEntryExpected)).isTrue();
         assertThat(dmlEntryExpected.getCommandType() == Envelope.Operation.CREATE).isTrue();

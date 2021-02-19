@@ -64,7 +64,6 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
     private final Clock clock;
     private final OracleDatabaseSchema schema;
     private final OracleOffsetContext offsetContext;
-    private final String catalogName;
     private final boolean isRac;
     private final Set<String> racHosts = new HashSet<>();
     private final JdbcConfiguration jdbcConfiguration;
@@ -89,7 +88,6 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
         this.schema = schema;
         this.offsetContext = offsetContext;
         this.connectorConfig = connectorConfig;
-        this.catalogName = (connectorConfig.getPdbName() != null) ? connectorConfig.getPdbName() : connectorConfig.getDatabaseName();
         this.strategy = connectorConfig.getLogMiningStrategy();
         this.isContinuousMining = connectorConfig.isContinuousMining();
         this.errorHandler = errorHandler;
@@ -142,9 +140,9 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
 
                     final LogMinerQueryResultProcessor processor = new LogMinerQueryResultProcessor(context, jdbcConnection,
                             connectorConfig, logMinerMetrics, transactionalBuffer, offsetContext, schema, dispatcher,
-                            catalogName, clock, historyRecorder);
+                            clock, historyRecorder);
 
-                    final String query = SqlUtils.logMinerContentsQuery(connectorConfig.getSchemaName(), jdbcConnection.username(), schema);
+                    final String query = SqlUtils.logMinerContentsQuery(connectorConfig, jdbcConnection.username());
                     try (PreparedStatement miningView = jdbcConnection.connection().prepareStatement(query, ResultSet.TYPE_FORWARD_ONLY,
                             ResultSet.CONCUR_READ_ONLY, ResultSet.HOLD_CURSORS_OVER_COMMIT)) {
                         Set<String> currentRedoLogFiles = getCurrentRedoLogFiles(jdbcConnection, logMinerMetrics);

@@ -13,6 +13,7 @@ import java.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
 import io.debezium.relational.TableId;
 import io.debezium.util.HexConverter;
 
@@ -191,8 +192,13 @@ public class RowMapper {
         LogMinerHelper.logError(metrics, "Cannot get {}. This entry from LogMiner will be lost due to the {}", s, e);
     }
 
-    public static TableId getTableId(String catalogName, ResultSet rs) throws SQLException {
-        return new TableId(catalogName, rs.getString(SEG_OWNER), rs.getString(TABLE_NAME));
+    public static TableId getTableId(String catalogName, ResultSet rs) {
+        try {
+            return new TableId(catalogName, rs.getString(SEG_OWNER), rs.getString(TABLE_NAME));
+        }
+        catch (SQLException e) {
+            throw new DebeziumException("Cannot resolve TableId from result set data", e);
+        }
     }
 
 }

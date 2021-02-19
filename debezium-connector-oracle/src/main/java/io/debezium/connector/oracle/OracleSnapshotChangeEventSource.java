@@ -74,13 +74,12 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
             jdbcConnection.setSessionToPdb(connectorConfig.getPdbName());
         }
 
-        return new OracleSnapshotContext(
-                connectorConfig.getPdbName() != null ? connectorConfig.getPdbName() : connectorConfig.getDatabaseName());
+        return new OracleSnapshotContext(connectorConfig.getCatalogName());
     }
 
     @Override
     protected Set<TableId> getAllTableIds(RelationalSnapshotContext ctx) throws Exception {
-        return jdbcConnection.getAllTableIds(ctx.catalogName, connectorConfig.getSchemaName(), false);
+        return jdbcConnection.getAllTableIds(ctx.catalogName, null, false);
         // this very slow approach(commented out), it took 30 minutes on an instance with 600 tables
         // return jdbcConnection.readTableNames(ctx.catalogName, null, null, new String[] {"TABLE"} );
     }

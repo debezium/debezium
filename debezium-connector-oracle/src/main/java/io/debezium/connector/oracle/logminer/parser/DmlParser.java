@@ -6,6 +6,7 @@
 package io.debezium.connector.oracle.logminer.parser;
 
 import io.debezium.connector.oracle.logminer.valueholder.LogMinerDmlEntry;
+import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
 
 /**
@@ -19,9 +20,10 @@ public interface DmlParser {
      *
      * @param sql the sql statement
      * @param tables collection of known tables.
+     * @param tableId the table identifier
      * @param txId the current transaction id the sql is part of.
      * @return the parsed sql as a DML entry or {@code null} if the SQL couldn't be parsed.
      * @throws DmlParserException thrown if a parse exception is detected.
      */
-    LogMinerDmlEntry parse(String sql, Tables tables, String txId);
+    LogMinerDmlEntry parse(String sql, Tables tables, TableId tableId, String txId);
 }
