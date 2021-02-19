@@ -1380,6 +1380,39 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         assertThat(version.getMajor()).isGreaterThan(0);
     }
 
+    @Test
+    @FixFor("DBZ-3109")
+    public void shouldStreamChangesForTableWithMultipleLogGroupTypes() throws Exception {
+        try {
+            TestHelper.dropTable(connection, "log_group_test");
+
+            final String ddl = "CREATE TABLE log_group_test (id numeric(9,0) primary key, name varchar2(50))";
+            connection.execute(ddl);
+            connection.execute("GRANT SELECT ON debezium.log_group_test TO " + TestHelper.getConnectorUserName());
+            connection.execute("ALTER TABLE debezium.log_group_test ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
+            connection.execute("ALTER TABLE debezium.log_group_test ADD SUPPLEMENTAL LOG DATA (PRIMARY KEY) COLUMNS");
+
+            final Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.LOG_GROUP_TEST")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.execute("INSERT INTO debezium.log_group_test (id, name) values (1,'Test')");
+            connection.execute("COMMIT");
+
+            SourceRecords records = consumeRecordsByTopic(1);
+            assertThat(records.recordsForTopic("server1.DEBEZIUM.LOG_GROUP_TEST")).hasSize(1);
+        }
+        finally {
+            TestHelper.dropTable(connection, "log_group_test");
+        }
+    }
+
     private String generateAlphaNumericStringColumn(int size) {
         final String alphaNumericString = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz";
         final StringBuilder sb = new StringBuilder(size);

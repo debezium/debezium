@@ -46,6 +46,7 @@ public class LogMinerHelper {
 
     private static final String UNKNOWN = "unknown";
     private static final String TOTAL = "TOTAL";
+    private static final String ALL_COLUMN_LOGGING = "ALL COLUMN LOGGING";
     private static final String MAX_SCN_11_2 = "281474976710655";
     private static final String MAX_SCN_12_2 = "18446744073709551615";
     private static final String MAX_SCN_19_6 = "9295429630892703743";
@@ -447,8 +448,7 @@ public class LogMinerHelper {
 
                 // If ALL supplemental logging is not enabled, then each monitored table should be set to ALL COLUMNS
                 for (TableId tableId : schema.getTables().tableIds()) {
-                    Map<String, String> tableAll = getMap(connection, SqlUtils.tableSupplementalLoggingCheckQuery(tableId), UNKNOWN);
-                    if (!"ALL COLUMN LOGGING".equalsIgnoreCase(tableAll.get("KEY"))) {
+                    if (!isTableSupplementalLogDataAll(connection, tableId)) {
                         throw new DebeziumException("Supplemental logging not configured for table " + tableId + ".  " +
                                 "Use command: ALTER TABLE " + tableId.schema() + "." + tableId.table() + " ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
                     }
@@ -460,6 +460,17 @@ public class LogMinerHelper {
                 connection.resetSessionToCdb();
             }
         }
+    }
+
+    static boolean isTableSupplementalLogDataAll(OracleConnection connection, TableId tableId) throws SQLException {
+        return connection.queryAndMap(SqlUtils.tableSupplementalLoggingCheckQuery(tableId), (rs) -> {
+            while (rs.next()) {
+                if (ALL_COLUMN_LOGGING.equals(rs.getString(2))) {
+                    return true;
+                }
+            }
+            return false;
+        });
     }
 
     /**
