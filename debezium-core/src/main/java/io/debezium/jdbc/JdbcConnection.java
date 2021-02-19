@@ -1264,16 +1264,19 @@ public class JdbcConnection implements AutoCloseable {
                 if (firstIndexName == null) {
                     firstIndexName = indexName;
                 }
-                // SQL Server provides indices also without index name
-                // so we need to ignore them
-                if (indexName == null) {
+                if (!isTableUniqueIndexIncluded(indexName, columnName)) {
                     continue;
                 }
                 // Only first unique index is taken into consideration
                 if (indexName != null && !indexName.equals(firstIndexName)) {
                     return uniqueIndexColumnNames;
                 }
-                Collect.set(uniqueIndexColumnNames, columnIndex - 1, columnName, null);
+                if (columnName != null) {
+                    // The returned columnIndex is 0 when columnName is null. These are related
+                    // to table statistics that get returned as part of the index descriptors
+                    // and should be ignored.
+                    Collect.set(uniqueIndexColumnNames, columnIndex - 1, columnName, null);
+                }
             }
         }
         return uniqueIndexColumnNames;
@@ -1282,6 +1285,18 @@ public class JdbcConnection implements AutoCloseable {
     protected List<String> readPrimaryKeyOrUniqueIndexNames(DatabaseMetaData metadata, TableId id) throws SQLException {
         final List<String> pkColumnNames = readPrimaryKeyNames(metadata, id);
         return pkColumnNames.isEmpty() ? readTableUniqueIndices(metadata, id) : pkColumnNames;
+    }
+
+    /**
+     * Allows the connector implementation to determine if a table's unique index
+     * should be include when resolving a table's unique indices.
+     *
+     * @param indexName the index name
+     * @param columnName the column name
+     * @return true if the index is to be included; false otherwise.
+     */
+    protected boolean isTableUniqueIndexIncluded(String indexName, String columnName) {
+        return true;
     }
 
     private void cleanupPreparedStatement(PreparedStatement statement) {

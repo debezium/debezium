@@ -535,4 +535,11 @@ public class SqlServerConnection extends JdbcConnection {
         return defaultValueConverter
                 .parseDefaultValue(column, defaultValue);
     }
+
+    @Override
+    protected boolean isTableUniqueIndexIncluded(String indexName, String columnName) {
+        // SQL Server provides indices also without index name
+        // so we need to ignore them
+        return indexName != null;
+    }
 }
