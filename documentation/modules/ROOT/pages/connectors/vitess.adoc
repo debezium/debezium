@@ -1247,4 +1247,7 @@ A properly configured Kafka cluster is able to handle massive throughput. Kafka 
 
 * Due to a minor Vitess padding issue (which is fixed in Vitess 9.0.0), decimal values with a precision that is greater than or equal to 13 will cause extra whitespaces in front of the number. E.g. if the column type is `decimal(13,4)` in the table definition, the value `-1.2300` becomes `"-        1.2300"`, and the value `1.2300` becomes `"        1.2300"`.
 * Does not support the `JSON` column type.
-* VStream 8.0.0 doesn't provide additional metadata of permitted values for `ENUM` columns. Therefore, the Connector does not support the `ENUM` column type. The index number (1-based) will to emitted instead of the enumeration value. E.g. `"3"` will be emitted as the value instead of `"L"` if the `ENUM` definition is `enum('S','M','L')`.
+* VStream 8.0.0 doesn't provide additional metadata of permitted values for `ENUM` columns.
+Therefore, the Connector does not support the `ENUM` column type.
+The index number (1-based) will be emitted instead of the enumeration value.
+E.g. `"3"` will be emitted as the value instead of `"L"` if the `ENUM` definition is `enum('S','M','L')`.
