@@ -1010,49 +1010,54 @@ public class OracleConnectorIT extends AbstractConnectorTest {
     public void shouldAvroSerializeColumnsWithSpecialCharacters() throws Exception {
         // Setup environment
         TestHelper.dropTable(connection, "columns_test");
-        connection.execute("CREATE TABLE columns_test (id NUMERIC(6), amount$ number not null, primary key(id))");
-        connection.execute("GRANT SELECT ON debezium.columns_test to " + TestHelper.getConnectorUserName());
-        connection.execute("ALTER TABLE debezium.columns_test ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
+        try {
+            connection.execute("CREATE TABLE columns_test (id NUMERIC(6), amount$ number not null, primary key(id))");
+            connection.execute("GRANT SELECT ON debezium.columns_test to " + TestHelper.getConnectorUserName());
+            connection.execute("ALTER TABLE debezium.columns_test ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
 
-        // Insert a record for snapshot
-        connection.execute("INSERT INTO debezium.columns_test (id, amount$) values (1, 12345.67)");
-        connection.commit();
+            // Insert a record for snapshot
+            connection.execute("INSERT INTO debezium.columns_test (id, amount$) values (1, 12345.67)");
+            connection.commit();
 
-        // Start connector
-        final Configuration config = TestHelper.defaultConfig()
-                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM.COLUMNS_TEST")
-                .with(OracleConnectorConfig.SANITIZE_FIELD_NAMES, "true")
-                .build();
-        start(OracleConnector.class, config);
-        assertConnectorIsRunning();
+            // Start connector
+            final Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM.COLUMNS_TEST")
+                    .with(OracleConnectorConfig.SANITIZE_FIELD_NAMES, "true")
+                    .build();
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
 
-        waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+            waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
-        final SourceRecords snapshots = consumeRecordsByTopic(1);
-        assertThat(snapshots.recordsForTopic("server1.DEBEZIUM.COLUMNS_TEST").size()).isEqualTo(1);
+            final SourceRecords snapshots = consumeRecordsByTopic(1);
+            assertThat(snapshots.recordsForTopic("server1.DEBEZIUM.COLUMNS_TEST").size()).isEqualTo(1);
 
-        final SourceRecord snapshot = snapshots.recordsForTopic("server1.DEBEZIUM.COLUMNS_TEST").get(0);
-        VerifyRecord.isValidRead(snapshot, "ID", 1);
+            final SourceRecord snapshot = snapshots.recordsForTopic("server1.DEBEZIUM.COLUMNS_TEST").get(0);
+            VerifyRecord.isValidRead(snapshot, "ID", 1);
 
-        Struct after = ((Struct) snapshot.value()).getStruct(AFTER);
-        assertThat(after.getInt32("ID")).isEqualTo(1);
-        assertThat(after.get("AMOUNT_")).isEqualTo(VariableScaleDecimal.fromLogical(after.schema().field("AMOUNT_").schema(), BigDecimal.valueOf(12345.67d)));
+            Struct after = ((Struct) snapshot.value()).getStruct(AFTER);
+            assertThat(after.getInt32("ID")).isEqualTo(1);
+            assertThat(after.get("AMOUNT_")).isEqualTo(VariableScaleDecimal.fromLogical(after.schema().field("AMOUNT_").schema(), BigDecimal.valueOf(12345.67d)));
 
-        waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
-        // Insert a record for streaming
-        connection.execute("INSERT INTO debezium.columns_test (id, amount$) values (2, 23456.78)");
-        connection.commit();
+            // Insert a record for streaming
+            connection.execute("INSERT INTO debezium.columns_test (id, amount$) values (2, 23456.78)");
+            connection.commit();
 
-        final SourceRecords streams = consumeRecordsByTopic(1);
-        assertThat(streams.recordsForTopic("server1.DEBEZIUM.COLUMNS_TEST").size()).isEqualTo(1);
+            final SourceRecords streams = consumeRecordsByTopic(1);
+            assertThat(streams.recordsForTopic("server1.DEBEZIUM.COLUMNS_TEST").size()).isEqualTo(1);
 
-        final SourceRecord stream = streams.recordsForTopic("server1.DEBEZIUM.COLUMNS_TEST").get(0);
-        VerifyRecord.isValidInsert(stream, "ID", 2);
+            final SourceRecord stream = streams.recordsForTopic("server1.DEBEZIUM.COLUMNS_TEST").get(0);
+            VerifyRecord.isValidInsert(stream, "ID", 2);
 
-        after = ((Struct) stream.value()).getStruct(AFTER);
-        assertThat(after.getInt32("ID")).isEqualTo(2);
-        assertThat(after.get("AMOUNT_")).isEqualTo(VariableScaleDecimal.fromLogical(after.schema().field("AMOUNT_").schema(), BigDecimal.valueOf(23456.78d)));
+            after = ((Struct) stream.value()).getStruct(AFTER);
+            assertThat(after.getInt32("ID")).isEqualTo(2);
+            assertThat(after.get("AMOUNT_")).isEqualTo(VariableScaleDecimal.fromLogical(after.schema().field("AMOUNT_").schema(), BigDecimal.valueOf(23456.78d)));
+        }
+        finally {
+            TestHelper.dropTable(connection, "columns_test");
+        }
     }
 
     @Test
@@ -1357,6 +1362,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
             final String ddl = "CREATE GLOBAL TEMPORARY TABLE " + TABLE_NAME + " (id number, name varchar2(50))";
             connection.execute(ddl);
             connection.execute("GRANT SELECT ON " + TABLE_NAME + " TO " + TestHelper.getConnectorUserName());
+            connection.execute("ALTER TABLE " + TABLE_NAME + " ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
 
             final Configuration config = TestHelper.defaultConfig()
                     .with(OracleConnectorConfig.SNAPSHOT_MODE, OracleConnectorConfig.SnapshotMode.INITIAL)
@@ -1365,10 +1371,37 @@ public class OracleConnectorIT extends AbstractConnectorTest {
             start(OracleConnector.class, config);
             assertConnectorIsRunning();
 
-            waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
         }
         finally {
             TestHelper.dropTable(connection, TABLE_NAME);
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-3151")
+    public void testSnapshotCompletesWithSystemGeneratedUniqueIndexOnKeylessTable() throws Exception {
+        TestHelper.dropTable(connection, "XML_TABLE");
+        try {
+            final String ddl = "CREATE TABLE XML_TABLE of XMLTYPE";
+            connection.execute(ddl);
+            connection.execute("GRANT SELECT ON DEBEZIUM.XML_TABLE TO " + TestHelper.getConnectorUserName());
+            connection.execute("ALTER TABLE DEBEZIUM.XML_TABLE ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
+
+            connection.execute("INSERT INTO DEBEZIUM.XML_TABLE values (xmltype('<?xml version=\"1.0\"?><tab><name>Hi</name></tab>'))");
+            connection.execute("COMMIT");
+
+            final Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertNoRecordsToConsume();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+        }
+        finally {
+            TestHelper.dropTable(connection, "XML_TABLE");
         }
     }
 

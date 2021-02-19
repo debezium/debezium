@@ -48,6 +48,8 @@ public class OracleConnection extends JdbcConnection {
      */
     private static final int ORACLE_UNSET_SCALE = -127;
 
+    private static final String SYS_NC_OID_COLUMN = "SYS_NC_OID$";
+
     /**
      * A field for the raw jdbc url. This field has no default value.
      */
@@ -291,6 +293,11 @@ public class OracleConnection extends JdbcConnection {
     @Override
     public List<String> readTableUniqueIndices(DatabaseMetaData metadata, TableId id) throws SQLException {
         return super.readTableUniqueIndices(metadata, id.toDoubleQuoted());
+    }
+
+    @Override
+    protected boolean isTableUniqueIndexIncluded(String indexName, String columnName) {
+        return !SYS_NC_OID_COLUMN.equals(columnName);
     }
 
     private void overrideOracleSpecificColumnTypes(Tables tables, TableId tableId, TableId tableIdWithCatalog) {
