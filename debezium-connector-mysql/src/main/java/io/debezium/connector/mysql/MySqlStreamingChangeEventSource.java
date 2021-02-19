@@ -241,6 +241,15 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
                 }
                 // DBZ-217 In case an event couldn't be read we create a pseudo-event for the sake of logging
                 catch (EventDataDeserializationException edde) {
+                    // DBZ-3095 As of Java 15, when reaching EOF in the binlog stream, the polling loop in
+                    // BinaryLogClient#listenForEventPackets() keeps returning values != -1 from peek();
+                    // this causes the loop to never finish
+                    // Propagating the exception (either EOF or socket closed) causes the loop to be aborted
+                    // in this case
+                    if (edde.getCause() instanceof IOException) {
+                        throw edde;
+                    }
+
                     EventHeaderV4 header = new EventHeaderV4();
                     header.setEventType(EventType.INCIDENT);
                     header.setTimestamp(edde.getEventHeader().getTimestamp());
