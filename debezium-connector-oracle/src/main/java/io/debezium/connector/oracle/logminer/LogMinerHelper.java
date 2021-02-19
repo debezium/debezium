@@ -660,6 +660,13 @@ public class LogMinerHelper {
             catch (SQLException e) {
                 LOGGER.debug("Failed to obtain registered logs with LogMiner", e);
             }
+            LOGGER.debug("Log mining session parameters are:");
+            try {
+                logQueryResults(connection, "SELECT * FROM V$LOGMNR_PARAMETERS");
+            }
+            catch (SQLException e) {
+                LOGGER.debug("Failed to obtain log mining session parameters", e);
+            }
         }
     }
 
