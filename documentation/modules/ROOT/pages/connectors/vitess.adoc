@@ -778,8 +778,9 @@ a|`io.debezium.data.Json` +
 Contains the string representation of a `JSON` document, array, or scalar.
 
 |`ENUM`
-|Unsupported yet
-a|_n/a_
+|`STRING`
+a|`io.debezium.data.Enum` +
+The `allowed` schema parameter contains the comma-separated list of allowed values.
 
 |`SET`
 |Unsupported yet
