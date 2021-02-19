@@ -1121,7 +1121,7 @@ The last option for `decimal.handling.mode` configuration property is `string`. 
 Due to licensing requirements, the {prodname} Oracle Connector does not ship with the Oracle JDBC driver and the XStream API JAR.
 You can obtain them for free by downloading the http://www.oracle.com/technetwork/topics/linuxx86-64soft-092277.html[Oracle Instant Client].
 
-Extract the archive into a directory, e.g. _/path/to/instant_client/.
+Extract the archive into a directory, e.g. _/path/to/instant_client/_.
 Copy the files _ojdbc8.jar_ and _xstreams.jar_ from the Instant Client into Kafka's _libs_ directory.
 Create the environment variable `LD_LIBRARY_PATH`, pointing to the Instant Client directory:
 
@@ -1178,6 +1178,59 @@ When using a more complex Oracle deployment or needing to use TNS names, then a 
 }
 ----
 
+[[oracle-database-mode]]
+=== Pluggable vs Non-Plugable databases
+
+The {prodname} Oracle connector supports both deployment practices of pluggable databases (CDB mode) as well as non-pluggable databases (non-CDB mode).
+
+==== Non-Pluggable Databases
+
+In order to deploy the connector in non-pluggable database mode, the the `database.pdb.name` configuration option must **not** be supplied.
+An example configuration for pluggable databases would be:
+
+[source,json,indent=0]
+----
+{
+  "config": {
+    "connector.class" : "io.debezium.connector.oracle.OracleConnector",
+    "tasks.max" : "1",
+    "database.server.name" : "server1",
+    "database.hostname" : "<oracle ip>",
+    "database.port" : "1521",
+    "database.user" : "c##xstrm",
+    "database.password" : "xs",
+    "database.dbname" : "ORCLCDB",
+    "database.out.server.name" : "dbzxout",
+    "database.history.kafka.bootstrap.servers" : "kafka:9092",
+    "database.history.kafka.topic": "schema-changes.inventory"
+  }
+}
+----
+
+==== Pluggable Databases
+
+In order to deploy the connector in pluggable database mode (CDB), the `database.pdb.name` configuration option *must* be supplied.
+An example configuration when using pluggable databases would be:
+
+[source,json,indent=0]
+----
+{
+  "config": {
+    "connector.class" : "io.debezium.connector.oracle.OracleConnector",
+    "tasks.max" : "1",
+    "database.server.name" : "server1",
+    "database.hostname" : "<oracle ip>",
+    "database.port" : "1521",
+    "database.user" : "c##xstrm",
+    "database.password" : "xs",
+    "database.dbname" : "ORCLCDB",
+    "database.pdb.name" : "ORCLPDB1",
+    "database.out.server.name" : "dbzxout",
+    "database.history.kafka.bootstrap.servers" : "kafka:9092",
+    "database.history.kafka.topic": "schema-changes.inventory"
+  }
+}
+----
 
 [[selecting-the-adapter]]
 == Selecting the adapter
