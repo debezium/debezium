@@ -12,10 +12,12 @@ import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static junit.framework.TestCase.assertEquals;
 import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.sql.SQLException;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -1947,6 +1949,25 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         waitForStreamingRunning();
         assertThat(logInterceptor.containsMessage(DatabaseSchema.NO_CAPTURED_DATA_COLLECTIONS_WARNING)).isFalse();
 
+        stopConnector();
+    }
+
+    @Test
+    @FixFor("DBZ-2865")
+    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.DECODERBUFS, reason = "Expected warning message is emitted by protobuf decoder")
+    public void shouldClearDatabaseWarnings() throws Exception {
+        final LogInterceptor logInterceptor = new LogInterceptor();
+
+        TestHelper.execute(SETUP_TABLES_STMT);
+        TestHelper.execute(INSERT_STMT);
+        Configuration config = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.POLL_INTERVAL_MS, "10")
+                .build();
+
+        start(PostgresConnector.class, config);
+        waitForSnapshotToBeCompleted();
+        Awaitility.await().atMost(Duration.ofSeconds(TestHelper.waitTimeForRecords() * 6))
+                .until(() -> logInterceptor.containsMessage("Server-side message: 'Exiting startup callback'"));
         stopConnector();
     }
 

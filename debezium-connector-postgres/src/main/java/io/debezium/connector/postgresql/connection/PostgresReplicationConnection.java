@@ -446,6 +446,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
 
             @Override
             public void read(ReplicationMessageProcessor processor) throws SQLException, InterruptedException {
+                processWarnings(false);
                 ByteBuffer read = stream.read();
                 final Lsn lastReceiveLsn = Lsn.valueOf(stream.getLastReceiveLSN());
                 LOGGER.trace("Streaming requested from LSN {}, received LSN {}", startLsn, lastReceiveLsn);
@@ -457,6 +458,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
 
             @Override
             public boolean readPending(ReplicationMessageProcessor processor) throws SQLException, InterruptedException {
+                processWarnings(false);
                 ByteBuffer read = stream.readPending();
                 final Lsn lastReceiveLsn = Lsn.valueOf(stream.getLastReceiveLSN());
                 LOGGER.trace("Streaming requested from LSN {}, received LSN {}", startLsn, lastReceiveLsn);
@@ -540,6 +542,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                         LOGGER.debug("Server-side message: '{}', state = {}, code = {}",
                                 w.getMessage(), w.getSQLState(), w.getErrorCode());
                     }
+                    connection().clearWarnings();
                 }
             }
 
