@@ -114,50 +114,6 @@ jobs:
           jdkFile: ${{ steps.jdk.outputs.file }}
       - name: Maven Build
         run: mvn clean install -B -pl debezium-connector-postgres -am -Passembly,pgoutput-decoder,postgres-10 -Ddebezium.test.records.waittime=5 -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dversion.postgres.server=10-devel -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
-  mongodb-32:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        feature: [ 15, 16 ]
-    name: MongoDB 3.2 - Java ${{ matrix.feature }}
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          submodules: recursive
-      - name: Setup OpenJDK
-        uses: sormuras/download-jdk@v1
-        id: jdk
-        with:
-          feature: ${{ matrix.feature }}
-      - name: Setup Java
-        uses: actions/setup-java@v1.4.3
-        with:
-          java-version: ${{ steps.jdk.outputs.version }}
-          jdkFile: ${{ steps.jdk.outputs.file }}
-      - name: Maven Build
-        run: mvn clean install -B -pl debezium-connector-mongodb -am -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dversion.mongo.server=3.2 -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
-  mongodb-36:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        feature: [ 15, 16 ]
-    name: MongoDB 3.6 - Java ${{ matrix.feature }}
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          submodules: recursive
-      - name: Setup OpenJDK
-        uses: sormuras/download-jdk@v1
-        id: jdk
-        with:
-          feature: ${{ matrix.feature }}
-      - name: Setup Java
-        uses: actions/setup-java@v1.4.3
-        with:
-          java-version: ${{ steps.jdk.outputs.version }}
-          jdkFile: ${{ steps.jdk.outputs.file }}
-      - name: Maven Build
-        run: mvn clean install -B -pl debezium-connector-mongodb -am -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dversion.mongo.server=3.6 -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
   mongodb-40:
     runs-on: ubuntu-latest
     strategy:
