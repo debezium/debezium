@@ -100,7 +100,7 @@ public class MySqlConnector extends RelationalBaseSourceConnector {
                 LOGGER.info("Successfully tested connection for {} with user '{}'", connection.connectionString(), connectionConfig.username());
             }
             catch (SQLException e) {
-                LOGGER.info("Failed testing connection for {} with user '{}'", connection.connectionString(), connectionConfig.username());
+                LOGGER.error("Failed testing connection for {} with user '{}'", connection.connectionString(), connectionConfig.username(), e);
                 hostnameValue.addErrorMessage("Unable to connect: " + e.getMessage());
             }
         }

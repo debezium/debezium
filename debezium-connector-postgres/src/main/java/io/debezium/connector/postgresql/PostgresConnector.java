@@ -128,8 +128,8 @@ public class PostgresConnector extends RelationalBaseSourceConnector {
                 }
             }
             catch (SQLException e) {
-                LOGGER.error("Failed testing connection for {} with user '{}': {}", connection.connectionString(),
-                        connection.username(), e.getMessage());
+                LOGGER.error("Failed testing connection for {} with user '{}'", connection.connectionString(),
+                        connection.username(), e);
                 hostnameValue.addErrorMessage("Error while validating connector config: " + e.getMessage());
             }
         }
