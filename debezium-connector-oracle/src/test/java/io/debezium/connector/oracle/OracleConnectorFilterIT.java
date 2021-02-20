@@ -394,7 +394,7 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
 
         Configuration config = TestHelper.defaultConfig()
                 .with(OracleConnectorConfig.SCHEMA_EXCLUDE_LIST, "DEBEZIUM,SYS")
-                .with(option, "DEBEZIUM\\.TABLE2,DEBEZIUM\\.CUSTOMER.*")
+                .with(option, "DEBEZIUM\\.TABLE2,DEBEZIUM\\.CUSTOMER.*,DEBEZIUM2\\.NOPK")
                 .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
                 .build();
 

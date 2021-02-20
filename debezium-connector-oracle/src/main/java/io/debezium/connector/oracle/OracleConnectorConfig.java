@@ -6,6 +6,8 @@
 package io.debezium.connector.oracle;
 
 import java.time.Duration;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Set;
 import java.util.function.Predicate;
 
@@ -119,7 +121,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
     public static final Field LOG_MINING_STRATEGY = Field.create("log.mining.strategy")
             .withDisplayName("Log Mining Strategy")
-            .withEnum(LogMiningStrategy.class, LogMiningStrategy.CATALOG_IN_REDO)
+            .withEnum(LogMiningStrategy.class, LogMiningStrategy.ONLINE_CATALOG)
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.HIGH)
             .withDescription("There are strategies: Online catalog with faster mining but no captured DDL. Another - with data dictionary loaded into REDO LOG files");
@@ -744,24 +746,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
         @Override
         public boolean isIncluded(TableId t) {
-            return !t.schema().toLowerCase().equals("appqossys") &&
-                    !t.schema().toLowerCase().equals("audsys") &&
-                    !t.schema().toLowerCase().equals("ctxsys") &&
-                    !t.schema().toLowerCase().equals("dvsys") &&
-                    !t.schema().toLowerCase().equals("dbsfwuser") &&
-                    !t.schema().toLowerCase().equals("dbsnmp") &&
-                    !t.schema().toLowerCase().equals("gsmadmin_internal") &&
-                    !t.schema().toLowerCase().equals("lbacsys") &&
-                    !t.schema().toLowerCase().equals("mdsys") &&
-                    !t.schema().toLowerCase().equals("ojvmsys") &&
-                    !t.schema().toLowerCase().equals("olapsys") &&
-                    !t.schema().toLowerCase().equals("orddata") &&
-                    !t.schema().toLowerCase().equals("ordsys") &&
-                    !t.schema().toLowerCase().equals("outln") &&
-                    !t.schema().toLowerCase().equals("sys") &&
-                    !t.schema().toLowerCase().equals("system") &&
-                    !t.schema().toLowerCase().equals("wmsys") &&
-                    !t.schema().toLowerCase().equals("xdb");
+            return !OracleConnectorConfig.getExcludedSchemaNames().contains(t.schema().toLowerCase());
         }
     }
 
@@ -930,6 +915,12 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     @Override
     public String getConnectorName() {
         return Module.name();
+    }
+
+    public static List<String> getExcludedSchemaNames() {
+        return Arrays.asList("appqossys", "audsys", "ctxsys", "dvsys", "dbsfwuser", "dbsnmp", "gsmadmin_internal",
+                "lbacsys", "mdsys", "ojvmsys", "olapsys", "orddata", "ordsys", "outln", "sys", "system",
+                "wmsys", "xdb");
     }
 
     public static int validateOutServerName(Configuration config, Field field, ValidationOutput problems) {

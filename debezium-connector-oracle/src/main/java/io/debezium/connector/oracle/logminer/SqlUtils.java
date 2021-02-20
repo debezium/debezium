@@ -228,6 +228,19 @@ public class SqlUtils {
         query.append("AND SCN < ? ");
         query.append("AND TABLE_NAME != '").append(LOGMNR_FLUSH_TABLE).append("' ");
 
+        List<String> excludedSchemas = OracleConnectorConfig.getExcludedSchemaNames();
+        if (!excludedSchemas.isEmpty()) {
+            query.append("AND SEG_OWNER NOT IN (");
+            for (Iterator<String> i = excludedSchemas.iterator(); i.hasNext();) {
+                String excludedSchema = i.next();
+                query.append("'").append(excludedSchema.toUpperCase()).append("'");
+                if (i.hasNext()) {
+                    query.append(",");
+                }
+            }
+            query.append(") ");
+        }
+
         String schemaPredicate = buildSchemaPredicate(connectorConfig);
         if (!Strings.isNullOrEmpty(schemaPredicate)) {
             query.append("AND ").append(schemaPredicate).append(" ");

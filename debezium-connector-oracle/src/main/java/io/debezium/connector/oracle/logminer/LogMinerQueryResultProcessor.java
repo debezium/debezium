@@ -176,9 +176,6 @@ class LogMinerQueryResultProcessor {
             // DML
             if (operationCode == RowMapper.INSERT || operationCode == RowMapper.DELETE || operationCode == RowMapper.UPDATE) {
                 final TableId tableId = RowMapper.getTableId(connectorConfig.getCatalogName(), resultSet);
-                if (!connectorConfig.getTableFilters().dataCollectionFilter().isIncluded(tableId)) {
-                    continue;
-                }
 
                 LOGGER.trace("DML,  {}, sql {}", logMessage, redoSql);
                 dmlCounter++;

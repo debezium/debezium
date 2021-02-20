@@ -12,6 +12,8 @@ import java.io.IOException;
 import java.sql.SQLRecoverableException;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.Iterator;
+import java.util.List;
 
 import org.junit.Rule;
 import org.junit.Test;
@@ -31,10 +33,11 @@ public class SqlUtilsTest {
     @Rule
     public TestRule skipRule = new SkipTestDependingOnAdapterNameRule();
 
-    private static final String LOG_MINER_CONTENT_QUERY_TEMPLATE = "SELECT SCN, SQL_REDO, OPERATION_CODE, TIMESTAMP, XID, CSF, TABLE_NAME, SEG_OWNER, OPERATION, USERNAME "
-            +
+    private static final String LOG_MINER_CONTENT_QUERY_TEMPLATE = "SELECT SCN, SQL_REDO, OPERATION_CODE, TIMESTAMP, " +
+            "XID, CSF, TABLE_NAME, SEG_OWNER, OPERATION, USERNAME " +
             "FROM V$LOGMNR_CONTENTS WHERE OPERATION_CODE IN (1,2,3,5) AND SCN >= ? AND SCN < ? " +
             "AND TABLE_NAME != '" + SqlUtils.LOGMNR_FLUSH_TABLE + "' " +
+            "${systemTablePredicate}" +
             "${schemaPredicate}" +
             "${tablePredicate}" +
             "OR (OPERATION_CODE IN (5,34) AND USERNAME NOT IN ('SYS','SYSTEM','${user}')) " +
@@ -317,6 +320,25 @@ public class SqlUtilsTest {
 
     private String resolveLogMineryContentQueryFromTemplate(String schemaReplacement, String tableReplacement) {
         String query = LOG_MINER_CONTENT_QUERY_TEMPLATE;
+
+        List<String> excludedSchemas = OracleConnectorConfig.getExcludedSchemaNames();
+        if (!excludedSchemas.isEmpty()) {
+            StringBuilder systemPredicate = new StringBuilder();
+            systemPredicate.append("AND SEG_OWNER NOT IN (");
+            for (Iterator<String> i = excludedSchemas.iterator(); i.hasNext();) {
+                String excludedSchema = i.next();
+                systemPredicate.append("'").append(excludedSchema.toUpperCase()).append("'");
+                if (i.hasNext()) {
+                    systemPredicate.append(",");
+                }
+            }
+            systemPredicate.append(") ");
+            query = query.replace("${systemTablePredicate}", systemPredicate.toString());
+        }
+        else {
+            query = query.replace("${systemTablePredicate}", "");
+        }
+
         query = query.replace("${schemaPredicate}", schemaReplacement == null ? "" : schemaReplacement);
         query = query.replace("${tablePredicate}", tableReplacement == null ? "" : tableReplacement);
         query = query.replace("${user}", USERNAME);
