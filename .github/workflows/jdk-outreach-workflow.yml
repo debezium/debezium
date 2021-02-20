@@ -201,7 +201,7 @@ jobs:
           java-version: ${{ steps.jdk.outputs.version }}
           jdkFile: ${{ steps.jdk.outputs.file }}
       - name: Maven Build
-        run: mvn clean install -B -pl debezium-quarkus-outbox -U -am -amd -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+        run: mvn clean install -B -pl :debezium-quarkus-outbox -U -am -amd -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
   testing:
     runs-on: ubuntu-latest
     strategy:
