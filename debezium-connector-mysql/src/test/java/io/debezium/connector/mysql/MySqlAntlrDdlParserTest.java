@@ -2010,6 +2010,24 @@ public class MySqlAntlrDdlParserTest {
         assertThat(table.columns()).hasSize(2);
     }
 
+    @Test
+    @FixFor("DBZ-3067")
+    public void shouldParseIndex() {
+        final String ddl1 = "USE db;"
+                + "CREATE TABLE db.t1 (ID INTEGER PRIMARY KEY, val INTEGER, INDEX myidx(val));";
+        final String ddl2 = "USE db;"
+                + "CREATE OR REPLACE INDEX myidx on db.t1(val);";
+        parser = new MysqlDdlParserWithSimpleTestListener(listener, true);
+        parser.parse(ddl1, tables);
+        assertThat(tables.size()).isEqualTo(1);
+        final Table table = tables.forTable(new TableId(null, "db", "t1"));
+        assertThat(table).isNotNull();
+        assertThat(table.columns()).hasSize(2);
+        parser.parse(ddl2, tables);
+        assertThat(tables.size()).isEqualTo(1);
+        assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
+    }
+
     @FixFor("DBZ-437")
     @Test
     public void shouldParseStringSameAsKeyword() {
