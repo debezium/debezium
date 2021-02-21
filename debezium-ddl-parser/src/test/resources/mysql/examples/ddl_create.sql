@@ -89,6 +89,10 @@ create index index3 using hash on antlr_tokens(token(30) asc);
 create index ix_add_test_col1 on add_test(col1) comment 'test index' using btree;
 #end
 #begin
+create index myindex on t1(col1) comment 'test index' comment 'some test' using btree;
+create or replace index myindex on t1(col1) comment 'test index' comment 'some test' using btree;
+#end
+#begin
 -- Create logfile group
 -- http://dev.mysql.com/doc/refman/5.6/en/create-logfile-group.html
 CREATE LOGFILE GROUP lg1 ADD UNDOFILE 'undo.dat' INITIAL_SIZE = 10M ENGINE = InnoDB;

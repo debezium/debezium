@@ -138,7 +138,7 @@ createEvent
     ;
 
 createIndex
-    : CREATE
+    : CREATE (OR REPLACE)?                                        // OR is MariaDB-specific only
       intimeAction=(ONLINE | OFFLINE)?
       indexCategory=(UNIQUE | FULLTEXT | SPATIAL)?
       INDEX uid indexType?
