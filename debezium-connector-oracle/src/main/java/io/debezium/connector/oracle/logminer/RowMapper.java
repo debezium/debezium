@@ -10,12 +10,11 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
 
-import javax.xml.bind.DatatypeConverter;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.relational.TableId;
+import io.debezium.util.HexConverter;
 
 /**
  * A utility class to map LogMiner content resultSet values.
@@ -124,7 +123,7 @@ public class RowMapper {
 
     public static String getTransactionId(TransactionalBufferMetrics metrics, ResultSet rs) {
         try {
-            return DatatypeConverter.printHexBinary(rs.getBytes(TX_ID));
+            return HexConverter.convertToHexString(rs.getBytes(TX_ID));
         }
         catch (SQLException e) {
             logError(metrics, e, "TX_ID");
