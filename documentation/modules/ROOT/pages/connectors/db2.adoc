@@ -37,9 +37,22 @@ The first time a {prodname} Db2 connector connects to a Db2 database, the connec
 
 When the snapshot is complete the connector begins emitting change events for committed updates to tables that are in capture mode. By default, change events for a particular table go to a Kafka topic that has the same name as the table. Applications and services consume change events from these topics.
 
-The connector uses the abstract syntax notation (ASN) libraries that come as a standard part of Db2 LUW (Db2 for Linux, UNIX and Windows) and which you can add to Db2 zOS. To use ASN and hence this connector, you must have a license for the IBM InfoSphere Data Replication (IIDR) product. However, IIDR does not need to be installed.
+[NOTE]
+====
+The connector uses the abstract syntax notation (ASN) libraries that come as a standard part of Db2 LUW (Db2 for Linux, UNIX and Windows) and which you can add to Db2 zOS.
+To use ASN and hence this connector, you must have a license for the IBM InfoSphere Data Replication (IIDR) product.
+However, IIDR does not need to be installed.
+====
 
-The Db2 connector has been tested with Db2/Linux {linux-version}. It is expected that the connector would also work on Windows, AIX and zOS.
+ifdef::community[]
+The Db2 connector has been tested with Db2/Linux {linux-version}.
+It is expected that the connector would also work on other platforms such as Windows,
+and we'd love to get your feedback if you can confirm this to be the case.
+endif::community[]
+
+ifdef::product[]
+The Db2 connector has been tested with Db2/Linux {linux-version}.
+endif::product[]
 
 ifdef::product[]
 Information and procedures for using a {prodname} Db2 connector is organized as follows:
