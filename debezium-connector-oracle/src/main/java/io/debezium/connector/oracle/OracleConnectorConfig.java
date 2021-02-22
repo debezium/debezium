@@ -121,7 +121,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
     public static final Field LOG_MINING_STRATEGY = Field.create("log.mining.strategy")
             .withDisplayName("Log Mining Strategy")
-            .withEnum(LogMiningStrategy.class, LogMiningStrategy.ONLINE_CATALOG)
+            .withEnum(LogMiningStrategy.class, LogMiningStrategy.CATALOG_IN_REDO)
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.HIGH)
             .withDescription("There are strategies: Online catalog with faster mining but no captured DDL. Another - with data dictionary loaded into REDO LOG files");

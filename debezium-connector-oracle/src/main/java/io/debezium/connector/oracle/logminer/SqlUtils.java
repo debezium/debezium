@@ -228,6 +228,8 @@ public class SqlUtils {
         query.append("AND SCN < ? ");
         query.append("AND TABLE_NAME != '").append(LOGMNR_FLUSH_TABLE).append("' ");
 
+        // There are some common schemas that we automatically ignore when building the filter predicates
+        // and we pull that same list of schemas in here and apply those exclusions in the generated SQL.
         List<String> excludedSchemas = OracleConnectorConfig.getExcludedSchemaNames();
         if (!excludedSchemas.isEmpty()) {
             query.append("AND SEG_OWNER NOT IN (");
