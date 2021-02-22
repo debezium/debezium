@@ -348,6 +348,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final String schemaName;
     private final Tables.ColumnNameFilter columnFilter;
     private final HistoryRecorder logMiningHistoryRecorder;
+    private final Configuration jdbcConfig;
 
     public OracleConnectorConfig(Configuration config) {
         super(OracleConnector.class, config, config.getString(SERVER_NAME), new SystemTablesPredicate(), x -> x.schema() + "." + x.table(), true);
@@ -362,6 +363,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         String blacklistedColumns = toUpperCase(config.getString(RelationalDatabaseConnectorConfig.COLUMN_BLACKLIST));
         this.columnFilter = getColumnNameFilter(blacklistedColumns);
         this.logMiningHistoryRecorder = resolveLogMiningHistoryRecorder(config);
+        this.jdbcConfig = config.subset(DATABASE_CONFIG_PREFIX, true);
     }
 
     private static String toUpperCase(String property) {
@@ -393,7 +395,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
         Field.group(config, "Oracle", HOSTNAME, PORT, RelationalDatabaseConnectorConfig.USER,
                 RelationalDatabaseConnectorConfig.PASSWORD, SERVER_NAME, RelationalDatabaseConnectorConfig.DATABASE_NAME, PDB_NAME,
-                XSTREAM_SERVER_NAME, SNAPSHOT_MODE, CONNECTOR_ADAPTER, LOG_MINING_STRATEGY, URL);
+                XSTREAM_SERVER_NAME, SNAPSHOT_MODE, CONNECTOR_ADAPTER, LOG_MINING_STRATEGY, URL, TABLENAME_CASE_INSENSITIVE, ORACLE_VERSION, SCHEMA_NAME);
         Field.group(config, "History Storage", KafkaDatabaseHistory.BOOTSTRAP_SERVERS,
                 KafkaDatabaseHistory.TOPIC, KafkaDatabaseHistory.RECOVERY_POLL_ATTEMPTS,
                 KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS, HistorizedRelationalDatabaseConnectorConfig.DATABASE_HISTORY);
@@ -905,6 +907,10 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
      */
     public LogMiningDmlParser getLogMiningDmlParser() {
         return LogMiningDmlParser.parse(getConfig().getString(LOG_MINING_DML_PARSER));
+    }
+
+    public Configuration jdbcConfig() {
+        return jdbcConfig;
     }
 
     /**

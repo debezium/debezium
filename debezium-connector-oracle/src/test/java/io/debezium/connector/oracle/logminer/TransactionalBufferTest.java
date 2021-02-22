@@ -14,6 +14,7 @@ import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
@@ -59,7 +60,7 @@ public class TransactionalBufferTest {
     private static final Configuration config = new Configuration() {
         @Override
         public Set<String> keys() {
-            return null;
+            return Collections.emptySet();
         }
 
         @Override

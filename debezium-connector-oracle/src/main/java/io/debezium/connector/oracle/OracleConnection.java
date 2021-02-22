@@ -353,11 +353,12 @@ public class OracleConnection extends JdbcConnection {
         return this;
     }
 
-    private static ConnectionFactory resolveConnectionFactory(Configuration config) {
-
-        final String connectionUrl = config.getString(URL) != null ? config.getString(URL)
+    public static String connectionString(Configuration config) {
+        return config.getString(URL) != null ? config.getString(URL)
                 : ConnectorAdapter.parse(config.getString("connection.adapter")).getConnectionUrl();
+    }
 
-        return JdbcConnection.patternBasedFactory(connectionUrl);
+    private static ConnectionFactory resolveConnectionFactory(Configuration config) {
+        return JdbcConnection.patternBasedFactory(connectionString(config));
     }
 }
