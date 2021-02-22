@@ -84,8 +84,8 @@ public class SqlServerConnector extends RelationalBaseSourceConnector {
                     connection.username());
         }
         catch (Exception e) {
-            LOGGER.debug("Failed testing connection for {} with user '{}'", config.withMaskedPasswords(),
-                    userValue);
+            LOGGER.error("Failed testing connection for {} with user '{}'", config.withMaskedPasswords(),
+                    userValue, e);
             hostnameValue.addErrorMessage("Unable to connect. Check this and other connection properties. Error: "
                     + e.getMessage());
         }
