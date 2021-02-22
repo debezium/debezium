@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -598,6 +599,30 @@ public abstract class CommonConnectorConfig {
      */
     public boolean isSchemaChangesHistoryEnabled() {
         return false;
+    }
+
+    /**
+     * Validates the supplied fields in this configuration. Extra fields not described by the supplied
+     * {@code fields} parameter will not be validated.
+     *
+     * @param fields the fields
+     * @param problems the consumer to eb called with each problem; never null
+     * @return {@code true} if the value is considered valid, or {@code false} if it is not valid
+     */
+    public boolean validate(Iterable<Field> fields, ValidationOutput problems) {
+        return config.validate(fields, problems);
+    }
+
+    /**
+     * Validate the supplied fields in this configuration. Extra fields not described by the supplied
+     * {@code fields} parameter will not be validated.
+     *
+     * @param fields the fields
+     * @param problems the consumer to be called with each problem; never null
+     * @return {@code true} if the value is considered valid, or {@code false} if it is not valid
+     */
+    public boolean validateAndRecord(Iterable<Field> fields, Consumer<String> problems) {
+        return config.validateAndRecord(fields, problems);
     }
 
     private static int validateMaxQueueSize(Configuration config, Field field, Field.ValidationOutput problems) {
