@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Supplier;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
@@ -48,7 +49,10 @@ public class OracleConnection extends JdbcConnection {
      */
     private static final int ORACLE_UNSET_SCALE = -127;
 
-    private static final String SYS_NC_OID_COLUMN = "SYS_NC_OID$";
+    /**
+     * Pattern to identify system generated indices and column names.
+     */
+    private static final Pattern SYS_NC_PATTERN = Pattern.compile("^SYS_NC(?:_OID|_ROWINFO|[0-9][0-9][0-9][0-9][0-9])\\$$");
 
     /**
      * A field for the raw jdbc url. This field has no default value.
@@ -297,7 +301,7 @@ public class OracleConnection extends JdbcConnection {
 
     @Override
     protected boolean isTableUniqueIndexIncluded(String indexName, String columnName) {
-        return !SYS_NC_OID_COLUMN.equals(columnName);
+        return !SYS_NC_PATTERN.matcher(columnName).matches();
     }
 
     private void overrideOracleSpecificColumnTypes(Tables tables, TableId tableId, TableId tableIdWithCatalog) {
