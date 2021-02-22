@@ -45,13 +45,13 @@ However, IIDR does not need to be installed.
 ====
 
 ifdef::community[]
-The Db2 connector has been tested with Db2/Linux {linux-version}.
+The Db2 connector has been tested with Db2/Linux {db2-version}.
 It is expected that the connector would also work on other platforms such as Windows,
 and we'd love to get your feedback if you can confirm this to be the case.
 endif::community[]
 
 ifdef::product[]
-The Db2 connector has been tested with Db2/Linux {linux-version}.
+The Db2 connector has been tested with Db2/Linux {db2-version}.
 endif::product[]
 
 ifdef::product[]
