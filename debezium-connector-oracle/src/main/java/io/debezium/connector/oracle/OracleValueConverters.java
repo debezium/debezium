@@ -8,6 +8,8 @@ package io.debezium.connector.oracle;
 import static io.debezium.util.NumberConversions.BYTE_FALSE;
 
 import java.math.BigDecimal;
+import java.sql.Blob;
+import java.sql.Clob;
 import java.sql.SQLException;
 import java.sql.Types;
 import java.time.LocalDateTime;
@@ -42,9 +44,7 @@ import io.debezium.util.Strings;
 import oracle.jdbc.OracleTypes;
 import oracle.sql.BINARY_DOUBLE;
 import oracle.sql.BINARY_FLOAT;
-import oracle.sql.BLOB;
 import oracle.sql.CHAR;
-import oracle.sql.CLOB;
 import oracle.sql.DATE;
 import oracle.sql.INTERVALDS;
 import oracle.sql.INTERVALYM;
@@ -247,8 +247,8 @@ public class OracleValueConverters extends JdbcValueConverters {
         if (data instanceof CHAR) {
             return ((CHAR) data).stringValue();
         }
-        if (data instanceof CLOB) {
-            return ((CLOB) data).toString();
+        if (data instanceof Clob) {
+            return ((Clob) data).toString();
         }
         if (data instanceof String) {
             String s = (String) data;
@@ -288,8 +288,14 @@ public class OracleValueConverters extends JdbcValueConverters {
 
     @Override
     protected Object convertBinary(Column column, Field fieldDefn, Object data, BinaryHandlingMode mode) {
-        if (data instanceof BLOB) {
-            return ((BLOB) data).getBytes();
+        if (data instanceof Blob) {
+            try {
+                Blob blob = (Blob) data;
+                return blob.getBytes(0, Long.valueOf(blob.length()).intValue());
+            }
+            catch (SQLException e) {
+                throw new RuntimeException("Couldn't convert value for column " + column.name(), e);
+            }
         }
         return super.convertBinary(column, fieldDefn, data, mode);
     }

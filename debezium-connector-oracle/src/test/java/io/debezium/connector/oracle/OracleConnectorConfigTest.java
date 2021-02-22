@@ -11,7 +11,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.time.Duration;
-import java.util.Arrays;
+import java.util.Collections;
 
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -36,7 +36,7 @@ public class OracleConnectorConfigTest {
                         .with(OracleConnectorConfig.XSTREAM_SERVER_NAME, "myserver")
                         .with(OracleConnectorConfig.USER, "debezium")
                         .build());
-        assertTrue(connectorConfig.getConfig().validateAndRecord(connectorConfig.ALL_FIELDS, LOGGER::error));
+        assertTrue(connectorConfig.validateAndRecord(OracleConnectorConfig.ALL_FIELDS, LOGGER::error));
     }
 
     @Test
@@ -51,7 +51,7 @@ public class OracleConnectorConfigTest {
                         .with(OracleConnectorConfig.SCHEMA_NAME, "myschema")
                         .with(OracleConnectorConfig.USER, "debezium")
                         .build());
-        assertTrue(connectorConfig.getConfig().validateAndRecord(connectorConfig.ALL_FIELDS, LOGGER::error));
+        assertTrue(connectorConfig.validateAndRecord(OracleConnectorConfig.ALL_FIELDS, LOGGER::error));
     }
 
     @Test
@@ -65,7 +65,7 @@ public class OracleConnectorConfigTest {
                         .with(OracleConnectorConfig.XSTREAM_SERVER_NAME, "myserver")
                         .with(OracleConnectorConfig.USER, "debezium")
                         .build());
-        assertTrue(connectorConfig.getConfig().validateAndRecord(connectorConfig.ALL_FIELDS, LOGGER::error));
+        assertTrue(connectorConfig.validateAndRecord(OracleConnectorConfig.ALL_FIELDS, LOGGER::error));
     }
 
     @Test
@@ -80,7 +80,7 @@ public class OracleConnectorConfigTest {
                         .with(OracleConnectorConfig.SCHEMA_NAME, "myschema")
                         .with(OracleConnectorConfig.USER, "debezium")
                         .build());
-        assertTrue(connectorConfig.getConfig().validateAndRecord(connectorConfig.ALL_FIELDS, LOGGER::error));
+        assertTrue(connectorConfig.validateAndRecord(OracleConnectorConfig.ALL_FIELDS, LOGGER::error));
     }
 
     @Test
@@ -96,7 +96,7 @@ public class OracleConnectorConfigTest {
                         .with(OracleConnectorConfig.SCHEMA_NAME, "myschema")
                         .with(OracleConnectorConfig.USER, "debezium")
                         .build());
-        assertTrue(connectorConfig.getConfig().validateAndRecord(connectorConfig.ALL_FIELDS, LOGGER::error));
+        assertTrue(connectorConfig.validateAndRecord(OracleConnectorConfig.ALL_FIELDS, LOGGER::error));
     }
 
     @Test
@@ -110,7 +110,7 @@ public class OracleConnectorConfigTest {
                         .with(OracleConnectorConfig.SCHEMA_NAME, "myschema")
                         .with(OracleConnectorConfig.USER, "debezium")
                         .build());
-        assertFalse(connectorConfig.getConfig().validateAndRecord(connectorConfig.ALL_FIELDS, LOGGER::error));
+        assertFalse(connectorConfig.validateAndRecord(OracleConnectorConfig.ALL_FIELDS, LOGGER::error));
     }
 
     @Test
@@ -119,10 +119,6 @@ public class OracleConnectorConfigTest {
         final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(
                 Configuration.create()
                         .build());
-
-        assertEquals(connectorConfig.getConfig().getInteger(OracleConnectorConfig.LOG_MINING_BATCH_SIZE_DEFAULT), OracleConnectorConfig.DEFAULT_BATCH_SIZE);
-        assertEquals(connectorConfig.getConfig().getInteger(OracleConnectorConfig.LOG_MINING_BATCH_SIZE_MAX), OracleConnectorConfig.MAX_BATCH_SIZE);
-        assertEquals(connectorConfig.getConfig().getInteger(OracleConnectorConfig.LOG_MINING_BATCH_SIZE_MIN), OracleConnectorConfig.MIN_BATCH_SIZE);
 
         assertEquals(connectorConfig.getLogMiningBatchSizeDefault(), OracleConnectorConfig.DEFAULT_BATCH_SIZE);
         assertEquals(connectorConfig.getLogMiningBatchSizeMax(), OracleConnectorConfig.MAX_BATCH_SIZE);
@@ -136,12 +132,6 @@ public class OracleConnectorConfigTest {
                 Configuration.create()
                         .build());
 
-        assertEquals(connectorConfig.getConfig().getInteger(OracleConnectorConfig.LOG_MINING_SLEEP_TIME_DEFAULT_MS), OracleConnectorConfig.DEFAULT_SLEEP_TIME.toMillis());
-        assertEquals(connectorConfig.getConfig().getInteger(OracleConnectorConfig.LOG_MINING_SLEEP_TIME_MAX_MS), OracleConnectorConfig.MAX_SLEEP_TIME.toMillis());
-        assertEquals(connectorConfig.getConfig().getInteger(OracleConnectorConfig.LOG_MINING_SLEEP_TIME_MIN_MS), OracleConnectorConfig.MIN_SLEEP_TIME.toMillis());
-        assertEquals(connectorConfig.getConfig().getInteger(OracleConnectorConfig.LOG_MINING_SLEEP_TIME_INCREMENT_MS),
-                OracleConnectorConfig.SLEEP_TIME_INCREMENT.toMillis());
-
         assertEquals(connectorConfig.getLogMiningSleepTimeDefault(), OracleConnectorConfig.DEFAULT_SLEEP_TIME);
         assertEquals(connectorConfig.getLogMiningSleepTimeMax(), OracleConnectorConfig.MAX_SLEEP_TIME);
         assertEquals(connectorConfig.getLogMiningSleepTimeMin(), OracleConnectorConfig.MIN_SLEEP_TIME);
@@ -154,8 +144,6 @@ public class OracleConnectorConfigTest {
         final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(
                 Configuration.create()
                         .build());
-
-        assertEquals(connectorConfig.getConfig().getInteger(OracleConnectorConfig.LOG_MINING_VIEW_FETCH_SIZE), OracleConnectorConfig.DEFAULT_VIEW_FETCH_SIZE);
 
         assertEquals(connectorConfig.getLogMiningViewFetchSize(), OracleConnectorConfig.DEFAULT_VIEW_FETCH_SIZE);
     }
@@ -174,12 +162,12 @@ public class OracleConnectorConfigTest {
         final Field transactionRetentionField = OracleConnectorConfig.LOG_MINING_TRANSACTION_RETENTION;
 
         Configuration config = Configuration.create().with(transactionRetentionField, 3).build();
-        assertThat(config.validateAndRecord(Arrays.asList(transactionRetentionField), LOGGER::error)).isTrue();
+        assertThat(config.validateAndRecord(Collections.singletonList(transactionRetentionField), LOGGER::error)).isTrue();
 
         OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
         assertThat(connectorConfig.getLogMiningTransactionRetention()).isEqualTo(Duration.ofHours(3));
 
         config = Configuration.create().with(transactionRetentionField, 0).build();
-        assertThat(config.validateAndRecord(Arrays.asList(transactionRetentionField), LOGGER::error)).isFalse();
+        assertThat(config.validateAndRecord(Collections.singletonList(transactionRetentionField), LOGGER::error)).isFalse();
     }
 }

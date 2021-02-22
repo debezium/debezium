@@ -750,7 +750,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         final Configuration config;
         if (useDatabaseName) {
             config = TestHelper.defaultConfig()
-                    .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_SCHEMA_ONLY)
+                    .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
                     .with("column.mask.with.12.chars", "ORCLPDB1.DEBEZIUM.MASKED_HASHED_COLUMN_TABLE.NAME")
                     .with("column.mask.hash.SHA-256.with.salt.CzQMA0cB5K",
                             "ORCLPDB1.DEBEZIUM.MASKED_HASHED_COLUMN_TABLE.NAME2,ORCLPDB1.DEBEZIUM.MASKED_HASHED_COLUMN_TABLE.NAME3")
@@ -759,7 +759,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         }
         else {
             config = TestHelper.defaultConfig()
-                    .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_SCHEMA_ONLY)
+                    .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
                     .with("column.mask.with.12.chars", "DEBEZIUM.MASKED_HASHED_COLUMN_TABLE.NAME")
                     .with("column.mask.hash.SHA-256.with.salt.CzQMA0cB5K", "DEBEZIUM.MASKED_HASHED_COLUMN_TABLE.NAME2,DEBEZIUM.MASKED_HASHED_COLUMN_TABLE.NAME3")
                     .with("column.truncate.to.4.chars", "DEBEZIUM.TRUNCATED_COLUMN_TABLE.NAME")
@@ -819,13 +819,13 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         final Configuration config;
         if (useDatabaseName) {
             config = TestHelper.defaultConfig()
-                    .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_SCHEMA_ONLY)
+                    .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
                     .with(OracleConnectorConfig.MSG_KEY_COLUMNS, "(.*).debezium.customer:id,name")
                     .build();
         }
         else {
             config = TestHelper.defaultConfig()
-                    .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_SCHEMA_ONLY)
+                    .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
                     .with(OracleConnectorConfig.MSG_KEY_COLUMNS, "debezium.customer:id,name")
                     .build();
         }

@@ -46,9 +46,6 @@ import io.debezium.util.Strings;
  */
 public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnectorConfig {
 
-    // TODO pull up to RelationalConnectorConfig
-    public static final String DATABASE_CONFIG_PREFIX = "database.";
-
     protected static final int DEFAULT_PORT = 1528;
 
     protected static final int DEFAULT_VIEW_FETCH_SIZE = 10_000;
@@ -98,7 +95,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     public static final Field SNAPSHOT_MODE = Field.create("snapshot.mode")
             .withDisplayName("Snapshot mode")
             .withEnum(SnapshotMode.class, SnapshotMode.INITIAL)
-            .withValidation(OracleConnectorConfig::validateSnapshotMode)
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDescription("The criteria for running a snapshot upon startup of the connector. "
@@ -349,6 +345,25 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final Tables.ColumnNameFilter columnFilter;
     private final HistoryRecorder logMiningHistoryRecorder;
     private final Configuration jdbcConfig;
+    private final ConnectorAdapter connectorAdapter;
+    private final String snapshotEnhancementToken;
+
+    // LogMiner options
+    private final LogMiningStrategy logMiningStrategy;
+    private final long logMiningHistoryRetentionHours;
+    private final Set<String> racNodes;
+    private final boolean logMiningContinuousMine;
+    private final Duration logMiningArchiveLogRetention;
+    private final int logMiningBatchSizeMin;
+    private final int logMiningBatchSizeMax;
+    private final int logMiningBatchSizeDefault;
+    private final int logMiningViewFetchSize;
+    private final Duration logMiningSleepTimeMin;
+    private final Duration logMiningSleepTimeMax;
+    private final Duration logMiningSleepTimeDefault;
+    private final Duration logMiningSleepTimeIncrement;
+    private final Duration logMiningTransactionRetention;
+    private final LogMiningDmlParser dmlParser;
 
     public OracleConnectorConfig(Configuration config) {
         super(OracleConnector.class, config, config.getString(SERVER_NAME), new SystemTablesPredicate(), x -> x.schema() + "." + x.table(), true);
@@ -364,6 +379,25 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.columnFilter = getColumnNameFilter(blacklistedColumns);
         this.logMiningHistoryRecorder = resolveLogMiningHistoryRecorder(config);
         this.jdbcConfig = config.subset(DATABASE_CONFIG_PREFIX, true);
+        this.snapshotEnhancementToken = config.getString(SNAPSHOT_ENHANCEMENT_TOKEN);
+
+        // LogMiner
+        this.connectorAdapter = ConnectorAdapter.parse(config.getString(CONNECTOR_ADAPTER));
+        this.logMiningStrategy = LogMiningStrategy.parse(config.getString(LOG_MINING_STRATEGY));
+        this.logMiningHistoryRetentionHours = config.getLong(LOG_MINING_HISTORY_RETENTION);
+        this.racNodes = Strings.setOf(config.getString(RAC_NODES), String::new);
+        this.logMiningContinuousMine = config.getBoolean(CONTINUOUS_MINE);
+        this.logMiningArchiveLogRetention = Duration.ofHours(config.getLong(LOG_MINING_ARCHIVE_LOG_HOURS));
+        this.logMiningBatchSizeMin = config.getInteger(LOG_MINING_BATCH_SIZE_MIN);
+        this.logMiningBatchSizeMax = config.getInteger(LOG_MINING_BATCH_SIZE_MAX);
+        this.logMiningBatchSizeDefault = config.getInteger(LOG_MINING_BATCH_SIZE_DEFAULT);
+        this.logMiningViewFetchSize = config.getInteger(LOG_MINING_VIEW_FETCH_SIZE);
+        this.logMiningSleepTimeMin = Duration.ofMillis(config.getInteger(LOG_MINING_SLEEP_TIME_MIN_MS));
+        this.logMiningSleepTimeMax = Duration.ofMillis(config.getInteger(LOG_MINING_SLEEP_TIME_MAX_MS));
+        this.logMiningSleepTimeDefault = Duration.ofMillis(config.getInteger(LOG_MINING_SLEEP_TIME_DEFAULT_MS));
+        this.logMiningSleepTimeIncrement = Duration.ofMillis(config.getInteger(LOG_MINING_SLEEP_TIME_INCREMENT_MS));
+        this.logMiningTransactionRetention = Duration.ofHours(config.getInteger(LOG_MINING_TRANSACTION_RETENTION));
+        this.dmlParser = LogMiningDmlParser.parse(config.getString(LOG_MINING_DML_PARSER));
     }
 
     private static String toUpperCase(String property) {
@@ -486,14 +520,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
          * Perform a snapshot of data and schema upon initial startup of a connector.
          */
         INITIAL("initial", true),
-
-        /**
-         * Perform a snapshot of the schema but no data upon initial startup of a connector.
-         *
-         * @deprecated to be removed in 1.1; use {@link #SCHEMA_ONLY} instead.
-         */
-        @Deprecated
-        INITIAL_SCHEMA_ONLY("initial_schema_only", false),
 
         /**
          * Perform a snapshot of the schema but no data upon initial startup of a connector.
@@ -764,21 +790,21 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
      * @return connection adapter
      */
     public ConnectorAdapter getAdapter() {
-        return ConnectorAdapter.parse(getConfig().getString(CONNECTOR_ADAPTER));
+        return connectorAdapter;
     }
 
     /**
      * @return Log Mining strategy
      */
     public LogMiningStrategy getLogMiningStrategy() {
-        return LogMiningStrategy.parse(getConfig().getString(LOG_MINING_STRATEGY));
+        return logMiningStrategy;
     }
 
     /**
      * @return whether log mining history is recorded
      */
     public Boolean isLogMiningHistoryRecorded() {
-        return getLogMinerHistoryRetentionHours() > 0;
+        return logMiningHistoryRetentionHours > 0;
     }
 
     /**
@@ -792,146 +818,124 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
      * @return the number of hours log mining history is retained if history is recorded
      */
     public long getLogMinerHistoryRetentionHours() {
-        return getConfig().getLong(LOG_MINING_HISTORY_RETENTION);
+        return logMiningHistoryRetentionHours;
     }
 
     /**
      * @return whether Oracle is using RAC
      */
     public Boolean isRacSystem() {
-        return !getRacNodes().isEmpty();
+        return !racNodes.isEmpty();
     }
 
     /**
      * @return set of node hosts or ip addresses used in Oracle RAC
      */
     public Set<String> getRacNodes() {
-        String nodes = getConfig().getString(RAC_NODES);
-        return Strings.setOf(nodes, String::new);
+        return racNodes;
     }
 
     /**
      * @return String token to replace
      */
     public String getTokenToReplaceInSnapshotPredicate() {
-        return getConfig().getString(SNAPSHOT_ENHANCEMENT_TOKEN);
+        return snapshotEnhancementToken;
     }
 
     /**
      * @return whether continuous log mining is enabled
      */
     public boolean isContinuousMining() {
-        return getConfig().getBoolean(CONTINUOUS_MINE);
+        return logMiningContinuousMine;
     }
 
     /**
      * @return the duration that archive logs are scanned for log mining
      */
     public Duration getLogMiningArchiveLogRetention() {
-        return Duration.ofHours(getConfig().getLong(LOG_MINING_ARCHIVE_LOG_HOURS));
+        return logMiningArchiveLogRetention;
     }
 
     /**
-     * 
+     *
      * @return int The minimum SCN interval used when mining redo/archive logs
      */
     public int getLogMiningBatchSizeMin() {
-        return getConfig().getInteger(LOG_MINING_BATCH_SIZE_MIN);
+        return logMiningBatchSizeMin;
     }
 
     /**
-     * 
+     *
      * @return int Number of actual records that will be fetched from the log mining contents view
      */
     public int getLogMiningViewFetchSize() {
-        return getConfig().getInteger(LOG_MINING_VIEW_FETCH_SIZE);
+        return logMiningViewFetchSize;
     }
 
     /**
-     * 
+     *
      * @return int The maximum SCN interval used when mining redo/archive logs
      */
     public int getLogMiningBatchSizeMax() {
-        return getConfig().getInteger(LOG_MINING_BATCH_SIZE_MAX);
+        return logMiningBatchSizeMax;
     }
 
     /**
-     * 
+     *
      * @return int The default SCN interval used when mining redo/archive logs
      */
     public int getLogMiningBatchSizeDefault() {
-        return getConfig().getInteger(LOG_MINING_BATCH_SIZE_DEFAULT);
+        return logMiningBatchSizeDefault;
     }
 
     /**
-     * 
+     *
      * @return int The minimum sleep time used when mining redo/archive logs
      */
     public Duration getLogMiningSleepTimeMin() {
-        return Duration.ofMillis(getConfig().getInteger(LOG_MINING_SLEEP_TIME_MIN_MS));
+        return logMiningSleepTimeMin;
     }
 
     /**
-     * 
+     *
      * @return int The maximum sleep time used when mining redo/archive logs
      */
     public Duration getLogMiningSleepTimeMax() {
-        return Duration.ofMillis(getConfig().getInteger(LOG_MINING_SLEEP_TIME_MAX_MS));
+        return logMiningSleepTimeMax;
     }
 
     /**
-     * 
+     *
      * @return int The default sleep time used when mining redo/archive logs
      */
     public Duration getLogMiningSleepTimeDefault() {
-        return Duration.ofMillis(getConfig().getInteger(LOG_MINING_SLEEP_TIME_DEFAULT_MS));
+        return logMiningSleepTimeDefault;
     }
 
     /**
-     * 
+     *
      * @return int The increment in sleep time when doing auto-tuning while mining redo/archive logs
      */
     public Duration getLogMiningSleepTimeIncrement() {
-        return Duration.ofMillis(getConfig().getInteger(LOG_MINING_SLEEP_TIME_INCREMENT_MS));
+        return logMiningSleepTimeIncrement;
     }
 
     /**
      * @return the duration for which long running transactions are permitted in the transaction buffer between log switches
      */
     public Duration getLogMiningTransactionRetention() {
-        return Duration.ofHours(getConfig().getInteger(LOG_MINING_TRANSACTION_RETENTION));
+        return logMiningTransactionRetention;
     }
 
     /**
      * @return the log mining parser implementation to be used
      */
     public LogMiningDmlParser getLogMiningDmlParser() {
-        return LogMiningDmlParser.parse(getConfig().getString(LOG_MINING_DML_PARSER));
+        return dmlParser;
     }
 
     public Configuration jdbcConfig() {
         return jdbcConfig;
-    }
-
-    /**
-     * Validate the time.precision.mode configuration.
-     *
-     * If {@code adaptive} is specified, this option has the potential to cause overflow which is why the
-     * option was deprecated and no longer supported for this connector.
-     */
-    private static int validateSnapshotMode(Configuration config, Field field, ValidationOutput problems) {
-        if (config.hasKey(SNAPSHOT_MODE.name())) {
-            final String snapshotMode = config.getString(SNAPSHOT_MODE.name());
-            if (SnapshotMode.INITIAL_SCHEMA_ONLY.value.equals(snapshotMode)) {
-                // this will be logged as ERROR, but returning 0 doesn't prevent start-up
-                problems.accept(SNAPSHOT_MODE, snapshotMode,
-                        "The 'initial_schema_only' snapshot.mode is no longer supported and will be removed in a future revision. Use 'schema_only' instead.");
-                return 0;
-            }
-        }
-
-        // Everything checks out ok.
-        return 0;
     }
 
     @Override

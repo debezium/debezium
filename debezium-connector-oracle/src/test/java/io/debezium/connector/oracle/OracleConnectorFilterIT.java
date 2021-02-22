@@ -127,7 +127,7 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
                 .with(
                         RelationalDatabaseConnectorConfig.TABLE_WHITELIST,
                         "DEBEZIUM2\\.TABLE2,DEBEZIUM\\.TABLE1,DEBEZIUM\\.TABLE3")
-                .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_SCHEMA_ONLY)
+                .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
                 .build();
 
         start(OracleConnector.class, config);
@@ -181,7 +181,7 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
                 .with(
                         OracleConnectorConfig.TABLE_INCLUDE_LIST,
                         "DEBEZIUM2\\.TABLE2,DEBEZIUM\\.TABLE1,DEBEZIUM\\.TABLE3")
-                .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_SCHEMA_ONLY)
+                .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
                 .build();
 
         start(OracleConnector.class, config);
@@ -235,7 +235,7 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
                 .with(
                         OracleConnectorConfig.TABLE_BLACKLIST,
                         "DEBEZIUM\\.TABLE2,DEBEZIUM\\.CUSTOMER.*")
-                .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_SCHEMA_ONLY)
+                .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
                 .build();
 
         start(OracleConnector.class, config);
@@ -289,7 +289,7 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
                 .with(
                         OracleConnectorConfig.TABLE_EXCLUDE_LIST,
                         "DEBEZIUM\\.TABLE2,DEBEZIUM\\.CUSTOMER.*")
-                .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_SCHEMA_ONLY)
+                .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
                 .build();
 
         start(OracleConnector.class, config);
