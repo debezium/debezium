@@ -1725,7 +1725,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-2094")
-    public void customSnapshotterSkipsTablesOnRestartWithConncurrentTx() throws Exception {
+    public void customSnapshotterSkipsTablesOnRestartWithConcurrentTx() throws Exception {
         final LogInterceptor logInterceptor = new LogInterceptor();
 
         Testing.Print.enable();
@@ -1767,7 +1767,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
                 .atMost(waitTimeForRecords() * 30, TimeUnit.SECONDS)
                 .ignoreException(InstanceNotFoundException.class)
                 .until(() -> {
-                    // Requested due to DBZ-3158, creates empty transaction
+                    // Required due to DBZ-3158, creates empty transaction
                     TestHelper.create().execute("vacuum full").close();
                     return (boolean) ManagementFactory.getPlatformMBeanServer()
                             .getAttribute(getSnapshotMetricsObjectName("postgres", TestHelper.TEST_SERVER), "SnapshotCompleted");
