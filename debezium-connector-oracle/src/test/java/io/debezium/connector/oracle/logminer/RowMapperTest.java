@@ -108,7 +108,7 @@ public class RowMapperTest {
     public void testGetTransactionId() throws SQLException {
         Mockito.when(rs.getBytes(5)).thenReturn("tr_id".getBytes());
         String transactionId = RowMapper.getTransactionId(metrics, rs);
-        assertThat(transactionId.equals("74725F6964")).isTrue();
+        assertThat(transactionId).isEqualToIgnoringCase("74725F6964");
         verify(rs).getBytes(5);
         Mockito.when(rs.getBytes(5)).thenThrow(SQLException.class);
         transactionId = RowMapper.getTransactionId(metrics, rs);
