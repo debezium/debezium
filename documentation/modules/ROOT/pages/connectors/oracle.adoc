@@ -1475,6 +1475,20 @@ This field is required to enable Oracle RAC support.
 |_empty string_
 |An optional comma-separated list of regular expressions that match fully-qualified table identifiers for tables to be excluded from monitoring; any table not included in the exclude list will be monitored. Each identifier is of the form _schemaName_._tableName_. May not be used with `table.include.list`.  When using LogMiner, only POSIX regular expressions are supported.
 
+|[[oracle-property-column-include-list]]<<oracle-property-column-include-list, `+column.include.list+`>>
+|_empty string_
+|An optional comma-separated list of regular expressions that match the fully-qualified names of columns that should be included in the change event message values.
+Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_.
+Note that primary key columns are always included in the event's key, even if not included in the value.
+Do not also set the `column.exclude.list` property.
+
+|[[oracle-property-column-exclude-list]]<<oracle-property-column-exclude-list, `+column.exclude.list+`>>
+|_empty string_
+|An optional comma-separated list of regular expressions that match the fully-qualified names of columns that should be excluded from change event message values.
+Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_.
+Note that primary key columns are always included in the event's key, also if excluded from the value.
+Do not also set the `column.include.list` property.
+
 |[[oracle-property-column-mask-hash]]<<oracle-property-column-mask-hash, `+column.mask.hash._hashAlgorithm_.with.salt._salt_+`>>
 |_n/a_
 |An optional comma-separated list of regular expressions that match the fully-qualified names of character-based columns whose values should be pseudonyms in the change event message values with a field value consisting of the hashed value using the algorithm `_hashAlgorithm_` and salt `_salt_`.
