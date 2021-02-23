@@ -1272,9 +1272,10 @@ We do encourage the use of the LogMiner implementation for testing purposes and 
 
 The {prodname} Oracle connector has three metric types in addition to the built-in support for JMX metrics that Zookeeper, Kafka, and Kafka Connect have.
 
-* <<snapshot-metrics, snapshot metrics>>; for monitoring the connector when performing snapshots
-* <<streaming-metrics, streaming metrics>>; for monitoring the connector when processing change events
-* <<schema-history-metrics, schema history metrics>>; for monitoring the status of the connector's schema history
+* <<oracle-snapshot-metrics, snapshot metrics>>; for monitoring the connector when performing snapshots
+* <<oracle-streaming-metrics, streaming metrics>>; for monitoring the connector when processing change events
+* <<oracle-monitoring-streaming-logminer, logminer metrics>>; additional metrics captured when using the LogMiner adpter to process change events
+* <<oracle-schema-history-metrics, schema history metrics>>; for monitoring the status of the connector's schema history
 
 Please refer to the {link-prefix}:{link-debezium-monitoring}#monitoring-debezium[monitoring documentation] for details of how to expose these metrics via JMX.
 
@@ -1305,55 +1306,125 @@ The *MBean* is `debezium.oracle:type=connector-metrics,context=log-miner,server=
 
 |[[log-miner-metrics-currentscn]]<<log-miner-metrics-currentscn, `+CurrentScn+`>>
 |`long`
-|The most recent SCN has has been processed.
+|The most recent SCN that has been processed.
 
-|[[log-miner-metrics-captureddmlcount]]<<log-miner-metrics-captureddmlcount, `+CapturedDmlCount+`>>
-|`int`
-|The number of DML operations observed.
-
-|[[log-miner-metrics-currentlogfilename]]<<log-miner-metrics-currentlogfilename, `+CurrentLogFileName+`>>
+|[[log-miner-metrics-currentredologfilename]]<<log-miner-metrics-currentredologfilename, `+CurrentRedoLogFileName+`>>
 |`string[]`
-|The current redo log filename.
+|Array of the log files that are currently mined.
+
+|[[log-miner-metrics-minimumminedlogcount]]<<log-miner-metrics-minimumminedlogcount, `+MinimumMinedLogCount+`>>
+|`long`
+|The minimum number of logs specified for any LogMiner session.
+
+|[[log-miner-metrics-maximumminedlogcount]]<<log-miner-metrics-maximumminedlogcount, `+MaximumMinedLogCount+`>>
+|`long`
+|The maximum number of logs specified for any LogMiner session.
 
 |[[log-miner-metrics-redologstatus]]<<log-miner-metrics-redologstatus, `+RedoLogStatus+`>>
 |`string[]`
-|The current status of the redo logs.
+|Array of the current state for each mined logfile with the format `_filename_\|_status_`.
 
 |[[log-miner-metrics-switchcounter]]<<log-miner-metrics-switchcounter, `+SwitchCounter+`>>
+|`int`
+|The number of times the database has performed a log switch for the last day.
+
+|[[log-miner-metrics-lastcaptureddmlcount]]<<log-miner-metrics-lastcaptureddmlcount, `+LastCapturedDmlCount+`>>
 |`long`
-|The number of times the redo logs have switched.
+|The number of DML operations observed in the last LogMiner session query.
 
-|[[log-miner-metrics-lastlogminerqueryduration]]<<log-miner-metrics-lastlogminerqueryduration, `+LastLogMinerQueryDuration+`>>
-|`Duration`
-|The duration it took for the last log mining query to prepare results for processing.
+|[[log-miner-metrics-maxcaptureddmlinbatch]]<<log-miner-metrics-maxcaptureddmlinbatch, `+MaxCapturedDmlInBatch+`>>
+|`long`
+|The maximum number of DML operations observed while processing a single LogMiner session query.
 
-|[[log-miner-metrics-averagelogminerqueryduration]]<<log-miner-metrics-averagelogminerqueryduration, `+AverageLogMinerQueryDuration+`>>
-|`Duration`
-|The average duration it has taken for log mining queries to prepare results for processing.
+|[[log-miner-metrics-totalcaptureddmlcount]]<<log-miner-metrics-totalcaptureddmlcount, `+TotalCapturedDmlCount+`>>
+|`long`
+|The total number of DML operations observed.
 
-|[[log-miner-metrics-logminerquerycount]]<<log-miner-metrics-logminerquerycount, `+LogMinerQueryCount+`>>
-|`int`
-|The number of log mining queries executed.
+|[[log-miner-metrics-fetchingquerycount]]<<log-miner-metrics-fetchingquerycount, `+FetchingQueryCount+`>>
+|`long`
+|The total number of LogMiner session query (aka batches) performed.
 
-|[[log-miner-metrics-lastprocessedcapturedbatchduration]]<<log-miner-metrics-lastprocessedcapturedbatchduration, `+LastProcessedCapturedBatchDuration+`>>
-|`Duration`
-|The duration it took for the last log mining query results to be processed.
+|[[log-miner-metrics-lastdurationoffetchqueryinmilliseconds]]<<log-miner-metrics-lastdurationoffetchqueryinmilliseconds, `+LastDurationOfFetchQueryInMilliseconds+`>>
+|`long`
+|The duration of the last LogMiner session query's fetch in milliseconds.
 
-|[[log-miner-metrics-averageprocessedcapturedbatchduration]]<<log-miner-metrics-averageprocessedcapturedbatchduration, `+AverageProcessedCapturedBatchDuration+`>>
-|`Duration`
-|The average duration it has taken for the log mining query results to be processed.
+|[[log-miner-metrics-maxdurationoffetchqueryinmilliseconds]]<<log-miner-metrics-maxdurationoffetchqueryinmilliseconds, `+MaxDurationOfFetchQueryInMilliseconds+`>>
+|`long`
+|The maximum duration of any LogMiner session query's fetch in milliseconds.
 
-|[[log-miner-metrics-processedcapturebatchcount]]<<log-miner-metrics-processedcapturebatchcount, `+ProcesssedCaptureBatchCount+`>>
-|`int`
-|The number of log mining query results processed.
+|[[log-miner-metrics-lastbatchprocessingtimeinmilliseconds]]<<log-miner-metrics-lastbatchprocessingtimeinmilliseconds, `+LastBatchProcessingTimeInMilliseconds+`>>
+|`long`
+|The duration for processing the last LogMiner query batch results in milliseconds.
+
+|[[log-miner-metrics-totalparsetimeinmilliseconds]]<<log-miner-metrics-totalparsetimeinmilliseconds, `+TotalParseTimeInMilliseconds+`>>
+|`long`
+|The time in milliseconds spent parsing DML event SQL sattements.
+
+|[[log-miner-metrics-lastminingsessionstarttimeinmilliseconds]]<<log-miner-metrics-lastminingsessionstarttimeinmilliseconds, `+LastMiningSessionStartTimeInMilliseconds+`>>
+|`long`
+|The duration in milliseconds to start the last LogMiner session.
+
+|[[log-miner-metrics-maxminingsessionstarttimeinmilliseconds]]<<log-miner-metrics-maxminingsessionstarttimeinmilliseconds, `+MaxMiningSessionStartTimeInMilliseconds+`>>
+|`long`
+|The longest duration in milliseconds to start a LogMiner session.
+
+|[[log-miner-metrics-totalminingsessionstarttimeinmilliseconds]]<<log-miner-metrics-totalminingsessionstarttimeinmilliseconds, `+TotalMiningSessionStartTimeInMilliseconds+`>>
+|`long`
+|The total duration in milliseconds spent by the connector starting LogMiner sessions.
+
+|[[log-miner-metrics-minbatchprocessingtimeinmilliseconds]]<<log-miner-metrics-minbatchprocessingtimeinmilliseconds, `+MinBatchProcessingTimeInMilliseconds+`>>
+|`long`
+|The minimum duration in milliseconds spent processing results from a single LogMiner session.
+
+|[[log-miner-metrics-maxbatchprocessingtimeinmilliseconds]]<<log-miner-metrics-maxbatchprocessingtimeinmilliseconds, `+MaxBatchProcessingTimeInMilliseconds+`>>
+|`long`
+|The maximum duration in milliseconds spent processing results from a single LogMiner session.
+
+|[[log-miner-metrics-totalprocessingtimeinmilliseconds]]<<log-miner-metrics-totalprocessingtimeinmilliseconds, `+TotalProcessingTimeInMilliseconds+`>>
+|`long`
+|The total duration in milliseconds spent processing results from LogMiner sessions.
+
+|[[log-miner-metrics-totalresultsetnexttimeinmilliseconds]]<<log-miner-metrics-totalresultsetnexttimeinmilliseconds, `+TotalResultSetNextTimeInMilliseconds+`>>
+|`long`
+|The total duration in milliseconds spent by the JDBC driver fetching the next row to be processed from the log mining view.
+
+|[[log-miner-metrics-totalprocessedrows]]<<log-miner-metrics-totalprocessedrows, `+TotalProcessedRows+`>>
+|`long`
+|The total number of rows processed from the log mining view across all sessions.
 
 |[[log-miner-metrics-batchsize]]<<log-miner-metrics-batchsize, `+BatchSize+`>>
 |`int`
 |The number of entries fetched by the log mining query per database round-trip.
 
 |[[log-miner-metrics-millisecondtosleepbetweenminingquery]]<<log-miner-metrics-millisecondtosleepbetweenminingquery, `+MillisecondToSleepBetweenMiningQuery+`>>
-|`int`
+|`long`
 |The number of milliseconds the connector sleeps before fetching another batch of results from the log mining view.
+
+|[[log-miner-metrics-maxbatchprocessingthroughput]]<<log-miner-metrics-maxbatchprocessingthroughput, `+MaxBatchProcessingThroughput+`>>
+|`long`
+|The maximum number of rows/second processed from the log mining view.
+
+|[[log-miner-metrics-averagebatchprocessingthroughput]]<<log-miner-metrics-averagebatchprocessingthroughput, `+AverageBatchProcessingThroughput+`>>
+|`long`
+|The average number of rows/second processed from the log mining.
+
+|[[log-miner-metrics-lastbatchprocessingthroughput]]<<log-miner-metrics-lastbatchprocessingthroughput, `+LastBatchProcessingThroughput+`>>
+|`long`
+|The average number of rows/second processed from the log mining view for the last batch.
+
+|[[log-miner-metrics-networkconnectionproblemscounter]]<<log-miner-metrics-networkconnectionproblemscounter, `+NetworkConnectionProblemsCounter+`>>
+|`long`
+|The number of connection problems detected.
+
+|[[log-miner-metrics-hourstokeeptransactioninbuffer]]<<log-miner-metrics-hourstokeeptransactioninbuffer, `+HoursToKeepTransactionInBuffer+`>>
+|`int`
+|The number of hours that transactions will be retained by the connector's in-memory buffer without being committed or rolled back before being discarded.
+See <<oracle-property-log-mining-transaction-retention-hours, `log.mining.transaction.retention`>> for more details.
+
+|[[log-miner-metrics-recordmininghistory]]<<log-miner-metrics-recordmininghistory, `+RecordMiningHistory+`>>
+|`boolean`
+|Flag that indicates if the mining results are being recorded.
+See <<oracle-property-log-mining-history-recorder-class, `log.mining.history.recorder.clas`>> for more details.
 
 |===
 
