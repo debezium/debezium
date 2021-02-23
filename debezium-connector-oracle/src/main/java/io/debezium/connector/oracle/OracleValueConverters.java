@@ -462,6 +462,14 @@ public class OracleValueConverters extends JdbcValueConverters {
         if (data instanceof String) {
             return Byte.parseByte((String) data) == 0 ? Boolean.FALSE : Boolean.TRUE;
         }
+        if (data instanceof NUMBER) {
+            try {
+                return ((NUMBER) data).intValue() == 0 ? Boolean.FALSE : Boolean.TRUE;
+            }
+            catch (SQLException e) {
+                throw new RuntimeException("Couldn't convert value for column " + column.name(), e);
+            }
+        }
         return super.convertBoolean(column, fieldDefn, data);
     }
 
