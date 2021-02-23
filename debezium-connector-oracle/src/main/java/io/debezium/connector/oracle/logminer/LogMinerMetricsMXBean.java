@@ -11,18 +11,24 @@ package io.debezium.connector.oracle.logminer;
 public interface LogMinerMetricsMXBean {
 
     /**
-     * Exposes current SCN in the database. This is very efficient query and will not affect overall performance
-     *
-     * @return current SCN
+     * @return the current system change number of the database
      */
     Long getCurrentScn();
 
     /**
-     * Exposes current redo log file. This is very efficient query and will not affect overall performance
-     *
-     * @return full path or NULL if an exception occurs.
+     * @return array of current filenames to be used by the mining session.
      */
     String[] getCurrentRedoLogFileName();
+
+    /**
+     * @return the minimum number of logs used by a mining session
+     */
+    long getMinimumMinedLogCount();
+
+    /**
+     * @return the maximum number of logs used by a mining session
+     */
+    long getMaximumMinedLogCount();
 
     /**
      * Exposes states of redo logs: current, active, inactive, unused ...
@@ -108,12 +114,6 @@ public interface LogMinerMetricsMXBean {
     void changeBatchSize(boolean increment);
 
     /**
-     * this flag turns on recording of captured incremental changes. It creates an overhead on CPU and takes disk space
-     * @param doRecording true - record
-     */
-    void setRecordMiningHistory(boolean doRecording);
-
-    /**
      * this flag indicates whether log mining is being recorded by {@link HistoryRecorder}
      */
     boolean getRecordMiningHistory();
@@ -158,9 +158,29 @@ public interface LogMinerMetricsMXBean {
     long getTotalMiningSessionStartTimeInMilliseconds();
 
     /**
+     * @return the total number of milliseconds the last mining session took to start
+     */
+    long getLastMiningSessionStartTimeInMilliseconds();
+
+    /**
+     * @return the duration in milliseconds of the longest mining session start
+     */
+    long getMaxMiningSessionStartTimeInMilliseconds();
+
+    /**
      * @return the total number of milliseconds spent mining and processing results
      */
     long getTotalProcessingTimeInMilliseconds();
+
+    /**
+     * @return the minimum time in milliseconds spent processing results from a single LogMiner session
+     */
+    long getMinBatchProcessingTimeInMilliseconds();
+
+    /**
+     * @return the maximum time in milliseconds spent processing results from a single LogMiner session
+     */
+    long getMaxBatchProcessingTimeInMilliseconds();
 
     /**
      * @return the total number of log miner rows processed.
@@ -173,14 +193,12 @@ public interface LogMinerMetricsMXBean {
     long getTotalResultSetNextTimeInMilliseconds();
 
     /**
-     * Resets metrics.
-     */
-    void reset();
-
-    // *** following metrics work if RecordMiningHistory is true.
-
-    /**
      * @return the number of hours to keep transaction in buffer before abandoning
      */
     int getHoursToKeepTransactionInBuffer();
+
+    /**
+     * Resets metrics.
+     */
+    void reset();
 }

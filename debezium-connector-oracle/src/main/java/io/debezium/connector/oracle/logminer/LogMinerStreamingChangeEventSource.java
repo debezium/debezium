@@ -133,7 +133,6 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
 
                 HistoryRecorder historyRecorder = connectorConfig.getLogMiningHistoryRecorder();
 
-                Duration processTime = Duration.ZERO;
                 try {
                     // todo: why can't OracleConnection be used rather than a Factory+JdbcConfiguration?
                     historyRecorder.prepare(logMinerMetrics, jdbcConfiguration, connectorConfig.getLogMinerHistoryRetentionHours());
@@ -190,9 +189,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                                 }
                             }
 
-                            processTime = processTime.plus(Duration.between(start, Instant.now()));
-                            logMinerMetrics.setTotalProcessingTime(processTime);
-
+                            logMinerMetrics.setCurrentBatchProcessingTime(Duration.between(start, Instant.now()));
                             pauseBetweenMiningSessions();
                         }
                     }
@@ -220,9 +217,6 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
     private void registerLogMinerMetrics() {
         logMinerMetrics = new LogMinerMetrics(taskContext, connectorConfig);
         logMinerMetrics.register(LOGGER);
-        if (connectorConfig.isLogMiningHistoryRecorded()) {
-            logMinerMetrics.setRecordMiningHistory(true);
-        }
     }
 
     private void unregisterLogMinerMetrics() {

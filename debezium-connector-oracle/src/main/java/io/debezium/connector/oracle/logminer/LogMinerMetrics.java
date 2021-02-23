@@ -28,7 +28,6 @@ import io.debezium.metrics.Metrics;
 @ThreadSafe
 public class LogMinerMetrics extends Metrics implements LogMinerMetricsMXBean {
 
-    private final static int DEFAULT_HOURS_TO_KEEP_TRANSACTION = 4;
     private static final Logger LOGGER = LoggerFactory.getLogger(LogMinerMetrics.class);
 
     private final AtomicLong currentScn = new AtomicLong();
@@ -44,12 +43,18 @@ public class LogMinerMetrics extends Metrics implements LogMinerMetricsMXBean {
     private final AtomicReference<Duration> lastBatchProcessingDuration = new AtomicReference<>();
     private final AtomicReference<Duration> maxBatchProcessingDuration = new AtomicReference<>();
     private final AtomicReference<Duration> totalParseTime = new AtomicReference<>();
-    private final AtomicReference<Duration> totalStartLogMiningSession = new AtomicReference<>();
+    private final AtomicReference<Duration> totalStartLogMiningSessionDuration = new AtomicReference<>();
+    private final AtomicReference<Duration> lastStartLogMiningSessionDuration = new AtomicReference<>();
+    private final AtomicReference<Duration> maxStartingLogMiningSessionDuration = new AtomicReference<>();
     private final AtomicReference<Duration> totalProcessingTime = new AtomicReference<>();
+    private final AtomicReference<Duration> minBatchProcessingTime = new AtomicReference<>();
+    private final AtomicReference<Duration> maxBatchProcessingTime = new AtomicReference<>();
     private final AtomicReference<Duration> totalResultSetNextTime = new AtomicReference<>();
     private final AtomicLong maxBatchProcessingThroughput = new AtomicLong();
     private final AtomicReference<String[]> currentLogFileName;
     private final AtomicReference<String[]> redoLogStatus;
+    private final AtomicLong minimumLogsMined = new AtomicLong();
+    private final AtomicLong maximumLogsMined = new AtomicLong();
     private final AtomicInteger switchCounter = new AtomicInteger();
 
     private final AtomicInteger batchSize = new AtomicInteger();
@@ -75,9 +80,12 @@ public class LogMinerMetrics extends Metrics implements LogMinerMetricsMXBean {
 
         currentScn.set(-1);
         currentLogFileName = new AtomicReference<>();
+        minimumLogsMined.set(0L);
+        maximumLogsMined.set(0L);
         redoLogStatus = new AtomicReference<>();
         switchCounter.set(0);
 
+        recordMiningHistory.set(connectorConfig.isLogMiningHistoryRecorded());
         batchSizeDefault = connectorConfig.getLogMiningBatchSizeDefault();
         batchSizeMin = connectorConfig.getLogMiningBatchSizeMin();
         batchSizeMax = connectorConfig.getLogMiningBatchSizeMax();
@@ -95,7 +103,6 @@ public class LogMinerMetrics extends Metrics implements LogMinerMetricsMXBean {
 
     @Override
     public void reset() {
-
         batchSize.set(batchSizeDefault);
         millisecondToSleepBetweenMiningQuery.set(sleepTimeDefault);
         totalCapturedDmlCount.set(0);
@@ -112,18 +119,37 @@ public class LogMinerMetrics extends Metrics implements LogMinerMetricsMXBean {
         lastBatchProcessingDuration.set(Duration.ZERO);
         networkConnectionProblemsCounter.set(0);
         totalParseTime.set(Duration.ZERO);
-        totalStartLogMiningSession.set(Duration.ZERO);
+        totalStartLogMiningSessionDuration.set(Duration.ZERO);
+        lastStartLogMiningSessionDuration.set(Duration.ZERO);
+        maxStartingLogMiningSessionDuration.set(Duration.ZERO);
         totalProcessingTime.set(Duration.ZERO);
+        minBatchProcessingTime.set(Duration.ZERO);
+        maxBatchProcessingTime.set(Duration.ZERO);
         totalResultSetNextTime.set(Duration.ZERO);
     }
 
-    // setters
     public void setCurrentScn(Long scn) {
         currentScn.set(scn);
     }
 
     public void setCurrentLogFileName(Set<String> names) {
         currentLogFileName.set(names.stream().toArray(String[]::new));
+        if (names.size() < minimumLogsMined.get()) {
+            minimumLogsMined.set(names.size());
+        }
+        if (names.size() > maximumLogsMined.get()) {
+            maximumLogsMined.set(names.size());
+        }
+    }
+
+    @Override
+    public long getMinimumMinedLogCount() {
+        return minimumLogsMined.get();
+    }
+
+    @Override
+    public long getMaximumMinedLogCount() {
+        return maximumLogsMined.get();
     }
 
     public void setRedoLogStatus(Map<String, String> status) {
@@ -167,7 +193,6 @@ public class LogMinerMetrics extends Metrics implements LogMinerMetricsMXBean {
         networkConnectionProblemsCounter.incrementAndGet();
     }
 
-    // implemented getters
     @Override
     public Long getCurrentScn() {
         return currentScn.get();
@@ -290,11 +315,25 @@ public class LogMinerMetrics extends Metrics implements LogMinerMetricsMXBean {
 
     @Override
     public long getTotalMiningSessionStartTimeInMilliseconds() {
-        return totalStartLogMiningSession.get().toMillis();
+        return totalStartLogMiningSessionDuration.get().toMillis();
     }
 
     public void addCurrentMiningSessionStart(Duration currentStartLogMiningSession) {
-        totalStartLogMiningSession.accumulateAndGet(currentStartLogMiningSession, Duration::plus);
+        lastStartLogMiningSessionDuration.set(currentStartLogMiningSession);
+        if (currentStartLogMiningSession.compareTo(maxStartingLogMiningSessionDuration.get()) > 0) {
+            maxStartingLogMiningSessionDuration.set(currentStartLogMiningSession);
+        }
+        totalStartLogMiningSessionDuration.accumulateAndGet(currentStartLogMiningSession, Duration::plus);
+    }
+
+    @Override
+    public long getLastMiningSessionStartTimeInMilliseconds() {
+        return lastStartLogMiningSessionDuration.get().toMillis();
+    }
+
+    @Override
+    public long getMaxMiningSessionStartTimeInMilliseconds() {
+        return maxStartingLogMiningSessionDuration.get().toMillis();
     }
 
     @Override
@@ -302,8 +341,18 @@ public class LogMinerMetrics extends Metrics implements LogMinerMetricsMXBean {
         return totalProcessingTime.get().toMillis();
     }
 
-    public void setTotalProcessingTime(Duration processingTime) {
-        totalProcessingTime.set(processingTime);
+    @Override
+    public long getMinBatchProcessingTimeInMilliseconds() {
+        return minBatchProcessingTime.get().toMillis();
+    }
+
+    @Override
+    public long getMaxBatchProcessingTimeInMilliseconds() {
+        return maxBatchProcessingTime.get().toMillis();
+    }
+
+    public void setCurrentBatchProcessingTime(Duration currentBatchProcessingTime) {
+        totalProcessingTime.accumulateAndGet(currentBatchProcessingTime, Duration::plus);
     }
 
     public void addCurrentResultSetNext(Duration currentNextTime) {
@@ -314,7 +363,6 @@ public class LogMinerMetrics extends Metrics implements LogMinerMetricsMXBean {
         totalProcessedRows.getAndAdd(rows);
     }
 
-    // MBean accessible setters
     @Override
     public void setBatchSize(int size) {
         if (size >= batchSizeMin && size <= batchSizeMax) {
@@ -361,11 +409,6 @@ public class LogMinerMetrics extends Metrics implements LogMinerMetricsMXBean {
     }
 
     @Override
-    public void setRecordMiningHistory(boolean doRecording) {
-        recordMiningHistory.set(doRecording);
-    }
-
-    @Override
     public String toString() {
         return "LogMinerMetrics{" +
                 "currentScn=" + currentScn +
@@ -382,6 +425,8 @@ public class LogMinerMetrics extends Metrics implements LogMinerMetricsMXBean {
                 ", maxBatchProcessingDuration=" + maxBatchProcessingDuration +
                 ", maxBatchProcessingThroughput=" + maxBatchProcessingThroughput +
                 ", currentLogFileName=" + currentLogFileName +
+                ", minLogFilesMined=" + minimumLogsMined +
+                ", maxLogFilesMined=" + maximumLogsMined +
                 ", redoLogStatus=" + redoLogStatus +
                 ", switchCounter=" + switchCounter +
                 ", batchSize=" + batchSize +
@@ -397,8 +442,12 @@ public class LogMinerMetrics extends Metrics implements LogMinerMetricsMXBean {
                 ", sleepTimeMax=" + sleepTimeMax +
                 ", sleepTimeIncrement=" + sleepTimeIncrement +
                 ", totalParseTime=" + totalParseTime +
-                ", totalStartLogMiningSession=" + totalStartLogMiningSession +
+                ", totalStartLogMiningSessionDuration=" + totalStartLogMiningSessionDuration +
+                ", lastStartLogMiningSessionDuration=" + lastStartLogMiningSessionDuration +
+                ", maxStartLogMiningSessionDuration=" + maxStartingLogMiningSessionDuration +
                 ", totalProcessTime=" + totalProcessingTime +
+                ", minBatchProcessTime=" + minBatchProcessingTime +
+                ", maxBatchProcessTime=" + maxBatchProcessingTime +
                 ", totalResultSetNextTime=" + totalResultSetNextTime +
                 '}';
     }
