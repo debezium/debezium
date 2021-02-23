@@ -2,6 +2,104 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 1.5.0.Beta1
+February 23rd 2021 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12353830)
+
+### New features since 1.5.0.Alpha1
+
+* Make field descriptions consistent for time values (milliseconds, ms, sec, seconds, etc) [DBZ-2858](https://issues.jboss.org/browse/DBZ-2858)
+* DebeziumEngine RecordChangeEvents cannot be modified [DBZ-2897](https://issues.jboss.org/browse/DBZ-2897)
+* Add license headers and related checkstyle checks for Debezium UI files [DBZ-2985](https://issues.jboss.org/browse/DBZ-2985)
+* Display commit SHA of UI frontend/backend somewhere in the footer [DBZ-3052](https://issues.jboss.org/browse/DBZ-3052)
+* Implement UX suggestions for display of connector type [DBZ-3054](https://issues.jboss.org/browse/DBZ-3054)
+* SqlServerConnector does not implement validate [DBZ-3056](https://issues.jboss.org/browse/DBZ-3056)
+* Database History Producer does not close with a timeout [DBZ-3075](https://issues.jboss.org/browse/DBZ-3075)
+* Improve DML parser performance [DBZ-3078](https://issues.jboss.org/browse/DBZ-3078)
+* Connector list table UI improvement desktop/mobile [DBZ-3079](https://issues.jboss.org/browse/DBZ-3079)
+* Vitess Connector adds support for Vitess 9.0.0 GA [DBZ-3100](https://issues.jboss.org/browse/DBZ-3100)
+* Improve layout for Column Truncate - Mask Component [DBZ-3101](https://issues.jboss.org/browse/DBZ-3101)
+* Improve layout for Data options component and main wizard nav [DBZ-3105](https://issues.jboss.org/browse/DBZ-3105)
+* Add ability to skip tests based on available database options [DBZ-3110](https://issues.jboss.org/browse/DBZ-3110)
+* Support for Transaction Metadata in MySql connector [DBZ-3114](https://issues.jboss.org/browse/DBZ-3114)
+* Add support for JSON column type [DBZ-3115](https://issues.jboss.org/browse/DBZ-3115)
+* Add support for ENUM column type [DBZ-3124](https://issues.jboss.org/browse/DBZ-3124)
+* Enable easy downloading of Camel Kafka Connectors [DBZ-3136](https://issues.jboss.org/browse/DBZ-3136)
+* Capture LogMiner session parameters when session fails to start [DBZ-3153](https://issues.jboss.org/browse/DBZ-3153)
+* Process special values in temporal datatypes [DBZ-2614](https://issues.jboss.org/browse/DBZ-2614)
+
+
+### Breaking changes since 1.5.0.Alpha1
+
+* Document JSON column parsing regression for MySQL connector [DBZ-3130](https://issues.jboss.org/browse/DBZ-3130)
+* Replace MySQL connector option with SMT for mitigating wrong op flag [DBZ-2788](https://issues.jboss.org/browse/DBZ-2788)
+* Avoid dependency to JAXB classes [DBZ-3165](https://issues.jboss.org/browse/DBZ-3165)
+* Remove build deprecation warnings [DBZ-3034](https://issues.jboss.org/browse/DBZ-3034)
+
+
+### Fixes since 1.5.0.Alpha1
+
+* Negative timestamps are converted to positive during snapshot [DBZ-2616](https://issues.jboss.org/browse/DBZ-2616)
+* Wrong reference to KafkaConnector in setting up Debezium [DBZ-2745](https://issues.jboss.org/browse/DBZ-2745)
+* Oracle Connector(Using Logminer) with Oracle RDS (v12) does not capture changes [DBZ-2754](https://issues.jboss.org/browse/DBZ-2754)
+* Oracle connector causes ORA-65090 when connecting to an Oracle instance running in non-CDB mode [DBZ-2795](https://issues.jboss.org/browse/DBZ-2795)
+* Warnings and notifications from PostgreSQL are ignored by the connector until the connection is closed [DBZ-2865](https://issues.jboss.org/browse/DBZ-2865)
+* Add support for MySQL to UI Backend  [DBZ-2950](https://issues.jboss.org/browse/DBZ-2950)
+* ExtractNewRecord SMT incorrectly extracts ts_ms from source info [DBZ-2984](https://issues.jboss.org/browse/DBZ-2984)
+* Replication terminates with ORA-01291: missing log file [DBZ-3001](https://issues.jboss.org/browse/DBZ-3001)
+* Kafka Docker image the HEAP_OPTS variable is not used [DBZ-3006](https://issues.jboss.org/browse/DBZ-3006)
+* Support multiple schemas with Oracle LogMiner [DBZ-3009](https://issues.jboss.org/browse/DBZ-3009)
+* Function calls does not allow parentheses for functions with non-mandatory parentheses [DBZ-3017](https://issues.jboss.org/browse/DBZ-3017)
+* Complete support for properties that contain hyphens [DBZ-3019](https://issues.jboss.org/browse/DBZ-3019)
+* UI issues with connectors table row expansion state [DBZ-3049](https://issues.jboss.org/browse/DBZ-3049)
+* SQLException for Global temp tables  from OracleDatabaseMetaData.getIndexInfo() makes Debezium snapshotting fail [DBZ-3057](https://issues.jboss.org/browse/DBZ-3057)
+* Cassandra Connector doesn't support Cassandra version >=3.11.5 [DBZ-3060](https://issues.jboss.org/browse/DBZ-3060)
+* Make Cassandra Connector work with CommitLogTransfer better [DBZ-3063](https://issues.jboss.org/browse/DBZ-3063)
+* no viable alternative at input 'create or replace index' [DBZ-3067](https://issues.jboss.org/browse/DBZ-3067)
+* Connect image propagates  env vars starting with CONNECT prefix [DBZ-3070](https://issues.jboss.org/browse/DBZ-3070)
+* PgOutputMessageDecoder doesn't order primary keys [DBZ-3074](https://issues.jboss.org/browse/DBZ-3074)
+* Strange transaction metadata for Oracle logminer connector [DBZ-3090](https://issues.jboss.org/browse/DBZ-3090)
+* Getting RejectedExecutionException when checking topic settings from KafkaDatabaseHistory.checkTopicSettings [DBZ-3096](https://issues.jboss.org/browse/DBZ-3096)
+* Environment Variables with spaces are truncated when written to properties file [DBZ-3103](https://issues.jboss.org/browse/DBZ-3103)
+* Error: Supplemental logging not configured for table. Use command: ALTER TABLE  [DBZ-3109](https://issues.jboss.org/browse/DBZ-3109)
+* Uncaught (in promise) TypeError: Cannot read property 'call' of undefined [DBZ-3125](https://issues.jboss.org/browse/DBZ-3125)
+* Final stage of snapshot analyzes tables not present in table.include.list thus stumbles upon unsupported XMLTYPE table [DBZ-3151](https://issues.jboss.org/browse/DBZ-3151)
+* Missing Prometheus port in kafka network policy  [DBZ-3170](https://issues.jboss.org/browse/DBZ-3170)
+* XStream does not process NUMER(1) data [DBZ-3172](https://issues.jboss.org/browse/DBZ-3172)
+
+
+### Other changes since 1.5.0.Alpha1
+
+* Setup CI job for DB2  [DBZ-2235](https://issues.jboss.org/browse/DBZ-2235)
+* Integration with Service Registry promoted to GA [DBZ-2815](https://issues.jboss.org/browse/DBZ-2815)
+* Remove DECIMAL string sanitisation once Vitess upstream bug is fixed [DBZ-2908](https://issues.jboss.org/browse/DBZ-2908)
+* Review format and configuration options for Db2 for GA [DBZ-2977](https://issues.jboss.org/browse/DBZ-2977)
+* Test with Postgres 13 [DBZ-3022](https://issues.jboss.org/browse/DBZ-3022)
+* Prepare Debezium UI to participate in upstream releases [DBZ-3027](https://issues.jboss.org/browse/DBZ-3027)
+* Upgrade testcontainers to 1.15.1  [DBZ-3066](https://issues.jboss.org/browse/DBZ-3066)
+* Use new deployment endpoint for releases to Maven Central [DBZ-3069](https://issues.jboss.org/browse/DBZ-3069)
+* Remove obsolete Awestruct container image [DBZ-3072](https://issues.jboss.org/browse/DBZ-3072)
+* "JDBC driver" doesn't make sense for non-relational connectors [DBZ-3076](https://issues.jboss.org/browse/DBZ-3076)
+* Replace RecordMakers with MySqlChangeRecordEmitter [DBZ-3077](https://issues.jboss.org/browse/DBZ-3077)
+* Make CI builds resilient against disconnects on GH Actions infrastructure [DBZ-3083](https://issues.jboss.org/browse/DBZ-3083)
+* Separate SourceInfo and MySQL offset context [DBZ-3086](https://issues.jboss.org/browse/DBZ-3086)
+* Remove zero-width whitespace from option names [DBZ-3087](https://issues.jboss.org/browse/DBZ-3087)
+* Adapt UI for MySQL connector type [DBZ-3091](https://issues.jboss.org/browse/DBZ-3091)
+* Change MySQL database schema contract to support separate parsing and processing phase [DBZ-3093](https://issues.jboss.org/browse/DBZ-3093)
+* MySQL build stuck for 6h [DBZ-3095](https://issues.jboss.org/browse/DBZ-3095)
+* Rewrite legacy reader tests [DBZ-3099](https://issues.jboss.org/browse/DBZ-3099)
+* Intermittent test failure in Postgres PostgresConnectorIT#customSnapshotterSkipsTablesOnRestart [DBZ-3107](https://issues.jboss.org/browse/DBZ-3107)
+* Remove duplicate anchor links in Connector properties [DBZ-3111](https://issues.jboss.org/browse/DBZ-3111)
+* Upgrade to Quarkus 1.12.0.Final [DBZ-3116](https://issues.jboss.org/browse/DBZ-3116)
+* Config validation for Vitess [DBZ-3117](https://issues.jboss.org/browse/DBZ-3117)
+* Config validation for Oracle [DBZ-3119](https://issues.jboss.org/browse/DBZ-3119)
+* Avoid naming conflict between connection classes [DBZ-3147](https://issues.jboss.org/browse/DBZ-3147)
+* Set up commit message check for Vitess [DBZ-3152](https://issues.jboss.org/browse/DBZ-3152)
+* Put IIDR license requirement into NOTE box [DBZ-3163](https://issues.jboss.org/browse/DBZ-3163)
+* Consistent logging of connection validation failure [DBZ-3164](https://issues.jboss.org/browse/DBZ-3164)
+* Remove COLUMN_BLACK_LIST option in Oracle connector [DBZ-3167](https://issues.jboss.org/browse/DBZ-3167)
+
+
+
 ## 1.5.0.Alpha1
 February 4th 2021 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12351487)
 
