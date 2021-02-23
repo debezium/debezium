@@ -241,7 +241,6 @@ public class EndToEndPerf {
 
             return builder.with(OracleConnectorConfig.SERVER_NAME, SERVER_NAME)
                     .with(OracleConnectorConfig.PDB_NAME, "ORCLPDB1")
-                    .with(OracleConnectorConfig.SCHEMA_NAME, SCHEMA_USER)
                     .with(OracleConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
                     .with(OracleConnectorConfig.CONNECTOR_ADAPTER, ConnectorAdapter.LOG_MINER)
                     .with(OracleConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
