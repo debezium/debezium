@@ -301,7 +301,10 @@ public class OracleConnection extends JdbcConnection {
 
     @Override
     protected boolean isTableUniqueIndexIncluded(String indexName, String columnName) {
-        return !SYS_NC_PATTERN.matcher(columnName).matches();
+        if (columnName != null) {
+            return !SYS_NC_PATTERN.matcher(columnName).matches();
+        }
+        return false;
     }
 
     private void overrideOracleSpecificColumnTypes(Tables tables, TableId tableId, TableId tableIdWithCatalog) {
