@@ -51,6 +51,11 @@
                 <artifactId>debezium-embedded</artifactId>
                 <version>${version.debezium}</version>
             </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
+                <artifactId>debezium-microbenchmark</artifactId>
+                <version>${version.debezium}</version>
+            </dependency>
 
             <!-- Testing -->
             <dependency>

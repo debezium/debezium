@@ -15,14 +15,10 @@
         <dependency>
             <groupId>io.debezium</groupId>
             <artifactId>debezium-microbenchmark</artifactId>
-            <!-- IntelliJ needed the following for some strange reason? -->
-            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>io.debezium</groupId>
             <artifactId>debezium-embedded</artifactId>
-            <!-- IntelliJ needed the following for some strange reason? -->
-            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>io.debezium</groupId>
