@@ -17,6 +17,7 @@ import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
 
 import io.debezium.config.CommonConnectorConfig;
+import io.debezium.config.ConfigDefinition;
 import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
@@ -29,7 +30,6 @@ import io.debezium.connector.oracle.xstream.LcrPosition;
 import io.debezium.connector.oracle.xstream.OracleVersion;
 import io.debezium.document.Document;
 import io.debezium.function.Predicates;
-import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.relational.ColumnId;
 import io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig;
@@ -38,7 +38,6 @@ import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.history.HistoryRecordComparator;
-import io.debezium.relational.history.KafkaDatabaseHistory;
 import io.debezium.util.Strings;
 
 /**
@@ -278,54 +277,56 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withDescription(
                     "The maximum amount of time that the connector will use to tune the optimal sleep time when reading data from LogMiner. Value is in milliseconds.");
 
+    private static final ConfigDefinition CONFIG_DEFINITION = HistorizedRelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
+            .name("Oracle")
+            .excluding(
+                    SCHEMA_WHITELIST,
+                    SCHEMA_INCLUDE_LIST,
+                    SCHEMA_BLACKLIST,
+                    SCHEMA_EXCLUDE_LIST,
+                    RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN,
+                    SERVER_NAME)
+            .type(
+                    HOSTNAME,
+                    PORT,
+                    USER,
+                    PASSWORD,
+                    SERVER_NAME,
+                    DATABASE_NAME,
+                    PDB_NAME,
+                    XSTREAM_SERVER_NAME,
+                    SNAPSHOT_MODE,
+                    CONNECTOR_ADAPTER,
+                    LOG_MINING_STRATEGY,
+                    URL,
+                    TABLENAME_CASE_INSENSITIVE,
+                    ORACLE_VERSION)
+            .connector(
+                    SNAPSHOT_ENHANCEMENT_TOKEN,
+                    RAC_SYSTEM,
+                    RAC_NODES,
+                    LOG_MINING_HISTORY_RECORDER_CLASS,
+                    LOG_MINING_HISTORY_RETENTION,
+                    LOG_MINING_ARCHIVE_LOG_HOURS,
+                    LOG_MINING_BATCH_SIZE_DEFAULT,
+                    LOG_MINING_BATCH_SIZE_MIN,
+                    LOG_MINING_BATCH_SIZE_MAX,
+                    LOG_MINING_SLEEP_TIME_DEFAULT_MS,
+                    LOG_MINING_SLEEP_TIME_MIN_MS,
+                    LOG_MINING_SLEEP_TIME_MAX_MS,
+                    LOG_MINING_SLEEP_TIME_INCREMENT_MS,
+                    LOG_MINING_TRANSACTION_RETENTION,
+                    LOG_MINING_DML_PARSER)
+            .create();
+
     /**
      * The set of {@link Field}s defined as part of this configuration.
      */
-    public static Field.Set ALL_FIELDS = Field.setOf(
-            HOSTNAME,
-            PORT,
-            RelationalDatabaseConnectorConfig.USER,
-            RelationalDatabaseConnectorConfig.PASSWORD,
-            SERVER_NAME,
-            RelationalDatabaseConnectorConfig.DATABASE_NAME,
-            PDB_NAME,
-            XSTREAM_SERVER_NAME,
-            SNAPSHOT_MODE,
-            HistorizedRelationalDatabaseConnectorConfig.DATABASE_HISTORY,
-            RelationalDatabaseConnectorConfig.TABLE_WHITELIST,
-            RelationalDatabaseConnectorConfig.TABLE_INCLUDE_LIST,
-            RelationalDatabaseConnectorConfig.TABLE_BLACKLIST,
-            RelationalDatabaseConnectorConfig.TABLE_EXCLUDE_LIST,
-            RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN,
-            RelationalDatabaseConnectorConfig.MSG_KEY_COLUMNS,
-            CommonConnectorConfig.POLL_INTERVAL_MS,
-            CommonConnectorConfig.MAX_BATCH_SIZE,
-            CommonConnectorConfig.MAX_QUEUE_SIZE,
-            CommonConnectorConfig.SNAPSHOT_DELAY_MS,
-            CommonConnectorConfig.SNAPSHOT_FETCH_SIZE,
-            CommonConnectorConfig.PROVIDE_TRANSACTION_METADATA,
-            Heartbeat.HEARTBEAT_INTERVAL,
-            Heartbeat.HEARTBEAT_TOPICS_PREFIX,
-            TABLENAME_CASE_INSENSITIVE,
-            ORACLE_VERSION,
-            CONNECTOR_ADAPTER,
-            LOG_MINING_STRATEGY,
-            SNAPSHOT_ENHANCEMENT_TOKEN,
-            LOG_MINING_HISTORY_RECORDER_CLASS,
-            LOG_MINING_HISTORY_RETENTION,
-            RAC_SYSTEM,
-            RAC_NODES,
-            CommonConnectorConfig.EVENT_PROCESSING_FAILURE_HANDLING_MODE,
-            URL,
-            LOG_MINING_ARCHIVE_LOG_HOURS,
-            LOG_MINING_BATCH_SIZE_DEFAULT,
-            LOG_MINING_BATCH_SIZE_MIN,
-            LOG_MINING_BATCH_SIZE_MAX,
-            LOG_MINING_SLEEP_TIME_DEFAULT_MS,
-            LOG_MINING_SLEEP_TIME_MIN_MS,
-            LOG_MINING_SLEEP_TIME_MAX_MS,
-            LOG_MINING_SLEEP_TIME_INCREMENT_MS,
-            LOG_MINING_DML_PARSER);
+    public static Field.Set ALL_FIELDS = Field.setOf(CONFIG_DEFINITION.all());
+
+    public static ConfigDef configDef() {
+        return CONFIG_DEFINITION.configDef();
+    }
 
     private final String databaseName;
     private final String pdbName;
@@ -334,7 +335,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
     private final boolean tablenameCaseInsensitive;
     private final OracleVersion oracleVersion;
-    private final Tables.ColumnNameFilter columnFilter;
     private final HistoryRecorder logMiningHistoryRecorder;
     private final Configuration jdbcConfig;
     private final ConnectorAdapter connectorAdapter;
@@ -366,8 +366,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE));
         this.tablenameCaseInsensitive = config.getBoolean(TABLENAME_CASE_INSENSITIVE);
         this.oracleVersion = OracleVersion.parse(config.getString(ORACLE_VERSION));
-        String blacklistedColumns = toUpperCase(config.getString(RelationalDatabaseConnectorConfig.COLUMN_BLACKLIST));
-        this.columnFilter = getColumnNameFilter(blacklistedColumns);
         this.logMiningHistoryRecorder = resolveLogMiningHistoryRecorder(config);
         this.jdbcConfig = config.subset(DATABASE_CONFIG_PREFIX, true);
         this.snapshotEnhancementToken = config.getString(SNAPSHOT_ENHANCEMENT_TOKEN);
@@ -415,35 +413,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         };
     }
 
-    public static ConfigDef configDef() {
-        ConfigDef config = new ConfigDef();
-
-        Field.group(config, "Oracle", HOSTNAME, PORT, RelationalDatabaseConnectorConfig.USER,
-                RelationalDatabaseConnectorConfig.PASSWORD, SERVER_NAME, RelationalDatabaseConnectorConfig.DATABASE_NAME, PDB_NAME,
-                XSTREAM_SERVER_NAME, SNAPSHOT_MODE, CONNECTOR_ADAPTER, LOG_MINING_STRATEGY, URL, TABLENAME_CASE_INSENSITIVE, ORACLE_VERSION);
-        Field.group(config, "History Storage", KafkaDatabaseHistory.BOOTSTRAP_SERVERS,
-                KafkaDatabaseHistory.TOPIC, KafkaDatabaseHistory.RECOVERY_POLL_ATTEMPTS,
-                KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS, HistorizedRelationalDatabaseConnectorConfig.DATABASE_HISTORY);
-        Field.group(config, "Events", RelationalDatabaseConnectorConfig.TABLE_WHITELIST,
-                RelationalDatabaseConnectorConfig.TABLE_INCLUDE_LIST,
-                RelationalDatabaseConnectorConfig.TABLE_BLACKLIST,
-                RelationalDatabaseConnectorConfig.TABLE_EXCLUDE_LIST,
-                RelationalDatabaseConnectorConfig.MSG_KEY_COLUMNS,
-                RelationalDatabaseConnectorConfig.COLUMN_BLACKLIST,
-                RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN,
-                CommonConnectorConfig.PROVIDE_TRANSACTION_METADATA,
-                Heartbeat.HEARTBEAT_INTERVAL, Heartbeat.HEARTBEAT_TOPICS_PREFIX,
-                CommonConnectorConfig.EVENT_PROCESSING_FAILURE_HANDLING_MODE);
-        Field.group(config, "Connector", CommonConnectorConfig.POLL_INTERVAL_MS, CommonConnectorConfig.MAX_BATCH_SIZE,
-                CommonConnectorConfig.MAX_QUEUE_SIZE, CommonConnectorConfig.SNAPSHOT_DELAY_MS, CommonConnectorConfig.SNAPSHOT_FETCH_SIZE,
-                SNAPSHOT_ENHANCEMENT_TOKEN, LOG_MINING_HISTORY_RECORDER_CLASS, LOG_MINING_HISTORY_RETENTION, RAC_SYSTEM, RAC_NODES,
-                LOG_MINING_ARCHIVE_LOG_HOURS, LOG_MINING_BATCH_SIZE_DEFAULT, LOG_MINING_BATCH_SIZE_MIN, LOG_MINING_BATCH_SIZE_MAX,
-                LOG_MINING_SLEEP_TIME_DEFAULT_MS, LOG_MINING_SLEEP_TIME_MIN_MS, LOG_MINING_SLEEP_TIME_MAX_MS, LOG_MINING_SLEEP_TIME_INCREMENT_MS,
-                LOG_MINING_TRANSACTION_RETENTION, LOG_MINING_DML_PARSER);
-
-        return config;
-    }
-
     public String getDatabaseName() {
         return databaseName;
     }
@@ -470,10 +439,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
     public OracleVersion getOracleVersion() {
         return oracleVersion;
-    }
-
-    public Tables.ColumnNameFilter getColumnFilter() {
-        return columnFilter;
     }
 
     @Override
