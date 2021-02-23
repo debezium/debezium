@@ -79,6 +79,7 @@ Eric S. Kreiseir
 Ewen Cheslack-Postava
 Fabian Aussems
 Fabio Cantarini
+Fahim Farook
 Faizan
 Fatih Güçlü Akkaya
 Fándly Gergő 
@@ -97,6 +98,7 @@ Guy Pascarella
 Grzegorz Kołakowski
 Jan Hendrik Dolling
 Hans-Peter Grahsl
+Harvey Yue
 Henryk Konsek
 Hoa Le
 Horia Chiorean
@@ -169,6 +171,7 @@ Matthias Wessendorf
 Max Kaplan
 Martín Pérez
 Melissa Winstanley
+Michael Cizmar
 Michael Wang
 Mickaël Isaert
 Mike Graham
@@ -183,6 +186,7 @@ Nayana Hettiarachchi
 Nick Murray
 Nikhil Benesch
 Nishant Singh
+Nitin Agarwal
 Olavi Mustanoja
 Omar Al-Safi
 Ori Popowski
@@ -237,6 +241,7 @@ Theofanis Despoudis
 Thierry De Leeuw
 Thomas Deblock
 Thomas Prelle
+Thomas Thornton
 Tom Bentley
 Tomaz Lemos Fernandes
 Tony Rizko
@@ -254,6 +259,7 @@ William Pursell
 Willie Cheong
 Wout Scheepers
 Yang Yang
+Yilong Chang
 Yiming Liu
 Yoann Rodière
 志飞 张
