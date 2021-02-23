@@ -110,7 +110,12 @@ endif::product[]
 [[postgresql-security]]
 === Security
 
-See the link:https://www.postgresql.org/docs/current/logical-replication-security.html[Logical Replication Security] guide for details, but in general the {prodname} user needs to have `replication` privileges. It is possible to just provide the user with `superuser` privileges but that allows the user complete control of the PostgreSQL instance. Instead create the {prodname} user with `replication` privileges and add SELECT privileges on the table(s) as well as CREATE privileges on the database.
+To use the {prodname} connector to stream changes from a PostgreSQL database, the connector must operate with specific privileges in the database.
+Although one way to grant the necessary privileges is to provide the user with `superuser` privileges, doing so potentially exposes your PostgreSQL data to unauthorized access.
+Rather than granting excessive privileges to the {prodname} user, it is best to create a dedicated {prodname} replication user to which you grant specific privileges.
+
+For more information about configuring privileges for the {prodname} PostgreSQL user, see xref:postgresql-permissions[Setting up permissions].
+For more information about PostgreSQL logical replication security, see the link:https://www.postgresql.org/docs/current/logical-replication-security.html[PostgreSQL documentation].
 
 // Type: concept
 // ModuleID: how-debezium-postgresql-connectors-perform-database-snapshots
@@ -1750,6 +1755,8 @@ Details are in the following topics:
 
 * xref:configuring-a-replication-slot-for-the-debezium-pgoutput-plug-in[]
 * xref:setting-up-postgresql-permissions-required-by-debezium-connectors[]
+* xref:setting-privileges-to-permit-debezium-user-to-create-postgresql-publications[]
+* xref:configuring-postgresql-to-allow-replication-with-the-connector-host[]
 * xref:configuring-postgresql-to-manage-debezium-wal-disk-space-consumption[]
 
 endif::product[]
@@ -1891,7 +1898,7 @@ All up-to-date differences are tracked in a test suite link:https://github.com/d
 [[postgresql-server-configuration]]
 === Configuring the PostgreSQL server
 
-If you are using one of the supported {link-prefix}:{link-postgresql-connector}#postgresql-output-plugin[logical decoding plug-ins], that is, not `pgoutput`, and it has been installed, configure the PostgreSQL server as follows:
+If you are using a {link-prefix}:{link-postgresql-connector}#postgresql-output-plugin[logical decoding plug-in] other than pgoutput, after installing it, configure the PostgreSQL server as follows:
 
 . To load the plug-in at startup, add the following to the `postgresql.conf` file::
 +
@@ -1931,11 +1938,15 @@ endif::community[]
 
 // Type: procedure
 // ModuleID: setting-up-postgresql-permissions-required-by-debezium-connectors
-// Title: Setting up PostgreSQL permissions required by {prodname} connectors
+// Title: Setting up PostgreSQL permissions for the {prodname} connector
 [[postgresql-permissions]]
 === Setting up permissions
 
-Setting up a PostgreSQL server to run a {prodname} connector requires a database user who can perform replications. Replication can be performed only by a database user who has appropriate permissions and only for a configured number of hosts. Also, you must configure the PostgreSQL server to allow replication to take place between the server machine and the host on which the PostgreSQL connector is running.
+Setting up a PostgreSQL server to run a {prodname} connector requires a database user who can perform replications.
+Replication can be performed only by a database user who has appropriate permissions and only for a configured number of hosts.
+
+Although, by default, superusers have the necessary `REPLICATION` and `LOGIN` roles, as mentioned in xref:postgresql-security[Security], it is best not to provide the {prodname} replication user with elevated privileges.
+Instead, create a {prodname} user that has the the minimum required privileges.
 
 .Prerequisites
 
@@ -1943,19 +1954,89 @@ Setting up a PostgreSQL server to run a {prodname} connector requires a database
 
 .Procedure
 
-. To give replication permissions to a user, define a PostgreSQL role that has _at least_ the `REPLICATION` and `LOGIN` permissions. For example:
+. To provide a user with replication permissions, define a PostgreSQL role that has _at least_ the `REPLICATION` and `LOGIN` permissions, and then grant that role to the user.
+  For example:
 +
-[source,sql]
+[source,sql,subs="+quotes"]
 ----
-CREATE ROLE name REPLICATION LOGIN;
+CREATE ROLE __<name>__ REPLICATION LOGIN;
 ----
-+
-[NOTE]
-====
-By default, superusers have both of the above roles.
-====
 
-. Configure the PostgreSQL server to allow replication to take place between the server machine and the host on which the PostgreSQL connector is running.
+// Type: procedure
+// ModuleID: setting-privileges-to-permit-debezium-user-to-create-postgresql-publications
+// Title: Setting privileges to enable {prodname} to create PostgreSQL publications
+[[postgresql-replication-user-privileges]]
+=== Setting privileges to enable {prodname} to create PostgreSQL publications when you use `pgoutput`
+
+ifdef::community[]
+If you use `pgoutput` as the logical decoding plugin, {prodname} must operate in the database as a user with specific privileges.
+endif::community[]
+
+{prodname} streams change events for PostgreSQL source tables from _publications_ that are created for the tables.
+Publications contain a filtered set of change events that are generated from one or more tables.
+The data in each publication is filtered based on the publication specification.
+The specification can be created by the PostgreSQL database administrator or by the {prodname} connector.
+To permit the {prodname} PostgreSQL connector to create publications and specify the data to replicate to them, the connector must operate with specific privileges in the database.
+
+There are several options for determining how publications are created.
+In general, it is best to manually create publications for the tables that you want to capture, before you set up the connector.
+However, you can configure your environment in a way that permits {prodname} to create publications automatically, and to specify the data that is added to them.
+
+{prodname} uses include list and exclude list properties to specify how data is inserted in the publication.
+For more information about the options for enabling {prodname} to create publications, see {link-prefix}:{link-postgresql-connector}#postgresql-publication-autocreate-mode[`publication.autocreate.mode`].
+
+For {prodname} to create a PostgreSQL publication, it must run as a user that has the following privileges:
+
+* Replication privileges in the database to add the table to a publication.
+* `CREATE` privileges on the database to add publications.
+* `SELECT` privileges on the tables to copy the initial table data. Table owners automatically have `SELECT` permission for the table.
+
+To add tables to a publication, the user be an owner of the table.
+But because the source table already exists, you need a mechanism to share ownership with the original owner.
+To enable shared ownership, you create a PostgreSQL replication group, and then add the existing table owner and the replication user to the group.
+
+.Procedure
+
+. Create a replication group.
++
+[source,sql,subs="+quotes"]
+----
+CREATE ROLE _<replication_group>_;
+----
+. Add the original owner of the table to the group.
++
+[source,sql,subs="+quotes"]
+----
+GRANT REPLICATION_GROUP TO __<original_owner>__;
+----
+. Add the {prodname} replication user to the group.
++
+[source,sql,subs="+quotes"]
+----
+GRANT REPLICATION_GROUP TO __<replication_user>__;
+----
+. Transfer ownership of the table to `<replication_group>`.
++
+[source,sql,subs="+quotes"]
+----
+ALTER TABLE __<table_name>__ OWNER TO REPLICATION_GROUP;
+----
+
+For {prodname} to specify the capture configuration, the value of {link-prefix}:{link-postgresql-connector}#postgresql-publication-autocreate-mode[`publication.autocreate.mode`] must be set to `filtered`.
+
+// Type: procedure
+// ModuleID: configuring-postgresql-to-allow-replication-with-the-connector-host
+[[postgresql-host-replication-permissions]]
+=== Configuring PostgreSQL to allow replication with the {prodname} connector host
+
+To enable {prodname] to replicate PostgreSQL data, you must configure the database to permit replication with the host that runs the PostgreSQL connector.
+To specify the clients that are permitted to replicate with the database, add entries to the PostgreSQL host-based authentication file, `pg_hba.conf`.
+For more information about the `pg_hba.conf` file, see link:https://www.postgresql.org/docs/10/auth-pg-hba-conf.html[the PostgreSQL] documentation.
+
+.Procedure
+
+* Add entries to the `pg_hba.conf` file to specify the {prodname} connector hosts that can replicate with the database host.
+For example,
 +
 .`pg_hba.conf` file example:
 [source]
