@@ -271,7 +271,8 @@ public abstract class CloudEventsMaker {
         public String ceId() {
             return "name:" + recordParser.getMetadata(AbstractSourceInfo.SERVER_NAME_KEY)
                     + ";change_lsn:" + recordParser.getMetadata(RecordParser.SqlserverRecordParser.CHANGE_LSN_KEY)
-                    + ";commit_lsn:" + recordParser.getMetadata(RecordParser.SqlserverRecordParser.COMMIT_LSN_KEY);
+                    + ";commit_lsn:" + recordParser.getMetadata(RecordParser.SqlserverRecordParser.COMMIT_LSN_KEY)
+                    + ";event_serial_no:" + recordParser.getMetadata(RecordParser.SqlserverRecordParser.EVENT_SERIAL_NO_KEY);
         }
     }
 }
