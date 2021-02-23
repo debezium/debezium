@@ -101,7 +101,7 @@ public class LogMinerDmlParserPerf {
     @Warmup(iterations = 10, time = 1, timeUnit = TimeUnit.SECONDS)
     @Measurement(iterations = 3, time = 2, timeUnit = TimeUnit.SECONDS)
     public void testInserts(ParserState state) {
-        state.dmlParser.parse(state.insertDml, null, state.txId);
+        state.dmlParser.parse(state.insertDml, null, null, state.txId);
     }
 
     @Benchmark
@@ -111,7 +111,7 @@ public class LogMinerDmlParserPerf {
     @Warmup(iterations = 10, time = 1, timeUnit = TimeUnit.SECONDS)
     @Measurement(iterations = 3, time = 2, timeUnit = TimeUnit.SECONDS)
     public void testUpdates(ParserState state) {
-        state.dmlParser.parse(state.deleteDml, null, state.txId);
+        state.dmlParser.parse(state.deleteDml, null, null, state.txId);
     }
 
     @Benchmark
@@ -121,6 +121,6 @@ public class LogMinerDmlParserPerf {
     @Warmup(iterations = 10, time = 1, timeUnit = TimeUnit.SECONDS)
     @Measurement(iterations = 3, time = 2, timeUnit = TimeUnit.SECONDS)
     public void testDeletes(ParserState state) {
-        state.dmlParser.parse(state.deleteDml, null, state.txId);
+        state.dmlParser.parse(state.deleteDml, null, null, state.txId);
     }
 }
