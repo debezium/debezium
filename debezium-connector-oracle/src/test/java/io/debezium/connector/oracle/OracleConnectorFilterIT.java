@@ -163,6 +163,134 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
         shouldApplySchemaAndTableExclusionsConfiguration(false);
     }
 
+    @Test
+    @FixFor("DBZ-3167")
+    public void shouldApplyColumnIncludeListConfiguration() throws Exception {
+        TestHelper.dropTable(connection, "table4");
+        try {
+            String ddl = "CREATE TABLE debezium.table4 (" +
+                    "  id NUMERIC(9,0) NOT NULL, " +
+                    "  name VARCHAR2(1000), " +
+                    "  birth_date date, " +
+                    "  PRIMARY KEY (id)" +
+                    ")";
+
+            connection.execute(ddl);
+            connection.execute("GRANT SELECT ON debezium.table4 TO " + TestHelper.getConnectorUserName());
+            connection.execute("ALTER TABLE debezium.table4 ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
+
+            connection.execute("INSERT INTO debezium.table4 VALUES (1, 'Text-1', '01-JAN-1990')");
+            connection.execute("COMMIT");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.TABLE4")
+                    .with(OracleConnectorConfig.COLUMN_INCLUDE_LIST, "DEBEZIUM\\.TABLE4\\.ID,DEBEZIUM\\.TABLE4\\.NAME")
+                    .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            // Fetch the snapshot records
+            SourceRecords records = consumeRecordsByTopic(1);
+
+            List<SourceRecord> testTableRecords = records.recordsForTopic("server1.DEBEZIUM.TABLE4");
+            assertThat(testTableRecords).hasSize(1);
+
+            VerifyRecord.isValidRead(testTableRecords.get(0), "ID", 1);
+            Struct after = (Struct) ((Struct) testTableRecords.get(0).value()).get("after");
+            assertThat(after.get("ID")).isEqualTo(1);
+            assertThat(after.get("NAME")).isEqualTo("Text-1");
+            assertThat(testTableRecords.get(0).valueSchema().field("BIRTH_DATE")).isNull();
+
+            // Start streaming & wait for it
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.execute("INSERT INTO debezium.table4 VALUES (2, 'Text-2', '31-DEC-1990')");
+            connection.execute("COMMIT");
+
+            records = consumeRecordsByTopic(1);
+
+            testTableRecords = records.recordsForTopic("server1.DEBEZIUM.TABLE4");
+            assertThat(testTableRecords).hasSize(1);
+
+            VerifyRecord.isValidInsert(testTableRecords.get(0), "ID", 2);
+            after = (Struct) ((Struct) testTableRecords.get(0).value()).get("after");
+            assertThat(after.get("ID")).isEqualTo(2);
+            assertThat(after.get("NAME")).isEqualTo("Text-2");
+            assertThat(testTableRecords.get(0).valueSchema().field("BIRTH_DATE")).isNull();
+        }
+        finally {
+            TestHelper.dropTable(connection, "table4");
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-3167")
+    public void shouldApplyColumnExcludeListConfiguration() throws Exception {
+        TestHelper.dropTable(connection, "table4");
+        try {
+            String ddl = "CREATE TABLE debezium.table4 (" +
+                    "  id NUMERIC(9,0) NOT NULL, " +
+                    "  name VARCHAR2(1000), " +
+                    "  birth_date date, " +
+                    "  PRIMARY KEY (id)" +
+                    ")";
+
+            connection.execute(ddl);
+            connection.execute("GRANT SELECT ON debezium.table4 TO " + TestHelper.getConnectorUserName());
+            connection.execute("ALTER TABLE debezium.table4 ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
+
+            connection.execute("INSERT INTO debezium.table4 VALUES (1, 'Text-1', '01-JAN-1990')");
+            connection.execute("COMMIT");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.TABLE4")
+                    .with(OracleConnectorConfig.COLUMN_EXCLUDE_LIST, "DEBEZIUM\\.TABLE4\\.BIRTH_DATE")
+                    .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            // Fetch the snapshot records
+            SourceRecords records = consumeRecordsByTopic(1);
+
+            List<SourceRecord> testTableRecords = records.recordsForTopic("server1.DEBEZIUM.TABLE4");
+            assertThat(testTableRecords).hasSize(1);
+
+            VerifyRecord.isValidRead(testTableRecords.get(0), "ID", 1);
+            Struct after = (Struct) ((Struct) testTableRecords.get(0).value()).get("after");
+            assertThat(after.get("ID")).isEqualTo(1);
+            assertThat(after.get("NAME")).isEqualTo("Text-1");
+            assertThat(testTableRecords.get(0).valueSchema().field("BIRTH_DATE")).isNull();
+
+            // Start streaming & wait for it
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.execute("INSERT INTO debezium.table4 VALUES (2, 'Text-2', '31-DEC-1990')");
+            connection.execute("COMMIT");
+
+            records = consumeRecordsByTopic(1);
+
+            testTableRecords = records.recordsForTopic("server1.DEBEZIUM.TABLE4");
+            assertThat(testTableRecords).hasSize(1);
+
+            VerifyRecord.isValidInsert(testTableRecords.get(0), "ID", 2);
+            after = (Struct) ((Struct) testTableRecords.get(0).value()).get("after");
+            assertThat(after.get("ID")).isEqualTo(2);
+            assertThat(after.get("NAME")).isEqualTo("Text-2");
+            assertThat(testTableRecords.get(0).valueSchema().field("BIRTH_DATE")).isNull();
+        }
+        finally {
+            TestHelper.dropTable(connection, "table4");
+        }
+    }
+
     private void shouldApplyTableInclusionConfiguration(boolean useLegacyOption) throws Exception {
         Field option = OracleConnectorConfig.TABLE_INCLUDE_LIST;
         if (useLegacyOption) {
