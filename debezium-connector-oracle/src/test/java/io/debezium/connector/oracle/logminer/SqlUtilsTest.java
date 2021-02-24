@@ -35,7 +35,7 @@ public class SqlUtilsTest {
 
     private static final String LOG_MINER_CONTENT_QUERY_TEMPLATE = "SELECT SCN, SQL_REDO, OPERATION_CODE, TIMESTAMP, " +
             "XID, CSF, TABLE_NAME, SEG_OWNER, OPERATION, USERNAME " +
-            "FROM V$LOGMNR_CONTENTS WHERE OPERATION_CODE IN (1,2,3,5) AND SCN >= ? AND SCN < ? " +
+            "FROM V$LOGMNR_CONTENTS WHERE OPERATION_CODE IN (1,2,3,5) AND SCN > ? AND SCN < ? " +
             "AND TABLE_NAME != '" + SqlUtils.LOGMNR_FLUSH_TABLE + "' " +
             "${systemTablePredicate}" +
             "${schemaPredicate}" +

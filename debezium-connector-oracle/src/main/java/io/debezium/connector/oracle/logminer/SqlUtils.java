@@ -224,7 +224,7 @@ public class SqlUtils {
         query.append("SELECT SCN, SQL_REDO, OPERATION_CODE, TIMESTAMP, XID, CSF, TABLE_NAME, SEG_OWNER, OPERATION, USERNAME ");
         query.append("FROM ").append(LOGMNR_CONTENTS_VIEW).append(" ");
         query.append("WHERE OPERATION_CODE IN (1,2,3,5) ");
-        query.append("AND SCN >= ? ");
+        query.append("AND SCN > ? ");
         query.append("AND SCN < ? ");
         query.append("AND TABLE_NAME != '").append(LOGMNR_FLUSH_TABLE).append("' ");
 

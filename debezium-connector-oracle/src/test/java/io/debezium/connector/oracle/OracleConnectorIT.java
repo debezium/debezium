@@ -1433,6 +1433,59 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         }
     }
 
+    @Test
+    @FixFor("DBZ-2875")
+    public void shouldResumeStreamingAtCorrectScnOffset() throws Exception {
+        TestHelper.dropTable(connection, "offset_test");
+        try {
+            Testing.Debug.enable();
+
+            connection.execute("CREATE TABLE offset_test (id numeric(9,0) primary key, name varchar2(50))");
+            connection.execute("GRANT SELECT ON debezium.offset_test TO " + TestHelper.getConnectorUserName());
+            connection.execute("ALTER TABLE debezium.offset_test ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
+
+            final Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.OFFSET_TEST")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertNoRecordsToConsume();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.execute("INSERT INTO debezium.offset_test (id, name) values (1, 'Bob')");
+
+            SourceRecords records1 = consumeRecordsByTopic(1);
+            assertThat(records1.recordsForTopic("server1.DEBEZIUM.OFFSET_TEST")).hasSize(1);
+
+            Struct after = (Struct) ((Struct) records1.allRecordsInOrder().get(0).value()).get("after");
+            Testing.print(after);
+            assertThat(after.get("ID")).isEqualTo(1);
+            assertThat(after.get("NAME")).isEqualTo("Bob");
+
+            stopConnector();
+
+            start(OracleConnector.class, config);
+            assertNoRecordsToConsume();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.execute("INSERT INTO debezium.offset_test (id, name) values (2, 'Bill')");
+
+            SourceRecords records2 = consumeRecordsByTopic(1);
+            assertThat(records2.recordsForTopic("server1.DEBEZIUM.OFFSET_TEST")).hasSize(1);
+
+            after = (Struct) ((Struct) records2.allRecordsInOrder().get(0).value()).get("after");
+            Testing.print(after);
+            assertThat(after.get("ID")).isEqualTo(2);
+            assertThat(after.get("NAME")).isEqualTo("Bill");
+        }
+        finally {
+            TestHelper.dropTable(connection, "offset_test");
+        }
+    }
+
     private String generateAlphaNumericStringColumn(int size) {
         final String alphaNumericString = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz";
         final StringBuilder sb = new StringBuilder(size);
