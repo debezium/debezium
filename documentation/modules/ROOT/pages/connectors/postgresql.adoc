@@ -2634,7 +2634,7 @@ If `table_a` has a an `id` column, and `regex_1` is `^i` (matches any column tha
  +
 `hex` represents binary data as hex-encoded (base16) strings.
 
-|[[postgresql-property-truncat-handling-mode]]<<postgresql-property-truncate-handling-mode, `+truncate.handling.mode+`>>
+|[[postgresql-property-truncate-handling-mode]]<<postgresql-property-truncate-handling-mode, `+truncate.handling.mode+`>>
 |bytes
 |Specifies how whether `TRUNCATE` events should be propagated or not (only available when using the `pgoutput` plug-in with Postgres 11 or later): +
  +
