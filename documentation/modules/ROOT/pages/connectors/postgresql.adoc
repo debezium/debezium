@@ -1942,8 +1942,8 @@ endif::community[]
 [[postgresql-permissions]]
 === Setting up permissions
 
-Setting up a PostgreSQL server to run a {prodname} connector requires a database user who can perform replications.
-Replication can be performed only by a database user who has appropriate permissions and only for a configured number of hosts.
+Setting up a PostgreSQL server to run a {prodname} connector requires a database user that can perform replications.
+Replication can be performed only by a database user that has appropriate permissions and only for a configured number of hosts.
 
 Although, by default, superusers have the necessary `REPLICATION` and `LOGIN` roles, as mentioned in xref:postgresql-security[Security], it is best not to provide the {prodname} replication user with elevated privileges.
 Instead, create a {prodname} user that has the the minimum required privileges.
@@ -2618,7 +2618,7 @@ If `table_a` has a an `id` column, and `regex_1` is `^i` (matches any column tha
 |_all_tables_
 |Applies only when streaming changes by using link:https://www.postgresql.org/docs/current/sql-createpublication.html[the `pgoutput` plug-in]. The setting determines how creation of a link:https://www.postgresql.org/docs/current/logical-replication-publication.html[publication] should work. Possible settings are: +
  +
-`all_tables` - If a publication exists, the connector uses it. If a publication does not exist, the connector creates a publication for all tables in the database for which the connector is capturing changes. This requires that the database user who has permission to perform replications also has permission to create a publication. This is granted with `CREATE PUBLICATION <publication_name> FOR ALL TABLES;`. +
+`all_tables` - If a publication exists, the connector uses it. If a publication does not exist, the connector creates a publication for all tables in the database for which the connector is capturing changes. This requires that the database user that has permission to perform replications also has permission to create a publication. This is granted with `CREATE PUBLICATION <publication_name> FOR ALL TABLES;`. +
  +
 `disabled` - The connector does not attempt to create a publication. A database administrator or the user configured to perform replications must have created the publication before running the connector. If the connector cannot find the publication, the connector throws an exception and stops. +
  +
