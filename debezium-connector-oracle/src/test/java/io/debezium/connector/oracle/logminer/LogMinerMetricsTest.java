@@ -119,7 +119,6 @@ public class LogMinerMetricsTest {
         assertThat(metrics.toString().contains("logMinerQueryCount"));
 
         assertThat(metrics.getRecordMiningHistory()).isFalse();
-        metrics.setRecordMiningHistory(true);
         assertThat(metrics.getRecordMiningHistory()).isTrue();
 
         metrics.incrementNetworkConnectionProblemsCounter();
