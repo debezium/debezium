@@ -922,7 +922,7 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
             RelationalDatabaseConnectorConfig.MASK_COLUMN_WITH_HASH,
             RelationalDatabaseConnectorConfig.MASK_COLUMN,
             RelationalDatabaseConnectorConfig.TRUNCATE_COLUMN,
-            SNAPSHOT_MODE, SNAPSHOT_NEW_TABLES, SNAPSHOT_LOCKING_MODE, SNAPSHOT_EVENTS_AS_INSERTS,
+            SNAPSHOT_MODE, SNAPSHOT_NEW_TABLES, SNAPSHOT_LOCKING_MODE,
             RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE,
             GTID_SOURCE_INCLUDES, GTID_SOURCE_EXCLUDES,
             GTID_SOURCE_FILTER_DML_EVENTS,
@@ -1016,7 +1016,7 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
                 CommonConnectorConfig.TOMBSTONES_ON_DELETE, CommonConnectorConfig.SOURCE_STRUCT_MAKER_VERSION);
         Field.group(config, "Connector", CONNECTION_TIMEOUT_MS, KEEP_ALIVE, KEEP_ALIVE_INTERVAL_MS, CommonConnectorConfig.MAX_QUEUE_SIZE,
                 CommonConnectorConfig.MAX_BATCH_SIZE, CommonConnectorConfig.POLL_INTERVAL_MS,
-                SNAPSHOT_MODE, SNAPSHOT_LOCKING_MODE, SNAPSHOT_NEW_TABLES, SNAPSHOT_EVENTS_AS_INSERTS, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE,
+                SNAPSHOT_MODE, SNAPSHOT_LOCKING_MODE, SNAPSHOT_NEW_TABLES, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE,
                 BIGINT_UNSIGNED_HANDLING_MODE, SNAPSHOT_DELAY_MS, SNAPSHOT_FETCH_SIZE, ENABLE_TIME_ADJUSTER, BINARY_HANDLING_MODE);
         return config;
     }
