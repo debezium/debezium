@@ -36,7 +36,6 @@ import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
 import io.debezium.relational.Tables.ColumnNameFilter;
 import io.debezium.relational.Tables.TableFilter;
-import io.debezium.util.Strings;
 
 import oracle.jdbc.OracleTypes;
 
@@ -177,44 +176,32 @@ public class OracleConnection extends JdbcConnection {
                 .collect(Collectors.toSet());
     }
 
-    protected Set<TableId> getAllTableIds(String catalogName, String schemaNamePattern, boolean isView) throws SQLException {
-        String query;
-        boolean filterBySchema = !Strings.isNullOrEmpty(schemaNamePattern);
-
-        if (!isView) {
-            query = "select table_name, owner from all_tables where table_name NOT LIKE 'MDRT_%' AND table_name not LIKE 'MDXT_%' ";
-
-            if (filterBySchema) {
-                query += " and owner like ?";
-            }
-        }
-        else {
-            query = "select view_name, owner from all_views";
-
-            if (filterBySchema) {
-                query += " where owner like ?";
-            }
-        }
+    /**
+     * Retrieves all {@code TableId} in a given database catalog, filtering certain ids that
+     * should be omitted from the returned set such as special spatial tables and index-organized
+     * tables.
+     *
+     * @param catalogName the catalog/database name
+     * @return set of all table ids for existing table objects
+     * @throws SQLException if a database exception occurred
+     */
+    protected Set<TableId> getAllTableIds(String catalogName) throws SQLException {
+        final String query = "select owner, table_name from all_tables " +
+        // filter special spatial tables
+                "where table_name NOT LIKE 'MDRT_%' " +
+                "and table_name NOT LIKE 'MDRS_%' " +
+                "and table_name NOT LIKE 'MDXT_%' " +
+                // filter index-organized-tables
+                "and (table_name NOT LIKE 'SYS_IOT_OVER_%' and IOT_NAME IS NULL) ";
 
         Set<TableId> tableIds = new HashSet<>();
-
-        try (PreparedStatement statement = connection().prepareStatement(query)) {
-            if (filterBySchema) {
-                statement.setString(1, '%' + schemaNamePattern.toUpperCase() + '%');
+        query(query, (rs) -> {
+            while (rs.next()) {
+                tableIds.add(new TableId(catalogName, rs.getString(1), rs.getString(2)));
             }
-
-            try (ResultSet result = statement.executeQuery()) {
-                while (result.next()) {
-                    String tableName = result.getString(1);
-                    final String schemaName = result.getString(2);
-                    TableId tableId = new TableId(catalogName, schemaName, tableName);
-                    tableIds.add(tableId);
-                }
-            }
-        }
-        finally {
             LOGGER.trace("TableIds are: {}", tableIds);
-        }
+        });
+
         return tableIds;
     }
 

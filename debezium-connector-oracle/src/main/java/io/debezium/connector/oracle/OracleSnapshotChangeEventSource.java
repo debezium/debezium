@@ -79,7 +79,7 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
 
     @Override
     protected Set<TableId> getAllTableIds(RelationalSnapshotContext ctx) throws Exception {
-        return jdbcConnection.getAllTableIds(ctx.catalogName, null, false);
+        return jdbcConnection.getAllTableIds(ctx.catalogName);
         // this very slow approach(commented out), it took 30 minutes on an instance with 600 tables
         // return jdbcConnection.readTableNames(ctx.catalogName, null, null, new String[] {"TABLE"} );
     }

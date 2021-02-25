@@ -251,6 +251,34 @@ public class TestHelper {
         }
     }
 
+    /**
+     * Enables a given table to be streamed by Oracle.
+     *
+     * @param connection the oracle connection
+     * @param table the table name in {@code schema.table} format.
+     * @throws SQLException if an exception occurred
+     */
+    public static void streamTable(OracleConnection connection, String table) throws SQLException {
+        connection.execute(String.format("GRANT SELECT ON %s TO %s", table, getConnectorUserName()));
+        connection.execute(String.format("ALTER TABLE %s ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS", table));
+    }
+
+    /**
+     * Clear the recycle bin, removing all objects from the bin and release all space associated
+     * with objects in the recycle bin.  This also clears any system-generated objects that are
+     * associated with a table that may have been recently dropped, such as index-organized tables.
+     *
+     * @param connection the oracle connection
+     */
+    public static void purgeRecycleBin(OracleConnection connection) {
+        try {
+            connection.execute("PURGE RECYCLEBIN");
+        }
+        catch (SQLException e) {
+            throw new RuntimeException("Failed to clear user recyclebin", e);
+        }
+    }
+
     public static int defaultMessageConsumerPollTimeout() {
         return 120;
     }

@@ -8,6 +8,7 @@ package io.debezium.connector.oracle;
 import static io.debezium.connector.oracle.util.TestHelper.TYPE_LENGTH_PARAMETER_KEY;
 import static io.debezium.connector.oracle.util.TestHelper.TYPE_NAME_PARAMETER_KEY;
 import static io.debezium.connector.oracle.util.TestHelper.TYPE_SCALE_PARAMETER_KEY;
+import static io.debezium.connector.oracle.util.TestHelper.defaultConfig;
 import static io.debezium.data.Envelope.FieldName.AFTER;
 import static junit.framework.TestCase.assertEquals;
 import static org.fest.assertions.Assertions.assertThat;
@@ -42,6 +43,7 @@ import io.debezium.connector.oracle.junit.SkipTestDependingOnDatabaseOptionRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIs;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.util.TestHelper;
+import io.debezium.data.Envelope.FieldName;
 import io.debezium.data.SchemaAndValueField;
 import io.debezium.data.VariableScaleDecimal;
 import io.debezium.data.VerifyRecord;
@@ -1483,6 +1485,64 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         }
         finally {
             TestHelper.dropTable(connection, "offset_test");
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-3036")
+    public void shouldHandleParentChildIndexOrganizedTables() throws Exception {
+        TestHelper.dropTable(connection, "test_iot");
+        try {
+            String ddl = "CREATE TABLE test_iot (" +
+                    "id numeric(9,0), " +
+                    "description varchar2(50) not null, " +
+                    "primary key(id)) " +
+                    "ORGANIZATION INDEX " +
+                    "INCLUDING description " +
+                    "OVERFLOW";
+            connection.execute(ddl);
+            TestHelper.streamTable(connection, "debezium.test_iot");
+
+            // Insert data for snapshot
+            connection.executeWithoutCommitting("INSERT INTO debezium.test_iot VALUES ('1', 'Hello World')");
+            connection.execute("COMMIT");
+
+            Configuration config = defaultConfig()
+                    .with(OracleConnectorConfig.SCHEMA_INCLUDE_LIST, "DEBEZIUM")
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "(.)*IOT(.)*")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertNoRecordsToConsume();
+
+            waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            SourceRecords records = consumeRecordsByTopic(1);
+            assertThat(records.recordsForTopic("server1.DEBEZIUM.TEST_IOT")).hasSize(1);
+
+            SourceRecord record = records.recordsForTopic("server1.DEBEZIUM.TEST_IOT").get(0);
+            Struct after = (Struct) ((Struct) record.value()).get(FieldName.AFTER);
+            VerifyRecord.isValidRead(record, "ID", 1);
+            assertThat(after.get("DESCRIPTION")).isEqualTo("Hello World");
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            // Insert data for streaming
+            connection.executeWithoutCommitting("INSERT INTO debezium.test_iot VALUES ('2', 'Goodbye')");
+            connection.execute("COMMIT");
+
+            records = consumeRecordsByTopic(1);
+            assertThat(records.recordsForTopic("server1.DEBEZIUM.TEST_IOT")).hasSize(1);
+
+            record = records.recordsForTopic("server1.DEBEZIUM.TEST_IOT").get(0);
+            after = (Struct) ((Struct) record.value()).get(FieldName.AFTER);
+            VerifyRecord.isValidInsert(record, "ID", 2);
+            assertThat(after.get("DESCRIPTION")).isEqualTo("Goodbye");
+        }
+        finally {
+            TestHelper.dropTable(connection, "test_iot");
+            // This makes sure all index-organized tables are cleared after dropping parent table
+            TestHelper.purgeRecycleBin(connection);
         }
     }
 
