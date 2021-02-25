@@ -21,10 +21,10 @@ import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OracleOffsetContext;
 import io.debezium.connector.oracle.OracleValueConverters;
 import io.debezium.connector.oracle.logminer.parser.DmlParser;
+import io.debezium.connector.oracle.logminer.parser.DmlParserException;
 import io.debezium.connector.oracle.logminer.parser.LogMinerDmlParser;
 import io.debezium.connector.oracle.logminer.parser.SimpleDmlParser;
 import io.debezium.connector.oracle.logminer.valueholder.LogMinerDmlEntry;
-import io.debezium.data.Envelope;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.ChangeEventSource.ChangeEventSourceContext;
 import io.debezium.relational.Table;
@@ -178,6 +178,11 @@ class LogMinerQueryResultProcessor {
                 final TableId tableId = RowMapper.getTableId(connectorConfig.getCatalogName(), resultSet);
 
                 LOGGER.trace("DML,  {}, sql {}", logMessage, redoSql);
+                if (redoSql == null) {
+                    LOGGER.trace("Redo SQL was empty, DML operation skipped.");
+                    continue;
+                }
+
                 dmlCounter++;
                 switch (operationCode) {
                     case RowMapper.INSERT:
@@ -191,24 +196,7 @@ class LogMinerQueryResultProcessor {
                         break;
                 }
 
-                Instant parseStart = Instant.now();
-                LogMinerDmlEntry dmlEntry = dmlParser.parse(redoSql, schema.getTables(), tableId, txId);
-                metrics.addCurrentParseTime(Duration.between(parseStart, Instant.now()));
-
-                if (dmlEntry == null || redoSql == null) {
-                    LOGGER.trace("Following statement was not parsed: {}, details: {}", redoSql, logMessage);
-                    continue;
-                }
-
-                // this will happen for instance on a excluded column change, we will omit this update
-                if (dmlEntry.getCommandType().equals(Envelope.Operation.UPDATE)
-                        && dmlEntry.getOldValues().size() == dmlEntry.getNewValues().size()
-                        && dmlEntry.getNewValues().containsAll(dmlEntry.getOldValues())) {
-                    LOGGER.trace("Following DML was skipped, " +
-                            "most likely because of ignored excluded column change: {}, details: {}", redoSql, logMessage);
-                    continue;
-                }
-
+                final LogMinerDmlEntry dmlEntry = parse(redoSql, schema, tableId, txId);
                 dmlEntry.setObjectOwner(segOwner);
                 dmlEntry.setSourceTime(changeTime);
                 dmlEntry.setTransactionId(txId);
@@ -286,5 +274,24 @@ class LogMinerQueryResultProcessor {
                 stuckScnCounter = 0;
             }
         }
+    }
+
+    private LogMinerDmlEntry parse(String redoSql, OracleDatabaseSchema schema, TableId tableId, String txId) {
+        LogMinerDmlEntry dmlEntry;
+        try {
+            Instant parseStart = Instant.now();
+            dmlEntry = dmlParser.parse(redoSql, schema.getTables(), tableId, txId);
+            metrics.addCurrentParseTime(Duration.between(parseStart, Instant.now()));
+        }
+        catch (DmlParserException e) {
+            StringBuilder message = new StringBuilder();
+            message.append("DML statement couldn't be parsed.");
+            message.append(" Please open a Jira issue with the statement '").append(redoSql).append("'.");
+            if (LogMiningDmlParser.FAST.equals(connectorConfig.getLogMiningDmlParser())) {
+                message.append(" You can set internal.log.mining.dml.parser='legacy' as a workaround until the parse error is fixed.");
+            }
+            throw new DmlParserException(message.toString(), e);
+        }
+        return dmlEntry;
     }
 }

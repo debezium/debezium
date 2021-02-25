@@ -59,6 +59,7 @@ public class LogMinerDmlParser implements DmlParser {
     private static final String SET = " set ";
     private static final String WHERE = " where ";
     private static final String VALUES = " values ";
+    private static final String IS_NULL = "IS NULL";
     // Use by Oracle for specific data types that cannot be represented in SQL
     private static final String UNSUPPORTED = "Unsupported";
     private static final String UNSUPPORTED_TYPE = "Unsupported Type";
@@ -476,6 +477,14 @@ public class LogMinerDmlParser implements DmlParser {
                 // Oracle SQL generated is always ' = ', skipping following space
                 index += 1;
                 start = index + 1;
+            }
+            else if (c == 'I' && !inColumnName && !inColumnValue) {
+                if (sql.substring(index).startsWith(IS_NULL)) {
+                    columnValues.add(null);
+                    index += 6;
+                    start = index;
+                    continue;
+                }
             }
             else if (c == '\'' && inColumnValue && nested == 0) {
                 // Where clause single-quoted column value
