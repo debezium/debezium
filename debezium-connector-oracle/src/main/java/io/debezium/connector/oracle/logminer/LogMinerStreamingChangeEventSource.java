@@ -60,7 +60,7 @@ import io.debezium.util.Stopwatch;
  * A {@link StreamingChangeEventSource} based on Oracle's LogMiner utility.
  * The event handler loop is executed in a separate executor.
  */
-public class LogMinerStreamingChangeEventSource implements StreamingChangeEventSource {
+public class LogMinerStreamingChangeEventSource implements StreamingChangeEventSource<OracleOffsetContext> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(LogMinerStreamingChangeEventSource.class);
 
@@ -68,7 +68,6 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
     private final EventDispatcher<TableId> dispatcher;
     private final Clock clock;
     private final OracleDatabaseSchema schema;
-    private final OracleOffsetContext offsetContext;
     private final boolean isRac;
     private final Set<String> racHosts = new HashSet<>();
     private final JdbcConfiguration jdbcConfiguration;
@@ -83,7 +82,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
     private Scn endScn;
     private List<BigInteger> currentRedoLogSequences;
 
-    public LogMinerStreamingChangeEventSource(OracleConnectorConfig connectorConfig, OracleOffsetContext offsetContext,
+    public LogMinerStreamingChangeEventSource(OracleConnectorConfig connectorConfig,
                                               OracleConnection jdbcConnection, EventDispatcher<TableId> dispatcher,
                                               ErrorHandler errorHandler, Clock clock, OracleDatabaseSchema schema,
                                               Configuration jdbcConfig, OracleStreamingChangeEventSourceMetrics streamingMetrics) {
@@ -91,7 +90,6 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
         this.dispatcher = dispatcher;
         this.clock = clock;
         this.schema = schema;
-        this.offsetContext = offsetContext;
         this.connectorConfig = connectorConfig;
         this.strategy = connectorConfig.getLogMiningStrategy();
         this.isContinuousMining = connectorConfig.isContinuousMining();
@@ -113,7 +111,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
      *         change event source context
      */
     @Override
-    public void execute(ChangeEventSourceContext context) {
+    public void execute(ChangeEventSourceContext context, OracleOffsetContext offsetContext) {
         try (TransactionalBuffer transactionalBuffer = new TransactionalBuffer(schema, clock, errorHandler, streamingMetrics)) {
             try {
                 startScn = offsetContext.getScn();
@@ -163,7 +161,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
 
                                 initializeRedoLogsForMining(jdbcConnection, true, archiveLogRetention, startScn);
 
-                                abandonOldTransactionsIfExist(jdbcConnection, transactionalBuffer);
+                                abandonOldTransactionsIfExist(jdbcConnection, offsetContext, transactionalBuffer);
 
                                 // This needs to be re-calculated because building the data dictionary will force the
                                 // current redo log sequence to be advanced due to a complete log switch of all logs.
@@ -210,7 +208,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
         }
     }
 
-    private void abandonOldTransactionsIfExist(OracleConnection connection, TransactionalBuffer transactionalBuffer) {
+    private void abandonOldTransactionsIfExist(OracleConnection connection, OracleOffsetContext offsetContext, TransactionalBuffer transactionalBuffer) {
         Duration transactionRetention = connectorConfig.getLogMiningTransactionRetention();
         if (!Duration.ZERO.equals(transactionRetention)) {
             final Scn offsetScn = offsetContext.getScn();
