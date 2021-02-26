@@ -181,7 +181,7 @@ public class MySqlOffsetContext implements OffsetContext {
         return offset;
     }
 
-    public static class Loader implements OffsetContext.Loader {
+    public static class Loader implements OffsetContext.Loader<MySqlOffsetContext> {
 
         private final MySqlConnectorConfig connectorConfig;
 
@@ -195,7 +195,7 @@ public class MySqlOffsetContext implements OffsetContext {
         }
 
         @Override
-        public OffsetContext load(Map<String, ?> offset) {
+        public MySqlOffsetContext load(Map<String, ?> offset) {
             boolean snapshot = Boolean.TRUE.equals(offset.get(SourceInfo.SNAPSHOT_KEY)) || "true".equals(offset.get(SourceInfo.SNAPSHOT_KEY));
             boolean snapshotCompleted = Boolean.TRUE.equals(offset.get(SNAPSHOT_COMPLETED_KEY)) || "true".equals(offset.get(SNAPSHOT_COMPLETED_KEY));
 
