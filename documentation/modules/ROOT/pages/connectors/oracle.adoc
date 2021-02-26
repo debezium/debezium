@@ -27,287 +27,19 @@ It is supported though to capture tables newly added while the connector is runn
 In order to use the XStream API, you need to have a license for the GoldenGate product
 (though it is not required that GoldenGate itself is installed).
 
-[[setting-up-oracle]]
-== Setting up Oracle
-
-The following steps need to be performed in order to prepare the database so the {prodname} connector can be used.
-This assumes the multi-tenancy configuration (with a container database and at least one pluggable database);
-if you're not using this model, adjust the steps accordingly.
-
-You can find a template for setting up Oracle in a virtual machine (via Vagrant) in the https://github.com/debezium/oracle-vagrant-box/[oracle-vagrant-box/] repository.
-
-=== Preparing the Database
-
-==== XStream
-
-Enable GoldenGate replication and archive log mode:
-
-[source,indent=0]
-----
-ORACLE_SID=ORCLCDB dbz_oracle sqlplus /nolog
-
-CONNECT sys/top_secret AS SYSDBA
-alter system set db_recovery_file_dest_size = 5G;
-alter system set db_recovery_file_dest = '/opt/oracle/oradata/recovery_area' scope=spfile;
-alter system set enable_goldengate_replication=true;
-shutdown immediate
-startup mount
-alter database archivelog;
-alter database open;
--- Should show "Database log mode: Archive Mode"
-archive log list
-
-exit;
-----
-
-Furthermore, in order to capture the _before_ state of changed rows, supplemental logging must be enabled for the captured tables or the database in general.
-E.g. like so for a specific table:
-
-[source,indent=0]
-----
-ALTER TABLE inventory.customers ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS;
-----
-
-==== LogMiner
-
-[NOTE]
-====
-The LogMiner implementation requires the database to be configured with a minimum number of redo log groups and files per group.
-It's recommended to have a minimum of `5` redo log groups each with `2` redo files per group.
-Please refer to the Oracle documentation on how to manipulate redo log groups and files for your database version.
-====
-
-Enable archive log mode:
-
-[source,indent=0]
-----
-ORACLE_SID=ORACLCDB dbz_oracle sqlplus /nolog
-
-CONNECT sys/top_secret AS SYSDBA
-alter system set db_recovery_file_dest_size = 10G;
-alter system set db_recovery_file_dest = '/opt/oracle/oradta/recovery_area' scope=spfile;
-shutdown immediate
-startup mount
-alter database archivelog;
-alter database open;
--- Should now "Database log mode: Archive Mode"
-archive log list
-
-exit;
-----
-
-Furthermore, in order to capture the _before_ state of changed rows, supplemental logging must be enabled for the captured tables or the database in general.
-E.g. like so for a specific table:
-
-[source,indent=0]
-----
-ALTER TABLE inventory.customers ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS;
-----
-
-=== Creating Users for the connector
-
-==== XStream
-
-Create an XStream admin user in the container database (used per Oracle's recommendation for administering XStream):
-
-[source,indent=0]
-----
-sqlplus sys/top_secret@//localhost:1521/ORCLCDB as sysdba
-CREATE TABLESPACE xstream_adm_tbs DATAFILE '/opt/oracle/oradata/ORCLCDB/xstream_adm_tbs.dbf'
-  SIZE 25M REUSE AUTOEXTEND ON MAXSIZE UNLIMITED;
-exit;
-----
-
-[source,indent=0]
-----
-sqlplus sys/top_secret@//localhost:1521/ORCLPDB1 as sysdba
-CREATE TABLESPACE xstream_adm_tbs DATAFILE '/opt/oracle/oradata/ORCLCDB/ORCLPDB1/xstream_adm_tbs.dbf'
-  SIZE 25M REUSE AUTOEXTEND ON MAXSIZE UNLIMITED;
-exit;
-----
-
-[source,indent=0]
-----
-sqlplus sys/top_secret@//localhost:1521/ORCLCDB as sysdba
-
-CREATE USER c##xstrmadmin IDENTIFIED BY xsa
-  DEFAULT TABLESPACE xstream_adm_tbs
-  QUOTA UNLIMITED ON xstream_adm_tbs
-  CONTAINER=ALL;
-
-GRANT CREATE SESSION, SET CONTAINER TO c##xstrmadmin CONTAINER=ALL;
-
-BEGIN
-   DBMS_XSTREAM_AUTH.GRANT_ADMIN_PRIVILEGE(
-      grantee                 => 'c##xstrmadmin',
-      privilege_type          => 'CAPTURE',
-      grant_select_privileges => TRUE,
-      container               => 'ALL'
-   );
-END;
-/
-
-exit;
-----
-
-Create XStream user (used by the {prodname} connector to connect to the XStream outbound server):
-
-[source,indent=0]
-----
-sqlplus sys/top_secret@//localhost:1521/ORCLCDB as sysdba
-CREATE TABLESPACE xstream_tbs DATAFILE '/opt/oracle/oradata/ORCLCDB/xstream_tbs.dbf'
-  SIZE 25M REUSE AUTOEXTEND ON MAXSIZE UNLIMITED;
-exit;
-----
-
-[source,indent=0]
-----
-sqlplus sys/top_secret@//localhost:1521/ORCLPDB1 as sysdba
-CREATE TABLESPACE xstream_tbs DATAFILE '/opt/oracle/oradata/ORCLCDB/ORCLPDB1/xstream_tbs.dbf'
-  SIZE 25M REUSE AUTOEXTEND ON MAXSIZE UNLIMITED;
-exit;
-----
-
-[source,indent=0]
-----
-sqlplus sys/top_secret@//localhost:1521/ORCLCDB as sysdba
-
-CREATE USER c##xstrm IDENTIFIED BY xs
-  DEFAULT TABLESPACE xstream_tbs
-  QUOTA UNLIMITED ON xstream_tbs
-  CONTAINER=ALL;
-
-GRANT CREATE SESSION TO c##xstrm CONTAINER=ALL;
-GRANT SET CONTAINER TO c##xstrm CONTAINER=ALL;
-GRANT SELECT ON V_$DATABASE to c##xstrm CONTAINER=ALL;
-GRANT FLASHBACK ANY TABLE TO c##xstrm CONTAINER=ALL;
-GRANT SELECT_CATALOG_ROLE TO c##xstrm CONTAINER=ALL;
-
-exit;
-----
-
-==== LogMiner
-
-Create LogMiner user (used by the {prodname} connector to connect to Oracle):
-
-[source,indent=0]
-----
-sqlplus sys/top_secret@//localhost:1521/ORCLCDB as sysdba
-CREATE TABLESPACE logminer_tbs DATAFILE '/opt/oracle/oradata/ORCLCDB/logminer_tbs.dbf'
-  SIZE 25M REUSE AUTOEXTEND ON MAXSIZE UNLIMITED;
-exit;
-----
-
-[source,indent=0]
-----
-sqlplus sys/top_secret@//localhost:1521/ORCLPDB1 as sysdba
-CREATE TABLESPACE logminer_tbs DATAFILE '/opt/oracle/oradata/ORCLCDB/ORCLPDB1/logminer_tbs.dbf'
-  SIZE 25M REUSE AUTOEXTEND ON MAXSIZE UNLIMITED;
-exit;
-----
-
-[source,indent=0]
-----
-sqlplus sys/top_secret@//localhost:1521/ORCLCDB as sysdba
-
-CREATE USER c##logminer IDENTIFIED BY lm
-  DEFAULT TABLESPACE logminer_tbs
-  QUOTA UNLIMITED ON logminer_tbs
-  CONTAINER=ALL;
-
-GRANT CREATE SESSION TO c##logminer CONTAINER=ALL;
-GRANT SET CONTAINER TO c##logminer CONTAINER=ALL;
-GRANT SELECT ON V_$DATABASE to c##logminer CONTAINER=ALL;
-GRANT FLASHBACK ANY TABLE TO c##logminer CONTAINER=ALL;
-GRANT LOCK ANY TABLE TO c##logminer CONTAINER=ALL;
-GRANT CREATE TABLE TO c##logminer CONTAINER=ALL;
-GRANT CREATE SEQUENCE TO c##logminer CONTAINER=ALL;
-GRANT SELECT ON V_$LOG TO c##logminer CONTAINER=ALL;
-
-GRANT LOGMINING TO c##logminer CONTAINER=ALL;
-GRANT EXECUTE ON DBMS_LOGMNR TO c##logminer CONTAINER=ALL;
-GRANT EXECUTE ON DBMS_LOGMNR_D TO c##logminer CONTAINER=ALL;
-GRANT SELECT ON V$LOGMNR_LOGS TO c##logminer CONTAINER=ALL;
-GRANT SELECT ON V$LOGMNR_CONTENTS TO c##logminer CONTAINER=ALL;
-GRANT SELECT ON V$LOGFILE TO c##logminer CONTAINER=ALL;
-GRANT SELECT ON V$ARCHIVED_LOG TO c##logminer CONTAINER=ALL;
-GRANT SELECT ON V$ARCHIVE_DEST_STATUS TO c##logminer CONTAINER=ALL;
-
-exit;
-----
-
-=== Create an XStream Outbound Server
-
-[NOTE]
-====
-If you're using the LogMiner implementation, this step is not necessary.
-====
-
-Create an https://docs.oracle.com/cd/E11882_01/server.112/e16545/xstrm_cncpt.htm#XSTRM1088[XStream Outbound server]
-(given the right privileges, this may be done automatically by the connector going forward, see {jira-url}/browse/DBZ-721[DBZ-721]):
-
-[source,indent=0]
-----
-sqlplus c##xstrmadmin/xsa@//localhost:1521/ORCLCDB
-
-DECLARE
-  tables  DBMS_UTILITY.UNCL_ARRAY;
-  schemas DBMS_UTILITY.UNCL_ARRAY;
-BEGIN
-    tables(1)  := NULL;
-    schemas(1) := 'debezium';
-  DBMS_XSTREAM_ADM.CREATE_OUTBOUND(
-    server_name     =>  'dbzxout',
-    table_names     =>  tables,
-    schema_names    =>  schemas);
-END;
-/
-
-exit;
-----
-
-Alter the XStream Outbound server to allow the xstrm user to connect to it:
-
-[source,indent=0]
-----
-sqlplus sys/top_secret@//localhost:1521/ORCLCDB as sysdba
-
-BEGIN
-  DBMS_XSTREAM_ADM.ALTER_OUTBOUND(
-    server_name  => 'dbzxout',
-    connect_user => 'c##xstrm');
-END;
-/
-
-exit;
-----
-
-Note that a given outbound server must not be used by multiple connector instances at the same time.
-If you wish to set up multiple instances of the {prodname} Oracle connector, a specific XStreamOutbound server is needed for each of them.
-
-=== Supported Configurations
-
-So far, the connector has been tested with the pluggable database set-up (CDB/PDB model).
-It should monitor a single PDB in this model.
-It should also work with traditional (non-CDB) set-ups, though this could not be tested so far.
-
 [[how-the-oracle-connector-works]]
 == How the Oracle Connector Works
 
-[[oracle-database-schema-history]]
-=== Database Schema History
-
-tbd.
+To optimally configure and run a {prodname} Oracle connector, it is helpful to understand how the connector performs snapshots, streams change events, determines Kafka topic names, and uses metadata.
 
 [[oracle-snapshots]]
 === Snapshots
 
 Most Oracle servers are configured to not retain the complete history of the database in the redo logs,
 so the {prodname} Oracle connector would be unable to see the entire history of the database by simply reading the logs.
-So, by default (snapshotting mode *initial*) the connector will upon first startup perform an initial _consistent snapshot_ of the database
-(meaning the structure and data within any tables to be captured as per the connector's filter configuration).
-
-Each snapshot consists of the following steps:
+Consequently, the first time the connector starts, it performs an initial _consistent snapshot_ of the database.
+the default behavior for perofmring a snapshot consists of the following steps.
+you can change this behavior by setting the `snapshot.mode` connector configuration property to a value other than `initial`.
 
 1. Determine the tables to be captured
 2. Obtain an `IN EXCLUSIVE MODE` lock on each of the monitored tables to ensure that no structural changes can occur to any of the tables.
@@ -319,24 +51,22 @@ Each snapshot consists of the following steps:
 
 If the connector fails, is rebalanced, or stops after step 1 begins but before step 7 completes,
 upon restart the connector will begin a new snapshot.
-Once the Oracle connector does complete its initial snapshot, it continues streaming from the position read during step 3,
-ensuring that it does not miss any updates that occurred while the snapshot was taken.
-If the connector stops again for any reason, upon restart it will simply continue streaming changes from where it previously left off.
+After the connector completes its initial snapshot, the {prodname} connector continues streaming from the position that it read in step 3.
+This ensures that the connector does not miss any updates.
+If the connector stops again for any reason, upon restart, the connector continues streaming changes from where it previously left off.
 
-A second snapshotting mode is *schema_only*.
-In this case, step 6 from the snapshotting routine described above is not applied.
-In other words, the connector still captures the structure of the relevant tables, but it does not create any `READ` events representing the complete dataset at the point of connector start-up.
-This can be useful if you are interested in data changes only from now onwards but not the complete current state of all records.
+.Settings for `snapshot.mode` connector configuration property
+[cols="30%a,70%a",options="header"]
+|===
+|Setting |Description
 
-[[oracle-reading-the-log]]
-=== Reading the Redo Log
+|`initial`
+|The connector performs a database snapshot after which it will transition to streaming changes.
 
-Upon first start-up, the connector takes a snapshot of the structure of the captured tables (DDL)
-and persists this information in its internal database history topic.
-It then proceeds to listen for change events right from the SCN at which the schema structure was captured.
-Processed SCNs are passed as offsets to Kafka Connect and regularly acknowledged with the database server
-(allowing it to discard older log files).
-After restart, the connector will resume from the offset (SCN) where it left off before.
+|`schema_only`
+|The connector captures the structure of all relevant tables, performing all the steps described above, except it does not create any `READ` events representing the dataset at the point of the connector's start-up.
+
+|===
 
 [[oracle-topic-names]]
 === Topics Names
@@ -344,22 +74,22 @@ After restart, the connector will resume from the offset (SCN) where it left off
 [[oracle-schema-change-topic]]
 === Schema Change Topic
 
+The {prodname} Oracle connector stores the history of schema changes in a database history topic.
+This topic reflects an internal connector state and you should not use it directly.
+Applications that require notifications about schema changes should obtain the information from the public schema change topic.
+the connector writes all of these events to a Kafka topic named `<serverName>`, where `serverName` is the name of the connector that is specified in the `database.server.name` configuration property.
+
 [WARNING]
 ====
-The format of the schema change topic messages is in incubating state and it can change without further notice.
+The schema change topic message format is in an incubating state and may change without notice.
 ====
-
-Oracle connector stores the historic schema structure of database tables in a database history topic.
-This topic should be considered as an internal state of the connector and should not be used by the user.
-If the application needs to track changes in the source database there is the public-facing schema change topic.
-The topic name is the same as the logical server name configured in connector configuration.
 
 {prodname} emits a new message to this topic whenever a new table is streamed from or when the structure of the table is altered ({link-prefix}:{link-oracle-connector}#oracle-schema-evolution[schema evolution procedure must be followed]).
 The message contains a logical representation of the table schema.
 
 The example of the message is:
 
-[source,json,indent=0,subs="attributes"]
+[source,json,indent=0,subs="+attributes"]
 ----
 {
   "schema": {
@@ -380,19 +110,19 @@ The example of the message is:
       "commit_scn": "1513734",
       "lcr_position" : null
     },
-    "databaseName": "ORCLPDB1",
-    "schemaName": "DEBEZIUM",
-    "ddl": "CREATE TABLE \"DEBEZIUM\".\"CUSTOMERS\" \n   (    \"ID\" NUMBER(9,0) NOT NULL ENABLE, \n    \"FIRST_NAME\" VARCHAR2(255), \n    \"LAST_NAME" VARCHAR2(255), \n    \"EMAIL\" VARCHAR2(255), \n     PRIMARY KEY (\"ID\") ENABLE, \n     SUPPLEMENTAL LOG DATA (ALL) COLUMNS\n   ) SEGMENT CREATION IMMEDIATE \n  PCTFREE 10 PCTUSED 40 INITRANS 1 MAXTRANS 255 \n NOCOMPRESS LOGGING\n  STORAGE(INITIAL 65536 NEXT 1048576 MINEXTENTS 1 MAXEXTENTS 2147483645\n  PCTINCREASE 0 FREELISTS 1 FREELIST GROUPS 1\n  BUFFER_POOL DEFAULT FLASH_CACHE DEFAULT CELL_FLASH_CACHE DEFAULT)\n  TABLESPACE \"USERS\" ",
-    "tableChanges": [
+    "databaseName": "ORCLPDB1", // <1>
+    "schemaName": "DEBEZIUM", // <1>
+    "ddl": "CREATE TABLE \"DEBEZIUM\".\"CUSTOMERS\" \n   (    \"ID\" NUMBER(9,0) NOT NULL ENABLE, \n    \"FIRST_NAME\" VARCHAR2(255), \n    \"LAST_NAME" VARCHAR2(255), \n    \"EMAIL\" VARCHAR2(255), \n     PRIMARY KEY (\"ID\") ENABLE, \n     SUPPLEMENTAL LOG DATA (ALL) COLUMNS\n   ) SEGMENT CREATION IMMEDIATE \n  PCTFREE 10 PCTUSED 40 INITRANS 1 MAXTRANS 255 \n NOCOMPRESS LOGGING\n  STORAGE(INITIAL 65536 NEXT 1048576 MINEXTENTS 1 MAXEXTENTS 2147483645\n  PCTINCREASE 0 FREELISTS 1 FREELIST GROUPS 1\n  BUFFER_POOL DEFAULT FLASH_CACHE DEFAULT CELL_FLASH_CACHE DEFAULT)\n  TABLESPACE \"USERS\" ", // <2>
+    "tableChanges": [ // <3>
       {
-        "type": "CREATE",
-        "id": "\"ORCLPDB1\".\"DEBEZIUM\".\"CUSTOMERS\"",
-        "table": {
+        "type": "CREATE", // <4>
+        "id": "\"ORCLPDB1\".\"DEBEZIUM\".\"CUSTOMERS\"", // <5>
+        "table": { // <6>
           "defaultCharsetName": null,
-          "primaryKeyColumnNames": [
+          "primaryKeyColumnNames": [ // <7>
             "ID"
           ],
-          "columns": [
+          "columns": [ // <8>
             {
               "name": "ID",
               "jdbcType": 2,
@@ -457,18 +187,52 @@ The example of the message is:
 }
 ----
 
-The fields
+.Descriptions of fields in messages emitted to the schema change topic
+[cols="1,4,5",options="header"]
+|===
+|Item |Field name |Description
 
-* `databaseName` and `schemaName` describe which database/schema has been affected
-* `ddl` contains the DDL responsible for the schema change
-* `tableChanges` array contains one or more schema changes generated by the DDL command
-* `type` describes the kind of the change: `CREATE` - table created, `ALTER` - table modified, `DROP` - table deleted
-* `id` is the full identifier of the table
-* `table` represents table metadata after the applied change
-* `primaryKeyColumnNames` is a list of columns that compose the table primary key
-* `columns` are column metadata of each of the columns
+|1
+|`databaseName` +
+`schemaName`
+|Identifies the database and the schema that contain the change.
 
-The schema change messages use as the key the name of the database to which the changes apply:
+|2
+|`ddl`
+|This field contains the DDL responsible for the schema change.
+
+|3
+|`tableChanges`
+|An array of one or more items that contain the schema changes generated by a DDL command.
+
+|4
+|`type`
+a|Describes the kind of change. The value is one of the following:
+
+* `CREATE` - table created
+* `ALTER` - table modified
+* `DROP` - table deleted
+
+|5
+|`id`
+|Full identifier of the table that was created, altered, or dropped.
+
+|6
+|`table`
+|Represents table metadata after the applied change.
+
+|7
+|`primaryKeyColumnNames`
+|List of columns that compose the table's primary key.
+
+|8
+|`columns`
+|Metadata for each column in the changed table.
+
+|===
+
+In messages that the connector sends to the schema change topic, the key is the name of the database that contains the schema change.
+In the following example, the `payload` field contains the key:
 
 [source,json,indent=0,subs="attributes"]
 ----
@@ -491,8 +255,83 @@ The schema change messages use as the key the name of the database to which the 
 }
 ----
 
+[[oracle-transaction-metadata]]
+=== Transaction Metadata
+
+{prodname} can generate events that represents tranaction metadata boundaries and enrich data messages.
+
+==== Transaction boundaries
+{prodname} generates events for every transaction `BEGIN` and `END`.
+Every event contains
+
+* `status` - `BEGIN` or `END`
+* `id` - string representation of unique transaction identifier
+* `event_count` (for `END` events) - total number of events emmitted by the transaction
+* `data_collections` (for `END` events) - an array of pairs of `data_collection` and `event_count` that provides number of events emitted by changes originating from given data collection
+
+Following is an example of what a message looks like:
+
+[source,json,indent=0,subs="attributes"]
+----
+{
+  "status": "BEGIN",
+  "id": "5.6.641",
+  "event_count": null,
+  "data_collections": null
+}
+
+{
+  "status": "END",
+  "id": "5.6.641",
+  "event_count": 2,
+  "data_collections": [
+    {
+      "data_collection": "ORCLPDB1.DEBEZIUM.CUSTOMER",
+      "event_count": 1
+    },
+    {
+      "data_collection": "ORCLPDB1.DEBEZIUM.ORDER",
+      "event_count": 1
+    }
+  ]
+}
+----
+
+The transaction events are written to the topic named `<database.server.name>.transaction`.
+
+==== Data events enrichment
+When transaction metadata is enabled the data message `Envelope` is enriched with a new `transaction` field.
+This field provides information about every event in the form of a composite of fields:
+
+* `id` - string representation of unique transaction identifier
+* `total_order` - the absolute position of the event among all events generated by the transaction
+* `data_collection_order` - the per-data collection position of the event among all events that were emitted by the transaction
+
+Following is an example of what a message looks like:
+
+[source,json,indent=0,subs="attributes"]
+----
+{
+  "before": null,
+  "after": {
+    "pk": "2",
+    "aa": "1"
+  },
+  "source": {
+...
+  },
+  "op": "c",
+  "ts_ms": "1580390884335",
+  "transaction": {
+    "id": "5.6.641",
+    "total_order": "1",
+    "data_collection_order": "1"
+  }
+}
+----
+
 [[oracle-events]]
-=== Events
+== Data change events
 
 All data change events produced by the Oracle connector have a key and a value, although the structure of the key and value depend on the table from which the change events originated (see {link-prefix}:{link-oracle-connector}#oracle-topic-names[Topic names]).
 
@@ -512,7 +351,7 @@ Every message key and value has two parts: a _schema_ and _payload_.
 The schema describes the structure of the payload, while the payload contains the actual data.
 
 [[oracle-change-event-keys]]
-==== Change Event Keys
+=== Change event keys
 
 For a given table, the change event's key will have a structure that contains a field for each column in the primary key (or unique key constraint) of the table at the time the event was created.
 
@@ -570,7 +409,7 @@ If the table does not have a primary or unique key, then the change event's key 
 ////
 
 [[oracle-change-event-values]]
-==== Change Event Values
+=== Change event values
 
 Like the message key, the value of a change event message has a _schema_ section and _payload_ section.
 The payload section of every change event value produced by the Oracle connector has an _envelope_ structure with the following fields:
@@ -597,7 +436,7 @@ This field is only present when using the LogMiner connection adapter.
 And of course, the _schema_ portion of the event message's value contains a schema that describes this envelope structure and the nested fields within it.
 
 [[oracle-create-events]]
-===== Create events
+=== Create events
 
 Let's look at what a _create_ event value might look like for our `customers` table:
 
@@ -761,7 +600,7 @@ It is possible and even recommended to use the link:/docs/faq/#avro-converter[Av
 ====
 
 [[oracle-update-events]]
-===== Update events
+=== Update events
 The value of an _update_ change event on this table will actually have the exact same _schema_, and its payload will be structured the same but will hold different values.
 Here's an example:
 
@@ -814,7 +653,7 @@ When the columns for a row's primary/unique key are updated, the value of the ro
 ====
 
 [[oracle-delete-events]]
-===== Delete events
+=== Delete events
 
 So far we've seen samples of _create_ and _update_ events.
 Now, let's look at the value of a _delete_ event for the same table. Once again, the `schema` portion of the value will be exactly the same as with the _create_ and _update_ events:
@@ -865,265 +704,465 @@ When a row is deleted, the _delete_ event value listed above still works with lo
 But only if the message value is `null` will Kafka know that it can remove _all messages_ with that same key.
 To make this possible, {prodname}'s Oracle connector always follows the _delete_ event with a special _tombstone_ event that has the same key but `null` value.
 
-[[oracle-transaction-metadata]]
-=== Transaction Metadata
+[[oracle-data-type-mappings]]
+== Data Type mappings
 
-{prodname} can generate events that represents tranaction metadata boundaries and enrich data messages.
+The Oracle conenctor represents changes to rows with events that are structured like the table in which the rows exists. The event contains a field for each column value. How that value is represented in the event depends on the Oracle data type of the column. The following sections describe how the connector maps oracle data types to a _litearl type_ and a _semantic type_ in event fields.
 
-==== Transaction boundaries
-{prodname} generates events for every transaction `BEGIN` and `END`.
-Every event contains
+* _litearl type_ describes how the value is literally represented using Kafka Connect schema types: `INT8`, `INT16`, `INT32`, `INT64`, `FLOAT32`, `FLOAT64`, `BOOLEAN`, `STRING`, `BYTES`, `ARRAY`, `MAP`, and `STRUCT`.
 
-* `status` - `BEGIN` or `END`
-* `id` - string representation of unique transaction identifier
-* `event_count` (for `END` events) - total number of events emmitted by the transaction
-* `data_collections` (for `END` events) - an array of pairs of `data_collection` and `event_count` that provides number of events emitted by changes originating from given data collection
+* _semantic type_ describes how the Kafka Connect schema captures the _meaning_ of the field using the name of the Kafka Connect schema for the field.
 
-Following is an example of what a message looks like:
+ifdef::product[]
+Details are in the following sections:
 
-[source,json,indent=0,subs="attributes"]
-----
-{
-  "status": "BEGIN",
-  "id": "5.6.641",
-  "event_count": null,
-  "data_collections": null
-}
+* xref:oracle-character-types[]
+* xref:oracle-numeric-types[]
+* xref:oracle-decimal-types[]
+* xref:oracle-temporal-types[]
 
-{
-  "status": "END",
-  "id": "5.6.641",
-  "event_count": 2,
-  "data_collections": [
-    {
-      "data_collection": "ORCLPDB1.DEBEZIUM.CUSTOMER",
-      "event_count": 1
-    },
-    {
-      "data_collection": "ORCLPDB1.DEBEZIUM.ORDER",
-      "event_count": 1
-    }
-  ]
-}
-----
+endif::product[]
 
-The transaction events are written to the topic named `<database.server.name>.transaction`.
-
-==== Data events enrichment
-When transaction metadata is enabled the data message `Envelope` is enriched with a new `transaction` field.
-This field provides information about every event in the form of a composite of fields:
-
-* `id` - string representation of unique transaction identifier
-* `total_order` - the absolute position of the event among all events generated by the transaction
-* `data_collection_order` - the per-data collection position of the event among all events that were emitted by the transaction
-
-Following is an example of what a message looks like:
-
-[source,json,indent=0,subs="attributes"]
-----
-{
-  "before": null,
-  "after": {
-    "pk": "2",
-    "aa": "1"
-  },
-  "source": {
-...
-  },
-  "op": "c",
-  "ts_ms": "1580390884335",
-  "transaction": {
-    "id": "5.6.641",
-    "total_order": "1",
-    "data_collection_order": "1"
-  }
-}
-----
-
-[[oracle-data-types]]
-=== Data Types
-
-As described above, the {prodname} Oracle connector represents the changes to rows with events that are structured like the table in which the row exist.
-The event contains a field for each column value, and how that value is represented in the event depends on the Oracle data type of the column.
-This section describes this mapping from Oracle's data types to a _literal type_ and _semantic type_ within the events' fields.
-
-Here, the _literal type_ describes how the value is literally represented using Kafka Connect schema types, namely `INT8`, `INT16`, `INT32`, `INT64`, `FLOAT32`, `FLOAT64`, `BOOLEAN`, `STRING`, `BYTES`, `ARRAY`, `MAP`, and `STRUCT`.
-
-The _semantic type_ describes how the Kafka Connect schema captures the _meaning_ of the field using the name of the Kafka Connect schema for the field.
-
+ifndef::product[]
 Support for further data types will be added in subsequent releases.
-Please file a {jira-url}/browse/DBZ[JIRA issue] for any specific types you are missing.
+Please file a {jira-url}/browse/DBZ[JIRA issue] for any specific types that may be missing.
+endif::[]
 
-[[oracle-character-values]]
-==== Character Values
+[id="oracle-character-types"]
+=== Character types
 
-[cols="20%a,15%a,30%a,35%a"]
+The following table describes how the connector maps character types.
+
+.Mappings for Oracle character data types
+[cols="20%a,15%a,55%a",options="header"]
 |===
 |Oracle Data Type
 |Literal type (schema type)
-|Semantic type (schema name)
-|Notes
+|Semantic type (schema name) and Notes
 
 |`CHAR[(M)]`
 |`STRING`
 |n/a
-|
 
 |`NCHAR[(M)]`
 |`STRING`
 |n/a
-|
-
-|`VARCHAR[(M)]`
-|`STRING`
-|n/a
-|
-
-|`VARCHAR2[(M)]`
-|`STRING`
-|n/a
-|
 
 |`NVARCHAR2[(M)]`
 |`STRING`
 |n/a
-|
+
+|`VARCHAR[(M)]`
+|`STRING`
+|n/a
+
+|`VARCHAR2[(M)]`
+|`STRING`
+|n/a
 
 |===
 
-[[oracle-numeric-values]]
-==== Numeric Values
+[id="oracle-numeric-types"]
+=== Numeric types
 
-[cols="20%a,15%a,30%a,35%a"]
+The following table describes how the connector maps numeric types.
+
+.Mappings for Oracle numeric data types
+[cols="20%a,15%a,55%a",options="header"]
 |===
 |Oracle Data Type
 |Literal type (schema type)
-|Semantic type (schema name)
-|Notes
-
-|`NUMBER[(P[, *])]`
-|`STRUCT`
-|`io.debezium.data.VariableScaleDecimal`
-|Contains a structure with two fields: `scale` of type `INT32` that contains the scale of the transferred value and `value` of type `BYTES` containing the original value in an unscaled form.
-
-|`NUMBER(P, S > 0)`
-|`BYTES`
-|`org.apache.kafka.connect.data.Decimal`
-|
-
-|`NUMBER(P, S <= 0)`
-|`INT8` / `INT16` / `INT32` / `INT64`
-|n/a
-|`NUMBER` columns with a scale of 0 represent integer numbers; a negative scale indicates rounding in Oracle, e.g. a scale of -2 will cause rounding to hundreds. +
-Depending on the precision and scale, a matching Kafka Connect integer type will be chosen: `INT8` if P - S < 3, `INT16` if P - S < 5, `INT32` if P - S < 10 and `INT64` if P - S < 19. +
-If P - S >= 19, the column will be mapped to `BYTES` (`org.apache.kafka.connect.data.Decimal`).
-
-|`SMALLINT`
-|`BYTES`
-|`org.apache.kafka.connect.data.Decimal`
-|`SMALLINT` is mapped in Oracle to NUMBER(38,0) and hence can hold values larger than any of the `INT` types could store
-
-|`INTEGER`, `INT`
-|`BYTES`
-|`org.apache.kafka.connect.data.Decimal`
-|`INTEGER` is mapped in Oracle to NUMBER(38,0) and hence can hold values larger than any of the `INT` types could store
-
-|`NUMERIC[(P, S)]`
-|`BYTES` / `INT8` / `INT16` / `INT32` / `INT64`
-|`org.apache.kafka.connect.data.Decimal` if using `BYTES`
-|Handled equivalently to `NUMBER` (note that S defaults to 0 for `NUMERIC`).
-
-|`DECIMAL[(P, S)]`
-|`BYTES` / `INT8` / `INT16` / `INT32` / `INT64`
-|`org.apache.kafka.connect.data.Decimal` if using `BYTES`
-|Handled equivalently to `NUMBER` (note that S defaults to 0 for `DECIMAL`).
+|Semantic type (schema name) and Notes
 
 |`BINARY_FLOAT`
 |`FLOAT32`
 |n/a
-|
 
 |`BINARY_DOUBLE`
 |`FLOAT64`
 |n/a
-|
 
-|`FLOAT[(P)]`
-|`STRUCT`
-|`io.debezium.data.VariableScaleDecimal`
-|Contains a structure with two fields: `scale` of type `INT32` that contains the scale of the transferred value and `value` of type `BYTES` containing the original value in an unscaled form.
+|`DECIMAL[(P, S)]`
+|`BYTES` / `INT8` / `INT16` / `INT32` / `INT64`
+|`org.apache.kafka.connect.data.Decimal` if using `BYTES` +
+ +
+Handled equivalently to `NUMBER` (note that S defaults to 0 for `DECIMAL`).
 
 |`DOUBLE PRECISION`
 |`STRUCT`
-|`io.debezium.data.VariableScaleDecimal`
-|Contains a structure with two fields: `scale` of type `INT32` that contains the scale of the transferred value and `value` of type `BYTES` containing the original value in an unscaled form.
+|`io.debezium.data.VariableScaleDecimal` +
+ +
+Contains a structure with two fields: `scale` of type `INT32` that contains the scale of the transferred value and `value` of type `BYTES` containing the original value in an unscaled form.
+
+|`FLOAT[(P)]`
+|`STRUCT`
+|`io.debezium.data.VariableScaleDecimal` +
+ +
+Contains a structure with two fields: `scale` of type `INT32` that contains the scale of the transferred value and `value` of type `BYTES` containing the original value in an unscaled form.
+
+|`INTEGER`, `INT`
+|`BYTES`
+|`org.apache.kafka.connect.data.Decimal` +
+ +
+`INTEGER` is mapped in Oracle to NUMBER(38,0) and hence can hold values larger than any of the `INT` types could store
+
+|`LONG`
+|`INT64`
+|n/a
+
+|`NUMBER(1,0)`
+|`BOOLEAN`
+|n/a
+
+|`NUMBER[(P[, *])]`
+|`STRUCT`
+|`io.debezium.data.VariableScaleDecimal` +
+ +
+Contains a structure with two fields: `scale` of type `INT32` that contains the scale of the transferred value and `value` of type `BYTES` containing the original value in an unscaled form.
+
+|`NUMBER(P, S > 0)`
+|`BYTES`
+|`org.apache.kafka.connect.data.Decimal`
+
+|`NUMBER(P, S <= 0)`
+|`INT8` / `INT16` / `INT32` / `INT64`
+|`NUMBER` columns with a scale of 0 represent integer numbers; a negative scale indicates rounding in Oracle, e.g. a scale of -2 will cause rounding to hundreds. +
+ +
+Depending on the precision and scale, a matching Kafka Connect integer type will be chosen: +
+
+ * P - S < 3, `INT8` +
+ * P - S < 5, `INT16` +
+ * P - S < 10, `INT32` +
+ * P - S < 19, `INT64` +
+ * P - S >= 19, `BYTES` (`org.apache.kafka.connect.data.Decimal`).
+
+|`NUMERIC[(P, S)]`
+|`BYTES` / `INT8` / `INT16` / `INT32` / `INT64`
+|`org.apache.kafka.connect.data.Decimal` if using `BYTES` +
+ +
+Handled equivalently to `NUMBER` (note that S defaults to 0 for `NUMERIC`).
+
+|`SMALLINT`
+|`BYTES`
+|`org.apache.kafka.connect.data.Decimal` +
+ +
+`SMALLINT` is mapped in Oracle to NUMBER(38,0) and hence can hold values larger than any of the `INT` types could store
 
 |`REAL`
 |`STRUCT`
-|`io.debezium.data.VariableScaleDecimal`
-|Contains a structure with two fields: `scale` of type `INT32` that contains the scale of the transferred value and `value` of type `BYTES` containing the original value in an unscaled form.
+|`io.debezium.data.VariableScaleDecimal` +
+ +
+Contains a structure with two fields: `scale` of type `INT32` that contains the scale of the transferred value and `value` of type `BYTES` containing the original value in an unscaled form.
 
 |===
 
-[[oracle-decimal-values]]
-==== Decimal Values
-When `decimal.handling.mode` configuration property is set to `precise`, then the connector will use the predefined Kafka Connect `org.apache.kafka.connect.data.Decimal` or `io.debezium.data.VariableScaleDecimal` logical types for numeric columns as described above.
+[id="oracle-decimal-types"]
+=== Decimal types
+The setting of the Oracle connector configuration property, `decimal.handling.mode` determines how the connector maps decimal types.
+
+When the `decimal.handling.mode` property is set to `precise`, the connector uses Kafka Connect `org.apache.kafka.connect.data.Decimal` logical type for all `DECIMAL` and `NUMERIC` columns.
 This is the default mode.
 
-However, when `decimal.handling.mode` configuration property is set to `double`, then the connector will represent the values as Java double values with schema type `FLOAT64`.
-The last option for `decimal.handling.mode` configuration property is `string`. In this case the connector will represent the values as their formatted string representation with schema type `STRING`.
+However, when the `decimal.handling.mode` property is set to `double`, the connector will represent the values as Java double values with schema type `FLOAT64`.
 
-[[oracle-temporal-values]]
-==== Temporal Values
+The last possible setting for the `decimal.handling.mode` configuration property is `string`.
+In this case, the connector reprsents `DECIMAL` and `NUMERIC` values as their formatted string representation with schema type `STRING`.
 
-[cols="20%a,15%a,30%a,35%a"]
+[id="oracle-temporal-types"]
+=== Temporal types
+
+The following table describes how the connector maps temporal types.
+
+.Mappings for Oracle temporal data types
+[cols="25%a,20%a,55%a",options="header"]
 |===
-|Oracle Data Type
-|Literal type (schema type)
-|Semantic type (schema name)
-|Notes
+|Oracle data type |Literal type (schema type) |Semantic type (schema name) and Notes
 
 |`DATE`
 |`INT64`
-|`io.debezium.time.Timestamp`
-| Represents the number of milliseconds past epoch, and does not include timezone information.
+|`io.debezium.time.Timestamp` +
+ +
+Represents the number of milliseconds past epoch, and does not include timezone information.
+
+|`INTERVAL DAY[(M)] TO SECOND`
+|`FLOAT64`
+|`io.debezium.time.MicroDuration` +
++
+The number of micro seconds for a time interval using the `365.25 / 12.0` formula for days per month average
+
+|`INTERVAL YEAR[(M)] TO MONTH`
+|`FLOAT64`
+|`io.debezium.time.MicroDuration` +
+ +
+The number of micro seconds for a time interval using the `365.25 / 12.0` formula for days per month average
 
 |`TIMESTAMP(0 - 3)`
 |`INT64`
-|`io.debezium.time.Timestamp`
-| Represents the number of milliseconds past epoch, and does not include timezone information.
+|`io.debezium.time.Timestamp` +
+ +
+Represents the number of milliseconds past epoch, and does not include timezone information.
 
 |`TIMESTAMP, TIMESTAMP(4 - 6)`
 |`INT64`
-|`io.debezium.time.MicroTimestamp`
-| Represents the number of microseconds past epoch, and does not include timezone information.
+|`io.debezium.time.MicroTimestamp` +
+ +
+Represents the number of microseconds past epoch, and does not include timezone information.
 
-|`TIMESTAMP(7 - 9)`
-|`INT64`
-|`io.debezium.time.NanoTimestamp`
-| Represents the number of nanoseconds past epoch, and does not include timezone information.
+|`TIMESTAMP(7 - 9)` +
+ |`INT64`
+|`io.debezium.time.NanoTimestamp` +
+ +
+Represents the number of nanoseconds past epoch, and does not include timezone information.
 
 |`TIMESTAMP WITH TIME ZONE`
 |`STRING`
-|`io.debezium.time.ZonedTimestamp`
-| A string representation of a timestamp with timezone information
+|`io.debezium.time.ZonedTimestamp` +
+ +
+A string representation of a timestamp with timezone information
 
-|`INTERVAL`
-|`FLOAT64`
-|`io.debezium.time.MicroDuration`
-|The number of micro seconds for a time interval using the `365.25 / 12.0` formula for days per month average
+|`TIMESTAMP WITH LOCAL TIME ZONE`
+|`STRING`
+|`io.debezium.time.ZonedTimestamp` +
+ +
+A string representation of a timestamp with timezone information
 
 |===
+
+[[setting-up-oracle]]
+== Setting up Oracle
+
+The following database set up steps are necessary to use the {prodname} Oracle connector.
+These steps assume the use of the multitenancy configuration with a container database and at least one pluggable database.
+If you intend to use a non-multitenancy configuration, the following steps may require adjustment.
+
+You can find a template for setting up Oracle in a virtual machine (via Vagrant) in the https://github.com/debezium/oracle-vagrant-box/[oracle-vagrant-box/] repository.
+
+=== Preparing the Database
+
+.Configuration needed for Oracle XStream
+[source,indent=0]
+----
+ORACLE_SID=ORCLCDB dbz_oracle sqlplus /nolog
+
+CONNECT sys/top_secret AS SYSDBA
+alter system set db_recovery_file_dest_size = 5G;
+alter system set db_recovery_file_dest = '/opt/oracle/oradata/recovery_area' scope=spfile;
+alter system set enable_goldengate_replication=true;
+shutdown immediate
+startup mount
+alter database archivelog;
+alter database open;
+-- Should show "Database log mode: Archive Mode"
+archive log list
+
+exit;
+----
+
+.Configuration needed for Oracle LogMiner
+[source,indent=0]
+----
+ORACLE_SID=ORACLCDB dbz_oracle sqlplus /nolog
+
+CONNECT sys/top_secret AS SYSDBA
+alter system set db_recovery_file_dest_size = 10G;
+alter system set db_recovery_file_dest = '/opt/oracle/oradta/recovery_area' scope=spfile;
+shutdown immediate
+startup mount
+alter database archivelog;
+alter database open;
+-- Should now "Database log mode: Archive Mode"
+archive log list
+
+exit;
+----
+
+In addition, supplemental logging must be enabled for captured tables or the database in order for data changes to capture the _before_ state of changed database rows.
+The following illustrates how to configure this on a specific table, which is the ideal choice to minimize the amount of information captured in the Oracle redo logs.
+
+[source,indent=0]
+----
+ALTER TABLE inventory.customers ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS;
+----
+
+=== Creating Users for the connector
+
+The {prodname} Oracle connector requires that users accounts be set up with specific permissions so that the connector can capture change events.
+The following briefly describes these user configurations using a multi-tenant database model.
+
+* <<oracle-create-users-xstream, `Creating users for Oracle XStream`>>
+* <<oracle-create-users-logminer, `Creating users for Oracle LogMiner`>>
+
+[[oracle-create-users-xstream]]
+.Creating an XStream Administrator user
+[source,indent=0]
+----
+sqlplus sys/top_secret@//localhost:1521/ORCLCDB as sysdba
+  CREATE TABLESPACE xstream_adm_tbs DATAFILE '/opt/oracle/oradata/ORCLCDB/xstream_adm_tbs.dbf'
+    SIZE 25M REUSE AUTOEXTEND ON MAXSIZE UNLIMITED;
+  exit;
+
+sqlplus sys/top_secret@//localhost:1521/ORCLPDB1 as sysdba
+  CREATE TABLESPACE xstream_adm_tbs DATAFILE '/opt/oracle/oradata/ORCLCDB/ORCLPDB1/xstream_adm_tbs.dbf'
+    SIZE 25M REUSE AUTOEXTEND ON MAXSIZE UNLIMITED;
+  exit;
+
+sqlplus sys/top_secret@//localhost:1521/ORCLCDB as sysdba
+  CREATE USER c##xstrmadmin IDENTIFIED BY xsa
+    DEFAULT TABLESPACE xstream_adm_tbs
+    QUOTA UNLIMITED ON xstream_adm_tbs
+    CONTAINER=ALL;
+
+  GRANT CREATE SESSION, SET CONTAINER TO c##xstrmadmin CONTAINER=ALL;
+
+  BEGIN
+     DBMS_XSTREAM_AUTH.GRANT_ADMIN_PRIVILEGE(
+        grantee                 => 'c##xstrmadmin',
+        privilege_type          => 'CAPTURE',
+        grant_select_privileges => TRUE,
+        container               => 'ALL'
+     );
+  END;
+  /
+
+  exit;
+----
+
+.Creating the connector's XStream user
+[source,indent=0]
+----
+sqlplus sys/top_secret@//localhost:1521/ORCLCDB as sysdba
+  CREATE TABLESPACE xstream_tbs DATAFILE '/opt/oracle/oradata/ORCLCDB/xstream_tbs.dbf'
+    SIZE 25M REUSE AUTOEXTEND ON MAXSIZE UNLIMITED;
+  exit;
+
+sqlplus sys/top_secret@//localhost:1521/ORCLPDB1 as sysdba
+  CREATE TABLESPACE xstream_tbs DATAFILE '/opt/oracle/oradata/ORCLCDB/ORCLPDB1/xstream_tbs.dbf'
+    SIZE 25M REUSE AUTOEXTEND ON MAXSIZE UNLIMITED;
+  exit;
+
+sqlplus sys/top_secret@//localhost:1521/ORCLCDB as sysdba
+  CREATE USER c##xstrm IDENTIFIED BY xs
+    DEFAULT TABLESPACE xstream_tbs
+    QUOTA UNLIMITED ON xstream_tbs
+    CONTAINER=ALL;
+
+  GRANT CREATE SESSION TO c##xstrm CONTAINER=ALL;
+  GRANT SET CONTAINER TO c##xstrm CONTAINER=ALL;
+  GRANT SELECT ON V_$DATABASE to c##xstrm CONTAINER=ALL;
+  GRANT FLASHBACK ANY TABLE TO c##xstrm CONTAINER=ALL;
+  GRANT SELECT_CATALOG_ROLE TO c##xstrm CONTAINER=ALL;
+  GRANT EXECUTE_CATALOG_ROLE TO c##xstrm CONTAINER=ALL;
+  exit;
+----
+
+[[oracle-create-users-logminer]]
+.Creating the connector's LogMiner user
+[source,indent=0]
+----
+sqlplus sys/top_secret@//localhost:1521/ORCLCDB as sysdba
+  CREATE TABLESPACE logminer_tbs DATAFILE '/opt/oracle/oradata/ORCLCDB/logminer_tbs.dbf'
+    SIZE 25M REUSE AUTOEXTEND ON MAXSIZE UNLIMITED;
+  exit;
+
+sqlplus sys/top_secret@//localhost:1521/ORCLPDB1 as sysdba
+  CREATE TABLESPACE logminer_tbs DATAFILE '/opt/oracle/oradata/ORCLCDB/ORCLPDB1/logminer_tbs.dbf'
+    SIZE 25M REUSE AUTOEXTEND ON MAXSIZE UNLIMITED;
+  exit;
+
+sqlplus sys/top_secret@//localhost:1521/ORCLCDB as sysdba
+
+  CREATE USER c##logminer IDENTIFIED BY lm
+    DEFAULT TABLESPACE logminer_tbs
+    QUOTA UNLIMITED ON logminer_tbs
+    CONTAINER=ALL;
+
+  GRANT CREATE SESSION TO c##logminer CONTAINER=ALL;
+  GRANT SET CONTAINER TO c##logminer CONTAINER=ALL;
+  GRANT SELECT ON V_$DATABASE to c##logminer CONTAINER=ALL;
+  GRANT FLASHBACK ANY TABLE TO c##logminer CONTAINER=ALL;
+  GRANT SELECT ANY TABLE TO c##logminer CONTAINER=ALL;
+  GRANT SELECT_CATALOG_ROLE TO c##logminer CONTAINER=ALL;
+  GRANT EXECUTE_CATALOG_ROLE TO c##logminer CONTAINER=ALL;
+  GRANT SELECT ANY TRANSACTION TO c##logminer CONTAINER=ALL;
+  GRANT LOGMINING TO c##logminer CONTAINER=ALL;
+
+  GRANT CREATE TABLE TO c##logminer CONTAINER=ALL;
+  GRANT LOCK ANY TABLE TO c##logminer CONTAINER=ALL;
+  GRANT ALTER ANY TABLE TO c##logminer CONTAINER=ALL;
+  GRANT CREATE SEQUENCE TO c##logminer CONTAINER=ALL;
+
+  GRANT EXECUTE ON DBMS_LOGMNR TO c##logminer CONTAINER=ALL;
+  GRANT EXECUTE ON DBMS_LOGMNR_D TO c##logminer CONTAINER=ALL;
+
+  GRANT SELECT ON V_$LOG TO c##logminer CONTAINER=ALL;
+  GRANT SELECT ON V_$LOG_HISTORY TO c##logminer CONTAINER=ALL;
+  GRANT SELECT ON V_$LOGMNR_LOGS TO c##logminer CONTAINER=ALL;
+  GRANT SELECT ON V_$LOGMNR_CONTENTS TO c##logminer CONTAINER=ALL;
+  GRANT SELECT ON V_$LOGMNR_PARAMETERS TO c##logminer CONTAINER=ALL;
+  GRANT SELECT ON V_$LOGFILE TO c##logminer CONTAINER=ALL;
+  GRANT SELECT ON V_$ARCHIVED_LOG TO c##logminer CONTAINER=ALL;
+  GRANT SELECT ON V_$ARCHIVE_DEST_STATUS TO c##logminer CONTAINER=ALL;
+
+  exit;
+----
+
+=== Create an XStream Outbound Server
+
+[NOTE]
+====
+If you're using the LogMiner implementation, this step is not necessary.
+====
+
+Create an https://docs.oracle.com/cd/E11882_01/server.112/e16545/xstrm_cncpt.htm#XSTRM1088[XStream Outbound server]
+(given the right privileges, this may be done automatically by the connector going forward, see {jira-url}/browse/DBZ-721[DBZ-721]):
+
+.Create an XStream Outbound Server
+[source,indent=0]
+----
+sqlplus c##xstrmadmin/xsa@//localhost:1521/ORCLCDB
+DECLARE
+  tables  DBMS_UTILITY.UNCL_ARRAY;
+  schemas DBMS_UTILITY.UNCL_ARRAY;
+BEGIN
+    tables(1)  := NULL;
+    schemas(1) := 'debezium';
+  DBMS_XSTREAM_ADM.CREATE_OUTBOUND(
+    server_name     =>  'dbzxout',
+    table_names     =>  tables,
+    schema_names    =>  schemas);
+END;
+/
+exit;
+----
+
+.Configure the XStream user account to connect to the XStream Outbound Server
+[source,indent=0]
+----
+sqlplus sys/top_secret@//localhost:1521/ORCLCDB as sysdba
+BEGIN
+  DBMS_XSTREAM_ADM.ALTER_OUTBOUND(
+    server_name  => 'dbzxout',
+    connect_user => 'c##xstrm');
+END;
+/
+exit;
+----
+
+[NOTE]
+====
+A single XStream Outbound server cannot be shared by multiple {prodname} Oracle connectors.
+Each connector requires a unique XStream Outbound connector to be configured.
+====
 
 [[oracle-deploying-a-connector]]
 == Deploying a Connector
 
 Due to licensing requirements, the {prodname} Oracle Connector does not ship with the Oracle JDBC driver and the XStream API JAR.
-You can obtain them for free by downloading the http://www.oracle.com/technetwork/topics/linuxx86-64soft-092277.html[Oracle Instant Client].
+You can obtain them for free by downloading the https://www.oracle.com/database/technologies/instant-client/downloads.html[Oracle Instant Client].
 
-Extract the archive into a directory, e.g. _/path/to/instant_client/_.
-Copy the files _ojdbc8.jar_ and _xstreams.jar_ from the Instant Client into Kafka's _libs_ directory.
-Create the environment variable `LD_LIBRARY_PATH`, pointing to the Instant Client directory:
+Extract the archive and navigate to the Instant Client directory.
+Copy `ojdbc<version>.jar` and `xstreams.jar` into Kafka's _libs_ directory.
+Lastly, create an environment variable, `LD_LIBRARY_PATH`, that points to the instant client directory, as shown below:
 
 [source,bash,indent=0]
 ----
@@ -1183,11 +1222,7 @@ When using a more complex Oracle deployment or needing to use TNS names, then a 
 
 The {prodname} Oracle connector supports both deployment practices of pluggable databases (CDB mode) as well as non-pluggable databases (non-CDB mode).
 
-==== Non-Pluggable Databases
-
-In order to deploy the connector in non-pluggable database mode, the the `database.pdb.name` configuration option must **not** be supplied.
-An example configuration for pluggable databases would be:
-
+.Example configuration using non-CDB (Non Pluggable Database) installations
 [source,json,indent=0]
 ----
 {
@@ -1207,11 +1242,7 @@ An example configuration for pluggable databases would be:
 }
 ----
 
-==== Pluggable Databases
-
-In order to deploy the connector in pluggable database mode (CDB), the `database.pdb.name` configuration option *must* be supplied.
-An example configuration when using pluggable databases would be:
-
+.Example configuration using CDB (Pluggable Database) installations
 [source,json,indent=0]
 ----
 {
@@ -1232,8 +1263,14 @@ An example configuration when using pluggable databases would be:
 }
 ----
 
+[WARNING]
+====
+When using CDB installations, specify `database.pbd.name`. +
+When using a non-CDB installation, do *not* specify the `database.pdb.name`.
+====
+
 [[selecting-the-adapter]]
-== Selecting the adapter
+=== Selecting the adapter
 
 {prodname} provides multiple ways to ingest change events from Oracle.
 By default {prodname} uses the XStream API but this isn't always applicable for every installation.
@@ -1264,177 +1301,8 @@ The following example configuration illustrates that by adding the `database.con
 
 [NOTE]
 ====
-We do encourage the use of the LogMiner implementation for testing purposes and providing us with your feedback, but we do not yet recommend its use in production as its still under active development.
+We encourage the use of the LogMiner adapter for testing and feedback purposes, but we do not yet recommend it for production use as its still under active development.
 ====
-
-[[oracle-monitoring]]
-=== Monitoring
-
-The {prodname} Oracle connector has three metric types in addition to the built-in support for JMX metrics that Zookeeper, Kafka, and Kafka Connect have.
-
-* <<oracle-snapshot-metrics, snapshot metrics>>; for monitoring the connector when performing snapshots
-* <<oracle-streaming-metrics, streaming metrics>>; for monitoring the connector when processing change events
-* <<oracle-monitoring-streaming-logminer, logminer metrics>>; additional metrics captured when using the LogMiner adpter to process change events
-* <<oracle-schema-history-metrics, schema history metrics>>; for monitoring the status of the connector's schema history
-
-Please refer to the {link-prefix}:{link-debezium-monitoring}#monitoring-debezium[monitoring documentation] for details of how to expose these metrics via JMX.
-
-[[oracle-monitoring-snapshots]]
-[[oracle-snapshot-metrics]]
-==== Snapshot Metrics
-
-The *MBean* is `debezium.oracle:type=connector-metrics,context=snapshot,server=_<database.server.name>_`.
-
-include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-snapshot-metrics.adoc[leveloffset=+1]
-
-[[oracle-monitoring-streaming]]
-[[oracle-streaming-metrics]]
-==== Streaming Metrics
-
-The *MBean* is `debezium.oracle:type=connector-metrics,context=streaming,server=_<database.server.name>_`.
-
-include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-streaming-metrics.adoc[leveloffset=+1]
-
-[[oracle-monitoring-streaming-logminer]]
-==== LogMiner Metrics
-
-The *MBean* is `debezium.oracle:type=connector-metrics,context=log-miner,server=_<database.server.name>_`.
-
-[cols="45%a,25%a,30%a"]
-|===
-|Attributes |Type |Description
-
-|[[log-miner-metrics-currentscn]]<<log-miner-metrics-currentscn, `+CurrentScn+`>>
-|`long`
-|The most recent SCN that has been processed.
-
-|[[log-miner-metrics-currentredologfilename]]<<log-miner-metrics-currentredologfilename, `+CurrentRedoLogFileName+`>>
-|`string[]`
-|Array of the log files that are currently mined.
-
-|[[log-miner-metrics-minimumminedlogcount]]<<log-miner-metrics-minimumminedlogcount, `+MinimumMinedLogCount+`>>
-|`long`
-|The minimum number of logs specified for any LogMiner session.
-
-|[[log-miner-metrics-maximumminedlogcount]]<<log-miner-metrics-maximumminedlogcount, `+MaximumMinedLogCount+`>>
-|`long`
-|The maximum number of logs specified for any LogMiner session.
-
-|[[log-miner-metrics-redologstatus]]<<log-miner-metrics-redologstatus, `+RedoLogStatus+`>>
-|`string[]`
-|Array of the current state for each mined logfile with the format `_filename_\|_status_`.
-
-|[[log-miner-metrics-switchcounter]]<<log-miner-metrics-switchcounter, `+SwitchCounter+`>>
-|`int`
-|The number of times the database has performed a log switch for the last day.
-
-|[[log-miner-metrics-lastcaptureddmlcount]]<<log-miner-metrics-lastcaptureddmlcount, `+LastCapturedDmlCount+`>>
-|`long`
-|The number of DML operations observed in the last LogMiner session query.
-
-|[[log-miner-metrics-maxcaptureddmlinbatch]]<<log-miner-metrics-maxcaptureddmlinbatch, `+MaxCapturedDmlInBatch+`>>
-|`long`
-|The maximum number of DML operations observed while processing a single LogMiner session query.
-
-|[[log-miner-metrics-totalcaptureddmlcount]]<<log-miner-metrics-totalcaptureddmlcount, `+TotalCapturedDmlCount+`>>
-|`long`
-|The total number of DML operations observed.
-
-|[[log-miner-metrics-fetchingquerycount]]<<log-miner-metrics-fetchingquerycount, `+FetchingQueryCount+`>>
-|`long`
-|The total number of LogMiner session query (aka batches) performed.
-
-|[[log-miner-metrics-lastdurationoffetchqueryinmilliseconds]]<<log-miner-metrics-lastdurationoffetchqueryinmilliseconds, `+LastDurationOfFetchQueryInMilliseconds+`>>
-|`long`
-|The duration of the last LogMiner session query's fetch in milliseconds.
-
-|[[log-miner-metrics-maxdurationoffetchqueryinmilliseconds]]<<log-miner-metrics-maxdurationoffetchqueryinmilliseconds, `+MaxDurationOfFetchQueryInMilliseconds+`>>
-|`long`
-|The maximum duration of any LogMiner session query's fetch in milliseconds.
-
-|[[log-miner-metrics-lastbatchprocessingtimeinmilliseconds]]<<log-miner-metrics-lastbatchprocessingtimeinmilliseconds, `+LastBatchProcessingTimeInMilliseconds+`>>
-|`long`
-|The duration for processing the last LogMiner query batch results in milliseconds.
-
-|[[log-miner-metrics-totalparsetimeinmilliseconds]]<<log-miner-metrics-totalparsetimeinmilliseconds, `+TotalParseTimeInMilliseconds+`>>
-|`long`
-|The time in milliseconds spent parsing DML event SQL sattements.
-
-|[[log-miner-metrics-lastminingsessionstarttimeinmilliseconds]]<<log-miner-metrics-lastminingsessionstarttimeinmilliseconds, `+LastMiningSessionStartTimeInMilliseconds+`>>
-|`long`
-|The duration in milliseconds to start the last LogMiner session.
-
-|[[log-miner-metrics-maxminingsessionstarttimeinmilliseconds]]<<log-miner-metrics-maxminingsessionstarttimeinmilliseconds, `+MaxMiningSessionStartTimeInMilliseconds+`>>
-|`long`
-|The longest duration in milliseconds to start a LogMiner session.
-
-|[[log-miner-metrics-totalminingsessionstarttimeinmilliseconds]]<<log-miner-metrics-totalminingsessionstarttimeinmilliseconds, `+TotalMiningSessionStartTimeInMilliseconds+`>>
-|`long`
-|The total duration in milliseconds spent by the connector starting LogMiner sessions.
-
-|[[log-miner-metrics-minbatchprocessingtimeinmilliseconds]]<<log-miner-metrics-minbatchprocessingtimeinmilliseconds, `+MinBatchProcessingTimeInMilliseconds+`>>
-|`long`
-|The minimum duration in milliseconds spent processing results from a single LogMiner session.
-
-|[[log-miner-metrics-maxbatchprocessingtimeinmilliseconds]]<<log-miner-metrics-maxbatchprocessingtimeinmilliseconds, `+MaxBatchProcessingTimeInMilliseconds+`>>
-|`long`
-|The maximum duration in milliseconds spent processing results from a single LogMiner session.
-
-|[[log-miner-metrics-totalprocessingtimeinmilliseconds]]<<log-miner-metrics-totalprocessingtimeinmilliseconds, `+TotalProcessingTimeInMilliseconds+`>>
-|`long`
-|The total duration in milliseconds spent processing results from LogMiner sessions.
-
-|[[log-miner-metrics-totalresultsetnexttimeinmilliseconds]]<<log-miner-metrics-totalresultsetnexttimeinmilliseconds, `+TotalResultSetNextTimeInMilliseconds+`>>
-|`long`
-|The total duration in milliseconds spent by the JDBC driver fetching the next row to be processed from the log mining view.
-
-|[[log-miner-metrics-totalprocessedrows]]<<log-miner-metrics-totalprocessedrows, `+TotalProcessedRows+`>>
-|`long`
-|The total number of rows processed from the log mining view across all sessions.
-
-|[[log-miner-metrics-batchsize]]<<log-miner-metrics-batchsize, `+BatchSize+`>>
-|`int`
-|The number of entries fetched by the log mining query per database round-trip.
-
-|[[log-miner-metrics-millisecondtosleepbetweenminingquery]]<<log-miner-metrics-millisecondtosleepbetweenminingquery, `+MillisecondToSleepBetweenMiningQuery+`>>
-|`long`
-|The number of milliseconds the connector sleeps before fetching another batch of results from the log mining view.
-
-|[[log-miner-metrics-maxbatchprocessingthroughput]]<<log-miner-metrics-maxbatchprocessingthroughput, `+MaxBatchProcessingThroughput+`>>
-|`long`
-|The maximum number of rows/second processed from the log mining view.
-
-|[[log-miner-metrics-averagebatchprocessingthroughput]]<<log-miner-metrics-averagebatchprocessingthroughput, `+AverageBatchProcessingThroughput+`>>
-|`long`
-|The average number of rows/second processed from the log mining.
-
-|[[log-miner-metrics-lastbatchprocessingthroughput]]<<log-miner-metrics-lastbatchprocessingthroughput, `+LastBatchProcessingThroughput+`>>
-|`long`
-|The average number of rows/second processed from the log mining view for the last batch.
-
-|[[log-miner-metrics-networkconnectionproblemscounter]]<<log-miner-metrics-networkconnectionproblemscounter, `+NetworkConnectionProblemsCounter+`>>
-|`long`
-|The number of connection problems detected.
-
-|[[log-miner-metrics-hourstokeeptransactioninbuffer]]<<log-miner-metrics-hourstokeeptransactioninbuffer, `+HoursToKeepTransactionInBuffer+`>>
-|`int`
-|The number of hours that transactions will be retained by the connector's in-memory buffer without being committed or rolled back before being discarded.
-See <<oracle-property-log-mining-transaction-retention-hours, `log.mining.transaction.retention`>> for more details.
-
-|[[log-miner-metrics-recordmininghistory]]<<log-miner-metrics-recordmininghistory, `+RecordMiningHistory+`>>
-|`boolean`
-|Flag that indicates if the mining results are being recorded.
-See <<oracle-property-log-mining-history-recorder-class, `log.mining.history.recorder.clas`>> for more details.
-
-|===
-
-[[oracle-monitoring-schema-history]]
-[[oracle-schema-history-metrics]]
-==== Schema History Metrics
-
-The *MBean* is `debezium.mysql:type=connector-metrics,context=schema-history,server=_<database.server.name>_`.
-
-include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-schema-history-metrics.adoc[leveloffset=+1]
 
 [[oracle-connector-properties]]
 === Connector Properties
@@ -1738,3 +1606,202 @@ While this option allows the behavior to be configured on a case-by-case basis,
 we have plans to enhance this behavior in a future release by means of adding a scalable transaction buffer, (see {link-prefix}:{jira-url}/browse/DBZ-3123[DBZ-3123]).
 
 |===
+
+[[oracle-monitoring]]
+== Monitoring
+
+The {prodname} Oracle connector has three metric types in addition to the built-in support for JMX metrics that Zookeeper, Kafka, and Kafka Connect have.
+
+* <<oracle-snapshot-metrics, snapshot metrics>>; for monitoring the connector when performing snapshots
+* <<oracle-streaming-metrics, streaming metrics>>; for monitoring the connector when processing change events
+* <<oracle-monitoring-streaming-logminer, logminer metrics>>; additional metrics captured when using the LogMiner adpter to process change events
+* <<oracle-schema-history-metrics, schema history metrics>>; for monitoring the status of the connector's schema history
+
+Please refer to the {link-prefix}:{link-debezium-monitoring}#monitoring-debezium[monitoring documentation] for details of how to expose these metrics via JMX.
+
+[[oracle-monitoring-snapshots]]
+[[oracle-snapshot-metrics]]
+=== Snapshot Metrics
+
+The *MBean* is `debezium.oracle:type=connector-metrics,context=snapshot,server=_<database.server.name>_`.
+
+include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-snapshot-metrics.adoc[leveloffset=+1]
+
+[[oracle-monitoring-streaming]]
+[[oracle-streaming-metrics]]
+=== Streaming Metrics
+
+The *MBean* is `debezium.oracle:type=connector-metrics,context=streaming,server=_<database.server.name>_`.
+
+include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-streaming-metrics.adoc[leveloffset=+1]
+
+[[oracle-monitoring-streaming-logminer]]
+=== LogMiner Metrics
+
+The *MBean* is `debezium.oracle:type=connector-metrics,context=log-miner,server=_<database.server.name>_`.
+
+[cols="45%a,25%a,30%a"]
+|===
+|Attributes |Type |Description
+
+|[[log-miner-metrics-currentscn]]<<log-miner-metrics-currentscn, `+CurrentScn+`>>
+|`long`
+|The most recent SCN that has been processed.
+
+|[[log-miner-metrics-currentredologfilename]]<<log-miner-metrics-currentredologfilename, `+CurrentRedoLogFileName+`>>
+|`string[]`
+|Array of the log files that are currently mined.
+
+|[[log-miner-metrics-minimumminedlogcount]]<<log-miner-metrics-minimumminedlogcount, `+MinimumMinedLogCount+`>>
+|`long`
+|The minimum number of logs specified for any LogMiner session.
+
+|[[log-miner-metrics-maximumminedlogcount]]<<log-miner-metrics-maximumminedlogcount, `+MaximumMinedLogCount+`>>
+|`long`
+|The maximum number of logs specified for any LogMiner session.
+
+|[[log-miner-metrics-redologstatus]]<<log-miner-metrics-redologstatus, `+RedoLogStatus+`>>
+|`string[]`
+|Array of the current state for each mined logfile with the format `_filename_\|_status_`.
+
+|[[log-miner-metrics-switchcounter]]<<log-miner-metrics-switchcounter, `+SwitchCounter+`>>
+|`int`
+|The number of times the database has performed a log switch for the last day.
+
+|[[log-miner-metrics-lastcaptureddmlcount]]<<log-miner-metrics-lastcaptureddmlcount, `+LastCapturedDmlCount+`>>
+|`long`
+|The number of DML operations observed in the last LogMiner session query.
+
+|[[log-miner-metrics-maxcaptureddmlinbatch]]<<log-miner-metrics-maxcaptureddmlinbatch, `+MaxCapturedDmlInBatch+`>>
+|`long`
+|The maximum number of DML operations observed while processing a single LogMiner session query.
+
+|[[log-miner-metrics-totalcaptureddmlcount]]<<log-miner-metrics-totalcaptureddmlcount, `+TotalCapturedDmlCount+`>>
+|`long`
+|The total number of DML operations observed.
+
+|[[log-miner-metrics-fetchingquerycount]]<<log-miner-metrics-fetchingquerycount, `+FetchingQueryCount+`>>
+|`long`
+|The total number of LogMiner session query (aka batches) performed.
+
+|[[log-miner-metrics-lastdurationoffetchqueryinmilliseconds]]<<log-miner-metrics-lastdurationoffetchqueryinmilliseconds, `+LastDurationOfFetchQueryInMilliseconds+`>>
+|`long`
+|The duration of the last LogMiner session query's fetch in milliseconds.
+
+|[[log-miner-metrics-maxdurationoffetchqueryinmilliseconds]]<<log-miner-metrics-maxdurationoffetchqueryinmilliseconds, `+MaxDurationOfFetchQueryInMilliseconds+`>>
+|`long`
+|The maximum duration of any LogMiner session query's fetch in milliseconds.
+
+|[[log-miner-metrics-lastbatchprocessingtimeinmilliseconds]]<<log-miner-metrics-lastbatchprocessingtimeinmilliseconds, `+LastBatchProcessingTimeInMilliseconds+`>>
+|`long`
+|The duration for processing the last LogMiner query batch results in milliseconds.
+
+|[[log-miner-metrics-totalparsetimeinmilliseconds]]<<log-miner-metrics-totalparsetimeinmilliseconds, `+TotalParseTimeInMilliseconds+`>>
+|`long`
+|The time in milliseconds spent parsing DML event SQL sattements.
+
+|[[log-miner-metrics-lastminingsessionstarttimeinmilliseconds]]<<log-miner-metrics-lastminingsessionstarttimeinmilliseconds, `+LastMiningSessionStartTimeInMilliseconds+`>>
+|`long`
+|The duration in milliseconds to start the last LogMiner session.
+
+|[[log-miner-metrics-maxminingsessionstarttimeinmilliseconds]]<<log-miner-metrics-maxminingsessionstarttimeinmilliseconds, `+MaxMiningSessionStartTimeInMilliseconds+`>>
+|`long`
+|The longest duration in milliseconds to start a LogMiner session.
+
+|[[log-miner-metrics-totalminingsessionstarttimeinmilliseconds]]<<log-miner-metrics-totalminingsessionstarttimeinmilliseconds, `+TotalMiningSessionStartTimeInMilliseconds+`>>
+|`long`
+|The total duration in milliseconds spent by the connector starting LogMiner sessions.
+
+|[[log-miner-metrics-minbatchprocessingtimeinmilliseconds]]<<log-miner-metrics-minbatchprocessingtimeinmilliseconds, `+MinBatchProcessingTimeInMilliseconds+`>>
+|`long`
+|The minimum duration in milliseconds spent processing results from a single LogMiner session.
+
+|[[log-miner-metrics-maxbatchprocessingtimeinmilliseconds]]<<log-miner-metrics-maxbatchprocessingtimeinmilliseconds, `+MaxBatchProcessingTimeInMilliseconds+`>>
+|`long`
+|The maximum duration in milliseconds spent processing results from a single LogMiner session.
+
+|[[log-miner-metrics-totalprocessingtimeinmilliseconds]]<<log-miner-metrics-totalprocessingtimeinmilliseconds, `+TotalProcessingTimeInMilliseconds+`>>
+|`long`
+|The total duration in milliseconds spent processing results from LogMiner sessions.
+
+|[[log-miner-metrics-totalresultsetnexttimeinmilliseconds]]<<log-miner-metrics-totalresultsetnexttimeinmilliseconds, `+TotalResultSetNextTimeInMilliseconds+`>>
+|`long`
+|The total duration in milliseconds spent by the JDBC driver fetching the next row to be processed from the log mining view.
+
+|[[log-miner-metrics-totalprocessedrows]]<<log-miner-metrics-totalprocessedrows, `+TotalProcessedRows+`>>
+|`long`
+|The total number of rows processed from the log mining view across all sessions.
+
+|[[log-miner-metrics-batchsize]]<<log-miner-metrics-batchsize, `+BatchSize+`>>
+|`int`
+|The number of entries fetched by the log mining query per database round-trip.
+
+|[[log-miner-metrics-millisecondtosleepbetweenminingquery]]<<log-miner-metrics-millisecondtosleepbetweenminingquery, `+MillisecondToSleepBetweenMiningQuery+`>>
+|`long`
+|The number of milliseconds the connector sleeps before fetching another batch of results from the log mining view.
+
+|[[log-miner-metrics-maxbatchprocessingthroughput]]<<log-miner-metrics-maxbatchprocessingthroughput, `+MaxBatchProcessingThroughput+`>>
+|`long`
+|The maximum number of rows/second processed from the log mining view.
+
+|[[log-miner-metrics-averagebatchprocessingthroughput]]<<log-miner-metrics-averagebatchprocessingthroughput, `+AverageBatchProcessingThroughput+`>>
+|`long`
+|The average number of rows/second processed from the log mining.
+
+|[[log-miner-metrics-lastbatchprocessingthroughput]]<<log-miner-metrics-lastbatchprocessingthroughput, `+LastBatchProcessingThroughput+`>>
+|`long`
+|The average number of rows/second processed from the log mining view for the last batch.
+
+|[[log-miner-metrics-networkconnectionproblemscounter]]<<log-miner-metrics-networkconnectionproblemscounter, `+NetworkConnectionProblemsCounter+`>>
+|`long`
+|The number of connection problems detected.
+
+|[[log-miner-metrics-hourstokeeptransactioninbuffer]]<<log-miner-metrics-hourstokeeptransactioninbuffer, `+HoursToKeepTransactionInBuffer+`>>
+|`int`
+|The number of hours that transactions will be retained by the connector's in-memory buffer without being committed or rolled back before being discarded.
+See <<oracle-property-log-mining-transaction-retention-hours, `log.mining.transaction.retention`>> for more details.
+
+|[[log-miner-metrics-recordmininghistory]]<<log-miner-metrics-recordmininghistory, `+RecordMiningHistory+`>>
+|`boolean`
+|Flag that indicates if the mining results are being recorded.
+See <<oracle-property-log-mining-history-recorder-class, `log.mining.history.recorder.clas`>> for more details.
+
+|===
+
+[[oracle-monitoring-schema-history]]
+[[oracle-schema-history-metrics]]
+=== Schema History Metrics
+
+The *MBean* is `debezium.mysql:type=connector-metrics,context=schema-history,server=_<database.server.name>_`.
+
+include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-schema-history-metrics.adoc[leveloffset=+1]
+
+[[oracle-when-things-go-wrong]]
+== Behavior when things go wrong
+
+{prodname} is a distributed system that captures all changes in multiple upstream databases; it never misses or loses an event.
+When the system is operating normally or being managed carefully then {prodname} provides _exactly once_ delivery of every change event record.
+
+If a fault does happen then the system does not lose any events.
+However, while it is recovering from the fault, it might repeat some change events.
+In these abnormal situations, {prodname}, like Kafka, provides _at least once_ delivery of change events.
+
+The rest of this section describes how {prodname} handles various kinds of faults and problems.
+
+[id="oracle-cannot-reference-overflow-table"]
+=== ORA-25191 - Cannot reference overflow table of an index-organized table
+
+Oracle may issue this error during the snapshot phase when encountering an index-organized table (IOT).
+This error means that the connector has attempted to execute an operation that must be executed against the parent index-organized table that contains the specified overflow table.
+
+To resolve this, the IOT name used in the SQL operation should be replaced with the parent index-organized table name.
+To determine the parent index-organized table name, use the following SQL:
+
+```
+SELECT IOT_NAME
+  FROM DBA_TABLES
+ WHERE OWNER='<tablespace-owner>'
+   AND TABLE_NAME='<iot-table-name-that-failed>'
+```
+
+The connector's `table.include.list` or `table.exclude.list` configuration options should then be adjusted to explicitly include or exclude the appropriate tables to avoid the connector from attempting to capture changes from the child index-organized table.
