@@ -37,7 +37,6 @@ import io.debezium.connector.mysql.legacy.MySqlJdbcContext.DatabaseLocales;
 import io.debezium.data.Envelope;
 import io.debezium.function.BlockingConsumer;
 import io.debezium.pipeline.EventDispatcher;
-import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.relational.Column;
 import io.debezium.relational.RelationalSnapshotChangeEventSource;
 import io.debezium.relational.RelationalTableFilters;
@@ -49,7 +48,7 @@ import io.debezium.util.Clock;
 import io.debezium.util.Collect;
 import io.debezium.util.Strings;
 
-public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEventSource {
+public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEventSource<MySqlOffsetContext> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MySqlSnapshotChangeEventSource.class);
 
@@ -59,30 +58,28 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
     private long tableLockAcquiredAt = -1;
     private final RelationalTableFilters filters;
     private final MySqlSnapshotChangeEventSourceMetrics metrics;
-    private final MySqlOffsetContext previousOffset;
     private final MySqlDatabaseSchema databaseSchema;
     private final List<SchemaChangeEvent> schemaEvents = new ArrayList<>();
     private Set<TableId> delayedSchemaSnapshotTables = Collections.emptySet();
     private final BlockingConsumer<Function<SourceRecord, SourceRecord>> lastEventProcessor;
     private final MysqlFieldReader mysqlFieldReader;
 
-    public MySqlSnapshotChangeEventSource(MySqlConnectorConfig connectorConfig, MySqlOffsetContext previousOffset, MySqlConnection connection,
+    public MySqlSnapshotChangeEventSource(MySqlConnectorConfig connectorConfig, MySqlConnection connection,
                                           MySqlDatabaseSchema schema, EventDispatcher<TableId> dispatcher, Clock clock,
                                           MySqlSnapshotChangeEventSourceMetrics metrics,
                                           BlockingConsumer<Function<SourceRecord, SourceRecord>> lastEventProcessor) {
-        super(connectorConfig, previousOffset, connection, schema, dispatcher, clock, metrics);
+        super(connectorConfig, connection, schema, dispatcher, clock, metrics);
         this.connectorConfig = connectorConfig;
         this.connection = connection;
         this.filters = connectorConfig.getTableFilters();
         this.metrics = metrics;
-        this.previousOffset = previousOffset;
         this.databaseSchema = schema;
         this.lastEventProcessor = lastEventProcessor;
         this.mysqlFieldReader = connectorConfig.useCursorFetch() ? new MysqlBinaryProtocolFieldReader() : new MysqlTextProtocolFieldReader();
     }
 
     @Override
-    protected SnapshottingTask getSnapshottingTask(OffsetContext previousOffset) {
+    protected SnapshottingTask getSnapshottingTask(MySqlOffsetContext previousOffset) {
         boolean snapshotSchema = true;
         boolean snapshotData = true;
 
@@ -261,7 +258,7 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
     }
 
     @Override
-    protected void determineSnapshotOffset(RelationalSnapshotContext ctx) throws Exception {
+    protected void determineSnapshotOffset(RelationalSnapshotContext ctx, MySqlOffsetContext previousOffset) throws Exception {
         if (!isGloballyLocked() && !isTablesLocked() && connectorConfig.getSnapshotLockingMode().usesLocking()) {
             return;
         }
@@ -304,12 +301,14 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
     }
 
     @Override
-    protected void readTableStructure(ChangeEventSourceContext sourceContext, RelationalSnapshotContext snapshotContext) throws Exception {
+    protected void readTableStructure(ChangeEventSourceContext sourceContext, RelationalSnapshotContext snapshotContext,
+                                      MySqlOffsetContext offsetContext)
+            throws Exception {
         Set<TableId> capturedSchemaTables;
         if (twoPhaseSchemaSnapshot()) {
             // Capture schema of captured tables after they are locked
             tableLock(snapshotContext);
-            determineSnapshotOffset(snapshotContext);
+            determineSnapshotOffset(snapshotContext, offsetContext);
             capturedSchemaTables = snapshotContext.capturedTables;
             LOGGER.info("Table level locking is in place, the schema will be capture in two phases, now capturing: {}", capturedSchemaTables);
             delayedSchemaSnapshotTables = Collect.minus(snapshotContext.capturedSchemaTables, snapshotContext.capturedTables);

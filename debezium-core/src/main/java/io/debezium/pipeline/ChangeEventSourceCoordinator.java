@@ -40,7 +40,7 @@ import io.debezium.util.Threads;
  * @author Gunnar Morling
  */
 @ThreadSafe
-public class ChangeEventSourceCoordinator {
+public class ChangeEventSourceCoordinator<O extends OffsetContext> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ChangeEventSourceCoordinator.class);
 
@@ -49,24 +49,24 @@ public class ChangeEventSourceCoordinator {
      */
     public static final Duration SHUTDOWN_WAIT_TIMEOUT = Duration.ofSeconds(90);
 
-    private final OffsetContext previousOffset;
+    private final O previousOffset;
     private final ErrorHandler errorHandler;
-    private final ChangeEventSourceFactory changeEventSourceFactory;
+    private final ChangeEventSourceFactory<O> changeEventSourceFactory;
     private final ChangeEventSourceMetricsFactory changeEventSourceMetricsFactory;
     private final ExecutorService executor;
     private final EventDispatcher<?> eventDispatcher;
     private final DatabaseSchema<?> schema;
 
     private volatile boolean running;
-    private volatile StreamingChangeEventSource streamingSource;
+    private volatile StreamingChangeEventSource<O> streamingSource;
     private final ReentrantLock commitOffsetLock = new ReentrantLock();
 
     private SnapshotChangeEventSourceMetrics snapshotMetrics;
     private StreamingChangeEventSourceMetrics streamingMetrics;
 
-    public ChangeEventSourceCoordinator(OffsetContext previousOffset, ErrorHandler errorHandler, Class<? extends SourceConnector> connectorType,
+    public ChangeEventSourceCoordinator(O previousOffset, ErrorHandler errorHandler, Class<? extends SourceConnector> connectorType,
                                         CommonConnectorConfig connectorConfig,
-                                        ChangeEventSourceFactory changeEventSourceFactory,
+                                        ChangeEventSourceFactory<O> changeEventSourceFactory,
                                         ChangeEventSourceMetricsFactory changeEventSourceMetricsFactory, EventDispatcher<?> eventDispatcher, DatabaseSchema<?> schema) {
         this.previousOffset = previousOffset;
         this.errorHandler = errorHandler;
@@ -93,7 +93,7 @@ public class ChangeEventSourceCoordinator {
                 ChangeEventSourceContext context = new ChangeEventSourceContextImpl();
                 LOGGER.info("Context created");
 
-                SnapshotChangeEventSource snapshotSource = changeEventSourceFactory.getSnapshotChangeEventSource(previousOffset, snapshotMetrics);
+                SnapshotChangeEventSource<O> snapshotSource = changeEventSourceFactory.getSnapshotChangeEventSource(snapshotMetrics);
                 CatchUpStreamingResult catchUpStreamingResult = executeCatchUpStreaming(previousOffset, context, snapshotSource);
                 if (catchUpStreamingResult.performedCatchUpStreaming) {
                     streamingConnected(false);
@@ -102,7 +102,7 @@ public class ChangeEventSourceCoordinator {
                     commitOffsetLock.unlock();
                 }
                 eventDispatcher.setEventListener(snapshotMetrics);
-                SnapshotResult snapshotResult = snapshotSource.execute(context);
+                SnapshotResult<O> snapshotResult = snapshotSource.execute(context, previousOffset);
                 LOGGER.info("Snapshot ended with {}", snapshotResult);
 
                 if (snapshotResult.getStatus() == SnapshotResultStatus.COMPLETED || schema.tableInformationComplete()) {
@@ -127,17 +127,17 @@ public class ChangeEventSourceCoordinator {
     }
 
     protected CatchUpStreamingResult executeCatchUpStreaming(OffsetContext previousOffset, ChangeEventSourceContext context,
-                                                             SnapshotChangeEventSource snapshotSource)
+                                                             SnapshotChangeEventSource<O> snapshotSource)
             throws InterruptedException {
         return new CatchUpStreamingResult(false);
     }
 
-    protected void streamEvents(OffsetContext offsetContext, ChangeEventSourceContext context) throws InterruptedException {
-        streamingSource = changeEventSourceFactory.getStreamingChangeEventSource(offsetContext);
+    protected void streamEvents(O offsetContext, ChangeEventSourceContext context) throws InterruptedException {
+        streamingSource = changeEventSourceFactory.getStreamingChangeEventSource();
         eventDispatcher.setEventListener(streamingMetrics);
         streamingConnected(true);
         LOGGER.info("Starting streaming");
-        streamingSource.execute(context);
+        streamingSource.execute(context, offsetContext);
         LOGGER.info("Finished streaming");
     }
 
