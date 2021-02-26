@@ -185,8 +185,8 @@ public class TransactionalBufferMetrics extends Metrics implements Transactional
 
     @Override
     public long getCommitThroughput() {
-        long timeSpent = Duration.between(startTime, Instant.now()).isZero() ? 1 : Duration.between(startTime, Instant.now()).toMillis();
-        return committedTransactions.get() * MILLIS_PER_SECOND / timeSpent;
+        long timeSpent = Duration.between(startTime, Instant.now()).toMillis();
+        return committedTransactions.get() * MILLIS_PER_SECOND / (timeSpent != 0 ? timeSpent : 1);
     }
 
     @Override
