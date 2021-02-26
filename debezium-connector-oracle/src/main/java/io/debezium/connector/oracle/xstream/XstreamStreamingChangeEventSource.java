@@ -39,17 +39,20 @@ import oracle.streams.XStreamUtility;
  *
  * @author Gunnar Morling
  */
-public class XstreamStreamingChangeEventSource implements StreamingChangeEventSource {
+public class XstreamStreamingChangeEventSource implements StreamingChangeEventSource<OracleOffsetContext> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(XstreamStreamingChangeEventSource.class);
 
+    private final OracleConnectorConfig connectorConfig;
     private final OracleConnection jdbcConnection;
+    private final EventDispatcher<TableId> dispatcher;
     private final ErrorHandler errorHandler;
-    private final OracleOffsetContext offsetContext;
+    private final Clock clock;
+    private final OracleDatabaseSchema schema;
+    private final OracleStreamingChangeEventSourceMetrics streamingMetrics;
     private final String xStreamServerName;
     private volatile XStreamOut xsOut;
     private final int posVersion;
-    private final LcrEventHandler eventHandler;
     /**
      * A message box between thread that is informed about committed offsets and the XStream thread.
      * When the last offset is committed its value is passed to the XStream thread and a watermark is
@@ -59,23 +62,28 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
      */
     private final AtomicReference<PositionAndScn> lcrMessage = new AtomicReference<>();
 
-    public XstreamStreamingChangeEventSource(OracleConnectorConfig connectorConfig, OracleOffsetContext offsetContext,
-                                             OracleConnection jdbcConnection, EventDispatcher<TableId> dispatcher,
-                                             ErrorHandler errorHandler, Clock clock, OracleDatabaseSchema schema,
+    public XstreamStreamingChangeEventSource(OracleConnectorConfig connectorConfig, OracleConnection jdbcConnection,
+                                             EventDispatcher<TableId> dispatcher, ErrorHandler errorHandler,
+                                             Clock clock, OracleDatabaseSchema schema,
                                              OracleStreamingChangeEventSourceMetrics streamingMetrics) {
+        this.connectorConfig = connectorConfig;
         this.jdbcConnection = jdbcConnection;
+        this.dispatcher = dispatcher;
         this.errorHandler = errorHandler;
-        this.offsetContext = offsetContext;
+        this.clock = clock;
+        this.schema = schema;
+        this.streamingMetrics = streamingMetrics;
         this.xStreamServerName = connectorConfig.getXoutServerName();
         this.posVersion = resolvePosVersion(jdbcConnection, connectorConfig);
-
-        this.eventHandler = new LcrEventHandler(connectorConfig, errorHandler, dispatcher, clock, schema, offsetContext,
-                TableNameCaseSensitivity.INSENSITIVE.equals(connectorConfig.getAdapter().getTableNameCaseSensitivity(jdbcConnection)), this,
-                streamingMetrics);
     }
 
     @Override
-    public void execute(ChangeEventSourceContext context) throws InterruptedException {
+    public void execute(ChangeEventSourceContext context, OracleOffsetContext offsetContext) throws InterruptedException {
+
+        LcrEventHandler eventHandler = new LcrEventHandler(connectorConfig, errorHandler, dispatcher, clock, schema, offsetContext,
+                TableNameCaseSensitivity.INSENSITIVE.equals(connectorConfig.getAdapter().getTableNameCaseSensitivity(jdbcConnection)), this,
+                streamingMetrics);
+
         try (OracleConnection xsConnection = new OracleConnection(jdbcConnection.config(), () -> getClass().getClassLoader())) {
             try {
                 // 1. connect

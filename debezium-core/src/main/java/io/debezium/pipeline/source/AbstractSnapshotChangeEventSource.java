@@ -31,22 +31,20 @@ import io.debezium.util.Threads;
  *
  * @author Chris Cranford
  */
-public abstract class AbstractSnapshotChangeEventSource implements SnapshotChangeEventSource {
+public abstract class AbstractSnapshotChangeEventSource<O extends OffsetContext> implements SnapshotChangeEventSource<O> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractSnapshotChangeEventSource.class);
 
     private final CommonConnectorConfig connectorConfig;
-    protected final OffsetContext previousOffset;
     private final SnapshotProgressListener snapshotProgressListener;
 
-    public AbstractSnapshotChangeEventSource(CommonConnectorConfig connectorConfig, OffsetContext previousOffset, SnapshotProgressListener snapshotProgressListener) {
+    public AbstractSnapshotChangeEventSource(CommonConnectorConfig connectorConfig, SnapshotProgressListener snapshotProgressListener) {
         this.connectorConfig = connectorConfig;
-        this.previousOffset = previousOffset;
         this.snapshotProgressListener = snapshotProgressListener;
     }
 
     @Override
-    public SnapshotResult execute(ChangeEventSourceContext context) throws InterruptedException {
+    public SnapshotResult<O> execute(ChangeEventSourceContext context, O previousOffset) throws InterruptedException {
         SnapshottingTask snapshottingTask = getSnapshottingTask(previousOffset);
         if (snapshottingTask.shouldSkipSnapshot()) {
             LOGGER.debug("Skipping snapshotting");
@@ -55,7 +53,7 @@ public abstract class AbstractSnapshotChangeEventSource implements SnapshotChang
 
         delaySnapshotIfNeeded(context);
 
-        final SnapshotContext ctx;
+        final SnapshotContext<O> ctx;
         try {
             ctx = prepare(context);
         }
@@ -68,9 +66,7 @@ public abstract class AbstractSnapshotChangeEventSource implements SnapshotChang
 
         try {
             snapshotProgressListener.snapshotStarted();
-            SnapshotResult result = doExecute(context, ctx, snapshottingTask);
-
-            return result;
+            return doExecute(context, previousOffset, ctx, snapshottingTask);
         }
         catch (InterruptedException e) {
             completedSuccessfully = false;
@@ -134,21 +130,24 @@ public abstract class AbstractSnapshotChangeEventSource implements SnapshotChang
      * pending transactions, releasing locks, etc.
      *
      * @param context contextual information for this source's execution
+     * @param previousOffset previous offset restored from Kafka
      * @param snapshotContext mutable context information populated throughout the snapshot process
      * @param snapshottingTask immutable information about what tasks should be performed during snapshot
      * @return an indicator to the position at which the snapshot was taken
      */
-    protected abstract SnapshotResult doExecute(ChangeEventSourceContext context, SnapshotContext snapshotContext, SnapshottingTask snapshottingTask) throws Exception;
+    protected abstract SnapshotResult<O> doExecute(ChangeEventSourceContext context, O previousOffset,
+                                                   SnapshotContext<O> snapshotContext, SnapshottingTask snapshottingTask)
+            throws Exception;
 
     /**
      * Returns the snapshotting task based on the previous offset (if available) and the connector's snapshotting mode.
      */
-    protected abstract SnapshottingTask getSnapshottingTask(OffsetContext previousOffset);
+    protected abstract SnapshottingTask getSnapshottingTask(O previousOffset);
 
     /**
      * Prepares the taking of a snapshot and returns an initial {@link SnapshotContext}.
      */
-    protected abstract SnapshotContext prepare(ChangeEventSourceContext changeEventSourceContext) throws Exception;
+    protected abstract SnapshotContext<O> prepare(ChangeEventSourceContext changeEventSourceContext) throws Exception;
 
     /**
      * Completes the snapshot, doing any required clean-up (resource disposal etc.).
@@ -156,14 +155,14 @@ public abstract class AbstractSnapshotChangeEventSource implements SnapshotChang
      *
      * @param snapshotContext snapshot context
      */
-    protected void complete(SnapshotContext snapshotContext) {
+    protected void complete(SnapshotContext<O> snapshotContext) {
     }
 
     /**
      * Mutable context which is populated in the course of snapshotting
      */
-    public static class SnapshotContext implements AutoCloseable {
-        public OffsetContext offset;
+    public static class SnapshotContext<O extends OffsetContext> implements AutoCloseable {
+        public O offset;
 
         @Override
         public void close() throws Exception {

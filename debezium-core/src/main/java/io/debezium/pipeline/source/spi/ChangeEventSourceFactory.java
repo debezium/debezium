@@ -16,28 +16,26 @@ import io.debezium.schema.DataCollectionId;
  *
  * @author Gunnar Morling
  */
-public interface ChangeEventSourceFactory {
+public interface ChangeEventSourceFactory<O extends OffsetContext> {
 
     /**
      * Returns a snapshot change event source that may emit change events for schema and/or data changes. Depending on
      * the snapshot mode, a given source may decide to do nothing at all if a previous offset is given. In this case it
      * should return that given offset context from its
-     * {@link StreamingChangeEventSource#execute(io.debezium.pipeline.source.spi.ChangeEventSource.ChangeEventSourceContext)}
+     * {@link StreamingChangeEventSource#execute(ChangeEventSource.ChangeEventSourceContext, io.debezium.pipeline.spi.OffsetContext)}
      * method.
      *
-     * @param offsetContext
-     *            A context representing a restored offset from an earlier run of this connector. May be {@code null}.
      * @param snapshotProgressListener
      *            A listener called for changes in the state of snapshot. May be {@code null}.
      *
      * @return A snapshot change event source
      */
-    SnapshotChangeEventSource getSnapshotChangeEventSource(OffsetContext offsetContext, SnapshotProgressListener snapshotProgressListener);
+    SnapshotChangeEventSource<O> getSnapshotChangeEventSource(SnapshotProgressListener snapshotProgressListener);
 
     /**
      * Returns a streaming change event source that starts streaming at the given offset.
      */
-    StreamingChangeEventSource getStreamingChangeEventSource(OffsetContext offsetContext);
+    StreamingChangeEventSource<O> getStreamingChangeEventSource();
 
     /**
      * Returns and incremental snapshot change event source that can run in parallel with streaming
@@ -50,7 +48,7 @@ public interface ChangeEventSourceFactory {
      *
      * @return An incremental snapshot change event source
      */
-    default Optional<IncrementalSnapshotChangeEventSource<? extends DataCollectionId>> getIncrementalSnapshotChangeEventSource(OffsetContext offsetContext,
+    default Optional<IncrementalSnapshotChangeEventSource<? extends DataCollectionId>> getIncrementalSnapshotChangeEventSource(O offsetContext,
                                                                                                                                SnapshotProgressListener snapshotProgressListener,
                                                                                                                                DataChangeEventListener dataChangeEventListener) {
         return Optional.empty();

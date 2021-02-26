@@ -44,7 +44,7 @@ import io.debezium.util.SchemaNameAdjuster;
  * @author Randall Hauch
  */
 @ThreadSafe
-public final class MongoDbConnectorTask extends BaseSourceTask {
+public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbOffsetContext> {
 
     private static final String CONTEXT_NAME = "mongodb-connector-task";
 
@@ -63,7 +63,7 @@ public final class MongoDbConnectorTask extends BaseSourceTask {
     }
 
     @Override
-    public ChangeEventSourceCoordinator start(Configuration config) {
+    public ChangeEventSourceCoordinator<MongoDbOffsetContext> start(Configuration config) {
         final MongoDbConnectorConfig connectorConfig = new MongoDbConnectorConfig(config);
         final SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create();
 
@@ -103,7 +103,7 @@ public final class MongoDbConnectorTask extends BaseSourceTask {
                     metadataProvider,
                     schemaNameAdjuster);
 
-            ChangeEventSourceCoordinator coordinator = new ChangeEventSourceCoordinator(
+            ChangeEventSourceCoordinator<MongoDbOffsetContext> coordinator = new ChangeEventSourceCoordinator<>(
                     previousOffsets,
                     errorHandler,
                     MongoDbConnector.class,

@@ -38,7 +38,6 @@ import io.debezium.pipeline.source.AbstractSnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.SnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.spi.ChangeRecordEmitter;
-import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.SnapshotResult;
 import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.util.Clock;
@@ -50,7 +49,7 @@ import io.debezium.util.Threads;
  *
  * @author Chris Cranford
  */
-public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEventSource {
+public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEventSource<MongoDbOffsetContext> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MongoDbSnapshotChangeEventSource.class);
 
@@ -58,7 +57,6 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
 
     private final MongoDbConnectorConfig connectorConfig;
     private final MongoDbTaskContext taskContext;
-    private final MongoDbOffsetContext previousOffset;
     private final ConnectionContext connectionContext;
     private final ReplicaSets replicaSets;
     private final EventDispatcher<CollectionId> dispatcher;
@@ -68,14 +66,13 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
     private AtomicBoolean aborted = new AtomicBoolean(false);
 
     public MongoDbSnapshotChangeEventSource(MongoDbConnectorConfig connectorConfig, MongoDbTaskContext taskContext,
-                                            ReplicaSets replicaSets, MongoDbOffsetContext previousOffset,
+                                            ReplicaSets replicaSets,
                                             EventDispatcher<CollectionId> dispatcher, Clock clock,
                                             SnapshotProgressListener snapshotProgressListener, ErrorHandler errorHandler) {
-        super(connectorConfig, previousOffset, snapshotProgressListener);
+        super(connectorConfig, snapshotProgressListener);
         this.connectorConfig = connectorConfig;
         this.taskContext = taskContext;
         this.connectionContext = taskContext.getConnectionContext();
-        this.previousOffset = previousOffset;
         this.replicaSets = replicaSets;
         this.dispatcher = dispatcher;
         this.clock = clock;
@@ -84,7 +81,9 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
     }
 
     @Override
-    protected SnapshotResult doExecute(ChangeEventSourceContext context, SnapshotContext snapshotContext, SnapshottingTask snapshottingTask)
+    protected SnapshotResult<MongoDbOffsetContext> doExecute(ChangeEventSourceContext context, MongoDbOffsetContext previousOffset,
+                                                             SnapshotContext<MongoDbOffsetContext> snapshotContext,
+                                                             SnapshottingTask snapshottingTask)
             throws Exception {
         final MongoDbSnapshottingTask mongoDbSnapshottingTask = (MongoDbSnapshottingTask) snapshottingTask;
         final MongoDbSnapshotContext mongoDbSnapshotContext = (MongoDbSnapshotContext) snapshotContext;
@@ -158,7 +157,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
     }
 
     @Override
-    protected SnapshottingTask getSnapshottingTask(OffsetContext previousOffset) {
+    protected SnapshottingTask getSnapshottingTask(MongoDbOffsetContext previousOffset) {
         if (previousOffset == null) {
             LOGGER.info("No previous offset has been found");
             if (connectorConfig.getSnapshotMode().equals(MongoDbConnectorConfig.SnapshotMode.NEVER)) {
@@ -202,7 +201,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
     }
 
     @Override
-    protected SnapshotContext prepare(ChangeEventSourceContext sourceContext) throws Exception {
+    protected SnapshotContext<MongoDbOffsetContext> prepare(ChangeEventSourceContext sourceContext) throws Exception {
         return new MongoDbSnapshotContext();
     }
 
@@ -475,8 +474,9 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
         });
     }
 
-    protected ChangeRecordEmitter getChangeRecordEmitter(SnapshotContext snapshotContext, CollectionId collectionId, Document document, ReplicaSet replicaSet) {
-        final MongoDbOffsetContext offsetContext = ((MongoDbOffsetContext) snapshotContext.offset);
+    protected ChangeRecordEmitter getChangeRecordEmitter(SnapshotContext<MongoDbOffsetContext> snapshotContext, CollectionId collectionId, Document document,
+                                                         ReplicaSet replicaSet) {
+        final MongoDbOffsetContext offsetContext = snapshotContext.offset;
 
         final ReplicaSetOffsetContext replicaSetOffsetContext = offsetContext.getReplicaSetOffsetContext(replicaSet);
         replicaSetOffsetContext.readEvent(collectionId, getClock().currentTime());
@@ -519,7 +519,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
     /**
      * Mutable context that is populated in the course of snapshotting.
      */
-    private static class MongoDbSnapshotContext extends SnapshotContext {
+    private static class MongoDbSnapshotContext extends SnapshotContext<MongoDbOffsetContext> {
         public boolean lastCollection;
         public boolean lastRecordInCollection;
     }

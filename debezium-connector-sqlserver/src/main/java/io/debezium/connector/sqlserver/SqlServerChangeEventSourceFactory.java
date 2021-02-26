@@ -16,12 +16,11 @@ import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.SnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
-import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.relational.TableId;
 import io.debezium.schema.DataCollectionId;
 import io.debezium.util.Clock;
 
-public class SqlServerChangeEventSourceFactory implements ChangeEventSourceFactory {
+public class SqlServerChangeEventSourceFactory implements ChangeEventSourceFactory<SqlServerOffsetContext> {
 
     private final SqlServerConnectorConfig configuration;
     private final SqlServerConnection dataConnection;
@@ -43,16 +42,15 @@ public class SqlServerChangeEventSourceFactory implements ChangeEventSourceFacto
     }
 
     @Override
-    public SnapshotChangeEventSource getSnapshotChangeEventSource(OffsetContext offsetContext, SnapshotProgressListener snapshotProgressListener) {
-        return new SqlServerSnapshotChangeEventSource(configuration, (SqlServerOffsetContext) offsetContext, dataConnection, schema, dispatcher, clock,
+    public SnapshotChangeEventSource<SqlServerOffsetContext> getSnapshotChangeEventSource(SnapshotProgressListener snapshotProgressListener) {
+        return new SqlServerSnapshotChangeEventSource(configuration, dataConnection, schema, dispatcher, clock,
                 snapshotProgressListener);
     }
 
     @Override
-    public StreamingChangeEventSource getStreamingChangeEventSource(OffsetContext offsetContext) {
+    public StreamingChangeEventSource<SqlServerOffsetContext> getStreamingChangeEventSource() {
         return new SqlServerStreamingChangeEventSource(
                 configuration,
-                (SqlServerOffsetContext) offsetContext,
                 dataConnection,
                 metadataConnection,
                 dispatcher,
@@ -63,7 +61,7 @@ public class SqlServerChangeEventSourceFactory implements ChangeEventSourceFacto
 
     @Override
     public Optional<IncrementalSnapshotChangeEventSource<? extends DataCollectionId>> getIncrementalSnapshotChangeEventSource(
-                                                                                                                              OffsetContext offsetContext,
+                                                                                                                              SqlServerOffsetContext offsetContext,
                                                                                                                               SnapshotProgressListener snapshotProgressListener,
                                                                                                                               DataChangeEventListener dataChangeEventListener) {
         final SignalBasedIncrementalSnapshotChangeEventSource<TableId> incrementalSnapshotChangeEventSource = new SignalBasedIncrementalSnapshotChangeEventSource<TableId>(
