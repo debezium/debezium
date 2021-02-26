@@ -18,6 +18,7 @@ import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.common.BaseSourceTask;
+import io.debezium.connector.common.TaskOffsetContext;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
@@ -80,12 +81,21 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerOffsetContex
         catch (SQLException e) {
             throw new ConnectException(e);
         }
-        this.schema = new SqlServerDatabaseSchema(connectorConfig, valueConverters, topicSelector, schemaNameAdjuster);
-        this.schema.initializeStorage();
 
-        final SqlServerOffsetContext previousOffset = (SqlServerOffsetContext) getPreviousOffset(new SqlServerOffsetContext.Loader(connectorConfig));
-        if (previousOffset != null) {
-            schema.recover(previousOffset);
+        TaskOffsetContext.Loader<SqlServerTaskPartition, SqlServerOffsetContext, SqlServerOffsetContext.Loader> loader = new TaskOffsetContext.Loader<>(
+                context.offsetStorageReader(),
+                new SqlServerOffsetContext.Loader(connectorConfig));
+        TaskOffsetContext<SqlServerTaskPartition, SqlServerOffsetContext> taskOffsetContext = loader.load(
+                new SqlServerTaskPartition.Provider(connectorConfig, config).getPartitions());
+
+        schema = new SqlServerDatabaseSchema(connectorConfig, valueConverters, topicSelector, schemaNameAdjuster);
+        schema.initializeStorage();
+
+        // TODO: recover from all partitions at once
+        for (SqlServerOffsetContext offsetContext : taskOffsetContext.getOffsets().values()) {
+            if (offsetContext != null) {
+                schema.recover(offsetContext);
+            }
         }
 
         taskContext = new SqlServerTaskContext(connectorConfig, schema);
@@ -112,6 +122,14 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerOffsetContex
                 DataChangeEvent::new,
                 metadataProvider,
                 schemaNameAdjuster);
+
+        SqlServerOffsetContext previousOffset = null;
+
+        // TODO: iterate over all partitions instead of breaking
+        for (SqlServerOffsetContext offsetContext : taskOffsetContext.getOffsets().values()) {
+            previousOffset = offsetContext;
+            break;
+        }
 
         ChangeEventSourceCoordinator<SqlServerOffsetContext> coordinator = new ChangeEventSourceCoordinator<>(
                 previousOffset,
