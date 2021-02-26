@@ -23,7 +23,6 @@ import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.metrics.DefaultChangeEventSourceMetricsFactory;
-import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
 import io.debezium.relational.history.DatabaseHistory;
@@ -38,7 +37,7 @@ import io.debezium.util.SchemaNameAdjuster;
  * @author Jiri Pechanec
  *
  */
-public class SqlServerConnectorTask extends BaseSourceTask {
+public class SqlServerConnectorTask extends BaseSourceTask<SqlServerOffsetContext> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SqlServerConnectorTask.class);
     private static final String CONTEXT_NAME = "sql-server-connector-task";
@@ -56,7 +55,7 @@ public class SqlServerConnectorTask extends BaseSourceTask {
     }
 
     @Override
-    public ChangeEventSourceCoordinator start(Configuration config) {
+    public ChangeEventSourceCoordinator<SqlServerOffsetContext> start(Configuration config) {
         final Clock clock = Clock.system();
         final SqlServerConnectorConfig connectorConfig = new SqlServerConnectorConfig(config);
         final TopicSelector<TableId> topicSelector = SqlServerTopicSelector.defaultSelector(connectorConfig);
@@ -84,7 +83,7 @@ public class SqlServerConnectorTask extends BaseSourceTask {
         this.schema = new SqlServerDatabaseSchema(connectorConfig, valueConverters, topicSelector, schemaNameAdjuster);
         this.schema.initializeStorage();
 
-        final OffsetContext previousOffset = getPreviousOffset(new SqlServerOffsetContext.Loader(connectorConfig));
+        final SqlServerOffsetContext previousOffset = (SqlServerOffsetContext) getPreviousOffset(new SqlServerOffsetContext.Loader(connectorConfig));
         if (previousOffset != null) {
             schema.recover(previousOffset);
         }
@@ -114,7 +113,7 @@ public class SqlServerConnectorTask extends BaseSourceTask {
                 metadataProvider,
                 schemaNameAdjuster);
 
-        ChangeEventSourceCoordinator coordinator = new ChangeEventSourceCoordinator(
+        ChangeEventSourceCoordinator<SqlServerOffsetContext> coordinator = new ChangeEventSourceCoordinator<>(
                 previousOffset,
                 errorHandler,
                 SqlServerConnector.class,
