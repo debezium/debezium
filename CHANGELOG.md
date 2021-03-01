@@ -2,6 +2,68 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 1.4.2.Final
+March 1st 2021 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12353633)
+
+### New features since 1.4.1.Final
+
+* Make field descriptions consistent for time values (milliseconds, ms, sec, seconds, etc) [DBZ-2858](https://issues.jboss.org/browse/DBZ-2858)
+* Detect and skip non-parent index-organized tables [DBZ-3036](https://issues.jboss.org/browse/DBZ-3036)
+* Capture additional JMX metrics for LogMiner [DBZ-3038](https://issues.jboss.org/browse/DBZ-3038)
+* SqlServerConnector does not implement validate [DBZ-3056](https://issues.jboss.org/browse/DBZ-3056)
+* Improve DML parser performance [DBZ-3078](https://issues.jboss.org/browse/DBZ-3078)
+* Add ability to skip tests based on available database options [DBZ-3110](https://issues.jboss.org/browse/DBZ-3110)
+* Capture LogMiner session parameters when session fails to start [DBZ-3153](https://issues.jboss.org/browse/DBZ-3153)
+
+
+### Breaking changes since 1.4.1.Final
+
+* Replace MySQL connector option with SMT for mitigating wrong op flag [DBZ-2788](https://issues.jboss.org/browse/DBZ-2788)
+* Avoid dependency to JAXB classes [DBZ-3165](https://issues.jboss.org/browse/DBZ-3165)
+* Remove build deprecation warnings [DBZ-3034](https://issues.jboss.org/browse/DBZ-3034)
+
+
+### Fixes since 1.4.1.Final
+
+* Wrong reference to KafkaConnector in setting up Debezium [DBZ-2745](https://issues.jboss.org/browse/DBZ-2745)
+* Oracle Connector(Using Logminer) with Oracle RDS (v12) does not capture changes [DBZ-2754](https://issues.jboss.org/browse/DBZ-2754)
+* Oracle connector causes ORA-65090 when connecting to an Oracle instance running in non-CDB mode [DBZ-2795](https://issues.jboss.org/browse/DBZ-2795)
+* Warnings and notifications from PostgreSQL are ignored by the connector until the connection is closed [DBZ-2865](https://issues.jboss.org/browse/DBZ-2865)
+* ExtractNewRecord SMT incorrectly extracts ts_ms from source info [DBZ-2984](https://issues.jboss.org/browse/DBZ-2984)
+* Replication terminates with ORA-01291: missing log file [DBZ-3001](https://issues.jboss.org/browse/DBZ-3001)
+* Support multiple schemas with Oracle LogMiner [DBZ-3009](https://issues.jboss.org/browse/DBZ-3009)
+* Documentation `LOCK_TABLES` should be `LOCK TABLES` [DBZ-3013](https://issues.jboss.org/browse/DBZ-3013)
+* Complete support for properties that contain hyphens [DBZ-3019](https://issues.jboss.org/browse/DBZ-3019)
+*  SQLException for Global temp tables  from OracleDatabaseMetaData.getIndexInfo() makes Debezium snapshotting fail [DBZ-3057](https://issues.jboss.org/browse/DBZ-3057)
+* no viable alternative at input 'create or replace index' [DBZ-3067](https://issues.jboss.org/browse/DBZ-3067)
+* Strange transaction metadata for Oracle logminer connector [DBZ-3090](https://issues.jboss.org/browse/DBZ-3090)
+* Environment Variables with spaces are truncated when written to properties file [DBZ-3103](https://issues.jboss.org/browse/DBZ-3103)
+* Error: Supplemental logging not configured for table. Use command: ALTER TABLE  [DBZ-3109](https://issues.jboss.org/browse/DBZ-3109)
+* Final stage of snapshot analyzes tables not present in table.include.list thus stumbles upon unsupported XMLTYPE table [DBZ-3151](https://issues.jboss.org/browse/DBZ-3151)
+* Forever stuck with new binlog parser (1.3 and later) when processing big JSON column data  [DBZ-3168](https://issues.jboss.org/browse/DBZ-3168)
+* XStream does not process NUMER(1) data [DBZ-3172](https://issues.jboss.org/browse/DBZ-3172)
+* DML parser IndexOutOfRangeException with where-clause using "IS NULL" [DBZ-3193](https://issues.jboss.org/browse/DBZ-3193)
+* ORA-01284 file cannot be opened error when file locked by another process [DBZ-3194](https://issues.jboss.org/browse/DBZ-3194)
+* CommitThroughput metrics can raise division by zero error [DBZ-3200](https://issues.jboss.org/browse/DBZ-3200)
+
+
+### Other changes since 1.4.1.Final
+
+* OSD certification [DBZ-2813](https://issues.jboss.org/browse/DBZ-2813)
+* Integration with Service Registry promoted to GA [DBZ-2815](https://issues.jboss.org/browse/DBZ-2815)
+* Use new deployment endpoint for releases to Maven Central [DBZ-3069](https://issues.jboss.org/browse/DBZ-3069)
+* Remove zero-width whitespace from option names [DBZ-3087](https://issues.jboss.org/browse/DBZ-3087)
+* Remove duplicate anchor links in Connector properties [DBZ-3111](https://issues.jboss.org/browse/DBZ-3111)
+* Config validation for Oracle [DBZ-3119](https://issues.jboss.org/browse/DBZ-3119)
+* Clarify required privileges for using pgoutput [DBZ-3138](https://issues.jboss.org/browse/DBZ-3138)
+* Update Oracle documentation [DBZ-3156](https://issues.jboss.org/browse/DBZ-3156)
+* Put IIDR license requirement into NOTE box [DBZ-3163](https://issues.jboss.org/browse/DBZ-3163)
+* Remove COLUMN_BLACK_LIST option in Oracle connector [DBZ-3167](https://issues.jboss.org/browse/DBZ-3167)
+* Minor editorial update to PostgreSQL connector documentation [DBZ-3192](https://issues.jboss.org/browse/DBZ-3192)
+* Incorrect link/anchor pair for truncate.handling.mode property in PG properties documentation [DBZ-3195](https://issues.jboss.org/browse/DBZ-3195)
+
+
+
 ## 1.4.1.Final
 January 28th 2021 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12353181)
 
@@ -12,8 +74,6 @@ January 28th 2021 [Detailed release notes](https://issues.redhat.com/secure/Rele
 * Use collation to get charset when charset is not set [DBZ-2922](https://issues.jboss.org/browse/DBZ-2922)
 * Additional logging for number and type of sql operations [DBZ-2980](https://issues.jboss.org/browse/DBZ-2980)
 * Retry on "The server failed to resume the transaction" [DBZ-2959](https://issues.jboss.org/browse/DBZ-2959)
-
-
 
 
 ### Breaking changes since 1.4.0.Final
