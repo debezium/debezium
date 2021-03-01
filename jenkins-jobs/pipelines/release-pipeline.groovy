@@ -591,30 +591,29 @@ node('Slave') {
             }
         }
 
-        stage('Merge candidates to the master') {
+        stage('Merge candidates to the branch') {
             if (!DRY_RUN) {
                 dir(DEBEZIUM_DIR) {
                     withCredentials([usernamePassword(credentialsId: GIT_CREDENTIALS_ID, passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USERNAME')]) {
                         sh """
                            git pull --rebase https://\${GIT_USERNAME}:\${GIT_PASSWORD}@$DEBEZIUM_REPOSITORY $CANDIDATE_BRANCH && \\
-                           git checkout master && \\
+                           git checkout $DEBEZIUM_BRANCH && \\
                            git rebase $CANDIDATE_BRANCH && \\
                            git push https://\${GIT_USERNAME}:\${GIT_PASSWORD}@$DEBEZIUM_REPOSITORY HEAD:$DEBEZIUM_BRANCH && \\
                            git push --delete https://\${GIT_USERNAME}:\${GIT_PASSWORD}@$DEBEZIUM_REPOSITORY $CANDIDATE_BRANCH
                         """
                     }
-                    ADDITIONAL_REPOSITORIES.each { id, repo ->
-                        dir(id) {
-                            sh "git pull --rebase $CANDIDATE_BRANCH && git checkout master && git rebase $CANDIDATE_BRANCH"
-                                withCredentials([usernamePassword(credentialsId: GIT_CREDENTIALS_ID, passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USERNAME')]) {
-                                    sh """
-                                       git pull --rebase ${repo.git} $CANDIDATE_BRANCH && \\
-                                       git checkout master && \\
-                                       git rebase $CANDIDATE_BRANCH && \\
-                                       git push https://\${GIT_USERNAME}:\${GIT_PASSWORD}@${repo.git} HEAD:${repo.branch} && \\
-                                       git push --delete https://\${GIT_USERNAME}:\${GIT_PASSWORD}@${repo.git} $CANDIDATE_BRANCH
-                                    """
-                            }
+                }
+                ADDITIONAL_REPOSITORIES.each { id, repo ->
+                    dir(id) {
+                        withCredentials([usernamePassword(credentialsId: GIT_CREDENTIALS_ID, passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USERNAME')]) {
+                            sh """
+                               git pull --rebase https://\${GIT_USERNAME}:\${GIT_PASSWORD}@${repo.git} $CANDIDATE_BRANCH && \\
+                               git checkout ${repo.branch} && \\
+                               git rebase $CANDIDATE_BRANCH && \\
+                               git push https://\${GIT_USERNAME}:\${GIT_PASSWORD}@${repo.git} HEAD:${repo.branch} && \\
+                               git push --delete https://\${GIT_USERNAME}:\${GIT_PASSWORD}@${repo.git} $CANDIDATE_BRANCH
+                            """
                         }
                     }
                 }
