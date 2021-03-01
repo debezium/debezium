@@ -423,8 +423,8 @@ public class OracleDmlParserTest {
                     }
                     break;
                 case "COL12":
-                    assertThat(newValue.getColumnData()).isInstanceOf(Boolean.class);
-                    assertThat(newValue.getColumnData()).isEqualTo(true);
+                    assertThat(newValue.getColumnData()).isInstanceOf(Byte.class);
+                    assertThat(newValue.getColumnData()).isEqualTo(Byte.valueOf("1"));
                     break;
             }
         }

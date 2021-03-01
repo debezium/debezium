@@ -145,11 +145,7 @@ public class OracleValueConverters extends JdbcValueConverters {
             // a negative scale means rounding, e.g. NUMBER(10, -2) would be rounded to hundreds
             if (scale <= 0) {
                 int width = column.length() - scale;
-                if (width == 1 && scale == 0) {
-                    // Boolean represented as Number(1,0)
-                    return SchemaBuilder.bool();
-                }
-                else if (width < 3) {
+                if (width < 3) {
                     return SchemaBuilder.int8();
                 }
                 else if (width < 5) {
@@ -216,10 +212,6 @@ public class OracleValueConverters extends JdbcValueConverters {
 
             if (scale <= 0) {
                 int width = column.length() - scale;
-                if (width == 1 && scale == 0) {
-                    // Boolean represented as Number(1,0)
-                    return data -> convertBoolean(column, fieldDefn, data);
-                }
                 if (width < 3) {
                     return data -> convertNumericAsTinyInt(column, fieldDefn, data);
                 }

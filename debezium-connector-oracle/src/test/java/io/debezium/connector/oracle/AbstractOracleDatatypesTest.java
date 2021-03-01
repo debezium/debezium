@@ -174,7 +174,7 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
             new SchemaAndValueField("VAL_NUMBER_18_NEGATIVE_SCALE", Schema.OPTIONAL_INT64_SCHEMA, 999_99999_99999_99900L),
             new SchemaAndValueField("VAL_DECIMAL", Schema.OPTIONAL_INT64_SCHEMA, 99999_99999L),
             new SchemaAndValueField("VAL_NUMERIC", Schema.OPTIONAL_INT64_SCHEMA, 99999_99999L),
-            new SchemaAndValueField("VAL_NUMBER_1", Schema.OPTIONAL_BOOLEAN_SCHEMA, true));
+            new SchemaAndValueField("VAL_NUMBER_1", Schema.OPTIONAL_INT8_SCHEMA, (byte) 1));
 
     private static final List<SchemaAndValueField> EXPECTED_TIME = Arrays.asList(
             new SchemaAndValueField("VAL_DATE", Timestamp.builder().optional().build(), 1522108800_000l),
