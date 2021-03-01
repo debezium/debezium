@@ -825,6 +825,7 @@ The following example shows the value portion of a change event that the connect
             "ts_ms": 1559033904863,
             "snapshot": true,
             "db": "postgres",
+            "sequence": "[24023119,24023128]"
             "schema": "public",
             "table": "customers",
             "txId": 555,
@@ -890,6 +891,7 @@ a|Mandatory field that describes the source metadata for the event. This field c
 * {prodname} version
 * Connector type and name
 * Database and table that contains the new row
+* Stringified JSON array of additional offset information. The first value is always the last committed LSN, the second value is always the current LSN. Either value may be `null`.
 * Schema name
 * If the event was part of a snapshot
 * ID of the transaction in which the operation was performed
