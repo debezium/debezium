@@ -5,6 +5,10 @@
  */
 package io.debezium.connector.sqlserver;
 
+import static io.debezium.relational.RelationalDatabaseConnectorConfig.DATABASE_NAME;
+import static io.debezium.relational.RelationalDatabaseConnectorConfig.DATABASE_NAMES;
+
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -50,11 +54,47 @@ public class SqlServerConnector extends RelationalBaseSourceConnector {
 
     @Override
     public List<Map<String, String>> taskConfigs(int maxTasks) {
-        if (maxTasks > 1) {
-            throw new IllegalArgumentException("Only a single connector task may be started");
-        }
+        if (!properties.containsKey(DATABASE_NAMES.name())) {
+            if (maxTasks > 1) {
+                throw new IllegalArgumentException("Only a single connector task may be started");
+            }
 
-        return Collections.singletonList(properties);
+            return Collections.singletonList(properties);
+        }
+        else {
+            try {
+                // Parse the database names property
+                String[] dbNames = properties.get(DATABASE_NAMES.name()).split(",");
+
+                // Initialize the database list for each task
+                List<List<String>> taskDatabases = new ArrayList<>();
+                for (int i = 0; i < maxTasks; i++) {
+                    taskDatabases.add(new ArrayList<>());
+                }
+
+                // Add each database to a task list via round robin.
+                for (int dbNamesIndex = 0; dbNamesIndex < dbNames.length; dbNamesIndex++) {
+                    int taskIndex = dbNamesIndex % maxTasks;
+                    taskDatabases.get(taskIndex).add(dbNames[dbNamesIndex]);
+                }
+
+                // Create a task config for each task, assigning each a list of database names.
+                List<Map<String, String>> taskConfigs = new ArrayList<>();
+                for (int taskIndex = 0; taskIndex < maxTasks; taskIndex++) {
+                    String databases = String.join(",", taskDatabases.get(taskIndex));
+                    Map<String, String> taskProperties = new HashMap<>(properties);
+                    taskProperties.put(DATABASE_NAMES.name(), databases);
+                    taskProperties.put(DATABASE_NAME.name(),
+                            taskDatabases.get(taskIndex).get(0));
+                    taskConfigs.add(Collections.unmodifiableMap(taskProperties));
+                }
+
+                return taskConfigs;
+            }
+            catch (Exception ex) {
+                throw new IllegalArgumentException("Failed to parse the property: " + DATABASE_NAMES);
+            }
+        }
     }
 
     @Override
@@ -68,7 +108,7 @@ public class SqlServerConnector extends RelationalBaseSourceConnector {
 
     @Override
     protected void validateConnection(Map<String, ConfigValue> configValues, Configuration config) {
-        final ConfigValue databaseValue = configValues.get(RelationalDatabaseConnectorConfig.DATABASE_NAME.name());
+        final ConfigValue databaseValue = configValues.get(DATABASE_NAME.name());
         if (!databaseValue.errorMessages().isEmpty()) {
             return;
         }

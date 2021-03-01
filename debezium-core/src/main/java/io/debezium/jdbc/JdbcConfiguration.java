@@ -33,6 +33,12 @@ public interface JdbcConfiguration extends Configuration {
     public static final Field DATABASE = Field.create("dbname",
             "Name of the database");
     /**
+     * A field for the names of a comma separated list of databases. This field has no default value.
+     * The dbname field should be set to the default database to use from this list.
+     */
+    public static final Field DATABASES = Field.create("dbnames",
+            "Names of the databases");
+    /**
      * A field for the user of the database. This field has no default value.
      */
     public static final Field USER = Field.create("user",
