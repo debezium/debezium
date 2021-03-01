@@ -810,10 +810,6 @@ Contains a structure with two fields: `scale` of type `INT32` that contains the 
 |`INT64`
 |n/a
 
-|`NUMBER(1,0)`
-|`BOOLEAN`
-|n/a
-
 |`NUMBER[(P[, *])]`
 |`STRUCT`
 |`io.debezium.data.VariableScaleDecimal` +
@@ -855,6 +851,24 @@ Handled equivalently to `NUMBER` (note that S defaults to 0 for `NUMERIC`).
 Contains a structure with two fields: `scale` of type `INT32` that contains the scale of the transferred value and `value` of type `BYTES` containing the original value in an unscaled form.
 
 |===
+
+[id="oracle-boolean-types"]
+=== Boolean types
+
+Oracle does not natively have support for a `BOOLEAN` data type; however,
+it is common practice to use other data types with certain semantics to simulate the concept of a logical `BOOLEAN` data type.
+
+The operator can configure the out-of-the-box `NumberOneToBooleanConverter` custom converter that would either map all `NUMBER(1)` columns to a `BOOLEAN` or if the `selector` parameter is set,
+then a subset of columns could be enumerated using a comma-separated list of regular expressions.
+
+Following is an example configuration:
+
+[source]
+----
+converters=boolean
+boolean.type=io.debezium.connector.oracle.converters.NumberOneToBooleanConverter
+boolean.selector=.*MYTABLE.FLAG,.*.IS_ARCHIVED
+----
 
 [id="oracle-decimal-types"]
 === Decimal types
