@@ -232,12 +232,14 @@ public class ConfigurationTest {
     @Test
     @FixFor("DBZ-1015")
     public void testMsgKeyColumnsField() {
+        List<String> errorList;
         // null : ok
         config = Configuration.create().build();
         assertThat(config.validate(Field.setOf(MSG_KEY_COLUMNS)).get(MSG_KEY_COLUMNS.name()).errorMessages()).isEmpty();
         // empty field: error
         config = Configuration.create().with(MSG_KEY_COLUMNS, "").build();
-        assertThat(config.validate(Field.setOf(MSG_KEY_COLUMNS)).get(MSG_KEY_COLUMNS.name()).errorMessages()).isNotEmpty();
+        errorList = config.validate(Field.setOf(MSG_KEY_COLUMNS)).get(MSG_KEY_COLUMNS.name()).errorMessages();
+        assertThat(" has an invalid format (expecting '^(([^:;]+):([^:;\\s]+))+$')").isEqualTo(errorList.get(0));
         // field: ok
         config = Configuration.create().with(MSG_KEY_COLUMNS, "t1:C1").build();
         assertThat(config.validate(Field.setOf(MSG_KEY_COLUMNS)).get(MSG_KEY_COLUMNS.name()).errorMessages()).isEmpty();
@@ -252,6 +254,30 @@ public class ConfigurationTest {
         assertThat(config.validate(Field.setOf(MSG_KEY_COLUMNS)).get(MSG_KEY_COLUMNS.name()).errorMessages()).isEmpty();
         // field: invalid format
         config = Configuration.create().with(MSG_KEY_COLUMNS, "t1,t2").build();
-        assertThat(config.validate(Field.setOf(MSG_KEY_COLUMNS)).get(MSG_KEY_COLUMNS.name()).errorMessages()).isNotEmpty();
+        errorList = config.validate(Field.setOf(MSG_KEY_COLUMNS)).get(MSG_KEY_COLUMNS.name()).errorMessages();
+        assertThat("t1,t2 has an invalid format (expecting '^(([^:;]+):([^:;\\s]+))+$')").isEqualTo(errorList.get(0));
+    }
+
+    @Test
+    @FixFor("DBZ-2957")
+    public void testMsgKeyColumnsFieldRegexValidation() {
+        List<String> errorList;
+        config = Configuration.create().with(MSG_KEY_COLUMNS, "t1:C1;(.*).t2:C1,C2;").build();
+        assertThat(config.validate(Field.setOf(MSG_KEY_COLUMNS)).get(MSG_KEY_COLUMNS.name()).errorMessages()).isEmpty();
+
+        // field : invalid format
+        config = Configuration.create().with(MSG_KEY_COLUMNS, "t1:C1;(.*).t2:C1,C2;t3.C1;").build();
+        errorList = config.validate(Field.setOf(MSG_KEY_COLUMNS)).get(MSG_KEY_COLUMNS.name()).errorMessages();
+        assertThat("t3.C1 has an invalid format (expecting '^(([^:;]+):([^:;\\s]+))+$')").isEqualTo(errorList.get(0));
+
+        // field : invalid format
+        config = Configuration.create().with(MSG_KEY_COLUMNS, "t1:C1;(.*).t2:C1,C2;t3;").build();
+        errorList = config.validate(Field.setOf(MSG_KEY_COLUMNS)).get(MSG_KEY_COLUMNS.name()).errorMessages();
+        assertThat("t3 has an invalid format (expecting '^(([^:;]+):([^:;\\s]+))+$')").isEqualTo(errorList.get(0));
+
+        // field : invalid format
+        config = Configuration.create().with(MSG_KEY_COLUMNS, "t1:C1;foobar").build();
+        errorList = config.validate(Field.setOf(MSG_KEY_COLUMNS)).get(MSG_KEY_COLUMNS.name()).errorMessages();
+        assertThat("foobar has an invalid format (expecting '^(([^:;]+):([^:;\\s]+))+$')").isEqualTo(errorList.get(0));
     }
 }
