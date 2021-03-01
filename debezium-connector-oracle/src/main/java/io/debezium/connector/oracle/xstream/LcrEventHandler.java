@@ -128,12 +128,11 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
     }
 
     private TableId getTableId(LCR lcr) {
-        final String sourceDatabaseName = lcr.getSourceDatabaseName().split("\\.")[0];
         if (!this.tablenameCaseInsensitive) {
-            return new TableId(sourceDatabaseName, lcr.getObjectOwner(), lcr.getObjectName());
+            return new TableId(lcr.getSourceDatabaseName(), lcr.getObjectOwner(), lcr.getObjectName());
         }
         else {
-            return new TableId(sourceDatabaseName.toLowerCase(), lcr.getObjectOwner(), lcr.getObjectName().toLowerCase());
+            return new TableId(lcr.getSourceDatabaseName().toLowerCase(), lcr.getObjectOwner(), lcr.getObjectName().toLowerCase());
         }
     }
 
