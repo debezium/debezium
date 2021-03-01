@@ -46,7 +46,7 @@ import io.debezium.util.Threads;
  *
  * @author Chris Cranford
  */
-public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSource {
+public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSource<MongoDbOffsetContext> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MongoDbStreamingChangeEventSource.class);
 
@@ -57,38 +57,42 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
     private static final String OPERATION_CONTROL = "c";
     private static final String TX_OPS = "applyOps";
 
+    private final MongoDbConnectorConfig connectorConfig;
     private final EventDispatcher<CollectionId> dispatcher;
     private final ErrorHandler errorHandler;
     private final Clock clock;
-    private final MongoDbOffsetContext offsetContext;
     private final ConnectionContext connectionContext;
     private final ReplicaSets replicaSets;
     private final MongoDbTaskContext taskContext;
 
     public MongoDbStreamingChangeEventSource(MongoDbConnectorConfig connectorConfig, MongoDbTaskContext taskContext,
-                                             ReplicaSets replicaSets, MongoDbOffsetContext offsetContext,
+                                             ReplicaSets replicaSets,
                                              EventDispatcher<CollectionId> dispatcher, ErrorHandler errorHandler, Clock clock) {
+        this.connectorConfig = connectorConfig;
         this.connectionContext = taskContext.getConnectionContext();
         this.dispatcher = dispatcher;
         this.errorHandler = errorHandler;
         this.clock = clock;
         this.replicaSets = replicaSets;
         this.taskContext = taskContext;
-        this.offsetContext = (offsetContext != null) ? offsetContext : initializeOffsets(connectorConfig, replicaSets);
     }
 
     @Override
-    public void execute(ChangeEventSourceContext context) throws InterruptedException {
+    public void execute(ChangeEventSourceContext context, MongoDbOffsetContext offsetContext) throws InterruptedException {
         final List<ReplicaSet> validReplicaSets = replicaSets.validReplicaSets();
+
+        if (offsetContext == null) {
+            offsetContext = initializeOffsets(connectorConfig, replicaSets);
+        }
 
         try {
             if (validReplicaSets.size() == 1) {
                 // Streams the replica-set changes in the current thread
-                streamChangesForReplicaSet(context, validReplicaSets.get(0));
+                streamChangesForReplicaSet(context, validReplicaSets.get(0), offsetContext);
             }
             else if (validReplicaSets.size() > 1) {
                 // Starts a thread for each replica-set and executes the streaming process
-                streamChangesForReplicaSets(context, validReplicaSets);
+                streamChangesForReplicaSets(context, validReplicaSets, offsetContext);
             }
         }
         finally {
@@ -96,14 +100,15 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         }
     }
 
-    private void streamChangesForReplicaSet(ChangeEventSourceContext context, ReplicaSet replicaSet) {
+    private void streamChangesForReplicaSet(ChangeEventSourceContext context, ReplicaSet replicaSet,
+                                            MongoDbOffsetContext offsetContext) {
         MongoPrimary primaryClient = null;
         try {
             primaryClient = establishConnectionToPrimary(replicaSet);
             if (primaryClient != null) {
                 final AtomicReference<MongoPrimary> primaryReference = new AtomicReference<>(primaryClient);
                 primaryClient.execute("read from oplog on '" + replicaSet + "'", primary -> {
-                    readOplog(primary, primaryReference.get(), replicaSet, context);
+                    readOplog(primary, primaryReference.get(), replicaSet, context, offsetContext);
                 });
             }
         }
@@ -118,7 +123,8 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         }
     }
 
-    private void streamChangesForReplicaSets(ChangeEventSourceContext context, List<ReplicaSet> replicaSets) {
+    private void streamChangesForReplicaSets(ChangeEventSourceContext context, List<ReplicaSet> replicaSets,
+                                             MongoDbOffsetContext offsetContext) {
         final int threads = replicaSets.size();
         final ExecutorService executor = Threads.newFixedThreadPool(MongoDbConnector.class, taskContext.serverName(), "replicator-streaming", threads);
         final CountDownLatch latch = new CountDownLatch(threads);
@@ -128,7 +134,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         replicaSets.forEach(replicaSet -> {
             executor.submit(() -> {
                 try {
-                    streamChangesForReplicaSet(context, replicaSet);
+                    streamChangesForReplicaSet(context, replicaSet, offsetContext);
                 }
                 finally {
                     latch.countDown();
@@ -161,7 +167,8 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         });
     }
 
-    private void readOplog(MongoClient primary, MongoPrimary primaryClient, ReplicaSet replicaSet, ChangeEventSourceContext context) {
+    private void readOplog(MongoClient primary, MongoPrimary primaryClient, ReplicaSet replicaSet, ChangeEventSourceContext context,
+                           MongoDbOffsetContext offsetContext) {
         final ReplicaSetOffsetContext rsOffsetContext = offsetContext.getReplicaSetOffsetContext(replicaSet);
 
         final BsonTimestamp oplogStart = rsOffsetContext.lastOffsetTimestamp();

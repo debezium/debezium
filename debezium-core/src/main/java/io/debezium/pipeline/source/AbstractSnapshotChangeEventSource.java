@@ -31,22 +31,20 @@ import io.debezium.util.Threads;
  *
  * @author Chris Cranford
  */
-public abstract class AbstractSnapshotChangeEventSource implements SnapshotChangeEventSource {
+public abstract class AbstractSnapshotChangeEventSource<O extends OffsetContext> implements SnapshotChangeEventSource<O> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractSnapshotChangeEventSource.class);
 
     private final CommonConnectorConfig connectorConfig;
-    protected final OffsetContext previousOffset;
     private final SnapshotProgressListener snapshotProgressListener;
 
-    public AbstractSnapshotChangeEventSource(CommonConnectorConfig connectorConfig, OffsetContext previousOffset, SnapshotProgressListener snapshotProgressListener) {
+    public AbstractSnapshotChangeEventSource(CommonConnectorConfig connectorConfig, SnapshotProgressListener snapshotProgressListener) {
         this.connectorConfig = connectorConfig;
-        this.previousOffset = previousOffset;
         this.snapshotProgressListener = snapshotProgressListener;
     }
 
     @Override
-    public SnapshotResult execute(ChangeEventSourceContext context) throws InterruptedException {
+    public SnapshotResult execute(ChangeEventSourceContext context, O previousOffset) throws InterruptedException {
         SnapshottingTask snapshottingTask = getSnapshottingTask(previousOffset);
         if (snapshottingTask.shouldSkipSnapshot()) {
             LOGGER.debug("Skipping snapshotting");
@@ -68,7 +66,7 @@ public abstract class AbstractSnapshotChangeEventSource implements SnapshotChang
 
         try {
             snapshotProgressListener.snapshotStarted();
-            SnapshotResult result = doExecute(context, ctx, snapshottingTask);
+            SnapshotResult result = doExecute(context, previousOffset, ctx, snapshottingTask);
 
             return result;
         }
@@ -134,16 +132,19 @@ public abstract class AbstractSnapshotChangeEventSource implements SnapshotChang
      * pending transactions, releasing locks, etc.
      *
      * @param context contextual information for this source's execution
+     * @param previousOffset
      * @param snapshotContext mutable context information populated throughout the snapshot process
      * @param snapshottingTask immutable information about what tasks should be performed during snapshot
      * @return an indicator to the position at which the snapshot was taken
      */
-    protected abstract SnapshotResult doExecute(ChangeEventSourceContext context, SnapshotContext snapshotContext, SnapshottingTask snapshottingTask) throws Exception;
+    protected abstract SnapshotResult doExecute(ChangeEventSourceContext context, O previousOffset, SnapshotContext snapshotContext,
+                                                SnapshottingTask snapshottingTask)
+            throws Exception;
 
     /**
      * Returns the snapshotting task based on the previous offset (if available) and the connector's snapshotting mode.
      */
-    protected abstract SnapshottingTask getSnapshottingTask(OffsetContext previousOffset);
+    protected abstract SnapshottingTask getSnapshottingTask(O previousOffset);
 
     /**
      * Prepares the taking of a snapshot and returns an initial {@link SnapshotContext}.

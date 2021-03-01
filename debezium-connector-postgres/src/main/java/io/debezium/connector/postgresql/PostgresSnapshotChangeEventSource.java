@@ -25,7 +25,6 @@ import io.debezium.connector.postgresql.spi.Snapshotter;
 import io.debezium.data.SpecialValueDecimal;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
-import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.relational.Column;
 import io.debezium.relational.RelationalSnapshotChangeEventSource;
 import io.debezium.relational.Table;
@@ -34,7 +33,7 @@ import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.schema.SchemaChangeEvent.SchemaChangeEventType;
 import io.debezium.util.Clock;
 
-public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeEventSource {
+public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeEventSource<PostgresOffsetContext> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PostgresSnapshotChangeEventSource.class);
 
@@ -44,23 +43,21 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
     private final Snapshotter snapshotter;
     private final SlotCreationResult slotCreatedInfo;
     private final SlotState startingSlotInfo;
-    private final PostgresOffsetContext previousOffset;
 
-    public PostgresSnapshotChangeEventSource(PostgresConnectorConfig connectorConfig, Snapshotter snapshotter, PostgresOffsetContext previousOffset,
+    public PostgresSnapshotChangeEventSource(PostgresConnectorConfig connectorConfig, Snapshotter snapshotter,
                                              PostgresConnection jdbcConnection, PostgresSchema schema, EventDispatcher<TableId> dispatcher, Clock clock,
                                              SnapshotProgressListener snapshotProgressListener, SlotCreationResult slotCreatedInfo, SlotState startingSlotInfo) {
-        super(connectorConfig, previousOffset, jdbcConnection, dispatcher, clock, snapshotProgressListener);
+        super(connectorConfig, jdbcConnection, dispatcher, clock, snapshotProgressListener);
         this.connectorConfig = connectorConfig;
         this.jdbcConnection = jdbcConnection;
         this.schema = schema;
         this.snapshotter = snapshotter;
         this.slotCreatedInfo = slotCreatedInfo;
         this.startingSlotInfo = startingSlotInfo;
-        this.previousOffset = previousOffset;
     }
 
     @Override
-    protected SnapshottingTask getSnapshottingTask(OffsetContext previousOffset) {
+    protected SnapshottingTask getSnapshottingTask(PostgresOffsetContext previousOffset) {
         boolean snapshotSchema = true;
         boolean snapshotData = true;
 
@@ -129,7 +126,7 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
     }
 
     @Override
-    protected void determineSnapshotOffset(RelationalSnapshotContext ctx) throws Exception {
+    protected void determineSnapshotOffset(RelationalSnapshotContext ctx, PostgresOffsetContext previousOffset) throws Exception {
         PostgresOffsetContext offset = (PostgresOffsetContext) ctx.offset;
         if (offset == null) {
             if (previousOffset != null && !snapshotter.shouldStreamEventsStartingFromSnapshot()) {
@@ -182,7 +179,9 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
     }
 
     @Override
-    protected void readTableStructure(ChangeEventSourceContext sourceContext, RelationalSnapshotContext snapshotContext) throws SQLException, InterruptedException {
+    protected void readTableStructure(ChangeEventSourceContext sourceContext, RelationalSnapshotContext snapshotContext,
+                                      PostgresOffsetContext offsetContext)
+            throws SQLException, InterruptedException {
         Set<String> schemas = snapshotContext.capturedTables.stream()
                 .map(TableId::schema)
                 .collect(Collectors.toSet());

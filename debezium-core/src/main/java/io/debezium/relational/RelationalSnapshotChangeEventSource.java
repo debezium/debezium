@@ -50,7 +50,7 @@ import io.debezium.util.Threads.Timer;
  *
  * @author Gunnar Morling
  */
-public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapshotChangeEventSource {
+public abstract class RelationalSnapshotChangeEventSource<O extends OffsetContext> extends AbstractSnapshotChangeEventSource<O> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RelationalSnapshotChangeEventSource.class);
 
@@ -60,7 +60,6 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
     private static final Duration LOG_INTERVAL = Duration.ofMillis(10_000);
 
     private final RelationalDatabaseConnectorConfig connectorConfig;
-    private final OffsetContext previousOffset;
     private final JdbcConnection jdbcConnection;
     private final HistorizedRelationalDatabaseSchema schema;
     protected final EventDispatcher<TableId> dispatcher;
@@ -68,11 +67,10 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
     private final SnapshotProgressListener snapshotProgressListener;
 
     public RelationalSnapshotChangeEventSource(RelationalDatabaseConnectorConfig connectorConfig,
-                                               OffsetContext previousOffset, JdbcConnection jdbcConnection, HistorizedRelationalDatabaseSchema schema,
+                                               JdbcConnection jdbcConnection, HistorizedRelationalDatabaseSchema schema,
                                                EventDispatcher<TableId> dispatcher, Clock clock, SnapshotProgressListener snapshotProgressListener) {
-        super(connectorConfig, previousOffset, snapshotProgressListener);
+        super(connectorConfig, snapshotProgressListener);
         this.connectorConfig = connectorConfig;
-        this.previousOffset = previousOffset;
         this.jdbcConnection = jdbcConnection;
         this.schema = schema;
         this.dispatcher = dispatcher;
@@ -81,13 +79,13 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
     }
 
     public RelationalSnapshotChangeEventSource(RelationalDatabaseConnectorConfig connectorConfig,
-                                               OffsetContext previousOffset, JdbcConnection jdbcConnection,
+                                               JdbcConnection jdbcConnection,
                                                EventDispatcher<TableId> dispatcher, Clock clock, SnapshotProgressListener snapshotProgressListener) {
-        this(connectorConfig, previousOffset, jdbcConnection, null, dispatcher, clock, snapshotProgressListener);
+        this(connectorConfig, jdbcConnection, null, dispatcher, clock, snapshotProgressListener);
     }
 
     @Override
-    public SnapshotResult doExecute(ChangeEventSourceContext context, SnapshotContext snapshotContext, SnapshottingTask snapshottingTask)
+    public SnapshotResult doExecute(ChangeEventSourceContext context, O previousOffset, SnapshotContext snapshotContext, SnapshottingTask snapshottingTask)
             throws Exception {
         final RelationalSnapshotContext ctx = (RelationalSnapshotContext) snapshotContext;
 
@@ -116,10 +114,10 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
             }
 
             LOGGER.info("Snapshot step 4 - Determining snapshot offset");
-            determineSnapshotOffset(ctx);
+            determineSnapshotOffset(ctx, previousOffset);
 
             LOGGER.info("Snapshot step 5 - Reading structure of captured tables");
-            readTableStructure(context, ctx);
+            readTableStructure(context, ctx, previousOffset);
 
             if (snapshottingTask.snapshotSchema()) {
                 LOGGER.info("Snapshot step 6 - Persisting schema history");
@@ -230,12 +228,14 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
      * completed, a {@link StreamingChangeEventSource} will be set up with this initial position to continue with stream
      * reading from there.
      */
-    protected abstract void determineSnapshotOffset(RelationalSnapshotContext snapshotContext) throws Exception;
+    protected abstract void determineSnapshotOffset(RelationalSnapshotContext snapshotContext, O previousOffset) throws Exception;
 
     /**
      * Reads the structure of all the captured tables, writing it to {@link RelationalSnapshotContext#tables}.
      */
-    protected abstract void readTableStructure(ChangeEventSourceContext sourceContext, RelationalSnapshotContext snapshotContext) throws Exception;
+    protected abstract void readTableStructure(ChangeEventSourceContext sourceContext, RelationalSnapshotContext snapshotContext,
+                                               O offsetContext)
+            throws Exception;
 
     /**
      * Releases all locks established in order to create a consistent schema snapshot.
