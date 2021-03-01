@@ -15,11 +15,13 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -53,6 +55,8 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestRule;
 import org.postgresql.util.PSQLState;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.CommonConnectorConfig.Version;
@@ -2507,6 +2511,70 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         }).exceptionally(throwable -> {
             throw new RuntimeException(throwable);
         });
+    }
+
+    private List<Long> getSequence(SourceRecord record) {
+        assertTrue(record.value() instanceof Struct);
+        Struct source = ((Struct) record.value()).getStruct("source");
+        String stringSequence = source.getString("sequence");
+        ObjectMapper mapper = new ObjectMapper();
+        try {
+            // Sequence values are Strings, but they are all Longs for
+            // Postgres sources.
+            return Arrays.asList(mapper.readValue(stringSequence, Long[].class));
+        }
+        catch (IOException e) {
+            throw new IllegalArgumentException(e);
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-2991")
+    public void shouldHaveLastCommitLsn() throws InterruptedException {
+        TestHelper.execute(SETUP_TABLES_STMT);
+        start(PostgresConnector.class, TestHelper.defaultConfig()
+                .with(CommonConnectorConfig.SOURCE_STRUCT_MAKER_VERSION, Version.V2)
+                .with(PostgresConnectorConfig.PROVIDE_TRANSACTION_METADATA, true)
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.getValue())
+                .build());
+        assertConnectorIsRunning();
+
+        waitForAvailableRecords(100, TimeUnit.MILLISECONDS);
+        assertNoRecordsToConsume();
+
+        final int n_inserts = 3;
+        for (int i = 0; i < n_inserts; ++i) {
+            TestHelper.execute(INSERT_STMT);
+        }
+
+        List<SourceRecord> records = new ArrayList<>();
+        Awaitility.await("Skip empty transactions and find the data").atMost(Duration.ofSeconds(TestHelper.waitTimeForRecords() * 3)).until(() -> {
+            int n_transactions = 0;
+            while (n_transactions < n_inserts) {
+                final List<SourceRecord> candidate = consumeRecordsByTopic(2).allRecordsInOrder();
+                if (candidate.get(1).topic().contains("transaction")) {
+                    // empty transaction, should be skipped
+                    continue;
+                }
+                records.addAll(candidate);
+                records.addAll(consumeRecordsByTopic(2).allRecordsInOrder());
+                ++n_transactions;
+            }
+            return true;
+        });
+
+        assertEquals(4 * n_inserts, records.size());
+        List<Long> second_transaction_sequence = getSequence(records.get(5));
+        assertEquals(second_transaction_sequence.size(), 2);
+        assertEquals(second_transaction_sequence.get(0), getSequence(records.get(6)).get(0));
+
+        List<Long> third_transaction_sequence = getSequence(records.get(9));
+        assertEquals(third_transaction_sequence.size(), 2);
+        assertEquals(third_transaction_sequence.get(0), getSequence(records.get(10)).get(0));
+
+        // Assert the lsn of the second transaction is less than the third.
+        assertTrue(second_transaction_sequence.get(1) < third_transaction_sequence.get(1));
+        stopConnector();
     }
 
     private Predicate<SourceRecord> stopOnPKPredicate(int pkValue) {

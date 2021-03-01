@@ -43,18 +43,21 @@ public abstract class AbstractSourceInfoStructMaker<T extends AbstractSourceInfo
                 .field(AbstractSourceInfo.SERVER_NAME_KEY, Schema.STRING_SCHEMA)
                 .field(AbstractSourceInfo.TIMESTAMP_KEY, Schema.INT64_SCHEMA)
                 .field(AbstractSourceInfo.SNAPSHOT_KEY, SNAPSHOT_RECORD_SCHEMA)
-                .field(AbstractSourceInfo.DATABASE_NAME_KEY, Schema.STRING_SCHEMA);
+                .field(AbstractSourceInfo.DATABASE_NAME_KEY, Schema.STRING_SCHEMA)
+                .field(AbstractSourceInfo.SEQUENCE_KEY, Schema.OPTIONAL_STRING_SCHEMA);
     }
 
     protected Struct commonStruct(T sourceInfo) {
         final Instant timestamp = sourceInfo.timestamp() == null ? Instant.now() : sourceInfo.timestamp();
         final String database = sourceInfo.database() == null ? "" : sourceInfo.database();
+        final String sequence = sourceInfo.sequence() == null ? "" : sourceInfo.sequence();
         Struct ret = new Struct(schema())
                 .put(AbstractSourceInfo.DEBEZIUM_VERSION_KEY, version)
                 .put(AbstractSourceInfo.DEBEZIUM_CONNECTOR_KEY, connector)
                 .put(AbstractSourceInfo.SERVER_NAME_KEY, serverName)
                 .put(AbstractSourceInfo.TIMESTAMP_KEY, timestamp.toEpochMilli())
-                .put(AbstractSourceInfo.DATABASE_NAME_KEY, database);
+                .put(AbstractSourceInfo.DATABASE_NAME_KEY, database)
+                .put(AbstractSourceInfo.SEQUENCE_KEY, sequence);
         final SnapshotRecord snapshot = sourceInfo.snapshot();
         if (snapshot != null) {
             snapshot.toSource(ret);
