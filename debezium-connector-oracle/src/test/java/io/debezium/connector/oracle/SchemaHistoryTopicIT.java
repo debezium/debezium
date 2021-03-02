@@ -100,7 +100,7 @@ public class SchemaHistoryTopicIT extends AbstractConnectorTest {
         Assertions.assertThat(schemaRecords).hasSize(3);
         schemaRecords.forEach(record -> {
             Assertions.assertThat(record.topic()).isEqualTo("server1");
-            Assertions.assertThat(((Struct) record.key()).getString("databaseName")).isEqualTo("ORCLPDB1");
+            Assertions.assertThat(((Struct) record.key()).getString("databaseName")).isEqualTo(TestHelper.getDatabaseName());
             Assertions.assertThat(record.sourceOffset().get("snapshot")).isEqualTo(true);
         });
         Assertions.assertThat(((Struct) schemaRecords.get(0).value()).getStruct("source").getString("snapshot")).isEqualTo("true");

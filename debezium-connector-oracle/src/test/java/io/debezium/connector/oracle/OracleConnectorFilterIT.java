@@ -57,6 +57,9 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
 
     @AfterClass
     public static void closeConnection() throws SQLException {
+        if (adminConnection != null) {
+            adminConnection.close();
+        }
         if (connection != null) {
             connection.close();
         }

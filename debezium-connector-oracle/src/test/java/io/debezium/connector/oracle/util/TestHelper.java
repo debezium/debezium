@@ -7,29 +7,34 @@ package io.debezium.connector.oracle.util;
 
 import java.nio.file.Path;
 import java.sql.SQLException;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.util.Map;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.relational.history.FileDatabaseHistory;
+import io.debezium.util.Strings;
 import io.debezium.util.Testing;
 
 public class TestHelper {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(TestHelper.class);
+    private static final String PDB_NAME = "pdb.name";
+    private static final String DATABASE_PREFIX = "database.";
+    private static final String DATABASE_ADMIN_PREFIX = "database.admin.";
 
     public static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-connect.txt").toAbsolutePath();
 
-    public static final String CONNECTOR_USER = "c##xstrm";
-    public static final String CONNECTOR_USER_LOGMINER = "c##dbzuser";
-
+    public static final String CONNECTOR_USER = "c##dbzuser";
     public static final String CONNECTOR_NAME = "oracle";
-
     public static final String SERVER_NAME = "server1";
+    public static final String CONNECTOR_USER_PASS = "dbz";
+    public static final String HOST = "localhost";
+    public static final String SCHEMA_USER = "debezium";
+    public static final String SCHEMA_PASS = "dbz";
+    public static final String DATABASE = "ORCLPDB1";
+    public static final String DATABASE_CDB = "ORCLCDB";
+    public static final int PORT = 1521;
 
     /**
      * Key for schema parameter used to store a source column's type name.
@@ -46,33 +51,38 @@ public class TestHelper {
      */
     public static final String TYPE_SCALE_PARAMETER_KEY = "__debezium.source.column.scale";
 
-    // todo: unify logminer and xstream user accounts
-    public static final String CONNECTOR_USER_PASS = "xs";
-    public static final String CONNECTOR_USER_PASS_LOGMINER = "dbz";
-    public static final String HOST = "localhost";
-    public static final String SCHEMA_USER = "debezium";
-    public static final String SCHEMA_PASS = "dbz";
-    public static final String DATABASE = "ORCLPDB1";
-    public static final String DATABASE_CDB = "ORCLCDB";
-
+    /**
+     * Get the name of the connector user, the default is {@link TestHelper#CONNECTOR_USER}.
+     */
     public static String getConnectorUserName() {
-        if (TestHelper.adapter().equals(OracleConnectorConfig.ConnectorAdapter.LOG_MINER)) {
-            return CONNECTOR_USER_LOGMINER;
-        }
-        return CONNECTOR_USER;
+        final String userName = getDatabaseConfig(DATABASE_PREFIX).getString(JdbcConfiguration.USER.name());
+        return Strings.isNullOrEmpty(userName) ? CONNECTOR_USER : userName;
     }
 
-    public static String getConnectorUserPassword() {
-        if (TestHelper.adapter().equals(OracleConnectorConfig.ConnectorAdapter.LOG_MINER)) {
-            return CONNECTOR_USER_PASS_LOGMINER;
-        }
-        return CONNECTOR_USER_PASS;
+    /**
+     * Get the password of the connector user, the default is {@link TestHelper#CONNECTOR_USER_PASS}.
+     */
+    private static String getConnectorUserPassword() {
+        final String password = getDatabaseConfig(DATABASE_PREFIX).getString(JdbcConfiguration.PASSWORD.name());
+        return Strings.isNullOrEmpty(password) ? CONNECTOR_USER_PASS : password;
     }
 
+    /**
+     * Get the database name, the default is {@link TestHelper#DATABASE}.
+     */
+    public static String getDatabaseName() {
+        final String databaseName = getDatabaseConfig(DATABASE_PREFIX).getString(JdbcConfiguration.DATABASE);
+        return Strings.isNullOrEmpty(databaseName) ? DATABASE : databaseName;
+    }
+
+    /**
+     * Returns a JdbcConfiguration that is specific for the XStream/LogMiner user accounts.
+     * If connecting to a CDB enabled database, this connection is to the root database.
+     */
     private static JdbcConfiguration defaultJdbcConfig() {
-        return JdbcConfiguration.copy(Configuration.fromSystemProperties("database."))
+        return JdbcConfiguration.copy(getDatabaseConfig(DATABASE_PREFIX))
                 .withDefault(JdbcConfiguration.HOSTNAME, HOST)
-                .withDefault(JdbcConfiguration.PORT, 1521)
+                .withDefault(JdbcConfiguration.PORT, PORT)
                 .withDefault(JdbcConfiguration.USER, getConnectorUserName())
                 .withDefault(JdbcConfiguration.PASSWORD, getConnectorUserPassword())
                 .withDefault(JdbcConfiguration.DATABASE, DATABASE_CDB)
@@ -80,8 +90,12 @@ public class TestHelper {
     }
 
     /**
-     * Returns a default configuration suitable for most test cases. Can be amended/overridden in individual tests as
-     * needed.
+     * Returns a JdbcConfiguration that is specific and suitable for initializing the connector.
+     * The returned builder can be amended with values as a test case requires.
+     *
+     * When initializing a connector connection to a database that operates in non-CDB mode, the
+     * configuration should still provide a {@code database.pdb.name} setting; however the value
+     * of the setting should be empty.  This is specific to the test suite only.
      */
     public static Configuration.Builder defaultConfig() {
         JdbcConfiguration jdbcConfiguration = defaultJdbcConfig();
@@ -91,57 +105,62 @@ public class TestHelper {
                 (field, value) -> builder.with(OracleConnectorConfig.DATABASE_CONFIG_PREFIX + field, value));
 
         if (adapter().equals(OracleConnectorConfig.ConnectorAdapter.XSTREAM)) {
-            builder.with(OracleConnectorConfig.XSTREAM_SERVER_NAME, "dbzxout");
+            builder.withDefault(OracleConnectorConfig.XSTREAM_SERVER_NAME, "dbzxout");
+        }
+
+        // In the event that the environment variables do not specify a database.pdb.name setting,
+        // the test suite will then assume default CDB mode and apply the default PDB name. If
+        // the environment wishes to use non-CDB mode, the database.pdb.name setting should be
+        // given but without a value.
+        if (!Configuration.fromSystemProperties(DATABASE_PREFIX).asMap().containsKey(PDB_NAME)) {
+            builder.withDefault(OracleConnectorConfig.PDB_NAME, DATABASE);
         }
 
         return builder.with(OracleConnectorConfig.SERVER_NAME, SERVER_NAME)
-                .with(OracleConnectorConfig.PDB_NAME, "ORCLPDB1")
                 .with(OracleConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
                 .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
                 .with(OracleConnectorConfig.INCLUDE_SCHEMA_CHANGES, false);
     }
 
+    /**
+     * Obtain a connection using the default configuration, i.e. within the context of the
+     * actual connector user that connectors and interacts with the database.
+     */
     public static OracleConnection defaultConnection() {
         Configuration config = defaultConfig().build();
-        Configuration jdbcConfig = config.subset("database.", true);
-
-        OracleConnection jdbcConnection = new OracleConnection(jdbcConfig, TestHelper.class::getClassLoader);
-
-        String pdbName = new OracleConnectorConfig(config).getPdbName();
-
-        if (pdbName != null) {
-            jdbcConnection.setSessionToPdb(pdbName);
-        }
-
-        return jdbcConnection;
+        Configuration jdbcConfig = config.subset(DATABASE_PREFIX, true);
+        return createConnection(config, jdbcConfig, true);
     }
 
     /**
-     * Returns a JDBC configuration for the test data schema and user (NOT the XStream user).
+     * Returns a JdbcConfiguration for the test schema and user account.
      */
     private static JdbcConfiguration testJdbcConfig() {
-        return JdbcConfiguration.copy(Configuration.fromSystemProperties("database."))
+        return JdbcConfiguration.copy(getDatabaseConfig(DATABASE_PREFIX))
                 .withDefault(JdbcConfiguration.HOSTNAME, HOST)
-                .withDefault(JdbcConfiguration.PORT, 1521)
-                .withDefault(JdbcConfiguration.USER, SCHEMA_USER)
-                .withDefault(JdbcConfiguration.PASSWORD, SCHEMA_PASS)
+                .withDefault(JdbcConfiguration.PORT, PORT)
+                .with(JdbcConfiguration.USER, SCHEMA_USER)
+                .with(JdbcConfiguration.PASSWORD, SCHEMA_PASS)
                 .withDefault(JdbcConfiguration.DATABASE, DATABASE)
                 .build();
     }
 
     /**
-     * Returns a JDBC configuration for database admin user (NOT the XStream user).
+     * Returns a JdbcConfiguration for the database administrator account.
      */
     private static JdbcConfiguration adminJdbcConfig() {
-        return JdbcConfiguration.copy(Configuration.fromSystemProperties("database.admin."))
+        return JdbcConfiguration.copy(getDatabaseConfig(DATABASE_ADMIN_PREFIX))
                 .withDefault(JdbcConfiguration.HOSTNAME, HOST)
-                .withDefault(JdbcConfiguration.PORT, 1521)
+                .withDefault(JdbcConfiguration.PORT, PORT)
                 .withDefault(JdbcConfiguration.USER, "sys as sysdba")
                 .withDefault(JdbcConfiguration.PASSWORD, "top_secret")
-                .withDefault(JdbcConfiguration.DATABASE, DATABASE)
+                .withDefault(JdbcConfiguration.DATABASE, getDatabaseName())
                 .build();
     }
 
+    /**
+     * Returns a configuration builder based on the test schema and user account settings.
+     */
     private static Configuration.Builder testConfig() {
         JdbcConfiguration jdbcConfiguration = testJdbcConfig();
         Configuration.Builder builder = Configuration.create();
@@ -152,6 +171,9 @@ public class TestHelper {
         return builder;
     }
 
+    /**
+     * Returns a configuration builder based on the administrator account settings.
+     */
     private static Configuration.Builder adminConfig() {
         JdbcConfiguration jdbcConfiguration = adminJdbcConfig();
         Configuration.Builder builder = Configuration.create();
@@ -162,54 +184,80 @@ public class TestHelper {
         return builder;
     }
 
-    public static OracleConnection testConnection() {
-        Configuration config = testConfig().build();
-        Configuration jdbcConfig = config.subset("database.", true);
-
-        OracleConnection jdbcConnection = new OracleConnection(jdbcConfig, TestHelper.class::getClassLoader);
-        try {
-            jdbcConnection.setAutoCommit(false);
+    /**
+     * Retrieves all settings provided by system properties based on the supplied {@code prefix}.
+     *
+     * @param prefix the key prefix to limit the settings based upon, i.e. {@code database.}.
+     * @return the configuration object
+     */
+    private static Configuration getDatabaseConfig(String prefix) {
+        // The test suite by default
+        // Get properties from system and remove empty database.pdb.name
+        // This will be set this way if a user wishes to test against a non-CDB environment
+        Configuration config = Configuration.fromSystemProperties(prefix);
+        if (config.hasKey(PDB_NAME)) {
+            String pdbName = config.getString(PDB_NAME);
+            if (Strings.isNullOrEmpty(pdbName)) {
+                Map<String, ?> map = config.asMap();
+                map.remove(PDB_NAME);
+                config = Configuration.from(map);
+            }
         }
-        catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
-
-        String pdbName = new OracleConnectorConfig(config).getPdbName();
-
-        if (pdbName != null) {
-            jdbcConnection.setSessionToPdb(pdbName);
-        }
-
-        return jdbcConnection;
+        return config;
     }
 
+    /**
+     * Return a test connection that is suitable for performing test database changes in tests.
+     */
+    public static OracleConnection testConnection() {
+        Configuration config = testConfig().build();
+        Configuration jdbcConfig = config.subset(DATABASE_PREFIX, true);
+        return createConnection(config, jdbcConfig, false);
+    }
+
+    /**
+     * Return a connection that is suitable for performing test database changes that require
+     * an administrator role permission.
+     */
     public static OracleConnection adminConnection() {
         Configuration config = adminConfig().build();
-        Configuration jdbcConfig = config.subset("database.", true);
+        Configuration jdbcConfig = config.subset(DATABASE_PREFIX, true);
+        return createConnection(config, jdbcConfig, false);
+    }
 
-        OracleConnection jdbcConnection = new OracleConnection(jdbcConfig, TestHelper.class::getClassLoader);
+    /**
+     * Create an OracleConnection.
+     *
+     * @param config the connector configuration
+     * @param jdbcConfig the JDBC configuration
+     * @param autoCommit whether the connection should enforce auto-commit
+     * @return the connection
+     */
+    private static OracleConnection createConnection(Configuration config, Configuration jdbcConfig, boolean autoCommit) {
+        OracleConnection connection = new OracleConnection(jdbcConfig, TestHelper.class::getClassLoader);
         try {
-            jdbcConnection.setAutoCommit(false);
+            connection.setAutoCommit(autoCommit);
+
+            String pdbName = new OracleConnectorConfig(config).getPdbName();
+            if (!Strings.isNullOrEmpty(pdbName)) {
+                connection.setSessionToPdb(pdbName);
+            }
+
+            return connection;
         }
         catch (SQLException e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("Failed to create connection", e);
         }
-
-        String pdbName = new OracleConnectorConfig(config).getPdbName();
-
-        if (pdbName != null) {
-            jdbcConnection.setSessionToPdb(pdbName);
-        }
-
-        return jdbcConnection;
     }
 
     public static void forceLogfileSwitch() {
         Configuration config = adminConfig().build();
-        Configuration jdbcConfig = config.subset("database.", true);
+        Configuration jdbcConfig = config.subset(DATABASE_PREFIX, true);
 
         try (OracleConnection jdbcConnection = new OracleConnection(jdbcConfig, TestHelper.class::getClassLoader)) {
-            jdbcConnection.resetSessionToCdb();
+            if ((new OracleConnectorConfig(defaultConfig().build())).getPdbName() != null) {
+                jdbcConnection.resetSessionToCdb();
+            }
             jdbcConnection.execute("ALTER SYSTEM SWITCH LOGFILE");
         }
         catch (SQLException e) {
@@ -219,10 +267,12 @@ public class TestHelper {
 
     public static int getNumberOfOnlineLogGroups() {
         Configuration config = adminConfig().build();
-        Configuration jdbcConfig = config.subset("database.", true);
+        Configuration jdbcConfig = config.subset(DATABASE_PREFIX, true);
 
         try (OracleConnection jdbcConnection = new OracleConnection(jdbcConfig, TestHelper.class::getClassLoader)) {
-            jdbcConnection.resetSessionToCdb();
+            if ((new OracleConnectorConfig(defaultConfig().build())).getPdbName() != null) {
+                jdbcConnection.resetSessionToCdb();
+            }
             return jdbcConnection.queryAndMap("SELECT COUNT(GROUP#) FROM V$LOG", rs -> {
                 rs.next();
                 return rs.getInt(1);

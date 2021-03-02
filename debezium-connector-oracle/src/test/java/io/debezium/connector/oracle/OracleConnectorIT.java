@@ -738,12 +738,13 @@ public class OracleConnectorIT extends AbstractConnectorTest {
     public void shouldConsumeEventsWithMaskedAndTruncatedColumns(boolean useDatabaseName) throws Exception {
         final Configuration config;
         if (useDatabaseName) {
+            final String dbName = TestHelper.getDatabaseName();
             config = TestHelper.defaultConfig()
                     .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
-                    .with("column.mask.with.12.chars", "ORCLPDB1.DEBEZIUM.MASKED_HASHED_COLUMN_TABLE.NAME")
+                    .with("column.mask.with.12.chars", dbName + ".DEBEZIUM.MASKED_HASHED_COLUMN_TABLE.NAME")
                     .with("column.mask.hash.SHA-256.with.salt.CzQMA0cB5K",
-                            "ORCLPDB1.DEBEZIUM.MASKED_HASHED_COLUMN_TABLE.NAME2,ORCLPDB1.DEBEZIUM.MASKED_HASHED_COLUMN_TABLE.NAME3")
-                    .with("column.truncate.to.4.chars", "ORCLPDB1.DEBEZIUM.TRUNCATED_COLUMN_TABLE.NAME")
+                            dbName + ".DEBEZIUM.MASKED_HASHED_COLUMN_TABLE.NAME2," + dbName + ".DEBEZIUM.MASKED_HASHED_COLUMN_TABLE.NAME3")
+                    .with("column.truncate.to.4.chars", dbName + ".DEBEZIUM.TRUNCATED_COLUMN_TABLE.NAME")
                     .build();
         }
         else {

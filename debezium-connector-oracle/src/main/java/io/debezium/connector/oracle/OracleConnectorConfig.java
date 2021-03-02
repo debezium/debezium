@@ -358,7 +358,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final LogMiningDmlParser dmlParser;
 
     public OracleConnectorConfig(Configuration config) {
-        super(OracleConnector.class, config, config.getString(SERVER_NAME), new SystemTablesPredicate(), x -> x.schema() + "." + x.table(), true);
+        super(OracleConnector.class, config, config.getString(SERVER_NAME), new SystemTablesPredicate(config), x -> x.schema() + "." + x.table(), true);
 
         this.databaseName = toUpperCase(config.getString(DATABASE_NAME));
         this.pdbName = toUpperCase(config.getString(PDB_NAME));
@@ -709,9 +709,24 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
      */
     private static class SystemTablesPredicate implements TableFilter {
 
+        private final Configuration config;
+
+        SystemTablesPredicate(Configuration config) {
+            this.config = config;
+        }
+
         @Override
         public boolean isIncluded(TableId t) {
-            return !OracleConnectorConfig.getExcludedSchemaNames().contains(t.schema().toLowerCase());
+            return !isExcludedSchema(t) && !isFlushTable(t);
+        }
+
+        private boolean isExcludedSchema(TableId id) {
+            return OracleConnectorConfig.getExcludedSchemaNames().contains(id.schema().toLowerCase());
+        }
+
+        private boolean isFlushTable(TableId id) {
+            final String schema = config.getString(USER);
+            return id.table().equalsIgnoreCase("LOG_MINING_FLUSH") && id.schema().equalsIgnoreCase(schema);
         }
     }
 

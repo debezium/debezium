@@ -135,13 +135,17 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
 
         // TX End
         record = records.get(3);
-        assertEndTransaction(record, expectedTxId, 2, Collect.hashMapOf("ORCLPDB1.DEBEZIUM.CUSTOMER", 1, "ORCLPDB1.DEBEZIUM.ORDERS", 1));
+
+        final String dbName = TestHelper.getDatabaseName();
+        assertEndTransaction(record, expectedTxId, 2, Collect.hashMapOf(dbName + ".DEBEZIUM.CUSTOMER", 1, dbName + ".DEBEZIUM.ORDERS", 1));
     }
 
     @Test
     @FixFor("DBZ-3090")
     public void transactionMetadataMultipleTransactions() throws Exception {
         try (OracleConnection secondaryConn = TestHelper.testConnection()) {
+
+            final String dbName = TestHelper.getDatabaseName();
 
             Configuration config = TestHelper.defaultConfig()
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.CUSTOMER,DEBEZIUM\\.ORDERS")
@@ -184,7 +188,7 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
 
             // TX End
             record = records.get(2);
-            assertEndTransaction(record, expectedTxId, 1, Collect.hashMapOf("ORCLPDB1.DEBEZIUM.ORDERS", 1));
+            assertEndTransaction(record, expectedTxId, 1, Collect.hashMapOf(dbName + ".DEBEZIUM.ORDERS", 1));
 
             // TX Begin
             record = records.get(3);
@@ -212,7 +216,7 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
 
             // TX End
             record = records.get(6);
-            assertEndTransaction(record, expectedTxId, 2, Collect.hashMapOf("ORCLPDB1.DEBEZIUM.CUSTOMER", 1, "ORCLPDB1.DEBEZIUM.ORDERS", 1));
+            assertEndTransaction(record, expectedTxId, 2, Collect.hashMapOf(dbName + ".DEBEZIUM.CUSTOMER", 1, dbName + ".DEBEZIUM.ORDERS", 1));
         }
     }
 }
