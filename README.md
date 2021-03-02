@@ -78,6 +78,20 @@ But as those tables are different in Oracle 11g, Debezium will report an error o
 
 Making this configuration obsolete is tracked under [DBZ-1045](https://issues.jboss.org/browse/DBZ-1045).
 
+### Running tests
+
+The Debezium Oracle connector's test suite can be tested against both a CDB installation (Oracle 12+) and a non-CDB installation (Oracle 11+).
+Starting with Oracle 12, CDB installations are the default way Oracle Database is installed unless explicitly changed prior to installation.
+
+#### CDB mode
+
+By default the Debezium Oracle connector test suite assumes CDB mode and so no additional arguments are required.
+
+#### Non CDB mode
+
+In order to run the Debezium Oracle connector tests against a non-CDB environment, 
+pass `-Ddatabase.pdb.name=` on the Maven command line. 
+ 
 ## Contributing
 
 The Debezium community welcomes anyone that wants to help out in any way, whether that includes reporting problems, helping with documentation, or contributing code changes to fix bugs, add tests, or implement new features. See [this document](https://github.com/debezium/debezium/blob/master/CONTRIBUTE.md) for details.

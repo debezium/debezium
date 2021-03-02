@@ -7,6 +7,8 @@ package io.debezium.connector.oracle;
 
 import java.time.Duration;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.Set;
 import java.util.function.Predicate;
 
@@ -328,9 +330,9 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         return CONFIG_DEFINITION.configDef();
     }
 
-    public static final String[] EXCLUDED_SCHEMAS = { "appqossys", "audsys", "ctxsys", "dvsys", "dbsfwuser", "dbsnmp",
-            "gsmadmin_internal", "lbacsys", "mdsys", "ojvmsys", "olapsys", "orddata", "ordsys", "outln", "sys", "system",
-            "wmsys", "xdb" };
+    public static final List<String> EXCLUDED_SCHEMAS = Collections.unmodifiableList(Arrays.asList("appqossys", "audsys",
+            "ctxsys", "dvsys", "dbsfwuser", "dbsnmp", "gsmadmin_internal", "lbacsys", "mdsys", "ojvmsys", "olapsys",
+            "orddata", "ordsys", "outln", "sys", "system", "wmsys", "xdb"));
 
     private final String databaseName;
     private final String pdbName;
@@ -725,7 +727,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         }
 
         private boolean isExcludedSchema(TableId id) {
-            return Arrays.stream(EXCLUDED_SCHEMAS).anyMatch(id.schema().toLowerCase()::equals);
+            return EXCLUDED_SCHEMAS.contains(id.schema().toLowerCase());
         }
 
         private boolean isFlushTable(TableId id) {

@@ -9,7 +9,6 @@ import java.io.IOException;
 import java.sql.SQLRecoverableException;
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.regex.Pattern;
@@ -231,9 +230,9 @@ public class SqlUtils {
 
         // There are some common schemas that we automatically ignore when building the filter predicates
         // and we pull that same list of schemas in here and apply those exclusions in the generated SQL.
-        if (OracleConnectorConfig.EXCLUDED_SCHEMAS.length > 0) {
+        if (!OracleConnectorConfig.EXCLUDED_SCHEMAS.isEmpty()) {
             query.append("AND SEG_OWNER NOT IN (");
-            for (Iterator<String> i = Arrays.stream(OracleConnectorConfig.EXCLUDED_SCHEMAS).iterator(); i.hasNext();) {
+            for (Iterator<String> i = OracleConnectorConfig.EXCLUDED_SCHEMAS.iterator(); i.hasNext();) {
                 String excludedSchema = i.next();
                 query.append("'").append(excludedSchema.toUpperCase()).append("'");
                 if (i.hasNext()) {
