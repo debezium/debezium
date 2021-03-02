@@ -7,7 +7,6 @@ package io.debezium.connector.oracle;
 
 import java.time.Duration;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Set;
 import java.util.function.Predicate;
 
@@ -26,6 +25,7 @@ import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.connector.oracle.logminer.HistoryRecorder;
 import io.debezium.connector.oracle.logminer.NeverHistoryRecorder;
+import io.debezium.connector.oracle.logminer.SqlUtils;
 import io.debezium.connector.oracle.xstream.LcrPosition;
 import io.debezium.connector.oracle.xstream.OracleVersion;
 import io.debezium.document.Document;
@@ -327,6 +327,10 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     public static ConfigDef configDef() {
         return CONFIG_DEFINITION.configDef();
     }
+
+    public static final String[] EXCLUDED_SCHEMAS = { "appqossys", "audsys", "ctxsys", "dvsys", "dbsfwuser", "dbsnmp",
+            "gsmadmin_internal", "lbacsys", "mdsys", "ojvmsys", "olapsys", "orddata", "ordsys", "outln", "sys", "system",
+            "wmsys", "xdb" };
 
     private final String databaseName;
     private final String pdbName;
@@ -721,12 +725,12 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         }
 
         private boolean isExcludedSchema(TableId id) {
-            return OracleConnectorConfig.getExcludedSchemaNames().contains(id.schema().toLowerCase());
+            return Arrays.stream(EXCLUDED_SCHEMAS).anyMatch(id.schema().toLowerCase()::equals);
         }
 
         private boolean isFlushTable(TableId id) {
             final String schema = config.getString(USER);
-            return id.table().equalsIgnoreCase("LOG_MINING_FLUSH") && id.schema().equalsIgnoreCase(schema);
+            return id.table().equalsIgnoreCase(SqlUtils.LOGMNR_FLUSH_TABLE) && id.schema().equalsIgnoreCase(schema);
         }
     }
 
@@ -895,12 +899,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     @Override
     public String getConnectorName() {
         return Module.name();
-    }
-
-    public static List<String> getExcludedSchemaNames() {
-        return Arrays.asList("appqossys", "audsys", "ctxsys", "dvsys", "dbsfwuser", "dbsnmp", "gsmadmin_internal",
-                "lbacsys", "mdsys", "ojvmsys", "olapsys", "orddata", "ordsys", "outln", "sys", "system",
-                "wmsys", "xdb");
     }
 
     public static int validateOutServerName(Configuration config, Field field, ValidationOutput problems) {

@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.sql.SQLRecoverableException;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.regex.Pattern;
@@ -76,7 +77,7 @@ public class SqlUtils {
     // log writer flush statements
     // todo: this table shifted from LOG_MINING_AUDIT to LOG_MINING_FLUSH.
     // since this is only used during streaming to flush redo log buffer, accept this change?
-    static final String LOGMNR_FLUSH_TABLE = "LOG_MINING_FLUSH";
+    public static final String LOGMNR_FLUSH_TABLE = "LOG_MINING_FLUSH";
     static final String FLUSH_TABLE_NOT_EMPTY = "SELECT '1' AS ONE FROM " + LOGMNR_FLUSH_TABLE;
     static final String CREATE_FLUSH_TABLE = "CREATE TABLE " + LOGMNR_FLUSH_TABLE + "(LAST_SCN NUMBER(19,0))";
     static final String INSERT_FLUSH_TABLE = "INSERT INTO " + LOGMNR_FLUSH_TABLE + " VALUES(0)";
@@ -230,10 +231,9 @@ public class SqlUtils {
 
         // There are some common schemas that we automatically ignore when building the filter predicates
         // and we pull that same list of schemas in here and apply those exclusions in the generated SQL.
-        List<String> excludedSchemas = OracleConnectorConfig.getExcludedSchemaNames();
-        if (!excludedSchemas.isEmpty()) {
+        if (OracleConnectorConfig.EXCLUDED_SCHEMAS.length > 0) {
             query.append("AND SEG_OWNER NOT IN (");
-            for (Iterator<String> i = excludedSchemas.iterator(); i.hasNext();) {
+            for (Iterator<String> i = Arrays.stream(OracleConnectorConfig.EXCLUDED_SCHEMAS).iterator(); i.hasNext();) {
                 String excludedSchema = i.next();
                 query.append("'").append(excludedSchema.toUpperCase()).append("'");
                 if (i.hasNext()) {

@@ -12,8 +12,8 @@ import java.io.IOException;
 import java.sql.SQLRecoverableException;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.Iterator;
-import java.util.List;
 
 import org.junit.Rule;
 import org.junit.Test;
@@ -321,11 +321,10 @@ public class SqlUtilsTest {
     private String resolveLogMineryContentQueryFromTemplate(String schemaReplacement, String tableReplacement) {
         String query = LOG_MINER_CONTENT_QUERY_TEMPLATE;
 
-        List<String> excludedSchemas = OracleConnectorConfig.getExcludedSchemaNames();
-        if (!excludedSchemas.isEmpty()) {
+        if (OracleConnectorConfig.EXCLUDED_SCHEMAS.length > 0) {
             StringBuilder systemPredicate = new StringBuilder();
             systemPredicate.append("AND SEG_OWNER NOT IN (");
-            for (Iterator<String> i = excludedSchemas.iterator(); i.hasNext();) {
+            for (Iterator<String> i = Arrays.stream(OracleConnectorConfig.EXCLUDED_SCHEMAS).iterator(); i.hasNext();) {
                 String excludedSchema = i.next();
                 systemPredicate.append("'").append(excludedSchema.toUpperCase()).append("'");
                 if (i.hasNext()) {
