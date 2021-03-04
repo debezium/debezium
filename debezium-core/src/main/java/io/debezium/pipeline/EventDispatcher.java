@@ -28,6 +28,7 @@ import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.data.Envelope;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.heartbeat.Heartbeat;
+import io.debezium.pipeline.signal.Signal;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
 import io.debezium.pipeline.spi.ChangeEventCreator;
@@ -77,6 +78,7 @@ public class EventDispatcher<T extends DataCollectionId> {
     private final Schema schemaChangeKeySchema;
     private final Schema schemaChangeValueSchema;
     private final TableChangesSerializer<List<Struct>> tableChangesSerializer = new ConnectTableChangeSerializer();
+    private final Signal signal;
 
     /**
      * Change event receiver for events dispatched from a streaming change event source.
@@ -114,6 +116,7 @@ public class EventDispatcher<T extends DataCollectionId> {
         this.inconsistentSchemaHandler = inconsistentSchemaHandler != null ? inconsistentSchemaHandler : this::errorOnMissingSchema;
 
         this.transactionMonitor = new TransactionMonitor(connectorConfig, metadataProvider, this::enqueueTransactionMessage);
+        this.signal = new Signal(connectorConfig);
         if (customHeartbeat != null) {
             heartbeat = customHeartbeat;
         }
@@ -207,6 +210,9 @@ public class EventDispatcher<T extends DataCollectionId> {
                             throws InterruptedException {
                         transactionMonitor.dataEvent(dataCollectionId, offset, key, value);
                         eventListener.onEvent(dataCollectionId, offset, key, value);
+                        if (operation == Operation.CREATE && signal.isSignal(dataCollectionId)) {
+                            signal.process(value);
+                        }
                         streamingReceiver.changeRecord(schema, operation, key, value, offset, headers);
                     }
                 });
