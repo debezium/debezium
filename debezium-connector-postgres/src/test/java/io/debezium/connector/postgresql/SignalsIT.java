@@ -66,7 +66,7 @@ public class SignalsIT extends AbstractConnectorTest {
         TestHelper.execute(INSERT_STMT);
 
         // Insert the signal record
-        TestHelper.execute("INSERT INTO s1.debezium_signal VALUES('1', 'log', '{\"message\": \"Signal message\"}')");
+        TestHelper.execute("INSERT INTO s1.debezium_signal VALUES('1', 'log', '{\"message\": \"Signal message at offset ''{}''\"}')");
 
         final SourceRecords records = consumeRecordsByTopic(2);
         Assertions.assertThat(records.allRecordsInOrder()).hasSize(2);

@@ -211,7 +211,7 @@ public class EventDispatcher<T extends DataCollectionId> {
                         transactionMonitor.dataEvent(dataCollectionId, offset, key, value);
                         eventListener.onEvent(dataCollectionId, offset, key, value);
                         if (operation == Operation.CREATE && signal.isSignal(dataCollectionId)) {
-                            signal.process(value);
+                            signal.process(value, offset);
                         }
                         streamingReceiver.changeRecord(schema, operation, key, value, offset, headers);
                     }
