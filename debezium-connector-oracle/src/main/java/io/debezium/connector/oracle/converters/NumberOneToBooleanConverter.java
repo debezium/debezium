@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.oracle.converters;
 
+import java.sql.SQLException;
 import java.util.Properties;
 import java.util.function.Predicate;
 
@@ -16,6 +17,7 @@ import io.debezium.function.Predicates;
 import io.debezium.spi.converter.CustomConverter;
 import io.debezium.spi.converter.RelationalColumn;
 import io.debezium.util.Strings;
+import oracle.sql.NUMBER;
 
 /**
  * Oracle reports {@code NUMBER(1)} as a numeric column type by default.  There may be some cases
@@ -66,6 +68,14 @@ public class NumberOneToBooleanConverter implements CustomConverter<SchemaBuilde
             else if (x instanceof Number) {
                 return ((Number) x).intValue() > 0;
             }
+            else if (x instanceof NUMBER) {
+                try {
+                    return ((NUMBER) x).intValue() > 0;
+                }
+                catch (SQLException e) {
+                    // ignored, use fallback below
+                }
+            }
             else if (x instanceof String) {
                 try {
                     return Integer.parseInt((String) x) > 0;
@@ -74,7 +84,7 @@ public class NumberOneToBooleanConverter implements CustomConverter<SchemaBuilde
                     return Boolean.parseBoolean((String) x);
                 }
             }
-            LOGGER.warn("Cannot converter '{}' to boolean", x.getClass());
+            LOGGER.warn("Cannot convert '{}' to boolean", x.getClass());
             return FALLBACK;
         });
     }
