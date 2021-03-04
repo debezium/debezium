@@ -22,6 +22,7 @@ import io.debezium.util.Collect;
 public class SqlServerOffsetContext implements OffsetContext {
 
     private static final String SERVER_PARTITION_KEY = "server";
+    private static final String DATABASE_PARTITION_KEY = "database";
     private static final String SNAPSHOT_COMPLETED_KEY = "snapshot_completed";
 
     private final Schema sourceInfoSchema;
@@ -37,7 +38,12 @@ public class SqlServerOffsetContext implements OffsetContext {
 
     public SqlServerOffsetContext(SqlServerConnectorConfig connectorConfig, TxLogPosition position, boolean snapshot, boolean snapshotCompleted, long eventSerialNo,
                                   TransactionContext transactionContext) {
-        partition = Collections.singletonMap(SERVER_PARTITION_KEY, connectorConfig.getLogicalName());
+        // Now this effectively duplicates {@link io.debezium.connector.common.TaskPartition},
+        // probably worth moving out of from the offset context
+        partition = Collect.hashMapOf(
+                SERVER_PARTITION_KEY, connectorConfig.getLogicalName(),
+                // TODO: this should be passed explicitly as an argument
+                DATABASE_PARTITION_KEY, connectorConfig.getDatabaseName());
         sourceInfo = new SourceInfo(connectorConfig);
 
         sourceInfo.setCommitLsn(position.getCommitLsn());
@@ -136,7 +142,7 @@ public class SqlServerOffsetContext implements OffsetContext {
         sourceInfo.setSnapshot(SnapshotRecord.FALSE);
     }
 
-    public static class Loader implements OffsetContext.Loader {
+    public static class Loader implements OffsetContext.Loader<SqlServerOffsetContext> {
 
         private final SqlServerConnectorConfig connectorConfig;
 
@@ -150,7 +156,7 @@ public class SqlServerOffsetContext implements OffsetContext {
         }
 
         @Override
-        public OffsetContext load(Map<String, ?> offset) {
+        public SqlServerOffsetContext load(Map<String, ?> offset) {
             final Lsn changeLsn = Lsn.valueOf((String) offset.get(SourceInfo.CHANGE_LSN_KEY));
             final Lsn commitLsn = Lsn.valueOf((String) offset.get(SourceInfo.COMMIT_LSN_KEY));
             boolean snapshot = Boolean.TRUE.equals(offset.get(SourceInfo.SNAPSHOT_KEY));
