@@ -92,7 +92,7 @@ public class SnapshotWithSelectOverridesIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-1224")
-    public void takeSnapshotWithOverrides() throws Exception {
+    public void takeSnapshotWithOverridesInSinglePartitionMode() throws Exception {
         final Configuration config = TestHelper.defaultConfig()
                 .with(
                         RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE,
@@ -104,7 +104,27 @@ public class SnapshotWithSelectOverridesIT extends AbstractConnectorTest {
                         RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + ".dbo.table3",
                         "SELECT * FROM [dbo].[table3] where soft_deleted = 0")
                 .build();
+        takeSnapshotWithOverrides(config);
+    }
 
+    @Test
+    @FixFor({ "DBZ-1224", "DBZ-2975" })
+    public void takeSnapshotWithOverridesInMultiPartitionMode() throws Exception {
+        final Configuration config = TestHelper.defaultMultiPartitionConfig()
+                .with(
+                        RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE,
+                        "dbo.table1,dbo.table3")
+                .with(
+                        RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + ".dbo.table1",
+                        "SELECT * FROM [" + TestHelper.TEST_DATABASE + "].[dbo].[table1] where soft_deleted = 0 order by id desc")
+                .with(
+                        RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + ".dbo.table3",
+                        "SELECT * FROM [" + TestHelper.TEST_DATABASE + "].[dbo].[table3] where soft_deleted = 0")
+                .build();
+        takeSnapshotWithOverrides(config);
+    }
+
+    private void takeSnapshotWithOverrides(Configuration config) throws Exception {
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
 
@@ -138,7 +158,7 @@ public class SnapshotWithSelectOverridesIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-3429")
-    public void takeSnapshotWithOverridesWithAdditionalWhitespace() throws Exception {
+    public void takeSnapshotWithOverridesWithAdditionalWhitespaceInSinglePartitionMode() throws Exception {
         final Configuration config = TestHelper.defaultConfig()
                 .with(
                         RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE,
@@ -150,7 +170,27 @@ public class SnapshotWithSelectOverridesIT extends AbstractConnectorTest {
                         RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + ".dbo.table3",
                         "SELECT * FROM [dbo].[table3] where soft_deleted = 0")
                 .build();
+        takeSnapshotWithOverridesWithAdditionalWhitespace(config);
+    }
 
+    @Test
+    @FixFor({ "DBZ-3429", "DBZ-2975" })
+    public void takeSnapshotWithOverridesWithAdditionalWhitespaceInMultiPartitionMode() throws Exception {
+        final Configuration config = TestHelper.defaultMultiPartitionConfig()
+                .with(
+                        RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE,
+                        "  dbo.table1 , dbo.table3  ")
+                .with(
+                        RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + ".dbo.table1",
+                        "SELECT * FROM [" + TestHelper.TEST_DATABASE + "].[dbo].[table1] where soft_deleted = 0 order by id desc")
+                .with(
+                        RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + ".dbo.table3",
+                        "SELECT * FROM [" + TestHelper.TEST_DATABASE + "].[dbo].[table3] where soft_deleted = 0")
+                .build();
+        takeSnapshotWithOverridesWithAdditionalWhitespace(config);
+    }
+
+    private void takeSnapshotWithOverridesWithAdditionalWhitespace(Configuration config) throws Exception {
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
 

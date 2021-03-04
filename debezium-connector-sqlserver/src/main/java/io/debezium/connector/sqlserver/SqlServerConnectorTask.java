@@ -72,10 +72,10 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
         final Configuration jdbcConfig = config.filter(
                 x -> !(x.startsWith(DatabaseHistory.CONFIGURATION_FIELD_PREFIX_STRING) || x.equals(HistorizedRelationalDatabaseConnectorConfig.DATABASE_HISTORY.name())))
                 .subset("database.", true);
-        dataConnection = new SqlServerConnection(jdbcConfig, clock, connectorConfig.getSourceTimestampMode(), valueConverters, () -> getClass().getClassLoader(),
-                connectorConfig.getSkippedOperations());
-        metadataConnection = new SqlServerConnection(jdbcConfig, clock, connectorConfig.getSourceTimestampMode(), valueConverters, () -> getClass().getClassLoader(),
-                connectorConfig.getSkippedOperations());
+        dataConnection = new SqlServerConnection(jdbcConfig, connectorConfig.getSourceTimestampMode(), valueConverters, () -> getClass().getClassLoader(),
+                connectorConfig.getSkippedOperations(), connectorConfig.isMultiPartitionModeEnabled());
+        metadataConnection = new SqlServerConnection(jdbcConfig, connectorConfig.getSourceTimestampMode(), valueConverters, () -> getClass().getClassLoader(),
+                connectorConfig.getSkippedOperations(), connectorConfig.isMultiPartitionModeEnabled());
 
         this.schema = new SqlServerDatabaseSchema(connectorConfig, valueConverters, topicSelector, schemaNameAdjuster);
         this.schema.initializeStorage();

@@ -81,7 +81,7 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
     @Override
     protected SnapshotContext<SqlServerPartition, SqlServerOffsetContext> prepare(SqlServerPartition partition)
             throws Exception {
-        return new SqlServerSnapshotContext(partition, jdbcConnection.getDatabaseName());
+        return new SqlServerSnapshotContext(partition);
     }
 
     @Override
@@ -137,7 +137,8 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
 
                     LOGGER.info("Locking table {}", tableId);
 
-                    String query = String.format("SELECT TOP(0) * FROM [%s].[%s] WITH (TABLOCKX)", tableId.schema(), tableId.table());
+                    String query = String.format("SELECT TOP(0) * FROM [%s].[%s].[%s] WITH (TABLOCKX)",
+                            tableId.catalog(), tableId.schema(), tableId.table());
                     statement.executeQuery(query).close();
                 }
             }
@@ -164,7 +165,7 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
             throws Exception {
         ctx.offset = new SqlServerOffsetContext(
                 connectorConfig,
-                TxLogPosition.valueOf(jdbcConnection.getMaxLsn()),
+                TxLogPosition.valueOf(jdbcConnection.getMaxLsn(ctx.partition.getDatabaseName())),
                 false,
                 false);
     }
@@ -196,7 +197,7 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
                     false);
 
             // Save changeTables for sql select later.
-            changeTables = jdbcConnection.listOfChangeTables().stream()
+            changeTables = jdbcConnection.listOfChangeTables(snapshotContext.partition.getDatabaseName()).stream()
                     .collect(Collectors.toMap(SqlServerChangeTable::getSourceTableId, changeTable -> changeTable,
                             (changeTable1, changeTable2) -> changeTable1.getStartLsn().compareTo(changeTable2.getStartLsn()) > 0
                                     ? changeTable1
@@ -258,7 +259,8 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
     protected Optional<String> getSnapshotSelect(RelationalSnapshotContext<SqlServerPartition, SqlServerOffsetContext> snapshotContext,
                                                  TableId tableId) {
         String modifiedColumns = checkExcludedColumns(tableId);
-        return Optional.of(String.format("SELECT %s FROM [%s].[%s]", modifiedColumns, tableId.schema(), tableId.table()));
+        return Optional.of(String.format("SELECT %s FROM [%s].[%s].[%s]",
+                modifiedColumns, tableId.catalog(), tableId.schema(), tableId.table()));
     }
 
     @Override
@@ -311,8 +313,8 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
         private int isolationLevelBeforeStart;
         private Savepoint preSchemaSnapshotSavepoint;
 
-        public SqlServerSnapshotContext(SqlServerPartition partition, String catalogName) throws SQLException {
-            super(partition, catalogName);
+        public SqlServerSnapshotContext(SqlServerPartition partition) throws SQLException {
+            super(partition, partition.getDatabaseName());
         }
     }
 

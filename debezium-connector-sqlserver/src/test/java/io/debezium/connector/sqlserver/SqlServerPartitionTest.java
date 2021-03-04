@@ -11,11 +11,11 @@ public class SqlServerPartitionTest extends AbstractPartitionTest<SqlServerParti
 
     @Override
     protected SqlServerPartition createPartition1() {
-        return new SqlServerPartition("server1");
+        return new SqlServerPartition("server1", "database1", false);
     }
 
     @Override
     protected SqlServerPartition createPartition2() {
-        return new SqlServerPartition("server2");
+        return new SqlServerPartition("server2", "database2", false);
     }
 }
