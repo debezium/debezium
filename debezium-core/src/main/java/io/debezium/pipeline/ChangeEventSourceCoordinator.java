@@ -109,7 +109,7 @@ public class ChangeEventSourceCoordinator<P extends TaskPartition, O extends Off
                 LOGGER.info("Context created");
 
                 SnapshotChangeEventSource<P, O> snapshotSource = changeEventSourceFactory.getSnapshotChangeEventSource(snapshotMetrics);
-                CatchUpStreamingResult catchUpStreamingResult = executeCatchUpStreaming(previousOffset, context, snapshotSource);
+                CatchUpStreamingResult catchUpStreamingResult = executeCatchUpStreaming(context, previousOffset, snapshotSource);
                 if (catchUpStreamingResult.performedCatchUpStreaming) {
                     streamingConnected(false);
                     commitOffsetLock.lock();
@@ -117,7 +117,7 @@ public class ChangeEventSourceCoordinator<P extends TaskPartition, O extends Off
                     commitOffsetLock.unlock();
                 }
                 eventDispatcher.setEventListener(snapshotMetrics);
-                SnapshotResult<O> snapshotResult = snapshotSource.execute(context, previousOffset, partition);
+                SnapshotResult<O> snapshotResult = snapshotSource.execute(context, partition, previousOffset);
                 LOGGER.info("Snapshot ended with {}", snapshotResult);
 
                 if (snapshotResult.getStatus() == SnapshotResultStatus.COMPLETED || schema.tableInformationComplete()) {
@@ -125,7 +125,7 @@ public class ChangeEventSourceCoordinator<P extends TaskPartition, O extends Off
                 }
 
                 if (running && snapshotResult.isCompletedOrSkipped()) {
-                    streamEvents(snapshotResult.getOffset(), context, partition);
+                    streamEvents(context, partition, snapshotResult.getOffset());
                 }
             }
             catch (InterruptedException e) {
@@ -141,18 +141,18 @@ public class ChangeEventSourceCoordinator<P extends TaskPartition, O extends Off
         });
     }
 
-    protected CatchUpStreamingResult executeCatchUpStreaming(OffsetContext previousOffset, ChangeEventSourceContext context,
+    protected CatchUpStreamingResult executeCatchUpStreaming(ChangeEventSourceContext context, OffsetContext previousOffset,
                                                              SnapshotChangeEventSource<P, O> snapshotSource)
             throws InterruptedException {
         return new CatchUpStreamingResult(false);
     }
 
-    protected void streamEvents(O offsetContext, ChangeEventSourceContext context, P partition) throws InterruptedException {
+    protected void streamEvents(ChangeEventSourceContext context, P partition, O offsetContext) throws InterruptedException {
         streamingSource = changeEventSourceFactory.getStreamingChangeEventSource();
         eventDispatcher.setEventListener(streamingMetrics);
         streamingConnected(true);
         LOGGER.info("Starting streaming");
-        streamingSource.execute(context, offsetContext, partition);
+        streamingSource.execute(context, partition, offsetContext);
         LOGGER.info("Finished streaming");
     }
 
