@@ -1816,8 +1816,9 @@ It is possible to capture changes in a PostgreSQL database that is running in li
 * Initiate logical replication from an AWS account that has the `rds_replication` role.
   The role grants permissions to manage logical slots and to stream data using logical slots.
   By default, only the master user account on AWS has the `rds_replication` role on Amazon RDS.
-  To initiate logical replication from a user account other than the master account, grant the account the `rds_replication` role.
-  For example, `grant rds_replication to _<my_user>_`
+  To enable a user account other than the master account to initiate logical replication, you must grant the account the `rds_replication` role.
+  For example, `grant rds_replication to _<my_user>_`. Superuser access is required to grant the role.
+  To enable the non-master account to perform an initial snapshot, the account also requires `SELECT` permission on the schema of any tables to be captured.
 
 [IMPORTANT]
 ====
