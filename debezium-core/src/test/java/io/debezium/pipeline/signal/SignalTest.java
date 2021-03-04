@@ -39,8 +39,8 @@ public class SignalTest {
     public void shouldExecuteLog() {
         final Signal signal = new Signal(config());
         final LogInterceptor log = new LogInterceptor(io.debezium.pipeline.signal.Log.class);
-        assertThat(signal.process("log1", "log", "{\"message\": \"signallog\"}")).isTrue();
-        assertThat(log.containsMessage("signallog")).isTrue();
+        assertThat(signal.process("log1", "log", "{\"message\": \"signallog {}\"}")).isTrue();
+        assertThat(log.containsMessage("signallog <none>")).isTrue();
     }
 
     @Test
@@ -100,7 +100,7 @@ public class SignalTest {
             }
         };
         signal.registerSignalAction("custom", testAction);
-        assertThat(signal.process(env.create(record, null, null))).isTrue();
+        assertThat(signal.process(env.create(record, null, null), null)).isTrue();
         assertThat(called.intValue()).isEqualTo(5);
     }
 
@@ -130,10 +130,10 @@ public class SignalTest {
         };
         signal.registerSignalAction("custom", testAction);
 
-        assertThat(signal.process(env.create(record, null, null))).isFalse();
+        assertThat(signal.process(env.create(record, null, null), null)).isFalse();
         assertThat(called.intValue()).isEqualTo(0);
 
-        assertThat(signal.process(record)).isFalse();
+        assertThat(signal.process(record, null)).isFalse();
         assertThat(called.intValue()).isEqualTo(0);
     }
 

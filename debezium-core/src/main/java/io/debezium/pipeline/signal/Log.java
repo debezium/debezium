@@ -22,7 +22,7 @@ public class Log implements Signal.Action {
             LOGGER.warn("Logging signal '{}' has arrived but the requested field 'message' is missing from data", signalPayload);
             return false;
         }
-        LOGGER.info(message);
+        LOGGER.info(message, signalPayload.offsetContext != null ? signalPayload.offsetContext.getOffset() : "<none>");
         return true;
     }
 

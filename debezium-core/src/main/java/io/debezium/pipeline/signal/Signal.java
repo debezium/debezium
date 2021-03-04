@@ -19,6 +19,7 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.data.Envelope;
 import io.debezium.document.Document;
 import io.debezium.document.DocumentReader;
+import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.schema.DataCollectionId;
 
 /**
@@ -51,17 +52,20 @@ public class Signal {
         public final String id;
         public final String type;
         public final Document data;
+        public final OffsetContext offsetContext;
 
         /**
          * @param id identifier of the signal intended for deduplication, usually ignored by the signal
          * @param type of the signal, usually ignored by the signal, should be used only when a signal code is shared for mutlple signals
          * @param data data specific for given signal instance
+         * @param offsetContext offset t what the signal was sent
          */
-        public Payload(String id, String type, Document data) {
+        public Payload(String id, String type, Document data, OffsetContext offsetContext) {
             super();
             this.id = id;
             this.type = type;
             this.data = data;
+            this.offsetContext = offsetContext;
         }
 
         @Override
@@ -92,7 +96,7 @@ public class Signal {
         signalActions.put(id, signal);
     }
 
-    public boolean process(String id, String type, String data) {
+    public boolean process(String id, String type, String data, OffsetContext offset) {
         LOGGER.debug("Arrived signal id = '{}', type = '{}', data = '{}'", id, type, data);
         final Action action = signalActions.get(type);
         if (action == null) {
@@ -102,7 +106,7 @@ public class Signal {
         try {
             final Document jsonData = (data == null || data.isEmpty()) ? Document.create()
                     : DocumentReader.defaultReader().read(data);
-            return action.arrived(new Payload(id, type, jsonData));
+            return action.arrived(new Payload(id, type, jsonData, offset));
         }
         catch (IOException e) {
             LOGGER.warn("Signal '{}' has arrived but the data '{}' cannot be parsed: {}", id, data, e);
@@ -110,12 +114,16 @@ public class Signal {
         }
     }
 
+    public boolean process(String id, String type, String data) {
+        return process(id, type, data, null);
+    }
+
     /**
      * 
      * @param value Envelope with change from signaling table
      * @return
      */
-    public boolean process(Struct value) {
+    public boolean process(Struct value, OffsetContext offset) {
         String id = null;
         String type = null;
         String data = null;
@@ -137,6 +145,6 @@ public class Signal {
         catch (Exception e) {
             LOGGER.warn("Exception while preparing to process the signal '{}', {}", value, e);
         }
-        return process(id, type, data);
+        return process(id, type, data, offset);
     }
 }
