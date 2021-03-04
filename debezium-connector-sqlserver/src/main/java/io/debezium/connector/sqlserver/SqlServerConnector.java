@@ -20,7 +20,6 @@ import org.slf4j.LoggerFactory;
 import io.debezium.config.Configuration;
 import io.debezium.connector.common.RelationalBaseSourceConnector;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
-import io.debezium.util.Clock;
 import io.debezium.util.Strings;
 
 /**
@@ -60,8 +59,9 @@ public class SqlServerConnector extends RelationalBaseSourceConnector {
 
         Configuration config = Configuration.from(properties);
         final SqlServerConnectorConfig sqlServerConfig = new SqlServerConnectorConfig(config);
+        final String databaseName = sqlServerConfig.getDatabaseName();
         try (SqlServerConnection connection = connect(sqlServerConfig)) {
-            final String realDatabaseName = connection.retrieveRealDatabaseName();
+            final String realDatabaseName = connection.retrieveRealDatabaseName(databaseName);
             if (!sqlServerConfig.isMultiPartitionModeEnabled()) {
                 taskConfig.put(SqlServerConnectorConfig.DATABASE_NAME.name(), realDatabaseName);
             }
@@ -117,7 +117,8 @@ public class SqlServerConnector extends RelationalBaseSourceConnector {
     }
 
     private SqlServerConnection connect(SqlServerConnectorConfig sqlServerConfig) {
-        return new SqlServerConnection(sqlServerConfig.jdbcConfig(), Clock.system(),
-                sqlServerConfig.getSourceTimestampMode(), null);
+        return new SqlServerConnection(sqlServerConfig.jdbcConfig(),
+                sqlServerConfig.getSourceTimestampMode(), null,
+                sqlServerConfig.isMultiPartitionModeEnabled());
     }
 }
