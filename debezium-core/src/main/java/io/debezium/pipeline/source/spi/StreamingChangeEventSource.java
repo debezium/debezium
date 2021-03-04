@@ -7,6 +7,7 @@ package io.debezium.pipeline.source.spi;
 
 import java.util.Map;
 
+import io.debezium.connector.common.TaskPartition;
 import io.debezium.pipeline.spi.OffsetContext;
 
 /**
@@ -14,7 +15,7 @@ import io.debezium.pipeline.spi.OffsetContext;
  *
  * @author Gunnar Morling
  */
-public interface StreamingChangeEventSource<O extends OffsetContext> extends ChangeEventSource {
+public interface StreamingChangeEventSource<P extends TaskPartition, O extends OffsetContext> extends ChangeEventSource {
 
     /**
      * Executes this source. Implementations should regularly check via the given context if they should stop. If that's
@@ -24,11 +25,12 @@ public interface StreamingChangeEventSource<O extends OffsetContext> extends Cha
      * @param context
      *            contextual information for this source's execution
      * @param offsetContext
+     * @param partition
      * @return an indicator to the position at which the snapshot was taken
      * @throws InterruptedException
      *             in case the snapshot was aborted before completion
      */
-    void execute(ChangeEventSourceContext context, O offsetContext) throws InterruptedException;
+    void execute(ChangeEventSourceContext context, O offsetContext, P partition) throws InterruptedException;
 
     /**
      * Commits the given offset with the source database. Used by some connectors

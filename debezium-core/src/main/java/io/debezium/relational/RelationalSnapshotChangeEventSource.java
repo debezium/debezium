@@ -25,6 +25,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
+import io.debezium.connector.common.TaskPartition;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.EventDispatcher.SnapshotReceiver;
@@ -50,7 +51,7 @@ import io.debezium.util.Threads.Timer;
  *
  * @author Gunnar Morling
  */
-public abstract class RelationalSnapshotChangeEventSource<O extends OffsetContext> extends AbstractSnapshotChangeEventSource<O> {
+public abstract class RelationalSnapshotChangeEventSource<P extends TaskPartition, O extends OffsetContext> extends AbstractSnapshotChangeEventSource<P, O> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RelationalSnapshotChangeEventSource.class);
 

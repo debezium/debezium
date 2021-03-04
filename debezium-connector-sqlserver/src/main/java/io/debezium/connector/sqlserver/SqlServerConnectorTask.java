@@ -38,7 +38,7 @@ import io.debezium.util.SchemaNameAdjuster;
  * @author Jiri Pechanec
  *
  */
-public class SqlServerConnectorTask extends BaseSourceTask<SqlServerOffsetContext> {
+public class SqlServerConnectorTask extends BaseSourceTask<SqlServerTaskPartition, SqlServerOffsetContext> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SqlServerConnectorTask.class);
     private static final String CONTEXT_NAME = "sql-server-connector-task";
@@ -56,7 +56,7 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerOffsetContex
     }
 
     @Override
-    public ChangeEventSourceCoordinator<SqlServerOffsetContext> start(Configuration config) {
+    public ChangeEventSourceCoordinator<SqlServerTaskPartition, SqlServerOffsetContext> start(Configuration config) {
         final Clock clock = Clock.system();
         final SqlServerConnectorConfig connectorConfig = new SqlServerConnectorConfig(config);
         final TopicSelector<TableId> topicSelector = SqlServerTopicSelector.defaultSelector(connectorConfig);
@@ -123,16 +123,8 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerOffsetContex
                 metadataProvider,
                 schemaNameAdjuster);
 
-        SqlServerOffsetContext previousOffset = null;
-
-        // TODO: iterate over all partitions instead of breaking
-        for (SqlServerOffsetContext offsetContext : taskOffsetContext.getOffsets().values()) {
-            previousOffset = offsetContext;
-            break;
-        }
-
-        ChangeEventSourceCoordinator<SqlServerOffsetContext> coordinator = new ChangeEventSourceCoordinator<>(
-                previousOffset,
+        ChangeEventSourceCoordinator<SqlServerTaskPartition, SqlServerOffsetContext> coordinator = new ChangeEventSourceCoordinator<>(
+                taskOffsetContext,
                 errorHandler,
                 SqlServerConnector.class,
                 connectorConfig,
