@@ -55,7 +55,7 @@ ifdef::product[]
 
 .Procedure
 
-* To prevent connectors from creating topics automatically, set the value of `topic.creation.enable` to `false`
+* To prevent Kafka connect from creating topics automatically, set the value of `topic.creation.enable` to `false`
 in the Kafka Connect custom resource, as in the following example:
 
 
