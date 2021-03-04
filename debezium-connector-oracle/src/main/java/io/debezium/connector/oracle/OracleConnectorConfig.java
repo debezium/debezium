@@ -37,7 +37,7 @@ import io.debezium.relational.ColumnId;
 import io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
-import io.debezium.relational.Tables;
+import io.debezium.relational.Tables.ColumnNameFilter;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.history.HistoryRecordComparator;
 import io.debezium.util.Strings;
@@ -338,6 +338,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final String pdbName;
     private final String xoutServerName;
     private final SnapshotMode snapshotMode;
+    private final ColumnNameFilter columnFilter;
 
     private final boolean tablenameCaseInsensitive;
     private final OracleVersion oracleVersion;
@@ -376,6 +377,13 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.jdbcConfig = config.subset(DATABASE_CONFIG_PREFIX, true);
         this.snapshotEnhancementToken = config.getString(SNAPSHOT_ENHANCEMENT_TOKEN);
 
+        if (columnIncludeList() != null) {
+            this.columnFilter = getColumnIncludeNameFilter(columnIncludeList());
+        }
+        else {
+            this.columnFilter = getColumnExcludeNameFilter(columnExcludeList());
+        }
+
         // LogMiner
         this.connectorAdapter = ConnectorAdapter.parse(config.getString(CONNECTOR_ADAPTER));
         this.logMiningStrategy = LogMiningStrategy.parse(config.getString(LOG_MINING_STRATEGY));
@@ -406,15 +414,28 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         return config.getInstance(LOG_MINING_HISTORY_RECORDER_CLASS, HistoryRecorder.class);
     }
 
-    protected Tables.ColumnNameFilter getColumnNameFilter(String excludedColumnPatterns) {
-        return new Tables.ColumnNameFilter() {
+    private static ColumnNameFilter getColumnExcludeNameFilter(String excludedColumnPatterns) {
+        return new ColumnNameFilter() {
 
             Predicate<ColumnId> delegate = Predicates.excludes(excludedColumnPatterns, ColumnId::toString);
 
             @Override
             public boolean matches(String catalogName, String schemaName, String tableName, String columnName) {
-                // ignore database name and schema name, we are supposed to capture from one database and one schema
-                return delegate.test(new ColumnId(new TableId(null, null, tableName), columnName));
+                // ignore database name as it's not relevant here
+                return delegate.test(new ColumnId(new TableId(null, schemaName, tableName), columnName));
+            }
+        };
+    }
+
+    private static ColumnNameFilter getColumnIncludeNameFilter(String includedColumnPatterns) {
+        return new ColumnNameFilter() {
+
+            Predicate<ColumnId> delegate = Predicates.includes(includedColumnPatterns, ColumnId::toString);
+
+            @Override
+            public boolean matches(String catalogName, String schemaName, String tableName, String columnName) {
+                // ignore database name as it's not relevant here
+                return delegate.test(new ColumnId(new TableId(null, schemaName, tableName), columnName));
             }
         };
     }
@@ -445,6 +466,10 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
     public OracleVersion getOracleVersion() {
         return oracleVersion;
+    }
+
+    public ColumnNameFilter getColumnFilter() {
+        return columnFilter;
     }
 
     @Override

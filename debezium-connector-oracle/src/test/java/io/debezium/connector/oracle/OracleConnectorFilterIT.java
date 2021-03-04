@@ -167,7 +167,7 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
     }
 
     @Test
-    @FixFor("DBZ-3167")
+    @FixFor({ "DBZ-3167", "DBZ-3219" })
     public void shouldApplyColumnIncludeListConfiguration() throws Exception {
         TestHelper.dropTable(connection, "table4");
         try {
@@ -206,7 +206,7 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
             Struct after = (Struct) ((Struct) testTableRecords.get(0).value()).get("after");
             assertThat(after.get("ID")).isEqualTo(1);
             assertThat(after.get("NAME")).isEqualTo("Text-1");
-            assertThat(testTableRecords.get(0).valueSchema().field("BIRTH_DATE")).isNull();
+            assertThat(after.schema().field("BIRTH_DATE")).isNull();
 
             // Start streaming & wait for it
             waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
@@ -223,7 +223,7 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
             after = (Struct) ((Struct) testTableRecords.get(0).value()).get("after");
             assertThat(after.get("ID")).isEqualTo(2);
             assertThat(after.get("NAME")).isEqualTo("Text-2");
-            assertThat(testTableRecords.get(0).valueSchema().field("BIRTH_DATE")).isNull();
+            assertThat(after.schema().field("BIRTH_DATE")).isNull();
         }
         finally {
             TestHelper.dropTable(connection, "table4");
@@ -231,7 +231,7 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
     }
 
     @Test
-    @FixFor("DBZ-3167")
+    @FixFor({ "DBZ-3167", "DBZ-3219" })
     public void shouldApplyColumnExcludeListConfiguration() throws Exception {
         TestHelper.dropTable(connection, "table4");
         try {
@@ -270,7 +270,7 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
             Struct after = (Struct) ((Struct) testTableRecords.get(0).value()).get("after");
             assertThat(after.get("ID")).isEqualTo(1);
             assertThat(after.get("NAME")).isEqualTo("Text-1");
-            assertThat(testTableRecords.get(0).valueSchema().field("BIRTH_DATE")).isNull();
+            assertThat(after.schema().field("BIRTH_DATE")).isNull();
 
             // Start streaming & wait for it
             waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
@@ -287,7 +287,7 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
             after = (Struct) ((Struct) testTableRecords.get(0).value()).get("after");
             assertThat(after.get("ID")).isEqualTo(2);
             assertThat(after.get("NAME")).isEqualTo("Text-2");
-            assertThat(testTableRecords.get(0).valueSchema().field("BIRTH_DATE")).isNull();
+            assertThat(after.schema().field("BIRTH_DATE")).isNull();
         }
         finally {
             TestHelper.dropTable(connection, "table4");
