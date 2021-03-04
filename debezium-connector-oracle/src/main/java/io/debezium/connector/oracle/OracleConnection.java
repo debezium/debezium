@@ -5,9 +5,7 @@
  */
 package io.debezium.connector.oracle;
 
-import java.sql.Connection;
 import java.sql.DatabaseMetaData;
-import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -32,6 +30,7 @@ import io.debezium.config.Field;
 import io.debezium.connector.oracle.OracleConnectorConfig.ConnectorAdapter;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.relational.Column;
+import io.debezium.relational.RelationalSnapshotChangeEventSource.RelationalSnapshotContext;
 import io.debezium.relational.TableEditor;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
@@ -170,35 +169,19 @@ public class OracleConnection extends JdbcConnection {
                                        String[] tableTypes)
             throws SQLException {
 
-        Set<TableId> tableIds = super.readTableNames(null, schemaNamePattern, tableNamePattern, tableTypes);
-
-        return tableIds.stream()
-                .map(t -> new TableId(databaseCatalog, t.schema(), t.table()))
-                .collect(Collectors.toSet());
-    }
-
-    /**
-     * Retrieves all {@code TableId} in a given database catalog, filtering certain ids that
-     * should be omitted from the returned set such as special spatial tables and index-organized
-     * tables.
-     *
-     * @param catalogName the catalog/database name
-     * @return set of all table ids for existing table objects
-     * @throws SQLException if a database exception occurred
-     */
-    protected Set<TableId> getAllTableIds(String catalogName) throws SQLException {
-        final String query = "select owner, table_name from all_tables " +
-        // filter special spatial tables
-                "where table_name NOT LIKE 'MDRT_%' " +
-                "and table_name NOT LIKE 'MDRS_%' " +
-                "and table_name NOT LIKE 'MDXT_%' " +
-                // filter index-organized-tables
-                "and (table_name NOT LIKE 'SYS_IOT_OVER_%' and IOT_NAME IS NULL) ";
+        // Specialized query for performance to retrieve all table names that will exclude
+        // special spatial tables and index-organized tables. Since the query is against
+        // all_tables, the only returned objects are tables, i.e. no views.
+        final String query = "select owner, table_name from all_tables "
+                + "where table_name NOT LIKE 'MDRT_%' "
+                + "and table_name NOT LIKE 'MDRS_%' "
+                + "and table_name NOT LIKE 'MDXT_%' "
+                + "and (table_name NOT LIKE 'SYS_IOT_OVER_%' and IOT_NAME IS NULL) ";
 
         Set<TableId> tableIds = new HashSet<>();
         query(query, (rs) -> {
             while (rs.next()) {
-                tableIds.add(new TableId(catalogName, rs.getString(1), rs.getString(2)));
+                tableIds.add(new TableId(databaseCatalog, rs.getString(1), rs.getString(2)));
             }
             LOGGER.trace("TableIds are: {}", tableIds);
         });
@@ -206,27 +189,31 @@ public class OracleConnection extends JdbcConnection {
         return tableIds;
     }
 
-    // todo replace metadata with something like this
-    private ResultSet getTableColumnsInfo(String schemaNamePattern, String tableName) throws SQLException {
-        String columnQuery = "select column_name, data_type, data_length, data_precision, data_scale, default_length, density, char_length from " +
-                "all_tab_columns where owner like '" + schemaNamePattern + "' and table_name='" + tableName + "'";
-
-        PreparedStatement statement = connection().prepareStatement(columnQuery);
-        return statement.executeQuery();
-    }
-
-    // this is much faster, we will use it until full replacement of the metadata usage TODO
-    public void readSchemaForCapturedTables(Tables tables, String databaseCatalog, String schemaNamePattern,
-                                            ColumnNameFilter columnFilter, boolean removeTablesNotFoundInJdbc, Set<TableId> capturedTables)
+    @Override
+    public void readSchema(Tables tables, String databaseCatalog, String schemaNamePattern, TableFilter tableFilter,
+                           ColumnNameFilter columnFilter, boolean removeTablesNotFoundInJdbc)
             throws SQLException {
 
-        Set<TableId> tableIdsBefore = new HashSet<>(tables.tableIds());
+        super.readSchema(tables, null, schemaNamePattern, tableFilter, columnFilter, removeTablesNotFoundInJdbc);
 
+        Set<TableId> tableIds = tables.tableIds().stream().filter(x -> schemaNamePattern.equals(x.schema())).collect(Collectors.toSet());
+        for (TableId tableId : tableIds) {
+            // JdbcConnection.readSchema populates ids without the catalog; hence we apply the filtering only
+            // here and if a table is included, override it with a new id including the catalog
+            TableId tableIdWithCatalog = new TableId(databaseCatalog, tableId.schema(), tableId.table());
+            if (tableFilter.isIncluded(tableIdWithCatalog)) {
+                overrideOracleSpecificColumnTypes(tables, tableId, tableIdWithCatalog);
+            }
+            tables.removeTable(tableId);
+        }
+    }
+
+    public void readSchemaForCapturedTables(RelationalSnapshotContext snapshotContext, String schemaNamePattern, ColumnNameFilter columnFilter) throws SQLException {
         DatabaseMetaData metadata = connection().getMetaData();
         Map<TableId, List<Column>> columnsByTable = new HashMap<>();
 
-        for (TableId tableId : capturedTables) {
-            try (ResultSet columnMetadata = metadata.getColumns(databaseCatalog, schemaNamePattern, tableId.table(), null)) {
+        for (TableId tableId : snapshotContext.capturedTables) {
+            try (ResultSet columnMetadata = metadata.getColumns(snapshotContext.catalogName, schemaNamePattern, tableId.table(), null)) {
                 while (columnMetadata.next()) {
                     // add all whitelisted columns
                     readTableColumn(columnMetadata, tableId, columnFilter).ifPresent(column -> {
@@ -240,45 +227,17 @@ public class OracleConnection extends JdbcConnection {
         // Read the metadata for the primary keys ...
         for (Map.Entry<TableId, List<Column>> tableEntry : columnsByTable.entrySet()) {
             // First get the primary key information, which must be done for *each* table ...
-            List<String> pkColumnNames = readPrimaryKeyNames(metadata, tableEntry.getKey());
+            List<String> pkColumnNames = readPrimaryKeyOrUniqueIndexNames(metadata, tableEntry.getKey());
 
             // Then define the table ...
             List<Column> columns = tableEntry.getValue();
             Collections.sort(columns);
-            tables.overwriteTable(tableEntry.getKey(), columns, pkColumnNames, null);
+            snapshotContext.tables.overwriteTable(tableEntry.getKey(), columns, pkColumnNames, null);
         }
 
-        if (removeTablesNotFoundInJdbc) {
-            // Remove any definitions for tables that were not found in the database metadata ...
-            tableIdsBefore.removeAll(columnsByTable.keySet());
-            tableIdsBefore.forEach(tables::removeTable);
-        }
-
-        for (TableId tableId : capturedTables) {
-            overrideOracleSpecificColumnTypes(tables, tableId, tableId);
-        }
-
-    }
-
-    @Override
-    public void readSchema(Tables tables, String databaseCatalog, String schemaNamePattern, TableFilter tableFilter,
-                           ColumnNameFilter columnFilter, boolean removeTablesNotFoundInJdbc)
-            throws SQLException {
-
-        super.readSchema(tables, null, schemaNamePattern, tableFilter, columnFilter, removeTablesNotFoundInJdbc);
-
-        Set<TableId> tableIds = tables.tableIds().stream().filter(x -> schemaNamePattern.equals(x.schema())).collect(Collectors.toSet());
-
+        Set<TableId> tableIds = snapshotContext.capturedTables.stream().filter(x -> schemaNamePattern.equals(x.schema())).collect(Collectors.toSet());
         for (TableId tableId : tableIds) {
-            // super.readSchema() populates ids without the catalog; hence we apply the filtering only
-            // here and if a table is included, overwrite it with a new id including the catalog
-            TableId tableIdWithCatalog = new TableId(databaseCatalog, tableId.schema(), tableId.table());
-
-            if (tableFilter.isIncluded(tableIdWithCatalog)) {
-                overrideOracleSpecificColumnTypes(tables, tableId, tableIdWithCatalog);
-            }
-
-            tables.removeTable(tableId);
+            overrideOracleSpecificColumnTypes(snapshotContext.tables, tableId, tableId);
         }
     }
 
@@ -339,25 +298,6 @@ public class OracleConnection extends JdbcConnection {
     public boolean getTablenameCaseInsensitivity(OracleConnectorConfig connectorConfig) {
         Optional<Boolean> configValue = connectorConfig.getTablenameCaseInsensitive();
         return configValue.orElse(getOracleVersion().getMajor() == 11);
-    }
-
-    public OracleConnection executeLegacy(String... sqlStatements) throws SQLException {
-        return executeLegacy(statement -> {
-            for (String sqlStatement : sqlStatements) {
-                if (sqlStatement != null) {
-                    statement.execute(sqlStatement);
-                }
-            }
-        });
-    }
-
-    public OracleConnection executeLegacy(Operations operations) throws SQLException {
-        Connection conn = connection();
-        try (Statement statement = conn.createStatement()) {
-            operations.apply(statement);
-            commit();
-        }
-        return this;
     }
 
     public static String connectionString(Configuration config) {

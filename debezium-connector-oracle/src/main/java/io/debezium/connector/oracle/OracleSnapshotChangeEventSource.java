@@ -26,6 +26,7 @@ import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.relational.RelationalSnapshotChangeEventSource;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
+import io.debezium.relational.Tables;
 import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.schema.SchemaChangeEvent.SchemaChangeEventType;
 import io.debezium.util.Clock;
@@ -79,9 +80,7 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
 
     @Override
     protected Set<TableId> getAllTableIds(RelationalSnapshotContext ctx) throws Exception {
-        return jdbcConnection.getAllTableIds(ctx.catalogName);
-        // this very slow approach(commented out), it took 30 minutes on an instance with 600 tables
-        // return jdbcConnection.readTableNames(ctx.catalogName, null, null, new String[] {"TABLE"} );
+        return jdbcConnection.readTableNames(ctx.catalogName, null, null, null);
     }
 
     @Override
@@ -210,6 +209,8 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
                 .map(TableId::schema)
                 .collect(Collectors.toSet());
 
+        final Tables.ColumnNameFilter columnNameFilter = connectorConfig.getColumnNameFilter(connectorConfig.columnExcludeList());
+
         // reading info only for the schemas we're interested in as per the set of captured tables;
         // while the passed table name filter alone would skip all non-included tables, reading the schema
         // would take much longer that way
@@ -218,27 +219,8 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
                 throw new InterruptedException("Interrupted while reading structure of schema " + schema);
             }
 
-            // todo: DBZ-137 the new readSchemaForCapturedTables seems to cause failures.
-            // For now, reverted to the default readSchema implementation as the intended goal
-            // with the new implementation was to be faster, not change behavior.
-            // if (connectorConfig.getAdapter().equals(OracleConnectorConfig.ConnectorAdapter.LOG_MINER)) {
-            // jdbcConnection.readSchemaForCapturedTables(
-            // snapshotContext.tables,
-            // snapshotContext.catalogName,
-            // schema,
-            // connectorConfig.getColumnFilter(),
-            // false,
-            // snapshotContext.capturedTables);
-            // }
-            // else {
-            jdbcConnection.readSchema(
-                    snapshotContext.tables,
-                    snapshotContext.catalogName,
-                    schema,
-                    connectorConfig.getTableFilters().dataCollectionFilter(),
-                    null,
-                    false);
-            // }
+            LOGGER.info("Reading structure of schema '{}'", snapshotContext.catalogName);
+            jdbcConnection.readSchemaForCapturedTables(snapshotContext, schema, columnNameFilter);
         }
     }
 
