@@ -39,7 +39,7 @@ import io.debezium.util.Strings;
  *
  * @author Gunnar Morling
  */
-public abstract class BaseSourceTask<O extends OffsetContext> extends SourceTask {
+public abstract class BaseSourceTask<P extends TaskPartition, O extends OffsetContext> extends SourceTask {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(BaseSourceTask.class);
     private static final long INITIAL_POLL_PERIOD_IN_MILLIS = TimeUnit.SECONDS.toMillis(5);
@@ -68,7 +68,7 @@ public abstract class BaseSourceTask<O extends OffsetContext> extends SourceTask
      * The change event source coordinator for those connectors adhering to the new
      * framework structure, {@code null} for legacy-style connectors.
      */
-    private ChangeEventSourceCoordinator<O> coordinator;
+    private ChangeEventSourceCoordinator<P, O> coordinator;
 
     /**
      * The latest offset that has been acknowledged by the Kafka producer. Will be
@@ -141,7 +141,7 @@ public abstract class BaseSourceTask<O extends OffsetContext> extends SourceTask
      *            the task configuration; implementations should wrap it in a dedicated implementation of
      *            {@link CommonConnectorConfig} and work with typed access to configuration properties that way
      */
-    protected abstract ChangeEventSourceCoordinator<O> start(Configuration config);
+    protected abstract ChangeEventSourceCoordinator<P, O> start(Configuration config);
 
     @Override
     public final List<SourceRecord> poll() throws InterruptedException {
