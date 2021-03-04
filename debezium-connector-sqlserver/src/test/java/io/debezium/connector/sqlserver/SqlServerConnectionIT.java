@@ -196,7 +196,7 @@ public class SqlServerConnectionIT {
 
             SqlServerChangeTable changeTable = new SqlServerChangeTable(new TableId("testDB", "dbo", "table_with_defaults"),
                     null, 0, null, null, capturedColumns);
-            Table table = connection.getTableSchemaFromTable(changeTable);
+            Table table = connection.getTableSchemaFromTable(TestHelper.TEST_DATABASE, changeTable);
 
             assertColumnHasNotDefaultValue(table, "int_no_default_not_null");
             assertColumnHasDefaultValue(table, "int_no_default", null);
@@ -310,7 +310,7 @@ public class SqlServerConnectionIT {
             // and issue a test call to a CDC wrapper function
             Awaitility.await()
                     .atMost(5, TimeUnit.SECONDS)
-                    .until(() -> connection.getMinLsn("table_with_defaults").isAvailable()); // Need to wait to make sure the min_lsn is available
+                    .until(() -> connection.getMinLsn(TestHelper.TEST_DATABASE, "table_with_defaults").isAvailable()); // Need to wait to make sure the min_lsn is available
             List<String> capturedColumns = Arrays
                     .asList(
                             "int_no_default_not_null",
@@ -345,7 +345,7 @@ public class SqlServerConnectionIT {
 
             SqlServerChangeTable changeTable = new SqlServerChangeTable(new TableId("testDB", "dbo", "table_with_defaults"),
                     null, 0, null, null, capturedColumns);
-            Table table = connection.getTableSchemaFromTable(changeTable);
+            Table table = connection.getTableSchemaFromTable(TestHelper.TEST_DATABASE, changeTable);
 
             assertColumnHasNotDefaultValue(table, "int_no_default_not_null");
             assertColumnHasDefaultValue(table, "int_no_default", null);

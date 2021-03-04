@@ -751,21 +751,21 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
 
         Awaitility.await().atMost(30, TimeUnit.SECONDS).until(() -> {
             // Wait for max lsn to be available
-            if (!connection.getMaxLsn().isAvailable()) {
+            if (!connection.getMaxLsn(TestHelper.TEST_DATABASE).isAvailable()) {
                 return false;
             }
 
             // verify pre-snapshot inserts have succeeded
             Map<String, Boolean> resultMap = new HashMap<>();
-            connection.listOfChangeTables().forEach(ct -> {
+            connection.listOfChangeTables(TestHelper.TEST_DATABASE).forEach(ct -> {
                 final String tableName = ct.getChangeTableId().table();
                 if (tableName.endsWith("dbo_" + tableaCT) || tableName.endsWith("dbo_" + tablebCT)) {
                     try {
-                        final Lsn minLsn = connection.getMinLsn(tableName);
-                        final Lsn maxLsn = connection.getMaxLsn();
+                        final Lsn minLsn = connection.getMinLsn(TestHelper.TEST_DATABASE, tableName);
+                        final Lsn maxLsn = connection.getMaxLsn(TestHelper.TEST_DATABASE);
                         SqlServerChangeTable[] tables = Collections.singletonList(ct).toArray(new SqlServerChangeTable[]{});
                         final List<Integer> ids = new ArrayList<>();
-                        connection.getChangesForTables(tables, minLsn, maxLsn, resultsets -> {
+                        connection.getChangesForTables(TestHelper.TEST_DATABASE, tables, minLsn, maxLsn, resultsets -> {
                             final ResultSet rs = resultsets[0];
                             while (rs.next()) {
                                 ids.add(rs.getInt("id"));
@@ -2077,7 +2077,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
 
         Awaitility.await().atMost(30, TimeUnit.SECONDS).pollInterval(100, TimeUnit.MILLISECONDS).until(() -> {
             Testing.debug("Waiting for initial changes to be propagated to CDC structures");
-            return connection.getMaxLsn().isAvailable();
+            return connection.getMaxLsn(TestHelper.TEST_DATABASE).isAvailable();
         });
 
         start(SqlServerConnector.class, config);
