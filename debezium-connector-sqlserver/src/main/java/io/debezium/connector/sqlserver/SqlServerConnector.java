@@ -79,7 +79,7 @@ public class SqlServerConnector extends RelationalBaseSourceConnector {
         // Try to connect to the database ...
         try (SqlServerConnection connection = new SqlServerConnection(sqlServerConfig.jdbcConfig(), Clock.system(),
                 sqlServerConfig.getSourceTimestampMode(), null)) {
-            // SqlServerConnection will try retrieving database, no need to run another query.
+            connection.retrieveRealDatabaseName();
             LOGGER.debug("Successfully tested connection for {} with user '{}'", connection.connectionString(),
                     connection.username());
         }

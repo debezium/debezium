@@ -42,10 +42,12 @@ public class SqlServerTaskPartition implements TaskPartition {
     static class Provider implements TaskPartition.Provider<SqlServerTaskPartition> {
         private final SqlServerConnectorConfig connectorConfig;
         private final Configuration taskConfig;
+        private final SqlServerConnection connection;
 
-        Provider(SqlServerConnectorConfig connectorConfig, Configuration taskConfig) {
+        Provider(SqlServerConnectorConfig connectorConfig, Configuration taskConfig, SqlServerConnection connection) {
             this.connectorConfig = connectorConfig;
             this.taskConfig = taskConfig;
+            this.connection = connection;
         }
 
         @Override
@@ -56,6 +58,7 @@ public class SqlServerTaskPartition implements TaskPartition {
             String[] databaseNames = { connectorConfig.getDatabaseName() };
 
             return Arrays.stream(databaseNames)
+                    .map(databaseName -> connection.retrieveRealDatabaseName())
                     .map(databaseName -> new SqlServerTaskPartition(serverName, databaseName))
                     .collect(Collectors.toList());
         }

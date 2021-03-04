@@ -86,7 +86,7 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerTaskPartitio
                 context.offsetStorageReader(),
                 new SqlServerOffsetContext.Loader(connectorConfig));
         TaskOffsetContext<SqlServerTaskPartition, SqlServerOffsetContext> taskOffsetContext = loader.load(
-                new SqlServerTaskPartition.Provider(connectorConfig, config).getPartitions());
+                new SqlServerTaskPartition.Provider(connectorConfig, config, metadataConnection).getPartitions());
 
         schema = new SqlServerDatabaseSchema(connectorConfig, valueConverters, topicSelector, schemaNameAdjuster);
         schema.initializeStorage();

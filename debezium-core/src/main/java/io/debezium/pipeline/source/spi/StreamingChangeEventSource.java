@@ -24,13 +24,13 @@ public interface StreamingChangeEventSource<P extends TaskPartition, O extends O
      *
      * @param context
      *            contextual information for this source's execution
-     * @param offsetContext
      * @param partition
+     * @param offsetContext
      * @return an indicator to the position at which the snapshot was taken
      * @throws InterruptedException
      *             in case the snapshot was aborted before completion
      */
-    void execute(ChangeEventSourceContext context, O offsetContext, P partition) throws InterruptedException;
+    void execute(ChangeEventSourceContext context, P partition, O offsetContext) throws InterruptedException;
 
     /**
      * Commits the given offset with the source database. Used by some connectors

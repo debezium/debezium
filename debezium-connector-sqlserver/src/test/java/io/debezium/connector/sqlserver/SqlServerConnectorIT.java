@@ -749,6 +749,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
 
         TestHelper.waitForCdcRecord(connection, "tableb", rs -> rs.getInt("id") == expectedIds.get(expectedIds.size() - 1));
 
+        String databaseName = connection.config().getDatabase();
         Awaitility.await().atMost(30, TimeUnit.SECONDS).until(() -> {
             // Wait for max lsn to be available
             if (!connection.getMaxLsn().isAvailable()) {
@@ -757,7 +758,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
 
             // verify pre-snapshot inserts have succeeded
             Map<String, Boolean> resultMap = new HashMap<>();
-            connection.listOfChangeTables().forEach(ct -> {
+            connection.listOfChangeTables(databaseName).forEach(ct -> {
                 final String tableName = ct.getChangeTableId().table();
                 if (tableName.endsWith("dbo_" + tableaCT) || tableName.endsWith("dbo_" + tablebCT)) {
                     try {
@@ -770,7 +771,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
                             while (rs.next()) {
                                 ids.add(rs.getInt("id"));
                             }
-                        });
+                        }, databaseName);
                         if (ids.equals(expectedIds)) {
                             resultMap.put(tableName, true);
                         }

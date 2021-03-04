@@ -24,11 +24,11 @@ public interface SnapshotChangeEventSource<P extends TaskPartition, O extends Of
      *
      * @param context
      *            contextual information for this source's execution
-     * @param previousOffset
      * @param partition
+     * @param previousOffset
      * @return an indicator to the position at which the snapshot was taken
      * @throws InterruptedException
      *             in case the snapshot was aborted before completion
      */
-    SnapshotResult<O> execute(ChangeEventSourceContext context, O previousOffset, P partition) throws InterruptedException;
+    SnapshotResult<O> execute(ChangeEventSourceContext context, P partition, O previousOffset) throws InterruptedException;
 }
