@@ -62,9 +62,17 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
         tables().overwriteTable(table);
 
         TableChanges tableChanges = null;
-        if (schemaChange.getType() == SchemaChangeEventType.CREATE && schemaChange.isFromSnapshot()) {
+        if (schemaChange.getType() == SchemaChangeEventType.CREATE) {
             tableChanges = new TableChanges();
             tableChanges.create(table);
+        }
+        else if (schemaChange.getType() == SchemaChangeEventType.ALTER) {
+            tableChanges = new TableChanges();
+            tableChanges.alter(table);
+        }
+        else if (schemaChange.getType() == SchemaChangeEventType.DROP) {
+            tableChanges = new TableChanges();
+            tableChanges.drop(table);
         }
 
         record(schemaChange, tableChanges);

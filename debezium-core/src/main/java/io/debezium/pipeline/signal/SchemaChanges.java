@@ -58,12 +58,14 @@ public class SchemaChanges implements Signal.Action {
         }
         for (TableChanges.TableChange tableChange : serializer.deserialize(changes, useCatalogBeforeSchema)) {
             if (dispatcher.getHistorizedSchema() != null) {
+                LOGGER.info("Executing schema change for table '{}' requested by signal '{}'", tableChange.getId(), signalPayload.id);
                 dispatcher.dispatchSchemaChangeEvent(tableChange.getId(), emitter -> {
                     emitter.schemaChangeEvent(new SchemaChangeEvent(signalPayload.offsetContext.getPartition(), signalPayload.offsetContext.getOffset(),
                             signalPayload.source, database, schema, null, tableChange.getTable(), toSchemaChangeEventType(tableChange.getType()), false));
                 });
             }
             else if (dispatcher.getSchema() instanceof RelationalDatabaseSchema) {
+                LOGGER.info("Executing schema change for table '{}' requested by signal '{}'", tableChange.getId(), signalPayload.id);
                 final RelationalDatabaseSchema databaseSchema = (RelationalDatabaseSchema) dispatcher.getSchema();
                 if (tableChange.getType() == TableChangeType.CREATE || tableChange.getType() == TableChangeType.ALTER) {
                     databaseSchema.refresh(tableChange.getTable());
