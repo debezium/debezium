@@ -133,4 +133,32 @@ public class LogMinerDmlParserTest {
         assertThat(entry.getOldValues().get(6).getColumnData()).isNull();
         assertThat(entry.getNewValues()).isEmpty();
     }
+
+    @Test
+    @FixFor("DBZ-3235")
+    public void testParsingUpdateWithNoWhereClauseIsAcceptable() throws Exception {
+        String sql = "update \"DEBEZIUM\".\"TEST\" set \"COL1\" = '1', \"COL2\" = NULL, \"COL3\" = 'Hello';";
+
+        LogMinerDmlEntry entry = fastDmlParser.parse(sql, null, null, null);
+        assertThat(entry.getCommandType()).isEqualTo(Operation.UPDATE);
+        assertThat(entry.getOldValues()).isEmpty();
+        assertThat(entry.getNewValues()).hasSize(3);
+        assertThat(entry.getNewValues().get(0).getColumnName()).isEqualTo("COL1");
+        assertThat(entry.getNewValues().get(0).getColumnData()).isEqualTo("1");
+        assertThat(entry.getNewValues().get(1).getColumnName()).isEqualTo("COL2");
+        assertThat(entry.getNewValues().get(1).getColumnData()).isNull();
+        assertThat(entry.getNewValues().get(2).getColumnName()).isEqualTo("COL3");
+        assertThat(entry.getNewValues().get(2).getColumnData()).isEqualTo("Hello");
+    }
+
+    @Test
+    @FixFor("DBZ-3235")
+    public void testParsingDeleteWithNoWhereClauseIsAcceptable() throws Exception {
+        String sql = "delete from \"DEBEZIUM\".\"TEST\";";
+
+        LogMinerDmlEntry entry = fastDmlParser.parse(sql, null, null, null);
+        assertThat(entry.getCommandType()).isEqualTo(Operation.DELETE);
+        assertThat(entry.getOldValues()).isEmpty();
+        assertThat(entry.getNewValues()).isEmpty();
+    }
 }
