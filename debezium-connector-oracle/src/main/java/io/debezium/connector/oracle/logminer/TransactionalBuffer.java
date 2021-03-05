@@ -181,8 +181,8 @@ public final class TransactionalBuffer implements AutoCloseable {
             metrics.incrementCommittedTransactions();
             metrics.setActiveTransactions(transactions.size());
             metrics.incrementCommittedDmlCounter(commitCallbacks.size());
-            metrics.setCommittedScn(scn.longValue());
-            metrics.setOffsetScn(offsetContext.getScn());
+            metrics.setCommittedScn(scn);
+            metrics.setOffsetScn(Scn.valueOf(offsetContext.getScn()));
             metrics.setLastCommitDuration(Duration.between(start, Instant.now()).toMillis());
         }
     }
@@ -261,7 +261,7 @@ public final class TransactionalBuffer implements AutoCloseable {
                         .map(transaction -> transaction.firstScn)
                         .min(Scn::compareTo)
                         .orElseThrow(() -> new DataException("Cannot calculate smallest SCN"));
-        metrics.setOldestScn(scn == null ? -1 : scn.longValue());
+        metrics.setOldestScn(scn == null ? Scn.INVALID : scn);
         return scn;
     }
 

@@ -25,9 +25,9 @@ public class TransactionalBufferMetrics extends Metrics implements Transactional
 
     private final static long MILLIS_PER_SECOND = 1000L;
 
-    private final AtomicLong oldestScn = new AtomicLong();
-    private final AtomicLong committedScn = new AtomicLong();
-    private final AtomicLong offsetScn = new AtomicLong();
+    private final AtomicReference<Scn> oldestScn = new AtomicReference<>();
+    private final AtomicReference<Scn> committedScn = new AtomicReference<>();
+    private final AtomicReference<Scn> offsetScn = new AtomicReference<>();
     private final AtomicInteger activeTransactions = new AtomicInteger();
     private final AtomicLong rolledBackTransactions = new AtomicLong();
     private final AtomicLong committedTransactions = new AtomicLong();
@@ -49,23 +49,23 @@ public class TransactionalBufferMetrics extends Metrics implements Transactional
     TransactionalBufferMetrics(CdcSourceTaskContext taskContext) {
         super(taskContext, "log-miner-transactional-buffer");
         startTime = Instant.now();
-        oldestScn.set(-1);
-        committedScn.set(-1);
+        oldestScn.set(Scn.INVALID);
+        committedScn.set(Scn.INVALID);
         timeDifference.set(0);
-        offsetScn.set(0);
+        offsetScn.set(Scn.ZERO);
         reset();
     }
 
     // setters
-    void setOldestScn(Long scn) {
+    void setOldestScn(Scn scn) {
         oldestScn.set(scn);
     }
 
-    public void setCommittedScn(Long scn) {
+    public void setCommittedScn(Scn scn) {
         committedScn.set(scn);
     }
 
-    public void setOffsetScn(Long scn) {
+    public void setOffsetScn(Scn scn) {
         offsetScn.set(scn);
     }
 
@@ -155,17 +155,17 @@ public class TransactionalBufferMetrics extends Metrics implements Transactional
     // implemented getters
     @Override
     public Long getOldestScn() {
-        return oldestScn.get();
+        return oldestScn.get().longValue();
     }
 
     @Override
     public Long getCommittedScn() {
-        return committedScn.get();
+        return committedScn.get().longValue();
     }
 
     @Override
     public Long getOffsetScn() {
-        return offsetScn.get();
+        return offsetScn.get().longValue();
     }
 
     @Override

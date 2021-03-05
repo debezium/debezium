@@ -7,7 +7,6 @@ package io.debezium.connector.oracle;
 
 import static org.fest.assertions.Assertions.assertThat;
 
-import java.math.BigDecimal;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -74,24 +73,24 @@ public class LogMinerHelperIT extends AbstractConnectorTest {
     @Test
     public void shouldAddRightArchivedRedoFiles() throws Exception {
         // case 1 : oldest scn = current scn
-        long currentScn = LogMinerHelper.getCurrentScn(conn);
+        Scn currentScn = LogMinerHelper.getCurrentScn(conn);
         Map<String, String> archivedRedoFiles = LogMinerHelper.getMap(conn, SqlUtils.archiveLogsQuery(currentScn, Duration.ofHours(0L)), "-1");
         assertThat(archivedRedoFiles.size() == 0).isTrue();
 
         // case 2: oldest scn = oldest in not cleared archive
-        List<BigDecimal> oneDayArchivedNextScn = getOneDayArchivedLogNextScn(conn);
-        long oldestArchivedScn = getOldestArchivedScn(oneDayArchivedNextScn);
+        List<Scn> oneDayArchivedNextScn = getOneDayArchivedLogNextScn(conn);
+        Scn oldestArchivedScn = getOldestArchivedScn(oneDayArchivedNextScn);
         Map<String, Scn> archivedLogsForMining = LogMinerHelper.getArchivedLogFilesForOffsetScn(conn, oldestArchivedScn, Duration.ofHours(0L));
         assertThat(archivedLogsForMining.size() == (oneDayArchivedNextScn.size() - 1)).isTrue();
 
-        archivedRedoFiles = LogMinerHelper.getMap(conn, SqlUtils.archiveLogsQuery(oldestArchivedScn - 1, Duration.ofHours(0L)), "-1");
+        archivedRedoFiles = LogMinerHelper.getMap(conn, SqlUtils.archiveLogsQuery(oldestArchivedScn.subtract(Scn.valueOf(1L)), Duration.ofHours(0L)), "-1");
         assertThat(archivedRedoFiles.size() == (oneDayArchivedNextScn.size())).isTrue();
     }
 
     @Test
     public void shouldAddRightRedoFiles() throws Exception {
-        List<BigDecimal> oneDayArchivedNextScn = getOneDayArchivedLogNextScn(conn);
-        long oldestArchivedScn = getOldestArchivedScn(oneDayArchivedNextScn);
+        List<Scn> oneDayArchivedNextScn = getOneDayArchivedLogNextScn(conn);
+        Scn oldestArchivedScn = getOldestArchivedScn(oneDayArchivedNextScn);
         LogMinerHelper.setRedoLogFilesForMining(conn, oldestArchivedScn, Duration.ofHours(0L));
 
         // eliminate duplications
@@ -105,11 +104,11 @@ public class LogMinerHelperIT extends AbstractConnectorTest {
         assertThat(getNumberOfAddedLogFiles(conn) == (redoLogFiles.size() + archivedLogFilesCount)).isTrue();
     }
 
-    private Long getOldestArchivedScn(List<BigDecimal> oneDayArchivedNextScn) throws Exception {
-        long oldestArchivedScn;
-        Optional<BigDecimal> archivedScn = oneDayArchivedNextScn.stream().min(BigDecimal::compareTo);
+    private Scn getOldestArchivedScn(List<Scn> oneDayArchivedNextScn) throws Exception {
+        Scn oldestArchivedScn;
+        Optional<Scn> archivedScn = oneDayArchivedNextScn.stream().min(Scn::compareTo);
         if (archivedScn.isPresent()) {
-            oldestArchivedScn = archivedScn.get().longValue();
+            oldestArchivedScn = archivedScn.get();
         }
         else {
             throw new Exception("cannot get oldest archived scn");
@@ -128,15 +127,15 @@ public class LogMinerHelperIT extends AbstractConnectorTest {
         return counter;
     }
 
-    private List<BigDecimal> getOneDayArchivedLogNextScn(OracleConnection conn) throws SQLException {
-        List<BigDecimal> allArchivedNextScn = new ArrayList<>();
+    private List<Scn> getOneDayArchivedLogNextScn(OracleConnection conn) throws SQLException {
+        List<Scn> allArchivedNextScn = new ArrayList<>();
         try (
                 PreparedStatement st = conn.connection(false).prepareStatement("SELECT NAME AS FILE_NAME, NEXT_CHANGE# AS NEXT_CHANGE FROM V$ARCHIVED_LOG " +
                         " WHERE NAME IS NOT NULL AND FIRST_TIME >= SYSDATE - 1 AND ARCHIVED = 'YES' " +
                         " AND STATUS = 'A' ORDER BY 2");
                 ResultSet rs = st.executeQuery()) {
             while (rs.next()) {
-                allArchivedNextScn.add(rs.getBigDecimal(2));
+                allArchivedNextScn.add(Scn.valueOf(rs.getString(2)));
             }
         }
         return allArchivedNextScn;

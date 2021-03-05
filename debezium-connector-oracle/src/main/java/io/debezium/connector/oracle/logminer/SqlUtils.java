@@ -160,7 +160,7 @@ public class SqlUtils {
      * @param archiveLogRetention duration archive logs will be mined
      * @return query
      */
-    public static String archiveLogsQuery(Long scn, Duration archiveLogRetention) {
+    public static String archiveLogsQuery(Scn scn, Duration archiveLogRetention) {
         if (!archiveLogRetention.isNegative() && !archiveLogRetention.isZero()) {
             return String.format("SELECT NAME AS FILE_NAME, NEXT_CHANGE# AS NEXT_CHANGE, FIRST_CHANGE# AS FIRST_CHANGE FROM %s " +
                     " WHERE NAME IS NOT NULL AND FIRST_TIME >= SYSDATE - (%d/24) AND ARCHIVED = 'YES' " +
@@ -179,7 +179,7 @@ public class SqlUtils {
      * @param strategy Log Mining strategy
      * @return statement todo: handle corruption. STATUS (Double) — value of 0 indicates it is executable
      */
-    static String startLogMinerStatement(Long startScn, Long endScn, OracleConnectorConfig.LogMiningStrategy strategy, boolean isContinuousMining) {
+    static String startLogMinerStatement(Scn startScn, Scn endScn, OracleConnectorConfig.LogMiningStrategy strategy, boolean isContinuousMining) {
         String miningStrategy;
         if (strategy.equals(OracleConnectorConfig.LogMiningStrategy.CATALOG_IN_REDO)) {
             miningStrategy = "DBMS_LOGMNR.DICT_FROM_REDO_LOGS + DBMS_LOGMNR.DDL_DICT_TRACKING ";
