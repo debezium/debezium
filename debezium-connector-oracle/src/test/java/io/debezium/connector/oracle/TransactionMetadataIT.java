@@ -73,6 +73,8 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
     @AfterClass
     public static void closeConnection() throws SQLException {
         if (connection != null) {
+            TestHelper.dropTable(connection, "debezium.orders");
+            TestHelper.dropTable(connection, "debezium.customer");
             connection.close();
         }
     }

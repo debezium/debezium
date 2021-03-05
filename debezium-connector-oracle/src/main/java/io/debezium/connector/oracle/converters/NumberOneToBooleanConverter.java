@@ -17,6 +17,7 @@ import io.debezium.function.Predicates;
 import io.debezium.spi.converter.CustomConverter;
 import io.debezium.spi.converter.RelationalColumn;
 import io.debezium.util.Strings;
+
 import oracle.sql.NUMBER;
 
 /**
