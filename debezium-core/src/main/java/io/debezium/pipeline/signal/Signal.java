@@ -19,7 +19,9 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.data.Envelope;
 import io.debezium.document.Document;
 import io.debezium.document.DocumentReader;
+import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig;
 import io.debezium.schema.DataCollectionId;
 
 /**
@@ -45,7 +47,7 @@ public class Signal {
          * @param signalPayload the content of the signal
          * @return true if the signal was processed
          */
-        boolean arrived(Payload signalPayload);
+        boolean arrived(Payload signalPayload) throws InterruptedException;
     }
 
     public static class Payload {
@@ -53,24 +55,28 @@ public class Signal {
         public final String type;
         public final Document data;
         public final OffsetContext offsetContext;
+        public final Struct source;
 
         /**
          * @param id identifier of the signal intended for deduplication, usually ignored by the signal
          * @param type of the signal, usually ignored by the signal, should be used only when a signal code is shared for mutlple signals
          * @param data data specific for given signal instance
-         * @param offsetContext offset t what the signal was sent
+         * @param offsetContext offset at what the signal was sent
+         * @param source source info about position at what the signal was sent
          */
-        public Payload(String id, String type, Document data, OffsetContext offsetContext) {
+        public Payload(String id, String type, Document data, OffsetContext offsetContext, Struct source) {
             super();
             this.id = id;
             this.type = type;
             this.data = data;
             this.offsetContext = offsetContext;
+            this.source = source;
         }
 
         @Override
         public String toString() {
-            return "Payload [id=" + id + ", type=" + type + ", data=" + data + "]";
+            return "Payload [id=" + id + ", type=" + type + ", data=" + data + ", offsetContext=" + offsetContext
+                    + ", source=" + source + "]";
         }
     }
 
@@ -78,13 +84,26 @@ public class Signal {
 
     private final CommonConnectorConfig connectorConfig;
     private final String signalDataCollectionId;
+    private final EventDispatcher<? extends DataCollectionId> dispatcher;
 
     private final Map<String, Action> signalActions = new HashMap<>();
 
-    public Signal(CommonConnectorConfig connectorConfig) {
+    public Signal(CommonConnectorConfig connectorConfig, EventDispatcher<? extends DataCollectionId> eventDispatcher) {
         this.connectorConfig = connectorConfig;
         this.signalDataCollectionId = connectorConfig.getSignalingDataCollectionId();
-        registerSignalAction("log", new Log());
+        this.dispatcher = eventDispatcher;
+        registerSignalAction(Log.NAME, new Log());
+        if (connectorConfig instanceof HistorizedRelationalDatabaseConnectorConfig) {
+            registerSignalAction(SchemaChanges.NAME,
+                    new SchemaChanges(dispatcher, ((HistorizedRelationalDatabaseConnectorConfig) connectorConfig).useCatalogBeforeSchema()));
+        }
+        else {
+            registerSignalAction(SchemaChanges.NAME, new SchemaChanges(dispatcher, false));
+        }
+    }
+
+    Signal(CommonConnectorConfig connectorConfig) {
+        this(connectorConfig, null);
     }
 
     public boolean isSignal(DataCollectionId dataCollectionId) {
@@ -96,7 +115,7 @@ public class Signal {
         signalActions.put(id, signal);
     }
 
-    public boolean process(String id, String type, String data, OffsetContext offset) {
+    public boolean process(String id, String type, String data, OffsetContext offset, Struct source) throws InterruptedException {
         LOGGER.debug("Arrived signal id = '{}', type = '{}', data = '{}'", id, type, data);
         final Action action = signalActions.get(type);
         if (action == null) {
@@ -106,7 +125,7 @@ public class Signal {
         try {
             final Document jsonData = (data == null || data.isEmpty()) ? Document.create()
                     : DocumentReader.defaultReader().read(data);
-            return action.arrived(new Payload(id, type, jsonData, offset));
+            return action.arrived(new Payload(id, type, jsonData, offset, source));
         }
         catch (IOException e) {
             LOGGER.warn("Signal '{}' has arrived but the data '{}' cannot be parsed: {}", id, data, e);
@@ -114,24 +133,29 @@ public class Signal {
         }
     }
 
-    public boolean process(String id, String type, String data) {
-        return process(id, type, data, null);
+    public boolean process(String id, String type, String data) throws InterruptedException {
+        return process(id, type, data, null, null);
     }
 
     /**
      * 
      * @param value Envelope with change from signaling table
-     * @return
+     * @param offset offset of the incoming signal
+     * @return true if the signal was processed
      */
-    public boolean process(Struct value, OffsetContext offset) {
+    public boolean process(Struct value, OffsetContext offset) throws InterruptedException {
         String id = null;
         String type = null;
         String data = null;
+        Struct source = null;
         try {
             final Struct after = value.getStruct(Envelope.FieldName.AFTER);
             if (after == null) {
                 LOGGER.warn("After part of signal '{}' is missing", value);
                 return false;
+            }
+            if (value.schema().field(Envelope.FieldName.SOURCE) != null) {
+                source = value.getStruct(Envelope.FieldName.SOURCE);
             }
             List<Field> fields = after.schema().fields();
             if (fields.size() != 3) {
@@ -145,6 +169,6 @@ public class Signal {
         catch (Exception e) {
             LOGGER.warn("Exception while preparing to process the signal '{}', {}", value, e);
         }
-        return process(id, type, data, offset);
+        return process(id, type, data, offset, source);
     }
 }

@@ -148,18 +148,6 @@ public class PostgresSchema extends RelationalDatabaseSchema {
         }
     }
 
-    /**
-     * Refreshes the schema content with a table constructed externally
-     *
-     * @param table constructed externally - typically from decoder metadata
-     */
-    protected void refresh(Table table) {
-        // overwrite (add or update) or views of the tables
-        tables().overwriteTable(table);
-        // and refresh the schema
-        refreshSchema(table.id());
-    }
-
     protected boolean isFilteredOut(TableId id) {
         return !getTableFilter().isIncluded(id);
     }
@@ -172,15 +160,6 @@ public class PostgresSchema extends RelationalDatabaseSchema {
 
         // Create TableSchema instances for any existing table ...
         tableIds().forEach(this::refreshSchema);
-    }
-
-    private void refreshSchema(TableId id) {
-        if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug("refreshing DB schema for table '{}'", id);
-        }
-        Table table = tableFor(id);
-
-        buildAndRegisterSchema(table);
     }
 
     private void refreshToastableColumnsMap(PostgresConnection connection, TableId tableId) {

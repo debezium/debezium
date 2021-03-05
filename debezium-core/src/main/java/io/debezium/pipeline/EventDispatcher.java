@@ -116,7 +116,7 @@ public class EventDispatcher<T extends DataCollectionId> {
         this.inconsistentSchemaHandler = inconsistentSchemaHandler != null ? inconsistentSchemaHandler : this::errorOnMissingSchema;
 
         this.transactionMonitor = new TransactionMonitor(connectorConfig, metadataProvider, this::enqueueTransactionMessage);
-        this.signal = new Signal(connectorConfig);
+        this.signal = new Signal(connectorConfig, this);
         if (customHeartbeat != null) {
             heartbeat = customHeartbeat;
         }
@@ -492,4 +492,11 @@ public class EventDispatcher<T extends DataCollectionId> {
         Optional<DataCollectionSchema> handle(T dataCollectionId, ChangeRecordEmitter changeRecordEmitter);
     }
 
+    public DatabaseSchema<T> getSchema() {
+        return schema;
+    }
+
+    public HistorizedDatabaseSchema<T> getHistorizedSchema() {
+        return historizedSchema;
+    }
 }
