@@ -26,7 +26,6 @@ import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.relational.RelationalSnapshotChangeEventSource;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
-import io.debezium.relational.Tables;
 import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.schema.SchemaChangeEvent.SchemaChangeEventType;
 import io.debezium.util.Clock;
@@ -209,8 +208,6 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
                 .map(TableId::schema)
                 .collect(Collectors.toSet());
 
-        final Tables.ColumnNameFilter columnNameFilter = connectorConfig.getColumnNameFilter(connectorConfig.columnExcludeList());
-
         // reading info only for the schemas we're interested in as per the set of captured tables;
         // while the passed table name filter alone would skip all non-included tables, reading the schema
         // would take much longer that way
@@ -220,7 +217,7 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
             }
 
             LOGGER.info("Reading structure of schema '{}'", snapshotContext.catalogName);
-            jdbcConnection.readSchemaForCapturedTables(snapshotContext, schema, columnNameFilter);
+            jdbcConnection.readSchemaForCapturedTables(snapshotContext, schema, connectorConfig.getColumnFilter());
         }
     }
 
