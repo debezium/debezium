@@ -167,7 +167,7 @@ public class OracleConnectorConfigTest {
     public void validTransactionRetentionDefaults() throws Exception {
         final Configuration config = Configuration.create().build();
         final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
-        assertThat(connectorConfig.getLogMiningTransactionRetention()).isEqualTo(OracleConnectorConfig.DEFAULT_TRANSACTION_RETENTION);
+        assertThat(connectorConfig.getLogMiningTransactionRetention()).isEqualTo(Duration.ZERO);
     }
 
     @Test
@@ -182,6 +182,9 @@ public class OracleConnectorConfigTest {
         assertThat(connectorConfig.getLogMiningTransactionRetention()).isEqualTo(Duration.ofHours(3));
 
         config = Configuration.create().with(transactionRetentionField, 0).build();
+        assertThat(config.validateAndRecord(Collections.singletonList(transactionRetentionField), LOGGER::error)).isTrue();
+
+        config = Configuration.create().with(transactionRetentionField, -1).build();
         assertThat(config.validateAndRecord(Collections.singletonList(transactionRetentionField), LOGGER::error)).isFalse();
     }
 

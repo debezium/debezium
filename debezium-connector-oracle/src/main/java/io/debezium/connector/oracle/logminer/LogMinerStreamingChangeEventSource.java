@@ -226,12 +226,15 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
     }
 
     private void abandonOldTransactionsIfExist(OracleConnection connection, TransactionalBuffer transactionalBuffer) {
-        Optional<Long> lastScnToAbandonTransactions = getLastScnToAbandon(connection, offsetContext.getScn(), connectorConfig.getLogMiningTransactionRetention());
-        lastScnToAbandonTransactions.ifPresent(thresholdScn -> {
-            transactionalBuffer.abandonLongTransactions(thresholdScn, offsetContext);
-            offsetContext.setScn(thresholdScn);
-            startScn = endScn;
-        });
+        Duration transactionRetention = connectorConfig.getLogMiningTransactionRetention();
+        if (!Duration.ZERO.equals(transactionRetention)) {
+            Optional<Long> lastScnToAbandonTransactions = getLastScnToAbandon(connection, offsetContext.getScn(), transactionRetention);
+            lastScnToAbandonTransactions.ifPresent(thresholdScn -> {
+                transactionalBuffer.abandonLongTransactions(thresholdScn, offsetContext);
+                offsetContext.setScn(thresholdScn);
+                startScn = endScn;
+            });
+        }
     }
 
     private void initializeRedoLogsForMining(OracleConnection connection, boolean postEndMiningSession, Duration archiveLogRetention) throws SQLException {

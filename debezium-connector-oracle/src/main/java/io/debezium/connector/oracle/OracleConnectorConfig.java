@@ -67,8 +67,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     protected final static Duration MIN_SLEEP_TIME = Duration.ZERO;
     protected final static Duration SLEEP_TIME_INCREMENT = Duration.ofMillis(200);
 
-    protected final static Duration DEFAULT_TRANSACTION_RETENTION = Duration.ofHours(4);
-
     public static final Field PORT = RelationalDatabaseConnectorConfig.PORT
             .withDefault(DEFAULT_PORT);
 
@@ -171,9 +169,9 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withType(Type.LONG)
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
-            .withDefault(DEFAULT_TRANSACTION_RETENTION.toHours())
-            .withValidation(OracleConnectorConfig::isPositiveNonZeroInteger)
-            .withDescription("Hours to keep long running transactions in transaction buffer between log mining sessions.");
+            .withDefault(0)
+            .withValidation(Field::isNonNegativeInteger)
+            .withDescription("Hours to keep long running transactions in transaction buffer between log mining sessions.  By default, all transactions are retained.");
 
     public static final Field RAC_SYSTEM = Field.create("database.rac")
             .withDisplayName("Oracle RAC")
@@ -964,15 +962,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             return Field.isRequired(config, field, problems);
         }
         return 0;
-    }
-
-    public static int isPositiveNonZeroInteger(Configuration config, Field field, ValidationOutput problems) {
-        Integer value = config.getInteger(field);
-        if (value == 0) {
-            problems.accept(field, value, "The value must be non-zero.");
-            return 1;
-        }
-        return Field.isPositiveInteger(config, field, problems);
     }
 
     private static Boolean resolveTableNameCaseInsensitivity(Configuration config) {

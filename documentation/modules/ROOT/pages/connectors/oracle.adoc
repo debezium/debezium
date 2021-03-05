@@ -1604,8 +1604,9 @@ Using the default `0` will mine all archive logs.
 When set to `0`, log mining history is is disabled.
 
 |[[oracle-property-log-mining-transaction-retention-hours]]<<oracle-property-log-mining-transaction-retention-hours, `log.mining.transaction.retention.hours`>>
-|`4`
+|`0`
 |Positive integer value that specifies the number of hours to retain long running transactions between redo log switches.
+When set to `0`, transactions are retained until a commit or rollback is detected.
 
 The LogMiner adapter maintains an in-memory buffer of all running transactions.
 As all DML operations that are part of a transaction will be buffered until a commit or rollback is detected,
