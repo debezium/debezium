@@ -36,7 +36,7 @@ public class SignalTest {
     }
 
     @Test
-    public void shouldExecuteLog() {
+    public void shouldExecuteLog() throws Exception {
         final Signal signal = new Signal(config());
         final LogInterceptor log = new LogInterceptor(io.debezium.pipeline.signal.Log.class);
         assertThat(signal.process("log1", "log", "{\"message\": \"signallog {}\"}")).isTrue();
@@ -44,19 +44,19 @@ public class SignalTest {
     }
 
     @Test
-    public void shouldIgnoreInvalidSignalType() {
+    public void shouldIgnoreInvalidSignalType() throws Exception {
         final Signal signal = new Signal(config());
         assertThat(signal.process("log1", "log1", "{\"message\": \"signallog\"}")).isFalse();
     }
 
     @Test
-    public void shouldIgnoreUnparseableData() {
+    public void shouldIgnoreUnparseableData() throws Exception {
         final Signal signal = new Signal(config());
         assertThat(signal.process("log1", "log", "{\"message: \"signallog\"}")).isFalse();
     }
 
     @Test
-    public void shouldRegisterAdditionalAction() {
+    public void shouldRegisterAdditionalAction() throws Exception {
         final Signal signal = new Signal(config());
 
         final AtomicInteger called = new AtomicInteger();
@@ -74,7 +74,7 @@ public class SignalTest {
     }
 
     @Test
-    public void shouldExecuteFromEnvelope() {
+    public void shouldExecuteFromEnvelope() throws Exception {
         final Signal signal = new Signal(config());
         final Schema afterSchema = SchemaBuilder.struct().name("signal")
                 .field("col1", Schema.OPTIONAL_STRING_SCHEMA)
@@ -84,7 +84,7 @@ public class SignalTest {
         final Envelope env = Envelope.defineSchema()
                 .withName("someName")
                 .withRecord(afterSchema)
-                .withSource(Schema.OPTIONAL_INT64_SCHEMA)
+                .withSource(SchemaBuilder.struct().name("source").build())
                 .build();
         final Struct record = new Struct(afterSchema);
         record.put("col1", "log1");
@@ -105,7 +105,7 @@ public class SignalTest {
     }
 
     @Test
-    public void shouldIgnoreInvalidEnvelope() {
+    public void shouldIgnoreInvalidEnvelope() throws Exception {
         final Signal signal = new Signal(config());
         final Schema afterSchema = SchemaBuilder.struct().name("signal")
                 .field("col1", Schema.OPTIONAL_STRING_SCHEMA)
@@ -114,7 +114,7 @@ public class SignalTest {
         final Envelope env = Envelope.defineSchema()
                 .withName("someName")
                 .withRecord(afterSchema)
-                .withSource(Schema.OPTIONAL_INT64_SCHEMA)
+                .withSource(SchemaBuilder.struct().name("source").build())
                 .build();
         final Struct record = new Struct(afterSchema);
         record.put("col1", "log1");

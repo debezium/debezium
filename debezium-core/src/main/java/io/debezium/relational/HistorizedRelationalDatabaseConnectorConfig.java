@@ -101,6 +101,10 @@ public abstract class HistorizedRelationalDatabaseConnectorConfig extends Relati
         return databaseHistory;
     }
 
+    public boolean useCatalogBeforeSchema() {
+        return useCatalogBeforeSchema;
+    }
+
     /**
      * Returns a comparator to be used when recovering records from the schema history, making sure no history entries
      * newer than the offset we resume from are recovered (which could happen when restarting a connector after history
