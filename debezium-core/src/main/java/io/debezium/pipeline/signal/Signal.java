@@ -128,7 +128,7 @@ public class Signal {
             return action.arrived(new Payload(id, type, jsonData, offset, source));
         }
         catch (IOException e) {
-            LOGGER.warn("Signal '{}' has arrived but the data '{}' cannot be parsed: {}", id, data, e);
+            LOGGER.warn("Signal '{}' has arrived but the data '{}' cannot be parsed", id, data, e);
             return false;
         }
     }
@@ -167,7 +167,7 @@ public class Signal {
             data = after.getString(fields.get(2).name());
         }
         catch (Exception e) {
-            LOGGER.warn("Exception while preparing to process the signal '{}', {}", value, e);
+            LOGGER.warn("Exception while preparing to process the signal '{}'", value, e);
         }
         return process(id, type, data, offset, source);
     }
