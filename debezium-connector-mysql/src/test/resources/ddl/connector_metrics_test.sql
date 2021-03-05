@@ -1,1 +1,0 @@
-CREATE TABLE simple (pk integer auto_increment, val integer not null, primary key(pk));

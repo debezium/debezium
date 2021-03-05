@@ -5,6 +5,7 @@
  */
 package io.debezium.pipeline.source.spi;
 
+import io.debezium.connector.common.TaskPartition;
 import io.debezium.pipeline.spi.OffsetContext;
 
 /**
@@ -12,7 +13,7 @@ import io.debezium.pipeline.spi.OffsetContext;
  *
  * @author Gunnar Morling
  */
-public interface ChangeEventSourceFactory<O extends OffsetContext> {
+public interface ChangeEventSourceFactory<P extends TaskPartition, O extends OffsetContext> {
 
     /**
      * Returns a snapshot change event source that may emit change events for schema and/or data changes. Depending on
@@ -26,10 +27,10 @@ public interface ChangeEventSourceFactory<O extends OffsetContext> {
      *
      * @return A snapshot change event source
      */
-    SnapshotChangeEventSource<O> getSnapshotChangeEventSource(SnapshotProgressListener snapshotProgressListener);
+    SnapshotChangeEventSource<P, O> getSnapshotChangeEventSource(SnapshotProgressListener snapshotProgressListener);
 
     /**
      * Returns a streaming change event source that starts streaming at the given offset.
      */
-    StreamingChangeEventSource<O> getStreamingChangeEventSource();
+    StreamingChangeEventSource<P, O> getStreamingChangeEventSource();
 }

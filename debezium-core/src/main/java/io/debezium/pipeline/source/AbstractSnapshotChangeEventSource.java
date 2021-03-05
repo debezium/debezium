@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.ConfigurationDefaults;
+import io.debezium.connector.common.TaskPartition;
 import io.debezium.pipeline.source.spi.SnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.spi.OffsetContext;
@@ -31,7 +32,7 @@ import io.debezium.util.Threads;
  *
  * @author Chris Cranford
  */
-public abstract class AbstractSnapshotChangeEventSource<O extends OffsetContext> implements SnapshotChangeEventSource<O> {
+public abstract class AbstractSnapshotChangeEventSource<P extends TaskPartition, O extends OffsetContext> implements SnapshotChangeEventSource<P, O> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractSnapshotChangeEventSource.class);
 
@@ -44,7 +45,7 @@ public abstract class AbstractSnapshotChangeEventSource<O extends OffsetContext>
     }
 
     @Override
-    public SnapshotResult execute(ChangeEventSourceContext context, O previousOffset) throws InterruptedException {
+    public SnapshotResult execute(ChangeEventSourceContext context, O previousOffset, P partition) throws InterruptedException {
         SnapshottingTask snapshottingTask = getSnapshottingTask(previousOffset);
         if (snapshottingTask.shouldSkipSnapshot()) {
             LOGGER.debug("Skipping snapshotting");
