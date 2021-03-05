@@ -335,6 +335,6 @@ public class TestHelper {
 
     public static OracleConnectorConfig.ConnectorAdapter adapter() {
         final String s = System.getProperty(OracleConnectorConfig.CONNECTOR_ADAPTER.name());
-        return (s == null || s.length() == 0) ? OracleConnectorConfig.ConnectorAdapter.XSTREAM : OracleConnectorConfig.ConnectorAdapter.parse(s);
+        return (s == null || s.length() == 0) ? OracleConnectorConfig.ConnectorAdapter.LOG_MINER : OracleConnectorConfig.ConnectorAdapter.parse(s);
     }
 }

@@ -110,7 +110,7 @@
     </dependencies>
 
     <properties>
-        <adapter.name>xstream</adapter.name>
+        <adapter.name>logminer</adapter.name>
     </properties>
 
     <build>
@@ -222,9 +222,9 @@
             </build>
         </profile>
         <profile>
-            <id>logminer</id>
+            <id>xstream</id>
             <properties>
-                <adapter.name>logminer</adapter.name>
+                <adapter.name>xstream</adapter.name>
             </properties>
         </profile>
     </profiles>
