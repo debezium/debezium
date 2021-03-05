@@ -25,6 +25,7 @@ import io.debezium.connector.oracle.logminer.parser.DmlParserException;
 import io.debezium.connector.oracle.logminer.parser.LogMinerDmlParser;
 import io.debezium.connector.oracle.logminer.parser.SimpleDmlParser;
 import io.debezium.connector.oracle.logminer.valueholder.LogMinerDmlEntry;
+import io.debezium.data.Envelope.Operation;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.ChangeEventSource.ChangeEventSourceContext;
 import io.debezium.relational.Table;
@@ -292,6 +293,14 @@ class LogMinerQueryResultProcessor {
             }
             throw new DmlParserException(message.toString(), e);
         }
+
+        if (dmlEntry.getOldValues().isEmpty()) {
+            if (Operation.UPDATE.equals(dmlEntry.getCommandType()) || Operation.DELETE.equals(dmlEntry.getCommandType())) {
+                LOGGER.warn("The DML event '{}' contained no before state.", redoSql);
+                transactionalBufferMetrics.incrementWarningCounter();
+            }
+        }
+
         return dmlEntry;
     }
 }

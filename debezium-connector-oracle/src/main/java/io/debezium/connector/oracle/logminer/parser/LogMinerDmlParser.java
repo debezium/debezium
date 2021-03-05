@@ -156,17 +156,26 @@ public class LogMinerDmlParser implements DmlParser {
             }
 
             List<LogMinerColumnValue> newValues = new ArrayList<>(newColumnNames.size());
-            for (LogMinerColumnValue oldValue : oldValues) {
-                boolean found = false;
-                for (int j = 0; j < newColumnNames.size(); ++j) {
-                    if (newColumnNames.get(j).equals(oldValue.getColumnName())) {
-                        newValues.add(createColumnValue(newColumnNames.get(j), newColumnValues.get(j)));
-                        found = true;
-                        break;
+            if (!oldValues.isEmpty()) {
+                for (LogMinerColumnValue oldValue : oldValues) {
+                    boolean found = false;
+                    for (int j = 0; j < newColumnNames.size(); ++j) {
+                        if (newColumnNames.get(j).equals(oldValue.getColumnName())) {
+                            newValues.add(createColumnValue(newColumnNames.get(j), newColumnValues.get(j)));
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found) {
+                        newValues.add(oldValue);
                     }
                 }
-                if (!found) {
-                    newValues.add(oldValue);
+            }
+            else {
+                for (int i = 0; i < newColumnNames.size(); ++i) {
+                    LogMinerColumnValue value = new LogMinerColumnValueImpl(newColumnNames.get(i), 0);
+                    value.setColumnData(newColumnValues.get(i));
+                    newValues.add(value);
                 }
             }
 
@@ -449,6 +458,13 @@ public class LogMinerDmlParser implements DmlParser {
         boolean inDoubleQuote = false;
         boolean inSingleQuote = false;
         boolean inSpecial = false;
+
+        // DBZ-3235
+        // LogMiner can generate SQL without a WHERE condition under some circumstances and if it does
+        // we shouldn't immediately fail DML parsing.
+        if (start >= sql.length()) {
+            return start;
+        }
 
         // verify entering where-clause
         if (!sql.substring(start, start + WHERE_LENGTH).equals(WHERE)) {
