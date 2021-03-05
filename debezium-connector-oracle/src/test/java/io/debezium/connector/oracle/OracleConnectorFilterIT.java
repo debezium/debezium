@@ -61,6 +61,8 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
             adminConnection.close();
         }
         if (connection != null) {
+            TestHelper.dropTable(connection, "debezium.table1");
+            TestHelper.dropTable(connection, "debezium.table2");
             connection.close();
         }
     }

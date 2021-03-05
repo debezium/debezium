@@ -207,10 +207,17 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
     private static OracleConnection connection;
 
     @BeforeClass
-    public static void dropTables() throws SQLException {
+    public static void beforeClass() throws SQLException {
         connection = TestHelper.testConnection();
-        for (String table : ALL_TABLES) {
-            TestHelper.dropTable(connection, table);
+        dropTables();
+    }
+
+    @AfterClass
+    public static void dropTables() throws SQLException {
+        if (connection != null) {
+            for (String table : ALL_TABLES) {
+                TestHelper.dropTable(connection, table);
+            }
         }
     }
 
