@@ -23,7 +23,7 @@ It is supported though to capture tables newly added while the connector is runn
 [[oracle-overview]]
 == Overview
 
-{prodname} ingests change events from Oracle using the https://docs.oracle.com/database/121/XSTRM/xstrm_intro.htm#XSTRM72647[XStream API] or directly by LogMiner.
+{prodname} ingests change events from Oracle using the native LogMiner database package or the https://docs.oracle.com/database/121/XSTRM/xstrm_intro.htm#XSTRM72647[XStream API].
 In order to use the XStream API, you need to have a license for the GoldenGate product
 (though it is not required that GoldenGate itself is installed).
 
@@ -38,7 +38,7 @@ To optimally configure and run a {prodname} Oracle connector, it is helpful to u
 Most Oracle servers are configured to not retain the complete history of the database in the redo logs,
 so the {prodname} Oracle connector would be unable to see the entire history of the database by simply reading the logs.
 Consequently, the first time the connector starts, it performs an initial _consistent snapshot_ of the database.
-the default behavior for perofmring a snapshot consists of the following steps.
+the default behavior for performing a snapshot consists of the following steps.
 you can change this behavior by setting the `snapshot.mode` connector configuration property to a value other than `initial`.
 
 1. Determine the tables to be captured
@@ -946,12 +946,30 @@ A string representation of a timestamp with timezone information
 == Setting up Oracle
 
 The following database set up steps are necessary to use the {prodname} Oracle connector.
-These steps assume the use of the multitenancy configuration with a container database and at least one pluggable database.
-If you intend to use a non-multitenancy configuration, the following steps may require adjustment.
+These steps assume the use of the multi-tenancy configuration with a container database and at least one pluggable database.
+If you intend to not use multi-tenancy configuration, the following steps may require adjustment.
 
 You can find a template for setting up Oracle in a virtual machine (via Vagrant) in the https://github.com/debezium/oracle-vagrant-box/[oracle-vagrant-box/] repository.
 
 === Preparing the Database
+
+.Configuration needed for Oracle LogMiner
+[source,indent=0]
+----
+ORACLE_SID=ORACLCDB dbz_oracle sqlplus /nolog
+
+CONNECT sys/top_secret AS SYSDBA
+alter system set db_recovery_file_dest_size = 10G;
+alter system set db_recovery_file_dest = '/opt/oracle/oradta/recovery_area' scope=spfile;
+shutdown immediate
+startup mount
+alter database archivelog;
+alter database open;
+-- Should now "Database log mode: Archive Mode"
+archive log list
+
+exit;
+----
 
 .Configuration needed for Oracle XStream
 [source,indent=0]
@@ -972,24 +990,6 @@ archive log list
 exit;
 ----
 
-.Configuration needed for Oracle LogMiner
-[source,indent=0]
-----
-ORACLE_SID=ORACLCDB dbz_oracle sqlplus /nolog
-
-CONNECT sys/top_secret AS SYSDBA
-alter system set db_recovery_file_dest_size = 10G;
-alter system set db_recovery_file_dest = '/opt/oracle/oradta/recovery_area' scope=spfile;
-shutdown immediate
-startup mount
-alter database archivelog;
-alter database open;
--- Should now "Database log mode: Archive Mode"
-archive log list
-
-exit;
-----
-
 In addition, supplemental logging must be enabled for captured tables or the database in order for data changes to capture the _before_ state of changed database rows.
 The following illustrates how to configure this on a specific table, which is the ideal choice to minimize the amount of information captured in the Oracle redo logs.
 
@@ -1003,8 +1003,59 @@ ALTER TABLE inventory.customers ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS;
 The {prodname} Oracle connector requires that users accounts be set up with specific permissions so that the connector can capture change events.
 The following briefly describes these user configurations using a multi-tenant database model.
 
-* <<oracle-create-users-xstream, `Creating users for Oracle XStream`>>
 * <<oracle-create-users-logminer, `Creating users for Oracle LogMiner`>>
+* <<oracle-create-users-xstream, `Creating users for Oracle XStream`>>
+
+[[oracle-create-users-logminer]]
+.Creating the connector's LogMiner user
+[source,indent=0]
+----
+sqlplus sys/top_secret@//localhost:1521/ORCLCDB as sysdba
+  CREATE TABLESPACE logminer_tbs DATAFILE '/opt/oracle/oradata/ORCLCDB/logminer_tbs.dbf'
+    SIZE 25M REUSE AUTOEXTEND ON MAXSIZE UNLIMITED;
+  exit;
+
+sqlplus sys/top_secret@//localhost:1521/ORCLPDB1 as sysdba
+  CREATE TABLESPACE logminer_tbs DATAFILE '/opt/oracle/oradata/ORCLCDB/ORCLPDB1/logminer_tbs.dbf'
+    SIZE 25M REUSE AUTOEXTEND ON MAXSIZE UNLIMITED;
+  exit;
+
+sqlplus sys/top_secret@//localhost:1521/ORCLCDB as sysdba
+
+  CREATE USER c##dbzuser IDENTIFIED BY dbz
+    DEFAULT TABLESPACE logminer_tbs
+    QUOTA UNLIMITED ON logminer_tbs
+    CONTAINER=ALL;
+
+  GRANT CREATE SESSION TO c##dbzuser CONTAINER=ALL;
+  GRANT SET CONTAINER TO c##dbzuser CONTAINER=ALL;
+  GRANT SELECT ON V_$DATABASE to c##dbzuser CONTAINER=ALL;
+  GRANT FLASHBACK ANY TABLE TO c##dbzuser CONTAINER=ALL;
+  GRANT SELECT ANY TABLE TO c##dbzuser CONTAINER=ALL;
+  GRANT SELECT_CATALOG_ROLE TO c##dbzuser CONTAINER=ALL;
+  GRANT EXECUTE_CATALOG_ROLE TO c##dbzuser CONTAINER=ALL;
+  GRANT SELECT ANY TRANSACTION TO c##dbzuser CONTAINER=ALL;
+  GRANT LOGMINING TO c##dbzuser CONTAINER=ALL;
+
+  GRANT CREATE TABLE TO c##dbzuser CONTAINER=ALL;
+  GRANT LOCK ANY TABLE TO c##dbzuser CONTAINER=ALL;
+  GRANT ALTER ANY TABLE TO c##dbzuser CONTAINER=ALL;
+  GRANT CREATE SEQUENCE TO c##dbzuser CONTAINER=ALL;
+
+  GRANT EXECUTE ON DBMS_LOGMNR TO c##dbzuser CONTAINER=ALL;
+  GRANT EXECUTE ON DBMS_LOGMNR_D TO c##dbzuser CONTAINER=ALL;
+
+  GRANT SELECT ON V_$LOG TO c##dbzuser CONTAINER=ALL;
+  GRANT SELECT ON V_$LOG_HISTORY TO c##dbzuser CONTAINER=ALL;
+  GRANT SELECT ON V_$LOGMNR_LOGS TO c##dbzuser CONTAINER=ALL;
+  GRANT SELECT ON V_$LOGMNR_CONTENTS TO c##dbzuser CONTAINER=ALL;
+  GRANT SELECT ON V_$LOGMNR_PARAMETERS TO c##dbzuser CONTAINER=ALL;
+  GRANT SELECT ON V_$LOGFILE TO c##dbzuser CONTAINER=ALL;
+  GRANT SELECT ON V_$ARCHIVED_LOG TO c##dbzuser CONTAINER=ALL;
+  GRANT SELECT ON V_$ARCHIVE_DEST_STATUS TO c##dbzuser CONTAINER=ALL;
+
+  exit;
+----
 
 [[oracle-create-users-xstream]]
 .Creating an XStream Administrator user
@@ -1021,16 +1072,16 @@ sqlplus sys/top_secret@//localhost:1521/ORCLPDB1 as sysdba
   exit;
 
 sqlplus sys/top_secret@//localhost:1521/ORCLCDB as sysdba
-  CREATE USER c##xstrmadmin IDENTIFIED BY xsa
+  CREATE USER c##dbzadmin IDENTIFIED BY dbz
     DEFAULT TABLESPACE xstream_adm_tbs
     QUOTA UNLIMITED ON xstream_adm_tbs
     CONTAINER=ALL;
 
-  GRANT CREATE SESSION, SET CONTAINER TO c##xstrmadmin CONTAINER=ALL;
+  GRANT CREATE SESSION, SET CONTAINER TO c##dbzadmin CONTAINER=ALL;
 
   BEGIN
      DBMS_XSTREAM_AUTH.GRANT_ADMIN_PRIVILEGE(
-        grantee                 => 'c##xstrmadmin',
+        grantee                 => 'c##dbzadmin',
         privilege_type          => 'CAPTURE',
         grant_select_privileges => TRUE,
         container               => 'ALL'
@@ -1055,68 +1106,17 @@ sqlplus sys/top_secret@//localhost:1521/ORCLPDB1 as sysdba
   exit;
 
 sqlplus sys/top_secret@//localhost:1521/ORCLCDB as sysdba
-  CREATE USER c##xstrm IDENTIFIED BY xs
+  CREATE USER c##dbzuser IDENTIFIED BY dbz
     DEFAULT TABLESPACE xstream_tbs
     QUOTA UNLIMITED ON xstream_tbs
     CONTAINER=ALL;
 
-  GRANT CREATE SESSION TO c##xstrm CONTAINER=ALL;
-  GRANT SET CONTAINER TO c##xstrm CONTAINER=ALL;
-  GRANT SELECT ON V_$DATABASE to c##xstrm CONTAINER=ALL;
-  GRANT FLASHBACK ANY TABLE TO c##xstrm CONTAINER=ALL;
-  GRANT SELECT_CATALOG_ROLE TO c##xstrm CONTAINER=ALL;
-  GRANT EXECUTE_CATALOG_ROLE TO c##xstrm CONTAINER=ALL;
-  exit;
-----
-
-[[oracle-create-users-logminer]]
-.Creating the connector's LogMiner user
-[source,indent=0]
-----
-sqlplus sys/top_secret@//localhost:1521/ORCLCDB as sysdba
-  CREATE TABLESPACE logminer_tbs DATAFILE '/opt/oracle/oradata/ORCLCDB/logminer_tbs.dbf'
-    SIZE 25M REUSE AUTOEXTEND ON MAXSIZE UNLIMITED;
-  exit;
-
-sqlplus sys/top_secret@//localhost:1521/ORCLPDB1 as sysdba
-  CREATE TABLESPACE logminer_tbs DATAFILE '/opt/oracle/oradata/ORCLCDB/ORCLPDB1/logminer_tbs.dbf'
-    SIZE 25M REUSE AUTOEXTEND ON MAXSIZE UNLIMITED;
-  exit;
-
-sqlplus sys/top_secret@//localhost:1521/ORCLCDB as sysdba
-
-  CREATE USER c##logminer IDENTIFIED BY lm
-    DEFAULT TABLESPACE logminer_tbs
-    QUOTA UNLIMITED ON logminer_tbs
-    CONTAINER=ALL;
-
-  GRANT CREATE SESSION TO c##logminer CONTAINER=ALL;
-  GRANT SET CONTAINER TO c##logminer CONTAINER=ALL;
-  GRANT SELECT ON V_$DATABASE to c##logminer CONTAINER=ALL;
-  GRANT FLASHBACK ANY TABLE TO c##logminer CONTAINER=ALL;
-  GRANT SELECT ANY TABLE TO c##logminer CONTAINER=ALL;
-  GRANT SELECT_CATALOG_ROLE TO c##logminer CONTAINER=ALL;
-  GRANT EXECUTE_CATALOG_ROLE TO c##logminer CONTAINER=ALL;
-  GRANT SELECT ANY TRANSACTION TO c##logminer CONTAINER=ALL;
-  GRANT LOGMINING TO c##logminer CONTAINER=ALL;
-
-  GRANT CREATE TABLE TO c##logminer CONTAINER=ALL;
-  GRANT LOCK ANY TABLE TO c##logminer CONTAINER=ALL;
-  GRANT ALTER ANY TABLE TO c##logminer CONTAINER=ALL;
-  GRANT CREATE SEQUENCE TO c##logminer CONTAINER=ALL;
-
-  GRANT EXECUTE ON DBMS_LOGMNR TO c##logminer CONTAINER=ALL;
-  GRANT EXECUTE ON DBMS_LOGMNR_D TO c##logminer CONTAINER=ALL;
-
-  GRANT SELECT ON V_$LOG TO c##logminer CONTAINER=ALL;
-  GRANT SELECT ON V_$LOG_HISTORY TO c##logminer CONTAINER=ALL;
-  GRANT SELECT ON V_$LOGMNR_LOGS TO c##logminer CONTAINER=ALL;
-  GRANT SELECT ON V_$LOGMNR_CONTENTS TO c##logminer CONTAINER=ALL;
-  GRANT SELECT ON V_$LOGMNR_PARAMETERS TO c##logminer CONTAINER=ALL;
-  GRANT SELECT ON V_$LOGFILE TO c##logminer CONTAINER=ALL;
-  GRANT SELECT ON V_$ARCHIVED_LOG TO c##logminer CONTAINER=ALL;
-  GRANT SELECT ON V_$ARCHIVE_DEST_STATUS TO c##logminer CONTAINER=ALL;
-
+  GRANT CREATE SESSION TO c##dbzuser CONTAINER=ALL;
+  GRANT SET CONTAINER TO c##dbzuser CONTAINER=ALL;
+  GRANT SELECT ON V_$DATABASE to c##dbzuser CONTAINER=ALL;
+  GRANT FLASHBACK ANY TABLE TO c##dbzuser CONTAINER=ALL;
+  GRANT SELECT_CATALOG_ROLE TO c##dbzuser CONTAINER=ALL;
+  GRANT EXECUTE_CATALOG_ROLE TO c##dbzuser CONTAINER=ALL;
   exit;
 ----
 
@@ -1124,7 +1124,7 @@ sqlplus sys/top_secret@//localhost:1521/ORCLCDB as sysdba
 
 [NOTE]
 ====
-If you're using the LogMiner implementation, this step is not necessary.
+If you're using the default adapter, LogMiner, then this step can be skipped.
 ====
 
 Create an https://docs.oracle.com/cd/E11882_01/server.112/e16545/xstrm_cncpt.htm#XSTRM1088[XStream Outbound server]
@@ -1133,7 +1133,7 @@ Create an https://docs.oracle.com/cd/E11882_01/server.112/e16545/xstrm_cncpt.htm
 .Create an XStream Outbound Server
 [source,indent=0]
 ----
-sqlplus c##xstrmadmin/xsa@//localhost:1521/ORCLCDB
+sqlplus c##dbzadmin/dbz@//localhost:1521/ORCLCDB
 DECLARE
   tables  DBMS_UTILITY.UNCL_ARRAY;
   schemas DBMS_UTILITY.UNCL_ARRAY;
@@ -1156,7 +1156,7 @@ sqlplus sys/top_secret@//localhost:1521/ORCLCDB as sysdba
 BEGIN
   DBMS_XSTREAM_ADM.ALTER_OUTBOUND(
     server_name  => 'dbzxout',
-    connect_user => 'c##xstrm');
+    connect_user => 'c##dbzuser');
 END;
 /
 exit;
@@ -1198,11 +1198,10 @@ The following shows an example JSON request for registering an instance of the {
         "database.server.name" : "server1",
         "database.hostname" : "<oracle ip>",
         "database.port" : "1521",
-        "database.user" : "c##xstrm",
-        "database.password" : "xs",
+        "database.user" : "c##dbzuser",
+        "database.password" : "dbz",
         "database.dbname" : "ORCLCDB",
         "database.pdb.name" : "ORCLPDB1",
-        "database.out.server.name" : "dbzxout",
         "database.history.kafka.bootstrap.servers" : "kafka:9092",
         "database.history.kafka.topic": "schema-changes.inventory"
     }
@@ -1219,12 +1218,11 @@ When using a more complex Oracle deployment or needing to use TNS names, then a 
         "connector.class" : "io.debezium.connector.oracle.OracleConnector",
         "tasks.max" : "1",
         "database.server.name" : "server1",
-        "database.user" : "c##xstrm",
-        "database.password" : "xs",
+        "database.user" : "c##dbzuser",
+        "database.password" : "dbz",
         "database.url": "jdbc:oracle:thin:@(DESCRIPTION=(ADDRESS_LIST=(LOAD_BALANCE=OFF)(FAILOVER=ON)(ADDRESS=(PROTOCOL=TCP)(HOST=<oracle ip 1>)(PORT=1521))(ADDRESS=(PROTOCOL=TCP)(HOST=<oracle ip 2>)(PORT=1521)))(CONNECT_DATA=SERVICE_NAME=)(SERVER=DEDICATED)))",
         "database.dbname" : "ORCLCDB",
         "database.pdb.name" : "ORCLPDB1",
-        "database.out.server.name" : "dbzxout",
         "database.history.kafka.bootstrap.servers" : "kafka:9092",
         "database.history.kafka.topic": "schema-changes.inventory"
     }
@@ -1232,7 +1230,7 @@ When using a more complex Oracle deployment or needing to use TNS names, then a 
 ----
 
 [[oracle-database-mode]]
-=== Pluggable vs Non-Plugable databases
+=== Pluggable vs Non-Pluggable databases
 
 The {prodname} Oracle connector supports both deployment practices of pluggable databases (CDB mode) as well as non-pluggable databases (non-CDB mode).
 
@@ -1246,10 +1244,9 @@ The {prodname} Oracle connector supports both deployment practices of pluggable 
     "database.server.name" : "server1",
     "database.hostname" : "<oracle ip>",
     "database.port" : "1521",
-    "database.user" : "c##xstrm",
-    "database.password" : "xs",
+    "database.user" : "c##dbzuser",
+    "database.password" : "dbz",
     "database.dbname" : "ORCLCDB",
-    "database.out.server.name" : "dbzxout",
     "database.history.kafka.bootstrap.servers" : "kafka:9092",
     "database.history.kafka.topic": "schema-changes.inventory"
   }
@@ -1266,11 +1263,10 @@ The {prodname} Oracle connector supports both deployment practices of pluggable 
     "database.server.name" : "server1",
     "database.hostname" : "<oracle ip>",
     "database.port" : "1521",
-    "database.user" : "c##xstrm",
-    "database.password" : "xs",
+    "database.user" : "c##dbzuser",
+    "database.password" : "dbz",
     "database.dbname" : "ORCLCDB",
     "database.pdb.name" : "ORCLPDB1",
-    "database.out.server.name" : "dbzxout",
     "database.history.kafka.bootstrap.servers" : "kafka:9092",
     "database.history.kafka.topic": "schema-changes.inventory"
   }
@@ -1287,9 +1283,10 @@ When using a non-CDB installation, do *not* specify the `database.pdb.name`.
 === Selecting the adapter
 
 {prodname} provides multiple ways to ingest change events from Oracle.
-By default {prodname} uses the XStream API but this isn't always applicable for every installation.
+By default {prodname} uses Oracle LogMiner but you may wish to use the Oracle XStream API for your installation.
 
-The following example configuration illustrates that by adding the `database.connection.adapter`, the connector can be toggled to use the LogMiner implementation.
+The following example configuration illustrates that by adding the `database.connection.adapter` and `database.out.server.name`,
+the connector can be toggled to use the XStream API implementation.
 
 [source,json,indent=0]
 ----
@@ -1301,22 +1298,17 @@ The following example configuration illustrates that by adding the `database.con
         "database.server.name" : "server1",
         "database.hostname" : "<oracle ip>",
         "database.port" : "1521",
-        "database.user" : "c##xstrm",
-        "database.password" : "xs",
+        "database.user" : "c##dbzuser",
+        "database.password" : "dbz",
         "database.dbname" : "ORCLCDB",
         "database.pdb.name" : "ORCLPDB1",
-        "database.out.server.name" : "dbzxout",
         "database.history.kafka.bootstrap.servers" : "kafka:9092",
-        "database.history.kafka.topic": "schema-changes.inventory"
-        "database.connection.adapter": "logminer"
+        "database.history.kafka.topic": "schema-changes.inventory",
+        "database.connection.adapter": "xstream",
+        "database.out.server.name" : "dbzxout",
     }
 }
 ----
-
-[NOTE]
-====
-We encourage the use of the LogMiner adapter for testing and feedback purposes, but we do not yet recommend it for production use as its still under active development.
-====
 
 [[oracle-connector-properties]]
 === Connector Properties
@@ -1386,10 +1378,10 @@ This field is only applicable when using the Oracle XStreams connector adapter.
 Only alphanumeric characters and underscores should be used.
 
 |[[oracle-property-database-connection-adapter]]<<oracle-database-connection-adapter, `+database.connection.adapter+`>>
-|`xstream`
-|The adapter implementation to use.
-`xstream` uses the Oracle XStreams API.
-`logminer` uses the native Oracle LogMiner API.
+|`logminer`
+|The adapter implementation to be used to stream database changes.
+`logminer` (the default) to use the native Oracle LogMiner API;
+`xstream` to use the Oracle XStreams API.
 
 |[[oracle-property-rac-nodes]]<<oracle-property-rac-nodes, `+rac.nodes+`>>
 |
