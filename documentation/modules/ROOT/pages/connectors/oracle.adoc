@@ -1365,9 +1365,10 @@ The following configuration properties are _required_ unless a default value is 
 |
 |Raw database jdbc url. This property can be used when more flexibility is needed and can support raw TNS names or RAC connection strings.
 
-|[[oracle-property-database-tablename-case-insensitive]]<<oracle-property-database-tablename-case-insensitive, `+database.tablename.case.insensitive+`>>
+|[[oracle-property-database-tablename-case-insensitive]]<<oracle-property-database-tablename-case-insensitive, `+database.tablename.case.insensitive+`>> +
+_deprecated and scheduled for removal_
 |`false`
-|Enable support for case insensitive table names; set to `true` for Oracle 11g.
+|Enable support for case insensitive table names; *only* set to `true` for Oracle 11g.
 
 |[[oracle-property-database-oracle-version]]<<oracle-property-database-oracle-version, `+database.oracle.version+`>>
 |`12+`

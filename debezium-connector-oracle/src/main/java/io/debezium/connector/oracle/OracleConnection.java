@@ -18,6 +18,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
@@ -322,6 +323,22 @@ public class OracleConnection extends JdbcConnection {
             }
         }
         tables.overwriteTable(editor.create());
+    }
+
+    /**
+     * Resolve the table name case insensitivity used by the schema based on the following rules:
+     *
+     * <ul>
+     *     <li>If option is provided in connector configuration, it will be used.</li>
+     *     <li>Otherwise resolved by database version where Oracle 11 will be {@code true}; otherwise {@code false}.</li>
+     * </ul>
+     *
+     * @param connectorConfig the connector configuration
+     * @return whether table name case insensitivity is used
+     */
+    public boolean getTablenameCaseInsensitivity(OracleConnectorConfig connectorConfig) {
+        Optional<Boolean> configValue = connectorConfig.getTablenameCaseInsensitive();
+        return configValue.orElse(getOracleVersion().getMajor() == 11);
     }
 
     public OracleConnection executeLegacy(String... sqlStatements) throws SQLException {

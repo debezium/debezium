@@ -39,7 +39,7 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
                         connectorConfig.customConverterRegistry(),
                         connectorConfig.getSourceInfoStructMaker().schema(),
                         connectorConfig.getSanitizeFieldNames()),
-                connectorConfig.getTablenameCaseInsensitive(),
+                connection.getTablenameCaseInsensitivity(connectorConfig),
                 connectorConfig.getKeyMapper());
     }
 
