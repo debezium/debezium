@@ -119,10 +119,13 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
     public static final Field CONNECTOR_ADAPTER = Field.create(DATABASE_CONFIG_PREFIX + "connection.adapter")
             .withDisplayName("Connector adapter")
-            .withEnum(ConnectorAdapter.class, ConnectorAdapter.XSTREAM)
+            .withEnum(ConnectorAdapter.class, ConnectorAdapter.LOG_MINER)
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.HIGH)
-            .withDescription("There are two adapters: XStream and LogMiner.");
+            .withDescription("The adapter to use when capturing changes from the database. "
+                    + "Options include: "
+                    + "'logminer': (the default) to capture changes using native Oracle LogMiner; "
+                    + "'xstream' to capture changes using Oracle XStreams");
 
     public static final Field LOG_MINING_STRATEGY = Field.create("log.mining.strategy")
             .withDisplayName("Log Mining Strategy")
@@ -627,7 +630,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
          */
         public static ConnectorAdapter parse(String value) {
             if (value == null) {
-                return ConnectorAdapter.XSTREAM;
+                return ConnectorAdapter.LOG_MINER;
             }
             value = value.trim();
             for (ConnectorAdapter adapter : ConnectorAdapter.values()) {
