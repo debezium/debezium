@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -32,7 +33,6 @@ import io.debezium.DebeziumException;
 import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
-import io.debezium.connector.oracle.OracleDatabaseVersion;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.relational.TableId;
@@ -46,10 +46,8 @@ public class LogMinerHelper {
 
     private static final String UNKNOWN = "unknown";
     private static final String TOTAL = "TOTAL";
+    private static final String CURRENT = "CURRENT";
     private static final String ALL_COLUMN_LOGGING = "ALL COLUMN LOGGING";
-    private static final String MAX_SCN_11_2 = "281474976710655";
-    private static final String MAX_SCN_12_2 = "18446744073709551615";
-    private static final String MAX_SCN_19_6 = "9295429630892703743";
     private static final Logger LOGGER = LoggerFactory.getLogger(LogMinerHelper.class);
 
     public enum DATATYPE {
@@ -126,33 +124,6 @@ public class LogMinerHelper {
         if (recordExists == null) {
             executeCallableStatement(connection, SqlUtils.INSERT_FLUSH_TABLE);
             connection.commit();
-        }
-    }
-
-    static void createLogMiningHistoryObjects(OracleConnection connection, String historyTableName) throws SQLException {
-
-        String tableExists = (String) getSingleResult(connection, SqlUtils.tableExistsQuery(SqlUtils.LOGMNR_HISTORY_TEMP_TABLE), DATATYPE.STRING);
-        if (tableExists == null) {
-            executeCallableStatement(connection, SqlUtils.logMiningHistoryDdl(SqlUtils.LOGMNR_HISTORY_TEMP_TABLE));
-        }
-        tableExists = (String) getSingleResult(connection, SqlUtils.tableExistsQuery(historyTableName), DATATYPE.STRING);
-        if (tableExists == null) {
-            executeCallableStatement(connection, SqlUtils.logMiningHistoryDdl(historyTableName));
-        }
-        String sequenceExists = (String) getSingleResult(connection, SqlUtils.LOGMINING_HISTORY_SEQUENCE_EXISTS, DATATYPE.STRING);
-        if (sequenceExists == null) {
-            executeCallableStatement(connection, SqlUtils.CREATE_LOGMINING_HISTORY_SEQUENCE);
-        }
-    }
-
-    static void deleteOutdatedHistory(OracleConnection connection, long retention) throws SQLException {
-        Set<String> tableNames = getMap(connection, SqlUtils.getHistoryTableNamesQuery(), "-1").keySet();
-        for (String tableName : tableNames) {
-            long hoursAgo = SqlUtils.parseRetentionFromName(tableName);
-            if (hoursAgo > retention) {
-                LOGGER.info("Deleting history table {}", tableName);
-                executeCallableStatement(connection, SqlUtils.dropHistoryTableStatement(tableName));
-            }
         }
     }
 
@@ -506,18 +477,28 @@ public class LogMinerHelper {
 
         removeLogFilesFromMining(connection);
 
-        Map<String, BigInteger> onlineLogFilesForMining = getOnlineLogFilesForOffsetScn(connection, lastProcessedScn);
-        Map<String, BigInteger> archivedLogFilesForMining = getArchivedLogFilesForOffsetScn(connection, lastProcessedScn, archiveLogRetention);
+        Map<String, Scn> onlineLogFilesForMining = getOnlineLogFilesForOffsetScn(connection, lastProcessedScn);
+        Map<String, Scn> archivedLogFilesForMining = getArchivedLogFilesForOffsetScn(connection, lastProcessedScn, archiveLogRetention);
 
         if (onlineLogFilesForMining.size() + archivedLogFilesForMining.size() == 0) {
             throw new IllegalStateException("None of log files contains offset SCN: " + lastProcessedScn + ", re-snapshot is required.");
         }
 
+        // Deduplicate log files with the same SCn ranges.
+        // todo: could this be eliminated by restricting the online log query to those there 'ARCHIVED="NO"'?
         List<String> logFilesNames = onlineLogFilesForMining.entrySet().stream().map(Map.Entry::getKey).collect(Collectors.toList());
-        // remove duplications
-        List<String> archivedLogFiles = archivedLogFilesForMining.entrySet().stream()
-                .filter(e -> !onlineLogFilesForMining.values().contains(e.getValue())).map(Map.Entry::getKey).collect(Collectors.toList());
-        logFilesNames.addAll(archivedLogFiles);
+        for (Map.Entry<String, Scn> archiveEntry : archivedLogFilesForMining.entrySet()) {
+            boolean found = false;
+            for (Map.Entry<String, Scn> redoEntry : onlineLogFilesForMining.entrySet()) {
+                if (redoEntry.getValue().equals(archiveEntry.getValue())) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                logFilesNames.add(archiveEntry.getKey());
+            }
+        }
 
         for (String file : logFilesNames) {
             LOGGER.trace("Adding log file {} to mining session", file);
@@ -568,67 +549,38 @@ public class LogMinerHelper {
      * @return size
      */
     private static int getRedoLogGroupSize(OracleConnection connection) throws SQLException {
-        return getMap(connection, SqlUtils.allOnlineLogsQuery(), getDatabaseMaxScnValue(connection)).size();
-    }
-
-    /**
-     * Get the database maximum SCN value
-     *
-     * @param connection the oracle database connection
-     * @return the maximum scn value as a string value
-     */
-    public static String getDatabaseMaxScnValue(OracleConnection connection) {
-        OracleDatabaseVersion version = connection.getOracleVersion();
-        if ((version.getMajor() == 19 && version.getMaintenance() >= 6) || (version.getMajor() > 19)) {
-            return MAX_SCN_19_6;
-        }
-        else if ((version.getMajor() == 12 && version.getMaintenance() >= 2) || (version.getMajor() > 12)) {
-            return MAX_SCN_12_2;
-        }
-        else if ((version.getMajor() == 11 && version.getMaintenance() >= 2) || (version.getMajor() == 12 && version.getMaintenance() < 2)) {
-            return MAX_SCN_11_2;
-        }
-        throw new RuntimeException("Max SCN cannot be resolved for database version " + version);
+        return connection.queryAndMap("SELECT COUNT(DISTINCT GROUP#) FROM V$LOG", (rs) -> rs.getInt(1));
     }
 
     /**
      * This method returns all online log files, starting from one which contains offset SCN and ending with one containing largest SCN
      * 18446744073709551615 on Ora 19c is the max value of the nextScn in the current redo todo replace all Long with BigInteger for SCN
      */
-    public static Map<String, BigInteger> getOnlineLogFilesForOffsetScn(OracleConnection connection, Long offsetScn) throws SQLException {
+    public static Map<String, Scn> getOnlineLogFilesForOffsetScn(OracleConnection connection, Long offsetScn) throws SQLException {
         // TODO: Make offset a BigInteger and refactor upstream
         BigInteger offsetScnBi = BigInteger.valueOf(offsetScn);
         LOGGER.trace("Getting online redo logs for offset scn {}", offsetScnBi);
-        Map<String, ScnRange> redoLogFiles = new LinkedHashMap<>();
+        Map<String, Scn> redoLogFiles = new LinkedHashMap<>();
 
-        String maxScnStr = getDatabaseMaxScnValue(connection);
-        final BigInteger maxScn = new BigInteger(maxScnStr);
         try (PreparedStatement s = connection.connection(false).prepareStatement(SqlUtils.allOnlineLogsQuery())) {
             try (ResultSet rs = s.executeQuery()) {
                 while (rs.next()) {
-                    ScnRange range = new ScnRange(rs.getString(4), defaultIfNull(rs.getString(2), maxScnStr));
-                    redoLogFiles.put(rs.getString(1), range);
+                    String fileName = rs.getString(1);
+                    String nextChangeNumber = rs.getString(2);
+                    String firstChangeNumber = rs.getString(4);
+                    String status = rs.getString(5);
+                    boolean current = CURRENT.equalsIgnoreCase(status);
+                    if (current || new BigInteger(nextChangeNumber).compareTo(BigInteger.valueOf(offsetScn)) >= 0) {
+                        LOGGER.trace("Online redo log {} with SCN range {} to {} ({}) to be added.", fileName, firstChangeNumber, nextChangeNumber, status);
+                        redoLogFiles.put(fileName, current ? Scn.MAX : Scn.valueof(rs.getString(2)));
+                    }
+                    else {
+                        LOGGER.trace("Online redo log {} with SCN range {} to {} ({}) to be excluded.", fileName, firstChangeNumber, nextChangeNumber, status);
+                    }
                 }
             }
         }
-        return redoLogFiles.entrySet().stream()
-                .filter(entry -> filterRedoLogEntry(entry, offsetScnBi, maxScn)).collect(Collectors
-                        .toMap(Map.Entry::getKey, entry -> resolveNextChangeFromScnRange(entry.getValue().getNextChange(), maxScn)));
-    }
-
-    private static boolean filterRedoLogEntry(Map.Entry<String, ScnRange> entry, BigInteger offsetScn, BigInteger maxScn) {
-        final BigInteger nextChangeNumber = new BigInteger(entry.getValue().getNextChange());
-        if (nextChangeNumber.compareTo(offsetScn) >= 0 || nextChangeNumber.equals(maxScn)) {
-            LOGGER.trace("Online redo log {} with SCN range {} to {} to be added.", entry.getKey(), entry.getValue().getFirstChange(), entry.getValue().getNextChange());
-            return true;
-        }
-        LOGGER.trace("Online redo log {} with SCN range {} to {} to be excluded.", entry.getKey(), entry.getValue().getFirstChange(), entry.getValue().getNextChange());
-        return false;
-    }
-
-    private static BigInteger resolveNextChangeFromScnRange(String nextChangeValue, BigInteger maxScn) {
-        final BigInteger value = new BigInteger(nextChangeValue);
-        return value.equals(maxScn) ? maxScn : value;
+        return redoLogFiles;
     }
 
     /**
@@ -717,21 +669,22 @@ public class LogMinerHelper {
      * @return                Map of archived files
      * @throws SQLException   if something happens
      */
-    public static Map<String, BigInteger> getArchivedLogFilesForOffsetScn(OracleConnection connection, Long offsetScn, Duration archiveLogRetention) throws SQLException {
-        final Map<String, String> redoLogFiles = new LinkedHashMap<>();
-        final String maxScnStr = getDatabaseMaxScnValue(connection);
-        final BigInteger maxScn = new BigInteger(maxScnStr);
+    public static Map<String, Scn> getArchivedLogFilesForOffsetScn(OracleConnection connection, Long offsetScn, Duration archiveLogRetention) throws SQLException {
+        final Map<String, Scn> archiveLogFiles = new LinkedHashMap<>();
         try (PreparedStatement s = connection.connection(false).prepareStatement(SqlUtils.archiveLogsQuery(offsetScn, archiveLogRetention))) {
             try (ResultSet rs = s.executeQuery()) {
                 while (rs.next()) {
+                    String fileName = rs.getString(1);
+                    Scn firstChangeNumber = Scn.valueof(rs.getString(3));
+                    Scn nextChangeNumber = rs.getString(2) == null ? Scn.MAX : Scn.valueof(rs.getString(2));
                     if (LOGGER.isTraceEnabled()) {
-                        LOGGER.trace("Archive log {} with SCN range {} to {} to be added.", rs.getString(1), rs.getString(3), rs.getString(2));
+                        LOGGER.trace("Archive log {} with SCN range {} to {} to be added.", fileName, firstChangeNumber, nextChangeNumber);
                     }
-                    redoLogFiles.put(rs.getString(1), defaultIfNull(rs.getString(2), maxScnStr));
+                    archiveLogFiles.put(fileName, nextChangeNumber);
                 }
             }
         }
-        return redoLogFiles.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> resolveNextChangeFromScnRange(e.getValue(), maxScn)));
+        return archiveLogFiles;
     }
 
     /**
@@ -742,8 +695,11 @@ public class LogMinerHelper {
     public static void removeLogFilesFromMining(OracleConnection conn) throws SQLException {
         try (PreparedStatement ps = conn.connection(false).prepareStatement(SqlUtils.FILES_FOR_MINING);
                 ResultSet result = ps.executeQuery()) {
+            Set<String> files = new LinkedHashSet<>();
             while (result.next()) {
-                String fileName = result.getString(1);
+                files.add(result.getString(1));
+            }
+            for (String fileName : files) {
                 executeCallableStatement(conn, SqlUtils.deleteLogFileStatement(fileName));
                 LOGGER.debug("File {} was removed from mining", fileName);
             }
@@ -787,31 +743,6 @@ public class LogMinerHelper {
                 }
             }
             return null;
-        }
-    }
-
-    private static String defaultIfNull(String value, String replacement) {
-        return value != null ? value : replacement;
-    }
-
-    /**
-     * Holds the first and next change number range for a log entry.
-     */
-    private static class ScnRange {
-        private final String firstChange;
-        private final String nextChange;
-
-        public ScnRange(String firstChange, String nextChange) {
-            this.firstChange = firstChange;
-            this.nextChange = nextChange;
-        }
-
-        public String getFirstChange() {
-            return firstChange;
-        }
-
-        public String getNextChange() {
-            return nextChange;
         }
     }
 }

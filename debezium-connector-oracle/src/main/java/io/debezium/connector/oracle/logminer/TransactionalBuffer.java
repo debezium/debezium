@@ -164,7 +164,7 @@ public final class TransactionalBuffer implements AutoCloseable {
                 callback.execute(timestamp, smallestScn, scn, --counter);
             }
 
-            lastCommittedScn = Scn.fromLong(scn.longValue());
+            lastCommittedScn = Scn.valueOf(scn.longValue());
 
             if (!commitCallbacks.isEmpty()) {
                 dispatcher.dispatchTransactionCommittedEvent(offsetContext);
@@ -226,7 +226,7 @@ public final class TransactionalBuffer implements AutoCloseable {
      */
     void abandonLongTransactions(Long thresholdScn, OracleOffsetContext offsetContext) {
         LogMinerHelper.logWarn(metrics, "All transactions with first SCN <= {} will be abandoned, offset: {}", thresholdScn, offsetContext.getScn());
-        Scn threshold = Scn.fromLong(thresholdScn);
+        Scn threshold = Scn.valueOf(thresholdScn);
         Scn smallestScn = calculateSmallestScn();
         if (smallestScn == null) {
             // no transactions in the buffer

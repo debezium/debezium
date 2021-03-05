@@ -54,8 +54,8 @@ public class TransactionalBufferTest {
     private static final String SQL_TWO = "insert into table";
     private static final String MESSAGE = "OK";
     private static final Scn SCN = Scn.ONE;
-    private static final Scn OTHER_SCN = Scn.fromLong(10L);
-    private static final Scn LARGEST_SCN = Scn.fromLong(100L);
+    private static final Scn OTHER_SCN = Scn.valueOf(10L);
+    private static final Scn LARGEST_SCN = Scn.valueOf(100L);
     private static final Timestamp TIMESTAMP = new Timestamp(System.currentTimeMillis());
     private static final Configuration config = new Configuration() {
         @Override

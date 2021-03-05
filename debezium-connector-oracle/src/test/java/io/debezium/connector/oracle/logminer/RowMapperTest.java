@@ -96,7 +96,7 @@ public class RowMapperTest {
     public void testGetScn() throws SQLException {
         Mockito.when(rs.getBigDecimal(1)).thenReturn(new BigDecimal(1));
         Scn scn = RowMapper.getScn(metrics, rs);
-        assertThat(scn).isEqualTo(Scn.fromLong(1L));
+        assertThat(scn).isEqualTo(Scn.valueOf(1L));
         verify(rs).getBigDecimal(1);
         Mockito.when(rs.getBigDecimal(1)).thenThrow(SQLException.class);
         scn = RowMapper.getScn(metrics, rs);

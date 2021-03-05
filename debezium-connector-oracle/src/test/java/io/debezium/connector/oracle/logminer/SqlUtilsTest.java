@@ -236,10 +236,10 @@ public class SqlUtilsTest {
         assertThat(result).isEqualTo(expected);
 
         result = SqlUtils.allOnlineLogsQuery();
-        expected = "SELECT MIN(F.MEMBER) AS FILE_NAME, L.NEXT_CHANGE# AS NEXT_CHANGE, F.GROUP#, L.FIRST_CHANGE# AS FIRST_CHANGE " +
+        expected = "SELECT MIN(F.MEMBER) AS FILE_NAME, L.NEXT_CHANGE# AS NEXT_CHANGE, F.GROUP#, L.FIRST_CHANGE# AS FIRST_CHANGE, L.STATUS " +
                 " FROM V$LOG L, V$LOGFILE F " +
                 " WHERE F.GROUP# = L.GROUP# AND L.NEXT_CHANGE# > 0 " +
-                " GROUP BY F.GROUP#, L.NEXT_CHANGE#, L.FIRST_CHANGE# ORDER BY 3";
+                " GROUP BY F.GROUP#, L.NEXT_CHANGE#, L.FIRST_CHANGE#, L.STATUS ORDER BY 3";
         assertThat(result).isEqualTo(expected);
 
         result = SqlUtils.tableExistsQuery("table_name");

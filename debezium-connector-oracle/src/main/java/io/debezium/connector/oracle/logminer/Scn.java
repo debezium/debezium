@@ -6,6 +6,7 @@
 package io.debezium.connector.oracle.logminer;
 
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.util.Objects;
 
 /**
@@ -16,6 +17,7 @@ import java.util.Objects;
 public class Scn implements Comparable<Scn> {
 
     public static final Scn INVALID = new Scn(new BigDecimal(-1));
+    public static final Scn MAX = new Scn(new BigDecimal(-2));
     public static final Scn ZERO = new Scn(BigDecimal.ZERO);
     public static final Scn ONE = new Scn(BigDecimal.ONE);
 
@@ -26,8 +28,12 @@ public class Scn implements Comparable<Scn> {
         this.scn = scn;
     }
 
-    public static Scn fromLong(Long value) {
+    public static Scn valueOf(Long value) {
         return new Scn(new BigDecimal(value));
+    }
+
+    public static Scn valueof(String value) {
+        return new Scn(new BigDecimal(new BigInteger(value)));
     }
 
     public long longValue() {

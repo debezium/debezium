@@ -147,10 +147,10 @@ public class SqlUtils {
     }
 
     public static String allOnlineLogsQuery() {
-        return String.format("SELECT MIN(F.MEMBER) AS FILE_NAME, L.NEXT_CHANGE# AS NEXT_CHANGE, F.GROUP#, L.FIRST_CHANGE# AS FIRST_CHANGE " +
+        return String.format("SELECT MIN(F.MEMBER) AS FILE_NAME, L.NEXT_CHANGE# AS NEXT_CHANGE, F.GROUP#, L.FIRST_CHANGE# AS FIRST_CHANGE, L.STATUS " +
                 " FROM %s L, %s F " +
                 " WHERE F.GROUP# = L.GROUP# AND L.NEXT_CHANGE# > 0 " +
-                " GROUP BY F.GROUP#, L.NEXT_CHANGE#, L.FIRST_CHANGE# ORDER BY 3", LOG_VIEW, LOGFILE_VIEW);
+                " GROUP BY F.GROUP#, L.NEXT_CHANGE#, L.FIRST_CHANGE#, L.STATUS ORDER BY 3", LOG_VIEW, LOGFILE_VIEW);
     }
 
     /**
