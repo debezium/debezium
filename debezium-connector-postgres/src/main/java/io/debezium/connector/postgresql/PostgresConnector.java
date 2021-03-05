@@ -86,6 +86,8 @@ public class PostgresConnector extends RelationalBaseSourceConnector {
         // Try to connect to the database ...
         try (PostgresConnection connection = new PostgresConnection(postgresConfig.jdbcConfig())) {
             try {
+                // Prepare connection without initial statement execution
+                connection.connection(false);
                 // check connection
                 connection.execute("SELECT version()");
                 LOGGER.info("Successfully tested connection for {} with user '{}'", connection.connectionString(),
