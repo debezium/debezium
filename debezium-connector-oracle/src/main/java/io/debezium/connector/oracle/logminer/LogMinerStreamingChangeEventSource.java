@@ -74,8 +74,8 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
 
     private OracleConnectorConfig connectorConfig;
     private LogMinerMetrics logMinerMetrics;
-    private long startScn;
-    private long endScn;
+    private Scn startScn;
+    private Scn endScn;
     private Duration archiveLogRetention;
 
     public LogMinerStreamingChangeEventSource(OracleConnectorConfig connectorConfig, OracleOffsetContext offsetContext,
@@ -118,10 +118,10 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                 LOGGER.trace("Current time {} ms, database difference {} ms", System.currentTimeMillis(), databaseTimeMs);
                 transactionalBuffer.setDatabaseTimeDifference(databaseTimeMs);
 
-                startScn = offsetContext.getScn();
+                startScn = Scn.valueOf(offsetContext.getScn());
                 createFlushTable(jdbcConnection);
 
-                if (!isContinuousMining && startScn < getFirstOnlineLogScn(jdbcConnection, archiveLogRetention)) {
+                if (!isContinuousMining && startScn.compareTo(getFirstOnlineLogScn(jdbcConnection, archiveLogRetention)) < 0) {
                     throw new DebeziumException(
                             "Online REDO LOG files or archive log files do not contain the offset scn " + startScn + ".  Please perform a new snapshot.");
                 }
@@ -174,8 +174,8 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                             stopwatch.start();
                             miningView.setFetchSize(connectorConfig.getMaxQueueSize());
                             miningView.setFetchDirection(ResultSet.FETCH_FORWARD);
-                            miningView.setLong(1, startScn);
-                            miningView.setLong(2, endScn);
+                            miningView.setString(1, startScn.toString());
+                            miningView.setString(2, endScn.toString());
                             try (ResultSet rs = miningView.executeQuery()) {
                                 Duration lastDurationOfBatchCapturing = stopwatch.stop().durations().statistics().getTotal();
                                 logMinerMetrics.setLastDurationOfBatchCapturing(lastDurationOfBatchCapturing);
@@ -185,7 +185,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
 
                                 if (transactionalBuffer.isEmpty()) {
                                     LOGGER.debug("Transactional buffer empty, updating offset's SCN {}", startScn);
-                                    offsetContext.setScn(startScn);
+                                    offsetContext.setScn(startScn.longValue());
                                 }
                             }
 

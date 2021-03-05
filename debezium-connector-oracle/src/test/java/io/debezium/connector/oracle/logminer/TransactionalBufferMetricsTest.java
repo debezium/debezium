@@ -132,10 +132,10 @@ public class TransactionalBufferMetricsTest {
         assertThat(metrics.getAbandonedTransactionIds().size()).isEqualTo(1);
         assertThat(metrics.getAbandonedTransactionIds().contains("abandoned id")).isTrue();
 
-        metrics.setOldestScn(10L);
+        metrics.setOldestScn(Scn.valueOf(10L));
         assertThat(metrics.getOldestScn()).isEqualTo(10);
 
-        metrics.setCommittedScn(10L);
+        metrics.setCommittedScn(Scn.valueOf(10L));
         assertThat(metrics.getCommittedScn()).isEqualTo(10);
 
         assertThat(metrics.toString().contains("registeredDmlCounter=1000")).isTrue();
@@ -146,7 +146,7 @@ public class TransactionalBufferMetricsTest {
         metrics.setLastCommitDuration(50L);
         assertThat(metrics.getMaxCommitDuration()).isEqualTo(100L);
 
-        metrics.setOffsetScn(10L);
+        metrics.setOffsetScn(Scn.valueOf(10L));
         assertThat(metrics.getOldestScn() == 10).isTrue();
     }
 }

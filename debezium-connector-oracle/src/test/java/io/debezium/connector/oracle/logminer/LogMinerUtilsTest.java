@@ -25,30 +25,30 @@ import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot.AdapterName;
 @SkipWhenAdapterNameIsNot(value = AdapterName.LOGMINER)
 public class LogMinerUtilsTest {
 
-    private static final BigDecimal SCN = BigDecimal.ONE;
-    private static final BigDecimal OTHER_SCN = BigDecimal.TEN;
+    private static final Scn SCN = new Scn(BigDecimal.ONE);
+    private static final Scn OTHER_SCN = new Scn(BigDecimal.TEN);
 
     @Rule
     public TestRule skipRule = new SkipTestDependingOnAdapterNameRule();
 
     @Test
     public void testStartLogMinerStatement() {
-        String statement = SqlUtils.startLogMinerStatement(SCN.longValue(), OTHER_SCN.longValue(), OracleConnectorConfig.LogMiningStrategy.CATALOG_IN_REDO, false);
+        String statement = SqlUtils.startLogMinerStatement(SCN, OTHER_SCN, OracleConnectorConfig.LogMiningStrategy.CATALOG_IN_REDO, false);
         assertThat(statement.contains("DBMS_LOGMNR.DICT_FROM_REDO_LOGS")).isTrue();
         assertThat(statement.contains("DBMS_LOGMNR.DDL_DICT_TRACKING")).isTrue();
         assertThat(statement.contains("DBMS_LOGMNR.DICT_FROM_ONLINE_CATALOG")).isFalse();
         assertThat(statement.contains("DBMS_LOGMNR.CONTINUOUS_MINE")).isFalse();
-        statement = SqlUtils.startLogMinerStatement(SCN.longValue(), OTHER_SCN.longValue(), OracleConnectorConfig.LogMiningStrategy.ONLINE_CATALOG, false);
+        statement = SqlUtils.startLogMinerStatement(SCN, OTHER_SCN, OracleConnectorConfig.LogMiningStrategy.ONLINE_CATALOG, false);
         assertThat(statement.contains("DBMS_LOGMNR.DICT_FROM_REDO_LOGS")).isFalse();
         assertThat(statement.contains("DBMS_LOGMNR.DDL_DICT_TRACKING")).isFalse();
         assertThat(statement.contains("DBMS_LOGMNR.DICT_FROM_ONLINE_CATALOG")).isTrue();
         assertThat(statement.contains("DBMS_LOGMNR.CONTINUOUS_MINE")).isFalse();
-        statement = SqlUtils.startLogMinerStatement(SCN.longValue(), OTHER_SCN.longValue(), OracleConnectorConfig.LogMiningStrategy.CATALOG_IN_REDO, true);
+        statement = SqlUtils.startLogMinerStatement(SCN, OTHER_SCN, OracleConnectorConfig.LogMiningStrategy.CATALOG_IN_REDO, true);
         assertThat(statement.contains("DBMS_LOGMNR.DICT_FROM_REDO_LOGS")).isTrue();
         assertThat(statement.contains("DBMS_LOGMNR.DDL_DICT_TRACKING")).isTrue();
         assertThat(statement.contains("DBMS_LOGMNR.DICT_FROM_ONLINE_CATALOG")).isFalse();
         assertThat(statement.contains("DBMS_LOGMNR.CONTINUOUS_MINE")).isTrue();
-        statement = SqlUtils.startLogMinerStatement(SCN.longValue(), OTHER_SCN.longValue(), OracleConnectorConfig.LogMiningStrategy.ONLINE_CATALOG, true);
+        statement = SqlUtils.startLogMinerStatement(SCN, OTHER_SCN, OracleConnectorConfig.LogMiningStrategy.ONLINE_CATALOG, true);
         assertThat(statement.contains("DBMS_LOGMNR.DICT_FROM_REDO_LOGS")).isFalse();
         assertThat(statement.contains("DBMS_LOGMNR.DDL_DICT_TRACKING")).isFalse();
         assertThat(statement.contains("DBMS_LOGMNR.DICT_FROM_ONLINE_CATALOG")).isTrue();

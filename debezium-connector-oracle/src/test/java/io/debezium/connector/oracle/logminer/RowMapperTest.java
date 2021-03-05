@@ -33,6 +33,9 @@ import io.debezium.relational.TableId;
 
 @SkipWhenAdapterNameIsNot(value = AdapterName.LOGMINER)
 public class RowMapperTest {
+
+    private static final Scn SCN_ONE = new Scn(BigDecimal.ONE);
+
     private ResultSet rs;
     private TransactionalBufferMetrics metrics;
 
@@ -120,14 +123,14 @@ public class RowMapperTest {
     public void testSqlRedo() throws SQLException {
         Mockito.when(rs.getInt(6)).thenReturn(0);
         Mockito.when(rs.getString(2)).thenReturn("short_sql");
-        String sql = RowMapper.getSqlRedo(metrics, rs, false, null, Scn.ONE, "", "", 1, null, "");
+        String sql = RowMapper.getSqlRedo(metrics, rs, false, null, SCN_ONE, "", "", 1, null, "");
         assertThat(sql.equals("short_sql")).isTrue();
         verify(rs).getInt(6);
         verify(rs).getString(2);
 
         Mockito.when(rs.getInt(6)).thenReturn(1).thenReturn(0);
         Mockito.when(rs.getString(2)).thenReturn("long").thenReturn("_sql");
-        sql = RowMapper.getSqlRedo(metrics, rs, false, null, Scn.ONE, "", "", 1, null, "");
+        sql = RowMapper.getSqlRedo(metrics, rs, false, null, SCN_ONE, "", "", 1, null, "");
         assertThat(sql.equals("long_sql")).isTrue();
         verify(rs, times(3)).getInt(6);
         verify(rs, times(3)).getString(2);
@@ -137,21 +140,21 @@ public class RowMapperTest {
         Arrays.fill(chars, 'a');
         Mockito.when(rs.getString(2)).thenReturn(new String(chars));
         Mockito.when(rs.getInt(6)).thenReturn(1);
-        sql = RowMapper.getSqlRedo(metrics, rs, false, null, Scn.ONE, "", "", 1, null, "");
+        sql = RowMapper.getSqlRedo(metrics, rs, false, null, SCN_ONE, "", "", 1, null, "");
         assertThat(sql.length()).isEqualTo(40_000);
         verify(rs, times(13)).getInt(6);
         verify(rs, times(13)).getString(2);
 
         Mockito.when(rs.getInt(6)).thenReturn(0);
         Mockito.when(rs.getString(2)).thenReturn(null);
-        sql = RowMapper.getSqlRedo(metrics, rs, false, null, Scn.ONE, "", "", 1, null, "");
+        sql = RowMapper.getSqlRedo(metrics, rs, false, null, SCN_ONE, "", "", 1, null, "");
         assertThat(sql).isNull();
         verify(rs, times(13)).getInt(6);
         verify(rs, times(14)).getString(2);
 
         Mockito.when(rs.getInt(6)).thenReturn(0);
         Mockito.when(rs.getString(2)).thenThrow(SQLException.class);
-        sql = RowMapper.getSqlRedo(metrics, rs, false, null, Scn.ONE, "", "", 1, null, "");
+        sql = RowMapper.getSqlRedo(metrics, rs, false, null, SCN_ONE, "", "", 1, null, "");
         assertThat(sql.equals("")).isTrue();
         verify(rs, times(13)).getInt(6);
         verify(rs, times(15)).getString(2);

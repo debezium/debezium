@@ -30,7 +30,7 @@ public class LogMinerMetrics extends Metrics implements LogMinerMetricsMXBean {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(LogMinerMetrics.class);
 
-    private final AtomicLong currentScn = new AtomicLong();
+    private final AtomicReference<Scn> currentScn = new AtomicReference<>();
     private final AtomicInteger logMinerQueryCount = new AtomicInteger();
     private final AtomicInteger totalCapturedDmlCount = new AtomicInteger();
     private final AtomicReference<Duration> totalDurationOfFetchingQuery = new AtomicReference<>();
@@ -78,7 +78,7 @@ public class LogMinerMetrics extends Metrics implements LogMinerMetricsMXBean {
     LogMinerMetrics(CdcSourceTaskContext taskContext, OracleConnectorConfig connectorConfig) {
         super(taskContext, "log-miner");
 
-        currentScn.set(-1);
+        currentScn.set(Scn.INVALID);
         currentLogFileName = new AtomicReference<>();
         minimumLogsMined.set(0L);
         maximumLogsMined.set(0L);
@@ -128,7 +128,7 @@ public class LogMinerMetrics extends Metrics implements LogMinerMetricsMXBean {
         totalResultSetNextTime.set(Duration.ZERO);
     }
 
-    public void setCurrentScn(Long scn) {
+    public void setCurrentScn(Scn scn) {
         currentScn.set(scn);
     }
 
@@ -195,7 +195,7 @@ public class LogMinerMetrics extends Metrics implements LogMinerMetricsMXBean {
 
     @Override
     public Long getCurrentScn() {
-        return currentScn.get();
+        return currentScn.get().longValue();
     }
 
     @Override

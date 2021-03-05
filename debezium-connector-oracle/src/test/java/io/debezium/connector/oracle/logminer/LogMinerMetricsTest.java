@@ -48,7 +48,7 @@ public class LogMinerMetricsTest {
         metrics.setLastCapturedDmlCount(1);
         assertThat(metrics.getTotalCapturedDmlCount() == 1).isTrue();
 
-        metrics.setCurrentScn(1000L);
+        metrics.setCurrentScn(Scn.valueOf(1000L));
         assertThat(metrics.getCurrentScn()).isEqualTo(1000L);
 
         metrics.setBatchSize(10);

@@ -5,7 +5,6 @@
  */
 package io.debezium.connector.oracle.logminer;
 
-import java.math.BigInteger;
 import java.sql.CallableStatement;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -102,7 +101,7 @@ public class LogMinerHelper {
      * @return current SCN
      * @throws SQLException if anything unexpected happens
      */
-    public static long getCurrentScn(OracleConnection connection) throws SQLException {
+    public static Scn getCurrentScn(OracleConnection connection) throws SQLException {
         try (Statement statement = connection.connection(false).createStatement();
                 ResultSet rs = statement.executeQuery(SqlUtils.currentScnQuery())) {
 
@@ -110,7 +109,7 @@ public class LogMinerHelper {
                 throw new IllegalStateException("Couldn't get SCN");
             }
 
-            return rs.getLong(1);
+            return Scn.valueOf(rs.getString(1));
         }
     }
 
@@ -139,24 +138,24 @@ public class LogMinerHelper {
      * @return next SCN to mine up to
      * @throws SQLException if anything unexpected happens
      */
-    static long getEndScn(OracleConnection connection, long startScn, LogMinerMetrics metrics, int defaultBatchSize) throws SQLException {
-        long currentScn = getCurrentScn(connection);
+    static Scn getEndScn(OracleConnection connection, Scn startScn, LogMinerMetrics metrics, int defaultBatchSize) throws SQLException {
+        Scn currentScn = getCurrentScn(connection);
         metrics.setCurrentScn(currentScn);
 
-        long topScnToMine = startScn + metrics.getBatchSize();
+        Scn topScnToMine = startScn.add(Scn.valueOf(metrics.getBatchSize()));
 
         // adjust batch size
         boolean topMiningScnInFarFuture = false;
-        if ((topScnToMine - currentScn) > defaultBatchSize) {
+        if (topScnToMine.subtract(currentScn).compareTo(Scn.valueOf(defaultBatchSize)) > 0) {
             metrics.changeBatchSize(false);
             topMiningScnInFarFuture = true;
         }
-        if ((currentScn - topScnToMine) > defaultBatchSize) {
+        if (currentScn.subtract(topScnToMine).compareTo(Scn.valueOf(defaultBatchSize)) > 0) {
             metrics.changeBatchSize(true);
         }
 
         // adjust sleeping time to reduce DB impact
-        if (currentScn < topScnToMine) {
+        if (currentScn.compareTo(topScnToMine) < 0) {
             if (!topMiningScnInFarFuture) {
                 metrics.changeSleepingTime(true);
             }
@@ -180,7 +179,7 @@ public class LogMinerHelper {
     static void flushLogWriter(OracleConnection connection, JdbcConfiguration config,
                                boolean isRac, Set<String> racHosts)
             throws SQLException {
-        long currentScn = getCurrentScn(connection);
+        Scn currentScn = getCurrentScn(connection);
         if (isRac) {
             flushRacLogWriters(currentScn, config, racHosts);
         }
@@ -221,7 +220,7 @@ public class LogMinerHelper {
      * @param metrics log miner metrics
      * @throws SQLException if anything unexpected happens
      */
-    static void startLogMining(OracleConnection connection, Long startScn, Long endScn,
+    static void startLogMining(OracleConnection connection, Scn startScn, Scn endScn,
                                OracleConnectorConfig.LogMiningStrategy strategy, boolean isContinuousMining, LogMinerMetrics metrics)
             throws SQLException {
         LOGGER.trace("Starting log mining startScn={}, endScn={}, strategy={}, continuous={}", startScn, endScn, strategy, isContinuousMining);
@@ -268,12 +267,12 @@ public class LogMinerHelper {
      * @return oldest SCN from online redo log
      * @throws SQLException if anything unexpected happens
      */
-    static long getFirstOnlineLogScn(OracleConnection connection, Duration archiveLogRetention) throws SQLException {
+    static Scn getFirstOnlineLogScn(OracleConnection connection, Duration archiveLogRetention) throws SQLException {
         LOGGER.trace("Getting first scn of all online logs");
         try (Statement s = connection.connection(false).createStatement()) {
             try (ResultSet rs = s.executeQuery(SqlUtils.oldestFirstChangeQuery(archiveLogRetention))) {
                 rs.next();
-                long firstScnOfOnlineLog = rs.getLong(1);
+                Scn firstScnOfOnlineLog = Scn.valueOf(rs.getString(1));
                 LOGGER.trace("First SCN in online logs is {}", firstScnOfOnlineLog);
                 return firstScnOfOnlineLog;
             }
@@ -345,7 +344,7 @@ public class LogMinerHelper {
      * We also cannot rely on connection factory, because it may return connection to the same instance multiple times
      * Instead we are asking node ip list from configuration
      */
-    private static void flushRacLogWriters(long currentScn, JdbcConfiguration config, Set<String> racHosts) {
+    private static void flushRacLogWriters(Scn currentScn, JdbcConfiguration config, Set<String> racHosts) {
         Instant startTime = Instant.now();
         if (racHosts.isEmpty()) {
             throw new RuntimeException("No RAC node ip addresses were supplied in the configuration");
@@ -473,7 +472,7 @@ public class LogMinerHelper {
      * @throws SQLException if anything unexpected happens
      */
     // todo: check RAC resiliency
-    public static void setRedoLogFilesForMining(OracleConnection connection, Long lastProcessedScn, Duration archiveLogRetention) throws SQLException {
+    public static void setRedoLogFilesForMining(OracleConnection connection, Scn lastProcessedScn, Duration archiveLogRetention) throws SQLException {
 
         removeLogFilesFromMining(connection);
 
@@ -556,10 +555,8 @@ public class LogMinerHelper {
      * This method returns all online log files, starting from one which contains offset SCN and ending with one containing largest SCN
      * 18446744073709551615 on Ora 19c is the max value of the nextScn in the current redo todo replace all Long with BigInteger for SCN
      */
-    public static Map<String, Scn> getOnlineLogFilesForOffsetScn(OracleConnection connection, Long offsetScn) throws SQLException {
-        // TODO: Make offset a BigInteger and refactor upstream
-        BigInteger offsetScnBi = BigInteger.valueOf(offsetScn);
-        LOGGER.trace("Getting online redo logs for offset scn {}", offsetScnBi);
+    public static Map<String, Scn> getOnlineLogFilesForOffsetScn(OracleConnection connection, Scn offsetScn) throws SQLException {
+        LOGGER.trace("Getting online redo logs for offset scn {}", offsetScn);
         Map<String, Scn> redoLogFiles = new LinkedHashMap<>();
 
         try (PreparedStatement s = connection.connection(false).prepareStatement(SqlUtils.allOnlineLogsQuery())) {
@@ -570,9 +567,9 @@ public class LogMinerHelper {
                     String firstChangeNumber = rs.getString(4);
                     String status = rs.getString(5);
                     boolean current = CURRENT.equalsIgnoreCase(status);
-                    if (current || new BigInteger(nextChangeNumber).compareTo(BigInteger.valueOf(offsetScn)) >= 0) {
+                    if (current || Scn.valueOf(nextChangeNumber).compareTo(offsetScn) >= 0) {
                         LOGGER.trace("Online redo log {} with SCN range {} to {} ({}) to be added.", fileName, firstChangeNumber, nextChangeNumber, status);
-                        redoLogFiles.put(fileName, current ? Scn.MAX : Scn.valueof(rs.getString(2)));
+                        redoLogFiles.put(fileName, current ? Scn.MAX : Scn.valueOf(rs.getString(2)));
                     }
                     else {
                         LOGGER.trace("Online redo log {} with SCN range {} to {} ({}) to be excluded.", fileName, firstChangeNumber, nextChangeNumber, status);
@@ -669,14 +666,14 @@ public class LogMinerHelper {
      * @return                Map of archived files
      * @throws SQLException   if something happens
      */
-    public static Map<String, Scn> getArchivedLogFilesForOffsetScn(OracleConnection connection, Long offsetScn, Duration archiveLogRetention) throws SQLException {
+    public static Map<String, Scn> getArchivedLogFilesForOffsetScn(OracleConnection connection, Scn offsetScn, Duration archiveLogRetention) throws SQLException {
         final Map<String, Scn> archiveLogFiles = new LinkedHashMap<>();
         try (PreparedStatement s = connection.connection(false).prepareStatement(SqlUtils.archiveLogsQuery(offsetScn, archiveLogRetention))) {
             try (ResultSet rs = s.executeQuery()) {
                 while (rs.next()) {
                     String fileName = rs.getString(1);
-                    Scn firstChangeNumber = Scn.valueof(rs.getString(3));
-                    Scn nextChangeNumber = rs.getString(2) == null ? Scn.MAX : Scn.valueof(rs.getString(2));
+                    Scn firstChangeNumber = Scn.valueOf(rs.getString(3));
+                    Scn nextChangeNumber = rs.getString(2) == null ? Scn.MAX : Scn.valueOf(rs.getString(2));
                     if (LOGGER.isTraceEnabled()) {
                         LOGGER.trace("Archive log {} with SCN range {} to {} to be added.", fileName, firstChangeNumber, nextChangeNumber);
                     }

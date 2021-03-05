@@ -18,6 +18,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.oracle.logminer.LogMinerHelper;
+import io.debezium.connector.oracle.logminer.Scn;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
@@ -109,8 +110,8 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
 
     @Override
     protected void determineSnapshotOffset(RelationalSnapshotContext ctx) throws Exception {
-        Optional<Long> latestTableDdlScn = getLatestTableDdlScn(ctx);
-        long currentScn;
+        Optional<Scn> latestTableDdlScn = getLatestTableDdlScn(ctx);
+        Scn currentScn;
 
         // we must use an SCN for taking the snapshot that represents a later timestamp than the latest DDL change than
         // any of the captured tables; this will not be a problem in practice, but during testing it may happen that the
@@ -122,12 +123,12 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
 
         ctx.offset = OracleOffsetContext.create()
                 .logicalName(connectorConfig)
-                .scn(currentScn)
+                .scn(currentScn.longValue())
                 .transactionContext(new TransactionContext())
                 .build();
     }
 
-    private long getCurrentScn(SnapshotContext ctx) throws SQLException {
+    private Scn getCurrentScn(SnapshotContext ctx) throws SQLException {
         if (connectorConfig.getAdapter().equals(OracleConnectorConfig.ConnectorAdapter.LOG_MINER)) {
             return LogMinerHelper.getCurrentScn(jdbcConnection);
         }
@@ -139,14 +140,14 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
                 throw new IllegalStateException("Couldn't get SCN");
             }
 
-            return rs.getLong(1);
+            return Scn.valueOf(rs.getString(1));
         }
     }
 
     /**
      * Whether the two SCNs represent the same timestamp or not (resolution is only 3 seconds).
      */
-    private boolean areSameTimestamp(Long scn1, long scn2) throws SQLException {
+    private boolean areSameTimestamp(Scn scn1, Scn scn2) throws SQLException {
         if (scn1 == null) {
             return false;
         }
@@ -162,7 +163,7 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
      * Returns the SCN of the latest DDL change to the captured tables. The result will be empty if there's no table to
      * capture as per the configuration.
      */
-    private Optional<Long> getLatestTableDdlScn(RelationalSnapshotContext ctx) throws SQLException {
+    private Optional<Scn> getLatestTableDdlScn(RelationalSnapshotContext ctx) throws SQLException {
         if (ctx.capturedTables.isEmpty()) {
             return Optional.empty();
         }
@@ -186,12 +187,12 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
             // Guard against LAST_DDL_TIME with value of 0.
             // This case should be treated as if we were unable to determine a value for LAST_DDL_TIME.
             // This forces later calculations to be based upon the current SCN.
-            Long latestDdlTime = rs.getLong(1);
-            if (latestDdlTime != null && latestDdlTime == 0L) {
+            String latestDdlTime = rs.getString(1);
+            if ("0".equals(latestDdlTime)) {
                 return Optional.empty();
             }
 
-            return Optional.of(latestDdlTime);
+            return Optional.of(Scn.valueOf(latestDdlTime));
         }
         catch (SQLException e) {
             if (e.getErrorCode() == 8180) {

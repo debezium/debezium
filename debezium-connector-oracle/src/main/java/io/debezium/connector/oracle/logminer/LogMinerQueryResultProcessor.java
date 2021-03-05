@@ -209,7 +209,7 @@ class LogMinerQueryResultProcessor {
                         // update SCN in offset context only if processed SCN less than SCN among other transactions
                         if (smallestScn == null || scn.compareTo(smallestScn) < 0) {
                             offsetContext.setScn(scn.longValue());
-                            transactionalBufferMetrics.setOldestScn(scn.longValue());
+                            transactionalBufferMetrics.setOldestScn(scn);
                         }
                         offsetContext.setTransactionId(txId);
                         offsetContext.setSourceTime(timestamp.toInstant());

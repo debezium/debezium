@@ -186,12 +186,12 @@ public class SqlUtilsTest {
         expected = "SELECT 'KEY', LOG_GROUP_TYPE FROM ALL_LOG_GROUPS WHERE OWNER = 's' AND TABLE_NAME = 't'";
         assertThat(result).isEqualTo(expected);
 
-        result = SqlUtils.startLogMinerStatement(10L, 20L, OracleConnectorConfig.LogMiningStrategy.ONLINE_CATALOG, true);
+        result = SqlUtils.startLogMinerStatement(Scn.valueOf(10L), Scn.valueOf(20L), OracleConnectorConfig.LogMiningStrategy.ONLINE_CATALOG, true);
         expected = "BEGIN sys.dbms_logmnr.start_logmnr(startScn => '10', endScn => '20', " +
                 "OPTIONS => DBMS_LOGMNR.DICT_FROM_ONLINE_CATALOG  + DBMS_LOGMNR.CONTINUOUS_MINE  + DBMS_LOGMNR.NO_ROWID_IN_STMT);END;";
         assertThat(result).isEqualTo(expected);
 
-        result = SqlUtils.startLogMinerStatement(10L, 20L, OracleConnectorConfig.LogMiningStrategy.CATALOG_IN_REDO, false);
+        result = SqlUtils.startLogMinerStatement(Scn.valueOf(10L), Scn.valueOf(20L), OracleConnectorConfig.LogMiningStrategy.CATALOG_IN_REDO, false);
         expected = "BEGIN sys.dbms_logmnr.start_logmnr(startScn => '10', endScn => '20', " +
                 "OPTIONS => DBMS_LOGMNR.DICT_FROM_REDO_LOGS + DBMS_LOGMNR.DDL_DICT_TRACKING  + DBMS_LOGMNR.NO_ROWID_IN_STMT);END;";
         assertThat(result).isEqualTo(expected);
@@ -260,13 +260,13 @@ public class SqlUtilsTest {
                 ") nologging";
         assertThat(result).isEqualTo(expected);
 
-        result = SqlUtils.archiveLogsQuery(10L, Duration.ofHours(0L));
+        result = SqlUtils.archiveLogsQuery(Scn.valueOf(10L), Duration.ofHours(0L));
         expected = "SELECT NAME AS FILE_NAME, NEXT_CHANGE# AS NEXT_CHANGE, FIRST_CHANGE# AS FIRST_CHANGE FROM V$ARCHIVED_LOG " +
                 "WHERE NAME IS NOT NULL AND ARCHIVED = 'YES' " +
                 "AND STATUS = 'A' AND NEXT_CHANGE# > 10 ORDER BY 2";
         assertThat(result).isEqualTo(expected);
 
-        result = SqlUtils.archiveLogsQuery(10L, Duration.ofHours(1L));
+        result = SqlUtils.archiveLogsQuery(Scn.valueOf(10L), Duration.ofHours(1L));
         expected = "SELECT NAME AS FILE_NAME, NEXT_CHANGE# AS NEXT_CHANGE, FIRST_CHANGE# AS FIRST_CHANGE FROM V$ARCHIVED_LOG " +
                 " WHERE NAME IS NOT NULL AND FIRST_TIME >= SYSDATE - (1/24) AND ARCHIVED = 'YES' " +
                 " AND STATUS = 'A' AND NEXT_CHANGE# > 10 ORDER BY 2";
