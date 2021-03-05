@@ -8,7 +8,6 @@ package io.debezium.connector.oracle;
 import static org.fest.assertions.Assertions.assertThat;
 
 import java.math.BigDecimal;
-import java.math.BigInteger;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -23,7 +22,6 @@ import java.util.stream.Collectors;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestRule;
@@ -31,6 +29,7 @@ import org.junit.rules.TestRule;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.logminer.LogMinerHelper;
+import io.debezium.connector.oracle.logminer.Scn;
 import io.debezium.connector.oracle.logminer.SqlUtils;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.embedded.AbstractConnectorTest;
@@ -40,34 +39,28 @@ import io.debezium.util.Testing;
  * This subclasses common OracleConnectorIT for LogMiner adaptor
  */
 @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "LogMiner specific tests")
-@Ignore(value = "The super class before method fails, needs investigation - alter session insufficient privileges")
 public class LogMinerHelperIT extends AbstractConnectorTest {
 
     @Rule
     public final TestRule skipAdapterRule = new SkipTestDependingOnAdapterNameRule();
 
-    private static OracleConnection connection;
-    private static OracleConnection lmConnection;
     private static OracleConnection conn;
 
     @BeforeClass
     public static void beforeSuperClass() throws SQLException {
-        connection = TestHelper.testConnection();
+        try (OracleConnection adminConnection = TestHelper.adminConnection()) {
+            adminConnection.resetSessionToCdb();
+            LogMinerHelper.removeLogFilesFromMining(adminConnection);
+        }
 
-        lmConnection = TestHelper.testConnection();
-        conn = lmConnection;
-
-        lmConnection.resetSessionToCdb();
-        LogMinerHelper.removeLogFilesFromMining(conn);
+        conn = TestHelper.defaultConnection();
+        conn.resetSessionToCdb();
     }
 
     @AfterClass
     public static void closeConnection() throws SQLException {
-        if (lmConnection != null && lmConnection.isConnected()) {
-            lmConnection.close();
-        }
-        if (connection != null && connection.isConnected()) {
-            connection.close();
+        if (conn != null && conn.isConnected()) {
+            conn.close();
         }
     }
 
@@ -76,27 +69,6 @@ public class LogMinerHelperIT extends AbstractConnectorTest {
         setConsumeTimeout(TestHelper.defaultMessageConsumerPollTimeout(), TimeUnit.SECONDS);
         initializeConnectorTestFramework();
         Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
-    }
-
-    @Test
-    public void shouldAddRightOnlineRedoFiles() throws Exception {
-        // case 1 : oldest scn = current scn
-        long currentScn = LogMinerHelper.getCurrentScn(conn);
-        LogMinerHelper.setRedoLogFilesForMining(conn, currentScn, Duration.ofHours(0L));
-        assertThat(getNumberOfAddedLogFiles(conn) == 1).isTrue();
-
-        // case 2 : oldest scn = oldest in online redo
-        Map<String, String> redoLogFiles = LogMinerHelper.getMap(conn, SqlUtils.allOnlineLogsQuery(), "-1");
-        Long oldestScn = getOldestOnlineScn(redoLogFiles);
-        LogMinerHelper.setRedoLogFilesForMining(conn, oldestScn, Duration.ofHours(0L));
-        // make sure this method will not add duplications
-        LogMinerHelper.setRedoLogFilesForMining(conn, oldestScn, Duration.ofHours(0L));
-        assertThat(getNumberOfAddedLogFiles(conn) == redoLogFiles.size() - 1).isTrue();
-
-        // case 3 :
-        oldestScn -= 1;
-        LogMinerHelper.setRedoLogFilesForMining(conn, oldestScn, Duration.ofHours(0L));
-        assertThat(getNumberOfAddedLogFiles(conn) == (redoLogFiles.size())).isTrue();
     }
 
     @Test
@@ -109,7 +81,7 @@ public class LogMinerHelperIT extends AbstractConnectorTest {
         // case 2: oldest scn = oldest in not cleared archive
         List<BigDecimal> oneDayArchivedNextScn = getOneDayArchivedLogNextScn(conn);
         long oldestArchivedScn = getOldestArchivedScn(oneDayArchivedNextScn);
-        Map<String, BigInteger> archivedLogsForMining = LogMinerHelper.getArchivedLogFilesForOffsetScn(conn, oldestArchivedScn, Duration.ofHours(0L));
+        Map<String, Scn> archivedLogsForMining = LogMinerHelper.getArchivedLogFilesForOffsetScn(conn, oldestArchivedScn, Duration.ofHours(0L));
         assertThat(archivedLogsForMining.size() == (oneDayArchivedNextScn.size() - 1)).isTrue();
 
         archivedRedoFiles = LogMinerHelper.getMap(conn, SqlUtils.archiveLogsQuery(oldestArchivedScn - 1, Duration.ofHours(0L)), "-1");
@@ -123,68 +95,14 @@ public class LogMinerHelperIT extends AbstractConnectorTest {
         LogMinerHelper.setRedoLogFilesForMining(conn, oldestArchivedScn, Duration.ofHours(0L));
 
         // eliminate duplications
-        Map<String, BigInteger> onlineLogFilesForMining = LogMinerHelper.getOnlineLogFilesForOffsetScn(conn, oldestArchivedScn);
-        Map<String, BigInteger> archivedLogFilesForMining = LogMinerHelper.getArchivedLogFilesForOffsetScn(conn, oldestArchivedScn, Duration.ofHours(0L));
+        Map<String, Scn> onlineLogFilesForMining = LogMinerHelper.getOnlineLogFilesForOffsetScn(conn, oldestArchivedScn);
+        Map<String, Scn> archivedLogFilesForMining = LogMinerHelper.getArchivedLogFilesForOffsetScn(conn, oldestArchivedScn, Duration.ofHours(0L));
         List<String> archivedLogFiles = archivedLogFilesForMining.entrySet().stream()
                 .filter(e -> !onlineLogFilesForMining.values().contains(e.getValue())).map(Map.Entry::getKey).collect(Collectors.toList());
         int archivedLogFilesCount = archivedLogFiles.size();
 
         Map<String, String> redoLogFiles = LogMinerHelper.getMap(conn, SqlUtils.allOnlineLogsQuery(), "-1");
         assertThat(getNumberOfAddedLogFiles(conn) == (redoLogFiles.size() + archivedLogFilesCount)).isTrue();
-    }
-
-    @Test
-    public void shouldCalculateAbandonTransactions() throws Exception {
-        Map<String, String> redoLogFiles = LogMinerHelper.getMap(conn, SqlUtils.allOnlineLogsQuery(), "-1");
-        Long oldestOnlineScn = getOldestOnlineScn(redoLogFiles);
-        Optional<Long> abandonWatermark = LogMinerHelper.getLastScnToAbandon(conn, oldestOnlineScn, Duration.ofHours(1));
-        assertThat(abandonWatermark.isPresent()).isTrue();
-
-        long currentScn = LogMinerHelper.getCurrentScn(conn);
-        abandonWatermark = LogMinerHelper.getLastScnToAbandon(conn, currentScn, Duration.ofHours(1));
-        assertThat(abandonWatermark.isPresent()).isFalse();
-
-        List<BigDecimal> oneDayArchivedNextScn = getOneDayArchivedLogNextScn(conn);
-        long oldestArchivedScn = getOldestArchivedScn(oneDayArchivedNextScn);
-        abandonWatermark = LogMinerHelper.getLastScnToAbandon(conn, oldestArchivedScn, Duration.ofHours(1));
-        assertThat(abandonWatermark.isPresent()).isTrue();
-
-        long twoHoursAgoScn;
-        String scnQuery = "with minus_one as (select (systimestamp - INTERVAL '2' HOUR) as diff from dual) " +
-                "select timestamp_to_scn(diff) from minus_one";
-        try (PreparedStatement ps = conn.connection(false).prepareStatement(scnQuery);
-                ResultSet rs = ps.executeQuery()) {
-            rs.next();
-            twoHoursAgoScn = rs.getBigDecimal(1).longValue();
-        }
-        String query = SqlUtils.diffInDaysQuery(twoHoursAgoScn);
-        Float diffInDays = (Float) LogMinerHelper.getSingleResult(conn, query, LogMinerHelper.DATATYPE.FLOAT);
-        assertThat(Math.round(diffInDays * 24) == 2).isTrue();
-
-        diffInDays += 0.6F; // + 4 hours
-        abandonWatermark = LogMinerHelper.getLastScnToAbandon(conn, twoHoursAgoScn, Duration.ofHours(Math.round(diffInDays * 24)));
-        assertThat(abandonWatermark.isPresent()).isFalse();
-
-        abandonWatermark = LogMinerHelper.getLastScnToAbandon(conn, twoHoursAgoScn, Duration.ofHours(1));
-        assertThat(abandonWatermark.isPresent()).isTrue();
-
-        abandonWatermark = LogMinerHelper.getLastScnToAbandon(conn, twoHoursAgoScn, Duration.ofHours(2));
-        assertThat(abandonWatermark.isPresent()).isTrue();
-
-        abandonWatermark = LogMinerHelper.getLastScnToAbandon(conn, twoHoursAgoScn, Duration.ofHours(3));
-        assertThat(abandonWatermark.isPresent()).isFalse();
-    }
-
-    private Long getOldestOnlineScn(Map<String, String> redoLogFiles) throws Exception {
-        Optional<BigDecimal> scn = redoLogFiles.values().stream().map(BigDecimal::new).min(BigDecimal::compareTo);
-        Long oldestScn;
-        if (scn.isPresent()) {
-            oldestScn = scn.get().longValue();
-        }
-        else {
-            throw new Exception("cannot get oldest scn");
-        }
-        return oldestScn;
     }
 
     private Long getOldestArchivedScn(List<BigDecimal> oneDayArchivedNextScn) throws Exception {
