@@ -111,7 +111,7 @@ public class LogMinerMetricsTest {
         metrics.setLastDurationOfBatchProcessing(Duration.ZERO);
         assertThat(metrics.getLastBatchProcessingThroughput()).isEqualTo(0);
 
-        assertThat(metrics.getHoursToKeepTransactionInBuffer()).isEqualTo(4);
+        assertThat(metrics.getHoursToKeepTransactionInBuffer()).isEqualTo(0);
 
         metrics.setRedoLogStatus(Collections.singletonMap("name", "current"));
         assertThat(metrics.getRedoLogStatus()[0].equals("name | current")).isTrue();
