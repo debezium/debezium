@@ -53,7 +53,6 @@ public class TestHelper {
 
     public static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-connect.txt").toAbsolutePath();
     public static final String TEST_DATABASE = "testdb";
-    public static final String TEST_DATABASES = "testdb,testdb2";
     private static final String TEST_PROPERTY_PREFIX = "debezium.test.";
 
     private static final String STATEMENTS_PLACEHOLDER = "#";
@@ -108,7 +107,6 @@ public class TestHelper {
     public static JdbcConfiguration defaultJdbcConfig() {
         return JdbcConfiguration.copy(Configuration.fromSystemProperties("database."))
                 .withDefault(JdbcConfiguration.DATABASE, TEST_DATABASE)
-                .withDefault(JdbcConfiguration.DATABASES, TEST_DATABASES)
                 .withDefault(JdbcConfiguration.HOSTNAME, "localhost")
                 .withDefault(JdbcConfiguration.PORT, 1433)
                 .withDefault(JdbcConfiguration.USER, "sa")
