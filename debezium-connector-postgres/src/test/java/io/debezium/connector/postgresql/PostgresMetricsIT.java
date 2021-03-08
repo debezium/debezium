@@ -7,6 +7,7 @@ package io.debezium.connector.postgresql;
 
 import java.lang.management.ManagementFactory;
 import java.time.Duration;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import javax.management.InstanceNotFoundException;
@@ -20,6 +21,8 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
@@ -29,6 +32,8 @@ import io.debezium.util.Testing;
  * @author Chris Cranford
  */
 public class PostgresMetricsIT extends AbstractRecordsProducerTest {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(PostgresMetricsIT.class);
 
     private static final String INIT_STATEMENTS = "CREATE TABLE simple (pk SERIAL NOT NULL, val INT NOT NULL, PRIMARY KEY(pk)); "
             + "ALTER TABLE simple REPLICA IDENTITY FULL;";
@@ -194,23 +199,39 @@ public class PostgresMetricsIT extends AbstractRecordsProducerTest {
 
     @Test
     public void twoRecordsInQueue() throws Exception {
+        // Testing.Print.enable();
         final MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
         TestHelper.execute(INIT_STATEMENTS, INSERT_STATEMENTS);
-        final int recordCount = 2;
+        final CountDownLatch step1 = new CountDownLatch(1);
+        final CountDownLatch step2 = new CountDownLatch(1);
 
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
                 .with(PostgresConnectorConfig.MAX_QUEUE_SIZE, 10)
                 .with(PostgresConnectorConfig.MAX_BATCH_SIZE, 1)
-                .with(PostgresConnectorConfig.POLL_INTERVAL_MS, 5000L)
+                .with(PostgresConnectorConfig.POLL_INTERVAL_MS, 100L)
                 .with(PostgresConnectorConfig.MAX_QUEUE_SIZE_IN_BYTES, 10000L);
-        start(PostgresConnector.class, configBuilder.build());
+        start(PostgresConnector.class, configBuilder.build(), loggingCompletion(), null, x -> {
+            LOGGER.info("Record '{}' arrived", x);
+            step1.countDown();
+            try {
+                step2.await(TestHelper.waitTimeForRecords() * 5, TimeUnit.SECONDS);
+            }
+            catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+            LOGGER.info("Record processing completed");
+        });
 
         waitForStreamingToStart();
-        for (int i = 0; i < recordCount - 1; i++) {
-            TestHelper.execute(INSERT_STATEMENTS);
-        }
+        TestHelper.execute(INSERT_STATEMENTS);
+        LOGGER.info("Waiting for the first record to arrive");
+        step1.await(TestHelper.waitTimeForRecords() * 5, TimeUnit.SECONDS);
+        LOGGER.info("First record arrived");
+
+        // One record is read from queue and reading is blocked
+        // Second record should stay in queue
         Awaitility.await()
                 .alias("MBean attribute was not an expected value")
                 .pollInterval(100, TimeUnit.MILLISECONDS)
@@ -221,6 +242,8 @@ public class PostgresMetricsIT extends AbstractRecordsProducerTest {
                     return value > 0;
                 });
         Assertions.assertThat(mBeanServer.getAttribute(getStreamingMetricsObjectName(), "CurrentQueueSizeInBytes")).isNotEqualTo(0L);
+
+        LOGGER.info("Wait for the queue to contain second record");
         Awaitility.await()
                 .alias("MBean attribute was not an expected value")
                 .pollInterval(100, TimeUnit.MILLISECONDS)
@@ -228,12 +251,24 @@ public class PostgresMetricsIT extends AbstractRecordsProducerTest {
                 .ignoreException(InstanceNotFoundException.class)
                 .until(() -> {
                     int value = (int) mBeanServer.getAttribute(getStreamingMetricsObjectName(), "QueueRemainingCapacity");
-                    return value == 8;
+                    return value == 9;
                 });
-        Assertions.assertThat(mBeanServer.getAttribute(getStreamingMetricsObjectName(), "QueueRemainingCapacity")).isEqualTo(8);
+        LOGGER.info("Wait for second record to be in queue");
+        Assertions.assertThat(mBeanServer.getAttribute(getStreamingMetricsObjectName(), "QueueRemainingCapacity")).isEqualTo(9);
 
-        SourceRecords records = consumeRecordsByTopic(recordCount);
+        LOGGER.info("Empty queue");
+        step2.countDown();
 
+        LOGGER.info("Wait for queue to be empty");
+        Awaitility.await()
+                .alias("MBean attribute was not an expected value")
+                .pollInterval(100, TimeUnit.MILLISECONDS)
+                .atMost(TestHelper.waitTimeForRecords() * 5, TimeUnit.SECONDS)
+                .ignoreException(InstanceNotFoundException.class)
+                .until(() -> {
+                    long value = (long) mBeanServer.getAttribute(getStreamingMetricsObjectName(), "CurrentQueueSizeInBytes");
+                    return value == 0;
+                });
         Assertions.assertThat(mBeanServer.getAttribute(getStreamingMetricsObjectName(), "CurrentQueueSizeInBytes")).isEqualTo(0L);
         stopConnector();
     }

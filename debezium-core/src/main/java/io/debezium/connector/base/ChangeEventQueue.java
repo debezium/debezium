@@ -203,14 +203,15 @@ public class ChangeEventQueue<T> implements ChangeEventQueueMetrics {
         while (maxQueueSizeInBytes > 0 && currentQueueSizeInBytes.get() > maxQueueSizeInBytes) {
             Thread.sleep(pollInterval.toMillis());
         }
-        // this will also raise an InterruptedException if the thread is interrupted while waiting for space in the queue
-        queue.put(record);
         // If we pass a positiveLong max.queue.size.in.bytes to enable handling queue size in bytes feature
         if (maxQueueSizeInBytes > 0) {
             long messageSize = ObjectSizeCalculator.getObjectSize(record);
             objectMap.put(record, messageSize);
             currentQueueSizeInBytes.addAndGet(messageSize);
         }
+
+        // this will also raise an InterruptedException if the thread is interrupted while waiting for space in the queue
+        queue.put(record);
     }
 
     /**
