@@ -210,6 +210,14 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
         }
     }
 
+    public static final Field DATABASE_NAMES = Field.create(DATABASE_CONFIG_PREFIX + "dbnames")
+            .withDisplayName("Databases")
+            .withType(Type.STRING)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.HIGH)
+            .withValidation(Field::isRequired)
+            .withDescription("The names of the databases the connector should be monitoring");
+
     public static final Field PORT = RelationalDatabaseConnectorConfig.PORT
             .withDefault(DEFAULT_PORT);
 

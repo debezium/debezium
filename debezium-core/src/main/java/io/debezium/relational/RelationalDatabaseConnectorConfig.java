@@ -180,14 +180,6 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withValidation(Field::isRequired)
             .withDescription("The name of the database the connector should be monitoring");
 
-    public static final Field DATABASE_NAMES = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.DATABASES)
-            .withDisplayName("Databases")
-            .withType(Type.STRING)
-            .withWidth(Width.MEDIUM)
-            .withImportance(Importance.HIGH)
-            .withValidation(Field::isRequired)
-            .withDescription("The names of the databases the connector should be monitoring");
-
     public static final Field SERVER_NAME = Field.create(DATABASE_CONFIG_PREFIX + "server.name")
             .withDisplayName("Namespace")
             .withType(Type.STRING)

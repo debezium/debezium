@@ -1781,7 +1781,7 @@ spec:
     database.port: 1433 // <4>
     database.user: debezium // <5>
     database.password: dbz // <6>
-    database.dbname: testDB // <7>
+    database.dbnames: "testDB,testDB2", // <7>
     database.server.name: fullfullment // <8>
     database.include.list: dbo.customers // <9>
     database.history.kafka.bootstrap.servers: my-cluster-kafka-bootstrap:9092 // <10>
@@ -1989,6 +1989,10 @@ The following configuration properties are _required_ unless a default value is 
 |[[sqlserver-property-database-dbname]]<<sqlserver-property-database-dbname, `+database.dbname+`>>
 |
 |The name of the SQL Server database from which to stream the changes
+
+|[[sqlserver-property-database-dbname]]<<sqlserver-property-database-dbname, `+database.dbnames+`>>
+|
+|The names of the SQL Server databases from which to stream the changes
 
 |[[sqlserver-property-database-server-name]]<<sqlserver-property-database-server-name, `+database.server.name+`>>
 |
