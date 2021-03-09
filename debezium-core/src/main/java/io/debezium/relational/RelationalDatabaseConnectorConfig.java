@@ -235,7 +235,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withType(Type.LIST)
             .withWidth(Width.LONG)
             .withImportance(Importance.LOW)
-            .withValidation(Field::isListOfRegex, RelationalDatabaseConnectorConfig::validateTableExcludeList)
+            .withValidation(Field::isListOfRegex, RelationalDatabaseConnectorConfig::validateTableBlacklist)
             .withInvisibleRecommender()
             .withDescription(
                     "A comma-separated list of regular expressions that match the fully-qualified names of tables to be excluded from monitoring (deprecated, use \""
@@ -273,7 +273,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withType(Type.LIST)
             .withWidth(Width.LONG)
             .withImportance(Importance.LOW)
-            .withValidation(Field::isListOfRegex, RelationalDatabaseConnectorConfig::validateColumnExcludeList)
+            .withValidation(Field::isListOfRegex, RelationalDatabaseConnectorConfig::validateColumnBlacklist)
             .withInvisibleRecommender()
             .withDescription("Regular expressions matching columns to exclude from change events (deprecated, use \"" + COLUMN_EXCLUDE_LIST.name() + "\" instead)");
 
@@ -288,7 +288,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withType(Type.LIST)
             .withWidth(Width.LONG)
             .withImportance(Importance.MEDIUM)
-            .withValidation(Field::isListOfRegex, RelationalDatabaseConnectorConfig::validateColumnExcludeList)
+            .withValidation(Field::isListOfRegex)
             .withDescription("Regular expressions matching columns to include in change events");
 
     /**
@@ -300,7 +300,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withType(Type.LIST)
             .withWidth(Width.LONG)
             .withImportance(Importance.LOW)
-            .withValidation(Field::isListOfRegex, RelationalDatabaseConnectorConfig::validateColumnExcludeList)
+            .withValidation(Field::isListOfRegex)
             .withInvisibleRecommender()
             .withDescription("Regular expressions matching columns to include in change events (deprecated, use \"" + COLUMN_INCLUDE_LIST.name() + "\" instead)");
 
@@ -390,7 +390,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withType(Type.LIST)
             .withWidth(Width.LONG)
             .withImportance(Importance.LOW)
-            .withValidation(Field::isListOfRegex, RelationalDatabaseConnectorConfig::validateSchemaExcludeList)
+            .withValidation(Field::isListOfRegex, RelationalDatabaseConnectorConfig::validateSchemaBlacklist)
             .withInvisibleRecommender()
             .withDescription("The schemas for which events must not be captured (deprecated, use \"" + SCHEMA_EXCLUDE_LIST.name() + "\" instead)");
 
@@ -435,7 +435,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withType(Type.LIST)
             .withWidth(Width.LONG)
             .withImportance(Importance.LOW)
-            .withValidation(Field::isListOfRegex, RelationalDatabaseConnectorConfig::validateDatabaseExcludeList)
+            .withValidation(Field::isListOfRegex, RelationalDatabaseConnectorConfig::validateDatabaseBlacklist)
             .withInvisibleRecommender()
             .withDescription("A comma-separated list of regular expressions that match database names to be excluded from monitoring (deprecated, use \""
                     + DATABASE_EXCLUDE_LIST.name() + "\" instead)");
@@ -637,9 +637,20 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
         return getConfig().getBoolean(SNAPSHOT_FULL_COLUMN_SCAN_FORCE);
     }
 
+    private static int validateColumnBlacklist(Configuration config, Field field, Field.ValidationOutput problems) {
+        String blacklist = Configuration.getFallbackStringProperty(config, COLUMN_INCLUDE_LIST, COLUMN_WHITELIST);
+        String whitelist = Configuration.getFallbackStringProperty(config, COLUMN_EXCLUDE_LIST, COLUMN_BLACKLIST);
+
+        if (whitelist != null && blacklist != null) {
+            problems.accept(COLUMN_BLACKLIST, blacklist, COLUMN_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG);
+            return 1;
+        }
+        return 0;
+    }
+
     private static int validateColumnExcludeList(Configuration config, Field field, Field.ValidationOutput problems) {
-        String includeList = Configuration.getFallbackStringProperty(config, COLUMN_INCLUDE_LIST, COLUMN_WHITELIST);
-        String excludeList = Configuration.getFallbackStringProperty(config, COLUMN_EXCLUDE_LIST, COLUMN_BLACKLIST);
+        String includeList = config.getString(COLUMN_INCLUDE_LIST);
+        String excludeList = config.getString(COLUMN_EXCLUDE_LIST);
 
         if (includeList != null && excludeList != null) {
             problems.accept(COLUMN_EXCLUDE_LIST, excludeList, COLUMN_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG);
@@ -657,15 +668,25 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
         return tableIdMapper;
     }
 
+    private static int validateTableBlacklist(Configuration config, Field field, ValidationOutput problems) {
+        String whitelist = Configuration.getFallbackStringProperty(config, TABLE_INCLUDE_LIST, TABLE_WHITELIST);
+        String blacklist = Configuration.getFallbackStringProperty(config, TABLE_EXCLUDE_LIST, TABLE_BLACKLIST);
+
+        if (whitelist != null && blacklist != null) {
+            problems.accept(TABLE_BLACKLIST, blacklist, TABLE_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG);
+            return 1;
+        }
+        return 0;
+    }
+
     private static int validateTableExcludeList(Configuration config, Field field, ValidationOutput problems) {
-        String includeList = Configuration.getFallbackStringProperty(config, TABLE_INCLUDE_LIST, TABLE_WHITELIST);
-        String excludeList = Configuration.getFallbackStringProperty(config, TABLE_EXCLUDE_LIST, TABLE_BLACKLIST);
+        String includeList = config.getString(TABLE_WHITELIST);
+        String excludeList = config.getString(TABLE_BLACKLIST);
 
         if (includeList != null && excludeList != null) {
             problems.accept(TABLE_EXCLUDE_LIST, excludeList, TABLE_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG);
             return 1;
         }
-
         return 0;
     }
 
@@ -690,9 +711,20 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
         return Collections.unmodifiableMap(snapshotSelectOverridesByTable);
     }
 
+    private static int validateSchemaBlacklist(Configuration config, Field field, Field.ValidationOutput problems) {
+        String whitelist = Configuration.getFallbackStringProperty(config, SCHEMA_INCLUDE_LIST, SCHEMA_WHITELIST);
+        String blacklist = Configuration.getFallbackStringProperty(config, SCHEMA_EXCLUDE_LIST, SCHEMA_BLACKLIST);
+
+        if (whitelist != null && blacklist != null) {
+            problems.accept(SCHEMA_BLACKLIST, blacklist, SCHEMA_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG);
+            return 1;
+        }
+        return 0;
+    }
+
     private static int validateSchemaExcludeList(Configuration config, Field field, Field.ValidationOutput problems) {
-        String includeList = Configuration.getFallbackStringProperty(config, SCHEMA_INCLUDE_LIST, SCHEMA_WHITELIST);
-        String excludeList = Configuration.getFallbackStringProperty(config, SCHEMA_EXCLUDE_LIST, SCHEMA_BLACKLIST);
+        String includeList = config.getString(SCHEMA_INCLUDE_LIST);
+        String excludeList = config.getString(SCHEMA_EXCLUDE_LIST);
 
         if (includeList != null && excludeList != null) {
             problems.accept(SCHEMA_EXCLUDE_LIST, excludeList, SCHEMA_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG);
@@ -706,6 +738,16 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
         String excludeList = config.getString(DATABASE_EXCLUDE_LIST);
         if (includeList != null && excludeList != null) {
             problems.accept(DATABASE_EXCLUDE_LIST, excludeList, DATABASE_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG);
+            return 1;
+        }
+        return 0;
+    }
+
+    private static int validateDatabaseBlacklist(Configuration config, Field field, ValidationOutput problems) {
+        String whitelist = Configuration.getFallbackStringProperty(config, DATABASE_INCLUDE_LIST, DATABASE_WHITELIST);
+        String blacklist = Configuration.getFallbackStringProperty(config, DATABASE_EXCLUDE_LIST, DATABASE_BLACKLIST);
+        if (whitelist != null && blacklist != null) {
+            problems.accept(DATABASE_BLACKLIST, blacklist, DATABASE_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG);
             return 1;
         }
         return 0;
