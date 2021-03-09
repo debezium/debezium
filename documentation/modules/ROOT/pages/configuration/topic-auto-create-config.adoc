@@ -85,7 +85,7 @@ Custom topic creation groups use lists of topic name patterns to specify the top
 For details about how Kafka Connect matches topics to topic creation groups, see xref:topic-creation-groups[].
 For more information about how configuration properties are assigned to groups, see xref:topic-creation-group-configuration-properties[Topic creation group configuration properties].
 
-By default, topics that Kafka Connect creates are named based on the pattern `server.schema.table`, for example, `dbserver`.myschema.inventory`.
+By default, topics that Kafka Connect creates are named based on the pattern `server.schema.table`, for example, `dbserver.myschema.inventory`.
 
 ifdef::community[]
 [NOTE]
@@ -307,7 +307,6 @@ The following example shows sample configurations for the `inventory` and `appli
 
     //<1>
     "topic.creation.inventory.include": "dbserver1\\.inventory\\.*",  //<2>
-    "topic.creation.inventory.replication.factor": 3,
     "topic.creation.inventory.partitions": 20,
     "topic.creation.inventory.cleanup.policy": "compact",
     "topic.creation.inventory.delete.retention.ms": 7776000000,
@@ -343,11 +342,10 @@ spec:
 
    config:
 ... //<1>
-     topic.creation.inventory.include: "dbserver1\\.inventory\\.*"  //<2>
-     "topic.creation.inventory.replication.factor": 3
-     topic.creation.inventory.partitions: 20
-     topic.creation.inventory.cleanup.policy: compact
-     topic.creation.inventory.delete.retention.ms: 7776000000
+    topic.creation.inventory.include: dbserver1\\.inventory\\.*  //<2>
+    topic.creation.inventory.partitions: 20
+    topic.creation.inventory.cleanup.policy: compact
+    topic.creation.inventory.delete.retention.ms: 7776000000
 
     //<3>
     topic.creation.applicationlogs.include: dbserver1\\.logs\\.applog-.* //<4>
@@ -464,7 +462,6 @@ ifdef::community[]
     "topic.creation.default.compression.type": "lz4"
     "topic.creation.groups": "inventory,applicationlogs",
     "topic.creation.inventory.include": "dbserver1\\.inventory\\.*",
-    "topic.creation.inventory.replication.factor": 3,
     "topic.creation.inventory.partitions": 20,
     "topic.creation.inventory.cleanup.policy": "compact",
     "topic.creation.inventory.delete.retention.ms": 7776000000,
@@ -495,10 +492,9 @@ spec:
     topic.creation.default.replication.factor: 3,
     topic.creation.default.partitions: 10,
     topic.creation.default.cleanup.policy: compact
-    topic.creation.default.compression.type": lz4
+    topic.creation.default.compression.type: lz4
     topic.creation.groups: inventory,applicationlogs
     topic.creation.inventory.include: dbserver1\\.inventory\\.*
-    topic.creation.inventory.replication.factor: 3
     topic.creation.inventory.partitions: 20
     topic.creation.inventory.cleanup.policy: compact
     topic.creation.inventory.delete.retention.ms: 7776000000
