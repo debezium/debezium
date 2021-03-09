@@ -15,6 +15,7 @@ import org.apache.kafka.connect.data.Struct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.annotation.NotThreadSafe;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.data.Envelope;
 import io.debezium.document.Document;
@@ -38,6 +39,7 @@ import io.debezium.schema.DataCollectionId;
  * @author Jiri Pechanec
  *
  */
+@NotThreadSafe
 public class Signal {
 
     @FunctionalInterface

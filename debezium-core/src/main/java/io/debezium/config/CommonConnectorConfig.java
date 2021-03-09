@@ -415,7 +415,7 @@ public abstract class CommonConnectorConfig {
             .withType(Type.STRING)
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
-            .withDescription("The name of the data collection that is used to send signlas/commands to Debezium. Signaling is disabled when not set.");
+            .withDescription("The name of the data collection that is used to send signals/commands to Debezium. Signaling is disabled when not set.");
 
     protected static final ConfigDefinition CONFIG_DEFINITION = ConfigDefinition.editor()
             .connector(
