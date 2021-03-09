@@ -157,6 +157,9 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                                     try {
                                         Set<TableId> tablesToCapture = determineCapturedTables();
                                         tableFilterString = tablesToCapture.stream().map(TableId::toDoubleQuotedString).collect(Collectors.joining(", "));
+                                        if (tableFilterString.isEmpty()) {
+                                            throw new DebeziumException(String.format("No table filters found for filtered publication %s", publicationName));
+                                        }
                                         createPublicationStmt = String.format("CREATE PUBLICATION %s FOR TABLE %s;", publicationName, tableFilterString);
                                         LOGGER.info("Creating Publication with statement '{}'", createPublicationStmt);
                                         // Publication doesn't exist, create it but restrict to the tableFilter.
