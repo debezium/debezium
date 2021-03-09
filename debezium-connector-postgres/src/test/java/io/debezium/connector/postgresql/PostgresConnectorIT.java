@@ -2479,16 +2479,12 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
 
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.PUBLICATION_NAME, "cdc")
-                .with(PostgresConnectorConfig.PUBLICATION_AUTOCREATE_MODE, PostgresConnectorConfig.AutoCreateMode.FILTERED.getValue());
+                .with(PostgresConnectorConfig.PUBLICATION_AUTOCREATE_MODE, PostgresConnectorConfig.AutoCreateMode.FILTERED.getValue())
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "nonexistent.table");
 
         start(PostgresConnector.class, configBuilder.build());
-        assertConnectorIsRunning();
-
-        waitForAvailableRecords(100, TimeUnit.MILLISECONDS);
-
-        stopConnector(value -> {
-            assertTrue(logInterceptor.containsMessage("No table filters found for filtered publication cdc"));
-        });
+        assertConnectorNotRunning();
+        assertTrue(logInterceptor.containsStacktraceElement("No table filters found for filtered publication cdc"));
     }
 
     private CompletableFuture<Void> batchInsertRecords(long recordsCount, int batchSize) {
