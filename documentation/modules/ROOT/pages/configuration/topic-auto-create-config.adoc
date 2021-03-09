@@ -1,9 +1,9 @@
 // Category: debezium-using
 // Type: assembly
-// ModuleID: automatic-creation-and-configuration-of-debezium-topics
-// Title: Automatic creation and configuration of {prodname} topics
+// ModuleID: customization-of-kafka-connect-automatic-topic-creation
+// Title: Customization of Kafka Connect automatic topic creation
 [id="customizing-debezium-automatically-created-topics"]
-= Customizing topic auto-creation
+= Customization of Kafka Connect automatic topic creation
 
 :toc:
 :toc-placement: macro
@@ -13,15 +13,27 @@
 
 toc::[]
 
-Beginning with Kafka 2.6.0, you can set the Kafka Connect configuration to permit automatic creation of topics.
-If you enable automatic topic creation,
-when Debezium emits a change event record, Kafka Connect ingests the record into Kafka and writes it to a topic.
-Topic are named based on the pattern `server.schema.table`, for example, `dbserver`.myschema.inventory`.
-If the target topic does not yet exist, Kafka Connect creates it.
-Further, to provide control over how the resulting topics are configured, you can specify unique configuration properties for groups of topics.
-Topic creation properties are defined in the {prodname} connector configuration.
-First, you define a default topic creation group, and, optionally, one or more custom groups based on topic names.
-You then specify the topic properties to apply to topics in each group.
+Kafka provides two mechanisms for creating topics automatically.
+You can enable automatic topic creation for the Kafka broker, and, beginning with Kafka 2.6.0, you can also enable Kafka Connect to create topics.
+The Kafka broker uses the `auto.create.topics.enable` property to control automatic topic creation.
+In Kafka Connect, the `topic.creation.enable` property specifies whether Kafka Connect is permitted to create topics.
+In both cases, the default settings for the properties enables automatic topic creation.
+
+When automatic topic creation is enabled,
+if a Debezium source connector emits a change event record for a table for which no target topic already exists,
+the topic is created at runtime as the event record is ingested into Kafka.
+
+.Differences between automatic topic creation at the broker and in Kafka Connect
+Topics that the broker creates are limited to sharing a single default configuration.
+The broker cannot apply unique configurations to different topics or sets of topics.
+By contrast, Kafka Connect can apply any of several configurations when creating topics,
+setting the replication factor, number of partitions, and other topic-specific settings as specified in the {prodname} connector configuration.
+The connector configuration defines a set of topic creation groups, and associates a set of topic configuration properties with each group.
+
+The broker configuration and the Kafka Connect configuration are independent of each other.
+Kafka Connect can create topics regardless of whether you disable topic creation at the broker.
+If you enable automatic topic creation at both the broker and in Kafka Connect, the Connect configuration takes precedence,
+and the broker creates topics only if none of the settings in the Kafka Connect configuration apply.
 
 ifdef::product[]
 See the following topics for more information:
@@ -41,27 +53,14 @@ endif::product[]
 [id="disabling-automatic-topic-creation-for-the-kafka-broker"]
 == Disabling automatic topic creation for the Kafka broker
 
-The default Kafka broker configuration enables the broker to create topics at runtime if the topics do not already exist.
-However, topics that the broker creates always share a single default configuration.
-It's not possible for the broker to apply unique configurations to different topics.
-
-The Kafka broker uses the `auto.create.topics.enable` property to control automatic topic creation.
-By default, the value of the property is set to `true` to enable the broker to create topics if they do not already exist.
-If you use a version of Kafka earlier than 2.6.0, and you want to create topics with specific configurations, you must disable automatic topic creation at the broker level.
-You must then explicitly create the topics, either manually, or through a custom deployment process.
+By default, the Kafka broker configuration enables the broker to create topics at runtime if the topics do not already exist.
+Topics created by the broker cannot be configured with custom properties.
+If you use a Kafka version earlier than 2.6.0, and you want to create topics with specific configurations, you must to disable automatic topic creation at the broker,
+and then explicitly create the topics, either manually, or through a custom deployment process.
 
 .Procedure
 
 * In the broker configuration, set the value of `auto.create.topics.enable` to `false`.
-
-[NOTE]
-====
-In environments that run Kafka version 2.6.0 or later, the Kafka Connect property to enable automatic topic creation is independent of the broker property.
-The Kafka Connect configuration takes precedence over the broker configuration.
-Disabling topic creation at the broker has no effect on whether Kafka Connect can create topics.
-However, if you configure Kafka Connect to create topics, and you retain the default broker configuration,
-the broker creates topics when none of the topic creation groups in the Kafka Connect configuration apply,
-====
 
 // Type: procedure
 // ModuleID: configuring-automatic-topic-creation-in-kafka-connect
@@ -69,23 +68,29 @@ the broker creates topics when none of the topic creation groups in the Kafka Co
 [id="enabling-automatic-topic-creation"]
 == Set up Kafka Connect
 
-In Kafka 2.6 and greater, you can set a Kafka Connect property that specifies whether Kafka Connect can create topics that a {prodname} connector writes if those topics do not already exist.
-The `topic.creation.enable` property in Kafka Connect enables or disables automatic topic creation.
-The setting for the `topic.creation.enable` property applies to all workers in the Connect cluster.
+Automatic topic creation in Kafka Connect is controlled by the `topic.creation.enable` property.
 The default value for the property is `true`, enabling automatic topic creation, as shown in the following example:
-If you enable automatic topic creation, you must specify the configuration settings that Kafka Connect applies when creating topics.
-You specify topic configuration setting in the {prodname} connector configuration.
-For more information about configuring topic properties, see xref:configuration[Configuration].
 
 [source,options="nowrap",shell]
 ----
 topic.creation.enable = true
 ----
 
+The setting for the `topic.creation.enable` property applies to all workers in the Connect cluster.
+
+Kafka Connect automatic topic creation requires you to define the configuration properties that Kafka Connect applies when creating topics.
+You specify topic configuration properties in the {prodname} connector configuration by defining topic groups, and then specifying the properties to apply to each group.
+The connector configuration defines a default topic creation group, and, optionally, one or more custom topic creation groups.
+Custom topic creation groups use lists of topic name patterns to specify the topics to which the group's settings apply.
+For details about how Kafka Connect matches topics to topic creation groups, see xref:topic-creation-groups[].
+For more information about how configuration properties are assigned to groups, see xref:topic-creation-group-configuration-properties[Topic creation group configuration properties].
+
+By default, topics that Kafka Connect creates are named based on the pattern `server.schema.table`, for example, `dbserver`.myschema.inventory`.
+
 ifdef::community[]
 [NOTE]
 ====
-If you don't want to allow automatic topic creation by connectors, set the value of `topic.creation.enable` to `false`
+If you don't want to allow automatic topic creation by Kafka Connect, set the value of `topic.creation.enable` to `false`
 in the Kafka Connect configuration (_connect-distributed.properties_ file or via environment variable
 _CONNECT_TOPIC_CREATION_ENABLE_ when using https://hub.docker.com/r/debezium/connect[{prodname}'s container image for Kafka Connect]).
 ====
@@ -95,7 +100,7 @@ ifdef::product[]
 
 .Procedure
 
-* To prevent Kafka connect from creating topics automatically, set the value of `topic.creation.enable` to `false`
+* To prevent Kafka Connect from creating topics automatically, set the value of `topic.creation.enable` to `false`
 in the Kafka Connect custom resource, as in the following example:
 
 
@@ -116,7 +121,7 @@ endif::product[]
 
 [NOTE]
 ====
-Automatic topic creation requires the `replication.factor` and `partitions` properties to be set for at least the `default` topic creation group.
+Kafka Connect automatic topic creation requires the `replication.factor` and `partitions` properties to be set for at least the `default` topic creation group.
 It is valid for groups to obtain the values for the required properties from the default values for the Kafka broker.
 ====
 
@@ -128,7 +133,7 @@ It is valid for groups to obtain the values for the required properties from the
 
 For Kafka Connect to create topics automatically, it requires information from the source connector about the configuration properties to apply when creating topics.
 You define the properties that control topic creation in the configuration for each {prodname} connector.
-As Kafka Connect create topics for event records that a connector emits, the resulting topics obtain their configuration from the applicable group.
+As Kafka Connect creates topics for event records that a connector emits, the resulting topics obtain their configuration from the applicable group.
 The configuration applies to event records emitted by that connector only.
 
 // Type: concept
@@ -144,6 +149,12 @@ You can specify naming patterns that describe the topics to include or exclude f
 The `include` and `exclude` properties contain comma-separated lists of regular expressions that define topic name patterns.
 For example, if you want a group to include all topics that start with the string `dbserver1.inventory`, set the value of its `topic.creation.inventory.include` property to `dbserver1\\.inventory\\.*`.
 
+[NOTE]
+====
+If you specify both `include` and `exclude` properties for a custom topic group, the exclusion rules
+take precedence, and override the inclusion rules.
+====
+
 // Type: concept
 // ModuleID: debezium-connector-topic-creation-group-configuration-properties
 [id="topic-creation-group-configuration-properties"]
@@ -155,13 +166,6 @@ You must define at least a minimum set of properties to describe the configurati
 
 If no custom groups are registered, or if the `include` patterns for any registered groups don't match the names of any topics to be created,
 then Kafka Connect uses the configuration of the `default` group to create topics.
-
-[NOTE]
-====
-If you specify both `include` and `exclude` properties for a custom topic group, the exclusion rules
-take precedence, and override the inclusion rules.
-====
-
 
 ifdef::community[]
 See {link-prefix}:{link-install-debezium}#_configuring_debezium_topics[Configuring {prodname} topics] in the
@@ -178,11 +182,29 @@ endif::product[]
 [id="default-topic-creation-group-configuration"]
 === Default group configuration
 
-You must create a default topic creation group and define a configuration for it.
-The configuration for the default topic creation group is applied to any topics whose names do not match the `include` list pattern of a custom topic creation group.
+Before you can use Kafka Connect automatic topic creation, you must create a default topic creation group and define a configuration for it.
+The configuration for the default topic creation group is applied to any topics with names that do not match the `include` list pattern of a custom topic creation group.
+
+ifdef::product[]
+.Prerequisites
+
+* In the Kafka Connect custom resource, the `use-connector-resources` value in `metadata.annotations` specifies that the cluster Operator uses KafkaConnector custom resources to configure connectors in the cluster.
+  For example:
++
+[source,yaml]
+----
+ ...
+    metadata:
+      name: my-connect-cluster
+      annotations: strimzi.io/use-connector-resources: "true"
+ ...
+----
+
+endif::product[]
 
 .Procedure
 
+ifdef::community[]
 * To define properties for the `topic.creation.default` group, add them to the connector configuration JSON, as shown in the following example:
 +
 [source,options="nowrap",json]
@@ -198,6 +220,32 @@ The configuration for the default topic creation group is applied to any topics 
      ...
 }
 ----
+endif::community[]
+
+ifdef::product[]
+
+* To define properties for the `topic.creation.default` group, add them to `spec.config` in the connector custom resource, as shown in the following example:
++
+[source,yaml]
+----
+apiVersion: kafka.strimzi.io/v1beta1
+kind: KafkaConnector
+metadata:
+  name: inventory-connector
+  labels:
+    strimzi.io/cluster: my-connect-cluster
+spec:
+...
+
+   config:
+...
+     topic.creation.default.replication.factor: 3  //<1>
+     topic.creation.default.partitions: 10  //<2>
+     topic.creation.default.cleanup.policy: compact  //<3>
+     topic.creation.default.compression.type: lz4  //<4>
+...
+----
+endif::product[]
 +
 You can include any {link-kafka-docs}/#topicconfigs[Kafka topic-level configuration property] in the configuration for the `default` group.
 
@@ -246,7 +294,7 @@ If the configuration for a custom topic group leaves other properties undefined,
 You can define multiple custom topic groups, each with its own configuration.
 
 .Procedure
-
+ifdef::community[]
 * To define a custom topic group, add a `topic.creation._<group_name>_.include` property to the connector JSON, and
 list the properties for the custom group after the group name.
 +
@@ -259,6 +307,7 @@ The following example shows sample configurations for the `inventory` and `appli
 
     //<1>
     "topic.creation.inventory.include": "dbserver1\\.inventory\\.*",  //<2>
+    "topic.creation.inventory.replication.factor": 3,
     "topic.creation.inventory.partitions": 20,
     "topic.creation.inventory.cleanup.policy": "compact",
     "topic.creation.inventory.delete.retention.ms": 7776000000,
@@ -275,6 +324,43 @@ The following example shows sample configurations for the `inventory` and `appli
      ...
 }
 ----
+endif::community[]
+ifdef::product[]
+* To define a custom topic group, add a `topic.creation._<group_name>_.include` property to `spec.config` in the connector custom resource, followed
+by the configuration properties that you want to apply to topics in the custom group.
++
+The following example shows an excerpt of a custom resource that defines the custom topic creation groups `inventory` and `applicationlogs`:
++
+[source,yaml]
+----
+apiVersion: kafka.strimzi.io/v1beta1
+kind: KafkaConnector
+metadata:
+  name: inventory-connector
+...
+spec:
+...
+
+   config:
+... //<1>
+     topic.creation.inventory.include: "dbserver1\\.inventory\\.*"  //<2>
+     "topic.creation.inventory.replication.factor": 3
+     topic.creation.inventory.partitions: 20
+     topic.creation.inventory.cleanup.policy: compact
+     topic.creation.inventory.delete.retention.ms: 7776000000
+
+    //<3>
+    topic.creation.applicationlogs.include: dbserver1\\.logs\\.applog-.* //<4>
+    topic.creation.applicationlogs.exclude": dbserver1\\.logs\\.applog-old-.*  //<5>
+    topic.creation.applicationlogs.replication.factor: 1
+    topic.creation.applicationlogs.partitions: 20
+    topic.creation.applicationlogs.cleanup.policy: delete
+    topic.creation.applicationlogs.retention.ms: 7776000000
+    topic.creation.applicationlogs.compression.type: lz4
+...
+...
+----
+endif::product[]
 
 .Connector configuration for custom `inventory` and `applicationlogs` topic creation groups
 [cols="1,9",options="header"]
@@ -307,7 +393,7 @@ further restricted by the that `exclude` property.
 |`topic.creation.applicationlogs.exclude` defines a regular expression to match all topics that start
 with `dbserver1.logs.applog-old-`. The configuration that is defined for the `applicationlogs` group is
 applied only to topics with name that do *not* match the given regular expression. Because an
-`include` property is also definedfor this group, the configuration of the `applicationlogs` group is applied only to topics
+`include` property is also defined for this group, the configuration of the `applicationlogs` group is applied only to topics
 with names that match the specified `include` regular expressions *and* that do _not_ match the specified `exclude` regular
 expressions.
 |===
@@ -321,7 +407,7 @@ expressions.
 After you specify the configuration for any custom topic creation groups, register the groups.
 
 .Procedure
-
+ifdef::community[]
 * Register custom groups by adding the `topic.creation.groups` property to the connector JSON, and specifying a comma-separated list of groups.
 +
 The following example registers the custom topic creation groups `inventory` and `applicationlogs`:
@@ -333,15 +419,40 @@ The following example registers the custom topic creation groups `inventory` and
 
     "topic.creation.groups": "inventory,applicationlogs",
 
-     ...
+    ...
 }
 ----
+endif::community[]
+
+ifdef::product[]
+* Register custom groups by adding the `topic.creation.groups` property to the connector custom resource, and specifying a comma-separated list of custom topic creation groups.
++
+The following excerpt from a connector custom resource registers the custom topic creation groups `inventory` and `applicationlogs`:
++
+[source,yaml]
+----
+apiVersion: kafka.strimzi.io/v1beta1
+kind: KafkaConnector
+metadata:
+  name: inventory-connector
+...
+spec:
+...
+
+   config:
+     topic.creation.groups: inventory,applicationlogs
+
+...
+----
+endif::product[]
 
 .Completed configuration
-The following example shows a completed connector JSON configuration that includes the configuration for a `default` topic group,
+The following example shows a completed configuration that includes the configuration for a `default` topic group,
 along with the configurations for an `inventory` and an `applicationlogs` custom topic creation group:
 
 .Example: Configuration for a default topic creation group and two custom groups
+ifdef::community[]
+
 [source,options="nowrap",json]
 ----
 {
@@ -366,7 +477,41 @@ along with the configurations for an `inventory` and an `applicationlogs` custom
     "topic.creation.applicationlogs.compression.type": "lz4"
 }
 ----
+endif::community[]
 
+ifdef::product[]
+[source,yaml]
+----
+apiVersion: kafka.strimzi.io/v1beta1
+kind: KafkaConnector
+metadata:
+  name: inventory-connector
+...
+spec:
+...
+
+   config:
+...
+    topic.creation.default.replication.factor: 3,
+    topic.creation.default.partitions: 10,
+    topic.creation.default.cleanup.policy: compact
+    topic.creation.default.compression.type": lz4
+    topic.creation.groups: inventory,applicationlogs
+    topic.creation.inventory.include: dbserver1\\.inventory\\.*
+    topic.creation.inventory.replication.factor: 3
+    topic.creation.inventory.partitions: 20
+    topic.creation.inventory.cleanup.policy: compact
+    topic.creation.inventory.delete.retention.ms: 7776000000
+    topic.creation.applicationlogs.include: dbserver1\\.logs\\.applog-.*
+    topic.creation.applicationlogs.exclude": dbserver1\\.logs\\.applog-old-.*
+    topic.creation.applicationlogs.replication.factor: 1
+    topic.creation.applicationlogs.partitions: 20
+    topic.creation.applicationlogs.cleanup.policy: delete
+    topic.creation.applicationlogs.retention.ms: 7776000000
+    topic.creation.applicationlogs.compression.type: lz4
+...
+----
+endif::product[]
 ifdef::community[]
 == Additional resources
 
