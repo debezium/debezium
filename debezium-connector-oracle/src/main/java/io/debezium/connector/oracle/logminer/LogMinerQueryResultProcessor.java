@@ -198,7 +198,13 @@ class LogMinerQueryResultProcessor {
                         break;
                 }
 
-                final LogMinerDmlEntry dmlEntry = parse(redoSql, schema, tableId, txId);
+                final Table table = schema.tableFor(tableId);
+                if (table == null) {
+                    LogMinerHelper.logWarn(transactionalBufferMetrics, "DML for table '{}' that is not known to this connector, skipping.", tableId);
+                    continue;
+                }
+
+                final LogMinerDmlEntry dmlEntry = parse(redoSql, table, txId);
                 dmlEntry.setObjectOwner(segOwner);
                 dmlEntry.setSourceTime(changeTime);
                 dmlEntry.setTransactionId(txId);
@@ -218,11 +224,10 @@ class LogMinerQueryResultProcessor {
                         if (counter == 0) {
                             offsetContext.setCommitScn(commitScn);
                         }
-                        Table table = schema.tableFor(tableId);
                         LOGGER.trace("Processing DML event {} scn {}", dmlEntry.toString(), scn);
 
                         dispatcher.dispatchDataChangeEvent(tableId,
-                                new LogMinerChangeRecordEmitter(offsetContext, dmlEntry, table, clock));
+                                new LogMinerChangeRecordEmitter(offsetContext, dmlEntry, schema.tableFor(tableId), clock));
                     });
 
                 }
@@ -280,11 +285,11 @@ class LogMinerQueryResultProcessor {
         }
     }
 
-    private LogMinerDmlEntry parse(String redoSql, OracleDatabaseSchema schema, TableId tableId, String txId) {
+    private LogMinerDmlEntry parse(String redoSql, Table table, String txId) {
         LogMinerDmlEntry dmlEntry;
         try {
             Instant parseStart = Instant.now();
-            dmlEntry = dmlParser.parse(redoSql, schema.getTables(), tableId, txId);
+            dmlEntry = dmlParser.parse(redoSql, table, txId);
             metrics.addCurrentParseTime(Duration.between(parseStart, Instant.now()));
         }
         catch (DmlParserException e) {
