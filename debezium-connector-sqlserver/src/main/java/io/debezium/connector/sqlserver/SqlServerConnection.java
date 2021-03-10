@@ -51,7 +51,8 @@ public class SqlServerConnection extends JdbcConnection {
     public static final String SERVER_TIMEZONE_PROP_NAME = "server.timezone";
     public static final String INSTANCE_NAME = "instance";
 
-    private static final String GET_DATABASE_NAME = "SELECT db_name()";
+    private static final String GET_DATABASE_NAME = "SELECT name FROM sys.databases WHERE name=?";
+    private static final String TEST_CONNECTION = "SELECT NULL";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SqlServerConnection.class);
 
@@ -488,14 +489,25 @@ public class SqlServerConnection extends JdbcConnection {
         return serverTimezoneConfig == null ? ZoneId.of("UTC") : ZoneId.of(serverTimezoneConfig, ZoneId.SHORT_IDS);
     }
 
-    public String retrieveRealDatabaseName() {
+    public String retrieveRealDatabaseName(String databaseName) {
         try {
-            return queryAndMap(
-                    GET_DATABASE_NAME,
-                    singleResultMapper(rs -> rs.getString(1), "Could not retrieve database name"));
+            return prepareQueryAndMap(GET_DATABASE_NAME,
+                    ps -> ps.setString(1, databaseName),
+                    singleResultMapper(rs -> rs.getString(1), "Could not retrieve exactly one database name"));
         }
         catch (SQLException e) {
             throw new RuntimeException("Couldn't obtain database name", e);
+        }
+    }
+
+    public void test() {
+        try {
+            queryAndMap(
+                    TEST_CONNECTION,
+                    singleResultMapper(rs -> "OK", "Could not perform SELECT"));
+        }
+        catch (SQLException e) {
+            throw new RuntimeException("Connection failed", e);
         }
     }
 
