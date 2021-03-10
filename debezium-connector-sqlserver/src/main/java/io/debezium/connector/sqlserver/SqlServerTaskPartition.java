@@ -11,10 +11,14 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import io.debezium.config.Configuration;
 import io.debezium.connector.common.TaskPartition;
 
 public class SqlServerTaskPartition implements TaskPartition {
+    private static final Logger LOGGER = LoggerFactory.getLogger(SqlServerTaskPartition.class);
     private static final String SERVER_PARTITION_KEY = "server";
     private static final String DATABASE_PARTITION_KEY = "database";
 
@@ -58,8 +62,17 @@ public class SqlServerTaskPartition implements TaskPartition {
             String[] databaseNames = { connectorConfig.getDatabaseName() };
 
             return Arrays.stream(databaseNames)
-                    .map(databaseName -> connection.retrieveRealDatabaseName())
-                    .map(databaseName -> new SqlServerTaskPartition(serverName, databaseName))
+                    .map(databaseName -> {
+                        try {
+                            return connection.retrieveRealDatabaseName(databaseName);
+                        }
+                        catch (RuntimeException e) {
+                            LOGGER.warn("Couldn't obtain real name for database {}", databaseName);
+                            return "";
+                        }
+                    })
+                    .filter(realDatabaseName -> !realDatabaseName.isEmpty())
+                    .map(realDatabaseName -> new SqlServerTaskPartition(serverName, realDatabaseName))
                     .collect(Collectors.toList());
         }
     }
