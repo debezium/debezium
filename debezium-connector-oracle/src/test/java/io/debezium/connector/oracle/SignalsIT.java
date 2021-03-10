@@ -26,7 +26,7 @@ import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.util.Testing;
 
 /**
- * Integration test to check transaction metadata.
+ * Integration test for signaling schema changes.
  *
  * @author Jiri Pechanec
  */
