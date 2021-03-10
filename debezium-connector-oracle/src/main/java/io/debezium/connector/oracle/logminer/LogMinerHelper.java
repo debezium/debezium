@@ -543,17 +543,8 @@ public class LogMinerHelper {
     }
 
     /**
-     * get size of online REDO groups
-     * @param connection connection
-     * @return size
-     */
-    private static int getRedoLogGroupSize(OracleConnection connection) throws SQLException {
-        return connection.queryAndMap("SELECT COUNT(DISTINCT GROUP#) FROM V$LOG", (rs) -> rs.getInt(1));
-    }
-
-    /**
      * This method returns all online log files, starting from one which contains offset SCN and ending with one containing largest SCN
-     * 18446744073709551615 on Ora 19c is the max value of the nextScn in the current redo todo replace all Long with BigInteger for SCN
+     * 18446744073709551615 on Ora 19c is the max value of the nextScn in the current redo
      */
     public static Map<String, Scn> getOnlineLogFilesForOffsetScn(OracleConnection connection, Scn offsetScn) throws SQLException {
         LOGGER.trace("Getting online redo logs for offset scn {}", offsetScn);
