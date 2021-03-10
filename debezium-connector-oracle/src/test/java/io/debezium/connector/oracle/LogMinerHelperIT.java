@@ -27,6 +27,7 @@ import org.junit.rules.TestRule;
 
 import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
+import io.debezium.connector.oracle.logminer.LogFile;
 import io.debezium.connector.oracle.logminer.LogMinerHelper;
 import io.debezium.connector.oracle.logminer.Scn;
 import io.debezium.connector.oracle.logminer.SqlUtils;
@@ -80,7 +81,7 @@ public class LogMinerHelperIT extends AbstractConnectorTest {
         // case 2: oldest scn = oldest in not cleared archive
         List<Scn> oneDayArchivedNextScn = getOneDayArchivedLogNextScn(conn);
         Scn oldestArchivedScn = getOldestArchivedScn(oneDayArchivedNextScn);
-        Map<String, Scn> archivedLogsForMining = LogMinerHelper.getArchivedLogFilesForOffsetScn(conn, oldestArchivedScn, Duration.ofHours(0L));
+        List<LogFile> archivedLogsForMining = LogMinerHelper.getArchivedLogFilesForOffsetScn(conn, oldestArchivedScn, Duration.ofHours(0L));
         assertThat(archivedLogsForMining.size() == (oneDayArchivedNextScn.size() - 1)).isTrue();
 
         archivedRedoFiles = LogMinerHelper.getMap(conn, SqlUtils.archiveLogsQuery(oldestArchivedScn.subtract(Scn.valueOf(1L)), Duration.ofHours(0L)), "-1");
@@ -94,10 +95,16 @@ public class LogMinerHelperIT extends AbstractConnectorTest {
         LogMinerHelper.setRedoLogFilesForMining(conn, oldestArchivedScn, Duration.ofHours(0L));
 
         // eliminate duplications
-        Map<String, Scn> onlineLogFilesForMining = LogMinerHelper.getOnlineLogFilesForOffsetScn(conn, oldestArchivedScn);
-        Map<String, Scn> archivedLogFilesForMining = LogMinerHelper.getArchivedLogFilesForOffsetScn(conn, oldestArchivedScn, Duration.ofHours(0L));
-        List<String> archivedLogFiles = archivedLogFilesForMining.entrySet().stream()
-                .filter(e -> !onlineLogFilesForMining.values().contains(e.getValue())).map(Map.Entry::getKey).collect(Collectors.toList());
+        List<LogFile> onlineLogFilesForMining = LogMinerHelper.getOnlineLogFilesForOffsetScn(conn, oldestArchivedScn);
+        List<LogFile> archivedLogFilesForMining = LogMinerHelper.getArchivedLogFilesForOffsetScn(conn, oldestArchivedScn, Duration.ofHours(0L));
+        List<String> archivedLogFiles = archivedLogFilesForMining.stream().filter(e -> {
+            for (LogFile log : onlineLogFilesForMining) {
+                if (log.isSameRange(e)) {
+                    return false;
+                }
+            }
+            return true;
+        }).map(LogFile::getFileName).collect(Collectors.toList());
         int archivedLogFilesCount = archivedLogFiles.size();
 
         Map<String, String> redoLogFiles = LogMinerHelper.getMap(conn, SqlUtils.allOnlineLogsQuery(), "-1");
