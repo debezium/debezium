@@ -37,6 +37,7 @@ import io.debezium.jdbc.JdbcConnection;
 import io.debezium.relational.TableId;
 import io.debezium.util.Clock;
 import io.debezium.util.Metronome;
+import io.debezium.util.Strings;
 
 /**
  * This class contains methods to configure and manage LogMiner utility
@@ -45,7 +46,6 @@ public class LogMinerHelper {
 
     private static final String UNKNOWN = "unknown";
     private static final String TOTAL = "TOTAL";
-    private static final String CURRENT = "CURRENT";
     private static final String ALL_COLUMN_LOGGING = "ALL COLUMN LOGGING";
     private static final Logger LOGGER = LoggerFactory.getLogger(LogMinerHelper.class);
 
@@ -476,8 +476,8 @@ public class LogMinerHelper {
 
         removeLogFilesFromMining(connection);
 
-        Map<String, Scn> onlineLogFilesForMining = getOnlineLogFilesForOffsetScn(connection, lastProcessedScn);
-        Map<String, Scn> archivedLogFilesForMining = getArchivedLogFilesForOffsetScn(connection, lastProcessedScn, archiveLogRetention);
+        List<LogFile> onlineLogFilesForMining = getOnlineLogFilesForOffsetScn(connection, lastProcessedScn);
+        List<LogFile> archivedLogFilesForMining = getArchivedLogFilesForOffsetScn(connection, lastProcessedScn, archiveLogRetention);
 
         if (onlineLogFilesForMining.size() + archivedLogFilesForMining.size() == 0) {
             throw new IllegalStateException("None of log files contains offset SCN: " + lastProcessedScn + ", re-snapshot is required.");
@@ -485,17 +485,17 @@ public class LogMinerHelper {
 
         // Deduplicate log files with the same SCn ranges.
         // todo: could this be eliminated by restricting the online log query to those there 'ARCHIVED="NO"'?
-        List<String> logFilesNames = onlineLogFilesForMining.entrySet().stream().map(Map.Entry::getKey).collect(Collectors.toList());
-        for (Map.Entry<String, Scn> archiveEntry : archivedLogFilesForMining.entrySet()) {
+        List<String> logFilesNames = onlineLogFilesForMining.stream().map(LogFile::getFileName).collect(Collectors.toList());
+        for (LogFile archiveLog : archivedLogFilesForMining) {
             boolean found = false;
-            for (Map.Entry<String, Scn> redoEntry : onlineLogFilesForMining.entrySet()) {
-                if (redoEntry.getValue().equals(archiveEntry.getValue())) {
+            for (LogFile redoLog : onlineLogFilesForMining) {
+                if (redoLog.isSameRange(archiveLog)) {
                     found = true;
                     break;
                 }
             }
             if (!found) {
-                logFilesNames.add(archiveEntry.getKey());
+                logFilesNames.add(archiveLog.getFileName());
             }
         }
 
@@ -546,21 +546,21 @@ public class LogMinerHelper {
      * This method returns all online log files, starting from one which contains offset SCN and ending with one containing largest SCN
      * 18446744073709551615 on Ora 19c is the max value of the nextScn in the current redo
      */
-    public static Map<String, Scn> getOnlineLogFilesForOffsetScn(OracleConnection connection, Scn offsetScn) throws SQLException {
+    public static List<LogFile> getOnlineLogFilesForOffsetScn(OracleConnection connection, Scn offsetScn) throws SQLException {
         LOGGER.trace("Getting online redo logs for offset scn {}", offsetScn);
-        Map<String, Scn> redoLogFiles = new LinkedHashMap<>();
+        List<LogFile> redoLogFiles = new ArrayList<>();
 
         try (PreparedStatement s = connection.connection(false).prepareStatement(SqlUtils.allOnlineLogsQuery())) {
             try (ResultSet rs = s.executeQuery()) {
                 while (rs.next()) {
                     String fileName = rs.getString(1);
-                    String nextChangeNumber = rs.getString(2);
-                    String firstChangeNumber = rs.getString(4);
+                    Scn nextChangeNumber = getScnFromString(rs.getString(2));
+                    Scn firstChangeNumber = getScnFromString(rs.getString(4));
                     String status = rs.getString(5);
-                    boolean current = CURRENT.equalsIgnoreCase(status);
-                    if (current || Scn.valueOf(nextChangeNumber).compareTo(offsetScn) >= 0) {
+                    LogFile logFile = new LogFile(fileName, firstChangeNumber, nextChangeNumber, status);
+                    if (logFile.isCurrent() || logFile.getNextScn().compareTo(offsetScn) >= 0) {
                         LOGGER.trace("Online redo log {} with SCN range {} to {} ({}) to be added.", fileName, firstChangeNumber, nextChangeNumber, status);
-                        redoLogFiles.put(fileName, current ? Scn.MAX : Scn.valueOf(rs.getString(2)));
+                        redoLogFiles.add(logFile);
                     }
                     else {
                         LOGGER.trace("Online redo log {} with SCN range {} to {} ({}) to be excluded.", fileName, firstChangeNumber, nextChangeNumber, status);
@@ -569,6 +569,13 @@ public class LogMinerHelper {
             }
         }
         return redoLogFiles;
+    }
+
+    private static Scn getScnFromString(String value) {
+        if (Strings.isNullOrEmpty(value)) {
+            return Scn.MAX;
+        }
+        return Scn.valueOf(value);
     }
 
     /**
@@ -654,11 +661,11 @@ public class LogMinerHelper {
      * @param connection      connection
      * @param offsetScn       offset scn
      * @param archiveLogRetention duration that archive logs will be mined
-     * @return                Map of archived files
+     * @return                list of archive logs
      * @throws SQLException   if something happens
      */
-    public static Map<String, Scn> getArchivedLogFilesForOffsetScn(OracleConnection connection, Scn offsetScn, Duration archiveLogRetention) throws SQLException {
-        final Map<String, Scn> archiveLogFiles = new LinkedHashMap<>();
+    public static List<LogFile> getArchivedLogFilesForOffsetScn(OracleConnection connection, Scn offsetScn, Duration archiveLogRetention) throws SQLException {
+        final List<LogFile> archiveLogFiles = new ArrayList<>();
         try (PreparedStatement s = connection.connection(false).prepareStatement(SqlUtils.archiveLogsQuery(offsetScn, archiveLogRetention))) {
             try (ResultSet rs = s.executeQuery()) {
                 while (rs.next()) {
@@ -668,7 +675,7 @@ public class LogMinerHelper {
                     if (LOGGER.isTraceEnabled()) {
                         LOGGER.trace("Archive log {} with SCN range {} to {} to be added.", fileName, firstChangeNumber, nextChangeNumber);
                     }
-                    archiveLogFiles.put(fileName, nextChangeNumber);
+                    archiveLogFiles.add(new LogFile(fileName, firstChangeNumber, nextChangeNumber));
                 }
             }
         }

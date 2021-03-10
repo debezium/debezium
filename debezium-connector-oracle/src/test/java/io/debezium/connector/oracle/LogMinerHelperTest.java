@@ -14,12 +14,14 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.time.Duration;
-import java.util.Map;
+import java.util.List;
+import java.util.Optional;
 
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 
+import io.debezium.connector.oracle.logminer.LogFile;
 import io.debezium.connector.oracle.logminer.LogMinerHelper;
 import io.debezium.connector.oracle.logminer.Scn;
 
@@ -57,10 +59,10 @@ public class LogMinerHelperTest {
                 new String[]{ "logfile2", "103700", "12", "104000", "ACTIVE" }
         };
 
-        Map<String, Scn> onlineLogs = LogMinerHelper.getOnlineLogFilesForOffsetScn(connection, Scn.valueOf(10L));
+        List<LogFile> onlineLogs = LogMinerHelper.getOnlineLogFilesForOffsetScn(connection, Scn.valueOf(10L));
         assertEquals(onlineLogs.size(), 2);
-        assertEquals(onlineLogs.get("logfile1"), Scn.valueOf(103400L));
-        assertEquals(onlineLogs.get("logfile2"), Scn.valueOf(103700L));
+        assertEquals(getLogFileNextScnByName(onlineLogs, "logfile1"), Scn.valueOf(103400L));
+        assertEquals(getLogFileNextScnByName(onlineLogs, "logfile2"), Scn.valueOf(103700L));
     }
 
     @Test
@@ -72,9 +74,9 @@ public class LogMinerHelperTest {
                 new String[]{ "logfile3", "500", "13", "103100", "ACTIVE" },
         };
 
-        Map<String, Scn> onlineLogs = LogMinerHelper.getOnlineLogFilesForOffsetScn(connection, Scn.valueOf(600L));
+        List<LogFile> onlineLogs = LogMinerHelper.getOnlineLogFilesForOffsetScn(connection, Scn.valueOf(600L));
         assertEquals(onlineLogs.size(), 2);
-        assertNull(onlineLogs.get("logfile3"));
+        assertNull(getLogFileNextScnByName(onlineLogs, "logfile3"));
     }
 
     @Test
@@ -86,9 +88,9 @@ public class LogMinerHelperTest {
                 new String[]{ "logfile3", null, "13", "103100", "CURRENT" },
         };
 
-        Map<String, Scn> onlineLogs = LogMinerHelper.getOnlineLogFilesForOffsetScn(connection, Scn.valueOf(600L));
+        List<LogFile> onlineLogs = LogMinerHelper.getOnlineLogFilesForOffsetScn(connection, Scn.valueOf(600L));
         assertEquals(onlineLogs.size(), 3);
-        assertEquals(onlineLogs.get("logfile3"), Scn.MAX);
+        assertEquals(getLogFileNextScnByName(onlineLogs, "logfile3"), Scn.MAX);
     }
 
     @Test
@@ -100,9 +102,9 @@ public class LogMinerHelperTest {
                 new String[]{ "logfile3", "18446744073709551615", "13", "104300", "CURRENT" },
         };
 
-        Map<String, Scn> onlineLogs = LogMinerHelper.getOnlineLogFilesForOffsetScn(connection, Scn.valueOf(600L));
+        List<LogFile> onlineLogs = LogMinerHelper.getOnlineLogFilesForOffsetScn(connection, Scn.valueOf(600L));
         assertEquals(onlineLogs.size(), 3);
-        assertEquals(onlineLogs.get("logfile3"), Scn.MAX);
+        assertEquals(getLogFileNextScnByName(onlineLogs, "logfile3"), Scn.MAX);
     }
 
     @Test
@@ -116,9 +118,9 @@ public class LogMinerHelperTest {
                 new String[]{ "logfile3", scnLonger, "13", "104300", "ACTIVE" },
         };
 
-        Map<String, Scn> onlineLogs = LogMinerHelper.getOnlineLogFilesForOffsetScn(connection, Scn.valueOf(600L));
+        List<LogFile> onlineLogs = LogMinerHelper.getOnlineLogFilesForOffsetScn(connection, Scn.valueOf(600L));
         assertEquals(onlineLogs.size(), 3);
-        assertEquals(onlineLogs.get("logfile3"), Scn.valueOf(scnLonger));
+        assertEquals(getLogFileNextScnByName(onlineLogs, "logfile3"), Scn.valueOf(scnLonger));
     }
 
     @Test
@@ -129,10 +131,10 @@ public class LogMinerHelperTest {
                 new String[]{ "logfile2", "103700", "12", "ACTIVE" }
         };
 
-        Map<String, Scn> onlineLogs = LogMinerHelper.getArchivedLogFilesForOffsetScn(connection, Scn.valueOf(500L), Duration.ofDays(60));
+        List<LogFile> onlineLogs = LogMinerHelper.getArchivedLogFilesForOffsetScn(connection, Scn.valueOf(500L), Duration.ofDays(60));
         assertEquals(onlineLogs.size(), 2);
-        assertEquals(onlineLogs.get("logfile1"), Scn.valueOf(103400L));
-        assertEquals(onlineLogs.get("logfile2"), Scn.valueOf(103700L));
+        assertEquals(getLogFileNextScnByName(onlineLogs, "logfile1"), Scn.valueOf(103400L));
+        assertEquals(getLogFileNextScnByName(onlineLogs, "logfile2"), Scn.valueOf(103700L));
     }
 
     // Following are the same set of tests used for online logs but on archived logs
@@ -146,9 +148,9 @@ public class LogMinerHelperTest {
                 // new String[]{ "logfile3", "500", "13" },
         };
 
-        Map<String, Scn> onlineLogs = LogMinerHelper.getArchivedLogFilesForOffsetScn(connection, Scn.valueOf(600L), Duration.ofDays(60));
+        List<LogFile> onlineLogs = LogMinerHelper.getArchivedLogFilesForOffsetScn(connection, Scn.valueOf(600L), Duration.ofDays(60));
         assertEquals(onlineLogs.size(), 2);
-        assertNull(onlineLogs.get("logfile3"));
+        assertNull(getLogFileNextScnByName(onlineLogs, "logfile3"));
     }
 
     @Test
@@ -160,9 +162,9 @@ public class LogMinerHelperTest {
                 new String[]{ "logfile3", null, "13", "104300" },
         };
 
-        Map<String, Scn> onlineLogs = LogMinerHelper.getArchivedLogFilesForOffsetScn(connection, Scn.valueOf(500L), Duration.ofDays(60));
+        List<LogFile> onlineLogs = LogMinerHelper.getArchivedLogFilesForOffsetScn(connection, Scn.valueOf(500L), Duration.ofDays(60));
         assertEquals(onlineLogs.size(), 3);
-        assertEquals(onlineLogs.get("logfile3"), Scn.MAX);
+        assertEquals(getLogFileNextScnByName(onlineLogs, "logfile3"), Scn.MAX);
     }
 
     @Test
@@ -176,8 +178,16 @@ public class LogMinerHelperTest {
                 new String[]{ "logfile3", scnLonger, "13" },
         };
 
-        Map<String, Scn> onlineLogs = LogMinerHelper.getArchivedLogFilesForOffsetScn(connection, Scn.valueOf(500L), Duration.ofDays(60));
+        List<LogFile> onlineLogs = LogMinerHelper.getArchivedLogFilesForOffsetScn(connection, Scn.valueOf(500L), Duration.ofDays(60));
         assertEquals(onlineLogs.size(), 3);
-        assertEquals(onlineLogs.get("logfile3"), Scn.valueOf(scnLonger));
+        assertEquals(getLogFileNextScnByName(onlineLogs, "logfile3"), Scn.valueOf(scnLonger));
+    }
+
+    private static Scn getLogFileNextScnByName(List<LogFile> logs, String name) {
+        Optional<LogFile> file = logs.stream().filter(l -> l.getFileName().equals(name)).findFirst();
+        if (file.isPresent()) {
+            return file.get().getNextScn();
+        }
+        return null;
     }
 }
