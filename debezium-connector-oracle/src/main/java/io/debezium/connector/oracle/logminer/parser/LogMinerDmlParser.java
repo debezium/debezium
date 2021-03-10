@@ -7,7 +7,9 @@ package io.debezium.connector.oracle.logminer.parser;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import io.debezium.DebeziumException;
 import io.debezium.connector.oracle.logminer.valueholder.LogMinerColumnValue;
@@ -15,8 +17,7 @@ import io.debezium.connector.oracle.logminer.valueholder.LogMinerColumnValueImpl
 import io.debezium.connector.oracle.logminer.valueholder.LogMinerDmlEntry;
 import io.debezium.connector.oracle.logminer.valueholder.LogMinerDmlEntryImpl;
 import io.debezium.data.Envelope;
-import io.debezium.relational.TableId;
-import io.debezium.relational.Tables;
+import io.debezium.relational.Table;
 
 /**
  * A simple DML parser implementation specifically for Oracle LogMiner.
@@ -72,15 +73,18 @@ public class LogMinerDmlParser implements DmlParser {
     private static final int WHERE_LENGTH = WHERE.length();
 
     @Override
-    public LogMinerDmlEntry parse(String sql, Tables tables, TableId tableId, String txId) {
+    public LogMinerDmlEntry parse(String sql, Table table, String txId) {
+        if (table == null) {
+            throw new DmlParserException("DML parser requires a non-null table");
+        }
         if (sql != null && sql.length() > 0) {
             switch (sql.charAt(0)) {
                 case 'i':
-                    return parseInsert(sql);
+                    return parseInsert(sql, table);
                 case 'u':
-                    return parseUpdate(sql);
+                    return parseUpdate(sql, table);
                 case 'd':
-                    return parseDelete(sql);
+                    return parseDelete(sql, table);
             }
         }
         throw new DmlParserException("Unknown supported SQL '" + sql + "'");
@@ -90,9 +94,10 @@ public class LogMinerDmlParser implements DmlParser {
      * Parse an {@code INSERT} SQL statement.
      *
      * @param sql the sql statement
+     * @param table the table
      * @return the parsed DML entry record or {@code null} if the SQL was not parsed
      */
-    private LogMinerDmlEntry parseInsert(String sql) {
+    private LogMinerDmlEntry parseInsert(String sql, Table table) {
         try {
             // advance beyond "insert into "
             int index = INSERT_INTO_LENGTH;
@@ -112,9 +117,13 @@ public class LogMinerDmlParser implements DmlParser {
                 throw new DmlParserException("Columns: " + columnNames + ", Values: " + columnValues);
             }
 
-            List<LogMinerColumnValue> newValues = new ArrayList<>(columnNames.size());
-            for (int i = 0; i < columnNames.size(); ++i) {
-                newValues.add(createColumnValue(columnNames.get(i), columnValues.get(i)));
+            final Map<String, String> columnMap = createMap(columnNames, columnValues);
+
+            final List<LogMinerColumnValue> newValues = new ArrayList<>(columnNames.size());
+            for (int i = 0; i < table.columns().size(); ++i) {
+                String columnName = table.columns().get(i).name();
+                String columnValue = columnMap.get(columnName);
+                newValues.add(createColumnValue(columnName, columnValue));
             }
 
             return new LogMinerDmlEntryImpl(Envelope.Operation.CREATE, newValues, Collections.emptyList());
@@ -124,13 +133,22 @@ public class LogMinerDmlParser implements DmlParser {
         }
     }
 
+    private static <K, V> Map<K, V> createMap(List<K> keys, List<V> values) {
+        Map<K, V> result = new LinkedHashMap<>(keys.size());
+        for (int i = 0; i < keys.size(); ++i) {
+            result.put(keys.get(i), values.get(i));
+        }
+        return result;
+    }
+
     /**
      * Parse an {@code UPDATE} SQL statement.
      *
      * @param sql the sql statement
+     * @param table the table
      * @return the parsed DML entry record or {@code null} if the SQL was not parsed
      */
-    private LogMinerDmlEntry parseUpdate(String sql) {
+    private LogMinerDmlEntry parseUpdate(String sql, Table table) {
         try {
             // advance beyond "update "
             int index = UPDATE_LENGTH;
@@ -148,35 +166,43 @@ public class LogMinerDmlParser implements DmlParser {
             List<String> oldColumnValues = new ArrayList<>();
             parseWhereClause(sql, index, oldColumnNames, oldColumnValues);
 
-            List<LogMinerColumnValue> oldValues = new ArrayList<>(oldColumnNames.size());
-            for (int i = 0; i < oldColumnNames.size(); ++i) {
-                LogMinerColumnValue value = new LogMinerColumnValueImpl(oldColumnNames.get(i), 0);
-                value.setColumnData(oldColumnValues.get(i));
-                oldValues.add(value);
+            final Map<String, String> beforeColumnMap = createMap(oldColumnNames, oldColumnValues);
+            final Map<String, String> afterColumnMap = createMap(newColumnNames, newColumnValues);
+
+            // set before
+            final List<LogMinerColumnValue> oldValues;
+            if (!beforeColumnMap.isEmpty()) {
+                oldValues = new ArrayList<>(table.columns().size());
+                for (int i = 0; i < table.columns().size(); ++i) {
+                    String columnName = table.columns().get(i).name();
+                    String columnValue = beforeColumnMap.get(columnName);
+                    oldValues.add(createColumnValue(columnName, columnValue));
+                }
+            }
+            else {
+                oldValues = Collections.emptyList();
             }
 
-            List<LogMinerColumnValue> newValues = new ArrayList<>(newColumnNames.size());
-            if (!oldValues.isEmpty()) {
-                for (LogMinerColumnValue oldValue : oldValues) {
-                    boolean found = false;
-                    for (int j = 0; j < newColumnNames.size(); ++j) {
-                        if (newColumnNames.get(j).equals(oldValue.getColumnName())) {
-                            newValues.add(createColumnValue(newColumnNames.get(j), newColumnValues.get(j)));
-                            found = true;
-                            break;
-                        }
+            // set after
+            List<LogMinerColumnValue> newValues;
+            if (!afterColumnMap.isEmpty()) {
+                newValues = new ArrayList<>(table.columns().size());
+                for (int i = 0; i < table.columns().size(); ++i) {
+                    String columnName = table.columns().get(i).name();
+                    if (afterColumnMap.containsKey(columnName)) {
+                        LogMinerColumnValue value = new LogMinerColumnValueImpl(columnName, 0);
+                        value.setColumnData(afterColumnMap.get(columnName));
+                        newValues.add(value);
                     }
-                    if (!found) {
-                        newValues.add(oldValue);
+                    else {
+                        LogMinerColumnValue value = new LogMinerColumnValueImpl(columnName, 0);
+                        value.setColumnData(beforeColumnMap.get(columnName));
+                        newValues.add(value);
                     }
                 }
             }
             else {
-                for (int i = 0; i < newColumnNames.size(); ++i) {
-                    LogMinerColumnValue value = new LogMinerColumnValueImpl(newColumnNames.get(i), 0);
-                    value.setColumnData(newColumnValues.get(i));
-                    newValues.add(value);
-                }
+                newValues = Collections.emptyList();
             }
 
             return new LogMinerDmlEntryImpl(Envelope.Operation.UPDATE, newValues, oldValues);
@@ -190,9 +216,10 @@ public class LogMinerDmlParser implements DmlParser {
      * Parses a SQL {@code DELETE} statement.
      *
      * @param sql the sql statement
+     * @param table the table
      * @return the parsed DML entry record or {@code null} if the SQL was not parsed
      */
-    private LogMinerDmlEntry parseDelete(String sql) {
+    private LogMinerDmlEntry parseDelete(String sql, Table table) {
         try {
             // advance beyond "delete from "
             int index = DELETE_FROM_LENGTH;
@@ -205,9 +232,19 @@ public class LogMinerDmlParser implements DmlParser {
             List<String> columnValues = new ArrayList<>();
             parseWhereClause(sql, index, columnNames, columnValues);
 
-            List<LogMinerColumnValue> oldValues = new ArrayList<>(columnNames.size());
-            for (int i = 0; i < columnNames.size(); ++i) {
-                oldValues.add(createColumnValue(columnNames.get(i), columnValues.get(i)));
+            final Map<String, String> beforeColumnMap = createMap(columnNames, columnValues);
+
+            List<LogMinerColumnValue> oldValues;
+            if (!beforeColumnMap.isEmpty()) {
+                oldValues = new ArrayList<>(columnNames.size());
+                for (int i = 0; i < table.columns().size(); ++i) {
+                    String columnName = table.columns().get(i).name();
+                    String columnValue = beforeColumnMap.get(columnName);
+                    oldValues.add(createColumnValue(columnName, columnValue));
+                }
+            }
+            else {
+                oldValues = Collections.emptyList();
             }
 
             return new LogMinerDmlEntryImpl(Envelope.Operation.DELETE, Collections.emptyList(), oldValues);

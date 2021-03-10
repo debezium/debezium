@@ -83,7 +83,7 @@ public class ValueHolderTest {
         ddlParser.parse(createStatement, tables);
 
         String dml = "insert into \"" + FULL_TABLE_NAME + "\"  (\"column1\",\"column2\") values ('5','Text');";
-        LogMinerDmlEntry dmlEntryParsed = sqlDmlParser.parse(dml, tables, TABLE_ID, "1");
+        LogMinerDmlEntry dmlEntryParsed = sqlDmlParser.parse(dml, tables.forTable(TABLE_ID), "1");
 
         assertThat(dmlEntryParsed.equals(dmlEntryExpected)).isTrue();
         assertThat(dmlEntryExpected.getCommandType() == Envelope.Operation.CREATE).isTrue();

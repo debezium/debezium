@@ -240,7 +240,13 @@ public class OracleValueConverters extends JdbcValueConverters {
             return ((CHAR) data).stringValue();
         }
         if (data instanceof Clob) {
-            return ((Clob) data).toString();
+            try {
+                Clob clob = (Clob) data;
+                return clob.getSubString(1, (int) clob.length());
+            }
+            catch (SQLException e) {
+                throw new RuntimeException("Couldn't convert value for column " + column.name(), e);
+            }
         }
         if (data instanceof String) {
             String s = (String) data;
