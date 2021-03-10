@@ -1441,6 +1441,44 @@ VALUES ASNCDC.ASNCDCSERVICES('reinit','asncdc');
 
 {link-prefix}:{link-db2-connector}#managing-debezium-db2-connectors[Reference table for {prodname} Db2 management UDFs]
 
+// Type:concept
+// ModuleID: how-the-db2-capture-agent-configuration
+=== How the Db2 capture agent configuration affects latency, server load, and performance
+
+When a database administrator enables change data capture for a source table, the capture agent begins to run.
+The agent reads new change event records from the transaction log and replicates the event records to a capture table.
+Between the time that a change is committed in the source table, and the time that the change appears in the corresponding change table, there is always a small latency interval.
+This latency interval represents a gap between when changes occur in the source table and when they become available for {prodname} to stream to Kafka.
+
+Ideally, for applications that must respond quickly to changes in data, you want to maintain close synchronization between the source and capture tables.
+You might imagine that running the capture agent to continuously process change events as rapidly as possible might result in increased throughput and reduced latency --
+populating change tables with new event records as soon as possible after the events occur, in near real time.
+However, this is not necessarily the case.
+There is a performance penalty to pay in the pursuit of more immediate synchronization.
+Each time that the change agent queries the database for new event records, it increases the CPU load on the database host.
+The additional load on the server can have a negative effect on overall database performance, and potentially reduce transaction efficiency, especially during times of peak database use.
+
+It's important to monitor database metrics so that you know if the database reaches the point where the server can no longer support the capture agent's level of activity.
+If you notice performance problems, there are Db2 capture agent settings that you can modify to help balance the overall CPU load on the database host with a tolerable degree of latency.
+
+.Capture agent tuning parameters
+On Db2, the `IBMSNAP_CAPPARMS` table contains parameters that control the operations of the capture agent.
+Should you experience performance issues on Db2, you can configure the capture process by adjusting the values for these parameters.
+Specifying the exact values to set for these parameters is beyond the scope of this documentation.
+
+There are multiple capture agent parameters in the `IBMSNAP_CAPPARMS` table.
+The following parameters are the most significant for modifying capture agent behavior for use with the {prodname} Db2 connector.
+
+`COMMIT_INTERVAL`:: Specifies the number of seconds that the capture agent waits to commit data to the change data tables.
+A lower value results in the change table receiving a greater number of commits in a shorter time period (lower latency).
+Specify a larger commit interval results in batch processing of the replication workload.
+
+`SLEEP_INTERVAL`:: Specifies the number of seconds that the capture agent waits to start a new commit cycle after it reaches the end of the active transaction log.
+Higher values reduce the number of commit cycles
+
+.Additional resources
+* For more information about capture agent parameters, see the documentation for your Db2 database.
+
 // Type: assembly
 // ModuleID: deploying-debezium-db2-connectors
 // Title: Deploying {prodname} Db2 connectors
