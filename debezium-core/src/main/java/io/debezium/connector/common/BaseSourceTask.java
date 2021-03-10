@@ -302,7 +302,7 @@ public abstract class BaseSourceTask<P extends TaskPartition, O extends OffsetCo
         Map<String, ?> partition = loader.getPartition();
 
         if (lastOffset != null) {
-            OffsetContext offsetContext = loader.load(lastOffset);
+            OffsetContext offsetContext = loader.load(partition, lastOffset);
             LOGGER.info("Found previous offset after restart {}", offsetContext);
             return offsetContext;
         }
@@ -312,7 +312,7 @@ public abstract class BaseSourceTask<P extends TaskPartition, O extends OffsetCo
                 .get(partition);
 
         if (previousOffset != null) {
-            OffsetContext offsetContext = loader.load(previousOffset);
+            OffsetContext offsetContext = loader.load(partition, previousOffset);
             LOGGER.info("Found previous offset {}", offsetContext);
             return offsetContext;
         }

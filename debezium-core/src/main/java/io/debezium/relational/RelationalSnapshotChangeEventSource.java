@@ -86,7 +86,8 @@ public abstract class RelationalSnapshotChangeEventSource<P extends TaskPartitio
     }
 
     @Override
-    public SnapshotResult doExecute(ChangeEventSourceContext context, O previousOffset, SnapshotContext snapshotContext, SnapshottingTask snapshottingTask)
+    public SnapshotResult doExecute(ChangeEventSourceContext context, P partition, O previousOffset,
+                                    SnapshotContext snapshotContext, SnapshottingTask snapshottingTask)
             throws Exception {
         final RelationalSnapshotContext ctx = (RelationalSnapshotContext) snapshotContext;
 
@@ -111,14 +112,14 @@ public abstract class RelationalSnapshotChangeEventSource<P extends TaskPartitio
             LOGGER.info("Snapshot step 3 - Locking captured tables {}", ctx.capturedTables);
 
             if (snapshottingTask.snapshotSchema()) {
-                lockTablesForSchemaSnapshot(context, ctx);
+                lockTablesForSchemaSnapshot(context, partition, ctx);
             }
 
             LOGGER.info("Snapshot step 4 - Determining snapshot offset");
-            determineSnapshotOffset(ctx, previousOffset);
+            determineSnapshotOffset(partition, previousOffset, ctx);
 
             LOGGER.info("Snapshot step 5 - Reading structure of captured tables");
-            readTableStructure(context, ctx, previousOffset);
+            readTableStructure(context, partition, previousOffset, ctx);
 
             if (snapshottingTask.snapshotSchema()) {
                 LOGGER.info("Snapshot step 6 - Persisting schema history");
@@ -134,7 +135,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends TaskPartitio
 
             if (snapshottingTask.snapshotData()) {
                 LOGGER.info("Snapshot step 7 - Snapshotting data");
-                createDataEvents(context, ctx);
+                createDataEvents(context, partition, ctx);
             }
             else {
                 LOGGER.info("Snapshot step 7 - Skipping snapshotting of data");
@@ -221,7 +222,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends TaskPartitio
     /**
      * Locks all tables to be captured, so that no concurrent schema changes can be applied to them.
      */
-    protected abstract void lockTablesForSchemaSnapshot(ChangeEventSourceContext sourceContext, RelationalSnapshotContext snapshotContext) throws Exception;
+    protected abstract void lockTablesForSchemaSnapshot(ChangeEventSourceContext sourceContext, P partition, RelationalSnapshotContext snapshotContext) throws Exception;
 
     /**
      * Determines the current offset (MySQL binlog position, Oracle SCN etc.), storing it into the passed context
@@ -229,13 +230,13 @@ public abstract class RelationalSnapshotChangeEventSource<P extends TaskPartitio
      * completed, a {@link StreamingChangeEventSource} will be set up with this initial position to continue with stream
      * reading from there.
      */
-    protected abstract void determineSnapshotOffset(RelationalSnapshotContext snapshotContext, O previousOffset) throws Exception;
+    protected abstract void determineSnapshotOffset(P partition, O previousOffset, RelationalSnapshotContext snapshotContext) throws Exception;
 
     /**
      * Reads the structure of all the captured tables, writing it to {@link RelationalSnapshotContext#tables}.
      */
-    protected abstract void readTableStructure(ChangeEventSourceContext sourceContext, RelationalSnapshotContext snapshotContext,
-                                               O offsetContext)
+    protected abstract void readTableStructure(ChangeEventSourceContext sourceContext, P partition, O offsetContext,
+                                               RelationalSnapshotContext snapshotContext)
             throws Exception;
 
     /**
@@ -286,7 +287,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends TaskPartitio
      */
     protected abstract SchemaChangeEvent getCreateTableEvent(RelationalSnapshotContext snapshotContext, Table table) throws Exception;
 
-    private void createDataEvents(ChangeEventSourceContext sourceContext, RelationalSnapshotContext snapshotContext) throws Exception {
+    private void createDataEvents(ChangeEventSourceContext sourceContext, P partition, RelationalSnapshotContext snapshotContext) throws Exception {
         SnapshotReceiver snapshotReceiver = dispatcher.getSnapshotChangeEventReceiver();
         tryStartingSnapshot(snapshotContext);
 
@@ -303,7 +304,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends TaskPartitio
 
             LOGGER.debug("Snapshotting table {}", tableId);
 
-            createDataEventsForTable(sourceContext, snapshotContext, snapshotReceiver, snapshotContext.tables.forTable(tableId), tableOrder++, tableCount);
+            createDataEventsForTable(sourceContext, partition, snapshotContext, snapshotReceiver, snapshotContext.tables.forTable(tableId), tableOrder++, tableCount);
         }
 
         releaseDataSnapshotLocks(snapshotContext);
@@ -321,14 +322,14 @@ public abstract class RelationalSnapshotChangeEventSource<P extends TaskPartitio
     /**
      * Dispatches the data change events for the records of a single table.
      */
-    private void createDataEventsForTable(ChangeEventSourceContext sourceContext, RelationalSnapshotContext snapshotContext,
+    private void createDataEventsForTable(ChangeEventSourceContext sourceContext, P partition, RelationalSnapshotContext snapshotContext,
                                           SnapshotReceiver snapshotReceiver, Table table, int tableOrder, int tableCount)
             throws InterruptedException {
 
         long exportStart = clock.currentTimeInMillis();
         LOGGER.info("\t Exporting data from table '{}' ({} of {} tables)", table.id(), tableOrder, tableCount);
 
-        final Optional<String> selectStatement = determineSnapshotSelect(snapshotContext, table.id());
+        final Optional<String> selectStatement = determineSnapshotSelect(partition, snapshotContext, table.id());
         if (!selectStatement.isPresent()) {
             LOGGER.warn("For table '{}' the select statement was not provided, skipping table", table.id());
             snapshotProgressListener.dataCollectionSnapshotCompleted(table.id(), 0);
@@ -418,10 +419,12 @@ public abstract class RelationalSnapshotChangeEventSource<P extends TaskPartitio
      * Returns a valid query string for the specified table, either given by the user via snapshot select overrides or
      * defaulting to a statement provided by the DB-specific change event source.
      *
+     * @param partition
+     * @param snapshotContext
      * @param tableId the table to generate a query for
      * @return a valid query string or empty if table will not be snapshotted
      */
-    private Optional<String> determineSnapshotSelect(RelationalSnapshotContext snapshotContext, TableId tableId) {
+    private Optional<String> determineSnapshotSelect(P partition, RelationalSnapshotContext snapshotContext, TableId tableId) {
         String overriddenSelect = connectorConfig.getSnapshotSelectOverridesByTable().get(tableId);
 
         // try without catalog id, as this might or might not be populated based on the given connector
@@ -429,16 +432,19 @@ public abstract class RelationalSnapshotChangeEventSource<P extends TaskPartitio
             overriddenSelect = connectorConfig.getSnapshotSelectOverridesByTable().get(new TableId(null, tableId.schema(), tableId.table()));
         }
 
-        return overriddenSelect != null ? Optional.of(enhanceOverriddenSelect(snapshotContext, overriddenSelect, tableId)) : getSnapshotSelect(snapshotContext, tableId);
+        return overriddenSelect != null ? Optional.of(enhanceOverriddenSelect(partition, snapshotContext, overriddenSelect, tableId))
+                : getSnapshotSelect(partition, snapshotContext, tableId);
     }
 
     /**
      * This method is overridden for Oracle to implement "as of SCN" predicate
+     * @param partition
      * @param snapshotContext snapshot context, used for getting offset SCN
      * @param overriddenSelect conditional snapshot select
      * @return enhanced select statement. By default it just returns original select statements.
      */
-    protected String enhanceOverriddenSelect(RelationalSnapshotContext snapshotContext, String overriddenSelect, TableId tableId) {
+    protected String enhanceOverriddenSelect(P partition, RelationalSnapshotContext snapshotContext, String overriddenSelect,
+                                             TableId tableId) {
         return overriddenSelect;
     }
 
@@ -449,7 +455,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends TaskPartitio
     // TODO Should it be Statement or similar?
     // TODO Handle override option generically; a problem will be how to handle the dynamic part (Oracle's "... as of
     // scn xyz")
-    protected abstract Optional<String> getSnapshotSelect(RelationalSnapshotContext snapshotContext, TableId tableId);
+    protected abstract Optional<String> getSnapshotSelect(P partition, RelationalSnapshotContext snapshotContext, TableId tableId);
 
     protected Object getColumnValue(ResultSet rs, int columnIndex, Column column, Table table) throws SQLException {
         return getColumnValue(rs, columnIndex, column);

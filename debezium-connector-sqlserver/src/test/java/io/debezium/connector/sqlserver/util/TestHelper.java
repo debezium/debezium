@@ -413,6 +413,7 @@ public class TestHelper {
      */
     public static void waitForCdcRecord(SqlServerConnection connection, String tableName, CdcRecordHandler handler) {
         try {
+            String databaseName = connection.config().getDatabase();
             Awaitility.await("Checking for expected record in CDC table for " + tableName)
                     .atMost(60, TimeUnit.SECONDS)
                     .pollDelay(Duration.ofSeconds(0))
@@ -421,7 +422,7 @@ public class TestHelper {
                             return false;
                         }
 
-                        for (SqlServerChangeTable ct : connection.listOfChangeTables()) {
+                        for (SqlServerChangeTable ct : connection.listOfChangeTables(databaseName)) {
                             final String ctTableName = ct.getChangeTableId().table();
                             if (ctTableName.endsWith("dbo_" + connection.getNameOfChangeTable(tableName))) {
                                 try {
@@ -429,7 +430,7 @@ public class TestHelper {
                                     final Lsn maxLsn = connection.getMaxLsn();
                                     final CdcRecordFoundBlockingMultiResultSetConsumer consumer = new CdcRecordFoundBlockingMultiResultSetConsumer(handler);
                                     SqlServerChangeTable[] tables = Collections.singletonList(ct).toArray(new SqlServerChangeTable[]{});
-                                    connection.getChangesForTables(tables, minLsn, maxLsn, consumer);
+                                    connection.getChangesForTables(tables, minLsn, maxLsn, consumer, databaseName);
                                     return consumer.isFound();
                                 }
                                 catch (Exception e) {
@@ -452,6 +453,7 @@ public class TestHelper {
 
     public static void waitForCdcRecord(SqlServerConnection connection, String tableName, String captureInstanceName, CdcRecordHandler handler) {
         try {
+            String databaseName = connection.config().getDatabase();
             Awaitility.await("Checking for expected record in CDC table for " + tableName)
                     .atMost(30, TimeUnit.SECONDS)
                     .pollDelay(Duration.ofSeconds(0))
@@ -460,7 +462,7 @@ public class TestHelper {
                             return false;
                         }
 
-                        for (SqlServerChangeTable ct : connection.listOfChangeTables()) {
+                        for (SqlServerChangeTable ct : connection.listOfChangeTables(databaseName)) {
                             final String ctTableName = ct.getChangeTableId().table();
                             if (ctTableName.endsWith(connection.getNameOfChangeTable(captureInstanceName))) {
                                 try {
@@ -468,7 +470,7 @@ public class TestHelper {
                                     final Lsn maxLsn = connection.getMaxLsn();
                                     final CdcRecordFoundBlockingMultiResultSetConsumer consumer = new CdcRecordFoundBlockingMultiResultSetConsumer(handler);
                                     SqlServerChangeTable[] tables = Collections.singletonList(ct).toArray(new SqlServerChangeTable[]{});
-                                    connection.getChangesForTables(tables, minLsn, maxLsn, consumer);
+                                    connection.getChangesForTables(tables, minLsn, maxLsn, consumer, databaseName);
                                     return consumer.isFound();
                                 }
                                 catch (Exception e) {

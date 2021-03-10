@@ -45,7 +45,7 @@ public abstract class AbstractSnapshotChangeEventSource<P extends TaskPartition,
     }
 
     @Override
-    public SnapshotResult execute(ChangeEventSourceContext context, O previousOffset, P partition) throws InterruptedException {
+    public SnapshotResult execute(ChangeEventSourceContext context, P partition, O previousOffset) throws InterruptedException {
         SnapshottingTask snapshottingTask = getSnapshottingTask(previousOffset);
         if (snapshottingTask.shouldSkipSnapshot()) {
             LOGGER.debug("Skipping snapshotting");
@@ -56,7 +56,7 @@ public abstract class AbstractSnapshotChangeEventSource<P extends TaskPartition,
 
         final SnapshotContext ctx;
         try {
-            ctx = prepare(context);
+            ctx = prepare(context, partition);
         }
         catch (Exception e) {
             LOGGER.error("Failed to initialize snapshot context.", e);
@@ -67,7 +67,7 @@ public abstract class AbstractSnapshotChangeEventSource<P extends TaskPartition,
 
         try {
             snapshotProgressListener.snapshotStarted();
-            SnapshotResult result = doExecute(context, previousOffset, ctx, snapshottingTask);
+            SnapshotResult result = doExecute(context, partition, previousOffset, ctx, snapshottingTask);
 
             return result;
         }
@@ -133,13 +133,14 @@ public abstract class AbstractSnapshotChangeEventSource<P extends TaskPartition,
      * pending transactions, releasing locks, etc.
      *
      * @param context contextual information for this source's execution
+     * @param partition
      * @param previousOffset
      * @param snapshotContext mutable context information populated throughout the snapshot process
      * @param snapshottingTask immutable information about what tasks should be performed during snapshot
      * @return an indicator to the position at which the snapshot was taken
      */
-    protected abstract SnapshotResult doExecute(ChangeEventSourceContext context, O previousOffset, SnapshotContext snapshotContext,
-                                                SnapshottingTask snapshottingTask)
+    protected abstract SnapshotResult doExecute(ChangeEventSourceContext context, P partition, O previousOffset,
+                                                SnapshotContext snapshotContext, SnapshottingTask snapshottingTask)
             throws Exception;
 
     /**
@@ -150,7 +151,7 @@ public abstract class AbstractSnapshotChangeEventSource<P extends TaskPartition,
     /**
      * Prepares the taking of a snapshot and returns an initial {@link SnapshotContext}.
      */
-    protected abstract SnapshotContext prepare(ChangeEventSourceContext changeEventSourceContext) throws Exception;
+    protected abstract SnapshotContext prepare(ChangeEventSourceContext changeEventSourceContext, P partition) throws Exception;
 
     /**
      * Completes the snapshot, doing any required clean-up (resource disposal etc.).

@@ -196,7 +196,8 @@ public class SqlServerConnectionIT {
 
             SqlServerChangeTable changeTable = new SqlServerChangeTable(new TableId("testDB", "dbo", "table_with_defaults"),
                     null, 0, null, null, capturedColumns);
-            Table table = connection.getTableSchemaFromTable(changeTable);
+            String databaseName = connection.config().getDatabase();
+            Table table = connection.getTableSchemaFromTable(changeTable, databaseName);
 
             assertColumnHasNotDefaultValue(table, "int_no_default_not_null");
             assertColumnHasDefaultValue(table, "int_no_default", null);
@@ -308,6 +309,7 @@ public class SqlServerConnectionIT {
             // insert some data
 
             // and issue a test call to a CDC wrapper function
+            String databaseName = connection.config().getDatabase();
             Awaitility.await()
                     .atMost(5, TimeUnit.SECONDS)
                     .until(() -> connection.getMinLsn("table_with_defaults").isAvailable()); // Need to wait to make sure the min_lsn is available
@@ -345,7 +347,7 @@ public class SqlServerConnectionIT {
 
             SqlServerChangeTable changeTable = new SqlServerChangeTable(new TableId("testDB", "dbo", "table_with_defaults"),
                     null, 0, null, null, capturedColumns);
-            Table table = connection.getTableSchemaFromTable(changeTable);
+            Table table = connection.getTableSchemaFromTable(changeTable, databaseName);
 
             assertColumnHasNotDefaultValue(table, "int_no_default_not_null");
             assertColumnHasDefaultValue(table, "int_no_default", null);

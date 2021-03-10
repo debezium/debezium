@@ -29,7 +29,7 @@ public interface OffsetContext {
     interface Loader<O extends OffsetContext> {
         Map<String, ?> getPartition();
 
-        O load(Map<String, ?> offset);
+        O load(Map<String, ?> partition, Map<String, ?> offset);
     }
 
     Map<String, ?> getPartition();

@@ -55,7 +55,7 @@ public class TaskOffsetContext<P extends TaskPartition, O extends OffsetContext>
                 Map<String, Object> sourceOffset = sourceOffsets.get(sourcePartition);
                 O taskOffset = null;
                 if (sourceOffset != null) {
-                    taskOffset = offsetLoader.load(sourceOffset);
+                    taskOffset = offsetLoader.load(taskPartition.getSourcePartition(), sourceOffset);
                 }
                 taskOffsets.put(taskPartition, taskOffset);
             });
