@@ -6,8 +6,10 @@
 package io.debezium.connector.sqlserver;
 
 import static org.fest.assertions.Assertions.assertThat;
+import static org.junit.Assert.assertThrows;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.apache.kafka.common.config.Config;
@@ -32,6 +34,7 @@ public class SqlServerConnectorTest {
         config.put(SqlServerConnectorConfig.HOSTNAME.name(), "narnia");
         config.put(SqlServerConnectorConfig.PORT.name(), "4321");
         config.put(SqlServerConnectorConfig.DATABASE_NAME.name(), "sqlserver");
+        config.put(SqlServerConnectorConfig.DATABASE_NAMES.name(), "sqlserver");
         config.put(SqlServerConnectorConfig.USER.name(), "pikachu");
         config.put(SqlServerConnectorConfig.PASSWORD.name(), "raichu");
 
@@ -41,6 +44,62 @@ public class SqlServerConnectorTest {
                 assertThat(value.errorMessages().get(0).startsWith("Unable to connect:"));
             }
         }
+    }
+
+    @Test
+    public void shouldReturnSingleTaskConfig() {
+        Map<String, String> config = new HashMap<>();
+        config.put(SqlServerConnectorConfig.HOSTNAME.name(), "narnia");
+        config.put(SqlServerConnectorConfig.PORT.name(), "4321");
+        config.put(SqlServerConnectorConfig.DATABASE_NAME.name(), "database1");
+        config.put(SqlServerConnectorConfig.DATABASE_NAMES.name(), "database1,database2");
+        config.put(SqlServerConnectorConfig.USER.name(), "pikachu");
+        config.put(SqlServerConnectorConfig.PASSWORD.name(), "raichu");
+
+        Config validated = connector.validate(config);
+        connector.start(config);
+        List<Map<String, String>> taskConfigs = connector.taskConfigs(1);
+        assertThat(taskConfigs.size()).isEqualTo(1);
+        assertThat(taskConfigs.get(0).get(SqlServerConnectorConfig.DATABASE_NAME.name())).isEqualTo("database1");
+        assertThat(taskConfigs.get(0).get(SqlServerConnectorConfig.DATABASE_NAMES.name())).isEqualTo("database1,database2");
+    }
+
+    @Test
+    public void shouldReturnTwoTaskConfigs() {
+        Map<String, String> config = new HashMap<>();
+        config.put(SqlServerConnectorConfig.HOSTNAME.name(), "narnia");
+        config.put(SqlServerConnectorConfig.PORT.name(), "4321");
+        config.put(SqlServerConnectorConfig.DATABASE_NAME.name(), "database1");
+        config.put(SqlServerConnectorConfig.DATABASE_NAMES.name(), "database1,database2");
+        config.put(SqlServerConnectorConfig.USER.name(), "pikachu");
+        config.put(SqlServerConnectorConfig.PASSWORD.name(), "raichu");
+
+        Config validated = connector.validate(config);
+        connector.start(config);
+        List<Map<String, String>> taskConfigs = connector.taskConfigs(2);
+        assertThat(taskConfigs.size()).isEqualTo(2);
+        assertThat(taskConfigs.get(0).get(SqlServerConnectorConfig.DATABASE_NAME.name())).isEqualTo("database1");
+        assertThat(taskConfigs.get(0).get(SqlServerConnectorConfig.DATABASE_NAMES.name())).isEqualTo("database1");
+        assertThat(taskConfigs.get(1).get(SqlServerConnectorConfig.DATABASE_NAME.name())).isEqualTo("database2");
+        assertThat(taskConfigs.get(1).get(SqlServerConnectorConfig.DATABASE_NAMES.name())).isEqualTo("database2");
+    }
+
+    @Test
+    public void shouldThrowInvalidArgumentException() {
+        Map<String, String> config = new HashMap<>();
+        config.put(SqlServerConnectorConfig.HOSTNAME.name(), "narnia");
+        config.put(SqlServerConnectorConfig.PORT.name(), "4321");
+        config.put(SqlServerConnectorConfig.DATABASE_NAME.name(), "database1");
+        config.put(SqlServerConnectorConfig.USER.name(), "pikachu");
+        config.put(SqlServerConnectorConfig.PASSWORD.name(), "raichu");
+        config.put(SqlServerConnectorConfig.DATABASE_NAMES.name(), ",");
+
+        Config validated = connector.validate(config);
+        connector.start(config);
+
+        Exception exception = assertThrows(IllegalArgumentException.class, () -> {
+            connector.taskConfigs(1);
+        });
     }
 
     @Test

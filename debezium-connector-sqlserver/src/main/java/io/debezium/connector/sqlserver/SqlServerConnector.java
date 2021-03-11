@@ -5,6 +5,11 @@
  */
 package io.debezium.connector.sqlserver;
 
+import static io.debezium.connector.sqlserver.SqlServerConnectorConfig.DATABASE_NAMES;
+import static io.debezium.relational.RelationalDatabaseConnectorConfig.DATABASE_NAME;
+
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -25,7 +30,6 @@ import io.debezium.util.Clock;
  * The main connector class used to instantiate configuration and execution classes
  *
  * @author Jiri Pechanec
- *
  */
 public class SqlServerConnector extends RelationalBaseSourceConnector {
 
@@ -50,11 +54,50 @@ public class SqlServerConnector extends RelationalBaseSourceConnector {
 
     @Override
     public List<Map<String, String>> taskConfigs(int maxTasks) {
-        if (maxTasks > 1) {
-            throw new IllegalArgumentException("Only a single connector task may be started");
-        }
+        if (!properties.containsKey(DATABASE_NAMES.name())) {
+            if (maxTasks > 1) {
+                throw new IllegalArgumentException("Only a single connector task may be started");
+            }
 
-        return Collections.singletonList(properties);
+            return Collections.singletonList(properties);
+        }
+        else {
+            List<String> dbNames;
+            try {
+                // Parse the database names property
+                dbNames = Arrays.asList(properties.get(DATABASE_NAMES.name()).split(","));
+                if (dbNames.isEmpty()) {
+                    throw new IllegalArgumentException();
+                }
+            }
+            catch (Exception ex) {
+                throw new IllegalArgumentException("Failed to parse the property: " + DATABASE_NAMES);
+            }
+
+            // Initialize the database list for each task
+            List<List<String>> taskDatabases = new ArrayList<>();
+            for (int i = 0; i < maxTasks; i++) {
+                taskDatabases.add(new ArrayList<>());
+            }
+
+            // Add each database to a task list via round robin.
+            for (int dbNamesIndex = 0; dbNamesIndex < dbNames.size(); dbNamesIndex++) {
+                int taskIndex = dbNamesIndex % maxTasks;
+                taskDatabases.get(taskIndex).add(dbNames.get(dbNamesIndex));
+            }
+
+            // Create a task config for each task, assigning each a list of database names.
+            List<Map<String, String>> taskConfigs = new ArrayList<>();
+            for (int taskIndex = 0; taskIndex < maxTasks; taskIndex++) {
+                String databases = String.join(",", taskDatabases.get(taskIndex));
+                Map<String, String> taskProperties = new HashMap<>(properties);
+                taskProperties.put(DATABASE_NAMES.name(), databases);
+                taskProperties.put(DATABASE_NAME.name(), taskDatabases.get(taskIndex).get(0));
+                taskConfigs.add(Collections.unmodifiableMap(taskProperties));
+            }
+
+            return taskConfigs;
+        }
     }
 
     @Override
@@ -68,7 +111,7 @@ public class SqlServerConnector extends RelationalBaseSourceConnector {
 
     @Override
     protected void validateConnection(Map<String, ConfigValue> configValues, Configuration config) {
-        final ConfigValue databaseValue = configValues.get(RelationalDatabaseConnectorConfig.DATABASE_NAME.name());
+        final ConfigValue databaseValue = configValues.get(DATABASE_NAME.name());
         if (!databaseValue.errorMessages().isEmpty()) {
             return;
         }
