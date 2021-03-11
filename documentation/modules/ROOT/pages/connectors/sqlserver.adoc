@@ -1333,6 +1333,8 @@ For details about setting up SQL Server for use with the {prodname} connector, s
 * xref:enabling-cdc-on-a-sql-server-table[]
 * xref:verifying-debezium-connector-access-to-the-cdc-table[]
 * xref:debezium-sql-server-connector-on-azure[]
+* xref:effect-of-sql-server-capture-job-agent-configuration-on-server-load-and-latency[]
+* xref:sql-server-capture-job-agent-configuration-parameters[]
 
 endif::product[]
 
@@ -1475,19 +1477,73 @@ ifdef::community[]
 === SQL Server Always On
 
 The SQL Server connector can capture changes from an Always On read-only replica.
-A few pre-requisities are necessary to be fulfilled:
 
+.Prerequisites
 * Change data capture is configured and enabled on the primary node.
 SQL Server does not support CDC directly on replicas.
-* The configuration option `database.applicationIntent` must be set to `ReadOnly`.
+* The configuration option `database.applicationIntent` is set to `ReadOnly`.
 This is required by SQL Server.
-When {prodname} detects this configuration option then it will:
+When {prodname} detects this configuration option, it responds by taking the following actions:
 
-** set `snapshot.isolation.mode` to `snapshot` as this is the only one transaction isolation mode supported by read-only replicas
-** commit the (read-only) transaction in every execution of the streaming query loop, as this is necessary to get the latest view on CDC data
+** Sets `snapshot.isolation.mode` to `snapshot`, which is the only one transaction isolation mode supported for read-only replicas.
+** Commits the (read-only) transaction in every execution of the streaming query loop, which is necessary to get the latest view of CDC data.
 
 endif::community[]
 
+// Type: concept
+// ModuleID: effect-of-sql-server-capture-job-agent-configuration-on-server-load-and-latency
+=== Effect of SQL Server capture job agent configuration on server load and latency
+
+When a database administrator enables change data capture for a source table, the capture job agent begins to run.
+The agent reads new change event records from the transaction log and replicates the event records to a change data table.
+Between the time that a change is committed in the source table, and the time that the change appears in the corresponding change table, there is always a small latency interval.
+This latency interval represents a gap between when changes occur in the source table and when they become available for {prodname} to stream to Apache Kafka.
+
+Ideally, for applications that must respond quickly to changes in data, you want to maintain close synchronization between the source and change tables.
+You might imagine that running the capture agent to continuously process change events as rapidly as possible might result in increased throughput and reduced latency --
+populating change tables with new event records as soon as possible after the events occur, in near real time.
+However, this is not necessarily the case.
+There is a performance penalty to pay in the pursuit of more immediate synchronization.
+Each time that the capture job agent queries the database for new event records, it increases the CPU load on the database host.
+The additional load on the server can have a negative effect on overall database performance, and potentially reduce transaction efficiency, especially during times of peak database use.
+
+It's important to monitor database metrics so that you know if the database reaches the point where the server can no longer support the capture agent's level of activity.
+If you notice performance problems, there are SQL Server capture agent settings that you can modify to help balance the overall CPU load on the database host with a tolerable degree of latency.
+
+// Type: reference
+// ModuleID: sql-server-capture-job-agent-configuration-parameters
+=== SQL Server capture job agent configuration parameters
+
+On SQL Server, parameters that control the behavior of the capture job agent are defined in the SQL Server table link:https://docs.microsoft.com/en-us/sql/relational-databases/system-tables/dbo-cdc-jobs-transact-sql?view=latest[`msdb.dbo.cdc_jobs`].
+If you experience performance issues while running the capture job agent, adjust capture jobs settings to reduce CPU load by running the link:https://docs.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sys-sp-cdc-change-job-transact-sql?view=latest[`sys.sp_cdc_change_job`] stored procedure and supplying new values.
+
+[NOTE]
+====
+Specifying the exact values to set for SQL Server capture job agent parameters is beyond the scope of this documentation.
+====
+
+The following parameters are the most significant for modifying capture agent behavior for use with the {prodname} SQL Server connector:
+
+`pollinginterval`::
+* Specifies the number of seconds that the capture agent waits between log scan cycles.
+* A higher value reduces the load on the database host and increases latency.
+* A value of `0` specifies no wait between scans.
+* The default value is `5`.
+
+`maxtrans`::
+* Specifies the maximum number of transactions to process during each log scan cycle.
+After the capture job processes the specified number of transactions, it pauses for the length of time that the `pollinginterval` specifies before the next scan begins.
+* A lower value reduces the load on the database host and increases latency.
+* The default value is `500`.
+
+`maxscans`::
+* Specifies a limit on the number of scan cycles that the capture job can attempt in capturing the full contents of the database transaction log.
+If the `continuous` parameter is set to `1`, the job pauses for the length of time that the `pollinginterval` specifies before it resumes scanning.
+* A lower values reduces the load on the database host and increases latency.
+* The default value is `10`.
+
+.Additional resources
+* For more information about capture agent parameters, see the SQL Server documentation.
 
 // Type: assembly
 // ModuleID: deploying-and-managing-debezium-sql-server-connectors
