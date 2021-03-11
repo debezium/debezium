@@ -1326,7 +1326,7 @@ The administrator must then enable CDC for each table that you want Debezium to 
 
 .Prerequisites
 
-* On the machine on which Db2 is running, the content in `debezium-connector-db2/src/test/docker/db2-cdc-docker` is available in the `$HOME/asncdctools/src` directory.
+* On the server where Db2 is running, the content in `debezium-connector-db2/src/test/docker/db2-cdc-docker` is available in the `$HOME/asncdctools/src` directory.
 * You are logged in as the `db2instl` user, which is the default instance and user name when using the Db2 docker container image.
 
 .Procedure
