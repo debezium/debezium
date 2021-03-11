@@ -14,12 +14,10 @@ import java.util.Objects;
  */
 public class LogFile {
 
-    private static final String CURRENT = "CURRENT";
-
     private final String fileName;
     private final Scn firstScn;
     private final Scn nextScn;
-    private final String status;
+    private final boolean current;
 
     /**
      * Create a log file that represents an archived log record.
@@ -29,7 +27,7 @@ public class LogFile {
      * @param nextScn the first system change number in the following log
      */
     public LogFile(String fileName, Scn firstScn, Scn nextScn) {
-        this(fileName, firstScn, nextScn, null);
+        this(fileName, firstScn, nextScn, false);
     }
 
     /**
@@ -38,13 +36,13 @@ public class LogFile {
      * @param fileName the file name
      * @param firstScn the first system change number in the log
      * @param nextScn the first system change number in the following log
-     * @param status the status
+     * @param current whether the log file is the current one
      */
-    public LogFile(String fileName, Scn firstScn, Scn nextScn, String status) {
+    public LogFile(String fileName, Scn firstScn, Scn nextScn, boolean current) {
         this.fileName = fileName;
         this.firstScn = firstScn;
         this.nextScn = nextScn;
-        this.status = status;
+        this.current = current;
     }
 
     public String getFileName() {
@@ -63,7 +61,7 @@ public class LogFile {
      * Returns whether this log file instance is considered the current online redo log record.
      */
     public boolean isCurrent() {
-        return CURRENT.equalsIgnoreCase(status);
+        return current;
     }
 
     /**
