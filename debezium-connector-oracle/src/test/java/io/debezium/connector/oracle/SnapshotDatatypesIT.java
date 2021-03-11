@@ -30,6 +30,7 @@ public class SnapshotDatatypesIT extends AbstractOracleDatatypesTest {
 
     @BeforeClass
     public static void beforeClass() throws SQLException {
+        AbstractOracleDatatypesTest.beforeClass();
         createTables();
 
         insertStringTypes();
