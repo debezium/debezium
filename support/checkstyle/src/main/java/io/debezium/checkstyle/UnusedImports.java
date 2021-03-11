@@ -4,6 +4,7 @@
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
 package io.debezium.checkstyle;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -33,7 +34,7 @@ import com.puppycrawl.tools.checkstyle.utils.JavadocUtil.JavadocTagType;
  */
 public class UnusedImports extends UnusedImportsCheck {
 
-    private static final String[] DEBUG_CLASSNAMES = {};// {"ModeShapeSingleUseTest"};
+    private static final String[] DEBUG_CLASSNAMES = {};
     private static final Set<String> DEBUG_CLASSNAMES_SET = new HashSet<>(Arrays.asList(DEBUG_CLASSNAMES));
 
     /**
@@ -94,7 +95,9 @@ public class UnusedImports extends UnusedImportsCheck {
         }
         if (aAST.getType() == TokenTypes.IDENT) {
             super.visitToken(aAST);
-            if (collect) processIdent(aAST);
+            if (collect) {
+                processIdent(aAST);
+            }
         }
         else if (aAST.getType() == TokenTypes.IMPORT) {
             super.visitToken(aAST);
@@ -121,12 +124,12 @@ public class UnusedImports extends UnusedImportsCheck {
     protected void processIdent(DetailAST aAST) {
         final int parentType = aAST.getParent().getType();
         if (((parentType != TokenTypes.DOT) && (parentType != TokenTypes.METHOD_DEF))
-            || ((parentType == TokenTypes.DOT) && (aAST.getNextSibling() != null))) {
+                || ((parentType == TokenTypes.DOT) && (aAST.getNextSibling() != null))) {
             referenced.add(aAST.getText());
         }
     }
 
-    protected void processJavaDocLinkParameters( DetailAST aAST ) {
+    protected void processJavaDocLinkParameters(DetailAST aAST) {
         final FileContents contents = getFileContents();
         final int lineNo = aAST.getLineNo();
         final TextBlock cmt = contents.getJavadocBefore(lineNo);
@@ -159,7 +162,8 @@ public class UnusedImports extends UnusedImportsCheck {
                 String methodCall = matcher.group(2);
                 processClassOrMethodReference(methodCall);
             }
-        } else if (tag.isParamTag()) {
+        }
+        else if (tag.isParamTag()) {
             String paramText = tag.getFirstArg();
             print("Found parameter text: ", paramText);
             // Find the links to classe
@@ -169,7 +173,8 @@ public class UnusedImports extends UnusedImportsCheck {
                 String linkValue = paramsMatcher.group(1);
                 processClassOrMethodReference(linkValue);
             }
-        } else if (tag.isReturnTag()) {
+        }
+        else if (tag.isReturnTag()) {
             String returnText = tag.getFirstArg();
             print("Found return text: ", returnText);
             // Find the links to classe
@@ -198,7 +203,9 @@ public class UnusedImports extends UnusedImportsCheck {
             if (params != null) {
                 print("Found params: ", params);
                 for (String param : params.split(",")) {
-                    if ("...".equals(param)) continue;
+                    if ("...".equals(param)) {
+                        continue;
+                    }
                     param = param.replace("...", "").trim();
                     print("Found param: ", param);
                     referenced.add(param);
@@ -232,7 +239,7 @@ public class UnusedImports extends UnusedImportsCheck {
     }
 
     @Override
-    public void finishTree( DetailAST aRootAST ) {
+    public void finishTree(DetailAST aRootAST) {
         // loop over all the imports to see if referenced.
         for (final FullIdent imp : imports) {
             if (!referenced.contains(CommonUtil.baseClassName(imp.getText()))) {
@@ -243,7 +250,7 @@ public class UnusedImports extends UnusedImportsCheck {
         }
     }
 
-    private void print( Object... messages ) {
+    private void print(Object... messages) {
         if (print) {
             // CHECKSTYLE IGNORE check FOR NEXT 4 LINES
             for (Object msg : messages) {

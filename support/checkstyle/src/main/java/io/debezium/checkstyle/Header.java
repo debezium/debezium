@@ -71,12 +71,16 @@ public class Header extends com.puppycrawl.tools.checkstyle.checks.header.Header
     protected boolean isExcluded(File file) {
         // See whether this file is excluded ...
         String filename = file.getAbsolutePath().replace(File.separator, "/");
-        if (filename.startsWith(workingDirPath)) filename = filename.substring(workingDirPathLength);
+        if (filename.startsWith(workingDirPath)) {
+            filename = filename.substring(workingDirPathLength);
+        }
         filename = filename.replaceAll(".*/src/(main|test)/(java|resources)/", "");
 
         // First try one of the explicit class names ...
         for (String excludedFileName : excludedFileSet) {
-            if (filename.endsWith(excludedFileName)) return true;
+            if (filename.endsWith(excludedFileName)) {
+                return true;
+            }
         }
 
         // Next try to evaluate the pattern ...
@@ -88,7 +92,9 @@ public class Header extends com.puppycrawl.tools.checkstyle.checks.header.Header
 
     @Override
     protected void processFiltered(File aFile, FileText fileText) {
-        if (isExcluded(aFile)) return;
+        if (isExcluded(aFile)) {
+            return;
+        }
         super.processFiltered(aFile, fileText);
     }
 }
