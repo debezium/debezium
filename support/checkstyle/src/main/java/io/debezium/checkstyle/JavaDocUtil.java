@@ -51,7 +51,8 @@ public final class JavaDocUtil {
                 }
                 if (JavadocTagInfo.isValidName(tagName)) {
                     tags.add(new JavadocTag(line, col, tagName, content.trim()));
-                } else {
+                }
+                else {
                     invalidTags.add(new InvalidJavadocTag(line, col, tagName));
                 }
             }
@@ -65,13 +66,14 @@ public final class JavaDocUtil {
                 if (!commentMatcher.find()) {
                     commentContents = s; // No leading asterisks, still valid
                     commentOffset = 0;
-                } else {
+                }
+                else {
                     commentContents = commentMatcher.group(1);
                     commentOffset = commentMatcher.start(1) - 1;
                 }
                 final Pattern tagPattern = CommonUtil.createPattern(".*?\\{@(\\p{Alpha}+)\\s+([^\\}]*)"); // The last '}' may
-                                                                                                  // appear on the next
-                                                                                                  // line ...
+                // appear on the next
+                // line ...
                 final Matcher tagMatcher = tagPattern.matcher(commentContents);
                 while (tagMatcher.find()) {
                     if (tagMatcher.groupCount() == 2) {
@@ -84,7 +86,8 @@ public final class JavaDocUtil {
                         }
                         if (JavadocTagInfo.isValidName(tagName)) {
                             tags.add(new JavadocTag(line, col, tagName, tagValue));
-                        } else {
+                        }
+                        else {
                             invalidTags.add(new InvalidJavadocTag(line, col, tagName));
                         }
                     }
