@@ -34,6 +34,7 @@ import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotIsolatio
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
 import io.debezium.connector.sqlserver.util.TestHelper;
 import io.debezium.converters.CloudEventsConverterTest;
+import io.debezium.converters.CloudEventsMaker;
 import io.debezium.data.SchemaAndValueField;
 import io.debezium.data.SourceRecordAssert;
 import io.debezium.doc.FixFor;
@@ -588,7 +589,7 @@ public class SnapshotIT extends AbstractConnectorTest {
     }
 
     @Test
-    @FixFor("DBZ-1292")
+    @FixFor({ "DBZ-1292", "DBZ-3157" })
     public void shouldOutputRecordsInCloudEventsFormat() throws Exception {
         final Configuration config = TestHelper.defaultConfig().build();
 
@@ -620,7 +621,8 @@ public class SnapshotIT extends AbstractConnectorTest {
 
         // test streaming
         for (SourceRecord sourceRecord : streamingTable1) {
-            CloudEventsConverterTest.shouldConvertToCloudEventsInJson(sourceRecord, false);
+            CloudEventsConverterTest.shouldConvertToCloudEventsInJson(sourceRecord, false,
+                    jsonNode -> { assertThat(jsonNode.get(CloudEventsMaker.FieldName.ID).asText()).contains("event_serial_no:1"); });
             CloudEventsConverterTest.shouldConvertToCloudEventsInJsonWithDataAsAvro(sourceRecord, false);
             CloudEventsConverterTest.shouldConvertToCloudEventsInAvro(sourceRecord, "sqlserver", "server1", false);
         }
