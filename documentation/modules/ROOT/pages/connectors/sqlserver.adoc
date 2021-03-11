@@ -1519,7 +1519,7 @@ If you experience performance issues while running the capture job agent, adjust
 
 [NOTE]
 ====
-Specifying the exact values to set for SQL Server capture job agent parameters is beyond the scope of this documentation.
+Specific guidance about how to configure SQL Server capture job agent parameters is beyond the scope of this documentation.
 ====
 
 The following parameters are the most significant for modifying capture agent behavior for use with the {prodname} SQL Server connector:
