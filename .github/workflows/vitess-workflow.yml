@@ -5,11 +5,13 @@ on:
     paths:
       - 'debezium-core/**'
       - 'debezium-api/**'
+      - 'debezium-parent/pom.xml'
       - 'pom.xml'
   pull_request:
     paths:
       - 'debezium-core/**'
       - 'debezium-api/**'
+      - 'debezium-parent/pom.xml'
       - 'pom.xml'
 
 jobs:
