@@ -209,14 +209,18 @@ public class TestHelper {
         }
     }
 
-    public static SqlServerConnection adminConnection() {
-        return new SqlServerConnection(TestHelper.adminJdbcConfig(), Clock.system(), SourceTimestampMode.getDefaultMode(),
+    public static SqlServerConnection adminConnection() throws SQLException {
+        SqlServerConnection connection = new SqlServerConnection(TestHelper.adminJdbcConfig(), Clock.system(), SourceTimestampMode.getDefaultMode(),
                 new SqlServerValueConverters(JdbcValueConverters.DecimalMode.PRECISE, TemporalPrecisionMode.ADAPTIVE, null));
+        connection.execute("USE " + connection.config().getDatabase());
+        return connection;
     }
 
-    public static SqlServerConnection testConnection() {
-        return new SqlServerConnection(TestHelper.defaultJdbcConfig(), Clock.system(), SourceTimestampMode.getDefaultMode(),
+    public static SqlServerConnection testConnection() throws SQLException {
+        SqlServerConnection connection = new SqlServerConnection(TestHelper.defaultJdbcConfig(), Clock.system(), SourceTimestampMode.getDefaultMode(),
                 new SqlServerValueConverters(JdbcValueConverters.DecimalMode.PRECISE, TemporalPrecisionMode.ADAPTIVE, null));
+        connection.execute("USE " + connection.config().getDatabase());
+        return connection;
     }
 
     /**
@@ -381,12 +385,13 @@ public class TestHelper {
     }
 
     public static void waitForMaxLsnAvailable(SqlServerConnection connection) throws Exception {
+        String databaseName = connection.config().getDatabase();
         try {
             Awaitility.await("Max LSN not available")
                     .atMost(60, TimeUnit.SECONDS)
                     .pollDelay(Duration.ofSeconds(0))
                     .pollInterval(Duration.ofMillis(100))
-                    .until(() -> connection.getMaxLsn().isAvailable());
+                    .until(() -> connection.getMaxLsn(databaseName).isAvailable());
         }
         catch (ConditionTimeoutException e) {
             throw new IllegalArgumentException("A max LSN was not available", e);
@@ -418,7 +423,7 @@ public class TestHelper {
                     .atMost(60, TimeUnit.SECONDS)
                     .pollDelay(Duration.ofSeconds(0))
                     .pollInterval(Duration.ofMillis(100)).until(() -> {
-                        if (!connection.getMaxLsn().isAvailable()) {
+                        if (!connection.getMaxLsn(databaseName).isAvailable()) {
                             return false;
                         }
 
@@ -426,8 +431,8 @@ public class TestHelper {
                             final String ctTableName = ct.getChangeTableId().table();
                             if (ctTableName.endsWith("dbo_" + connection.getNameOfChangeTable(tableName))) {
                                 try {
-                                    final Lsn minLsn = connection.getMinLsn(ctTableName);
-                                    final Lsn maxLsn = connection.getMaxLsn();
+                                    final Lsn minLsn = connection.getMinLsn(databaseName, ctTableName);
+                                    final Lsn maxLsn = connection.getMaxLsn(databaseName);
                                     final CdcRecordFoundBlockingMultiResultSetConsumer consumer = new CdcRecordFoundBlockingMultiResultSetConsumer(handler);
                                     SqlServerChangeTable[] tables = Collections.singletonList(ct).toArray(new SqlServerChangeTable[]{});
                                     connection.getChangesForTables(tables, minLsn, maxLsn, consumer, databaseName);
@@ -458,7 +463,7 @@ public class TestHelper {
                     .atMost(30, TimeUnit.SECONDS)
                     .pollDelay(Duration.ofSeconds(0))
                     .pollInterval(Duration.ofMillis(100)).until(() -> {
-                        if (!connection.getMaxLsn().isAvailable()) {
+                        if (!connection.getMaxLsn(databaseName).isAvailable()) {
                             return false;
                         }
 
@@ -466,8 +471,8 @@ public class TestHelper {
                             final String ctTableName = ct.getChangeTableId().table();
                             if (ctTableName.endsWith(connection.getNameOfChangeTable(captureInstanceName))) {
                                 try {
-                                    final Lsn minLsn = connection.getMinLsn(ctTableName);
-                                    final Lsn maxLsn = connection.getMaxLsn();
+                                    final Lsn minLsn = connection.getMinLsn(databaseName, ctTableName);
+                                    final Lsn maxLsn = connection.getMaxLsn(databaseName);
                                     final CdcRecordFoundBlockingMultiResultSetConsumer consumer = new CdcRecordFoundBlockingMultiResultSetConsumer(handler);
                                     SqlServerChangeTable[] tables = Collections.singletonList(ct).toArray(new SqlServerChangeTable[]{});
                                     connection.getChangesForTables(tables, minLsn, maxLsn, consumer, databaseName);

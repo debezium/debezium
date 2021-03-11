@@ -56,7 +56,7 @@ public class ChangeEventSourceCoordinator<P extends TaskPartition, O extends Off
     private final ChangeEventSourceFactory<P, O> changeEventSourceFactory;
     private final ChangeEventSourceMetricsFactory changeEventSourceMetricsFactory;
     private final ExecutorService executor;
-    private final EventDispatcher<?> eventDispatcher;
+    private final EventDispatcher<P, O, ?> eventDispatcher;
     private final DatabaseSchema<?> schema;
 
     private volatile boolean running;
@@ -69,7 +69,8 @@ public class ChangeEventSourceCoordinator<P extends TaskPartition, O extends Off
     public ChangeEventSourceCoordinator(TaskOffsetContext<P, O> previousOffsetContext, ErrorHandler errorHandler, Class<? extends SourceConnector> connectorType,
                                         CommonConnectorConfig connectorConfig,
                                         ChangeEventSourceFactory<P, O> changeEventSourceFactory,
-                                        ChangeEventSourceMetricsFactory changeEventSourceMetricsFactory, EventDispatcher<?> eventDispatcher, DatabaseSchema<?> schema) {
+                                        ChangeEventSourceMetricsFactory changeEventSourceMetricsFactory, EventDispatcher<P, O, ?> eventDispatcher,
+                                        DatabaseSchema<?> schema) {
         this.previousOffsetContext = previousOffsetContext;
         this.errorHandler = errorHandler;
         this.changeEventSourceFactory = changeEventSourceFactory;

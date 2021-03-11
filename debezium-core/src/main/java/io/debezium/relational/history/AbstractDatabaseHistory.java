@@ -5,6 +5,7 @@
  */
 package io.debezium.relational.history;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Consumer;
@@ -20,6 +21,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.document.Array;
+import io.debezium.document.Document;
 import io.debezium.function.Predicates;
 import io.debezium.relational.Tables;
 import io.debezium.relational.ddl.DdlParser;
@@ -94,13 +96,21 @@ public abstract class AbstractDatabaseHistory implements DatabaseHistory {
     }
 
     @Override
-    public final void recover(Map<String, ?> source, Map<String, ?> position, Tables schema, DdlParser ddlParser) {
-        logger.debug("Recovering DDL history for source partition {} and offset {}", source, position);
+    public final void recover(Map<Map<String, ?>, Map<String, ?>> offsets, Tables schema, DdlParser ddlParser) {
         listener.recoveryStarted();
-        HistoryRecord stopPoint = new HistoryRecord(source, position, null, null, null, null);
+        Map<Document, HistoryRecord> stopPoints = new HashMap<>();
+        offsets.forEach((Map<String, ?> source, Map<String, ?> position) -> {
+            Document srcDocument = Document.create();
+            if (source != null) {
+                source.forEach(srcDocument::set);
+            }
+            stopPoints.put(srcDocument, new HistoryRecord(source, position, null, null, null, null));
+        });
+
         recoverRecords(recovered -> {
             listener.onChangeFromHistory(recovered);
-            if (comparator.isAtOrBefore(recovered, stopPoint)) {
+            Document srcDocument = recovered.document().getDocument(HistoryRecord.Fields.SOURCE);
+            if (stopPoints.containsKey(srcDocument) && comparator.isAtOrBefore(recovered, stopPoints.get(srcDocument))) {
                 Array tableChanges = recovered.tableChanges();
                 String ddl = recovered.ddl();
 

@@ -752,7 +752,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         String databaseName = connection.config().getDatabase();
         Awaitility.await().atMost(30, TimeUnit.SECONDS).until(() -> {
             // Wait for max lsn to be available
-            if (!connection.getMaxLsn().isAvailable()) {
+            if (!connection.getMaxLsn(databaseName).isAvailable()) {
                 return false;
             }
 
@@ -762,8 +762,8 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
                 final String tableName = ct.getChangeTableId().table();
                 if (tableName.endsWith("dbo_" + tableaCT) || tableName.endsWith("dbo_" + tablebCT)) {
                     try {
-                        final Lsn minLsn = connection.getMinLsn(tableName);
-                        final Lsn maxLsn = connection.getMaxLsn();
+                        final Lsn minLsn = connection.getMinLsn(databaseName, tableName);
+                        final Lsn maxLsn = connection.getMaxLsn(databaseName);
                         SqlServerChangeTable[] tables = Collections.singletonList(ct).toArray(new SqlServerChangeTable[]{});
                         final List<Integer> ids = new ArrayList<>();
                         connection.getChangesForTables(tables, minLsn, maxLsn, resultsets -> {
@@ -2055,9 +2055,10 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
             connection.execute("INSERT INTO tableb VALUES(" + id + ", 'b')");
         }
 
+        String databaseName = connection.config().getDatabase();
         Awaitility.await().atMost(30, TimeUnit.SECONDS).pollInterval(100, TimeUnit.MILLISECONDS).until(() -> {
             Testing.debug("Waiting for initial changes to be propagated to CDC structures");
-            return connection.getMaxLsn().isAvailable();
+            return connection.getMaxLsn(databaseName).isAvailable();
         });
 
         start(SqlServerConnector.class, config);
@@ -2532,8 +2533,8 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         }
 
         @Override
-        public void recover(Map<String, ?> source, Map<String, ?> position, Tables schema, DdlParser ddlParser) {
-            delegate.recover(source, position, schema, ddlParser);
+        public void recover(Map<Map<String, ?>, Map<String, ?>> offsets, Tables schema, DdlParser ddlParser) {
+            delegate.recover(offsets, schema, ddlParser);
         }
 
         @Override

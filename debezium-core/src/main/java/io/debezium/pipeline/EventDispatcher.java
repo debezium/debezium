@@ -26,6 +26,7 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.SnapshotRecord;
 import io.debezium.connector.base.ChangeEventQueue;
+import io.debezium.connector.common.TaskPartition;
 import io.debezium.data.Envelope;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.heartbeat.Heartbeat;
@@ -59,13 +60,13 @@ import io.debezium.util.SchemaNameAdjuster;
  *
  * @author Gunnar Morling
  */
-public class EventDispatcher<T extends DataCollectionId> {
+public class EventDispatcher<P extends TaskPartition, O extends OffsetContext, T extends DataCollectionId> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(EventDispatcher.class);
 
     private final TopicSelector<T> topicSelector;
     private final DatabaseSchema<T> schema;
-    private final HistorizedDatabaseSchema<T> historizedSchema;
+    private final HistorizedDatabaseSchema<P, O, T> historizedSchema;
     private final ChangeEventQueue<DataChangeEvent> queue;
     private final DataCollectionFilter<T> filter;
     private final ChangeEventCreator changeEventCreator;
@@ -109,7 +110,7 @@ public class EventDispatcher<T extends DataCollectionId> {
         this.topicSelector = topicSelector;
         this.schema = schema;
         this.historizedSchema = schema instanceof HistorizedDatabaseSchema
-                ? (HistorizedDatabaseSchema<T>) schema
+                ? (HistorizedDatabaseSchema<P, O, T>) schema
                 : null;
         this.queue = queue;
         this.filter = filter;
@@ -504,7 +505,7 @@ public class EventDispatcher<T extends DataCollectionId> {
         return schema;
     }
 
-    public HistorizedDatabaseSchema<T> getHistorizedSchema() {
+    public HistorizedDatabaseSchema<P, O, T> getHistorizedSchema() {
         return historizedSchema;
     }
 }
