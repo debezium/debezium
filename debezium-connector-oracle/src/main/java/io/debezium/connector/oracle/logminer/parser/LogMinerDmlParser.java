@@ -236,7 +236,7 @@ public class LogMinerDmlParser implements DmlParser {
                 }
                 inQuote = true;
             }
-            else if (c == ' ' || c == '(' && !inQuote) {
+            else if ((c == ' ' || c == '(') && !inQuote) {
                 break;
             }
         }

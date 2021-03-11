@@ -161,4 +161,17 @@ public class LogMinerDmlParserTest {
         assertThat(entry.getOldValues()).isEmpty();
         assertThat(entry.getNewValues()).isEmpty();
     }
+
+    @Test
+    @FixFor("DBZ-3258")
+    public void testNameWithWhitespaces() throws Exception {
+        String sql = "insert into \"UNKNOWN\".\"OBJ# 74858\"(\"COL 1\") values (1)";
+
+        LogMinerDmlEntry entry = fastDmlParser.parse(sql, null, null, null);
+        assertThat(entry.getCommandType()).isEqualTo(Operation.CREATE);
+        assertThat(entry.getOldValues()).isEmpty();
+        assertThat(entry.getNewValues()).hasSize(1);
+        assertThat(entry.getNewValues().get(0).getColumnName()).isEqualTo("COL 1");
+        assertThat(entry.getNewValues().get(0).getColumnData()).isEqualTo("1");
+    }
 }
