@@ -44,6 +44,7 @@ import io.debezium.util.Strings;
  */
 public class LogMinerHelper {
 
+    private static final String CURRENT = "CURRENT";
     private static final String UNKNOWN = "unknown";
     private static final String TOTAL = "TOTAL";
     private static final String ALL_COLUMN_LOGGING = "ALL COLUMN LOGGING";
@@ -557,7 +558,7 @@ public class LogMinerHelper {
                     Scn nextChangeNumber = getScnFromString(rs.getString(2));
                     Scn firstChangeNumber = getScnFromString(rs.getString(4));
                     String status = rs.getString(5);
-                    LogFile logFile = new LogFile(fileName, firstChangeNumber, nextChangeNumber, status);
+                    LogFile logFile = new LogFile(fileName, firstChangeNumber, nextChangeNumber, CURRENT.equalsIgnoreCase(status));
                     if (logFile.isCurrent() || logFile.getNextScn().compareTo(offsetScn) >= 0) {
                         LOGGER.trace("Online redo log {} with SCN range {} to {} ({}) to be added.", fileName, firstChangeNumber, nextChangeNumber, status);
                         redoLogFiles.add(logFile);
