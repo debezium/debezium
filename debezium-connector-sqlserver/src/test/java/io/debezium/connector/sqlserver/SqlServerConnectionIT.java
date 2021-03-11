@@ -312,7 +312,7 @@ public class SqlServerConnectionIT {
             String databaseName = connection.config().getDatabase();
             Awaitility.await()
                     .atMost(5, TimeUnit.SECONDS)
-                    .until(() -> connection.getMinLsn("table_with_defaults").isAvailable()); // Need to wait to make sure the min_lsn is available
+                    .until(() -> connection.getMinLsn(databaseName, "table_with_defaults").isAvailable()); // Need to wait to make sure the min_lsn is available
             List<String> capturedColumns = Arrays
                     .asList(
                             "int_no_default_not_null",

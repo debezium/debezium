@@ -96,13 +96,13 @@ public class SnapshotWithSelectOverridesIT extends AbstractConnectorTest {
         final Configuration config = TestHelper.defaultConfig()
                 .with(
                         RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE,
-                        "dbo.table1,dbo.table3")
+                        "testDB.dbo.table1,testDB.dbo.table3")
                 .with(
-                        RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + ".dbo.table1",
-                        "SELECT * FROM [dbo].[table1] where soft_deleted = 0 order by id desc")
+                        RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + ".testDB.dbo.table1",
+                        "SELECT * FROM [testDB].[dbo].[table1] where soft_deleted = 0 order by id desc")
                 .with(
-                        RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + ".dbo.table3",
-                        "SELECT * FROM [dbo].[table3] where soft_deleted = 0")
+                        RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + ".testDB.dbo.table3",
+                        "SELECT * FROM [testDB].[dbo].[table3] where soft_deleted = 0")
                 .build();
 
         start(SqlServerConnector.class, config);
