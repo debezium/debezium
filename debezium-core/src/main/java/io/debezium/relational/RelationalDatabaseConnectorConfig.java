@@ -622,14 +622,6 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
         return getConfig().getFallbackStringProperty(SCHEMA_INCLUDE_LIST, SCHEMA_WHITELIST);
     }
 
-    public String databaseExcludeList() {
-        return getConfig().getFallbackStringProperty(DATABASE_EXCLUDE_LIST, DATABASE_BLACKLIST);
-    }
-
-    public String databaseIncludeList() {
-        return getConfig().getFallbackStringProperty(DATABASE_INCLUDE_LIST, DATABASE_WHITELIST);
-    }
-
     public String tableExcludeList() {
         return getConfig().getFallbackStringProperty(TABLE_EXCLUDE_LIST, TABLE_BLACKLIST);
     }

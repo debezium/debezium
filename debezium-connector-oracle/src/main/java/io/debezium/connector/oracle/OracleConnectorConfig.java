@@ -368,7 +368,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final LogMiningDmlParser dmlParser;
 
     public OracleConnectorConfig(Configuration config) {
-        super(OracleConnector.class, config, config.getString(SERVER_NAME), new SystemTablesPredicate(config), x -> x.schema() + "." + x.table(), true, ColumnFilterMode.SCHEMA);
+        super(OracleConnector.class, config, config.getString(SERVER_NAME), new SystemTablesPredicate(config), x -> x.schema() + "." + x.table(), true,
+                ColumnFilterMode.SCHEMA);
 
         this.databaseName = toUpperCase(config.getString(DATABASE_NAME));
         this.pdbName = toUpperCase(config.getString(PDB_NAME));
