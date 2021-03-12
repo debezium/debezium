@@ -38,9 +38,7 @@ endif::community[]
 
 ifdef::product[]
 The Db2 connector has been tested with Db2/Linux {db2-version}.
-endif::product[]
 
-ifdef::product[]
 Information and procedures for using a {prodname} Db2 connector is organized as follows:
 
 * xref:overview-of-debezium-db2-connector[]
@@ -1524,7 +1522,9 @@ To deploy a {prodname} Db2 connector, install the {prodname} Db2 connector archi
 * xref:debezium-db2-connector-configuration-example[]
 * xref:adding-debezium-db2-connector-configuration-to-kafka-connect[]
 * xref:descriptions-of-debezium-db2-connector-configuration-properties[]
+endif::product[]
 
+ifdef::product[]
 // Type: concept
 [id="steps-for-installing-debezium-db2-connectors"]
 === Steps for installing {prodname} Db2 connectors
