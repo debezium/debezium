@@ -350,7 +350,7 @@ node('Slave') {
                 sh "git checkout -b $CANDIDATE_BRANCH"
                 sh "mvn clean install -DskipTests -DskipITs -Poracle"
             }
-            STAGING_REPO_ID = mvnRelease(DEBEZIUM_DIR, DEBEZIUM_REPOSITORY, CANDIDATE_BRANCH)
+            STAGING_REPO_ID = mvnRelease(DEBEZIUM_DIR, DEBEZIUM_REPOSITORY, CANDIDATE_BRANCH, '-Poracle')
             ADDITIONAL_REPOSITORIES.each { id, repo ->
                 dir(id) {
                     sh "git checkout -b $CANDIDATE_BRANCH"
@@ -434,7 +434,7 @@ node('Slave') {
                 }
             }
             dir(IMAGES_DIR) {
-                sh "./build-all.sh"
+                sh "env SKIP_UI=true ./build-all.sh"
             }
             sh """
                 docker rm -f connect zookeeper kafka mysql || true

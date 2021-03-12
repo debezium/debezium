@@ -61,3 +61,12 @@ hauntingEcho,Matt Bear
 zxxz,Giovanni De Stefano
 mpermar,Martín Pérez
 harveyyue,Harvey Yue
+sheldon.fuchs,Sheldon Fuchs
+roldanbob,Robert Roldan
+ignatan,Andrey Ignatenko
+zrlurb,Peter Urbanetz
+DLiseichykau,Victar Malinouski
+xuans,Xuan Shen
+kewenchao,WenChao Ke
+mengqiu,Meng Qiu
+wangzheng422,Zheng Wang
