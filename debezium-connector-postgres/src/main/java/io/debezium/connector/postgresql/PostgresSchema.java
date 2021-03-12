@@ -60,7 +60,7 @@ public class PostgresSchema extends RelationalDatabaseSchema {
     protected PostgresSchema(PostgresConnectorConfig config, TypeRegistry typeRegistry, Charset databaseCharset,
                              TopicSelector<TableId> topicSelector) {
         super(config, topicSelector, new Filters(config).tableFilter(),
-                new Filters(config).columnFilter(), getTableSchemaBuilder(config, typeRegistry, databaseCharset), false,
+                config.getColumnFilter(), getTableSchemaBuilder(config, typeRegistry, databaseCharset), false,
                 config.getKeyMapper());
 
         this.typeRegistry = typeRegistry;

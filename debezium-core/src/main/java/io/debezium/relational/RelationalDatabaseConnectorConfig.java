@@ -29,6 +29,8 @@ import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.Key.CustomKeyMapper;
 import io.debezium.relational.Key.KeyMapper;
 import io.debezium.relational.Selectors.TableIdToStringMapper;
+import io.debezium.relational.Tables.ColumnNameFilter;
+import io.debezium.relational.Tables.ColumnNameFilterFactory;
 import io.debezium.relational.Tables.TableFilter;
 
 /**
@@ -549,12 +551,14 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .create();
 
     private final RelationalTableFilters tableFilters;
+    private final ColumnNameFilter columnFilter;
     private final TemporalPrecisionMode temporalPrecisionMode;
     private final KeyMapper keyMapper;
     private final TableIdToStringMapper tableIdMapper;
 
     protected RelationalDatabaseConnectorConfig(Configuration config, String logicalName, TableFilter systemTablesFilter,
-                                                TableIdToStringMapper tableIdMapper, int defaultSnapshotFetchSize) {
+                                                TableIdToStringMapper tableIdMapper, int defaultSnapshotFetchSize,
+                                                ColumnFilterMode columnFilterMode) {
         super(config, logicalName, defaultSnapshotFetchSize);
 
         this.temporalPrecisionMode = TemporalPrecisionMode.parse(config.getString(TIME_PRECISION_MODE));
@@ -567,6 +571,16 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
         // handled by sub-classes for the time being
         else {
             this.tableFilters = null;
+        }
+
+        String columnExcludeList = config.getFallbackStringProperty(COLUMN_EXCLUDE_LIST, COLUMN_BLACKLIST);
+        String columnIncludeList = config.getFallbackStringProperty(COLUMN_INCLUDE_LIST, COLUMN_WHITELIST);
+
+        if (columnIncludeList != null) {
+            this.columnFilter = ColumnNameFilterFactory.createIncludeListFilter(columnIncludeList, columnFilterMode);
+        }
+        else {
+            this.columnFilter = ColumnNameFilterFactory.createExcludeListFilter(columnExcludeList, columnFilterMode);
         }
     }
 
@@ -624,12 +638,8 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
         return getConfig().getFallbackStringProperty(TABLE_INCLUDE_LIST, TABLE_WHITELIST);
     }
 
-    public String columnExcludeList() {
-        return getConfig().getFallbackStringProperty(COLUMN_EXCLUDE_LIST, COLUMN_BLACKLIST);
-    }
-
-    public String columnIncludeList() {
-        return getConfig().getFallbackStringProperty(COLUMN_INCLUDE_LIST, COLUMN_WHITELIST);
+    public ColumnNameFilter getColumnFilter() {
+        return columnFilter;
     }
 
     public Boolean isFullColummnScanRequired() {

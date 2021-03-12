@@ -7,6 +7,7 @@ package io.debezium.junit.relational;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.SourceInfoStructMaker;
+import io.debezium.relational.ColumnFilterMode;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.Selectors;
 import io.debezium.relational.Tables;
@@ -15,7 +16,7 @@ public class TestRelationalDatabaseConfig extends RelationalDatabaseConnectorCon
 
     public TestRelationalDatabaseConfig(Configuration config, String logicalName, Tables.TableFilter systemTablesFilter,
                                         Selectors.TableIdToStringMapper tableIdMapper, int defaultSnapshotFetchSize) {
-        super(config, logicalName, systemTablesFilter, tableIdMapper, defaultSnapshotFetchSize);
+        super(config, logicalName, systemTablesFilter, tableIdMapper, defaultSnapshotFetchSize, ColumnFilterMode.SCHEMA);
     }
 
     @Override

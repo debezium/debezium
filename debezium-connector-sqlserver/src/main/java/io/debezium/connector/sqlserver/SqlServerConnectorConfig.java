@@ -7,7 +7,6 @@ package io.debezium.connector.sqlserver;
 
 import java.time.DateTimeException;
 import java.time.ZoneId;
-import java.util.function.Predicate;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
@@ -24,12 +23,10 @@ import io.debezium.config.Field;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.document.Document;
-import io.debezium.function.Predicates;
-import io.debezium.relational.ColumnId;
+import io.debezium.relational.ColumnFilterMode;
 import io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
-import io.debezium.relational.Tables.ColumnNameFilter;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.history.HistoryRecordComparator;
 
@@ -330,23 +327,17 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     private final SnapshotMode snapshotMode;
     private final SnapshotIsolationMode snapshotIsolationMode;
     private final SourceTimestampMode sourceTimestampMode;
-    private final ColumnNameFilter columnFilter;
     private final boolean readOnlyDatabaseConnection;
     private final boolean skipLowActivityLsnsEnabled;
 
     public SqlServerConnectorConfig(Configuration config) {
-        super(SqlServerConnector.class, config, config.getString(SERVER_NAME), new SystemTablesPredicate(), x -> x.schema() + "." + x.table(), true);
+        super(SqlServerConnector.class, config, config.getString(SERVER_NAME), new SystemTablesPredicate(), x -> x.schema() + "." + x.table(), true,
+                ColumnFilterMode.SCHEMA);
 
         this.databaseName = config.getString(DATABASE_NAME);
         this.instanceName = config.getString(INSTANCE);
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE), SNAPSHOT_MODE.defaultValueAsString());
 
-        if (columnIncludeList() != null) {
-            this.columnFilter = getColumnIncludeNameFilter(columnIncludeList());
-        }
-        else {
-            this.columnFilter = getColumnExcludeNameFilter(columnExcludeList());
-        }
         this.readOnlyDatabaseConnection = READ_ONLY_INTENT.equals(config.getString(APPLICATION_INTENT_KEY));
         if (readOnlyDatabaseConnection) {
             this.snapshotIsolationMode = SnapshotIsolationMode.SNAPSHOT;
@@ -358,32 +349,6 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
 
         this.sourceTimestampMode = SourceTimestampMode.fromMode(config.getString(SOURCE_TIMESTAMP_MODE_CONFIG_NAME));
         this.skipLowActivityLsnsEnabled = config.getBoolean(MAX_LSN_OPTIMIZATION);
-    }
-
-    private static ColumnNameFilter getColumnExcludeNameFilter(String excludedColumnPatterns) {
-        return new ColumnNameFilter() {
-
-            Predicate<ColumnId> delegate = Predicates.excludes(excludedColumnPatterns, ColumnId::toString);
-
-            @Override
-            public boolean matches(String catalogName, String schemaName, String tableName, String columnName) {
-                // ignore database name as it's not relevant here
-                return delegate.test(new ColumnId(new TableId(null, schemaName, tableName), columnName));
-            }
-        };
-    }
-
-    private static ColumnNameFilter getColumnIncludeNameFilter(String excludedColumnPatterns) {
-        return new ColumnNameFilter() {
-
-            Predicate<ColumnId> delegate = Predicates.includes(excludedColumnPatterns, ColumnId::toString);
-
-            @Override
-            public boolean matches(String catalogName, String schemaName, String tableName, String columnName) {
-                // ignore database name as it's not relevant here
-                return delegate.test(new ColumnId(new TableId(null, schemaName, tableName), columnName));
-            }
-        };
     }
 
     public Configuration jdbcConfig() {
@@ -408,10 +373,6 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
 
     public SourceTimestampMode getSourceTimestampMode() {
         return sourceTimestampMode;
-    }
-
-    public ColumnNameFilter getColumnFilter() {
-        return columnFilter;
     }
 
     public boolean isReadOnlyDatabaseConnection() {

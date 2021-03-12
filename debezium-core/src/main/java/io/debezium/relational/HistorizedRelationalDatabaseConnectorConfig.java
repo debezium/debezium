@@ -59,8 +59,8 @@ public abstract class HistorizedRelationalDatabaseConnectorConfig extends Relati
             .create();
 
     protected HistorizedRelationalDatabaseConnectorConfig(Class<? extends SourceConnector> connectorClass, Configuration config, String logicalName,
-                                                          TableFilter systemTablesFilter, boolean useCatalogBeforeSchema) {
-        super(config, logicalName, systemTablesFilter, TableId::toString, DEFAULT_SNAPSHOT_FETCH_SIZE);
+                                                          TableFilter systemTablesFilter, boolean useCatalogBeforeSchema, ColumnFilterMode columnFilterMode) {
+        super(config, logicalName, systemTablesFilter, TableId::toString, DEFAULT_SNAPSHOT_FETCH_SIZE, columnFilterMode);
         this.useCatalogBeforeSchema = useCatalogBeforeSchema;
         this.logicalName = logicalName;
         this.connectorClass = connectorClass;
@@ -68,8 +68,8 @@ public abstract class HistorizedRelationalDatabaseConnectorConfig extends Relati
 
     protected HistorizedRelationalDatabaseConnectorConfig(Class<? extends SourceConnector> connectorClass, Configuration config, String logicalName,
                                                           TableFilter systemTablesFilter, TableIdToStringMapper tableIdMapper,
-                                                          boolean useCatalogBeforeSchema) {
-        super(config, logicalName, systemTablesFilter, tableIdMapper, DEFAULT_SNAPSHOT_FETCH_SIZE);
+                                                          boolean useCatalogBeforeSchema, ColumnFilterMode columnFilterMode) {
+        super(config, logicalName, systemTablesFilter, tableIdMapper, DEFAULT_SNAPSHOT_FETCH_SIZE, columnFilterMode);
         this.useCatalogBeforeSchema = useCatalogBeforeSchema;
         this.logicalName = logicalName;
         this.connectorClass = connectorClass;

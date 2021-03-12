@@ -39,6 +39,7 @@ import io.debezium.connector.postgresql.snapshot.NeverSnapshotter;
 import io.debezium.connector.postgresql.spi.Snapshotter;
 import io.debezium.heartbeat.DatabaseHeartbeatImpl;
 import io.debezium.jdbc.JdbcConfiguration;
+import io.debezium.relational.ColumnFilterMode;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables.TableFilter;
@@ -970,7 +971,8 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                 config.getString(RelationalDatabaseConnectorConfig.SERVER_NAME),
                 new SystemTablesPredicate(),
                 x -> x.schema() + "." + x.table(),
-                DEFAULT_SNAPSHOT_FETCH_SIZE);
+                DEFAULT_SNAPSHOT_FETCH_SIZE,
+                ColumnFilterMode.SCHEMA);
 
         this.truncateHandlingMode = TruncateHandlingMode.parse(config.getString(PostgresConnectorConfig.TRUNCATE_HANDLING_MODE));
         String hstoreHandlingModeStr = config.getString(PostgresConnectorConfig.HSTORE_HANDLING_MODE);

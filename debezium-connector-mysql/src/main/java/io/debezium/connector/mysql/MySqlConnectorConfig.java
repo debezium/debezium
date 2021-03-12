@@ -29,6 +29,7 @@ import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.function.Predicates;
 import io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode;
 import io.debezium.jdbc.TemporalPrecisionMode;
+import io.debezium.relational.ColumnFilterMode;
 import io.debezium.relational.ColumnId;
 import io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
@@ -981,7 +982,6 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
     private final TemporalPrecisionMode temporalPrecisionMode;
     private final Duration connectionTimeout;
     private final Predicate<String> gtidSourceFilter;
-    private final ColumnNameFilter columnFilter;
     private final EventProcessingFailureHandlingMode inconsistentSchemaFailureHandlingMode;
     private final Predicate<String> ddlFilter;
     private final boolean legacy;
@@ -993,7 +993,8 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
                 config,
                 config.getString(SERVER_NAME),
                 TableFilter.fromPredicate(MySqlConnectorConfig::isNotBuiltInTable),
-                true);
+                true,
+                ColumnFilterMode.CATALOG);
 
         this.config = config;
         this.legacy = MySqlConnector.isLegacy(config.getString(io.debezium.connector.mysql.MySqlConnector.IMPLEMENTATION_PROP));
@@ -1017,13 +1018,6 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
         final String gtidSetExcludes = config.getString(MySqlConnectorConfig.GTID_SOURCE_EXCLUDES);
         this.gtidSourceFilter = gtidSetIncludes != null ? Predicates.includesUuids(gtidSetIncludes)
                 : (gtidSetExcludes != null ? Predicates.excludesUuids(gtidSetExcludes) : null);
-
-        if (columnIncludeList() != null) {
-            this.columnFilter = getColumnIncludeNameFilter(columnIncludeList());
-        }
-        else {
-            this.columnFilter = getColumnExcludeNameFilter(columnExcludeList());
-        }
 
         // Set up the DDL filter
         final String ddlFilter = config.getString(DatabaseHistory.DDL_FILTER);
@@ -1264,10 +1258,6 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
                 return delegate.test(new ColumnId(new TableId(catalogName, null, tableName), columnName));
             }
         };
-    }
-
-    public ColumnNameFilter getColumnFilter() {
-        return columnFilter;
     }
 
     public static boolean isBuiltInDatabase(String databaseName) {

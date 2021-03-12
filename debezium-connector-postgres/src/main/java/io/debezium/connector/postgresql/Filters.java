@@ -13,8 +13,6 @@ import java.util.function.Predicate;
 import io.debezium.annotation.Immutable;
 import io.debezium.relational.Selectors;
 import io.debezium.relational.TableId;
-import io.debezium.relational.Tables.ColumnNameFilter;
-import io.debezium.relational.Tables.ColumnNameFilterFactory;
 import io.debezium.relational.Tables.TableFilter;
 
 /**
@@ -31,7 +29,6 @@ public class Filters {
     protected static final String TEMP_TABLE_EXCLUDE_LIST = ".*\\.pg_temp.*";
 
     private final TableFilter tableFilter;
-    private final ColumnNameFilter columnFilter;
 
     /**
      * @param config the configuration; may not be null
@@ -62,23 +59,9 @@ public class Filters {
                 .includeSchemas(config.schemaIncludeList())
                 .excludeSchemas(schemaExcludeList)
                 .build());
-
-        String columnIncludeList = config.columnIncludeList();
-        if (columnIncludeList != null) {
-            this.columnFilter = ColumnNameFilterFactory.createIncludeListFilter(config.columnIncludeList());
-        }
-        else {
-            // Define the filter that excludes columns on the exclude list, truncated columns, and masked columns ...
-            this.columnFilter = ColumnNameFilterFactory.createExcludeListFilter(config.columnExcludeList());
-        }
     }
 
     protected TableFilter tableFilter() {
         return tableFilter;
     }
-
-    protected ColumnNameFilter columnFilter() {
-        return columnFilter;
-    }
-
 }
