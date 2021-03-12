@@ -12,6 +12,7 @@ import java.util.function.Predicate;
 import io.debezium.annotation.Immutable;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlConnectorConfig;
+import io.debezium.relational.ColumnFilterMode;
 import io.debezium.relational.Selectors;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables.ColumnNameFilter;
@@ -119,13 +120,12 @@ public class Filters {
             String includeColumnsFilter = config.getString(MySqlConnectorConfig.COLUMN_INCLUDE_LIST);
 
             if (includeColumnsFilter != null) {
-                this.columnFilter = ColumnNameFilterFactory.createIncludeListFilter(includeColumnsFilter);
+                this.columnFilter = ColumnNameFilterFactory.createIncludeListFilter(includeColumnsFilter, ColumnFilterMode.CATALOG);
             }
             else {
-                this.columnFilter = ColumnNameFilterFactory
-                        .createExcludeListFilter(config.getFallbackStringProperty(MySqlConnectorConfig.COLUMN_EXCLUDE_LIST, MySqlConnectorConfig.COLUMN_BLACKLIST));
+                String excludeColumnsFilter = config.getFallbackStringProperty(MySqlConnectorConfig.COLUMN_EXCLUDE_LIST, MySqlConnectorConfig.COLUMN_BLACKLIST);
+                this.columnFilter = ColumnNameFilterFactory.createExcludeListFilter(excludeColumnsFilter, ColumnFilterMode.CATALOG);
             }
-
         }
 
         /**

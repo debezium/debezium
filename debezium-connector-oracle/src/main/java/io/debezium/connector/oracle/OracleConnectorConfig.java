@@ -11,7 +11,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.function.Predicate;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
@@ -34,13 +33,11 @@ import io.debezium.connector.oracle.logminer.SqlUtils;
 import io.debezium.connector.oracle.xstream.LcrPosition;
 import io.debezium.connector.oracle.xstream.OracleVersion;
 import io.debezium.document.Document;
-import io.debezium.function.Predicates;
 import io.debezium.jdbc.JdbcConfiguration;
-import io.debezium.relational.ColumnId;
+import io.debezium.relational.ColumnFilterMode;
 import io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
-import io.debezium.relational.Tables.ColumnNameFilter;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.history.HistoryRecordComparator;
 import io.debezium.util.Strings;
@@ -345,7 +342,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final String pdbName;
     private final String xoutServerName;
     private final SnapshotMode snapshotMode;
-    private final ColumnNameFilter columnFilter;
 
     private final Boolean tablenameCaseInsensitive;
     private final OracleVersion oracleVersion;
@@ -372,7 +368,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final LogMiningDmlParser dmlParser;
 
     public OracleConnectorConfig(Configuration config) {
-        super(OracleConnector.class, config, config.getString(SERVER_NAME), new SystemTablesPredicate(config), x -> x.schema() + "." + x.table(), true);
+        super(OracleConnector.class, config, config.getString(SERVER_NAME), new SystemTablesPredicate(config), x -> x.schema() + "." + x.table(), true, ColumnFilterMode.SCHEMA);
 
         this.databaseName = toUpperCase(config.getString(DATABASE_NAME));
         this.pdbName = toUpperCase(config.getString(PDB_NAME));
@@ -383,13 +379,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.logMiningHistoryRecorder = resolveLogMiningHistoryRecorder(config);
         this.jdbcConfig = config.subset(DATABASE_CONFIG_PREFIX, true);
         this.snapshotEnhancementToken = config.getString(SNAPSHOT_ENHANCEMENT_TOKEN);
-
-        if (columnIncludeList() != null) {
-            this.columnFilter = getColumnIncludeNameFilter(columnIncludeList());
-        }
-        else {
-            this.columnFilter = getColumnExcludeNameFilter(columnExcludeList());
-        }
 
         // LogMiner
         this.connectorAdapter = ConnectorAdapter.parse(config.getString(CONNECTOR_ADAPTER));
@@ -419,32 +408,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             return new NeverHistoryRecorder();
         }
         return config.getInstance(LOG_MINING_HISTORY_RECORDER_CLASS, HistoryRecorder.class);
-    }
-
-    private static ColumnNameFilter getColumnExcludeNameFilter(String excludedColumnPatterns) {
-        return new ColumnNameFilter() {
-
-            Predicate<ColumnId> delegate = Predicates.excludes(excludedColumnPatterns, ColumnId::toString);
-
-            @Override
-            public boolean matches(String catalogName, String schemaName, String tableName, String columnName) {
-                // ignore database name as it's not relevant here
-                return delegate.test(new ColumnId(new TableId(null, schemaName, tableName), columnName));
-            }
-        };
-    }
-
-    private static ColumnNameFilter getColumnIncludeNameFilter(String includedColumnPatterns) {
-        return new ColumnNameFilter() {
-
-            Predicate<ColumnId> delegate = Predicates.includes(includedColumnPatterns, ColumnId::toString);
-
-            @Override
-            public boolean matches(String catalogName, String schemaName, String tableName, String columnName) {
-                // ignore database name as it's not relevant here
-                return delegate.test(new ColumnId(new TableId(null, schemaName, tableName), columnName));
-            }
-        };
     }
 
     public String getDatabaseName() {
@@ -480,10 +443,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
     public OracleVersion getOracleVersion() {
         return oracleVersion;
-    }
-
-    public ColumnNameFilter getColumnFilter() {
-        return columnFilter;
     }
 
     @Override
