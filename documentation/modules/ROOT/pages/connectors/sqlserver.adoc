@@ -1289,32 +1289,88 @@ Note that the timezone of the JVM running Kafka Connect and {prodname} does not 
 [id="sql-server-decimal-values"]
 ==== Decimal values
 
-[cols="30%a,17%a,53%a",options="header"]
+{prodname} connectors handle decimals according to the setting of the {link-prefix}:{link-sqlserver-connector}#sqlserver-property-decimal-handling-mode[`decimal.handling.mode` connector configuration property].
+
+decimal.handling.mode=precise::
++
+.Mappings when `decimal.handing.mode=precise`
+[cols="30%a,15%a,55%a",options="header",subs="+attributes"]
 |===
-|SQL Server data type
+|SQL Server type
 |Literal type (schema type)
 |Semantic type (schema name)
 
 |`NUMERIC[(P[,S])]`
 |`BYTES`
-|`org.apache.kafka.connect.data.Decimal`
+a|`org.apache.kafka.connect.data.Decimal` +
+The `scale` schema parameter contains an integer that represents how many digits the decimal point shifted.
 
 |`DECIMAL[(P[,S])]`
 |`BYTES`
-|`org.apache.kafka.connect.data.Decimal`
+a|`org.apache.kafka.connect.data.Decimal` +
+The `scale` schema parameter contains an integer that represents how many digits the decimal point shifted.
 
 |`SMALLMONEY`
 |`BYTES`
-|`org.apache.kafka.connect.data.Decimal`
+a|`org.apache.kafka.connect.data.Decimal` +
+The `scale` schema parameter contains an integer that represents how many digits the decimal point shifted.
 
 |`MONEY`
 |`BYTES`
-|`org.apache.kafka.connect.data.Decimal`
+a|`org.apache.kafka.connect.data.Decimal` +
+The `scale` schema parameter contains an integer that represents how many digits the decimal point shifted.
 
 |===
 
-The `scale` schema parameter contains an integer that represents how many digits the decimal point was shifted.
-The `connect.decimal.precision` schema parameter contains an integer that represents the precision of the given decimal value.
+decimal.handling.mode=double::
++
+.Mappings when `decimal.handing.mode=double`
+[cols="30%a,30%a,40%a",options="header",subs="+attributes"]
+|===
+|SQL Server type |Literal type |Semantic type
+
+|`NUMERIC[(M[,D])]`
+|`FLOAT64`
+a|_n/a_
+
+|`DECIMAL[(M[,D])]`
+|`FLOAT64`
+a|_n/a_
+
+|`SMALLMONEY[(M[,D])]`
+|`FLOAT64`
+a|_n/a_
+
+|`MONEY[(M[,D])]`
+|`FLOAT64`
+a|_n/a_
+
+|===
+
+decimal.handling.mode=string::
++
+.Mappings when `decimal.handing.mode=string`
+[cols="30%a,30%a,40%a",options="header",subs="+attributes"]
+|===
+|SQL Server type |Literal type |Semantic type
+
+|`NUMERIC[(M[,D])]`
+|`STRING`
+a|_n/a_
+
+|`DECIMAL[(M[,D])]`
+|`STRING`
+a|_n/a_
+
+|`SMALLMONEY[(M[,D])]`
+|`STRING`
+a|_n/a_
+
+|`MONEY[(M[,D])]`
+|`STRING`
+a|_n/a_
+
+|===
 
 // Type: assembly
 // ModuleID: setting-up-sql-server-for-use-with-the-debezium-sql-server-connector
@@ -1968,6 +2024,16 @@ Note: Depending on the `_hashAlgorithm_` used, the `_salt_` selected and the act
 |[[sqlserver-property-time-precision-mode]]<<sqlserver-property-time-precision-mode, `+time.precision.mode+`>>
 |`adaptive`
 | Time, date, and timestamps can be represented with different kinds of precision, including: `adaptive` (the default) captures the time and timestamp values exactly as in the database using either millisecond, microsecond, or nanosecond precision values based on the database column's type; or `connect` always represents time and timestamp values using Kafka Connect's built-in representations for Time, Date, and Timestamp, which uses millisecond precision regardless of the database columns' precision. See {link-prefix}:{link-sqlserver-connector}#sqlserver-temporal-values[temporal values].
+
+|[[sqlserver-property-decimal-handling-mode]]<<sqlserver-property-decimal-handling-mode,`+decimal.handling.mode+`>>
+|`precise`
+|Specifies how the connector should handle values for `DECIMAL` and `NUMERIC` columns: +
+ +
+`precise` (the default) represents them precisely using `java.math.BigDecimal` values represented in change events in a binary form. +
+ +
+`double` represents them using `double` values, which may result in a loss of precision but is easier to use. +
+ +
+`string` encodes values as formatted strings, which is easy to consume but  semantic information about the real type is lost.
 
 |[[sqlserver-property-include-schema-changes]]<<sqlserver-property-include-schema-changes, `+include.schema.changes+`>>
 |`true`
