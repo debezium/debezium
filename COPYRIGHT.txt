@@ -61,6 +61,7 @@ David Chen
 David Feinblum
 David Jerome
 David Leibovic
+David Seapy
 David Szabo
 Deepak Barr
 Denis Andrejew
@@ -170,6 +171,7 @@ Mathieu Rozieres
 Matthias Wessendorf
 Max Kaplan
 Martín Pérez
+Meng Qiu
 Melissa Winstanley
 Michael Cizmar
 Michael Wang
@@ -184,6 +186,7 @@ Navdeep Agarwal
 Naveen Kumar KR
 Nayana Hettiarachchi
 Nick Murray
+Niels Pardon
 Nikhil Benesch
 Nishant Singh
 Nitin Agarwal
@@ -215,6 +218,7 @@ Sahan Dilshan
 René Kerner
 Rich O'Connell
 Robert Coup
+Robert Roldan
 Ruslan Gibaiev
 siufay325
 Sairam Polavarapu
@@ -227,6 +231,7 @@ Scofield Xu
 Sean Rooney
 Sergei Morozov
 Sherafudheen PM
+Sheldon Fuchs
 Shubham Rawat
 Shuguang Xiang
 Siddhant Agnihotry
@@ -251,16 +256,20 @@ Troy Gaines
 Vadzim Ramanenka
 Vasily Ulianko
 Vedit Firat Arig
+Victar Malinouski
 Victor Xiang
 Vladimir Osin
 Wang-Yu-Chao
+WenChao Ke
 Wei Wu
 WenZe Hu
 William Pursell
 Willie Cheong
 Wout Scheepers
+Xuan Shen
 Yang Yang
 Yilong Chang
 Yiming Liu
 Yoann Rodière
+Zheng Wang
 志飞 张

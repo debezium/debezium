@@ -2,6 +2,79 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 1.5.0.Beta2
+March 12th 2021 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12354047)
+
+### New features since 1.5.0.Beta1
+
+* Detect and skip non-parent index-organized tables [DBZ-3036](https://issues.jboss.org/browse/DBZ-3036)
+* Capture additional JMX metrics for LogMiner [DBZ-3038](https://issues.jboss.org/browse/DBZ-3038)
+* Incorrect information in Debezium connector for Postgres documentation [DBZ-3197](https://issues.jboss.org/browse/DBZ-3197)
+* Add support for SET column type [DBZ-3199](https://issues.jboss.org/browse/DBZ-3199)
+* Improve relocation logic for processed commitLog files  [DBZ-3224](https://issues.jboss.org/browse/DBZ-3224)
+* Disable log.mining.transaction.retention.hours logic by default [DBZ-3242](https://issues.jboss.org/browse/DBZ-3242)
+* Provide a signalling table [DBZ-3141](https://issues.jboss.org/browse/DBZ-3141)
+* Update sensitive env vars for connect-base image [DBZ-3223](https://issues.jboss.org/browse/DBZ-3223)
+* Support specifying kinesis endpoint in debezium server [DBZ-3246](https://issues.jboss.org/browse/DBZ-3246)
+* Add log4j.properties file [DBZ-3248](https://issues.jboss.org/browse/DBZ-3248)
+
+
+### Breaking changes since 1.5.0.Beta1
+
+* LogMiner does not process NUMBER(1) data [DBZ-3208](https://issues.jboss.org/browse/DBZ-3208)
+* Use LogMiner adapter by default for Oracle connector [DBZ-3241](https://issues.jboss.org/browse/DBZ-3241)
+
+
+### Fixes since 1.5.0.Beta1
+
+* Error in LSN [DBZ-2417](https://issues.jboss.org/browse/DBZ-2417)
+* Connector restarts with an SCN that was previously processed. [DBZ-2875](https://issues.jboss.org/browse/DBZ-2875)
+* Misleading error message for filtered publication with misconfigured filters [DBZ-2885](https://issues.jboss.org/browse/DBZ-2885)
+* There are still important problems with Oracle LogMiner [DBZ-2976](https://issues.jboss.org/browse/DBZ-2976)
+* Don't execute initial statements upon connector validation [DBZ-3030](https://issues.jboss.org/browse/DBZ-3030)
+* Forever stuck with new binlog parser (1.3 and later) when processing big JSON column data  [DBZ-3106](https://issues.jboss.org/browse/DBZ-3106)
+* Change Events are not captured after initial load [DBZ-3128](https://issues.jboss.org/browse/DBZ-3128)
+* Repeating Unknown schema error even after recent schema_recovery [DBZ-3146](https://issues.jboss.org/browse/DBZ-3146)
+* CloudEvent value id field is not unique [DBZ-3157](https://issues.jboss.org/browse/DBZ-3157)
+* Oracle connector fails when using database.tablename.case.insensitive=true [DBZ-3190](https://issues.jboss.org/browse/DBZ-3190)
+* DML parser IndexOutOfRangeException with where-clause using "IS NULL" [DBZ-3193](https://issues.jboss.org/browse/DBZ-3193)
+* ORA-01284 file cannot be opened error when file locked by another process [DBZ-3194](https://issues.jboss.org/browse/DBZ-3194)
+* CommitThroughput metrics can raise division by zero error [DBZ-3200](https://issues.jboss.org/browse/DBZ-3200)
+* Update MongoDB driver version [DBZ-3212](https://issues.jboss.org/browse/DBZ-3212)
+* Extra connectors are not buildable unless main Debezium is built locally [DBZ-3213](https://issues.jboss.org/browse/DBZ-3213)
+* Docker image debezium/server:1.5 won't start [DBZ-3217](https://issues.jboss.org/browse/DBZ-3217)
+* Debezium Oracle Connector not excluding table columns [DBZ-3219](https://issues.jboss.org/browse/DBZ-3219)
+* LogMiner parse failure with Update DML with no where condition [DBZ-3235](https://issues.jboss.org/browse/DBZ-3235)
+* Debezium 1.4.2.Final and onwards unable to parse sasl.jaas.config from env var [DBZ-3245](https://issues.jboss.org/browse/DBZ-3245)
+* Debezium engine should call stop on task even when start fails [DBZ-3251](https://issues.jboss.org/browse/DBZ-3251)
+* No meaningful message provided when oracle driver is missing [DBZ-3254](https://issues.jboss.org/browse/DBZ-3254)
+
+
+### Other changes since 1.5.0.Beta1
+
+* Discuss capture job configuration as a tuning option for SQL Server and Db2 [DBZ-2122](https://issues.jboss.org/browse/DBZ-2122)
+* Prepare customizing auto-created topics doc for downstream [DBZ-2654](https://issues.jboss.org/browse/DBZ-2654)
+* Wrong warning about deprecated options [DBZ-3084](https://issues.jboss.org/browse/DBZ-3084)
+* Have non-validating mode in the UI [DBZ-3088](https://issues.jboss.org/browse/DBZ-3088)
+* Move container image builds to GH Actions [DBZ-3131](https://issues.jboss.org/browse/DBZ-3131)
+* Exclude CommonConnectorConfig.PROVIDE_TRANSACTION_METADATA from connectors not supporting it [DBZ-3132](https://issues.jboss.org/browse/DBZ-3132)
+* Add example for Debezium UI to debezium-examples repo [DBZ-3134](https://issues.jboss.org/browse/DBZ-3134)
+* Clarify required privileges for using pgoutput [DBZ-3138](https://issues.jboss.org/browse/DBZ-3138)
+* Do not rely on Max SCN seed value w/LogMiner [DBZ-3145](https://issues.jboss.org/browse/DBZ-3145)
+* Postgres documentation improvements [DBZ-3149](https://issues.jboss.org/browse/DBZ-3149)
+* Support running Oracle test suite in non-CDB (no PDB name) mode [DBZ-3154](https://issues.jboss.org/browse/DBZ-3154)
+* Update Oracle documentation [DBZ-3156](https://issues.jboss.org/browse/DBZ-3156)
+* Move the Oracle connector to the main repostory [DBZ-3166](https://issues.jboss.org/browse/DBZ-3166)
+* Minor editorial update to PostgreSQL connector documentation [DBZ-3192](https://issues.jboss.org/browse/DBZ-3192)
+* Incorrect link/anchor pair for truncate.handling.mode property in PG properties documentation [DBZ-3195](https://issues.jboss.org/browse/DBZ-3195)
+* Update oracle-vagrant-box [DBZ-3206](https://issues.jboss.org/browse/DBZ-3206)
+* Update Oracle versions tested [DBZ-3215](https://issues.jboss.org/browse/DBZ-3215)
+* Oracle test suite does not always clean-up tables after tests [DBZ-3237](https://issues.jboss.org/browse/DBZ-3237)
+* Update Oracle tutorial example [DBZ-3239](https://issues.jboss.org/browse/DBZ-3239)
+* Avoid reference to upstream Docker set-up [DBZ-3259](https://issues.jboss.org/browse/DBZ-3259)
+
+
+
 ## 1.5.0.Beta1
 February 23rd 2021 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12353830)
 
