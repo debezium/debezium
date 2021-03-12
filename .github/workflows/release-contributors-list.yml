@@ -17,4 +17,4 @@ jobs:
     steps:
       - name: Run script
         run: |
-          chomd +x ./github-support/list-contributors.sh ${{ github.event.inputs.tag1 }} ${{ github.event.inputs.tag2 }}
+          ./github-support/list-contributors.sh ${{ github.event.inputs.tag1 }} ${{ github.event.inputs.tag2 }}
