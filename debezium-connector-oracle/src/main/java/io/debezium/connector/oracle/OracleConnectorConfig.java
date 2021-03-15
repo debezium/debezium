@@ -29,7 +29,6 @@ import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.connector.oracle.logminer.HistoryRecorder;
 import io.debezium.connector.oracle.logminer.NeverHistoryRecorder;
-import io.debezium.connector.oracle.logminer.Scn;
 import io.debezium.connector.oracle.logminer.SqlUtils;
 import io.debezium.connector.oracle.xstream.LcrPosition;
 import io.debezium.connector.oracle.xstream.OracleVersion;

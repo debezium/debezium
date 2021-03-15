@@ -11,7 +11,7 @@ import java.util.Arrays;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.connector.oracle.logminer.Scn;
+import io.debezium.connector.oracle.Scn;
 import io.debezium.util.HexConverter;
 import io.debezium.util.Strings;
 

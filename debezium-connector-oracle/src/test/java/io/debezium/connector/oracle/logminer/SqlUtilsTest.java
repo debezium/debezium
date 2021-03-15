@@ -20,6 +20,7 @@ import org.junit.rules.TestRule;
 import org.mockito.Mockito;
 
 import io.debezium.connector.oracle.OracleConnectorConfig;
+import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot.AdapterName;

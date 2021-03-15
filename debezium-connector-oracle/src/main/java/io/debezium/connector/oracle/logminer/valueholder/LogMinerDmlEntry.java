@@ -8,7 +8,7 @@ package io.debezium.connector.oracle.logminer.valueholder;
 import java.sql.Timestamp;
 import java.util.List;
 
-import io.debezium.connector.oracle.logminer.Scn;
+import io.debezium.connector.oracle.Scn;
 import io.debezium.data.Envelope;
 
 public interface LogMinerDmlEntry {
