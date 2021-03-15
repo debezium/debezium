@@ -1,0 +1,124 @@
+// Category: debezium-using
+// Type: assembly
+// ModuleID: customization-of-kafka-connect-automatic-topic-creation
+// Title: Sending signals to a Debezium connector
+[id="sending-signals-to-a-debezium-connector"]
+= Sending signals to a Debezium connector
+
+:toc:
+:toc-placement: macro
+:linkattrs:
+:icons: font
+:source-highlighter: highlight.js
+
+toc::[]
+
+[NOTE]
+====
+This feature is currently in incubating state, i.e. exact semantics, configuration options etc. may change in future revisions, based on the feedback we receive. Please let us know if you encounter any problems while using this extension.
+====
+
+== Overview
+Sometimes it is necessary for the user to modify a connector behaviour or trigger a one-time action (e.g. snapshot of a single table).
+To fullwfill such needs {prodname} provides a mechanism how to send a signal to a {prodname} connector to trigger an action.
+As it might be necessary to synchronize such an action with the dataflow the signal is implemented as a write to a data collection.
+
+Signalling is disabled by default.
+The name of the signalling data collection must be set via connector configuration parameter to enable the function.
+The signalling data collection must be *explictly* added among captured data collections.
+
+.Connector configuration
+[cols="3,9",options="header"]
+|===
+|Parameter |  Description
+
+|`signal.data.collection`
+|Fully-qualified name of data cloection. +
+The name format is connector specific.
+
+|===
+
+
+=== Data collection structure
+
+The signalling data collection must conform to a required format.
+it must contain three fields.
+The naming of the fields is arbitrary and only order of the field is important.
+It is recommended but not mandatory to use the field names as defined in the table below.
+
+.Signalling data collection structure
+[cols="1,1,9",options="header"]
+|===
+|Column | Type | Description
+
+|`id`
+|`string`
+|A unique identifier of this signal instance. +
+It can be used for logging, debugging or deduplication.
+Usually an UUID string.
+
+|`type`
+|`string`
+|The type of the signal to be sent. +
+There are signals common for all connectors or specific to a subset of connectors.
+
+|`data`
+|`string`
+|JSON formatted parameters that are passed to a signal action. +
+Each signal has its own expected set of data.
+
+|===
+
+.Example of a signal record
+[cols="1,9",options="header"]
+|===
+|Column | Value
+
+|id
+|`924e3ff8-2245-43ca-ba77-2af9af02fa07`
+
+|type
+|`log`
+
+|data
+|`{"message": "Signal message at offset {}"}`
+
+|===
+
+
+== Signal Actions
+
+These signals are common to all connectors
+
+=== Logging
+
+The type of the logging action is `log`.
+It will print a provided message to the log optionally including streaming position.
+
+.Action parameters
+[cols="1,9",options="header"]
+|===
+|Name | Description
+
+|message
+|The string printed to the log. +
+If a placeholder `{}` is added to the message it will be replaced with streaming coordinates.
+
+|===
+
+.Example of a logging record
+[cols="1,9",options="header"]
+|===
+|Column | Value
+
+|id
+|`924e3ff8-2245-43ca-ba77-2af9af02fa07`
+
+|type
+|`log`
+
+|data
+|`{"message": "Signal message at offset {}"}`
+
+|===
+

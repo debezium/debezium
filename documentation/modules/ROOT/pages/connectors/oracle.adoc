@@ -15,10 +15,11 @@ This connector is currently in incubating state, i.e. exact semantics, configura
 ====
 
 {prodname}'s Oracle Connector can monitor and record all of the row-level changes in the databases on an Oracle server.
-Most notably, the connector does not yet support changes to the structure of captured tables (e.g. `ALTER TABLE...`) after the initial snapshot has been completed
+Most notably, the connector does not yet provide full-blown support of changes to the structure of captured tables (e.g. `ALTER TABLE...`) after the initial snapshot has been completed
 (see {jira-url}/browse/DBZ-718[DBZ-718]).
 It is supported though to capture tables newly added while the connector is running
 (provided the new table's name matches the connector's filter configuration).
+For table schema changes an xref:surrogate-schema-evolution[auxilliary solution] could be used.
 
 [[oracle-overview]]
 == Overview
@@ -1778,6 +1779,171 @@ See <<oracle-property-log-mining-history-recorder-class, `log.mining.history.rec
 The *MBean* is `debezium.mysql:type=connector-metrics,context=schema-history,server=_<database.server.name>_`.
 
 include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-schema-history-metrics.adoc[leveloffset=+1]
+
+[[surrogate-schema-evolution]]
+== Surrogate schema evolution
+
+Oracle connector does not yet support updates in table schemas parsing DDL `ALTER TABLE` statements.
+It is possible to use {prodname} link:/documentation/reference/configuration/signalling[signalling] to trigger the update of the database schema.
+
+The type of the schema update action is `schema-changes`.
+It will update the schema of all tables enumerated in the signal parameters.
+The message contain not the update to the schema but the complete new schema structure.
+
+.Action parameters
+[cols="3,9",options="header"]
+|===
+|Name | Description
+
+|`database`
+|The name of the Oracle database.
+
+|`schema`
+|The name of the schema where changes are applied.
+
+|`changes`
+|An array containing the requested schema updates.
+
+|`changes.type`
+|Type of the schema change, usually `ALTER`
+
+|`changes.id`
+|The fully-qualified name of the table
+
+|`changes.table`
+|The fully-qualified name of the table
+
+|`changes.table.defaultCharsetName`
+|The character set name used for the table if different from database default
+
+|`changes.table.primaryKeyColumnNames`
+|Array with the name of columns composing the primary key
+
+|`changes.table.columns`
+|Array with the column metadata
+
+|`...columns.name`
+|The name of the column
+
+|`...columns.jdbcType`
+|The JDBC type of the column as defined at link:https://docs.oracle.com/javase/8/docs/api/java/sql/Types.html[JDBC API]
+
+|`...columns.typeName`
+|The name of the column type
+
+|`...columns.typeExpression`
+|The full column type definition
+
+|`...columns.charsetName`
+|The column character set if different from the default
+
+|`...columns.length`
+|The length/size constraint of the column
+
+|`...columns.scale`
+|The scale of numeric column
+
+|`...columns.position`
+|The position of the column in the table starting with `1`
+
+|`...columns.optional`
+|Boolean `true` if column value is not mandatory
+
+|`...columns.autoIncremented`
+|Boolean `true` if column value is automatically calculated from a sequence
+
+|`...columns.generated`
+|Boolean `true` if column value is automatically calculated
+
+|===
+
+.Example of a logging record
+[cols="1,9a",options="header"]
+|===
+|Column | Value
+
+|id
+|`924e3ff8-2245-43ca-ba77-2af9af02fa07`
+
+|type
+|`schema-changes`
+
+|data
+|[source,json,indent=0,subs="attributes"]
+----
+{
+   "database":"ORCLPDB1",
+   "schema":"DEBEZIUM",
+   "changes":[
+      {
+         "type":"ALTER",
+         "id":"\"ORCLPDB1\".\"DEBEZIUM\".\"CUSTOMER\"",
+         "table":{
+            "defaultCharsetName":null,
+            "primaryKeyColumnNames":[
+               "ID",
+               "NAME"
+            ],
+            "columns":[
+               {
+                  "name":"ID",
+                  "jdbcType":2,
+                  "typeName":"NUMBER",
+                  "typeExpression":"NUMBER",
+                  "charsetName":null,
+                  "length":9,
+                  "scale":0,
+                  "position":1,
+                  "optional":false,
+                  "autoIncremented":false,
+                  "generated":false
+               },
+               {
+                  "name":"NAME",
+                  "jdbcType":12,
+                  "typeName":"VARCHAR2",
+                  "typeExpression":"VARCHAR2",
+                  "charsetName":null,
+                  "length":1000,
+                  "position":2,
+                  "optional":true,
+                  "autoIncremented":false,
+                  "generated":false
+               },
+               {
+                  "name":"SCORE",
+                  "jdbcType":2,
+                  "typeName":"NUMBER",
+                  "typeExpression":"NUMBER",
+                  "charsetName":null,
+                  "length":6,
+                  "scale":2,
+                  "position":3,
+                  "optional":true,
+                  "autoIncremented":false,
+                  "generated":false
+               },
+               {
+                  "name":"REGISTERED",
+                  "jdbcType":93,
+                  "typeName":"TIMESTAMP(6)",
+                  "typeExpression":"TIMESTAMP(6)",
+                  "charsetName":null,
+                  "length":6,
+                  "position":4,
+                  "optional":true,
+                  "autoIncremented":false,
+                  "generated":false
+               }
+            ]
+         }
+      }
+   ]
+}
+----
+
+|===
+
 
 [[oracle-when-things-go-wrong]]
 == Behavior when things go wrong
