@@ -108,5 +108,12 @@
             <artifactId>debezium-connector-postgres</artifactId>
             <scope>test</scope>
         </dependency>
+
+        <!-- Aligning versions/fixing scopes -->
+        <dependency>
+            <groupId>commons-logging</groupId>
+            <artifactId>commons-logging</artifactId>
+            <scope>runtime</scope>
+        </dependency>
     </dependencies>
 </project>
