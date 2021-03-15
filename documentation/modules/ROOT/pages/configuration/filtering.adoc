@@ -139,6 +139,13 @@ When the filter condition evaluates to `false`, the message is removed.
 
 Expressions should not result in any side-effects. That is, they should not modify any variables that they pass.
 
+[NOTE]
+====
+{prodname} emits not only data messages but also metadata messages about schema chages, transactions or heartbeat messages.
+The expressions should not be applied on such messages as their structure is different from what is usually expected by the expression.
+It is recommended to use either xref:filter-topic-regex[topic.regex] configuration option or a link:https://cwiki.apache.org/confluence/display/KAFKA/KIP-585%3A+Filter+and+Conditional+SMTs[an SMT predicate] to ensure that the expression is applied only to a valid messages.
+====
+
 // Type: reference
 // ModuleID: filter-condition-configuration-for-other-scripting-languages
 // Title: Filter condition configuration for other scripting languages 
