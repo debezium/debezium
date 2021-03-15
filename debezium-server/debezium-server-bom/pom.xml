@@ -16,6 +16,8 @@
         <version.pubsub>5.1.0</version.pubsub>
         <version.pulsar>2.5.2</version.pulsar>
         <version.eventhubs>5.1.1</version.eventhubs>
+
+        <version.commons.logging>1.2</version.commons.logging>
     </properties>
 
     <dependencyManagement>
@@ -89,6 +91,14 @@
                 <artifactId>debezium-testing-testcontainers</artifactId>
                 <version>${project.version}</version>
                 <scope>test</scope>
+            </dependency>
+
+            <!-- Aligning versions/fixing scopes -->
+            <dependency>
+                <groupId>commons-logging</groupId>
+                <artifactId>commons-logging</artifactId>
+                <version>${version.commons.logging}</version>
+                <scope>runtime</scope>
             </dependency>
         </dependencies>
     </dependencyManagement>
