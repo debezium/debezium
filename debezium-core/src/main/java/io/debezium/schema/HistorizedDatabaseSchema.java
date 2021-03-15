@@ -7,6 +7,8 @@ package io.debezium.schema;
 
 import java.util.Collection;
 
+import io.debezium.connector.common.TaskOffsetContext;
+import io.debezium.connector.common.TaskPartition;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.relational.TableId;
 
@@ -19,7 +21,7 @@ import io.debezium.relational.TableId;
  * @param <I>
  *            The collection id type of this schema
  */
-public interface HistorizedDatabaseSchema<I extends DataCollectionId> extends DatabaseSchema<I> {
+public interface HistorizedDatabaseSchema<P extends TaskPartition, O extends OffsetContext, I extends DataCollectionId> extends DatabaseSchema<I> {
 
     @FunctionalInterface
     public static interface SchemaChangeEventConsumer {
@@ -32,7 +34,7 @@ public interface HistorizedDatabaseSchema<I extends DataCollectionId> extends Da
 
     void applySchemaChange(SchemaChangeEvent schemaChange);
 
-    void recover(OffsetContext offset);
+    void recover(TaskOffsetContext<P, O> taskOffsetContext);
 
     void initializeStorage();
 

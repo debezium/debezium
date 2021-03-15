@@ -72,7 +72,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
      */
     private final SqlServerConnection metadataConnection;
 
-    private final EventDispatcher<TableId> dispatcher;
+    private final EventDispatcher<SqlServerTaskPartition, SqlServerOffsetContext, TableId> dispatcher;
     private final ErrorHandler errorHandler;
     private final Clock clock;
     private final SqlServerDatabaseSchema schema;
@@ -80,7 +80,9 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
     private final SqlServerConnectorConfig connectorConfig;
 
     public SqlServerStreamingChangeEventSource(SqlServerConnectorConfig connectorConfig, SqlServerConnection dataConnection,
-                                               SqlServerConnection metadataConnection, EventDispatcher<TableId> dispatcher, ErrorHandler errorHandler, Clock clock,
+                                               SqlServerConnection metadataConnection,
+                                               EventDispatcher<SqlServerTaskPartition, SqlServerOffsetContext, TableId> dispatcher, ErrorHandler errorHandler,
+                                               Clock clock,
                                                SqlServerDatabaseSchema schema) {
         this.connectorConfig = connectorConfig;
         this.dataConnection = dataConnection;
@@ -139,7 +141,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                 // Reading interval is inclusive so we need to move LSN forward but not for first
                 // run as TX might not be streamed completely
                 final Lsn fromLsn = lastProcessedPosition.getCommitLsn().isAvailable() && shouldIncreaseFromLsn
-                        ? dataConnection.incrementLsn(lastProcessedPosition.getCommitLsn())
+                        ? dataConnection.incrementLsn(lastProcessedPosition.getCommitLsn(), partition.getDatabaseName())
                         : lastProcessedPosition.getCommitLsn();
                 shouldIncreaseFromLsn = true;
 
@@ -252,7 +254,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                             offsetContext.setChangePosition(tableWithSmallestLsn.getChangePosition(), eventCount);
                             offsetContext.event(
                                     tableWithSmallestLsn.getChangeTable().getSourceTableId(),
-                                    metadataConnection.timestampOfLsn(tableWithSmallestLsn.getChangePosition().getCommitLsn()));
+                                    metadataConnection.timestampOfLsn(tableWithSmallestLsn.getChangePosition().getCommitLsn(), partition.getDatabaseName()));
 
                             dispatcher
                                     .dispatchDataChangeEvent(

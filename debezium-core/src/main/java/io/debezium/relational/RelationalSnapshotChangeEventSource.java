@@ -62,14 +62,14 @@ public abstract class RelationalSnapshotChangeEventSource<P extends TaskPartitio
 
     private final RelationalDatabaseConnectorConfig connectorConfig;
     private final JdbcConnection jdbcConnection;
-    private final HistorizedRelationalDatabaseSchema schema;
-    protected final EventDispatcher<TableId> dispatcher;
+    private final HistorizedRelationalDatabaseSchema<P, O> schema;
+    protected final EventDispatcher<P, O, TableId> dispatcher;
     protected final Clock clock;
     private final SnapshotProgressListener snapshotProgressListener;
 
     public RelationalSnapshotChangeEventSource(RelationalDatabaseConnectorConfig connectorConfig,
-                                               JdbcConnection jdbcConnection, HistorizedRelationalDatabaseSchema schema,
-                                               EventDispatcher<TableId> dispatcher, Clock clock, SnapshotProgressListener snapshotProgressListener) {
+                                               JdbcConnection jdbcConnection, HistorizedRelationalDatabaseSchema<P, O> schema,
+                                               EventDispatcher<P, O, TableId> dispatcher, Clock clock, SnapshotProgressListener snapshotProgressListener) {
         super(connectorConfig, snapshotProgressListener);
         this.connectorConfig = connectorConfig;
         this.jdbcConnection = jdbcConnection;
@@ -81,7 +81,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends TaskPartitio
 
     public RelationalSnapshotChangeEventSource(RelationalDatabaseConnectorConfig connectorConfig,
                                                JdbcConnection jdbcConnection,
-                                               EventDispatcher<TableId> dispatcher, Clock clock, SnapshotProgressListener snapshotProgressListener) {
+                                               EventDispatcher<P, O, TableId> dispatcher, Clock clock, SnapshotProgressListener snapshotProgressListener) {
         this(connectorConfig, jdbcConnection, null, dispatcher, clock, snapshotProgressListener);
     }
 
@@ -429,7 +429,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends TaskPartitio
 
         // try without catalog id, as this might or might not be populated based on the given connector
         if (overriddenSelect == null) {
-            overriddenSelect = connectorConfig.getSnapshotSelectOverridesByTable().get(new TableId(null, tableId.schema(), tableId.table()));
+            overriddenSelect = connectorConfig.getSnapshotSelectOverridesByTable().get(new TableId(tableId.catalog(), tableId.schema(), tableId.table()));
         }
 
         return overriddenSelect != null ? Optional.of(enhanceOverriddenSelect(partition, snapshotContext, overriddenSelect, tableId))
