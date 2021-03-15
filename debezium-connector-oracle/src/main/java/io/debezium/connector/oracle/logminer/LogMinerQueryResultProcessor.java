@@ -53,8 +53,8 @@ class LogMinerQueryResultProcessor {
     private final OracleConnectorConfig connectorConfig;
     private final Clock clock;
     private final Logger LOGGER = LoggerFactory.getLogger(LogMinerQueryResultProcessor.class);
-    private long currentOffsetScn = 0;
-    private long currentOffsetCommitScn = 0;
+    private Scn currentOffsetScn = Scn.ZERO;
+    private Scn currentOffsetCommitScn = Scn.ZERO;
     private long stuckScnCounter = 0;
     private HistoryRecorder historyRecorder;
 
@@ -208,14 +208,14 @@ class LogMinerQueryResultProcessor {
                     transactionalBuffer.registerCommitCallback(txId, scn, changeTime.toInstant(), (timestamp, smallestScn, commitScn, counter) -> {
                         // update SCN in offset context only if processed SCN less than SCN among other transactions
                         if (smallestScn == null || scn.compareTo(smallestScn) < 0) {
-                            offsetContext.setScn(scn.longValue());
+                            offsetContext.setScn(scn);
                             transactionalBufferMetrics.setOldestScn(scn);
                         }
                         offsetContext.setTransactionId(txId);
                         offsetContext.setSourceTime(timestamp.toInstant());
                         offsetContext.setTableId(tableId);
                         if (counter == 0) {
-                            offsetContext.setCommitScn(commitScn.longValue());
+                            offsetContext.setCommitScn(commitScn);
                         }
                         Table table = schema.tableFor(tableId);
                         LOGGER.trace("Processing DML event {} scn {}", dmlEntry.toString(), scn);
@@ -237,9 +237,9 @@ class LogMinerQueryResultProcessor {
             metrics.setLastDurationOfBatchProcessing(totalTime);
 
             warnStuckScn();
-            currentOffsetScn = offsetContext.getScn();
+            currentOffsetScn = Scn.valueOf(offsetContext.getScn());
             if (offsetContext.getCommitScn() != null) {
-                currentOffsetCommitScn = offsetContext.getCommitScn();
+                currentOffsetCommitScn = Scn.valueOf(offsetContext.getCommitScn());
             }
         }
 
@@ -260,7 +260,9 @@ class LogMinerQueryResultProcessor {
      */
     private void warnStuckScn() {
         if (offsetContext != null && offsetContext.getCommitScn() != null) {
-            if (currentOffsetScn == offsetContext.getScn() && currentOffsetCommitScn != offsetContext.getCommitScn()) {
+            final Scn scn = Scn.valueOf(offsetContext.getScn());
+            final Scn commitScn = Scn.valueOf(offsetContext.getCommitScn());
+            if (currentOffsetScn.equals(scn) && !currentOffsetCommitScn.equals(offsetContext.getCommitScn())) {
                 stuckScnCounter++;
                 // logWarn only once
                 if (stuckScnCounter == 25) {

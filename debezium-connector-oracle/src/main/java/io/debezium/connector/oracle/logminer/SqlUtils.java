@@ -372,11 +372,11 @@ public class SqlUtils {
     /**
      * This method return query which converts given SCN in days and deduct from the current day
      */
-    public static String diffInDaysQuery(Long scn) {
+    public static String diffInDaysQuery(Scn scn) {
         if (scn == null) {
             return null;
         }
-        return "select sysdate - CAST(scn_to_timestamp(" + scn + ") as date) from dual";
+        return "select sysdate - CAST(scn_to_timestamp(" + scn.toString() + ") as date) from dual";
     }
 
     public static boolean connectionProblem(Throwable e) {

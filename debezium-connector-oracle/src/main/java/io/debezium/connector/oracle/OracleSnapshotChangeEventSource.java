@@ -123,7 +123,7 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
 
         ctx.offset = OracleOffsetContext.create()
                 .logicalName(connectorConfig)
-                .scn(currentScn.longValue())
+                .scn(currentScn)
                 .transactionContext(new TransactionContext())
                 .build();
     }
@@ -280,7 +280,9 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
 
     @Override
     protected Optional<String> getSnapshotSelect(RelationalSnapshotContext snapshotContext, TableId tableId) {
-        long snapshotOffset = (Long) snapshotContext.offset.getOffset().get("scn");
+        final OracleOffsetContext offset = (OracleOffsetContext) snapshotContext.offset;
+        final String snapshotOffset = offset.getScn();
+        assert snapshotOffset != null;
         return Optional.of("SELECT * FROM " + quote(tableId) + " AS OF SCN " + snapshotOffset);
     }
 

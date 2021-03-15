@@ -518,7 +518,7 @@ public class LogMinerHelper {
      * @param transactionRetention duration to tolerate long running transactions
      * @return optional SCN as a watermark for abandonment
      */
-    public static Optional<Long> getLastScnToAbandon(OracleConnection connection, Long offsetScn, Duration transactionRetention) {
+    public static Optional<Scn> getLastScnToAbandon(OracleConnection connection, Scn offsetScn, Duration transactionRetention) {
         try {
             String query = SqlUtils.diffInDaysQuery(offsetScn);
             Float diffInDays = (Float) getSingleResult(connection, query, DATATYPE.FLOAT);

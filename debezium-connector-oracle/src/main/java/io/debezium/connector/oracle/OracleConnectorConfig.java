@@ -30,6 +30,7 @@ import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.connector.oracle.logminer.HistoryRecorder;
 import io.debezium.connector.oracle.logminer.NeverHistoryRecorder;
+import io.debezium.connector.oracle.logminer.Scn;
 import io.debezium.connector.oracle.logminer.SqlUtils;
 import io.debezium.connector.oracle.xstream.LcrPosition;
 import io.debezium.connector.oracle.xstream.OracleVersion;
@@ -491,23 +492,27 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         return new HistoryRecordComparator() {
             @Override
             protected boolean isPositionAtOrBefore(Document recorded, Document desired) {
-                Long recordedScn;
-                Long desiredScn;
+                Scn recordedScn;
+                Scn desiredScn;
                 if (getAdapter() == OracleConnectorConfig.ConnectorAdapter.XSTREAM) {
                     final LcrPosition recordedPosition = LcrPosition.valueOf(recorded.getString(SourceInfo.LCR_POSITION_KEY));
                     final LcrPosition desiredPosition = LcrPosition.valueOf(desired.getString(SourceInfo.LCR_POSITION_KEY));
-                    recordedScn = recordedPosition != null ? recordedPosition.getScn() : recorded.getLong(SourceInfo.SCN_KEY);
-                    desiredScn = desiredPosition != null ? desiredPosition.getScn() : desired.getLong(SourceInfo.SCN_KEY);
+                    recordedScn = recordedPosition != null ? recordedPosition.getScn() : getScnFromString(recorded.getString(SourceInfo.SCN2_KEY));
+                    desiredScn = desiredPosition != null ? desiredPosition.getScn() : getScnFromString(desired.getString(SourceInfo.SCN2_KEY));
                     return (recordedPosition != null && desiredPosition != null)
                             ? recordedPosition.compareTo(desiredPosition) < 1
                             : recordedScn.compareTo(desiredScn) < 1;
                 }
                 else {
-                    recordedScn = recorded.getLong(SourceInfo.SCN_KEY);
-                    desiredScn = desired.getLong(SourceInfo.SCN_KEY);
+                    recordedScn = getScnFromString(recorded.getString(SourceInfo.SCN_KEY));
+                    desiredScn = getScnFromString(desired.getString(SourceInfo.SCN_KEY));
                     return recordedScn.compareTo(desiredScn) < 1;
                 }
 
+            }
+
+            private Scn getScnFromString(String value) {
+                return value == null ? Scn.ZERO : Scn.valueOf(value);
             }
         };
     }
