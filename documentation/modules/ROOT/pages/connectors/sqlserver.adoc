@@ -991,6 +991,13 @@ Transaction boundary events contain the following fields:
 `event_count` (for `END` events):: Total number of events emitted by the transaction.
 `data_collections` (for `END` events):: An array of pairs of `data_collection` and `event_count` that provides the number of events emitted by changes originating from given data collection.
 
+[WARNING]
+====
+There is no way for {prodname} to reliably identify when a transaction has ended.
+The transaction `END` marker is thus emitted only after the first event of another transaction arrives.
+This can lead to the delayed delivery of `END` marker in case of a low-traffic system.
+====
+
 The following example shows a typical transaction boundary message:
 
 .Example: SQL Server connector transaction boundary event
