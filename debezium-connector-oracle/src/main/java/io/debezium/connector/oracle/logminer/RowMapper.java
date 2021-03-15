@@ -114,7 +114,7 @@ public class RowMapper {
 
     public static Scn getScn(TransactionalBufferMetrics metrics, ResultSet rs) {
         try {
-            return new Scn(rs.getBigDecimal(SCN));
+            return Scn.valueOf(rs.getString(SCN));
         }
         catch (SQLException e) {
             logError(metrics, e, "SCN");
