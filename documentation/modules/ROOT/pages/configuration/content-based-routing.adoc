@@ -76,6 +76,17 @@ ifdef::product[]
 . Restart the Kafka Connect process to pick up the new JAR files.
 endif::product[]
 
+The Groovy language needs the following libraries on the classpath:
+
+* `groovy`
+* `groovy-json` (optional)
+* `groovy-jsr223`
+
+The JavaScript language needs the following libraries on the classpath:
+
+* `graalvm.js`
+* `graalvm.js.scriptengine`
+
 // Type: concept
 // ModuleID: example-debezium-basic-content-based-routing-configuration
 // Title: Example: {prodname} basic content-based routing configuration 
