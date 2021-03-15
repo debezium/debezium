@@ -9,7 +9,7 @@ import java.sql.Timestamp;
 import java.util.List;
 import java.util.Objects;
 
-import io.debezium.connector.oracle.logminer.Scn;
+import io.debezium.connector.oracle.Scn;
 import io.debezium.data.Envelope;
 
 /**

@@ -19,6 +19,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.connector.oracle.OracleConnectorConfig;
+import io.debezium.connector.oracle.Scn;
 import io.debezium.metrics.Metrics;
 
 /**

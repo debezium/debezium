@@ -21,6 +21,7 @@ import org.mockito.Mockito;
 import io.debezium.config.Configuration;
 import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.connector.oracle.OracleConnectorConfig;
+import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot.AdapterName;

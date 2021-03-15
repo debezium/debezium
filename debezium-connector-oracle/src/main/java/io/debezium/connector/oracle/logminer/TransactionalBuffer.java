@@ -24,6 +24,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.connector.oracle.OracleOffsetContext;
 import io.debezium.connector.oracle.OracleTaskContext;
+import io.debezium.connector.oracle.Scn;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.ChangeEventSource;

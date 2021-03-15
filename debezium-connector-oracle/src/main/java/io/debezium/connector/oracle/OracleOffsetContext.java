@@ -14,7 +14,6 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.connector.SnapshotRecord;
-import io.debezium.connector.oracle.logminer.Scn;
 import io.debezium.connector.oracle.xstream.LcrPosition;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.txmetadata.TransactionContext;
