@@ -5,7 +5,7 @@
  */
 package io.debezium.connector.oracle.logminer;
 
-import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.util.Objects;
 
 /**
@@ -18,22 +18,21 @@ public class Scn implements Comparable<Scn> {
     /**
      * Represents an Scn that is considered INVALID, useful as a placeholder.
      */
-    public static final Scn INVALID = new Scn(new BigDecimal(-1));
+    public static final Scn INVALID = new Scn(BigInteger.valueOf(-1));
 
     /**
      * Represents an Scn that implies the maximum possible value of an SCN, useful as a placeholder.
      */
-    public static final Scn MAX = new Scn(new BigDecimal(-2));
+    public static final Scn MAX = new Scn(BigInteger.valueOf(-2));
 
     /**
      * Represents an Scn with a value of {@code 0}.
      */
-    public static final Scn ZERO = new Scn(BigDecimal.ZERO);
+    public static final Scn ZERO = new Scn(BigInteger.ZERO);
 
-    private final BigDecimal scn;
+    private final BigInteger scn;
 
-    public Scn(BigDecimal scn) {
-        assert scn.scale() == 0;
+    public Scn(BigInteger scn) {
         this.scn = scn;
     }
 
@@ -44,7 +43,7 @@ public class Scn implements Comparable<Scn> {
      * @return instance of Scn
      */
     public static Scn valueOf(int value) {
-        return new Scn(new BigDecimal(value));
+        return new Scn(BigInteger.valueOf(value));
     }
 
     /**
@@ -54,7 +53,7 @@ public class Scn implements Comparable<Scn> {
      * @return instance of Scn
      */
     public static Scn valueOf(long value) {
-        return new Scn(new BigDecimal(value));
+        return new Scn(BigInteger.valueOf(value));
     }
 
     /**
@@ -64,7 +63,7 @@ public class Scn implements Comparable<Scn> {
      * @return instance of Scn
      */
     public static Scn valueOf(String value) {
-        return new Scn(new BigDecimal(value));
+        return new Scn(new BigInteger(value));
     }
 
     /**

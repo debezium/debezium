@@ -10,7 +10,7 @@ import static io.debezium.config.CommonConnectorConfig.DEFAULT_MAX_QUEUE_SIZE;
 import static org.fest.assertions.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
-import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
@@ -54,7 +54,7 @@ public class TransactionalBufferTest {
     private static final String SQL_ONE = "update table";
     private static final String SQL_TWO = "insert into table";
     private static final String MESSAGE = "OK";
-    private static final Scn SCN_ONE = new Scn(BigDecimal.ONE);
+    private static final Scn SCN_ONE = new Scn(BigInteger.ONE);
     private static final Scn SCN = SCN_ONE;
     private static final Scn OTHER_SCN = Scn.valueOf(10L);
     private static final Scn LARGEST_SCN = Scn.valueOf(100L);
