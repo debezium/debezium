@@ -8,6 +8,7 @@ package io.debezium.connector.oracle.logminer;
 import static org.fest.assertions.Assertions.assertThat;
 
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.sql.Timestamp;
 import java.sql.Types;
 import java.util.ArrayList;
@@ -39,7 +40,7 @@ import io.debezium.util.IoUtil;
 
 @SkipWhenAdapterNameIsNot(value = AdapterName.LOGMINER)
 public class ValueHolderTest {
-    private static final Scn SCN_ONE = new Scn(BigDecimal.ONE);
+    private static final Scn SCN_ONE = new Scn(BigInteger.ONE);
     private static final String TABLE_NAME = "TEST";
     private static final String CATALOG_NAME = "CATALOG";
     private static final String SCHEMA_NAME = "DEBEZIUM";

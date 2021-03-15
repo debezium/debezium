@@ -25,8 +25,8 @@ import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot.AdapterName;
 @SkipWhenAdapterNameIsNot(value = AdapterName.LOGMINER)
 public class LogMinerUtilsTest {
 
-    private static final Scn SCN = new Scn(BigDecimal.ONE);
-    private static final Scn OTHER_SCN = new Scn(BigDecimal.TEN);
+    private static final Scn SCN = new Scn(BigInteger.ONE);
+    private static final Scn OTHER_SCN = new Scn(BigInteger.TEN);
 
     @Rule
     public TestRule skipRule = new SkipTestDependingOnAdapterNameRule();
