@@ -138,7 +138,7 @@ public final class TransactionalBuffer implements AutoCloseable {
 
         // On the restarting connector, we start from SCN in the offset. There is possibility to commit a transaction(s) which were already committed.
         // Currently we cannot use ">=", because we may lose normal commit which may happen at the same time. TODO use audit table to prevent duplications
-        if ((offsetContext.getCommitScn() != null && offsetContext.getCommitScn() > scn.longValue()) || lastCommittedScn.longValue() > scn.longValue()) {
+        if ((offsetContext.getCommitScn() != null && Scn.valueOf(offsetContext.getCommitScn()).compareTo(scn) > 0) || lastCommittedScn.compareTo(scn) > 0) {
             LogMinerHelper.logWarn(metrics,
                     "Transaction {} was already processed, ignore. Committed SCN in offset is {}, commit SCN of the transaction is {}, last committed SCN is {}",
                     transactionId, offsetContext.getCommitScn(), scn, lastCommittedScn);
@@ -224,9 +224,9 @@ public final class TransactionalBuffer implements AutoCloseable {
      * @param thresholdScn the smallest SVN of any transaction to keep in the buffer. All others will be removed.
      * @param offsetContext the offset context
      */
-    void abandonLongTransactions(Long thresholdScn, OracleOffsetContext offsetContext) {
+    void abandonLongTransactions(Scn thresholdScn, OracleOffsetContext offsetContext) {
         LogMinerHelper.logWarn(metrics, "All transactions with first SCN <= {} will be abandoned, offset: {}", thresholdScn, offsetContext.getScn());
-        Scn threshold = Scn.valueOf(thresholdScn);
+        Scn threshold = Scn.valueOf(thresholdScn.toString());
         Scn smallestScn = calculateSmallestScn();
         if (smallestScn == null) {
             // no transactions in the buffer

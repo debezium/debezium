@@ -14,6 +14,7 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.connector.SnapshotRecord;
+import io.debezium.connector.oracle.logminer.Scn;
 import io.debezium.connector.oracle.xstream.LcrPosition;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.txmetadata.TransactionContext;
@@ -36,13 +37,13 @@ public class OracleOffsetContext implements OffsetContext {
      */
     private boolean snapshotCompleted;
 
-    public OracleOffsetContext(OracleConnectorConfig connectorConfig, long scn, Long commitScn, LcrPosition lcrPosition,
+    public OracleOffsetContext(OracleConnectorConfig connectorConfig, String scn, String commitScn, LcrPosition lcrPosition,
                                boolean snapshot, boolean snapshotCompleted, TransactionContext transactionContext) {
         this(connectorConfig, scn, lcrPosition, snapshot, snapshotCompleted, transactionContext);
         sourceInfo.setCommitScn(commitScn);
     }
 
-    private OracleOffsetContext(OracleConnectorConfig connectorConfig, long scn, LcrPosition lcrPosition,
+    private OracleOffsetContext(OracleConnectorConfig connectorConfig, String scn, LcrPosition lcrPosition,
                                 boolean snapshot, boolean snapshotCompleted, TransactionContext transactionContext) {
         partition = Collections.singletonMap(SERVER_PARTITION_KEY, connectorConfig.getLogicalName());
 
@@ -65,7 +66,7 @@ public class OracleOffsetContext implements OffsetContext {
     public static class Builder {
 
         private OracleConnectorConfig connectorConfig;
-        private long scn;
+        private String scn;
         private LcrPosition lcrPosition;
         private boolean snapshot;
         private boolean snapshotCompleted;
@@ -76,8 +77,13 @@ public class OracleOffsetContext implements OffsetContext {
             return this;
         }
 
-        public Builder scn(long scn) {
+        public Builder scn(String scn) {
             this.scn = scn;
+            return this;
+        }
+
+        public Builder scn(Scn scn) {
+            scn(scn != null ? scn.toString() : null);
             return this;
         }
 
@@ -120,7 +126,7 @@ public class OracleOffsetContext implements OffsetContext {
         if (sourceInfo.isSnapshot()) {
             Map<String, Object> offset = new HashMap<>();
 
-            offset.put(SourceInfo.SCN_KEY, sourceInfo.getScn());
+            offset.put(SourceInfo.SCN2_KEY, sourceInfo.getScn());
             offset.put(SourceInfo.SNAPSHOT_KEY, true);
             offset.put(SNAPSHOT_COMPLETED_KEY, snapshotCompleted);
 
@@ -132,8 +138,8 @@ public class OracleOffsetContext implements OffsetContext {
                 offset.put(SourceInfo.LCR_POSITION_KEY, sourceInfo.getLcrPosition().toString());
             }
             else {
-                offset.put(SourceInfo.SCN_KEY, sourceInfo.getScn());
-                offset.put(SourceInfo.COMMIT_SCN_KEY, sourceInfo.getCommitScn());
+                offset.put(SourceInfo.SCN2_KEY, sourceInfo.getScn());
+                offset.put(SourceInfo.COMMIT2_SCN_KEY, sourceInfo.getCommitScn());
             }
             return transactionContext.store(offset);
         }
@@ -149,19 +155,19 @@ public class OracleOffsetContext implements OffsetContext {
         return sourceInfo.struct();
     }
 
-    public void setScn(long scn) {
-        sourceInfo.setScn(scn);
+    public void setScn(Scn scn) {
+        sourceInfo.setScn(scn.toString());
     }
 
-    public void setCommitScn(Long commitScn) {
-        sourceInfo.setCommitScn(commitScn);
+    public void setCommitScn(Scn commitScn) {
+        sourceInfo.setCommitScn(commitScn.toString());
     }
 
-    public long getScn() {
+    public String getScn() {
         return sourceInfo.getScn();
     }
 
-    public Long getCommitScn() {
+    public String getCommitScn() {
         return sourceInfo.getCommitScn();
     }
 
@@ -256,18 +262,43 @@ public class OracleOffsetContext implements OffsetContext {
         public OffsetContext load(Map<String, ?> offset) {
             boolean snapshot = Boolean.TRUE.equals(offset.get(SourceInfo.SNAPSHOT_KEY));
             boolean snapshotCompleted = Boolean.TRUE.equals(offset.get(SNAPSHOT_COMPLETED_KEY));
-            Long scn;
+            String scn;
             if (adapter == OracleConnectorConfig.ConnectorAdapter.LOG_MINER) {
-                scn = (Long) offset.get(SourceInfo.SCN_KEY);
-                Long commitScn = (Long) offset.get(SourceInfo.COMMIT_SCN_KEY);
+                scn = getScnFromOffset(offset, null);
+                String commitScn = getCommitScnFromOffset(offset);
                 return new OracleOffsetContext(connectorConfig, scn, commitScn, null, snapshot, snapshotCompleted, TransactionContext.load(offset));
             }
             else {
                 LcrPosition lcrPosition = LcrPosition.valueOf((String) offset.get(SourceInfo.LCR_POSITION_KEY));
-                scn = lcrPosition != null ? lcrPosition.getScn() : (Long) offset.get(SourceInfo.SCN_KEY);
+                scn = getScnFromOffset(offset, lcrPosition);
                 return new OracleOffsetContext(connectorConfig, scn, lcrPosition, snapshot, snapshotCompleted, TransactionContext.load(offset));
             }
 
+        }
+
+        private String getScnFromOffset(Map<String, ?> offset, LcrPosition lcrPosition) {
+            if (lcrPosition != null) {
+                return lcrPosition.getScn().toString();
+            }
+            // Prioritize string-based SCN key over the numeric-based SCN key
+            if (offset.containsKey(SourceInfo.SCN2_KEY)) {
+                return (String) offset.get(SourceInfo.SCN2_KEY);
+            }
+            else {
+                Long scnAsLong = (Long) offset.get(SourceInfo.SCN_KEY);
+                return scnAsLong != null ? scnAsLong.toString() : null;
+            }
+        }
+
+        private String getCommitScnFromOffset(Map<String, ?> offset) {
+            // Prioritize string-based commit SCN key over the numeric-based commit SCN key
+            if (offset.containsKey(SourceInfo.COMMIT2_SCN_KEY)) {
+                return (String) offset.get(SourceInfo.COMMIT2_SCN_KEY);
+            }
+            else {
+                Long commitScnAsLong = (Long) offset.get(SourceInfo.COMMIT_SCN_KEY);
+                return commitScnAsLong != null ? commitScnAsLong.toString() : null;
+            }
         }
     }
 }
