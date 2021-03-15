@@ -25,6 +25,8 @@ public class OracleSourceInfoStructMaker extends AbstractSourceInfoStructMaker<S
                 .field(SourceInfo.SCN_KEY, Schema.OPTIONAL_INT64_SCHEMA)
                 .field(SourceInfo.COMMIT_SCN_KEY, Schema.OPTIONAL_INT64_SCHEMA)
                 .field(SourceInfo.LCR_POSITION_KEY, Schema.OPTIONAL_STRING_SCHEMA)
+                .field(SourceInfo.SCN2_KEY, Schema.OPTIONAL_STRING_SCHEMA)
+                .field(SourceInfo.COMMIT2_SCN_KEY, Schema.OPTIONAL_STRING_SCHEMA)
                 .build();
     }
 
@@ -39,13 +41,15 @@ public class OracleSourceInfoStructMaker extends AbstractSourceInfoStructMaker<S
                 .put(SourceInfo.SCHEMA_NAME_KEY, sourceInfo.getTableId().schema())
                 .put(SourceInfo.TABLE_NAME_KEY, sourceInfo.getTableId().table())
                 .put(SourceInfo.TXID_KEY, sourceInfo.getTransactionId())
-                .put(SourceInfo.SCN_KEY, sourceInfo.getScn());
+                .put(SourceInfo.SCN_KEY, sourceInfo.getScn() != null ? Long.parseLong(sourceInfo.getScn()) : 0L)
+                .put(SourceInfo.SCN2_KEY, sourceInfo.getScn());
 
         if (sourceInfo.getLcrPosition() != null) {
             ret.put(SourceInfo.LCR_POSITION_KEY, sourceInfo.getLcrPosition().toString());
         }
         if (sourceInfo.getCommitScn() != null) {
-            ret.put(SourceInfo.COMMIT_SCN_KEY, sourceInfo.getCommitScn());
+            ret.put(SourceInfo.COMMIT_SCN_KEY, sourceInfo.getCommitScn() != null ? Long.parseLong(sourceInfo.getCommitScn()) : 0L);
+            ret.put(SourceInfo.COMMIT2_SCN_KEY, sourceInfo.getCommitScn());
         }
         return ret;
     }

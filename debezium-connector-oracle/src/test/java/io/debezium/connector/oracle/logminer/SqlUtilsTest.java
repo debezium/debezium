@@ -202,7 +202,7 @@ public class SqlUtilsTest {
         expected = "TRUNCATE TABLE table_name";
         assertThat(result).isEqualTo(expected);
 
-        result = SqlUtils.diffInDaysQuery(123L);
+        result = SqlUtils.diffInDaysQuery(Scn.valueOf(123L));
         expected = "select sysdate - CAST(scn_to_timestamp(123) as date) from dual";
         assertThat(expected.equals(result)).isTrue();
         result = SqlUtils.diffInDaysQuery(null);

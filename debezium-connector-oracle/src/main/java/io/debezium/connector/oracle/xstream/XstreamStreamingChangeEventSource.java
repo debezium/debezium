@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.oracle.xstream;
 
+import java.sql.SQLException;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -109,18 +110,18 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
         if (xsOut != null) {
             LOGGER.debug("Sending message to request recording of offsets to Oracle");
             final LcrPosition lcrPosition = LcrPosition.valueOf((String) offset.get(SourceInfo.LCR_POSITION_KEY));
-            final Long scn = (Long) offset.get(SourceInfo.SCN_KEY);
+            final String scn = (String) offset.get(SourceInfo.SCN2_KEY);
             // We can safely overwrite the message even if it was not processed. The watermarked will be set to the highest
             // (last) delivered value in a single step instead of incrementally
             sendPublishedPosition(lcrPosition, scn);
         }
     }
 
-    private byte[] convertScnToPosition(long scn) {
+    private byte[] convertScnToPosition(String scn) {
         try {
-            return XStreamUtility.convertSCNToPosition(new NUMBER(scn), this.posVersion);
+            return XStreamUtility.convertSCNToPosition(new NUMBER(scn, 0), this.posVersion);
         }
-        catch (StreamsException e) {
+        catch (SQLException | StreamsException e) {
             throw new RuntimeException(e);
         }
     }
@@ -139,7 +140,7 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
         return xsOut;
     }
 
-    private void sendPublishedPosition(final LcrPosition lcrPosition, final Long scn) {
+    private void sendPublishedPosition(final LcrPosition lcrPosition, final String scn) {
         lcrMessage.set(new PositionAndScn(lcrPosition, (scn != null) ? convertScnToPosition(scn) : null));
     }
 

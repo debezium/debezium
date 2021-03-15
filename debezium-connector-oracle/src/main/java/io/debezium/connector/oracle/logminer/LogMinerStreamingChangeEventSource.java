@@ -185,7 +185,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
 
                                 if (transactionalBuffer.isEmpty()) {
                                     LOGGER.debug("Transactional buffer empty, updating offset's SCN {}", startScn);
-                                    offsetContext.setScn(startScn.longValue());
+                                    offsetContext.setScn(startScn);
                                 }
                             }
 
@@ -228,7 +228,8 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
     private void abandonOldTransactionsIfExist(OracleConnection connection, TransactionalBuffer transactionalBuffer) {
         Duration transactionRetention = connectorConfig.getLogMiningTransactionRetention();
         if (!Duration.ZERO.equals(transactionRetention)) {
-            Optional<Long> lastScnToAbandonTransactions = getLastScnToAbandon(connection, offsetContext.getScn(), transactionRetention);
+            final Scn offsetScn = Scn.valueOf(offsetContext.getScn());
+            Optional<Scn> lastScnToAbandonTransactions = getLastScnToAbandon(connection, offsetScn, transactionRetention);
             lastScnToAbandonTransactions.ifPresent(thresholdScn -> {
                 transactionalBuffer.abandonLongTransactions(thresholdScn, offsetContext);
                 offsetContext.setScn(thresholdScn);
