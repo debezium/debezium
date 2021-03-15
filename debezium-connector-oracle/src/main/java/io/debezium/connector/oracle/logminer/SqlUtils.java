@@ -223,9 +223,16 @@ public class SqlUtils {
         StringBuilder query = new StringBuilder();
         query.append("SELECT SCN, SQL_REDO, OPERATION_CODE, TIMESTAMP, XID, CSF, TABLE_NAME, SEG_OWNER, OPERATION, USERNAME ");
         query.append("FROM ").append(LOGMNR_CONTENTS_VIEW).append(" ");
-        query.append("WHERE OPERATION_CODE IN (1,2,3,5) ");
-        query.append("AND SCN > ? ");
-        query.append("AND SCN < ? ");
+        query.append("WHERE ");
+        query.append("SCN > ? AND SCN <= ? ");
+        query.append("AND (");
+        // MISSING_SCN/DDL only when not performed by excluded users
+        query.append("(OPERATION_CODE IN (5,34) AND USERNAME NOT IN (").append(getExcludedUsers(logMinerUser)).append(")) ");
+        // COMMIT/ROLLBACK
+        query.append("OR (OPERATION_CODE IN (7,36)) ");
+        // INSERT/UPDATE/DELETE/DDL
+        query.append("OR ");
+        query.append("(OPERATION_CODE IN (1,2,3) ");
         query.append("AND TABLE_NAME != '").append(LOGMNR_FLUSH_TABLE).append("' ");
 
         // There are some common schemas that we automatically ignore when building the filter predicates
@@ -252,10 +259,13 @@ public class SqlUtils {
             query.append("AND ").append(tablePredicate).append(" ");
         }
 
-        query.append("OR (OPERATION_CODE IN (5,34) AND USERNAME NOT IN ('SYS','SYSTEM','").append(logMinerUser.toUpperCase()).append("')) ");
-        query.append("OR (OPERATION_CODE IN (7,36))");
+        query.append("))");
 
         return query.toString();
+    }
+
+    private static String getExcludedUsers(String logMinerUser) {
+        return "'SYS','SYSTEM','" + logMinerUser.toUpperCase() + "'";
     }
 
     private static String buildSchemaPredicate(OracleConnectorConfig connectorConfig) {
