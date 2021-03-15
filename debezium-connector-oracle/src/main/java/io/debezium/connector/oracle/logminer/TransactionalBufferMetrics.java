@@ -15,6 +15,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.connector.common.CdcSourceTaskContext;
+import io.debezium.connector.oracle.Scn;
 import io.debezium.metrics.Metrics;
 
 /**

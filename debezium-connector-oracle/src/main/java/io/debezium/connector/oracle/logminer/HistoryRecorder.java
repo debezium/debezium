@@ -8,6 +8,7 @@ package io.debezium.connector.oracle.logminer;
 import java.sql.Timestamp;
 
 import io.debezium.common.annotation.Incubating;
+import io.debezium.connector.oracle.Scn;
 import io.debezium.jdbc.JdbcConfiguration;
 
 /**
