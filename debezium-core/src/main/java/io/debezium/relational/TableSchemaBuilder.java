@@ -156,9 +156,8 @@ public class TableSchemaBuilder {
         else if (Strings.isNullOrEmpty(tableId.schema())) {
             return tableId.catalog() + "." + tableId.table();
         }
-        // When both catalog and schema is present then only schema is used
         else {
-            return tableId.schema() + "." + tableId.table();
+            return tableId.catalog() + "." + tableId.schema() + "." + tableId.table();
         }
     }
 

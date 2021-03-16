@@ -109,9 +109,9 @@ public class SnapshotWithSelectOverridesIT extends AbstractConnectorTest {
         assertConnectorIsRunning();
 
         SourceRecords records = consumeRecordsByTopic(INITIAL_RECORDS_PER_TABLE + (INITIAL_RECORDS_PER_TABLE + INITIAL_RECORDS_PER_TABLE) / 2);
-        List<SourceRecord> table1 = records.recordsForTopic("server1.dbo.table1");
-        List<SourceRecord> table2 = records.recordsForTopic("server1.dbo.table2");
-        List<SourceRecord> table3 = records.recordsForTopic("server1.dbo.table3");
+        List<SourceRecord> table1 = records.recordsForTopic("server1.testDB.dbo.table1");
+        List<SourceRecord> table2 = records.recordsForTopic("server1.testDB.dbo.table2");
+        List<SourceRecord> table3 = records.recordsForTopic("server1.testDB.dbo.table3");
 
         // soft_deleted records should be excluded for table1 and table3
         assertThat(table1).hasSize(INITIAL_RECORDS_PER_TABLE / 2);

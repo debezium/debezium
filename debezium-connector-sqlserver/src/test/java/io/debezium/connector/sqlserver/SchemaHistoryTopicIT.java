@@ -110,8 +110,8 @@ public class SchemaHistoryTopicIT extends AbstractConnectorTest {
         waitForAvailableRecords(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS);
 
         records = consumeRecordsByTopic(RECORDS_PER_TABLE * TABLES, 24);
-        Assertions.assertThat(records.recordsForTopic("server1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
-        final List<SourceRecord> tablebRecords = records.recordsForTopic("server1.dbo.tableb");
+        Assertions.assertThat(records.recordsForTopic("server1.testDB.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
+        final List<SourceRecord> tablebRecords = records.recordsForTopic("server1.testDB.dbo.tableb");
         // Additional schema change record was emitted
         if (tablebRecords.size() == RECORDS_PER_TABLE - 1) {
             tablebRecords.add(consumeRecord());
@@ -122,7 +122,7 @@ public class SchemaHistoryTopicIT extends AbstractConnectorTest {
                     (Struct) ((Struct) record.value()).get("after"),
                     SchemaBuilder.struct()
                             .optional()
-                            .name("server1.dbo.tableb.Value")
+                            .name("server1.testDB.dbo.tableb.Value")
                             .field("id", Schema.INT32_SCHEMA)
                             .field("colb", Schema.OPTIONAL_STRING_SCHEMA)
                             .build());
@@ -161,15 +161,15 @@ public class SchemaHistoryTopicIT extends AbstractConnectorTest {
         Assertions.assertThat(lastUpdate.sourceOffset()).isEqualTo(schemaRecord.sourceOffset());
 
         records = consumeRecordsByTopic(RECORDS_PER_TABLE * 2);
-        Assertions.assertThat(records.recordsForTopic("server1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
-        Assertions.assertThat(records.recordsForTopic("server1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
+        Assertions.assertThat(records.recordsForTopic("server1.testDB.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
+        Assertions.assertThat(records.recordsForTopic("server1.testDB.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
 
-        records.recordsForTopic("server1.dbo.tableb").forEach(record -> {
+        records.recordsForTopic("server1.testDB.dbo.tableb").forEach(record -> {
             assertSchemaMatchesStruct(
                     (Struct) ((Struct) record.value()).get("after"),
                     SchemaBuilder.struct()
                             .optional()
-                            .name("server1.dbo.tableb.Value")
+                            .name("server1.testDB.dbo.tableb.Value")
                             .field("id", Schema.INT32_SCHEMA)
                             .field("newcolb", Schema.OPTIONAL_STRING_SCHEMA)
                             .build());
@@ -183,14 +183,14 @@ public class SchemaHistoryTopicIT extends AbstractConnectorTest {
                     "INSERT INTO tableb VALUES(" + id + ", 'b3')");
         }
         records = consumeRecordsByTopic(RECORDS_PER_TABLE * 2);
-        Assertions.assertThat(records.recordsForTopic("server1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
-        Assertions.assertThat(records.recordsForTopic("server1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
-        records.recordsForTopic("server1.dbo.tableb").forEach(record -> {
+        Assertions.assertThat(records.recordsForTopic("server1.testDB.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
+        Assertions.assertThat(records.recordsForTopic("server1.testDB.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
+        records.recordsForTopic("server1.testDB.dbo.tableb").forEach(record -> {
             assertSchemaMatchesStruct(
                     (Struct) ((Struct) record.value()).get("after"),
                     SchemaBuilder.struct()
                             .optional()
-                            .name("server1.dbo.tableb.Value")
+                            .name("server1.testDB.dbo.tableb.Value")
                             .field("id", Schema.INT32_SCHEMA)
                             .field("newcolb", Schema.OPTIONAL_STRING_SCHEMA)
                             .build());
@@ -240,14 +240,14 @@ public class SchemaHistoryTopicIT extends AbstractConnectorTest {
         Assertions.assertThat(tableChanges.get(0).get("type")).isEqualTo("CREATE");
 
         records = consumeRecordsByTopic(RECORDS_PER_TABLE * TABLES);
-        Assertions.assertThat(records.recordsForTopic("server1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
-        Assertions.assertThat(records.recordsForTopic("server1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
-        records.recordsForTopic("server1.dbo.tableb").forEach(record -> {
+        Assertions.assertThat(records.recordsForTopic("server1.testDB.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
+        Assertions.assertThat(records.recordsForTopic("server1.testDB.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
+        records.recordsForTopic("server1.testDB.dbo.tableb").forEach(record -> {
             assertSchemaMatchesStruct(
                     (Struct) ((Struct) record.value()).get("after"),
                     SchemaBuilder.struct()
                             .optional()
-                            .name("server1.dbo.tableb.Value")
+                            .name("server1.testDB.dbo.tableb.Value")
                             .field("id", Schema.INT32_SCHEMA)
                             .field("colb", Schema.OPTIONAL_STRING_SCHEMA)
                             .build());
@@ -278,7 +278,7 @@ public class SchemaHistoryTopicIT extends AbstractConnectorTest {
         // 1 schema event + 1 data event
         Testing.Print.enable();
         SourceRecords records = consumeRecordsByTopic(1 + 1);
-        Assertions.assertThat(records.recordsForTopic("server1.dbo.tablec")).hasSize(1);
+        Assertions.assertThat(records.recordsForTopic("server1.testDB.dbo.tablec")).hasSize(1);
 
         stopConnector();
         assertConnectorNotRunning();
@@ -297,7 +297,7 @@ public class SchemaHistoryTopicIT extends AbstractConnectorTest {
 
         // 1-2 schema events + 1 data event
         records = consumeRecordsByTopic(2 + 1);
-        Assertions.assertThat(records.recordsForTopic("server1.dbo.tabled")).hasSize(1);
+        Assertions.assertThat(records.recordsForTopic("server1.testDB.dbo.tabled")).hasSize(1);
 
         final List<SourceRecord> schemaEvents = records.recordsForTopic("server1");
         final SourceRecord schemaEventD = schemaEvents.get(schemaEvents.size() - 1);
