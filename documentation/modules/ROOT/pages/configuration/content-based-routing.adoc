@@ -158,9 +158,9 @@ Expressions should not result in any side-effects. That is, they should not modi
 
 [NOTE]
 ====
-{prodname} emits not only data messages but also metadata messages about schema chages, transactions or heartbeat messages.
-The expressions should not be applied on such messages as their structure is different from what is usually expected by the expression.
-It is recommended to use either xref:content-based-router-topic-regex[topic.regex] configuration option or a link:https://cwiki.apache.org/confluence/display/KAFKA/KIP-585%3A+Filter+and+Conditional+SMTs[an SMT predicate] to ensure that the expression is applied only to a valid messages.
+{prodname} emits not only data change events, but also metadata messages about schema changes, transactions, or heartbeat messages.
+Typically, routing expressions should not be applied to such messages, as their structure is different from what is usually expected by the expression.
+It is recommended to use either the xref:content-based-router-topic-regex[topic.regex] configuration option or an link:https://cwiki.apache.org/confluence/display/KAFKA/KIP-585%3A+Filter+and+Conditional+SMTs[SMT predicate] to ensure that the expression is applied only to data change events.
 ====
 
 // Type: reference
