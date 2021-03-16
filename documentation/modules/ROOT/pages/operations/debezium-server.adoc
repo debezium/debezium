@@ -321,7 +321,11 @@ Kinesis exposes a set of REST APIs and provides a (not-only) Java SDK that is us
 |
 |A region name in which the Kinesis target streams are provided.
 
-|[[kinesis-credentials-profile]]<<kinesis-credentials-profile, `debezium.sink.kinesis.creadentials.profile`>>
+|[[kinesis-endpoint]]<<kinesis-endpoint, `debezium.sink.kinesis.endpoint`>>
+|_endpoint determined by aws sdk_
+|(Optional) An endpoint url at which the Kinesis target streams are provided.
+
+|[[kinesis-credentials-profile]]<<kinesis-credentials-profile, `debezium.sink.kinesis.credentials.profile`>>
 |`default`
 |A credentials profile name used to communicate with Amazon API.
 

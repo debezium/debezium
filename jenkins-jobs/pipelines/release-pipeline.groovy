@@ -348,9 +348,9 @@ node('Slave') {
         stage('Prepare release') {
             dir(DEBEZIUM_DIR) {
                 sh "git checkout -b $CANDIDATE_BRANCH"
-                sh "mvn clean install -DskipTests -DskipITs"
+                sh "mvn clean install -DskipTests -DskipITs -Poracle"
             }
-            STAGING_REPO_ID = mvnRelease(DEBEZIUM_DIR, DEBEZIUM_REPOSITORY, CANDIDATE_BRANCH)
+            STAGING_REPO_ID = mvnRelease(DEBEZIUM_DIR, DEBEZIUM_REPOSITORY, CANDIDATE_BRANCH, '-Poracle')
             ADDITIONAL_REPOSITORIES.each { id, repo ->
                 dir(id) {
                     sh "git checkout -b $CANDIDATE_BRANCH"
@@ -358,9 +358,9 @@ node('Slave') {
                         it.replaceFirst('<version>.+</version>\n    </parent>', "<version>$RELEASE_VERSION</version>\n    </parent>")
                     }
                     sh "git commit -a -m '[release] Stable parent $RELEASE_VERSION for release'"
-                    sh "mvn clean install -DskipTests -DskipITs${id == 'incubator' ? ' -Poracle' : ''}"
+                    sh "mvn clean install -DskipTests -DskipITs"
                 }
-                ADDITIONAL_REPOSITORIES[id].mavenRepoId = mvnRelease(id, repo.git, CANDIDATE_BRANCH, "-Dversion.debezium=$RELEASE_VERSION${id == 'incubator' ? ' -Poracle' : ''}")
+                ADDITIONAL_REPOSITORIES[id].mavenRepoId = mvnRelease(id, repo.git, CANDIDATE_BRANCH, "-Dversion.debezium=$RELEASE_VERSION")
                 dir(id) {
                     modifyFile("pom.xml") {
                         it.replaceFirst('<version>.+</version>\n    </parent>', "<version>$DEVELOPMENT_VERSION</version>\n    </parent>")
@@ -434,7 +434,7 @@ node('Slave') {
                 }
             }
             dir(IMAGES_DIR) {
-                sh "./build-all.sh"
+                sh "env SKIP_UI=true ./build-all.sh"
             }
             sh """
                 docker rm -f connect zookeeper kafka mysql || true
@@ -591,30 +591,29 @@ node('Slave') {
             }
         }
 
-        stage('Merge candidates to the master') {
+        stage('Merge candidates to the branch') {
             if (!DRY_RUN) {
                 dir(DEBEZIUM_DIR) {
                     withCredentials([usernamePassword(credentialsId: GIT_CREDENTIALS_ID, passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USERNAME')]) {
                         sh """
                            git pull --rebase https://\${GIT_USERNAME}:\${GIT_PASSWORD}@$DEBEZIUM_REPOSITORY $CANDIDATE_BRANCH && \\
-                           git checkout master && \\
+                           git checkout $DEBEZIUM_BRANCH && \\
                            git rebase $CANDIDATE_BRANCH && \\
                            git push https://\${GIT_USERNAME}:\${GIT_PASSWORD}@$DEBEZIUM_REPOSITORY HEAD:$DEBEZIUM_BRANCH && \\
                            git push --delete https://\${GIT_USERNAME}:\${GIT_PASSWORD}@$DEBEZIUM_REPOSITORY $CANDIDATE_BRANCH
                         """
                     }
-                    ADDITIONAL_REPOSITORIES.each { id, repo ->
-                        dir(id) {
-                            sh "git pull --rebase $CANDIDATE_BRANCH && git checkout master && git rebase $CANDIDATE_BRANCH"
-                                withCredentials([usernamePassword(credentialsId: GIT_CREDENTIALS_ID, passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USERNAME')]) {
-                                    sh """
-                                       git pull --rebase ${repo.git} $CANDIDATE_BRANCH && \\
-                                       git checkout master && \\
-                                       git rebase $CANDIDATE_BRANCH && \\
-                                       git push https://\${GIT_USERNAME}:\${GIT_PASSWORD}@${repo.git} HEAD:${repo.branch} && \\
-                                       git push --delete https://\${GIT_USERNAME}:\${GIT_PASSWORD}@${repo.git} $CANDIDATE_BRANCH
-                                    """
-                            }
+                }
+                ADDITIONAL_REPOSITORIES.each { id, repo ->
+                    dir(id) {
+                        withCredentials([usernamePassword(credentialsId: GIT_CREDENTIALS_ID, passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USERNAME')]) {
+                            sh """
+                               git pull --rebase https://\${GIT_USERNAME}:\${GIT_PASSWORD}@${repo.git} $CANDIDATE_BRANCH && \\
+                               git checkout ${repo.branch} && \\
+                               git rebase $CANDIDATE_BRANCH && \\
+                               git push https://\${GIT_USERNAME}:\${GIT_PASSWORD}@${repo.git} HEAD:${repo.branch} && \\
+                               git push --delete https://\${GIT_USERNAME}:\${GIT_PASSWORD}@${repo.git} $CANDIDATE_BRANCH
+                            """
                         }
                     }
                 }

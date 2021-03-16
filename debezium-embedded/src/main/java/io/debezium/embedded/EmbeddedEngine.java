@@ -760,6 +760,14 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
                         connectorCallback.ifPresent(DebeziumEngine.ConnectorCallback::taskStarted);
                     }
                     catch (Throwable t) {
+                        // Clean-up allocated resources
+                        try {
+                            LOGGER.debug("Stopping the task");
+                            task.stop();
+                        }
+                        catch (Throwable tstop) {
+                            LOGGER.info("Error while trying to stop the task");
+                        }
                         // Mask the passwords ...
                         Configuration config = Configuration.from(taskConfigs.get(0)).withMaskedPasswords();
                         String msg = "Unable to initialize and start connector's task class '" + taskClass.getName() + "' with config: "

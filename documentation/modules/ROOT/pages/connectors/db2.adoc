@@ -38,9 +38,7 @@ endif::community[]
 
 ifdef::product[]
 The Db2 connector has been tested with Db2/Linux {db2-version}.
-endif::product[]
 
-ifdef::product[]
 Information and procedures for using a {prodname} Db2 connector is organized as follows:
 
 * xref:overview-of-debezium-db2-connector[]
@@ -1296,19 +1294,39 @@ The `scale` schema parameter contains an integer that represents how many digits
 The `connect.decimal.precision` schema parameter contains an integer that represents the precision of the given decimal value.
 |===
 
-// Type: procedure
+// Type: assembly
 // ModuleID: setting-up-db2-to-run-a-debezium-connector
 // Title: Setting up Db2 to run a {prodname} connector
 [[setting-up-db2]]
-== Set up
+== Setting up Db2
 
-A database administrator must put tables into capture mode before you can run a {prodname} Db2 connector to capture changes that are committed to a Db2 database. To put tables into capture mode, {prodname} provides a set of user-defined functions (UDFs) for your convenience. The procedure here shows how to install and run these management UDFs. Alternatively, you can run Db2 control commands to put tables into capture mode.
+For {prodname} to capture change events that are committed to Db2 tables, a Db2 database administrator with the necessary privileges must configure tables in the database for change data capture.
+After you begin to run {prodname} you can adjust the configuration of the capture agent to optimize performance.
 
-This procedure assumes that you are logged in as the `db2instl` user, which is the default instance and user name when using the Db2 docker container image.
+ifdef::product[]
+
+For details about setting up Db2 for use with the {prodname} connector, see the following sections:
+
+* xref:configuring-db2-tables-for-change-data-capture[]
+* xref:effect-of-db2-capture-agent-configuration-on-server-load-and-latency[]
+* xref:db2-capture-agent-configuration-parameters[]
+
+endif::product[]
+
+// Type: procedure
+// ModuleID: configuring-db2-tables-for-change-data-capture
+// Title: Configuring Db2 tables for change data capture
+=== Putting tables into capture mode
+
+To put tables into capture mode, {prodname} provides a set of user-defined functions (UDFs) for your convenience.
+The procedure here shows how to install and run these management UDFs. Alternatively, you can run Db2 control commands to put tables into capture mode.
+The administrator must then enable CDC for each table that you want Debezium to capture.
 
 .Prerequisites
 
-* On the machine on which Db2 is running, the content in `debezium-connector-db2/src/test/docker/db2-cdc-docker` is available in the `$HOME/asncdctools/src` directory.
+* You are logged in to Db2 as the `db2instl` user.
+* On the Db2 host, the Debezium management UDFs are available in the $HOME/asncdctools/src directory.
+ UDFs are available from the link:https://github.com/debezium/debezium-examples/tree/master/tutorial/debezium-db2-init/db2server[Debezium examples repository].
 
 .Procedure
 
@@ -1427,6 +1445,53 @@ VALUES ASNCDC.ASNCDCSERVICES('reinit','asncdc');
 
 {link-prefix}:{link-db2-connector}#managing-debezium-db2-connectors[Reference table for {prodname} Db2 management UDFs]
 
+// Type: concept
+// ModuleID: effect-of-db2-capture-agent-configuration-on-server-load-and-latency
+=== Effect of Db2 capture agent configuration on server load and latency
+
+When a database administrator enables change data capture for a source table, the capture agent begins to run.
+The agent reads new change event records from the transaction log and replicates the event records to a capture table.
+Between the time that a change is committed in the source table, and the time that the change appears in the corresponding change table, there is always a small latency interval.
+This latency interval represents a gap between when changes occur in the source table and when they become available for {prodname} to stream to Apache Kafka.
+
+Ideally, for applications that must respond quickly to changes in data, you want to maintain close synchronization between the source and capture tables.
+You might imagine that running the capture agent to continuously process change events as rapidly as possible might result in increased throughput and reduced latency --
+populating change tables with new event records as soon as possible after the events occur, in near real time.
+However, this is not necessarily the case.
+There is a performance penalty to pay in the pursuit of more immediate synchronization.
+Each time that the change agent queries the database for new event records, it increases the CPU load on the database host.
+The additional load on the server can have a negative effect on overall database performance, and potentially reduce transaction efficiency, especially during times of peak database use.
+
+It's important to monitor database metrics so that you know if the database reaches the point where the server can no longer support the capture agent's level of activity.
+If you experience performance issues while running the capture agent, adjust capture agent settings to reduce CPU load.
+
+// Type: reference
+// ModuleID: db2-capture-agent-configuration-parameters
+=== Db2 capture agent configuration parameters
+
+On Db2, the `IBMSNAP_CAPPARMS` table contains parameters that control the behavior of the capture agent.
+You can adjust the values for these parameters to balance the configuration of the capture process to reduce CPU load and still maintain acceptable levels of latency.
+
+[NOTE]
+====
+Specific guidance about how to configure Db2 capture agent parameters is beyond the scope of this documentation.
+====
+
+In the `IBMSNAP_CAPPARMS` table, the following parameters have the greatest effect on reducing CPU load:
+
+`COMMIT_INTERVAL`::
+* Specifies the number of seconds that the capture agent waits to commit data to the change data tables.
+* A higher value reduces the load on the database host and increases latency.
+* The default value is `30`.
+
+`SLEEP_INTERVAL`::
+* Specifies the number of seconds that the capture agent waits to start a new commit cycle after it reaches the end of the active transaction log.
+* A higher value reduces the load on the server, and increases latency.
+* The default value is `5`.
+
+.Additional resources
+* For more information about capture agent parameters, see the Db2 documentation.
+
 // Type: assembly
 // ModuleID: deploying-debezium-db2-connectors
 // Title: Deploying {prodname} Db2 connectors
@@ -1457,7 +1522,9 @@ To deploy a {prodname} Db2 connector, install the {prodname} Db2 connector archi
 * xref:debezium-db2-connector-configuration-example[]
 * xref:adding-debezium-db2-connector-configuration-to-kafka-connect[]
 * xref:descriptions-of-debezium-db2-connector-configuration-properties[]
+endif::product[]
 
+ifdef::product[]
 // Type: concept
 [id="steps-for-installing-debezium-db2-connectors"]
 === Steps for installing {prodname} Db2 connectors

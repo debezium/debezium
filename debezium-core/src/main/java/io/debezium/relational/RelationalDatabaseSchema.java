@@ -182,4 +182,25 @@ public abstract class RelationalDatabaseSchema implements DatabaseSchema<TableId
     public boolean tableInformationComplete() {
         return false;
     }
+
+    /**
+     * Refreshes the schema content with a table constructed externally
+     *
+     * @param table constructed externally - typically from decoder metadata or an external signal
+     */
+    public void refresh(Table table) {
+        // overwrite (add or update) or views of the tables
+        tables().overwriteTable(table);
+        // and refresh the schema
+        refreshSchema(table.id());
+    }
+
+    protected void refreshSchema(TableId id) {
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("refreshing DB schema for table '{}'", id);
+        }
+        Table table = tableFor(id);
+
+        buildAndRegisterSchema(table);
+    }
 }

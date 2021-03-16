@@ -783,8 +783,9 @@ a|`io.debezium.data.Enum` +
 The `allowed` schema parameter contains the comma-separated list of allowed values.
 
 |`SET`
-|Unsupported yet
-a|_n/a_
+|`STRING`
+a|`io.debezium.data.EnumSet` +
+The `allowed` schema parameter contains the comma-separated list of allowed values.
 
 |`YEAR[(2\|4)]`
 |`STRING`

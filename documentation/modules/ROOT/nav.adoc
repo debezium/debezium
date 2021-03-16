@@ -13,6 +13,7 @@
 ** xref:configuration/filtering.adoc[Message Filtering]
 ** xref:configuration/content-based-routing.adoc[Content-Based Routing]
 ** xref:configuration/topic-auto-create-config.adoc[Customizing Topic Auto-Creation]
+** xref:configuration/signalling.adoc[Sending Signals to Debezium]
 * Connectors
 ** xref:connectors/index.adoc[Overview]
 ** xref:connectors/mysql.adoc[MySQL]

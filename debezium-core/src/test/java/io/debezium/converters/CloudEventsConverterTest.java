@@ -12,6 +12,7 @@ import java.util.Base64;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Consumer;
 
 import org.apache.kafka.connect.data.SchemaAndValue;
 import org.apache.kafka.connect.data.Struct;
@@ -32,6 +33,11 @@ import io.debezium.util.Testing;
 public class CloudEventsConverterTest {
 
     public static void shouldConvertToCloudEventsInJson(SourceRecord record, boolean hasTransaction) {
+        shouldConvertToCloudEventsInJson(record, hasTransaction, valueJson -> {
+        });
+    }
+
+    public static void shouldConvertToCloudEventsInJson(SourceRecord record, boolean hasTransaction, Consumer<JsonNode> furtherAssertions) {
         Map<String, Object> config = new HashMap<>();
         config.put("serializer.type", "json");
         config.put("data.serializer.type", "json");
@@ -104,6 +110,8 @@ public class CloudEventsConverterTest {
             assertThat(dataJson.get(CloudEventsMaker.FieldName.PAYLOAD_FIELD_NAME)).isNotNull();
             // before field may be null
             assertThat(dataJson.get(CloudEventsMaker.FieldName.PAYLOAD_FIELD_NAME).get(Envelope.FieldName.AFTER)).isNotNull();
+
+            furtherAssertions.accept(valueJson);
         }
         catch (Throwable t) {
             Testing.Print.enable();
