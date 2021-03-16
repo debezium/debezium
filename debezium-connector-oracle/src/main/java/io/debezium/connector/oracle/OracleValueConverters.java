@@ -12,6 +12,7 @@ import java.sql.Blob;
 import java.sql.Clob;
 import java.sql.SQLException;
 import java.sql.Types;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
@@ -31,10 +32,8 @@ import io.debezium.data.SpecialValueDecimal;
 import io.debezium.data.VariableScaleDecimal;
 import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.jdbc.ResultReceiver;
-import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.Column;
 import io.debezium.relational.ValueConverter;
-import io.debezium.time.Conversions;
 import io.debezium.time.Date;
 import io.debezium.time.MicroDuration;
 import io.debezium.time.ZonedTimestamp;
@@ -98,7 +97,7 @@ public class OracleValueConverters extends JdbcValueConverters {
     private final OracleConnection connection;
 
     public OracleValueConverters(OracleConnectorConfig config, OracleConnection connection) {
-        super(config.getDecimalMode(), TemporalPrecisionMode.ADAPTIVE, ZoneOffset.UTC, null, null, null);
+        super(config.getDecimalMode(), config.getTemporalPrecisionMode(), ZoneOffset.UTC, null, null, null);
         this.connection = connection;
     }
 
@@ -531,12 +530,20 @@ public class OracleValueConverters extends JdbcValueConverters {
     }
 
     @Override
+    protected Object convertTimestampToEpochMillisAsDate(Column column, Field fieldDefn, Object data) {
+        if (data instanceof String) {
+            data = resolveTimestampStringAsInstant((String) data);
+        }
+        return super.convertTimestampToEpochMillisAsDate(column, fieldDefn, fromOracleTimeClasses(column, data));
+    }
+
+    @Override
     protected Object convertTimestampToEpochMicros(Column column, Field fieldDefn, Object data) {
         if (data instanceof Long) {
             return data;
         }
         if (data instanceof String) {
-            return resolveTimestampString(column, fieldDefn, (String) data);
+            data = resolveTimestampStringAsInstant((String) data);
         }
         return super.convertTimestampToEpochMicros(column, fieldDefn, fromOracleTimeClasses(column, data));
     }
@@ -544,7 +551,7 @@ public class OracleValueConverters extends JdbcValueConverters {
     @Override
     protected Object convertTimestampToEpochMillis(Column column, Field fieldDefn, Object data) {
         if (data instanceof String) {
-            return resolveTimestampString(column, fieldDefn, (String) data);
+            data = resolveTimestampStringAsInstant((String) data);
         }
         return super.convertTimestampToEpochMillis(column, fieldDefn, fromOracleTimeClasses(column, data));
     }
@@ -552,12 +559,12 @@ public class OracleValueConverters extends JdbcValueConverters {
     @Override
     protected Object convertTimestampToEpochNanos(Column column, Field fieldDefn, Object data) {
         if (data instanceof String) {
-            return resolveTimestampString(column, fieldDefn, (String) data);
+            data = resolveTimestampStringAsInstant((String) data);
         }
         return super.convertTimestampToEpochNanos(column, fieldDefn, fromOracleTimeClasses(column, data));
     }
 
-    private Object resolveTimestampString(Column column, Field fieldDefn, String data) {
+    private Instant resolveTimestampStringAsInstant(String data) {
         LocalDateTime dateTime;
 
         final Matcher toTimestampMatcher = TO_TIMESTAMP.matcher(data);
@@ -569,30 +576,17 @@ public class OracleValueConverters extends JdbcValueConverters {
             else {
                 dateTime = LocalDateTime.from(TIMESTAMP_FORMATTER.parse(dateText.trim()));
             }
-            return getDateTimeWithPrecision(column, dateTime);
+            return dateTime.atZone(GMT_ZONE_ID).toInstant();
         }
 
         final Matcher toDateMatcher = TO_DATE.matcher(data);
         if (toDateMatcher.matches()) {
             dateTime = LocalDateTime.from(TIMESTAMP_FORMATTER.parse(toDateMatcher.group(1)));
-            return getDateTimeWithPrecision(column, dateTime);
+            return dateTime.atZone(GMT_ZONE_ID).toInstant();
         }
 
         // Unable to resolve
         return null;
-    }
-
-    private Object getDateTimeWithPrecision(Column column, LocalDateTime dateTime) {
-        if (adaptiveTimePrecisionMode || adaptiveTimeMicrosecondsPrecisionMode) {
-            if (getTimePrecision(column) <= 3) {
-                return dateTime.atZone(GMT_ZONE_ID).toInstant().toEpochMilli();
-            }
-            if (getTimePrecision(column) <= 6) {
-                return Conversions.toEpochMicros(dateTime.atZone(GMT_ZONE_ID).toInstant());
-            }
-            return dateTime.atZone(GMT_ZONE_ID).toInstant().toEpochMilli() * 1_000_000;
-        }
-        return dateTime.atZone(GMT_ZONE_ID).toInstant().toEpochMilli();
     }
 
     @Override

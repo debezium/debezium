@@ -17,6 +17,7 @@ import io.debezium.config.Configuration.Builder;
 import io.debezium.connector.oracle.OracleConnectorConfig.SnapshotMode;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.util.TestHelper;
+import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.util.Testing;
 
 /**
@@ -31,12 +32,18 @@ public class StreamingDatatypesIT extends AbstractOracleDatatypesTest {
 
     @Before
     public void before() throws Exception {
+        init(TemporalPrecisionMode.ADAPTIVE);
+    }
+
+    @Override
+    protected void init(TemporalPrecisionMode temporalPrecisionMode) throws Exception {
         setConsumeTimeout(TestHelper.defaultMessageConsumerPollTimeout(), TimeUnit.SECONDS);
         dropTables();
         initializeConnectorTestFramework();
         Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
 
         Configuration config = connectorConfig()
+                .with(OracleConnectorConfig.TIME_PRECISION_MODE, temporalPrecisionMode)
                 .build();
 
         createTables();
