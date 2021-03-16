@@ -34,7 +34,10 @@ import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.SnapshotResult;
 import io.debezium.pipeline.spi.SnapshotResult.SnapshotResultStatus;
+import io.debezium.pipeline.spi.StreamingResult;
 import io.debezium.schema.DatabaseSchema;
+import io.debezium.util.Clock;
+import io.debezium.util.Metronome;
 import io.debezium.util.Threads;
 
 /**
@@ -66,12 +69,14 @@ public class ChangeEventSourceCoordinator<P extends TaskPartition, O extends Off
 
     private SnapshotChangeEventSourceMetrics snapshotMetrics;
     private StreamingChangeEventSourceMetrics streamingMetrics;
+    private final Clock clock;
+    private final Duration pollInterval;
 
     public ChangeEventSourceCoordinator(TaskOffsetContext<P, O> previousOffsetContext, ErrorHandler errorHandler, Class<? extends SourceConnector> connectorType,
                                         CommonConnectorConfig connectorConfig,
                                         ChangeEventSourceFactory<P, O> changeEventSourceFactory,
                                         ChangeEventSourceMetricsFactory changeEventSourceMetricsFactory, EventDispatcher<P, O, ?> eventDispatcher,
-                                        DatabaseSchema<?> schema) {
+                                        DatabaseSchema<?> schema, Clock clock) {
         this.previousOffsetContext = previousOffsetContext;
         this.errorHandler = errorHandler;
         this.changeEventSourceFactory = changeEventSourceFactory;
@@ -79,6 +84,8 @@ public class ChangeEventSourceCoordinator<P extends TaskPartition, O extends Off
         this.executor = Threads.newSingleThreadExecutor(connectorType, connectorConfig.getLogicalName(), "change-event-source-coordinator");
         this.eventDispatcher = eventDispatcher;
         this.schema = schema;
+        this.pollInterval = connectorConfig.getPollInterval();
+        this.clock = clock;
     }
 
     public synchronized <T extends CdcSourceTaskContext> void start(T taskContext, ChangeEventQueueMetrics changeEventQueueMetrics,
@@ -100,7 +107,7 @@ public class ChangeEventSourceCoordinator<P extends TaskPartition, O extends Off
                 P partition = null;
                 O previousOffset = null;
 
-                HashMap<P, O> partitionState = new HashMap<>();
+                Map<P, SnapshotResult<O>> partitionState = new HashMap<>();
 
                 SnapshotChangeEventSource<P, O> snapshotSource = changeEventSourceFactory.getSnapshotChangeEventSource(snapshotMetrics);
                 for (Map.Entry<P, O> entry : previousOffsetContext.getOffsets().entrySet()) {
@@ -114,17 +121,41 @@ public class ChangeEventSourceCoordinator<P extends TaskPartition, O extends Off
                     if (snapshotResult.getStatus() == SnapshotResultStatus.COMPLETED || schema.tableInformationComplete()) {
                         schema.assureNonEmptySchema();
                     }
-                    partitionState.put(partition, snapshotResult.getOffset());
+                    partitionState.put(partition, snapshotResult);
                 }
 
-                for (Map.Entry<P, O> entry : partitionState.entrySet()) {
-                    partition = entry.getKey();
-                    previousOffset = entry.getValue();
+                final Metronome metronome = Metronome.sleeper(pollInterval, clock);
+                Map<P, StreamingResult<O>> partitionStreamingResults = new HashMap<>();
+                while (running) {
+                    for (Map.Entry<P, SnapshotResult<O>> entry : partitionState.entrySet()) {
+                        partition = entry.getKey();
+                        SnapshotResult<O> snapshotResult = entry.getValue();
+                        if (running && snapshotResult.isCompletedOrSkipped()) {
+                            StreamingResult<O> previousStreamingResult = null;
 
-                    if (running) {
-                        streamEvents(context, partition, previousOffset);
+                            if (!partitionStreamingResults.containsKey(entry.getKey())) {
+                                previousStreamingResult = partitionStreamingResults.get(partition);
+                            }
+
+                            StreamingResult<O> streamingResult = streamEvents(context, partition, snapshotResult.getOffset(), previousStreamingResult);
+                            partitionStreamingResults.put(entry.getKey(), streamingResult);
+                        }
+                    }
+
+                    boolean streamedEvents = false;
+                    for (StreamingResult streamingResult : partitionStreamingResults.values()) {
+                        if (!streamingResult.hasNoEvents()) {
+                            streamedEvents = true;
+                            break;
+                        }
+                    }
+
+                    if (!streamedEvents) {
+                        metronome.pause();
                     }
                 }
+
+                LOGGER.info("Finished streaming");
             }
             catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
@@ -145,13 +176,16 @@ public class ChangeEventSourceCoordinator<P extends TaskPartition, O extends Off
         return new CatchUpStreamingResult(false);
     }
 
-    protected void streamEvents(ChangeEventSourceContext context, P partition, O offsetContext) throws InterruptedException {
-        streamingSource = changeEventSourceFactory.getStreamingChangeEventSource();
-        eventDispatcher.setEventListener(streamingMetrics);
-        streamingConnected(true);
-        LOGGER.info("Starting streaming");
-        streamingSource.execute(context, partition, offsetContext);
-        LOGGER.info("Finished streaming");
+    protected StreamingResult<O> streamEvents(ChangeEventSourceContext context, P partition, O offsetContext, StreamingResult<O> oStreamingResult)
+            throws InterruptedException {
+        if (streamingSource == null) {
+            streamingSource = changeEventSourceFactory.getStreamingChangeEventSource();
+            eventDispatcher.setEventListener(streamingMetrics);
+            streamingConnected(true);
+            LOGGER.info("Starting streaming");
+        }
+        StreamingResult<O> streamingResult = streamingSource.execute(context, partition, offsetContext);
+        return streamingResult;
     }
 
     public void commitOffset(Map<String, ?> offset) {
