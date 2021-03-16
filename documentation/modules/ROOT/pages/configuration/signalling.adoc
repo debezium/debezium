@@ -41,10 +41,10 @@ The name format is connector specific, e.g. "some_schema.debezium_signals" in ca
 
 === Data collection structure
 
-The signalling data collection must conform to a required format.
-It must contain three fields
-The naming of the fields is arbitrary and only order of the field is important.
-It is recommended but not mandatory to use the field names as defined in the table below.
+The signalling data collection must conform to a required format:
+It must contain three fields;
+the naming of the fields is arbitrary and only order of the field is important.
+It is recommended but not mandatory to use the field names as defined in the table below:
 
 .Signalling data collection structure
 [cols="1,1,9",options="header"]
