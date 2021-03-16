@@ -213,7 +213,7 @@ public abstract class AbstractSqlServerDatatypesTest extends AbstractConnectorTe
 
         final SourceRecords records = consumeRecordsByTopic(EXPECTED_RECORD_COUNT);
 
-        List<SourceRecord> testTableRecords = records.recordsForTopic("server1.dbo.type_int");
+        List<SourceRecord> testTableRecords = records.recordsForTopic("server1.testDB.dbo.type_int");
         assertThat(testTableRecords).hasSize(1);
 
         // insert
@@ -228,7 +228,7 @@ public abstract class AbstractSqlServerDatatypesTest extends AbstractConnectorTe
 
         final SourceRecords records = consumeRecordsByTopic(EXPECTED_RECORD_COUNT);
 
-        List<SourceRecord> testTableRecords = records.recordsForTopic("server1.dbo.type_fp");
+        List<SourceRecord> testTableRecords = records.recordsForTopic("server1.testDB.dbo.type_fp");
         assertThat(testTableRecords).hasSize(1);
 
         // insert
@@ -243,7 +243,7 @@ public abstract class AbstractSqlServerDatatypesTest extends AbstractConnectorTe
 
         final SourceRecords records = consumeRecordsByTopic(EXPECTED_RECORD_COUNT);
 
-        List<SourceRecord> testTableRecords = records.recordsForTopic("server1.dbo.type_string");
+        List<SourceRecord> testTableRecords = records.recordsForTopic("server1.testDB.dbo.type_string");
         assertThat(testTableRecords).hasSize(1);
 
         // insert
@@ -258,7 +258,7 @@ public abstract class AbstractSqlServerDatatypesTest extends AbstractConnectorTe
 
         final SourceRecords records = consumeRecordsByTopic(EXPECTED_RECORD_COUNT);
 
-        List<SourceRecord> testTableRecords = records.recordsForTopic("server1.dbo.type_time");
+        List<SourceRecord> testTableRecords = records.recordsForTopic("server1.testDB.dbo.type_time");
         assertThat(testTableRecords).hasSize(1);
 
         // insert
@@ -276,7 +276,7 @@ public abstract class AbstractSqlServerDatatypesTest extends AbstractConnectorTe
 
         final SourceRecords records = consumeRecordsByTopic(EXPECTED_RECORD_COUNT);
 
-        List<SourceRecord> testTableRecords = records.recordsForTopic("server1.dbo.type_time");
+        List<SourceRecord> testTableRecords = records.recordsForTopic("server1.testDB.dbo.type_time");
         assertThat(testTableRecords).hasSize(1);
 
         // insert
@@ -291,7 +291,7 @@ public abstract class AbstractSqlServerDatatypesTest extends AbstractConnectorTe
 
         final SourceRecords records = consumeRecordsByTopic(EXPECTED_RECORD_COUNT);
 
-        List<SourceRecord> testTableRecords = records.recordsForTopic("server1.dbo.type_xml");
+        List<SourceRecord> testTableRecords = records.recordsForTopic("server1.testDB.dbo.type_xml");
         assertThat(testTableRecords).hasSize(1);
 
         // insert

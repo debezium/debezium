@@ -18,6 +18,6 @@ public class SqlServerTopicSelector {
 
     public static TopicSelector<TableId> defaultSelector(SqlServerConnectorConfig connectorConfig) {
         return TopicSelector.defaultSelector(connectorConfig,
-                (tableId, prefix, delimiter) -> String.join(delimiter, prefix, tableId.schema(), tableId.table()));
+                (tableId, prefix, delimiter) -> String.join(delimiter, prefix, tableId.catalog(), tableId.schema(), tableId.table()));
     }
 }

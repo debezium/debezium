@@ -158,8 +158,8 @@ public class TableSchemaBuilderTest {
         schema = new TableSchemaBuilder(new JdbcValueConverters(), adjuster, customConverterRegistry, SchemaBuilder.struct().build(), false)
                 .create(prefix, "sometopic", table, null, null, null);
         assertThat(schema).isNotNull();
-        assertThat(schema.keySchema().name()).isEqualTo("schema.table.Key");
-        assertThat(schema.valueSchema().name()).isEqualTo("schema.table.Value");
+        assertThat(schema.keySchema().name()).isEqualTo("catalog.schema.table.Key");
+        assertThat(schema.valueSchema().name()).isEqualTo("catalog.schema.table.Value");
 
         // only catalog
         table = table.edit()
