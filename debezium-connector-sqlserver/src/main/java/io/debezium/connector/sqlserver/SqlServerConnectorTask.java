@@ -115,7 +115,7 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
                 metadataProvider,
                 schemaNameAdjuster);
 
-        ChangeEventSourceCoordinator<SqlServerPartition, SqlServerOffsetContext> coordinator = new ChangeEventSourceCoordinator<>(
+        ChangeEventSourceCoordinator<SqlServerPartition, SqlServerOffsetContext> coordinator = new SqlServerChangeEventSourceCoordinator(
                 offsets,
                 errorHandler,
                 SqlServerConnector.class,
@@ -123,7 +123,8 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
                 new SqlServerChangeEventSourceFactory(connectorConfig, dataConnection, metadataConnection, errorHandler, dispatcher, clock, schema),
                 new DefaultChangeEventSourceMetricsFactory(),
                 dispatcher,
-                schema);
+                schema,
+                clock);
 
         coordinator.start(taskContext, this.queue, metadataProvider);
 
