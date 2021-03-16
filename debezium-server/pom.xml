@@ -11,14 +11,8 @@
     <name>Debezium Server Parent</name>
     <packaging>pom</packaging>
 
-    <properties>
-        <version.kinesis>2.13.13</version.kinesis>
-        <version.pubsub>5.1.0</version.pubsub>
-        <version.pulsar>2.5.2</version.pulsar>
-        <version.eventhubs>5.1.1</version.eventhubs>
-    </properties>
-
     <modules>
+        <module>debezium-server-bom</module>
         <module>debezium-server-core</module>
         <module>debezium-server-kinesis</module>
         <module>debezium-server-pubsub</module>
@@ -37,67 +31,12 @@
                 <scope>import</scope>
             </dependency>
 
-            <!-- Debezium dependencies -->
             <dependency>
                 <groupId>io.debezium</groupId>
-                <artifactId>debezium-server-core</artifactId>
+                <artifactId>debezium-server-bom</artifactId>
                 <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.debezium</groupId>
-                <artifactId>debezium-server-kinesis</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.debezium</groupId>
-                <artifactId>debezium-server-pubsub</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.debezium</groupId>
-                <artifactId>debezium-server-pulsar</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.debezium</groupId>
-                <artifactId>debezium-server-eventhubs</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.debezium</groupId>
-                <artifactId>debezium-server-core</artifactId>
-                <type>test-jar</type>
-                <version>${project.version}</version>
-            </dependency>
-
-            <!-- Target systems -->
-            <dependency>
-                <groupId>software.amazon.awssdk</groupId>
-                <artifactId>kinesis</artifactId>
-                <version>${version.kinesis}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.google.cloud</groupId>
-                <artifactId>libraries-bom</artifactId>
-                <version>${version.pubsub}</version>
                 <type>pom</type>
                 <scope>import</scope>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.pulsar</groupId>
-                <artifactId>pulsar-client</artifactId>
-                <version>${version.pulsar}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.azure</groupId>
-                <artifactId>azure-messaging-eventhubs</artifactId>
-                <version>${version.eventhubs}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.debezium</groupId>
-                <artifactId>debezium-testing-testcontainers</artifactId>
-                <version>${project.version}</version>
-                <scope>test</scope>
             </dependency>
         </dependencies>
     </dependencyManagement>

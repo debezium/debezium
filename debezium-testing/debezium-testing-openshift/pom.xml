@@ -107,7 +107,6 @@
     <dependency>
       <groupId>io.fabric8</groupId>
       <artifactId>openshift-client</artifactId>
-      <version>${version.fabric8.client}</version>
       <exclusions>
         <exclusion>
           <groupId>com.squareup.okhttp3</groupId>
@@ -136,7 +135,6 @@
     <dependency>
       <groupId>org.apache.kafka</groupId>
       <artifactId>kafka-clients</artifactId>
-      <version>${version.kafka}</version>
     </dependency>
 
     <dependency>
@@ -167,9 +165,7 @@
     <dependency>
       <groupId>com.squareup.okhttp3</groupId>
       <artifactId>logging-interceptor</artifactId>
-      <version>${version.okhttp}</version>
     </dependency>
-
 
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
@@ -246,12 +242,6 @@
     <dependency>
       <groupId>org.mongodb</groupId>
       <artifactId>mongodb-driver-sync</artifactId>
-    </dependency>
-
-    <dependency>
-      <groupId>com.ibm.db2</groupId>
-      <artifactId>jcc</artifactId>
-      <version>${version.db2.driver}</version>
     </dependency>
 
     <dependency>

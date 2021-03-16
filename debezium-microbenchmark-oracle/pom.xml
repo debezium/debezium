@@ -46,12 +46,10 @@
         <dependency>
             <groupId>com.oracle.database.jdbc</groupId>
             <artifactId>ojdbc8</artifactId>
-            <version>${version.oracle.driver}</version>
         </dependency>
         <dependency>
             <groupId>com.oracle.instantclient</groupId>
             <artifactId>xstreams</artifactId>
-            <version>${version.oracle.driver}</version>
         </dependency>
     </dependencies>
 

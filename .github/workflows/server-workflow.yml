@@ -15,6 +15,7 @@ on:
       - 'debezium-scripting/**'
       - 'debezium-server/**'
       - 'debezium-parent/pom.xml'
+      - 'debezium-bom/pom.xml'
       - 'pom.xml'
   pull_request:
     paths:
@@ -30,6 +31,7 @@ on:
       - 'debezium-scripting/**'
       - 'debezium-server/**'
       - 'debezium-parent/pom.xml'
+      - 'debezium-bom/pom.xml'
       - 'pom.xml'
 
 jobs:

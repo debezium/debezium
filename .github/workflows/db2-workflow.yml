@@ -6,12 +6,14 @@ on:
       - 'debezium-core/**'
       - 'debezium-api/**'
       - 'debezium-parent/pom.xml'
+      - 'debezium-bom/pom.xml'
       - 'pom.xml'
   pull_request:
     paths:
       - 'debezium-core/**'
       - 'debezium-api/**'
       - 'debezium-parent/pom.xml'
+      - 'debezium-bom/pom.xml'
       - 'pom.xml'
 
 jobs:
