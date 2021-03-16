@@ -2197,7 +2197,36 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
             Assertions.assertThat(key.get("id")).isNotNull();
             Assertions.assertThat(key.get("name")).isNotNull();
         });
+    }
 
+    @Test
+    @FixFor("DBZ-2957")
+    public void shouldRewriteIdentityKeyWithWhitespace() throws InterruptedException, SQLException {
+        // Define the table we want to watch events from.
+        final String tableName = "products";
+
+        config = DATABASE.defaultConfig()
+                .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+                .with(CommonConnectorConfig.TOMBSTONES_ON_DELETE, false)
+                .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName(tableName))
+                // Explicitly configure connector TO parse query
+                .with(MySqlConnectorConfig.INCLUDE_SQL_QUERY, true)
+                // rewrite key from table 'products': from {id} to {id, name}
+                .with(MySqlConnectorConfig.MSG_KEY_COLUMNS, "   (.*).products:id,name   ")
+                .build();
+
+        // Start the connector ...
+        start(MySqlConnector.class, config);
+
+        final SourceRecords records = consumeRecordsByTopic(9);
+        // Parse through the source record for the query value.
+        final List<SourceRecord> recordsForTopic = records.recordsForTopic(DATABASE.topicForTable(tableName));
+
+        recordsForTopic.forEach(record -> {
+            Struct key = (Struct) record.key();
+            Assertions.assertThat(key.get("id")).isNotNull();
+            Assertions.assertThat(key.get("name")).isNotNull();
+        });
     }
 
     @Test
