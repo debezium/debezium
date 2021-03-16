@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Predicate;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import io.debezium.annotation.Immutable;
@@ -91,6 +92,16 @@ public class Key {
     public static class CustomKeyMapper {
 
         /**
+         * Pattern for defining the PK columns of a given table, in the form of "table:column1(,column2,...)",
+         * optionally with leading/trailing whitespace.
+         */
+        public static final Pattern MSG_KEY_COLUMNS_PATTERN = Pattern.compile("^\s*([^\\s:]+):([^:\\s]+)\s*$");
+
+        public static final Pattern PATTERN_SPLIT = Pattern.compile(";");
+        private static final Pattern TABLE_SPLIT = Pattern.compile(":");
+        private static final Pattern COLUMN_SPLIT = Pattern.compile(",");
+
+        /**
          * Getting an instance with a list of regexp (table:column1,column2) delimited by ';' matching the tables keys.
          * ex: inventory.customers:pk1,pk2;(.*).purchaseorders:pk3,pk4
          *
@@ -107,12 +118,11 @@ public class Key {
             // ex: message.key.columns=inventory.customers:pk1,pk2;(.*).purchaseorders:pk3,pk4
             // will become => [inventory.customers.pk1,inventory.customers.pk2,(.*).purchaseorders.pk3,(.*).purchaseorders.pk4]
             // then joining those values
-            String regexes = Arrays.asList(fullyQualifiedColumnNames.split(";"))
-                    .stream()
-                    .map(s -> s.split(":"))
+            String regexes = Arrays.stream(PATTERN_SPLIT.split(fullyQualifiedColumnNames))
+                    .map(s -> TABLE_SPLIT.split(":"))
                     .collect(
                             ArrayList<String>::new,
-                            (m, p) -> Arrays.asList(p[1].split(",")).forEach(c -> m.add(p[0] + "." + c)),
+                            (m, p) -> Arrays.asList(COLUMN_SPLIT.split(p[1])).forEach(c -> m.add(p[0] + "." + c)),
                             ArrayList::addAll)
                     .stream()
                     .collect(Collectors.joining(","));
