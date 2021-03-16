@@ -16,6 +16,7 @@ on:
       - 'debezium-e2e-benchmark/**'
       - 'debezium-scripting/**'
       - 'debezium-parent/pom.xml'
+      - 'debezium-bom/pom.xml'
       - 'pom.xml'
   pull_request:
     paths:
@@ -32,6 +33,7 @@ on:
       - 'debezium-e2e-benchmark/**'
       - 'debezium-scripting/**'
       - 'debezium-parent/pom.xml'
+      - 'debezium-bom/pom.xml'
       - 'pom.xml'
 
 jobs:

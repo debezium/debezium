@@ -33,13 +33,11 @@
         <dependency>
             <groupId>com.oracle.database.jdbc</groupId>
             <artifactId>ojdbc8</artifactId>
-            <version>${version.oracle.driver}</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>com.oracle.instantclient</groupId>
             <artifactId>xstreams</artifactId>
-            <version>${version.oracle.driver}</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
@@ -49,7 +47,6 @@
         <dependency>
             <groupId>com.github.jsqlparser</groupId>
             <artifactId>jsqlparser</artifactId>
-            <version>2.1</version>
         </dependency>
 
         <!-- Testing -->
