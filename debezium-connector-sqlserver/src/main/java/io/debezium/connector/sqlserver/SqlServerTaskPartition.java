@@ -57,8 +57,6 @@ public class SqlServerTaskPartition implements TaskPartition {
         @Override
         public Collection<SqlServerTaskPartition> getPartitions() {
             String serverName = connectorConfig.getLogicalName();
-
-            // TODO: source database names from the task configuration, throw if the array is empty
             String[] databaseNames = { connectorConfig.getDatabaseName() };
 
             return Arrays.stream(databaseNames)
