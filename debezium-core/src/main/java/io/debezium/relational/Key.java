@@ -95,7 +95,7 @@ public class Key {
          * Pattern for defining the PK columns of a given table, in the form of "table:column1(,column2,...)",
          * optionally with leading/trailing whitespace.
          */
-        public static final Pattern MSG_KEY_COLUMNS_PATTERN = Pattern.compile("^\s*([^\\s:]+):([^:\\s]+)\s*$");
+        public static final Pattern MSG_KEY_COLUMNS_PATTERN = Pattern.compile("^\s*([^\s:]+):([^:\s]+)\s*$");
 
         public static final Pattern PATTERN_SPLIT = Pattern.compile(";");
         private static final Pattern TABLE_SPLIT = Pattern.compile(":");
