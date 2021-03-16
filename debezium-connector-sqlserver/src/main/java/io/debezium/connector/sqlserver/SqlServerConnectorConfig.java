@@ -298,6 +298,14 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
                     + "In '" + SnapshotIsolationMode.READ_UNCOMMITTED.getValue()
                     + "' mode neither table nor row-level locks are acquired, but connector does not guarantee snapshot consistency.");
 
+    public static final Field TASK_DATABASE_NAMES = Field.create("task.database.dbnames")
+            .withDisplayName("Task Database Names")
+            .withType(Type.STRING)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.HIGH)
+            .withValidation(Field::isRequired)
+            .withDescription("The name of the databases assigned to a task");
+
     private static final ConfigDefinition CONFIG_DEFINITION = HistorizedRelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .name("SQL Server")
             .type(
