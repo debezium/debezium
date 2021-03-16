@@ -20,7 +20,7 @@ declare -a DEBEZIUM_REPOS=("debezium" "debezium-connector-db2" "debezium-connect
 
 for REPO in "${DEBEZIUM_REPOS[@]}";
 do
- curl --silent -X "GET" "https://api.github.com/repos/debezium/$REPO/compare/$1...$2" | jq '.commits[] | {name: .commit.author.name, github_url: .author.html_url}' &>> "$CONTRIBUTORS_LIST_JSON"
+ curl --silent -X "GET" "https://api.github.com/repos/debezium/$REPO/compare/$1...$2" | jq '.commits[] | {name: .commit.author.name, github_url: .author.html_url}' >> "$CONTRIBUTORS_LIST_JSON"
 done
 
 jq -r '.github_url + " " + .name' $CONTRIBUTORS_LIST_JSON > $CONTRIBUTORS_NAMES
