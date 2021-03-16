@@ -56,20 +56,20 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
      */
     public static final Duration SHUTDOWN_WAIT_TIMEOUT = Duration.ofSeconds(90);
 
-    private final Offsets<P, O> previousOffsets;
-    private final ErrorHandler errorHandler;
-    private final ChangeEventSourceFactory<P, O> changeEventSourceFactory;
-    private final ChangeEventSourceMetricsFactory changeEventSourceMetricsFactory;
-    private final ExecutorService executor;
-    private final EventDispatcher<?> eventDispatcher;
-    private final DatabaseSchema<?> schema;
+    protected final Offsets<P, O> previousOffsets;
+    protected final ErrorHandler errorHandler;
+    protected final ChangeEventSourceFactory<P, O> changeEventSourceFactory;
+    protected final ChangeEventSourceMetricsFactory changeEventSourceMetricsFactory;
+    protected final ExecutorService executor;
+    protected final EventDispatcher<?> eventDispatcher;
+    protected final DatabaseSchema<?> schema;
 
     private volatile boolean running;
-    private volatile StreamingChangeEventSource<P, O> streamingSource;
-    private final ReentrantLock commitOffsetLock = new ReentrantLock();
+    protected volatile StreamingChangeEventSource<P, O> streamingSource;
+    protected final ReentrantLock commitOffsetLock = new ReentrantLock();
 
-    private SnapshotChangeEventSourceMetrics snapshotMetrics;
-    private StreamingChangeEventSourceMetrics streamingMetrics;
+    protected SnapshotChangeEventSourceMetrics snapshotMetrics;
+    protected StreamingChangeEventSourceMetrics streamingMetrics;
 
     public ChangeEventSourceCoordinator(Offsets<P, O> previousOffsets, ErrorHandler errorHandler, Class<? extends SourceConnector> connectorType,
                                         CommonConnectorConfig connectorConfig,
@@ -86,8 +86,6 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
 
     public synchronized void start(CdcSourceTaskContext taskContext, ChangeEventQueueMetrics changeEventQueueMetrics,
                                    EventMetadataProvider metadataProvider) {
-        final P partition = previousOffsets.getTheOnlyPartition();
-        final O previousOffset = previousOffsets.getTheOnlyOffset();
 
         AtomicReference<LoggingContext.PreviousContext> previousLogContext = new AtomicReference<>();
         try {
@@ -107,25 +105,7 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
                     LOGGER.info("Context created");
 
                     SnapshotChangeEventSource<P, O> snapshotSource = changeEventSourceFactory.getSnapshotChangeEventSource(snapshotMetrics);
-                    CatchUpStreamingResult catchUpStreamingResult = executeCatchUpStreaming(context, snapshotSource, partition, previousOffset);
-                    if (catchUpStreamingResult.performedCatchUpStreaming) {
-                        streamingConnected(false);
-                        commitOffsetLock.lock();
-                        streamingSource = null;
-                        commitOffsetLock.unlock();
-                    }
-                    eventDispatcher.setEventListener(snapshotMetrics);
-                    SnapshotResult<O> snapshotResult = snapshotSource.execute(context, partition, previousOffset);
-                    LOGGER.info("Snapshot ended with {}", snapshotResult);
-
-                    if (snapshotResult.getStatus() == SnapshotResultStatus.COMPLETED || schema.tableInformationComplete()) {
-                        schema.assureNonEmptySchema();
-                    }
-
-                    if (running && snapshotResult.isCompletedOrSkipped()) {
-                        previousLogContext.set(taskContext.configureLoggingContext("streaming"));
-                        streamEvents(context, partition, snapshotResult.getOffset());
-                    }
+                    executeChangeEventSources(taskContext, snapshotSource, previousOffsets, previousLogContext, context);
                 }
                 catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
@@ -146,6 +126,39 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
         }
     }
 
+    protected void executeChangeEventSources(CdcSourceTaskContext taskContext, SnapshotChangeEventSource<P, O> snapshotSource, Offsets<P, O> previousOffsets,
+                                             AtomicReference<LoggingContext.PreviousContext> previousLogContext, ChangeEventSourceContext context)
+            throws InterruptedException {
+        final P partition = previousOffsets.getTheOnlyPartition();
+        final O previousOffset = previousOffsets.getTheOnlyOffset();
+
+        SnapshotResult<O> snapshotResult = doSnapshot(snapshotSource, context, partition, previousOffset);
+
+        if (running && snapshotResult.isCompletedOrSkipped()) {
+            previousLogContext.set(taskContext.configureLoggingContext("streaming"));
+            streamEvents(context, partition, snapshotResult.getOffset());
+        }
+    }
+
+    protected SnapshotResult<O> doSnapshot(SnapshotChangeEventSource<P, O> snapshotSource, ChangeEventSourceContext context, P partition, O previousOffset)
+            throws InterruptedException {
+        CatchUpStreamingResult catchUpStreamingResult = executeCatchUpStreaming(context, snapshotSource, partition, previousOffset);
+        if (catchUpStreamingResult.performedCatchUpStreaming) {
+            streamingConnected(false);
+            commitOffsetLock.lock();
+            streamingSource = null;
+            commitOffsetLock.unlock();
+        }
+        eventDispatcher.setEventListener(snapshotMetrics);
+        SnapshotResult<O> snapshotResult = snapshotSource.execute(context, partition, previousOffset);
+        LOGGER.info("Snapshot ended with {}", snapshotResult);
+
+        if (snapshotResult.getStatus() == SnapshotResultStatus.COMPLETED || schema.tableInformationComplete()) {
+            schema.assureNonEmptySchema();
+        }
+        return snapshotResult;
+    }
+
     protected CatchUpStreamingResult executeCatchUpStreaming(ChangeEventSourceContext context,
                                                              SnapshotChangeEventSource<P, O> snapshotSource,
                                                              P partition, O previousOffset)
@@ -154,17 +167,22 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
     }
 
     protected void streamEvents(ChangeEventSourceContext context, P partition, O offsetContext) throws InterruptedException {
+        initStreamEvents(offsetContext);
+        LOGGER.info("Starting streaming");
+        streamingSource.execute(context, partition, offsetContext);
+        LOGGER.info("Finished streaming");
+    }
+
+    protected void initStreamEvents(O offsetContext) throws InterruptedException {
         streamingSource = changeEventSourceFactory.getStreamingChangeEventSource();
+        eventDispatcher.setEventListener(streamingMetrics);
+        streamingConnected(true);
+        streamingSource.init();
+
         final Optional<IncrementalSnapshotChangeEventSource<? extends DataCollectionId>> incrementalSnapshotChangeEventSource = changeEventSourceFactory
                 .getIncrementalSnapshotChangeEventSource(offsetContext, snapshotMetrics, snapshotMetrics);
         eventDispatcher.setIncrementalSnapshotChangeEventSource(incrementalSnapshotChangeEventSource);
-        eventDispatcher.setEventListener(streamingMetrics);
-        streamingConnected(true);
-        LOGGER.info("Starting streaming");
-        streamingSource.init();
         incrementalSnapshotChangeEventSource.ifPresent(x -> x.init(offsetContext));
-        streamingSource.execute(context, partition, offsetContext);
-        LOGGER.info("Finished streaming");
     }
 
     public void commitOffset(Map<String, ?> offset) {
@@ -200,7 +218,7 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
         }
     }
 
-    private class ChangeEventSourceContextImpl implements ChangeEventSourceContext {
+    public class ChangeEventSourceContextImpl implements ChangeEventSourceContext {
 
         @Override
         public boolean isRunning() {
@@ -208,7 +226,7 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
         }
     }
 
-    private void streamingConnected(boolean status) {
+    protected void streamingConnected(boolean status) {
         if (changeEventSourceMetricsFactory.connectionMetricHandledByCoordinator()) {
             streamingMetrics.connected(status);
         }
