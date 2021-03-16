@@ -20,7 +20,7 @@ This feature is currently in incubating state, i.e. exact semantics, configurati
 
 == Overview
 Sometimes it is necessary for the user to modify a connector behaviour or trigger a one-time action (e.g. snapshot of a single table).
-To fullwfill such needs {prodname} provides a mechanism how to send a signal to a {prodname} connector to trigger an action.
+To fulfill such needs {prodname} provides a mechanism how to send a signal to a {prodname} connector to trigger an action.
 As it might be necessary to synchronize such an action with the dataflow the signal is implemented as a write to a data collection.
 
 Signalling is disabled by default.
@@ -33,8 +33,8 @@ The signalling data collection must be *explictly* added among captured data col
 |Parameter |  Description
 
 |`signal.data.collection`
-|Fully-qualified name of data cloection. +
-The name format is connector specific.
+|Fully-qualified name of data collection. +
+The name format is connector specific, e.g. "some_schema.debezium_signals" in case of the {prodname} Postgres connector.
 
 |===
 
@@ -42,7 +42,7 @@ The name format is connector specific.
 === Data collection structure
 
 The signalling data collection must conform to a required format.
-it must contain three fields.
+It must contain three fields
 The naming of the fields is arbitrary and only order of the field is important.
 It is recommended but not mandatory to use the field names as defined in the table below.
 
@@ -121,4 +121,3 @@ If a placeholder `{}` is added to the message it will be replaced with streaming
 |`{"message": "Signal message at offset {}"}`
 
 |===
-
