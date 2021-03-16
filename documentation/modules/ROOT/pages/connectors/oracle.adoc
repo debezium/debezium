@@ -1788,7 +1788,7 @@ It is possible to use {prodname} link:/documentation/reference/configuration/sig
 
 The type of the schema update action is `schema-changes`.
 It will update the schema of all tables enumerated in the signal parameters.
-The message contain not the update to the schema but the complete new schema structure.
+The message does not contain the update to the schema, but the complete new schema structure.
 
 .Action parameters
 [cols="3,9",options="header"]
