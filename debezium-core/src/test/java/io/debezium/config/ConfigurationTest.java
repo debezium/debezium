@@ -72,7 +72,7 @@ public class ConfigurationTest {
 
         List<String> errorMessages = config.validate(Field.setOf(COLUMN_BLACKLIST)).get(COLUMN_BLACKLIST.name()).errorMessages();
         assertThat(errorMessages).isNotEmpty();
-        assertThat(errorMessages.get(0)).isEqualTo(RelationalDatabaseConnectorConfig.COLUMN_BLACKLIST_ALREADY_SPECIFIED_ERROR_MSG);
+        assertThat(errorMessages.get(0)).isEqualTo(RelationalDatabaseConnectorConfig.COLUMN_WHITELIST_ALREADY_SPECIFIED_ERROR_MSG);
     }
 
     @Test
@@ -85,7 +85,7 @@ public class ConfigurationTest {
 
         List<String> errorMessages = config.validate(Field.setOf(COLUMN_EXCLUDE_LIST)).get(COLUMN_EXCLUDE_LIST.name()).errorMessages();
         assertThat(errorMessages).isNotEmpty();
-        assertThat(errorMessages.get(0)).isEqualTo(RelationalDatabaseConnectorConfig.COLUMN_EXCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG);
+        assertThat(errorMessages.get(0)).isEqualTo(RelationalDatabaseConnectorConfig.COLUMN_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG);
     }
 
     @Test
@@ -98,7 +98,7 @@ public class ConfigurationTest {
 
         List<String> errorMessages = config.validate(Field.setOf(COLUMN_EXCLUDE_LIST)).get(COLUMN_EXCLUDE_LIST.name()).errorMessages();
         assertThat(errorMessages).isNotEmpty();
-        assertThat(errorMessages.get(0)).isEqualTo(RelationalDatabaseConnectorConfig.COLUMN_EXCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG);
+        assertThat(errorMessages.get(0)).isEqualTo(RelationalDatabaseConnectorConfig.COLUMN_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG);
     }
 
     @Test
