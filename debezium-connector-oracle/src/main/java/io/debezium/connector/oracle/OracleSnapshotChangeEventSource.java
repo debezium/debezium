@@ -280,7 +280,7 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
     @Override
     protected Optional<String> getSnapshotSelect(RelationalSnapshotContext snapshotContext, TableId tableId) {
         final OracleOffsetContext offset = (OracleOffsetContext) snapshotContext.offset;
-        final String snapshotOffset = offset.getScn();
+        final String snapshotOffset = offset.getScn().toString();
         assert snapshotOffset != null;
         return Optional.of("SELECT * FROM " + quote(tableId) + " AS OF SCN " + snapshotOffset);
     }

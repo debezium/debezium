@@ -139,7 +139,7 @@ public final class TransactionalBuffer implements AutoCloseable {
 
         // On the restarting connector, we start from SCN in the offset. There is possibility to commit a transaction(s) which were already committed.
         // Currently we cannot use ">=", because we may lose normal commit which may happen at the same time. TODO use audit table to prevent duplications
-        if ((offsetContext.getCommitScn() != null && Scn.valueOf(offsetContext.getCommitScn()).compareTo(scn) > 0) || lastCommittedScn.compareTo(scn) > 0) {
+        if ((offsetContext.getCommitScn() != null && offsetContext.getCommitScn().compareTo(scn) > 0) || lastCommittedScn.compareTo(scn) > 0) {
             LogMinerHelper.logWarn(metrics,
                     "Transaction {} was already processed, ignore. Committed SCN in offset is {}, commit SCN of the transaction is {}, last committed SCN is {}",
                     transactionId, offsetContext.getCommitScn(), scn, lastCommittedScn);
@@ -183,7 +183,7 @@ public final class TransactionalBuffer implements AutoCloseable {
             metrics.setActiveTransactions(transactions.size());
             metrics.incrementCommittedDmlCounter(commitCallbacks.size());
             metrics.setCommittedScn(scn);
-            metrics.setOffsetScn(Scn.valueOf(offsetContext.getScn()));
+            metrics.setOffsetScn(offsetContext.getScn());
             metrics.setLastCommitDuration(Duration.between(start, Instant.now()).toMillis());
         }
     }

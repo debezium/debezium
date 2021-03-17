@@ -35,17 +35,20 @@ public class OracleSourceInfoStructMaker extends AbstractSourceInfoStructMaker<S
 
     @Override
     public Struct struct(SourceInfo sourceInfo) {
+        final String scn = sourceInfo.getScn() == null ? null : sourceInfo.getScn().toString();
+        final String commitScn = sourceInfo.getCommitScn() == null ? null : sourceInfo.getCommitScn().toString();
+
         final Struct ret = super.commonStruct(sourceInfo)
                 .put(SourceInfo.SCHEMA_NAME_KEY, sourceInfo.getTableId().schema())
                 .put(SourceInfo.TABLE_NAME_KEY, sourceInfo.getTableId().table())
                 .put(SourceInfo.TXID_KEY, sourceInfo.getTransactionId())
-                .put(SourceInfo.SCN_KEY, sourceInfo.getScn());
+                .put(SourceInfo.SCN_KEY, scn);
 
         if (sourceInfo.getLcrPosition() != null) {
             ret.put(SourceInfo.LCR_POSITION_KEY, sourceInfo.getLcrPosition().toString());
         }
-        if (sourceInfo.getCommitScn() != null) {
-            ret.put(SourceInfo.COMMIT_SCN_KEY, sourceInfo.getCommitScn());
+        if (commitScn != null) {
+            ret.put(SourceInfo.COMMIT_SCN_KEY, commitScn);
         }
         return ret;
     }

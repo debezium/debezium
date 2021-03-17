@@ -118,9 +118,9 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
         }
     }
 
-    private byte[] convertScnToPosition(String scn) {
+    private byte[] convertScnToPosition(Scn scn) {
         try {
-            return XStreamUtility.convertSCNToPosition(new NUMBER(scn, 0), this.posVersion);
+            return XStreamUtility.convertSCNToPosition(new NUMBER(scn.toString(), 0), this.posVersion);
         }
         catch (SQLException | StreamsException e) {
             throw new RuntimeException(e);
@@ -142,7 +142,7 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
     }
 
     private void sendPublishedPosition(final LcrPosition lcrPosition, final Scn scn) {
-        lcrMessage.set(new PositionAndScn(lcrPosition, (scn != null) ? convertScnToPosition(scn.toString()) : null));
+        lcrMessage.set(new PositionAndScn(lcrPosition, (scn != null) ? convertScnToPosition(scn) : null));
     }
 
     PositionAndScn receivePublishedPosition() {
