@@ -1,4 +1,5 @@
 steps:
   - name: "eu.gcr.io/confluent-kafka-development/jenkins-maven-gcp:11-3.6.3"
     args: ["/bin/bash", "-c", "mvn deploy -DskipITs"]
-    timeout: '7200s'
+    timeout: "7200s"
+timeout: "7200s"
