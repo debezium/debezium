@@ -10,6 +10,7 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Objects;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,8 +55,8 @@ class LogMinerQueryResultProcessor {
     private final OracleConnectorConfig connectorConfig;
     private final Clock clock;
     private final Logger LOGGER = LoggerFactory.getLogger(LogMinerQueryResultProcessor.class);
-    private Scn currentOffsetScn = Scn.ZERO;
-    private Scn currentOffsetCommitScn = Scn.ZERO;
+    private Scn currentOffsetScn;
+    private Scn currentOffsetCommitScn;
     private long stuckScnCounter = 0;
     private HistoryRecorder historyRecorder;
 
@@ -263,7 +264,7 @@ class LogMinerQueryResultProcessor {
         if (offsetContext != null && offsetContext.getCommitScn() != null) {
             final Scn scn = offsetContext.getScn();
             final Scn commitScn = offsetContext.getCommitScn();
-            if (currentOffsetScn.equals(scn) && !currentOffsetCommitScn.equals(commitScn)) {
+            if (Objects.equals(currentOffsetScn, scn) && !Objects.equals(currentOffsetCommitScn, commitScn)) {
                 stuckScnCounter++;
                 // logWarn only once
                 if (stuckScnCounter == 25) {
