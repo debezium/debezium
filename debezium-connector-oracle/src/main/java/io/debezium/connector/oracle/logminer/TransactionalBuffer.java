@@ -57,7 +57,7 @@ public final class TransactionalBuffer implements AutoCloseable {
     TransactionalBuffer(OracleTaskContext taskContext, ErrorHandler errorHandler) {
         this.transactions = new HashMap<>();
         this.errorHandler = errorHandler;
-        this.lastCommittedScn = Scn.ZERO;
+        this.lastCommittedScn = Scn.NULL;
         this.abandonedTransactionIds = new HashSet<>();
         this.rolledBackTransactionIds = new HashSet<>();
 
@@ -262,7 +262,7 @@ public final class TransactionalBuffer implements AutoCloseable {
                         .map(transaction -> transaction.firstScn)
                         .min(Scn::compareTo)
                         .orElseThrow(() -> new DataException("Cannot calculate smallest SCN"));
-        metrics.setOldestScn(scn == null ? Scn.INVALID : scn);
+        metrics.setOldestScn(scn == null ? Scn.valueOf(-1) : scn);
         return scn;
     }
 
