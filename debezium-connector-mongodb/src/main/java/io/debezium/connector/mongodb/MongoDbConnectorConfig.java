@@ -34,10 +34,10 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MongoDbConnectorConfig.class);
 
-    protected static final String COLLECTION_EXCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG = "\"collection.exclude.list\" is already specified";
-    protected static final String COLLECTION_BLACKLIST_ALREADY_SPECIFIED_ERROR_MSG = "\"collection.blacklist\" is already specified";
-    protected static final String DATABASE_EXCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG = "\"database.exclude.list\" is already specified";
-    protected static final String DATABASE_BLACKLIST_ALREADY_SPECIFIED_ERROR_MSG = "\"database.blacklist\" is already specified";
+    protected static final String COLLECTION_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG = "\"collection.include.list\" is already specified";
+    protected static final String COLLECTION_WHITELIST_ALREADY_SPECIFIED_ERROR_MSG = "\"collection.whitelist\" is already specified";
+    protected static final String DATABASE_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG = "\"database.include.list\" is already specified";
+    protected static final String DATABASE_WHITELIST_ALREADY_SPECIFIED_ERROR_MSG = "\"database.whitelist\" is already specified";
 
     /**
      * The set of predefined SnapshotMode options or aliases.
@@ -257,7 +257,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withType(Type.LIST)
             .withWidth(Width.LONG)
             .withImportance(Importance.HIGH)
-            .withValidation(Field::isListOfRegex, MongoDbConnectorConfig::validateDatabaseExcludeList)
+            .withValidation(Field::isListOfRegex)
             .withDescription("A comma-separated list of regular expressions that match the database names for which changes are to be captured");
 
     /**
@@ -269,7 +269,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withType(Type.LIST)
             .withWidth(Width.LONG)
             .withImportance(Importance.LOW)
-            .withValidation(Field::isListOfRegex, MongoDbConnectorConfig::validateDatabaseBlacklist)
+            .withValidation(Field::isListOfRegex)
             .withInvisibleRecommender()
             .withDescription("A comma-separated list of regular expressions that match the database names for which changes are to be captured (deprecated, use \""
                     + DATABASE_INCLUDE_LIST.name() + "\" instead)");
@@ -310,8 +310,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withType(Type.LIST)
             .withWidth(Width.LONG)
             .withImportance(Importance.HIGH)
-            .withValidation(Field::isListOfRegex,
-                    MongoDbConnectorConfig::validateCollectionExcludeList)
+            .withValidation(Field::isListOfRegex)
             .withDescription("A comma-separated list of regular expressions that match the collection names for which changes are to be captured");
 
     /**
@@ -323,7 +322,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withType(Type.LIST)
             .withWidth(Width.LONG)
             .withImportance(Importance.LOW)
-            .withValidation(Field::isListOfRegex, MongoDbConnectorConfig::validateCollectionBlacklist)
+            .withValidation(Field::isListOfRegex)
             .withInvisibleRecommender()
             .withDescription("A comma-separated list of regular expressions that match the collection names for which changes are to be captured (deprecated, use \""
                     + COLLECTION_INCLUDE_LIST.name() + "\" instead)");
@@ -514,7 +513,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         String includeList = config.getString(COLLECTION_INCLUDE_LIST);
         String excludeList = config.getString(COLLECTION_EXCLUDE_LIST);
         if (includeList != null && excludeList != null) {
-            problems.accept(COLLECTION_EXCLUDE_LIST, excludeList, COLLECTION_EXCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG);
+            problems.accept(COLLECTION_EXCLUDE_LIST, excludeList, COLLECTION_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG);
             return 1;
         }
         return 0;
@@ -524,7 +523,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         String whitelist = config.getFallbackStringPropertyWithWarning(COLLECTION_INCLUDE_LIST, COLLECTION_WHITELIST);
         String blacklist = config.getFallbackStringPropertyWithWarning(COLLECTION_EXCLUDE_LIST, COLLECTION_BLACKLIST);
         if (whitelist != null && blacklist != null) {
-            problems.accept(COLLECTION_EXCLUDE_LIST, blacklist, COLLECTION_EXCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG);
+            problems.accept(COLLECTION_EXCLUDE_LIST, blacklist, COLLECTION_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG);
             return 1;
         }
         return 0;
@@ -534,7 +533,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         String includeList = config.getString(DATABASE_INCLUDE_LIST);
         String excludeList = config.getString(DATABASE_EXCLUDE_LIST);
         if (includeList != null && excludeList != null) {
-            problems.accept(DATABASE_EXCLUDE_LIST, excludeList, DATABASE_EXCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG);
+            problems.accept(DATABASE_EXCLUDE_LIST, excludeList, DATABASE_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG);
             return 1;
         }
         return 0;
@@ -544,7 +543,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         String whitelist = config.getFallbackStringPropertyWithWarning(DATABASE_INCLUDE_LIST, DATABASE_WHITELIST);
         String blacklist = config.getFallbackStringPropertyWithWarning(DATABASE_EXCLUDE_LIST, DATABASE_BLACKLIST);
         if (whitelist != null && blacklist != null) {
-            problems.accept(DATABASE_BLACKLIST, blacklist, DATABASE_BLACKLIST_ALREADY_SPECIFIED_ERROR_MSG);
+            problems.accept(DATABASE_BLACKLIST, blacklist, DATABASE_WHITELIST_ALREADY_SPECIFIED_ERROR_MSG);
             return 1;
         }
         return 0;
