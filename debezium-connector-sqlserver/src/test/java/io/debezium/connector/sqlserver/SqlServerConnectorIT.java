@@ -749,7 +749,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
 
         TestHelper.waitForCdcRecord(connection, "tableb", rs -> rs.getInt("id") == expectedIds.get(expectedIds.size() - 1));
 
-        String databaseName = connection.config().getDatabase();
+        String databaseName = "testDB";
         Awaitility.await().atMost(30, TimeUnit.SECONDS).until(() -> {
             // Wait for max lsn to be available
             if (!connection.getMaxLsn(databaseName).isAvailable()) {
@@ -2055,7 +2055,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
             connection.execute("INSERT INTO tableb VALUES(" + id + ", 'b')");
         }
 
-        String databaseName = connection.config().getDatabase();
+        String databaseName = "testDB";
         Awaitility.await().atMost(30, TimeUnit.SECONDS).pollInterval(100, TimeUnit.MILLISECONDS).until(() -> {
             Testing.debug("Waiting for initial changes to be propagated to CDC structures");
             return connection.getMaxLsn(databaseName).isAvailable();
