@@ -119,7 +119,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                 LOGGER.trace("Current time {} ms, database difference {} ms", System.currentTimeMillis(), databaseTimeMs);
                 transactionalBuffer.setDatabaseTimeDifference(databaseTimeMs);
 
-                startScn = Scn.valueOf(offsetContext.getScn());
+                startScn = offsetContext.getScn();
                 createFlushTable(jdbcConnection);
 
                 if (!isContinuousMining && startScn.compareTo(getFirstOnlineLogScn(jdbcConnection, archiveLogRetention)) < 0) {
@@ -229,7 +229,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
     private void abandonOldTransactionsIfExist(OracleConnection connection, TransactionalBuffer transactionalBuffer) {
         Duration transactionRetention = connectorConfig.getLogMiningTransactionRetention();
         if (!Duration.ZERO.equals(transactionRetention)) {
-            final Scn offsetScn = Scn.valueOf(offsetContext.getScn());
+            final Scn offsetScn = offsetContext.getScn();
             Optional<Scn> lastScnToAbandonTransactions = getLastScnToAbandon(connection, offsetScn, transactionRetention);
             lastScnToAbandonTransactions.ifPresent(thresholdScn -> {
                 transactionalBuffer.abandonLongTransactions(thresholdScn, offsetContext);
