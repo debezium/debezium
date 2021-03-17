@@ -13,7 +13,7 @@ public interface LogMinerMetricsMXBean {
     /**
      * @return the current system change number of the database
      */
-    Long getCurrentScn();
+    String getCurrentScn();
 
     /**
      * @return array of current filenames to be used by the mining session.

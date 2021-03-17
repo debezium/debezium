@@ -195,8 +195,8 @@ public class LogMinerMetrics extends Metrics implements LogMinerMetricsMXBean {
     }
 
     @Override
-    public Long getCurrentScn() {
-        return currentScn.get().longValue();
+    public String getCurrentScn() {
+        return currentScn.get().toString();
     }
 
     @Override

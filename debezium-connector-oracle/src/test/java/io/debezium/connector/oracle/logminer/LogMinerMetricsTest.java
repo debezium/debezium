@@ -50,7 +50,7 @@ public class LogMinerMetricsTest {
         assertThat(metrics.getTotalCapturedDmlCount() == 1).isTrue();
 
         metrics.setCurrentScn(Scn.valueOf(1000L));
-        assertThat(metrics.getCurrentScn()).isEqualTo(1000L);
+        assertThat(metrics.getCurrentScn()).isEqualTo("1000");
 
         metrics.setBatchSize(10);
         assertThat(metrics.getBatchSize() == connectorConfig.getLogMiningBatchSizeDefault()).isTrue();
