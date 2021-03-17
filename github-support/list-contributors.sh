@@ -2,6 +2,11 @@
 
 set -euo
 
+if [ $# -eq 0 ];then
+    echo "No release parameters provided"
+    exit 1
+fi
+
 DIR="$HOME/debezium-contributors"
 ALIASES="jenkins-jobs/scripts/config/Aliases.txt"
 FILTERS="jenkins-jobs/scripts/config/FilteredNames.txt"
@@ -36,7 +41,7 @@ do
     if grep -qi "^$NAME" $CONTRIBUTORS_ALIASES; then
         REAL_NAME=`grep -i "^$NAME" $CONTRIBUTORS_ALIASES | head -1 | awk '{split($0,a,","); print a[2]}'`
         sed -n -e "s/ $NAME/\[$REAL_NAME\]/p" $CONTRIBUTORS_NAMES >> $CONTRIBUTORS_LIST_TXT
-     elif grep -qi "^$NAME" $CONTRIBUTORS_FILTERS; then
+     elif grep -qi "$NAME" $CONTRIBUTORS_FILTERS; then
         sed -n "/$NAME/d" $CONTRIBUTORS_NAMES >> $CONTRIBUTORS_LIST_TXT
      else
        sed -n -e "s/ $NAME/\[$NAME\]/p" $CONTRIBUTORS_NAMES >> $CONTRIBUTORS_LIST_TXT
@@ -44,8 +49,10 @@ do
   fi
 done < $CONTRIBUTORS_NAMES
 
-sort $CONTRIBUTORS_LIST_TXT | uniq > $CONTRIBUTORS_NAMES
-
+sort -t[ -k2 $CONTRIBUTORS_LIST_TXT | uniq > $CONTRIBUTORS_NAMES
 sed -e '$!s/$/,/' $CONTRIBUTORS_NAMES
+
+FIX_VERSION=`echo $2 | cut -d "v" -f 2`
+echo "List of issues: https://issues.redhat.com/issues/?jql=project%20%3D%20DBZ%20AND%20fixVersion%20%3D%20$FIX_VERSION%20ORDER%20BY%20issuetype%20DESC"
 
 rm -rf $DIR
