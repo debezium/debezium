@@ -526,12 +526,12 @@ Let's look at what a _create_ event value might look like for our `customers` ta
                         "field": "txId"
                     },
                     {
-                        "type": "int64",
+                        "type": "string",
                         "optional": true,
                         "field": "scn"
                     },
                     {
-                        "type": "int64",
+                        "type": "string",
                         "optional": true,
                         "field": "commit_scn"
                     },
@@ -572,8 +572,8 @@ Let's look at what a _create_ event value might look like for our `customers` ta
             "name": "server1",
             "ts_ms": 1520085154000,
             "txId": "6.28.807",
-            "scn": 2122185,
-            "commit_scn": 2122185,
+            "scn": "2122185",
+            "commit_scn": "2122185",
             "snapshot": false
         },
         "op": "c",
@@ -626,8 +626,8 @@ Here's an example:
             "name": "server1",
             "ts_ms": 1520085811000,
             "txId": "6.9.809",
-            "scn": 2125544,
-            "commit_scn": 2125544,
+            "scn": "2125544",
+            "commit_scn": "2125544",
             "snapshot": false
         },
         "op": "u",
@@ -675,8 +675,8 @@ Now, let's look at the value of a _delete_ event for the same table. Once again,
             "name": "server1",
             "ts_ms": 1520085153000,
             "txId": "6.28.807",
-            "scn": 2122184,
-            "commit_scn": 2122184,
+            "scn": "2122184",
+            "commit_scn": "2122184",
             "snapshot": false
         },
         "op": "d",
@@ -1648,7 +1648,7 @@ The *MBean* is `debezium.oracle:type=connector-metrics,context=log-miner,server=
 |Attributes |Type |Description
 
 |[[log-miner-metrics-currentscn]]<<log-miner-metrics-currentscn, `+CurrentScn+`>>
-|`long`
+|`string`
 |The most recent SCN that has been processed.
 
 |[[log-miner-metrics-currentredologfilename]]<<log-miner-metrics-currentredologfilename, `+CurrentRedoLogFileName+`>>
