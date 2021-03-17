@@ -174,4 +174,26 @@ public class LogMinerDmlParserTest {
         assertThat(entry.getNewValues().get(0).getColumnName()).isEqualTo("COL 1");
         assertThat(entry.getNewValues().get(0).getColumnData()).isEqualTo("1");
     }
+
+    @Test
+    @FixFor("DBZ-3305")
+    public void testParsingUpdateWithNoWhereClauseFunctionAsLastColumn() throws Exception {
+        String sql = "update \"TICKETUSER\".\"CRS_ORDER\" set \"AMOUNT_PAID\" = '0', \"AMOUNT_UNPAID\" = '540', " +
+                "\"PAY_STATUS\" = '10111015', \"IS_DEL\" = '0', \"TM_UPDATE\" = TO_DATE('2021-03-17 10:18:55', 'YYYY-MM-DD HH24:MI:SS');";
+
+        LogMinerDmlEntry entry = fastDmlParser.parse(sql, null, null, null);
+        assertThat(entry.getCommandType()).isEqualTo(Operation.UPDATE);
+        assertThat(entry.getOldValues()).isEmpty();
+        assertThat(entry.getNewValues()).hasSize(5);
+        assertThat(entry.getNewValues().get(0).getColumnName()).isEqualTo("AMOUNT_PAID");
+        assertThat(entry.getNewValues().get(1).getColumnName()).isEqualTo("AMOUNT_UNPAID");
+        assertThat(entry.getNewValues().get(2).getColumnName()).isEqualTo("PAY_STATUS");
+        assertThat(entry.getNewValues().get(3).getColumnName()).isEqualTo("IS_DEL");
+        assertThat(entry.getNewValues().get(4).getColumnName()).isEqualTo("TM_UPDATE");
+        assertThat(entry.getNewValues().get(0).getColumnData()).isEqualTo("0");
+        assertThat(entry.getNewValues().get(1).getColumnData()).isEqualTo("540");
+        assertThat(entry.getNewValues().get(2).getColumnData()).isEqualTo("10111015");
+        assertThat(entry.getNewValues().get(3).getColumnData()).isEqualTo("0");
+        assertThat(entry.getNewValues().get(4).getColumnData()).isEqualTo("TO_DATE('2021-03-17 10:18:55', 'YYYY-MM-DD HH24:MI:SS')");
+    }
 }

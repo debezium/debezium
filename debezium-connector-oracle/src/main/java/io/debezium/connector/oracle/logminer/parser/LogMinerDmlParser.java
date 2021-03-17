@@ -410,7 +410,7 @@ public class LogMinerDmlParser implements DmlParser {
                 else if (c == ')' && nested > 0) {
                     nested--;
                 }
-                else if ((c == ',' || c == ' ') && nested == 0) {
+                else if ((c == ',' || c == ' ' || c == ';') && nested == 0) {
                     String value = sql.substring(start, index);
                     if (value.equals(NULL) || value.equals(UNSUPPORTED_TYPE)) {
                         columnValues.add(null);
