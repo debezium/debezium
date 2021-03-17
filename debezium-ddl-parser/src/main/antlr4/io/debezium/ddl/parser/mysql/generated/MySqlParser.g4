@@ -432,7 +432,7 @@ tableOption
     | ROW_FORMAT '='?
         rowFormat=(
           DEFAULT | DYNAMIC | FIXED | COMPRESSED
-          | REDUNDANT | COMPACT
+          | REDUNDANT | COMPACT | ID
         )                                                           #tableOptionRowFormat
     | STATS_AUTO_RECALC '='? extBoolValue=(DEFAULT | '0' | '1')     #tableOptionRecalculation
     | STATS_PERSISTENT '='? extBoolValue=(DEFAULT | '0' | '1')      #tableOptionPersistent
