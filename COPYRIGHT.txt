@@ -3,7 +3,9 @@ Aaron Brady
 Aaron Rosenberg
 Abhishek Gupta
 Addison Higham
+Adham
 Adrian Kreuziger
+Ahmed Eljami
 Akshath Patkar
 Alex Mansell
 Alex Soto
@@ -50,6 +52,8 @@ Ching Tsai
 Chris Cranford
 Chris Riccomini
 Christian Posta
+Christopher Sang
+Chuck Ha
 Cliff Wheadon
 Collin Van Dyck
 Cory Harper
@@ -71,6 +75,7 @@ Dennis Persson
 Duncan Sands
 Echo Xu
 Ed Laur
+Eduardo Hayashi
 Eero Koplimets
 Elan Hasson
 Emmanuel Brard
@@ -86,6 +91,7 @@ Fatih Güçlü Akkaya
 Fándly Gergő 
 Felix Eckhardt
 Fintan Bolton
+Frank Koornstra
 Frank Mormino
 Gagan Agrawal
 Ganesh Ramasubramanian
@@ -104,6 +110,7 @@ Henryk Konsek
 Hoa Le
 Horia Chiorean
 Hossein Torabi
+Hussain Ansari
 Ian Axelrod
 Igor Gabaydulin
 Ilia Bogdanov
@@ -190,6 +197,8 @@ Nikhil Benesch
 Nishant Singh
 Nitin Agarwal
 Olavi Mustanoja
+Oliver Weiler
+Olivier Lemasle
 Omar Al-Safi
 Ori Popowski
 Orr Ganani
@@ -197,6 +206,7 @@ Paul Mellor
 Peng Lyu
 Peter Goransson
 Peter Junos
+Peter Larsson
 Peter Urbanetz
 Philip Sanetra
 Pradeep Mamillapalli
@@ -219,7 +229,7 @@ Rich O'Connell
 Robert Coup
 Robert Roldan
 Ruslan Gibaiev
-siufay325
+SiuFay
 Sairam Polavarapu
 Sanjay Kr Singh
 Sanne Grinovero
@@ -229,8 +239,10 @@ Sayed Mohammad Hossein Torabi
 Scofield Xu
 Sean Rooney
 Sergei Morozov
+Shane Paul
 Sherafudheen PM
 Sheldon Fuchs
+Shivam Sharma
 Shubham Rawat
 Shuguang Xiang
 Siddhant Agnihotry
@@ -239,6 +251,7 @@ Stathis Souris
 Stephen Powis
 Steven Siahetiong
 Syed Muhammad Sufyian
+Tapani Moilanen
 Tautvydas Januskevicius
 Taylor Rolison
 Theofanis Despoudis
@@ -265,6 +278,7 @@ WenZe Hu
 William Pursell
 Willie Cheong
 Wout Scheepers
+Xiao Fu
 Xuan Shen
 Yang Yang
 Yilong Chang
