@@ -25,19 +25,18 @@ When the snapshot is complete the connector begins emitting change events for co
 
 [NOTE]
 ====
-The connector uses the abstract syntax notation (ASN) libraries that come as a standard part of Db2 LUW (Db2 for Linux, UNIX and Windows) and which you can add to Db2 zOS.
-To use ASN and hence this connector, you must have a license for the IBM InfoSphere Data Replication (IIDR) product.
-However, IIDR does not need to be installed.
+The connector requires the use of the abstract syntax notation (ASN) libraries, which are available as a standard part of Db2 for Linux.
+To use the ASN libraries, you must have a license for IBM InfoSphere Data Replication (IIDR).
+You do not have to install IIDR to use the ASN libraries.
 ====
 
 ifdef::community[]
-The Db2 connector has been tested with Db2/Linux {db2-version}.
+The Db2 connector has been tested with Db2 for Linux.
 It is expected that the connector would also work on other platforms such as Windows,
 and we'd love to get your feedback if you can confirm this to be the case.
 endif::community[]
 
 ifdef::product[]
-The Db2 connector has been tested with Db2/Linux {db2-version}.
 
 Information and procedures for using a {prodname} Db2 connector is organized as follows:
 
