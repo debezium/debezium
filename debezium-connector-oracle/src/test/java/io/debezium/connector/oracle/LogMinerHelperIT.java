@@ -81,7 +81,12 @@ public class LogMinerHelperIT extends AbstractConnectorTest {
         List<Scn> oneDayArchivedNextScn = getOneDayArchivedLogNextScn(conn);
         Scn oldestArchivedScn = getOldestArchivedScn(oneDayArchivedNextScn);
         List<LogFile> archivedLogsForMining = LogMinerHelper.getArchivedLogFilesForOffsetScn(conn, oldestArchivedScn, Duration.ofHours(0L));
-        assertThat(archivedLogsForMining.size() == (oneDayArchivedNextScn.size() - 1)).isTrue();
+        if (oneDayArchivedNextScn.isEmpty()) {
+            assertThat(archivedLogsForMining.size()).isEqualTo(oneDayArchivedNextScn.size());
+        }
+        else {
+            assertThat(archivedLogsForMining.size()).isEqualTo(oneDayArchivedNextScn.size() - 1);
+        }
 
         archivedRedoFiles = LogMinerHelper.getMap(conn, SqlUtils.archiveLogsQuery(oldestArchivedScn.subtract(Scn.valueOf(1L)), Duration.ofHours(0L)), "-1");
         assertThat(archivedRedoFiles.size() == (oneDayArchivedNextScn.size())).isTrue();
@@ -96,18 +101,24 @@ public class LogMinerHelperIT extends AbstractConnectorTest {
         // eliminate duplications
         List<LogFile> onlineLogFilesForMining = LogMinerHelper.getOnlineLogFilesForOffsetScn(conn, oldestArchivedScn);
         List<LogFile> archivedLogFilesForMining = LogMinerHelper.getArchivedLogFilesForOffsetScn(conn, oldestArchivedScn, Duration.ofHours(0L));
-        List<String> archivedLogFiles = archivedLogFilesForMining.stream().filter(e -> {
-            for (LogFile log : onlineLogFilesForMining) {
+        List<String> redoLogFiles = onlineLogFilesForMining.stream().filter(e -> {
+            for (LogFile log : archivedLogFilesForMining) {
                 if (log.isSameRange(e)) {
                     return false;
                 }
             }
             return true;
         }).map(LogFile::getFileName).collect(Collectors.toList());
-        int archivedLogFilesCount = archivedLogFiles.size();
+        int redoLogFilesCount = redoLogFiles.size();
 
-        Map<String, String> redoLogFiles = LogMinerHelper.getMap(conn, SqlUtils.allOnlineLogsQuery(), "-1");
-        assertThat(getNumberOfAddedLogFiles(conn) == (redoLogFiles.size() + archivedLogFilesCount)).isTrue();
+        if (!archivedLogFilesForMining.isEmpty()) {
+            assertThat(onlineLogFilesForMining.size()).isGreaterThan(redoLogFilesCount);
+            assertThat(getNumberOfAddedLogFiles(conn)).isGreaterThan(redoLogFilesCount);
+        }
+        else {
+            assertThat(onlineLogFilesForMining.size()).isEqualTo(redoLogFilesCount);
+            assertThat(getNumberOfAddedLogFiles(conn)).isEqualTo(redoLogFilesCount);
+        }
     }
 
     private Scn getOldestArchivedScn(List<Scn> oneDayArchivedNextScn) throws Exception {
@@ -117,7 +128,7 @@ public class LogMinerHelperIT extends AbstractConnectorTest {
             oldestArchivedScn = archivedScn.get();
         }
         else {
-            throw new Exception("cannot get oldest archived scn");
+            oldestArchivedScn = Scn.ZERO;
         }
         return oldestArchivedScn;
     }
