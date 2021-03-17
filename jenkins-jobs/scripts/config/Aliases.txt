@@ -72,3 +72,7 @@ mengqiu,Meng Qiu
 wangzheng422,Zheng Wang
 martper2,Martín Pérez
 fuxiao224,Xiao Fu
+plarsson,Peter Larsson
+pln,Peter Larsson
+uidoyen,Hussain Ansari
+siufay325,SiuFay
