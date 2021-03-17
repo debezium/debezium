@@ -90,7 +90,7 @@ public class SqlServerBinaryModeIT extends AbstractConnectorTest {
         TestHelper.waitForSnapshotToBeCompleted();
 
         SourceRecords records = consumeRecordsByTopic(1);
-        final List<SourceRecord> results = records.recordsForTopic("server1.dbo.binary_mode_test");
+        final List<SourceRecord> results = records.recordsForTopic("server1.testDB.dbo.binary_mode_test");
         Assertions.assertThat(results).hasSize(1);
 
         return (Struct) ((Struct) results.get(0).value()).get("after");

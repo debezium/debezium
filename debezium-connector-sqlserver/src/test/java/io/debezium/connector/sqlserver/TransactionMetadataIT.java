@@ -105,8 +105,8 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
 
         // BEGIN, data, END, BEGIN, data
         final SourceRecords records = consumeRecordsByTopic(1 + RECORDS_PER_TABLE * 2 + 1 + 1 + 1);
-        final List<SourceRecord> tableA = records.recordsForTopic("server1.dbo.tablea");
-        final List<SourceRecord> tableB = records.recordsForTopic("server1.dbo.tableb");
+        final List<SourceRecord> tableA = records.recordsForTopic("server1.testDB.dbo.tablea");
+        final List<SourceRecord> tableB = records.recordsForTopic("server1.testDB.dbo.tableb");
         final List<SourceRecord> tx = records.recordsForTopic("server1.transaction");
         Assertions.assertThat(tableA).hasSize(RECORDS_PER_TABLE);
         Assertions.assertThat(tableB).hasSize(RECORDS_PER_TABLE + 1);
@@ -183,7 +183,7 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
         }
 
         start(SqlServerConnector.class, config, record -> {
-            if (!"server1.dbo.tablea.Envelope".equals(record.valueSchema().name())) {
+            if (!"server1.testDB.dbo.tablea.Envelope".equals(record.valueSchema().name())) {
                 return false;
             }
             final Struct envelope = (Struct) record.value();
@@ -253,8 +253,8 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
         records = sourceRecords.allRecordsInOrder();
         assertThat(records).hasSize(RECORDS_PER_TABLE);
 
-        List<SourceRecord> tableA = sourceRecords.recordsForTopic("server1.dbo.tablea");
-        List<SourceRecord> tableB = sourceRecords.recordsForTopic("server1.dbo.tableb");
+        List<SourceRecord> tableA = sourceRecords.recordsForTopic("server1.testDB.dbo.tablea");
+        List<SourceRecord> tableB = sourceRecords.recordsForTopic("server1.testDB.dbo.tableb");
         for (int i = 0; i < RECORDS_PER_TABLE / 2; i++) {
             final int id = HALF_ID + i;
             final SourceRecord recordA = tableA.get(i);
@@ -289,8 +289,8 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
 
         // END of previous TX, data records, BEGIN of TX for every pair of record, END of TX for every pair of record but last
         sourceRecords = consumeRecordsByTopic(1 + RECORDS_PER_TABLE * TABLES + (2 * RECORDS_PER_TABLE - 1));
-        tableA = sourceRecords.recordsForTopic("server1.dbo.tablea");
-        tableB = sourceRecords.recordsForTopic("server1.dbo.tableb");
+        tableA = sourceRecords.recordsForTopic("server1.testDB.dbo.tablea");
+        tableB = sourceRecords.recordsForTopic("server1.testDB.dbo.tableb");
         List<SourceRecord> txMetadata = sourceRecords.recordsForTopic("server1.transaction");
 
         Assertions.assertThat(tableA).hasSize(RECORDS_PER_TABLE);
