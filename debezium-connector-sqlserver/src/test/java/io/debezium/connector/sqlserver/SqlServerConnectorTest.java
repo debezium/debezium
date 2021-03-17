@@ -35,6 +35,7 @@ public class SqlServerConnectorTest {
         config.put(SqlServerConnectorConfig.PORT.name(), "4321");
         config.put(SqlServerConnectorConfig.DATABASE_NAME.name(), "sqlserver");
         config.put(SqlServerConnectorConfig.DATABASE_NAMES.name(), "sqlserver");
+        config.put(SqlServerConnectorConfig.TASK_DATABASE_NAMES.name(), "sqlserver");
         config.put(SqlServerConnectorConfig.USER.name(), "pikachu");
         config.put(SqlServerConnectorConfig.PASSWORD.name(), "raichu");
 
@@ -61,7 +62,7 @@ public class SqlServerConnectorTest {
         List<Map<String, String>> taskConfigs = connector.taskConfigs(1);
         assertThat(taskConfigs.size()).isEqualTo(1);
         assertThat(taskConfigs.get(0).get(SqlServerConnectorConfig.DATABASE_NAME.name())).isEqualTo("database1");
-        assertThat(taskConfigs.get(0).get(SqlServerConnectorConfig.DATABASE_NAMES.name())).isEqualTo("database1,database2");
+        assertThat(taskConfigs.get(0).get(SqlServerConnectorConfig.TASK_DATABASE_NAMES.name())).isEqualTo("database1,database2");
     }
 
     @Test
@@ -79,9 +80,9 @@ public class SqlServerConnectorTest {
         List<Map<String, String>> taskConfigs = connector.taskConfigs(2);
         assertThat(taskConfigs.size()).isEqualTo(2);
         assertThat(taskConfigs.get(0).get(SqlServerConnectorConfig.DATABASE_NAME.name())).isEqualTo("database1");
-        assertThat(taskConfigs.get(0).get(SqlServerConnectorConfig.DATABASE_NAMES.name())).isEqualTo("database1");
+        assertThat(taskConfigs.get(0).get(SqlServerConnectorConfig.TASK_DATABASE_NAMES.name())).isEqualTo("database1");
         assertThat(taskConfigs.get(1).get(SqlServerConnectorConfig.DATABASE_NAME.name())).isEqualTo("database2");
-        assertThat(taskConfigs.get(1).get(SqlServerConnectorConfig.DATABASE_NAMES.name())).isEqualTo("database2");
+        assertThat(taskConfigs.get(1).get(SqlServerConnectorConfig.TASK_DATABASE_NAMES.name())).isEqualTo("database2");
     }
 
     @Test
