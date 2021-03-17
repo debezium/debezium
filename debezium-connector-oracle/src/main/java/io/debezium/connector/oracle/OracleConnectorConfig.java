@@ -496,22 +496,27 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                 if (getAdapter() == OracleConnectorConfig.ConnectorAdapter.XSTREAM) {
                     final LcrPosition recordedPosition = LcrPosition.valueOf(recorded.getString(SourceInfo.LCR_POSITION_KEY));
                     final LcrPosition desiredPosition = LcrPosition.valueOf(desired.getString(SourceInfo.LCR_POSITION_KEY));
-                    recordedScn = recordedPosition != null ? recordedPosition.getScn() : getScnFromString(recorded.getString(SourceInfo.SCN2_KEY));
-                    desiredScn = desiredPosition != null ? desiredPosition.getScn() : getScnFromString(desired.getString(SourceInfo.SCN2_KEY));
+                    recordedScn = recordedPosition != null ? recordedPosition.getScn() : resolveScn(recorded);
+                    desiredScn = desiredPosition != null ? desiredPosition.getScn() : resolveScn(desired);
                     return (recordedPosition != null && desiredPosition != null)
                             ? recordedPosition.compareTo(desiredPosition) < 1
                             : recordedScn.compareTo(desiredScn) < 1;
                 }
                 else {
-                    recordedScn = getScnFromString(recorded.getString(SourceInfo.SCN_KEY));
-                    desiredScn = getScnFromString(desired.getString(SourceInfo.SCN_KEY));
+                    recordedScn = resolveScn(recorded);
+                    desiredScn = resolveScn(desired);
                     return recordedScn.compareTo(desiredScn) < 1;
                 }
 
             }
 
-            private Scn getScnFromString(String value) {
-                return value == null ? Scn.ZERO : Scn.valueOf(value);
+            private Scn resolveScn(Document document) {
+                // prioritize reading scn as string and if not found, fallback to long data types
+                if (document.getString(SourceInfo.SCN_KEY) == null) {
+                    Long scnValue = document.getLong(SourceInfo.SCN_KEY);
+                    Scn.valueOf(scnValue == null ? 0 : scnValue);
+                }
+                return Scn.valueOf(document.getString(SourceInfo.SCN_KEY));
             }
         };
     }

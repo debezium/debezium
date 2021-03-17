@@ -34,7 +34,7 @@ public class OracleOffsetContextTest {
 
     @Test
     @FixFor("DBZ-2994")
-    public void shouldReadLegacyScnAndCommitScnFieldsWhenNewNotProvided() throws Exception {
+    public void shouldreadScnAndCommitScnAsLongValues() throws Exception {
         final Map<String, Object> offsetValues = new HashMap<>();
         offsetValues.put(SourceInfo.SCN_KEY, 12345L);
         offsetValues.put(SourceInfo.COMMIT_SCN_KEY, 23456L);
@@ -46,28 +46,14 @@ public class OracleOffsetContextTest {
 
     @Test
     @FixFor("DBZ-2994")
-    public void shouldReadNewScnAndCommitScnFieldsWhenLegacyNotProvided() throws Exception {
+    public void shouldReadScnAndCommitScnAsStringValues() throws Exception {
         final Map<String, Object> offsetValues = new HashMap<>();
-        offsetValues.put(SourceInfo.SCN2_KEY, "12345");
-        offsetValues.put(SourceInfo.COMMIT2_SCN_KEY, "23456");
+        offsetValues.put(SourceInfo.SCN_KEY, "12345");
+        offsetValues.put(SourceInfo.COMMIT_SCN_KEY, "23456");
 
         final OracleOffsetContext offsetContext = (OracleOffsetContext) offsetLoader.load(offsetValues);
         assertThat(offsetContext.getScn()).isEqualTo("12345");
         assertThat(offsetContext.getCommitScn()).isEqualTo("23456");
-    }
-
-    @Test
-    @FixFor("DBZ-2994")
-    public void shouldPrioritizeNewScnAndCommitScnFields() throws Exception {
-        final Map<String, Object> offsetValues = new HashMap<>();
-        offsetValues.put(SourceInfo.SCN_KEY, 12345L);
-        offsetValues.put(SourceInfo.COMMIT_SCN_KEY, 23456L);
-        offsetValues.put(SourceInfo.SCN2_KEY, "345678");
-        offsetValues.put(SourceInfo.COMMIT2_SCN_KEY, "456789");
-
-        final OracleOffsetContext offsetContext = (OracleOffsetContext) offsetLoader.load(offsetValues);
-        assertThat(offsetContext.getScn()).isEqualTo("345678");
-        assertThat(offsetContext.getCommitScn()).isEqualTo("456789");
     }
 
     @Test
@@ -76,8 +62,6 @@ public class OracleOffsetContextTest {
         final Map<String, Object> offsetValues = new HashMap<>();
         offsetValues.put(SourceInfo.SCN_KEY, null);
         offsetValues.put(SourceInfo.COMMIT_SCN_KEY, null);
-        offsetValues.put(SourceInfo.SCN2_KEY, null);
-        offsetValues.put(SourceInfo.COMMIT2_SCN_KEY, null);
 
         final OracleOffsetContext offsetContext = (OracleOffsetContext) offsetLoader.load(offsetValues);
         assertThat(offsetContext.getScn()).isNull();

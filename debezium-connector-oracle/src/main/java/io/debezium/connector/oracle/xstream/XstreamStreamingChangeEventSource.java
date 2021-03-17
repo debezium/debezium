@@ -16,6 +16,7 @@ import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OracleOffsetContext;
+import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.SourceInfo;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
@@ -110,7 +111,7 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
         if (xsOut != null) {
             LOGGER.debug("Sending message to request recording of offsets to Oracle");
             final LcrPosition lcrPosition = LcrPosition.valueOf((String) offset.get(SourceInfo.LCR_POSITION_KEY));
-            final String scn = (String) offset.get(SourceInfo.SCN2_KEY);
+            final Scn scn = OracleOffsetContext.getScnFromOffsetMapByKey(offset, SourceInfo.SCN_KEY);
             // We can safely overwrite the message even if it was not processed. The watermarked will be set to the highest
             // (last) delivered value in a single step instead of incrementally
             sendPublishedPosition(lcrPosition, scn);
@@ -140,8 +141,8 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
         return xsOut;
     }
 
-    private void sendPublishedPosition(final LcrPosition lcrPosition, final String scn) {
-        lcrMessage.set(new PositionAndScn(lcrPosition, (scn != null) ? convertScnToPosition(scn) : null));
+    private void sendPublishedPosition(final LcrPosition lcrPosition, final Scn scn) {
+        lcrMessage.set(new PositionAndScn(lcrPosition, (scn != null) ? convertScnToPosition(scn.toString()) : null));
     }
 
     PositionAndScn receivePublishedPosition() {

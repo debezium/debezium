@@ -17,9 +17,7 @@ public class SourceInfo extends BaseSourceInfo {
 
     public static final String TXID_KEY = "txId";
     public static final String SCN_KEY = "scn";
-    public static final String SCN2_KEY = "scn2";
     public static final String COMMIT_SCN_KEY = "commit_scn";
-    public static final String COMMIT2_SCN_KEY = "commit2_scn";
     public static final String LCR_POSITION_KEY = "lcr_position";
     public static final String SNAPSHOT_KEY = "snapshot";
 
@@ -42,12 +40,20 @@ public class SourceInfo extends BaseSourceInfo {
         return commitScn;
     }
 
-    public void setScn(String scn) {
-        this.scn = scn;
+    public void setScn(Scn scn) {
+        if (scn == null) {
+            this.scn = null;
+            return;
+        }
+        this.scn = scn.toString();
     }
 
-    public void setCommitScn(String commitScn) {
-        this.commitScn = commitScn;
+    public void setCommitScn(Scn commitScn) {
+        if (commitScn == null) {
+            this.commitScn = null;
+            return;
+        }
+        this.commitScn = commitScn.toString();
     }
 
     public LcrPosition getLcrPosition() {
