@@ -383,22 +383,22 @@ public final class MySqlConnectorTask extends BaseSourceTask {
         // if either include lists has been added to, then we may have new tables
 
         if (hasExclusiveElements.apply(
-                config.getFallbackStringProperty(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, MySqlConnectorConfig.DATABASE_WHITELIST),
+                config.getFallbackStringProperty(config, MySqlConnectorConfig.DATABASE_INCLUDE_LIST, MySqlConnectorConfig.DATABASE_WHITELIST),
                 sourceInfo.getDatabaseIncludeList())) {
             return true;
         }
         if (hasExclusiveElements.apply(
-                config.getFallbackStringProperty(MySqlConnectorConfig.TABLE_INCLUDE_LIST, MySqlConnectorConfig.TABLE_WHITELIST),
+                config.getFallbackStringProperty(config, MySqlConnectorConfig.TABLE_INCLUDE_LIST, MySqlConnectorConfig.TABLE_WHITELIST),
                 sourceInfo.getTableIncludeList())) {
             return true;
         }
         // if either blacklist has been removed from, then we may have new tables
         if (hasExclusiveElements.apply(sourceInfo.getDatabaseExcludeList(),
-                config.getFallbackStringProperty(MySqlConnectorConfig.DATABASE_EXCLUDE_LIST, MySqlConnectorConfig.DATABASE_BLACKLIST))) {
+                config.getFallbackStringProperty(config, MySqlConnectorConfig.DATABASE_EXCLUDE_LIST, MySqlConnectorConfig.DATABASE_BLACKLIST))) {
             return true;
         }
         if (hasExclusiveElements.apply(sourceInfo.getTableExcludeList(),
-                config.getFallbackStringProperty(MySqlConnectorConfig.TABLE_EXCLUDE_LIST, MySqlConnectorConfig.TABLE_BLACKLIST))) {
+                config.getFallbackStringProperty(config, MySqlConnectorConfig.TABLE_EXCLUDE_LIST, MySqlConnectorConfig.TABLE_BLACKLIST))) {
             return true;
         }
         // otherwise, false.

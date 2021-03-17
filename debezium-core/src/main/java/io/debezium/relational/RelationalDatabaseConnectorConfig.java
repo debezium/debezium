@@ -52,10 +52,14 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     protected static final String TABLE_INCLUDE_LIST_NAME = "table.include.list";
     private static final Pattern MSG_KEY_COLUMNS_PATTERN = Pattern.compile("^(([^:]+):([^:;\\s]+))+[^;]$");
     public static final long DEFAULT_SNAPSHOT_LOCK_TIMEOUT_MILLIS = TimeUnit.SECONDS.toMillis(10);
-    public static final String TABLE_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG = "\"table.include.list\" or \"table.whitelist\" is already specified";
-    public static final String COLUMN_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG = "\"column.include.list\" or \"column.whitelist\" is already specified";
-    public static final String SCHEMA_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG = "\"schema.include.list\" or \"schema.whitelist\" is already specified";
-    protected static final String DATABASE_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG = "\"database.include.list\" is already specified";
+    public static final String TABLE_EXCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG = "\"table.exclude.list\" is already specified";
+    public static final String TABLE_BLACKLIST_ALREADY_SPECIFIED_ERROR_MSG = "\"table.blacklist\" is already specified";
+    public static final String COLUMN_EXCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG = "\"column.exclude.list\" is already specified";
+    public static final String COLUMN_BLACKLIST_ALREADY_SPECIFIED_ERROR_MSG = "\"column.blacklist\" is already specified";
+    public static final String SCHEMA_EXCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG = "\"schema.exclude.list\" is already specified";
+    public static final String SCHEMA_BLACKLIST_ALREADY_SPECIFIED_ERROR_MSG = "\"schema.blacklist\" is already specified";
+    public static final String DATABASE_EXCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG = "\"database.exclude.list\" is already specified";
+    public static final String DATABASE_BLACKLIST_ALREADY_SPECIFIED_ERROR_MSG = "\"database.blacklist\" is already specified";
 
     /**
      * The set of predefined DecimalHandlingMode options or aliases.
@@ -573,8 +577,8 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             this.tableFilters = null;
         }
 
-        String columnExcludeList = config.getFallbackStringProperty(COLUMN_EXCLUDE_LIST, COLUMN_BLACKLIST);
-        String columnIncludeList = config.getFallbackStringProperty(COLUMN_INCLUDE_LIST, COLUMN_WHITELIST);
+        String columnExcludeList = config.getFallbackStringProperty(config, COLUMN_EXCLUDE_LIST, COLUMN_BLACKLIST);
+        String columnIncludeList = config.getFallbackStringProperty(config, COLUMN_INCLUDE_LIST, COLUMN_WHITELIST);
 
         if (columnIncludeList != null) {
             this.columnFilter = ColumnNameFilterFactory.createIncludeListFilter(columnIncludeList, columnFilterMode);
@@ -615,19 +619,19 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     }
 
     public String schemaExcludeList() {
-        return getConfig().getFallbackStringProperty(SCHEMA_EXCLUDE_LIST, SCHEMA_BLACKLIST);
+        return getConfig().getFallbackStringProperty(getConfig(), SCHEMA_EXCLUDE_LIST, SCHEMA_BLACKLIST);
     }
 
     public String schemaIncludeList() {
-        return getConfig().getFallbackStringProperty(SCHEMA_INCLUDE_LIST, SCHEMA_WHITELIST);
+        return getConfig().getFallbackStringProperty(getConfig(), SCHEMA_INCLUDE_LIST, SCHEMA_WHITELIST);
     }
 
     public String tableExcludeList() {
-        return getConfig().getFallbackStringProperty(TABLE_EXCLUDE_LIST, TABLE_BLACKLIST);
+        return getConfig().getFallbackStringProperty(getConfig(), TABLE_EXCLUDE_LIST, TABLE_BLACKLIST);
     }
 
     public String tableIncludeList() {
-        return getConfig().getFallbackStringProperty(TABLE_INCLUDE_LIST, TABLE_WHITELIST);
+        return getConfig().getFallbackStringProperty(getConfig(), TABLE_INCLUDE_LIST, TABLE_WHITELIST);
     }
 
     public ColumnNameFilter getColumnFilter() {
@@ -639,11 +643,11 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     }
 
     private static int validateColumnBlacklist(Configuration config, Field field, Field.ValidationOutput problems) {
-        String blacklist = Configuration.getFallbackStringProperty(config, COLUMN_INCLUDE_LIST, COLUMN_WHITELIST);
-        String whitelist = Configuration.getFallbackStringProperty(config, COLUMN_EXCLUDE_LIST, COLUMN_BLACKLIST);
+        String blacklist = Configuration.getFallbackStringPropertyWithWarning(config, COLUMN_INCLUDE_LIST, COLUMN_WHITELIST);
+        String whitelist = Configuration.getFallbackStringPropertyWithWarning(config, COLUMN_EXCLUDE_LIST, COLUMN_BLACKLIST);
 
         if (whitelist != null && blacklist != null) {
-            problems.accept(COLUMN_BLACKLIST, blacklist, COLUMN_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG);
+            problems.accept(COLUMN_BLACKLIST, blacklist, COLUMN_BLACKLIST_ALREADY_SPECIFIED_ERROR_MSG);
             return 1;
         }
         return 0;
@@ -654,7 +658,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
         String excludeList = config.getString(COLUMN_EXCLUDE_LIST);
 
         if (includeList != null && excludeList != null) {
-            problems.accept(COLUMN_EXCLUDE_LIST, excludeList, COLUMN_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG);
+            problems.accept(COLUMN_EXCLUDE_LIST, excludeList, COLUMN_EXCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG);
             return 1;
         }
         return 0;
@@ -670,11 +674,11 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     }
 
     private static int validateTableBlacklist(Configuration config, Field field, ValidationOutput problems) {
-        String whitelist = Configuration.getFallbackStringProperty(config, TABLE_INCLUDE_LIST, TABLE_WHITELIST);
-        String blacklist = Configuration.getFallbackStringProperty(config, TABLE_EXCLUDE_LIST, TABLE_BLACKLIST);
+        String whitelist = Configuration.getFallbackStringPropertyWithWarning(config, TABLE_INCLUDE_LIST, TABLE_WHITELIST);
+        String blacklist = Configuration.getFallbackStringPropertyWithWarning(config, TABLE_EXCLUDE_LIST, TABLE_BLACKLIST);
 
         if (whitelist != null && blacklist != null) {
-            problems.accept(TABLE_BLACKLIST, blacklist, TABLE_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG);
+            problems.accept(TABLE_BLACKLIST, blacklist, TABLE_BLACKLIST_ALREADY_SPECIFIED_ERROR_MSG);
             return 1;
         }
         return 0;
@@ -685,7 +689,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
         String excludeList = config.getString(TABLE_BLACKLIST);
 
         if (includeList != null && excludeList != null) {
-            problems.accept(TABLE_EXCLUDE_LIST, excludeList, TABLE_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG);
+            problems.accept(TABLE_EXCLUDE_LIST, excludeList, TABLE_EXCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG);
             return 1;
         }
         return 0;
@@ -713,11 +717,11 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     }
 
     private static int validateSchemaBlacklist(Configuration config, Field field, Field.ValidationOutput problems) {
-        String whitelist = Configuration.getFallbackStringProperty(config, SCHEMA_INCLUDE_LIST, SCHEMA_WHITELIST);
-        String blacklist = Configuration.getFallbackStringProperty(config, SCHEMA_EXCLUDE_LIST, SCHEMA_BLACKLIST);
+        String whitelist = Configuration.getFallbackStringPropertyWithWarning(config, SCHEMA_INCLUDE_LIST, SCHEMA_WHITELIST);
+        String blacklist = Configuration.getFallbackStringPropertyWithWarning(config, SCHEMA_EXCLUDE_LIST, SCHEMA_BLACKLIST);
 
         if (whitelist != null && blacklist != null) {
-            problems.accept(SCHEMA_BLACKLIST, blacklist, SCHEMA_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG);
+            problems.accept(SCHEMA_BLACKLIST, blacklist, SCHEMA_BLACKLIST_ALREADY_SPECIFIED_ERROR_MSG);
             return 1;
         }
         return 0;
@@ -728,7 +732,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
         String excludeList = config.getString(SCHEMA_EXCLUDE_LIST);
 
         if (includeList != null && excludeList != null) {
-            problems.accept(SCHEMA_EXCLUDE_LIST, excludeList, SCHEMA_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG);
+            problems.accept(SCHEMA_EXCLUDE_LIST, excludeList, SCHEMA_EXCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG);
             return 1;
         }
         return 0;
@@ -738,17 +742,17 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
         String includeList = config.getString(DATABASE_INCLUDE_LIST);
         String excludeList = config.getString(DATABASE_EXCLUDE_LIST);
         if (includeList != null && excludeList != null) {
-            problems.accept(DATABASE_EXCLUDE_LIST, excludeList, DATABASE_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG);
+            problems.accept(DATABASE_EXCLUDE_LIST, excludeList, DATABASE_EXCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG);
             return 1;
         }
         return 0;
     }
 
     private static int validateDatabaseBlacklist(Configuration config, Field field, ValidationOutput problems) {
-        String whitelist = Configuration.getFallbackStringProperty(config, DATABASE_INCLUDE_LIST, DATABASE_WHITELIST);
-        String blacklist = Configuration.getFallbackStringProperty(config, DATABASE_EXCLUDE_LIST, DATABASE_BLACKLIST);
+        String whitelist = Configuration.getFallbackStringPropertyWithWarning(config, DATABASE_INCLUDE_LIST, DATABASE_WHITELIST);
+        String blacklist = Configuration.getFallbackStringPropertyWithWarning(config, DATABASE_EXCLUDE_LIST, DATABASE_BLACKLIST);
         if (whitelist != null && blacklist != null) {
-            problems.accept(DATABASE_BLACKLIST, blacklist, DATABASE_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG);
+            problems.accept(DATABASE_BLACKLIST, blacklist, DATABASE_BLACKLIST_ALREADY_SPECIFIED_ERROR_MSG);
             return 1;
         }
         return 0;

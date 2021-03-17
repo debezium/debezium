@@ -434,7 +434,7 @@ public class SnapshotReader extends AbstractReader {
                  * +
                  */
                 List<Pattern> tableIncludeListPattern = Strings.listOfRegex(
-                        configuration.getFallbackStringProperty(MySqlConnectorConfig.TABLE_INCLUDE_LIST, MySqlConnectorConfig.TABLE_WHITELIST),
+                        configuration.getFallbackStringProperty(configuration, MySqlConnectorConfig.TABLE_INCLUDE_LIST, MySqlConnectorConfig.TABLE_WHITELIST),
                         Pattern.CASE_INSENSITIVE);
                 List<TableId> tableIdsSorted = new ArrayList<>();
                 tableIncludeListPattern.forEach(pattern -> {
