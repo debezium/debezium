@@ -472,11 +472,12 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
             private Scn resolveScn(Document document) {
                 // prioritize reading scn as string and if not found, fallback to long data types
-                if (document.getString(SourceInfo.SCN_KEY) == null) {
+                final String scn = document.getString(SourceInfo.SCN_KEY);
+                if (scn == null) {
                     Long scnValue = document.getLong(SourceInfo.SCN_KEY);
                     Scn.valueOf(scnValue == null ? 0 : scnValue);
                 }
-                return Scn.valueOf(document.getString(SourceInfo.SCN_KEY));
+                return Scn.valueOf(scn);
             }
         };
     }

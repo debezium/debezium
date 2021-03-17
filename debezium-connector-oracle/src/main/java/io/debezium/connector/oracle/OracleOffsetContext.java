@@ -120,7 +120,8 @@ public class OracleOffsetContext implements OffsetContext {
         if (sourceInfo.isSnapshot()) {
             Map<String, Object> offset = new HashMap<>();
 
-            offset.put(SourceInfo.SCN_KEY, sourceInfo.getScn());
+            final Scn scn = sourceInfo.getScn();
+            offset.put(SourceInfo.SCN_KEY, scn != null ? scn.toString() : scn);
             offset.put(SourceInfo.SNAPSHOT_KEY, true);
             offset.put(SNAPSHOT_COMPLETED_KEY, snapshotCompleted);
 
@@ -132,8 +133,10 @@ public class OracleOffsetContext implements OffsetContext {
                 offset.put(SourceInfo.LCR_POSITION_KEY, sourceInfo.getLcrPosition().toString());
             }
             else {
-                offset.put(SourceInfo.SCN_KEY, sourceInfo.getScn());
-                offset.put(SourceInfo.COMMIT_SCN_KEY, sourceInfo.getCommitScn());
+                final Scn scn = sourceInfo.getScn();
+                final Scn commitScn = sourceInfo.getCommitScn();
+                offset.put(SourceInfo.SCN_KEY, scn != null ? scn.toString() : null);
+                offset.put(SourceInfo.COMMIT_SCN_KEY, commitScn != null ? commitScn.toString() : null);
             }
             return transactionContext.store(offset);
         }
@@ -157,11 +160,11 @@ public class OracleOffsetContext implements OffsetContext {
         sourceInfo.setCommitScn(commitScn);
     }
 
-    public String getScn() {
+    public Scn getScn() {
         return sourceInfo.getScn();
     }
 
-    public String getCommitScn() {
+    public Scn getCommitScn() {
         return sourceInfo.getCommitScn();
     }
 

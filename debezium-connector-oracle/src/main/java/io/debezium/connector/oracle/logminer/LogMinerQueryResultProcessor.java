@@ -238,9 +238,9 @@ class LogMinerQueryResultProcessor {
             metrics.setLastDurationOfBatchProcessing(totalTime);
 
             warnStuckScn();
-            currentOffsetScn = Scn.valueOf(offsetContext.getScn());
+            currentOffsetScn = offsetContext.getScn();
             if (offsetContext.getCommitScn() != null) {
-                currentOffsetCommitScn = Scn.valueOf(offsetContext.getCommitScn());
+                currentOffsetCommitScn = offsetContext.getCommitScn();
             }
         }
 
@@ -261,16 +261,16 @@ class LogMinerQueryResultProcessor {
      */
     private void warnStuckScn() {
         if (offsetContext != null && offsetContext.getCommitScn() != null) {
-            final Scn scn = Scn.valueOf(offsetContext.getScn());
-            final Scn commitScn = Scn.valueOf(offsetContext.getCommitScn());
-            if (currentOffsetScn.equals(scn) && !currentOffsetCommitScn.equals(offsetContext.getCommitScn())) {
+            final Scn scn = offsetContext.getScn();
+            final Scn commitScn = offsetContext.getCommitScn();
+            if (currentOffsetScn.equals(scn) && !currentOffsetCommitScn.equals(commitScn)) {
                 stuckScnCounter++;
                 // logWarn only once
                 if (stuckScnCounter == 25) {
                     LogMinerHelper.logWarn(transactionalBufferMetrics,
                             "Offset SCN {} is not changing. It indicates long transaction(s). " +
                                     "Offset commit SCN: {}",
-                            currentOffsetScn, offsetContext.getCommitScn());
+                            currentOffsetScn, commitScn);
                     transactionalBufferMetrics.incrementScnFreezeCounter();
                 }
             }

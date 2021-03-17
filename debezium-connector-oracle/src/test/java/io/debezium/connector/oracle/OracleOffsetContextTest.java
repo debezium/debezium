@@ -40,8 +40,8 @@ public class OracleOffsetContextTest {
         offsetValues.put(SourceInfo.COMMIT_SCN_KEY, 23456L);
 
         final OracleOffsetContext offsetContext = (OracleOffsetContext) offsetLoader.load(offsetValues);
-        assertThat(offsetContext.getScn()).isEqualTo("12345");
-        assertThat(offsetContext.getCommitScn()).isEqualTo("23456");
+        assertThat(offsetContext.getScn()).isEqualTo(Scn.valueOf("12345"));
+        assertThat(offsetContext.getCommitScn()).isEqualTo(Scn.valueOf("23456"));
     }
 
     @Test
@@ -52,8 +52,8 @@ public class OracleOffsetContextTest {
         offsetValues.put(SourceInfo.COMMIT_SCN_KEY, "23456");
 
         final OracleOffsetContext offsetContext = (OracleOffsetContext) offsetLoader.load(offsetValues);
-        assertThat(offsetContext.getScn()).isEqualTo("12345");
-        assertThat(offsetContext.getCommitScn()).isEqualTo("23456");
+        assertThat(offsetContext.getScn()).isEqualTo(Scn.valueOf("12345"));
+        assertThat(offsetContext.getCommitScn()).isEqualTo(Scn.valueOf("23456"));
     }
 
     @Test
