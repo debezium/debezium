@@ -43,6 +43,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     protected static final int DEFAULT_PORT = 1433;
     private static final String READ_ONLY_INTENT = "ReadOnly";
     private static final String APPLICATION_INTENT_KEY = "database.applicationIntent";
+    private static final String DATABASES_FIELD_NAME = "dbnames";
 
     /**
      * The set of predefined SnapshotMode options or aliases.
@@ -210,7 +211,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
         }
     }
 
-    public static final Field DATABASE_NAMES = Field.create(DATABASE_CONFIG_PREFIX + "dbnames")
+    public static final Field DATABASE_NAMES = Field.create(DATABASE_CONFIG_PREFIX + DATABASES_FIELD_NAME)
             .withDisplayName("Databases")
             .withType(Type.STRING)
             .withWidth(Width.MEDIUM)
@@ -309,7 +310,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     private static final ConfigDefinition CONFIG_DEFINITION = HistorizedRelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .name("SQL Server")
             .type(
-                    DATABASE_NAME,
+                    DATABASE_NAMES,
                     HOSTNAME,
                     PORT,
                     USER,

@@ -148,7 +148,7 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
             stopConnector();
             connection.execute("INSERT INTO tablea VALUES(-1, '-a')");
 
-            String databaseName = connection.config().getDatabase();
+            String databaseName = "testDB";
             Awaitility.await().atMost(30, TimeUnit.SECONDS).until(() -> {
                 if (!connection.getMaxLsn(databaseName).isAvailable()) {
                     return false;
