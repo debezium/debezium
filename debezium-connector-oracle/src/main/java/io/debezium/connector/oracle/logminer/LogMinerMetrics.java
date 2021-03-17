@@ -79,7 +79,7 @@ public class LogMinerMetrics extends Metrics implements LogMinerMetricsMXBean {
     LogMinerMetrics(CdcSourceTaskContext taskContext, OracleConnectorConfig connectorConfig) {
         super(taskContext, "log-miner");
 
-        currentScn.set(Scn.INVALID);
+        currentScn.set(Scn.NULL);
         currentLogFileName = new AtomicReference<>();
         minimumLogsMined.set(0L);
         maximumLogsMined.set(0L);

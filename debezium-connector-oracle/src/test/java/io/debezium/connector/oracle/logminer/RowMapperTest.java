@@ -104,7 +104,7 @@ public class RowMapperTest {
         verify(rs).getString(1);
         Mockito.when(rs.getString(1)).thenThrow(SQLException.class);
         scn = RowMapper.getScn(metrics, rs);
-        assertThat(scn).isEqualTo(Scn.INVALID);
+        assertThat(scn).isEqualTo(Scn.NULL);
         verify(rs, times(2)).getString(1);
     }
 

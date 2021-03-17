@@ -119,7 +119,7 @@ public class RowMapper {
         }
         catch (SQLException e) {
             logError(metrics, e, "SCN");
-            return Scn.INVALID;
+            return Scn.NULL;
         }
     }
 

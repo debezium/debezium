@@ -16,24 +16,26 @@ import java.util.Objects;
 public class Scn implements Comparable<Scn> {
 
     /**
-     * Represents an Scn that is considered INVALID, useful as a placeholder.
-     */
-    public static final Scn INVALID = new Scn(BigInteger.valueOf(-1));
-
-    /**
      * Represents an Scn that implies the maximum possible value of an SCN, useful as a placeholder.
      */
     public static final Scn MAX = new Scn(BigInteger.valueOf(-2));
 
     /**
-     * Represents an Scn with a value of {@code 0}.
+     * Represents an Scn without a value.
      */
-    public static final Scn ZERO = new Scn(BigInteger.ZERO);
+    public static final Scn NULL = new Scn(null);
 
     private final BigInteger scn;
 
     public Scn(BigInteger scn) {
         this.scn = scn;
+    }
+
+    /**
+     * Returns whether this {@link Scn} is null and contains no value.
+     */
+    public boolean isNull() {
+        return this.scn == null;
     }
 
     /**
@@ -59,7 +61,7 @@ public class Scn implements Comparable<Scn> {
     /**
      * Construct a {@link Scn} from a string value.
      *
-     * @param value string value
+     * @param value string value, should not be null
      * @return instance of Scn
      */
     public static Scn valueOf(String value) {
@@ -70,7 +72,7 @@ public class Scn implements Comparable<Scn> {
      * Get the Scn represented as a {@code long} data type.
      */
     public long longValue() {
-        return scn.longValue();
+        return isNull() ? 0 : scn.longValue();
     }
 
     /**
@@ -80,6 +82,15 @@ public class Scn implements Comparable<Scn> {
      * @return {@code this + value}
      */
     public Scn add(Scn value) {
+        if (isNull() && value.isNull()) {
+            return Scn.NULL;
+        }
+        else if (value.isNull()) {
+            return new Scn(scn);
+        }
+        else if (isNull()) {
+            return new Scn(value.scn);
+        }
         return new Scn(scn.add(value.scn));
     }
 
@@ -90,17 +101,35 @@ public class Scn implements Comparable<Scn> {
      * @return {@code this - value}
      */
     public Scn subtract(Scn value) {
+        if (isNull() && value.isNull()) {
+            return Scn.NULL;
+        }
+        else if (value.isNull()) {
+            return new Scn(scn);
+        }
+        else if (isNull()) {
+            return new Scn(value.scn.negate());
+        }
         return new Scn(scn.subtract(value.scn));
     }
 
     /**
-     * Compares this {@code SCn} with the specified {@code Scn}.
+     * Compares this {@code Scn} with the specified {@code Scn}.
      *
      * @param o {@code Scn} to which this {@code Scn} is to be compared
      * @return -1, 0, or 1 as this {code Scn} is numerically less than, equal to, or greater than {@code o}.
      */
     @Override
     public int compareTo(Scn o) {
+        if (isNull() && o.isNull()) {
+            return 0;
+        }
+        else if (isNull() && !o.isNull()) {
+            return -1;
+        }
+        else if (!isNull() && o.isNull()) {
+            return 1;
+        }
         return scn.compareTo(o.scn);
     }
 
@@ -123,6 +152,6 @@ public class Scn implements Comparable<Scn> {
 
     @Override
     public String toString() {
-        return scn.toString();
+        return isNull() ? "null" : scn.toString();
     }
 }
