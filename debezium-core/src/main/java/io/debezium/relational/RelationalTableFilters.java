@@ -31,18 +31,22 @@ public class RelationalTableFilters implements DataCollectionFilters {
         final TableSelectionPredicateBuilder eligibleTables = Selectors.tableSelector()
                 .includeDatabases(
                         config.getFallbackStringProperty(
+                                config,
                                 RelationalDatabaseConnectorConfig.DATABASE_INCLUDE_LIST,
                                 RelationalDatabaseConnectorConfig.DATABASE_WHITELIST))
                 .excludeDatabases(
                         config.getFallbackStringProperty(
+                                config,
                                 RelationalDatabaseConnectorConfig.DATABASE_EXCLUDE_LIST,
                                 RelationalDatabaseConnectorConfig.DATABASE_BLACKLIST))
                 .includeSchemas(
                         config.getFallbackStringProperty(
+                                config,
                                 RelationalDatabaseConnectorConfig.SCHEMA_INCLUDE_LIST,
                                 RelationalDatabaseConnectorConfig.SCHEMA_WHITELIST))
                 .excludeSchemas(
                         config.getFallbackStringProperty(
+                                config,
                                 RelationalDatabaseConnectorConfig.SCHEMA_EXCLUDE_LIST,
                                 RelationalDatabaseConnectorConfig.SCHEMA_BLACKLIST));
         final Predicate<TableId> eligibleTablePredicate = eligibleTables.build();
@@ -57,11 +61,13 @@ public class RelationalTableFilters implements DataCollectionFilters {
         Predicate<TableId> tablePredicate = eligibleTables
                 .includeTables(
                         config.getFallbackStringProperty(
+                                config,
                                 RelationalDatabaseConnectorConfig.TABLE_INCLUDE_LIST,
                                 RelationalDatabaseConnectorConfig.TABLE_WHITELIST),
                         tableIdMapper)
                 .excludeTables(
                         config.getFallbackStringProperty(
+                                config,
                                 RelationalDatabaseConnectorConfig.TABLE_EXCLUDE_LIST,
                                 RelationalDatabaseConnectorConfig.TABLE_BLACKLIST),
                         tableIdMapper)
@@ -77,15 +83,17 @@ public class RelationalTableFilters implements DataCollectionFilters {
         this.databaseFilter = Selectors.databaseSelector()
                 .includeDatabases(
                         config.getFallbackStringProperty(
+                                config,
                                 RelationalDatabaseConnectorConfig.DATABASE_INCLUDE_LIST,
                                 RelationalDatabaseConnectorConfig.DATABASE_WHITELIST))
                 .excludeDatabases(
                         config.getFallbackStringProperty(
+                                config,
                                 RelationalDatabaseConnectorConfig.DATABASE_EXCLUDE_LIST,
                                 RelationalDatabaseConnectorConfig.DATABASE_BLACKLIST))
                 .build();
 
-        this.excludeColumns = config.getFallbackStringProperty(COLUMN_EXCLUDE_LIST, COLUMN_BLACKLIST);
+        this.excludeColumns = config.getFallbackStringProperty(config, COLUMN_EXCLUDE_LIST, COLUMN_BLACKLIST);
     }
 
     @Override
