@@ -6,6 +6,7 @@
 package io.debezium.pipeline;
 
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -82,22 +83,10 @@ public class ChangeEventSourceCoordinator<P extends TaskPartition, O extends Off
 
     public synchronized <T extends CdcSourceTaskContext> void start(T taskContext, ChangeEventQueueMetrics changeEventQueueMetrics,
                                                                     EventMetadataProvider metadataProvider) {
-        O tempOffset = null;
-        P tempPartition = null;
-
-        // TODO: iterate over all entries instead of breaking
-        for (Map.Entry<P, O> entry : previousOffsetContext.getOffsets().entrySet()) {
-            tempPartition = entry.getKey();
-            tempOffset = entry.getValue();
-            break;
-        }
 
         this.snapshotMetrics = changeEventSourceMetricsFactory.getSnapshotMetrics(taskContext, changeEventQueueMetrics, metadataProvider);
         this.streamingMetrics = changeEventSourceMetricsFactory.getStreamingMetrics(taskContext, changeEventQueueMetrics, metadataProvider);
         running = true;
-
-        P partition = tempPartition;
-        O previousOffset = tempOffset;
 
         // run the snapshot source on a separate thread so start() won't block
         executor.submit(() -> {
@@ -108,25 +97,33 @@ public class ChangeEventSourceCoordinator<P extends TaskPartition, O extends Off
 
                 ChangeEventSourceContext context = new ChangeEventSourceContextImpl();
                 LOGGER.info("Context created");
+                P partition = null;
+                O previousOffset = null;
+
+                HashMap<P, O> partitionState = new HashMap<>();
 
                 SnapshotChangeEventSource<P, O> snapshotSource = changeEventSourceFactory.getSnapshotChangeEventSource(snapshotMetrics);
-                CatchUpStreamingResult catchUpStreamingResult = executeCatchUpStreaming(context, previousOffset, snapshotSource);
-                if (catchUpStreamingResult.performedCatchUpStreaming) {
-                    streamingConnected(false);
-                    commitOffsetLock.lock();
-                    streamingSource = null;
-                    commitOffsetLock.unlock();
-                }
-                eventDispatcher.setEventListener(snapshotMetrics);
-                SnapshotResult<O> snapshotResult = snapshotSource.execute(context, partition, previousOffset);
-                LOGGER.info("Snapshot ended with {}", snapshotResult);
+                for (Map.Entry<P, O> entry : previousOffsetContext.getOffsets().entrySet()) {
+                    partition = entry.getKey();
+                    previousOffset = entry.getValue();
 
-                if (snapshotResult.getStatus() == SnapshotResultStatus.COMPLETED || schema.tableInformationComplete()) {
-                    schema.assureNonEmptySchema();
+                    eventDispatcher.setEventListener(snapshotMetrics);
+                    SnapshotResult<O> snapshotResult = snapshotSource.execute(context, partition, previousOffset);
+                    LOGGER.info("Snapshot ended with {}", snapshotResult);
+
+                    if (snapshotResult.getStatus() == SnapshotResultStatus.COMPLETED || schema.tableInformationComplete()) {
+                        schema.assureNonEmptySchema();
+                    }
+                    partitionState.put(partition, snapshotResult.getOffset());
                 }
 
-                if (running && snapshotResult.isCompletedOrSkipped()) {
-                    streamEvents(context, partition, snapshotResult.getOffset());
+                for (Map.Entry<P, O> entry : partitionState.entrySet()) {
+                    partition = entry.getKey();
+                    previousOffset = entry.getValue();
+
+                    if (running) {
+                        streamEvents(context, partition, previousOffset);
+                    }
                 }
             }
             catch (InterruptedException e) {
