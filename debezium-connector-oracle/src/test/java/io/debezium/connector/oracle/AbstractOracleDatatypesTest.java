@@ -9,9 +9,13 @@ import static org.fest.assertions.Assertions.assertThat;
 
 import java.math.BigDecimal;
 import java.sql.SQLException;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.List;
 
@@ -191,10 +195,12 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
             new SchemaAndValueField("VAL_TS_PRECISION9", NanoTimestamp.builder().optional().build(),
                     LocalDateTime.of(2018, 3, 27, 12, 34, 56).toEpochSecond(ZoneOffset.UTC) * 1_000_000_000 + 125456789),
             new SchemaAndValueField("VAL_TSTZ", ZonedTimestamp.builder().optional().build(), "2018-03-27T01:34:56.00789-11:00"),
+            new SchemaAndValueField("VAL_TSLTZ", ZonedTimestamp.builder().optional().build(),
+                    ZonedDateTime.of(2018, 3, 27, 1, 34, 56, 7890 * 1_000,
+                            ZoneId.systemDefault().getRules().getStandardOffset(Instant.now())).format(
+                                    DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSSXXX"))),
             new SchemaAndValueField("VAL_INT_YTM", MicroDuration.builder().optional().build(), -110451600_000_000L),
-            new SchemaAndValueField("VAL_INT_DTS", MicroDuration.builder().optional().build(), -93784_560_000L)
-    // new SchemaAndValueField("VAL_TSLTZ", ZonedTimestamp.builder().optional().build(), "2018-03-27T01:34:56.00789-11:00")
-    );
+            new SchemaAndValueField("VAL_INT_DTS", MicroDuration.builder().optional().build(), -93784_560_000L));
 
     private static final List<SchemaAndValueField> EXPECTED_TIME_AS_CONNECT = Arrays.asList(
             new SchemaAndValueField("VAL_DATE", org.apache.kafka.connect.data.Timestamp.builder().optional().build(),
@@ -208,10 +214,12 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
             new SchemaAndValueField("VAL_TS_PRECISION9", org.apache.kafka.connect.data.Timestamp.builder().optional().build(),
                     java.util.Date.from(LocalDateTime.of(2018, 3, 27, 12, 34, 56, 125456789).atOffset(ZoneOffset.UTC).toInstant())),
             new SchemaAndValueField("VAL_TSTZ", ZonedTimestamp.builder().optional().build(), "2018-03-27T01:34:56.00789-11:00"),
+            new SchemaAndValueField("VAL_TSLTZ", ZonedTimestamp.builder().optional().build(),
+                    ZonedDateTime.of(2018, 3, 27, 1, 34, 56, 7890 * 1_000,
+                            ZoneId.systemDefault().getRules().getStandardOffset(Instant.now())).format(
+                                    DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSSXXX"))),
             new SchemaAndValueField("VAL_INT_YTM", MicroDuration.builder().optional().build(), -110451600_000_000L),
-            new SchemaAndValueField("VAL_INT_DTS", MicroDuration.builder().optional().build(), -93784_560_000L)
-    // new SchemaAndValueField("VAL_TSLTZ", ZonedTimestamp.builder().optional().build(), "2018-03-27T01:34:56.00789-11:00")
-    );
+            new SchemaAndValueField("VAL_INT_DTS", MicroDuration.builder().optional().build(), -93784_560_000L));
 
     private static final String[] ALL_TABLES = {
             "debezium.type_string",
