@@ -230,7 +230,7 @@ public class SqlUtils {
         query.append("(OPERATION_CODE IN (5,34) AND USERNAME NOT IN (").append(getExcludedUsers(logMinerUser)).append(")) ");
         // COMMIT/ROLLBACK
         query.append("OR (OPERATION_CODE IN (7,36)) ");
-        // INSERT/UPDATE/DELETE/DDL
+        // INSERT/UPDATE/DELETE
         query.append("OR ");
         query.append("(OPERATION_CODE IN (1,2,3) ");
         query.append("AND TABLE_NAME != '").append(LOGMNR_FLUSH_TABLE).append("' ");
