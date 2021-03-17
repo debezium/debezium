@@ -2110,10 +2110,8 @@ public interface Configuration {
      * @param oldProperty the old / fallback property config field
      * @return the evaluated value
      */
-    default String getFallbackStringProperty(Configuration config, Field newProperty, Field oldProperty) {
-        return config.getString(
-                newProperty,
-                () -> config.getString(oldProperty));
+    default String getFallbackStringProperty(Field newProperty, Field oldProperty) {
+        return getString(newProperty, () -> getString(oldProperty));
     }
 
     /**
@@ -2121,15 +2119,15 @@ public interface Configuration {
      * set/null. If both are null it returns the value of the oldProperty config field with a warning, or its default value when
      * it's null.
      */
-    static String getFallbackStringPropertyWithWarning(Configuration config, Field newProperty, Field oldProperty) {
-        if (config.hasKey(oldProperty.name()) && config.hasKey(newProperty.name())) { // both are set
+    default String getFallbackStringPropertyWithWarning(Field newProperty, Field oldProperty) {
+        if (hasKey(oldProperty.name()) && hasKey(newProperty.name())) { // both are set
             CONFIGURATION_LOGGER.warn("Provided configuration has deprecated property \"" + oldProperty.name()
                     + "\" and new property \"" + newProperty.name() + "\" set. Using value from \"" + newProperty.name() + "\"!");
         }
-        return config.getString(
+        return getString(
                 newProperty,
                 () -> {
-                    String oldValue = config.getString(oldProperty);
+                    String oldValue = getString(oldProperty);
                     if (oldValue != null && !oldValue.equals(oldProperty.defaultValueAsString())) {
                         CONFIGURATION_LOGGER.warn("Using configuration property \"" + oldProperty.name()
                                 + "\" is deprecated and will be removed in future versions. Please use \"" + newProperty.name()
