@@ -105,6 +105,9 @@ public class JsonTableChangeSerializer implements TableChanges.TableChangesSeria
             else if (change.getType() == TableChangeType.ALTER) {
                 tableChanges.alter(change.getTable());
             }
+            else if (change.getType() == TableChangeType.DROP) {
+                tableChanges.drop(change.getTable());
+            }
         }
 
         return tableChanges;

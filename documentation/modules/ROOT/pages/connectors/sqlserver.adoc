@@ -373,7 +373,7 @@ The {prodname} SQL Server connector generates a data change event for each row-l
 
 {prodname} and Kafka Connect are designed around _continuous streams of event messages_. However, the structure of these events may change over time, which can be difficult for consumers to handle. To address this, each event contains the schema for its content or, if you are using a schema registry, a schema ID that a consumer can use to obtain the schema from the registry. This makes each event self-contained.
 
-The following skeleton JSON shows the basic four parts of a change event. However, how you configure the Kafka Connect converter that you choose to use in your application determines the representation of these four parts in change events. A `schema` field is in a change event only when you configure the converter to produce it. Likewise, the event key and event payload are in a change event only if you configure a converter to produce it. If you use the JSON converver and you configure it to produce all four basic change event parts, change events have this structure:
+The following skeleton JSON shows the basic four parts of a change event. However, how you configure the Kafka Connect converter that you choose to use in your application determines the representation of these four parts in change events. A `schema` field is in a change event only when you configure the converter to produce it. Likewise, the event key and event payload are in a change event only if you configure a converter to produce it. If you use the JSON converter and you configure it to produce all four basic change event parts, change events have this structure:
 
 [source,json,index=0]
 ----
@@ -991,6 +991,13 @@ Transaction boundary events contain the following fields:
 `event_count` (for `END` events):: Total number of events emitted by the transaction.
 `data_collections` (for `END` events):: An array of pairs of `data_collection` and `event_count` that provides the number of events emitted by changes originating from given data collection.
 
+[WARNING]
+====
+There is no way for {prodname} to reliably identify when a transaction has ended.
+The transaction `END` marker is thus emitted only after the first event of another transaction arrives.
+This can lead to the delayed delivery of `END` marker in case of a low-traffic system.
+====
+
 The following example shows a typical transaction boundary message:
 
 .Example: SQL Server connector transaction boundary event
@@ -1289,32 +1296,88 @@ Note that the timezone of the JVM running Kafka Connect and {prodname} does not 
 [id="sql-server-decimal-values"]
 ==== Decimal values
 
-[cols="30%a,17%a,53%a",options="header"]
+{prodname} connectors handle decimals according to the setting of the {link-prefix}:{link-sqlserver-connector}#sqlserver-property-decimal-handling-mode[`decimal.handling.mode` connector configuration property].
+
+decimal.handling.mode=precise::
++
+.Mappings when `decimal.handing.mode=precise`
+[cols="30%a,15%a,55%a",options="header",subs="+attributes"]
 |===
-|SQL Server data type
+|SQL Server type
 |Literal type (schema type)
 |Semantic type (schema name)
 
 |`NUMERIC[(P[,S])]`
 |`BYTES`
-|`org.apache.kafka.connect.data.Decimal`
+a|`org.apache.kafka.connect.data.Decimal` +
+The `scale` schema parameter contains an integer that represents how many digits the decimal point shifted.
 
 |`DECIMAL[(P[,S])]`
 |`BYTES`
-|`org.apache.kafka.connect.data.Decimal`
+a|`org.apache.kafka.connect.data.Decimal` +
+The `scale` schema parameter contains an integer that represents how many digits the decimal point shifted.
 
 |`SMALLMONEY`
 |`BYTES`
-|`org.apache.kafka.connect.data.Decimal`
+a|`org.apache.kafka.connect.data.Decimal` +
+The `scale` schema parameter contains an integer that represents how many digits the decimal point shifted.
 
 |`MONEY`
 |`BYTES`
-|`org.apache.kafka.connect.data.Decimal`
+a|`org.apache.kafka.connect.data.Decimal` +
+The `scale` schema parameter contains an integer that represents how many digits the decimal point shifted.
 
 |===
 
-The `scale` schema parameter contains an integer that represents how many digits the decimal point was shifted.
-The `connect.decimal.precision` schema parameter contains an integer that represents the precision of the given decimal value.
+decimal.handling.mode=double::
++
+.Mappings when `decimal.handing.mode=double`
+[cols="30%a,30%a,40%a",options="header",subs="+attributes"]
+|===
+|SQL Server type |Literal type |Semantic type
+
+|`NUMERIC[(M[,D])]`
+|`FLOAT64`
+a|_n/a_
+
+|`DECIMAL[(M[,D])]`
+|`FLOAT64`
+a|_n/a_
+
+|`SMALLMONEY[(M[,D])]`
+|`FLOAT64`
+a|_n/a_
+
+|`MONEY[(M[,D])]`
+|`FLOAT64`
+a|_n/a_
+
+|===
+
+decimal.handling.mode=string::
++
+.Mappings when `decimal.handing.mode=string`
+[cols="30%a,30%a,40%a",options="header",subs="+attributes"]
+|===
+|SQL Server type |Literal type |Semantic type
+
+|`NUMERIC[(M[,D])]`
+|`STRING`
+a|_n/a_
+
+|`DECIMAL[(M[,D])]`
+|`STRING`
+a|_n/a_
+
+|`SMALLMONEY[(M[,D])]`
+|`STRING`
+a|_n/a_
+
+|`MONEY[(M[,D])]`
+|`STRING`
+a|_n/a_
+
+|===
 
 // Type: assembly
 // ModuleID: setting-up-sql-server-for-use-with-the-debezium-sql-server-connector
@@ -1333,6 +1396,8 @@ For details about setting up SQL Server for use with the {prodname} connector, s
 * xref:enabling-cdc-on-a-sql-server-table[]
 * xref:verifying-debezium-connector-access-to-the-cdc-table[]
 * xref:debezium-sql-server-connector-on-azure[]
+* xref:effect-of-sql-server-capture-job-agent-configuration-on-server-load-and-latency[]
+* xref:sql-server-capture-job-agent-configuration-parameters[]
 
 endif::product[]
 
@@ -1475,19 +1540,73 @@ ifdef::community[]
 === SQL Server Always On
 
 The SQL Server connector can capture changes from an Always On read-only replica.
-A few pre-requisities are necessary to be fulfilled:
 
+.Prerequisites
 * Change data capture is configured and enabled on the primary node.
 SQL Server does not support CDC directly on replicas.
-* The configuration option `database.applicationIntent` must be set to `ReadOnly`.
+* The configuration option `database.applicationIntent` is set to `ReadOnly`.
 This is required by SQL Server.
-When {prodname} detects this configuration option then it will:
+When {prodname} detects this configuration option, it responds by taking the following actions:
 
-** set `snapshot.isolation.mode` to `snapshot` as this is the only one transaction isolation mode supported by read-only replicas
-** commit the (read-only) transaction in every execution of the streaming query loop, as this is necessary to get the latest view on CDC data
+** Sets `snapshot.isolation.mode` to `snapshot`, which is the only one transaction isolation mode supported for read-only replicas.
+** Commits the (read-only) transaction in every execution of the streaming query loop, which is necessary to get the latest view of CDC data.
 
 endif::community[]
 
+// Type: concept
+// ModuleID: effect-of-sql-server-capture-job-agent-configuration-on-server-load-and-latency
+=== Effect of SQL Server capture job agent configuration on server load and latency
+
+When a database administrator enables change data capture for a source table, the capture job agent begins to run.
+The agent reads new change event records from the transaction log and replicates the event records to a change data table.
+Between the time that a change is committed in the source table, and the time that the change appears in the corresponding change table, there is always a small latency interval.
+This latency interval represents a gap between when changes occur in the source table and when they become available for {prodname} to stream to Apache Kafka.
+
+Ideally, for applications that must respond quickly to changes in data, you want to maintain close synchronization between the source and change tables.
+You might imagine that running the capture agent to continuously process change events as rapidly as possible might result in increased throughput and reduced latency --
+populating change tables with new event records as soon as possible after the events occur, in near real time.
+However, this is not necessarily the case.
+There is a performance penalty to pay in the pursuit of more immediate synchronization.
+Each time that the capture job agent queries the database for new event records, it increases the CPU load on the database host.
+The additional load on the server can have a negative effect on overall database performance, and potentially reduce transaction efficiency, especially during times of peak database use.
+
+It's important to monitor database metrics so that you know if the database reaches the point where the server can no longer support the capture agent's level of activity.
+If you notice performance problems, there are SQL Server capture agent settings that you can modify to help balance the overall CPU load on the database host with a tolerable degree of latency.
+
+// Type: reference
+// ModuleID: sql-server-capture-job-agent-configuration-parameters
+=== SQL Server capture job agent configuration parameters
+
+On SQL Server, parameters that control the behavior of the capture job agent are defined in the SQL Server table link:https://docs.microsoft.com/en-us/sql/relational-databases/system-tables/dbo-cdc-jobs-transact-sql?view=latest[`msdb.dbo.cdc_jobs`].
+If you experience performance issues while running the capture job agent, adjust capture jobs settings to reduce CPU load by running the link:https://docs.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sys-sp-cdc-change-job-transact-sql?view=latest[`sys.sp_cdc_change_job`] stored procedure and supplying new values.
+
+[NOTE]
+====
+Specific guidance about how to configure SQL Server capture job agent parameters is beyond the scope of this documentation.
+====
+
+The following parameters are the most significant for modifying capture agent behavior for use with the {prodname} SQL Server connector:
+
+`pollinginterval`::
+* Specifies the number of seconds that the capture agent waits between log scan cycles.
+* A higher value reduces the load on the database host and increases latency.
+* A value of `0` specifies no wait between scans.
+* The default value is `5`.
+
+`maxtrans`::
+* Specifies the maximum number of transactions to process during each log scan cycle.
+After the capture job processes the specified number of transactions, it pauses for the length of time that the `pollinginterval` specifies before the next scan begins.
+* A lower value reduces the load on the database host and increases latency.
+* The default value is `500`.
+
+`maxscans`::
+* Specifies a limit on the number of scan cycles that the capture job can attempt in capturing the full contents of the database transaction log.
+If the `continuous` parameter is set to `1`, the job pauses for the length of time that the `pollinginterval` specifies before it resumes scanning.
+* A lower values reduces the load on the database host and increases latency.
+* The default value is `10`.
+
+.Additional resources
+* For more information about capture agent parameters, see the SQL Server documentation.
 
 // Type: assembly
 // ModuleID: deploying-and-managing-debezium-sql-server-connectors
@@ -1917,6 +2036,16 @@ Note: Depending on the `_hashAlgorithm_` used, the `_salt_` selected and the act
 |[[sqlserver-property-time-precision-mode]]<<sqlserver-property-time-precision-mode, `+time.precision.mode+`>>
 |`adaptive`
 | Time, date, and timestamps can be represented with different kinds of precision, including: `adaptive` (the default) captures the time and timestamp values exactly as in the database using either millisecond, microsecond, or nanosecond precision values based on the database column's type; or `connect` always represents time and timestamp values using Kafka Connect's built-in representations for Time, Date, and Timestamp, which uses millisecond precision regardless of the database columns' precision. See {link-prefix}:{link-sqlserver-connector}#sqlserver-temporal-values[temporal values].
+
+|[[sqlserver-property-decimal-handling-mode]]<<sqlserver-property-decimal-handling-mode,`+decimal.handling.mode+`>>
+|`precise`
+|Specifies how the connector should handle values for `DECIMAL` and `NUMERIC` columns: +
+ +
+`precise` (the default) represents them precisely using `java.math.BigDecimal` values represented in change events in a binary form. +
+ +
+`double` represents them using `double` values, which may result in a loss of precision but is easier to use. +
+ +
+`string` encodes values as formatted strings, which is easy to consume but  semantic information about the real type is lost.
 
 |[[sqlserver-property-include-schema-changes]]<<sqlserver-property-include-schema-changes, `+include.schema.changes+`>>
 |`true`

@@ -1806,11 +1806,20 @@ ifdef::community[]
 It is possible to capture changes in a PostgreSQL database that is running in link:https://aws.amazon.com/rds/[Amazon RDS]. To do this:
 
 * Set the instance parameter `rds.logical_replication` to `1`.
-* Verify that the `wal_level` parameter is set to `logical` by running the query `SHOW wal_level` as the database RDS master user. This might not be the case in multi-zone replication setups.
-You cannot set this option manually. It is link:https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_WorkingWithParamGroups.html[automatically changed] when the `rds.logical_replication` parameter is set to `1`.
-If the `wal_level` is not `logical` after the change above, it is probably because the instance has to be restarted due to the parameter group change. This happens according to your maintenance window or you can do it manually.
+* Verify that the `wal_level` parameter is set to `logical` by running the query `SHOW wal_level` as the database RDS master user.
+  This might not be the case in multi-zone replication setups.
+  You cannot set this option manually.
+  It is link:https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_WorkingWithParamGroups.html[automatically changed] when the `rds.logical_replication` parameter is set to `1`.
+  If the `wal_level` is not set to `logical` after you make the preceding change, it is probably because the instance has to be restarted after the parameter group change.
+  Restarts occur during your maintenance window, or you can initiate a restart manually.
 * Set the  {prodname} `plugin.name` parameter to `wal2json`. You can skip this on PostgreSQL 10+ if you plan to use `pgoutput` logical replication stream support.
-* Use the RDS master account for replication as RDS currently does not support setting of `REPLICATION` privilege for another account.
+* Initiate logical replication from an AWS account that has the `rds_replication` role.
+  The role grants permissions to manage logical slots and to stream data using logical slots.
+  By default, only the master user account on AWS has the `rds_replication` role on Amazon RDS.
+  To enable a user account other than the master account to initiate logical replication, you must grant the account the `rds_replication` role.
+  For example, `grant rds_replication to _<my_user>_`. You must have `superuser` access to grant the `rds_replication` role to a user.
+  To enable accounts other than the master account to create an initial snapshot, you must grant `SELECT` permission to the accounts on the tables to be captured.
+  For more information about security for PostgreSQL logical replication, see the link:https://www.postgresql.org/docs/current/logical-replication-security.html[PostgreSQL documentation].
 
 [IMPORTANT]
 ====
@@ -1942,8 +1951,8 @@ endif::community[]
 [[postgresql-permissions]]
 === Setting up permissions
 
-Setting up a PostgreSQL server to run a {prodname} connector requires a database user who can perform replications.
-Replication can be performed only by a database user who has appropriate permissions and only for a configured number of hosts.
+Setting up a PostgreSQL server to run a {prodname} connector requires a database user that can perform replications.
+Replication can be performed only by a database user that has appropriate permissions and only for a configured number of hosts.
 
 Although, by default, superusers have the necessary `REPLICATION` and `LOGIN` roles, as mentioned in xref:postgresql-security[Security], it is best not to provide the {prodname} replication user with elevated privileges.
 Instead, create a {prodname} user that has the the minimum required privileges.
@@ -2618,7 +2627,7 @@ If `table_a` has a an `id` column, and `regex_1` is `^i` (matches any column tha
 |_all_tables_
 |Applies only when streaming changes by using link:https://www.postgresql.org/docs/current/sql-createpublication.html[the `pgoutput` plug-in]. The setting determines how creation of a link:https://www.postgresql.org/docs/current/logical-replication-publication.html[publication] should work. Possible settings are: +
  +
-`all_tables` - If a publication exists, the connector uses it. If a publication does not exist, the connector creates a publication for all tables in the database for which the connector is capturing changes. This requires that the database user who has permission to perform replications also has permission to create a publication. This is granted with `CREATE PUBLICATION <publication_name> FOR ALL TABLES;`. +
+`all_tables` - If a publication exists, the connector uses it. If a publication does not exist, the connector creates a publication for all tables in the database for which the connector is capturing changes. This requires that the database user that has permission to perform replications also has permission to create a publication. This is granted with `CREATE PUBLICATION <publication_name> FOR ALL TABLES;`. +
  +
 `disabled` - The connector does not attempt to create a publication. A database administrator or the user configured to perform replications must have created the publication before running the connector. If the connector cannot find the publication, the connector throws an exception and stops. +
  +
@@ -2634,7 +2643,7 @@ If `table_a` has a an `id` column, and `regex_1` is `^i` (matches any column tha
  +
 `hex` represents binary data as hex-encoded (base16) strings.
 
-|[[postgresql-property-truncat-handling-mode]]<<postgresql-property-truncate-handling-mode, `+truncate.handling.mode+`>>
+|[[postgresql-property-truncate-handling-mode]]<<postgresql-property-truncate-handling-mode, `+truncate.handling.mode+`>>
 |bytes
 |Specifies how whether `TRUNCATE` events should be propagated or not (only available when using the `pgoutput` plug-in with Postgres 11 or later): +
  +

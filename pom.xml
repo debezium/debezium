@@ -9,9 +9,9 @@
 
     <modelVersion>4.0.0</modelVersion>
     <groupId>io.debezium</groupId>
-    <artifactId>debezium-parent</artifactId>
+    <artifactId>debezium-build-parent</artifactId>
     <version>1.5.0-SNAPSHOT</version>
-    <name>Debezium Parent POM</name>
+    <name>Debezium Build Aggregator</name>
     <description>Debezium is an open source change data capture platform</description>
     <packaging>pom</packaging>
     <url>https://debezium.io</url>
@@ -55,55 +55,6 @@
         <maven.compiler.target>1.8</maven.compiler.target>
         <release>8</release>
 
-        <!-- Kafka and it's dependencies MUST reflect what the Kafka version uses -->
-        <version.kafka>2.6.1</version.kafka>
-        <version.kafka.scala>2.12</version.kafka.scala>
-        <version.curator>4.2.0</version.curator>
-        <version.zookeeper>3.5.8</version.zookeeper>
-        <version.jackson>2.10.2</version.jackson>
-        <version.org.slf4j>1.7.30</version.org.slf4j>
-        <version.log4j>1.2.17</version.log4j>
-        <version.netty>4.1.50.Final</version.netty>
-        <!-- check new release version at https://github.com/confluentinc/schema-registry/releases -->
-        <version.confluent.platform>5.5.1</version.confluent.platform>
-
-        <!-- Databases -->
-        <version.postgresql.driver>42.2.14</version.postgresql.driver>
-        <version.mysql.server>5.7</version.mysql.server>
-        <version.mysql.driver>8.0.21</version.mysql.driver>
-        <version.mysql.binlog>0.23.3</version.mysql.binlog>
-        <version.mongo.server>3.6</version.mongo.server>
-        <version.mongo.driver>4.1.1</version.mongo.driver>
-        <version.sqlserver.driver>7.2.2.jre8</version.sqlserver.driver>
-
-        <!-- Connectors -->
-        <version.com.google.protobuf>3.8.0</version.com.google.protobuf>
-
-        <!-- ANTLR -->
-        <antlr.version>4.7.2</antlr.version>
-
-        <!-- Quarkus -->
-        <quarkus.version>1.12.0.Final</quarkus.version>
-
-        <!-- Tracing -->
-        <version.opentracing.strimzi>0.33.0</version.opentracing.strimzi>
-
-        <!-- HTTP client -->
-        <version.okhttp>4.8.1</version.okhttp>
-
-        <!-- Scripting -->
-        <version.groovy>3.0.7</version.groovy>
-        <version.graalvm.js>20.0.0</version.graalvm.js>
-
-        <!-- Testing -->
-        <version.junit>4.13.1</version.junit>
-        <version.fest>1.4</version.fest>
-        <version.jmh>1.21</version.jmh>
-        <version.mockito>3.0.0</version.mockito>
-        <version.awaitility>4.0.1</version.awaitility>
-        <version.testcontainers>1.15.1</version.testcontainers>
-        <version.jsonpath>2.4.0</version.jsonpath>
-
         <!-- Maven Plugins -->
         <version.compiler.plugin>3.8.1</version.compiler.plugin>
         <version.resources.plugin>3.1.0</version.resources.plugin>
@@ -132,45 +83,12 @@
         <version.revapi-java.plugin>0.21.0</version.revapi-java.plugin>
         <version.build-helper.plugin>1.9.1</version.build-helper.plugin>
 
-        <!-- Dockerfiles -->
-        <docker.maintainer>Debezium community</docker.maintainer>
-
-        <!--Skip long running tests by default-->
-        <skipLongRunningTests>true</skipLongRunningTests>
-
-        <!-- Don't skip integration tests by default -->
-        <skipITs>false</skipITs>
-
-        <!-- Do not skip formatting source code by default -->
-        <format.skip>false</format.skip>
-
-        <!-- Set formatting default goals -->
-        <format.formatter.goal>format</format.formatter.goal>
-        <format.imports.goal>sort</format.imports.goal>
-
-        <!-- No debug options by default -->
-        <debug.argline />
-
-        <!-- No modules options by default -->
-        <modules.argline />
-
-        <!-- No test options by default -->
-        <test.argline />
-
-        <!-- Assembly configuration -->
-        <assembly.descriptor>connector-distribution</assembly.descriptor>
-
-        <!-- Needed for pre jdk 9 -->
-        <useSystemClassLoader>true</useSystemClassLoader>
-
-        <!-- Skip the API checks by default. Let the modules opt in. -->
-        <revapi.skip>true</revapi.skip>
-
         <!-- Which Maven Central infra should be used -->
         <release.endpoint>https://s01.oss.sonatype.org/</release.endpoint>
     </properties>
 
     <modules>
+        <module>debezium-parent</module>
         <module>support/checkstyle</module>
         <module>support/ide-configs</module>
         <module>support/revapi</module>
@@ -224,330 +142,6 @@
         </repository>
     </repositories>
 
-    <dependencyManagement>
-        <dependencies>
-            <!-- Major dependencies -->
-            <dependency>
-                <groupId>com.fasterxml.jackson.core</groupId>
-                <artifactId>jackson-core</artifactId>
-                <version>${version.jackson}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.fasterxml.jackson.datatype</groupId>
-                <artifactId>jackson-datatype-joda</artifactId>
-                <version>${version.jackson}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.fasterxml.jackson.dataformat</groupId>
-                <artifactId>jackson-dataformat-yaml</artifactId>
-                <version>${version.jackson}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.fasterxml.jackson.core</groupId>
-                <artifactId>jackson-databind</artifactId>
-                <version>${version.jackson}</version>
-                <optional>true</optional>
-            </dependency>
-            <dependency>
-                <groupId>com.fasterxml.jackson.datatype</groupId>
-                <artifactId>jackson-datatype-jsr310</artifactId>
-                <version>${version.jackson}</version>
-                <optional>true</optional>
-            </dependency>
-
-            <!-- Kafka Connect -->
-            <dependency>
-                <groupId>org.apache.kafka</groupId>
-                <artifactId>connect-api</artifactId>
-                <version>${version.kafka}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.kafka</groupId>
-                <artifactId>connect-runtime</artifactId>
-                <version>${version.kafka}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.kafka</groupId>
-                <artifactId>connect-json</artifactId>
-                <version>${version.kafka}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.kafka</groupId>
-                <artifactId>connect-file</artifactId>
-                <version>${version.kafka}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.kafka</groupId>
-                <artifactId>connect-transforms</artifactId>
-                <version>${version.kafka}</version>
-            </dependency>
-
-            <!-- Kafka -->
-            <dependency>
-                <groupId>org.apache.kafka</groupId>
-                <artifactId>kafka_${version.kafka.scala}</artifactId>
-                <version>${version.kafka}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.kafka</groupId>
-                <artifactId>kafka-clients</artifactId>
-                <version>${version.kafka}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.zookeeper</groupId>
-                <artifactId>zookeeper</artifactId>
-                <version>${version.zookeeper}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.kafka</groupId>
-                <artifactId>kafka_${version.kafka.scala}</artifactId>
-                <version>${version.kafka}</version>
-                <classifier>test</classifier>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.curator</groupId>
-                <artifactId>curator-test</artifactId>
-                <version>${version.curator}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.confluent</groupId>
-                <artifactId>kafka-connect-avro-converter</artifactId>
-                <version>${version.confluent.platform}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>org.antlr</groupId>
-                <artifactId>antlr4-runtime</artifactId>
-                <version>${antlr.version}</version>
-            </dependency>
-
-            <!-- PostgreSQL connector -->
-
-            <dependency>
-                <groupId>org.postgresql</groupId>
-                <artifactId>postgresql</artifactId>
-                <version>${version.postgresql.driver}</version>
-            </dependency>
-
-            <!--Make sure this version is compatible with the Protbuf-C version used on the server -->
-            <dependency>
-                <groupId>com.google.protobuf</groupId>
-                <artifactId>protobuf-java</artifactId>
-                <version>${version.com.google.protobuf}</version>
-            </dependency>
-
-            <!-- MySQL JDBC Driver, Binlog reader, Geometry support -->
-            <dependency>
-                <groupId>mysql</groupId>
-                <artifactId>mysql-connector-java</artifactId>
-                <version>${version.mysql.driver}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.zendesk</groupId>
-                <artifactId>mysql-binlog-connector-java</artifactId>
-                <version>${version.mysql.binlog}</version>
-            </dependency>
-            <dependency>
-                <groupId>mil.nga</groupId>
-                <artifactId>wkb</artifactId>
-                <version>1.0.2</version>
-            </dependency>
-
-            <!-- MongoDB Java driver -->
-            <dependency>
-                <groupId>org.mongodb</groupId>
-                <artifactId>mongodb-driver-sync</artifactId>
-                <version>${version.mongo.driver}</version>
-            </dependency>
-
-            <!-- SQL Server driver -->
-            <dependency>
-                <groupId>com.microsoft.sqlserver</groupId>
-                <artifactId>mssql-jdbc</artifactId>
-                <version>${version.sqlserver.driver}</version>
-            </dependency>
-
-            <!-- Logging -->
-            <dependency>
-                <groupId>org.slf4j</groupId>
-                <artifactId>slf4j-api</artifactId>
-                <version>${version.org.slf4j}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.slf4j</groupId>
-                <artifactId>slf4j-log4j12</artifactId>
-                <version>${version.org.slf4j}</version>
-            </dependency>
-            <dependency>
-                <groupId>log4j</groupId>
-                <artifactId>log4j</artifactId>
-                <version>${version.log4j}</version>
-            </dependency>
-
-            <!-- Scripting -->
-            <dependency>
-                <groupId>org.codehaus.groovy</groupId>
-                <artifactId>groovy</artifactId>
-                <version>${version.groovy}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.codehaus.groovy</groupId>
-                <artifactId>groovy-json</artifactId>
-                <version>${version.groovy}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.codehaus.groovy</groupId>
-                <artifactId>groovy-jsr223</artifactId>
-                <version>${version.groovy}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.graalvm.js</groupId>
-                <artifactId>js</artifactId>
-                <version>${version.graalvm.js}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.graalvm.js</groupId>
-                <artifactId>js-scriptengine</artifactId>
-                <version>${version.graalvm.js}</version>
-            </dependency>
-
-            <!-- Testing utilities -->
-            <dependency>
-                <groupId>org.testcontainers</groupId>
-                <artifactId>testcontainers-bom</artifactId>
-                <version>${version.testcontainers}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-            <dependency>
-                <groupId>com.squareup.okhttp3</groupId>
-                <artifactId>okhttp</artifactId>
-                <version>${version.okhttp}</version>
-            </dependency>
-
-            <!-- Test dependencies -->
-            <dependency>
-                <groupId>junit</groupId>
-                <artifactId>junit</artifactId>
-                <version>${version.junit}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.easytesting</groupId>
-                <artifactId>fest-assert</artifactId>
-                <version>${version.fest}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.openjdk.jmh</groupId>
-                <artifactId>jmh-core</artifactId>
-                <version>${version.jmh}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.openjdk.jmh</groupId>
-                <artifactId>jmh-generator-annprocess</artifactId>
-                <version>${version.jmh}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.mockito</groupId>
-                <artifactId>mockito-core</artifactId>
-                <version>${version.mockito}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.awaitility</groupId>
-                <artifactId>awaitility</artifactId>
-                <version>${version.awaitility}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.jayway.jsonpath</groupId>
-                <artifactId>json-path</artifactId>
-                <version>${version.jsonpath}</version>
-            </dependency>
-
-            <!-- Debezium artifacts -->
-            <dependency>
-                <groupId>io.debezium</groupId>
-                <artifactId>debezium-api</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.debezium</groupId>
-                <artifactId>debezium-core</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.debezium</groupId>
-                <artifactId>debezium-scripting</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.debezium</groupId>
-                <artifactId>debezium-embedded</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.debezium</groupId>
-                <artifactId>debezium-connector-jdbc</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.debezium</groupId>
-                <artifactId>debezium-connector-postgres</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.debezium</groupId>
-                <artifactId>debezium-connector-postgres-test</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.debezium</groupId>
-                <artifactId>debezium-connector-mysql</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.debezium</groupId>
-                <artifactId>debezium-ddl-parser</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.debezium</groupId>
-                <artifactId>debezium-connector-mongodb</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.debezium</groupId>
-                <artifactId>debezium-connector-sqlserver</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-
-            <!-- Debezium test artifacts -->
-            <dependency>
-                <groupId>io.debezium</groupId>
-                <artifactId>debezium-core</artifactId>
-                <version>${project.version}</version>
-                <type>test-jar</type>
-            </dependency>
-            <dependency>
-                <groupId>io.debezium</groupId>
-                <artifactId>debezium-embedded</artifactId>
-                <version>${project.version}</version>
-                <type>test-jar</type>
-            </dependency>
-            <dependency>
-                <groupId>io.debezium</groupId>
-                <artifactId>debezium-connector-mysql</artifactId>
-                <version>${project.version}</version>
-                <type>test-jar</type>
-            </dependency>
-            <dependency>
-                <groupId>javax.xml.bind</groupId>
-                <artifactId>jaxb-api</artifactId>
-                <version>2.3.1</version>
-            </dependency>
-
-        </dependencies>
-    </dependencyManagement>
-    <dependencies>
-    </dependencies>
     <build>
         <pluginManagement>
             <plugins>
@@ -617,80 +211,6 @@
                     <version>${version.gpg.plugin}</version>
                 </plugin>
                 <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-failsafe-plugin</artifactId>
-                    <version>${version.failsafe.plugin}</version>
-                    <configuration>
-                        <argLine>${debug.argline} ${modules.argline} ${test.argline}</argLine>
-                        <useSystemClassLoader>${useSystemClassLoader}</useSystemClassLoader>
-                    </configuration>
-                </plugin>
-                <plugin>
-                    <groupId>com.googlecode.maven-java-formatter-plugin</groupId>
-                    <artifactId>maven-java-formatter-plugin</artifactId>
-                    <version>${version.google.formatter.plugin}</version>
-                </plugin>
-                <plugin>
-                    <groupId>io.fabric8</groupId>
-                    <artifactId>docker-maven-plugin</artifactId>
-                    <version>${version.docker.maven.plugin}</version>
-                </plugin>
-                <plugin>
-                    <groupId>com.github.os72</groupId>
-                    <artifactId>protoc-jar-maven-plugin</artifactId>
-                    <version>${version.protoc.maven.plugin}</version>
-                </plugin>
-                <plugin>
-                    <groupId>net.revelc.code.formatter</groupId>
-                    <artifactId>formatter-maven-plugin</artifactId>
-                    <version>${version.code.formatter}</version>
-                    <dependencies>
-                        <dependency>
-                            <groupId>io.debezium</groupId>
-                            <artifactId>debezium-ide-configs</artifactId>
-                            <version>${project.version}</version>
-                        </dependency>
-                    </dependencies>
-                    <configuration>
-                        <configFile>/eclipse/debezium-formatter.xml</configFile>
-                        <skip>${format.skip}</skip>
-                    </configuration>
-                </plugin>
-                <plugin>
-                    <groupId>net.revelc.code</groupId>
-                    <artifactId>impsort-maven-plugin</artifactId>
-                    <version>${version.impsort}</version>
-                    <configuration>
-                        <groups>java.,javax.,org.,com.,io.</groups>
-                        <staticGroups>*</staticGroups>
-                        <staticAfter>false</staticAfter>
-                        <skip>${format.skip}</skip>
-                        <removeUnused>true</removeUnused>
-                    </configuration>
-                </plugin>
-               <plugin>
-                    <groupId>org.jboss.jandex</groupId>
-                    <artifactId>jandex-maven-plugin</artifactId>
-                    <version>${version.jandex}</version>
-                </plugin>
-                <plugin>
-                    <groupId>org.revapi</groupId>
-                    <artifactId>revapi-maven-plugin</artifactId>
-                    <version>${version.revapi.plugin}</version>
-                    <dependencies>
-                        <dependency>
-                            <groupId>io.debezium</groupId>
-                            <artifactId>debezium-revapi</artifactId>
-                            <version>${project.version}</version>
-                        </dependency>
-                        <dependency>
-                            <groupId>org.revapi</groupId>
-                            <artifactId>revapi-java</artifactId>
-                            <version>${version.revapi-java.plugin}</version>
-                        </dependency>
-                    </dependencies>
-                </plugin>
-                <plugin>
                     <groupId>org.codehaus.mojo</groupId>
                     <artifactId>build-helper-maven-plugin</artifactId>
                     <version>${version.build-helper.plugin}</version>
@@ -698,52 +218,6 @@
             </plugins>
         </pluginManagement>
         <plugins>
-            <plugin>
-                <groupId>net.revelc.code.formatter</groupId>
-                <artifactId>formatter-maven-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <phase>process-sources</phase>
-                        <goals>
-                            <goal>${format.formatter.goal}</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>net.revelc.code</groupId>
-                <artifactId>impsort-maven-plugin</artifactId>
-                <configuration>
-                    <removeUnused>true</removeUnused>
-                </configuration>
-                <executions>
-                    <execution>
-                        <id>sort-imports</id>
-                        <goals>
-                            <goal>${format.imports.goal}</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-source-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>attach-sources</id>
-                        <phase>verify</phase>
-                        <goals>
-                            <goal>jar-no-fork</goal>
-                        </goals>
-                    </execution>
-                    <execution>
-                        <id>attach-test-sources</id>
-                        <goals>
-                            <goal>test-jar-no-fork</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-release-plugin</artifactId>
@@ -779,14 +253,6 @@
                 </configuration>
             </plugin>
             <plugin>
-                <groupId>com.googlecode.maven-java-formatter-plugin</groupId>
-                <artifactId>maven-java-formatter-plugin</artifactId>
-                <configuration>
-                    <configFile>${project.basedir}/support/eclipse-formatting.xml</configFile>
-                    <lineEnding>LF</lineEnding>
-                </configuration>
-            </plugin>
-            <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-enforcer-plugin</artifactId>
                 <executions>
@@ -805,168 +271,14 @@
                     </execution>
                 </executions>
             </plugin>
-            <!--
-                   Build a test-jar for each project, so that src/test/* resources and
-                   classes can be used in other projects. Also customize how the jar
-                   files are assembled.
-               -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-jar-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>test-jar</id>
-                        <goals>
-                            <goal>test-jar</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-plugin</artifactId>
-                <configuration>
-                    <systemProperties combine.children="append">
-                        <property>
-                            <name>java.io.tmpdir</name>
-                            <value>${project.build.directory}</value>
-                        </property>
-                        <property>
-                            <name>skipLongRunningTests</name>
-                            <value>${skipLongRunningTests}</value>
-                        </property>
-                        <property>
-                            <name>dbz.test.data.dir</name>
-                            <value>${project.build.directory}/data</value>
-                        </property>
-                    </systemProperties>
-                    <argLine>-Djava.awt.headless=true ${debug.argline} ${modules.argline}</argLine>
-                    <!--runOrder>alphabetical</runOrder-->
-                    <useFile>false</useFile>
-                    <enableAssertions>true</enableAssertions>
-                    <forkCount>${forkCount}</forkCount>
-                    <reuseForks>${reuseForks}</reuseForks>
-                    <useSystemClassLoader>${useSystemClassLoader}</useSystemClassLoader>
-                </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-checkstyle-plugin</artifactId>
-                <dependencies>
-                    <dependency>
-                        <groupId>io.debezium</groupId>
-                        <artifactId>debezium-checkstyle</artifactId>
-                        <version>${project.version}</version>
-                    </dependency>
-                </dependencies>
-                <configuration>
-                    <configLocation>checkstyle.xml</configLocation>
-                    <suppressionsLocation>checkstyle-suppressions.xml</suppressionsLocation>
-                    <suppressionsFileExpression>checkstyle.suppressions.file</suppressionsFileExpression>
-                    <consoleOutput>true</consoleOutput>
-                    <failsOnError>true</failsOnError>
-                    <linkXRef>false</linkXRef>
-                    <violationSeverity>error</violationSeverity>
-                    <includeTestSourceDirectory>true</includeTestSourceDirectory>
-                    <sourceDirectories>
-                        <sourceDirectory>${project.build.sourceDirectory}</sourceDirectory>
-                        <sourceDirectory>${project.build.testSourceDirectory}</sourceDirectory>
-                    </sourceDirectories>
-                </configuration>
-                <executions>
-                    <execution>
-                        <id>check-style</id>
-                        <phase>verify</phase>
-                        <goals>
-                            <goal>checkstyle</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <!-- Serves as support for configuring Revapi -->
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>build-helper-maven-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>parse-version</id>
-                        <goals>
-                            <!-- This defines the ${parsedVersion.*} properties used in the Revapi config. -->
-                            <goal>parse-version</goal>
-                        </goals>
-                        <phase>validate</phase>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.revapi</groupId>
-                <artifactId>revapi-maven-plugin</artifactId>
-                <configuration>
-                    <failOnMissingConfigurationFiles>false</failOnMissingConfigurationFiles>
-                    <!-- Consider changes from the latest .Final version, not from the latest non-snapshot. -->
-                    <versionFormat>\d+\.\d+\.\d+\.Final</versionFormat>
-                    <ignoreSuggestionsFormat>xml</ignoreSuggestionsFormat>
-                    <analysisConfigurationFiles>
-                        <configurationFile>
-                            <!-- common API checking configuration -->
-                            <resource>revapi/revapi-configuration.xml</resource>
-                        </configurationFile>
-                        <configurationFile>
-                            <!-- API changes recorded in the support/revapi module -->
-                            <resource>revapi/debezium-api-changes.xml</resource>
-                            <roots>
-                                <!--
-                                    The XML file has "<analysisConfiguration>" root node, underneath which
-                                    there are nodes named after each version.
-                                    This way we only need a single file for all releases of Debezium.
-                                -->
-                                <root>analysisConfiguration/version-${parsedVersion.majorVersion}.${parsedVersion.minorVersion}.${parsedVersion.incrementalVersion}</root>
-                            </roots>
-                        </configurationFile>
-                    </analysisConfigurationFiles>
-                </configuration>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>check</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
         </plugins>
     </build>
     <profiles>
-        <!--
-           ###################################################################
-           Enable remotely debugging on the command line
-           ###################################################################
-
-           To use, specify "-Ddebug=true" on the Maven command line
-           (typically used when running a single test). Then, start
-           remote debugger (on port 1044) and connect.
-       -->
-        <profile>
-            <id>debug</id>
-            <activation>
-                <property>
-                    <name>debug</name>
-                    <value>true</value>
-                </property>
-            </activation>
-            <properties>
-                <!-- Useful for remotely debugging the unit tests run by Surefire ... -->
-                <debug.argline>-Xdebug -Xrunjdwp:transport=dt_socket,server=y,suspend=y,address=1044</debug.argline>
-            </properties>
-        </profile>
-
         <profile>
             <id>assembly</id>
             <properties>
                 <skipLongRunningTests>false</skipLongRunningTests>
             </properties>
-            <modules>
-                <!--module>integration-tests</module-->
-            </modules>
         </profile>
         <profile>
             <id>release</id>
@@ -1062,6 +374,13 @@
                 <maven.compiler.target>11</maven.compiler.target>
                 <release>11</release>
             </properties>
+        </profile>
+        <profile>
+            <id>oracle</id>
+            <modules>
+                <module>debezium-connector-oracle</module>
+                <module>debezium-microbenchmark-oracle</module>
+            </modules>
         </profile>
     </profiles>
 </project>

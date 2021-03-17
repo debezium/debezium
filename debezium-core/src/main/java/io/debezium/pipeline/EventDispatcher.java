@@ -29,6 +29,7 @@ import io.debezium.connector.common.TaskPartition;
 import io.debezium.data.Envelope;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.heartbeat.Heartbeat;
+import io.debezium.pipeline.signal.Signal;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
 import io.debezium.pipeline.spi.ChangeEventCreator;
@@ -78,6 +79,7 @@ public class EventDispatcher<P extends TaskPartition, O extends OffsetContext, T
     private final Schema schemaChangeKeySchema;
     private final Schema schemaChangeValueSchema;
     private final TableChangesSerializer<List<Struct>> tableChangesSerializer = new ConnectTableChangeSerializer();
+    private final Signal signal;
 
     /**
      * Change event receiver for events dispatched from a streaming change event source.
@@ -115,6 +117,7 @@ public class EventDispatcher<P extends TaskPartition, O extends OffsetContext, T
         this.inconsistentSchemaHandler = inconsistentSchemaHandler != null ? inconsistentSchemaHandler : this::errorOnMissingSchema;
 
         this.transactionMonitor = new TransactionMonitor(connectorConfig, metadataProvider, this::enqueueTransactionMessage);
+        this.signal = new Signal(connectorConfig, this);
         if (customHeartbeat != null) {
             heartbeat = customHeartbeat;
         }
@@ -208,6 +211,9 @@ public class EventDispatcher<P extends TaskPartition, O extends OffsetContext, T
                             throws InterruptedException {
                         transactionMonitor.dataEvent(dataCollectionId, offset, key, value);
                         eventListener.onEvent(dataCollectionId, offset, key, value);
+                        if (operation == Operation.CREATE && signal.isSignal(dataCollectionId)) {
+                            signal.process(value, offset);
+                        }
                         streamingReceiver.changeRecord(schema, operation, key, value, offset, headers);
                     }
                 });
@@ -487,4 +493,11 @@ public class EventDispatcher<P extends TaskPartition, O extends OffsetContext, T
         Optional<DataCollectionSchema> handle(T dataCollectionId, ChangeRecordEmitter changeRecordEmitter);
     }
 
+    public DatabaseSchema<T> getSchema() {
+        return schema;
+    }
+
+    public HistorizedDatabaseSchema<P, O, T> getHistorizedSchema() {
+        return historizedSchema;
+    }
 }

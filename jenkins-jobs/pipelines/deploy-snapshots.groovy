@@ -52,14 +52,14 @@ node('Slave') {
 
         stage('Build and deploy Debezium') {
             dir(DEBEZIUM_DIR) {
-                sh "mvn clean deploy -U -s $HOME/.m2/settings-snapshots.xml -DdeployAtEnd=true -DskipITs -DskipTests -Passembly"
+                sh "mvn clean deploy -U -s $HOME/.m2/settings-snapshots.xml -DdeployAtEnd=true -DskipITs -DskipTests -Passembly,oracle"
             }
         }
 
         additionalDirs.each { id ->
             stage("Build and deploy Debezium ${id.capitalize()}") {
                 dir(id) {
-                    sh "mvn clean deploy -U -s $HOME/.m2/settings-snapshots.xml -DdeployAtEnd=true -DskipITs -DskipTests -P${id == 'incubator' ? 'assembly,oracle' : 'assembly'}"
+                    sh "mvn clean deploy -U -s $HOME/.m2/settings-snapshots.xml -DdeployAtEnd=true -DskipITs -DskipTests -Passembly"
                 }
             }
         }

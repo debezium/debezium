@@ -144,6 +144,14 @@ Adjust the timeout value as needed.
 
 See [PostgreSQL on Amazon RDS](debezium-connector-postgres/RDS.md) for details on setting up a database on RDS to test against.
 
+### Running tests of the Oracle connector using Oracle LogMiner
+
+    $ mvn clean install -pl debezium-connector-oracle -Poracle,logminer -Dinstantclient.dir=<path-to-instantclient>
+
+### Running tests of the Oracle connector with a non-CDB database
+
+    $ mvn clean install -pl debezium-connector-oracle -Poracle -Dinstantlclient.dir=<path-to-instantclient> -Ddatabase.pdb.name=
+
 ## Contributing
 
 The Debezium community welcomes anyone that wants to help out in any way, whether that includes reporting problems, helping with documentation, or contributing code changes to fix bugs, add tests, or implement new features. See [this document](CONTRIBUTE.md) for details.

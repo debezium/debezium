@@ -410,6 +410,13 @@ public abstract class CommonConnectorConfig {
             .withValidation(Field::isPositiveInteger)
             .withDescription("The maximum number of threads used to perform the snapshot.  Defaults to 1.");
 
+    public static final Field SIGNAL_DATA_COLLECTION = Field.create("signal.data.collection")
+            .withDisplayName("Signaling data collection")
+            .withType(Type.STRING)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("The name of the data collection that is used to send signals/commands to Debezium. Signaling is disabled when not set.");
+
     protected static final ConfigDefinition CONFIG_DEFINITION = ConfigDefinition.editor()
             .connector(
                     EVENT_PROCESSING_FAILURE_HANDLING_MODE,
@@ -431,7 +438,8 @@ public abstract class CommonConnectorConfig {
                     TOMBSTONES_ON_DELETE,
                     SOURCE_STRUCT_MAKER_VERSION,
                     Heartbeat.HEARTBEAT_INTERVAL,
-                    Heartbeat.HEARTBEAT_TOPICS_PREFIX)
+                    Heartbeat.HEARTBEAT_TOPICS_PREFIX,
+                    SIGNAL_DATA_COLLECTION)
             .create();
 
     private final Configuration config;
@@ -453,6 +461,7 @@ public abstract class CommonConnectorConfig {
     private final EventProcessingFailureHandlingMode eventProcessingFailureHandlingMode;
     private final CustomConverterRegistry customConverterRegistry;
     private final BinaryHandlingMode binaryHandlingMode;
+    private final String signalingDataCollection;
 
     protected CommonConnectorConfig(Configuration config, String logicalName, int defaultSnapshotFetchSize) {
         this.config = config;
@@ -474,6 +483,7 @@ public abstract class CommonConnectorConfig {
         this.eventProcessingFailureHandlingMode = EventProcessingFailureHandlingMode.parse(config.getString(EVENT_PROCESSING_FAILURE_HANDLING_MODE));
         this.customConverterRegistry = new CustomConverterRegistry(getCustomConverters());
         this.binaryHandlingMode = BinaryHandlingMode.parse(config.getString(BINARY_HANDLING_MODE));
+        this.signalingDataCollection = config.getString(SIGNAL_DATA_COLLECTION);
     }
 
     /**
@@ -690,5 +700,9 @@ public abstract class CommonConnectorConfig {
 
     public BinaryHandlingMode binaryHandlingMode() {
         return binaryHandlingMode;
+    }
+
+    public String getSignalingDataCollectionId() {
+        return signalingDataCollection;
     }
 }
