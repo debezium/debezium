@@ -171,10 +171,18 @@ public class MySqlMetricsIT extends AbstractConnectorTest {
                         .with(DatabaseHistory.STORE_ONLY_MONITORED_TABLES_DDL, Boolean.TRUE)
                         .build());
 
-        assertNoSnapshotMetricsExist();
-
         // CREATE DATABASE, CREATE TABLE, and 2 INSERT
         assertStreamingMetrics(4);
+
+        // The legacy implementation did not exposed snapshot metrics when snapshot never was configured.
+        // All other connectors based on new framework exposes snapshot metrics always so we are
+        // following the same behaviour in the new implementation
+        if (isLegacy()) {
+            assertNoSnapshotMetricsExist();
+        }
+        else {
+            assertSnapshotMetricsExist();
+        }
     }
 
     private void assertNoSnapshotMetricsExist() throws Exception {
@@ -206,6 +214,16 @@ public class MySqlMetricsIT extends AbstractConnectorTest {
         }
         catch (InstanceNotFoundException e) {
             Assert.fail("Streaming Metrics should exist");
+        }
+    }
+
+    private void assertSnapshotMetricsExist() throws Exception {
+        final MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
+        try {
+            mBeanServer.getAttribute(getSnapshotMetricsObjectName(), "SnapshotCompleted");
+        }
+        catch (InstanceNotFoundException e) {
+            Assert.fail("Snapshot Metrics should exist");
         }
     }
 
