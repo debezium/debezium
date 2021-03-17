@@ -486,17 +486,17 @@ public class LogMinerHelper {
 
         // Deduplicate log files with the same SCn ranges.
         // todo: could this be eliminated by restricting the online log query to those there 'ARCHIVED="NO"'?
-        List<String> logFilesNames = onlineLogFilesForMining.stream().map(LogFile::getFileName).collect(Collectors.toList());
-        for (LogFile archiveLog : archivedLogFilesForMining) {
+        List<String> logFilesNames = archivedLogFilesForMining.stream().map(LogFile::getFileName).collect(Collectors.toList());
+        for (LogFile redoLog : onlineLogFilesForMining) {
             boolean found = false;
-            for (LogFile redoLog : onlineLogFilesForMining) {
-                if (redoLog.isSameRange(archiveLog)) {
+            for (LogFile archiveLog : archivedLogFilesForMining) {
+                if (archiveLog.isSameRange(redoLog)) {
                     found = true;
                     break;
                 }
             }
             if (!found) {
-                logFilesNames.add(archiveLog.getFileName());
+                logFilesNames.add(redoLog.getFileName());
             }
         }
 
