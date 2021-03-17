@@ -136,8 +136,9 @@ public class CreateTableParserListener extends MySqlParserBaseListener {
     @Override
     public void enterTableOptionCharset(MySqlParser.TableOptionCharsetContext ctx) {
         parser.runIfNotNull(() -> {
-            String charsetName = parser.withoutQuotes(ctx.charsetName());
-            tableEditor.setDefaultCharsetName(charsetName);
+            if (ctx.charsetName() != null) {
+                tableEditor.setDefaultCharsetName(parser.withoutQuotes(ctx.charsetName()));
+            }
         }, tableEditor);
         super.enterTableOptionCharset(ctx);
     }

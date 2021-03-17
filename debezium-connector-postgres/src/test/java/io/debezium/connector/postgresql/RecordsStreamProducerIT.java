@@ -19,6 +19,7 @@ import static org.fest.assertions.Assertions.assertThat;
 import static org.fest.assertions.Fail.fail;
 import static org.fest.assertions.MapAssert.entry;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -83,7 +84,9 @@ import io.debezium.jdbc.JdbcConnection;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.junit.ConditionalFail;
+import io.debezium.junit.EqualityCheck;
 import io.debezium.junit.ShouldFailWhen;
+import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.relational.RelationalChangeRecordEmitter;
 import io.debezium.relational.RelationalDatabaseConnectorConfig.DecimalHandlingMode;
@@ -514,6 +517,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
     @Test
     @FixFor("DBZ-1029")
+    @SkipWhenDecoderPluginNameIs(value = PGOUTPUT, reason = "Decoder synchronizes all schema columns when processing relation messages")
     public void shouldReceiveChangesForInsertsIndependentOfReplicaIdentity() throws Exception {
         // insert statement should not be affected by replica identity settings in any way
 
@@ -537,6 +541,36 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         TestHelper.execute("ALTER TABLE test_table REPLICA IDENTITY DEFAULT;");
         statement = "INSERT INTO test_table (pk, text) VALUES (5, 'no_pk_and_default');";
         assertInsert(statement, 5, Collections.singletonList(new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "no_pk_and_default")));
+    }
+
+    @Test
+    @FixFor("DBZ-1029")
+    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Decoder synchronizes all schema columns when processing relation messages")
+    public void shouldReceiveChangesForInsertsIndependentOfReplicaIdentityWhenSchemaChanged() throws Exception {
+        // insert statement should not be affected by replica identity settings in any way
+
+        startConnector();
+
+        TestHelper.execute("ALTER TABLE test_table REPLICA IDENTITY DEFAULT;");
+        String statement = "INSERT INTO test_table (text) VALUES ('pk_and_default');";
+        assertInsert(statement, 2, Collections.singletonList(new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "pk_and_default")));
+
+        consumer.expects(1);
+        TestHelper.execute("ALTER TABLE test_table REPLICA IDENTITY FULL;");
+        statement = "INSERT INTO test_table (text) VALUES ('pk_and_full');";
+        assertInsert(statement, 3, Collections.singletonList(new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "pk_and_full")));
+
+        consumer.expects(1);
+        TestHelper.execute("ALTER TABLE test_table DROP CONSTRAINT test_table_pkey CASCADE;");
+        statement = "INSERT INTO test_table (pk, text) VALUES (4, 'no_pk_and_full');";
+        assertInsert(statement, Arrays.asList(new SchemaAndValueField("pk", SchemaBuilder.INT32_SCHEMA, 4),
+                new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "no_pk_and_full")));
+
+        consumer.expects(1);
+        TestHelper.execute("ALTER TABLE test_table REPLICA IDENTITY DEFAULT;");
+        statement = "INSERT INTO test_table (pk, text) VALUES (5, 'no_pk_and_default');";
+        assertInsert(statement, Arrays.asList(new SchemaAndValueField("pk", SchemaBuilder.INT32_SCHEMA, 5),
+                new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "no_pk_and_default")));
     }
 
     @Test
@@ -1881,9 +1915,11 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
-    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Tests specifically that pgoutput gracefully skips these messages")
-    public void shouldGracefullySkipTruncateMessages() throws Exception {
-        startConnector();
+    @SkipWhenDatabaseVersion(check = EqualityCheck.LESS_THAN, major = 11, reason = "TRUNCATE events only supported in PG11+ PGOUTPUT Plugin")
+    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Tests specifically that pgoutput handles TRUNCATE messages")
+    public void shouldProcessTruncateMessages() throws Exception {
+        startConnector(builder -> builder
+                .with(PostgresConnectorConfig.TRUNCATE_HANDLING_MODE, PostgresConnectorConfig.TruncateHandlingMode.INCLUDE));
         waitForStreamingToStart();
 
         consumer = testConsumer(1);
@@ -1893,10 +1929,60 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         assertEquals(TestHelper.topicName("public.test_table"), record.topic());
         VerifyRecord.isValidInsert(record, PK_FIELD, 2);
 
-        consumer.expects(0);
-        TestHelper.execute("TRUNCATE TABLE public.test_table;");
+        consumer.expects(1);
+        TestHelper.execute("TRUNCATE TABLE public.test_table RESTART IDENTITY CASCADE;");
         consumer.await(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS);
+
+        assertFalse(consumer.isEmpty());
+        SourceRecord truncateRecord = consumer.remove();
+        assertNotNull(truncateRecord);
+        VerifyRecord.isValidTruncate(truncateRecord);
         assertTrue(consumer.isEmpty());
+    }
+
+    @Test
+    @SkipWhenDatabaseVersion(check = EqualityCheck.LESS_THAN, major = 11, reason = "TRUNCATE events only supported in PG11+ PGOUTPUT Plugin")
+    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Tests specifically that pgoutput handled TRUNCATE these messages")
+    public void shouldProcessTruncateMessagesForMultipleTableTruncateStatement() throws Exception {
+        TestHelper.execute("CREATE TABLE test_table_2 (pk SERIAL, text TEXT, PRIMARY KEY(pk));");
+
+        startConnector(builder -> builder.with(PostgresConnectorConfig.TRUNCATE_HANDLING_MODE, PostgresConnectorConfig.TruncateHandlingMode.INCLUDE));
+        waitForStreamingToStart();
+
+        consumer = testConsumer(1);
+        executeAndWait("INSERT INTO test_table (text) values ('TRUNCATE TEST');");
+
+        SourceRecord record = consumer.remove();
+        assertEquals(TestHelper.topicName("public.test_table"), record.topic());
+        VerifyRecord.isValidInsert(record, PK_FIELD, 2);
+
+        executeAndWait("INSERT INTO test_table_2 (text) values ('TRUNCATE TEST 2');");
+
+        SourceRecord record_2 = consumer.remove();
+        assertEquals(TestHelper.topicName("public.test_table_2"), record_2.topic());
+        VerifyRecord.isValidInsert(record_2, PK_FIELD, 1);
+
+        consumer.expects(2);
+        TestHelper.execute("TRUNCATE TABLE public.test_table, public.test_table_2;");
+        consumer.await(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS);
+
+        assertFalse(consumer.isEmpty());
+
+        SourceRecord truncateRecord = consumer.remove();
+        assertNotNull(truncateRecord);
+        VerifyRecord.isValidTruncate(truncateRecord);
+
+        SourceRecord truncateRecord_2 = consumer.remove();
+        assertNotNull(truncateRecord_2);
+        VerifyRecord.isValidTruncate(truncateRecord_2);
+        assertTrue(consumer.isEmpty());
+
+        assertEquals(truncateRecord.sourceOffset().get("lsn_commit"), truncateRecord_2.sourceOffset().get("lsn_commit"));
+        assertEquals(truncateRecord.sourceOffset().get("lsn"), truncateRecord_2.sourceOffset().get("lsn"));
+        assertEquals(truncateRecord.sourceOffset().get("txId"), truncateRecord_2.sourceOffset().get("txId"));
+
+        consumer = testConsumer(1);
+        executeAndWait("INSERT INTO test_table (text) values ('TRUNCATE TEST');");
     }
 
     @Test
@@ -2598,6 +2684,38 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                 entry(TYPE_NAME_PARAMETER_KEY, "FLOAT4"),
                 entry(TYPE_LENGTH_PARAMETER_KEY, "8"),
                 entry(TYPE_SCALE_PARAMETER_KEY, "8"));
+    }
+
+    @Test
+    @FixFor({ "DBZ-3074" })
+    public void shouldMaintainPrimaryKeyOrderOnSchemaChange() throws Exception {
+        startConnector();
+        consumer = testConsumer(1);
+        executeAndWait("CREATE TABLE test_should_maintain_primary_key_order(b INTEGER, d INTEGER, c INTEGER, a INTEGER, val INTEGER, PRIMARY KEY (b, d, c, a));" +
+                "INSERT INTO test_should_maintain_primary_key_order VALUES (1, 2, 3, 4, 5);");
+
+        SourceRecord record = consumer.remove();
+        assertEquals(1, ((Struct) record.value()).getStruct("after").getInt32("b").intValue());
+
+        List<Field> fields = record.keySchema().fields();
+        String[] expectedFieldOrder = new String[]{ "b", "d", "c", "a" };
+
+        for (int i = 0; i < fields.size(); i++) {
+            assertEquals("Key field names should in order", expectedFieldOrder[i], fields.get(i).name());
+        }
+
+        // Alter the table to trigger a schema change event. Validate that the new schema maintains the primary key order.
+        consumer.expects(1);
+        executeAndWait("ALTER TABLE test_should_maintain_primary_key_order ADD COLUMN val2 INTEGER;" +
+                "INSERT INTO test_should_maintain_primary_key_order VALUES (10, 11, 12, 13, 14, 15);");
+
+        record = consumer.remove();
+        assertEquals(10, ((Struct) record.value()).getStruct("after").getInt32("b").intValue());
+
+        fields = record.keySchema().fields();
+        for (int i = 0; i < fields.size(); i++) {
+            assertEquals("Key field names should in order", expectedFieldOrder[i], fields.get(i).name());
+        }
     }
 
     private void assertHeartBeatRecordInserted() {

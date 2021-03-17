@@ -321,7 +321,11 @@ Kinesis exposes a set of REST APIs and provides a (not-only) Java SDK that is us
 |
 |A region name in which the Kinesis target streams are provided.
 
-|[[kinesis-credentials-profile]]<<kinesis-credentials-profile, `debezium.sink.kinesis.creadentials.profile`>>
+|[[kinesis-endpoint]]<<kinesis-endpoint, `debezium.sink.kinesis.endpoint`>>
+|_endpoint determined by aws sdk_
+|(Optional) An endpoint url at which the Kinesis target streams are provided.
+
+|[[kinesis-credentials-profile]]<<kinesis-credentials-profile, `debezium.sink.kinesis.credentials.profile`>>
 |`default`
 |A credentials profile name used to communicate with Amazon API.
 
@@ -412,7 +416,7 @@ When the alternative implementations are not available then the default ones are
 ==== Apache Pulsar
 
 https://pulsar.apache.org/[Apache Pulsar] is high-performance, low-latency server for server-to-server messaging.
-Pulsar exposes a REST APIs and a native endopint provides a (not-only) Java client that is used to implement the sink.
+Pulsar exposes a REST APIs and a native endpoint provides a (not-only) Java client that is used to implement the sink.
 
 [cols="35%a,10%a,55%a",options="header"]
 |===
@@ -513,7 +517,7 @@ The name of the bean is used as the `debezium.sink.type` option.
 The sink needs to read the configuration using Microprofile Config API.
 The execution path must pass the messages into the target system and regularly commit the passed/processed messages.
 
-See the https://github.com/debezium/debezium/blob/master/debezium-server/src/main/java/io/debezium/server/kinesis/KinesisChangeConsumer.java[Kinesis sink] implementation for further details.
+See the https://github.com/debezium/debezium/blob/master/debezium-server/debezium-server-kinesis/src/main/java/io/debezium/server/kinesis/KinesisChangeConsumer.java[Kinesis sink] implementation for further details.
 
 
 === Customization of an existing sink

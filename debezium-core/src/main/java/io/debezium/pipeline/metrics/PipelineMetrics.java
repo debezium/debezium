@@ -118,4 +118,15 @@ public abstract class PipelineMetrics extends Metrics implements DataChangeEvent
     public int getQueueRemainingCapacity() {
         return changeEventQueueMetrics.remainingCapacity();
     }
+
+    @Override
+    public long getMaxQueueSizeInBytes() {
+        return changeEventQueueMetrics.maxQueueSizeInBytes();
+    }
+
+    @Override
+    public long getCurrentQueueSizeInBytes() {
+        return changeEventQueueMetrics.currentQueueSizeInBytes();
+    }
+
 }

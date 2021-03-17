@@ -280,6 +280,18 @@ public class Collect {
         list.set(index, value);
     }
 
+    /**
+     * Remove the content of one set from an another one.
+     *
+     * @param subtrahend the main set 
+     * @param minuend the elements to be removed
+     */
+    public static <T> Set<T> minus(Set<T> subtrahend, Set<T> minuend) {
+        final Set<T> r = new HashSet<T>(subtrahend);
+        r.removeAll(minuend);
+        return r;
+    }
+
     private Collect() {
     }
 }

@@ -152,17 +152,13 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
                 columnEditor.length(length);
             }
 
-            if (stringDataTypeContext.charsetName() != null) {
-                charsetName = stringDataTypeContext.charsetName().getText();
-            }
+            charsetName = parser.extractCharset(stringDataTypeContext.charsetName(), stringDataTypeContext.collationName());
         }
         else if (dataTypeContext instanceof MySqlParser.LongVarcharDataTypeContext) {
             // Same as StringDataTypeContext but without dimension handling
             MySqlParser.LongVarcharDataTypeContext longVarcharTypeContext = (MySqlParser.LongVarcharDataTypeContext) dataTypeContext;
 
-            if (longVarcharTypeContext.charsetName() != null) {
-                charsetName = longVarcharTypeContext.charsetName().getText();
-            }
+            charsetName = parser.extractCharset(longVarcharTypeContext.charsetName(), longVarcharTypeContext.collationName());
         }
         else if (dataTypeContext instanceof MySqlParser.NationalStringDataTypeContext) {
             MySqlParser.NationalStringDataTypeContext nationalStringDataTypeContext = (MySqlParser.NationalStringDataTypeContext) dataTypeContext;

@@ -25,6 +25,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.awaitility.Awaitility;
+import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.rnorth.ducttape.unreliables.Unreliables;
@@ -47,16 +48,16 @@ public class DebeziumContainerTest {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DebeziumContainerTest.class);
 
-    private static Network network = Network.newNetwork();
+    private static final Network network = Network.newNetwork();
 
-    private static KafkaContainer kafkaContainer = new KafkaContainer()
+    private static final KafkaContainer kafkaContainer = new KafkaContainer()
             .withNetwork(network);
 
-    public static PostgreSQLContainer<?> postgresContainer = new PostgreSQLContainer<>("debezium/postgres:11")
+    public static PostgreSQLContainer<?> postgresContainer = new PostgreSQLContainer<>(ImageNames.POSTGRES_DOCKER_IMAGE_NAME)
             .withNetwork(network)
             .withNetworkAliases("postgres");
 
-    public static DebeziumContainer debeziumContainer = new DebeziumContainer("debezium/connect:1.1.1.Final")
+    public static DebeziumContainer debeziumContainer = DebeziumContainer.latestStable()
             .withNetwork(network)
             .withKafka(kafkaContainer)
             .withLogConsumer(new Slf4jLogConsumer(LOGGER))
@@ -78,7 +79,7 @@ public class DebeziumContainerTest {
                 .atMost(Duration.ofSeconds(30))
                 .untilAsserted(
                         () -> {
-                            String status = executeHttpRequest(debeziumContainer.getConnectorStatus("my-connector-1"));
+                            String status = executeHttpRequest(debeziumContainer.getConnectorStatusUri("my-connector-1"));
 
                             assertThat(JsonPath.<String> read(status, "$.name")).isEqualTo("my-connector-1");
                             assertThat(JsonPath.<String> read(status, "$.connector.state")).isEqualTo("RUNNING");
@@ -144,7 +145,7 @@ public class DebeziumContainerTest {
         List<ConsumerRecord<String, String>> allRecords = new ArrayList<>();
 
         Unreliables.retryUntilTrue(10, TimeUnit.SECONDS, () -> {
-            consumer.poll(Duration.ofMillis(50).toMillis())
+            consumer.poll(Duration.ofMillis(50))
                     .iterator()
                     .forEachRemaining(allRecords::add);
 
@@ -167,6 +168,24 @@ public class DebeziumContainerTest {
 
         try (Response response = client.newCall(request).execute()) {
             return response.body().string();
+        }
+    }
+
+    @AfterClass
+    public static void stopContainers() {
+        try {
+            if (postgresContainer != null) {
+                postgresContainer.stop();
+            }
+            if (kafkaContainer != null) {
+                kafkaContainer.stop();
+            }
+            if (debeziumContainer != null) {
+                debeziumContainer.stop();
+            }
+        }
+        catch (Exception e) {
+            // ignored
         }
     }
 }

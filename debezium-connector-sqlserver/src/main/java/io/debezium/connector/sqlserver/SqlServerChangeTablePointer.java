@@ -13,6 +13,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import io.debezium.jdbc.JdbcConnection.ResultSetMapper;
 import io.debezium.pipeline.source.spi.ChangeTableResultSet;
 import io.debezium.relational.Column;
@@ -31,6 +34,10 @@ import io.debezium.util.ColumnUtils;
  *
  */
 public class SqlServerChangeTablePointer extends ChangeTableResultSet<SqlServerChangeTable, TxLogPosition> {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(SqlServerChangeTablePointer.class);
+
+    private static final int INVALID_COLUMN_INDEX = -1;
 
     private static final int COL_COMMIT_LSN = 1;
     private static final int COL_ROW_LSN = 2;
@@ -110,6 +117,10 @@ public class SqlServerChangeTablePointer extends ChangeTableResultSet<SqlServerC
             final Object[] data = new Object[columnMap.getGreatestColumnPosition()];
             for (int i = 0; i < resultColumnCount; i++) {
                 int index = indicesMapping.getSourceTableColumnIndex(i);
+                if (index == INVALID_COLUMN_INDEX) {
+                    LOGGER.trace("Data for table '{}' contains a column without position mapping", table.id());
+                    continue;
+                }
                 data[index] = getColumnData(resultSet, columnDataOffset + i);
             }
             return data;
@@ -133,7 +144,15 @@ public class SqlServerChangeTablePointer extends ChangeTableResultSet<SqlServerC
             this.mapping = new HashMap<>(sourceTableColumns.size(), 1.0F);
 
             for (int i = 0; i < captureInstanceColumns.size(); ++i) {
-                mapping.put(i, sourceTableColumns.get(captureInstanceColumns.get(i)).position() - 1);
+                final String columnName = captureInstanceColumns.get(i);
+                final Column column = sourceTableColumns.get(columnName);
+                if (column == null) {
+                    LOGGER.warn("Column '{}' available in capture table not found among source table columns", columnName);
+                    mapping.put(i, INVALID_COLUMN_INDEX);
+                }
+                else {
+                    mapping.put(i, column.position() - 1);
+                }
             }
 
         }

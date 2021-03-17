@@ -5,7 +5,8 @@
  */
 package io.debezium.connector.mongodb;
 
-import static io.debezium.connector.mongodb.MongoDbSchema.COMPACT_JSON_SETTINGS;
+import static io.debezium.connector.mongodb.JsonSerialization.COMPACT_JSON_SETTINGS;
+import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.fail;
 
@@ -13,6 +14,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashSet;
@@ -45,8 +48,6 @@ import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.InsertOneOptions;
-import com.mongodb.util.JSON;
-import com.mongodb.util.JSONSerializers;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
@@ -130,7 +131,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.COLLECTION_BLACKLIST);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.COLLECTION_EXCLUDE_LIST);
-        assertNoConfigurationErrors(result, MongoDbConnectorConfig.MAX_COPY_THREADS);
+        assertNoConfigurationErrors(result, MongoDbConnectorConfig.SNAPSHOT_MAX_THREADS);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.MAX_QUEUE_SIZE);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.MAX_BATCH_SIZE);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.POLL_INTERVAL_MS);
@@ -167,7 +168,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.COLLECTION_BLACKLIST);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.COLLECTION_EXCLUDE_LIST);
-        assertNoConfigurationErrors(result, MongoDbConnectorConfig.MAX_COPY_THREADS);
+        assertNoConfigurationErrors(result, MongoDbConnectorConfig.SNAPSHOT_MAX_THREADS);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.MAX_QUEUE_SIZE);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.MAX_BATCH_SIZE);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.POLL_INTERVAL_MS);
@@ -333,8 +334,8 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         Testing.debug("Update event: " + updateRecord);
         Struct insertKey = (Struct) insertRecord.key();
         Struct updateKey = (Struct) updateRecord.key();
-        String insertId = JSON.parse(insertKey.getString("id")).toString();
-        String updateId = JSON.parse(updateKey.getString("id")).toString();
+        String insertId = toObjectId(insertKey.getString("id")).toString();
+        String updateId = toObjectId(updateKey.getString("id")).toString();
         assertThat(insertId).isEqualTo(id.get());
         assertThat(updateId).isEqualTo(id.get());
 
@@ -364,7 +365,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         Testing.debug("Delete event: " + deleteRecord);
         Testing.debug("Tombstone event: " + tombStoneRecord);
         Struct deleteKey = (Struct) deleteRecord.key();
-        String deleteId = JSON.parse(deleteKey.getString("id")).toString();
+        String deleteId = toObjectId(deleteKey.getString("id")).toString();
         assertThat(deleteId).isEqualTo(id.get());
     }
 
@@ -966,6 +967,53 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
+    @FixFor("DBZ-2496")
+    public void shouldFilterItemsInCollectionWhileTakingSnapshot() throws Exception {
+        // Use the DB configuration to define the connector's configuration ...
+        config = TestHelper.getConfiguration().edit()
+                .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
+                .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
+                .with(MongoDbConnectorConfig.LOGICAL_NAME, "mongo")
+                .with(MongoDbConnectorConfig.SNAPSHOT_FILTER_QUERY_BY_COLLECTION, "dbit.simpletons,dbit.restaurants1,dbit.restaurants4")
+                .with(MongoDbConnectorConfig.SNAPSHOT_FILTER_QUERY_BY_COLLECTION + "." + "dbit.simpletons", "{ \"_id\": { \"$gt\": 4 } }")
+                .with(MongoDbConnectorConfig.SNAPSHOT_FILTER_QUERY_BY_COLLECTION + "." + "dbit.restaurants1",
+                        "{ $or: [ { cuisine: \"American \"}, { \"grades.grade\": \"Z\" } ] }")
+                .with(MongoDbConnectorConfig.SNAPSHOT_FILTER_QUERY_BY_COLLECTION + "." + "dbit.restaurants4", "{ cuisine: \"American \" , borough: \"Manhattan\"  }")
+                .build();
+
+        // Set up the replication context for connections ...
+        context = new MongoDbTaskContext(config);
+
+        // Cleanup database
+        TestHelper.cleanDatabase(primary(), "dbit");
+
+        // Before starting the connector, add data to the databases ...
+
+        // Before starting the connector, add data to the databases ...
+        storeDocuments("dbit", "simpletons", "simple_objects.json");
+        storeDocuments("dbit", "restaurants1", "restaurants1.json");
+        storeDocuments("dbit", "restaurants2", "restaurants2.json");
+        storeDocuments("dbit", "restaurants4", "restaurants4.json");
+
+        // Start the connector ...
+        start(MongoDbConnector.class, config);
+
+        // ---------------------------------------------------------------------------------------------------------------
+        // Consume all of the events due to startup and initialization of the database
+        // ---------------------------------------------------------------------------------------------------------------
+        SourceRecords records = consumeRecordsByTopic(15);
+        assertThat(records.topics().size()).isEqualTo(4);
+        assertThat(records.recordsForTopic("mongo.dbit.simpletons").size()).isEqualTo(4);
+        assertThat(records.recordsForTopic("mongo.dbit.restaurants1").size()).isEqualTo(3);
+        assertThat(records.recordsForTopic("mongo.dbit.restaurants2").size()).isEqualTo(4);
+        assertThat(records.recordsForTopic("mongo.dbit.restaurants4").size()).isEqualTo(4);
+        assertNoRecordsToConsume();
+
+        stopConnector();
+
+    }
+
+    @Test
     @FixFor("DBZ-2456")
     public void shouldSelectivelySnapshot() throws InterruptedException {
         config = TestHelper.getConfiguration().edit()
@@ -1150,8 +1198,10 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         // Set up the replication context for connections ...
         context = new MongoDbTaskContext(config);
 
-        primary().executeBlocking("Try SSL connection", mongo -> {
-            mongo.getDatabase("dbit");
+        final MongoPrimary primary = primary();
+        primary.executeBlocking("Try SSL connection", mongo -> {
+            primary.stop();
+            mongo.getDatabase("dbit").listCollectionNames().first();
         });
     }
 
@@ -1301,7 +1351,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         final Struct value = (Struct) deleteRecord.value();
 
         assertThat(key.schema()).isSameAs(deleteRecord.keySchema());
-        assertThat(key.get("id")).isEqualTo("{ \"$oid\" : \"" + objId + "\"}");
+        assertThat(key.get("id")).isEqualTo(formatObjectId(objId));
 
         assertThat(value.schema()).isSameAs(deleteRecord.valueSchema());
         // assertThat(value.getString(Envelope.FieldName.BEFORE)).isNull();
@@ -1355,7 +1405,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         final Struct value = (Struct) deleteRecord.value();
 
         assertThat(key.schema()).isSameAs(deleteRecord.keySchema());
-        assertThat(key.get("id")).isEqualTo(JSONSerializers.getStrict().serialize(objId));
+        assertThat(key.get("id")).isEqualTo(formatObjectId(objId));
 
         Document patchObj = Document.parse(value.getString(MongoDbFieldName.PATCH));
         patchObj.remove("$v");
@@ -1408,7 +1458,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         final Struct value = (Struct) deleteRecord.value();
 
         assertThat(key.schema()).isSameAs(deleteRecord.keySchema());
-        assertThat(key.get("id")).isEqualTo(JSONSerializers.getStrict().serialize(objId));
+        assertThat(key.get("id")).isEqualTo(formatObjectId(objId));
 
         assertThat(value.schema()).isSameAs(deleteRecord.valueSchema());
         assertThat(value.getString(Envelope.FieldName.AFTER)).isNull();
@@ -1423,7 +1473,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         final SourceRecord tombstoneRecord = records.allRecordsInOrder().get(1);
         final Struct tombstoneKey = (Struct) tombstoneRecord.key();
         assertThat(tombstoneKey.schema()).isSameAs(tombstoneRecord.keySchema());
-        assertThat(tombstoneKey.get("id")).isEqualTo(JSONSerializers.getStrict().serialize(objId));
+        assertThat(tombstoneKey.get("id")).isEqualTo(formatObjectId(objId));
         assertThat(tombstoneRecord.value()).isNull();
         assertThat(tombstoneRecord.valueSchema()).isNull();
     }
@@ -1467,7 +1517,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         final Struct value = (Struct) record.value();
 
         assertThat(key.schema()).isSameAs(record.keySchema());
-        assertThat(key.get("id")).isEqualTo(JSONSerializers.getStrict().serialize(objId));
+        assertThat(key.get("id")).isEqualTo(formatObjectId(objId));
 
         assertThat(value.schema()).isSameAs(record.valueSchema());
         assertThat(value.getString(Envelope.FieldName.AFTER)).isNull();
@@ -1534,13 +1584,14 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
 
         assertSourceRecordKeyFieldIsEqualTo(sourceRecords.get(0), "id", "2147483657");
         assertSourceRecordKeyFieldIsEqualTo(sourceRecords.get(1), "id", "\"123\"");
-        assertSourceRecordKeyFieldIsEqualTo(sourceRecords.get(2), "id", "{ \"company\" : 32 , \"dept\" : \"home improvement\"}");
+        assertSourceRecordKeyFieldIsEqualTo(sourceRecords.get(2), "id", "{\"company\": 32,\"dept\": \"home improvement\"}");
         // that's actually not what https://docs.mongodb.com/manual/reference/mongodb-extended-json/#date suggests;
         // seems JsonSerializers is not fully compliant with that description
-        assertSourceRecordKeyFieldIsEqualTo(sourceRecords.get(3), "id", "{ \"$date\" : " + cal.getTime().getTime() + "}");
+        assertSourceRecordKeyFieldIsEqualTo(sourceRecords.get(3), "id",
+                "{\"$date\": \"" + ZonedDateTime.ofInstant(Instant.ofEpochMilli(cal.getTimeInMillis()), ZoneId.of("Z")).format(ISO_OFFSET_DATE_TIME) + "\"}");
 
         if (decimal128Supported) {
-            assertSourceRecordKeyFieldIsEqualTo(sourceRecords.get(4), "id", "{ \"$numberDecimal\" : \"123.45678\"}");
+            assertSourceRecordKeyFieldIsEqualTo(sourceRecords.get(4), "id", "{\"$numberDecimal\": \"123.45678\"}");
         }
     }
 
@@ -1580,7 +1631,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         final Struct key = (Struct) record.key();
         final Struct value = (Struct) record.value();
         assertThat(key.schema()).isSameAs(record.keySchema());
-        assertThat(key.get("id")).isEqualTo("{ \"$oid\" : \"" + objId + "\"}");
+        assertThat(key.get("id")).isEqualTo(formatObjectId(objId));
 
         assertThat(value.schema()).isSameAs(record.valueSchema());
 
@@ -1711,7 +1762,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
             VerifyRecord.isValid(record);
 
             final Struct key = (Struct) record.key();
-            final ObjectId id = (ObjectId) (JSON.parse(key.getString("id")));
+            final ObjectId id = toObjectId(key.getString("id"));
             foundIds.add(id);
             if (record.value() != null) {
                 final Struct value = (Struct) record.value();
@@ -1849,7 +1900,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         final Struct value = (Struct) deleteRecord.value();
 
         assertThat(key.schema()).isSameAs(deleteRecord.keySchema());
-        assertThat(key.get("id")).isEqualTo(JSONSerializers.getStrict().serialize(objId));
+        assertThat(key.get("id")).isEqualTo(formatObjectId(objId));
 
         Document patchObj = Document.parse(value.getString(MongoDbFieldName.PATCH));
         patchObj.remove("$v");
@@ -1859,6 +1910,10 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         assertThat(patchObj.toJson(COMPACT_JSON_SETTINGS)).isEqualTo(updateObj.toJson(COMPACT_JSON_SETTINGS));
         assertThat(value.getString(Envelope.FieldName.OPERATION)).isEqualTo(Operation.UPDATE.code());
         assertThat(value.getInt64(Envelope.FieldName.TIMESTAMP)).isGreaterThanOrEqualTo(timestamp.toEpochMilli());
+    }
+
+    private String formatObjectId(ObjectId objId) {
+        return "{\"$oid\": \"" + objId + "\"}";
     }
 
     private void insertDocuments(String dbName, String collectionName, Document... documents) {
@@ -1891,5 +1946,9 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
             Document filter = Document.parse("{\"_id\": {\"$oid\": \"" + objectId + "\"}}");
             coll.deleteOne(filter);
         });
+    }
+
+    private ObjectId toObjectId(String oid) {
+        return new ObjectId(oid.substring(10, oid.length() - 2));
     }
 }

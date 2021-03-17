@@ -11,7 +11,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
-import java.util.regex.Pattern;
 
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
@@ -23,11 +22,14 @@ import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.config.Field.ValidationOutput;
+import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.Key.CustomKeyMapper;
 import io.debezium.relational.Key.KeyMapper;
 import io.debezium.relational.Selectors.TableIdToStringMapper;
+import io.debezium.relational.Tables.ColumnNameFilter;
+import io.debezium.relational.Tables.ColumnNameFilterFactory;
 import io.debezium.relational.Tables.TableFilter;
 
 /**
@@ -39,15 +41,20 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
 
     protected static final String SCHEMA_INCLUDE_LIST_NAME = "schema.include.list";
     protected static final String SCHEMA_EXCLUDE_LIST_NAME = "schema.exclude.list";
+    protected static final String DATABASE_WHITELIST_NAME = "database.whitelist";
+    protected static final String DATABASE_INCLUDE_LIST_NAME = "database.include.list";
+    protected static final String DATABASE_BLACKLIST_NAME = "database.blacklist";
+    protected static final String DATABASE_EXCLUDE_LIST_NAME = "database.exclude.list";
     protected static final String TABLE_BLACKLIST_NAME = "table.blacklist";
     protected static final String TABLE_EXCLUDE_LIST_NAME = "table.exclude.list";
     protected static final String TABLE_WHITELIST_NAME = "table.whitelist";
     protected static final String TABLE_INCLUDE_LIST_NAME = "table.include.list";
-    private static final Pattern MSG_KEY_COLUMNS_PATTERN = Pattern.compile("^(([^:]+):([^:;\\s]+))+[^;]$");
+
     public static final long DEFAULT_SNAPSHOT_LOCK_TIMEOUT_MILLIS = TimeUnit.SECONDS.toMillis(10);
     public static final String TABLE_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG = "\"table.include.list\" or \"table.whitelist\" is already specified";
     public static final String COLUMN_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG = "\"column.include.list\" or \"column.whitelist\" is already specified";
     public static final String SCHEMA_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG = "\"schema.include.list\" or \"schema.whitelist\" is already specified";
+    protected static final String DATABASE_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG = "\"database.include.list\" is already specified";
 
     /**
      * The set of predefined DecimalHandlingMode options or aliases.
@@ -129,6 +136,45 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
         }
     }
 
+    public static final Field HOSTNAME = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.HOSTNAME)
+            .withDisplayName("Hostname")
+            .withType(Type.STRING)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.HIGH)
+            .withValidation(Field::isRequired)
+            .withDescription("Resolvable hostname or IP address of the database server.");
+
+    public static final Field PORT = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.PORT)
+            .withDisplayName("Port")
+            .withType(Type.INT)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.HIGH)
+            .withValidation(Field::isInteger)
+            .withDescription("Port of the database server.");
+
+    public static final Field USER = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.USER)
+            .withDisplayName("User")
+            .withType(Type.STRING)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.HIGH)
+            .withValidation(Field::isRequired)
+            .withDescription("Name of the database user to be used when connecting to the database.");
+
+    public static final Field PASSWORD = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.PASSWORD)
+            .withDisplayName("Password")
+            .withType(Type.PASSWORD)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.HIGH)
+            .withDescription("Password of the database user to be used when connecting to the database.");
+
+    public static final Field DATABASE_NAME = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.DATABASE)
+            .withDisplayName("Database")
+            .withType(Type.STRING)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.HIGH)
+            .withValidation(Field::isRequired)
+            .withDescription("The name of the database the connector should be monitoring");
+
     public static final Field SERVER_NAME = Field.create(DATABASE_CONFIG_PREFIX + "server.name")
             .withDisplayName("Namespace")
             .withType(Type.STRING)
@@ -178,7 +224,6 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withWidth(Width.LONG)
             .withImportance(Importance.MEDIUM)
             .withValidation(Field::isListOfRegex, RelationalDatabaseConnectorConfig::validateTableExcludeList)
-            .withInvisibleRecommender()
             .withDescription("A comma-separated list of regular expressions that match the fully-qualified names of tables to be excluded from monitoring");
 
     /**
@@ -349,6 +394,52 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withInvisibleRecommender()
             .withDescription("The schemas for which events must not be captured (deprecated, use \"" + SCHEMA_EXCLUDE_LIST.name() + "\" instead)");
 
+    /**
+     * A comma-separated list of regular expressions that match database names to be monitored.
+     * Must not be used with {@link #DATABASE_BLACKLIST}.
+     */
+    public static final Field DATABASE_INCLUDE_LIST = Field.create(DATABASE_INCLUDE_LIST_NAME)
+            .withDisplayName("Include Databases")
+            .withType(Type.LIST)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.HIGH)
+            .withDependents(TABLE_INCLUDE_LIST_NAME, TABLE_WHITELIST_NAME)
+            .withValidation(Field::isListOfRegex)
+            .withDescription("The databases for which changes are to be captured");
+
+    @Deprecated
+    public static final Field DATABASE_WHITELIST = Field.create(DATABASE_WHITELIST_NAME)
+            .withDisplayName("Deprecated: Include Databases")
+            .withType(Type.LIST)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.LOW)
+            .withValidation(Field::isListOfRegex)
+            .withInvisibleRecommender()
+            .withDescription("The databases for which changes are to be captured (deprecated, use \"" + DATABASE_INCLUDE_LIST.name() + "\" instead)");
+
+    /**
+     * A comma-separated list of regular expressions that match database names to be excluded from monitoring.
+     * Must not be used with {@link #DATABASE_INCLUDE_LIST}.
+     */
+    public static final Field DATABASE_EXCLUDE_LIST = Field.create(DATABASE_EXCLUDE_LIST_NAME)
+            .withDisplayName("Exclude Databases")
+            .withType(Type.LIST)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.MEDIUM)
+            .withValidation(Field::isListOfRegex, RelationalDatabaseConnectorConfig::validateDatabaseExcludeList)
+            .withDescription("A comma-separated list of regular expressions that match database names to be excluded from monitoring");
+
+    @Deprecated
+    public static final Field DATABASE_BLACKLIST = Field.create(DATABASE_BLACKLIST_NAME)
+            .withDisplayName("Deprecated: Exclude Databases")
+            .withType(Type.LIST)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.LOW)
+            .withValidation(Field::isListOfRegex, RelationalDatabaseConnectorConfig::validateDatabaseExcludeList)
+            .withInvisibleRecommender()
+            .withDescription("A comma-separated list of regular expressions that match database names to be excluded from monitoring (deprecated, use \""
+                    + DATABASE_EXCLUDE_LIST.name() + "\" instead)");
+
     public static final Field TIME_PRECISION_MODE = Field.create("time.precision.mode")
             .withDisplayName("Time Precision")
             .withEnum(TemporalPrecisionMode.class, TemporalPrecisionMode.ADAPTIVE)
@@ -416,6 +507,16 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withDescription("A comma-separated list of regular expressions matching the database-specific data type names that "
                     + "adds the data type's original type and original length as parameters to the corresponding field schemas in the emitted change records.");
 
+    public static final Field SNAPSHOT_FULL_COLUMN_SCAN_FORCE = Field.createInternal("snapshot.scan.all.columns.force")
+            .withDisplayName("Snapshot force scan all columns of all tables")
+            .withType(Type.BOOLEAN)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription("Restore pre 1.5 behaviour and scan all tables to discover columns."
+                    + " If you are excluding one table then turning this on may improve performance."
+                    + " If you are excluding a lot of tables the default behavour should work well.")
+            .withDefault(false);
+
     protected static final ConfigDefinition CONFIG_DEFINITION = CommonConnectorConfig.CONFIG_DEFINITION.edit()
             .type(
                     SERVER_NAME)
@@ -444,16 +545,19 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
                     TRUNCATE_COLUMN,
                     INCLUDE_SCHEMA_CHANGES,
                     PROPAGATE_COLUMN_SOURCE_TYPE,
-                    PROPAGATE_DATATYPE_SOURCE_TYPE)
+                    PROPAGATE_DATATYPE_SOURCE_TYPE,
+                    SNAPSHOT_FULL_COLUMN_SCAN_FORCE)
             .create();
 
     private final RelationalTableFilters tableFilters;
+    private final ColumnNameFilter columnFilter;
     private final TemporalPrecisionMode temporalPrecisionMode;
     private final KeyMapper keyMapper;
     private final TableIdToStringMapper tableIdMapper;
 
     protected RelationalDatabaseConnectorConfig(Configuration config, String logicalName, TableFilter systemTablesFilter,
-                                                TableIdToStringMapper tableIdMapper, int defaultSnapshotFetchSize) {
+                                                TableIdToStringMapper tableIdMapper, int defaultSnapshotFetchSize,
+                                                ColumnFilterMode columnFilterMode) {
         super(config, logicalName, defaultSnapshotFetchSize);
 
         this.temporalPrecisionMode = TemporalPrecisionMode.parse(config.getString(TIME_PRECISION_MODE));
@@ -466,6 +570,16 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
         // handled by sub-classes for the time being
         else {
             this.tableFilters = null;
+        }
+
+        String columnExcludeList = config.getFallbackStringProperty(COLUMN_EXCLUDE_LIST, COLUMN_BLACKLIST);
+        String columnIncludeList = config.getFallbackStringProperty(COLUMN_INCLUDE_LIST, COLUMN_WHITELIST);
+
+        if (columnIncludeList != null) {
+            this.columnFilter = ColumnNameFilterFactory.createIncludeListFilter(columnIncludeList, columnFilterMode);
+        }
+        else {
+            this.columnFilter = ColumnNameFilterFactory.createExcludeListFilter(columnExcludeList, columnFilterMode);
         }
     }
 
@@ -515,12 +629,12 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
         return getConfig().getFallbackStringProperty(TABLE_INCLUDE_LIST, TABLE_WHITELIST);
     }
 
-    public String columnExcludeList() {
-        return getConfig().getFallbackStringProperty(COLUMN_EXCLUDE_LIST, COLUMN_BLACKLIST);
+    public ColumnNameFilter getColumnFilter() {
+        return columnFilter;
     }
 
-    public String columnIncludeList() {
-        return getConfig().getFallbackStringProperty(COLUMN_INCLUDE_LIST, COLUMN_WHITELIST);
+    public Boolean isFullColummnScanRequired() {
+        return getConfig().getBoolean(SNAPSHOT_FULL_COLUMN_SCAN_FORCE);
     }
 
     private static int validateColumnExcludeList(Configuration config, Field field, Field.ValidationOutput problems) {
@@ -534,6 +648,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
         return 0;
     }
 
+    @Override
     public boolean isSchemaChangesHistoryEnabled() {
         return getConfig().getBoolean(INCLUDE_SCHEMA_CHANGES);
     }
@@ -586,12 +701,33 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
         return 0;
     }
 
-    private static int validateMessageKeyColumnsField(Configuration config, Field field, Field.ValidationOutput problems) {
-        String msgKeyColumns = config.getString(MSG_KEY_COLUMNS);
-        if (msgKeyColumns != null && !MSG_KEY_COLUMNS_PATTERN.asPredicate().test(msgKeyColumns)) {
-            problems.accept(MSG_KEY_COLUMNS, msgKeyColumns, MSG_KEY_COLUMNS.name() + " has an invalid format (expecting '" + MSG_KEY_COLUMNS_PATTERN.pattern() + "')");
+    private static int validateDatabaseExcludeList(Configuration config, Field field, ValidationOutput problems) {
+        String includeList = config.getString(DATABASE_INCLUDE_LIST);
+        String excludeList = config.getString(DATABASE_EXCLUDE_LIST);
+        if (includeList != null && excludeList != null) {
+            problems.accept(DATABASE_EXCLUDE_LIST, excludeList, DATABASE_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG);
             return 1;
         }
         return 0;
+    }
+
+    private static int validateMessageKeyColumnsField(Configuration config, Field field, Field.ValidationOutput problems) {
+        String msgKeyColumns = config.getString(MSG_KEY_COLUMNS);
+        int problemCount = 0;
+
+        if (msgKeyColumns != null) {
+            if (msgKeyColumns.isEmpty()) {
+                problems.accept(MSG_KEY_COLUMNS, "", "Must not be empty");
+            }
+
+            for (String substring : CustomKeyMapper.PATTERN_SPLIT.split(msgKeyColumns)) {
+                if (!CustomKeyMapper.MSG_KEY_COLUMNS_PATTERN.asPredicate().test(substring)) {
+                    problems.accept(MSG_KEY_COLUMNS, substring,
+                            substring + " has an invalid format (expecting '" + CustomKeyMapper.MSG_KEY_COLUMNS_PATTERN.pattern() + "')");
+                    problemCount++;
+                }
+            }
+        }
+        return problemCount;
     }
 }

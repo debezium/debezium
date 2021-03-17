@@ -35,6 +35,7 @@ import io.debezium.engine.DebeziumEngine.ChangeConsumer;
 import io.debezium.engine.format.Avro;
 import io.debezium.engine.format.Json;
 import io.debezium.engine.format.Protobuf;
+import io.quarkus.runtime.Quarkus;
 import io.quarkus.runtime.ShutdownEvent;
 import io.quarkus.runtime.Startup;
 
@@ -136,7 +137,14 @@ public class DebeziumServer {
                 .using((DebeziumEngine.CompletionCallback) health)
                 .build();
 
-        executor.execute(() -> engine.run());
+        executor.execute(() -> {
+            try {
+                engine.run();
+            }
+            finally {
+                Quarkus.asyncExit();
+            }
+        });
         LOGGER.info("Engine executor started");
     }
 

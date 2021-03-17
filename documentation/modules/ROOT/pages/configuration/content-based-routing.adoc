@@ -76,6 +76,17 @@ ifdef::product[]
 . Restart the Kafka Connect process to pick up the new JAR files.
 endif::product[]
 
+The Groovy language needs the following libraries on the classpath:
+
+* `groovy`
+* `groovy-json` (optional)
+* `groovy-jsr223`
+
+The JavaScript language needs the following libraries on the classpath:
+
+* `graalvm.js`
+* `graalvm.js.scriptengine`
+
 // Type: concept
 // ModuleID: example-debezium-basic-content-based-routing-configuration
 // Title: Example: {prodname} basic content-based routing configuration 
@@ -144,6 +155,13 @@ When the routing condition in an expression evaluates to `true`, the message is 
 When the routing condition evaluates to `false`, the message is removed.
 
 Expressions should not result in any side-effects. That is, they should not modify any variables that they pass.
+
+[NOTE]
+====
+{prodname} emits not only data change events, but also metadata messages about schema changes, transactions, or heartbeat messages.
+Typically, routing expressions should not be applied to such messages, as their structure is different from what is usually expected by the expression.
+It is recommended to use either the xref:content-based-router-topic-regex[topic.regex] configuration option or an link:https://cwiki.apache.org/confluence/display/KAFKA/KIP-585%3A+Filter+and+Conditional+SMTs[SMT predicate] to ensure that the expression is applied only to data change events.
+====
 
 // Type: reference
 // ModuleID: configuration-of-content-based-routing-conditions-for-other-scripting-languages

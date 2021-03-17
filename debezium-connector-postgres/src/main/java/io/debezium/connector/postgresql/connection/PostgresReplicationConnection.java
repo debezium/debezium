@@ -83,6 +83,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
      * @param tableFilter               the tables to watch of the DB publication for logical replication; may not be null
      * @param publicationAutocreateMode the mode for publication autocreation; may not be null
      * @param plugin                    decoder matching the server side plug-in used for streaming changes; may not be null
+     * @param truncateHandlingMode      the mode for truncate handling; may not be null
      * @param dropSlotOnClose           whether the replication slot should be dropped once the connection is closed
      * @param statusUpdateInterval      the interval at which the replication connection should periodically send status
      * @param exportSnapshot            whether the replication should export a snapshot when created
@@ -99,6 +100,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                                           RelationalTableFilters tableFilter,
                                           PostgresConnectorConfig.AutoCreateMode publicationAutocreateMode,
                                           PostgresConnectorConfig.LogicalDecoder plugin,
+                                          PostgresConnectorConfig.TruncateHandlingMode truncateHandlingMode,
                                           boolean dropSlotOnClose,
                                           boolean exportSnapshot,
                                           boolean doSnapshot,
@@ -117,7 +119,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         this.dropSlotOnClose = dropSlotOnClose;
         this.statusUpdateInterval = statusUpdateInterval;
         this.exportSnapshot = exportSnapshot;
-        this.messageDecoder = plugin.messageDecoder(new MessageDecoderConfig(config, schema, publicationName, exportSnapshot, doSnapshot));
+        this.messageDecoder = plugin.messageDecoder(new MessageDecoderConfig(config, schema, publicationName, exportSnapshot, doSnapshot, truncateHandlingMode));
         this.typeRegistry = typeRegistry;
         this.streamParams = streamParams;
         this.slotCreationInfo = null;
@@ -155,6 +157,9 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                                     try {
                                         Set<TableId> tablesToCapture = determineCapturedTables();
                                         tableFilterString = tablesToCapture.stream().map(TableId::toDoubleQuotedString).collect(Collectors.joining(", "));
+                                        if (tableFilterString.isEmpty()) {
+                                            throw new DebeziumException(String.format("No table filters found for filtered publication %s", publicationName));
+                                        }
                                         createPublicationStmt = String.format("CREATE PUBLICATION %s FOR TABLE %s;", publicationName, tableFilterString);
                                         LOGGER.info("Creating Publication with statement '{}'", createPublicationStmt);
                                         // Publication doesn't exist, create it but restrict to the tableFilter.
@@ -272,7 +277,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
      * 4. actually start the streamer
      * <p>
      * This method takes care of all of these and this method queries for a default starting position
-     * If you know where you are starting from you should call {@link #startStreaming(Long)}, this method
+     * If you know where you are starting from you should call {@link #startStreaming(Lsn, WalPositionLocator)}, this method
      * delegates to that method
      *
      * @return
@@ -321,15 +326,15 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
 
     @Override
     public Optional<SlotCreationResult> createReplicationSlot() throws SQLException {
-        // note that some of these options are only supported in pg94+, additionally
-        // the options are not yet exported by the jdbc api wrapper, therefore, we just do this ourselves
-        // but eventually this should be moved back to the jdbc API
+        // note that some of these options are only supported in Postgres 9.4+, additionally
+        // the options are not yet exported by the jdbc api wrapper, therefore, we just do
+        // this ourselves but eventually this should be moved back to the jdbc API
         // see https://github.com/pgjdbc/pgjdbc/issues/1305
 
         LOGGER.debug("Creating new replication slot '{}' for plugin '{}'", slotName, plugin);
         String tempPart = "";
-        // Exported snapshots are supported in PostgreSQL 9.4+
-        Boolean canExportSnapshot = pgConnection().haveMinimumServerVersion(ServerVersion.v9_4);
+        // Exported snapshots are supported in Postgres 9.4+
+        boolean canExportSnapshot = pgConnection().haveMinimumServerVersion(ServerVersion.v9_4);
         if ((dropSlotOnClose || exportSnapshot) && !canExportSnapshot) {
             LOGGER.warn("A slot marked as temporary or with an exported snapshot was created, " +
                     "but not on a supported version of Postgres, ignoring!");
@@ -350,8 +355,8 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                     plugin.getPostgresPluginName());
             LOGGER.info("Creating replication slot with command {}", createCommand);
             stmt.execute(createCommand);
-            // when we are in pg94+, we can parse the slot creation info, otherwise, it returns
-            // nothing
+            // when we are in Postgres 9.4+, we can parse the slot creation info,
+            // otherwise, it returns nothing
             if (canExportSnapshot) {
                 this.slotCreationInfo = parseSlotCreation(stmt.getResultSet());
             }
@@ -375,11 +380,11 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                 return new SlotCreationResult(slotName, startPoint, snapName, pluginName);
             }
             else {
-                throw new ConnectException("expected response to create_replication_slot");
+                throw new ConnectException("No replication slot found");
             }
         }
         catch (SQLException ex) {
-            throw new ConnectException("unable to parse create_replication_slot", ex);
+            throw new ConnectException("Unable to parse create_replication_slot response", ex);
         }
     }
 
@@ -446,6 +451,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
 
             @Override
             public void read(ReplicationMessageProcessor processor) throws SQLException, InterruptedException {
+                processWarnings(false);
                 ByteBuffer read = stream.read();
                 final Lsn lastReceiveLsn = Lsn.valueOf(stream.getLastReceiveLSN());
                 LOGGER.trace("Streaming requested from LSN {}, received LSN {}", startLsn, lastReceiveLsn);
@@ -457,6 +463,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
 
             @Override
             public boolean readPending(ReplicationMessageProcessor processor) throws SQLException, InterruptedException {
+                processWarnings(false);
                 ByteBuffer read = stream.readPending();
                 final Lsn lastReceiveLsn = Lsn.valueOf(stream.getLastReceiveLSN());
                 LOGGER.trace("Streaming requested from LSN {}, received LSN {}", startLsn, lastReceiveLsn);
@@ -540,6 +547,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                         LOGGER.debug("Server-side message: '{}', state = {}, code = {}",
                                 w.getMessage(), w.getSQLState(), w.getErrorCode());
                     }
+                    connection().clearWarnings();
                 }
             }
 
@@ -626,6 +634,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         private RelationalTableFilters tableFilter;
         private PostgresConnectorConfig.AutoCreateMode publicationAutocreateMode = PostgresConnectorConfig.AutoCreateMode.ALL_TABLES;
         private PostgresConnectorConfig.LogicalDecoder plugin = PostgresConnectorConfig.LogicalDecoder.DECODERBUFS;
+        private PostgresConnectorConfig.TruncateHandlingMode truncateHandlingMode;
         private boolean dropSlotOnClose = DEFAULT_DROP_SLOT_ON_CLOSE;
         private Duration statusUpdateIntervalVal;
         private boolean exportSnapshot = DEFAULT_EXPORT_SNAPSHOT;
@@ -675,6 +684,13 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         }
 
         @Override
+        public Builder withTruncateHandlingMode(PostgresConnectorConfig.TruncateHandlingMode truncateHandlingMode) {
+            assert truncateHandlingMode != null;
+            this.truncateHandlingMode = truncateHandlingMode;
+            return this;
+        }
+
+        @Override
         public ReplicationConnectionBuilder dropSlotOnClose(final boolean dropSlotOnClose) {
             this.dropSlotOnClose = dropSlotOnClose;
             return this;
@@ -719,8 +735,8 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         @Override
         public ReplicationConnection build() {
             assert plugin != null : "Decoding plugin name is not set";
-            return new PostgresReplicationConnection(config, slotName, publicationName, tableFilter, publicationAutocreateMode, plugin, dropSlotOnClose, exportSnapshot,
-                    doSnapshot, statusUpdateIntervalVal, typeRegistry, slotStreamParams, schema);
+            return new PostgresReplicationConnection(config, slotName, publicationName, tableFilter, publicationAutocreateMode, plugin, truncateHandlingMode,
+                    dropSlotOnClose, exportSnapshot, doSnapshot, statusUpdateIntervalVal, typeRegistry, slotStreamParams, schema);
         }
 
         @Override

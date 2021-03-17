@@ -31,12 +31,12 @@ public class SchemaChangeEvent {
     private final Map<String, ?> offset;
     private final Struct source;
     private final boolean isFromSnapshot;
-    private final TableChanges tableChanges = new TableChanges();
+    private TableChanges tableChanges = new TableChanges();
 
     public SchemaChangeEvent(Map<String, ?> partition, Map<String, ?> offset, Struct source, String database, String schema, String ddl, Table table,
                              SchemaChangeEventType type,
                              boolean isFromSnapshot) {
-        this(partition, offset, source, database, schema, ddl, table != null ? Collections.singleton(table) : null, type, isFromSnapshot);
+        this(partition, offset, source, database, schema, ddl, table != null ? Collections.singleton(table) : Collections.emptySet(), type, isFromSnapshot);
     }
 
     public SchemaChangeEvent(Map<String, ?> partition, Map<String, ?> offset, Struct source, String database, String schema, String ddl, Set<Table> tables,
@@ -46,7 +46,8 @@ public class SchemaChangeEvent {
         this.offset = Objects.requireNonNull(offset, "offset must not be null");
         this.source = Objects.requireNonNull(source, "source must not be null");
         this.database = Objects.requireNonNull(database, "database must not be null");
-        this.schema = Objects.requireNonNull(schema, "schema must not be null");
+        // schema is not mandatory for all databases
+        this.schema = schema;
         // DDL is not mandatory
         this.ddl = ddl;
         this.tables = Objects.requireNonNull(tables, "tables must not be null");
@@ -61,6 +62,8 @@ public class SchemaChangeEvent {
                 break;
             case DROP:
                 tables.forEach(tableChanges::drop);
+                break;
+            case DATABASE:
                 break;
         }
     }
@@ -107,12 +110,19 @@ public class SchemaChangeEvent {
 
     @Override
     public String toString() {
-        return "SchemaChangeEvent [ddl=" + ddl + ", tables=" + tables + ", type=" + type + "]";
+        return "SchemaChangeEvent [database=" + database + ", schema=" + schema + ", ddl=" + ddl + ", tables=" + tables
+                + ", type=" + type + "]";
     }
 
+    /**
+     * Type describing the content of the event.
+     * CREATE, ALTER, DROP - corresponds to table operations
+     * DATABASE - an event common to the database, like CREATE/DROP DATABASE or SET...
+     */
     public static enum SchemaChangeEventType {
         CREATE,
         ALTER,
-        DROP;
+        DROP,
+        DATABASE;
     }
 }

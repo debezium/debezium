@@ -17,6 +17,7 @@ import org.hibernate.boot.jaxb.hbm.spi.JaxbHbmIdentifierGeneratorDefinitionType;
 import org.hibernate.boot.jaxb.hbm.spi.JaxbHbmRootEntityType;
 import org.hibernate.boot.jaxb.hbm.spi.JaxbHbmSimpleIdType;
 
+import io.debezium.outbox.quarkus.internal.EventDispatcher;
 import io.debezium.outbox.quarkus.internal.JsonNodeAttributeConverter;
 
 /**
@@ -49,6 +50,7 @@ public class OutboxEventHbmWriter {
         entityType.getAttributes().add(createTypeAttribute(config));
         entityType.getAttributes().add(createTimestampAttribute(config));
         entityType.getAttributes().add(createPayloadAttribute(config, outboxEventEntityBuildItem));
+        entityType.getAttributes().add(createTracingSpanAttribute(config));
 
         return mapping;
     }
@@ -174,6 +176,25 @@ public class OutboxEventHbmWriter {
         }
         else if (isJacksonJsonNode) {
             column.setSqlType("varchar(8000)");
+        }
+
+        attribute.getColumnOrFormula().add(column);
+
+        return attribute;
+    }
+
+    private static JaxbHbmBasicAttributeType createTracingSpanAttribute(DebeziumOutboxConfig config) {
+        final JaxbHbmBasicAttributeType attribute = new JaxbHbmBasicAttributeType();
+        attribute.setName(EventDispatcher.TRACING_SPAN_CONTEXT);
+        attribute.setNotNull(false);
+        attribute.setTypeAttribute("string");
+
+        final JaxbHbmColumnType column = new JaxbHbmColumnType();
+        column.setName(config.tracingSpan.name);
+        column.setLength(256);
+
+        if (config.tracingSpan.columnDefinition.isPresent()) {
+            column.setSqlType(config.tracingSpan.columnDefinition.get());
         }
 
         attribute.getColumnOrFormula().add(column);

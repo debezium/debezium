@@ -14,7 +14,9 @@ import java.math.BigDecimal;
 import java.nio.charset.Charset;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.OffsetTime;
 import java.time.ZoneOffset;
@@ -38,6 +40,7 @@ import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.errors.ConnectException;
+import org.postgresql.PGStatement;
 import org.postgresql.geometric.PGpoint;
 import org.postgresql.jdbc.PgArray;
 import org.postgresql.util.HStoreConverter;
@@ -64,6 +67,7 @@ import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.Column;
 import io.debezium.relational.ValueConverter;
+import io.debezium.time.Conversions;
 import io.debezium.time.Interval;
 import io.debezium.time.MicroDuration;
 import io.debezium.time.MicroTime;
@@ -83,6 +87,18 @@ import io.debezium.util.Strings;
  * @author Horia Chiorean (hchiorea@redhat.com)
  */
 public class PostgresValueConverter extends JdbcValueConverters {
+
+    public static final Timestamp POSITIVE_INFINITY_TIMESTAMP = new Timestamp(PGStatement.DATE_POSITIVE_INFINITY);
+    public static final Instant POSITIVE_INFINITY_INSTANT = Conversions.toInstantFromMicros(PGStatement.DATE_POSITIVE_INFINITY);
+    public static final LocalDateTime POSITIVE_INFINITY_LOCAL_DATE_TIME = LocalDateTime.ofInstant(POSITIVE_INFINITY_INSTANT, ZoneOffset.UTC);
+    public static final OffsetDateTime POSITIVE_INFINITY_OFFSET_DATE_TIME = OffsetDateTime.ofInstant(Conversions.toInstantFromMillis(PGStatement.DATE_POSITIVE_INFINITY),
+            ZoneOffset.UTC);
+
+    public static final Timestamp NEGATIVE_INFINITY_TIMESTAMP = new Timestamp(PGStatement.DATE_NEGATIVE_INFINITY);
+    public static final Instant NEGATIVE_INFINITY_INSTANT = Conversions.toInstantFromMicros(PGStatement.DATE_NEGATIVE_INFINITY);
+    public static final LocalDateTime NEGATIVE_INFINITY_LOCAL_DATE_TIME = LocalDateTime.ofInstant(NEGATIVE_INFINITY_INSTANT, ZoneOffset.UTC);
+    public static final OffsetDateTime NEGATIVE_INFINITY_OFFSET_DATE_TIME = OffsetDateTime.ofInstant(Conversions.toInstantFromMillis(PGStatement.DATE_NEGATIVE_INFINITY),
+            ZoneOffset.UTC);
 
     /**
      * Variable scale decimal/numeric is defined by metadata
@@ -748,6 +764,13 @@ public class PostgresValueConverter extends JdbcValueConverters {
             data = OffsetDateTime.ofInstant(((Date) data).toInstant(), ZoneOffset.UTC);
         }
 
+        if (POSITIVE_INFINITY_OFFSET_DATE_TIME.equals(data)) {
+            return "infinity";
+        }
+        else if (NEGATIVE_INFINITY_OFFSET_DATE_TIME.equals(data)) {
+            return "-infinity";
+        }
+
         return super.convertTimestampWithZone(column, fieldDefn, data);
     }
 
@@ -937,7 +960,18 @@ public class PostgresValueConverter extends JdbcValueConverters {
         }
         final Timestamp timestamp = (Timestamp) data;
 
-        return timestamp.toLocalDateTime();
+        if (POSITIVE_INFINITY_TIMESTAMP.equals(timestamp)) {
+            return POSITIVE_INFINITY_LOCAL_DATE_TIME;
+        }
+        else if (NEGATIVE_INFINITY_TIMESTAMP.equals(timestamp)) {
+            return NEGATIVE_INFINITY_LOCAL_DATE_TIME;
+        }
+
+        final Instant instant = timestamp.toInstant();
+        final LocalDateTime utcTime = LocalDateTime
+                .ofInstant(instant, ZoneOffset.systemDefault());
+
+        return utcTime;
     }
 
     @Override

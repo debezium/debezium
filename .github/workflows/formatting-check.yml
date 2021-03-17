@@ -9,7 +9,7 @@ jobs:
     - uses: actions/checkout@v2
 
     - name: Set up JDK
-      uses: actions/setup-java@v1.3.0
+      uses: actions/setup-java@v1.4.3
       with:
         java-version: "14"
 
@@ -21,4 +21,4 @@ jobs:
           ${{ runner.os }}-maven-
 
     - name: Run formatting and import order checks
-      run: mvn clean install -DskipTests=true -DskipITs=true -Dformat.formatter.goal=validate -Dformat.imports.goal=check
+      run: mvn clean install -DskipTests=true -DskipITs=true -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120

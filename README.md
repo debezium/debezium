@@ -123,6 +123,14 @@ To run the integration tests of the PG connector using pgoutput, enable the "pgo
 A few tests currently don't pass when using the wal2json plug-in.
 Look for references to the types defined in `io.debezium.connector.postgresql.DecoderDifferences` to find these tests.
 
+### Running tests of the Postgres connector with specific Apicurio Version
+To run the tests of PG connector using wal2json or pgoutput logical decoding plug-ins with a specific version of Apicurio, a test property can be passed as:
+
+    $ mvn clean install -pl debezium-connector-postgres -Pwal2json-decoder 
+          -Ddebezium.test.apicurio.version=1.3.1.Final
+
+In absence of the property the stable version of Apicurio will be fetched.
+
 ### Running tests of the Postgres connector against an external database, e.g. Amazon RDS
 Please note if you want to test against a *non-RDS* cluster, this test requires `<your user>` to be a superuser with not only `replication` but permissions
 to login to `all` databases in `pg_hba.conf`.  It also requires `postgis` packages to be available on the target server for some of the tests to pass.
@@ -136,6 +144,20 @@ Adjust the timeout value as needed.
 
 See [PostgreSQL on Amazon RDS](debezium-connector-postgres/RDS.md) for details on setting up a database on RDS to test against.
 
+### Running tests of the Oracle connector using Oracle LogMiner
+
+    $ mvn clean install -pl debezium-connector-oracle -Poracle,logminer -Dinstantclient.dir=<path-to-instantclient>
+
+### Running tests of the Oracle connector with a non-CDB database
+
+    $ mvn clean install -pl debezium-connector-oracle -Poracle -Dinstantlclient.dir=<path-to-instantclient> -Ddatabase.pdb.name=
+
 ## Contributing
 
 The Debezium community welcomes anyone that wants to help out in any way, whether that includes reporting problems, helping with documentation, or contributing code changes to fix bugs, add tests, or implement new features. See [this document](CONTRIBUTE.md) for details.
+
+A big thank you to all the Debezium contributors!
+
+<a href="https://github.com/debezium/debezium/graphs/contributors">
+  <img src="https://contributors-img.web.app/image?repo=debezium/debezium" />
+</a>

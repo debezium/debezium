@@ -6,7 +6,6 @@
 package io.debezium.connector.mysql;
 
 import static org.fest.assertions.Assertions.assertThat;
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.util.Collections;
@@ -25,6 +24,7 @@ import org.junit.Test;
 import io.confluent.connect.avro.AvroData;
 import io.debezium.config.CommonConnectorConfig.Version;
 import io.debezium.config.Configuration;
+import io.debezium.connector.mysql.SourceInfoTest.PositionAssert;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.document.Document;
@@ -38,38 +38,39 @@ public class LegacyV1SourceInfoTest {
     private static final String SERVER_NAME = "my-server"; // can technically be any string
 
     private SourceInfo source;
+    private MySqlOffsetContext offsetContext;
     private boolean inTxn = false;
     private long positionOfBeginEvent = 0L;
     private int eventNumberInTxn = 0;
 
     @Before
     public void beforeEach() {
-        source = new SourceInfo(new MySqlConnectorConfig(Configuration.create()
+        offsetContext = MySqlOffsetContext.initial(new MySqlConnectorConfig(Configuration.create()
                 .with(MySqlConnectorConfig.SERVER_NAME, "server")
                 .with(MySqlConnectorConfig.SOURCE_STRUCT_MAKER_VERSION, Version.V1)
                 .build()));
-        inTxn = false;
+        source = offsetContext.getSource();
         positionOfBeginEvent = 0L;
         eventNumberInTxn = 0;
     }
 
     @Test
     public void shouldStartSourceInfoFromZeroBinlogCoordinates() {
-        source.setBinlogStartPoint(FILENAME, 0);
+        offsetContext.setBinlogStartPoint(FILENAME, 0);
         assertThat(source.binlogFilename()).isEqualTo(FILENAME);
         assertThat(source.binlogPosition()).isEqualTo(0);
-        assertThat(source.eventsToSkipUponRestart()).isEqualTo(0);
-        assertThat(source.rowsToSkipUponRestart()).isEqualTo(0);
-        assertThat(source.isSnapshotInEffect()).isFalse();
+        assertThat(offsetContext.eventsToSkipUponRestart()).isEqualTo(0);
+        assertThat(offsetContext.rowsToSkipUponRestart()).isEqualTo(0);
+        assertThat(offsetContext.isSnapshotRunning()).isFalse();
     }
 
     @Test
     public void shouldStartSourceInfoFromNonZeroBinlogCoordinates() {
-        source.setBinlogStartPoint(FILENAME, 100);
+        offsetContext.setBinlogStartPoint(FILENAME, 100);
         assertThat(source.binlogFilename()).isEqualTo(FILENAME);
         assertThat(source.binlogPosition()).isEqualTo(100);
-        assertThat(source.rowsToSkipUponRestart()).isEqualTo(0);
-        assertThat(source.isSnapshotInEffect()).isFalse();
+        assertThat(offsetContext.rowsToSkipUponRestart()).isEqualTo(0);
+        assertThat(offsetContext.isSnapshotRunning()).isFalse();
     }
 
     // -------------------------------------------------------------------------------------
@@ -79,235 +80,161 @@ public class LegacyV1SourceInfoTest {
     @Test
     public void shouldRecoverSourceInfoFromOffsetWithZeroBinlogCoordinates() {
         sourceWith(offset(0, 0));
-        assertThat(source.gtidSet()).isNull();
+        assertThat(offsetContext.gtidSet()).isNull();
         assertThat(source.binlogFilename()).isEqualTo(FILENAME);
         assertThat(source.binlogPosition()).isEqualTo(0);
-        assertThat(source.rowsToSkipUponRestart()).isEqualTo(0);
-        assertThat(source.isSnapshotInEffect()).isFalse();
+        assertThat(offsetContext.rowsToSkipUponRestart()).isEqualTo(0);
+        assertThat(offsetContext.isSnapshotRunning()).isFalse();
     }
 
     @Test
     public void shouldRecoverSourceInfoFromOffsetWithNonZeroBinlogCoordinates() {
         sourceWith(offset(100, 0));
-        assertThat(source.gtidSet()).isNull();
+        assertThat(offsetContext.gtidSet()).isNull();
         assertThat(source.binlogFilename()).isEqualTo(FILENAME);
         assertThat(source.binlogPosition()).isEqualTo(100);
-        assertThat(source.rowsToSkipUponRestart()).isEqualTo(0);
-        assertThat(source.isSnapshotInEffect()).isFalse();
+        assertThat(offsetContext.rowsToSkipUponRestart()).isEqualTo(0);
+        assertThat(offsetContext.isSnapshotRunning()).isFalse();
     }
 
     @Test
     public void shouldRecoverSourceInfoFromOffsetWithZeroBinlogCoordinatesAndNonZeroRow() {
         sourceWith(offset(0, 5));
-        assertThat(source.gtidSet()).isNull();
+        assertThat(offsetContext.gtidSet()).isNull();
         assertThat(source.binlogFilename()).isEqualTo(FILENAME);
         assertThat(source.binlogPosition()).isEqualTo(0);
-        assertThat(source.rowsToSkipUponRestart()).isEqualTo(5);
-        assertThat(source.isSnapshotInEffect()).isFalse();
+        assertThat(offsetContext.rowsToSkipUponRestart()).isEqualTo(5);
+        assertThat(offsetContext.isSnapshotRunning()).isFalse();
     }
 
     @Test
     public void shouldRecoverSourceInfoFromOffsetWithNonZeroBinlogCoordinatesAndNonZeroRow() {
         sourceWith(offset(100, 5));
-        assertThat(source.gtidSet()).isNull();
+        assertThat(offsetContext.gtidSet()).isNull();
         assertThat(source.binlogFilename()).isEqualTo(FILENAME);
         assertThat(source.binlogPosition()).isEqualTo(100);
-        assertThat(source.rowsToSkipUponRestart()).isEqualTo(5);
-        assertThat(source.isSnapshotInEffect()).isFalse();
+        assertThat(offsetContext.rowsToSkipUponRestart()).isEqualTo(5);
+        assertThat(offsetContext.isSnapshotRunning()).isFalse();
     }
 
     @Test
     public void shouldRecoverSourceInfoFromOffsetWithZeroBinlogCoordinatesAndSnapshot() {
         sourceWith(offset(0, 0, true));
-        assertThat(source.gtidSet()).isNull();
+        assertThat(offsetContext.gtidSet()).isNull();
         assertThat(source.binlogFilename()).isEqualTo(FILENAME);
         assertThat(source.binlogPosition()).isEqualTo(0);
-        assertThat(source.rowsToSkipUponRestart()).isEqualTo(0);
-        assertThat(source.isSnapshotInEffect()).isTrue();
+        assertThat(offsetContext.rowsToSkipUponRestart()).isEqualTo(0);
+        assertThat(offsetContext.isSnapshotRunning()).isTrue();
     }
 
     @Test
     public void shouldRecoverSourceInfoFromOffsetWithNonZeroBinlogCoordinatesAndSnapshot() {
         sourceWith(offset(100, 0, true));
-        assertThat(source.gtidSet()).isNull();
+        assertThat(offsetContext.gtidSet()).isNull();
         assertThat(source.binlogFilename()).isEqualTo(FILENAME);
         assertThat(source.binlogPosition()).isEqualTo(100);
-        assertThat(source.rowsToSkipUponRestart()).isEqualTo(0);
-        assertThat(source.isSnapshotInEffect()).isTrue();
+        assertThat(offsetContext.rowsToSkipUponRestart()).isEqualTo(0);
+        assertThat(offsetContext.isSnapshotRunning()).isTrue();
     }
 
     @Test
     public void shouldRecoverSourceInfoFromOffsetWithZeroBinlogCoordinatesAndNonZeroRowAndSnapshot() {
         sourceWith(offset(0, 5, true));
-        assertThat(source.gtidSet()).isNull();
+        assertThat(offsetContext.gtidSet()).isNull();
         assertThat(source.binlogFilename()).isEqualTo(FILENAME);
         assertThat(source.binlogPosition()).isEqualTo(0);
-        assertThat(source.rowsToSkipUponRestart()).isEqualTo(5);
-        assertThat(source.isSnapshotInEffect()).isTrue();
+        assertThat(offsetContext.rowsToSkipUponRestart()).isEqualTo(5);
+        assertThat(offsetContext.isSnapshotRunning()).isTrue();
     }
 
     @Test
     public void shouldRecoverSourceInfoFromOffsetWithNonZeroBinlogCoordinatesAndNonZeroRowAndSnapshot() {
         sourceWith(offset(100, 5, true));
-        assertThat(source.gtidSet()).isNull();
+        assertThat(offsetContext.gtidSet()).isNull();
         assertThat(source.binlogFilename()).isEqualTo(FILENAME);
         assertThat(source.binlogPosition()).isEqualTo(100);
-        assertThat(source.rowsToSkipUponRestart()).isEqualTo(5);
-        assertThat(source.isSnapshotInEffect()).isTrue();
-    }
-
-    @Test
-    public void shouldRecoverSourceInfoFromOffsetWithFilterData() {
-        final String databaseWhitelist = "a,b";
-        final String tableWhitelist = "c.foo,d.bar,d.baz";
-        Map<String, String> offset = offset(10, 10);
-        offset.put(SourceInfo.DATABASE_INCLUDE_LIST_KEY, databaseWhitelist);
-        offset.put(SourceInfo.TABLE_INCLUDE_LIST_KEY, tableWhitelist);
-
-        sourceWith(offset);
-        assertThat(source.hasFilterInfo()).isTrue();
-        assertEquals(databaseWhitelist, source.getDatabaseIncludeList());
-        assertEquals(tableWhitelist, source.getTableIncludeList());
-        // confirm other filter info is null
-        assertThat(source.getDatabaseExcludeList()).isNull();
-        assertThat(source.getTableExcludeList()).isNull();
-    }
-
-    @Test
-    public void shouldRecoverSourceInfoFromOffsetWithFilterDataOld() {
-        final String databaseWhitelist = "a,b";
-        final String tableWhitelist = "c.foo,d.bar,d.baz";
-        Map<String, String> offset = offset(10, 10);
-        offset.put(SourceInfo.DATABASE_WHITELIST_KEY, databaseWhitelist);
-        offset.put(SourceInfo.TABLE_WHITELIST_KEY, tableWhitelist);
-
-        sourceWith(offset);
-        assertThat(source.hasFilterInfo()).isTrue();
-        assertEquals(databaseWhitelist, source.getDatabaseIncludeList());
-        assertEquals(tableWhitelist, source.getTableIncludeList());
-        // confirm other filter info is null
-        assertThat(source.getDatabaseExcludeList()).isNull();
-        assertThat(source.getTableExcludeList()).isNull();
-    }
-
-    @Test
-    public void setOffsetFilterFromFilter() {
-        final String databaseBlacklist = "a,b";
-        final String tableBlacklist = "c.foo, d.bar, d.baz";
-        Map<String, String> offset = offset(10, 10);
-
-        sourceWith(offset);
-        assertThat(!source.hasFilterInfo());
-
-        final Configuration configuration = Configuration.create()
-                .with(MySqlConnectorConfig.DATABASE_EXCLUDE_LIST, databaseBlacklist)
-                .with(MySqlConnectorConfig.TABLE_EXCLUDE_LIST, tableBlacklist)
-                .build();
-        source.setFilterDataFromConfig(configuration);
-
-        assertThat(source.hasFilterInfo()).isTrue();
-        assertEquals(databaseBlacklist, source.getDatabaseExcludeList());
-        assertEquals(tableBlacklist, source.getTableExcludeList());
-    }
-
-    @Test
-    public void setOffsetFilterFromFilterOld() {
-        final String databaseBlacklist = "a,b";
-        final String tableBlacklist = "c.foo, d.bar, d.baz";
-        Map<String, String> offset = offset(10, 10);
-
-        sourceWith(offset);
-        assertThat(!source.hasFilterInfo());
-
-        final Configuration configuration = Configuration.create()
-                .with(MySqlConnectorConfig.DATABASE_BLACKLIST, databaseBlacklist)
-                .with(MySqlConnectorConfig.TABLE_BLACKLIST, tableBlacklist)
-                .build();
-        source.setFilterDataFromConfig(configuration);
-
-        assertThat(source.hasFilterInfo()).isTrue();
-        assertEquals(databaseBlacklist, source.getDatabaseExcludeList());
-        assertEquals(tableBlacklist, source.getTableExcludeList());
+        assertThat(offsetContext.rowsToSkipUponRestart()).isEqualTo(5);
+        assertThat(offsetContext.isSnapshotRunning()).isTrue();
     }
 
     @Test
     public void shouldStartSourceInfoFromBinlogCoordinatesWithGtidsAndZeroBinlogCoordinates() {
         sourceWith(offset(GTID_SET, 0, 0, false));
-        assertThat(source.gtidSet()).isEqualTo(GTID_SET);
+        assertThat(offsetContext.gtidSet()).isEqualTo(GTID_SET);
         assertThat(source.binlogFilename()).isEqualTo(FILENAME);
         assertThat(source.binlogPosition()).isEqualTo(0);
-        assertThat(source.rowsToSkipUponRestart()).isEqualTo(0);
-        assertThat(source.isSnapshotInEffect()).isFalse();
+        assertThat(offsetContext.rowsToSkipUponRestart()).isEqualTo(0);
+        assertThat(offsetContext.isSnapshotRunning()).isFalse();
     }
 
     @Test
     public void shouldStartSourceInfoFromBinlogCoordinatesWithGtidsAndZeroBinlogCoordinatesAndNonZeroRow() {
         sourceWith(offset(GTID_SET, 0, 5, false));
-        assertThat(source.gtidSet()).isEqualTo(GTID_SET);
+        assertThat(offsetContext.gtidSet()).isEqualTo(GTID_SET);
         assertThat(source.binlogFilename()).isEqualTo(FILENAME);
         assertThat(source.binlogPosition()).isEqualTo(0);
-        assertThat(source.rowsToSkipUponRestart()).isEqualTo(5);
-        assertThat(source.isSnapshotInEffect()).isFalse();
+        assertThat(offsetContext.rowsToSkipUponRestart()).isEqualTo(5);
+        assertThat(offsetContext.isSnapshotRunning()).isFalse();
     }
 
     @Test
     public void shouldStartSourceInfoFromBinlogCoordinatesWithGtidsAndNonZeroBinlogCoordinates() {
         sourceWith(offset(GTID_SET, 100, 0, false));
-        assertThat(source.gtidSet()).isEqualTo(GTID_SET);
+        assertThat(offsetContext.gtidSet()).isEqualTo(GTID_SET);
         assertThat(source.binlogFilename()).isEqualTo(FILENAME);
         assertThat(source.binlogPosition()).isEqualTo(100);
-        assertThat(source.rowsToSkipUponRestart()).isEqualTo(0);
-        assertThat(source.isSnapshotInEffect()).isFalse();
+        assertThat(offsetContext.rowsToSkipUponRestart()).isEqualTo(0);
+        assertThat(offsetContext.isSnapshotRunning()).isFalse();
     }
 
     @Test
     public void shouldStartSourceInfoFromBinlogCoordinatesWithGtidsAndNonZeroBinlogCoordinatesAndNonZeroRow() {
         sourceWith(offset(GTID_SET, 100, 5, false));
-        assertThat(source.gtidSet()).isEqualTo(GTID_SET);
+        assertThat(offsetContext.gtidSet()).isEqualTo(GTID_SET);
         assertThat(source.binlogFilename()).isEqualTo(FILENAME);
         assertThat(source.binlogPosition()).isEqualTo(100);
-        assertThat(source.rowsToSkipUponRestart()).isEqualTo(5);
-        assertThat(source.isSnapshotInEffect()).isFalse();
+        assertThat(offsetContext.rowsToSkipUponRestart()).isEqualTo(5);
+        assertThat(offsetContext.isSnapshotRunning()).isFalse();
     }
 
     @Test
     public void shouldStartSourceInfoFromBinlogCoordinatesWithGtidsAndZeroBinlogCoordinatesAndSnapshot() {
         sourceWith(offset(GTID_SET, 0, 0, true));
-        assertThat(source.gtidSet()).isEqualTo(GTID_SET);
+        assertThat(offsetContext.gtidSet()).isEqualTo(GTID_SET);
         assertThat(source.binlogFilename()).isEqualTo(FILENAME);
         assertThat(source.binlogPosition()).isEqualTo(0);
-        assertThat(source.rowsToSkipUponRestart()).isEqualTo(0);
-        assertThat(source.isSnapshotInEffect()).isTrue();
+        assertThat(offsetContext.rowsToSkipUponRestart()).isEqualTo(0);
+        assertThat(offsetContext.isSnapshotRunning()).isTrue();
     }
 
     @Test
     public void shouldStartSourceInfoFromBinlogCoordinatesWithGtidsAndZeroBinlogCoordinatesAndNonZeroRowAndSnapshot() {
         sourceWith(offset(GTID_SET, 0, 5, true));
-        assertThat(source.gtidSet()).isEqualTo(GTID_SET);
+        assertThat(offsetContext.gtidSet()).isEqualTo(GTID_SET);
         assertThat(source.binlogFilename()).isEqualTo(FILENAME);
         assertThat(source.binlogPosition()).isEqualTo(0);
-        assertThat(source.rowsToSkipUponRestart()).isEqualTo(5);
-        assertThat(source.isSnapshotInEffect()).isTrue();
+        assertThat(offsetContext.rowsToSkipUponRestart()).isEqualTo(5);
+        assertThat(offsetContext.isSnapshotRunning()).isTrue();
     }
 
     @Test
     public void shouldStartSourceInfoFromBinlogCoordinatesWithGtidsAndNonZeroBinlogCoordinatesAndSnapshot() {
         sourceWith(offset(GTID_SET, 100, 0, true));
-        assertThat(source.gtidSet()).isEqualTo(GTID_SET);
+        assertThat(offsetContext.gtidSet()).isEqualTo(GTID_SET);
         assertThat(source.binlogFilename()).isEqualTo(FILENAME);
         assertThat(source.binlogPosition()).isEqualTo(100);
-        assertThat(source.rowsToSkipUponRestart()).isEqualTo(0);
-        assertThat(source.isSnapshotInEffect()).isTrue();
+        assertThat(offsetContext.rowsToSkipUponRestart()).isEqualTo(0);
+        assertThat(offsetContext.isSnapshotRunning()).isTrue();
     }
 
     @Test
     public void shouldStartSourceInfoFromBinlogCoordinatesWithGtidsAndNonZeroBinlogCoordinatesAndNonZeroRowAndSnapshot() {
         sourceWith(offset(GTID_SET, 100, 5, true));
-        assertThat(source.gtidSet()).isEqualTo(GTID_SET);
+        assertThat(offsetContext.gtidSet()).isEqualTo(GTID_SET);
         assertThat(source.binlogFilename()).isEqualTo(FILENAME);
         assertThat(source.binlogPosition()).isEqualTo(100);
-        assertThat(source.rowsToSkipUponRestart()).isEqualTo(5);
-        assertThat(source.isSnapshotInEffect()).isTrue();
+        assertThat(offsetContext.rowsToSkipUponRestart()).isEqualTo(5);
+        assertThat(offsetContext.isSnapshotRunning()).isTrue();
     }
 
     // -------------------------------------------------------------------------------------
@@ -411,22 +338,22 @@ public class LegacyV1SourceInfoTest {
     }
 
     protected void handleTransactionBegin(long positionOfEvent, int eventSize) {
-        source.setEventPosition(positionOfEvent, eventSize);
+        offsetContext.setEventPosition(positionOfEvent, eventSize);
         positionOfBeginEvent = positionOfEvent;
-        source.startNextTransaction();
+        offsetContext.startNextTransaction();
         inTxn = true;
 
-        assertThat(source.rowsToSkipUponRestart()).isEqualTo(0);
+        assertThat(offsetContext.rowsToSkipUponRestart()).isEqualTo(0);
     }
 
     protected void handleTransactionCommit(long positionOfEvent, int eventSize) {
-        source.setEventPosition(positionOfEvent, eventSize);
-        source.commitTransaction();
+        offsetContext.setEventPosition(positionOfEvent, eventSize);
+        offsetContext.commitTransaction();
         eventNumberInTxn = 0;
         inTxn = false;
 
         // Verify the offset ...
-        Map<String, ?> offset = source.offset();
+        Map<String, ?> offset = offsetContext.getOffset();
 
         // The offset position should be the position of the next event
         long position = (Long) offset.get(SourceInfo.BINLOG_POSITION_OFFSET_KEY);
@@ -436,9 +363,9 @@ public class LegacyV1SourceInfoTest {
             rowsToSkip = 0L;
         }
         assertThat(rowsToSkip).isEqualTo(0);
-        assertThat(offset.get(SourceInfo.EVENTS_TO_SKIP_OFFSET_KEY)).isNull();
-        if (source.gtidSet() != null) {
-            assertThat(offset.get(SourceInfo.GTID_SET_KEY)).isEqualTo(source.gtidSet());
+        assertThat(offset.get(MySqlOffsetContext.EVENTS_TO_SKIP_OFFSET_KEY)).isNull();
+        if (offsetContext.gtidSet() != null) {
+            assertThat(offset.get(MySqlOffsetContext.GTID_SET_KEY)).isEqualTo(offsetContext.gtidSet());
         }
     }
 
@@ -446,20 +373,21 @@ public class LegacyV1SourceInfoTest {
         if (inTxn) {
             ++eventNumberInTxn;
         }
-        source.setEventPosition(positionOfEvent, eventSize);
+        offsetContext.setEventPosition(positionOfEvent, eventSize);
         for (int row = 0; row != rowCount; ++row) {
             // Get the offset for this row (always first!) ...
-            Map<String, ?> offset = source.offsetForRow(row, rowCount);
+            offsetContext.setRowNumber(row, rowCount);
+            Map<String, ?> offset = offsetContext.getOffset();
             assertThat(offset.get(SourceInfo.BINLOG_FILENAME_OFFSET_KEY)).isEqualTo(FILENAME);
-            if (source.gtidSet() != null) {
-                assertThat(offset.get(SourceInfo.GTID_SET_KEY)).isEqualTo(source.gtidSet());
+            if (offsetContext.gtidSet() != null) {
+                assertThat(offset.get(MySqlOffsetContext.GTID_SET_KEY)).isEqualTo(offsetContext.gtidSet());
             }
             long position = (Long) offset.get(SourceInfo.BINLOG_POSITION_OFFSET_KEY);
             if (inTxn) {
                 // regardless of the row count, the position is always the txn begin position ...
                 assertThat(position).isEqualTo(positionOfBeginEvent);
                 // and the number of the last completed event (the previous one) ...
-                Long eventsToSkip = (Long) offset.get(SourceInfo.EVENTS_TO_SKIP_OFFSET_KEY);
+                Long eventsToSkip = (Long) offset.get(MySqlOffsetContext.EVENTS_TO_SKIP_OFFSET_KEY);
                 if (eventsToSkip == null) {
                     eventsToSkip = 0L;
                 }
@@ -468,7 +396,7 @@ public class LegacyV1SourceInfoTest {
             else {
                 // Matches the next event ...
                 assertThat(position).isEqualTo(positionOfEvent + eventSize);
-                assertThat(offset.get(SourceInfo.EVENTS_TO_SKIP_OFFSET_KEY)).isNull();
+                assertThat(offset.get(MySqlOffsetContext.EVENTS_TO_SKIP_OFFSET_KEY)).isNull();
             }
             Long rowsToSkip = (Long) offset.get(SourceInfo.BINLOG_ROW_IN_EVENT_OFFSET_KEY);
             if (rowsToSkip == null) {
@@ -487,11 +415,11 @@ public class LegacyV1SourceInfoTest {
             assertThat(recordSource.getInt64(SourceInfo.BINLOG_POSITION_OFFSET_KEY)).isEqualTo(positionOfEvent);
             assertThat(recordSource.getInt32(SourceInfo.BINLOG_ROW_IN_EVENT_OFFSET_KEY)).isEqualTo(row);
             assertThat(recordSource.getString(SourceInfo.BINLOG_FILENAME_OFFSET_KEY)).isEqualTo(FILENAME);
-            if (source.gtidSet() != null) {
-                assertThat(recordSource.getString(SourceInfo.GTID_SET_KEY)).isEqualTo(source.gtidSet());
+            if (offsetContext.gtidSet() != null) {
+                assertThat(recordSource.getString(MySqlOffsetContext.GTID_SET_KEY)).isEqualTo(offsetContext.gtidSet());
             }
         }
-        source.completeEvent();
+        offsetContext.completeEvent();
     }
 
     protected Map<String, String> offset(long position, int row) {
@@ -508,7 +436,7 @@ public class LegacyV1SourceInfoTest {
         offset.put(SourceInfo.BINLOG_POSITION_OFFSET_KEY, Long.toString(position));
         offset.put(SourceInfo.BINLOG_ROW_IN_EVENT_OFFSET_KEY, Integer.toString(row));
         if (gtidSet != null) {
-            offset.put(SourceInfo.GTID_SET_KEY, gtidSet);
+            offset.put(MySqlOffsetContext.GTID_SET_KEY, gtidSet);
         }
         if (snapshot) {
             offset.put(SourceInfo.SNAPSHOT_KEY, Boolean.TRUE.toString());
@@ -517,11 +445,11 @@ public class LegacyV1SourceInfoTest {
     }
 
     protected SourceInfo sourceWith(Map<String, String> offset) {
-        source = new SourceInfo(new MySqlConnectorConfig(Configuration.create()
+        offsetContext = (MySqlOffsetContext) new MySqlOffsetContext.Loader(new MySqlConnectorConfig(Configuration.create()
                 .with(MySqlConnectorConfig.SERVER_NAME, SERVER_NAME)
                 .with(MySqlConnectorConfig.SOURCE_STRUCT_MAKER_VERSION, Version.V1)
-                .build()));
-        source.setOffset(offset);
+                .build())).load(offset);
+        source = offsetContext.getSource();
         return source;
     }
 
@@ -643,22 +571,22 @@ public class LegacyV1SourceInfoTest {
         String gtidCleaned = "036d85a9-64e5-11e6-9b48-42010af0000c:1-2," +
                 "7145bf69-d1ca-11e5-a588-0242ac110004:1-3149," +
                 "7c1de3f2-3fd2-11e6-9cdc-42010af000bc:1-39";
-        source.setCompletedGtidSet(gtidExecuted);
-        assertThat(source.gtidSet()).isEqualTo(gtidCleaned);
+        offsetContext.setCompletedGtidSet(gtidExecuted);
+        assertThat(offsetContext.gtidSet()).isEqualTo(gtidCleaned);
     }
 
     @FixFor("DBZ-107")
     @Test
     public void shouldNotSetBlankGtidSet() {
-        source.setCompletedGtidSet("");
-        assertThat(source.gtidSet()).isNull();
+        offsetContext.setCompletedGtidSet("");
+        assertThat(offsetContext.gtidSet()).isNull();
     }
 
     @FixFor("DBZ-107")
     @Test
     public void shouldNotSetNullGtidSet() {
-        source.setCompletedGtidSet(null);
-        assertThat(source.gtidSet()).isNull();
+        offsetContext.setCompletedGtidSet(null);
+        assertThat(offsetContext.gtidSet()).isNull();
     }
 
     @Test
@@ -711,9 +639,9 @@ public class LegacyV1SourceInfoTest {
 
     protected Document positionWithGtids(String gtids, boolean snapshot) {
         if (snapshot) {
-            return Document.create(SourceInfo.GTID_SET_KEY, gtids, SourceInfo.SNAPSHOT_KEY, true);
+            return Document.create(MySqlOffsetContext.GTID_SET_KEY, gtids, SourceInfo.SNAPSHOT_KEY, true);
         }
-        return Document.create(SourceInfo.GTID_SET_KEY, gtids);
+        return Document.create(MySqlOffsetContext.GTID_SET_KEY, gtids);
     }
 
     protected Document positionWithoutGtids(String filename, int position, int event, int row) {
@@ -731,10 +659,10 @@ public class LegacyV1SourceInfoTest {
             pos = pos.set(SourceInfo.BINLOG_ROW_IN_EVENT_OFFSET_KEY, row);
         }
         if (event >= 0) {
-            pos = pos.set(SourceInfo.EVENTS_TO_SKIP_OFFSET_KEY, event);
+            pos = pos.set(MySqlOffsetContext.EVENTS_TO_SKIP_OFFSET_KEY, event);
         }
         if (gtids != null && gtids.trim().length() != 0) {
-            pos = pos.set(SourceInfo.GTID_SET_KEY, gtids);
+            pos = pos.set(MySqlOffsetContext.GTID_SET_KEY, gtids);
         }
         if (snapshot) {
             pos = pos.set(SourceInfo.SNAPSHOT_KEY, true);
@@ -772,7 +700,8 @@ public class LegacyV1SourceInfoTest {
         }
 
         public PositionAssert isAt(Document otherPosition, Predicate<String> gtidFilter) {
-            if (SourceInfo.isPositionAtOrBefore(actual, otherPosition, gtidFilter)) {
+            final MySqlHistoryRecordComparator comparator = new MySqlHistoryRecordComparator(gtidFilter);
+            if (comparator.isPositionAtOrBefore(actual, otherPosition)) {
                 return this;
             }
             failIfCustomMessageIsSet();
@@ -792,7 +721,8 @@ public class LegacyV1SourceInfoTest {
         }
 
         public PositionAssert isAtOrBefore(Document otherPosition, Predicate<String> gtidFilter) {
-            if (SourceInfo.isPositionAtOrBefore(actual, otherPosition, gtidFilter)) {
+            final MySqlHistoryRecordComparator comparator = new MySqlHistoryRecordComparator(gtidFilter);
+            if (comparator.isPositionAtOrBefore(actual, otherPosition)) {
                 return this;
             }
             failIfCustomMessageIsSet();
@@ -804,7 +734,8 @@ public class LegacyV1SourceInfoTest {
         }
 
         public PositionAssert isAfter(Document otherPosition, Predicate<String> gtidFilter) {
-            if (!SourceInfo.isPositionAtOrBefore(actual, otherPosition, gtidFilter)) {
+            final MySqlHistoryRecordComparator comparator = new MySqlHistoryRecordComparator(gtidFilter);
+            if (!comparator.isPositionAtOrBefore(actual, otherPosition)) {
                 return this;
             }
             failIfCustomMessageIsSet();

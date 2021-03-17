@@ -12,6 +12,7 @@ pipelineJob('ocp-downstream-strimzi-prepare-job') {
         stringParam('QUAY_ORGANISATION', '', "Organisation where images are copied")
 //        STRIMZI CONFIG
         stringParam('STRZ_RESOURCES_ARCHIVE_URL', "", "URL to productised strimzi sources")
+        stringParam('STRZ_RESOURCES_DEPLOYMENT_DESCRIPTOR', "060-Deployment-strimzi-cluster-operator.yaml", "Descriptor for cluster-operator deployment")
         textParam('STRZ_IMAGES', "", "List of productised strimzi images")
 //        DEBEZIUM CONFIG
         stringParam('DBZ_GIT_REPOSITORY', 'https://github.com/debezium/debezium.git', 'Repository from which Debezium sources are cloned')

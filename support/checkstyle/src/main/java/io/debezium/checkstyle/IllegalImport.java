@@ -42,7 +42,7 @@ public class IllegalImport extends AbstractCheck {
 
     @Override
     public int[] getDefaultTokens() {
-        return new int[] {TokenTypes.IMPORT, TokenTypes.STATIC_IMPORT};
+        return new int[]{ TokenTypes.IMPORT, TokenTypes.STATIC_IMPORT };
     }
 
     @Override
@@ -63,7 +63,8 @@ public class IllegalImport extends AbstractCheck {
         final FullIdent imp;
         if (aAST.getType() == TokenTypes.IMPORT) {
             imp = FullIdent.createFullIdentBelow(aAST);
-        } else {
+        }
+        else {
             // handle case of static imports of method names
             imp = FullIdent.createFullIdent(aAST.getFirstChild().getNextSibling());
         }

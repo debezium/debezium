@@ -90,8 +90,18 @@ public class ConvertingEngineBuilder<R> implements Builder<R> {
                             }
 
                             @Override
-                            public void markBatchFinished() {
+                            public void markBatchFinished() throws InterruptedException {
                                 committer.markBatchFinished();
+                            }
+
+                            @Override
+                            public void markProcessed(R record, DebeziumEngine.Offsets sourceOffsets) throws InterruptedException {
+                                committer.markProcessed(fromFormat.apply(record), sourceOffsets);
+                            }
+
+                            @Override
+                            public DebeziumEngine.Offsets buildOffsets() {
+                                return committer.buildOffsets();
                             }
                         }));
         return this;

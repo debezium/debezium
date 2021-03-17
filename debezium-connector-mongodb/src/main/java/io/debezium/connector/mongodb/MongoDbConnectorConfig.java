@@ -5,12 +5,18 @@
  */
 package io.debezium.connector.mongodb;
 
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.ConfigDefinition;
@@ -25,6 +31,8 @@ import io.debezium.connector.SourceInfoStructMaker;
  * The configuration properties.
  */
 public class MongoDbConnectorConfig extends CommonConnectorConfig {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(MongoDbConnectorConfig.class);
 
     protected static final String COLLECTION_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG = "\"collection.include.list\" or \"collection.whitelist\" is already specified";
     protected static final String DATABASE_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG = "\"database.include.list\" or \"database.whitelist\" is already specified";
@@ -152,17 +160,17 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withImportance(Importance.MEDIUM)
             .withDefault(30)
             .withValidation(Field::isPositiveInteger)
-            .withDescription("(Deprecated, use mongodb.poll.interval.ms) Frequency in seconds to look for new, removed, " +
-                    "or changed replica sets. Defaults to 30 seconds.");
+            .withDescription(
+                    "(Deprecated, use mongodb.poll.interval.ms) Interval for looking for new, removed, or changed replica sets, given in seconds. Defaults to 30 seconds.");
 
     public static final Field MONGODB_POLL_INTERVAL_MS = Field.create("mongodb.poll.interval.ms")
             .withDisplayName("Replica membership poll interval (ms)")
             .withType(Type.LONG)
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
-            .withDefault(30000L)
+            .withDefault(30_000L)
             .withValidation(Field::isPositiveInteger)
-            .withDescription("Frequency in milliseconds to look for new, removed, or changed replica sets.  Defaults to 30000 milliseconds.");
+            .withDescription("Interval for looking for new, removed, or changed replica sets, given in milliseconds.  Defaults to 30 seconds (30,000 ms).");
 
     public static final Field SSL_ENABLED = Field.create("mongodb.ssl.enabled")
             .withDisplayName("Enable SSL connection to MongoDB")
@@ -182,6 +190,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withValidation(Field::isBoolean)
             .withDescription("Whether invalid host names are allowed when using SSL. If true the connection will not prevent man-in-the-middle attacks");
 
+    @Deprecated
     public static final Field MAX_COPY_THREADS = Field.create("initial.sync.max.threads")
             .withDisplayName("Maximum number of threads for initial sync")
             .withType(Type.INT)
@@ -189,7 +198,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withImportance(Importance.MEDIUM)
             .withDefault(1)
             .withValidation(Field::isPositiveInteger)
-            .withDescription("Maximum number of threads used to perform an initial sync of the collections in a replica set. "
+            .withDescription("(Deprecated) Maximum number of threads used to perform an initial sync of the collections in a replica set. "
                     + "Defaults to 1.");
 
     public static final Field CONNECT_BACKOFF_INITIAL_DELAY_MS = Field.create("connect.backoff.initial.delay.ms")
@@ -200,7 +209,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withDefault(TimeUnit.SECONDS.toMillis(1))
             .withValidation(Field::isPositiveInteger)
             .withDescription(
-                    "The initial delay when trying to reconnect to a primary after a connection cannot be made or when no primary is available. Defaults to 1 second (1000 ms).");
+                    "The initial delay when trying to reconnect to a primary after a connection cannot be made or when no primary is available, given in milliseconds. Defaults to 1 second (1,000 ms).");
 
     public static final Field CONNECT_BACKOFF_MAX_DELAY_MS = Field.create("connect.backoff.max.delay.ms")
             .withDisplayName("Maximum delay before reconnection (ms)")
@@ -210,7 +219,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withDefault(TimeUnit.SECONDS.toMillis(120))
             .withValidation(Field::isPositiveInteger)
             .withDescription(
-                    "The maximum delay when trying to reconnect to a primary after a connection cannot be made or when no primary is available. Defaults to 120 second (120,000 ms).");
+                    "The maximum delay when trying to reconnect to a primary after a connection cannot be made or when no primary is available, given in milliseconds. Defaults to 120 second (120,000 ms).");
 
     public static final Field MAX_FAILED_CONNECTIONS = Field.create("connect.max.attempts")
             .withDisplayName("Connection attempt limit")
@@ -392,16 +401,16 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withType(Type.INT)
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
-            .withDefault(10000)
-            .withDescription("The connection timeout in milliseconds");
+            .withDefault(10_000)
+            .withDescription("The connection timeout, given in milliseconds. Defaults to 10 seconds (10,000 ms).");
 
     public static final Field SERVER_SELECTION_TIMEOUT_MS = Field.create("mongodb.server.selection.timeout.ms")
             .withDisplayName("Server selection timeout MS")
             .withType(Type.INT)
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
-            .withDefault(30000)
-            .withDescription("The server selection timeout in milliseconds");
+            .withDefault(30_000)
+            .withDescription("The server selection timeout, given in milliseconds. Defaults to 10 seconds (10,000 ms).");
 
     public static final Field SOCKET_TIMEOUT_MS = Field.create("mongodb.socket.timeout.ms")
             .withDisplayName("Socket timeout MS")
@@ -409,12 +418,21 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDefault(0)
-            .withDescription("The socket timeout in milliseconds");
+            .withDescription("The socket timeout, given in milliseconds. Defaults to 0 ms.");
 
     protected static final Field TASK_ID = Field.create("mongodb.task.id")
             .withDescription("Internal use only")
             .withValidation(Field::isInteger)
             .withInvisibleRecommender();
+
+    public static final Field SNAPSHOT_FILTER_QUERY_BY_COLLECTION = Field.create("snapshot.collection.filter.overrides")
+            .withDisplayName("Snapshot mode")
+            .withType(Type.STRING)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("This property contains a comma-separated list of <dbName>.<collectionName>, for which "
+                    + " the initial snapshot may be a subset of data present in the data source. The subset would be defined"
+                    + " by mongodb filter query specified as value for property snapshot.collection.filter.override.<dbname>.<collectionName>");
 
     private static final ConfigDefinition CONFIG_DEFINITION = CommonConnectorConfig.CONFIG_DEFINITION.edit()
             .name("MongoDB")
@@ -446,7 +464,8 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
                     COLLECTION_EXCLUDE_LIST,
                     FIELD_BLACKLIST,
                     FIELD_EXCLUDE_LIST,
-                    FIELD_RENAMES)
+                    FIELD_RENAMES,
+                    SNAPSHOT_FILTER_QUERY_BY_COLLECTION)
             .connector(
                     MAX_COPY_THREADS,
                     SNAPSHOT_MODE)
@@ -464,12 +483,15 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     protected static Field.Set EXPOSED_FIELDS = ALL_FIELDS;
 
     private final SnapshotMode snapshotMode;
+    private final int snapshotMaxThreads;
 
     public MongoDbConnectorConfig(Configuration config) {
         super(config, config.getString(LOGICAL_NAME), DEFAULT_SNAPSHOT_FETCH_SIZE);
 
         String snapshotModeValue = config.getString(MongoDbConnectorConfig.SNAPSHOT_MODE);
         this.snapshotMode = SnapshotMode.parse(snapshotModeValue, MongoDbConnectorConfig.SNAPSHOT_MODE.defaultValueAsString());
+
+        this.snapshotMaxThreads = resolveSnapshotMaxThreads(config);
     }
 
     private static int validateHosts(Configuration config, Field field, ValidationOutput problems) {
@@ -511,6 +533,11 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     }
 
     @Override
+    public int getSnapshotMaxThreads() {
+        return snapshotMaxThreads;
+    }
+
+    @Override
     protected SourceInfoStructMaker<? extends AbstractSourceInfo> getSourceInfoStructMaker(Version version) {
         switch (version) {
             case V1:
@@ -518,6 +545,31 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             default:
                 return new MongoDbSourceInfoStructMaker(Module.name(), Module.version(), this);
         }
+    }
+
+    public Optional<String> getSnapshotFilterQueryForCollection(CollectionId collectionId) {
+        return Optional.ofNullable(getSnapshotFilterQueryByCollection().get(collectionId.dbName() + "." + collectionId.name()));
+    }
+
+    public Map<String, String> getSnapshotFilterQueryByCollection() {
+        String collectionList = getConfig().getString(SNAPSHOT_FILTER_QUERY_BY_COLLECTION);
+
+        if (collectionList == null) {
+            return Collections.emptyMap();
+        }
+
+        Map<String, String> snapshotFilterQueryByCollection = new HashMap<>();
+
+        for (String collection : collectionList.split(",")) {
+            snapshotFilterQueryByCollection.put(
+                    collection,
+                    getConfig().getString(
+                            new StringBuilder().append(SNAPSHOT_FILTER_QUERY_BY_COLLECTION).append(".")
+                                    .append(collection).toString()));
+        }
+
+        return Collections.unmodifiableMap(snapshotFilterQueryByCollection);
+
     }
 
     @Override
@@ -528,5 +580,17 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     @Override
     public String getConnectorName() {
         return Module.name();
+    }
+
+    private static int resolveSnapshotMaxThreads(Configuration config) {
+        if (config.hasKey(SNAPSHOT_MAX_THREADS.name())) {
+            return config.getInteger(SNAPSHOT_MAX_THREADS);
+        }
+        else {
+            if (config.hasKey(MAX_COPY_THREADS.name())) {
+                LOGGER.warn("The option '{}' is deprecated.  Use '{}' instead.", MAX_FAILED_CONNECTIONS.name(), SNAPSHOT_MAX_THREADS.name());
+            }
+            return config.getInteger(MAX_COPY_THREADS);
+        }
     }
 }

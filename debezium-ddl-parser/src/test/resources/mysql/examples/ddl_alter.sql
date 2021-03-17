@@ -4,6 +4,7 @@ alter table ship_class add column ship_spec varchar(150) first, add somecol int 
 alter table t3 add column (c2 decimal(10, 2) comment 'comment`' null, c3 enum('abc', 'cba', 'aaa')), add index t3_i1 using btree (c2) comment 'some index';
 alter table t3 add column (c4 decimal(10, 2) comment 'comment`' null), add index t3_i2 using btree (c4) comment 'some index';
 alter table t2 add constraint t2_pk_constraint primary key (1c), alter column `_` set default 1;
+alter table t2 drop constraint t2_pk_constraint;
 alter table ship_class change column somecol col_for_del tinyint first;
 alter table ship_class drop col_for_del;
 alter table t3 drop index t3_i1;
@@ -13,6 +14,9 @@ alter table t2 drop primary key;
 alter table t3 rename to table3column;
 alter table childtable add constraint `fk1` foreign key (idParent) references parenttable(id) on delete restrict on update cascade;
 alter table table3column default character set = cp1251;
+alter table `test` change `id` `id` varchar(10) character set utf8mb4 collate utf8mb4_bin not null;
+alter table `test` change `id` `id` varchar(10) character set utf8mb4 binary not null;
+alter table `test` change `id` `id` varchar(10) character set utf8mb4 binary null default null;
 alter table table1 add primary key (id);
 alter table table1 add primary key table_pk (id);
 alter table table1 add primary key `table_pk` (id);
@@ -100,4 +104,8 @@ alter user 'user'@'%' identified with 'mysql_native_password' as '*2470C0C06DEE4
     require none password expire default account unlock password_lock_time 2;
 alter user 'user'@'%' identified with 'mysql_native_password' as '*2470C0C06DEE42FD1618BB99005ADCA2EC9D1E19'
     require none password expire default account unlock password_lock_time unbounded;
+rename user user1@100.200.1.1 to user2@100.200.1.2;
+rename user user1@100.200.1.1 to user2@2001:0db8:85a3:0000:0000:8a2e:0370:7334;
 #end
+ALTER TABLE t1 ADD PARTITION (PARTITION p3 VALUES LESS THAN (2002));
+ALTER TABLE t1 ADD PARTITION IF NOT EXISTS (PARTITION p3 VALUES LESS THAN (2002));

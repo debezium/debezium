@@ -31,6 +31,13 @@ For more information, see link:https://docs.docker.com/engine/installation/[the 
 For this tutorial, do not run Docker in a virtual machine (using Docker Machine).
 ====
 
+ifdef::community[]
+[NOTE]
+====
+This example can also be run using Podman. For more information see link:https://podman.io/[Podman]
+====
+endif::community[]
+
 include::{partialsdir}/modules/tutorial/con-introduction-debezium.adoc[leveloffset=+1]
 
 include::{partialsdir}/assemblies/tutorial/assembly-starting-services.adoc[leveloffset=+1]

@@ -132,3 +132,5 @@ SELECT CAST('1' AS INT);
 SELECT CAST('1' AS INTEGER);
 #end
 SELECT trigger.num FROM test `trigger`;
+-- Valid when SELECT is in stored procedure
+SELECT * FROM test LIMIT LIMIT1,LIMIT2;

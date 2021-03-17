@@ -22,7 +22,7 @@ To do this, {prodname} provides the topic routing single message transformation 
 
 It is up to you to ensure that the transformation configuration provides the behavior that you want. {prodname} does not validate the behavior that results from your configuration of the transformation. 
 
-The topic routing transformation is a 
+The topic routing transformation is a
 link:https://kafka.apache.org/documentation/#connect_transforms[Kafka Connect SMT].
 
 ifdef::product[]
@@ -72,7 +72,7 @@ transforms.Reroute.topic.replacement=$1customers_all_shards
 
 `topic.regex`:: Specifies a regular expression that the transformation applies to each change event record to determine if it should be routed to a particular topic.  
 +
-In the example, the regular expression, `(.*)customers_shard(.*)` matches records for changes to tables whose names include the `customers_shard` string. This would re-route records for tables with the following names:
+In the example, the regular expression, `pass:[(.*)customers_shard(.*)]` matches records for changes to tables whose names include the `customers_shard` string. This would re-route records for tables with the following names:
 +
 `myserver.mydb.customers_shard1` +
 `myserver.mydb.customers_shard2` +

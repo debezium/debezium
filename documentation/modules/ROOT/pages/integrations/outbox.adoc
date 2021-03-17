@@ -235,6 +235,17 @@ e.g. `com.company.TheAttributeConverter`
 |string
 |
 
+|`quarkus.debezium-outbox.tracingspancontext.name`::
+The column name for the tracing span context column.
+|string
+|`tracingspancontext`
+
+|`quarkus.debezium-outbox.tracingspancontext.column-definition`::
+The database-specific column definition for the tracingspancontext. +
+e.g. `text not null`
+|string
+|`VARCHAR(256)`
+
 |===
 
 [NOTE]
@@ -260,3 +271,7 @@ This is used as a way to keep the table's underlying storage from growing over t
 |true
 
 |===
+
+=== Distributed tracing
+The extension has support for the distributed tracing.
+See link:/documentation/reference/integrations/tracing[tracing documentation] for more details.

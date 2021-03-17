@@ -378,6 +378,45 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
     }
 
     @Test
+    @FixFor("DBZ-2716")
+    public void removeColumnFromTableWithoutChangingCapture() throws Exception {
+        connection.execute("CREATE TABLE tableb2 (colb1 varchar(30), id int primary key, colb2 varchar(30))");
+        TestHelper.enableTableCdc(connection, "tableb2");
+        connection.execute("ALTER TABLE dbo.tableb2 DROP COLUMN colb1");
+
+        final int RECORDS_PER_TABLE = 5;
+        final int TABLES = 1;
+        final int ID_START_1 = 10;
+        final Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, "dbo.tableb2")
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                .with(SqlServerConnectorConfig.COLUMN_INCLUDE_LIST, ".*id")
+                .build();
+
+        start(SqlServerConnector.class, config);
+        assertConnectorIsRunning();
+        TestHelper.waitForSnapshotToBeCompleted();
+
+        for (int i = 0; i < RECORDS_PER_TABLE; i++) {
+            final int id = ID_START_1 + i;
+            connection.execute(
+                    "INSERT INTO tableb2 VALUES(" + id + ", 'b2')");
+        }
+
+        SourceRecords records = consumeRecordsByTopic(RECORDS_PER_TABLE * TABLES);
+        Assertions.assertThat(records.recordsForTopic("server1.dbo.tableb2")).hasSize(RECORDS_PER_TABLE);
+        records.recordsForTopic("server1.dbo.tableb2").forEach(record -> {
+            assertSchemaMatchesStruct(
+                    (Struct) ((Struct) record.value()).get("after"),
+                    SchemaBuilder.struct()
+                            .optional()
+                            .name("server1.dbo.tableb2.Value")
+                            .field("id", Schema.INT32_SCHEMA)
+                            .build());
+        });
+    }
+
+    @Test
     public void addColumnToTableWithParallelWrites() throws Exception {
         final int RECORDS_PER_TABLE = 20;
         final int TABLES = 2;

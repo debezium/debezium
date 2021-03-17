@@ -5,6 +5,8 @@
  */
 package io.debezium.heartbeat;
 
+import java.sql.SQLException;
+import java.time.Duration;
 import java.util.Map;
 
 import org.apache.kafka.common.config.ConfigDef;
@@ -12,7 +14,6 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.function.BlockingConsumer;
 import io.debezium.jdbc.JdbcConnection;
@@ -34,12 +35,15 @@ public class DatabaseHeartbeatImpl extends HeartbeatImpl {
 
     private final String heartBeatActionQuery;
     private final JdbcConnection jdbcConnection;
+    private final HeartbeatErrorHandler errorHandler;
 
-    DatabaseHeartbeatImpl(Configuration configuration, String topicName, String key, JdbcConnection jdbcConnection, String heartBeatActionQuery) {
-        super(configuration, topicName, key);
+    DatabaseHeartbeatImpl(Duration heartbeatInterval, String topicName, String key, JdbcConnection jdbcConnection, String heartBeatActionQuery,
+                          HeartbeatErrorHandler errorHandler) {
+        super(heartbeatInterval, topicName, key);
 
         this.heartBeatActionQuery = heartBeatActionQuery;
         this.jdbcConnection = jdbcConnection;
+        this.errorHandler = errorHandler;
     }
 
     @Override
@@ -47,8 +51,11 @@ public class DatabaseHeartbeatImpl extends HeartbeatImpl {
         try {
             jdbcConnection.execute(heartBeatActionQuery);
         }
-        catch (Exception e) {
-            LOGGER.error("Could not execute heartbeat action", e);
+        catch (SQLException e) {
+            if (errorHandler != null) {
+                errorHandler.onError(e);
+            }
+            LOGGER.error("Could not execute heartbeat action (Error: " + e.getSQLState() + ")", e);
         }
         LOGGER.debug("Executed heartbeat action query");
 

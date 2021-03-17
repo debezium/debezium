@@ -12,7 +12,7 @@ import java.util.function.Consumer;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.bson.Document;
 
-import com.mongodb.MongoClient;
+import com.mongodb.client.MongoClient;
 
 import io.debezium.connector.mongodb.transforms.AbstractExtractNewDocumentStateTestIT;
 import io.debezium.connector.mongodb.transforms.ExtractNewDocumentState;

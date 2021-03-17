@@ -37,12 +37,13 @@ public class ExtractNewRecordStateTest {
     private static final String ADD_HEADERS_PREFIX = ADD_HEADERS + ".prefix";
 
     final Schema recordSchema = SchemaBuilder.struct()
-            .field("id", SchemaBuilder.int8())
-            .field("name", SchemaBuilder.string())
+            .field("id", Schema.INT8_SCHEMA)
+            .field("name", Schema.STRING_SCHEMA)
             .build();
 
     final Schema sourceSchema = SchemaBuilder.struct()
-            .field("lsn", SchemaBuilder.int32())
+            .field("lsn", Schema.INT32_SCHEMA)
+            .field("ts_ms", Schema.OPTIONAL_INT32_SCHEMA)
             .build();
 
     final Envelope envelope = Envelope.defineSchema()
@@ -120,6 +121,7 @@ public class ExtractNewRecordStateTest {
         before.put("id", (byte) 1);
         before.put("name", "myRecord");
         source.put("lsn", 1234);
+        source.put("ts_ms", 12836);
         final Struct payload = envelope.create(before, source, Instant.now());
         return new SourceRecord(new HashMap<>(), new HashMap<>(), "dummy", envelope.schema(), payload);
     }
@@ -320,6 +322,28 @@ public class ExtractNewRecordStateTest {
     }
 
     @Test
+    @FixFor("DBZ-2984")
+    public void testAddTimestamp() {
+        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+            final Map<String, String> props1 = new HashMap<>();
+            props1.put(ADD_FIELDS, "ts_ms");
+            transform.configure(props1);
+
+            final SourceRecord createRecord1 = createCreateRecord();
+            final SourceRecord unwrapped1 = transform.apply(createRecord1);
+            assertThat(((Struct) unwrapped1.value()).get("__ts_ms")).isNotNull();
+
+            final Map<String, String> props2 = new HashMap<>();
+            props2.put(ADD_FIELDS, "source.ts_ms");
+            transform.configure(props2);
+
+            final SourceRecord createRecord2 = createCreateRecord();
+            final SourceRecord unwrapped2 = transform.apply(createRecord2);
+            assertThat(((Struct) unwrapped2.value()).get("__source_ts_ms")).isNotNull();
+        }
+    }
+
+    @Test
     @FixFor({ "DBZ-1452", "DBZ-2504" })
     public void testAddFields() {
         try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
@@ -333,6 +357,39 @@ public class ExtractNewRecordStateTest {
             assertThat(((Struct) unwrapped.value()).get("prefix.op")).isEqualTo(Envelope.Operation.UPDATE.code());
             assertThat(((Struct) unwrapped.value()).get("prefix.lsn")).isEqualTo(1234);
             assertThat(((Struct) unwrapped.value()).get("prefix.id")).isEqualTo("571");
+        }
+    }
+
+    @Test
+    @FixFor({ "DBZ-2606" })
+    public void testNewFieldAndHeaderMapping() {
+        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+            final Map<String, String> props = new HashMap<>();
+            String fieldPrefix = "";
+            String headerPrefix = "prefix.";
+            props.put(ADD_FIELDS, "op:OP, lsn:LSN, id:ID, source.lsn:source_lsn, transaction.total_order:TOTAL_ORDER");
+            props.put(ADD_FIELDS_PREFIX, fieldPrefix);
+            props.put(ADD_HEADERS, "op, source.lsn:source_lsn, transaction.id:TXN_ID, transaction.total_order:TOTAL_ORDER");
+            props.put(ADD_HEADERS_PREFIX, headerPrefix);
+            transform.configure(props);
+
+            final SourceRecord updateRecord = createUpdateRecord();
+            final SourceRecord unwrapped = transform.apply(updateRecord);
+            assertThat(((Struct) unwrapped.value()).get(fieldPrefix + "OP")).isEqualTo(Envelope.Operation.UPDATE.code());
+            assertThat(((Struct) unwrapped.value()).get(fieldPrefix + "LSN")).isEqualTo(1234);
+            assertThat(((Struct) unwrapped.value()).get(fieldPrefix + "ID")).isEqualTo("571");
+            assertThat(((Struct) unwrapped.value()).get(fieldPrefix + "source_lsn")).isEqualTo(1234);
+            assertThat(((Struct) unwrapped.value()).get(fieldPrefix + "TOTAL_ORDER")).isEqualTo(42L);
+
+            assertThat(unwrapped.headers()).hasSize(4);
+            String headerValue = getSourceRecordHeaderByKey(unwrapped, headerPrefix + "op");
+            assertThat(headerValue).isEqualTo(Envelope.Operation.UPDATE.code());
+            headerValue = getSourceRecordHeaderByKey(unwrapped, headerPrefix + "source_lsn");
+            assertThat(headerValue).isEqualTo(String.valueOf(1234));
+            headerValue = getSourceRecordHeaderByKey(unwrapped, headerPrefix + "TXN_ID");
+            assertThat(headerValue).isEqualTo(String.valueOf(571L));
+            headerValue = getSourceRecordHeaderByKey(unwrapped, headerPrefix + "TOTAL_ORDER");
+            assertThat(headerValue).isEqualTo(String.valueOf(42L));
         }
     }
 

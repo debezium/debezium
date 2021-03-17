@@ -5,6 +5,7 @@
  */
 package io.debezium.testing.openshift.mysql;
 
+import static io.debezium.testing.openshift.assertions.KafkaAssertions.awaitAssert;
 import static io.debezium.testing.openshift.tools.ConfigProperties.DATABASE_MYSQL_PASSWORD;
 import static io.debezium.testing.openshift.tools.ConfigProperties.DATABASE_MYSQL_USERNAME;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -28,7 +29,6 @@ import io.debezium.testing.openshift.tools.databases.SqlDatabaseController;
 import io.debezium.testing.openshift.tools.databases.mysql.MySqlDeployer;
 import io.debezium.testing.openshift.tools.kafka.ConnectorConfigBuilder;
 
-import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 
@@ -48,7 +48,6 @@ public class MySqlConnectorIT extends ConnectorTestBase {
 
     private static MySqlDeployer dbDeployer;
     private static SqlDatabaseController dbController;
-    private static OkHttpClient httpClient = new OkHttpClient();
     private static ConnectorFactories connectorFactories = new ConnectorFactories();
     private static ConnectorConfigBuilder connectorConfig;
     private static String connectorName;
@@ -64,14 +63,18 @@ public class MySqlConnectorIT extends ConnectorTestBase {
         }
 
         connectorName = CONNECTOR_NAME + "-" + testUtils.getUniqueId();
-        connectorConfig = connectorFactories.mysql().put("database.server.name", connectorName);
+        connectorConfig = connectorFactories.mysql()
+                .put("database.server.name", connectorName);
+        if (ConfigProperties.DEPLOY_SERVICE_REGISTRY) {
+            connectorConfig.addApicurioAvroSupport(registryController.getRegistryApiAddress());
+        }
         kafkaConnectController.deployConnector(connectorName, connectorConfig);
         Class.forName("com.mysql.cj.jdbc.Driver");
     }
 
     @AfterAll
     public static void tearDownDatabase() throws IOException, InterruptedException {
-        kafkaConnectController.undeployConnector(connectorName);
+        // kafkaConnectController.undeployConnector(connectorName);
         dbController.reload();
     }
 
@@ -98,7 +101,7 @@ public class MySqlConnectorIT extends ConnectorTestBase {
     @Test
     @Order(2)
     public void shouldCreateKafkaTopics() {
-        assertTopicsExist(
+        assertions.assertTopicsExist(
                 connectorName + ".inventory.addresses",
                 connectorName + ".inventory.customers",
                 connectorName + ".inventory.geom",
@@ -111,15 +114,15 @@ public class MySqlConnectorIT extends ConnectorTestBase {
     @Order(3)
     public void shouldSnapshotChanges() throws IOException {
         kafkaConnectController.waitForMySqlSnapshot(connectorName);
-        awaitAssert(() -> assertRecordsCount(connectorName + ".inventory.customers", 4));
+        awaitAssert(() -> assertions.assertRecordsCount(connectorName + ".inventory.customers", 4));
     }
 
     @Test
     @Order(4)
     public void shouldStreamChanges() throws SQLException {
         insertCustomer("Tom", "Tester", "tom@test.com");
-        awaitAssert(() -> assertRecordsCount(connectorName + ".inventory.customers", 5));
-        awaitAssert(() -> assertRecordsContain(connectorName + ".inventory.customers", "tom@test.com"));
+        awaitAssert(() -> assertions.assertRecordsCount(connectorName + ".inventory.customers", 5));
+        awaitAssert(() -> assertions.assertRecordsContain(connectorName + ".inventory.customers", "tom@test.com"));
     }
 
     @Test
@@ -127,15 +130,15 @@ public class MySqlConnectorIT extends ConnectorTestBase {
     public void shouldBeDown() throws SQLException, IOException {
         kafkaConnectController.undeployConnector(connectorName);
         insertCustomer("Jerry", "Tester", "jerry@test.com");
-        awaitAssert(() -> assertRecordsCount(connectorName + ".inventory.customers", 5));
+        awaitAssert(() -> assertions.assertRecordsCount(connectorName + ".inventory.customers", 5));
     }
 
     @Test
     @Order(6)
     public void shouldResumeStreamingAfterRedeployment() throws IOException, InterruptedException {
         kafkaConnectController.deployConnector(connectorName, connectorConfig);
-        awaitAssert(() -> assertRecordsCount(connectorName + ".inventory.customers", 6));
-        awaitAssert(() -> assertRecordsContain(connectorName + ".inventory.customers", "jerry@test.com"));
+        awaitAssert(() -> assertions.assertRecordsCount(connectorName + ".inventory.customers", 6));
+        awaitAssert(() -> assertions.assertRecordsContain(connectorName + ".inventory.customers", "jerry@test.com"));
     }
 
     @Test
@@ -144,7 +147,7 @@ public class MySqlConnectorIT extends ConnectorTestBase {
         operatorController.disable();
         kafkaConnectController.destroy();
         insertCustomer("Nibbles", "Tester", "nibbles@test.com");
-        awaitAssert(() -> assertRecordsCount(connectorName + ".inventory.customers", 6));
+        awaitAssert(() -> assertions.assertRecordsCount(connectorName + ".inventory.customers", 6));
     }
 
     @Test
@@ -152,8 +155,8 @@ public class MySqlConnectorIT extends ConnectorTestBase {
     public void shouldResumeStreamingAfterCrash() throws InterruptedException {
         operatorController.enable();
         kafkaConnectController.waitForConnectCluster();
-        awaitAssert(() -> assertMinimalRecordsCount(connectorName + ".inventory.customers", 7));
-        awaitAssert(() -> assertRecordsContain(connectorName + ".inventory.customers", "nibbles@test.com"));
+        awaitAssert(() -> assertions.assertMinimalRecordsCount(connectorName + ".inventory.customers", 7));
+        awaitAssert(() -> assertions.assertRecordsContain(connectorName + ".inventory.customers", "nibbles@test.com"));
     }
 
 }

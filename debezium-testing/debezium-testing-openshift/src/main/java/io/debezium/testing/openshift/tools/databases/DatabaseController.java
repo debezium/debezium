@@ -6,6 +6,9 @@
 package io.debezium.testing.openshift.tools.databases;
 
 import static io.debezium.testing.openshift.tools.WaitConditions.scaled;
+import static java.util.concurrent.TimeUnit.MINUTES;
+import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.awaitility.Awaitility.await;
 
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -45,12 +48,25 @@ public abstract class DatabaseController<C extends DatabaseClient<?, ?>> {
         this.ocpUtils = new OpenShiftUtils(ocp);
     }
 
-    public String getDatabaseUrl() {
-        Service svc = ocp
+    private Service getService() {
+        return ocp
                 .services()
                 .inNamespace(project)
                 .withName(deployment.getMetadata().getName() + "-lb")
                 .get();
+    }
+
+    private void awaitIngress() {
+        LOGGER.info("Waiting for LoadBalancerIngress to be available");
+        await()
+                .atMost(scaled(2), MINUTES)
+                .pollInterval(3, SECONDS)
+                .until(() -> getService().getStatus().getLoadBalancer().getIngress().size() > 0);
+    }
+
+    public String getDatabaseUrl() {
+        awaitIngress();
+        Service svc = getService();
         LoadBalancerIngress ingress = svc.getStatus().getLoadBalancer().getIngress().get(0);
         String hostname = ingress.getHostname();
         Integer port = svc.getSpec().getPorts().stream().filter(p -> p.getName().equals("db")).findAny().get().getPort();

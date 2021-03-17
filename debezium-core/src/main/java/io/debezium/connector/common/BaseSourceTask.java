@@ -6,10 +6,12 @@
 package io.debezium.connector.common;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -20,6 +22,7 @@ import org.apache.kafka.connect.source.SourceTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.annotation.SingleThreadAccess;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
@@ -28,6 +31,7 @@ import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.util.Clock;
 import io.debezium.util.ElapsedTimeStrategy;
 import io.debezium.util.Metronome;
+import io.debezium.util.Strings;
 
 /**
  * Base class for Debezium's CDC {@link SourceTask} implementations. Provides functionality common to all connectors,
@@ -38,6 +42,8 @@ import io.debezium.util.Metronome;
 public abstract class BaseSourceTask extends SourceTask {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(BaseSourceTask.class);
+    private static final long INITIAL_POLL_PERIOD_IN_MILLIS = TimeUnit.SECONDS.toMillis(5);
+    private static final long MAX_POLL_PERIOD_IN_MILLIS = TimeUnit.HOURS.toMillis(1);
 
     protected static enum State {
         RUNNING,
@@ -72,6 +78,24 @@ public abstract class BaseSourceTask extends SourceTask {
     private volatile Map<String, ?> lastOffset;
 
     private Duration retriableRestartWait;
+
+    private final ElapsedTimeStrategy pollOutputDelay;
+    private final Clock clock = Clock.system();
+
+    @SingleThreadAccess("polling thread")
+    private long recordCounter = 0L;
+
+    @SingleThreadAccess("polling thread")
+    private Instant previousOutputInstant;
+
+    protected BaseSourceTask() {
+        // Use exponential delay to log the progress frequently at first, but the quickly tapering off to once an hour...
+        pollOutputDelay = ElapsedTimeStrategy.exponential(clock, INITIAL_POLL_PERIOD_IN_MILLIS, MAX_POLL_PERIOD_IN_MILLIS);
+
+        // Initial our poll output delay logic ...
+        pollOutputDelay.hasElapsed();
+        previousOutputInstant = clock.currentTimeAsInstant();
+    }
 
     @Override
     public final void start(Map<String, String> props) {
@@ -133,11 +157,33 @@ public abstract class BaseSourceTask extends SourceTask {
         }
 
         try {
-            return doPoll();
+            final List<SourceRecord> records = doPoll();
+            logStatistics(records);
+            return records;
         }
         catch (RetriableException e) {
             stop(true);
             throw e;
+        }
+    }
+
+    void logStatistics(final List<SourceRecord> records) {
+        if (records == null || !LOGGER.isInfoEnabled()) {
+            return;
+        }
+        int batchSize = records.size();
+        recordCounter += batchSize;
+        if (batchSize > 0) {
+            SourceRecord lastRecord = records.get(batchSize - 1);
+            lastOffset = lastRecord.sourceOffset();
+            if (pollOutputDelay.hasElapsed()) {
+                // We want to record the status ...
+                final Instant currentTime = clock.currentTime();
+                LOGGER.info("{} records sent during previous {}, last recorded offset: {}", recordCounter,
+                        Strings.duration(Duration.between(previousOutputInstant, currentTime).toMillis()), lastOffset);
+                recordCounter = 0;
+                previousOutputInstant = currentTime;
+            }
         }
     }
 

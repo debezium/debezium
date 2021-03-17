@@ -46,11 +46,15 @@ public class CreateAndAlterDatabaseParserListener extends MySqlParserBaseListene
 
     @Override
     public void enterCreateDatabaseOption(MySqlParser.CreateDatabaseOptionContext ctx) {
+        String charsetName = parser.extractCharset(ctx.charsetName(), ctx.collationName());
         if (ctx.charsetName() != null) {
-            String charsetName = parser.withoutQuotes(ctx.charsetName());
             if ("DEFAULT".equalsIgnoreCase(charsetName)) {
                 charsetName = parser.systemVariables().getVariable(MySqlSystemVariables.CHARSET_NAME_SERVER);
             }
+            parser.charsetNameForDatabase().put(databaseName, charsetName);
+        }
+        // Collation is used only if the database charset was not set by charset setting
+        else if (ctx.charsetName() != null && !parser.charsetNameForDatabase().containsKey(charsetName)) {
             parser.charsetNameForDatabase().put(databaseName, charsetName);
         }
         super.enterCreateDatabaseOption(ctx);

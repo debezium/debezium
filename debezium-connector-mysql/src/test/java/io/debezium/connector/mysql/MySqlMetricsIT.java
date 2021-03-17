@@ -10,6 +10,7 @@ import static org.fest.assertions.Assertions.assertThat;
 import java.lang.management.ManagementFactory;
 import java.nio.file.Path;
 import java.sql.Connection;
+import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 
 import javax.management.InstanceNotFoundException;
@@ -17,6 +18,7 @@ import javax.management.MBeanServer;
 import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
 
+import org.awaitility.Awaitility;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -105,7 +107,7 @@ public class MySqlMetricsIT extends AbstractConnectorTest {
     @Test
     public void testSnapshotOnlyMetrics() throws Exception {
         // Setup
-        try (Connection connection = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName()).connection()) {
+        try (Connection connection = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName()).connection()) {
             connection.createStatement().execute(INSERT1);
             connection.createStatement().execute(INSERT2);
         }
@@ -122,13 +124,21 @@ public class MySqlMetricsIT extends AbstractConnectorTest {
                         .build());
 
         assertSnapshotMetrics();
-        assertNoStreamingMetricsExist();
+        // The legacy implementation did not exposed streaming metrics when only snapshot was executed.
+        // All other connectors based on new framework exposes streaming metrics always so we are
+        // following the same behaviour in the new implementation
+        if (isLegacy()) {
+            assertNoStreamingMetricsExist();
+        }
+        else {
+            assertStreamingMetricsExist();
+        }
     }
 
     @Test
     public void testSnapshotAndStreamingMetrics() throws Exception {
         // Setup
-        try (Connection connection = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName()).connection()) {
+        try (Connection connection = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName()).connection()) {
             connection.createStatement().execute(INSERT1);
             connection.createStatement().execute(INSERT2);
         }
@@ -161,10 +171,18 @@ public class MySqlMetricsIT extends AbstractConnectorTest {
                         .with(DatabaseHistory.STORE_ONLY_MONITORED_TABLES_DDL, Boolean.TRUE)
                         .build());
 
-        assertNoSnapshotMetricsExist();
-
         // CREATE DATABASE, CREATE TABLE, and 2 INSERT
         assertStreamingMetrics(4);
+
+        // The legacy implementation did not exposed snapshot metrics when snapshot never was configured.
+        // All other connectors based on new framework exposes snapshot metrics always so we are
+        // following the same behaviour in the new implementation
+        if (isLegacy()) {
+            assertNoSnapshotMetricsExist();
+        }
+        else {
+            assertSnapshotMetricsExist();
+        }
     }
 
     private void assertNoSnapshotMetricsExist() throws Exception {
@@ -186,6 +204,26 @@ public class MySqlMetricsIT extends AbstractConnectorTest {
         }
         catch (InstanceNotFoundException e) {
             // expected
+        }
+    }
+
+    private void assertStreamingMetricsExist() throws Exception {
+        final MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
+        try {
+            mBeanServer.getAttribute(getStreamingMetricsObjectName(), "TotalNumberOfEventsSeen");
+        }
+        catch (InstanceNotFoundException e) {
+            Assert.fail("Streaming Metrics should exist");
+        }
+    }
+
+    private void assertSnapshotMetricsExist() throws Exception {
+        final MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
+        try {
+            mBeanServer.getAttribute(getSnapshotMetricsObjectName(), "SnapshotCompleted");
+        }
+        catch (InstanceNotFoundException e) {
+            Assert.fail("Snapshot Metrics should exist");
         }
     }
 
@@ -218,7 +256,7 @@ public class MySqlMetricsIT extends AbstractConnectorTest {
         waitForStreamingToStart();
 
         // Insert new records and wait for them to become available
-        try (Connection connection = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName()).connection()) {
+        try (Connection connection = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName()).connection()) {
             connection.createStatement().execute(INSERT1);
             connection.createStatement().execute(INSERT2);
         }
@@ -236,6 +274,8 @@ public class MySqlMetricsIT extends AbstractConnectorTest {
         assertThat((Long) mBeanServer.getAttribute(getStreamingMetricsObjectName(), "TotalNumberOfEventsSeen"))
                 .isGreaterThanOrEqualTo(events);
 
+        Awaitility.await().atMost(Duration.ofMinutes(1)).until(() -> ((String[]) mBeanServer
+                .getAttribute(getStreamingMetricsObjectName(), "MonitoredTables")).length > 0);
         assertThat(mBeanServer.getAttribute(getStreamingMetricsObjectName(), "MonitoredTables"))
                 .isEqualTo(new String[]{ DATABASE.qualifiedTableName("simple") });
     }
@@ -245,7 +285,7 @@ public class MySqlMetricsIT extends AbstractConnectorTest {
     }
 
     private ObjectName getStreamingMetricsObjectName() throws MalformedObjectNameException {
-        return getStreamingMetricsObjectName("mysql", SERVER_NAME, "binlog");
+        return getStreamingMetricsObjectName("mysql", SERVER_NAME, getStreamingNamespace());
     }
 
     private void waitForSnapshotToBeCompleted() throws InterruptedException {
@@ -253,6 +293,10 @@ public class MySqlMetricsIT extends AbstractConnectorTest {
     }
 
     private void waitForStreamingToStart() throws InterruptedException {
-        waitForStreamingRunning("mysql", SERVER_NAME, "binlog");
+        waitForStreamingRunning("mysql", SERVER_NAME, getStreamingNamespace());
+    }
+
+    protected static boolean isLegacy() {
+        return MySqlConnector.LEGACY_IMPLEMENTATION.equals(System.getProperty(MySqlConnector.IMPLEMENTATION_PROP, "new"));
     }
 }

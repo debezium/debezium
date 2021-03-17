@@ -11,8 +11,15 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.kafka.common.config.ConfigDef;
+import org.apache.kafka.common.config.ConfigValue;
 import org.apache.kafka.connect.connector.Task;
-import org.apache.kafka.connect.source.SourceConnector;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import io.debezium.config.Configuration;
+import io.debezium.connector.common.RelationalBaseSourceConnector;
+import io.debezium.relational.RelationalDatabaseConnectorConfig;
+import io.debezium.util.Clock;
 
 /**
  * The main connector class used to instantiate configuration and execution classes
@@ -20,7 +27,9 @@ import org.apache.kafka.connect.source.SourceConnector;
  * @author Jiri Pechanec
  *
  */
-public class SqlServerConnector extends SourceConnector {
+public class SqlServerConnector extends RelationalBaseSourceConnector {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(SqlServerConnector.class);
 
     private Map<String, String> properties;
 
@@ -55,5 +64,35 @@ public class SqlServerConnector extends SourceConnector {
     @Override
     public ConfigDef config() {
         return SqlServerConnectorConfig.configDef();
+    }
+
+    @Override
+    protected void validateConnection(Map<String, ConfigValue> configValues, Configuration config) {
+        final ConfigValue databaseValue = configValues.get(RelationalDatabaseConnectorConfig.DATABASE_NAME.name());
+        if (!databaseValue.errorMessages().isEmpty()) {
+            return;
+        }
+
+        final ConfigValue hostnameValue = configValues.get(RelationalDatabaseConnectorConfig.HOSTNAME.name());
+        final ConfigValue userValue = configValues.get(RelationalDatabaseConnectorConfig.USER.name());
+        SqlServerConnectorConfig sqlServerConfig = new SqlServerConnectorConfig(config);
+        // Try to connect to the database ...
+        try (SqlServerConnection connection = new SqlServerConnection(sqlServerConfig.jdbcConfig(), Clock.system(),
+                sqlServerConfig.getSourceTimestampMode(), null)) {
+            // SqlServerConnection will try retrieving database, no need to run another query.
+            LOGGER.debug("Successfully tested connection for {} with user '{}'", connection.connectionString(),
+                    connection.username());
+        }
+        catch (Exception e) {
+            LOGGER.error("Failed testing connection for {} with user '{}'", config.withMaskedPasswords(),
+                    userValue, e);
+            hostnameValue.addErrorMessage("Unable to connect. Check this and other connection properties. Error: "
+                    + e.getMessage());
+        }
+    }
+
+    @Override
+    protected Map<String, ConfigValue> validateAllFields(Configuration config) {
+        return config.validate(SqlServerConnectorConfig.ALL_FIELDS);
     }
 }

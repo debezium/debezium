@@ -23,6 +23,9 @@
               <exclude>com.fasterxml.jackson.datatype:jackson-datatype-jsr310:*</exclude>
               <exclude>org.reflections:reflections:*</exclude>
 
+              <!-- Exclude guava dependencies -->
+              <exclude>com.google.guava:listenablefuture:*</exclude>
+
               <!-- Exclude connection drivers -->
 	      <exclude>${assembly.exclude.1}</exclude>
 	      <exclude>${assembly.exclude.2}</exclude>

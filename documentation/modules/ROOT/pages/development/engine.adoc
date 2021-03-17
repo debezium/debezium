@@ -109,8 +109,6 @@ Here's an example of code that configures and runs an embedded {link-prefix}:{li
                 System.out.println(record);
             }).build()
         ) {
-        Executors.newSingleThreadExecutor().execute(engine);
-    
         // Run the engine asynchronously ...
         ExecutorService executor = Executors.newSingleThreadExecutor();
         executor.execute(engine);
@@ -334,6 +332,11 @@ This interface has single function with the following signature:
 
 As mentioned in the Javadoc, the `RecordCommitter` object is to be called for each record and once each batch is finished.
 The `RecordCommitter` interface is threadsafe, which allows for flexible processing of records.
+
+You can optionally overwrite the offsets of the records that are processed. This is done by first building a new
+`Offsets` object by calling `RecordCommitter#buildOffsets()`, updating the offsets with `Offsets#set(String key, Object value)`,
+and then calling `RecordCommitter#markProcessed(SourceRecord record, Offsets sourceOffsets)`,
+with the updated `Offsets`.
 
 To use the `ChangeConsumer` API, you must pass an implementation of the interface to the `notifying` API, as seen below:
 

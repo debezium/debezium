@@ -13,12 +13,9 @@ import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
-import io.debezium.connector.SourceInfoStructMaker;
+import io.debezium.junit.relational.TestRelationalDatabaseConfig;
 import io.debezium.relational.Column;
-import io.debezium.relational.RelationalDatabaseConnectorConfig;
-import io.debezium.relational.Selectors.TableIdToStringMapper;
 import io.debezium.relational.TableId;
-import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.ValueConverter;
 import io.debezium.util.Strings;
 
@@ -34,29 +31,6 @@ public class ColumnMappersTest {
     private ColumnMappers mappers;
     private ValueConverter converter;
     private String fullyQualifiedNames;
-
-    private static class TestRelationalDatabaseConfig extends RelationalDatabaseConnectorConfig {
-
-        protected TestRelationalDatabaseConfig(Configuration config, String logicalName, TableFilter systemTablesFilter,
-                                               TableIdToStringMapper tableIdMapper, int defaultSnapshotFetchSize) {
-            super(config, logicalName, systemTablesFilter, tableIdMapper, defaultSnapshotFetchSize);
-        }
-
-        @Override
-        public String getContextName() {
-            return null;
-        }
-
-        @Override
-        public String getConnectorName() {
-            return null;
-        }
-
-        @Override
-        protected SourceInfoStructMaker<?> getSourceInfoStructMaker(Version version) {
-            return null;
-        }
-    }
 
     @Before
     public void beforeEach() {

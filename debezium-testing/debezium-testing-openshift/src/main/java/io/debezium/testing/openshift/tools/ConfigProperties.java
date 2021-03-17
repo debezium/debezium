@@ -23,6 +23,7 @@ public class ConfigProperties {
     public static final String OCP_USERNAME = stringProperty("test.ocp.username");
     public static final String OCP_PASSWORD = stringProperty("test.ocp.password");
     public static final String OCP_PROJECT_DBZ = stringProperty("test.ocp.project.debezium");
+    public static final String OCP_PROJECT_REGISTRY = System.getProperty("test.ocp.project.registry", "debezium-registry");
     public static final String OCP_PROJECT_MYSQL = System.getProperty("test.ocp.project.mysql", "debezium-mysql");
     public static final String OCP_PROJECT_POSTGRESQL = System.getProperty("test.ocp.project.postgresql", "debezium-postgresql");
     public static final String OCP_PROJECT_SQLSERVER = System.getProperty("test.ocp.project.sqlserver", "debezium-sqlserver");
@@ -30,7 +31,7 @@ public class ConfigProperties {
     public static final String OCP_PROJECT_DB2 = System.getProperty("test.ocp.project.db2", "debezium-db2");
     public static final Optional<String> OCP_PULL_SECRET_PATHS = stringOptionalProperty("test.ocp.pull.secret.paths");
 
-    public static final boolean STRIMZI_OPERATOR_CONNECTORS = booleanProperty("test.strimzi.operator.connectors");
+    public static final boolean STRIMZI_OPERATOR_CONNECTORS = booleanProperty("test.strimzi.operator.connectors", "true");
 
     public static final int DATABASE_MYSQL_PORT = Integer.parseInt(System.getProperty("test.database.mysql.port", "3306"));
     public static final String DATABASE_MYSQL_USERNAME = System.getProperty("test.database.mysql.username", "mysqluser");
@@ -73,8 +74,15 @@ public class ConfigProperties {
     public static final String DATABASE_DB2_CDC_SCHEMA = System.getProperty("test.database.db2.cdc.schema", "ASNCDC");
     public static final Optional<String> DATABASE_DB2_HOST = stringOptionalProperty("test.database.sqlserver.host");
 
+    public static final boolean TEST_AVRO_SERIALISATION = booleanProperty("test.avro.serialisation", "false");
+    public static final boolean DEPLOY_SERVICE_REGISTRY = booleanProperty("test.registry.deploy", String.valueOf(TEST_AVRO_SERIALISATION));
+
     private static boolean booleanProperty(String key) {
         String value = System.getProperty(key);
+        return booleanProperty(key, value);
+    }
+
+    private static boolean booleanProperty(String key, String value) {
         if (value == null || value.isEmpty() || value.equalsIgnoreCase("false") || value.equalsIgnoreCase("0")) {
             return false;
         }

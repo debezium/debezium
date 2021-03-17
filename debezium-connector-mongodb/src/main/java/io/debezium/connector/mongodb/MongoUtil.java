@@ -15,14 +15,18 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.bson.Document;
+import org.bson.types.Binary;
 
-import com.mongodb.MongoClient;
 import com.mongodb.ServerAddress;
+import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.MongoIterable;
+import com.mongodb.connection.ClusterDescription;
+import com.mongodb.connection.ServerDescription;
 
+import io.debezium.DebeziumException;
 import io.debezium.function.BlockingConsumer;
 import io.debezium.util.Strings;
 
@@ -230,7 +234,10 @@ public class MongoUtil {
         if (!oplogEvent.containsKey("txnNumber")) {
             return null;
         }
-        final String lsid = oplogEvent.get("lsid", Document.class).get("id", UUID.class).toString();
+        final Document lsidDoc = oplogEvent.get("lsid", Document.class);
+        final Object id = lsidDoc.get("id");
+        // MongoDB 4.2 returns Binary instead of UUID
+        final String lsid = (id instanceof Binary) ? UUID.nameUUIDFromBytes(((Binary) id).getData()).toString() : ((UUID) id).toString();
         final Long txnNumber = oplogEvent.getLong("txnNumber");
         return lsid + ":" + txnNumber;
     }
@@ -323,6 +330,19 @@ public class MongoUtil {
 
     protected static String toString(List<ServerAddress> addresses) {
         return Strings.join(ADDRESS_DELIMITER, addresses);
+    }
+
+    protected static ServerAddress getPrimaryAddress(MongoClient client) {
+        final ClusterDescription clusterDescription = client.getClusterDescription();
+        if (clusterDescription == null) {
+            throw new DebeziumException("Unable to read cluster description from MongoDB connection");
+        }
+        final List<ServerDescription> serverDescriptions = clusterDescription.getServerDescriptions();
+        if (serverDescriptions == null || serverDescriptions.size() == 0) {
+            throw new DebeziumException("Unable to read server descriptions from MongoDB connection, got '" + serverDescriptions + "'");
+        }
+        ServerAddress serverAddress = serverDescriptions.get(0).getAddress();
+        return new ServerAddress(serverAddress.getHost(), serverAddress.getPort());
     }
 
     private MongoUtil() {

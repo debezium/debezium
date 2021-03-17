@@ -10,4 +10,8 @@ public interface ChangeEventQueueMetrics {
     int totalCapacity();
 
     int remainingCapacity();
+
+    long maxQueueSizeInBytes();
+
+    long currentQueueSizeInBytes();
 }

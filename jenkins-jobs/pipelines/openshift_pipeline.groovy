@@ -42,7 +42,7 @@ pipeline {
                 script {
                     env.STRZ_RESOURCES = "${env.WORKSPACE}/strimzi/install/cluster-operator"
                 }
-                copyArtifacts projectName: 'downstream-strimzi-prepare-job', filter: 'amq-streams-install-examples.zip', selector: lastSuccessful()
+                copyArtifacts projectName: 'ocp-downstream-strimzi-prepare-job', filter: 'amq-streams-install-examples.zip', selector: lastSuccessful()
                 unzip zipFile: 'amq-streams-install-examples.zip', dir: 'strimzi'
             }
         }
@@ -150,6 +150,7 @@ pipeline {
                     -Dimage.fullname="${DBZ_CONNECT_IMAGE}" \\
                     -Dtest.ocp.pull.secret.paths="${SECRET_PATH}" \\
                     -Dtest.wait.scale="${TEST_WAIT_SCALE}" \\
+                    -Dtest.avro.serialisation="${TEST_APICURIO_REGISTRY}" \\
                     ${TEST_PROPERTY_VERSION_KAFKA}
                     '''
                 }
@@ -163,7 +164,7 @@ pipeline {
             junit '**/target/failsafe-reports/*.xml'
 
             mail to: 'jcechace@redhat.com', subject: "Debezium OpenShift test run #${BUILD_NUMBER} finished", body: """
-OpenShift interoperability test run ${BUILD_URL} finished with result: ${currentBuild.result}
+OpenShift interoperability test run ${BUILD_URL} finished with result: ${currentBuild.currentResult}
 """
         }
         success {

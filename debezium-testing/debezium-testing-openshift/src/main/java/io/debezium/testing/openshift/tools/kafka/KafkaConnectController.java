@@ -128,7 +128,7 @@ public class KafkaConnectController {
         labels.put("strimzi.io/kind", "KafkaConnect");
         labels.put("strimzi.io/name", kafkaConnect.getMetadata().getName() + "-connect");
 
-        List<NetworkPolicyPort> ports = Stream.of(8083, 8404)
+        List<NetworkPolicyPort> ports = Stream.of(8083, 8404, 9404)
                 .map(IntOrString::new)
                 .map(p -> new NetworkPolicyPortBuilder().withProtocol("TCP").withPort(p).build())
                 .collect(Collectors.toList());

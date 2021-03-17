@@ -13,6 +13,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.Before;
 import org.junit.Test;
 
+import io.debezium.doc.FixFor;
+
 public class TableEditorTest {
 
     private final TableId id = new TableId("catalog", "schema", "table");
@@ -48,13 +50,15 @@ public class TableEditorTest {
     }
 
     @Test(expected = IllegalArgumentException.class)
+    @FixFor("DBZ-2580")
     public void shouldNotAllowAddingPrimaryKeyColumnWhenNotFound() {
         editor.tableId(id);
+        editor.setPrimaryKeyNames("C1", "WOOPS");
         Column c1 = columnEditor.name("C1").type("VARCHAR").jdbcType(Types.VARCHAR).length(10).position(1).create();
         Column c2 = columnEditor.name("C2").type("NUMBER").jdbcType(Types.NUMERIC).length(5).position(1).create();
         Column c3 = columnEditor.name("C3").type("DATE").jdbcType(Types.DATE).position(1).create();
         editor.addColumns(c1, c2, c3);
-        editor.setPrimaryKeyNames("C1", "WOOPS");
+        editor.create();
     }
 
     @Test

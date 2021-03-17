@@ -5,8 +5,9 @@ INSTALL_SOURCE_DIR="${WORKSPACE}/strimzi/install/cluster-operator"
 COPY_IMAGES=true
 REGISTRY="quay.io"
 BUILD_DBZ_DOCKERFILE=${DIR}/../docker/Dockerfile.AMQ
+DEPLOYMENT_DESC="060-Deployment-strimzi-cluster-operator.yaml"
 
-OPTS=`getopt -o d:i:r:o:s --long dir:,images:,registry:,organisation:,skip-copy,dest-creds:,src-creds:,img-output: -n 'parse-options' -- "$@"`
+OPTS=`getopt -o d:i:r:o:f:s --long dir:,images:,registry:,organisation:,deployment-desc:,skip-copy,dest-creds:,src-creds:,img-output: -n 'parse-options' -- "$@"`
 if [ $? != 0 ] ; then echo "Failed parsing options." >&2 ; exit 1 ; fi
 eval set -- "$OPTS"
 
@@ -16,6 +17,7 @@ while true; do
     -i | --images )             IMAGES=$2;                      shift; shift ;;
     -r | --registry )           REGISTRY=$2;                    shift; shift ;;
     -o | --organisation )       ORGANISATION=$2;                shift; shift ;;
+    -f | --deployment-desc )    DEPLOYMENT_DESC=$2;             shift; shift ;;
     -s | --skip-copy )          COPY_IMAGES=false;              shift ;;
     --dest-creds )              DEST_CREDS="--dest-creds $2";   shift; shift ;;
     --src-creds )               SRC_CREDS="--src-creds $2";     shift; shift ;;
@@ -45,7 +47,7 @@ function process_image() {
 
     # Replace images
     echo "[Deployment Transformation] replacing image ${target}"
-    sed -i "s@registry.redhat.io/.*/${name}:.*\$@${target}@" "${INSTALL_SOURCE_DIR}/050-Deployment-strimzi-cluster-operator.yaml"
+    sed -i "s@registry.redhat.io/.*/${name}:.*\$@${target}@" "${INSTALL_SOURCE_DIR}/${DEPLOYMENT_DESC}"
 }
 
 

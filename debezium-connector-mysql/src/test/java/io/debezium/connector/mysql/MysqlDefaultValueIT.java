@@ -54,8 +54,8 @@ import io.debezium.util.Testing;
 @SkipWhenDatabaseVersion(check = LESS_THAN, major = 5, minor = 6, reason = "DDL uses fractional second data types, not supported until MySQL 5.6")
 public class MysqlDefaultValueIT extends AbstractConnectorTest {
 
-    // 4 meta events (set character_set etc.) and then 15 tables with 3 events each (drop DDL, create DDL, insert)
-    private static final int EVENT_COUNT = 4 + 15 * 3;
+    // 4 meta events (set character_set etc.) and then 14 tables with 3 events each (drop DDL, create DDL, insert)
+    private static final int EVENT_COUNT = 4 + 14 * 3;
 
     private static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-connect.txt").toAbsolutePath();
     private final UniqueDatabase DATABASE = new UniqueDatabase("myServer1", "default_value")
@@ -69,6 +69,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
         DATABASE.createAndInitialize();
         initializeConnectorTestFramework();
         Testing.Files.delete(DB_HISTORY_PATH);
+        skipAvroValidation(); // https://github.com/confluentinc/schema-registry/issues/1693
     }
 
     @After
@@ -432,7 +433,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
         // Testing.Print.enable();
 
         consumeRecordsByTopic(EVENT_COUNT);
-        try (final Connection conn = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName()).connection()) {
+        try (final Connection conn = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName()).connection()) {
             conn.createStatement().execute("CREATE TABLE ti_boolean_table (" +
                     "  A TINYINT(1) NOT NULL DEFAULT TRUE," +
                     "  B TINYINT(2) NOT NULL DEFAULT FALSE" +
@@ -462,7 +463,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
         Testing.Print.enable();
         waitForSnapshotToBeCompleted("mysql", DATABASE.getServerName());
         consumeRecordsByTopic(EVENT_COUNT);
-        try (final Connection conn = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName()).connection()) {
+        try (final Connection conn = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName()).connection()) {
             conn.createStatement().execute("CREATE TABLE int_boolean_table (" +
                     "  A INT(1) NOT NULL DEFAULT TRUE," +
                     "  B INT(2) NOT NULL DEFAULT FALSE" +
@@ -629,7 +630,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
         ZonedDateTime t5 = ZonedDateTime.ofInstant(Instant.EPOCH, ZoneOffset.UTC);
         String isoString5 = ZonedTimestamp.toIsoString(t5, ZoneOffset.UTC, MySqlValueConverters::adjustTemporal);
         assertThat(schemaJ.defaultValue()).isEqualTo(
-                MySQLConnection.forTestDatabase(DATABASE.getDatabaseName())
+                MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())
                         .databaseAsserts()
                         .currentDateTimeDefaultOptional(isoString5));
         assertEmptyFieldValue(record, "K");
@@ -716,7 +717,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
         assertThat(customerTypeSchema.defaultValue()).isEqualTo("b2c");
 
         // Connect to the DB and issue our insert statement to test.
-        try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName())) {
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
             try (JdbcConnection connection = db.connect()) {
                 // Enable Query log option
                 connection.execute("SET binlog_rows_query_log_events=ON");
@@ -756,7 +757,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
         assertThat(customerTypeSchema.defaultValue()).isEqualTo("b2c");
 
         // Connect to the DB and issue our insert statement to test.
-        try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName())) {
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
             try (JdbcConnection connection = db.connect()) {
                 // Enable Query log option
                 connection.execute("SET binlog_rows_query_log_events=ON");
@@ -794,7 +795,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
         Testing.Print.enable();
 
         // Connect to the DB and issue our insert statement to test.
-        try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName())) {
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
             try (JdbcConnection connection = db.connect()) {
                 connection.execute("create table ALTER_DATE_TIME (ID int primary key);");
                 connection.execute("alter table ALTER_DATE_TIME add column CREATED timestamp not null default current_timestamp");

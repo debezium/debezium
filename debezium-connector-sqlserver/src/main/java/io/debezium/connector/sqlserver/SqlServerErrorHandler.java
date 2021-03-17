@@ -25,8 +25,14 @@ public class SqlServerErrorHandler extends ErrorHandler {
     protected boolean isRetriable(Throwable throwable) {
         return throwable instanceof SQLServerException
                 && (throwable.getMessage().contains("Connection timed out (Read failed)")
+                        || throwable.getMessage().contains("Connection timed out (Write failed)")
                         || throwable.getMessage().contains("The connection has been closed.")
                         || throwable.getMessage().contains("Connection reset")
-                        || throwable.getMessage().contains("SHUTDOWN is in progress"));
+                        || throwable.getMessage().contains("SHUTDOWN is in progress")
+                        || throwable.getMessage().contains("The server failed to resume the transaction")
+                        || throwable.getMessage()
+                                .startsWith("An insufficient number of arguments were supplied for the procedure or function cdc.fn_cdc_get_all_changes_")
+                        || throwable.getMessage()
+                                .endsWith("was deadlocked on lock resources with another process and has been chosen as the deadlock victim. Rerun the transaction."));
     }
 }

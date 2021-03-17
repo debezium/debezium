@@ -6,8 +6,8 @@
 package io.debezium.relational;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -83,7 +83,6 @@ class TableEditorImpl implements TableEditor {
     public TableEditor setColumns(Column... columns) {
         sortedColumns.clear();
         addColumns(columns);
-        updatePrimaryKeys();
         assert positionsAreValid();
         return this;
     }
@@ -92,47 +91,31 @@ class TableEditorImpl implements TableEditor {
     public TableEditor setColumns(Iterable<Column> columns) {
         sortedColumns.clear();
         addColumns(columns);
-        updatePrimaryKeys();
         assert positionsAreValid();
         return this;
     }
 
     protected void updatePrimaryKeys() {
-        // table does not have any primary key, no need to update
-        if (uniqueValues) {
-            return;
-        }
-        Iterator<String> nameIter = this.pkColumnNames.iterator();
-        while (nameIter.hasNext()) {
-            String pkColumnName = nameIter.next();
-            if (!hasColumnWithName(pkColumnName)) {
-                nameIter.remove();
-            }
+        if (!uniqueValues) {
+            // table does have any primary key --> we need to remove it
+            this.pkColumnNames.removeIf(pkColumnName -> {
+                final boolean pkColumnDoesNotExists = !hasColumnWithName(pkColumnName);
+                if (pkColumnDoesNotExists) {
+                    throw new IllegalArgumentException(
+                            "The column \"" + pkColumnName + "\" is referenced as PRIMARY KEY, but a matching column is not defined in table \"" + tableId() + "\"!");
+                }
+                return pkColumnDoesNotExists;
+            });
         }
     }
 
     @Override
     public TableEditor setPrimaryKeyNames(String... pkColumnNames) {
-        for (String pkColumnName : pkColumnNames) {
-            if (!hasColumnWithName(pkColumnName)) {
-                throw new IllegalArgumentException("The primary key cannot reference a non-existant column'" + pkColumnName + "'");
-            }
-        }
-        uniqueValues = false;
-        this.pkColumnNames.clear();
-        for (String pkColumnName : pkColumnNames) {
-            this.pkColumnNames.add(pkColumnName);
-        }
-        return this;
+        return setPrimaryKeyNames(Arrays.asList(pkColumnNames));
     }
 
     @Override
     public TableEditor setPrimaryKeyNames(List<String> pkColumnNames) {
-        for (String pkColumnName : pkColumnNames) {
-            if (!hasColumnWithName(pkColumnName)) {
-                throw new IllegalArgumentException("The primary key cannot reference a non-existant column'" + pkColumnName + "' in table '" + tableId() + "'");
-            }
-        }
         this.pkColumnNames.clear();
         this.pkColumnNames.addAll(pkColumnNames);
         uniqueValues = false;
@@ -188,12 +171,6 @@ class TableEditorImpl implements TableEditor {
             throw new IllegalArgumentException("No column with name '" + columnName + "'");
         }
         Column afterColumn = afterColumnName == null ? null : columnWithName(afterColumnName);
-        if (afterColumn != null && (afterColumn.position() + 1) == columnToMove.position()) {
-            // nothing to do ...
-        }
-        else if (afterColumn == null && columnToMove.position() == 1) {
-            // nothing to do ...
-        }
         if (afterColumn != null && afterColumn.position() == sortedColumns.size()) {
             // Just append ...
             sortedColumns.remove(columnName);
@@ -274,6 +251,7 @@ class TableEditorImpl implements TableEditor {
             column = column.edit().charsetNameOfTable(defaultCharsetName).create();
             columns.add(column);
         });
+        updatePrimaryKeys();
         return new TableImpl(id, columns, primaryKeyColumnNames(), defaultCharsetName);
     }
 }

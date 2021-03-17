@@ -318,7 +318,7 @@ public class TableSchemaBuilder {
         for (int i = 0; i < columns.size(); i++) {
             Column column = columns.get(i);
 
-            ValueConverter converter = createValueConverterFor(tableId, column, schema.field(column.name()));
+            ValueConverter converter = createValueConverterFor(tableId, column, schema.field(fieldNamer.fieldNameFor(column)));
             converter = wrapInMappingConverterIfNeeded(mappers, tableId, column, converter);
 
             if (converter == null) {
@@ -344,13 +344,7 @@ public class TableSchemaBuilder {
             return converter;
         }
 
-        return (value) -> {
-            if (value != null) {
-                value = converter.convert(value);
-            }
-
-            return mappingConverter.convert(value);
-        };
+        return (value) -> mappingConverter.convert(converter.convert(value));
     }
 
     /**

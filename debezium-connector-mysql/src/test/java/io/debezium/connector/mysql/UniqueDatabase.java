@@ -44,19 +44,25 @@ public class UniqueDatabase {
             "CREATE DATABASE $DBNAME$;",
             "USE $DBNAME$;"
     };
+    private static final String[] CREATE_DATABASE_WITH_CHARSET_DDL = new String[]{
+            "CREATE DATABASE $DBNAME$ CHARSET $CHARSET$;",
+            "USE $DBNAME$;"
+    };
     private static final Pattern COMMENT_PATTERN = Pattern.compile("^(.*)--.*$");
 
     private final String databaseName;
+    private final String charset;
     private final String templateName;
     private final String serverName;
     private Path dbHistoryPath;
     private final String identifier;
 
-    private UniqueDatabase(final String serverName, final String databaseName, final String identifier) {
+    private UniqueDatabase(final String serverName, final String databaseName, final String identifier, final String charset) {
         this.identifier = identifier;
         this.databaseName = databaseName + "_" + identifier;
         this.templateName = databaseName;
         this.serverName = serverName;
+        this.charset = charset;
     }
 
     /**
@@ -66,7 +72,17 @@ public class UniqueDatabase {
      * @param databaseName - the name of the database (prix)
      */
     public UniqueDatabase(final String serverName, final String databaseName) {
-        this(serverName, databaseName, Integer.toUnsignedString(new Random().nextInt(), 36));
+        this(serverName, databaseName, Integer.toUnsignedString(new Random().nextInt(), 36), null);
+    }
+
+    /**
+     * Creates an instance with given Debezium logical name and database name and a set default charset
+     *
+     * @param serverName - logical Debezium server name
+     * @param databaseName - the name of the database (prix)
+     */
+    public UniqueDatabase(final String serverName, final String databaseName, final String charset) {
+        this(serverName, databaseName, Integer.toUnsignedString(new Random().nextInt(), 36), charset);
     }
 
     /**
@@ -79,11 +95,12 @@ public class UniqueDatabase {
      * @param sibling - a database whose unique suffix will be used
      */
     public UniqueDatabase(final String serverName, final String databaseName, final UniqueDatabase sibling) {
-        this(serverName, databaseName, sibling.getIdentifier());
+        this(serverName, databaseName, sibling.getIdentifier(), null);
     }
 
     private String convertSQL(final String sql) {
-        return sql.replace("$DBNAME$", databaseName);
+        final String dbReplace = sql.replace("$DBNAME$", databaseName);
+        return charset != null ? dbReplace.replace("$CHARSET$", charset) : dbReplace;
     }
 
     public String getDatabaseName() {
@@ -106,7 +123,7 @@ public class UniqueDatabase {
         return String.format("%s.%s", databaseName, tableName);
     }
 
-    protected String getServerName() {
+    public String getServerName() {
         return serverName;
     }
 
@@ -131,10 +148,10 @@ public class UniqueDatabase {
         final URL ddlTestFile = UniqueDatabase.class.getClassLoader().getResource(ddlFile);
         assertNotNull("Cannot locate " + ddlFile, ddlTestFile);
         try {
-            try (MySQLConnection connection = MySQLConnection.forTestDatabase(DEFAULT_DATABASE, urlProperties)) {
+            try (MySqlTestConnection connection = MySqlTestConnection.forTestDatabase(DEFAULT_DATABASE, urlProperties)) {
                 final List<String> statements = Arrays.stream(
                         Stream.concat(
-                                Arrays.stream(CREATE_DATABASE_DDL),
+                                Arrays.stream(charset != null ? CREATE_DATABASE_WITH_CHARSET_DDL : CREATE_DATABASE_DDL),
                                 Files.readAllLines(Paths.get(ddlTestFile.toURI())).stream())
                                 .map(String::trim)
                                 .filter(x -> !x.startsWith("--") && !x.isEmpty())
@@ -185,7 +202,8 @@ public class UniqueDatabase {
                 .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, getDatabaseName())
                 .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
-                .with(MySqlConnectorConfig.BUFFER_SIZE_FOR_BINLOG_READER, 10_000);
+                .with(MySqlConnectorConfig.BUFFER_SIZE_FOR_BINLOG_READER, 10_000)
+                .with(MySqlConnector.IMPLEMENTATION_PROP, System.getProperty(MySqlConnector.IMPLEMENTATION_PROP, "new"));
 
         if (dbHistoryPath != null) {
             builder.with(FileDatabaseHistory.FILE_PATH, dbHistoryPath);

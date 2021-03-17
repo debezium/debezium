@@ -36,7 +36,7 @@ SPACE:                               [ \t\r\n]+    -> channel(HIDDEN);
 SPEC_MYSQL_COMMENT:                  '/*!' .+? '*/' -> channel(MYSQLCOMMENT);
 COMMENT_INPUT:                       '/*' .*? '*/' -> channel(HIDDEN);
 LINE_COMMENT:                        (
-                                       ('-- ' | '#') ~[\r\n]* ('\r'? '\n' | EOF) 
+                                       ('--' [ \t] | '#') ~[\r\n]* ('\r'? '\n' | EOF) 
                                        | '--' ('\r'? '\n' | EOF) 
                                      ) -> channel(HIDDEN);
 
@@ -1102,6 +1102,7 @@ LASTVAL:                             'LASTVAL';
 NEXTVAL:                             'NEXTVAL';
 SETVAL:                              'SETVAL';
 PREVIOUS:                            'PREVIOUS';
+PERSISTENT:                          'PERSISTENT'; // Same as STORED for MySQL
 
 // Operators
 // Operators. Assigns
@@ -1220,6 +1221,8 @@ STRING_USER_NAME:                    (
                                      (
                                        SQUOTA_STRING | DQUOTA_STRING 
                                        | BQUOTA_STRING | ID_LITERAL
+                                       | [0-9]+ '.' [0-9]+ '.' [0-9]+ '.' [0-9]+
+                                       | [0-9A-Fa-f:]+
                                      );
 LOCAL_ID:                            '@'
                                 (
@@ -1248,7 +1251,7 @@ fragment CHARSET_NAME:               ARMSCII8 | ASCII | BIG5 | BINARY | CP1250
                                      | UTF8 | UTF8MB3 | UTF8MB4;
 
 fragment EXPONENT_NUM_PART:          'E' [-+]? DEC_DIGIT+;
-fragment ID_LITERAL:                 [A-Z_$0-9]*?[A-Z_$]+?[A-Z_$0-9]*;
+fragment ID_LITERAL:                 [A-Z_$0-9\u0080-\uFFFF]*?[A-Z_$\u0080-\uFFFF]+?[A-Z_$0-9\u0080-\uFFFF]*;
 fragment DQUOTA_STRING:              '"' ( '\\'. | '""' | ~('"'| '\\') )* '"';
 fragment SQUOTA_STRING:              '\'' ('\\'. | '\'\'' | ~('\'' | '\\'))* '\'';
 fragment BQUOTA_STRING:              '`' ( '\\'. | '``' | ~('`'|'\\'))* '`';

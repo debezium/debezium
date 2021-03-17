@@ -8,11 +8,12 @@ matrixJob('connector-debezium-postgresql-matrix-test') {
     combinationFilter('''
          DECODER_PLUGIN == "decoderbufs" ||
         (DECODER_PLUGIN == "pgoutput" && (POSTGRES_VERSION == "10" || POSTGRES_VERSION == "11")) ||
-         POSTGRES_VERSION == "12"
+         POSTGRES_VERSION == "12" ||
+         POSTGRES_VERSION == "13"
          ''')
 
     axes {
-        text('POSTGRES_VERSION', '10', '11', '12')
+        text('POSTGRES_VERSION', '10', '11', '12', '13')
         text('DECODER_PLUGIN', 'decoderbufs', 'wal2json', 'wal2json_streaming', 'pgoutput')
         label("Node", "Slave")
     }

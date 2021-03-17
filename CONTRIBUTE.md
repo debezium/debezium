@@ -251,7 +251,7 @@ and in your fork:
 
 The project currently builds its jobs in two environments:
 
-- Travis CI for pull requests: https://travis-ci.org/debezium/debezium/builds
+- GitHub Actions for pull requests: https://github.com/debezium/debezium/actions
   - Tests run only against the current version of each supported database
 - Jenkins CI for tests matrix, deployment, release, etc - http://ci.hibernate.org/view/Debezium/
   - Test run against all database versions supported by the individual connectors
@@ -268,5 +268,5 @@ Here's a quick check list for a good pull request (PR):
 * One feature/change per PR
 * No changes to code not directly related to your change (e.g. no formatting changes or refactoring to existing code, if you want to refactor/improve existing code that's a separate discussion and separate JIRA issue)
 * New/changed features have been documented
-* A full build completes succesfully
+* A full build completes successfully
 * Do a rebase on upstream `master`

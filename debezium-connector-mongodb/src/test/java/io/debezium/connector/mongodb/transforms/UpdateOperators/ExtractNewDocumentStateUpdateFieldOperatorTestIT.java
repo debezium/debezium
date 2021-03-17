@@ -16,7 +16,7 @@ import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.junit.Test;
 
-import com.mongodb.MongoClient;
+import com.mongodb.client.MongoClient;
 import com.mongodb.client.model.UpdateOptions;
 
 import io.debezium.connector.mongodb.transforms.ExtractNewDocumentState;

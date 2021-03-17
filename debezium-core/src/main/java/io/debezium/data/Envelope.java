@@ -46,7 +46,11 @@ public final class Envelope {
         /**
          * An operation that resulted in an existing record being removed from or deleted in the source.
          */
-        DELETE("d");
+        DELETE("d"),
+        /**
+         * An operation that resulted in an existing table being truncated in the source.
+         */
+        TRUNCATE("t");
 
         private final String code;
 
@@ -342,6 +346,21 @@ public final class Envelope {
         if (timestamp != null) {
             struct.put(FieldName.TIMESTAMP, timestamp.toEpochMilli());
         }
+        return struct;
+    }
+
+    /**
+     * Generate an {@link Operation#TRUNCATE truncate} message with the given information.
+     *
+     * @param source the information about the source where the truncate occurred; never null
+     * @param timestamp the timestamp for this message; never null
+     * @return the truncate message; never null
+     */
+    public Struct truncate(Struct source, Instant timestamp) {
+        Struct struct = new Struct(schema);
+        struct.put(FieldName.OPERATION, Operation.TRUNCATE.code());
+        struct.put(FieldName.SOURCE, source);
+        struct.put(FieldName.TIMESTAMP, timestamp.toEpochMilli());
         return struct;
     }
 

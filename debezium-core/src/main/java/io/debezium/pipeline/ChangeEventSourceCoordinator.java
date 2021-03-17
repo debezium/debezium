@@ -96,7 +96,7 @@ public class ChangeEventSourceCoordinator {
                 SnapshotChangeEventSource snapshotSource = changeEventSourceFactory.getSnapshotChangeEventSource(previousOffset, snapshotMetrics);
                 CatchUpStreamingResult catchUpStreamingResult = executeCatchUpStreaming(previousOffset, context, snapshotSource);
                 if (catchUpStreamingResult.performedCatchUpStreaming) {
-                    streamingMetrics.connected(false);
+                    streamingConnected(false);
                     commitOffsetLock.lock();
                     streamingSource = null;
                     commitOffsetLock.unlock();
@@ -121,7 +121,7 @@ public class ChangeEventSourceCoordinator {
                 errorHandler.setProducerThrowable(e);
             }
             finally {
-                streamingMetrics.connected(false);
+                streamingConnected(false);
             }
         });
     }
@@ -135,7 +135,7 @@ public class ChangeEventSourceCoordinator {
     protected void streamEvents(OffsetContext offsetContext, ChangeEventSourceContext context) throws InterruptedException {
         streamingSource = changeEventSourceFactory.getStreamingChangeEventSource(offsetContext);
         eventDispatcher.setEventListener(streamingMetrics);
-        streamingMetrics.connected(true);
+        streamingConnected(true);
         LOGGER.info("Starting streaming");
         streamingSource.execute(context);
         LOGGER.info("Finished streaming");
@@ -179,6 +179,12 @@ public class ChangeEventSourceCoordinator {
         @Override
         public boolean isRunning() {
             return running;
+        }
+    }
+
+    private void streamingConnected(boolean status) {
+        if (changeEventSourceMetricsFactory.connectionMetricHandledByCoordinator()) {
+            streamingMetrics.connected(status);
         }
     }
 

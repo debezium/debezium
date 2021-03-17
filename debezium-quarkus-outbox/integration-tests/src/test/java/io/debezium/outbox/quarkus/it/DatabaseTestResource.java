@@ -11,6 +11,7 @@ import java.util.Map;
 
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
+import org.testcontainers.utility.DockerImageName;
 
 import io.quarkus.test.common.QuarkusTestResourceLifecycleManager;
 
@@ -19,27 +20,27 @@ import io.quarkus.test.common.QuarkusTestResourceLifecycleManager;
  */
 public class DatabaseTestResource implements QuarkusTestResourceLifecycleManager {
 
-    private static final String POSTGRES_USER = "postgres";
-    private static final String POSTGRES_PASSWORD = "postgres";
-    private static final String POSTGRES_DBNAME = "postgres";
-    private static final String POSTGRES_IMAGE = "debezium/postgres:9.6";
+    private static final String POSTGRES_IMAGE = "debezium/postgres:11";
 
-    private static PostgreSQLContainer<?> container;
+    private static final DockerImageName POSTGRES_DOCKER_IMAGE_NAME = DockerImageName.parse(POSTGRES_IMAGE)
+            .asCompatibleSubstituteFor("postgres");
+
+    private static PostgreSQLContainer<?> postgresContainer;
 
     @Override
     public Map<String, String> start() {
         try {
-            container = new PostgreSQLContainer<>(POSTGRES_IMAGE)
+            postgresContainer = new PostgreSQLContainer<>(POSTGRES_DOCKER_IMAGE_NAME)
                     .waitingFor(Wait.forLogMessage(".*database system is ready to accept connections.*", 2))
-                    .withUsername(POSTGRES_USER)
-                    .withPassword(POSTGRES_PASSWORD)
-                    .withDatabaseName(POSTGRES_DBNAME)
+                    .withUsername("postgres")
+                    .withPassword("postgres")
+                    .withDatabaseName("postgres")
                     .withEnv("POSTGRES_INITDB_ARGS", "-E UTF8")
                     .withEnv("LANG", "en_US.utf8")
                     .withStartupTimeout(Duration.ofSeconds(30));
 
-            container.start();
-            return Collections.singletonMap("quarkus.datasource.jdbc.url", container.getJdbcUrl());
+            postgresContainer.start();
+            return Collections.singletonMap("quarkus.datasource.jdbc.url", postgresContainer.getJdbcUrl());
         }
         catch (Exception e) {
             throw new RuntimeException(e);
@@ -49,8 +50,8 @@ public class DatabaseTestResource implements QuarkusTestResourceLifecycleManager
     @Override
     public void stop() {
         try {
-            if (container != null) {
-                container.stop();
+            if (postgresContainer != null) {
+                postgresContainer.stop();
             }
         }
         catch (Exception e) {

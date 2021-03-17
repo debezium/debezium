@@ -5,6 +5,7 @@
  */
 package io.debezium.testing.openshift.db2;
 
+import static io.debezium.testing.openshift.assertions.KafkaAssertions.awaitAssert;
 import static io.debezium.testing.openshift.tools.ConfigProperties.DATABASE_DB2_DBZ_DBNAME;
 import static io.debezium.testing.openshift.tools.ConfigProperties.DATABASE_DB2_DBZ_PASSWORD;
 import static io.debezium.testing.openshift.tools.ConfigProperties.DATABASE_DB2_DBZ_USERNAME;
@@ -70,6 +71,9 @@ public class DB2ConnectorIT extends ConnectorTestBase {
         connectorName = CONNECTOR_NAME + "-" + id;
         connectorConfig = connectorFactories.db2()
                 .put("database.server.name", connectorName);
+        if (ConfigProperties.DEPLOY_SERVICE_REGISTRY) {
+            connectorConfig.addApicurioAvroSupport(registryController.getRegistryApiAddress());
+        }
         kafkaConnectController.deployConnector(connectorName, connectorConfig);
     }
 
@@ -102,7 +106,7 @@ public class DB2ConnectorIT extends ConnectorTestBase {
     @Test
     @Order(2)
     public void shouldCreateKafkaTopics() {
-        assertTopicsExist(
+        assertions.assertTopicsExist(
                 connectorName + ".DB2INST1.CUSTOMERS",
                 connectorName + ".DB2INST1.ORDERS",
                 connectorName + ".DB2INST1.PRODUCTS",
@@ -113,15 +117,15 @@ public class DB2ConnectorIT extends ConnectorTestBase {
     @Order(3)
     public void shouldContainRecordsInCustomersTopic() throws IOException {
         kafkaConnectController.waitForDB2Snapshot(connectorName);
-        awaitAssert(() -> assertRecordsCount(connectorName + ".DB2INST1.CUSTOMERS", 4));
+        awaitAssert(() -> assertions.assertRecordsCount(connectorName + ".DB2INST1.CUSTOMERS", 4));
     }
 
     @Test
     @Order(4)
     public void shouldStreamChanges() throws SQLException {
         insertCustomer("Tom", "Tester", "tom@test.com");
-        awaitAssert(() -> assertRecordsCount(connectorName + ".DB2INST1.CUSTOMERS", 5));
-        awaitAssert(() -> assertRecordsContain(connectorName + ".DB2INST1.CUSTOMERS", "tom@test.com"));
+        awaitAssert(() -> assertions.assertRecordsCount(connectorName + ".DB2INST1.CUSTOMERS", 5));
+        awaitAssert(() -> assertions.assertRecordsContain(connectorName + ".DB2INST1.CUSTOMERS", "tom@test.com"));
     }
 
     @Test
@@ -129,15 +133,15 @@ public class DB2ConnectorIT extends ConnectorTestBase {
     public void shouldBeDown() throws SQLException, IOException {
         kafkaConnectController.undeployConnector(connectorName);
         insertCustomer("Jerry", "Tester", "jerry@test.com");
-        awaitAssert(() -> assertRecordsCount(connectorName + ".DB2INST1.CUSTOMERS", 5));
+        awaitAssert(() -> assertions.assertRecordsCount(connectorName + ".DB2INST1.CUSTOMERS", 5));
     }
 
     @Test
     @Order(6)
     public void shouldResumeStreamingAfterRedeployment() throws IOException, InterruptedException {
         kafkaConnectController.deployConnector(connectorName, connectorConfig);
-        awaitAssert(() -> assertRecordsCount(connectorName + ".DB2INST1.CUSTOMERS", 6));
-        awaitAssert(() -> assertRecordsContain(connectorName + ".DB2INST1.CUSTOMERS", "jerry@test.com"));
+        awaitAssert(() -> assertions.assertRecordsCount(connectorName + ".DB2INST1.CUSTOMERS", 6));
+        awaitAssert(() -> assertions.assertRecordsContain(connectorName + ".DB2INST1.CUSTOMERS", "jerry@test.com"));
     }
 
     @Test
@@ -146,7 +150,7 @@ public class DB2ConnectorIT extends ConnectorTestBase {
         operatorController.disable();
         kafkaConnectController.destroy();
         insertCustomer("Nibbles", "Tester", "nibbles@test.com");
-        awaitAssert(() -> assertRecordsCount(connectorName + ".DB2INST1.CUSTOMERS", 6));
+        awaitAssert(() -> assertions.assertRecordsCount(connectorName + ".DB2INST1.CUSTOMERS", 6));
     }
 
     @Test
@@ -154,7 +158,7 @@ public class DB2ConnectorIT extends ConnectorTestBase {
     public void shouldResumeStreamingAfterCrash() throws InterruptedException {
         operatorController.enable();
         kafkaConnectController.waitForConnectCluster();
-        awaitAssert(() -> assertMinimalRecordsCount(connectorName + ".DB2INST1.CUSTOMERS", 7));
-        awaitAssert(() -> assertRecordsContain(connectorName + ".DB2INST1.CUSTOMERS", "nibbles@test.com"));
+        awaitAssert(() -> assertions.assertMinimalRecordsCount(connectorName + ".DB2INST1.CUSTOMERS", 7));
+        awaitAssert(() -> assertions.assertRecordsContain(connectorName + ".DB2INST1.CUSTOMERS", "nibbles@test.com"));
     }
 }

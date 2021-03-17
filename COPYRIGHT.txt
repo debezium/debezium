@@ -10,7 +10,9 @@ Alex Soto
 Alexander Iskuskov
 Alexander Kovryga
 Alexander Schwartz
+Alisa Houskova
 Amit Sela
+Aman Garg
 Anders Engström
 Andrea Cosentino
 Andreas Bergmeier
@@ -20,6 +22,7 @@ Andrew Tongen
 Andrey Ignatenko
 Andrey Pustovetov
 Andy Teijelo
+Anisha Mohanty
 Anton Kondratev
 Anton Martynov
 Arik Cohen
@@ -28,6 +31,7 @@ artiship
 Ashhar Hasan
 Attila Szucs
 Aykut Farsak
+Babur Duisenov
 Balázs Németh
 Barry LaFond
 Bartosz Miedlar
@@ -51,13 +55,16 @@ Collin Van Dyck
 Cory Harper
 Cyril Scetbon
 Daan Roosen
+Dave Cramer
 Dave Cumberland
 David Chen
 David Feinblum
 David Jerome
 David Leibovic
+David Seapy
 David Szabo
 Deepak Barr
+Denis Andrejew
 Denis Mikhaylov
 Dennis Campagna
 Dennis Persson
@@ -73,6 +80,8 @@ Eric S. Kreiseir
 Ewen Cheslack-Postava
 Fabian Aussems
 Fabio Cantarini
+Fahim Farook
+Faizan
 Fatih Güçlü Akkaya
 Fándly Gergő 
 Felix Eckhardt
@@ -80,6 +89,7 @@ Fintan Bolton
 Frank Mormino
 Gagan Agrawal
 Ganesh Ramasubramanian
+Giovanni De Stefano
 Grant Cooksey
 Guillaume Rosauro
 Guillaume Smet
@@ -89,12 +99,15 @@ Guy Pascarella
 Grzegorz Kołakowski
 Jan Hendrik Dolling
 Hans-Peter Grahsl
+Harvey Yue
 Henryk Konsek
+Hoa Le
 Horia Chiorean
 Hossein Torabi
 Ian Axelrod
 Igor Gabaydulin
 Ilia Bogdanov
+ismail Simsek
 Ivan Klass
 Ivan Kovbas
 Ivan Lorenz
@@ -109,8 +122,10 @@ Jan Uyttenhove
 Jaromir Hamala
 Javier Holguera
 Jeremy Finzel
+Jeremy Ford
 jinguangyang
 Jiri Pechanec
+Johan Rhedin
 Johan Venant
 John Graf
 John Martin
@@ -127,6 +142,7 @@ Juan Antonio Pedraza
 Jun Du
 Jure Kajzer
 Justin Hiza
+Kaushik Iyer
 Keith Barber
 Kevin Pullin
 Kewei Shang
@@ -142,26 +158,37 @@ Lukas Krejci
 Lukasz Korzeniowski
 lyidataminr
 Maciej Bryński
+Mans Singh
 MaoXiang Pan
 Marc Zbyszynski
 Mario Mueller
 Mariusz Strzelecki
+Martin Sillence
 Matt Beary
 Matteo Capitanio
 Mathieu Rozieres
 Matthias Wessendorf
 Max Kaplan
+Martín Pérez
+Meng Qiu
 Melissa Winstanley
+Michael Cizmar
 Michael Wang
 Mickaël Isaert
 Mike Graham
 Mincong Huang
+Mohamed Pudukulathan
 Moira Tagle
 Muhammad Sufyian
 Nathan Mills
 Navdeep Agarwal
+Naveen Kumar KR
 Nayana Hettiarachchi
+Nick Murray
+Niels Pardon
 Nikhil Benesch
+Nishant Singh
+Nitin Agarwal
 Olavi Mustanoja
 Omar Al-Safi
 Ori Popowski
@@ -190,7 +217,9 @@ Sahan Dilshan
 René Kerner
 Rich O'Connell
 Robert Coup
+Robert Roldan
 Ruslan Gibaiev
+siufay325
 Sairam Polavarapu
 Sanjay Kr Singh
 Sanne Grinovero
@@ -199,8 +228,11 @@ Saulius Valatka
 Sayed Mohammad Hossein Torabi
 Scofield Xu
 Sean Rooney
+Sergei Morozov
 Sherafudheen PM
+Sheldon Fuchs
 Shubham Rawat
+Shuguang Xiang
 Siddhant Agnihotry
 Stanley Shyiko
 Stathis Souris
@@ -210,20 +242,33 @@ Syed Muhammad Sufyian
 Tautvydas Januskevicius
 Taylor Rolison
 Theofanis Despoudis
+Thierry De Leeuw
 Thomas Deblock
 Thomas Prelle
+Thomas Thornton
 Tom Bentley
 Tomaz Lemos Fernandes
 Tony Rizko
 Tova Cohen
+Travis Elnicky
+Troy Gaines
+Vadzim Ramanenka
 Vasily Ulianko
 Vedit Firat Arig
+Victar Malinouski
 Victor Xiang
+Vladimir Osin
 Wang-Yu-Chao
+WenChao Ke
 Wei Wu
 WenZe Hu
 William Pursell
 Willie Cheong
 Wout Scheepers
+Xuan Shen
 Yang Yang
+Yilong Chang
+Yiming Liu
+Yoann Rodière
+Zheng Wang
 志飞 张

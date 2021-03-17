@@ -43,6 +43,7 @@ public interface ReplicationMessage {
         INSERT,
         UPDATE,
         DELETE,
+        TRUNCATE,
         BEGIN,
         COMMIT,
         NOOP

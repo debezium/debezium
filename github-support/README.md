@@ -2,7 +2,7 @@
 
 The scripts in this directory allow auto-generation of GitHub Actions workflows in the `.github/workflows` directory, which are used to perform various tasks when code is pushed or pull requests are opened against this repository.
 Each script is designed to use an input template found in the same directory and to output the final YAML descriptor in the `.github/workflows` directory.
-A description about each script can be be found below.
+A description about each script can be found below.
 
 # Requirements
 

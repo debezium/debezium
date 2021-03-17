@@ -105,6 +105,9 @@ public class JsonTableChangeSerializer implements TableChanges.TableChangesSeria
             else if (change.getType() == TableChangeType.ALTER) {
                 tableChanges.alter(change.getTable());
             }
+            else if (change.getType() == TableChangeType.DROP) {
+                tableChanges.drop(change.getTable());
+            }
         }
 
         return tableChanges;
@@ -166,7 +169,9 @@ public class JsonTableChangeSerializer implements TableChanges.TableChangesSeria
         if (type == TableChangeType.CREATE || type == TableChangeType.ALTER) {
             table = fromDocument(id, document.getDocument("table"));
         }
-
+        else {
+            table = Table.editor().tableId(id).create();
+        }
         return new TableChange(type, table);
     }
 }

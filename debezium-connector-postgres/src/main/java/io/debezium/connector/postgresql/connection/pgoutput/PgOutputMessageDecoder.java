@@ -16,6 +16,7 @@ import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -27,6 +28,7 @@ import org.postgresql.replication.fluent.logical.ChainedLogicalStreamBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.connector.postgresql.PostgresConnectorConfig;
 import io.debezium.connector.postgresql.PostgresStreamingChangeEventSource.PgConnectionSupplier;
 import io.debezium.connector.postgresql.PostgresType;
 import io.debezium.connector.postgresql.TypeRegistry;
@@ -118,23 +120,6 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
             LOGGER.trace("Message Type: {}", type);
             final boolean candidateForSkipping = super.shouldMessageBeSkipped(buffer, lastReceivedLsn, startLsn, walPosition);
             switch (type) {
-                case TRUNCATE:
-                    // @formatter:off
-                    // For now we plan to gracefully skip TRUNCATE messages.
-                    // We may decide in the future that these may be emitted differently, see DBZ-1052.
-                    //
-                    // As of PG11, the Truncate message format is as described:
-                    // Byte Message Type (Always 'T')
-                    // Int32 number of relations described by the truncate message
-                    // Int8 flags for truncate; 1=CASCADE, 2=RESTART IDENTITY
-                    // Int32[] Array of number of relation ids
-                    //
-                    // In short this message tells us how many relations are impacted by the truncate
-                    // call, whether its cascaded or not and then all table relation ids involved.
-                    // It seems the protocol guarantees to send the most up-to-date `R` relation
-                    // messages for the tables prior to the `T` truncation message, even if in the
-                    // same session a `R` message was followed by an insert/update/delete message.
-                    // @formatter:on
                 case COMMIT:
                 case BEGIN:
                 case RELATION:
@@ -150,7 +135,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
                     LOGGER.trace("{} messages are always reprocessed", type);
                     return false;
                 default:
-                    // INSERT/UPDATE/DELETE/TYPE/ORIGIN
+                    // INSERT/UPDATE/DELETE/TRUNCATE/TYPE/ORIGIN
                     // These should be excluded based on the normal behavior, delegating to default method
                     return candidateForSkipping;
             }
@@ -195,6 +180,14 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
                 break;
             case DELETE:
                 decodeDelete(buffer, typeRegistry, processor);
+                break;
+            case TRUNCATE:
+                if (config.getTruncateHandlingMode() == PostgresConnectorConfig.TruncateHandlingMode.INCLUDE) {
+                    decodeTruncate(buffer, typeRegistry, processor);
+                }
+                else {
+                    LOGGER.trace("Message Type {} skipped, not processed.", messageType);
+                }
                 break;
             default:
                 LOGGER.trace("Message Type {} skipped, not processed.", messageType);
@@ -267,18 +260,20 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
 
         // Perform several out-of-bands database metadata queries
         Map<String, Boolean> columnOptionality;
-        Set<String> primaryKeyColumns;
+        List<String> primaryKeyColumns;
         try (final PostgresConnection connection = new PostgresConnection(config.getConfiguration())) {
             final DatabaseMetaData databaseMetadata = connection.connection().getMetaData();
+            final TableId tableId = new TableId(null, schemaName, tableName);
             columnOptionality = getTableColumnOptionalityFromDatabase(databaseMetadata, schemaName, tableName);
-            primaryKeyColumns = getTablePrimaryKeyColumnNamesFromDatabase(databaseMetadata, schemaName, tableName);
+            primaryKeyColumns = connection.readPrimaryKeyNames(databaseMetadata, tableId);
             if (primaryKeyColumns == null || primaryKeyColumns.isEmpty()) {
                 LOGGER.warn("Primary keys are not defined for table '{}', defaulting to unique indices", tableName);
-                primaryKeyColumns = new HashSet<>(connection.readTableUniqueIndices(databaseMetadata, new TableId(null, schemaName, tableName)));
+                primaryKeyColumns = connection.readTableUniqueIndices(databaseMetadata, tableId);
             }
         }
 
         List<ColumnMetaData> columns = new ArrayList<>();
+        Set<String> columnNames = new HashSet<>();
         for (short i = 0; i < columnCount; ++i) {
             byte flags = buffer.get();
             String columnName = Strings.unquoteIdentifierPart(readString(buffer));
@@ -295,9 +290,27 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
             }
 
             columns.add(new ColumnMetaData(columnName, postgresType, key, optional, attypmod));
+            columnNames.add(columnName);
         }
 
-        Table table = resolveRelationFromMetadata(new PgOutputRelationMetaData(relationId, schemaName, tableName, columns));
+        // Remove any PKs that do not exist as part of this this relation message. This can occur when issuing
+        // multiple schema changes in sequence since the lookup of primary keys is an out-of-band procedure, without
+        // any logical linkage or context to the point in time the relation message was emitted.
+        //
+        // Example DDL:
+        // ALTER TABLE changepk.test_table DROP COLUMN pk2; -- <- relation message #1
+        // ALTER TABLE changepk.test_table ADD COLUMN pk3 SERIAL; -- <- relation message #2
+        // ALTER TABLE changepk.test_table ADD PRIMARY KEY(newpk,pk3); -- <- relation message #3
+        //
+        // Consider the above schema changes. There's a possible temporal ordering where the messages arrive
+        // in the replication slot data stream at time `t0`, `t1`, and `t2`. It then takes until `t10` for _this_ method
+        // to start processing message #1. At `t10` invoking `connection.readPrimaryKeyNames()` returns the new
+        // primary key column, 'pk3', defined by message #3. We must remove this primary key column that came
+        // "from the future" (with temporal respect to the current relate message #1) as a best effort attempt
+        // to reflect the actual primary key state at time `t0`.
+        primaryKeyColumns.retainAll(columnNames);
+
+        Table table = resolveRelationFromMetadata(new PgOutputRelationMetaData(relationId, schemaName, tableName, columns, primaryKeyColumns));
         config.getSchema().applySchemaChangesForTable(relationId, table);
     }
 
@@ -317,20 +330,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
         return columnOptionality;
     }
 
-    private Set<String> getTablePrimaryKeyColumnNamesFromDatabase(DatabaseMetaData databaseMetadata, String schemaName, String tableName) {
-        Set<String> primaryKeyColumns = new HashSet<>();
-        try (ResultSet resultSet = databaseMetadata.getPrimaryKeys(null, schemaName, tableName)) {
-            while (resultSet.next()) {
-                primaryKeyColumns.add(resultSet.getString("COLUMN_NAME"));
-            }
-        }
-        catch (SQLException e) {
-            LOGGER.warn("Failed to read table {}.{} primary keys", schemaName, tableName);
-        }
-        return primaryKeyColumns;
-    }
-
-    private boolean isColumnInPrimaryKey(String schemaName, String tableName, String columnName, Set<String> primaryKeyColumns) {
+    private boolean isColumnInPrimaryKey(String schemaName, String tableName, String columnName, List<String> primaryKeyColumns) {
         // todo (DBZ-766) - Discuss this logic with team as there may be a better way to handle this
         // Personally I think its sufficient enough to resolve the PK based on the out-of-bands call
         // and should any test fail due to this it should be rewritten or excluded from the pgoutput
@@ -468,6 +468,77 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
     }
 
     /**
+     * Callback handler for the 'T' truncate replication stream message.
+     *
+     * @param buffer       The replication stream buffer
+     * @param typeRegistry The postgres type registry
+     * @param processor    The replication message processor
+     */
+    private void decodeTruncate(ByteBuffer buffer, TypeRegistry typeRegistry, ReplicationMessageProcessor processor) throws SQLException, InterruptedException {
+        // As of PG11, the Truncate message format is as described:
+        // Byte Message Type (Always 'T')
+        // Int32 number of relations described by the truncate message
+        // Int8 flags for truncate; 1=CASCADE, 2=RESTART IDENTITY
+        // Int32[] Array of number of relation ids
+        //
+        // In short this message tells us how many relations are impacted by the truncate
+        // call, whether its cascaded or not and then all table relation ids involved.
+        // It seems the protocol guarantees to send the most up-to-date `R` relation
+        // messages for the tables prior to the `T` truncation message, even if in the
+        // same session a `R` message was followed by an insert/update/delete message.
+
+        int numberOfRelations = buffer.getInt();
+        int optionBits = buffer.get();
+        // ignored / unused
+        List<String> truncateOptions = getTruncateOptions(optionBits);
+        int[] relationIds = new int[numberOfRelations];
+        for (int i = 0; i < numberOfRelations; i++) {
+            relationIds[i] = buffer.getInt();
+        }
+
+        List<Table> tables = new ArrayList<>();
+        for (int relationId : relationIds) {
+            Optional<Table> resolvedTable = resolveRelation(relationId);
+            resolvedTable.ifPresent(tables::add);
+        }
+
+        if (LOGGER.isTraceEnabled()) {
+            LOGGER.trace("Event: {}, RelationIds: {}, OptionBits: {}", MessageType.TRUNCATE, Arrays.toString(relationIds), optionBits);
+        }
+
+        int noOfResolvedTables = tables.size();
+        for (int i = 0; i < noOfResolvedTables; i++) {
+            Table table = tables.get(i);
+            boolean lastTableInTruncate = (i + 1) == noOfResolvedTables;
+            processor.process(new PgOutputTruncateReplicationMessage(
+                    Operation.TRUNCATE,
+                    table.id().toDoubleQuotedString(),
+                    commitTimestamp,
+                    transactionId,
+                    lastTableInTruncate));
+        }
+    }
+
+    /**
+     * Convert truncate option bits to postgres syntax truncate options
+     *
+     * @param flag truncate option bits
+     * @return truncate flags
+     */
+    private List<String> getTruncateOptions(int flag) {
+        switch (flag) {
+            case 1:
+                return Collections.singletonList("CASCADE");
+            case 2:
+                return Collections.singletonList("RESTART IDENTITY");
+            case 3:
+                return Arrays.asList("RESTART IDENTITY", "CASCADE");
+            default:
+                return null;
+        }
+    }
+
+    /**
      * Resolves a given replication message relation identifier to a {@link Table}.
      *
      * @param relationId The replication message stream's relation identifier
@@ -485,7 +556,6 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
      * @return table based on a prior replication relation message
      */
     private Table resolveRelationFromMetadata(PgOutputRelationMetaData metadata) {
-        List<String> pkColumnNames = new ArrayList<>();
         List<io.debezium.relational.Column> columns = new ArrayList<>();
         for (ColumnMetaData columnMetadata : metadata.getColumns()) {
             ColumnEditor editor = io.debezium.relational.Column.editor()
@@ -498,15 +568,11 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
                     .scale(columnMetadata.getScale());
 
             columns.add(editor.create());
-
-            if (columnMetadata.isKey()) {
-                pkColumnNames.add(columnMetadata.getColumnName());
-            }
         }
 
         Table table = Table.editor()
                 .addColumns(columns)
-                .setPrimaryKeyNames(pkColumnNames)
+                .setPrimaryKeyNames(metadata.getPrimaryKeyNames())
                 .tableId(metadata.getTableId())
                 .create();
 

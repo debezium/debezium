@@ -65,7 +65,7 @@ public class SqlServerConnection extends JdbcConnection {
     private static final String SQL_SERVER_VERSION = "SELECT @@VERSION AS 'SQL Server Version'";
     private final String lsnToTimestamp;
     private static final String INCREMENT_LSN = "SELECT sys.fn_cdc_increment_lsn(?)";
-    private static final String GET_ALL_CHANGES_FOR_TABLE = "SELECT * FROM cdc.[fn_cdc_get_all_changes_#](?, ?, N'all update old')";
+    private static final String GET_ALL_CHANGES_FOR_TABLE = "SELECT * FROM cdc.[fn_cdc_get_all_changes_#](?, ?, N'all update old') order by [__$start_lsn] ASC, [__$seqval] ASC, [__$operation] ASC";
     private static final String GET_LIST_OF_CDC_ENABLED_TABLES = "EXEC sys.sp_cdc_help_change_data_capture";
     private static final String GET_LIST_OF_NEW_CDC_ENABLED_TABLES = "SELECT * FROM cdc.change_tables WHERE start_lsn BETWEEN ? AND ?";
     private static final String GET_LIST_OF_KEY_COLUMNS = "SELECT * FROM cdc.index_columns WHERE object_id=?";
@@ -125,6 +125,15 @@ public class SqlServerConnection extends JdbcConnection {
         this.sourceTimestampMode = sourceTimestampMode;
         defaultValueConverter = new SqlServerDefaultValueConverter(this::connection, valueConverters);
         this.queryFetchSize = config().getInteger(CommonConnectorConfig.QUERY_FETCH_SIZE);
+    }
+
+    /**
+     * Returns a JDBC connection string for the current configuration.
+     *
+     * @return a {@code String} where the variables in {@code urlPattern} are replaced with values from the configuration
+     */
+    public String connectionString() {
+        return connectionString(URL_PATTERN);
     }
 
     /**
@@ -525,5 +534,12 @@ public class SqlServerConnection extends JdbcConnection {
     protected Optional<Object> getDefaultValue(Column column, String defaultValue) {
         return defaultValueConverter
                 .parseDefaultValue(column, defaultValue);
+    }
+
+    @Override
+    protected boolean isTableUniqueIndexIncluded(String indexName, String columnName) {
+        // SQL Server provides indices also without index name
+        // so we need to ignore them
+        return indexName != null;
     }
 }

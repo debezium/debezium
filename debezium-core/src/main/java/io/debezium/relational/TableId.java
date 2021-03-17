@@ -179,6 +179,32 @@ public final class TableId implements DataCollectionId, Comparable<TableId> {
     }
 
     /**
+     * Returns a new {@link TableId} with all parts of the identifier using {@code "} character.
+     */
+    public TableId toDoubleQuoted() {
+        return toQuoted('"');
+    }
+
+    /**
+     * Returns a new {@link TableId} that has all parts of the identifier quoted.
+     *
+     * @param quotingChar the character to be used to quote the identifier parts.
+     */
+    public TableId toQuoted(char quotingChar) {
+        String catalogName = null;
+        if (this.catalogName != null && !this.catalogName.isEmpty()) {
+            catalogName = quote(this.catalogName, quotingChar);
+        }
+
+        String schemaName = null;
+        if (this.schemaName != null && !this.schemaName.isEmpty()) {
+            schemaName = quote(this.schemaName, quotingChar);
+        }
+
+        return new TableId(catalogName, schemaName, quote(this.tableName, quotingChar));
+    }
+
+    /**
      * Returns a dot-separated String representation of this identifier, quoting all
      * name parts with the given quoting char.
      */

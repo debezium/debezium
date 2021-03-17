@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -242,6 +243,7 @@ public abstract class CommonConnectorConfig {
     public static final String DATABASE_CONFIG_PREFIX = "database.";
     private static final String CONVERTER_TYPE_SUFFIX = ".type";
     public static final long DEFAULT_RETRIABLE_RESTART_WAIT = 10000L;
+    public static final long DEFAULT_MAX_QUEUE_SIZE_IN_BYTES = 0; // In case we don't want to pass max.queue.size.in.bytes;
 
     public static final Field RETRIABLE_RESTART_WAIT = Field.create("retriable.restart.connector.wait.ms")
             .withDisplayName("Retriable restart wait (ms)")
@@ -289,17 +291,26 @@ public abstract class CommonConnectorConfig {
             .withType(Type.LONG)
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
-            .withDescription(
-                    "Frequency in milliseconds to wait for new change events to appear after receiving no events. Defaults to " + DEFAULT_POLL_INTERVAL_MILLIS + "ms.")
+            .withDescription("Time to wait for new change events to appear after receiving no events, given in milliseconds. Defaults to 500 ms.")
             .withDefault(DEFAULT_POLL_INTERVAL_MILLIS)
             .withValidation(Field::isPositiveInteger);
+
+    public static final Field MAX_QUEUE_SIZE_IN_BYTES = Field.create("max.queue.size.in.bytes")
+            .withDisplayName("Change event buffer size in bytes")
+            .withType(Type.LONG)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("Maximum size of the queue in bytes for change events read from the database log but not yet recorded or forwarded. Defaults to "
+                    + DEFAULT_MAX_QUEUE_SIZE_IN_BYTES + ". Mean the feature is not enabled")
+            .withDefault(DEFAULT_MAX_QUEUE_SIZE_IN_BYTES)
+            .withValidation(Field::isNonNegativeLong);
 
     public static final Field SNAPSHOT_DELAY_MS = Field.create("snapshot.delay.ms")
             .withDisplayName("Snapshot Delay (milliseconds)")
             .withType(Type.LONG)
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.LOW)
-            .withDescription("The number of milliseconds to delay before a snapshot will begin.")
+            .withDescription("A delay period before a snapshot will begin, given in milliseconds. Defaults to 0 ms.")
             .withDefault(0L)
             .withValidation(Field::isNonNegativeLong);
 
@@ -368,7 +379,7 @@ public abstract class CommonConnectorConfig {
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withValidation(CommonConnectorConfig::validateSkippedOperation)
-            .withDescription("The comma-separated list of operations to skip during streaming, defined as: 'i' for inserts; 'u' for updates; 'd' for deletes. "
+            .withDescription("The comma-separated list of operations to skip during streaming, defined as: 'c' for inserts/create; 'u' for updates; 'd' for deletes. "
                     + "By default, no operations will be skipped.");
 
     public static final Field BINARY_HANDLING_MODE = Field.create("binary.handling.mode")
@@ -390,17 +401,35 @@ public abstract class CommonConnectorConfig {
             .withValidation(Field::isNonNegativeInteger)
             .withDefault(DEFAULT_QUERY_FETCH_SIZE);
 
+    public static final Field SNAPSHOT_MAX_THREADS = Field.create("snapshot.max.threads")
+            .withDisplayName("Snapshot maximum threads")
+            .withType(Type.INT)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDefault(1)
+            .withValidation(Field::isPositiveInteger)
+            .withDescription("The maximum number of threads used to perform the snapshot.  Defaults to 1.");
+
+    public static final Field SIGNAL_DATA_COLLECTION = Field.create("signal.data.collection")
+            .withDisplayName("Signaling data collection")
+            .withType(Type.STRING)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("The name of the data collection that is used to send signals/commands to Debezium. Signaling is disabled when not set.");
+
     protected static final ConfigDefinition CONFIG_DEFINITION = ConfigDefinition.editor()
             .connector(
                     EVENT_PROCESSING_FAILURE_HANDLING_MODE,
                     MAX_BATCH_SIZE,
                     MAX_QUEUE_SIZE,
                     POLL_INTERVAL_MS,
+                    MAX_QUEUE_SIZE_IN_BYTES,
                     PROVIDE_TRANSACTION_METADATA,
                     SKIPPED_OPERATIONS,
                     SNAPSHOT_DELAY_MS,
                     SNAPSHOT_MODE_TABLES,
                     SNAPSHOT_FETCH_SIZE,
+                    SNAPSHOT_MAX_THREADS,
                     RETRIABLE_RESTART_WAIT,
                     QUERY_FETCH_SIZE)
             .events(
@@ -409,19 +438,22 @@ public abstract class CommonConnectorConfig {
                     TOMBSTONES_ON_DELETE,
                     SOURCE_STRUCT_MAKER_VERSION,
                     Heartbeat.HEARTBEAT_INTERVAL,
-                    Heartbeat.HEARTBEAT_TOPICS_PREFIX)
+                    Heartbeat.HEARTBEAT_TOPICS_PREFIX,
+                    SIGNAL_DATA_COLLECTION)
             .create();
 
     private final Configuration config;
     private final boolean emitTombstoneOnDelete;
     private final int maxQueueSize;
     private final int maxBatchSize;
+    private final long maxQueueSizeInBytes;
     private final Duration pollInterval;
     private final String logicalName;
     private final String heartbeatTopicsPrefix;
     private final Duration snapshotDelayMs;
     private final Duration retriableRestartWait;
     private final int snapshotFetchSize;
+    private final int snapshotMaxThreads;
     private final Integer queryFetchSize;
     private final SourceInfoStructMaker<? extends AbstractSourceInfo> sourceInfoStructMaker;
     private final boolean sanitizeFieldNames;
@@ -429,6 +461,7 @@ public abstract class CommonConnectorConfig {
     private final EventProcessingFailureHandlingMode eventProcessingFailureHandlingMode;
     private final CustomConverterRegistry customConverterRegistry;
     private final BinaryHandlingMode binaryHandlingMode;
+    private final String signalingDataCollection;
 
     protected CommonConnectorConfig(Configuration config, String logicalName, int defaultSnapshotFetchSize) {
         this.config = config;
@@ -436,11 +469,13 @@ public abstract class CommonConnectorConfig {
         this.maxQueueSize = config.getInteger(MAX_QUEUE_SIZE);
         this.maxBatchSize = config.getInteger(MAX_BATCH_SIZE);
         this.pollInterval = config.getDuration(POLL_INTERVAL_MS, ChronoUnit.MILLIS);
+        this.maxQueueSizeInBytes = config.getLong(MAX_QUEUE_SIZE_IN_BYTES);
         this.logicalName = logicalName;
         this.heartbeatTopicsPrefix = config.getString(Heartbeat.HEARTBEAT_TOPICS_PREFIX);
         this.snapshotDelayMs = Duration.ofMillis(config.getLong(SNAPSHOT_DELAY_MS));
         this.retriableRestartWait = Duration.ofMillis(config.getLong(RETRIABLE_RESTART_WAIT));
         this.snapshotFetchSize = config.getInteger(SNAPSHOT_FETCH_SIZE, defaultSnapshotFetchSize);
+        this.snapshotMaxThreads = config.getInteger(SNAPSHOT_MAX_THREADS);
         this.queryFetchSize = config.getInteger(QUERY_FETCH_SIZE);
         this.sourceInfoStructMaker = getSourceInfoStructMaker(Version.parse(config.getString(SOURCE_STRUCT_MAKER_VERSION)));
         this.sanitizeFieldNames = config.getBoolean(SANITIZE_FIELD_NAMES) || isUsingAvroConverter(config);
@@ -448,6 +483,7 @@ public abstract class CommonConnectorConfig {
         this.eventProcessingFailureHandlingMode = EventProcessingFailureHandlingMode.parse(config.getString(EVENT_PROCESSING_FAILURE_HANDLING_MODE));
         this.customConverterRegistry = new CustomConverterRegistry(getCustomConverters());
         this.binaryHandlingMode = BinaryHandlingMode.parse(config.getString(BINARY_HANDLING_MODE));
+        this.signalingDataCollection = config.getString(SIGNAL_DATA_COLLECTION);
     }
 
     /**
@@ -470,6 +506,10 @@ public abstract class CommonConnectorConfig {
 
     public int getMaxBatchSize() {
         return maxBatchSize;
+    }
+
+    public long getMaxQueueSizeInBytes() {
+        return maxQueueSizeInBytes;
     }
 
     public Duration getPollInterval() {
@@ -498,6 +538,10 @@ public abstract class CommonConnectorConfig {
 
     public int getSnapshotFetchSize() {
         return snapshotFetchSize;
+    }
+
+    public int getSnapshotMaxThreads() {
+        return snapshotMaxThreads;
     }
 
     public int getQueryFetchSize() {
@@ -567,6 +611,30 @@ public abstract class CommonConnectorConfig {
         return false;
     }
 
+    /**
+     * Validates the supplied fields in this configuration. Extra fields not described by the supplied
+     * {@code fields} parameter will not be validated.
+     *
+     * @param fields the fields
+     * @param problems the consumer to eb called with each problem; never null
+     * @return {@code true} if the value is considered valid, or {@code false} if it is not valid
+     */
+    public boolean validate(Iterable<Field> fields, ValidationOutput problems) {
+        return config.validate(fields, problems);
+    }
+
+    /**
+     * Validate the supplied fields in this configuration. Extra fields not described by the supplied
+     * {@code fields} parameter will not be validated.
+     *
+     * @param fields the fields
+     * @param problems the consumer to be called with each problem; never null
+     * @return {@code true} if the value is considered valid, or {@code false} if it is not valid
+     */
+    public boolean validateAndRecord(Iterable<Field> fields, Consumer<String> problems) {
+        return config.validateAndRecord(fields, problems);
+    }
+
     private static int validateMaxQueueSize(Configuration config, Field field, Field.ValidationOutput problems) {
         int maxQueueSize = config.getInteger(field);
         int maxBatchSize = config.getInteger(MAX_BATCH_SIZE);
@@ -613,7 +681,7 @@ public abstract class CommonConnectorConfig {
                 || APICURIO_AVRO_CONVERTER.equals(keyConverter) || APICURIO_AVRO_CONVERTER.equals(valueConverter);
     }
 
-    protected static int validateServerNameIsDifferentFromHistoryTopicName(Configuration config, Field field, ValidationOutput problems) {
+    public static int validateServerNameIsDifferentFromHistoryTopicName(Configuration config, Field field, ValidationOutput problems) {
         String serverName = config.getString(field);
         String historyTopicName = config.getString(KafkaDatabaseHistory.TOPIC);
 
@@ -632,5 +700,9 @@ public abstract class CommonConnectorConfig {
 
     public BinaryHandlingMode binaryHandlingMode() {
         return binaryHandlingMode;
+    }
+
+    public String getSignalingDataCollectionId() {
+        return signalingDataCollection;
     }
 }

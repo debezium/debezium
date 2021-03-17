@@ -39,7 +39,7 @@ public class MetadataIT implements Testing {
         final UniqueDatabase DATABASE = new UniqueDatabase("readbinlog_it", "readbinlog_test");
         DATABASE.createAndInitialize();
 
-        try (MySQLConnection conn = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());) {
+        try (MySqlTestConnection conn = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName());) {
             conn.connect();
             // Set up the table as one transaction and wait to see the events ...
             conn.execute("DROP TABLE IF EXISTS person",

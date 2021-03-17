@@ -48,6 +48,7 @@ import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
+import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
 import io.debezium.relational.Tables.ColumnNameFilter;
@@ -1147,34 +1148,40 @@ public class JdbcConnection implements AutoCloseable {
 
         // Find regular and materialized views as they cannot be snapshotted
         final Set<TableId> viewIds = new HashSet<>();
-        try (final ResultSet rs = metadata.getTables(databaseCatalog, schemaNamePattern, null, new String[]{ "VIEW", "MATERIALIZED VIEW" })) {
+        final Set<TableId> tableIds = new HashSet<>();
+
+        int totalTables = 0;
+        try (final ResultSet rs = metadata.getTables(databaseCatalog, schemaNamePattern, null,
+                new String[]{ "VIEW", "MATERIALIZED VIEW", "TABLE" })) {
             while (rs.next()) {
                 final String catalogName = rs.getString(1);
                 final String schemaName = rs.getString(2);
                 final String tableName = rs.getString(3);
-                viewIds.add(new TableId(catalogName, schemaName, tableName));
+                final String tableType = rs.getString(4);
+                if ("TABLE".equals(tableType)) {
+                    totalTables++;
+                    TableId tableId = new TableId(catalogName, schemaName, tableName);
+                    if (tableFilter == null || tableFilter.isIncluded(tableId)) {
+                        tableIds.add(tableId);
+                    }
+                }
+                else {
+                    TableId tableId = new TableId(catalogName, schemaName, tableName);
+                    viewIds.add(tableId);
+                }
             }
         }
 
         Map<TableId, List<Column>> columnsByTable = new HashMap<>();
-        try (ResultSet columnMetadata = metadata.getColumns(databaseCatalog, schemaNamePattern, null, null)) {
-            while (columnMetadata.next()) {
-                String catalogName = columnMetadata.getString(1);
-                String schemaName = columnMetadata.getString(2);
-                String tableName = columnMetadata.getString(3);
-                TableId tableId = new TableId(catalogName, schemaName, tableName);
 
-                // exclude views and non-captured tables
-                if (viewIds.contains(tableId) ||
-                        (tableFilter != null && !tableFilter.isIncluded(tableId))) {
-                    continue;
-                }
-
-                // add all included columns
-                readTableColumn(columnMetadata, tableId, columnFilter).ifPresent(column -> {
-                    columnsByTable.computeIfAbsent(tableId, t -> new ArrayList<>())
-                            .add(column.create());
-                });
+        if (totalTables == tableIds.size() || config.getBoolean(RelationalDatabaseConnectorConfig.SNAPSHOT_FULL_COLUMN_SCAN_FORCE)) {
+            columnsByTable = getColumnsDetails(databaseCatalog, schemaNamePattern, null, tableFilter, columnFilter, metadata, viewIds);
+        }
+        else {
+            for (TableId includeTable : tableIds) {
+                Map<TableId, List<Column>> cols = getColumnsDetails(databaseCatalog, schemaNamePattern, includeTable.table(), tableFilter,
+                        columnFilter, metadata, viewIds);
+                columnsByTable.putAll(cols);
             }
         }
 
@@ -1197,11 +1204,42 @@ public class JdbcConnection implements AutoCloseable {
         }
     }
 
+    private Map<TableId, List<Column>> getColumnsDetails(String databaseCatalog, String schemaNamePattern,
+                                                         String tableName, TableFilter tableFilter, ColumnNameFilter columnFilter, DatabaseMetaData metadata,
+                                                         final Set<TableId> viewIds)
+            throws SQLException {
+        Map<TableId, List<Column>> columnsByTable = new HashMap<>();
+        try (ResultSet columnMetadata = metadata.getColumns(databaseCatalog, schemaNamePattern, tableName, null)) {
+            while (columnMetadata.next()) {
+                String catalogName = columnMetadata.getString(1);
+                String schemaName = columnMetadata.getString(2);
+                String metaTableName = columnMetadata.getString(3);
+                TableId tableId = new TableId(catalogName, schemaName, metaTableName);
+
+                // exclude views and non-captured tables
+                if (viewIds.contains(tableId) ||
+                        (tableFilter != null && !tableFilter.isIncluded(tableId))) {
+                    continue;
+                }
+
+                // add all included columns
+                readTableColumn(columnMetadata, tableId, columnFilter).ifPresent(column -> {
+                    columnsByTable.computeIfAbsent(tableId, t -> new ArrayList<>())
+                            .add(column.create());
+                });
+            }
+        }
+        return columnsByTable;
+    }
+
     /**
      * Returns a {@link ColumnEditor} representing the current record of the given result set of column metadata, if
      * included in column.include.list.
      */
     protected Optional<ColumnEditor> readTableColumn(ResultSet columnMetadata, TableId tableId, ColumnNameFilter columnFilter) throws SQLException {
+        // Oracle drivers require this for LONG/LONGRAW to be fetched first.
+        final String defaultValue = columnMetadata.getString(13);
+
         final String columnName = columnMetadata.getString(4);
         if (columnFilter == null || columnFilter.matches(tableId.catalog(), tableId.schema(), tableId.table(), columnName)) {
             final ColumnEditor column = Column.editor().name(columnName);
@@ -1224,7 +1262,6 @@ public class JdbcConnection implements AutoCloseable {
 
             column.nativeType(resolveNativeType(column.typeName()));
             column.jdbcType(resolveJdbcType(columnMetadata.getInt(5), column.nativeType()));
-            final String defaultValue = columnMetadata.getString(13);
             if (defaultValue != null) {
                 getDefaultValue(column.create(), defaultValue).ifPresent(column::defaultValue);
             }
@@ -1239,7 +1276,7 @@ public class JdbcConnection implements AutoCloseable {
         return Optional.empty();
     }
 
-    protected List<String> readPrimaryKeyNames(DatabaseMetaData metadata, TableId id) throws SQLException {
+    public List<String> readPrimaryKeyNames(DatabaseMetaData metadata, TableId id) throws SQLException {
         final List<String> pkColumnNames = new ArrayList<>();
         try (ResultSet rs = metadata.getPrimaryKeys(id.catalog(), id.schema(), id.table())) {
             while (rs.next()) {
@@ -1262,16 +1299,19 @@ public class JdbcConnection implements AutoCloseable {
                 if (firstIndexName == null) {
                     firstIndexName = indexName;
                 }
-                // SQL Server provides indices also without index name
-                // so we need to ignore them
-                if (indexName == null) {
+                if (!isTableUniqueIndexIncluded(indexName, columnName)) {
                     continue;
                 }
                 // Only first unique index is taken into consideration
                 if (indexName != null && !indexName.equals(firstIndexName)) {
                     return uniqueIndexColumnNames;
                 }
-                Collect.set(uniqueIndexColumnNames, columnIndex - 1, columnName, null);
+                if (columnName != null) {
+                    // The returned columnIndex is 0 when columnName is null. These are related
+                    // to table statistics that get returned as part of the index descriptors
+                    // and should be ignored.
+                    Collect.set(uniqueIndexColumnNames, columnIndex - 1, columnName, null);
+                }
             }
         }
         return uniqueIndexColumnNames;
@@ -1280,6 +1320,18 @@ public class JdbcConnection implements AutoCloseable {
     protected List<String> readPrimaryKeyOrUniqueIndexNames(DatabaseMetaData metadata, TableId id) throws SQLException {
         final List<String> pkColumnNames = readPrimaryKeyNames(metadata, id);
         return pkColumnNames.isEmpty() ? readTableUniqueIndices(metadata, id) : pkColumnNames;
+    }
+
+    /**
+     * Allows the connector implementation to determine if a table's unique index
+     * should be include when resolving a table's unique indices.
+     *
+     * @param indexName the index name
+     * @param columnName the column name
+     * @return true if the index is to be included; false otherwise.
+     */
+    protected boolean isTableUniqueIndexIncluded(String indexName, String columnName) {
+        return true;
     }
 
     private void cleanupPreparedStatement(PreparedStatement statement) {

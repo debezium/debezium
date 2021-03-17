@@ -7,7 +7,6 @@ package io.debezium.connector.sqlserver;
 
 import java.time.DateTimeException;
 import java.time.ZoneId;
-import java.util.function.Predicate;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
@@ -24,13 +23,10 @@ import io.debezium.config.Field;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.document.Document;
-import io.debezium.function.Predicates;
-import io.debezium.jdbc.JdbcConfiguration;
-import io.debezium.relational.ColumnId;
+import io.debezium.relational.ColumnFilterMode;
 import io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
-import io.debezium.relational.Tables.ColumnNameFilter;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.history.HistoryRecordComparator;
 
@@ -214,49 +210,11 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
         }
     }
 
-    public static final Field HOSTNAME = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.HOSTNAME)
-            .withDisplayName("Hostname")
-            .withType(Type.STRING)
-            .withWidth(Width.MEDIUM)
-            .withImportance(Importance.HIGH)
-            .withValidation(Field::isRequired)
-            .withDescription("Resolvable hostname or IP address of the SQL Server database server.");
-
-    public static final Field PORT = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.PORT)
-            .withDisplayName("Port")
-            .withType(Type.INT)
-            .withWidth(Width.SHORT)
-            .withDefault(DEFAULT_PORT)
-            .withImportance(Importance.HIGH)
-            .withValidation(Field::isInteger)
-            .withDescription("Port of the SQL Server database server.");
-
-    public static final Field USER = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.USER)
-            .withDisplayName("User")
-            .withType(Type.STRING)
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.HIGH)
-            .withValidation(Field::isRequired)
-            .withDescription("Name of the SQL Server database user to be used when connecting to the database.");
-
-    public static final Field PASSWORD = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.PASSWORD)
-            .withDisplayName("Password")
-            .withType(Type.PASSWORD)
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.HIGH)
-            .withDescription("Password of the SQL Server database user to be used when connecting to the database.");
+    public static final Field PORT = RelationalDatabaseConnectorConfig.PORT
+            .withDefault(DEFAULT_PORT);
 
     public static final Field SERVER_NAME = RelationalDatabaseConnectorConfig.SERVER_NAME
             .withValidation(CommonConnectorConfig::validateServerNameIsDifferentFromHistoryTopicName);
-
-    public static final Field DATABASE_NAME = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.DATABASE)
-            .withDisplayName("Database name")
-            .withType(Type.STRING)
-            .withWidth(Width.MEDIUM)
-            .withImportance(Importance.HIGH)
-            .withValidation(Field::isRequired)
-            .withDescription("The name of the database the connector should be monitoring. When working with a "
-                    + "multi-tenant set-up, must be set to the CDB name.");
 
     public static final Field INSTANCE = Field.create(DATABASE_CONFIG_PREFIX + SqlServerConnection.INSTANCE_NAME)
             .withDisplayName("Instance name")
@@ -346,7 +304,8 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
                     SNAPSHOT_MODE,
                     SNAPSHOT_ISOLATION_MODE,
                     SOURCE_TIMESTAMP_MODE,
-                    MAX_LSN_OPTIMIZATION)
+                    MAX_LSN_OPTIMIZATION,
+                    BINARY_HANDLING_MODE)
             .excluding(
                     SCHEMA_WHITELIST,
                     SCHEMA_INCLUDE_LIST,
@@ -368,23 +327,17 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     private final SnapshotMode snapshotMode;
     private final SnapshotIsolationMode snapshotIsolationMode;
     private final SourceTimestampMode sourceTimestampMode;
-    private final ColumnNameFilter columnFilter;
     private final boolean readOnlyDatabaseConnection;
     private final boolean skipLowActivityLsnsEnabled;
 
     public SqlServerConnectorConfig(Configuration config) {
-        super(SqlServerConnector.class, config, config.getString(SERVER_NAME), new SystemTablesPredicate(), x -> x.schema() + "." + x.table(), true);
+        super(SqlServerConnector.class, config, config.getString(SERVER_NAME), new SystemTablesPredicate(), x -> x.schema() + "." + x.table(), true,
+                ColumnFilterMode.SCHEMA);
 
         this.databaseName = config.getString(DATABASE_NAME);
         this.instanceName = config.getString(INSTANCE);
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE), SNAPSHOT_MODE.defaultValueAsString());
 
-        if (columnIncludeList() != null) {
-            this.columnFilter = getColumnIncludeNameFilter(columnIncludeList());
-        }
-        else {
-            this.columnFilter = getColumnExcludeNameFilter(columnExcludeList());
-        }
         this.readOnlyDatabaseConnection = READ_ONLY_INTENT.equals(config.getString(APPLICATION_INTENT_KEY));
         if (readOnlyDatabaseConnection) {
             this.snapshotIsolationMode = SnapshotIsolationMode.SNAPSHOT;
@@ -398,30 +351,8 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
         this.skipLowActivityLsnsEnabled = config.getBoolean(MAX_LSN_OPTIMIZATION);
     }
 
-    private static ColumnNameFilter getColumnExcludeNameFilter(String excludedColumnPatterns) {
-        return new ColumnNameFilter() {
-
-            Predicate<ColumnId> delegate = Predicates.excludes(excludedColumnPatterns, ColumnId::toString);
-
-            @Override
-            public boolean matches(String catalogName, String schemaName, String tableName, String columnName) {
-                // ignore database name as it's not relevant here
-                return delegate.test(new ColumnId(new TableId(null, schemaName, tableName), columnName));
-            }
-        };
-    }
-
-    private static ColumnNameFilter getColumnIncludeNameFilter(String excludedColumnPatterns) {
-        return new ColumnNameFilter() {
-
-            Predicate<ColumnId> delegate = Predicates.includes(excludedColumnPatterns, ColumnId::toString);
-
-            @Override
-            public boolean matches(String catalogName, String schemaName, String tableName, String columnName) {
-                // ignore database name as it's not relevant here
-                return delegate.test(new ColumnId(new TableId(null, schemaName, tableName), columnName));
-            }
-        };
+    public Configuration jdbcConfig() {
+        return getConfig().subset(DATABASE_CONFIG_PREFIX, true);
     }
 
     public String getDatabaseName() {
@@ -442,10 +373,6 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
 
     public SourceTimestampMode getSourceTimestampMode() {
         return sourceTimestampMode;
-    }
-
-    public ColumnNameFilter getColumnFilter() {
-        return columnFilter;
     }
 
     public boolean isReadOnlyDatabaseConnection() {

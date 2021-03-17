@@ -145,4 +145,8 @@ public interface DatabaseHistory {
      * Called to initialize permanent storage of the history.
      */
     void initializeStorage();
+
+    boolean storeOnlyMonitoredTables();
+
+    boolean skipUnparseableDdlStatements();
 }

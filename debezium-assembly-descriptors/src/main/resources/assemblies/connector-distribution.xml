@@ -22,6 +22,9 @@
               <exclude>com.fasterxml.jackson.core:jackson-annotations:*</exclude>
               <exclude>com.fasterxml.jackson.datatype:jackson-datatype-jsr310:*</exclude>
               <exclude>org.reflections:reflections:*</exclude>
+
+              <!-- Exclude guava dependencies -->
+              <exclude>com.google.guava:listenablefuture:*</exclude>
           </excludes>
       </dependencySet>
       <dependencySet>

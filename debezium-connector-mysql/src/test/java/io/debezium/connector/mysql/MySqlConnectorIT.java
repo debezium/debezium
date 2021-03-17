@@ -36,10 +36,11 @@ import org.junit.Test;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
-import io.debezium.connector.mysql.MySQLConnection.MySqlVersion;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotLockingMode;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
+import io.debezium.connector.mysql.MySqlTestConnection.MySqlVersion;
+import io.debezium.connector.mysql.legacy.Filters;
 import io.debezium.converters.CloudEventsConverterTest;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
@@ -408,7 +409,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         stopConnector();
 
         // Make some changes to data only while the connector is stopped ...
-        try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());) {
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName());) {
             try (JdbcConnection connection = db.connect()) {
                 connection.query("SELECT * FROM products", rs -> {
                     if (Testing.Print.isEnabled()) {
@@ -444,7 +445,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // ---------------------------------------------------------------------------------------------------------------
         // Simple INSERT
         // ---------------------------------------------------------------------------------------------------------------
-        try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());) {
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName());) {
             try (JdbcConnection connection = db.connect()) {
                 connection.execute("INSERT INTO products VALUES (1001,'roy','old robot',1234.56);");
                 connection.query("SELECT * FROM products", rs -> {
@@ -455,6 +456,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
             }
         }
 
+        // Testing.Print.enable();
         // And consume the one insert ...
         records = consumeRecordsByTopic(1);
         assertThat(records.recordsForTopic(DATABASE.topicForTable("products")).size()).isEqualTo(1);
@@ -462,12 +464,12 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         inserts = records.recordsForTopic(DATABASE.topicForTable("products"));
         assertInsert(inserts.get(0), "id", 1001);
 
-        // Testing.print("*** Done with simple insert");
+        Testing.print("*** Done with simple insert");
 
         // ---------------------------------------------------------------------------------------------------------------
         // Changing the primary key of a row should result in 3 events: INSERT, DELETE, and TOMBSTONE
         // ---------------------------------------------------------------------------------------------------------------
-        try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());) {
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName());) {
             try (JdbcConnection connection = db.connect()) {
                 connection.execute("UPDATE products SET id=2001, description='really old robot' WHERE id=1001");
                 connection.query("SELECT * FROM products", rs -> {
@@ -501,7 +503,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // ---------------------------------------------------------------------------------------------------------------
         // Simple UPDATE (with no schema changes)
         // ---------------------------------------------------------------------------------------------------------------
-        try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());) {
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName());) {
             try (JdbcConnection connection = db.connect()) {
                 connection.execute("UPDATE products SET weight=1345.67 WHERE id=2001");
                 connection.query("SELECT * FROM products", rs -> {
@@ -528,7 +530,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // Change our schema with a fully-qualified name; we should still see this event
         // ---------------------------------------------------------------------------------------------------------------
         // Add a column with default to the 'products' table and explicitly update one record ...
-        try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName())) {
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
             try (JdbcConnection connection = db.connect()) {
                 connection.execute(String.format(
                         "ALTER TABLE %s.products ADD COLUMN volume FLOAT, ADD COLUMN alias VARCHAR(30) NULL AFTER description",
@@ -557,7 +559,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // DBZ-55 Change our schema using a different database and a fully-qualified name; we should still see this event
         // ---------------------------------------------------------------------------------------------------------------
         // Connect to a different database, but use the fully qualified name for a table in our database ...
-        try (MySQLConnection db = MySQLConnection.forTestDatabase("emptydb");) {
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase("emptydb");) {
             try (JdbcConnection connection = db.connect()) {
                 connection.execute(String.format("CREATE TABLE %s.stores ("
                         + " id INT(11) PRIMARY KEY NOT NULL AUTO_INCREMENT,"
@@ -580,7 +582,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // ---------------------------------------------------------------------------------------------------------------
 
         // Do something completely different with a table we've not modified yet and then read that event.
-        try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());) {
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName());) {
             try (JdbcConnection connection = db.connect()) {
                 connection.execute("UPDATE products_on_hand SET quantity=20 WHERE product_id=109");
                 connection.query("SELECT * FROM products_on_hand", rs -> {
@@ -624,7 +626,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         BinlogPosition positionBeforeInserts = new BinlogPosition();
         BinlogPosition positionAfterInserts = new BinlogPosition();
         BinlogPosition positionAfterUpdate = new BinlogPosition();
-        try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());) {
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName());) {
             try (JdbcConnection connection = db.connect()) {
                 connection.query("SHOW MASTER STATUS", positionBeforeInserts::readFromDatabase);
                 connection.execute("INSERT INTO products(id,name,description,weight,volume,alias) VALUES "
@@ -672,11 +674,12 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         stopConnector();
 
         // Read the last committed offsets, and verify the binlog coordinates ...
-        SourceInfo persistedOffsetSource = new SourceInfo(new MySqlConnectorConfig(Configuration.create()
+        final MySqlOffsetContext.Loader loader = new MySqlOffsetContext.Loader(new MySqlConnectorConfig(Configuration.create()
                 .with(MySqlConnectorConfig.SERVER_NAME, config.getString(MySqlConnectorConfig.SERVER_NAME))
                 .build()));
-        Map<String, ?> lastCommittedOffset = readLastCommittedOffset(config, persistedOffsetSource.partition());
-        persistedOffsetSource.setOffset(lastCommittedOffset);
+        Map<String, ?> lastCommittedOffset = readLastCommittedOffset(config, loader.getPartition());
+        final MySqlOffsetContext offsetContext = (MySqlOffsetContext) loader.load(lastCommittedOffset);
+        final SourceInfo persistedOffsetSource = offsetContext.getSource();
         Testing.print("Position before inserts: " + positionBeforeInserts);
         Testing.print("Position after inserts:  " + positionAfterInserts);
         Testing.print("Offset: " + lastCommittedOffset);
@@ -685,7 +688,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
             // Same binlog filename ...
             assertThat(persistedOffsetSource.binlogFilename()).isEqualTo(positionBeforeInserts.binlogFilename());
             assertThat(persistedOffsetSource.binlogFilename()).isEqualTo(positionAfterInserts.binlogFilename());
-            final MySqlVersion mysqlVersion = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName()).getMySqlVersion();
+            final MySqlVersion mysqlVersion = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName()).getMySqlVersion();
             if (mysqlVersion == MySqlVersion.MYSQL_5_5 || mysqlVersion == MySqlVersion.MYSQL_5_6) {
                 // todo: for some reason on MySQL 5.6, the binlog position does not behave like it does on MySQL 5.7 - why?
                 assertThat(persistedOffsetSource.binlogPosition()).isGreaterThanOrEqualTo(positionBeforeInserts.binlogPosition());
@@ -700,7 +703,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
             // the replica is not the same server as the master, so it will have a different binlog filename and position ...
         }
         // Event number is 2 ...
-        assertThat(persistedOffsetSource.eventsToSkipUponRestart()).isEqualTo(2);
+        assertThat(offsetContext.eventsToSkipUponRestart()).isEqualTo(2);
         // GTID set should match the before-inserts GTID set ...
         // assertThat(persistedOffsetSource.gtidSet()).isEqualTo(positionBeforeInserts.gtidSet());
 
@@ -875,7 +878,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         SourceRecords records = consumeRecordsByTopic(1 + 5);
         assertThat(records.ddlRecordsForDatabase(DATABASE.getDatabaseName()).size()).isEqualTo(5);
 
-        try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());) {
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName());) {
             try (JdbcConnection connection = db.connect()) {
                 connection.execute("ALTER TABLE orders ADD COLUMN (newcol INT)");
                 connection.execute("ALTER TABLE customers ADD COLUMN (newcol INT)");
@@ -946,7 +949,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // Consume the first records due to startup and initialization of the database ...
         // Testing.Print.enable();
 
-        try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());) {
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName());) {
             try (JdbcConnection connection = db.connect()) {
                 connection.execute(
                         "create table migration_test (id varchar(20) null,mgb_no varchar(20) null)",
@@ -955,7 +958,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
             }
         }
 
-        SourceRecords records = consumeRecordsByTopic(16);
+        SourceRecords records = consumeRecordsByTopic(15);
         final List<SourceRecord> migrationTestRecords = records.recordsForTopic(DATABASE.topicForTable("migration_test"));
         assertThat(migrationTestRecords.size()).isEqualTo(1);
         final SourceRecord record = migrationTestRecords.get(0);
@@ -987,7 +990,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         SourceRecords records = consumeRecordsByTopic(1 + 1 + 2 + 2 * 4);
         assertThat(records.ddlRecordsForDatabase(DATABASE.getDatabaseName()).size()).isEqualTo(1 + 2 + 2 * 4);
 
-        try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());) {
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName());) {
             try (JdbcConnection connection = db.connect()) {
                 connection.execute("ALTER TABLE orders ADD COLUMN (newcol INT)");
                 connection.execute("ALTER TABLE customers ADD COLUMN (newcol INT)");
@@ -1016,7 +1019,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
                 .with(DatabaseHistory.STORE_ONLY_MONITORED_TABLES_DDL, true)
                 .build();
 
-        try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());) {
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName());) {
             try (JdbcConnection connection = db.connect()) {
                 connection.execute(
                         "CREATE TABLE nonmon (id INT)");
@@ -1030,7 +1033,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         SourceRecords records = consumeRecordsByTopic(6);
         assertThat(records.ddlRecordsForDatabase(DATABASE.getDatabaseName()).size()).isEqualTo(5);
 
-        try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());) {
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName());) {
             try (JdbcConnection connection = db.connect()) {
                 connection.execute(
                         "CREATE UNIQUE INDEX pk ON nonmon(id)",
@@ -1057,7 +1060,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
 
         dropDatabases();
 
-        try (MySQLConnection db = MySQLConnection.forTestDatabase("mysql");) {
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase("mysql");) {
             try (JdbcConnection connection = db.connect()) {
                 connection.execute(
                         "CREATE DATABASE non_wh",
@@ -1134,7 +1137,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
     }
 
     private void dropDatabases() throws SQLException {
-        try (MySQLConnection db = MySQLConnection.forTestDatabase("mysql");) {
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase("mysql");) {
             try (JdbcConnection connection = db.connect()) {
                 connection.query("SHOW DATABASES", rs -> {
                     while (rs.next()) {
@@ -1457,7 +1460,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         SourceRecords records = consumeRecordsByTopic(INITIAL_EVENT_COUNT); // 6 DDL changes
         assertThat(records.recordsForTopic(DATABASE.topicForTable("orders")).size()).isEqualTo(5);
 
-        try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());) {
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName());) {
             try (JdbcConnection connection = db.connect()) {
                 connection.execute("UPDATE orders SET order_number=10101 WHERE order_number=10001");
             }
@@ -1470,7 +1473,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         assertTombstone(updates.get(1), "order_number", 10001);
         assertInsert(updates.get(2), "order_number", 10101);
 
-        try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());) {
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName());) {
             try (JdbcConnection connection = db.connect()) {
                 connection.execute("DELETE FROM orders WHERE order_number=10101");
             }
@@ -1495,13 +1498,14 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // Start the connector ...
         start(MySqlConnector.class, config);
 
+        // Testing.Print.enable();
         // ---------------------------------------------------------------------------------------------------------------
         // Consume all of the events due to startup and initialization of the database
         // ---------------------------------------------------------------------------------------------------------------
         SourceRecords records = consumeRecordsByTopic(INITIAL_EVENT_COUNT); // 6 DDL changes
         assertThat(records.recordsForTopic(DATABASE.topicForTable("orders")).size()).isEqualTo(5);
 
-        try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());) {
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName());) {
             try (JdbcConnection connection = db.connect()) {
                 connection.execute("UPDATE orders SET order_number=10101 WHERE order_number=10001");
             }
@@ -1513,7 +1517,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         assertDelete(updates.get(0), "order_number", 10001);
         assertInsert(updates.get(1), "order_number", 10101);
 
-        try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());) {
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName());) {
             try (JdbcConnection connection = db.connect()) {
                 connection.execute("DELETE FROM orders WHERE order_number = 10101;");
                 connection.execute("DELETE FROM orders WHERE order_number = 10002;");
@@ -1548,7 +1552,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
 
         waitForStreamingRunning(DATABASE.getServerName());
 
-        try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());) {
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName());) {
             try (JdbcConnection connection = db.connect()) {
                 final Connection jdbc = connection.connection();
                 connection.setAutoCommit(false);
@@ -1600,7 +1604,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         final String insertSqlStatement = "INSERT INTO products VALUES (default,'robot','Toy robot',1.304)";
 
         // Connect to the DB and issue our insert statement to test.
-        try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName())) {
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
             try (JdbcConnection connection = db.connect()) {
                 // Disable Query log option
                 connection.execute("SET binlog_rows_query_log_events=OFF");
@@ -1651,7 +1655,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         final String insertSqlStatement = "INSERT INTO products VALUES (default,'robot','Toy robot',1.304)";
 
         // Connect to the DB and issue our insert statement to test.
-        try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName())) {
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
             try (JdbcConnection connection = db.connect()) {
                 // Enable Query log option
                 connection.execute("SET binlog_rows_query_log_events=ON");
@@ -1703,7 +1707,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         final String insertSqlStatement = "INSERT INTO products VALUES (default,'robot','Toy robot',1.304)";
 
         // Connect to the DB and issue our insert statement to test.
-        try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName())) {
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
             try (JdbcConnection connection = db.connect()) {
                 // Enable Query log option
                 connection.execute("SET binlog_rows_query_log_events=ON");
@@ -1758,7 +1762,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         logger.warn(DATABASE.getDatabaseName());
 
         // Connect to the DB and issue our insert statement to test.
-        try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName())) {
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
             try (JdbcConnection connection = db.connect()) {
                 // Enable Query log option
                 connection.execute("SET binlog_rows_query_log_events=ON");
@@ -1820,7 +1824,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         logger.warn(DATABASE.getDatabaseName());
 
         // Connect to the DB and issue our insert statement to test.
-        try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName())) {
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
             try (JdbcConnection connection = db.connect()) {
                 // Enable Query log option
                 connection.execute("SET binlog_rows_query_log_events=ON");
@@ -1879,7 +1883,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         final String deleteSqlStatement = "DELETE FROM orders WHERE order_number=10001 LIMIT 1";
 
         // Connect to the DB and issue our insert statement to test.
-        try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName())) {
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
             try (JdbcConnection connection = db.connect()) {
                 // Enable Query log option
                 connection.execute("SET binlog_rows_query_log_events=ON");
@@ -1930,7 +1934,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         final String deleteSqlStatement = "DELETE FROM orders WHERE purchaser=1002";
 
         // Connect to the DB and issue our insert statement to test.
-        try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName())) {
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
             try (JdbcConnection connection = db.connect()) {
                 // Enable Query log option
                 connection.execute("SET binlog_rows_query_log_events=ON");
@@ -1989,7 +1993,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         final String updateSqlStatement = "UPDATE products set name='toaster' where id=109 LIMIT 1";
 
         // Connect to the DB and issue our insert statement to test.
-        try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName())) {
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
             try (JdbcConnection connection = db.connect()) {
                 // Enable Query log option
                 connection.execute("SET binlog_rows_query_log_events=ON");
@@ -2040,7 +2044,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         final String updateSqlStatement = "UPDATE orders set quantity=0 where order_number in (10001, 10004)";
 
         // Connect to the DB and issue our insert statement to test.
-        try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName())) {
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
             try (JdbcConnection connection = db.connect()) {
                 // Enable Query log option
                 connection.execute("SET binlog_rows_query_log_events=ON");
@@ -2193,6 +2197,64 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
             Assertions.assertThat(key.get("id")).isNotNull();
             Assertions.assertThat(key.get("name")).isNotNull();
         });
+    }
+
+    @Test
+    @FixFor("DBZ-2957")
+    public void shouldRewriteIdentityKeyWithWhitespace() throws InterruptedException, SQLException {
+        // Define the table we want to watch events from.
+        final String tableName = "products";
+
+        config = DATABASE.defaultConfig()
+                .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+                .with(CommonConnectorConfig.TOMBSTONES_ON_DELETE, false)
+                .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName(tableName))
+                // Explicitly configure connector TO parse query
+                .with(MySqlConnectorConfig.INCLUDE_SQL_QUERY, true)
+                // rewrite key from table 'products': from {id} to {id, name}
+                .with(MySqlConnectorConfig.MSG_KEY_COLUMNS, "   (.*).products:id,name   ")
+                .build();
+
+        // Start the connector ...
+        start(MySqlConnector.class, config);
+
+        final SourceRecords records = consumeRecordsByTopic(9);
+        // Parse through the source record for the query value.
+        final List<SourceRecord> recordsForTopic = records.recordsForTopic(DATABASE.topicForTable(tableName));
+
+        recordsForTopic.forEach(record -> {
+            Struct key = (Struct) record.key();
+            Assertions.assertThat(key.get("id")).isNotNull();
+            Assertions.assertThat(key.get("name")).isNotNull();
+        });
+    }
+
+    @Test
+    @FixFor("DBZ-2957")
+    public void shouldRewriteIdentityKeyWithMsgKeyColumnsFieldRegexValidation() throws InterruptedException, SQLException {
+        // Define the table we want to watch events from.
+        final String tableName = "products";
+
+        config = DATABASE.defaultConfig()
+                .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+                .with(CommonConnectorConfig.TOMBSTONES_ON_DELETE, false)
+                .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName(tableName))
+                .with(MySqlConnectorConfig.INCLUDE_SQL_QUERY, true)
+                .with(MySqlConnectorConfig.MSG_KEY_COLUMNS, "(.*).products:id,name;")
+                .build();
+
+        // Start the connector ...
+        start(MySqlConnector.class, config);
+
+        final SourceRecords records = consumeRecordsByTopic(9);
+        // Parse through the source record for the query value.
+        final List<SourceRecord> recordsForTopic = records.recordsForTopic(DATABASE.topicForTable(tableName));
+
+        recordsForTopic.forEach(record -> {
+            Struct key = (Struct) record.key();
+            Assertions.assertThat(key.get("id")).isNotNull();
+            Assertions.assertThat(key.get("name")).isNotNull();
+        });
 
     }
 
@@ -2222,7 +2284,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
     }
 
     private void waitForStreamingRunning(String serverName) throws InterruptedException {
-        waitForStreamingRunning("mysql", serverName, "binlog");
+        waitForStreamingRunning("mysql", serverName, getStreamingNamespace());
     }
 
     private List<SourceRecord> recordsForTopicForRoProductsTable(SourceRecords records) {
@@ -2243,10 +2305,11 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // ---------------------------------------------------------------------------------------------------------------
         // Consume all of the events due to startup and initialization of the database
         // ---------------------------------------------------------------------------------------------------------------
+        // Testing.Print.enable();
         SourceRecords records = consumeRecordsByTopic(INITIAL_EVENT_COUNT); // 6 DDL changes
         assertThat(records.recordsForTopic(DATABASE.topicForTable("orders")).size()).isEqualTo(5);
 
-        try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());) {
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName());) {
             try (JdbcConnection connection = db.connect()) {
                 connection.execute("UPDATE orders SET order_number=10303 WHERE order_number=10003");
             }
@@ -2265,12 +2328,12 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         keyPKUpdateHeader = getPKUpdateOldKeyHeader(insertRecord).get();
         assertEquals(Integer.valueOf(10003), ((Struct) keyPKUpdateHeader.value()).getInt32("order_number"));
 
-        try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());) {
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName());) {
             try (JdbcConnection connection = db.connect()) {
                 connection.execute("UPDATE orders SET quantity=5 WHERE order_number=10004");
             }
         }
-        records = consumeRecordsByTopic(5);
+        records = consumeRecordsByTopic(1);
         updates = records.recordsForTopic(DATABASE.topicForTable("orders"));
         assertThat(updates.size()).isEqualTo(1);
 
@@ -2293,7 +2356,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         start(MySqlConnector.class, config);
         waitForSnapshotToBeCompleted("mysql", DATABASE.getServerName());
 
-        try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());) {
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName());) {
             try (JdbcConnection connection = db.connect()) {
                 connection.execute("INSERT INTO products VALUES (201,'rubberduck','Rubber Duck',2.12);");
                 connection.execute("UPDATE products SET weight=3.13 WHERE name = 'rubberduck'");
@@ -2334,7 +2397,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         start(MySqlConnector.class, config);
         waitForSnapshotToBeCompleted("mysql", DATABASE.getServerName());
 
-        try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());) {
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName());) {
             try (JdbcConnection connection = db.connect()) {
                 connection.execute("INSERT INTO products VALUES (204,'rubberduck','Rubber Duck',2.12);");
                 connection.execute("UPDATE products SET weight=3.13 WHERE name = 'rubberduck'");

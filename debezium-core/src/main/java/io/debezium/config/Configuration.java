@@ -2132,11 +2132,13 @@ public interface Configuration {
         return config.getString(
                 newProperty,
                 () -> {
-                    CONFIGURATION_LOGGER.warn("Using configuration property \"" + oldProperty.name()
-                            + "\" is deprecated and will be removed in future versions. Please use \"" + newProperty.name()
-                            + "\" instead.");
-                    return config.getString(oldProperty);
+                    String oldValue = config.getString(oldProperty);
+                    if (oldValue != null && !oldValue.equals(oldProperty.defaultValueAsString())) {
+                        CONFIGURATION_LOGGER.warn("Using configuration property \"" + oldProperty.name()
+                                + "\" is deprecated and will be removed in future versions. Please use \"" + newProperty.name()
+                                + "\" instead.");
+                    }
+                    return oldValue;
                 });
     }
-
 }

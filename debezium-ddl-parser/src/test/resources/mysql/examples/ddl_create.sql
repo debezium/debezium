@@ -33,6 +33,12 @@ create table transactional(name varchar(255), class_id int, id int);
 create table add_test(col1 varchar(255), col2 int, col3 int);
 create table blob_test(id int, col1 blob(45));
 CREATE TABLE `user_account` ( `id1` bigint(20) unsigned NOT NULL DEFAULT nextval(`useraccount`.`user_account_id_seq`));
+create table žluťoučký (kůň int);
+CREATE TABLE staff (PRIMARY KEY (staff_num), staff_num INT(5) NOT NULL, first_name VARCHAR(100) NOT NULL, pens_in_drawer INT(2) NOT NULL, CONSTRAINT pens_in_drawer_range CHECK(pens_in_drawer BETWEEN 1 AND 99));
+create table column_names_as_aggr_funcs(min varchar(100), max varchar(100), sum varchar(100), count varchar(100));
+CREATE TABLE char_table (c1 CHAR VARYING(10), c2 CHARACTER VARYING(10), c3 NCHAR VARYING(10));
+CREATE TABLE generated_persistent(id int NOT NULL AUTO_INCREMENT, ip_hash char(64) AS (SHA2(CONCAT(`token`, COALESCE(`ip`, "")), 256)) PERSISTENT, persistent int, PRIMARY KEY (`id`), UNIQUE KEY `token_and_ip_hash` (`ip_hash`)) ENGINE=InnoDB;
+create table rack_shelf_bin ( id int unsigned not null auto_increment unique primary key, bin_volume decimal(20, 4) default (bin_len * bin_width * bin_height));
 #end
 #begin
 -- Rename table
@@ -81,6 +87,10 @@ create index index1 on t1(col1) comment 'test index' comment 'some test' using b
 create unique index index2 using btree on t2(1c desc, `_` asc);
 create index index3 using hash on antlr_tokens(token(30) asc);
 create index ix_add_test_col1 on add_test(col1) comment 'test index' using btree;
+#end
+#begin
+create index myindex on t1(col1) comment 'test index' comment 'some test' using btree;
+create or replace index myindex on t1(col1) comment 'test index' comment 'some test' using btree;
 #end
 #begin
 -- Create logfile group
@@ -232,6 +242,9 @@ CREATE TABLE `tab1` (
   mi MIDDLEINT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 #end
+-- Comments
+-- SELECT V_PAYABLE_AMT, DIS_ADJUST_TOTAL_PAYABLE;
+--	SELECT V_PAYABLE_AMT, DIS_ADJUST_TOTAL_PAYABLE;
 #begin
 -- Create procedure
 -- The default value for local variables in a DECLARE statement should be an expression
@@ -242,5 +255,27 @@ BEGIN
   DECLARE var1 INT unsigned default 1;
   DECLARE var2 TIMESTAMP default CURRENT_TIMESTAMP;
   DECLARE var3 INT unsigned default 2 + var1;
+END -- //-- delimiter ;
+#end
+#begin
+-- Create procedure
+-- delimiter //
+CREATE PROCEDURE doiterate(p1 INT)
+label2:BEGIN
+  label1:LOOP
+    SET p1 = p1 + 1;
+    IF p1 < 10 THEN ITERATE label1; END IF;
+    LEAVE label1;
+  END LOOP label1;
+END -- //-- delimiter ;
+#end
+-- Create procedure
+-- delimiter //
+CREATE PROCEDURE makesignal(p1 INT)
+BEGIN
+  DECLARE error_text VARCHAR(255);
+  IF (error_text != 'OK') THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = error_text;
+  END IF;
 END -- //-- delimiter ;
 #end

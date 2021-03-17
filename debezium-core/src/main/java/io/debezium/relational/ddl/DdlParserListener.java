@@ -11,11 +11,11 @@ import io.debezium.annotation.Immutable;
 import io.debezium.relational.TableId;
 
 /**
- * An interface that can listen to various actions of a {@link LegacyDdlParser}. Every kind of {@link Event} has a {@link EventType
+ * An interface that can listen to various actions of a {@link DdlParser}. Every kind of {@link Event} has a {@link EventType
  * type} that makes it easier to implement a {@link DdlParserListener} using a {@code switch} statement. However, each kind of
  * {@link Event} also may have additional data associated with it.
  * <p>
- * Clearly not all DDL statements processed by a {@link LegacyDdlParser parser} will result in an {@link Event event}.
+ * Clearly not all DDL statements processed by a {@link DdlParser parser} will result in an {@link Event event}.
  *
  * @author Randall Hauch
  */
@@ -324,12 +324,14 @@ public interface DdlParserListener {
         private final String variableName;
         private final String value;
         private final String databaseName;
+        private final int order;
 
-        public SetVariableEvent(String variableName, String value, String currentDatabaseName, String ddlStatement) {
+        public SetVariableEvent(String variableName, String value, String currentDatabaseName, int order, String ddlStatement) {
             super(EventType.SET_VARIABLE, ddlStatement);
             this.variableName = variableName;
             this.value = value;
             this.databaseName = currentDatabaseName;
+            this.order = order;
         }
 
         /**
@@ -346,6 +348,14 @@ public interface DdlParserListener {
          */
         public String variableValue() {
             return value;
+        }
+
+        /**
+         * In case of multiple vars set in the same SET statement the order of the variable in the statement.
+         * @return the variable order
+         */
+        public int order() {
+            return order;
         }
 
         public Optional<String> databaseName() {

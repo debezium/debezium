@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -20,10 +21,10 @@ import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.mongodb.MongoClient;
 import com.mongodb.MongoCredential;
-import com.mongodb.ReplicaSetStatus;
 import com.mongodb.ServerAddress;
+import com.mongodb.client.MongoClient;
+import com.mongodb.connection.ClusterDescription;
 
 import io.debezium.config.Configuration;
 import io.debezium.function.BlockingConsumer;
@@ -43,7 +44,8 @@ public class ConnectionContext implements AutoCloseable {
      */
     private static final Duration PAUSE_AFTER_ERROR = Duration.ofMillis(500);
 
-    private final Logger logger = LoggerFactory.getLogger(getClass());
+    private static final Logger LOGGER = LoggerFactory.getLogger(ConnectionContext.class);
+
     protected final Configuration config;
     protected final MongoClients pool;
     protected final ReplicaSets replicaSets;
@@ -73,13 +75,15 @@ public class ConnectionContext implements AutoCloseable {
             clientBuilder.withCredential(MongoCredential.createCredential(username, adminDbName, password.toCharArray()));
         }
         if (useSSL) {
-            clientBuilder.options().sslEnabled(true).sslInvalidHostNameAllowed(sslAllowInvalidHostnames);
+            clientBuilder.settings().applyToSslSettings(
+                    builder -> builder.enabled(true).invalidHostNameAllowed(sslAllowInvalidHostnames));
         }
 
-        clientBuilder.options()
-                .serverSelectionTimeout(serverSelectionTimeoutMs)
-                .socketTimeout(socketTimeoutMs)
-                .connectTimeout(connectTimeoutMs);
+        clientBuilder.settings()
+                .applyToSocketSettings(builder -> builder.connectTimeout(connectTimeoutMs, TimeUnit.MILLISECONDS)
+                        .readTimeout(socketTimeoutMs, TimeUnit.MILLISECONDS))
+                .applyToClusterSettings(
+                        builder -> builder.serverSelectionTimeout(serverSelectionTimeoutMs, TimeUnit.MILLISECONDS));
 
         pool = clientBuilder.build();
 
@@ -107,7 +111,7 @@ public class ConnectionContext implements AutoCloseable {
     }
 
     protected Logger logger() {
-        return logger;
+        return LOGGER;
     }
 
     public MongoClients clients() {
@@ -147,17 +151,13 @@ public class ConnectionContext implements AutoCloseable {
             return Duration.ofMillis(config.getLong(MongoDbConnectorConfig.MONGODB_POLL_INTERVAL_MS));
         }
         if (config.hasKey(MongoDbConnectorConfig.POLL_INTERVAL_SEC.name())) {
-            logger.warn("The option `mongodb.poll.interval.sec` is deprecated. Use `mongodb.poll.interval.ms` instead.");
+            LOGGER.warn("The option `mongodb.poll.interval.sec` is deprecated. Use `mongodb.poll.interval.ms` instead.");
         }
         return Duration.ofSeconds(config.getInteger(MongoDbConnectorConfig.POLL_INTERVAL_SEC));
     }
 
     public int maxConnectionAttemptsForPrimary() {
         return config.getInteger(MongoDbConnectorConfig.MAX_FAILED_CONNECTIONS);
-    }
-
-    public int maxNumberOfCopyThreads() {
-        return config.getInteger(MongoDbConnectorConfig.MAX_COPY_THREADS);
     }
 
     /**
@@ -269,13 +269,7 @@ public class ConnectionContext implements AutoCloseable {
          */
         public ServerAddress address() {
             return execute("get replica set primary", primary -> {
-                ReplicaSetStatus rsStatus = primary.getReplicaSetStatus();
-                if (rsStatus != null) {
-                    return rsStatus.getMaster();
-                }
-                else {
-                    return null;
-                }
+                return MongoUtil.getPrimaryAddress(primary);
             });
         }
 
@@ -440,8 +434,8 @@ public class ConnectionContext implements AutoCloseable {
      */
     protected MongoClient clientForPrimary(ReplicaSet replicaSet) {
         MongoClient replicaSetClient = clientForReplicaSet(replicaSet);
-        ReplicaSetStatus rsStatus = replicaSetClient.getReplicaSetStatus();
-        if (rsStatus == null) {
+        final ClusterDescription clusterDescription = replicaSetClient.getClusterDescription();
+        if (clusterDescription == null) {
             if (!this.useHostsAsSeeds) {
                 // No replica set status is available, but it may still be a replica set ...
                 return replicaSetClient;
@@ -451,7 +445,7 @@ public class ConnectionContext implements AutoCloseable {
                     "' is not a valid replica set and cannot be used");
         }
         // It is a replica set ...
-        ServerAddress primaryAddress = rsStatus.getMaster();
+        ServerAddress primaryAddress = MongoUtil.getPrimaryAddress(replicaSetClient);
         if (primaryAddress != null) {
             return pool.clientFor(primaryAddress);
         }

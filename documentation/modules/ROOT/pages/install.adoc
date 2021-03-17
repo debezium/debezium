@@ -36,6 +36,7 @@ ifeval::['{page-version}' == 'master']
 * {link-oracle-plugin-snapshot}[Oracle Connector plugin archive] (incubating)
 * {link-db2-plugin-snapshot}[Db2 Connector plugin archive] (incubating)
 * {link-cassandra-plugin-snapshot}[Cassandra plugin archive] (incubating)
+* {link-vitess-plugin-snapshot}[Vitess plugin archive] (incubating)
 
 NOTE: All above links are to nightly snapshots of the {prodname} master branch.  If you are looking for non-snapshot versions, please select the appropriate version in the top right.
 endif::[]
@@ -47,10 +48,13 @@ ifeval::['{page-version}' != 'master']
 * https://repo1.maven.org/maven2/io/debezium/debezium-connector-oracle/{debezium-version}/debezium-connector-oracle-{debezium-version}-plugin.tar.gz[Oracle Connector plugin archive] (incubating)
 * https://repo1.maven.org/maven2/io/debezium/debezium-connector-db2/{debezium-version}/debezium-connector-db2-{debezium-version}-plugin.tar.gz[Db2 Connector plugin archive] (incubating)
 * https://repo1.maven.org/maven2/io/debezium/debezium-connector-cassandra/{debezium-version}/debezium-connector-cassandra-{debezium-version}-plugin.tar.gz[Cassandra plugin archive] (incubating)
+* https://repo1.maven.org/maven2/io/debezium/debezium-connector-vitess/{debezium-version}/debezium-connector-vitess-{debezium-version}-plugin.tar.gz[Vitess plugin archive] (incubating)
 endif::[]
 
 If immutable containers are your thing, then check out https://quay.io/organization/debezium[{prodname}'s container images] (https://hub.docker.com/r/debezium/[alternative source] on DockerHub) for Apache Kafka, Kafka Connect and Apache Zookeeper, with the different {prodname} connectors already pre-installed and ready to go. Our xref:tutorial.adoc[tutorial] even walks you through using these images, and this is a great way to learn what {prodname} is all about.
 Of course you also can run {prodname} on Kubernetes and xref:operations/openshift.adoc[OpenShift].
+Using the https://strimzi.io/[Strimzi] Kubernetes Operator is recommended for that.
+It allows to deploy Apache Kafka, Kafka Connect, and even connectors declaratively via custom Kubernetes resources.
 
 By default, the directory _/kafka/connect_ is used as plugin directory by the {prodname} Docker image for Kafka Connect.
 So any additional connectors you may wish to use should be added to that directory.
@@ -76,8 +80,9 @@ xref:connectors/postgresql.adoc#postgresql-deploying-a-connector[Postgres Connec
 xref:connectors/mongodb.adoc#mongodb-deploying-a-connector[MongoDB Connector],
 xref:connectors/sqlserver.adoc#sqlserver-deploying-a-connector[SQL Server Connector],
 xref:connectors/oracle.adoc#oracle-deploying-a-connector[Oracle Connector],
-xref:connectors/db2.adoc#db2-deploying-a-connector[Db2 Connector]
-or xref:connectors/cassandra.adoc#cassandra-deploying-a-connector[Cassandra Connector]
+xref:connectors/db2.adoc#db2-deploying-a-connector[Db2 Connector],
+xref:connectors/cassandra.adoc#cassandra-deploying-a-connector[Cassandra Connector],
+or xref:connectors/vitess.adoc#vitess-deploying-a-connector[Vitess Connector],
 and use the link:{link-kafka-docs}/#connect_rest[Kafka Connect REST API] to add that
 connector configuration to your Kafka Connect cluster. When the connector starts, it will connect to the source and produce events
 for each inserted, updated, and deleted row or document.

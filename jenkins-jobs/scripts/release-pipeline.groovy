@@ -334,7 +334,7 @@ node('Slave') {
 
     stage ('Prepare release') {
         dir(DEBEZIUM_DIR) {
-            sh "mvn clean install -DskipTests -DskipITs"
+            sh "mvn clean install -DskipTests -DskipITs -Poracle"
         }
         STAGING_REPO_ID = mvnRelease(DEBEZIUM_DIR, DEBEZIUM_REPOSITORY, DEBEZIUM_BRANCH)
         ADDITIONAL_REPOSITORIES.each { id, repo ->
@@ -343,12 +343,12 @@ node('Slave') {
                     it.replaceFirst('<version>.+</version>\n    </parent>', "<version>$RELEASE_VERSION</version>\n    </parent>")
             }
             sh "git commit -a -m '[release] Stable parent $RELEASE_VERSION for release'"
-            sh "mvn clean install -DskipTests -DskipITs${id == 'incubator' ? ' -Poracle' : ''}"
+            sh "mvn clean install -DskipTests -DskipITs"
             }
-            ADDITIONAL_REPOSITORIES[id].mavenRepoId = mvnRelease(id, repo.git, repo.branch, "-Dversion.debezium=$RELEASE_VERSION${id == 'incubator' ? ' -Poracle' : ''}")
+            ADDITIONAL_REPOSITORIES[id].mavenRepoId = mvnRelease(id, repo.git, repo.branch, "-Dversion.debezium=$RELEASE_VERSION")
             dir(id) {
                 modifyFile("pom.xml") {
-                    it.replaceFirst('<version>.+</version>\n    </parent>', "<version>x$DEVELOPMENT_VERSION</version>\n    </parent>")
+                    it.replaceFirst('<version>.+</version>\n    </parent>', "<version>$DEVELOPMENT_VERSION</version>\n    </parent>")
                 }
                 sh "git commit -a -m '[release] New parent $DEVELOPMENT_VERSION for development'"
                 if (!DRY_RUN) {

@@ -17,6 +17,8 @@ import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.tree.ParseTree;
 
+import com.mysql.cj.CharsetMapping;
+
 import io.debezium.antlr.AntlrDdlParser;
 import io.debezium.antlr.AntlrDdlParserListener;
 import io.debezium.antlr.DataTypeResolver;
@@ -26,6 +28,8 @@ import io.debezium.connector.mysql.MySqlValueConverters;
 import io.debezium.connector.mysql.antlr.listener.MySqlAntlrDdlParserListener;
 import io.debezium.ddl.parser.mysql.generated.MySqlLexer;
 import io.debezium.ddl.parser.mysql.generated.MySqlParser;
+import io.debezium.ddl.parser.mysql.generated.MySqlParser.CharsetNameContext;
+import io.debezium.ddl.parser.mysql.generated.MySqlParser.CollationNameContext;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.SystemVariables;
@@ -99,12 +103,14 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
 
         dataTypeResolverBuilder.registerDataTypes(MySqlParser.StringDataTypeContext.class.getCanonicalName(), Arrays.asList(
                 new DataTypeEntry(Types.CHAR, MySqlParser.CHAR),
+                new DataTypeEntry(Types.VARCHAR, MySqlParser.CHAR, MySqlParser.VARYING),
                 new DataTypeEntry(Types.VARCHAR, MySqlParser.VARCHAR),
                 new DataTypeEntry(Types.VARCHAR, MySqlParser.TINYTEXT),
                 new DataTypeEntry(Types.VARCHAR, MySqlParser.TEXT),
                 new DataTypeEntry(Types.VARCHAR, MySqlParser.MEDIUMTEXT),
                 new DataTypeEntry(Types.VARCHAR, MySqlParser.LONGTEXT),
                 new DataTypeEntry(Types.NCHAR, MySqlParser.NCHAR),
+                new DataTypeEntry(Types.NVARCHAR, MySqlParser.NCHAR, MySqlParser.VARYING),
                 new DataTypeEntry(Types.NVARCHAR, MySqlParser.NVARCHAR),
                 new DataTypeEntry(Types.BINARY, MySqlParser.CHAR, MySqlParser.BINARY),
                 new DataTypeEntry(Types.BINARY, MySqlParser.VARCHAR, MySqlParser.BINARY),
@@ -114,7 +120,8 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
                 new DataTypeEntry(Types.BINARY, MySqlParser.LONGTEXT, MySqlParser.BINARY),
                 new DataTypeEntry(Types.BINARY, MySqlParser.NCHAR, MySqlParser.BINARY),
                 new DataTypeEntry(Types.BINARY, MySqlParser.NVARCHAR, MySqlParser.BINARY),
-                new DataTypeEntry(Types.CHAR, MySqlParser.CHARACTER)));
+                new DataTypeEntry(Types.CHAR, MySqlParser.CHARACTER),
+                new DataTypeEntry(Types.VARCHAR, MySqlParser.CHARACTER, MySqlParser.VARYING)));
         dataTypeResolverBuilder.registerDataTypes(MySqlParser.NationalStringDataTypeContext.class.getCanonicalName(), Arrays.asList(
                 new DataTypeEntry(Types.NVARCHAR, MySqlParser.NATIONAL, MySqlParser.VARCHAR).setSuffixTokens(MySqlParser.BINARY),
                 new DataTypeEntry(Types.NCHAR, MySqlParser.NATIONAL, MySqlParser.CHARACTER).setSuffixTokens(MySqlParser.BINARY),
@@ -376,5 +383,29 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
 
     public TableFilter getTableFilter() {
         return tableFilter;
+    }
+
+    /**
+     * Obtains the charset name either form charset if present or from collation.
+     *
+     * @param charsetNode
+     * @param collationNode
+     * @return character set
+     */
+    public String extractCharset(CharsetNameContext charsetNode, CollationNameContext collationNode) {
+        String charsetName = null;
+        if (charsetNode != null && charsetNode.getText() != null) {
+            charsetName = withoutQuotes(charsetNode.getText());
+        }
+        else if (collationNode != null && collationNode.getText() != null) {
+            final String collationName = withoutQuotes(collationNode.getText()).toLowerCase();
+            for (int index = 0; index < CharsetMapping.MAP_SIZE; index++) {
+                if (collationName.equals(CharsetMapping.COLLATION_INDEX_TO_COLLATION_NAME[index])) {
+                    charsetName = CharsetMapping.getMysqlCharsetNameForCollationIndex(index);
+                    break;
+                }
+            }
+        }
+        return charsetName;
     }
 }

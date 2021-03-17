@@ -24,7 +24,9 @@ public class MongoDbErrorHandler extends ErrorHandler {
         if (throwable instanceof org.apache.kafka.connect.errors.ConnectException) {
             Throwable cause = throwable.getCause();
             while ((cause != null) && (cause != throwable)) {
-                if (cause instanceof com.mongodb.MongoSocketException) {
+                if (cause instanceof com.mongodb.MongoSocketException ||
+                        cause instanceof com.mongodb.MongoTimeoutException ||
+                        cause instanceof com.mongodb.MongoExecutionTimeoutException) {
                     return true;
                 }
                 else {

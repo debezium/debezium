@@ -1,5 +1,5 @@
 listView('Debezium-OpenShift-Tests') {
-    description('Upstream connector jobs')
+    description('OpenShift certification jobs')
     jobs {
         regex(/^ocp-.*$/)
     }

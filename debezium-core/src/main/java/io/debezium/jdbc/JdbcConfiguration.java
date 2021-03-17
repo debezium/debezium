@@ -69,7 +69,7 @@ public interface JdbcConfiguration extends Configuration {
             .withValidation(Field::isOptional);
 
     public static final Field CONNECTION_TIMEOUT_MS = Field.create("connection.timeout.ms")
-            .withDisplayName("The maximum time (ms) to wait for a connection from the pool")
+            .withDisplayName("Time to wait for a connection from the pool, given in milliseconds. Defaults to 600 seconds (600,000 ms).")
             .withType(Type.INT)
             .withDefault(600000)
             .withValidation(Field::isOptional);
