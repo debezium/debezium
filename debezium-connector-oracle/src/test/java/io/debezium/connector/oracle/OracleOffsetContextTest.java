@@ -41,7 +41,9 @@ public class OracleOffsetContextTest {
 
         final OracleOffsetContext offsetContext = (OracleOffsetContext) offsetLoader.load(offsetValues);
         assertThat(offsetContext.getScn()).isEqualTo(Scn.valueOf("12345"));
-        assertThat(offsetContext.getCommitScn()).isEqualTo(Scn.valueOf("23456"));
+        if (TestHelper.adapter().equals(OracleConnectorConfig.ConnectorAdapter.LOG_MINER)) {
+            assertThat(offsetContext.getCommitScn()).isEqualTo(Scn.valueOf("23456"));
+        }
     }
 
     @Test
@@ -53,7 +55,9 @@ public class OracleOffsetContextTest {
 
         final OracleOffsetContext offsetContext = (OracleOffsetContext) offsetLoader.load(offsetValues);
         assertThat(offsetContext.getScn()).isEqualTo(Scn.valueOf("12345"));
-        assertThat(offsetContext.getCommitScn()).isEqualTo(Scn.valueOf("23456"));
+        if (TestHelper.adapter().equals(OracleConnectorConfig.ConnectorAdapter.LOG_MINER)) {
+            assertThat(offsetContext.getCommitScn()).isEqualTo(Scn.valueOf("23456"));
+        }
     }
 
     @Test
