@@ -11,7 +11,7 @@
     <modelVersion>4.0.0</modelVersion>
     <artifactId>debezium-parent</artifactId>
     <name>Debezium Parent POM</name>
-    <description>Parent POM for all modules and conectors</description>
+    <description>Parent POM for all modules and connectors</description>
     <packaging>pom</packaging>
     <properties>
 

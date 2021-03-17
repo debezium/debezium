@@ -448,10 +448,10 @@ final class SourceInfo extends BaseSourceInfo {
      * @param config the configuration
      */
     public void setFilterDataFromConfig(Configuration config) {
-        this.databaseIncludeList = config.getFallbackStringProperty(config, MySqlConnectorConfig.DATABASE_INCLUDE_LIST, MySqlConnectorConfig.DATABASE_WHITELIST);
-        this.databaseExcludeList = config.getFallbackStringProperty(config, MySqlConnectorConfig.DATABASE_EXCLUDE_LIST, MySqlConnectorConfig.DATABASE_BLACKLIST);
-        this.tableIncludeList = config.getFallbackStringProperty(config, MySqlConnectorConfig.TABLE_INCLUDE_LIST, MySqlConnectorConfig.TABLE_WHITELIST);
-        this.tableExcludeList = config.getFallbackStringProperty(config, MySqlConnectorConfig.TABLE_EXCLUDE_LIST, MySqlConnectorConfig.TABLE_BLACKLIST);
+        this.databaseIncludeList = config.getFallbackStringProperty(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, MySqlConnectorConfig.DATABASE_WHITELIST);
+        this.databaseExcludeList = config.getFallbackStringProperty(MySqlConnectorConfig.DATABASE_EXCLUDE_LIST, MySqlConnectorConfig.DATABASE_BLACKLIST);
+        this.tableIncludeList = config.getFallbackStringProperty(MySqlConnectorConfig.TABLE_INCLUDE_LIST, MySqlConnectorConfig.TABLE_WHITELIST);
+        this.tableExcludeList = config.getFallbackStringProperty(MySqlConnectorConfig.TABLE_EXCLUDE_LIST, MySqlConnectorConfig.TABLE_BLACKLIST);
     }
 
     /**

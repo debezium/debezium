@@ -521,8 +521,8 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     }
 
     private static int validateCollectionBlacklist(Configuration config, Field field, ValidationOutput problems) {
-        String whitelist = Configuration.getFallbackStringPropertyWithWarning(config, COLLECTION_INCLUDE_LIST, COLLECTION_WHITELIST);
-        String blacklist = Configuration.getFallbackStringPropertyWithWarning(config, COLLECTION_EXCLUDE_LIST, COLLECTION_BLACKLIST);
+        String whitelist = config.getFallbackStringPropertyWithWarning(COLLECTION_INCLUDE_LIST, COLLECTION_WHITELIST);
+        String blacklist = config.getFallbackStringPropertyWithWarning(COLLECTION_EXCLUDE_LIST, COLLECTION_BLACKLIST);
         if (whitelist != null && blacklist != null) {
             problems.accept(COLLECTION_EXCLUDE_LIST, blacklist, COLLECTION_EXCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG);
             return 1;
@@ -541,8 +541,8 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     }
 
     private static int validateDatabaseBlacklist(Configuration config, Field field, ValidationOutput problems) {
-        String whitelist = Configuration.getFallbackStringPropertyWithWarning(config, DATABASE_INCLUDE_LIST, DATABASE_WHITELIST);
-        String blacklist = Configuration.getFallbackStringPropertyWithWarning(config, DATABASE_EXCLUDE_LIST, DATABASE_BLACKLIST);
+        String whitelist = config.getFallbackStringPropertyWithWarning(DATABASE_INCLUDE_LIST, DATABASE_WHITELIST);
+        String blacklist = config.getFallbackStringPropertyWithWarning(DATABASE_EXCLUDE_LIST, DATABASE_BLACKLIST);
         if (whitelist != null && blacklist != null) {
             problems.accept(DATABASE_BLACKLIST, blacklist, DATABASE_BLACKLIST_ALREADY_SPECIFIED_ERROR_MSG);
             return 1;

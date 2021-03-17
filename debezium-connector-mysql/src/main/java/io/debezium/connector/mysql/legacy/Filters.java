@@ -112,10 +112,10 @@ public class Filters {
         public Builder(Configuration config) {
             this.config = config;
             setFiltersFromStrings(
-                    config.getFallbackStringProperty(config, MySqlConnectorConfig.DATABASE_INCLUDE_LIST, MySqlConnectorConfig.DATABASE_WHITELIST),
-                    config.getFallbackStringProperty(config, MySqlConnectorConfig.DATABASE_EXCLUDE_LIST, MySqlConnectorConfig.DATABASE_BLACKLIST),
-                    config.getFallbackStringProperty(config, MySqlConnectorConfig.TABLE_INCLUDE_LIST, MySqlConnectorConfig.TABLE_WHITELIST),
-                    config.getFallbackStringProperty(config, MySqlConnectorConfig.TABLE_EXCLUDE_LIST, MySqlConnectorConfig.TABLE_BLACKLIST));
+                    config.getFallbackStringProperty(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, MySqlConnectorConfig.DATABASE_WHITELIST),
+                    config.getFallbackStringProperty(MySqlConnectorConfig.DATABASE_EXCLUDE_LIST, MySqlConnectorConfig.DATABASE_BLACKLIST),
+                    config.getFallbackStringProperty(MySqlConnectorConfig.TABLE_INCLUDE_LIST, MySqlConnectorConfig.TABLE_WHITELIST),
+                    config.getFallbackStringProperty(MySqlConnectorConfig.TABLE_EXCLUDE_LIST, MySqlConnectorConfig.TABLE_BLACKLIST));
 
             String includeColumnsFilter = config.getString(MySqlConnectorConfig.COLUMN_INCLUDE_LIST);
 
@@ -123,7 +123,7 @@ public class Filters {
                 this.columnFilter = ColumnNameFilterFactory.createIncludeListFilter(includeColumnsFilter, ColumnFilterMode.CATALOG);
             }
             else {
-                String excludeColumnsFilter = config.getFallbackStringProperty(config, MySqlConnectorConfig.COLUMN_EXCLUDE_LIST, MySqlConnectorConfig.COLUMN_BLACKLIST);
+                String excludeColumnsFilter = config.getFallbackStringProperty(MySqlConnectorConfig.COLUMN_EXCLUDE_LIST, MySqlConnectorConfig.COLUMN_BLACKLIST);
                 this.columnFilter = ColumnNameFilterFactory.createExcludeListFilter(excludeColumnsFilter, ColumnFilterMode.CATALOG);
             }
         }
