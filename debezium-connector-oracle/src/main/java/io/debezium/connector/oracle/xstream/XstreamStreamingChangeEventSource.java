@@ -73,36 +73,41 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
 
     @Override
     public void execute(ChangeEventSourceContext context) throws InterruptedException {
-        try {
-            // 1. connect
-            final byte[] startPosition = offsetContext.getLcrPosition() != null ? offsetContext.getLcrPosition().getRawPosition()
-                    : convertScnToPosition(offsetContext.getScn());
-            xsOut = XStreamOut.attach((oracle.jdbc.OracleConnection) jdbcConnection.connection(), xStreamServerName,
-                    startPosition, 1, 1, XStreamOut.DEFAULT_MODE);
+        try (OracleConnection xsConnection = new OracleConnection(jdbcConnection.config(), () -> getClass().getClassLoader())) {
+            try {
+                // 1. connect
+                final byte[] startPosition = offsetContext.getLcrPosition() != null
+                        ? offsetContext.getLcrPosition().getRawPosition()
+                        : convertScnToPosition(offsetContext.getScn());
 
-            LcrEventHandler handler = new LcrEventHandler(errorHandler, dispatcher, clock, schema, offsetContext, this.tablenameCaseInsensitive, this);
+                xsOut = XStreamOut.attach((oracle.jdbc.OracleConnection) xsConnection.connection(), xStreamServerName,
+                                          startPosition, 1, 1, XStreamOut.DEFAULT_MODE);
 
-            // 2. receive events while running
-            while (context.isRunning()) {
-                LOGGER.trace("Receiving LCR");
-                xsOut.receiveLCRCallback(handler, XStreamOut.DEFAULT_MODE);
+                LcrEventHandler handler = new LcrEventHandler(errorHandler, dispatcher, clock, schema, offsetContext,
+                                          this.tablenameCaseInsensitive, this);
+
+                // 2. receive events while running
+                while (context.isRunning()) {
+                    LOGGER.trace("Receiving LCR");
+                    xsOut.receiveLCRCallback(handler, XStreamOut.DEFAULT_MODE);
+                }
+            }
+            finally {
+                // 3. disconnect
+                if (this.xsOut != null) {
+                    try {
+                        XStreamOut xsOut = this.xsOut;
+                        this.xsOut = null;
+                        xsOut.detach(XStreamOut.DEFAULT_MODE);
+                    }
+                    catch (StreamsException e) {
+                        LOGGER.error("Couldn't detach from XStream outbound server " + xStreamServerName, e);
+                    }
+                }
             }
         }
         catch (Throwable e) {
             errorHandler.setProducerThrowable(e);
-        }
-        finally {
-            // 3. disconnect
-            if (this.xsOut != null) {
-                try {
-                    XStreamOut xsOut = this.xsOut;
-                    this.xsOut = null;
-                    xsOut.detach(XStreamOut.DEFAULT_MODE);
-                }
-                catch (StreamsException e) {
-                    LOGGER.error("Couldn't detach from XStream outbound server " + xStreamServerName, e);
-                }
-            }
         }
     }
 
