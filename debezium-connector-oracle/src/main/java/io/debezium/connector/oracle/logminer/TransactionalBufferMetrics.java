@@ -50,10 +50,10 @@ public class TransactionalBufferMetrics extends Metrics implements Transactional
     TransactionalBufferMetrics(CdcSourceTaskContext taskContext) {
         super(taskContext, "log-miner-transactional-buffer");
         startTime = Instant.now();
-        oldestScn.set(Scn.INVALID);
-        committedScn.set(Scn.INVALID);
+        oldestScn.set(Scn.NULL);
+        committedScn.set(Scn.NULL);
         timeDifference.set(0);
-        offsetScn.set(Scn.ZERO);
+        offsetScn.set(Scn.NULL);
         reset();
     }
 
