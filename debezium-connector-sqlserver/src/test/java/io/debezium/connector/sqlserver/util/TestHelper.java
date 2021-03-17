@@ -96,7 +96,6 @@ public class TestHelper {
 
     public static JdbcConfiguration adminJdbcConfig() {
         return JdbcConfiguration.copy(Configuration.fromSystemProperties("database."))
-                .withDefault(JdbcConfiguration.DATABASE, "master")
                 .withDefault(JdbcConfiguration.HOSTNAME, "localhost")
                 .withDefault(JdbcConfiguration.PORT, 1433)
                 .withDefault(JdbcConfiguration.USER, "sa")
@@ -106,7 +105,6 @@ public class TestHelper {
 
     public static JdbcConfiguration defaultJdbcConfig() {
         return JdbcConfiguration.copy(Configuration.fromSystemProperties("database."))
-                .withDefault(JdbcConfiguration.DATABASE, TEST_DATABASE)
                 .withDefault(JdbcConfiguration.HOSTNAME, "localhost")
                 .withDefault(JdbcConfiguration.PORT, 1433)
                 .withDefault(JdbcConfiguration.USER, "sa")
@@ -126,6 +124,7 @@ public class TestHelper {
                 (field, value) -> builder.with(SqlServerConnectorConfig.DATABASE_CONFIG_PREFIX + field, value));
 
         return builder.with(RelationalDatabaseConnectorConfig.SERVER_NAME, "server1")
+                .with(SqlServerConnectorConfig.DATABASE_NAMES.name(), TEST_DATABASE)
                 .with(SqlServerConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
                 .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
                 .with(RelationalDatabaseConnectorConfig.INCLUDE_SCHEMA_CHANGES, false);
@@ -210,16 +209,14 @@ public class TestHelper {
     }
 
     public static SqlServerConnection adminConnection() throws SQLException {
-        SqlServerConnection connection = new SqlServerConnection(TestHelper.adminJdbcConfig(), Clock.system(), SourceTimestampMode.getDefaultMode(),
+        return new SqlServerConnection(TestHelper.adminJdbcConfig(), Clock.system(), SourceTimestampMode.getDefaultMode(),
                 new SqlServerValueConverters(JdbcValueConverters.DecimalMode.PRECISE, TemporalPrecisionMode.ADAPTIVE, null));
-        connection.execute("USE " + connection.config().getDatabase());
-        return connection;
     }
 
     public static SqlServerConnection testConnection() throws SQLException {
         SqlServerConnection connection = new SqlServerConnection(TestHelper.defaultJdbcConfig(), Clock.system(), SourceTimestampMode.getDefaultMode(),
                 new SqlServerValueConverters(JdbcValueConverters.DecimalMode.PRECISE, TemporalPrecisionMode.ADAPTIVE, null));
-        connection.execute("USE " + connection.config().getDatabase());
+        connection.execute("USE " + TEST_DATABASE);
         return connection;
     }
 
@@ -385,7 +382,7 @@ public class TestHelper {
     }
 
     public static void waitForMaxLsnAvailable(SqlServerConnection connection) throws Exception {
-        String databaseName = connection.config().getDatabase();
+        String databaseName = "testDB";
         try {
             Awaitility.await("Max LSN not available")
                     .atMost(60, TimeUnit.SECONDS)
@@ -418,7 +415,7 @@ public class TestHelper {
      */
     public static void waitForCdcRecord(SqlServerConnection connection, String tableName, CdcRecordHandler handler) {
         try {
-            String databaseName = connection.config().getDatabase();
+            String databaseName = "testDB";
             Awaitility.await("Checking for expected record in CDC table for " + tableName)
                     .atMost(60, TimeUnit.SECONDS)
                     .pollDelay(Duration.ofSeconds(0))
@@ -458,7 +455,7 @@ public class TestHelper {
 
     public static void waitForCdcRecord(SqlServerConnection connection, String tableName, String captureInstanceName, CdcRecordHandler handler) {
         try {
-            String databaseName = connection.config().getDatabase();
+            String databaseName = "testDB";
             Awaitility.await("Checking for expected record in CDC table for " + tableName)
                     .atMost(30, TimeUnit.SECONDS)
                     .pollDelay(Duration.ofSeconds(0))

@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.sqlserver;
 
+import static io.debezium.connector.sqlserver.SqlServerConnectorConfig.TASK_DATABASE_NAMES;
+
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
@@ -57,7 +59,7 @@ public class SqlServerTaskPartition implements TaskPartition {
         @Override
         public Collection<SqlServerTaskPartition> getPartitions() {
             String serverName = connectorConfig.getLogicalName();
-            String[] databaseNames = { connectorConfig.getDatabaseName() };
+            String[] databaseNames = taskConfig.getString(TASK_DATABASE_NAMES.name()).split(",");
 
             return Arrays.stream(databaseNames)
                     .map(databaseName -> {
