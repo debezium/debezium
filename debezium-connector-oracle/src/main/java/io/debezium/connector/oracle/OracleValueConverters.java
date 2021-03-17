@@ -517,10 +517,8 @@ public class OracleValueConverters extends JdbcValueConverters {
                 data = ZonedDateTime.ofInstant(ts.timestampValue(connection.connection()).toInstant(), ts.getTimeZone().toZoneId());
             }
             else if (data instanceof TIMESTAMPLTZ) {
-                // JDBC driver throws an exception
-                // final TIMESTAMPLTZ ts = (TIMESTAMPLTZ)data;
-                // data = ts.offsetDateTimeValue(connection.connection());
-                return null;
+                final TIMESTAMPLTZ ts = (TIMESTAMPLTZ) data;
+                data = ts.offsetDateTimeValue(connection.connection());
             }
         }
         catch (SQLException e) {
@@ -595,7 +593,17 @@ public class OracleValueConverters extends JdbcValueConverters {
             final Matcher toTimestampTzMatcher = TO_TIMESTAMP_TZ.matcher((String) data);
             if (toTimestampTzMatcher.matches()) {
                 String dateText = toTimestampTzMatcher.group(1);
-                data = ZonedDateTime.from(TIMESTAMP_TZ_FORMATTER.parse(dateText.trim()));
+                ZonedDateTime zonedDateTime = ZonedDateTime.from(TIMESTAMP_TZ_FORMATTER.parse(dateText.trim()));
+                if (OracleTypes.TIMESTAMPLTZ == column.jdbcType()) {
+                    // LogMiner does not supply a TZ and so the converted value needs to account for the database timezone
+                    // relative to the local time zone of the connector.
+                    ZoneOffset localOffset = ZoneId.systemDefault().getRules().getStandardOffset(Instant.now());
+                    ZoneId databaseZoneId = connection.getDatabaseOffset().normalized();
+                    data = ZonedDateTime.of(zonedDateTime.withZoneSameInstant(databaseZoneId).toLocalDateTime(), localOffset);
+                }
+                else {
+                    data = zonedDateTime;
+                }
             }
         }
         return super.convertTimestampWithZone(column, fieldDefn, fromOracleTimeClasses(column, data));
