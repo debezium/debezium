@@ -1,9 +1,9 @@
 steps:
   - name: gcr.io/cloud-builders/gsutil
-    args: ['gsutil', '-m', 'cp', '-r', 'gs://debezium-maven-repo/', '/root/.m2/repository/']
+    args: ['cp', '-r', 'gs://debezium-maven-repo/', '/root/.m2/repository/']
   - name: "eu.gcr.io/confluent-kafka-development/jenkins-maven-gcp:11-3.6.3"
     args: ["/bin/bash", "-c", "cat /root/.m2/settings.xml ; host nexus.jhc.co.uk; ping -c2 172.26.27.50; mvn deploy -DskipITs"]
     timeout: "7200s"
   - name: gcr.io/cloud-builders/gsutil
-    args: ['gsutil', '-m', 'cp', '-r', '/root/.m2/repository/', 'gs://debezium-maven-repo/']
+    args: ['cp', '-r', '/root/.m2/repository/', 'gs://debezium-maven-repo/']
 timeout: "7200s"
