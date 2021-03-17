@@ -1233,7 +1233,7 @@ The `length` schema parameter contains an integer that represents the number of 
 |`INT32`
 |n/a
 
-|`BIGINT`, `BIGSERIAL`
+|`BIGINT`, `BIGSERIAL`, `OID`
 |`INT64`
 |n/a
 
