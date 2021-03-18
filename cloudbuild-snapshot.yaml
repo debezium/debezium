@@ -1,9 +1,11 @@
 steps:
-#  - name: gcr.io/cloud-builders/gsutil
-#    args: ['cp', '-r', 'gs://debezium-maven-repo/', '/root/.m2/repository/']
+  - name: google/cloud-sdk
+    args: ["/bin/bash", "-c", "if gsutil ls gs://debezium-maven-repo/debezium/repository; then gsutil -m cp -R gs://debezium-maven-repo/database-schema-registry/repository /root/.m2/; fi" ]
   - name: "eu.gcr.io/confluent-kafka-development/jenkins-maven-gcp:11-3.6.3"
-    args: ["/bin/bash", "-c", "cat /root/.m2/settings.xml ; host nexus.jhc.co.uk; ping -c2 172.26.27.50; mvn compile -DskipITs"]
+    args: ["/bin/bash", "-c", "cat /root/.m2/settings.xml ; mvn install -DskipITs"]
     timeout: "7200s"
-  - name: gcr.io/cloud-builders/gsutil
-    args: ['cp', '-r', '/root/.m2/repository/', 'gs://debezium-maven-repo/']
+  - name: google/cloud-sdk
+    args: ['gsutil','-m', 'cp', '-r', '/root/.m2/repository/', 'gs://debezium-maven-repo/debezium/']
+  - name: google/cloud-sdk
+    args: ['gsutil','ls', 'gs://debezium-maven-repo/database-schema-registry/']
 timeout: "7200s"
