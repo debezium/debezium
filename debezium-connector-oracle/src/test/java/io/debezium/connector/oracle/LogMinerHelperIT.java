@@ -111,14 +111,7 @@ public class LogMinerHelperIT extends AbstractConnectorTest {
         }).map(LogFile::getFileName).collect(Collectors.toList());
         int redoLogFilesCount = redoLogFiles.size();
 
-        if (!archivedLogFilesForMining.isEmpty()) {
-            assertThat(onlineLogFilesForMining.size()).isGreaterThan(redoLogFilesCount);
-            assertThat(getNumberOfAddedLogFiles(conn)).isGreaterThan(redoLogFilesCount);
-        }
-        else {
-            assertThat(onlineLogFilesForMining.size()).isEqualTo(redoLogFilesCount);
-            assertThat(getNumberOfAddedLogFiles(conn)).isEqualTo(redoLogFilesCount);
-        }
+        assertThat(redoLogFilesCount + archivedLogFilesForMining.size()).isEqualTo(getNumberOfAddedLogFiles(conn));
     }
 
     private Scn getOldestArchivedScn(List<Scn> oneDayArchivedNextScn) throws Exception {
