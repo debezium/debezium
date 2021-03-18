@@ -102,7 +102,7 @@ public class MySqlSchema extends RelationalDatabaseSchema {
                 TableFilter.fromPredicate(tableFilters.tableFilter()),
                 tableFilters.columnFilter(),
                 new TableSchemaBuilder(
-                        getValueConverters(configuration), SchemaNameAdjuster.create(logger),
+                        getValueConverters(configuration), SchemaNameAdjuster.create(),
                         configuration.customConverterRegistry(),
                         configuration.getSourceInfoStructMaker().schema(),
                         configuration.getSanitizeFieldNames()),

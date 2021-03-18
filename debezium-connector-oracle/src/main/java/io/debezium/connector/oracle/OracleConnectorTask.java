@@ -49,7 +49,7 @@ public class OracleConnectorTask extends BaseSourceTask {
     public ChangeEventSourceCoordinator start(Configuration config) {
         OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
         TopicSelector<TableId> topicSelector = OracleTopicSelector.defaultSelector(connectorConfig);
-        SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create(LOGGER);
+        SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create();
 
         Configuration jdbcConfig = connectorConfig.jdbcConfig();
         jdbcConnection = new OracleConnection(jdbcConfig, () -> getClass().getClassLoader());

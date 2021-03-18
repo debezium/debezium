@@ -38,6 +38,8 @@ import io.debezium.annotation.ThreadSafe;
 @ThreadSafe
 public interface SchemaNameAdjuster {
 
+    public static final Logger LOGGER = LoggerFactory.getLogger(SchemaNameAdjuster.class);
+
     /**
      * Convert the proposed string to a valid Avro fullname, replacing all invalid characters with the underscore ('_')
      * character.
@@ -121,7 +123,7 @@ public interface SchemaNameAdjuster {
         }
     }
 
-    public static final SchemaNameAdjuster DEFAULT = create(LoggerFactory.getLogger(SchemaNameAdjuster.class));
+    public static final SchemaNameAdjuster DEFAULT = create();
 
     /**
      * Create a stateful Avro fullname adjuster that logs a warning the first time an invalid fullname is seen and replaced
@@ -139,11 +141,10 @@ public interface SchemaNameAdjuster {
      * with a valid fullname, and throws an error if the replacement conflicts with that of a different original. This method
      * replaces all invalid characters with the underscore character ('_').
      *
-     * @param logger the logger to use; may not be null
-     * @return the validator; never null
+     * @param logger the logger to use; may not be null     * @return the validator; never null
      */
-    public static SchemaNameAdjuster create(Logger logger) {
-        return create(logger, (original, replacement, conflict) -> {
+    public static SchemaNameAdjuster create() {
+        return create((original, replacement, conflict) -> {
             String msg = "The Kafka Connect schema name '" + original +
                     "' is not a valid Avro schema name and its replacement '" + replacement +
                     "' conflicts with another different schema '" + conflict + "'";
@@ -155,37 +156,24 @@ public interface SchemaNameAdjuster {
      * Create a stateful Avro fullname adjuster that logs a warning the first time an invalid fullname is seen and replaced
      * with a valid fullname. This method replaces all invalid characters with the underscore character ('_').
      *
-     * @param logger the logger to use; may not be null
      * @param uponConflict the function to be called when there is a conflict and after that conflict is logged; may be null
      * @return the validator; never null
      */
-    public static SchemaNameAdjuster create(Logger logger, ReplacementOccurred uponConflict) {
+    public static SchemaNameAdjuster create(ReplacementOccurred uponConflict) {
         ReplacementOccurred handler = (original, replacement, conflictsWith) -> {
             if (conflictsWith != null) {
-                logger.error("The Kafka Connect schema name '{}' is not a valid Avro schema name and its replacement '{}' conflicts with another different schema '{}'",
+                LOGGER.error("The Kafka Connect schema name '{}' is not a valid Avro schema name and its replacement '{}' conflicts with another different schema '{}'",
                         original, replacement, conflictsWith);
                 if (uponConflict != null) {
                     uponConflict.accept(original, replacement, conflictsWith);
                 }
             }
             else {
-                logger.warn("The Kafka Connect schema name '{}' is not a valid Avro schema name, so replacing with '{}'", original,
+                LOGGER.warn("The Kafka Connect schema name '{}' is not a valid Avro schema name, so replacing with '{}'", original,
                         replacement);
             }
         };
-        return create(handler.firstTimeOnly());
-    }
-
-    /**
-     * Create a stateful Avro fullname adjuster that calls the supplied {@link ReplacementOccurred} function when an invalid
-     * fullname is seen and replaced with a valid fullname. This method replaces all invalid characters with the underscore
-     * character ('_').
-     *
-     * @param uponReplacement the function called each time the original fullname is replaced; may be null
-     * @return the adjuster; never null
-     */
-    public static SchemaNameAdjuster create(ReplacementOccurred uponReplacement) {
-        return create("_", uponReplacement);
+        return create("_", handler.firstTimeOnly());
     }
 
     /**
