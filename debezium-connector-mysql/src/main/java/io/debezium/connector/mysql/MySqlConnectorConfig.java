@@ -994,6 +994,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
                 config.getString(SERVER_NAME),
                 TableFilter.fromPredicate(MySqlConnectorConfig::isNotBuiltInTable),
                 true,
+                DEFAULT_SNAPSHOT_FETCH_SIZE,
                 ColumnFilterMode.CATALOG);
 
         this.config = config;
