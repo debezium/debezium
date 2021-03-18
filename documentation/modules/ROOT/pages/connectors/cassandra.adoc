@@ -1027,7 +1027,7 @@ cipherSuites=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
 ----
 [NOTE]
 ====
-The cipherSuites filed is not mandatory, it simply allows you to add one (or more) ciphers that are not present.
+The cipherSuites field is not mandatory, it simply allows you to add one (or more) ciphers that are not present.
 ====
 
 The connector also supports pass-through configuration properties that are used when creating the Kafka producer. Specifically, all connector configuration properties that begin with the `kafka.producer.` prefix are used (without the prefix) when creating the Kafka producer that writes events to Kafka.
