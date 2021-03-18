@@ -3,9 +3,9 @@ steps:
     args: ["/bin/bash", "-c", "if gsutil ls gs://debezium-maven-repo/$REPO_NAME/repository; then mkdir -p ./_m2/; gsutil -m cp -R gs://debezium-maven-repo/$REPO_NAME/repository ./_m2/; fi" ]
   - name: "eu.gcr.io/confluent-kafka-development/jenkins-maven-gcp:11-3.6.3"
     args: ["/bin/bash", "-c", "mvn install -Dmaven.repo.local=./_m2/repository/ -DskipITs; ls ./_m2/repository/; ls ./_m2/repository/"]
-    timeout: "7200s"
+    timeout: "8200s"
   - name: google/cloud-sdk
     args: ["/bin/bash", "-c", "ls -l ./_m2/ ; gsutil -m cp -r ./_m2/repository gs://debezium-maven-repo/$REPO_NAME/"]
   - name: google/cloud-sdk
     args: ['gsutil','ls', 'gs://debezium-maven-repo/$REPO_NAME/']
-timeout: "7200s"
+timeout: "8200s"
