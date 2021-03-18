@@ -81,10 +81,10 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
                         : convertScnToPosition(offsetContext.getScn());
 
                 xsOut = XStreamOut.attach((oracle.jdbc.OracleConnection) xsConnection.connection(), xStreamServerName,
-                                          startPosition, 1, 1, XStreamOut.DEFAULT_MODE);
+                        startPosition, 1, 1, XStreamOut.DEFAULT_MODE);
 
                 LcrEventHandler handler = new LcrEventHandler(errorHandler, dispatcher, clock, schema, offsetContext,
-                                          this.tablenameCaseInsensitive, this);
+                        this.tablenameCaseInsensitive, this);
 
                 // 2. receive events while running
                 while (context.isRunning()) {

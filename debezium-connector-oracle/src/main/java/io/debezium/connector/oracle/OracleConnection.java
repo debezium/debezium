@@ -12,7 +12,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
-import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -38,7 +37,6 @@ import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
 import io.debezium.relational.Tables.ColumnNameFilter;
 import io.debezium.relational.Tables.TableFilter;
-import io.debezium.util.Strings;
 
 import oracle.jdbc.OracleTypes;
 
@@ -360,24 +358,6 @@ public class OracleConnection extends JdbcConnection {
             commit();
         }
         return this;
-    }
-
-    public ZoneOffset getDatabaseOffset() {
-        try {
-            final String offset = queryAndMap("SELECT DBTIMEZONE FROM DUAL", rs -> {
-                if (rs.next()) {
-                    return rs.getString(1);
-                }
-                return null;
-            });
-            if (!Strings.isNullOrEmpty(offset)) {
-                return ZoneOffset.of(offset);
-            }
-            return null;
-        }
-        catch (SQLException e) {
-            throw new RuntimeException("Failed to obtain database timezone offset", e);
-        }
     }
 
     public static String connectionString(Configuration config) {
