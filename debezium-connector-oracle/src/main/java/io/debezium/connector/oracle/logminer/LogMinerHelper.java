@@ -289,6 +289,8 @@ public class LogMinerHelper {
      */
     static void setNlsSessionParameters(JdbcConnection connection) throws SQLException {
         connection.executeWithoutCommitting(SqlUtils.NLS_SESSION_PARAMETERS);
+        // This is necessary so that TIMESTAMP WITH LOCAL TIME ZONE get returned in UTC
+        connection.executeWithoutCommitting("ALTER SESSION SET TIME_ZONE = '00:00'");
     }
 
     /**
