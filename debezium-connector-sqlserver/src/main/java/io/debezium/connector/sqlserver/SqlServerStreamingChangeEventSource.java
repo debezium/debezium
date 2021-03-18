@@ -98,7 +98,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
     public StreamingResult execute(ChangeEventSourceContext context, SqlServerTaskPartition partition, SqlServerOffsetContext offsetContext) throws InterruptedException {
         if (connectorConfig.getSnapshotMode().equals(SnapshotMode.INITIAL_ONLY)) {
             LOGGER.info("Streaming is not enabled in current configuration");
-            return StreamingResult.streamingNotEnabled(offsetContext);
+            return new StreamingResult(offsetContext);
         }
 
         Queue<SqlServerChangeTable> schemaChangeCheckpoints = new PriorityQueue<>((x, y) -> x.getStopLsn().compareTo(y.getStopLsn()));
@@ -115,15 +115,15 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
             // otherwise we might skip an incomplete transaction after restart
             boolean shouldIncreaseFromLsn = offsetContext.isSnapshotCompleted();
 
-            if (offsetContext.getTablesSlot() != null) {
-                schemaChangeCheckpoints = offsetContext.getSchemaChangeCheckpoints();
-                tablesSlot = offsetContext.getTablesSlot();
-                lastProcessedPositionOnStart = offsetContext.getLastProcessedPositionOnStart();
-                lastProcessedEventSerialNoOnStart = offsetContext.getLastProcessedEventSerialNoOnStart();
-                changesStoppedBeingMonotonic = offsetContext.getChangesStoppedBeingMonotonic();
+            if (offsetContext.getStreamingExecutionState() != null && offsetContext.getStreamingExecutionState().getTablesSlot() != null) {
+                schemaChangeCheckpoints = offsetContext.getStreamingExecutionState().getSchemaChangeCheckpoints();
+                tablesSlot = offsetContext.getStreamingExecutionState().getTablesSlot();
+                lastProcessedPositionOnStart = offsetContext.getStreamingExecutionState().getLastProcessedPositionOnStart();
+                lastProcessedEventSerialNoOnStart = offsetContext.getStreamingExecutionState().getLastProcessedEventSerialNoOnStart();
+                changesStoppedBeingMonotonic = offsetContext.getStreamingExecutionState().getChangesStoppedBeingMonotonic();
 
-                lastProcessedPosition = offsetContext.getLastProcessedPosition();
-                shouldIncreaseFromLsn = offsetContext.getShouldIncreaseFromLsn();
+                lastProcessedPosition = offsetContext.getStreamingExecutionState().getLastProcessedPosition();
+                shouldIncreaseFromLsn = offsetContext.getStreamingExecutionState().getShouldIncreaseFromLsn();
             }
             else {
                 LOGGER.info("Last position recorded in offsets is {}[{}]", lastProcessedPositionOnStart, lastProcessedEventSerialNoOnStart);
@@ -142,15 +142,17 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                 if (!maxLsnResult.getMaxLsn().isAvailable() || !maxLsnResult.getMaxTransactionalLsn().isAvailable()) {
                     LOGGER.warn("No maximum LSN recorded in the database; please ensure that the SQL Server Agent is running");
                     offsetContext.saveStreamingExecutionContext(schemaChangeCheckpoints, tablesSlot, lastProcessedPositionOnStart, lastProcessedEventSerialNoOnStart,
-                            lastProcessedPosition, changesStoppedBeingMonotonic, shouldIncreaseFromLsn);
-                    return StreamingResult.noMaximumLsnRecorded(offsetContext);
+                            lastProcessedPosition, changesStoppedBeingMonotonic, shouldIncreaseFromLsn,
+                            SqlServerStreamingExecutionState.StreamingResultStatus.NO_MAXIMUM_LSN_RECORDED);
+                    return new StreamingResult(offsetContext);
                 }
                 // There is no change in the database
                 if (maxLsnResult.getMaxTransactionalLsn().compareTo(lastProcessedPosition.getCommitLsn()) <= 0 && shouldIncreaseFromLsn) {
                     LOGGER.debug("No change in the database");
                     offsetContext.saveStreamingExecutionContext(schemaChangeCheckpoints, tablesSlot, lastProcessedPositionOnStart, lastProcessedEventSerialNoOnStart,
-                            lastProcessedPosition, changesStoppedBeingMonotonic, shouldIncreaseFromLsn);
-                    return StreamingResult.noChangesInDatabase(offsetContext);
+                            lastProcessedPosition, changesStoppedBeingMonotonic, shouldIncreaseFromLsn,
+                            SqlServerStreamingExecutionState.StreamingResultStatus.NO_CHANGES_IN_DATABASE);
+                    return new StreamingResult(offsetContext);
                 }
 
                 // Reading interval is inclusive so we need to move LSN forward but not for first
@@ -298,13 +300,14 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
             }
 
             offsetContext.saveStreamingExecutionContext(schemaChangeCheckpoints, tablesSlot, lastProcessedPositionOnStart, lastProcessedEventSerialNoOnStart,
-                    lastProcessedPosition, changesStoppedBeingMonotonic, shouldIncreaseFromLsn);
+                    lastProcessedPosition, changesStoppedBeingMonotonic, shouldIncreaseFromLsn,
+                    SqlServerStreamingExecutionState.StreamingResultStatus.CHANGES_IN_DATABASE);
         }
         catch (Exception e) {
             errorHandler.setProducerThrowable(e);
         }
 
-        return StreamingResult.changesDetected(offsetContext);
+        return new StreamingResult(offsetContext);
     }
 
     private void migrateTable(final Queue<SqlServerChangeTable> schemaChangeCheckpoints, SqlServerOffsetContext offsetContext, SqlServerTaskPartition partition)
