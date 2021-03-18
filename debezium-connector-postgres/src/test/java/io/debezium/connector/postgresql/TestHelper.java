@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.awaitility.Awaitility;
@@ -118,13 +119,11 @@ public final class TestHelper {
      * @return the PostgresConnection instance; never null
      */
     public static PostgresConnection createWithTypeRegistry() {
-        PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig().build());
-        TypeRegistry typeRegistry = new TypeRegistry();
+        final PostgresConnectorConfig config = new PostgresConnectorConfig(defaultConfig().build());
 
         return new PostgresConnection(
-                defaultJdbcConfig(),
-                typeRegistry,
-                getPostgresValueConverter(typeRegistry, config));
+                config.jdbcConfig(),
+                getPostgresValueConverterBuilder(config));
     }
 
     /**
@@ -192,11 +191,10 @@ public final class TestHelper {
     }
 
     public static TypeRegistry getTypeRegistry() {
-        TypeRegistry typeRegistry = new TypeRegistry();
-        try (final PostgresConnection connection = new PostgresConnection(defaultJdbcConfig(), typeRegistry, null)) {
-            // Creating the connection primes the type registry.
+        final PostgresConnectorConfig config = new PostgresConnectorConfig(defaultConfig().build());
+        try (final PostgresConnection connection = new PostgresConnection(config.jdbcConfig(), getPostgresValueConverterBuilder(config))) {
+            return connection.getTypeRegistry();
         }
-        return typeRegistry;
     }
 
     public static PostgresSchema getSchema(PostgresConnectorConfig config) {
@@ -372,7 +370,11 @@ public final class TestHelper {
     }
 
     private static PostgresValueConverter getPostgresValueConverter(TypeRegistry typeRegistry, PostgresConnectorConfig config) {
-        return new PostgresValueConverter(
+        return getPostgresValueConverterBuilder(config).apply(typeRegistry);
+    }
+
+    private static Function<TypeRegistry, PostgresValueConverter> getPostgresValueConverterBuilder(PostgresConnectorConfig config) {
+        return typeRegistry -> new PostgresValueConverter(
                 Charset.forName("UTF-8"),
                 config.getDecimalMode(),
                 config.getTemporalPrecisionMode(),
