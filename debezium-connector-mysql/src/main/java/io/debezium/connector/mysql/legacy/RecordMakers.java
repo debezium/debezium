@@ -50,7 +50,7 @@ public class RecordMakers {
     private final Map<Long, TableId> tableIdsByTableNumber = new HashMap<>();
     private final Schema schemaChangeKeySchema;
     private final Schema schemaChangeValueSchema;
-    private final SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create(logger);
+    private final SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create();
     private final Map<String, ?> restartOffset;
 
     /**

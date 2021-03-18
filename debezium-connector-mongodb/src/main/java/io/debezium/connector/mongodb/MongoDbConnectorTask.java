@@ -65,7 +65,7 @@ public final class MongoDbConnectorTask extends BaseSourceTask {
     @Override
     public ChangeEventSourceCoordinator start(Configuration config) {
         final MongoDbConnectorConfig connectorConfig = new MongoDbConnectorConfig(config);
-        final SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create(logger);
+        final SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create();
 
         this.taskName = "task" + config.getInteger(MongoDbConnectorConfig.TASK_ID);
         this.taskContext = new MongoDbTaskContext(config);

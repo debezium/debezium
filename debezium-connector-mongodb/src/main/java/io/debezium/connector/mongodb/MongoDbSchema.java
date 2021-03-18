@@ -35,7 +35,7 @@ public class MongoDbSchema implements DatabaseSchema<CollectionId> {
     private final Filters filters;
     private final TopicSelector<CollectionId> topicSelector;
     private final Schema sourceSchema;
-    private final SchemaNameAdjuster adjuster = SchemaNameAdjuster.create(LOGGER);
+    private final SchemaNameAdjuster adjuster = SchemaNameAdjuster.create();
     private final ConcurrentMap<CollectionId, MongoDbCollectionSchema> collections = new ConcurrentHashMap<>();
     private final JsonSerialization serialization = new JsonSerialization();
 

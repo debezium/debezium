@@ -377,7 +377,7 @@ public class CloudEventsConverter implements Converter {
     }
 
     private SchemaAndValue convertToCloudEventsFormat(RecordParser parser, CloudEventsMaker maker, Schema dataSchemaType, String dataSchema, Object serializedData) {
-        SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create(LOGGER);
+        SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create();
         Struct source = parser.source();
         Schema sourceSchema = parser.source().schema();
         final Struct transaction = parser.transaction();

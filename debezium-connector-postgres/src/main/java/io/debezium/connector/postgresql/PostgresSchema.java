@@ -83,7 +83,7 @@ public class PostgresSchema extends RelationalDatabaseSchema {
                 config.intervalHandlingMode(),
                 config.toastedValuePlaceholder());
 
-        return new TableSchemaBuilder(valueConverter, SchemaNameAdjuster.create(LOGGER), config.customConverterRegistry(), config.getSourceInfoStructMaker().schema(),
+        return new TableSchemaBuilder(valueConverter, SchemaNameAdjuster.create(), config.customConverterRegistry(), config.getSourceInfoStructMaker().schema(),
                 config.getSanitizeFieldNames());
     }
 

@@ -30,7 +30,7 @@ import io.debezium.util.Threads.Timer;
 class HeartbeatImpl implements Heartbeat {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(HeartbeatImpl.class);
-    private static final SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create(LOGGER);
+    private static final SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create();
 
     /**
      * Default length of interval in which connector generates periodically
