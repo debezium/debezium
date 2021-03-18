@@ -886,9 +886,10 @@ In this case, the connector reprsents `DECIMAL` and `NUMERIC` values as their fo
 [id="oracle-temporal-types"]
 === Temporal types
 
-The following table describes how the connector maps temporal types.
+Other than Oracle's `INTERVAL`, `TIMESTAMP WITH TIME ZONE` and `TIMESTAMP WITH LOCAL TIME ZONE` data types, the other temporal types depend on the value of the `time.precision.mode` configuration property.
 
-.Mappings for Oracle temporal data types
+When the `time.precision.mode` configuration property is set to `adaptive` (the default), then the connector will determine the literal and semantic type for the temporal types based on the column's data type definition so that events _exactly_ represent the values in the database:
+
 [cols="25%a,20%a,55%a",options="header"]
 |===
 |Oracle data type |Literal type (schema type) |Semantic type (schema name) and Notes
@@ -902,14 +903,14 @@ Represents the number of milliseconds past epoch, and does not include timezone 
 |`INTERVAL DAY[(M)] TO SECOND`
 |`FLOAT64`
 |`io.debezium.time.MicroDuration` +
-+
-The number of micro seconds for a time interval using the `365.25 / 12.0` formula for days per month average
+ +
+The number of micro seconds for a time interval using the `365.25 / 12.0` formula for days per month average.
 
 |`INTERVAL YEAR[(M)] TO MONTH`
 |`FLOAT64`
 |`io.debezium.time.MicroDuration` +
  +
-The number of micro seconds for a time interval using the `365.25 / 12.0` formula for days per month average
+The number of micro seconds for a time interval using the `365.25 / 12.0` formula for days per month average.
 
 |`TIMESTAMP(0 - 3)`
 |`INT64`
@@ -923,8 +924,8 @@ Represents the number of milliseconds past epoch, and does not include timezone 
  +
 Represents the number of microseconds past epoch, and does not include timezone information.
 
-|`TIMESTAMP(7 - 9)` +
- |`INT64`
+|`TIMESTAMP(7 - 9)`
+|`INT64`
 |`io.debezium.time.NanoTimestamp` +
  +
 Represents the number of nanoseconds past epoch, and does not include timezone information.
@@ -933,13 +934,71 @@ Represents the number of nanoseconds past epoch, and does not include timezone i
 |`STRING`
 |`io.debezium.time.ZonedTimestamp` +
  +
-A string representation of a timestamp with timezone information
+A string representation of a timestamp with timezone information.
 
 |`TIMESTAMP WITH LOCAL TIME ZONE`
 |`STRING`
 |`io.debezium.time.ZonedTimestamp` +
  +
-A string representation of a timestamp with timezone information
+A string representation of a timestamp in UTC.
+
+|===
+
+When the `time.precision.mode` configuration property is set to `connect`, then the connector will use the predefined Kafka Connect logical types.
+This may be useful when consumers only know about the built-in Kafka Connect logical types and are unable to handle variable-precision time values.
+Since Oracle supports precision that exceeds what Kafka Connect's logical types support, using `connect` time precision will *result in a loss of precision* when the database column has a _fractional second precision_ value that is greater than 3:
+
+[cols="25%a,20%a,55%a",options="header"]
+|===
+|Oracle data type |Literal type (schema type) |Semantic type (schema name) and Notes
+
+|`DATE`
+|`INT32`
+|`org.apache.kafka.connect.data.Date` +
+ +
+Represents the number of days since the epoch.
+
+|`INTERVAL DAY[(M)] TO SECOND`
+|`FLOAT64`
+|`io.debezium.time.MicroDuration` +
+ +
+The number of micro seconds for a time interval using the `365.25 / 12.0` formula for days per month average.
+
+|`INTERVAL YEAR[(M)] TO MONTH`
+|`FLOAT64`
+|`io.debezium.time.MicroDuration` +
+ +
+The number of micro seconds for a time interval using the `365.25 / 12.0` formula for days per month average.
+
+|`TIMESTAMP(0 - 3)`
+|`INT64`
+|`org.apache.kafka.connect.data.Timestamp` +
+ +
+Represents the number of milliseconds since epoch, and does not include timezone information.
+
+|`TIMESTAMP(4 - 6)`
+|`INT64`
+|`org.apache.kafka.connect.data.Timestamp` +
+ +
+Represents the number of milliseconds since epoch, and does not include timezone information.
+
+|`TIMESTAMP(7 - 9)`
+|`INT64`
+|`org.apache.kafka.connect.data.Timestamp` +
+ +
+Represents the number of milliseconds since epoch, and does not include timezone information.
+
+|`TIMESTAMP WITH TIME ZONE`
+|`STRING`
+|`io.debezium.time.ZonedTimestamp` +
+ +
+A string representation of a timestamp with timezone information.
+
+|`TIMESTAMP WITH LOCAL TIME ZONE`
+|`STRING`
+|`io.debezium.time.ZonedTimestamp` +
+ +
+A string representation of a timestamp in UTC.
 
 |===
 
