@@ -327,8 +327,8 @@ Some of the connectors also requires additional set of properties that configure
 * Db2
 
 Without proper configuration of the database history the connectors will refuse to start.
-The default configuration expects Kafka cluster available.
-For other deployments file-based database history storage is available.
+The default configuration expects a Kafka cluster to be available.
+For other deployments, a file-based database history storage implementation is available.
 
 [cols="35%a,10%a,55%a",options="header"]
 |=======================
