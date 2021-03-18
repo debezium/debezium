@@ -16,6 +16,7 @@ import java.time.Duration;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Function;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.postgresql.core.BaseConnection;
@@ -75,15 +76,27 @@ public class PostgresConnection extends JdbcConnection {
     /**
      * Creates a Postgres connection using the supplied configuration.
      * If necessary this connection is able to resolve data type mappings.
+     * Such a connection requires a {@link PostgresValueConverter}, and will provide its own {@link TypeRegistry}.
      * Usually only one such connection per connector is needed.
      *
      * @param config {@link Configuration} instance, may not be null.
-     * @param provideTypeRegistry {@code true} if type registry should be created
+     * @param valueConverterBuilder {@link Function} a function which supplies a configured {@link PostgresValueConverter
+        }
+     *                                               for a given {@link TypeRegistry}
      */
-    public PostgresConnection(Configuration config, boolean provideTypeRegistry) {
+    public PostgresConnection(Configuration config, Function<TypeRegistry, PostgresValueConverter> valueConverterBuilder) {
         super(config, FACTORY, PostgresConnection::validateServerVersion, PostgresConnection::defaultSettings);
-        this.typeRegistry = provideTypeRegistry ? new TypeRegistry(this) : null;
-        this.defaultValueConverter = new PostgresDefaultValueConverter(null);
+
+        if (Objects.isNull(valueConverterBuilder)) {
+            this.typeRegistry = null;
+            this.defaultValueConverter = null;
+        }
+        else {
+            this.typeRegistry = new TypeRegistry(this);
+
+            final PostgresValueConverter valueConverter = valueConverterBuilder.apply(this.typeRegistry);
+            this.defaultValueConverter = new PostgresDefaultValueConverter(valueConverter);
+        }
     }
 
     /**
@@ -93,7 +106,7 @@ public class PostgresConnection extends JdbcConnection {
      * @param config {@link Configuration} instance, may not be null.
      */
     public PostgresConnection(Configuration config) {
-        this(config, false);
+        this(config, null);
     }
 
     /**

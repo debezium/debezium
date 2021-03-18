@@ -9,8 +9,10 @@ package io.debezium.connector.postgresql;
 import java.nio.charset.Charset;
 import java.sql.SQLException;
 import java.time.Duration;
+import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.errors.ConnectException;
@@ -70,20 +72,35 @@ public class PostgresConnectorTask extends BaseSourceTask {
             throw new ConnectException("Unable to load snapshotter, if using custom snapshot mode, double check your settings");
         }
 
+        heartbeatConnection = new PostgresConnection(connectorConfig.jdbcConfig());
+        final Charset databaseCharset = heartbeatConnection.getDatabaseCharset();
+
+        final Function<TypeRegistry, PostgresValueConverter> valueConverterBuilder = (typeRegistry) -> new PostgresValueConverter(
+                databaseCharset,
+                connectorConfig.getDecimalMode(),
+                connectorConfig.getTemporalPrecisionMode(),
+                ZoneOffset.UTC,
+                null,
+                connectorConfig.includeUnknownDatatypes(),
+                typeRegistry,
+                connectorConfig.hStoreHandlingMode(),
+                connectorConfig.binaryHandlingMode(),
+                connectorConfig.intervalHandlingMode(),
+                connectorConfig.toastedValuePlaceholder());
+
         // Global JDBC connection used both for snapshotting and streaming.
         // Must be able to resolve datatypes.
-        jdbcConnection = new PostgresConnection(connectorConfig.jdbcConfig(), true);
+        jdbcConnection = new PostgresConnection(connectorConfig.jdbcConfig(), valueConverterBuilder);
         try {
             jdbcConnection.setAutoCommit(false);
         }
         catch (SQLException e) {
             throw new DebeziumException(e);
         }
-        heartbeatConnection = new PostgresConnection(connectorConfig.jdbcConfig());
-        final TypeRegistry typeRegistry = jdbcConnection.getTypeRegistry();
-        final Charset databaseCharset = jdbcConnection.getDatabaseCharset();
 
-        schema = new PostgresSchema(connectorConfig, typeRegistry, databaseCharset, topicSelector);
+        final TypeRegistry typeRegistry = jdbcConnection.getTypeRegistry();
+
+        schema = new PostgresSchema(connectorConfig, typeRegistry, topicSelector, valueConverterBuilder.apply(typeRegistry));
         this.taskContext = new PostgresTaskContext(connectorConfig, schema, topicSelector);
         final PostgresOffsetContext previousOffset = (PostgresOffsetContext) getPreviousOffset(new PostgresOffsetContext.Loader(connectorConfig));
         final Clock clock = Clock.system();
