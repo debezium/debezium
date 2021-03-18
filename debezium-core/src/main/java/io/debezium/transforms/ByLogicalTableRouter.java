@@ -112,7 +112,7 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ByLogicalTableRouter.class);
 
-    private final SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create(LOGGER);
+    private final SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create();
     private Pattern topicRegex;
     private String topicReplacement;
     private Pattern keyFieldRegex;

@@ -48,7 +48,7 @@ public class ConnectTableChangeSerializer implements TableChanges.TableChangesSe
     public static final String GENERATED_KEY = "generated";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ConnectTableChangeSerializer.class);
-    private static final SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create(LOGGER);
+    private static final SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create();
 
     private static final Schema COLUMN_SCHEMA = SchemaBuilder.struct()
             .name(schemaNameAdjuster.adjust("io.debezium.connector.schema.Column"))
