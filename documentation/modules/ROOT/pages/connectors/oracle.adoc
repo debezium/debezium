@@ -748,6 +748,10 @@ The following table describes how the connector maps character and blob types.
 |n/a
 |_This data type is not yet supported._
 
+|`LONG`
+|n/a
+|_This data type is not yet supported._
+
 |`NCHAR[(M)]`
 |`STRING`
 |n/a
@@ -809,10 +813,6 @@ Contains a structure with two fields: `scale` of type `INT32` that contains the 
 |`org.apache.kafka.connect.data.Decimal` +
  +
 `INTEGER` is mapped in Oracle to NUMBER(38,0) and hence can hold values larger than any of the `INT` types could store
-
-|`LONG`
-|`INT64`
-|n/a
 
 |`NUMBER[(P[, *])]`
 |`STRUCT`
