@@ -61,7 +61,7 @@ public class TableSchemaBuilderTest {
 
     @Before
     public void beforeEach() {
-        adjuster = SchemaNameAdjuster.create((original, replacement, conflict) -> {
+        adjuster = SchemaNameAdjuster.create("_", (original, replacement, conflict) -> {
             fail("Should not have come across an invalid schema name");
         });
         schema = null;
