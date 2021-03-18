@@ -39,14 +39,7 @@ public class SqlServerOffsetContext implements OffsetContext {
      */
     private long eventSerialNo;
 
-    Queue<SqlServerChangeTable> schemaChangeCheckpoints;
-
-    private AtomicReference<SqlServerChangeTable[]> tablesSlot;
-    private TxLogPosition lastProcessedPositionOnStart;
-    private long lastProcessedEventSerialNoOnStart;
-    private TxLogPosition lastProcessedPosition;
-    private AtomicBoolean changesStoppedBeingMonotonic;
-    boolean shouldIncreaseFromLsn = false;
+    private SqlServerStreamingExecutionState streamingExecutionState;
 
     public SqlServerOffsetContext(SqlServerConnectorConfig connectorConfig, Map<String, ?> partition, TxLogPosition position,
                                   boolean snapshot, boolean snapshotCompleted, long eventSerialNo, TransactionContext transactionContext) {
@@ -67,13 +60,7 @@ public class SqlServerOffsetContext implements OffsetContext {
         }
         this.eventSerialNo = eventSerialNo;
         this.transactionContext = transactionContext;
-
-        this.schemaChangeCheckpoints = null;
-        this.lastProcessedPositionOnStart = null;
-        this.lastProcessedEventSerialNoOnStart = 0;
-        this.lastProcessedPosition = null;
-        this.changesStoppedBeingMonotonic = null;
-        this.shouldIncreaseFromLsn = false;
+        this.streamingExecutionState = null;
     }
 
     public SqlServerOffsetContext(SqlServerConnectorConfig connectorConfig, Map<String, ?> partition, TxLogPosition position,
@@ -222,41 +209,20 @@ public class SqlServerOffsetContext implements OffsetContext {
                                               long lastProcessedEventSerialNoOnStart,
                                               TxLogPosition lastProcessedPosition,
                                               AtomicBoolean changesStoppedBeingMonotonic,
-                                              boolean shouldIncreaseFromLsn) {
-        this.schemaChangeCheckpoints = schemaChangeCheckpoints;
-        this.tablesSlot = tablesSlot;
-        this.lastProcessedPositionOnStart = lastProcessedPositionOnStart;
-        this.lastProcessedPosition = lastProcessedPosition;
-        this.changesStoppedBeingMonotonic = changesStoppedBeingMonotonic;
-        this.shouldIncreaseFromLsn = shouldIncreaseFromLsn;
+                                              boolean shouldIncreaseFromLsn,
+                                              SqlServerStreamingExecutionState.StreamingResultStatus status) {
+        this.streamingExecutionState = new SqlServerStreamingExecutionState(
+                schemaChangeCheckpoints, tablesSlot, lastProcessedPositionOnStart, lastProcessedEventSerialNoOnStart,
+                lastProcessedPosition, changesStoppedBeingMonotonic, shouldIncreaseFromLsn, status);
     }
 
-    public Queue<SqlServerChangeTable> getSchemaChangeCheckpoints() {
-        return schemaChangeCheckpoints;
+    public SqlServerStreamingExecutionState getStreamingExecutionState() {
+        return streamingExecutionState;
     }
 
-    public AtomicReference<SqlServerChangeTable[]> getTablesSlot() {
-        return tablesSlot;
+    @Override
+    public boolean eventsStreamed() {
+        return (streamingExecutionState.getStatus() == SqlServerStreamingExecutionState.StreamingResultStatus.NO_CHANGES_IN_DATABASE
+                || streamingExecutionState.getStatus() == SqlServerStreamingExecutionState.StreamingResultStatus.NO_MAXIMUM_LSN_RECORDED) == false;
     }
-
-    public TxLogPosition getLastProcessedPositionOnStart() {
-        return lastProcessedPositionOnStart;
-    }
-
-    public long getLastProcessedEventSerialNoOnStart() {
-        return lastProcessedEventSerialNoOnStart;
-    }
-
-    public TxLogPosition getLastProcessedPosition() {
-        return lastProcessedPosition;
-    }
-
-    public AtomicBoolean getChangesStoppedBeingMonotonic() {
-        return changesStoppedBeingMonotonic;
-    }
-
-    public boolean getShouldIncreaseFromLsn() {
-        return shouldIncreaseFromLsn;
-    }
-
 }
