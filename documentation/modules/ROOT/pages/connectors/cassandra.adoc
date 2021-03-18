@@ -1016,18 +1016,24 @@ See {link-prefix}:{link-avro-serialization}#avro-naming[Avro naming] for more de
 |===
 
 If the Cassandra agent use SSL to connect to Cassandra node, an SSL config file is required.
-The following example shows how to write the properties file:
+The following example shows how to write the SSL config file:
 [source,properties,indent=0]
 ----
 keyStore.location=/var/private/ssl/cassandra.keystore.jks
 keyStore.password=cassandra
+keyStore.type=JKS
 trustStore.location=/var/private/ssl/cassandra.truststore.jks
 trustStore.password=cassandra
+trustStore.type=JKS
+keyManager.algorithm=SunX509
+trustManager.algorithm=SunX509
 cipherSuites=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
 ----
 [NOTE]
 ====
 The cipherSuites field is not mandatory, it simply allows you to add one (or more) ciphers that are not present.
+The default value of trustStore.type and keyStore.type is JKS.
+The default value of keyManager.algorithm and trustManager.algorithm is SunX509.
 ====
 
 The connector also supports pass-through configuration properties that are used when creating the Kafka producer. Specifically, all connector configuration properties that begin with the `kafka.producer.` prefix are used (without the prefix) when creating the Kafka producer that writes events to Kafka.
