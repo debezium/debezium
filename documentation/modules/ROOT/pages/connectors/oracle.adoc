@@ -436,7 +436,7 @@ And of course, the _schema_ portion of the event message's value contains a sche
 
 Let's look at what a _create_ event value might look like for our `customers` table:
 
-[source,json,indent=0,subs="attributes"]
+[source,json,indent=0,subs="+attributes"]
 ----
 {
     "schema": {
@@ -564,7 +564,7 @@ Let's look at what a _create_ event value might look like for our `customers` ta
             "EMAIL": "annek@noanswer.org"
         },
         "source": {
-            "version": "0.9.0.Alpha1",
+            "version": "{debezium-version}",
             "name": "server1",
             "ts_ms": 1520085154000,
             "txId": "6.28.807",
@@ -600,7 +600,7 @@ It is possible and even recommended to use the link:/docs/faq/#avro-converter[Av
 The value of an _update_ change event on this table will actually have the exact same _schema_, and its payload will be structured the same but will hold different values.
 Here's an example:
 
-[source,json,indent=0,subs="attributes"]
+[source,json,indent=0,subs="+attributes"]
 ----
 {
     "schema": { ... },
@@ -618,7 +618,7 @@ Here's an example:
             "EMAIL": "anne@example.com"
         },
         "source": {
-            "version": "0.9.0.Alpha1",
+            "version": "{debezium-version}",
             "name": "server1",
             "ts_ms": 1520085811000,
             "txId": "6.9.809",
@@ -654,7 +654,7 @@ When the columns for a row's primary/unique key are updated, the value of the ro
 So far we've seen samples of _create_ and _update_ events.
 Now, let's look at the value of a _delete_ event for the same table. Once again, the `schema` portion of the value will be exactly the same as with the _create_ and _update_ events:
 
-[source,json,indent=0,subs="attributes"]
+[source,json,indent=0,subs="+attributes"]
 ----
 {
     "schema": { ... },
@@ -667,7 +667,7 @@ Now, let's look at the value of a _delete_ event for the same table. Once again,
         },
         "after": null,
         "source": {
-            "version": "0.9.0.Alpha1",
+            "version": "{debezium-version}",
             "name": "server1",
             "ts_ms": 1520085153000,
             "txId": "6.28.807",
@@ -703,9 +703,9 @@ To make this possible, {prodname}'s Oracle connector always follows the _delete_
 [[oracle-data-type-mappings]]
 == Data Type mappings
 
-The Oracle conenctor represents changes to rows with events that are structured like the table in which the rows exists. The event contains a field for each column value. How that value is represented in the event depends on the Oracle data type of the column. The following sections describe how the connector maps oracle data types to a _litearl type_ and a _semantic type_ in event fields.
+The Oracle connector represents changes to rows with events that are structured like the table in which the rows exists. The event contains a field for each column value. How that value is represented in the event depends on the Oracle data type of the column. The following sections describe how the connector maps oracle data types to a _litearl type_ and a _semantic type_ in event fields.
 
-* _litearl type_ describes how the value is literally represented using Kafka Connect schema types: `INT8`, `INT16`, `INT32`, `INT64`, `FLOAT32`, `FLOAT64`, `BOOLEAN`, `STRING`, `BYTES`, `ARRAY`, `MAP`, and `STRUCT`.
+* _literal type_ describes how the value is literally represented using Kafka Connect schema types: `INT8`, `INT16`, `INT32`, `INT64`, `FLOAT32`, `FLOAT64`, `BOOLEAN`, `STRING`, `BYTES`, `ARRAY`, `MAP`, and `STRUCT`.
 
 * _semantic type_ describes how the Kafka Connect schema captures the _meaning_ of the field using the name of the Kafka Connect schema for the field.
 
@@ -725,20 +725,28 @@ Please file a {jira-url}/browse/DBZ[JIRA issue] for any specific types that may 
 endif::[]
 
 [id="oracle-character-types"]
-=== Character types
+=== Character and BLOB types
 
-The following table describes how the connector maps character types.
+The following table describes how the connector maps character and blob types.
 
-.Mappings for Oracle character data types
+.Mappings for Oracle character and blob data types
 [cols="20%a,15%a,55%a",options="header"]
 |===
 |Oracle Data Type
 |Literal type (schema type)
 |Semantic type (schema name) and Notes
 
+|`BLOB`
+|n/a
+|_This data type is not yet supported._
+
 |`CHAR[(M)]`
 |`STRING`
 |n/a
+
+|`CLOB`
+|n/a
+|_This data type is not yet supported._
 
 |`NCHAR[(M)]`
 |`STRING`
@@ -812,11 +820,7 @@ Contains a structure with two fields: `scale` of type `INT32` that contains the 
  +
 Contains a structure with two fields: `scale` of type `INT32` that contains the scale of the transferred value and `value` of type `BYTES` containing the original value in an unscaled form.
 
-|`NUMBER(P, S > 0)`
-|`BYTES`
-|`org.apache.kafka.connect.data.Decimal`
-
-|`NUMBER(P, S <= 0)`
+|`NUMBER(P, S \<= 0)`
 |`INT8` / `INT16` / `INT32` / `INT64`
 |`NUMBER` columns with a scale of 0 represent integer numbers; a negative scale indicates rounding in Oracle, e.g. a scale of -2 will cause rounding to hundreds. +
  +
@@ -827,6 +831,10 @@ Depending on the precision and scale, a matching Kafka Connect integer type will
  * P - S < 10, `INT32` +
  * P - S < 19, `INT64` +
  * P - S >= 19, `BYTES` (`org.apache.kafka.connect.data.Decimal`).
+
+|`NUMBER(P, S > 0)`
+|`BYTES`
+|`org.apache.kafka.connect.data.Decimal`
 
 |`NUMERIC[(P, S)]`
 |`BYTES` / `INT8` / `INT16` / `INT32` / `INT64`
@@ -1026,25 +1034,6 @@ archive log list
 exit;
 ----
 
-.Configuration needed for Oracle XStream
-[source,indent=0]
-----
-ORACLE_SID=ORCLCDB dbz_oracle sqlplus /nolog
-
-CONNECT sys/top_secret AS SYSDBA
-alter system set db_recovery_file_dest_size = 5G;
-alter system set db_recovery_file_dest = '/opt/oracle/oradata/recovery_area' scope=spfile;
-alter system set enable_goldengate_replication=true;
-shutdown immediate
-startup mount
-alter database archivelog;
-alter database open;
--- Should show "Database log mode: Archive Mode"
-archive log list
-
-exit;
-----
-
 In addition, supplemental logging must be enabled for captured tables or the database in order for data changes to capture the _before_ state of changed database rows.
 The following illustrates how to configure this on a specific table, which is the ideal choice to minimize the amount of information captured in the Oracle redo logs.
 
@@ -1057,9 +1046,6 @@ ALTER TABLE inventory.customers ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS;
 
 The {prodname} Oracle connector requires that users accounts be set up with specific permissions so that the connector can capture change events.
 The following briefly describes these user configurations using a multi-tenant database model.
-
-* <<oracle-create-users-logminer, `Creating users for Oracle LogMiner`>>
-* <<oracle-create-users-xstream, `Creating users for Oracle XStream`>>
 
 [[oracle-create-users-logminer]]
 .Creating the connector's LogMiner user
@@ -1111,117 +1097,6 @@ sqlplus sys/top_secret@//localhost:1521/ORCLCDB as sysdba
 
   exit;
 ----
-
-[[oracle-create-users-xstream]]
-.Creating an XStream Administrator user
-[source,indent=0]
-----
-sqlplus sys/top_secret@//localhost:1521/ORCLCDB as sysdba
-  CREATE TABLESPACE xstream_adm_tbs DATAFILE '/opt/oracle/oradata/ORCLCDB/xstream_adm_tbs.dbf'
-    SIZE 25M REUSE AUTOEXTEND ON MAXSIZE UNLIMITED;
-  exit;
-
-sqlplus sys/top_secret@//localhost:1521/ORCLPDB1 as sysdba
-  CREATE TABLESPACE xstream_adm_tbs DATAFILE '/opt/oracle/oradata/ORCLCDB/ORCLPDB1/xstream_adm_tbs.dbf'
-    SIZE 25M REUSE AUTOEXTEND ON MAXSIZE UNLIMITED;
-  exit;
-
-sqlplus sys/top_secret@//localhost:1521/ORCLCDB as sysdba
-  CREATE USER c##dbzadmin IDENTIFIED BY dbz
-    DEFAULT TABLESPACE xstream_adm_tbs
-    QUOTA UNLIMITED ON xstream_adm_tbs
-    CONTAINER=ALL;
-
-  GRANT CREATE SESSION, SET CONTAINER TO c##dbzadmin CONTAINER=ALL;
-
-  BEGIN
-     DBMS_XSTREAM_AUTH.GRANT_ADMIN_PRIVILEGE(
-        grantee                 => 'c##dbzadmin',
-        privilege_type          => 'CAPTURE',
-        grant_select_privileges => TRUE,
-        container               => 'ALL'
-     );
-  END;
-  /
-
-  exit;
-----
-
-.Creating the connector's XStream user
-[source,indent=0]
-----
-sqlplus sys/top_secret@//localhost:1521/ORCLCDB as sysdba
-  CREATE TABLESPACE xstream_tbs DATAFILE '/opt/oracle/oradata/ORCLCDB/xstream_tbs.dbf'
-    SIZE 25M REUSE AUTOEXTEND ON MAXSIZE UNLIMITED;
-  exit;
-
-sqlplus sys/top_secret@//localhost:1521/ORCLPDB1 as sysdba
-  CREATE TABLESPACE xstream_tbs DATAFILE '/opt/oracle/oradata/ORCLCDB/ORCLPDB1/xstream_tbs.dbf'
-    SIZE 25M REUSE AUTOEXTEND ON MAXSIZE UNLIMITED;
-  exit;
-
-sqlplus sys/top_secret@//localhost:1521/ORCLCDB as sysdba
-  CREATE USER c##dbzuser IDENTIFIED BY dbz
-    DEFAULT TABLESPACE xstream_tbs
-    QUOTA UNLIMITED ON xstream_tbs
-    CONTAINER=ALL;
-
-  GRANT CREATE SESSION TO c##dbzuser CONTAINER=ALL;
-  GRANT SET CONTAINER TO c##dbzuser CONTAINER=ALL;
-  GRANT SELECT ON V_$DATABASE to c##dbzuser CONTAINER=ALL;
-  GRANT FLASHBACK ANY TABLE TO c##dbzuser CONTAINER=ALL;
-  GRANT SELECT_CATALOG_ROLE TO c##dbzuser CONTAINER=ALL;
-  GRANT EXECUTE_CATALOG_ROLE TO c##dbzuser CONTAINER=ALL;
-  exit;
-----
-
-=== Create an XStream Outbound Server
-
-[NOTE]
-====
-If you're using the default adapter, LogMiner, then this step can be skipped.
-====
-
-Create an https://docs.oracle.com/cd/E11882_01/server.112/e16545/xstrm_cncpt.htm#XSTRM1088[XStream Outbound server]
-(given the right privileges, this may be done automatically by the connector going forward, see {jira-url}/browse/DBZ-721[DBZ-721]):
-
-.Create an XStream Outbound Server
-[source,indent=0]
-----
-sqlplus c##dbzadmin/dbz@//localhost:1521/ORCLCDB
-DECLARE
-  tables  DBMS_UTILITY.UNCL_ARRAY;
-  schemas DBMS_UTILITY.UNCL_ARRAY;
-BEGIN
-    tables(1)  := NULL;
-    schemas(1) := 'debezium';
-  DBMS_XSTREAM_ADM.CREATE_OUTBOUND(
-    server_name     =>  'dbzxout',
-    table_names     =>  tables,
-    schema_names    =>  schemas);
-END;
-/
-exit;
-----
-
-.Configure the XStream user account to connect to the XStream Outbound Server
-[source,indent=0]
-----
-sqlplus sys/top_secret@//localhost:1521/ORCLCDB as sysdba
-BEGIN
-  DBMS_XSTREAM_ADM.ALTER_OUTBOUND(
-    server_name  => 'dbzxout',
-    connect_user => 'c##dbzuser');
-END;
-/
-exit;
-----
-
-[NOTE]
-====
-A single XStream Outbound server cannot be shared by multiple {prodname} Oracle connectors.
-Each connector requires a unique XStream Outbound connector to be configured.
-====
 
 [[oracle-deploying-a-connector]]
 == Deploying a Connector
@@ -1330,40 +1205,9 @@ The {prodname} Oracle connector supports both deployment practices of pluggable 
 
 [WARNING]
 ====
-When using CDB installations, specify `database.pbd.name`. +
+When using CDB installations, specify `database.pdb.name`. +
 When using a non-CDB installation, do *not* specify the `database.pdb.name`.
 ====
-
-[[selecting-the-adapter]]
-=== Selecting the adapter
-
-{prodname} provides multiple ways to ingest change events from Oracle.
-By default {prodname} uses Oracle LogMiner but you may wish to use the Oracle XStream API for your installation.
-
-The following example configuration illustrates that by adding the `database.connection.adapter` and `database.out.server.name`,
-the connector can be toggled to use the XStream API implementation.
-
-[source,json,indent=0]
-----
-{
-    "name": "inventory-connector",
-    "config": {
-        "connector.class" : "io.debezium.connector.oracle.OracleConnector",
-        "tasks.max" : "1",
-        "database.server.name" : "server1",
-        "database.hostname" : "<oracle ip>",
-        "database.port" : "1521",
-        "database.user" : "c##dbzuser",
-        "database.password" : "dbz",
-        "database.dbname" : "ORCLCDB",
-        "database.pdb.name" : "ORCLPDB1",
-        "database.history.kafka.bootstrap.servers" : "kafka:9092",
-        "database.history.kafka.topic": "schema-changes.inventory",
-        "database.connection.adapter": "xstream",
-        "database.out.server.name" : "dbzxout",
-    }
-}
-----
 
 [[oracle-connector-properties]]
 === Connector Properties
@@ -1412,20 +1256,9 @@ The following configuration properties are _required_ unless a default value is 
 |
 |Raw database jdbc url. This property can be used when more flexibility is needed and can support raw TNS names or RAC connection strings.
 
-|[[oracle-property-database-oracle-version]]<<oracle-property-database-oracle-version, `+database.oracle.version+`>>
-|`12+`
-|Specifies how to decode the Oracle SCN values.
-`11` should be used when connecting to Oracle 11 databases.
-`12+` (the default) should be used when connecting to Oracle 12 or later databases.
-This field is only applicable when using the Oracle XStreams connector adapter.
-
 |[[oracle-property-database-pdb-name]]<<oracle-property-database-pdb-name, `+database.pdb.name+`>>
 |
 |Name of the PDB to connect to, when working with the CDB + PDB model.
-
-|[[oracle-property-database-out-server-name]]<<oracle-property-database-out-server-name, `+database.out.server.name+`>>
-|
-|Name of the XStream outbound server configured in the database.
 
 |[[oracle-property-database-server-name]]<<oracle-property-database-server-name, `+database.server.name+`>>
 |
@@ -2004,6 +1837,200 @@ The message does not contain the update to the schema, but the complete new sche
 
 |===
 
+[[oracle-xstreams-support]]
+== XStreams support
+
+The {prodname} Oracle connector by default ingests changes using native Oracle LogMiner.
+The connector can be toggled to use Oracle XStream instead and to do so specific database and connector configurations must be used that differ from that of LogMiner.
+
+=== Preparing the Database
+
+.Configuration needed for Oracle XStream
+[source,indent=0]
+----
+ORACLE_SID=ORCLCDB dbz_oracle sqlplus /nolog
+
+CONNECT sys/top_secret AS SYSDBA
+alter system set db_recovery_file_dest_size = 5G;
+alter system set db_recovery_file_dest = '/opt/oracle/oradata/recovery_area' scope=spfile;
+alter system set enable_goldengate_replication=true;
+shutdown immediate
+startup mount
+alter database archivelog;
+alter database open;
+-- Should show "Database log mode: Archive Mode"
+archive log list
+
+exit;
+----
+
+In addition, supplemental logging must be enabled for captured tables or the database in order for data changes to capture the _before_ state of changed database rows.
+The following illustrates how to configure this on a specific table, which is the ideal choice to minimize the amount of information captured in the Oracle redo logs.
+
+[source,indent=0]
+----
+ALTER TABLE inventory.customers ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS;
+----
+
+=== Creating Users for the connector
+
+The {prodname} Oracle connector requires that users accounts be set up with specific permissions so that the connector can capture change events.
+The following briefly describes these user configurations using a multi-tenant database model.
+
+
+[[oracle-create-users-xstream]]
+.Creating an XStream Administrator user
+[source,indent=0]
+----
+sqlplus sys/top_secret@//localhost:1521/ORCLCDB as sysdba
+  CREATE TABLESPACE xstream_adm_tbs DATAFILE '/opt/oracle/oradata/ORCLCDB/xstream_adm_tbs.dbf'
+    SIZE 25M REUSE AUTOEXTEND ON MAXSIZE UNLIMITED;
+  exit;
+
+sqlplus sys/top_secret@//localhost:1521/ORCLPDB1 as sysdba
+  CREATE TABLESPACE xstream_adm_tbs DATAFILE '/opt/oracle/oradata/ORCLCDB/ORCLPDB1/xstream_adm_tbs.dbf'
+    SIZE 25M REUSE AUTOEXTEND ON MAXSIZE UNLIMITED;
+  exit;
+
+sqlplus sys/top_secret@//localhost:1521/ORCLCDB as sysdba
+  CREATE USER c##dbzadmin IDENTIFIED BY dbz
+    DEFAULT TABLESPACE xstream_adm_tbs
+    QUOTA UNLIMITED ON xstream_adm_tbs
+    CONTAINER=ALL;
+
+  GRANT CREATE SESSION, SET CONTAINER TO c##dbzadmin CONTAINER=ALL;
+
+  BEGIN
+     DBMS_XSTREAM_AUTH.GRANT_ADMIN_PRIVILEGE(
+        grantee                 => 'c##dbzadmin',
+        privilege_type          => 'CAPTURE',
+        grant_select_privileges => TRUE,
+        container               => 'ALL'
+     );
+  END;
+  /
+
+  exit;
+----
+
+.Creating the connector's XStream user
+[source,indent=0]
+----
+sqlplus sys/top_secret@//localhost:1521/ORCLCDB as sysdba
+  CREATE TABLESPACE xstream_tbs DATAFILE '/opt/oracle/oradata/ORCLCDB/xstream_tbs.dbf'
+    SIZE 25M REUSE AUTOEXTEND ON MAXSIZE UNLIMITED;
+  exit;
+
+sqlplus sys/top_secret@//localhost:1521/ORCLPDB1 as sysdba
+  CREATE TABLESPACE xstream_tbs DATAFILE '/opt/oracle/oradata/ORCLCDB/ORCLPDB1/xstream_tbs.dbf'
+    SIZE 25M REUSE AUTOEXTEND ON MAXSIZE UNLIMITED;
+  exit;
+
+sqlplus sys/top_secret@//localhost:1521/ORCLCDB as sysdba
+  CREATE USER c##dbzuser IDENTIFIED BY dbz
+    DEFAULT TABLESPACE xstream_tbs
+    QUOTA UNLIMITED ON xstream_tbs
+    CONTAINER=ALL;
+
+  GRANT CREATE SESSION TO c##dbzuser CONTAINER=ALL;
+  GRANT SET CONTAINER TO c##dbzuser CONTAINER=ALL;
+  GRANT SELECT ON V_$DATABASE to c##dbzuser CONTAINER=ALL;
+  GRANT FLASHBACK ANY TABLE TO c##dbzuser CONTAINER=ALL;
+  GRANT SELECT_CATALOG_ROLE TO c##dbzuser CONTAINER=ALL;
+  GRANT EXECUTE_CATALOG_ROLE TO c##dbzuser CONTAINER=ALL;
+  exit;
+----
+
+=== Create an XStream Outbound Server
+
+Create an https://docs.oracle.com/cd/E11882_01/server.112/e16545/xstrm_cncpt.htm#XSTRM1088[XStream Outbound server]
+(given the right privileges, this may be done automatically by the connector going forward, see {jira-url}/browse/DBZ-721[DBZ-721]):
+
+.Create an XStream Outbound Server
+[source,indent=0]
+----
+sqlplus c##dbzadmin/dbz@//localhost:1521/ORCLCDB
+DECLARE
+  tables  DBMS_UTILITY.UNCL_ARRAY;
+  schemas DBMS_UTILITY.UNCL_ARRAY;
+BEGIN
+    tables(1)  := NULL;
+    schemas(1) := 'debezium';
+  DBMS_XSTREAM_ADM.CREATE_OUTBOUND(
+    server_name     =>  'dbzxout',
+    table_names     =>  tables,
+    schema_names    =>  schemas);
+END;
+/
+exit;
+----
+
+.Configure the XStream user account to connect to the XStream Outbound Server
+[source,indent=0]
+----
+sqlplus sys/top_secret@//localhost:1521/ORCLCDB as sysdba
+BEGIN
+  DBMS_XSTREAM_ADM.ALTER_OUTBOUND(
+    server_name  => 'dbzxout',
+    connect_user => 'c##dbzuser');
+END;
+/
+exit;
+----
+
+[NOTE]
+====
+A single XStream Outbound server cannot be shared by multiple {prodname} Oracle connectors.
+Each connector requires a unique XStream Outbound connector to be configured.
+====
+
+[[selecting-the-adapter]]
+=== Configuring the XStream adapter
+
+By default {prodname} uses Oracle LogMiner to ingest change events from Oracle.
+In order to use Oracle XStreams, the connector configuration must be adjusted to enable this adapter.
+
+The following example configuration illustrates that by adding the `database.connection.adapter` and `database.out.server.name`,
+the connector can be toggled to use the XStream API implementation.
+
+[source,json,indent=0]
+----
+{
+    "name": "inventory-connector",
+    "config": {
+        "connector.class" : "io.debezium.connector.oracle.OracleConnector",
+        "tasks.max" : "1",
+        "database.server.name" : "server1",
+        "database.hostname" : "<oracle ip>",
+        "database.port" : "1521",
+        "database.user" : "c##dbzuser",
+        "database.password" : "dbz",
+        "database.dbname" : "ORCLCDB",
+        "database.pdb.name" : "ORCLPDB1",
+        "database.history.kafka.bootstrap.servers" : "kafka:9092",
+        "database.history.kafka.topic": "schema-changes.inventory",
+        "database.connection.adapter": "xstream",
+        "database.out.server.name" : "dbzxout"
+    }
+}
+----
+
+[[oracle-xstreams-connector-properties]]
+=== Connector properties
+
+The following configuration properties are _required_ when using XStreams unless a default value is available.
+
+[cols="30%a,25%a,45%a"]
+|===
+|Property
+|Default
+|Description
+
+|[[oracle-property-database-out-server-name]]<<oracle-property-database-out-server-name, `+database.out.server.name+`>>
+|
+|Name of the XStream outbound server configured in the database.
+
+|===
 
 [[oracle-when-things-go-wrong]]
 == Behavior when things go wrong
