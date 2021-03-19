@@ -1027,6 +1027,10 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
         this.sourceInfoStructMaker = getSourceInfoStructMaker(Version.parse(config.getString(SOURCE_STRUCT_MAKER_VERSION)));
     }
 
+    public boolean useCursorFetch() {
+        return this.getSnapshotFetchSize() > 0;
+    }
+
     public SnapshotLockingMode getSnapshotLockingMode() {
         return this.snapshotLockingMode;
     }
