@@ -20,8 +20,6 @@ For table schema changes an xref:surrogate-schema-evolution[auxilliary solution]
 == Overview
 
 {prodname} ingests change events from Oracle using the native LogMiner database package or the https://docs.oracle.com/database/121/XSTRM/xstrm_intro.htm#XSTRM72647[XStream API].
-In order to use the XStream API, you need to have a license for the GoldenGate product
-(though it is not required that GoldenGate itself is installed).
 
 [[how-the-oracle-connector-works]]
 == How the Oracle Connector Works
@@ -1042,7 +1040,7 @@ The following illustrates how to configure this on a specific table, which is th
 ALTER TABLE inventory.customers ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS;
 ----
 
-=== Creating Users for the connector
+=== Creating users for the connector
 
 The {prodname} Oracle connector requires that users accounts be set up with specific permissions so that the connector can capture change events.
 The following briefly describes these user configurations using a multi-tenant database model.
@@ -1842,6 +1840,8 @@ The message does not contain the update to the schema, but the complete new sche
 
 The {prodname} Oracle connector by default ingests changes using native Oracle LogMiner.
 The connector can be toggled to use Oracle XStream instead and to do so specific database and connector configurations must be used that differ from that of LogMiner.
+In order to use the XStream API, you need to have a license for the GoldenGate product
+(though it is not required that GoldenGate itself is installed).
 
 === Preparing the Database
 
@@ -1872,7 +1872,7 @@ The following illustrates how to configure this on a specific table, which is th
 ALTER TABLE inventory.customers ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS;
 ----
 
-=== Creating Users for the connector
+=== Creating users for the connector
 
 The {prodname} Oracle connector requires that users accounts be set up with specific permissions so that the connector can capture change events.
 The following briefly describes these user configurations using a multi-tenant database model.
