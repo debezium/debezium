@@ -13,15 +13,15 @@
 
     <properties>
         <!-- Kafka and it's dependencies MUST reflect what the Kafka version uses -->
-        <version.kafka>2.6.1</version.kafka>
+        <version.kafka>2.7.0</version.kafka>
         <version.curator>4.2.0</version.curator>
         <version.zookeeper>3.5.8</version.zookeeper>
-        <version.jackson>2.10.2</version.jackson>
+        <version.jackson>2.10.5</version.jackson>
         <version.org.slf4j>1.7.30</version.org.slf4j>
         <version.log4j>1.2.17</version.log4j>
-        <version.netty>4.1.50.Final</version.netty>
+        <version.netty>4.1.51.Final</version.netty>
         <!-- check new release version at https://github.com/confluentinc/schema-registry/releases -->
-        <version.confluent.platform>5.5.1</version.confluent.platform>
+        <version.confluent.platform>6.0.2</version.confluent.platform>
 
         <!-- Database drivers, should align with databases in debezium-build-parent -->
         <version.postgresql.driver>42.2.14</version.postgresql.driver>
