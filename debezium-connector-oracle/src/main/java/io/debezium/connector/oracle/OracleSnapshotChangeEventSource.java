@@ -244,7 +244,7 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
 
     @Override
     protected String enhanceOverriddenSelect(RelationalSnapshotContext snapshotContext, String overriddenSelect, TableId tableId) {
-        long snapshotOffset = (Long) snapshotContext.offset.getOffset().get("scn");
+        String snapshotOffset = (String) snapshotContext.offset.getOffset().get(SourceInfo.SCN_KEY);
         String token = connectorConfig.getTokenToReplaceInSnapshotPredicate();
         if (token != null) {
             return overriddenSelect.replaceAll(token, " AS OF SCN " + snapshotOffset);
