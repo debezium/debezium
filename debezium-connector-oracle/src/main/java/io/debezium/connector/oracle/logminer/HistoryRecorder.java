@@ -8,6 +8,7 @@ package io.debezium.connector.oracle.logminer;
 import java.sql.Timestamp;
 
 import io.debezium.common.annotation.Incubating;
+import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.jdbc.JdbcConfiguration;
 
@@ -19,11 +20,11 @@ public interface HistoryRecorder extends AutoCloseable {
     /**
      * Prepares the history recorder
      *
-     * @param metrics the LogMiner jmx metrics
+     * @param streamingMetrics the streaming metrics
      * @param jdbcConfiguration the jdbc configuration
      * @param retentionHours the history retention hours
      */
-    void prepare(LogMinerMetrics metrics, JdbcConfiguration jdbcConfiguration, long retentionHours);
+    void prepare(OracleStreamingChangeEventSourceMetrics streamingMetrics, JdbcConfiguration jdbcConfiguration, long retentionHours);
 
     /**
      * Records the LogMiner entry.

@@ -28,10 +28,12 @@ public class OracleChangeEventSourceFactory implements ChangeEventSourceFactory 
     private final OracleDatabaseSchema schema;
     private final Configuration jdbcConfig;
     private final OracleTaskContext taskContext;
+    private final OracleStreamingChangeEventSourceMetrics streamingMetrics;
 
     public OracleChangeEventSourceFactory(OracleConnectorConfig configuration, OracleConnection jdbcConnection,
                                           ErrorHandler errorHandler, EventDispatcher<TableId> dispatcher, Clock clock, OracleDatabaseSchema schema,
-                                          Configuration jdbcConfig, OracleTaskContext taskContext) {
+                                          Configuration jdbcConfig, OracleTaskContext taskContext,
+                                          OracleStreamingChangeEventSourceMetrics streamingMetrics) {
         this.configuration = configuration;
         this.jdbcConnection = jdbcConnection;
         this.errorHandler = errorHandler;
@@ -40,6 +42,7 @@ public class OracleChangeEventSourceFactory implements ChangeEventSourceFactory 
         this.schema = schema;
         this.jdbcConfig = jdbcConfig;
         this.taskContext = taskContext;
+        this.streamingMetrics = streamingMetrics;
     }
 
     @Override
@@ -70,6 +73,7 @@ public class OracleChangeEventSourceFactory implements ChangeEventSourceFactory 
                 clock,
                 schema,
                 taskContext,
-                jdbcConfig);
+                jdbcConfig,
+                streamingMetrics);
     }
 }

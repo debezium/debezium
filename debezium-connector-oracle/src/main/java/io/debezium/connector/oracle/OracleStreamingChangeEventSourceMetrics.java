@@ -3,9 +3,11 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.connector.oracle.logminer;
+package io.debezium.connector.oracle;
 
 import java.time.Duration;
+import java.time.Instant;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -17,19 +19,20 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.ThreadSafe;
+import io.debezium.connector.base.ChangeEventQueueMetrics;
 import io.debezium.connector.common.CdcSourceTaskContext;
-import io.debezium.connector.oracle.OracleConnectorConfig;
-import io.debezium.connector.oracle.Scn;
-import io.debezium.metrics.Metrics;
+import io.debezium.pipeline.metrics.StreamingChangeEventSourceMetrics;
+import io.debezium.pipeline.source.spi.EventMetadataProvider;
 
 /**
- * This class contains methods to be exposed via MBean server
- *
+ * The metrics implementation for Oracle connector streaming phase.
  */
 @ThreadSafe
-public class LogMinerMetrics extends Metrics implements LogMinerMetricsMXBean {
+public class OracleStreamingChangeEventSourceMetrics extends StreamingChangeEventSourceMetrics implements OracleStreamingChangeEventSourceMetricsMXBean {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(LogMinerMetrics.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(OracleStreamingChangeEventSourceMetrics.class);
+
+    private static final long MILLIS_PER_SECOND = 1000L;
 
     private final AtomicReference<Scn> currentScn = new AtomicReference<>();
     private final AtomicInteger logMinerQueryCount = new AtomicInteger();
@@ -65,6 +68,26 @@ public class LogMinerMetrics extends Metrics implements LogMinerMetricsMXBean {
     private final AtomicInteger hoursToKeepTransaction = new AtomicInteger();
     private final AtomicLong networkConnectionProblemsCounter = new AtomicLong();
 
+    private final AtomicReference<Duration> lagFromTheSourceDuration = new AtomicReference<>();
+    private final AtomicReference<Duration> minLagFromTheSourceDuration = new AtomicReference<>();
+    private final AtomicReference<Duration> maxLagFromTheSourceDuration = new AtomicReference<>();
+    private final AtomicReference<Duration> lastCommitDuration = new AtomicReference<>();
+    private final AtomicReference<Duration> maxCommitDuration = new AtomicReference<>();
+    private final AtomicLong activeTransactions = new AtomicLong();
+    private final AtomicLong rolledBackTransactions = new AtomicLong();
+    private final AtomicLong committedTransactions = new AtomicLong();
+    private final AtomicReference<Set<String>> abandonedTransactionIds = new AtomicReference<>();
+    private final AtomicReference<Set<String>> rolledBackTransactionIds = new AtomicReference<>();
+    private final AtomicLong registeredDmlCount = new AtomicLong();
+    private final AtomicLong committedDmlCount = new AtomicLong();
+    private final AtomicInteger errorCount = new AtomicInteger();
+    private final AtomicInteger warningCount = new AtomicInteger();
+    private final AtomicInteger scnFreezeCount = new AtomicInteger();
+    private final AtomicLong timeDifference = new AtomicLong();
+    private final AtomicReference<Scn> oldestScn = new AtomicReference<>();
+    private final AtomicReference<Scn> committedScn = new AtomicReference<>();
+    private final AtomicReference<Scn> offsetScn = new AtomicReference<>();
+
     // Constants for sliding window algorithm
     private final int batchSizeMin;
     private final int batchSizeMax;
@@ -76,10 +99,21 @@ public class LogMinerMetrics extends Metrics implements LogMinerMetricsMXBean {
     private final long sleepTimeDefault;
     private final long sleepTimeIncrement;
 
-    LogMinerMetrics(CdcSourceTaskContext taskContext, OracleConnectorConfig connectorConfig) {
-        super(taskContext, "log-miner");
+    private final Instant startTime;
+
+    public OracleStreamingChangeEventSourceMetrics(CdcSourceTaskContext taskContext, ChangeEventQueueMetrics changeEventQueueMetrics,
+                                                   EventMetadataProvider metadataProvider,
+                                                   OracleConnectorConfig connectorConfig) {
+        super(taskContext, changeEventQueueMetrics, metadataProvider);
+
+        startTime = Instant.now();
+        timeDifference.set(0L);
 
         currentScn.set(Scn.NULL);
+        oldestScn.set(Scn.NULL);
+        offsetScn.set(Scn.NULL);
+        committedScn.set(Scn.NULL);
+
         currentLogFileName = new AtomicReference<>();
         minimumLogsMined.set(0L);
         maximumLogsMined.set(0L);
@@ -99,7 +133,6 @@ public class LogMinerMetrics extends Metrics implements LogMinerMetricsMXBean {
         hoursToKeepTransaction.set(Long.valueOf(connectorConfig.getLogMiningTransactionRetention().toHours()).intValue());
 
         reset();
-        LOGGER.info("Logminer metrics initialized {}", this);
     }
 
     @Override
@@ -127,6 +160,23 @@ public class LogMinerMetrics extends Metrics implements LogMinerMetricsMXBean {
         minBatchProcessingTime.set(Duration.ZERO);
         maxBatchProcessingTime.set(Duration.ZERO);
         totalResultSetNextTime.set(Duration.ZERO);
+
+        // transactional buffer metrics
+        lagFromTheSourceDuration.set(Duration.ZERO);
+        maxLagFromTheSourceDuration.set(Duration.ZERO);
+        minLagFromTheSourceDuration.set(Duration.ZERO);
+        lastCommitDuration.set(Duration.ZERO);
+        maxCommitDuration.set(Duration.ZERO);
+        activeTransactions.set(0);
+        rolledBackTransactions.set(0);
+        committedTransactions.set(0);
+        registeredDmlCount.set(0);
+        committedDmlCount.set(0);
+        abandonedTransactionIds.set(new HashSet<>());
+        rolledBackTransactionIds.set(new HashSet<>());
+        errorCount.set(0);
+        warningCount.set(0);
+        scnFreezeCount.set(0);
     }
 
     public void setCurrentScn(Scn scn) {
@@ -409,10 +459,188 @@ public class LogMinerMetrics extends Metrics implements LogMinerMetricsMXBean {
         }
     }
 
+    // transactional buffer metrics
+
+    @Override
+    public long getNumberOfActiveTransactions() {
+        return activeTransactions.get();
+    }
+
+    @Override
+    public long getNumberOfRolledBackTransactions() {
+        return rolledBackTransactions.get();
+    }
+
+    @Override
+    public long getNumberOfCommittedTransactions() {
+        return committedTransactions.get();
+    }
+
+    @Override
+    public long getCommitThroughput() {
+        long timeSpent = Duration.between(startTime, Instant.now()).toMillis();
+        return committedTransactions.get() * MILLIS_PER_SECOND / (timeSpent != 0 ? timeSpent : 1);
+    }
+
+    @Override
+    public long getRegisteredDmlCount() {
+        return registeredDmlCount.get();
+    }
+
+    @Override
+    public String getOldestScn() {
+        return oldestScn.get().toString();
+    }
+
+    @Override
+    public String getCommittedScn() {
+        return committedScn.get().toString();
+    }
+
+    @Override
+    public String getOffsetScn() {
+        return offsetScn.get().toString();
+    }
+
+    @Override
+    public long getLagFromSourceInMilliseconds() {
+        return lagFromTheSourceDuration.get().toMillis();
+    }
+
+    @Override
+    public long getMaxLagFromSourceInMilliseconds() {
+        return maxLagFromTheSourceDuration.get().toMillis();
+    }
+
+    @Override
+    public long getMinLagFromSourceInMilliseconds() {
+        return minLagFromTheSourceDuration.get().toMillis();
+    }
+
+    @Override
+    public Set<String> getAbandonedTransactionIds() {
+        return abandonedTransactionIds.get();
+    }
+
+    @Override
+    public Set<String> getRolledBackTransactionIds() {
+        return rolledBackTransactionIds.get();
+    }
+
+    @Override
+    public long getLastCommitDurationInMilliseconds() {
+        return lastCommitDuration.get().toMillis();
+    }
+
+    @Override
+    public long getMaxCommitDurationInMilliseconds() {
+        return maxCommitDuration.get().toMillis();
+    }
+
+    @Override
+    public int getErrorCount() {
+        return errorCount.get();
+    }
+
+    @Override
+    public int getWarningCount() {
+        return warningCount.get();
+    }
+
+    @Override
+    public int getScnFreezeCount() {
+        return scnFreezeCount.get();
+    }
+
+    public void setOldestScn(Scn scn) {
+        oldestScn.set(scn);
+    }
+
+    public void setCommittedScn(Scn scn) {
+        committedScn.set(scn);
+    }
+
+    public void setOffsetScn(Scn scn) {
+        offsetScn.set(scn);
+    }
+
+    public void setActiveTransactions(long activeTransactionCount) {
+        activeTransactions.set(activeTransactionCount);
+    }
+
+    public void incrementRolledBackTransactions() {
+        rolledBackTransactions.incrementAndGet();
+    }
+
+    public void incrementCommittedTransactions() {
+        committedTransactions.incrementAndGet();
+    }
+
+    public void incrementRegisteredDmlCount() {
+        registeredDmlCount.incrementAndGet();
+    }
+
+    public void incrementCommittedDmlCount(long counter) {
+        committedDmlCount.getAndAdd(counter);
+    }
+
+    public void incrementErrorCount() {
+        errorCount.incrementAndGet();
+    }
+
+    public void incrementWarningCount() {
+        warningCount.incrementAndGet();
+    }
+
+    public void incrementScnFreezeCount() {
+        scnFreezeCount.incrementAndGet();
+    }
+
+    public void addAbandonedTransactionId(String transactionId) {
+        if (transactionId != null) {
+            abandonedTransactionIds.get().add(transactionId);
+        }
+    }
+
+    public void addRolledBackTransactionId(String transactionId) {
+        if (transactionId != null) {
+            rolledBackTransactionIds.get().add(transactionId);
+        }
+    }
+
+    public void setLastCommitDuration(Duration lastDuration) {
+        lastCommitDuration.set(lastDuration);
+        if (lastDuration.toMillis() > maxCommitDuration.get().toMillis()) {
+            maxCommitDuration.set(lastDuration);
+        }
+    }
+
+    public void setTimeDifference(long timeDifference) {
+        this.timeDifference.set(timeDifference);
+    }
+
+    public void calculateLagMetrics(Instant changeTime) {
+        if (changeTime != null) {
+            final Instant correctedChangeTime = changeTime.plus(Duration.ofMillis(timeDifference.longValue()));
+            final Duration lag = Duration.between(correctedChangeTime, Instant.now()).abs();
+            lagFromTheSourceDuration.set(lag);
+
+            if (maxLagFromTheSourceDuration.get().toMillis() < lag.toMillis()) {
+                maxLagFromTheSourceDuration.set(lag);
+            }
+            if (minLagFromTheSourceDuration.get().toMillis() > lag.toMillis()) {
+                minLagFromTheSourceDuration.set(lag);
+            }
+        }
+    }
+
     @Override
     public String toString() {
-        return "LogMinerMetrics{" +
+        return "OracleStreamingChangeEventSourceMetrics{" +
                 "currentScn=" + currentScn +
+                ", oldestScn=" + oldestScn.get() +
+                ", committedScn=" + committedScn.get() +
+                ", offsetScn=" + offsetScn.get() +
                 ", logMinerQueryCount=" + logMinerQueryCount +
                 ", totalProcessedRows=" + totalProcessedRows +
                 ", totalCapturedDmlCount=" + totalCapturedDmlCount +
@@ -450,6 +678,21 @@ public class LogMinerMetrics extends Metrics implements LogMinerMetricsMXBean {
                 ", minBatchProcessTime=" + minBatchProcessingTime +
                 ", maxBatchProcessTime=" + maxBatchProcessingTime +
                 ", totalResultSetNextTime=" + totalResultSetNextTime +
+                ", lagFromTheSource=Duration" + lagFromTheSourceDuration.get() +
+                ", maxLagFromTheSourceDuration=" + maxLagFromTheSourceDuration.get() +
+                ", minLagFromTheSourceDuration=" + minLagFromTheSourceDuration.get() +
+                ", lastCommitDuration=" + lastCommitDuration +
+                ", maxCommitDuration=" + maxCommitDuration +
+                ", activeTransactions=" + activeTransactions.get() +
+                ", rolledBackTransactions=" + rolledBackTransactions.get() +
+                ", committedTransactions=" + committedTransactions.get() +
+                ", abandonedTransactionIds=" + abandonedTransactionIds.get() +
+                ", rolledbackTransactionIds=" + rolledBackTransactionIds.get() +
+                ", registeredDmlCount=" + registeredDmlCount.get() +
+                ", committedDmlCount=" + committedDmlCount.get() +
+                ", errorCount=" + errorCount.get() +
+                ", warningCount=" + warningCount.get() +
+                ", scnFreezeCount=" + scnFreezeCount.get() +
                 '}';
     }
 }
