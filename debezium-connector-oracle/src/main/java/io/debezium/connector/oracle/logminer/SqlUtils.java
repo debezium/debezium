@@ -121,6 +121,10 @@ public class SqlUtils {
         return String.format("SELECT F.MEMBER FROM %s LOG, %s F  WHERE LOG.GROUP#=F.GROUP# AND LOG.STATUS='CURRENT'", LOG_VIEW, LOGFILE_VIEW);
     }
 
+    static String currentRedoLogSequenceQuery() {
+        return String.format("SELECT SEQUENCE# FROM %s WHERE STATUS = 'CURRENT'", LOG_VIEW);
+    }
+
     static String databaseSupplementalLoggingAllCheckQuery() {
         return String.format("SELECT 'KEY', SUPPLEMENTAL_LOG_DATA_ALL FROM %s", DATABASE_VIEW);
     }

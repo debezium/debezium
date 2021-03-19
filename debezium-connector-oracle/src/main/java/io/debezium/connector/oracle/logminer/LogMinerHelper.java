@@ -244,20 +244,17 @@ public class LogMinerHelper {
     /**
      * This method query the database to get CURRENT online redo log file(s). Multiple is applicable for RAC systems.
      * @param connection connection to reuse
-     * @param metrics MBean accessible metrics
      * @return full redo log file name(s), including path
      * @throws SQLException if anything unexpected happens
      */
-    static Set<String> getCurrentRedoLogFiles(OracleConnection connection, LogMinerMetrics metrics) throws SQLException {
-        Set<String> fileNames = new HashSet<>();
-        try (PreparedStatement st = connection.connection(false).prepareStatement(SqlUtils.currentRedoNameQuery()); ResultSet result = st.executeQuery()) {
-            while (result.next()) {
-                fileNames.add(result.getString(1));
+    static Set<String> getCurrentRedoLogFiles(OracleConnection connection) throws SQLException {
+        final Set<String> fileNames = new HashSet<>();
+        connection.query(SqlUtils.currentRedoNameQuery(), rs -> {
+            while (rs.next()) {
+                fileNames.add(rs.getString(1));
             }
-            LOGGER.trace(" Current Redo log fileNames: {} ", fileNames);
-        }
-
-        updateRedoLogMetrics(connection, metrics, fileNames);
+        });
+        LOGGER.trace(" Current Redo log fileNames: {} ", fileNames);
         return fileNames;
     }
 
@@ -289,27 +286,6 @@ public class LogMinerHelper {
      */
     static void setNlsSessionParameters(JdbcConnection connection) throws SQLException {
         connection.executeWithoutCommitting(SqlUtils.NLS_SESSION_PARAMETERS);
-    }
-
-    /**
-     * This is to update MBean metrics associated with REDO LOG groups
-     * @param connection connection
-     * @param fileNames name of current REDO LOG files
-     * @param metrics current metrics
-     */
-    private static void updateRedoLogMetrics(OracleConnection connection, LogMinerMetrics metrics, Set<String> fileNames) {
-        try {
-            // update metrics
-            Map<String, String> logStatuses = getRedoLogStatus(connection);
-            metrics.setRedoLogStatus(logStatuses);
-
-            int counter = getSwitchCount(connection);
-            metrics.setSwitchCount(counter);
-            metrics.setCurrentLogFileName(fileNames);
-        }
-        catch (SQLException e) {
-            LOGGER.error("Cannot update metrics");
-        }
     }
 
     /**
