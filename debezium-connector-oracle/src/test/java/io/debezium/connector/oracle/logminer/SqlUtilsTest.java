@@ -226,6 +226,10 @@ public class SqlUtilsTest {
         expected = "SELECT F.MEMBER FROM V$LOG LOG, V$LOGFILE F  WHERE LOG.GROUP#=F.GROUP# AND LOG.STATUS='CURRENT'";
         assertThat(result).isEqualTo(expected);
 
+        result = SqlUtils.currentRedoLogSequenceQuery();
+        expected = "SELECT SEQUENCE# FROM V$LOG WHERE STATUS = 'CURRENT'";
+        assertThat(result).isEqualTo(expected);
+
         result = SqlUtils.databaseSupplementalLoggingAllCheckQuery();
         expected = "SELECT 'KEY', SUPPLEMENTAL_LOG_DATA_ALL FROM V$DATABASE";
         assertThat(result).isEqualTo(expected);
