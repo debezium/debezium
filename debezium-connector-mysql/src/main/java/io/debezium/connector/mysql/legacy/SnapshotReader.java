@@ -5,17 +5,13 @@
  */
 package io.debezium.connector.mysql.legacy;
 
-import java.io.UnsupportedEncodingException;
-import java.sql.Blob;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.sql.Types;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -40,7 +36,9 @@ import io.debezium.connector.SnapshotRecord;
 import io.debezium.connector.common.SourceRecordWrapper;
 import io.debezium.connector.mysql.MySqlConnector;
 import io.debezium.connector.mysql.MySqlConnectorConfig;
-import io.debezium.connector.mysql.MySqlValueConverters;
+import io.debezium.connector.mysql.MysqlBinaryProtocolFieldReader;
+import io.debezium.connector.mysql.MysqlFieldReader;
+import io.debezium.connector.mysql.MysqlTextProtocolFieldReader;
 import io.debezium.connector.mysql.legacy.MySqlJdbcContext.DatabaseLocales;
 import io.debezium.connector.mysql.legacy.RecordMakers.RecordsForTable;
 import io.debezium.data.Envelope;
@@ -69,6 +67,7 @@ public class SnapshotReader extends AbstractReader {
     private final SnapshotReaderMetrics metrics;
     private ExecutorService executorService;
     private final boolean useGlobalLock;
+    private final MysqlFieldReader mysqlFieldReader;
 
     private final MySqlConnectorConfig.SnapshotLockingMode snapshotLockingMode;
 
@@ -98,6 +97,7 @@ public class SnapshotReader extends AbstractReader {
         recorder = this::recordRowAsRead;
         metrics = new SnapshotReaderMetrics(context, context.dbSchema(), changeEventQueueMetrics);
         this.useGlobalLock = useGlobalLock;
+        this.mysqlFieldReader = context.getConnectorConfig().useCursorFetch() ? new MysqlBinaryProtocolFieldReader() : new MysqlTextProtocolFieldReader();
     }
 
     /**
@@ -666,7 +666,7 @@ public class SnapshotReader extends AbstractReader {
                                         while (rs.next()) {
                                             for (int i = 0, j = 1; i != numColumns; ++i, ++j) {
                                                 Column actualColumn = table.columns().get(i);
-                                                row[i] = readField(rs, j, actualColumn, table);
+                                                row[i] = mysqlFieldReader.readField(rs, j, actualColumn, table);
                                             }
                                             recorder.recordRow(recordMaker, row, clock.currentTimeAsInstant()); // has no row number!
                                             rowNum.incrementAndGet();

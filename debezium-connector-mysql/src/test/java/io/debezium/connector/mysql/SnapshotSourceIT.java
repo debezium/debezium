@@ -62,6 +62,7 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
     private final UniqueDatabase DATABASE = new UniqueDatabase("logical_server_name", "connector_test_ro")
             .withDbHistoryPath(DB_HISTORY_PATH);
     private final UniqueDatabase OTHER_DATABASE = new UniqueDatabase("logical_server_name", "connector_test", DATABASE);
+    private final UniqueDatabase BINARY_FIELD_DATABASE = new UniqueDatabase("logical_server_name", "connector_read_binary_field_test");
 
     private Configuration config;
 
@@ -73,6 +74,7 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
         Testing.Files.delete(DB_HISTORY_PATH);
         DATABASE.createAndInitialize();
         OTHER_DATABASE.createAndInitialize();
+        BINARY_FIELD_DATABASE.createAndInitialize();
     }
 
     @After
@@ -303,6 +305,46 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
 
         Collection orders = store.collection(DATABASE.getDatabaseName(), "orders");
         assertThat(orders).isNull();
+    }
+
+    @Test
+    @FixFor("DBZ-3238")
+    public void shouldSnapshotCorrectlyReadFields() throws Exception {
+        config = simpleConfig()
+                .with(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, "connector_read_binary_field_test_" + BINARY_FIELD_DATABASE.getIdentifier())
+                .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, BINARY_FIELD_DATABASE.qualifiedTableName("binary_field"))
+                .with(MySqlConnectorConfig.ROW_COUNT_FOR_STREAMING_RESULT_SETS, "0")
+                .with(MySqlConnectorConfig.SNAPSHOT_FETCH_SIZE, "101")
+                // .with("internal.implementation", "legacy")
+                .build();
+
+        // Start the connector ...
+        start(MySqlConnector.class, config);
+        waitForSnapshotToBeCompleted("mysql", BINARY_FIELD_DATABASE.getServerName());
+
+        // Poll for records ...
+        KeyValueStore store = KeyValueStore.createForTopicsBeginningWith(BINARY_FIELD_DATABASE.getServerName() + ".");
+        SchemaChangeHistory schemaChanges = new SchemaChangeHistory(BINARY_FIELD_DATABASE.getServerName());
+        SourceRecords sourceRecords = consumeRecordsByTopic(1);
+        sourceRecords.allRecordsInOrder().forEach(record -> {
+            VerifyRecord.isValid(record);
+            VerifyRecord.hasNoSourceQuery(record);
+            store.add(record);
+            schemaChanges.add(record);
+        });
+
+        // There should be no schema changes ...
+        assertThat(schemaChanges.recordCount()).isEqualTo(0);
+
+        // Check the records via the store ...
+        assertThat(store.databases()).contains(BINARY_FIELD_DATABASE.getDatabaseName());
+        assertThat(store.collectionCount()).isEqualTo(1);
+
+        Collection customers = store.collection(BINARY_FIELD_DATABASE.getDatabaseName(), "binary_field");
+        assertThat(customers.numberOfCreates()).isEqualTo(0);
+        assertThat(customers.numberOfUpdates()).isEqualTo(0);
+        assertThat(customers.numberOfDeletes()).isEqualTo(0);
+        assertThat(customers.numberOfReads()).isEqualTo(1);
     }
 
     @Test
