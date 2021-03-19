@@ -66,6 +66,7 @@ public class MySqlJdbcContext implements AutoCloseable {
                 .filter(x -> !(x.startsWith(DatabaseHistory.CONFIGURATION_FIELD_PREFIX_STRING) || x.equals(MySqlConnectorConfig.DATABASE_HISTORY.name())))
                 .edit()
                 .withDefault(MySqlConnectorConfig.PORT, MySqlConnectorConfig.PORT.defaultValue())
+                .withDefault("database.useCursorFetch", config.useCursorFetch())
                 .build()
                 .subset("database.", true);
 

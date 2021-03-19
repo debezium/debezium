@@ -68,10 +68,12 @@ public class MySqlConnectorTask extends BaseSourceTask {
         final SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create();
         final MySqlValueConverters valueConverters = getValueConverters(connectorConfig);
 
+        // DBZ-3238: automatically set "useCursorFetch" to true when a snapshot fetch size other than the default of -1 is given
         // By default do not load whole result sets into memory
         config = config.edit()
                 .withDefault("database.responseBuffering", "adaptive")
                 .withDefault("database.fetchSize", 10_000)
+                .withDefault("database.useCursorFetch", connectorConfig.useCursorFetch())
                 .build();
 
         connection = new MySqlConnection(new MySqlConnectionConfiguration(config));
