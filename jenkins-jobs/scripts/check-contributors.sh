@@ -45,7 +45,7 @@ do
             if test -z "$NAME"; then
               COMMIT=`git --git-dir=../"$REPO"/.git log --pretty=format:"%H" --author "$LINE" | head -1`
               if ! grep -qi "$COMMIT" "$FILTERED_COMMITS"; then
-                echo "Commit $COMMIT : Did not find [$LINE] with email [$EMAIL]."
+                echo "Commit $COMMIT in $REPO: Did not find [$LINE] with email [$EMAIL]."
                 rc=1
               fi
             else
