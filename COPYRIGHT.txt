@@ -229,7 +229,7 @@ Rich O'Connell
 Robert Coup
 Robert Roldan
 Ruslan Gibaiev
-SiuFay
+Russell Ballard
 Sairam Polavarapu
 Sanjay Kr Singh
 Sanne Grinovero
@@ -245,6 +245,7 @@ Sheldon Fuchs
 Shivam Sharma
 Shubham Rawat
 Shuguang Xiang
+SiuFay
 Siddhant Agnihotry
 Stanley Shyiko
 Stathis Souris

@@ -5,6 +5,7 @@ CONTRIBUTOR_NAMES="/tmp/repository-CONTRIBUTOR-NAMES.txt"
 CONTRIBUTORS="/tmp/repository-CONTRIBUTORS.txt"
 
 FILTERS="jenkins-jobs/scripts/config/FilteredNames.txt"
+FILTERED_COMMITS="jenkins-jobs/scripts/config/FilteredCommits.txt"
 ALIASES="jenkins-jobs/scripts/config/Aliases.txt"
 
 declare -a DEBEZIUM_REPOS
@@ -42,8 +43,11 @@ do
             # If it did resolve as an alias, use the resolved name to see if its in the COPYRIGHT file
             # and return 1 only if the resolved name was not already listed.
             if test -z "$NAME"; then
-                echo "Commit $(git log --pretty=format:"%H" --author "$LINE" | head -1) : Did not find [$LINE] with email [$EMAIL]."
+              COMMIT=`git --git-dir=../"$REPO"/.git log --pretty=format:"%H" --author "$LINE" | head -1`
+              if ! grep -qi "$COMMIT" "$FILTERED_COMMITS"; then
+                echo "Commit $COMMIT : Did not find [$LINE] with email [$EMAIL]."
                 rc=1
+              fi
             else
                 if ! grep -qi "$NAME" $COPYRIGHT; then
                     echo "Found [$LINE] (translated to [$NAME]) but the name wasn't in the COPYRIGHT.txt file."
