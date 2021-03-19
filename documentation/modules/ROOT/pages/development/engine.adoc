@@ -355,6 +355,25 @@ DebeziumEngine<RecordChangeEvent<SourceRecord>> engine = DebeziumEngine.create(C
         .build();
 ----
 
+If JSON format is used (an equivalent would work for other formats too) then the code would look like:
+
+[source,java,indent=0]
+----
+
+class JsonChangeConsumer implements DebeziumEngine.ChangeConsumer<ChangeEvent<String, String>> {
+  public void handleBatch(List<ChangeEvent<String, String>> records,
+    RecordCommitter<ChangeEvent<String, String>> committer) throws InterruptedException {
+    ...
+  }
+}
+// Create the engine with this configuration ...
+DebeziumEngine<ChangeEvent<String, String>> engine = DebeziumEngine.create(Json.class)
+        .using(props)
+        .notifying(new MyChangeConsumer())
+        .build();
+----
+
+
 [[engine-properties]]
 == Engine Properties
 
