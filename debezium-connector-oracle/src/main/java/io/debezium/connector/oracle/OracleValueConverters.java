@@ -26,6 +26,7 @@ import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 
+import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
 import io.debezium.data.SpecialValueDecimal;
 import io.debezium.data.VariableScaleDecimal;
@@ -242,10 +243,13 @@ public class OracleValueConverters extends JdbcValueConverters {
         if (data instanceof Clob) {
             try {
                 Clob clob = (Clob) data;
+                // Note that java.sql.Clob specifies that the first character starts at 1
+                // and that length must be greater-than or equal to 0.  So for an empty
+                // clob field, a call to getSubString(1, 0) is perfectly valid.
                 return clob.getSubString(1, (int) clob.length());
             }
             catch (SQLException e) {
-                throw new RuntimeException("Couldn't convert value for column " + column.name(), e);
+                throw new DebeziumException("Couldn't convert value for column " + column.name(), e);
             }
         }
         if (data instanceof String) {
@@ -292,7 +296,7 @@ public class OracleValueConverters extends JdbcValueConverters {
                 return blob.getBytes(0, Long.valueOf(blob.length()).intValue());
             }
             catch (SQLException e) {
-                throw new RuntimeException("Couldn't convert value for column " + column.name(), e);
+                throw new DebeziumException("Couldn't convert value for column " + column.name(), e);
             }
         }
         return super.convertBinary(column, fieldDefn, data, mode);
@@ -305,7 +309,7 @@ public class OracleValueConverters extends JdbcValueConverters {
                 data = ((NUMBER) data).intValue();
             }
             catch (SQLException e) {
-                throw new RuntimeException("Couldn't convert value for column " + column.name(), e);
+                throw new DebeziumException("Couldn't convert value for column " + column.name(), e);
             }
         }
 
@@ -325,7 +329,7 @@ public class OracleValueConverters extends JdbcValueConverters {
                 return ((BINARY_FLOAT) data).floatValue();
             }
             catch (SQLException e) {
-                throw new RuntimeException("Couldn't convert value for column " + column.name(), e);
+                throw new DebeziumException("Couldn't convert value for column " + column.name(), e);
             }
         }
         else if (data instanceof String) {
@@ -342,7 +346,7 @@ public class OracleValueConverters extends JdbcValueConverters {
                 return ((BINARY_DOUBLE) data).doubleValue();
             }
             catch (SQLException e) {
-                throw new RuntimeException("Couldn't convert value for column " + column.name(), e);
+                throw new DebeziumException("Couldn't convert value for column " + column.name(), e);
             }
         }
         else if (data instanceof String) {
@@ -359,7 +363,7 @@ public class OracleValueConverters extends JdbcValueConverters {
                 data = ((NUMBER) data).bigDecimalValue();
             }
             catch (SQLException e) {
-                throw new RuntimeException("Couldn't convert value for column " + column.name(), e);
+                throw new DebeziumException("Couldn't convert value for column " + column.name(), e);
             }
         }
 
@@ -397,7 +401,7 @@ public class OracleValueConverters extends JdbcValueConverters {
                 data = ((NUMBER) data).byteValue();
             }
             catch (SQLException e) {
-                throw new RuntimeException("Couldn't convert value for column " + column.name(), e);
+                throw new DebeziumException("Couldn't convert value for column " + column.name(), e);
             }
         }
 
@@ -410,7 +414,7 @@ public class OracleValueConverters extends JdbcValueConverters {
                 data = ((NUMBER) data).shortValue();
             }
             catch (SQLException e) {
-                throw new RuntimeException("Couldn't convert value for column " + column.name(), e);
+                throw new DebeziumException("Couldn't convert value for column " + column.name(), e);
             }
         }
 
@@ -423,7 +427,7 @@ public class OracleValueConverters extends JdbcValueConverters {
                 data = ((NUMBER) data).intValue();
             }
             catch (SQLException e) {
-                throw new RuntimeException("Couldn't convert value for column " + column.name(), e);
+                throw new DebeziumException("Couldn't convert value for column " + column.name(), e);
             }
         }
 
@@ -436,7 +440,7 @@ public class OracleValueConverters extends JdbcValueConverters {
                 data = ((NUMBER) data).longValue();
             }
             catch (SQLException e) {
-                throw new RuntimeException("Couldn't convert value for column " + column.name(), e);
+                throw new DebeziumException("Couldn't convert value for column " + column.name(), e);
             }
         }
 
@@ -465,7 +469,7 @@ public class OracleValueConverters extends JdbcValueConverters {
                 return ((NUMBER) data).intValue() == 0 ? Boolean.FALSE : Boolean.TRUE;
             }
             catch (SQLException e) {
-                throw new RuntimeException("Couldn't convert value for column " + column.name(), e);
+                throw new DebeziumException("Couldn't convert value for column " + column.name(), e);
             }
         }
         return super.convertBoolean(column, fieldDefn, data);
@@ -531,7 +535,7 @@ public class OracleValueConverters extends JdbcValueConverters {
             }
         }
         catch (SQLException e) {
-            throw new RuntimeException("Couldn't convert value for column " + column.name(), e);
+            throw new DebeziumException("Couldn't convert value for column " + column.name(), e);
         }
         return data;
     }
