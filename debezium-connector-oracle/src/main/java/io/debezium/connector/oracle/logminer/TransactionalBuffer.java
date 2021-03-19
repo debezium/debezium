@@ -15,7 +15,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.kafka.connect.errors.DataException;
 import org.slf4j.Logger;
@@ -23,7 +22,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.connector.oracle.OracleOffsetContext;
-import io.debezium.connector.oracle.OracleTaskContext;
+import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
@@ -44,33 +43,23 @@ public final class TransactionalBuffer implements AutoCloseable {
     private final ErrorHandler errorHandler;
     private final Set<String> abandonedTransactionIds;
     private final Set<String> rolledBackTransactionIds;
-    private final TransactionalBufferMetrics metrics;
+    private final OracleStreamingChangeEventSourceMetrics streamingMetrics;
 
     private Scn lastCommittedScn;
 
     /**
      * Constructor to create a new instance.
      *
-     * @param taskContext the task context
      * @param errorHandler the connector error handler
+     * @param streamingMetrics the streaming metrics
      */
-    TransactionalBuffer(OracleTaskContext taskContext, ErrorHandler errorHandler) {
+    TransactionalBuffer(ErrorHandler errorHandler, OracleStreamingChangeEventSourceMetrics streamingMetrics) {
         this.transactions = new HashMap<>();
         this.errorHandler = errorHandler;
         this.lastCommittedScn = Scn.NULL;
         this.abandonedTransactionIds = new HashSet<>();
         this.rolledBackTransactionIds = new HashSet<>();
-
-        // create metrics and register them
-        this.metrics = new TransactionalBufferMetrics(taskContext);
-        this.metrics.register(LOGGER);
-    }
-
-    /**
-     * @return the transactional buffer's metrics
-     */
-    TransactionalBufferMetrics getMetrics() {
-        return metrics;
+        this.streamingMetrics = streamingMetrics;
     }
 
     /**
@@ -90,20 +79,20 @@ public final class TransactionalBuffer implements AutoCloseable {
      */
     void registerCommitCallback(String transactionId, Scn scn, Instant changeTime, CommitCallback callback) {
         if (abandonedTransactionIds.contains(transactionId)) {
-            LogMinerHelper.logWarn(metrics, "Captured DML for abandoned transaction {}, ignored", transactionId);
+            LogMinerHelper.logWarn(streamingMetrics, "Captured DML for abandoned transaction {}, ignored", transactionId);
             return;
         }
         // this should never happen
         if (rolledBackTransactionIds.contains(transactionId)) {
-            LogMinerHelper.logWarn(metrics, "Captured DML for rolled-back transaction {}, ignored", transactionId);
+            LogMinerHelper.logWarn(streamingMetrics, "Captured DML for rolled-back transaction {}, ignored", transactionId);
             return;
         }
 
         transactions.computeIfAbsent(transactionId, s -> new Transaction(scn));
 
-        metrics.setActiveTransactions(transactions.size());
-        metrics.incrementRegisteredDmlCounter();
-        metrics.calculateLagMetrics(changeTime);
+        streamingMetrics.setActiveTransactions(transactions.size());
+        streamingMetrics.incrementRegisteredDmlCount();
+        streamingMetrics.calculateLagMetrics(changeTime);
 
         Transaction transaction = transactions.get(transactionId);
         if (transaction != null) {
@@ -140,10 +129,10 @@ public final class TransactionalBuffer implements AutoCloseable {
         // On the restarting connector, we start from SCN in the offset. There is possibility to commit a transaction(s) which were already committed.
         // Currently we cannot use ">=", because we may lose normal commit which may happen at the same time. TODO use audit table to prevent duplications
         if ((offsetContext.getCommitScn() != null && offsetContext.getCommitScn().compareTo(scn) > 0) || lastCommittedScn.compareTo(scn) > 0) {
-            LogMinerHelper.logWarn(metrics,
+            LogMinerHelper.logWarn(streamingMetrics,
                     "Transaction {} was already processed, ignore. Committed SCN in offset is {}, commit SCN of the transaction is {}, last committed SCN is {}",
                     transactionId, offsetContext.getCommitScn(), scn, lastCommittedScn);
-            metrics.setActiveTransactions(transactions.size());
+            streamingMetrics.setActiveTransactions(transactions.size());
             return false;
         }
 
@@ -172,19 +161,19 @@ public final class TransactionalBuffer implements AutoCloseable {
             }
         }
         catch (InterruptedException e) {
-            LogMinerHelper.logError(metrics, "Thread interrupted during running", e);
+            LogMinerHelper.logError(streamingMetrics, "Thread interrupted during running", e);
             Thread.currentThread().interrupt();
         }
         catch (Exception e) {
             errorHandler.setProducerThrowable(e);
         }
         finally {
-            metrics.incrementCommittedTransactions();
-            metrics.setActiveTransactions(transactions.size());
-            metrics.incrementCommittedDmlCounter(commitCallbacks.size());
-            metrics.setCommittedScn(scn);
-            metrics.setOffsetScn(offsetContext.getScn());
-            metrics.setLastCommitDuration(Duration.between(start, Instant.now()).toMillis());
+            streamingMetrics.incrementCommittedTransactions();
+            streamingMetrics.setActiveTransactions(transactions.size());
+            streamingMetrics.incrementCommittedDmlCount(commitCallbacks.size());
+            streamingMetrics.setCommittedScn(scn);
+            streamingMetrics.setOffsetScn(offsetContext.getScn());
+            streamingMetrics.setLastCommitDuration(Duration.between(start, Instant.now()));
         }
     }
 
@@ -205,9 +194,9 @@ public final class TransactionalBuffer implements AutoCloseable {
             abandonedTransactionIds.remove(transactionId);
             rolledBackTransactionIds.add(transactionId);
 
-            metrics.setActiveTransactions(transactions.size());
-            metrics.incrementRolledBackTransactions();
-            metrics.addRolledBackTransactionId(transactionId);
+            streamingMetrics.setActiveTransactions(transactions.size());
+            streamingMetrics.incrementRolledBackTransactions();
+            streamingMetrics.addRolledBackTransactionId(transactionId);
 
             return true;
         }
@@ -226,7 +215,7 @@ public final class TransactionalBuffer implements AutoCloseable {
      * @param offsetContext the offset context
      */
     void abandonLongTransactions(Scn thresholdScn, OracleOffsetContext offsetContext) {
-        LogMinerHelper.logWarn(metrics, "All transactions with first SCN <= {} will be abandoned, offset: {}", thresholdScn, offsetContext.getScn());
+        LogMinerHelper.logWarn(streamingMetrics, "All transactions with first SCN <= {} will be abandoned, offset: {}", thresholdScn, offsetContext.getScn());
         Scn threshold = Scn.valueOf(thresholdScn.toString());
         Scn smallestScn = calculateSmallestScn();
         if (smallestScn == null) {
@@ -240,13 +229,13 @@ public final class TransactionalBuffer implements AutoCloseable {
         while (iter.hasNext()) {
             Map.Entry<String, Transaction> transaction = iter.next();
             if (transaction.getValue().firstScn.compareTo(threshold) <= 0) {
-                LogMinerHelper.logWarn(metrics, "Following long running transaction {} will be abandoned and ignored: {} ", transaction.getKey(),
+                LogMinerHelper.logWarn(streamingMetrics, "Following long running transaction {} will be abandoned and ignored: {} ", transaction.getKey(),
                         transaction.getValue().toString());
                 abandonedTransactionIds.add(transaction.getKey());
                 iter.remove();
 
-                metrics.addAbandonedTransactionId(transaction.getKey());
-                metrics.setActiveTransactions(transactions.size());
+                streamingMetrics.addAbandonedTransactionId(transaction.getKey());
+                streamingMetrics.setActiveTransactions(transactions.size());
             }
         }
     }
@@ -262,7 +251,7 @@ public final class TransactionalBuffer implements AutoCloseable {
                         .map(transaction -> transaction.firstScn)
                         .min(Scn::compareTo)
                         .orElseThrow(() -> new DataException("Cannot calculate smallest SCN"));
-        metrics.setOldestScn(scn == null ? Scn.valueOf(-1) : scn);
+        streamingMetrics.setOldestScn(scn == null ? Scn.valueOf(-1) : scn);
         return scn;
     }
 
@@ -281,7 +270,7 @@ public final class TransactionalBuffer implements AutoCloseable {
      * @param difference the time difference in milliseconds
      */
     void setDatabaseTimeDifference(long difference) {
-        metrics.setTimeDifference(new AtomicLong(difference));
+        streamingMetrics.setTimeDifference(difference);
     }
 
     @Override
@@ -295,9 +284,9 @@ public final class TransactionalBuffer implements AutoCloseable {
     public void close() {
         transactions.clear();
 
-        if (this.metrics != null) {
+        if (this.streamingMetrics != null) {
             // if metrics registered, unregister them
-            this.metrics.unregister(LOGGER);
+            this.streamingMetrics.unregister(LOGGER);
         }
     }
 

@@ -243,7 +243,7 @@ public class OracleValueConverters extends JdbcValueConverters {
             try {
                 Clob clob = (Clob) data;
                 // Note that java.sql.Clob specifies that the first character starts at 1
-                // and that length must be greater-than or equal to 0.  So for an empty
+                // and that length must be greater-than or equal to 0. So for an empty
                 // clob field, a call to getSubString(1, 0) is perfectly valid.
                 return clob.getSubString(1, (int) clob.length());
             }
