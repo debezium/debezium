@@ -78,4 +78,6 @@ public interface OffsetContext {
      * @return transaction context
      */
     TransactionContext getTransactionContext();
+
+    boolean eventsStreamed();
 }

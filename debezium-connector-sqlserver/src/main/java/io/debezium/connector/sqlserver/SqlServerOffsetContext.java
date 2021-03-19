@@ -8,6 +8,9 @@ package io.debezium.connector.sqlserver;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.Map;
+import java.util.Queue;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
@@ -36,6 +39,8 @@ public class SqlServerOffsetContext implements OffsetContext {
      */
     private long eventSerialNo;
 
+    private SqlServerStreamingExecutionState streamingExecutionState;
+
     public SqlServerOffsetContext(SqlServerConnectorConfig connectorConfig, Map<String, ?> partition, TxLogPosition position,
                                   boolean snapshot, boolean snapshotCompleted, long eventSerialNo, TransactionContext transactionContext) {
 
@@ -55,6 +60,7 @@ public class SqlServerOffsetContext implements OffsetContext {
         }
         this.eventSerialNo = eventSerialNo;
         this.transactionContext = transactionContext;
+        this.streamingExecutionState = null;
     }
 
     public SqlServerOffsetContext(SqlServerConnectorConfig connectorConfig, Map<String, ?> partition, TxLogPosition position,
@@ -195,5 +201,28 @@ public class SqlServerOffsetContext implements OffsetContext {
     @Override
     public TransactionContext getTransactionContext() {
         return transactionContext;
+    }
+
+    public void saveStreamingExecutionContext(Queue<SqlServerChangeTable> schemaChangeCheckpoints,
+                                              AtomicReference<SqlServerChangeTable[]> tablesSlot,
+                                              TxLogPosition lastProcessedPositionOnStart,
+                                              long lastProcessedEventSerialNoOnStart,
+                                              TxLogPosition lastProcessedPosition,
+                                              AtomicBoolean changesStoppedBeingMonotonic,
+                                              boolean shouldIncreaseFromLsn,
+                                              SqlServerStreamingExecutionState.StreamingResultStatus status) {
+        this.streamingExecutionState = new SqlServerStreamingExecutionState(
+                schemaChangeCheckpoints, tablesSlot, lastProcessedPositionOnStart, lastProcessedEventSerialNoOnStart,
+                lastProcessedPosition, changesStoppedBeingMonotonic, shouldIncreaseFromLsn, status);
+    }
+
+    public SqlServerStreamingExecutionState getStreamingExecutionState() {
+        return streamingExecutionState;
+    }
+
+    @Override
+    public boolean eventsStreamed() {
+        return (streamingExecutionState.getStatus() == SqlServerStreamingExecutionState.StreamingResultStatus.NO_CHANGES_IN_DATABASE
+                || streamingExecutionState.getStatus() == SqlServerStreamingExecutionState.StreamingResultStatus.NO_MAXIMUM_LSN_RECORDED) == false;
     }
 }
