@@ -14,7 +14,6 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -114,16 +113,8 @@ public class LogMinerHelperIT extends AbstractConnectorTest {
         assertThat(redoLogFilesCount + archivedLogFilesForMining.size()).isEqualTo(getNumberOfAddedLogFiles(conn));
     }
 
-    private Scn getOldestArchivedScn(List<Scn> oneDayArchivedNextScn) throws Exception {
-        Scn oldestArchivedScn;
-        Optional<Scn> archivedScn = oneDayArchivedNextScn.stream().min(Scn::compareTo);
-        if (archivedScn.isPresent()) {
-            oldestArchivedScn = archivedScn.get();
-        }
-        else {
-            oldestArchivedScn = Scn.ZERO;
-        }
-        return oldestArchivedScn;
+    private Scn getOldestArchivedScn(List<Scn> oneDayArchivedNextScn) {
+        return oneDayArchivedNextScn.stream().min(Scn::compareTo).orElse(Scn.NULL);
     }
 
     private static int getNumberOfAddedLogFiles(OracleConnection conn) throws SQLException {
