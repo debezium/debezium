@@ -6,16 +6,6 @@
 
 package io.debezium.connector.postgresql.connection;
 
-import io.debezium.annotation.ThreadSafe;
-import io.debezium.connector.postgresql.PostgresValueConverter;
-import io.debezium.relational.Column;
-import io.debezium.relational.ValueConverter;
-import org.apache.kafka.connect.data.Field;
-import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.SchemaBuilder;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.Collections;
@@ -25,6 +15,19 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import org.apache.kafka.connect.data.Field;
+import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaBuilder;
+import org.postgresql.jdbc.TimestampUtils;
+import org.postgresql.util.PGInterval;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import io.debezium.annotation.ThreadSafe;
+import io.debezium.connector.postgresql.PostgresValueConverter;
+import io.debezium.relational.Column;
+import io.debezium.relational.ValueConverter;
 
 /**
  * Parses and converts column default values.
@@ -56,9 +59,9 @@ class PostgresDefaultValueConverter {
     private final PostgresValueConverter valueConverters;
     private final Map<String, DefaultValueMapper> defaultValueMappers;
 
-    PostgresDefaultValueConverter(PostgresValueConverter valueConverters) {
+    PostgresDefaultValueConverter(PostgresValueConverter valueConverters, TimestampUtils timestampUtils) {
         this.valueConverters = valueConverters;
-        this.defaultValueMappers = Collections.unmodifiableMap(createDefaultValueMappers());
+        this.defaultValueMappers = Collections.unmodifiableMap(createDefaultValueMappers(timestampUtils));
     }
 
     Optional<Object> parseDefaultValue(Column column, String defaultValue) {
@@ -105,7 +108,7 @@ class PostgresDefaultValueConverter {
         return defaultValue;
     }
 
-    private static Map<String, DefaultValueMapper> createDefaultValueMappers() {
+    private static Map<String, DefaultValueMapper> createDefaultValueMappers(TimestampUtils timestampUtils) {
         final Map<String, DefaultValueMapper> result = new HashMap<>();
 
         result.put("bit", v -> {
@@ -139,7 +142,13 @@ class PostgresDefaultValueConverter {
 
         result.put("uuid", v -> UUID.fromString(extractDefault(v, "00000000-0000-0000-0000-000000000000"))); // Sample value: '76019d1a-ad2e-4b22-96e9-1a6d6543c818'::uuid
 
-        // Other data types, such as box, bytea, date, time and more are not handled.
+        result.put("date", v -> timestampUtils.toLocalDateTime(extractDefault(v, "1970-01-01")));
+        result.put("time", v -> timestampUtils.toLocalTime(extractDefault(v, "00:00")));
+        result.put("timestamp", v -> timestampUtils.toOffsetDateTime(extractDefault(v, "1970-01-01")));
+        result.put("timestamptz", v -> timestampUtils.toOffsetDateTime(extractDefault(v, "1970-01-01")));
+        result.put("interval", v -> new PGInterval(extractDefault(v, "epoch")));
+
+        // Other data types, such as box, bytea, and more are not handled.
         return result;
     }
 
