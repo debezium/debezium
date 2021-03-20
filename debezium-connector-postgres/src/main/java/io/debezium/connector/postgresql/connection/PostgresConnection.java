@@ -20,6 +20,8 @@ import java.util.function.Function;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.postgresql.core.BaseConnection;
+import org.postgresql.jdbc.PgConnection;
+import org.postgresql.jdbc.TimestampUtils;
 import org.postgresql.replication.LogSequenceNumber;
 import org.postgresql.util.PGmoney;
 import org.postgresql.util.PSQLState;
@@ -95,7 +97,7 @@ public class PostgresConnection extends JdbcConnection {
             this.typeRegistry = new TypeRegistry(this);
 
             final PostgresValueConverter valueConverter = valueConverterBuilder.apply(this.typeRegistry);
-            this.defaultValueConverter = new PostgresDefaultValueConverter(valueConverter);
+            this.defaultValueConverter = new PostgresDefaultValueConverter(valueConverter, this.getTimestampUtils());
         }
     }
 
@@ -450,6 +452,15 @@ public class PostgresConnection extends JdbcConnection {
         }
         catch (SQLException e) {
             throw new DebeziumException("Couldn't obtain encoding for database " + database(), e);
+        }
+    }
+
+    public TimestampUtils getTimestampUtils() {
+        try {
+            return ((PgConnection) this.connection()).getTimestampUtils();
+        }
+        catch (SQLException e) {
+            throw new DebeziumException("Couldn't get timestamp utils from underlying connection", e);
         }
     }
 
