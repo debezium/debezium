@@ -6,25 +6,25 @@
 
 package io.debezium.connector.postgresql.connection;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
+import io.debezium.annotation.ThreadSafe;
+import io.debezium.connector.postgresql.PostgresValueConverter;
+import io.debezium.relational.Column;
+import io.debezium.relational.ValueConverter;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.annotation.ThreadSafe;
-import io.debezium.connector.postgresql.PostgresValueConverter;
-import io.debezium.relational.Column;
-import io.debezium.relational.ValueConverter;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Parses and converts column default values.
@@ -33,6 +33,9 @@ import io.debezium.relational.ValueConverter;
 class PostgresDefaultValueConverter {
 
     private static Logger LOGGER = LoggerFactory.getLogger(PostgresDefaultValueConverter.class);
+
+    private static final Pattern LITERAL_DEFAULT_PATTERN = Pattern.compile("'(.*?)'");
+    private static final Pattern FUNCTION_DEFAULT_PATTERN = Pattern.compile("[A-Za-z0-9_]+\\((?:.+(?:, ?.+)*)?\\)");
 
     /**
      * Converts JDBC string representation of a default column value to an object.
@@ -60,11 +63,6 @@ class PostgresDefaultValueConverter {
 
     Optional<Object> parseDefaultValue(Column column, String defaultValue) {
         final String dataType = column.typeName();
-
-        if (dataType.equals("serial") || dataType.equals("bigserial")) {
-            LOGGER.debug("Ignoring db generated default type '{}'", dataType);
-            return Optional.empty();
-        }
 
         final DefaultValueMapper mapper = defaultValueMappers.get(dataType);
         if (mapper == null) {
@@ -111,31 +109,35 @@ class PostgresDefaultValueConverter {
         final Map<String, DefaultValueMapper> result = new HashMap<>();
 
         result.put("bit", v -> {
-            String defaultValue = extractDefault(v);
+            String defaultValue = extractDefault(v, "00"); // if default is generated, assume length > 1
             if (defaultValue.length() == 1) {
                 // treat as a bool
                 return "1".equals(defaultValue);
             }
             return defaultValue;
         }); // Sample values: `B'1'::"bit"`, `B'11'::"bit"`
-        result.put("varbit", v -> extractDefault(v)); // Sample value: B'110'::"bit"
+        result.put("varbit", v -> extractDefault(v, "0")); // Sample value: B'110'::"bit"
 
-        result.put("bool", v -> Boolean.parseBoolean(extractDefault(v))); // Sample value: true
+        result.put("bool", v -> Boolean.parseBoolean(extractDefault(v, "false"))); // Sample value: true
 
-        result.put("bpchar", v -> extractDefault(v)); // Sample value: 'abcd'::bpchar
-        result.put("varchar", v -> extractDefault(v)); // Sample value: `abcde'::character varying
-        result.put("text", v -> extractDefault(v)); // Sample value: 'asdf'::text
+        result.put("bpchar", v -> extractDefault(v, "")); // Sample value: 'abcd'::bpchar
+        result.put("varchar", v -> extractDefault(v, "")); // Sample value: `abcde'::character varying
+        result.put("text", v -> extractDefault(v, "")); // Sample value: 'asdf'::text
 
-        result.put("numeric", v -> new BigDecimal(v)); // Sample value: 12345.67891
-        result.put("float4", v -> Float.parseFloat(extractDefault(v))); // Sample value: 1.234
-        result.put("float8", v -> Double.parseDouble(extractDefault(v))); // Sample values: `1.234`, `'12345678901234567890'::numeric`
-        result.put("int2", v -> Short.parseShort(extractDefault(v))); // Sample value: 32767
-        result.put("int4", v -> Integer.parseInt(v)); // Sample value: 123
-        result.put("int8", v -> Long.parseLong(extractDefault(v))); // Sample values: `123`, `'9223372036854775807'::bigint`
+        result.put("numeric", v -> new BigDecimal(extractDefault(v, "0.0"))); // Sample value: 12345.67891
+        result.put("float4", v -> Float.parseFloat(extractDefault(v, "0.0"))); // Sample value: 1.234
+        result.put("float8", v -> Double.parseDouble(extractDefault(v, "0.0"))); // Sample values: `1.234`, `'12345678901234567890'::numeric`
+        result.put("int2", v -> Short.parseShort(extractDefault(v, "0"))); // Sample value: 32767
+        result.put("int4", v -> Integer.parseInt(extractDefault(v, "0"))); // Sample value: 123
+        result.put("serial", v -> Integer.parseInt(extractDefault(v, "0")));
+        result.put("int8", v -> Long.parseLong(extractDefault(v, "0"))); // Sample values: `123`, `'9223372036854775807'::bigint`
+        result.put("bigserial", v -> Long.parseLong(extractDefault(v, "0")));
 
-        result.put("json", v -> extractDefault(v)); // Sample value: '{}'::json
-        result.put("jsonb", v -> extractDefault(v)); // Sample value: '{}'::jsonb
-        result.put("xml", v -> extractDefault(v)); // Sample value: '<foo>bar</foo>'::xml
+        result.put("json", v -> extractDefault(v, "{}")); // Sample value: '{}'::json
+        result.put("jsonb", v -> extractDefault(v, "{}")); // Sample value: '{}'::jsonb
+        result.put("xml", v -> extractDefault(v, "")); // Sample value: '<foo>bar</foo>'::xml
+
+        result.put("uuid", v -> UUID.fromString(extractDefault(v, "00000000-0000-0000-0000-000000000000"))); // Sample value: '76019d1a-ad2e-4b22-96e9-1a6d6543c818'::uuid
 
         // Other data types, such as box, bytea, date, time and more are not handled.
         return result;
@@ -149,8 +151,18 @@ class PostgresDefaultValueConverter {
             return defaultValue;
         }
 
-        final Matcher matcher = Pattern.compile("'(.*?)'").matcher(defaultValue);
+        final Matcher matcher = LITERAL_DEFAULT_PATTERN.matcher(defaultValue);
         matcher.find();
         return matcher.group(1);
+    }
+
+    // If the default value is generated by a function, map a placeholder value for the schema
+    private static String extractDefault(String defaultValue, String generatedValuePlaceholder) {
+        final Matcher functionMatcher = FUNCTION_DEFAULT_PATTERN.matcher(defaultValue);
+        if (functionMatcher.find()) {
+            return generatedValuePlaceholder;
+        }
+
+        return extractDefault(defaultValue);
     }
 }

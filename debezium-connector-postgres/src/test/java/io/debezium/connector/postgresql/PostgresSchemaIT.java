@@ -19,6 +19,7 @@ import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.IntStream;
 
 import org.apache.kafka.connect.data.Decimal;
@@ -91,11 +92,11 @@ public class PostgresSchemaIT {
         try (PostgresConnection connection = TestHelper.createWithTypeRegistry()) {
             schema.refresh(connection, false);
             assertTablesIncluded(TEST_TABLES);
-            Arrays.stream(TEST_TABLES).forEach(tableId -> assertKeySchema(tableId, "pk", Schema.INT32_SCHEMA));
+            Arrays.stream(TEST_TABLES).forEach(tableId -> assertKeySchema(tableId, "pk", SchemaBuilder.int32().defaultValue(0).build()));
             assertTableSchema("public.numeric_table", "si, i, bi, r, db, ss, bs, b",
                     Schema.OPTIONAL_INT16_SCHEMA, Schema.OPTIONAL_INT32_SCHEMA, Schema.OPTIONAL_INT64_SCHEMA, Schema.OPTIONAL_FLOAT32_SCHEMA,
-                    Schema.OPTIONAL_FLOAT64_SCHEMA, Schema.INT16_SCHEMA,
-                    Schema.INT64_SCHEMA, Schema.OPTIONAL_BOOLEAN_SCHEMA);
+                    Schema.OPTIONAL_FLOAT64_SCHEMA, SchemaBuilder.int16().defaultValue((short) 0).build(),
+                    SchemaBuilder.int64().defaultValue(0L).build(), Schema.OPTIONAL_BOOLEAN_SCHEMA);
             assertTableSchema("public.numeric_decimal_table", "d, dzs, dvs, n, nzs, nvs",
                     Decimal.builder(2).parameter(TestHelper.PRECISION_PARAMETER_KEY, "3").optional().build(),
                     Decimal.builder(0).parameter(TestHelper.PRECISION_PARAMETER_KEY, "4").optional().build(),
@@ -184,7 +185,7 @@ public class PostgresSchemaIT {
             schema.refresh(connection, false);
             final String[] testTables = new String[]{ "public.postgis_table" };
             assertTablesIncluded(testTables);
-            Arrays.stream(testTables).forEach(tableId -> assertKeySchema(tableId, "pk", Schema.INT32_SCHEMA));
+            Arrays.stream(testTables).forEach(tableId -> assertKeySchema(tableId, "pk", SchemaBuilder.int32().defaultValue(0).build()));
 
             assertTableSchema("public.postgis_table", "p, ml",
                     Geometry.builder().optional().build(), Geography.builder().optional().build());
@@ -376,8 +377,10 @@ public class PostgresSchemaIT {
 
     @Test
     public void shouldProperlyGetDefaultColumnValues() throws Exception {
-        String ddl = "DROP TABLE IF EXISTS default_column_test; CREATE TABLE default_column_test (" +
+        String ddl = "DROP TABLE IF EXISTS default_column_test; CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\"; CREATE TABLE default_column_test (" +
                 "pk SERIAL, " +
+                "ss SMALLSERIAL, " +
+                "bs BIGSERIAL, " +
                 "bigint BIGINT default 9223372036854775807, " +
                 "bit_as_boolean BIT(1) default B'1', " +
                 "bit BIT(2) default B'11', " +
@@ -392,8 +395,12 @@ public class PostgresSchemaIT {
                 "double float8 default 123456789.1234567890123, " +
                 // inet
                 "integer INT default 2147483647, " +
+                "integer_func INT default ABS(-1), " +
+                "integer_func2 INT default DIV(2, 1), " +
+                "integer_opt INT, " +
                 // interval
                 "json JSON default '{}', " +
+                "json_opt JSON, " +
                 "jsonb JSONB default '{}', " +
                 // line
                 // lseg
@@ -408,6 +415,7 @@ public class PostgresSchemaIT {
                 "real FLOAT4 default 1234567890.5, " +
                 "smallint INT2 default 32767, " +
                 "text TEXT default 'asdf', " +
+                "text_func3 TEXT default concat('foo', 'bar', 'baz'), " +
                 // time
                 // time with time zone
                 // timestamp
@@ -415,7 +423,9 @@ public class PostgresSchemaIT {
                 // tsquery
                 // tsvector
                 // txid_snapshot
-                // uuid
+                "uuid UUID default '76019d1a-ad2e-4b22-96e9-1a6d6543c818'::uuid, " +
+                "uuid_func UUID default uuid_generate_v4(), " +
+                "uuid_opt UUID, " +
                 "xml XML default '<foo>bar</foo>'" +
                 ");";
 
@@ -427,7 +437,10 @@ public class PostgresSchemaIT {
             schema.refresh(connection, false);
 
             List<Column> columns = tableFor("public.default_column_test").columns();
-            assertColumnDefault("bigint", 9223372036854775807l, columns);
+            assertColumnDefault("pk", 0, columns);
+            assertColumnDefault("ss", (short) 0, columns);
+            assertColumnDefault("bs", 0L, columns);
+            assertColumnDefault("bigint", 9223372036854775807L, columns);
             assertColumnDefault("bit_as_boolean", true, columns);
             assertColumnDefault("bit", new byte[]{ 3 }, columns);
             assertColumnDefault("varbit", new byte[]{ 6 }, columns);
@@ -436,12 +449,20 @@ public class PostgresSchemaIT {
             assertColumnDefault("varchar", "abcde", columns);
             assertColumnDefault("double", 123456789.1234567890123, columns);
             assertColumnDefault("integer", 2147483647, columns);
+            assertColumnDefault("integer_func", 0, columns);
+            assertColumnDefault("integer_func2", 0, columns);
+            assertColumnDefault("integer_opt", null, columns);
             assertColumnDefault("json", "{}", columns);
+            assertColumnDefault("json_opt", null, columns);
             assertColumnDefault("jsonb", "{}", columns);
             assertColumnDefault("numeric", new BigDecimal("12345.67891"), columns);
             assertColumnDefault("real", 1234567890.5f, columns);
             assertColumnDefault("smallint", (short) 32767, columns);
             assertColumnDefault("text", "asdf", columns);
+            assertColumnDefault("text_func3", "", columns);
+            assertColumnDefault("uuid", "76019d1a-ad2e-4b22-96e9-1a6d6543c818", columns);
+            assertColumnDefault("uuid_func", "00000000-0000-0000-0000-000000000000", columns);
+            assertColumnDefault("uuid_opt", null, columns);
             assertColumnDefault("xml", "<foo>bar</foo>", columns);
         }
     }
@@ -455,7 +476,12 @@ public class PostgresSchemaIT {
             assertArrayEquals(expectedBytes, defaultBytes);
         }
         else {
-            assertTrue(column.defaultValue().equals(expectedDefault));
+            if (Objects.isNull(column.defaultValue())) {
+                assertTrue(Objects.isNull(expectedDefault));
+            }
+            else {
+                assertTrue(column.defaultValue().equals(expectedDefault));
+            }
         }
     }
 
