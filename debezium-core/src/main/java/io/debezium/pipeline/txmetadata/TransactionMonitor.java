@@ -57,6 +57,7 @@ public class TransactionMonitor {
     public static final String DEBEZIUM_TRANSACTION_TOTAL_ORDER_KEY = "total_order";
     public static final String DEBEZIUM_TRANSACTION_DATA_COLLECTION_ORDER_KEY = "data_collection_order";
     public static final String DEBEZIUM_TRANSACTION_STATUS_KEY = "status";
+    public static final String DEBEZIUM_TRANSACTION_TIMESTAMP_KEY = "ts_ms";
     public static final String DEBEZIUM_TRANSACTION_EVENT_COUNT_KEY = "event_count";
     public static final String DEBEZIUM_TRANSACTION_COLLECTION_KEY = "data_collection";
     public static final String DEBEZIUM_TRANSACTION_DATA_COLLECTIONS_KEY = "data_collections";
@@ -82,6 +83,7 @@ public class TransactionMonitor {
             .field(DEBEZIUM_TRANSACTION_STATUS_KEY, Schema.STRING_SCHEMA)
             .field(DEBEZIUM_TRANSACTION_ID_KEY, Schema.STRING_SCHEMA)
             .field(DEBEZIUM_TRANSACTION_EVENT_COUNT_KEY, Schema.OPTIONAL_INT64_SCHEMA)
+            .field(DEBEZIUM_TRANSACTION_TIMESTAMP_KEY, Schema.OPTIONAL_INT64_SCHEMA)
             .field(DEBEZIUM_TRANSACTION_DATA_COLLECTIONS_KEY, SchemaBuilder.array(EVENT_COUNT_PER_DATA_COLLECTION_SCHEMA).optional().build())
             .build();
 
@@ -133,11 +135,28 @@ public class TransactionMonitor {
         offset.getTransactionContext().endTransaction();
     }
 
+    public void transactionComittedEvent(OffsetContext offset, long transactionEndTime) throws InterruptedException {
+        if (!connectorConfig.shouldProvideTransactionMetadata()) {
+            return;
+        }
+        offset.getTransactionContext().setTransactionEndTime(transactionEndTime);
+        endTransaction(offset);
+        offset.getTransactionContext().endTransaction();
+    }
+
     public void transactionStartedEvent(String transactionId, OffsetContext offset) throws InterruptedException {
         if (!connectorConfig.shouldProvideTransactionMetadata()) {
             return;
         }
         offset.getTransactionContext().beginTransaction(transactionId);
+        beginTransaction(offset);
+    }
+
+    public void transactionStartedEvent(String transactionId, OffsetContext offset, long transactionStartTime) throws InterruptedException {
+        if (!connectorConfig.shouldProvideTransactionMetadata()) {
+            return;
+        }
+        offset.getTransactionContext().beginTransaction(transactionId, transactionStartTime);
         beginTransaction(offset);
     }
 
@@ -160,6 +179,7 @@ public class TransactionMonitor {
         final Struct value = new Struct(TRANSACTION_VALUE_SCHEMA);
         value.put(DEBEZIUM_TRANSACTION_STATUS_KEY, TransactionStatus.BEGIN.name());
         value.put(DEBEZIUM_TRANSACTION_ID_KEY, offsetContext.getTransactionContext().getTransactionId());
+        value.put(DEBEZIUM_TRANSACTION_TIMESTAMP_KEY, offsetContext.getTransactionContext().getTransactionStartTime());
 
         sender.accept(new SourceRecord(offsetContext.getPartition(), offsetContext.getOffset(),
                 topicName, null, key.schema(), key, value.schema(), value));
@@ -172,6 +192,7 @@ public class TransactionMonitor {
         value.put(DEBEZIUM_TRANSACTION_STATUS_KEY, TransactionStatus.END.name());
         value.put(DEBEZIUM_TRANSACTION_ID_KEY, offsetContext.getTransactionContext().getTransactionId());
         value.put(DEBEZIUM_TRANSACTION_EVENT_COUNT_KEY, offsetContext.getTransactionContext().getTotalEventCount());
+        value.put(DEBEZIUM_TRANSACTION_TIMESTAMP_KEY, offsetContext.getTransactionContext().getTransactionEndTime());
 
         final Set<Entry<String, Long>> perTableEventCount = offsetContext.getTransactionContext().getPerTableEventCount().entrySet();
         final List<Struct> valuePerTableCount = new ArrayList<>(perTableEventCount.size());

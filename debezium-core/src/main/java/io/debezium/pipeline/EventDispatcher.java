@@ -249,8 +249,16 @@ public class EventDispatcher<T extends DataCollectionId> {
         transactionMonitor.transactionComittedEvent(offset);
     }
 
+    public void dispatchTransactionCommittedEvent(OffsetContext offset, long transactionEndTime) throws InterruptedException {
+        transactionMonitor.transactionComittedEvent(offset, transactionEndTime);
+    }
+
     public void dispatchTransactionStartedEvent(String transactionId, OffsetContext offset) throws InterruptedException {
         transactionMonitor.transactionStartedEvent(transactionId, offset);
+    }
+
+    public void dispatchTransactionStartedEvent(String transactionId, OffsetContext offset, long transactionStartTime) throws InterruptedException {
+        transactionMonitor.transactionStartedEvent(transactionId, offset, transactionStartTime);
     }
 
     public void dispatchConnectorEvent(ConnectorEvent event) {
