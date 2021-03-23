@@ -12,9 +12,25 @@ steps:
         then gsutil cp gs://debezium-maven-repo/$REPO_NAME.tar - | tar -xf -
       fi
       date
-  - name: "eu.gcr.io/confluent-kafka-development/jenkins-maven-gcp:11-3.6.3"
-    args: ["/bin/bash", "-c", "mvn install -Dmaven.repo.local=./_m2/repository/ -DskipITs; ls ./_m2/repository/; ls ./_m2/repository/"]
-    timeout: "8200s"
+  - name: "eu.gcr.io/confluent-kafka-development/java11-maven3-6-gcp:latest"
+    entrypoint: "/bin/bash"
+    args:
+    - "-c"
+    - |
+      set -x 
+      set -e
+      set -o pipefail
+      date
+
+      echo copy config into HOME
+      cp -ar /root/.docker $$HOME
+      
+      date
+
+      echo build snapshot version
+
+      mvn -B --no-transfer-progress -Dmaven.repo.local=./_m2/repository/ -DskipITs deploy
+      date    timeout: "8200s"
   - name: google/cloud-sdk
     entrypoint: "/bin/bash"
     args:
