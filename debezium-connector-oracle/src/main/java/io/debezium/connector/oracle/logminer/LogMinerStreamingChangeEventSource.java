@@ -168,6 +168,10 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                                 initializeRedoLogsForMining(jdbcConnection, true, archiveLogRetention);
 
                                 abandonOldTransactionsIfExist(jdbcConnection, transactionalBuffer);
+
+                                // This needs to be re-calculated because building the data dictionary will force the
+                                // current redo log sequence to be advanced due to a complete log switch of all logs.
+                                currentRedoLogSequences = getCurrentRedoLogSequences();
                             }
 
                             startLogMining(jdbcConnection, startScn, endScn, strategy, isContinuousMining, logMinerMetrics);
