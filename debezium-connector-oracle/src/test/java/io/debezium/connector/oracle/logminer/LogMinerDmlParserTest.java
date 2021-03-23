@@ -240,9 +240,14 @@ public class LogMinerDmlParserTest {
     @Test
     @FixFor("DBZ-3258")
     public void testNameWithWhitespaces() throws Exception {
+        final Table table = Table.editor()
+                .tableId(new TableId(null, "UNKNOWN", "OBJ# 74858"))
+                .addColumn(Column.editor().name("COL 1").create())
+                .create();
+
         String sql = "insert into \"UNKNOWN\".\"OBJ# 74858\"(\"COL 1\") values (1)";
 
-        LogMinerDmlEntry entry = fastDmlParser.parse(sql, null, null, null);
+        LogMinerDmlEntry entry = fastDmlParser.parse(sql, table, null);
         assertThat(entry.getCommandType()).isEqualTo(Operation.CREATE);
         assertThat(entry.getOldValues()).isEmpty();
         assertThat(entry.getNewValues()).hasSize(1);
@@ -253,10 +258,18 @@ public class LogMinerDmlParserTest {
     @Test
     @FixFor("DBZ-3305")
     public void testParsingUpdateWithNoWhereClauseFunctionAsLastColumn() throws Exception {
+        final Table table = Table.editor()
+                .tableId(new TableId(null, "TICKETUSER", "CRS_ORDER"))
+                .addColumn(Column.editor().name("AMOUNT_PAID").create())
+                .addColumn(Column.editor().name("AMOUNT_UNPAID").create())
+                .addColumn(Column.editor().name("PAY_STATUS").create())
+                .addColumn(Column.editor().name("IS_DEL").create())
+                .addColumn(Column.editor().name("TM_UPDATE").create())
+                .create();
         String sql = "update \"TICKETUSER\".\"CRS_ORDER\" set \"AMOUNT_PAID\" = '0', \"AMOUNT_UNPAID\" = '540', " +
                 "\"PAY_STATUS\" = '10111015', \"IS_DEL\" = '0', \"TM_UPDATE\" = TO_DATE('2021-03-17 10:18:55', 'YYYY-MM-DD HH24:MI:SS');";
 
-        LogMinerDmlEntry entry = fastDmlParser.parse(sql, null, null, null);
+        LogMinerDmlEntry entry = fastDmlParser.parse(sql, table, null);
         assertThat(entry.getCommandType()).isEqualTo(Operation.UPDATE);
         assertThat(entry.getOldValues()).isEmpty();
         assertThat(entry.getNewValues()).hasSize(5);
