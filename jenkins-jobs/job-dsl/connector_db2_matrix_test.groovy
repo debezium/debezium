@@ -16,7 +16,7 @@ matrixJob('connector-debezium-db2-matrix-test') {
 
     parameters {
         stringParam('REPOSITORY', 'https://github.com/debezium/debezium-connector-db2', 'Repository from which connector is built')
-        stringParam('BRANCH', 'master', 'A branch/tag from which the connector is built')
+        stringParam('BRANCH', 'main', 'A branch/tag from which the connector is built')
         stringParam('SOURCE_URL', "", "URL to productised sources")
         booleanParam('PRODUCT_BUILD', false, 'Is this a productised build?')
     }
@@ -52,13 +52,13 @@ ls -A1 | xargs rm -rf
 if [ "$PRODUCT_BUILD" == true ] ; then
     PROFILE_PROD="pnc"
     curl -OJs $SOURCE_URL && unzip debezium-*-src.zip
-    
+
     # Build parent
     mvn clean install -s ~/.m2/settings-snapshots.xml -am -fae \
         -DskipTests -DskipITs \
         -Dinsecure.repositories=WARN \
-        -P$PROFILE_PROD 
-    
+        -P$PROFILE_PROD
+
     # Run connector tests
     cd debezium-connector-db2
     mvn clean install -U -s $HOME/.m2/settings-snapshots.xml -am -fae \
@@ -69,9 +69,9 @@ if [ "$PRODUCT_BUILD" == true ] ; then
         $MAVEN_ARGS
 else
     PROFILE_PROD="none"
-    git clone $REPOSITORY . 
+    git clone $REPOSITORY .
     git checkout $BRANCH
-    
+
     # Run connector tests
     mvn clean install -U -s $HOME/.m2/settings-snapshots.xml -am -fae \
         -Dmaven.test.failure.ignore=true \
