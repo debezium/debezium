@@ -37,12 +37,15 @@ public class EventProcessingFailureHandlingIT extends AbstractConnectorTest {
     public void before() throws SQLException {
         TestHelper.createTestDatabase();
         connection = TestHelper.testConnection();
+        String databaseName = TestHelper.TEST_REAL_DATABASE1;
+        connection.execute("USE " + databaseName);
+
         connection.execute(
                 "CREATE TABLE tablea (id int primary key, cola varchar(30))",
                 "CREATE TABLE tableb (id int primary key, colb BIGINT NOT NULL)",
                 "CREATE TABLE tablec (id int primary key, colc varchar(30))");
-        TestHelper.enableTableCdc(connection, "tablea");
-        TestHelper.enableTableCdc(connection, "tableb");
+        TestHelper.enableTableCdc(connection, databaseName, "tablea");
+        TestHelper.enableTableCdc(connection, databaseName, "tableb");
 
         initializeConnectorTestFramework();
         Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
@@ -69,6 +72,8 @@ public class EventProcessingFailureHandlingIT extends AbstractConnectorTest {
         assertConnectorIsRunning();
         TestHelper.waitForSnapshotToBeCompleted();
 
+        String databaseName = TestHelper.TEST_REAL_DATABASE1;
+
         // Will allow insertion of strings into what was originally a BIGINT NOT NULL column
         // This will cause NumberFormatExceptions which return nulls and thus an error due to the column being NOT NULL
         connection.execute("ALTER TABLE dbo.tableb ALTER COLUMN colb varchar(30)");
@@ -82,8 +87,8 @@ public class EventProcessingFailureHandlingIT extends AbstractConnectorTest {
         }
 
         SourceRecords records = consumeRecordsByTopic(RECORDS_PER_TABLE);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB.dbo.tableb")).isNull();
+        Assertions.assertThat(records.recordsForTopic(TestHelper.topicName(databaseName, "tablea"))).hasSize(RECORDS_PER_TABLE);
+        Assertions.assertThat(records.recordsForTopic(TestHelper.topicName(databaseName, "tableb"))).isNull();
 
         Awaitility.await()
                 .alias("Found warning message in logs")
@@ -105,6 +110,8 @@ public class EventProcessingFailureHandlingIT extends AbstractConnectorTest {
         assertConnectorIsRunning();
         TestHelper.waitForSnapshotToBeCompleted();
 
+        String databaseName = TestHelper.TEST_REAL_DATABASE1;
+
         // Will allow insertion of strings into what was originally a BIGINT NOT NULL column
         // This will cause NumberFormatExceptions which return nulls and thus an error due to the column being NOT NULL
         connection.execute("ALTER TABLE dbo.tableb ALTER COLUMN colb varchar(30)");
@@ -118,8 +125,8 @@ public class EventProcessingFailureHandlingIT extends AbstractConnectorTest {
         }
 
         SourceRecords records = consumeRecordsByTopic(RECORDS_PER_TABLE);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB.dbo.tableb")).isNull();
+        Assertions.assertThat(records.recordsForTopic(TestHelper.topicName(databaseName, "tablea"))).hasSize(RECORDS_PER_TABLE);
+        Assertions.assertThat(records.recordsForTopic(TestHelper.topicName(databaseName, "tableb"))).isNull();
     }
 
     @Test
@@ -135,6 +142,8 @@ public class EventProcessingFailureHandlingIT extends AbstractConnectorTest {
         assertConnectorIsRunning();
         TestHelper.waitForSnapshotToBeCompleted();
 
+        String databaseName = TestHelper.TEST_REAL_DATABASE1;
+
         // Will allow insertion of strings into what was originally a BIGINT NOT NULL column
         // This will cause NumberFormatExceptions which return nulls and thus an error due to the column being NOT NULL
         connection.execute("ALTER TABLE dbo.tableb ALTER COLUMN colb varchar(30)");
@@ -148,7 +157,7 @@ public class EventProcessingFailureHandlingIT extends AbstractConnectorTest {
         }
 
         SourceRecords records = consumeRecordsByTopic(1);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB.dbo.tablea")).hasSize(1);
+        Assertions.assertThat(records.recordsForTopic(TestHelper.topicName(databaseName, "tablea"))).hasSize(1);
         Awaitility.await()
                 .alias("Found warning message in logs")
                 .atMost(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS).until(() -> {

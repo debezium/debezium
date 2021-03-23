@@ -37,6 +37,8 @@ public class SpecialCharsInNamesIT extends AbstractConnectorTest {
     public void before() throws SQLException {
         TestHelper.createTestDatabase();
         connection = TestHelper.testConnection();
+        String databaseName = TestHelper.TEST_REAL_DATABASE1;
+        connection.execute("USE " + databaseName);
 
         initializeConnectorTestFramework();
         Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
@@ -57,22 +59,24 @@ public class SpecialCharsInNamesIT extends AbstractConnectorTest {
                 .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, "dbo\\.UAT WAG CZ\\$Fixed Asset.*, dbo\\.UAT WAG CZ\\$Fixed Prop.*")
                 .build();
 
+        String databaseName = TestHelper.TEST_REAL_DATABASE1;
+
         connection.execute(
                 "CREATE TABLE [UAT WAG CZ$Fixed Asset] (id int primary key, [my col$a] varchar(30))",
                 "CREATE TABLE [UAT WAG CZ$Fixed Prop] (id int primary key, [my col$a] varchar(30))",
                 "INSERT INTO [UAT WAG CZ$Fixed Asset] VALUES(1, 'asset')",
                 "INSERT INTO [UAT WAG CZ$Fixed Prop] VALUES(1, 'prop')");
-        TestHelper.enableTableCdc(connection, "UAT WAG CZ$Fixed Asset");
-        TestHelper.enableTableCdc(connection, "person");
+        TestHelper.enableTableCdc(connection, databaseName, "UAT WAG CZ$Fixed Asset");
+        TestHelper.enableTableCdc(connection, databaseName, "person");
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
 
         SourceRecords actualRecords = consumeRecordsByTopic(2, false);
-        Assertions.assertThat(actualRecords.recordsForTopic("server1.testDB.dbo.UAT_WAG_CZ_Fixed_Asset")).hasSize(1);
-        Assertions.assertThat(actualRecords.recordsForTopic("server1.testDB.dbo.UAT_WAG_CZ_Fixed_Prop")).hasSize(1);
+        Assertions.assertThat(actualRecords.recordsForTopic(TestHelper.topicName(databaseName, "UAT_WAG_CZ_Fixed_Asset"))).hasSize(1);
+        Assertions.assertThat(actualRecords.recordsForTopic(TestHelper.topicName(databaseName, "UAT_WAG_CZ_Fixed_Prop"))).hasSize(1);
 
-        List<SourceRecord> carRecords = actualRecords.recordsForTopic("server1.testDB.dbo.UAT_WAG_CZ_Fixed_Asset");
+        List<SourceRecord> carRecords = actualRecords.recordsForTopic(TestHelper.topicName(databaseName, "UAT_WAG_CZ_Fixed_Asset"));
         Assertions.assertThat(carRecords.size()).isEqualTo(1);
         SourceRecord carRecord = carRecords.get(0);
 
@@ -80,19 +84,19 @@ public class SpecialCharsInNamesIT extends AbstractConnectorTest {
                 (Struct) ((Struct) carRecord.value()).get("after"),
                 SchemaBuilder.struct()
                         .optional()
-                        .name("server1.testDB.dbo.UAT_WAG_CZ_Fixed_Asset.Value")
+                        .name(TestHelper.schemaName(databaseName, "UAT_WAG_CZ_Fixed_Asset", "Value"))
                         .field("id", Schema.INT32_SCHEMA)
                         .field("my col$a", Schema.OPTIONAL_STRING_SCHEMA)
                         .build());
         assertSchemaMatchesStruct(
                 (Struct) carRecord.key(),
                 SchemaBuilder.struct()
-                        .name("server1.testDB.dbo.UAT_WAG_CZ_Fixed_Asset.Key")
+                        .name(TestHelper.schemaName(databaseName, "UAT_WAG_CZ_Fixed_Asset", "Key"))
                         .field("id", Schema.INT32_SCHEMA)
                         .build());
         Assertions.assertThat(((Struct) carRecord.value()).getStruct("after").getString("my col$a")).isEqualTo("asset");
 
-        List<SourceRecord> personRecords = actualRecords.recordsForTopic("server1.testDB.dbo.UAT_WAG_CZ_Fixed_Prop");
+        List<SourceRecord> personRecords = actualRecords.recordsForTopic(TestHelper.topicName(databaseName, "UAT_WAG_CZ_Fixed_Prop"));
         Assertions.assertThat(personRecords.size()).isEqualTo(1);
         SourceRecord personRecord = personRecords.get(0);
 
@@ -100,14 +104,14 @@ public class SpecialCharsInNamesIT extends AbstractConnectorTest {
                 (Struct) ((Struct) personRecord.value()).get("after"),
                 SchemaBuilder.struct()
                         .optional()
-                        .name("server1.testDB.dbo.UAT_WAG_CZ_Fixed_Prop.Value")
+                        .name(TestHelper.schemaName(databaseName, "UAT_WAG_CZ_Fixed_Prop", "Value"))
                         .field("id", Schema.INT32_SCHEMA)
                         .field("my col$a", Schema.OPTIONAL_STRING_SCHEMA)
                         .build());
         assertSchemaMatchesStruct(
                 (Struct) personRecord.key(),
                 SchemaBuilder.struct()
-                        .name("server1.testDB.dbo.UAT_WAG_CZ_Fixed_Prop.Key")
+                        .name(TestHelper.schemaName(databaseName, "UAT_WAG_CZ_Fixed_Prop", "Key"))
                         .field("id", Schema.INT32_SCHEMA)
                         .build());
         Assertions.assertThat(((Struct) personRecord.value()).getStruct("after").getString("my col$a")).isEqualTo("prop");
@@ -122,65 +126,67 @@ public class SpecialCharsInNamesIT extends AbstractConnectorTest {
                 .with(SqlServerConnectorConfig.SANITIZE_FIELD_NAMES, true)
                 .build();
 
+        String databaseName = TestHelper.TEST_REAL_DATABASE1;
+
         connection.execute(
                 "CREATE TABLE [UAT WAG CZ$Fixed Asset] (id int primary key, [my col$a] varchar(30))",
                 "INSERT INTO [UAT WAG CZ$Fixed Asset] VALUES(1, 'a')");
-        TestHelper.enableTableCdc(connection, "UAT WAG CZ$Fixed Asset");
+        TestHelper.enableTableCdc(connection, databaseName, "UAT WAG CZ$Fixed Asset");
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
 
         SourceRecords records = consumeRecordsByTopic(1);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB.dbo.UAT_WAG_CZ_Fixed_Asset")).hasSize(1);
+        Assertions.assertThat(records.recordsForTopic(TestHelper.topicName(databaseName, "UAT_WAG_CZ_Fixed_Asset"))).hasSize(1);
 
-        SourceRecord record = records.recordsForTopic("server1.testDB.dbo.UAT_WAG_CZ_Fixed_Asset").get(0);
+        SourceRecord record = records.recordsForTopic(TestHelper.topicName(databaseName, "UAT_WAG_CZ_Fixed_Asset")).get(0);
         assertSchemaMatchesStruct(
                 (Struct) ((Struct) record.value()).get("after"),
                 SchemaBuilder.struct()
                         .optional()
-                        .name("server1.testDB.dbo.UAT_WAG_CZ_Fixed_Asset.Value")
+                        .name(TestHelper.schemaName(databaseName, "UAT_WAG_CZ_Fixed_Asset", "Value"))
                         .field("id", Schema.INT32_SCHEMA)
                         .field("my_col_a", Schema.OPTIONAL_STRING_SCHEMA)
                         .build());
         assertSchemaMatchesStruct(
                 (Struct) record.key(),
                 SchemaBuilder.struct()
-                        .name("server1.testDB.dbo.UAT_WAG_CZ_Fixed_Asset.Key")
+                        .name(TestHelper.schemaName(databaseName, "UAT_WAG_CZ_Fixed_Asset", "Key"))
                         .field("id", Schema.INT32_SCHEMA)
                         .build());
         Assertions.assertThat(((Struct) record.value()).getStruct("after").getInt32("id")).isEqualTo(1);
 
         connection.execute("INSERT INTO [UAT WAG CZ$Fixed Asset] VALUES(2, 'b')");
         records = consumeRecordsByTopic(1);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB.dbo.UAT_WAG_CZ_Fixed_Asset")).hasSize(1);
-        record = records.recordsForTopic("server1.testDB.dbo.UAT_WAG_CZ_Fixed_Asset").get(0);
+        Assertions.assertThat(records.recordsForTopic(TestHelper.topicName(databaseName, "UAT_WAG_CZ_Fixed_Asset"))).hasSize(1);
+        record = records.recordsForTopic(TestHelper.topicName(databaseName, "UAT_WAG_CZ_Fixed_Asset")).get(0);
         assertSchemaMatchesStruct(
                 (Struct) ((Struct) record.value()).get("after"),
                 SchemaBuilder.struct()
                         .optional()
-                        .name("server1.testDB.dbo.UAT_WAG_CZ_Fixed_Asset.Value")
+                        .name(TestHelper.schemaName(databaseName, "UAT_WAG_CZ_Fixed_Asset", "Value"))
                         .field("id", Schema.INT32_SCHEMA)
                         .field("my_col_a", Schema.OPTIONAL_STRING_SCHEMA)
                         .build());
         assertSchemaMatchesStruct(
                 (Struct) record.key(),
                 SchemaBuilder.struct()
-                        .name("server1.testDB.dbo.UAT_WAG_CZ_Fixed_Asset.Key")
+                        .name(TestHelper.schemaName(databaseName, "UAT_WAG_CZ_Fixed_Asset", "Key"))
                         .field("id", Schema.INT32_SCHEMA)
                         .build());
         Assertions.assertThat(((Struct) record.value()).getStruct("after").getInt32("id")).isEqualTo(2);
 
         connection.execute(
                 "CREATE TABLE [UAT WAG CZ$Fixed Asset Two] (id int primary key, [my col$] varchar(30), Description varchar(30) NOT NULL)");
-        TestHelper.enableTableCdc(connection, "UAT WAG CZ$Fixed Asset Two");
+        TestHelper.enableTableCdc(connection, databaseName, "UAT WAG CZ$Fixed Asset Two");
         connection.execute("INSERT INTO [UAT WAG CZ$Fixed Asset Two] VALUES(3, 'b', 'empty')");
         records = consumeRecordsByTopic(1);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB.dbo.UAT_WAG_CZ_Fixed_Asset_Two")).hasSize(1);
-        record = records.recordsForTopic("server1.testDB.dbo.UAT_WAG_CZ_Fixed_Asset_Two").get(0);
+        Assertions.assertThat(records.recordsForTopic(TestHelper.topicName(databaseName, "UAT_WAG_CZ_Fixed_Asset_Two"))).hasSize(1);
+        record = records.recordsForTopic(TestHelper.topicName(databaseName, "UAT_WAG_CZ_Fixed_Asset_Two")).get(0);
         assertSchemaMatchesStruct(
                 (Struct) ((Struct) record.value()).get("after"),
                 SchemaBuilder.struct()
                         .optional()
-                        .name("server1.testDB.dbo.UAT_WAG_CZ_Fixed_Asset_Two.Value")
+                        .name(TestHelper.schemaName(databaseName, "UAT_WAG_CZ_Fixed_Asset_Two", "Value"))
                         .field("id", Schema.INT32_SCHEMA)
                         .field("my_col_", Schema.OPTIONAL_STRING_SCHEMA)
                         .field("Description", Schema.STRING_SCHEMA)
@@ -188,20 +194,20 @@ public class SpecialCharsInNamesIT extends AbstractConnectorTest {
         assertSchemaMatchesStruct(
                 (Struct) record.key(),
                 SchemaBuilder.struct()
-                        .name("server1.testDB.dbo.UAT_WAG_CZ_Fixed_Asset_Two.Key")
+                        .name(TestHelper.schemaName(databaseName, "UAT_WAG_CZ_Fixed_Asset_Two", "Key"))
                         .field("id", Schema.INT32_SCHEMA)
                         .build());
         Assertions.assertThat(((Struct) record.value()).getStruct("after").getInt32("id")).isEqualTo(3);
 
         connection.execute("UPDATE [UAT WAG CZ$Fixed Asset Two] SET Description='c1' WHERE id=3");
         records = consumeRecordsByTopic(1);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB.dbo.UAT_WAG_CZ_Fixed_Asset_Two")).hasSize(1);
-        record = records.recordsForTopic("server1.testDB.dbo.UAT_WAG_CZ_Fixed_Asset_Two").get(0);
+        Assertions.assertThat(records.recordsForTopic(TestHelper.topicName(databaseName, "UAT_WAG_CZ_Fixed_Asset_Two"))).hasSize(1);
+        record = records.recordsForTopic(TestHelper.topicName(databaseName, "UAT_WAG_CZ_Fixed_Asset_Two")).get(0);
         assertSchemaMatchesStruct(
                 (Struct) ((Struct) record.value()).get("after"),
                 SchemaBuilder.struct()
                         .optional()
-                        .name("server1.testDB.dbo.UAT_WAG_CZ_Fixed_Asset_Two.Value")
+                        .name(TestHelper.schemaName(databaseName, "UAT_WAG_CZ_Fixed_Asset_Two", "Value"))
                         .field("id", Schema.INT32_SCHEMA)
                         .field("my_col_", Schema.OPTIONAL_STRING_SCHEMA)
                         .field("Description", Schema.STRING_SCHEMA)
@@ -210,7 +216,7 @@ public class SpecialCharsInNamesIT extends AbstractConnectorTest {
                 (Struct) ((Struct) record.value()).get("before"),
                 SchemaBuilder.struct()
                         .optional()
-                        .name("server1.testDB.dbo.UAT_WAG_CZ_Fixed_Asset_Two.Value")
+                        .name(TestHelper.schemaName(databaseName, "UAT_WAG_CZ_Fixed_Asset_Two", "Value"))
                         .field("id", Schema.INT32_SCHEMA)
                         .field("my_col_", Schema.OPTIONAL_STRING_SCHEMA)
                         .field("Description", Schema.STRING_SCHEMA)
@@ -225,20 +231,20 @@ public class SpecialCharsInNamesIT extends AbstractConnectorTest {
 
         connection.execute("INSERT INTO [UAT WAG CZ$Fixed Asset] VALUES(4, 'b')");
         records = consumeRecordsByTopic(1);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB.dbo.UAT_WAG_CZ_Fixed_Asset")).hasSize(1);
-        record = records.recordsForTopic("server1.testDB.dbo.UAT_WAG_CZ_Fixed_Asset").get(0);
+        Assertions.assertThat(records.recordsForTopic(TestHelper.topicName(databaseName, "UAT_WAG_CZ_Fixed_Asset"))).hasSize(1);
+        record = records.recordsForTopic(TestHelper.topicName(databaseName, "UAT_WAG_CZ_Fixed_Asset")).get(0);
         assertSchemaMatchesStruct(
                 (Struct) ((Struct) record.value()).get("after"),
                 SchemaBuilder.struct()
                         .optional()
-                        .name("server1.testDB.dbo.UAT_WAG_CZ_Fixed_Asset.Value")
+                        .name(TestHelper.schemaName(databaseName, "UAT_WAG_CZ_Fixed_Asset", "Value"))
                         .field("id", Schema.INT32_SCHEMA)
                         .field("my_col_a", Schema.OPTIONAL_STRING_SCHEMA)
                         .build());
         assertSchemaMatchesStruct(
                 (Struct) record.key(),
                 SchemaBuilder.struct()
-                        .name("server1.testDB.dbo.UAT_WAG_CZ_Fixed_Asset.Key")
+                        .name(TestHelper.schemaName(databaseName, "UAT_WAG_CZ_Fixed_Asset", "Key"))
                         .field("id", Schema.INT32_SCHEMA)
                         .build());
         Assertions.assertThat(((Struct) record.value()).getStruct("after").getInt32("id")).isEqualTo(4);
