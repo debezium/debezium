@@ -1,0 +1,42 @@
+name: Build Connector Cassandra
+
+on:
+  push:
+    paths:
+      - 'debezium-core/**'
+      - 'debezium-api/**'
+      - 'debezium-parent/pom.xml'
+      - 'debezium-bom/pom.xml'
+      - 'pom.xml'
+  pull_request:
+    paths:
+      - 'debezium-core/**'
+      - 'debezium-api/**'
+      - 'debezium-parent/pom.xml'
+      - 'debezium-bom/pom.xml'
+      - 'pom.xml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Core
+        uses: actions/checkout@v2
+        with:
+          path: core
+      - name: Checkout Cassandra
+        uses: actions/checkout@v2
+        with:
+          repository: debezium/debezium-connector-cassandra
+          path: cassandra
+      - name: Cache Maven Packages
+        uses: actions/cache@v2
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2
+      - name: Build Debezium Core
+        run: mvn clean install -f core/pom.xml -DskipTests -DskipITs -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+      - name: Build Debezium Connector Cassandra
+        run: mvn clean install -f cassandra/pom.xml -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
