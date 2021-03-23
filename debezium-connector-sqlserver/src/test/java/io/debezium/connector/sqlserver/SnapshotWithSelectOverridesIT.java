@@ -39,6 +39,8 @@ public class SnapshotWithSelectOverridesIT extends AbstractConnectorTest {
     public void before() throws SQLException {
         TestHelper.createTestDatabase();
         connection = TestHelper.testConnection();
+        String databaseName = TestHelper.TEST_REAL_DATABASE1;
+        connection.execute("USE " + databaseName);
         connection.execute(
                 "CREATE TABLE table1 (id int, name varchar(30), price decimal(8,2), ts datetime2(0), soft_deleted bit, primary key(id))");
         connection.execute(
@@ -74,9 +76,9 @@ public class SnapshotWithSelectOverridesIT extends AbstractConnectorTest {
                             i % 2));
         }
 
-        TestHelper.enableTableCdc(connection, "table1");
-        TestHelper.enableTableCdc(connection, "table2");
-        TestHelper.enableTableCdc(connection, "table3");
+        TestHelper.enableTableCdc(connection, databaseName, "table1");
+        TestHelper.enableTableCdc(connection, databaseName, "table2");
+        TestHelper.enableTableCdc(connection, databaseName, "table3");
 
         initializeConnectorTestFramework();
         Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
@@ -93,25 +95,28 @@ public class SnapshotWithSelectOverridesIT extends AbstractConnectorTest {
     @Test
     @FixFor("DBZ-1224")
     public void takeSnapshotWithOverrides() throws Exception {
+        String databaseName = TestHelper.TEST_REAL_DATABASE1;
         final Configuration config = TestHelper.defaultConfig()
                 .with(
                         RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE,
-                        "testDB.dbo.table1,testDB.dbo.table3")
+                        String.format("%1$s.dbo.table1,%1$s.dbo.table3", databaseName))
                 .with(
-                        RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + ".testDB.dbo.table1",
-                        "SELECT * FROM [testDB].[dbo].[table1] where soft_deleted = 0 order by id desc")
+                        RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE
+                                + String.format(".%s.dbo.table1", databaseName),
+                        String.format("SELECT * FROM [%s].[dbo].[table1] where soft_deleted = 0 order by id desc", databaseName))
                 .with(
-                        RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + ".testDB.dbo.table3",
-                        "SELECT * FROM [testDB].[dbo].[table3] where soft_deleted = 0")
+                        RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE
+                                + String.format(".%s.dbo.table3", databaseName),
+                        String.format("SELECT * FROM [%s].[dbo].[table3] where soft_deleted = 0", databaseName))
                 .build();
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
 
         SourceRecords records = consumeRecordsByTopic(INITIAL_RECORDS_PER_TABLE + (INITIAL_RECORDS_PER_TABLE + INITIAL_RECORDS_PER_TABLE) / 2);
-        List<SourceRecord> table1 = records.recordsForTopic("server1.testDB.dbo.table1");
-        List<SourceRecord> table2 = records.recordsForTopic("server1.testDB.dbo.table2");
-        List<SourceRecord> table3 = records.recordsForTopic("server1.testDB.dbo.table3");
+        List<SourceRecord> table1 = records.recordsForTopic(TestHelper.topicName(databaseName, "table1"));
+        List<SourceRecord> table2 = records.recordsForTopic(TestHelper.topicName(databaseName, "table2"));
+        List<SourceRecord> table3 = records.recordsForTopic(TestHelper.topicName(databaseName, "table3"));
 
         // soft_deleted records should be excluded for table1 and table3
         assertThat(table1).hasSize(INITIAL_RECORDS_PER_TABLE / 2);

@@ -32,11 +32,12 @@ public class SqlServerBinaryModeIT extends AbstractConnectorTest {
     public void before() throws SQLException {
         TestHelper.createTestDatabase();
         connection = TestHelper.testConnection();
-
+        String databaseName = TestHelper.TEST_REAL_DATABASE1;
+        connection.execute("USE " + databaseName);
         connection.execute(
                 "CREATE TABLE binary_mode_test (id INT IDENTITY (1, 1) PRIMARY KEY, binary_col BINARY(3) NOT NULL, varbinary_col VARBINARY(3) NOT NULL)",
                 "INSERT INTO binary_mode_test (binary_col, varbinary_col) VALUES (0x010203, 0x010203)");
-        TestHelper.enableTableCdc(connection, "binary_mode_test");
+        TestHelper.enableTableCdc(connection, databaseName, "binary_mode_test");
 
         initializeConnectorTestFramework();
         Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
@@ -89,8 +90,10 @@ public class SqlServerBinaryModeIT extends AbstractConnectorTest {
         assertConnectorIsRunning();
         TestHelper.waitForSnapshotToBeCompleted();
 
+        String databaseName = TestHelper.TEST_REAL_DATABASE1;
+
         SourceRecords records = consumeRecordsByTopic(1);
-        final List<SourceRecord> results = records.recordsForTopic("server1.testDB.dbo.binary_mode_test");
+        final List<SourceRecord> results = records.recordsForTopic(TestHelper.topicName(databaseName, "binary_mode_test"));
         Assertions.assertThat(results).hasSize(1);
 
         return (Struct) ((Struct) results.get(0).value()).get("after");

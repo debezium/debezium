@@ -59,10 +59,11 @@ public class SqlServerConnectionIT {
     public void shouldEnableCdcForDatabase() throws Exception {
         try (SqlServerConnection connection = TestHelper.adminConnection()) {
             connection.connect();
-            connection.execute("CREATE DATABASE testDB");
-            connection.execute("USE testDB");
+            String databaseName = TestHelper.TEST_REAL_DATABASE1;
+            connection.execute("CREATE DATABASE " + databaseName);
+            connection.execute("USE " + databaseName);
             // NOTE: you cannot enable CDC on master
-            TestHelper.enableDbCdc(connection, "testDB");
+            TestHelper.enableDbCdc(connection, databaseName);
         }
     }
 
@@ -70,10 +71,11 @@ public class SqlServerConnectionIT {
     public void shouldEnableCdcWithWrapperFunctionsForTable() throws Exception {
         try (SqlServerConnection connection = TestHelper.adminConnection()) {
             connection.connect();
-            connection.execute("CREATE DATABASE testDB");
-            connection.execute("USE testDB");
+            String databaseName = TestHelper.TEST_REAL_DATABASE1;
+            connection.execute("CREATE DATABASE " + databaseName);
+            connection.execute("USE " + databaseName);
             // NOTE: you cannot enable CDC on master
-            TestHelper.enableDbCdc(connection, "testDB");
+            TestHelper.enableDbCdc(connection, databaseName);
 
             // create table if exists
             String sql = "IF EXISTS (select 1 from sys.objects where name = 'testTable' and type = 'u')\n"
@@ -82,7 +84,7 @@ public class SqlServerConnectionIT {
             connection.execute(sql);
 
             // then enable CDC and wrapper functions
-            TestHelper.enableTableCdc(connection, "testTable");
+            TestHelper.enableTableCdc(connection, databaseName, "testTable");
             // insert some data
 
             connection.execute("INSERT INTO testTable (NUMBER, TEXT) values (1, 'aaa')\n"
@@ -112,21 +114,23 @@ public class SqlServerConnectionIT {
     @Test
     @FixFor("DBZ-1491")
     public void shouldProperlyGetDefaultColumnValues() throws Exception {
+        String databaseName = TestHelper.TEST_REAL_DATABASE1;
         try (SqlServerConnection connection = TestHelper.adminConnection()) {
             connection.connect();
-            connection.execute("CREATE DATABASE testDB");
-            connection.execute("USE testDB");
+            connection.execute("CREATE DATABASE " + databaseName);
+            connection.execute("USE " + databaseName);
         }
 
         try (SqlServerConnection connection = TestHelper.testConnection()) {
             connection.connect();
             // NOTE: you cannot enable CDC on master
-            TestHelper.enableDbCdc(connection, "testDB");
+            TestHelper.enableDbCdc(connection, databaseName);
+            connection.execute("USE " + databaseName);
 
             // create table if exists
             String sql = "IF EXISTS (select 1 from sys.objects where name = 'table_with_defaults' and type = 'u')\n"
                     + "DROP TABLE testTable\n"
-                    + "CREATE TABLE testDB.dbo.table_with_defaults ("
+                    + "CREATE TABLE table_with_defaults ("
                     + "    int_no_default_not_null int not null,"
                     + "    int_no_default int,"
                     + "    bigint_column bigint default (3147483648),"
@@ -180,7 +184,7 @@ public class SqlServerConnectionIT {
             connection.execute(sql);
 
             // then enable CDC and wrapper functions
-            TestHelper.enableTableCdc(connection, "table_with_defaults");
+            TestHelper.enableTableCdc(connection, databaseName, "table_with_defaults");
             // insert some data
 
             // and issue a test call to a CDC wrapper function
@@ -194,9 +198,8 @@ public class SqlServerConnectionIT {
                     "time_7_column", "char_column", "varchar_column", "text_column", "nchar_column", "nvarchar_column", "ntext_column", "binary_column",
                     "varbinary_column", "image_column");
 
-            SqlServerChangeTable changeTable = new SqlServerChangeTable(new TableId("testDB", "dbo", "table_with_defaults"),
+            SqlServerChangeTable changeTable = new SqlServerChangeTable(new TableId(databaseName, "dbo", "table_with_defaults"),
                     null, 0, null, null, capturedColumns);
-            String databaseName = "testDB";
             Table table = connection.getTableSchemaFromTable(changeTable, databaseName);
 
             assertColumnHasNotDefaultValue(table, "int_no_default_not_null");
@@ -256,21 +259,23 @@ public class SqlServerConnectionIT {
     @Test
     @FixFor("DBZ-2698")
     public void shouldProperlyGetDefaultColumnNullValues() throws Exception {
+        String databaseName = TestHelper.TEST_REAL_DATABASE1;
         try (SqlServerConnection connection = TestHelper.adminConnection()) {
             connection.connect();
-            connection.execute("CREATE DATABASE testDB");
-            connection.execute("USE testDB");
+            connection.execute("CREATE DATABASE " + databaseName);
+            connection.execute("USE " + databaseName);
         }
 
         try (SqlServerConnection connection = TestHelper.testConnection()) {
             connection.connect();
             // NOTE: you cannot enable CDC on master
-            TestHelper.enableDbCdc(connection, "testDB");
+            TestHelper.enableDbCdc(connection, databaseName);
+            connection.execute("USE " + databaseName);
 
             // create table if exists
             String sql = "IF EXISTS (select 1 from sys.objects where name = 'table_with_defaults' and type = 'u')\n"
                     + "DROP TABLE testTable\n"
-                    + "CREATE TABLE testDB.dbo.table_with_defaults ("
+                    + "CREATE TABLE table_with_defaults ("
                     + "    int_no_default_not_null int not null,"
                     + "    int_no_default int,"
                     + "    int_default_null int default null,"
@@ -305,11 +310,10 @@ public class SqlServerConnectionIT {
             connection.execute(sql);
 
             // then enable CDC and wrapper functions
-            TestHelper.enableTableCdc(connection, "table_with_defaults");
+            TestHelper.enableTableCdc(connection, databaseName, "table_with_defaults");
             // insert some data
 
             // and issue a test call to a CDC wrapper function
-            String databaseName = "testDB";
             Awaitility.await()
                     .atMost(5, TimeUnit.SECONDS)
                     .until(() -> connection.getMinLsn(databaseName, "table_with_defaults").isAvailable()); // Need to wait to make sure the min_lsn is available
@@ -345,7 +349,7 @@ public class SqlServerConnectionIT {
                             "real_default_null",
                             "real_column");
 
-            SqlServerChangeTable changeTable = new SqlServerChangeTable(new TableId("testDB", "dbo", "table_with_defaults"),
+            SqlServerChangeTable changeTable = new SqlServerChangeTable(new TableId(databaseName, "dbo", "table_with_defaults"),
                     null, 0, null, null, capturedColumns);
             Table table = connection.getTableSchemaFromTable(changeTable, databaseName);
 

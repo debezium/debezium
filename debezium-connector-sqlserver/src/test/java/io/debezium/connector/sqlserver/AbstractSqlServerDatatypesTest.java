@@ -191,9 +191,11 @@ public abstract class AbstractSqlServerDatatypesTest extends AbstractConnectorTe
     public static void createTables() throws SQLException {
         TestHelper.createTestDatabase();
         try (SqlServerConnection connection = TestHelper.testConnection()) {
+            String databaseName = TestHelper.TEST_REAL_DATABASE1;
+            connection.execute("USE " + databaseName);
             connection.execute(ALL_DDLS);
             for (String table : ALL_TABLES) {
-                TestHelper.enableTableCdc(connection, table);
+                TestHelper.enableTableCdc(connection, databaseName, table);
             }
             connection.execute(
                     "INSERT INTO type_int VALUES (0, 1, 22, 333, 4444, 55555)",
@@ -203,7 +205,7 @@ public abstract class AbstractSqlServerDatatypesTest extends AbstractConnectorTe
                     "INSERT INTO type_xml VALUES (0, '<a>b</a>')");
 
             // Make sure to wait for the CDC record for the last insert.
-            TestHelper.waitForCdcRecord(connection, "type_xml", rs -> rs.getInt("id") == 0);
+            TestHelper.waitForCdcRecord(connection, databaseName, "type_xml", rs -> rs.getInt("id") == 0);
         }
     }
 
@@ -211,9 +213,10 @@ public abstract class AbstractSqlServerDatatypesTest extends AbstractConnectorTe
     public void intTypes() throws Exception {
         Testing.debug("Inserted");
 
+        String databaseName = TestHelper.TEST_REAL_DATABASE1;
         final SourceRecords records = consumeRecordsByTopic(EXPECTED_RECORD_COUNT);
 
-        List<SourceRecord> testTableRecords = records.recordsForTopic("server1.testDB.dbo.type_int");
+        List<SourceRecord> testTableRecords = records.recordsForTopic(TestHelper.topicName(databaseName, "type_int"));
         assertThat(testTableRecords).hasSize(1);
 
         // insert
@@ -226,9 +229,10 @@ public abstract class AbstractSqlServerDatatypesTest extends AbstractConnectorTe
     public void fpTypes() throws Exception {
         Testing.debug("Inserted");
 
+        String databaseName = TestHelper.TEST_REAL_DATABASE1;
         final SourceRecords records = consumeRecordsByTopic(EXPECTED_RECORD_COUNT);
 
-        List<SourceRecord> testTableRecords = records.recordsForTopic("server1.testDB.dbo.type_fp");
+        List<SourceRecord> testTableRecords = records.recordsForTopic(TestHelper.topicName(databaseName, "type_fp"));
         assertThat(testTableRecords).hasSize(1);
 
         // insert
@@ -241,9 +245,10 @@ public abstract class AbstractSqlServerDatatypesTest extends AbstractConnectorTe
     public void stringTypes() throws Exception {
         Testing.debug("Inserted");
 
+        String databaseName = TestHelper.TEST_REAL_DATABASE1;
         final SourceRecords records = consumeRecordsByTopic(EXPECTED_RECORD_COUNT);
 
-        List<SourceRecord> testTableRecords = records.recordsForTopic("server1.testDB.dbo.type_string");
+        List<SourceRecord> testTableRecords = records.recordsForTopic(TestHelper.topicName(databaseName, "type_string"));
         assertThat(testTableRecords).hasSize(1);
 
         // insert
@@ -256,9 +261,10 @@ public abstract class AbstractSqlServerDatatypesTest extends AbstractConnectorTe
     public void dateTimeTypes() throws Exception {
         Testing.debug("Inserted");
 
+        String databaseName = TestHelper.TEST_REAL_DATABASE1;
         final SourceRecords records = consumeRecordsByTopic(EXPECTED_RECORD_COUNT);
 
-        List<SourceRecord> testTableRecords = records.recordsForTopic("server1.testDB.dbo.type_time");
+        List<SourceRecord> testTableRecords = records.recordsForTopic(TestHelper.topicName(databaseName, "type_time"));
         assertThat(testTableRecords).hasSize(1);
 
         // insert
@@ -274,9 +280,10 @@ public abstract class AbstractSqlServerDatatypesTest extends AbstractConnectorTe
 
         Testing.debug("Inserted");
 
+        String databaseName = TestHelper.TEST_REAL_DATABASE1;
         final SourceRecords records = consumeRecordsByTopic(EXPECTED_RECORD_COUNT);
 
-        List<SourceRecord> testTableRecords = records.recordsForTopic("server1.testDB.dbo.type_time");
+        List<SourceRecord> testTableRecords = records.recordsForTopic(TestHelper.topicName(databaseName, "type_time"));
         assertThat(testTableRecords).hasSize(1);
 
         // insert
@@ -289,9 +296,10 @@ public abstract class AbstractSqlServerDatatypesTest extends AbstractConnectorTe
     public void otherTypes() throws Exception {
         Testing.debug("Inserted");
 
+        String databaseName = TestHelper.TEST_REAL_DATABASE1;
         final SourceRecords records = consumeRecordsByTopic(EXPECTED_RECORD_COUNT);
 
-        List<SourceRecord> testTableRecords = records.recordsForTopic("server1.testDB.dbo.type_xml");
+        List<SourceRecord> testTableRecords = records.recordsForTopic(TestHelper.topicName(databaseName, "type_xml"));
         assertThat(testTableRecords).hasSize(1);
 
         // insert
