@@ -134,3 +134,5 @@ SELECT CAST('1' AS INTEGER);
 SELECT trigger.num FROM test `trigger`;
 -- Valid when SELECT is in stored procedure
 SELECT * FROM test LIMIT LIMIT1,LIMIT2;
+-- Functions
+SELECT mod(3,2);
