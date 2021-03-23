@@ -23,7 +23,6 @@ import org.mockito.Mockito;
 
 import io.debezium.connector.oracle.logminer.LogFile;
 import io.debezium.connector.oracle.logminer.LogMinerHelper;
-import io.debezium.connector.oracle.logminer.Scn;
 
 public class LogMinerHelperTest {
 

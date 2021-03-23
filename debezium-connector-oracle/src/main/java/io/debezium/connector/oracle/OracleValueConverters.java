@@ -12,6 +12,7 @@ import java.sql.Blob;
 import java.sql.Clob;
 import java.sql.SQLException;
 import java.sql.Types;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
@@ -26,15 +27,14 @@ import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 
+import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
 import io.debezium.data.SpecialValueDecimal;
 import io.debezium.data.VariableScaleDecimal;
 import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.jdbc.ResultReceiver;
-import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.Column;
 import io.debezium.relational.ValueConverter;
-import io.debezium.time.Conversions;
 import io.debezium.time.Date;
 import io.debezium.time.MicroDuration;
 import io.debezium.time.ZonedTimestamp;
@@ -98,7 +98,7 @@ public class OracleValueConverters extends JdbcValueConverters {
     private final OracleConnection connection;
 
     public OracleValueConverters(OracleConnectorConfig config, OracleConnection connection) {
-        super(config.getDecimalMode(), TemporalPrecisionMode.ADAPTIVE, ZoneOffset.UTC, null, null, null);
+        super(config.getDecimalMode(), config.getTemporalPrecisionMode(), ZoneOffset.UTC, null, null, null);
         this.connection = connection;
     }
 
@@ -240,7 +240,16 @@ public class OracleValueConverters extends JdbcValueConverters {
             return ((CHAR) data).stringValue();
         }
         if (data instanceof Clob) {
-            return ((Clob) data).toString();
+            try {
+                Clob clob = (Clob) data;
+                // Note that java.sql.Clob specifies that the first character starts at 1
+                // and that length must be greater-than or equal to 0.  So for an empty
+                // clob field, a call to getSubString(1, 0) is perfectly valid.
+                return clob.getSubString(1, (int) clob.length());
+            }
+            catch (SQLException e) {
+                throw new DebeziumException("Couldn't convert value for column " + column.name(), e);
+            }
         }
         if (data instanceof String) {
             String s = (String) data;
@@ -286,7 +295,7 @@ public class OracleValueConverters extends JdbcValueConverters {
                 return blob.getBytes(0, Long.valueOf(blob.length()).intValue());
             }
             catch (SQLException e) {
-                throw new RuntimeException("Couldn't convert value for column " + column.name(), e);
+                throw new DebeziumException("Couldn't convert value for column " + column.name(), e);
             }
         }
         return super.convertBinary(column, fieldDefn, data, mode);
@@ -299,7 +308,7 @@ public class OracleValueConverters extends JdbcValueConverters {
                 data = ((NUMBER) data).intValue();
             }
             catch (SQLException e) {
-                throw new RuntimeException("Couldn't convert value for column " + column.name(), e);
+                throw new DebeziumException("Couldn't convert value for column " + column.name(), e);
             }
         }
 
@@ -319,7 +328,7 @@ public class OracleValueConverters extends JdbcValueConverters {
                 return ((BINARY_FLOAT) data).floatValue();
             }
             catch (SQLException e) {
-                throw new RuntimeException("Couldn't convert value for column " + column.name(), e);
+                throw new DebeziumException("Couldn't convert value for column " + column.name(), e);
             }
         }
         else if (data instanceof String) {
@@ -336,7 +345,7 @@ public class OracleValueConverters extends JdbcValueConverters {
                 return ((BINARY_DOUBLE) data).doubleValue();
             }
             catch (SQLException e) {
-                throw new RuntimeException("Couldn't convert value for column " + column.name(), e);
+                throw new DebeziumException("Couldn't convert value for column " + column.name(), e);
             }
         }
         else if (data instanceof String) {
@@ -353,7 +362,7 @@ public class OracleValueConverters extends JdbcValueConverters {
                 data = ((NUMBER) data).bigDecimalValue();
             }
             catch (SQLException e) {
-                throw new RuntimeException("Couldn't convert value for column " + column.name(), e);
+                throw new DebeziumException("Couldn't convert value for column " + column.name(), e);
             }
         }
 
@@ -391,7 +400,7 @@ public class OracleValueConverters extends JdbcValueConverters {
                 data = ((NUMBER) data).byteValue();
             }
             catch (SQLException e) {
-                throw new RuntimeException("Couldn't convert value for column " + column.name(), e);
+                throw new DebeziumException("Couldn't convert value for column " + column.name(), e);
             }
         }
 
@@ -404,7 +413,7 @@ public class OracleValueConverters extends JdbcValueConverters {
                 data = ((NUMBER) data).shortValue();
             }
             catch (SQLException e) {
-                throw new RuntimeException("Couldn't convert value for column " + column.name(), e);
+                throw new DebeziumException("Couldn't convert value for column " + column.name(), e);
             }
         }
 
@@ -417,7 +426,7 @@ public class OracleValueConverters extends JdbcValueConverters {
                 data = ((NUMBER) data).intValue();
             }
             catch (SQLException e) {
-                throw new RuntimeException("Couldn't convert value for column " + column.name(), e);
+                throw new DebeziumException("Couldn't convert value for column " + column.name(), e);
             }
         }
 
@@ -430,7 +439,7 @@ public class OracleValueConverters extends JdbcValueConverters {
                 data = ((NUMBER) data).longValue();
             }
             catch (SQLException e) {
-                throw new RuntimeException("Couldn't convert value for column " + column.name(), e);
+                throw new DebeziumException("Couldn't convert value for column " + column.name(), e);
             }
         }
 
@@ -459,7 +468,7 @@ public class OracleValueConverters extends JdbcValueConverters {
                 return ((NUMBER) data).intValue() == 0 ? Boolean.FALSE : Boolean.TRUE;
             }
             catch (SQLException e) {
-                throw new RuntimeException("Couldn't convert value for column " + column.name(), e);
+                throw new DebeziumException("Couldn't convert value for column " + column.name(), e);
             }
         }
         return super.convertBoolean(column, fieldDefn, data);
@@ -518,16 +527,22 @@ public class OracleValueConverters extends JdbcValueConverters {
                 data = ZonedDateTime.ofInstant(ts.timestampValue(connection.connection()).toInstant(), ts.getTimeZone().toZoneId());
             }
             else if (data instanceof TIMESTAMPLTZ) {
-                // JDBC driver throws an exception
-                // final TIMESTAMPLTZ ts = (TIMESTAMPLTZ)data;
-                // data = ts.offsetDateTimeValue(connection.connection());
-                return null;
+                final TIMESTAMPLTZ ts = (TIMESTAMPLTZ) data;
+                data = ZonedDateTime.ofInstant(ts.timestampValue(connection.connection()).toInstant(), ZoneId.systemDefault()).withZoneSameInstant(ZoneOffset.UTC);
             }
         }
         catch (SQLException e) {
-            throw new RuntimeException("Couldn't convert value for column " + column.name(), e);
+            throw new DebeziumException("Couldn't convert value for column " + column.name(), e);
         }
         return data;
+    }
+
+    @Override
+    protected Object convertTimestampToEpochMillisAsDate(Column column, Field fieldDefn, Object data) {
+        if (data instanceof String) {
+            data = resolveTimestampStringAsInstant((String) data);
+        }
+        return super.convertTimestampToEpochMillisAsDate(column, fieldDefn, fromOracleTimeClasses(column, data));
     }
 
     @Override
@@ -536,7 +551,7 @@ public class OracleValueConverters extends JdbcValueConverters {
             return data;
         }
         if (data instanceof String) {
-            return resolveTimestampString(column, fieldDefn, (String) data);
+            data = resolveTimestampStringAsInstant((String) data);
         }
         return super.convertTimestampToEpochMicros(column, fieldDefn, fromOracleTimeClasses(column, data));
     }
@@ -544,7 +559,7 @@ public class OracleValueConverters extends JdbcValueConverters {
     @Override
     protected Object convertTimestampToEpochMillis(Column column, Field fieldDefn, Object data) {
         if (data instanceof String) {
-            return resolveTimestampString(column, fieldDefn, (String) data);
+            data = resolveTimestampStringAsInstant((String) data);
         }
         return super.convertTimestampToEpochMillis(column, fieldDefn, fromOracleTimeClasses(column, data));
     }
@@ -552,12 +567,12 @@ public class OracleValueConverters extends JdbcValueConverters {
     @Override
     protected Object convertTimestampToEpochNanos(Column column, Field fieldDefn, Object data) {
         if (data instanceof String) {
-            return resolveTimestampString(column, fieldDefn, (String) data);
+            data = resolveTimestampStringAsInstant((String) data);
         }
         return super.convertTimestampToEpochNanos(column, fieldDefn, fromOracleTimeClasses(column, data));
     }
 
-    private Object resolveTimestampString(Column column, Field fieldDefn, String data) {
+    private Instant resolveTimestampStringAsInstant(String data) {
         LocalDateTime dateTime;
 
         final Matcher toTimestampMatcher = TO_TIMESTAMP.matcher(data);
@@ -569,30 +584,17 @@ public class OracleValueConverters extends JdbcValueConverters {
             else {
                 dateTime = LocalDateTime.from(TIMESTAMP_FORMATTER.parse(dateText.trim()));
             }
-            return getDateTimeWithPrecision(column, dateTime);
+            return dateTime.atZone(GMT_ZONE_ID).toInstant();
         }
 
         final Matcher toDateMatcher = TO_DATE.matcher(data);
         if (toDateMatcher.matches()) {
             dateTime = LocalDateTime.from(TIMESTAMP_FORMATTER.parse(toDateMatcher.group(1)));
-            return getDateTimeWithPrecision(column, dateTime);
+            return dateTime.atZone(GMT_ZONE_ID).toInstant();
         }
 
         // Unable to resolve
         return null;
-    }
-
-    private Object getDateTimeWithPrecision(Column column, LocalDateTime dateTime) {
-        if (adaptiveTimePrecisionMode || adaptiveTimeMicrosecondsPrecisionMode) {
-            if (getTimePrecision(column) <= 3) {
-                return dateTime.atZone(GMT_ZONE_ID).toInstant().toEpochMilli();
-            }
-            if (getTimePrecision(column) <= 6) {
-                return Conversions.toEpochMicros(dateTime.atZone(GMT_ZONE_ID).toInstant());
-            }
-            return dateTime.atZone(GMT_ZONE_ID).toInstant().toEpochMilli() * 1_000_000;
-        }
-        return dateTime.atZone(GMT_ZONE_ID).toInstant().toEpochMilli();
     }
 
     @Override

@@ -32,6 +32,7 @@ import io.debezium.DebeziumException;
 import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
+import io.debezium.connector.oracle.Scn;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.relational.TableId;
@@ -243,20 +244,17 @@ public class LogMinerHelper {
     /**
      * This method query the database to get CURRENT online redo log file(s). Multiple is applicable for RAC systems.
      * @param connection connection to reuse
-     * @param metrics MBean accessible metrics
      * @return full redo log file name(s), including path
      * @throws SQLException if anything unexpected happens
      */
-    static Set<String> getCurrentRedoLogFiles(OracleConnection connection, LogMinerMetrics metrics) throws SQLException {
-        Set<String> fileNames = new HashSet<>();
-        try (PreparedStatement st = connection.connection(false).prepareStatement(SqlUtils.currentRedoNameQuery()); ResultSet result = st.executeQuery()) {
-            while (result.next()) {
-                fileNames.add(result.getString(1));
+    static Set<String> getCurrentRedoLogFiles(OracleConnection connection) throws SQLException {
+        final Set<String> fileNames = new HashSet<>();
+        connection.query(SqlUtils.currentRedoNameQuery(), rs -> {
+            while (rs.next()) {
+                fileNames.add(rs.getString(1));
             }
-            LOGGER.trace(" Current Redo log fileNames: {} ", fileNames);
-        }
-
-        updateRedoLogMetrics(connection, metrics, fileNames);
+        });
+        LOGGER.trace(" Current Redo log fileNames: {} ", fileNames);
         return fileNames;
     }
 
@@ -288,27 +286,8 @@ public class LogMinerHelper {
      */
     static void setNlsSessionParameters(JdbcConnection connection) throws SQLException {
         connection.executeWithoutCommitting(SqlUtils.NLS_SESSION_PARAMETERS);
-    }
-
-    /**
-     * This is to update MBean metrics associated with REDO LOG groups
-     * @param connection connection
-     * @param fileNames name of current REDO LOG files
-     * @param metrics current metrics
-     */
-    private static void updateRedoLogMetrics(OracleConnection connection, LogMinerMetrics metrics, Set<String> fileNames) {
-        try {
-            // update metrics
-            Map<String, String> logStatuses = getRedoLogStatus(connection);
-            metrics.setRedoLogStatus(logStatuses);
-
-            int counter = getSwitchCount(connection);
-            metrics.setSwitchCount(counter);
-            metrics.setCurrentLogFileName(fileNames);
-        }
-        catch (SQLException e) {
-            LOGGER.error("Cannot update metrics");
-        }
+        // This is necessary so that TIMESTAMP WITH LOCAL TIME ZONE get returned in UTC
+        connection.executeWithoutCommitting("ALTER SESSION SET TIME_ZONE = '00:00'");
     }
 
     /**
@@ -486,17 +465,17 @@ public class LogMinerHelper {
 
         // Deduplicate log files with the same SCn ranges.
         // todo: could this be eliminated by restricting the online log query to those there 'ARCHIVED="NO"'?
-        List<String> logFilesNames = onlineLogFilesForMining.stream().map(LogFile::getFileName).collect(Collectors.toList());
-        for (LogFile archiveLog : archivedLogFilesForMining) {
+        List<String> logFilesNames = archivedLogFilesForMining.stream().map(LogFile::getFileName).collect(Collectors.toList());
+        for (LogFile redoLog : onlineLogFilesForMining) {
             boolean found = false;
-            for (LogFile redoLog : onlineLogFilesForMining) {
-                if (redoLog.isSameRange(archiveLog)) {
+            for (LogFile archiveLog : archivedLogFilesForMining) {
+                if (archiveLog.isSameRange(redoLog)) {
                     found = true;
                     break;
                 }
             }
             if (!found) {
-                logFilesNames.add(archiveLog.getFileName());
+                logFilesNames.add(redoLog.getFileName());
             }
         }
 
@@ -518,7 +497,7 @@ public class LogMinerHelper {
      * @param transactionRetention duration to tolerate long running transactions
      * @return optional SCN as a watermark for abandonment
      */
-    public static Optional<Long> getLastScnToAbandon(OracleConnection connection, Long offsetScn, Duration transactionRetention) {
+    public static Optional<Scn> getLastScnToAbandon(OracleConnection connection, Scn offsetScn, Duration transactionRetention) {
         try {
             String query = SqlUtils.diffInDaysQuery(offsetScn);
             Float diffInDays = (Float) getSingleResult(connection, query, DATATYPE.FLOAT);

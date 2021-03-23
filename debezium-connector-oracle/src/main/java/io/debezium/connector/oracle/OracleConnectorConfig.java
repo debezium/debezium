@@ -451,23 +451,33 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         return new HistoryRecordComparator() {
             @Override
             protected boolean isPositionAtOrBefore(Document recorded, Document desired) {
-                Long recordedScn;
-                Long desiredScn;
+                Scn recordedScn;
+                Scn desiredScn;
                 if (getAdapter() == OracleConnectorConfig.ConnectorAdapter.XSTREAM) {
                     final LcrPosition recordedPosition = LcrPosition.valueOf(recorded.getString(SourceInfo.LCR_POSITION_KEY));
                     final LcrPosition desiredPosition = LcrPosition.valueOf(desired.getString(SourceInfo.LCR_POSITION_KEY));
-                    recordedScn = recordedPosition != null ? recordedPosition.getScn() : recorded.getLong(SourceInfo.SCN_KEY);
-                    desiredScn = desiredPosition != null ? desiredPosition.getScn() : desired.getLong(SourceInfo.SCN_KEY);
+                    recordedScn = recordedPosition != null ? recordedPosition.getScn() : resolveScn(recorded);
+                    desiredScn = desiredPosition != null ? desiredPosition.getScn() : resolveScn(desired);
                     return (recordedPosition != null && desiredPosition != null)
                             ? recordedPosition.compareTo(desiredPosition) < 1
                             : recordedScn.compareTo(desiredScn) < 1;
                 }
                 else {
-                    recordedScn = recorded.getLong(SourceInfo.SCN_KEY);
-                    desiredScn = desired.getLong(SourceInfo.SCN_KEY);
+                    recordedScn = resolveScn(recorded);
+                    desiredScn = resolveScn(desired);
                     return recordedScn.compareTo(desiredScn) < 1;
                 }
 
+            }
+
+            private Scn resolveScn(Document document) {
+                // prioritize reading scn as string and if not found, fallback to long data types
+                final String scn = document.getString(SourceInfo.SCN_KEY);
+                if (scn == null) {
+                    Long scnValue = document.getLong(SourceInfo.SCN_KEY);
+                    Scn.valueOf(scnValue == null ? 0 : scnValue);
+                }
+                return Scn.valueOf(scn);
             }
         };
     }

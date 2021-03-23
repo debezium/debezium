@@ -18,7 +18,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.oracle.logminer.LogMinerHelper;
-import io.debezium.connector.oracle.logminer.Scn;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
@@ -123,7 +122,7 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
 
         ctx.offset = OracleOffsetContext.create()
                 .logicalName(connectorConfig)
-                .scn(currentScn.longValue())
+                .scn(currentScn)
                 .transactionContext(new TransactionContext())
                 .build();
     }
@@ -245,7 +244,7 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
 
     @Override
     protected String enhanceOverriddenSelect(RelationalSnapshotContext snapshotContext, String overriddenSelect, TableId tableId) {
-        long snapshotOffset = (Long) snapshotContext.offset.getOffset().get("scn");
+        String snapshotOffset = (String) snapshotContext.offset.getOffset().get(SourceInfo.SCN_KEY);
         String token = connectorConfig.getTokenToReplaceInSnapshotPredicate();
         if (token != null) {
             return overriddenSelect.replaceAll(token, " AS OF SCN " + snapshotOffset);
@@ -280,7 +279,9 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
 
     @Override
     protected Optional<String> getSnapshotSelect(RelationalSnapshotContext snapshotContext, TableId tableId) {
-        long snapshotOffset = (Long) snapshotContext.offset.getOffset().get("scn");
+        final OracleOffsetContext offset = (OracleOffsetContext) snapshotContext.offset;
+        final String snapshotOffset = offset.getScn().toString();
+        assert snapshotOffset != null;
         return Optional.of("SELECT * FROM " + quote(tableId) + " AS OF SCN " + snapshotOffset);
     }
 

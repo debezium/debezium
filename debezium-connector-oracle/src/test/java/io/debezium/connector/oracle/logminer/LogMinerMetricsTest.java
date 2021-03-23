@@ -21,6 +21,7 @@ import org.mockito.Mockito;
 import io.debezium.config.Configuration;
 import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.connector.oracle.OracleConnectorConfig;
+import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot.AdapterName;
@@ -49,7 +50,7 @@ public class LogMinerMetricsTest {
         assertThat(metrics.getTotalCapturedDmlCount() == 1).isTrue();
 
         metrics.setCurrentScn(Scn.valueOf(1000L));
-        assertThat(metrics.getCurrentScn()).isEqualTo(1000L);
+        assertThat(metrics.getCurrentScn()).isEqualTo("1000");
 
         metrics.setBatchSize(10);
         assertThat(metrics.getBatchSize() == connectorConfig.getLogMiningBatchSizeDefault()).isTrue();

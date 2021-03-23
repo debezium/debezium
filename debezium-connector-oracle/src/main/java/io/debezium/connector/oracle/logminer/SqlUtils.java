@@ -17,6 +17,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.oracle.OracleConnectorConfig;
+import io.debezium.connector.oracle.Scn;
 import io.debezium.relational.TableId;
 import io.debezium.util.Strings;
 
@@ -118,6 +119,10 @@ public class SqlUtils {
 
     static String currentRedoNameQuery() {
         return String.format("SELECT F.MEMBER FROM %s LOG, %s F  WHERE LOG.GROUP#=F.GROUP# AND LOG.STATUS='CURRENT'", LOG_VIEW, LOGFILE_VIEW);
+    }
+
+    static String currentRedoLogSequenceQuery() {
+        return String.format("SELECT SEQUENCE# FROM %s WHERE STATUS = 'CURRENT'", LOG_VIEW);
     }
 
     static String databaseSupplementalLoggingAllCheckQuery() {
@@ -382,11 +387,11 @@ public class SqlUtils {
     /**
      * This method return query which converts given SCN in days and deduct from the current day
      */
-    public static String diffInDaysQuery(Long scn) {
+    public static String diffInDaysQuery(Scn scn) {
         if (scn == null) {
             return null;
         }
-        return "select sysdate - CAST(scn_to_timestamp(" + scn + ") as date) from dual";
+        return "select sysdate - CAST(scn_to_timestamp(" + scn.toString() + ") as date) from dual";
     }
 
     public static boolean connectionProblem(Throwable e) {

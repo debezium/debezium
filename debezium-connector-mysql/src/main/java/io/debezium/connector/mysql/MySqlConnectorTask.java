@@ -61,7 +61,7 @@ public class MySqlConnectorTask extends BaseSourceTask {
         final Clock clock = Clock.system();
         final MySqlConnectorConfig connectorConfig = new MySqlConnectorConfig(config);
         final TopicSelector<TableId> topicSelector = MySqlTopicSelector.defaultSelector(connectorConfig);
-        final SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create(LOGGER);
+        final SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create();
         final MySqlValueConverters valueConverters = getValueConverters(connectorConfig);
 
         // By default do not load whole result sets into memory

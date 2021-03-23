@@ -2111,28 +2111,23 @@ public interface Configuration {
      * @return the evaluated value
      */
     default String getFallbackStringProperty(Field newProperty, Field oldProperty) {
-        return Configuration.getFallbackStringProperty(this, newProperty, oldProperty);
+        return getString(newProperty, () -> getString(oldProperty));
     }
 
     /**
-     * Returns the string config value of the provided Configuration from newProperty config field if it's set or its
-     * default value when it's not set/null.If both are null it returns the value of the oldProperty config field, or
-     * its default value when it's null.
-     * This fallback only works for newProperty fields that have a null / not-set default value!
-     *
-     * @param newProperty the new property config field
-     * @param oldProperty the old / fallback property config field
-     * @return the evaluated value
+     * Returns the string config value from newProperty config field with a warning if it's set or its default value when it's not
+     * set/null. If both are null it returns the value of the oldProperty config field with a warning, or its default value when
+     * it's null.
      */
-    static String getFallbackStringProperty(Configuration config, Field newProperty, Field oldProperty) {
-        if (null != config.getString(oldProperty.name()) && null != config.getString(newProperty.name())) { // both are set
+    default String getFallbackStringPropertyWithWarning(Field newProperty, Field oldProperty) {
+        if (hasKey(oldProperty.name()) && hasKey(newProperty.name())) { // both are set
             CONFIGURATION_LOGGER.warn("Provided configuration has deprecated property \"" + oldProperty.name()
                     + "\" and new property \"" + newProperty.name() + "\" set. Using value from \"" + newProperty.name() + "\"!");
         }
-        return config.getString(
+        return getString(
                 newProperty,
                 () -> {
-                    String oldValue = config.getString(oldProperty);
+                    String oldValue = getString(oldProperty);
                     if (oldValue != null && !oldValue.equals(oldProperty.defaultValueAsString())) {
                         CONFIGURATION_LOGGER.warn("Using configuration property \"" + oldProperty.name()
                                 + "\" is deprecated and will be removed in future versions. Please use \"" + newProperty.name()

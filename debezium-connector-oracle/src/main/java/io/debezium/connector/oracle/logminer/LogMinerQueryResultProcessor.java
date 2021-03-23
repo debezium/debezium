@@ -20,6 +20,7 @@ import io.debezium.connector.oracle.OracleConnectorConfig.LogMiningDmlParser;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OracleOffsetContext;
 import io.debezium.connector.oracle.OracleValueConverters;
+import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.logminer.parser.DmlParser;
 import io.debezium.connector.oracle.logminer.parser.DmlParserException;
 import io.debezium.connector.oracle.logminer.parser.LogMinerDmlParser;
@@ -53,8 +54,8 @@ class LogMinerQueryResultProcessor {
     private final OracleConnectorConfig connectorConfig;
     private final Clock clock;
     private final Logger LOGGER = LoggerFactory.getLogger(LogMinerQueryResultProcessor.class);
-    private long currentOffsetScn = 0;
-    private long currentOffsetCommitScn = 0;
+    private Scn currentOffsetScn = Scn.NULL;
+    private Scn currentOffsetCommitScn = Scn.NULL;
     private long stuckScnCounter = 0;
     private HistoryRecorder historyRecorder;
 
@@ -197,7 +198,13 @@ class LogMinerQueryResultProcessor {
                         break;
                 }
 
-                final LogMinerDmlEntry dmlEntry = parse(redoSql, schema, tableId, txId);
+                final Table table = schema.tableFor(tableId);
+                if (table == null) {
+                    LogMinerHelper.logWarn(transactionalBufferMetrics, "DML for table '{}' that is not known to this connector, skipping.", tableId);
+                    continue;
+                }
+
+                final LogMinerDmlEntry dmlEntry = parse(redoSql, table, txId);
                 dmlEntry.setObjectOwner(segOwner);
                 dmlEntry.setSourceTime(changeTime);
                 dmlEntry.setTransactionId(txId);
@@ -208,20 +215,19 @@ class LogMinerQueryResultProcessor {
                     transactionalBuffer.registerCommitCallback(txId, scn, changeTime.toInstant(), (timestamp, smallestScn, commitScn, counter) -> {
                         // update SCN in offset context only if processed SCN less than SCN among other transactions
                         if (smallestScn == null || scn.compareTo(smallestScn) < 0) {
-                            offsetContext.setScn(scn.longValue());
+                            offsetContext.setScn(scn);
                             transactionalBufferMetrics.setOldestScn(scn);
                         }
                         offsetContext.setTransactionId(txId);
                         offsetContext.setSourceTime(timestamp.toInstant());
                         offsetContext.setTableId(tableId);
                         if (counter == 0) {
-                            offsetContext.setCommitScn(commitScn.longValue());
+                            offsetContext.setCommitScn(commitScn);
                         }
-                        Table table = schema.tableFor(tableId);
                         LOGGER.trace("Processing DML event {} scn {}", dmlEntry.toString(), scn);
 
                         dispatcher.dispatchDataChangeEvent(tableId,
-                                new LogMinerChangeRecordEmitter(offsetContext, dmlEntry, table, clock));
+                                new LogMinerChangeRecordEmitter(offsetContext, dmlEntry, schema.tableFor(tableId), clock));
                     });
 
                 }
@@ -260,14 +266,16 @@ class LogMinerQueryResultProcessor {
      */
     private void warnStuckScn() {
         if (offsetContext != null && offsetContext.getCommitScn() != null) {
-            if (currentOffsetScn == offsetContext.getScn() && currentOffsetCommitScn != offsetContext.getCommitScn()) {
+            final Scn scn = offsetContext.getScn();
+            final Scn commitScn = offsetContext.getCommitScn();
+            if (currentOffsetScn.equals(scn) && !currentOffsetCommitScn.equals(commitScn)) {
                 stuckScnCounter++;
                 // logWarn only once
                 if (stuckScnCounter == 25) {
                     LogMinerHelper.logWarn(transactionalBufferMetrics,
                             "Offset SCN {} is not changing. It indicates long transaction(s). " +
                                     "Offset commit SCN: {}",
-                            currentOffsetScn, offsetContext.getCommitScn());
+                            currentOffsetScn, commitScn);
                     transactionalBufferMetrics.incrementScnFreezeCounter();
                 }
             }
@@ -277,11 +285,11 @@ class LogMinerQueryResultProcessor {
         }
     }
 
-    private LogMinerDmlEntry parse(String redoSql, OracleDatabaseSchema schema, TableId tableId, String txId) {
+    private LogMinerDmlEntry parse(String redoSql, Table table, String txId) {
         LogMinerDmlEntry dmlEntry;
         try {
             Instant parseStart = Instant.now();
-            dmlEntry = dmlParser.parse(redoSql, schema.getTables(), tableId, txId);
+            dmlEntry = dmlParser.parse(redoSql, table, txId);
             metrics.addCurrentParseTime(Duration.between(parseStart, Instant.now()));
         }
         catch (DmlParserException e) {

@@ -9,8 +9,10 @@ import static org.fest.assertions.Assertions.assertThat;
 
 import java.math.BigDecimal;
 import java.sql.SQLException;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.List;
 
@@ -31,8 +33,10 @@ import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
+import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.time.MicroDuration;
 import io.debezium.time.MicroTimestamp;
+import io.debezium.time.NanoTimestamp;
 import io.debezium.time.Timestamp;
 import io.debezium.time.ZonedTimestamp;
 import io.debezium.util.Testing;
@@ -103,6 +107,7 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
             "  val_ts timestamp, " +
             "  val_ts_precision2 timestamp(2), " +
             "  val_ts_precision4 timestamp(4), " +
+            "  val_ts_precision9 timestamp(9), " +
             "  val_tstz timestamp with time zone, " +
             "  val_tsltz timestamp with local time zone, " +
             "  val_int_ytm interval year to month, " +
@@ -184,11 +189,32 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
                     LocalDateTime.of(2018, 3, 27, 12, 34, 56).toEpochSecond(ZoneOffset.UTC) * 1_000 + 130),
             new SchemaAndValueField("VAL_TS_PRECISION4", MicroTimestamp.builder().optional().build(),
                     LocalDateTime.of(2018, 3, 27, 12, 34, 56).toEpochSecond(ZoneOffset.UTC) * 1_000_000 + 125500),
+            new SchemaAndValueField("VAL_TS_PRECISION9", NanoTimestamp.builder().optional().build(),
+                    LocalDateTime.of(2018, 3, 27, 12, 34, 56).toEpochSecond(ZoneOffset.UTC) * 1_000_000_000 + 125456789),
             new SchemaAndValueField("VAL_TSTZ", ZonedTimestamp.builder().optional().build(), "2018-03-27T01:34:56.00789-11:00"),
+            new SchemaAndValueField("VAL_TSLTZ", ZonedTimestamp.builder().optional().build(),
+                    LocalDateTime.of(2018, 3, 27, 1, 34, 56, 7890 * 1_000).atZone(ZoneOffset.systemDefault())
+                            .withZoneSameInstant(ZoneOffset.UTC).format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSS'Z'"))),
             new SchemaAndValueField("VAL_INT_YTM", MicroDuration.builder().optional().build(), -110451600_000_000L),
-            new SchemaAndValueField("VAL_INT_DTS", MicroDuration.builder().optional().build(), -93784_560_000L)
-    // new SchemaAndValueField("VAL_TSLTZ", ZonedTimestamp.builder().optional().build(), "2018-03-27T01:34:56.00789-11:00")
-    );
+            new SchemaAndValueField("VAL_INT_DTS", MicroDuration.builder().optional().build(), -93784_560_000L));
+
+    private static final List<SchemaAndValueField> EXPECTED_TIME_AS_CONNECT = Arrays.asList(
+            new SchemaAndValueField("VAL_DATE", org.apache.kafka.connect.data.Timestamp.builder().optional().build(),
+                    java.util.Date.from(LocalDate.of(2018, 3, 27).atStartOfDay().atOffset(ZoneOffset.UTC).toInstant())),
+            new SchemaAndValueField("VAL_TS", org.apache.kafka.connect.data.Timestamp.builder().optional().build(),
+                    java.util.Date.from(LocalDateTime.of(2018, 3, 27, 12, 34, 56, 7890 * 1_000).atOffset(ZoneOffset.UTC).toInstant())),
+            new SchemaAndValueField("VAL_TS_PRECISION2", org.apache.kafka.connect.data.Timestamp.builder().optional().build(),
+                    java.util.Date.from(LocalDateTime.of(2018, 3, 27, 12, 34, 56, 130 * 1_000_000).atOffset(ZoneOffset.UTC).toInstant())),
+            new SchemaAndValueField("VAL_TS_PRECISION4", org.apache.kafka.connect.data.Timestamp.builder().optional().build(),
+                    java.util.Date.from(LocalDateTime.of(2018, 3, 27, 12, 34, 56, 125500 * 1_000).atOffset(ZoneOffset.UTC).toInstant())),
+            new SchemaAndValueField("VAL_TS_PRECISION9", org.apache.kafka.connect.data.Timestamp.builder().optional().build(),
+                    java.util.Date.from(LocalDateTime.of(2018, 3, 27, 12, 34, 56, 125456789).atOffset(ZoneOffset.UTC).toInstant())),
+            new SchemaAndValueField("VAL_TSTZ", ZonedTimestamp.builder().optional().build(), "2018-03-27T01:34:56.00789-11:00"),
+            new SchemaAndValueField("VAL_TSLTZ", ZonedTimestamp.builder().optional().build(),
+                    LocalDateTime.of(2018, 3, 27, 1, 34, 56, 7890 * 1_000).atZone(ZoneOffset.systemDefault())
+                            .withZoneSameInstant(ZoneOffset.UTC).format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSS'Z'"))),
+            new SchemaAndValueField("VAL_INT_YTM", MicroDuration.builder().optional().build(), -110451600_000_000L),
+            new SchemaAndValueField("VAL_INT_DTS", MicroDuration.builder().optional().build(), -93784_560_000L));
 
     private static final String[] ALL_TABLES = {
             "debezium.type_string",
@@ -224,7 +250,7 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
     protected static void createTables() throws SQLException {
         connection.execute(ALL_DDLS);
         for (String table : ALL_TABLES) {
-            streamTable(table);
+            TestHelper.streamTable(connection, table);
         }
     }
 
@@ -236,10 +262,7 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
 
     protected abstract Builder connectorConfig();
 
-    private static void streamTable(String table) throws SQLException {
-        connection.execute("GRANT SELECT ON " + table + " to " + TestHelper.getConnectorUserName());
-        connection.execute("ALTER TABLE " + table + " ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
-    }
+    protected abstract void init(TemporalPrecisionMode temporalPrecisionMode) throws Exception;
 
     @AfterClass
     public static void closeConnection() throws SQLException {
@@ -458,6 +481,76 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
         assertRecord(after, EXPECTED_TIME);
     }
 
+    @Test
+    @FixFor("DBZ-3268")
+    public void timeTypesAsAdaptiveMicroseconds() throws Exception {
+        stopConnector();
+        init(TemporalPrecisionMode.ADAPTIVE_TIME_MICROSECONDS);
+
+        int expectedRecordCount = 0;
+
+        if (insertRecordsDuringTest()) {
+            insertTimeTypes();
+        }
+
+        Testing.debug("Inserted");
+        expectedRecordCount++;
+
+        final SourceRecords records = consumeRecordsByTopic(expectedRecordCount);
+
+        List<SourceRecord> testTableRecords = records.recordsForTopic("server1.DEBEZIUM.TYPE_TIME");
+        assertThat(testTableRecords).hasSize(expectedRecordCount);
+        SourceRecord record = testTableRecords.get(0);
+
+        VerifyRecord.isValid(record);
+
+        // insert
+        if (insertRecordsDuringTest()) {
+            VerifyRecord.isValidInsert(record, "ID", 1);
+        }
+        else {
+            VerifyRecord.isValidRead(record, "ID", 1);
+        }
+
+        Struct after = (Struct) ((Struct) record.value()).get("after");
+        assertRecord(after, EXPECTED_TIME);
+    }
+
+    @Test
+    @FixFor("DBZ-3268")
+    public void timeTypesAsConnect() throws Exception {
+        stopConnector();
+        init(TemporalPrecisionMode.CONNECT);
+
+        int expectedRecordCount = 0;
+
+        if (insertRecordsDuringTest()) {
+            insertTimeTypes();
+        }
+
+        Testing.debug("Inserted");
+        expectedRecordCount++;
+
+        final SourceRecords records = consumeRecordsByTopic(expectedRecordCount);
+
+        List<SourceRecord> testTableRecords = records.recordsForTopic("server1.DEBEZIUM.TYPE_TIME");
+        assertThat(testTableRecords).hasSize(expectedRecordCount);
+        SourceRecord record = testTableRecords.get(0);
+
+        VerifyRecord.isValid(record);
+
+        // insert
+        if (insertRecordsDuringTest()) {
+            VerifyRecord.isValidInsert(record, "ID", 1);
+        }
+        else {
+            VerifyRecord.isValidRead(record, "ID", 1);
+        }
+
+        Struct after = (Struct) ((Struct) record.value()).get("after");
+        assertRecord(after, EXPECTED_TIME_AS_CONNECT);
+    }
+
     protected static void insertStringTypes() throws SQLException {
         connection.execute("INSERT INTO debezium.type_string VALUES (1, 'v\u010d2', 'v\u010d2', 'nv\u010d2', 'c', 'n\u010d')");
         connection.execute("COMMIT");
@@ -481,6 +574,7 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
                 + ", TO_TIMESTAMP('27-MAR-2018 12:34:56.00789', 'dd-MON-yyyy HH24:MI:SS.FF5')"
                 + ", TO_TIMESTAMP('27-MAR-2018 12:34:56.12545', 'dd-MON-yyyy HH24:MI:SS.FF5')"
                 + ", TO_TIMESTAMP('27-MAR-2018 12:34:56.12545', 'dd-MON-yyyy HH24:MI:SS.FF5')"
+                + ", TO_TIMESTAMP('27-MAR-2018 12:34:56.125456789', 'dd-MON-yyyy HH24:MI:SS.FF9')"
                 + ", TO_TIMESTAMP_TZ('27-MAR-2018 01:34:56.00789 -11:00', 'dd-MON-yyyy HH24:MI:SS.FF5 TZH:TZM')"
                 + ", TO_TIMESTAMP_TZ('27-MAR-2018 01:34:56.00789', 'dd-MON-yyyy HH24:MI:SS.FF5')"
                 + ", INTERVAL '-3-6' YEAR TO MONTH"

@@ -14,6 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
+import io.debezium.connector.oracle.Scn;
 import io.debezium.relational.TableId;
 import io.debezium.util.HexConverter;
 
@@ -114,11 +115,11 @@ public class RowMapper {
 
     public static Scn getScn(TransactionalBufferMetrics metrics, ResultSet rs) {
         try {
-            return new Scn(rs.getBigDecimal(SCN));
+            return Scn.valueOf(rs.getString(SCN));
         }
         catch (SQLException e) {
             logError(metrics, e, "SCN");
-            return Scn.INVALID;
+            return Scn.NULL;
         }
     }
 

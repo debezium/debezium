@@ -8,6 +8,7 @@ package io.debezium.connector.oracle.logminer;
 import static org.fest.assertions.Assertions.assertThat;
 
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.sql.Timestamp;
 import java.sql.Types;
 import java.util.ArrayList;
@@ -21,6 +22,7 @@ import org.junit.rules.TestRule;
 
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleValueConverters;
+import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.antlr.OracleDdlParser;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
@@ -39,7 +41,7 @@ import io.debezium.util.IoUtil;
 
 @SkipWhenAdapterNameIsNot(value = AdapterName.LOGMINER)
 public class ValueHolderTest {
-    private static final Scn SCN_ONE = new Scn(BigDecimal.ONE);
+    private static final Scn SCN_ONE = new Scn(BigInteger.ONE);
     private static final String TABLE_NAME = "TEST";
     private static final String CATALOG_NAME = "CATALOG";
     private static final String SCHEMA_NAME = "DEBEZIUM";
@@ -84,7 +86,7 @@ public class ValueHolderTest {
         ddlParser.parse(createStatement, tables);
 
         String dml = "insert into \"" + FULL_TABLE_NAME + "\"  (\"column1\",\"column2\") values ('5','Text');";
-        LogMinerDmlEntry dmlEntryParsed = sqlDmlParser.parse(dml, tables, TABLE_ID, "1");
+        LogMinerDmlEntry dmlEntryParsed = sqlDmlParser.parse(dml, tables.forTable(TABLE_ID), "1");
 
         assertThat(dmlEntryParsed.equals(dmlEntryExpected)).isTrue();
         assertThat(dmlEntryExpected.getCommandType() == Envelope.Operation.CREATE).isTrue();

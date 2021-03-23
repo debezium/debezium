@@ -64,7 +64,7 @@ public class PostgresConnectorTask extends BaseSourceTask {
         final PostgresConnectorConfig connectorConfig = new PostgresConnectorConfig(config);
         final TopicSelector<TableId> topicSelector = PostgresTopicSelector.create(connectorConfig);
         final Snapshotter snapshotter = connectorConfig.getSnapshotter();
-        final SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create(LOGGER);
+        final SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create();
 
         if (snapshotter == null) {
             throw new ConnectException("Unable to load snapshotter, if using custom snapshot mode, double check your settings");

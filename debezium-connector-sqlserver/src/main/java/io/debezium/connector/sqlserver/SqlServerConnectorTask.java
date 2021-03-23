@@ -60,7 +60,7 @@ public class SqlServerConnectorTask extends BaseSourceTask {
         final Clock clock = Clock.system();
         final SqlServerConnectorConfig connectorConfig = new SqlServerConnectorConfig(config);
         final TopicSelector<TableId> topicSelector = SqlServerTopicSelector.defaultSelector(connectorConfig);
-        final SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create(LOGGER);
+        final SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create();
         final SqlServerValueConverters valueConverters = new SqlServerValueConverters(connectorConfig.getDecimalMode(),
                 connectorConfig.getTemporalPrecisionMode(), connectorConfig.binaryHandlingMode());
 

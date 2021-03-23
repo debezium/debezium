@@ -71,12 +71,12 @@ public class ReplicationMessageColumnValueResolver {
             case "serial":
             case "serial2":
             case "serial4":
-            case "oid":
                 return value.asInteger();
 
             case "bigint":
             case "bigserial":
             case "int8":
+            case "oid":
                 return value.asLong();
 
             case "real":

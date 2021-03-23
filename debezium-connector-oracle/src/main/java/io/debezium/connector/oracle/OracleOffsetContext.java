@@ -36,13 +36,13 @@ public class OracleOffsetContext implements OffsetContext {
      */
     private boolean snapshotCompleted;
 
-    public OracleOffsetContext(OracleConnectorConfig connectorConfig, long scn, Long commitScn, LcrPosition lcrPosition,
+    public OracleOffsetContext(OracleConnectorConfig connectorConfig, Scn scn, Scn commitScn, LcrPosition lcrPosition,
                                boolean snapshot, boolean snapshotCompleted, TransactionContext transactionContext) {
         this(connectorConfig, scn, lcrPosition, snapshot, snapshotCompleted, transactionContext);
         sourceInfo.setCommitScn(commitScn);
     }
 
-    private OracleOffsetContext(OracleConnectorConfig connectorConfig, long scn, LcrPosition lcrPosition,
+    private OracleOffsetContext(OracleConnectorConfig connectorConfig, Scn scn, LcrPosition lcrPosition,
                                 boolean snapshot, boolean snapshotCompleted, TransactionContext transactionContext) {
         partition = Collections.singletonMap(SERVER_PARTITION_KEY, connectorConfig.getLogicalName());
 
@@ -65,7 +65,7 @@ public class OracleOffsetContext implements OffsetContext {
     public static class Builder {
 
         private OracleConnectorConfig connectorConfig;
-        private long scn;
+        private Scn scn;
         private LcrPosition lcrPosition;
         private boolean snapshot;
         private boolean snapshotCompleted;
@@ -76,7 +76,7 @@ public class OracleOffsetContext implements OffsetContext {
             return this;
         }
 
-        public Builder scn(long scn) {
+        public Builder scn(Scn scn) {
             this.scn = scn;
             return this;
         }
@@ -120,7 +120,8 @@ public class OracleOffsetContext implements OffsetContext {
         if (sourceInfo.isSnapshot()) {
             Map<String, Object> offset = new HashMap<>();
 
-            offset.put(SourceInfo.SCN_KEY, sourceInfo.getScn());
+            final Scn scn = sourceInfo.getScn();
+            offset.put(SourceInfo.SCN_KEY, scn != null ? scn.toString() : scn);
             offset.put(SourceInfo.SNAPSHOT_KEY, true);
             offset.put(SNAPSHOT_COMPLETED_KEY, snapshotCompleted);
 
@@ -132,8 +133,10 @@ public class OracleOffsetContext implements OffsetContext {
                 offset.put(SourceInfo.LCR_POSITION_KEY, sourceInfo.getLcrPosition().toString());
             }
             else {
-                offset.put(SourceInfo.SCN_KEY, sourceInfo.getScn());
-                offset.put(SourceInfo.COMMIT_SCN_KEY, sourceInfo.getCommitScn());
+                final Scn scn = sourceInfo.getScn();
+                final Scn commitScn = sourceInfo.getCommitScn();
+                offset.put(SourceInfo.SCN_KEY, scn != null ? scn.toString() : null);
+                offset.put(SourceInfo.COMMIT_SCN_KEY, commitScn != null ? commitScn.toString() : null);
             }
             return transactionContext.store(offset);
         }
@@ -149,19 +152,19 @@ public class OracleOffsetContext implements OffsetContext {
         return sourceInfo.struct();
     }
 
-    public void setScn(long scn) {
+    public void setScn(Scn scn) {
         sourceInfo.setScn(scn);
     }
 
-    public void setCommitScn(Long commitScn) {
+    public void setCommitScn(Scn commitScn) {
         sourceInfo.setCommitScn(commitScn);
     }
 
-    public long getScn() {
+    public Scn getScn() {
         return sourceInfo.getScn();
     }
 
-    public Long getCommitScn() {
+    public Scn getCommitScn() {
         return sourceInfo.getCommitScn();
     }
 
@@ -256,18 +259,51 @@ public class OracleOffsetContext implements OffsetContext {
         public OffsetContext load(Map<String, ?> offset) {
             boolean snapshot = Boolean.TRUE.equals(offset.get(SourceInfo.SNAPSHOT_KEY));
             boolean snapshotCompleted = Boolean.TRUE.equals(offset.get(SNAPSHOT_COMPLETED_KEY));
-            Long scn;
+            Scn scn;
             if (adapter == OracleConnectorConfig.ConnectorAdapter.LOG_MINER) {
-                scn = (Long) offset.get(SourceInfo.SCN_KEY);
-                Long commitScn = (Long) offset.get(SourceInfo.COMMIT_SCN_KEY);
+                scn = getScnFromOffsetMapByKey(offset, SourceInfo.SCN_KEY);
+                Scn commitScn = getScnFromOffsetMapByKey(offset, SourceInfo.COMMIT_SCN_KEY);
                 return new OracleOffsetContext(connectorConfig, scn, commitScn, null, snapshot, snapshotCompleted, TransactionContext.load(offset));
             }
             else {
                 LcrPosition lcrPosition = LcrPosition.valueOf((String) offset.get(SourceInfo.LCR_POSITION_KEY));
-                scn = lcrPosition != null ? lcrPosition.getScn() : (Long) offset.get(SourceInfo.SCN_KEY);
+                scn = (lcrPosition != null ? lcrPosition.getScn() : getScnFromOffsetMapByKey(offset, SourceInfo.SCN_KEY));
                 return new OracleOffsetContext(connectorConfig, scn, lcrPosition, snapshot, snapshotCompleted, TransactionContext.load(offset));
             }
 
         }
+
+        public static Scn getScnFromOffset(Map<String, ?> offset, LcrPosition lcrPosition) {
+            if (lcrPosition != null) {
+                return lcrPosition.getScn();
+            }
+            // Prioritize string-based SCN key over the numeric-based SCN key
+            Object scn = offset.get(SourceInfo.SCN_KEY);
+            if (scn instanceof String) {
+                return Scn.valueOf((String) scn);
+            }
+            else if (scn != null) {
+                return Scn.valueOf((Long) scn);
+            }
+            return null;
+        }
+    }
+
+    /**
+     * Helper method to resolve a {@link Scn} by key from the offset map.
+     *
+     * @param offset the offset map
+     * @param key the entry key, either {@link SourceInfo#SCN_KEY} or {@link SourceInfo#COMMIT_SCN_KEY}.
+     * @return the {@link Scn} or null if not found
+     */
+    public static Scn getScnFromOffsetMapByKey(Map<String, ?> offset, String key) {
+        Object scn = offset.get(key);
+        if (scn instanceof String) {
+            return Scn.valueOf((String) scn);
+        }
+        else if (scn != null) {
+            return Scn.valueOf((Long) scn);
+        }
+        return null;
     }
 }

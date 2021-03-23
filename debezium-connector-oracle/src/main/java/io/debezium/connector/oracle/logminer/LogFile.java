@@ -7,6 +7,8 @@ package io.debezium.connector.oracle.logminer;
 
 import java.util.Objects;
 
+import io.debezium.connector.oracle.Scn;
+
 /**
  * Represents a redo or archive log in Oracle.
  *

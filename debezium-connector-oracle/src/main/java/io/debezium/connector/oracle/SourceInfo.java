@@ -21,8 +21,8 @@ public class SourceInfo extends BaseSourceInfo {
     public static final String LCR_POSITION_KEY = "lcr_position";
     public static final String SNAPSHOT_KEY = "snapshot";
 
-    private long scn;
-    private Long commitScn;
+    private Scn scn;
+    private Scn commitScn;
     private LcrPosition lcrPosition;
     private String transactionId;
     private Instant sourceTime;
@@ -32,19 +32,19 @@ public class SourceInfo extends BaseSourceInfo {
         super(connectorConfig);
     }
 
-    public long getScn() {
+    public Scn getScn() {
         return scn;
     }
 
-    public Long getCommitScn() {
+    public Scn getCommitScn() {
         return commitScn;
     }
 
-    public void setScn(long scn) {
+    public void setScn(Scn scn) {
         this.scn = scn;
     }
 
-    public void setCommitScn(Long commitScn) {
+    public void setCommitScn(Scn commitScn) {
         this.commitScn = commitScn;
     }
 

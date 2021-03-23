@@ -355,6 +355,25 @@ DebeziumEngine<RecordChangeEvent<SourceRecord>> engine = DebeziumEngine.create(C
         .build();
 ----
 
+If JSON format is used (an equivalent would work for other formats too) then the code would look like:
+
+[source,java,indent=0]
+----
+
+class JsonChangeConsumer implements DebeziumEngine.ChangeConsumer<ChangeEvent<String, String>> {
+  public void handleBatch(List<ChangeEvent<String, String>> records,
+    RecordCommitter<ChangeEvent<String, String>> committer) throws InterruptedException {
+    ...
+  }
+}
+// Create the engine with this configuration ...
+DebeziumEngine<ChangeEvent<String, String>> engine = DebeziumEngine.create(Json.class)
+        .using(props)
+        .notifying(new MyChangeConsumer())
+        .build();
+----
+
+
 [[engine-properties]]
 == Engine Properties
 
@@ -421,6 +440,49 @@ The default is a periodic commity policy based upon time intervals.
 |`<...>.JsonConverter`
 |The Converter class that should be used to serialize and deserialize value data for offsets. The default is JSON converter.
 |===
+
+[[database-history-properties]]
+=== Database history properties
+
+Some of the connectors also requires additional set of properties that configures database history:
+
+* MySQL
+* SQL Server
+* Oracle
+* Db2
+
+Without proper configuration of the database history the connectors will refuse to start.
+The default configuration expects a Kafka cluster to be available.
+For other deployments, a file-based database history storage implementation is available.
+
+[cols="35%a,10%a,55%a",options="header"]
+|=======================
+|Property
+|Default
+|Description
+
+|`database.history`
+|`<...>.KafkaDatabaseHistory`
+|The name of the Java class that is responsible for persistence of the database history. +
+It must implement `<...>.DatabaseHistory` interface.
+
+|`database.history.file.filename`
+|`""`
+|Path to a file where the database history is stored. +
+Required when `database.history` is set to the `<...>.FileDatabaseHistory`.
+
+|`database.history.kafka.topic`
+|`""`
+|The Kafka topic where the database history is stored. +
+Required when `database.history` is set to the `<...>.KafkaDatabaseHistory`.
+
+|`database.history.kafka.bootstrap.servers`
+|`""`
+|The initial list of Kafka cluster servers to connect to.
+The cluster provides the topic to store the database history. +
+Required when `database.history` is set to the `<...>.KafkaDatabaseHistory`.
+
+|=======================
 
 == Handling Failures
 

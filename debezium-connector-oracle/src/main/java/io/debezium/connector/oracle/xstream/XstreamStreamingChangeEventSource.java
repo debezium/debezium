@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.oracle.xstream;
 
+import java.sql.SQLException;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -15,6 +16,7 @@ import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OracleOffsetContext;
+import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.SourceInfo;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
@@ -71,36 +73,41 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
 
     @Override
     public void execute(ChangeEventSourceContext context) throws InterruptedException {
-        try {
-            // 1. connect
-            final byte[] startPosition = offsetContext.getLcrPosition() != null ? offsetContext.getLcrPosition().getRawPosition()
-                    : convertScnToPosition(offsetContext.getScn());
-            xsOut = XStreamOut.attach((oracle.jdbc.OracleConnection) jdbcConnection.connection(), xStreamServerName,
-                    startPosition, 1, 1, XStreamOut.DEFAULT_MODE);
+        try (OracleConnection xsConnection = new OracleConnection(jdbcConnection.config(), () -> getClass().getClassLoader())) {
+            try {
+                // 1. connect
+                final byte[] startPosition = offsetContext.getLcrPosition() != null
+                        ? offsetContext.getLcrPosition().getRawPosition()
+                        : convertScnToPosition(offsetContext.getScn());
 
-            LcrEventHandler handler = new LcrEventHandler(errorHandler, dispatcher, clock, schema, offsetContext, this.tablenameCaseInsensitive, this);
+                xsOut = XStreamOut.attach((oracle.jdbc.OracleConnection) xsConnection.connection(), xStreamServerName,
+                        startPosition, 1, 1, XStreamOut.DEFAULT_MODE);
 
-            // 2. receive events while running
-            while (context.isRunning()) {
-                LOGGER.trace("Receiving LCR");
-                xsOut.receiveLCRCallback(handler, XStreamOut.DEFAULT_MODE);
+                LcrEventHandler handler = new LcrEventHandler(errorHandler, dispatcher, clock, schema, offsetContext,
+                        this.tablenameCaseInsensitive, this);
+
+                // 2. receive events while running
+                while (context.isRunning()) {
+                    LOGGER.trace("Receiving LCR");
+                    xsOut.receiveLCRCallback(handler, XStreamOut.DEFAULT_MODE);
+                }
+            }
+            finally {
+                // 3. disconnect
+                if (this.xsOut != null) {
+                    try {
+                        XStreamOut xsOut = this.xsOut;
+                        this.xsOut = null;
+                        xsOut.detach(XStreamOut.DEFAULT_MODE);
+                    }
+                    catch (StreamsException e) {
+                        LOGGER.error("Couldn't detach from XStream outbound server " + xStreamServerName, e);
+                    }
+                }
             }
         }
         catch (Throwable e) {
             errorHandler.setProducerThrowable(e);
-        }
-        finally {
-            // 3. disconnect
-            if (this.xsOut != null) {
-                try {
-                    XStreamOut xsOut = this.xsOut;
-                    this.xsOut = null;
-                    xsOut.detach(XStreamOut.DEFAULT_MODE);
-                }
-                catch (StreamsException e) {
-                    LOGGER.error("Couldn't detach from XStream outbound server " + xStreamServerName, e);
-                }
-            }
         }
     }
 
@@ -109,18 +116,18 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
         if (xsOut != null) {
             LOGGER.debug("Sending message to request recording of offsets to Oracle");
             final LcrPosition lcrPosition = LcrPosition.valueOf((String) offset.get(SourceInfo.LCR_POSITION_KEY));
-            final Long scn = (Long) offset.get(SourceInfo.SCN_KEY);
+            final Scn scn = OracleOffsetContext.getScnFromOffsetMapByKey(offset, SourceInfo.SCN_KEY);
             // We can safely overwrite the message even if it was not processed. The watermarked will be set to the highest
             // (last) delivered value in a single step instead of incrementally
             sendPublishedPosition(lcrPosition, scn);
         }
     }
 
-    private byte[] convertScnToPosition(long scn) {
+    private byte[] convertScnToPosition(Scn scn) {
         try {
-            return XStreamUtility.convertSCNToPosition(new NUMBER(scn), this.posVersion);
+            return XStreamUtility.convertSCNToPosition(new NUMBER(scn.toString(), 0), this.posVersion);
         }
-        catch (StreamsException e) {
+        catch (SQLException | StreamsException e) {
             throw new RuntimeException(e);
         }
     }
@@ -139,7 +146,7 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
         return xsOut;
     }
 
-    private void sendPublishedPosition(final LcrPosition lcrPosition, final Long scn) {
+    private void sendPublishedPosition(final LcrPosition lcrPosition, final Scn scn) {
         lcrMessage.set(new PositionAndScn(lcrPosition, (scn != null) ? convertScnToPosition(scn) : null));
     }
 

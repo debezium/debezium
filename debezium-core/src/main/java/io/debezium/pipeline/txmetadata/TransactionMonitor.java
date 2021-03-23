@@ -48,7 +48,7 @@ import io.debezium.util.SchemaNameAdjuster;
 public class TransactionMonitor {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(TransactionMonitor.class);
-    private static final SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create(LOGGER);
+    private static final SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create();
 
     private static final String TOPIC_SUFFIX = ".transaction";
 

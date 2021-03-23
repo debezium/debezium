@@ -11,6 +11,7 @@ import java.util.Arrays;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.connector.oracle.Scn;
 import io.debezium.util.HexConverter;
 import io.debezium.util.Strings;
 
@@ -28,13 +29,13 @@ public class LcrPosition implements Comparable<LcrPosition> {
 
     private final byte[] rawPosition;
     private final String stringFromat;
-    private final long scn;
+    private final Scn scn;
 
     public LcrPosition(byte[] rawPosition) {
         this.rawPosition = rawPosition;
         this.stringFromat = HexConverter.convertToHexString(rawPosition);
         try {
-            scn = XStreamUtility.getSCNFromPosition(rawPosition).longValue();
+            scn = new Scn(XStreamUtility.getSCNFromPosition(rawPosition).bigIntegerValue());
         }
         catch (SQLException | StreamsException e) {
             throw new RuntimeException(e);
@@ -53,7 +54,7 @@ public class LcrPosition implements Comparable<LcrPosition> {
         return rawPosition;
     }
 
-    public long getScn() {
+    public Scn getScn() {
         return scn;
     }
 

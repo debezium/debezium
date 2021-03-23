@@ -11,7 +11,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
-import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
@@ -25,6 +25,7 @@ import org.junit.rules.TestRule;
 import org.mockito.Mockito;
 
 import io.debezium.DebeziumException;
+import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot.AdapterName;
@@ -34,7 +35,7 @@ import io.debezium.relational.TableId;
 @SkipWhenAdapterNameIsNot(value = AdapterName.LOGMINER)
 public class RowMapperTest {
 
-    private static final Scn SCN_ONE = new Scn(BigDecimal.ONE);
+    private static final Scn SCN_ONE = new Scn(BigInteger.ONE);
 
     private ResultSet rs;
     private TransactionalBufferMetrics metrics;
@@ -97,14 +98,14 @@ public class RowMapperTest {
 
     @Test
     public void testGetScn() throws SQLException {
-        Mockito.when(rs.getBigDecimal(1)).thenReturn(new BigDecimal(1));
+        Mockito.when(rs.getString(1)).thenReturn("1");
         Scn scn = RowMapper.getScn(metrics, rs);
         assertThat(scn).isEqualTo(Scn.valueOf(1L));
-        verify(rs).getBigDecimal(1);
-        Mockito.when(rs.getBigDecimal(1)).thenThrow(SQLException.class);
+        verify(rs).getString(1);
+        Mockito.when(rs.getString(1)).thenThrow(SQLException.class);
         scn = RowMapper.getScn(metrics, rs);
-        assertThat(scn).isEqualTo(Scn.INVALID);
-        verify(rs, times(2)).getBigDecimal(1);
+        assertThat(scn).isEqualTo(Scn.NULL);
+        verify(rs, times(2)).getString(1);
     }
 
     @Test

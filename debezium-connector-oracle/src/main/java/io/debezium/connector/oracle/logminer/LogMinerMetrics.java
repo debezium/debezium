@@ -19,6 +19,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.connector.oracle.OracleConnectorConfig;
+import io.debezium.connector.oracle.Scn;
 import io.debezium.metrics.Metrics;
 
 /**
@@ -78,7 +79,7 @@ public class LogMinerMetrics extends Metrics implements LogMinerMetricsMXBean {
     LogMinerMetrics(CdcSourceTaskContext taskContext, OracleConnectorConfig connectorConfig) {
         super(taskContext, "log-miner");
 
-        currentScn.set(Scn.INVALID);
+        currentScn.set(Scn.NULL);
         currentLogFileName = new AtomicReference<>();
         minimumLogsMined.set(0L);
         maximumLogsMined.set(0L);
@@ -194,8 +195,8 @@ public class LogMinerMetrics extends Metrics implements LogMinerMetricsMXBean {
     }
 
     @Override
-    public Long getCurrentScn() {
-        return currentScn.get().longValue();
+    public String getCurrentScn() {
+        return currentScn.get().toString();
     }
 
     @Override

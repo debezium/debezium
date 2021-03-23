@@ -20,6 +20,7 @@ import org.junit.rules.TestRule;
 import org.mockito.Mockito;
 
 import io.debezium.connector.oracle.OracleConnectorConfig;
+import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot.AdapterName;
@@ -202,7 +203,7 @@ public class SqlUtilsTest {
         expected = "TRUNCATE TABLE table_name";
         assertThat(result).isEqualTo(expected);
 
-        result = SqlUtils.diffInDaysQuery(123L);
+        result = SqlUtils.diffInDaysQuery(Scn.valueOf(123L));
         expected = "select sysdate - CAST(scn_to_timestamp(123) as date) from dual";
         assertThat(expected.equals(result)).isTrue();
         result = SqlUtils.diffInDaysQuery(null);
@@ -223,6 +224,10 @@ public class SqlUtilsTest {
 
         result = SqlUtils.currentRedoNameQuery();
         expected = "SELECT F.MEMBER FROM V$LOG LOG, V$LOGFILE F  WHERE LOG.GROUP#=F.GROUP# AND LOG.STATUS='CURRENT'";
+        assertThat(result).isEqualTo(expected);
+
+        result = SqlUtils.currentRedoLogSequenceQuery();
+        expected = "SELECT SEQUENCE# FROM V$LOG WHERE STATUS = 'CURRENT'";
         assertThat(result).isEqualTo(expected);
 
         result = SqlUtils.databaseSupplementalLoggingAllCheckQuery();

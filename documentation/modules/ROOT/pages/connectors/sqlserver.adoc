@@ -2106,7 +2106,7 @@ The following values are supported:
 
 |[[sqlserver-property-snapshot-include-collection-list]]<<sqlserver-property-snapshot-include-collection-list, `+snapshot.include.collection.list+`>>
 | All tables specified in `table.include.list`
-|An optional, comma-separated list of regular expressions that match names of schemas specified in `table.include.list` for which you *want* to take the snapshot.
+|An optional, comma-separated list of regular expressions that match names of *fully-qualified* table names (`<db-name>.<schema-name>.<name>`) included in `table.include.list` for which you *want* to take the snapshot.
 
 |[[sqlserver-property-snapshot-isolation-mode]]<<sqlserver-property-snapshot-isolation-mode, `+snapshot.isolation.mode+`>>
 |_repeatable_read_
