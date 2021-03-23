@@ -8,9 +8,8 @@ steps:
       set -e
       set -o pipefail
       date
-      if gsutil stat gs://debezium-maven-repo/$REPO_NAME/repository
-        then mkdir -p ./_m2/
-        gsutil -m cp -R gs://debezium-maven-repo/$REPO_NAME/repository ./_m2/
+      if gsutil stat gs://debezium-maven-repo/$REPO_NAME.tar
+        then gsutil cp gs://debezium-maven-repo/$REPO_NAME.tar - | tar -xf -
       fi
       date
   - name: "eu.gcr.io/confluent-kafka-development/jenkins-maven-gcp:11-3.6.3"
@@ -25,8 +24,6 @@ steps:
       set -e
       set -o pipefail
       date
-      if gsutil stat gs://debezium-maven-repo/$REPO_NAME/repository
-        then gsutil -m cp -r ./_m2/repository gs://debezium-maven-repo/$REPO_NAME/
-      fi
+      tar -cf - ./_m2/ | gsutil cp - gs://debezium-maven-repo/$REPO_NAME.tar
       date
 timeout: "8200s"
