@@ -1372,6 +1372,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
             final Configuration config = TestHelper.defaultConfig()
                     .with(OracleConnectorConfig.SNAPSHOT_MODE, OracleConnectorConfig.SnapshotMode.INITIAL)
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.\\#T70_Sid\\:582003931_1_ConnConne")
                     .build();
 
             start(OracleConnector.class, config);
@@ -1399,6 +1400,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
             final Configuration config = TestHelper.defaultConfig()
                     .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.XML_TABLE")
                     .build();
 
             start(OracleConnector.class, config);
