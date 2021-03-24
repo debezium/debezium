@@ -1915,7 +1915,7 @@ The log displays output that is similar to the following messages:
 ----
 +
 If the connector starts correctly without errors, it creates a topic for each table whose changes the connector is capturing.
-For the example CR, there would be a topic for the table specified the `include.list` property.
+For the example CR, there would be a topic for the table specified in the `include.list` property.
 Downstream applications can subscribe to these topics.
 
 .. Verify that the connector created the topics by running the following command:
