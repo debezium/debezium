@@ -11,7 +11,6 @@ import static org.mockito.Mockito.mock;
 import java.io.IOException;
 import java.sql.SQLRecoverableException;
 import java.time.Duration;
-import java.time.LocalDateTime;
 import java.util.Iterator;
 
 import org.junit.Rule;
@@ -209,10 +208,6 @@ public class SqlUtilsTest {
         result = SqlUtils.diffInDaysQuery(null);
         assertThat(result).isNull();
 
-        result = SqlUtils.bulkHistoryInsertStmt("table_name");
-        expected = "INSERT  /*+ APPEND */ INTO table_name SELECT * FROM LOG_MINING_TEMP";
-        assertThat(result).isEqualTo(expected);
-
         result = SqlUtils.redoLogStatusQuery();
         expected = "SELECT F.MEMBER, R.STATUS FROM V$LOGFILE F, V$LOG R WHERE F.GROUP# = R.GROUP# ORDER BY 2";
         assertThat(expected.equals(result)).isTrue();
@@ -239,7 +234,9 @@ public class SqlUtilsTest {
         assertThat(result).isEqualTo(expected);
 
         result = SqlUtils.oldestFirstChangeQuery(Duration.ofHours(0L));
-        expected = "SELECT MIN(FIRST_CHANGE#) FROM (SELECT MIN(FIRST_CHANGE#) AS FIRST_CHANGE# FROM V$LOG UNION SELECT MIN(FIRST_CHANGE#) AS FIRST_CHANGE# FROM V$ARCHIVED_LOG)";
+        expected = "SELECT MIN(FIRST_CHANGE#) FROM (SELECT MIN(FIRST_CHANGE#) AS FIRST_CHANGE# FROM V$LOG UNION SELECT MIN(FIRST_CHANGE#)" +
+                " AS FIRST_CHANGE# FROM V$ARCHIVED_LOG WHERE DEST_ID IN (SELECT DEST_ID FROM V$ARCHIVE_DEST_STATUS" +
+                " WHERE STATUS='VALID' AND TYPE='LOCAL') )";
         assertThat(result).isEqualTo(expected);
 
         result = SqlUtils.allOnlineLogsQuery();
@@ -270,41 +267,27 @@ public class SqlUtilsTest {
         result = SqlUtils.archiveLogsQuery(Scn.valueOf(10L), Duration.ofHours(0L));
         expected = "SELECT NAME AS FILE_NAME, NEXT_CHANGE# AS NEXT_CHANGE, FIRST_CHANGE# AS FIRST_CHANGE FROM V$ARCHIVED_LOG " +
                 "WHERE NAME IS NOT NULL AND ARCHIVED = 'YES' " +
-                "AND STATUS = 'A' AND NEXT_CHANGE# > 10 ORDER BY 2";
+                "AND STATUS = 'A' AND NEXT_CHANGE# > 10 " +
+                "AND DEST_ID IN (SELECT DEST_ID FROM V$ARCHIVE_DEST_STATUS WHERE STATUS='VALID' AND TYPE='LOCAL') " +
+                "ORDER BY 2";
         assertThat(result).isEqualTo(expected);
 
         result = SqlUtils.archiveLogsQuery(Scn.valueOf(10L), Duration.ofHours(1L));
         expected = "SELECT NAME AS FILE_NAME, NEXT_CHANGE# AS NEXT_CHANGE, FIRST_CHANGE# AS FIRST_CHANGE FROM V$ARCHIVED_LOG " +
-                " WHERE NAME IS NOT NULL AND FIRST_TIME >= SYSDATE - (1/24) AND ARCHIVED = 'YES' " +
-                " AND STATUS = 'A' AND NEXT_CHANGE# > 10 ORDER BY 2";
+                "WHERE NAME IS NOT NULL AND ARCHIVED = 'YES' " +
+                "AND STATUS = 'A' AND NEXT_CHANGE# > 10 " +
+                "AND DEST_ID IN (SELECT DEST_ID FROM V$ARCHIVE_DEST_STATUS WHERE STATUS='VALID' AND TYPE='LOCAL') " +
+                "AND FIRST_TIME >= SYSDATE - (1/24) " +
+                "ORDER BY 2";
         assertThat(result).isEqualTo(expected);
 
         result = SqlUtils.deleteLogFileStatement("file_name");
         expected = "BEGIN SYS.DBMS_LOGMNR.REMOVE_LOGFILE(LOGFILENAME => 'file_name');END;";
         assertThat(result).isEqualTo(expected);
 
-        result = SqlUtils.getHistoryTableNamesQuery();
-        expected = "SELECT TABLE_NAME, '1' FROM USER_TABLES WHERE TABLE_NAME LIKE 'LM_HIST_%'";
-        assertThat(result).isEqualTo(expected);
-
-        result = SqlUtils.dropHistoryTableStatement("table_name");
+        result = SqlUtils.dropTableStatement("table_name");
         expected = "DROP TABLE TABLE_NAME PURGE";
         assertThat(result).isEqualTo(expected);
-
-    }
-
-    @Test
-    public void shouldParseHistoryTableNames() {
-        String name = SqlUtils.buildHistoryTableName(LocalDateTime.now());
-        long diff = SqlUtils.parseRetentionFromName(name);
-        assertThat(diff).isEqualTo(0);
-
-        name = SqlUtils.buildHistoryTableName(LocalDateTime.now().minusHours(10));
-        diff = SqlUtils.parseRetentionFromName(name);
-        assertThat(diff).isEqualTo(10);
-
-        diff = SqlUtils.parseRetentionFromName(SqlUtils.LOGMNR_HISTORY_TABLE_PREFIX + "10_2_4_5");
-        assertThat(diff).isEqualTo(0);
 
     }
 
