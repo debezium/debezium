@@ -44,19 +44,20 @@ public class SQLServerNumericColumnIT extends AbstractConnectorTest {
      */
     @Before
     public void before() throws SQLException {
-        TestHelper.createTestDatabase();
+        TestHelper.createMultipleTestDatabases();
         connection = TestHelper.testConnection();
-        String databaseName = TestHelper.TEST_REAL_DATABASE1;
-        connection.execute("USE " + databaseName);
-        connection.execute(
-                "CREATE TABLE tablenuma (id int IDENTITY(1,1) primary key, cola DECIMAL(8, 4),colb DECIMAL, colc numeric(8,1), cold numeric)",
-                "CREATE TABLE tablenumb (id int IDENTITY(1,1) primary key, cola DECIMAL(8, 4),colb DECIMAL, colc numeric(8,1), cold numeric)",
-                "CREATE TABLE tablenumc (id int IDENTITY(1,1) primary key, cola DECIMAL(8, 4),colb DECIMAL, colc numeric(8,1), cold numeric)",
-                "CREATE TABLE tablenumd (id int IDENTITY(1,1) primary key, cola DECIMAL(8, 4),colb DECIMAL, colc numeric(8,1), cold numeric)");
-        TestHelper.enableTableCdc(connection, databaseName, "tablenuma");
-        TestHelper.enableTableCdc(connection, databaseName, "tablenumb");
-        TestHelper.enableTableCdc(connection, databaseName, "tablenumc");
-        TestHelper.enableTableCdc(connection, databaseName, "tablenumd");
+        TestHelper.forEachDatabase(databaseName -> {
+            connection.execute("USE " + databaseName);
+            connection.execute(
+                    "CREATE TABLE tablenuma (id int IDENTITY(1,1) primary key, cola DECIMAL(8, 4),colb DECIMAL, colc numeric(8,1), cold numeric)",
+                    "CREATE TABLE tablenumb (id int IDENTITY(1,1) primary key, cola DECIMAL(8, 4),colb DECIMAL, colc numeric(8,1), cold numeric)",
+                    "CREATE TABLE tablenumc (id int IDENTITY(1,1) primary key, cola DECIMAL(8, 4),colb DECIMAL, colc numeric(8,1), cold numeric)",
+                    "CREATE TABLE tablenumd (id int IDENTITY(1,1) primary key, cola DECIMAL(8, 4),colb DECIMAL, colc numeric(8,1), cold numeric)");
+            TestHelper.enableTableCdc(connection, databaseName, "tablenuma");
+            TestHelper.enableTableCdc(connection, databaseName, "tablenumb");
+            TestHelper.enableTableCdc(connection, databaseName, "tablenumc");
+            TestHelper.enableTableCdc(connection, databaseName, "tablenumd");
+        });
 
         initializeConnectorTestFramework();
         Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
@@ -79,7 +80,7 @@ public class SQLServerNumericColumnIT extends AbstractConnectorTest {
      */
     @Test
     public void decimalModeConfigString() throws Exception {
-        final Configuration config = TestHelper.defaultConfig()
+        final Configuration config = TestHelper.defaultMultiDatabaseConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                 .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, "dbo.tablenuma")
                 .with(SqlServerConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.STRING).build();
@@ -88,18 +89,20 @@ public class SQLServerNumericColumnIT extends AbstractConnectorTest {
         assertConnectorIsRunning();
         TestHelper.waitForSnapshotToBeCompleted();
 
-        String databaseName = TestHelper.TEST_REAL_DATABASE1;
+        TestHelper.forEachDatabase(databaseName -> {
+            connection.execute("USE " + databaseName);
+            connection.execute("INSERT INTO tablenuma VALUES (111.1111, 1111111, 1111111.1, 1111111 );");
+            final SourceRecords records = consumeRecordsByTopic(1);
+            final List<SourceRecord> tableA = records.recordsForTopic(TestHelper.topicName(databaseName, "tablenuma"));
+            Assertions.assertThat(tableA).hasSize(1);
+            final Struct valueA = (Struct) tableA.get(0).value();
+            assertSchema(valueA, Schema.OPTIONAL_STRING_SCHEMA);
+            Assertions.assertThat(((Struct) valueA.get("after")).get("cola")).isEqualTo("111.1111");
+            Assertions.assertThat(((Struct) valueA.get("after")).get("colb")).isEqualTo("1111111");
+            Assertions.assertThat(((Struct) valueA.get("after")).get("colc")).isEqualTo("1111111.1");
+            Assertions.assertThat(((Struct) valueA.get("after")).get("cold")).isEqualTo("1111111");
+        });
 
-        connection.execute("INSERT INTO tablenuma VALUES (111.1111, 1111111, 1111111.1, 1111111 );");
-        final SourceRecords records = consumeRecordsByTopic(1);
-        final List<SourceRecord> tableA = records.recordsForTopic(TestHelper.topicName(databaseName, "tablenuma"));
-        Assertions.assertThat(tableA).hasSize(1);
-        final Struct valueA = (Struct) tableA.get(0).value();
-        assertSchema(valueA, Schema.OPTIONAL_STRING_SCHEMA);
-        Assertions.assertThat(((Struct) valueA.get("after")).get("cola")).isEqualTo("111.1111");
-        Assertions.assertThat(((Struct) valueA.get("after")).get("colb")).isEqualTo("1111111");
-        Assertions.assertThat(((Struct) valueA.get("after")).get("colc")).isEqualTo("1111111.1");
-        Assertions.assertThat(((Struct) valueA.get("after")).get("cold")).isEqualTo("1111111");
         stopConnector();
     }
 
@@ -113,7 +116,7 @@ public class SQLServerNumericColumnIT extends AbstractConnectorTest {
      */
     @Test
     public void decimalModeConfigDouble() throws Exception {
-        final Configuration config = TestHelper.defaultConfig()
+        final Configuration config = TestHelper.defaultMultiDatabaseConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                 .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, "dbo.tablenumb")
                 .with(SqlServerConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.DOUBLE).build();
@@ -122,18 +125,20 @@ public class SQLServerNumericColumnIT extends AbstractConnectorTest {
         assertConnectorIsRunning();
         TestHelper.waitForSnapshotToBeCompleted();
 
-        String databaseName = TestHelper.TEST_REAL_DATABASE1;
+        TestHelper.forEachDatabase(databaseName -> {
+            connection.execute("USE " + databaseName);
+            connection.execute("INSERT INTO tablenumb VALUES (222.2222, 22222, 22222.2, 2222222 );");
+            final SourceRecords records = consumeRecordsByTopic(1);
+            final List<SourceRecord> results = records.recordsForTopic(TestHelper.topicName(databaseName, "tablenumb"));
+            Assertions.assertThat(results).hasSize(1);
+            final Struct valueA = (Struct) results.get(0).value();
+            assertSchema(valueA, Schema.OPTIONAL_FLOAT64_SCHEMA);
+            Assertions.assertThat(((Struct) valueA.get("after")).get("cola")).isEqualTo(222.2222d);
+            Assertions.assertThat(((Struct) valueA.get("after")).get("colb")).isEqualTo(22222d);
+            Assertions.assertThat(((Struct) valueA.get("after")).get("colc")).isEqualTo(22222.2d);
+            Assertions.assertThat(((Struct) valueA.get("after")).get("cold")).isEqualTo(2222222d);
+        });
 
-        connection.execute("INSERT INTO tablenumb VALUES (222.2222, 22222, 22222.2, 2222222 );");
-        final SourceRecords records = consumeRecordsByTopic(1);
-        final List<SourceRecord> results = records.recordsForTopic(TestHelper.topicName(databaseName, "tablenumb"));
-        Assertions.assertThat(results).hasSize(1);
-        final Struct valueA = (Struct) results.get(0).value();
-        assertSchema(valueA, Schema.OPTIONAL_FLOAT64_SCHEMA);
-        Assertions.assertThat(((Struct) valueA.get("after")).get("cola")).isEqualTo(222.2222d);
-        Assertions.assertThat(((Struct) valueA.get("after")).get("colb")).isEqualTo(22222d);
-        Assertions.assertThat(((Struct) valueA.get("after")).get("colc")).isEqualTo(22222.2d);
-        Assertions.assertThat(((Struct) valueA.get("after")).get("cold")).isEqualTo(2222222d);
         stopConnector();
     }
 
@@ -146,7 +151,7 @@ public class SQLServerNumericColumnIT extends AbstractConnectorTest {
      */
     @Test
     public void decimalModeConfigPrecise() throws Exception {
-        final Configuration config = TestHelper.defaultConfig()
+        final Configuration config = TestHelper.defaultMultiDatabaseConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                 .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, "dbo.tablenumc")
                 .with(SqlServerConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.PRECISE).build();
@@ -155,25 +160,27 @@ public class SQLServerNumericColumnIT extends AbstractConnectorTest {
         assertConnectorIsRunning();
         TestHelper.waitForSnapshotToBeCompleted();
 
-        String databaseName = TestHelper.TEST_REAL_DATABASE1;
+        TestHelper.forEachDatabase(databaseName -> {
+            connection.execute("USE " + databaseName);
+            connection.execute("INSERT INTO tablenumc VALUES (333.3333, 3333, 3333.3, 33333333 );");
+            final SourceRecords records = consumeRecordsByTopic(1);
+            final List<SourceRecord> results = records.recordsForTopic(TestHelper.topicName(databaseName, "tablenumc"));
+            Assertions.assertThat(results).hasSize(1);
+            final Struct valueA = (Struct) results.get(0).value();
+            Assertions.assertThat(valueA.schema().field("after").schema().field("cola").schema())
+                    .isEqualTo(Decimal.builder(4).parameter("connect.decimal.precision", "8").optional().schema());
+            Assertions.assertThat(valueA.schema().field("after").schema().field("colb").schema())
+                    .isEqualTo(Decimal.builder(0).parameter("connect.decimal.precision", "18").optional().schema());
+            Assertions.assertThat(valueA.schema().field("after").schema().field("colc").schema())
+                    .isEqualTo(Decimal.builder(1).parameter("connect.decimal.precision", "8").optional().schema());
+            Assertions.assertThat(valueA.schema().field("after").schema().field("cold").schema())
+                    .isEqualTo(Decimal.builder(0).parameter("connect.decimal.precision", "18").optional().schema());
+            Assertions.assertThat(((Struct) valueA.get("after")).get("cola")).isEqualTo(BigDecimal.valueOf(333.3333));
+            Assertions.assertThat(((Struct) valueA.get("after")).get("colb")).isEqualTo(BigDecimal.valueOf(3333));
+            Assertions.assertThat(((Struct) valueA.get("after")).get("colc")).isEqualTo(BigDecimal.valueOf(3333.3));
+            Assertions.assertThat(((Struct) valueA.get("after")).get("cold")).isEqualTo(BigDecimal.valueOf(33333333));
+        });
 
-        connection.execute("INSERT INTO tablenumc VALUES (333.3333, 3333, 3333.3, 33333333 );");
-        final SourceRecords records = consumeRecordsByTopic(1);
-        final List<SourceRecord> results = records.recordsForTopic(TestHelper.topicName(databaseName, "tablenumc"));
-        Assertions.assertThat(results).hasSize(1);
-        final Struct valueA = (Struct) results.get(0).value();
-        Assertions.assertThat(valueA.schema().field("after").schema().field("cola").schema())
-                .isEqualTo(Decimal.builder(4).parameter("connect.decimal.precision", "8").optional().schema());
-        Assertions.assertThat(valueA.schema().field("after").schema().field("colb").schema())
-                .isEqualTo(Decimal.builder(0).parameter("connect.decimal.precision", "18").optional().schema());
-        Assertions.assertThat(valueA.schema().field("after").schema().field("colc").schema())
-                .isEqualTo(Decimal.builder(1).parameter("connect.decimal.precision", "8").optional().schema());
-        Assertions.assertThat(valueA.schema().field("after").schema().field("cold").schema())
-                .isEqualTo(Decimal.builder(0).parameter("connect.decimal.precision", "18").optional().schema());
-        Assertions.assertThat(((Struct) valueA.get("after")).get("cola")).isEqualTo(BigDecimal.valueOf(333.3333));
-        Assertions.assertThat(((Struct) valueA.get("after")).get("colb")).isEqualTo(BigDecimal.valueOf(3333));
-        Assertions.assertThat(((Struct) valueA.get("after")).get("colc")).isEqualTo(BigDecimal.valueOf(3333.3));
-        Assertions.assertThat(((Struct) valueA.get("after")).get("cold")).isEqualTo(BigDecimal.valueOf(33333333));
         stopConnector();
     }
 
