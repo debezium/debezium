@@ -34,10 +34,8 @@ public class CaseSensitivenessIT extends AbstractConnectorTest {
 
     @Before
     public void before() throws SQLException {
-        TestHelper.createTestDatabase();
+        TestHelper.createMultipleTestDatabases();
         connection = TestHelper.testConnection();
-        String databaseName = TestHelper.TEST_REAL_DATABASE1;
-        connection.execute("USE " + databaseName);
 
         initializeConnectorTestFramework();
         Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
@@ -53,41 +51,55 @@ public class CaseSensitivenessIT extends AbstractConnectorTest {
     @Test
     @FixFor("DBZ-1051")
     public void caseInsensitiveDatabase() throws Exception {
-        String databaseName = TestHelper.TEST_REAL_DATABASE1;
-        connection.execute(
-                "CREATE TABLE MyTableOne (Id int primary key, ColA varchar(30))",
-                "INSERT INTO MyTableOne VALUES(1, 'a')");
-        TestHelper.enableTableCdc(connection, databaseName, "MyTableOne");
-        testDatabase();
+        TestHelper.forEachDatabase(databaseName -> {
+            connection.execute("USE " + databaseName);
+            connection.execute(
+                    "CREATE TABLE MyTableOne (Id int primary key, ColA varchar(30))",
+                    "INSERT INTO MyTableOne VALUES(1, 'a')");
+            TestHelper.enableTableCdc(connection, databaseName, "MyTableOne");
+        });
+
+        final Configuration config = TestHelper.defaultMultiDatabaseConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .build();
+
+        start(SqlServerConnector.class, config);
+        assertConnectorIsRunning();
+
+        SourceRecords snapshotRecords = consumeRecordsByTopic(TestHelper.TEST_DATABASES.size());
+        TestHelper.forEachDatabase(databaseName -> testDatabase(databaseName, snapshotRecords));
     }
 
     @Test
     @FixFor("DBZ-1051")
     public void caseSensitiveDatabase() throws Exception {
-        String databaseName = TestHelper.TEST_REAL_DATABASE1;
-        connection.execute(
-                String.format("ALTER DATABASE %s COLLATE Latin1_General_BIN", databaseName),
-                "CREATE TABLE MyTableOne (Id int primary key, ColA varchar(30))",
-                "INSERT INTO MyTableOne VALUES(1, 'a')");
-        TestHelper.enableTableCdc(connection, databaseName, "MyTableOne");
-        testDatabase();
-    }
+        TestHelper.forEachDatabase(databaseName -> {
+            connection.execute("USE " + databaseName);
+            connection.execute(
+                    String.format("ALTER DATABASE %s COLLATE Latin1_General_BIN", databaseName),
+                    "CREATE TABLE MyTableOne (Id int primary key, ColA varchar(30))",
+                    "INSERT INTO MyTableOne VALUES(1, 'a')");
+            TestHelper.enableTableCdc(connection, databaseName, "MyTableOne");
+        });
 
-    private void testDatabase() throws Exception {
-        final Configuration config = TestHelper.defaultConfig()
+        final Configuration config = TestHelper.defaultMultiDatabaseConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                 .build();
-
-        String databaseName = TestHelper.TEST_REAL_DATABASE1;
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
 
-        SourceRecords records = consumeRecordsByTopic(1);
-        Assertions.assertThat(records.recordsForTopic(TestHelper.topicName(databaseName, "MyTableOne"))).hasSize(1);
-        SourceRecord record = records.recordsForTopic(TestHelper.topicName(databaseName, "MyTableOne")).get(0);
+        SourceRecords snapshotRecords = consumeRecordsByTopic(TestHelper.TEST_DATABASES.size());
+        TestHelper.forEachDatabase(databaseName -> testDatabase(databaseName, snapshotRecords));
+    }
+
+    private void testDatabase(String databaseName, SourceRecords snapshotRecords) throws Exception {
+        connection.execute("USE " + databaseName);
+
+        Assertions.assertThat(snapshotRecords.recordsForTopic(TestHelper.topicName(databaseName, "MyTableOne"))).hasSize(1);
+        SourceRecord snapshotRecord = snapshotRecords.recordsForTopic(TestHelper.topicName(databaseName, "MyTableOne")).get(0);
         assertSchemaMatchesStruct(
-                (Struct) ((Struct) record.value()).get("after"),
+                (Struct) ((Struct) snapshotRecord.value()).get("after"),
                 SchemaBuilder.struct()
                         .optional()
                         .name(TestHelper.schemaName(databaseName, "MyTableOne", "Value"))
@@ -95,19 +107,19 @@ public class CaseSensitivenessIT extends AbstractConnectorTest {
                         .field("ColA", Schema.OPTIONAL_STRING_SCHEMA)
                         .build());
         assertSchemaMatchesStruct(
-                (Struct) record.key(),
+                (Struct) snapshotRecord.key(),
                 SchemaBuilder.struct()
                         .name(TestHelper.schemaName(databaseName, "MyTableOne", "Key"))
                         .field("Id", Schema.INT32_SCHEMA)
                         .build());
-        Assertions.assertThat(((Struct) ((Struct) record.value()).get("after")).getInt32("Id")).isEqualTo(1);
+        Assertions.assertThat(((Struct) ((Struct) snapshotRecord.value()).get("after")).getInt32("Id")).isEqualTo(1);
 
         connection.execute("INSERT INTO MyTableOne VALUES(2, 'b')");
-        records = consumeRecordsByTopic(1);
-        Assertions.assertThat(records.recordsForTopic(TestHelper.topicName(databaseName, "MyTableOne"))).hasSize(1);
-        record = records.recordsForTopic(TestHelper.topicName(databaseName, "MyTableOne")).get(0);
+        SourceRecords streamingRecords = consumeRecordsByTopic(1);
+        Assertions.assertThat(streamingRecords.recordsForTopic(TestHelper.topicName(databaseName, "MyTableOne"))).hasSize(1);
+        SourceRecord streamingRecord = streamingRecords.recordsForTopic(TestHelper.topicName(databaseName, "MyTableOne")).get(0);
         assertSchemaMatchesStruct(
-                (Struct) ((Struct) record.value()).get("after"),
+                (Struct) ((Struct) streamingRecord.value()).get("after"),
                 SchemaBuilder.struct()
                         .optional()
                         .name(TestHelper.schemaName(databaseName, "MyTableOne", "Value"))
@@ -115,22 +127,22 @@ public class CaseSensitivenessIT extends AbstractConnectorTest {
                         .field("ColA", Schema.OPTIONAL_STRING_SCHEMA)
                         .build());
         assertSchemaMatchesStruct(
-                (Struct) record.key(),
+                (Struct) streamingRecord.key(),
                 SchemaBuilder.struct()
                         .name(TestHelper.schemaName(databaseName, "MyTableOne", "Key"))
                         .field("Id", Schema.INT32_SCHEMA)
                         .build());
-        Assertions.assertThat(((Struct) ((Struct) record.value()).get("after")).getInt32("Id")).isEqualTo(2);
+        Assertions.assertThat(((Struct) ((Struct) streamingRecord.value()).get("after")).getInt32("Id")).isEqualTo(2);
 
         connection.execute(
                 "CREATE TABLE MyTableTwo (Id int primary key, ColB varchar(30))");
         TestHelper.enableTableCdc(connection, databaseName, "MyTableTwo");
         connection.execute("INSERT INTO MyTableTwo VALUES(3, 'b')");
-        records = consumeRecordsByTopic(1);
-        Assertions.assertThat(records.recordsForTopic(TestHelper.topicName(databaseName, "MyTableTwo"))).hasSize(1);
-        record = records.recordsForTopic(TestHelper.topicName(databaseName, "MyTableTwo")).get(0);
+        streamingRecords = consumeRecordsByTopic(1);
+        Assertions.assertThat(streamingRecords.recordsForTopic(TestHelper.topicName(databaseName, "MyTableTwo"))).hasSize(1);
+        streamingRecord = streamingRecords.recordsForTopic(TestHelper.topicName(databaseName, "MyTableTwo")).get(0);
         assertSchemaMatchesStruct(
-                (Struct) ((Struct) record.value()).get("after"),
+                (Struct) ((Struct) streamingRecord.value()).get("after"),
                 SchemaBuilder.struct()
                         .optional()
                         .name(TestHelper.schemaName(databaseName, "MyTableTwo", "Value"))
@@ -138,11 +150,11 @@ public class CaseSensitivenessIT extends AbstractConnectorTest {
                         .field("ColB", Schema.OPTIONAL_STRING_SCHEMA)
                         .build());
         assertSchemaMatchesStruct(
-                (Struct) record.key(),
+                (Struct) streamingRecord.key(),
                 SchemaBuilder.struct()
                         .name(TestHelper.schemaName(databaseName, "MyTableTwo", "Key"))
                         .field("Id", Schema.INT32_SCHEMA)
                         .build());
-        Assertions.assertThat(((Struct) ((Struct) record.value()).get("after")).getInt32("Id")).isEqualTo(3);
+        Assertions.assertThat(((Struct) ((Struct) streamingRecord.value()).get("after")).getInt32("Id")).isEqualTo(3);
     }
 }

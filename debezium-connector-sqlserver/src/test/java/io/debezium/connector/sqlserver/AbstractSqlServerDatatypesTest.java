@@ -180,32 +180,33 @@ public abstract class AbstractSqlServerDatatypesTest extends AbstractConnectorTe
             DDL_XML
     };
 
-    private static final int EXPECTED_RECORD_COUNT = ALL_DDLS.length;
+    private static final int EXPECTED_RECORD_COUNT = ALL_DDLS.length * TestHelper.TEST_DATABASES.size();
 
     @AfterClass
     public static void dropTables() throws SQLException {
-        TestHelper.dropTestDatabase();
+        TestHelper.dropMultipleTestDatabases();
     }
 
     @BeforeClass
     public static void createTables() throws SQLException {
-        TestHelper.createTestDatabase();
+        TestHelper.createMultipleTestDatabases();
         try (SqlServerConnection connection = TestHelper.testConnection()) {
-            String databaseName = TestHelper.TEST_REAL_DATABASE1;
-            connection.execute("USE " + databaseName);
-            connection.execute(ALL_DDLS);
-            for (String table : ALL_TABLES) {
-                TestHelper.enableTableCdc(connection, databaseName, table);
-            }
-            connection.execute(
-                    "INSERT INTO type_int VALUES (0, 1, 22, 333, 4444, 55555)",
-                    "INSERT INTO type_fp VALUES (0, 1.123, 2, 3.323, 4.323, 5.323, 6.323)",
-                    "INSERT INTO type_string VALUES (0, 'c\u010d', 'vc\u010d', 't\u010d', N'c\u010d', N'vc\u010d', N't\u010d')",
-                    "INSERT INTO type_time VALUES (0, '2018-07-13', '10:23:45.678', '10:23:45.6789', '2018-07-13 11:23:45.34', '2018-07-13 12:23:45.456+11:00', '2018-07-13 13:23:45.78', '2018-07-13 14:23:45')",
-                    "INSERT INTO type_xml VALUES (0, '<a>b</a>')");
+            TestHelper.forEachDatabase(databaseName -> {
+                connection.execute("USE " + databaseName);
+                connection.execute(ALL_DDLS);
+                for (String table : ALL_TABLES) {
+                    TestHelper.enableTableCdc(connection, databaseName, table);
+                }
+                connection.execute(
+                        "INSERT INTO type_int VALUES (0, 1, 22, 333, 4444, 55555)",
+                        "INSERT INTO type_fp VALUES (0, 1.123, 2, 3.323, 4.323, 5.323, 6.323)",
+                        "INSERT INTO type_string VALUES (0, 'c\u010d', 'vc\u010d', 't\u010d', N'c\u010d', N'vc\u010d', N't\u010d')",
+                        "INSERT INTO type_time VALUES (0, '2018-07-13', '10:23:45.678', '10:23:45.6789', '2018-07-13 11:23:45.34', '2018-07-13 12:23:45.456+11:00', '2018-07-13 13:23:45.78', '2018-07-13 14:23:45')",
+                        "INSERT INTO type_xml VALUES (0, '<a>b</a>')");
 
-            // Make sure to wait for the CDC record for the last insert.
-            TestHelper.waitForCdcRecord(connection, databaseName, "type_xml", rs -> rs.getInt("id") == 0);
+                // Make sure to wait for the CDC record for the last insert.
+                TestHelper.waitForCdcRecord(connection, databaseName, "type_xml", rs -> rs.getInt("id") == 0);
+            });
         }
     }
 
@@ -213,64 +214,64 @@ public abstract class AbstractSqlServerDatatypesTest extends AbstractConnectorTe
     public void intTypes() throws Exception {
         Testing.debug("Inserted");
 
-        String databaseName = TestHelper.TEST_REAL_DATABASE1;
         final SourceRecords records = consumeRecordsByTopic(EXPECTED_RECORD_COUNT);
+        TestHelper.forEachDatabase(databaseName -> {
+            List<SourceRecord> testTableRecords = records.recordsForTopic(TestHelper.topicName(databaseName, "type_int"));
+            assertThat(testTableRecords).hasSize(1);
 
-        List<SourceRecord> testTableRecords = records.recordsForTopic(TestHelper.topicName(databaseName, "type_int"));
-        assertThat(testTableRecords).hasSize(1);
-
-        // insert
-        VerifyRecord.isValidRead(testTableRecords.get(0));
-        Struct after = (Struct) ((Struct) testTableRecords.get(0).value()).get("after");
-        assertRecord(after, EXPECTED_INT);
+            // insert
+            VerifyRecord.isValidRead(testTableRecords.get(0));
+            Struct after = (Struct) ((Struct) testTableRecords.get(0).value()).get("after");
+            assertRecord(after, EXPECTED_INT);
+        });
     }
 
     @Test
     public void fpTypes() throws Exception {
         Testing.debug("Inserted");
 
-        String databaseName = TestHelper.TEST_REAL_DATABASE1;
         final SourceRecords records = consumeRecordsByTopic(EXPECTED_RECORD_COUNT);
+        TestHelper.forEachDatabase(databaseName -> {
+            List<SourceRecord> testTableRecords = records.recordsForTopic(TestHelper.topicName(databaseName, "type_fp"));
+            assertThat(testTableRecords).hasSize(1);
 
-        List<SourceRecord> testTableRecords = records.recordsForTopic(TestHelper.topicName(databaseName, "type_fp"));
-        assertThat(testTableRecords).hasSize(1);
-
-        // insert
-        VerifyRecord.isValidRead(testTableRecords.get(0));
-        Struct after = (Struct) ((Struct) testTableRecords.get(0).value()).get("after");
-        assertRecord(after, EXPECTED_FP);
+            // insert
+            VerifyRecord.isValidRead(testTableRecords.get(0));
+            Struct after = (Struct) ((Struct) testTableRecords.get(0).value()).get("after");
+            assertRecord(after, EXPECTED_FP);
+        });
     }
 
     @Test
     public void stringTypes() throws Exception {
         Testing.debug("Inserted");
 
-        String databaseName = TestHelper.TEST_REAL_DATABASE1;
         final SourceRecords records = consumeRecordsByTopic(EXPECTED_RECORD_COUNT);
+        TestHelper.forEachDatabase(databaseName -> {
+            List<SourceRecord> testTableRecords = records.recordsForTopic(TestHelper.topicName(databaseName, "type_string"));
+            assertThat(testTableRecords).hasSize(1);
 
-        List<SourceRecord> testTableRecords = records.recordsForTopic(TestHelper.topicName(databaseName, "type_string"));
-        assertThat(testTableRecords).hasSize(1);
-
-        // insert
-        VerifyRecord.isValidRead(testTableRecords.get(0));
-        Struct after = (Struct) ((Struct) testTableRecords.get(0).value()).get("after");
-        assertRecord(after, EXPECTED_STRING);
+            // insert
+            VerifyRecord.isValidRead(testTableRecords.get(0));
+            Struct after = (Struct) ((Struct) testTableRecords.get(0).value()).get("after");
+            assertRecord(after, EXPECTED_STRING);
+        });
     }
 
     @Test
     public void dateTimeTypes() throws Exception {
         Testing.debug("Inserted");
 
-        String databaseName = TestHelper.TEST_REAL_DATABASE1;
         final SourceRecords records = consumeRecordsByTopic(EXPECTED_RECORD_COUNT);
+        TestHelper.forEachDatabase(databaseName -> {
+            List<SourceRecord> testTableRecords = records.recordsForTopic(TestHelper.topicName(databaseName, "type_time"));
+            assertThat(testTableRecords).hasSize(1);
 
-        List<SourceRecord> testTableRecords = records.recordsForTopic(TestHelper.topicName(databaseName, "type_time"));
-        assertThat(testTableRecords).hasSize(1);
-
-        // insert
-        VerifyRecord.isValidRead(testTableRecords.get(0));
-        Struct after = (Struct) ((Struct) testTableRecords.get(0).value()).get("after");
-        assertRecord(after, EXPECTED_DATE_TIME);
+            // insert
+            VerifyRecord.isValidRead(testTableRecords.get(0));
+            Struct after = (Struct) ((Struct) testTableRecords.get(0).value()).get("after");
+            assertRecord(after, EXPECTED_DATE_TIME);
+        });
     }
 
     @Test
@@ -280,32 +281,32 @@ public abstract class AbstractSqlServerDatatypesTest extends AbstractConnectorTe
 
         Testing.debug("Inserted");
 
-        String databaseName = TestHelper.TEST_REAL_DATABASE1;
         final SourceRecords records = consumeRecordsByTopic(EXPECTED_RECORD_COUNT);
+        TestHelper.forEachDatabase(databaseName -> {
+            List<SourceRecord> testTableRecords = records.recordsForTopic(TestHelper.topicName(databaseName, "type_time"));
+            assertThat(testTableRecords).hasSize(1);
 
-        List<SourceRecord> testTableRecords = records.recordsForTopic(TestHelper.topicName(databaseName, "type_time"));
-        assertThat(testTableRecords).hasSize(1);
-
-        // insert
-        VerifyRecord.isValidRead(testTableRecords.get(0));
-        Struct after = (Struct) ((Struct) testTableRecords.get(0).value()).get("after");
-        assertRecord(after, EXPECTED_DATE_TIME_AS_CONNECT);
+            // insert
+            VerifyRecord.isValidRead(testTableRecords.get(0));
+            Struct after = (Struct) ((Struct) testTableRecords.get(0).value()).get("after");
+            assertRecord(after, EXPECTED_DATE_TIME_AS_CONNECT);
+        });
     }
 
     @Test
     public void otherTypes() throws Exception {
         Testing.debug("Inserted");
 
-        String databaseName = TestHelper.TEST_REAL_DATABASE1;
         final SourceRecords records = consumeRecordsByTopic(EXPECTED_RECORD_COUNT);
+        TestHelper.forEachDatabase(databaseName -> {
+            List<SourceRecord> testTableRecords = records.recordsForTopic(TestHelper.topicName(databaseName, "type_xml"));
+            assertThat(testTableRecords).hasSize(1);
 
-        List<SourceRecord> testTableRecords = records.recordsForTopic(TestHelper.topicName(databaseName, "type_xml"));
-        assertThat(testTableRecords).hasSize(1);
-
-        // insert
-        VerifyRecord.isValidRead(testTableRecords.get(0));
-        Struct after = (Struct) ((Struct) testTableRecords.get(0).value()).get("after");
-        assertRecord(after, EXPECTED_XML);
+            // insert
+            VerifyRecord.isValidRead(testTableRecords.get(0));
+            Struct after = (Struct) ((Struct) testTableRecords.get(0).value()).get("after");
+            assertRecord(after, EXPECTED_XML);
+        });
     }
 
     private void assertRecord(Struct record, List<SchemaAndValueField> expected) {
@@ -317,7 +318,7 @@ public abstract class AbstractSqlServerDatatypesTest extends AbstractConnectorTe
         Testing.Debug.enable();
         Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
 
-        Configuration config = TestHelper.defaultConfig()
+        Configuration config = TestHelper.defaultMultiDatabaseConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                 .with(RelationalDatabaseConnectorConfig.TIME_PRECISION_MODE, temporalPrecisionMode)
                 .build();

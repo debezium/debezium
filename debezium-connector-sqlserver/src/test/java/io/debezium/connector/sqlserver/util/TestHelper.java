@@ -11,20 +11,28 @@ import java.nio.file.Path;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 import javax.management.InstanceNotFoundException;
 import javax.management.MBeanServer;
 import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
 
+import org.apache.kafka.connect.source.SourceRecord;
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionTimeoutException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.google.common.collect.ImmutableMap;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.sqlserver.Lsn;
@@ -56,6 +64,8 @@ public class TestHelper {
     public static final String TEST_DATABASE2 = "testdb2";
     public static final String TEST_REAL_DATABASE1 = "testDB1";
     public static final String TEST_REAL_DATABASE2 = "testDB2";
+    public static final Map<String, String> TEST_DATABASES = ImmutableMap.of(TEST_DATABASE1, TEST_REAL_DATABASE1, TEST_DATABASE2, TEST_REAL_DATABASE2);
+    public static final String TEST_FIRST_DATABASE = TEST_DATABASES.get(TEST_DATABASE1);
     public static final String TEST_SERVER_NAME = "server1";
     private static final String TEST_PROPERTY_PREFIX = "debezium.test.";
 
@@ -117,6 +127,25 @@ public class TestHelper {
                 .build();
     }
 
+    @FunctionalInterface
+    public interface ThrowingConsumer<T> extends Consumer<T> {
+        @Override
+        default void accept(final T elem) {
+            try {
+                acceptThrows(elem);
+            }
+            catch (final Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        void acceptThrows(T elem) throws Exception;
+    }
+
+    public static void forEachDatabase(ThrowingConsumer<String> callback) {
+        TEST_DATABASES.values().forEach(callback);
+    }
+
     /**
      * Returns a default configuration suitable for most test cases. Can be amended/overridden in individual tests as
      * needed.
@@ -126,22 +155,25 @@ public class TestHelper {
     }
 
     public static Configuration.Builder defaultSingleDatabaseConfig() {
-        return defaultMultiDatabaseConfig(new String[]{ TEST_DATABASE1 });
+        return defaultMultiDatabaseConfig(Collections.singletonList(TEST_DATABASE1));
     }
 
     public static Configuration.Builder defaultMultiDatabaseConfig() {
-        return defaultMultiDatabaseConfig(new String[]{ TEST_DATABASE1, TEST_DATABASE2 });
+        return defaultMultiDatabaseConfig(new ArrayList<>(TEST_DATABASES.keySet()));
     }
 
-    public static Configuration.Builder defaultMultiDatabaseConfig(String[] databaseNames) {
+    public static Configuration.Builder defaultMultiDatabaseConfig(List<String> databaseNames) {
         JdbcConfiguration jdbcConfiguration = defaultJdbcConfig();
         Configuration.Builder builder = Configuration.create();
 
         jdbcConfiguration.forEach(
                 (field, value) -> builder.with(SqlServerConnectorConfig.DATABASE_CONFIG_PREFIX + field, value));
 
+        String databases = databaseNames.stream()
+                .reduce((x, y) -> String.join(",", x, y))
+                .get();
         return builder.with(RelationalDatabaseConnectorConfig.SERVER_NAME, TEST_SERVER_NAME)
-                .with(SqlServerConnectorConfig.DATABASE_NAMES.name(), String.join(",", databaseNames))
+                .with(SqlServerConnectorConfig.DATABASE_NAMES.name(), databases)
                 .with(SqlServerConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
                 .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
                 .with(RelationalDatabaseConnectorConfig.INCLUDE_SCHEMA_CHANGES, false);
@@ -152,14 +184,14 @@ public class TestHelper {
     }
 
     public static void createSingleTestDatabase() {
-        createMultipleTestDatabases(new String[]{ TEST_REAL_DATABASE1 });
+        createMultipleTestDatabases(Collections.singletonList(TEST_REAL_DATABASE1));
     }
 
     public static void createMultipleTestDatabases() {
-        createMultipleTestDatabases(new String[]{ TEST_REAL_DATABASE1, TEST_REAL_DATABASE2 });
+        createMultipleTestDatabases(new ArrayList<>(TEST_DATABASES.values()));
     }
 
-    public static void createMultipleTestDatabases(String[] realDatabaseNames) {
+    public static void createMultipleTestDatabases(List<String> realDatabaseNames) {
         // NOTE: you cannot enable CDC for the "master" db (the default one) so
         // all tests must use a separate database...
         try (SqlServerConnection connection = adminConnection()) {
@@ -185,14 +217,14 @@ public class TestHelper {
     }
 
     public static void dropSingleTestDatabase() {
-        dropMultipleTestDatabases(new String[]{ TEST_REAL_DATABASE1 });
+        dropMultipleTestDatabases(Collections.singletonList(TEST_REAL_DATABASE1));
     }
 
     public static void dropMultipleTestDatabases() {
-        dropMultipleTestDatabases(new String[]{ TEST_REAL_DATABASE1, TEST_REAL_DATABASE2 });
+        dropMultipleTestDatabases(new ArrayList<>(TEST_DATABASES.values()));
     }
 
-    public static void dropMultipleTestDatabases(String[] realDatabaseNames) {
+    public static void dropMultipleTestDatabases(List<String> realDatabaseNames) {
         try (SqlServerConnection connection = adminConnection()) {
             connection.connect();
             for (String databaseName : realDatabaseNames) {
@@ -261,6 +293,7 @@ public class TestHelper {
     public static SqlServerConnection testConnection() throws SQLException {
         SqlServerConnection connection = new SqlServerConnection(TestHelper.defaultJdbcConfig(), Clock.system(), SourceTimestampMode.getDefaultMode(),
                 new SqlServerValueConverters(JdbcValueConverters.DecimalMode.PRECISE, TemporalPrecisionMode.ADAPTIVE, null));
+        // TODO: remove once all tests are converted
         connection.execute("USE " + TEST_DATABASE1);
         return connection;
     }
@@ -575,6 +608,16 @@ public class TestHelper {
 
     public static String schemaName(String databaseName, String tableName, String schema) {
         return String.join(".", TEST_SERVER_NAME, databaseName, "dbo", tableName, schema);
+    }
+
+    public static Map<String, List<SourceRecord>> recordsByDatabase(List<SourceRecord> records) {
+        Map<String, List<SourceRecord>> recordsByDatabase = new HashMap<>();
+        records.stream().forEach(record -> {
+            // server.(database).schema.table
+            String databaseName = Arrays.stream(record.topic().split("\\.")).toArray()[1].toString();
+            recordsByDatabase.computeIfAbsent(databaseName, key -> new ArrayList<>()).add(record);
+        });
+        return recordsByDatabase;
     }
 
     @FunctionalInterface
