@@ -461,7 +461,10 @@ public class LogMinerHelper {
         List<LogFile> onlineLogFilesForMining = getOnlineLogFilesForOffsetScn(connection, lastProcessedScn);
         List<LogFile> archivedLogFilesForMining = getArchivedLogFilesForOffsetScn(connection, lastProcessedScn, archiveLogRetention);
 
-        if (onlineLogFilesForMining.size() + archivedLogFilesForMining.size() == 0) {
+        final boolean hasOverlappingLogFile =
+                onlineLogFilesForMining.stream().anyMatch(l -> l.getFirstScn().compareTo(lastProcessedScn) <= 0)
+                        || archivedLogFilesForMining.stream().anyMatch(l -> l.getFirstScn().compareTo(lastProcessedScn) <= 0);
+        if (!hasOverlappingLogFile) {
             throw new IllegalStateException("None of log files contains offset SCN: " + lastProcessedScn + ", re-snapshot is required.");
         }
 
