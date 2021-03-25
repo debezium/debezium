@@ -1633,7 +1633,6 @@ When the connector starts, it will create a consistent snapshot of the schemas i
 Optionally, you can configure the connector to produce change events for a subset of the schemas and tables in a database.
 For example you can ignore, mask, or truncate columns that contain sensitive data, that are larger than a specified size, or that you do not need.
 
-ifdef::community[]
 Following is an example of the configuration for a connector instance that captures data from a SQL Server server at port 1433 on 192.168.99.100, which we logically name `fullfillment`.
 Typically, you configure the {prodname} SQL Server connector in a `.json` file using the configuration properties available for the connector.
 
@@ -1675,7 +1674,9 @@ For details about deploying the {prodname} SQL Server connector, see the followi
 
 * xref:deploying-debezium-sql-server-connectors[]
 * xref:descriptions-of-debezium-sql-server-connector-configuration-properties[]
+endif::product[]
 
+ifdef::product[]
 // Type: procedure
 // ModuleID: deploying-debezium-sql-server-connectors
 [[sql-server-deploying-a-connector]]
@@ -1770,25 +1771,25 @@ apiVersion: {KafkaConnectApiVersion}
 kind: KafkaConnect
 metadata:
   name: my-connect-cluster
-  annotations:strimzi.io/use-connector-resources: "true" // <1>
+  annotations:
+    strimzi.io/use-connector-resources: "true" // <1>
 spec:
   #...
   image: debezium-container-for-sqlserver  // <2>
 ----
-
 <1>  `metadata.annotations` indicates to the Cluster Operator that KafkaConnector resources are used to configure connectors in this Kafka Connect cluster.
-
 <2>  `spec.image` specifies the name of the image that you created to run your Debezium connector.
 This property overrides the `STRIMZI_DEFAULT_KAFKA_CONNECT_IMAGE` variable in the Cluster Operator
 
-.. Apply the `KafkaConnect` CR to the OpenShift Kafka instance by entering the following command:
+.. Apply the `KafkaConnect` CR to the OpenShift Kafka Connect environment by entering the following command:
 +
 [source,shell,options="nowrap"]
 ----
 oc create -f dbz-connect.yaml
 ----
 +
-The command updates the Kafka Connect environment on OpenShift by adding a Kafka Connector instance that specifies the name of the image that you created to run your {prodname} connector.
+The command adds a Kafka Connector instance that specifies the name of the image that you created to run your {prodname} connector.
+
 
 . Create a `KafkaConnector` custom resource that configures your {prodname} SQL Server connector instance.
 +
@@ -1796,6 +1797,7 @@ You configure a {prodname} SQL Server connector in a `.yaml` file that specifies
 The connector configuration might instruct {prodname} to produce events for a subset of the schemas and tables, or it might set properties so that {prodname} ignores, masks, or truncates values in specified columns that are sensitive, too large, or not needed.
 endif::product[]
 For the complete list of the configuration properties that you can set for the {prodname} SQL Server connector, see {link-prefix}:{link-sqlserver-connector}#sqlserver-connector-properties[SQL Server connector properties].
+
 ifdef::community[]
 
 This configuration can be sent via POST to a running Kafka Connect service, which will then record the configuration and start up the one connector task that will connect to the SQL Server database, read the transaction log, and record events to Kafka topics.
@@ -1847,6 +1849,7 @@ apiVersion: {KafkaConnectorApiVersion}
       database.history.kafka.topic: dbhistory.fullfillment // <11>
 
 ----
++
 .Descriptions of connector configuration settings
 [cols="1,7",options="header",subs="+attributes"]
 |===
