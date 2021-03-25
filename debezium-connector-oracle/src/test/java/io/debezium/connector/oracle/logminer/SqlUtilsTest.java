@@ -214,7 +214,7 @@ public class SqlUtilsTest {
 
         result = SqlUtils.switchHistoryQuery();
         expected = "SELECT 'TOTAL', COUNT(1) FROM V$ARCHIVED_LOG WHERE FIRST_TIME > TRUNC(SYSDATE)" +
-                " AND DEST_ID IN (SELECT DEST_ID FROM V$ARCHIVE_DEST_STATUS WHERE STATUS='VALID' AND TYPE='LOCAL')";
+                " AND DEST_ID IN (SELECT DEST_ID FROM V$ARCHIVE_DEST_STATUS WHERE STATUS='VALID' AND TYPE='LOCAL' AND ROWNUM=1)";
         assertThat(result).isEqualTo(expected);
 
         result = SqlUtils.currentRedoNameQuery();
@@ -236,7 +236,7 @@ public class SqlUtilsTest {
         result = SqlUtils.oldestFirstChangeQuery(Duration.ofHours(0L));
         expected = "SELECT MIN(FIRST_CHANGE#) FROM (SELECT MIN(FIRST_CHANGE#) AS FIRST_CHANGE# FROM V$LOG UNION SELECT MIN(FIRST_CHANGE#)" +
                 " AS FIRST_CHANGE# FROM V$ARCHIVED_LOG WHERE DEST_ID IN (SELECT DEST_ID FROM V$ARCHIVE_DEST_STATUS" +
-                " WHERE STATUS='VALID' AND TYPE='LOCAL') )";
+                " WHERE STATUS='VALID' AND TYPE='LOCAL' AND ROWNUM=1) )";
         assertThat(result).isEqualTo(expected);
 
         result = SqlUtils.allOnlineLogsQuery();
@@ -268,7 +268,7 @@ public class SqlUtilsTest {
         expected = "SELECT NAME AS FILE_NAME, NEXT_CHANGE# AS NEXT_CHANGE, FIRST_CHANGE# AS FIRST_CHANGE FROM V$ARCHIVED_LOG " +
                 "WHERE NAME IS NOT NULL AND ARCHIVED = 'YES' " +
                 "AND STATUS = 'A' AND NEXT_CHANGE# > 10 " +
-                "AND DEST_ID IN (SELECT DEST_ID FROM V$ARCHIVE_DEST_STATUS WHERE STATUS='VALID' AND TYPE='LOCAL') " +
+                "AND DEST_ID IN (SELECT DEST_ID FROM V$ARCHIVE_DEST_STATUS WHERE STATUS='VALID' AND TYPE='LOCAL' AND ROWNUM=1) " +
                 "ORDER BY 2";
         assertThat(result).isEqualTo(expected);
 
@@ -276,7 +276,7 @@ public class SqlUtilsTest {
         expected = "SELECT NAME AS FILE_NAME, NEXT_CHANGE# AS NEXT_CHANGE, FIRST_CHANGE# AS FIRST_CHANGE FROM V$ARCHIVED_LOG " +
                 "WHERE NAME IS NOT NULL AND ARCHIVED = 'YES' " +
                 "AND STATUS = 'A' AND NEXT_CHANGE# > 10 " +
-                "AND DEST_ID IN (SELECT DEST_ID FROM V$ARCHIVE_DEST_STATUS WHERE STATUS='VALID' AND TYPE='LOCAL') " +
+                "AND DEST_ID IN (SELECT DEST_ID FROM V$ARCHIVE_DEST_STATUS WHERE STATUS='VALID' AND TYPE='LOCAL' AND ROWNUM=1) " +
                 "AND FIRST_TIME >= SYSDATE - (1/24) " +
                 "ORDER BY 2";
         assertThat(result).isEqualTo(expected);
