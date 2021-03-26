@@ -110,10 +110,17 @@
         <name>Sonatype Staging Repository</name>
         <url>${release.endpoint}/service/local/staging/deploy/maven2</url>
       </repository>
+      <!--
       <snapshotRepository>
         <id>ossrh</id>
         <name>OSS Sonatype Nexus Snapshots</name>
         <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+      </snapshotRepository>
+      -->
+      <snapshotRepository>
+        <id>nexus-snapshots</id>
+        <name>OSS Sonatype Nexus Snapshots</name>
+        <url>http://nexus.k8s-use1.ea.prod.sugar.build/repository/cxp-public/</url>
       </snapshotRepository>
     </distributionManagement>
 
