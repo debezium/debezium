@@ -1825,7 +1825,7 @@ The following example configures a {prodname} connector that connects to a SQL s
 This host has a database named `testDB`, a table with the name `customers`, and `fulfillment` is the server's logical name.
 +
 .SQL Server `fulfillment-connector.yaml`
-[source,yaml,options="nowrap"]
+[source,yaml,subs="+attributes",options="nowrap"]
 ----
 apiVersion: {KafkaConnectorApiVersion}
   kind: KafkaConnector
