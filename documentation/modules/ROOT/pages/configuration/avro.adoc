@@ -86,6 +86,11 @@ This converter combines the advantage of less verbose messages with human-readab
 Messages do not contain the schema information themselves, but only a schema ID.
 ====
 
+[NOTE]
+====
+To use converters provided by {registry} you need to provide `apicurio.registry.url`.
+====
+
 // Type: concept
 // Title: Overview of deploying a {prodname} connector that uses Avro serialization
 [id="overview-of-deploying-a-debezium-connector-that-uses-avro-serialization"]
