@@ -2227,7 +2227,7 @@ endif::community[]
  +
 If you set this option to `true` then you must also configure MySQL with the `binlog_rows_query_log_events` option set to `ON`. When `include.query` is `true`, the query is not present for events that the snapshot process generates. +
  +
-Setting `include.query`to `true` might expose tables or fields explicitly excluded or masked by including the original SQL statement in the change event. For this reason, the default setting is `false`.
+Setting `include.query`to `true` might expose tables or fields that are explicitly excluded or masked by including the original SQL statement in the change event. For this reason, the default setting is `false`.
 
 |[[mysql-property-event-deserialization-failure-handling-mode]]<<mysql-property-event-deserialization-failure-handling-mode, `+event.deserialization.failure.handling.mode+`>>
 |`fail`
