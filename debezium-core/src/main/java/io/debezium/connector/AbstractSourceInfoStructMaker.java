@@ -50,14 +50,16 @@ public abstract class AbstractSourceInfoStructMaker<T extends AbstractSourceInfo
     protected Struct commonStruct(T sourceInfo) {
         final Instant timestamp = sourceInfo.timestamp() == null ? Instant.now() : sourceInfo.timestamp();
         final String database = sourceInfo.database() == null ? "" : sourceInfo.database();
-        final String sequence = sourceInfo.sequence() == null ? "" : sourceInfo.sequence();
         Struct ret = new Struct(schema())
                 .put(AbstractSourceInfo.DEBEZIUM_VERSION_KEY, version)
                 .put(AbstractSourceInfo.DEBEZIUM_CONNECTOR_KEY, connector)
                 .put(AbstractSourceInfo.SERVER_NAME_KEY, serverName)
                 .put(AbstractSourceInfo.TIMESTAMP_KEY, timestamp.toEpochMilli())
-                .put(AbstractSourceInfo.DATABASE_NAME_KEY, database)
-                .put(AbstractSourceInfo.SEQUENCE_KEY, sequence);
+                .put(AbstractSourceInfo.DATABASE_NAME_KEY, database);
+        final String sequence = sourceInfo.sequence();
+        if (sequence != null) {
+            ret.put(AbstractSourceInfo.SEQUENCE_KEY, sequence);
+        }
         final SnapshotRecord snapshot = sourceInfo.snapshot();
         if (snapshot != null) {
             snapshot.toSource(ret);
