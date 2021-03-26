@@ -141,13 +141,93 @@
                     <enableAssertions>true</enableAssertions>
                     <systemProperties>
                         <test.type>IT</test.type>
-                        <test.debezium.apicurio.profile.is.active>false</test.debezium.apicurio.profile.is.active>
+                        <test.apicurio>false</test.apicurio>
                     </systemProperties>
                 </configuration>
             </plugin>
         </plugins>
     </build>
     <profiles>
+        <profile>
+            <id>assembly</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-assembly-plugin</artifactId>
+                        <version>${version.assembly.plugin}</version>
+                        <dependencies>
+                            <dependency>
+                                <groupId>io.debezium</groupId>
+                                <artifactId>debezium-assembly-descriptors</artifactId>
+                                <version>${project.version}</version>
+                            </dependency>
+                        </dependencies>
+                        <executions>
+                            <execution>
+                                <id>default</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>single</goal>
+                                </goals>
+                                <configuration>
+                                    <finalName>${project.artifactId}-${project.version}</finalName>
+                                    <attach>true</attach>
+                                    <descriptorRefs>
+                                        <descriptorRef>${assembly.descriptor}</descriptorRef>
+                                    </descriptorRefs>
+                                    <tarLongFileMode>posix</tarLongFileMode>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <version>${version.failsafe.plugin}</version>
+                        <configuration>
+                            <skipTests>${skipITs}</skipTests>
+                            <enableAssertions>true</enableAssertions>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>integration-test-apicurio-ext-json</id>
+                                <goals>
+                                    <goal>integration-test</goal>
+                                </goals>
+                                <configuration>
+                                    <systemPropertyVariables>
+                                        <test.apicurio.converter.format>json</test.apicurio.converter.format>
+                                        <test.apicurio>true</test.apicurio>
+                                    </systemPropertyVariables>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>integration-test-apicurio-avro</id>
+                                <goals>
+                                    <goal>integration-test</goal>
+                                </goals>
+                                <configuration>
+                                    <systemPropertyVariables>
+                                        <test.apicurio.converter.format>avro</test.apicurio.converter.format>
+                                        <test.apicurio>true</test.apicurio>
+                                    </systemPropertyVariables>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>verify</id>
+                                <goals>
+                                    <goal>verify</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
         <profile>
             <id>apicurio-ext-json</id>
             <build>
@@ -159,8 +239,8 @@
                             <skipTests>${skipITs}</skipTests>
                             <enableAssertions>true</enableAssertions>
                             <systemPropertyVariables>
-                                <test.debezium.converter.format>json</test.debezium.converter.format>
-                                <test.debezium.apicurio.profile.is.active>true</test.debezium.apicurio.profile.is.active>
+                                <test.apicurio.converter.format>json</test.apicurio.converter.format>
+                                <test.apicurio>true</test.apicurio>
                             </systemPropertyVariables>
                         </configuration>
                     </plugin>
@@ -178,8 +258,8 @@
                             <skipTests>${skipITs}</skipTests>
                             <enableAssertions>true</enableAssertions>
                             <systemPropertyVariables>
-                                <test.debezium.converter.format>avro</test.debezium.converter.format>
-                                <test.debezium.apicurio.profile.is.active>true</test.debezium.apicurio.profile.is.active>
+                                <test.apicurio.converter.format>avro</test.apicurio.converter.format>
+                                <test.apicurio>true</test.apicurio>
                             </systemPropertyVariables>
                         </configuration>
                     </plugin>
