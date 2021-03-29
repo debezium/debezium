@@ -464,7 +464,7 @@ public class EventDispatcher<T extends DataCollectionId> {
                 final Integer partition = 0;
                 final Struct key = schemaChangeRecordKey(event);
                 final Struct value = schemaChangeRecordValue(event);
-                final SourceRecord record = new SourceRecord(null, event.getOffset(), topicName, partition,
+                final SourceRecord record = new SourceRecord(event.getPartition(), event.getOffset(), topicName, partition,
                         schemaChangeKeySchema, key, schemaChangeValueSchema, value);
                 enqueueSchemaChangeMessage(record);
             }
