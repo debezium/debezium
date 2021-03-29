@@ -35,14 +35,17 @@ public class EventProcessingFailureHandlingIT extends AbstractConnectorTest {
 
     @Before
     public void before() throws SQLException {
-        TestHelper.createTestDatabase();
+        TestHelper.createMultipleTestDatabases();
         connection = TestHelper.testConnection();
-        connection.execute(
-                "CREATE TABLE tablea (id int primary key, cola varchar(30))",
-                "CREATE TABLE tableb (id int primary key, colb BIGINT NOT NULL)",
-                "CREATE TABLE tablec (id int primary key, colc varchar(30))");
-        TestHelper.enableTableCdc(connection, "tablea");
-        TestHelper.enableTableCdc(connection, "tableb");
+        TestHelper.forEachDatabase(databaseName -> {
+            connection.execute("USE " + databaseName);
+            connection.execute(
+                    "CREATE TABLE tablea (id int primary key, cola varchar(30))",
+                    "CREATE TABLE tableb (id int primary key, colb BIGINT NOT NULL)",
+                    "CREATE TABLE tablec (id int primary key, colc varchar(30))");
+            TestHelper.enableTableCdc(connection, databaseName, "tablea");
+            TestHelper.enableTableCdc(connection, databaseName, "tableb");
+        });
 
         initializeConnectorTestFramework();
         Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
@@ -59,7 +62,7 @@ public class EventProcessingFailureHandlingIT extends AbstractConnectorTest {
     public void warn() throws Exception {
         final int RECORDS_PER_TABLE = 5;
         final int ID_START_1 = 10;
-        final Configuration config = TestHelper.defaultConfig()
+        final Configuration config = TestHelper.defaultMultiDatabaseConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
                 .with(SqlServerConnectorConfig.EVENT_PROCESSING_FAILURE_HANDLING_MODE, EventProcessingFailureHandlingMode.WARN)
                 .build();
@@ -69,34 +72,37 @@ public class EventProcessingFailureHandlingIT extends AbstractConnectorTest {
         assertConnectorIsRunning();
         TestHelper.waitForSnapshotToBeCompleted();
 
-        // Will allow insertion of strings into what was originally a BIGINT NOT NULL column
-        // This will cause NumberFormatExceptions which return nulls and thus an error due to the column being NOT NULL
-        connection.execute("ALTER TABLE dbo.tableb ALTER COLUMN colb varchar(30)");
+        TestHelper.forEachDatabase(databaseName -> {
+            connection.execute("USE " + databaseName);
+            // Will allow insertion of strings into what was originally a BIGINT NOT NULL column
+            // This will cause NumberFormatExceptions which return nulls and thus an error due to the column being NOT NULL
+            connection.execute("ALTER TABLE dbo.tableb ALTER COLUMN colb varchar(30)");
 
-        for (int i = 0; i < RECORDS_PER_TABLE; i++) {
-            final int id = ID_START_1 + i;
-            connection.execute(
-                    "INSERT INTO tablea VALUES(" + id + ", 'a')");
-            connection.execute(
-                    "INSERT INTO tableb VALUES(" + id + ", 'b')");
-        }
+            for (int i = 0; i < RECORDS_PER_TABLE; i++) {
+                final int id = ID_START_1 + i;
+                connection.execute(
+                        "INSERT INTO tablea VALUES(" + id + ", 'a')");
+                connection.execute(
+                        "INSERT INTO tableb VALUES(" + id + ", 'b')");
+            }
 
-        SourceRecords records = consumeRecordsByTopic(RECORDS_PER_TABLE);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB.dbo.tableb")).isNull();
+            SourceRecords records = consumeRecordsByTopic(RECORDS_PER_TABLE);
+            Assertions.assertThat(records.recordsForTopic(TestHelper.topicName(databaseName, "tablea"))).hasSize(RECORDS_PER_TABLE);
+            Assertions.assertThat(records.recordsForTopic(TestHelper.topicName(databaseName, "tableb"))).isNull();
 
-        Awaitility.await()
-                .alias("Found warning message in logs")
-                .atMost(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS).until(() -> {
-                    return logInterceptor.containsWarnMessage("Error while processing event at offset {");
-                });
+            Awaitility.await()
+                    .alias("Found warning message in logs")
+                    .atMost(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS).until(() -> {
+                        return logInterceptor.containsWarnMessage("Error while processing event at offset {");
+                    });
+        });
     }
 
     @Test
     public void ignore() throws Exception {
         final int RECORDS_PER_TABLE = 5;
         final int ID_START_1 = 10;
-        final Configuration config = TestHelper.defaultConfig()
+        final Configuration config = TestHelper.defaultMultiDatabaseConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
                 .with(SqlServerConnectorConfig.EVENT_PROCESSING_FAILURE_HANDLING_MODE, EventProcessingFailureHandlingMode.SKIP)
                 .build();
@@ -105,28 +111,31 @@ public class EventProcessingFailureHandlingIT extends AbstractConnectorTest {
         assertConnectorIsRunning();
         TestHelper.waitForSnapshotToBeCompleted();
 
-        // Will allow insertion of strings into what was originally a BIGINT NOT NULL column
-        // This will cause NumberFormatExceptions which return nulls and thus an error due to the column being NOT NULL
-        connection.execute("ALTER TABLE dbo.tableb ALTER COLUMN colb varchar(30)");
+        TestHelper.forEachDatabase(databaseName -> {
+            connection.execute("USE " + databaseName);
+            // Will allow insertion of strings into what was originally a BIGINT NOT NULL column
+            // This will cause NumberFormatExceptions which return nulls and thus an error due to the column being NOT NULL
+            connection.execute("ALTER TABLE dbo.tableb ALTER COLUMN colb varchar(30)");
 
-        for (int i = 0; i < RECORDS_PER_TABLE; i++) {
-            final int id = ID_START_1 + i;
-            connection.execute(
-                    "INSERT INTO tablea VALUES(" + id + ", 'a')");
-            connection.execute(
-                    "INSERT INTO tableb VALUES(" + id + ", 'b')");
-        }
+            for (int i = 0; i < RECORDS_PER_TABLE; i++) {
+                final int id = ID_START_1 + i;
+                connection.execute(
+                        "INSERT INTO tablea VALUES(" + id + ", 'a')");
+                connection.execute(
+                        "INSERT INTO tableb VALUES(" + id + ", 'b')");
+            }
 
-        SourceRecords records = consumeRecordsByTopic(RECORDS_PER_TABLE);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB.dbo.tableb")).isNull();
+            SourceRecords records = consumeRecordsByTopic(RECORDS_PER_TABLE);
+            Assertions.assertThat(records.recordsForTopic(TestHelper.topicName(databaseName, "tablea"))).hasSize(RECORDS_PER_TABLE);
+            Assertions.assertThat(records.recordsForTopic(TestHelper.topicName(databaseName, "tableb"))).isNull();
+        });
     }
 
     @Test
     public void fail() throws Exception {
         final int RECORDS_PER_TABLE = 5;
         final int ID_START_1 = 10;
-        final Configuration config = TestHelper.defaultConfig()
+        final Configuration config = TestHelper.defaultMultiDatabaseConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
                 .build();
         final LogInterceptor logInterceptor = new LogInterceptor();
@@ -135,6 +144,9 @@ public class EventProcessingFailureHandlingIT extends AbstractConnectorTest {
         assertConnectorIsRunning();
         TestHelper.waitForSnapshotToBeCompleted();
 
+        // Connector fails on the 1st database
+        String databaseName = TestHelper.TEST_FIRST_DATABASE;
+        connection.execute("USE " + databaseName);
         // Will allow insertion of strings into what was originally a BIGINT NOT NULL column
         // This will cause NumberFormatExceptions which return nulls and thus an error due to the column being NOT NULL
         connection.execute("ALTER TABLE dbo.tableb ALTER COLUMN colb varchar(30)");
@@ -148,7 +160,7 @@ public class EventProcessingFailureHandlingIT extends AbstractConnectorTest {
         }
 
         SourceRecords records = consumeRecordsByTopic(1);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB.dbo.tablea")).hasSize(1);
+        Assertions.assertThat(records.recordsForTopic(TestHelper.topicName(databaseName, "tablea"))).hasSize(1);
         Awaitility.await()
                 .alias("Found warning message in logs")
                 .atMost(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS).until(() -> {

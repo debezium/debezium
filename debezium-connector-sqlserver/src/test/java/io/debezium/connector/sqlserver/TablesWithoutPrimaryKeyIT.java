@@ -39,7 +39,7 @@ public class TablesWithoutPrimaryKeyIT extends AbstractConnectorTest {
 
     @Before
     public void before() throws SQLException {
-        TestHelper.createTestDatabase();
+        TestHelper.createMultipleTestDatabases();
         initializeConnectorTestFramework();
 
         Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
@@ -55,13 +55,17 @@ public class TablesWithoutPrimaryKeyIT extends AbstractConnectorTest {
     @Test
     public void shouldProcessFromSnapshot() throws Exception {
         connection = TestHelper.testConnection();
-        connection.execute(DDL_STATEMENTS + DML_STATEMENTS);
 
-        TestHelper.enableTableCdc(connection, "t1");
-        TestHelper.enableTableCdc(connection, "t2");
-        TestHelper.enableTableCdc(connection, "t3");
+        TestHelper.forEachDatabase(databaseName -> {
+            connection.execute("USE " + databaseName);
+            connection.execute(DDL_STATEMENTS + DML_STATEMENTS);
 
-        start(SqlServerConnector.class, TestHelper.defaultConfig()
+            TestHelper.enableTableCdc(connection, databaseName, "t1");
+            TestHelper.enableTableCdc(connection, databaseName, "t2");
+            TestHelper.enableTableCdc(connection, databaseName, "t3");
+        });
+
+        start(SqlServerConnector.class, TestHelper.defaultMultiDatabaseConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                 .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, "dbo.t[123]")
                 .build());
@@ -69,79 +73,88 @@ public class TablesWithoutPrimaryKeyIT extends AbstractConnectorTest {
 
         final int expectedRecordsCount = 1 + 1 + 1;
 
-        final SourceRecords records = consumeRecordsByTopic(expectedRecordsCount);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB.dbo.t1").get(0).keySchema().field("pk")).isNotNull();
-        Assertions.assertThat(records.recordsForTopic("server1.testDB.dbo.t1").get(0).keySchema().fields()).hasSize(1);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB.dbo.t2").get(0).keySchema().field("pk")).isNotNull();
-        Assertions.assertThat(records.recordsForTopic("server1.testDB.dbo.t2").get(0).keySchema().fields()).hasSize(1);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB.dbo.t3").get(0).keySchema()).isNull();
+        final SourceRecords records = consumeRecordsByTopic(expectedRecordsCount * TestHelper.TEST_DATABASES.size());
+        TestHelper.forEachDatabase(databaseName -> {
+            Assertions.assertThat(records.recordsForTopic(TestHelper.topicName(databaseName, "t1")).get(0).keySchema().field("pk")).isNotNull();
+            Assertions.assertThat(records.recordsForTopic(TestHelper.topicName(databaseName, "t1")).get(0).keySchema().fields()).hasSize(1);
+            Assertions.assertThat(records.recordsForTopic(TestHelper.topicName(databaseName, "t2")).get(0).keySchema().field("pk")).isNotNull();
+            Assertions.assertThat(records.recordsForTopic(TestHelper.topicName(databaseName, "t2")).get(0).keySchema().fields()).hasSize(1);
+            Assertions.assertThat(records.recordsForTopic(TestHelper.topicName(databaseName, "t3")).get(0).keySchema()).isNull();
+        });
     }
 
     @Test
     public void shouldProcessFromStreaming() throws Exception {
         connection = TestHelper.testConnection();
-        connection.execute(
-                "CREATE TABLE init (pk INT PRIMARY KEY);",
-                "INSERT INTO init VALUES (1);");
-        TestHelper.enableTableCdc(connection, "init");
 
-        waitForDisabledCdc(connection, "t1");
-        waitForDisabledCdc(connection, "t2");
-        waitForDisabledCdc(connection, "t3");
+        TestHelper.forEachDatabase(databaseName -> {
+            connection.execute("USE " + databaseName);
+            connection.execute(
+                    "CREATE TABLE init (pk INT PRIMARY KEY);",
+                    "INSERT INTO init VALUES (1);");
+            TestHelper.enableTableCdc(connection, databaseName, "init");
 
-        start(SqlServerConnector.class, TestHelper.defaultConfig()
+            waitForDisabledCdc(connection, databaseName, "t1");
+            waitForDisabledCdc(connection, databaseName, "t2");
+            waitForDisabledCdc(connection, databaseName, "t3");
+        });
+
+        start(SqlServerConnector.class, TestHelper.defaultMultiDatabaseConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                 .build());
         assertConnectorIsRunning();
         TestHelper.waitForSnapshotToBeCompleted();
 
-        consumeRecordsByTopic(1);
+        consumeRecordsByTopic(TestHelper.TEST_DATABASES.size());
 
         TestHelper.waitForStreamingStarted();
-        TestHelper.waitForMaxLsnAvailable(connection);
+        TestHelper.forEachDatabase(databaseName -> {
+            connection.execute("USE " + databaseName);
+            TestHelper.waitForMaxLsnAvailable(connection, databaseName);
 
-        connection.execute(DDL_STATEMENTS);
+            connection.execute(DDL_STATEMENTS);
 
-        Testing.Print.enable();
-        TestHelper.enableTableCdc(connection, "t1");
-        TestHelper.enableTableCdc(connection, "t2");
-        TestHelper.enableTableCdc(connection, "t3");
+            Testing.Print.enable();
+            TestHelper.enableTableCdc(connection, databaseName, "t1");
+            TestHelper.enableTableCdc(connection, databaseName, "t2");
+            TestHelper.enableTableCdc(connection, databaseName, "t3");
 
-        waitForEnabledCdc(connection, "t1");
-        waitForEnabledCdc(connection, "t2");
-        waitForEnabledCdc(connection, "t3");
+            waitForEnabledCdc(connection, databaseName, "t1");
+            waitForEnabledCdc(connection, databaseName, "t2");
+            waitForEnabledCdc(connection, databaseName, "t3");
 
-        connection.execute("INSERT INTO t1 VALUES (1,10);");
-        connection.execute("INSERT INTO t2 VALUES (2,20);");
-        connection.execute("INSERT INTO t3 VALUES (3,30);");
+            connection.execute("INSERT INTO t1 VALUES (1,10);");
+            connection.execute("INSERT INTO t2 VALUES (2,20);");
+            connection.execute("INSERT INTO t3 VALUES (3,30);");
 
-        TestHelper.waitForCdcRecord(connection, "t1", rs -> rs.getInt("pk") == 1);
-        TestHelper.waitForCdcRecord(connection, "t2", rs -> rs.getInt("pk") == 2);
-        TestHelper.waitForCdcRecord(connection, "t3", rs -> rs.getInt("pk") == 3);
+            TestHelper.waitForCdcRecord(connection, databaseName, "t1", rs -> rs.getInt("pk") == 1);
+            TestHelper.waitForCdcRecord(connection, databaseName, "t2", rs -> rs.getInt("pk") == 2);
+            TestHelper.waitForCdcRecord(connection, databaseName, "t3", rs -> rs.getInt("pk") == 3);
 
-        final int expectedRecordsCount = 1 + 1 + 1;
+            final int expectedRecordsCount = 1 + 1 + 1;
 
-        final SourceRecords records = consumeRecordsByTopic(expectedRecordsCount, 24);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB.dbo.t1").get(0).keySchema().field("pk")).isNotNull();
-        Assertions.assertThat(records.recordsForTopic("server1.testDB.dbo.t1").get(0).keySchema().fields()).hasSize(1);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB.dbo.t2").get(0).keySchema().field("pk")).isNotNull();
-        Assertions.assertThat(records.recordsForTopic("server1.testDB.dbo.t2").get(0).keySchema().fields()).hasSize(1);
-        Assertions.assertThat(records.recordsForTopic("server1.testDB.dbo.t3").get(0).keySchema()).isNull();
+            final SourceRecords records = consumeRecordsByTopic(expectedRecordsCount, 24);
+            Assertions.assertThat(records.recordsForTopic(TestHelper.topicName(databaseName, "t1")).get(0).keySchema().field("pk")).isNotNull();
+            Assertions.assertThat(records.recordsForTopic(TestHelper.topicName(databaseName, "t1")).get(0).keySchema().fields()).hasSize(1);
+            Assertions.assertThat(records.recordsForTopic(TestHelper.topicName(databaseName, "t2")).get(0).keySchema().field("pk")).isNotNull();
+            Assertions.assertThat(records.recordsForTopic(TestHelper.topicName(databaseName, "t2")).get(0).keySchema().fields()).hasSize(1);
+            Assertions.assertThat(records.recordsForTopic(TestHelper.topicName(databaseName, "t3")).get(0).keySchema()).isNull();
+        });
     }
 
-    private void waitForEnabledCdc(SqlServerConnection connection, String table) throws SQLException, InterruptedException {
+    private void waitForEnabledCdc(SqlServerConnection connection, String databaseName, String tableName) throws SQLException, InterruptedException {
         Awaitility
-                .await("CDC " + table)
+                .await("CDC " + tableName)
                 .atMost(1, TimeUnit.MINUTES)
                 .pollInterval(100, TimeUnit.MILLISECONDS)
-                .until(() -> TestHelper.isCdcEnabled(connection, table));
+                .until(() -> TestHelper.isCdcEnabled(connection, databaseName, tableName));
     }
 
-    private void waitForDisabledCdc(SqlServerConnection connection, String table) throws SQLException, InterruptedException {
+    private void waitForDisabledCdc(SqlServerConnection connection, String databaseName, String tableName) throws SQLException, InterruptedException {
         Awaitility
-                .await("CDC " + table)
+                .await("CDC " + tableName)
                 .atMost(1, TimeUnit.MINUTES)
                 .pollInterval(100, TimeUnit.MILLISECONDS)
-                .until(() -> !TestHelper.isCdcEnabled(connection, table));
+                .until(() -> !TestHelper.isCdcEnabled(connection, databaseName, tableName));
     }
 }
