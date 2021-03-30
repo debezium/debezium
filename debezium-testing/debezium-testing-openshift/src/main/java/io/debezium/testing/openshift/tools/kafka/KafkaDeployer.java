@@ -23,8 +23,6 @@ import io.fabric8.openshift.client.OpenShiftClient;
 import io.strimzi.api.kafka.Crds;
 import io.strimzi.api.kafka.KafkaConnectList;
 import io.strimzi.api.kafka.KafkaList;
-import io.strimzi.api.kafka.model.DoneableKafka;
-import io.strimzi.api.kafka.model.DoneableKafkaConnect;
 import io.strimzi.api.kafka.model.Kafka;
 import io.strimzi.api.kafka.model.KafkaConnect;
 import io.strimzi.api.kafka.model.KafkaConnectBuilder;
@@ -120,11 +118,11 @@ public class KafkaDeployer {
         return ocp.secrets().inNamespace(project).createOrReplace(YAML.from(yamlPath, Secret.class));
     }
 
-    private NonNamespaceOperation<Kafka, KafkaList, DoneableKafka, Resource<Kafka, DoneableKafka>> kafkaOperation() {
+    private NonNamespaceOperation<Kafka, KafkaList, Resource<Kafka>> kafkaOperation() {
         return Crds.kafkaOperation(ocp).inNamespace(project);
     }
 
-    private NonNamespaceOperation<KafkaConnect, KafkaConnectList, DoneableKafkaConnect, Resource<KafkaConnect, DoneableKafkaConnect>> kafkaConnectOperation() {
+    private NonNamespaceOperation<KafkaConnect, KafkaConnectList, Resource<KafkaConnect>> kafkaConnectOperation() {
         return Crds.kafkaConnectOperation(ocp).inNamespace(project);
     }
 

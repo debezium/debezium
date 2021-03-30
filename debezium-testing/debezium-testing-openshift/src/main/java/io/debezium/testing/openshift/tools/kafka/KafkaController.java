@@ -20,7 +20,6 @@ import io.fabric8.kubernetes.client.dsl.Resource;
 import io.fabric8.openshift.client.OpenShiftClient;
 import io.strimzi.api.kafka.Crds;
 import io.strimzi.api.kafka.KafkaTopicList;
-import io.strimzi.api.kafka.model.DoneableKafkaTopic;
 import io.strimzi.api.kafka.model.Kafka;
 import io.strimzi.api.kafka.model.KafkaTopic;
 import io.strimzi.api.kafka.model.status.ListenerAddress;
@@ -85,7 +84,7 @@ public class KafkaController {
         return topicOperation().withName(name).waitUntilCondition(WaitConditions::kafkaReadyCondition, 5, MINUTES);
     }
 
-    private NonNamespaceOperation<KafkaTopic, KafkaTopicList, DoneableKafkaTopic, Resource<KafkaTopic, DoneableKafkaTopic>> topicOperation() {
+    private NonNamespaceOperation<KafkaTopic, KafkaTopicList, Resource<KafkaTopic>> topicOperation() {
         return Crds.topicOperation(ocp).inNamespace(project);
     }
 }
