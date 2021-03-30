@@ -54,20 +54,9 @@ public class OracleChangeEventSourceFactory<SourceRecord extends SourceRecordWra
 
     @Override
     public StreamingChangeEventSource getStreamingChangeEventSource(OffsetContext offsetContext) {
-        OracleConnectorConfig.ConnectorAdapter adapter = configuration.getAdapter();
-        if (adapter == OracleConnectorConfig.ConnectorAdapter.XSTREAM) {
-            return new XstreamStreamingChangeEventSource(
-                    configuration,
-                    (OracleOffsetContext) offsetContext,
-                    jdbcConnection,
-                    dispatcher,
-                    errorHandler,
-                    clock,
-                    schema);
-        }
-        return new LogMinerStreamingChangeEventSource(
+        return configuration.getAdapter().getSource(
                 configuration,
-                (OracleOffsetContext) offsetContext,
+                offsetContext,
                 jdbcConnection,
                 dispatcher,
                 errorHandler,

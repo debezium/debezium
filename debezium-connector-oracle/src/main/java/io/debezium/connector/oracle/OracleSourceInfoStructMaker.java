@@ -45,7 +45,7 @@ public class OracleSourceInfoStructMaker extends AbstractSourceInfoStructMaker<S
                 .put(SourceInfo.SCN_KEY, scn);
 
         if (sourceInfo.getLcrPosition() != null) {
-            ret.put(SourceInfo.LCR_POSITION_KEY, sourceInfo.getLcrPosition().toString());
+            ret.put(SourceInfo.LCR_POSITION_KEY, sourceInfo.getLcrPosition());
         }
         if (commitScn != null) {
             ret.put(SourceInfo.COMMIT_SCN_KEY, commitScn);

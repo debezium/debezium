@@ -97,25 +97,6 @@ public class LogMinerHelper {
         executeCallableStatement(connection, SqlUtils.BUILD_DICTIONARY);
     }
 
-    /**
-     * This method returns current SCN from the database
-     *
-     * @param connection container level database connection
-     * @return current SCN
-     * @throws SQLException if anything unexpected happens
-     */
-    public static Scn getCurrentScn(OracleConnection connection) throws SQLException {
-        try (Statement statement = connection.connection(false).createStatement();
-                ResultSet rs = statement.executeQuery(SqlUtils.currentScnQuery())) {
-
-            if (!rs.next()) {
-                throw new IllegalStateException("Couldn't get SCN");
-            }
-
-            return Scn.valueOf(rs.getString(1));
-        }
-    }
-
     static void createFlushTable(OracleConnection connection) throws SQLException {
         String tableExists = (String) getSingleResult(connection, SqlUtils.tableExistsQuery(SqlUtils.LOGMNR_FLUSH_TABLE), DATATYPE.STRING);
         if (tableExists == null) {
@@ -143,7 +124,7 @@ public class LogMinerHelper {
      * @throws SQLException if anything unexpected happens
      */
     static Scn getEndScn(OracleConnection connection, Scn startScn, OracleStreamingChangeEventSourceMetrics streamingMetrics, int defaultBatchSize) throws SQLException {
-        Scn currentScn = getCurrentScn(connection);
+        Scn currentScn = connection.getCurrentScn();
         streamingMetrics.setCurrentScn(currentScn);
 
         Scn topScnToMine = startScn.add(Scn.valueOf(streamingMetrics.getBatchSize()));
@@ -183,7 +164,7 @@ public class LogMinerHelper {
     static void flushLogWriter(OracleConnection connection, JdbcConfiguration config,
                                boolean isRac, Set<String> racHosts)
             throws SQLException {
-        Scn currentScn = getCurrentScn(connection);
+        Scn currentScn = connection.getCurrentScn();
         if (isRac) {
             flushRacLogWriters(currentScn, config, racHosts);
         }

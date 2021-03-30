@@ -38,7 +38,6 @@ import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot.AdapterName;
-import io.debezium.connector.oracle.xstream.LcrPosition;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
@@ -124,7 +123,7 @@ public class TransactionalBufferTest {
     public void testIsEmptyWhenTransactionIsCommitted() throws InterruptedException {
         CountDownLatch commitLatch = new CountDownLatch(1);
         transactionalBuffer.registerCommitCallback(TRANSACTION_ID, SCN, Instant.now(), (timestamp, smallestScn, commitScn, counter) -> commitLatch.countDown());
-        offsetContext = new OracleOffsetContext(connectorConfig, SCN, SCN, (LcrPosition) null, false, true, new TransactionContext());
+        offsetContext = new OracleOffsetContext(connectorConfig, SCN, SCN, (String) null, false, true, new TransactionContext());
         transactionalBuffer.commit(TRANSACTION_ID, SCN.add(SCN_ONE), offsetContext, TIMESTAMP, () -> true, MESSAGE, dispatcher);
         commitLatch.await();
         Thread.sleep(1000);
@@ -221,7 +220,7 @@ public class TransactionalBufferTest {
     public void testAbandoningOneTransaction() {
         transactionalBuffer.registerCommitCallback(TRANSACTION_ID, SCN, Instant.now(), (timestamp, smallestScn, commitScn, counter) -> {
         });
-        offsetContext = new OracleOffsetContext(connectorConfig, SCN, SCN, (LcrPosition) null, false, true, new TransactionContext());
+        offsetContext = new OracleOffsetContext(connectorConfig, SCN, SCN, (String) null, false, true, new TransactionContext());
         transactionalBuffer.abandonLongTransactions(SCN, offsetContext);
         assertThat(transactionalBuffer.isEmpty()).isEqualTo(true);
     }
