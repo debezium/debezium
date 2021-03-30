@@ -600,6 +600,11 @@
                 <artifactId>debezium-testing-testcontainers</artifactId>
                 <version>${project.version}</version>
             </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
+                <artifactId>debezium-api-generator</artifactId>
+                <version>${project.version}</version>
+            </dependency>
 
             <!-- Debezium test artifacts -->
             <dependency>

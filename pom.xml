@@ -153,6 +153,7 @@
         <module>debezium-server</module>
         <module>debezium-testing</module>
         <module>debezium-connect-rest-extension</module>
+        <module>debezium-api-generator</module>
     </modules>
 
     <distributionManagement>
