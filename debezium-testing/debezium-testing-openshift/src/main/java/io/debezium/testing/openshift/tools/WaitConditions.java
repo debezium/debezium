@@ -13,9 +13,9 @@ import org.slf4j.LoggerFactory;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.kubernetes.api.model.apps.DeploymentCondition;
 import io.fabric8.kubernetes.api.model.apps.DeploymentStatus;
+import io.fabric8.kubernetes.client.CustomResource;
 import io.fabric8.openshift.api.model.DeploymentConfig;
 import io.fabric8.openshift.api.model.DeploymentConfigStatus;
-import io.strimzi.api.kafka.model.status.HasStatus;
 import io.strimzi.api.kafka.model.status.Status;
 
 /**
@@ -32,7 +32,7 @@ public class WaitConditions {
      * @param <T> resource type
      * @return true if resource is ready
      */
-    public static <T extends Status> boolean kafkaReadyCondition(HasStatus<T> resource) {
+    public static <T extends Status> boolean kafkaReadyCondition(CustomResource<?, T> resource) {
         T status = resource.getStatus();
         if (status == null) {
             return false;
