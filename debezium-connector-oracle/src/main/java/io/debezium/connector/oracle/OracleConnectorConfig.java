@@ -566,6 +566,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         };
 
         public abstract String getConnectionUrl();
+
         public abstract String getImplementationName();
 
         private final String value;
