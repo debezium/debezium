@@ -15,6 +15,7 @@ import org.junit.Test;
 
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.doc.FixFor;
+import io.debezium.pipeline.spi.OffsetContext;
 
 /**
  * Unit test that validates the behavior of the {@link OracleOffsetContext} and its friends.
@@ -24,12 +25,12 @@ import io.debezium.doc.FixFor;
 public class OracleOffsetContextTest {
 
     private OracleConnectorConfig connectorConfig;
-    private OracleOffsetContext.Loader offsetLoader;
+    private OffsetContext.Loader offsetLoader;
 
     @Before
     public void beforeEach() throws Exception {
         this.connectorConfig = new OracleConnectorConfig(TestHelper.defaultConfig().build());
-        this.offsetLoader = new OracleOffsetContext.Loader(connectorConfig, TestHelper.adapter());
+        this.offsetLoader = connectorConfig.getAdapter().getOffsetContextLoader(connectorConfig);
     }
 
     @Test

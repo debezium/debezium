@@ -9,7 +9,6 @@ import java.time.Instant;
 
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.connector.common.BaseSourceInfo;
-import io.debezium.connector.oracle.xstream.LcrPosition;
 import io.debezium.relational.TableId;
 
 @NotThreadSafe
@@ -23,7 +22,7 @@ public class SourceInfo extends BaseSourceInfo {
 
     private Scn scn;
     private Scn commitScn;
-    private LcrPosition lcrPosition;
+    private String lcrPosition;
     private String transactionId;
     private Instant sourceTime;
     private TableId tableId;
@@ -48,11 +47,11 @@ public class SourceInfo extends BaseSourceInfo {
         this.commitScn = commitScn;
     }
 
-    public LcrPosition getLcrPosition() {
+    public String getLcrPosition() {
         return lcrPosition;
     }
 
-    public void setLcrPosition(LcrPosition lcrPosition) {
+    public void setLcrPosition(String lcrPosition) {
         this.lcrPosition = lcrPosition;
     }
 

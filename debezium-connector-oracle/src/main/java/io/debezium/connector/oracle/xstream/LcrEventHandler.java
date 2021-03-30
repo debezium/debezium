@@ -63,9 +63,10 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
         final LcrPosition lcrPosition = new LcrPosition(lcr.getPosition());
 
         // After a restart it may happen we get the event with the last processed LCR again
-        if (lcrPosition.compareTo(offsetContext.getLcrPosition()) <= 0) {
+        LcrPosition offsetLcrPosition = LcrPosition.valueOf(offsetContext.getLcrPosition());
+        if (lcrPosition.compareTo(offsetLcrPosition) <= 0) {
             if (LOGGER.isDebugEnabled()) {
-                final LcrPosition recPosition = offsetContext.getLcrPosition();
+                final LcrPosition recPosition = offsetLcrPosition;
                 LOGGER.debug("Ignoring change event with already processed SCN/LCR Position {}/{}, last recorded {}/{}",
                         lcrPosition,
                         lcrPosition.getScn(),
@@ -76,7 +77,7 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
         }
 
         offsetContext.setScn(lcrPosition.getScn());
-        offsetContext.setLcrPosition(lcrPosition);
+        offsetContext.setLcrPosition(lcrPosition.toString());
         offsetContext.setTransactionId(lcr.getTransactionId());
         offsetContext.setSourceTime(lcr.getSourceTime().timestampValue().toInstant());
         offsetContext.setTableId(new TableId(lcr.getSourceDatabaseName(), lcr.getObjectOwner(), lcr.getObjectName()));
