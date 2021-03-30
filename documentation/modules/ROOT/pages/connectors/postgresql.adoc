@@ -2120,7 +2120,19 @@ endif::community[]
 == Deployment
 
 ifdef::community[]
-With link:https://zookeeper.apache.org[Zookeeper], link:http://kafka.apache.org/[Kafka], and {link-kafka-docs}.html#connect[Kafka Connect] installed, the remaining tasks to deploy a {prodname} PostgreSQL connector are to download the link:https://repo1.maven.org/maven2/io/debezium/debezium-connector-postgres/{debezium-version}/debezium-connector-postgres-{debezium-version}-plugin.tar.gz[connector's plug-in archive], extract the JAR files into your Kafka Connect environment, and add the directory with the JAR files to {link-kafka-docs}/#connectconfigs[Kafka Connect's `plugin.path`]. You then need to restart your Kafka Connect process to pick up the new JAR files.
+To deploy a {prodname} PostgreSQL connector, you install the {prodname} PostgreSQL connector archive, configure the connector, and start the connector by adding its configuration to Kafka Connect.
+
+.Prerequisites
+
+* link:https://zookeeper.apache.org/[Zookeeper], link:http://kafka.apache.org/[Kafka], and link:{link-kafka-docs}.html#connect[Kafka Connect] are installed.
+* PostgreSQL is installed and is {link-prefix}:{link-postgresql-connector}#setting-up-postgresql[set up to run the {prodname} connector].
+
+.Procedure
+
+. Download the {prodname} link:https://repo1.maven.org/maven2/io/debezium/debezium-connector-postgres/{debezium-version}/debezium-connector-postgres-{debezium-version}-plugin.tar.gz[PostgreSQL connector plug-in archive].
+. Extract the files into your Kafka Connect environment.
+. Add the directory with the JAR files to {link-kafka-docs}/#connectconfigs[Kafka Connect's `plugin.path`].
+. Restart your Kafka Connect process to pick up the new JAR files.
 
 If you are working with immutable containers, see link:https://hub.docker.com/r/debezium/[{prodname}'s Container images] for Zookeeper, Kafka, PostgreSQL and Kafka Connect with the PostgreSQL connector already installed and ready to run. You can also xref:operations/openshift.adoc[run {prodname} on Kubernetes and OpenShift].
 endif::community[]
@@ -2326,9 +2338,11 @@ ifdef::community[]
 [[postgresql-example-configuration]]
 === Connector configuration example
 
-Following is an example of the configuration for a PostgreSQL connector that connects to a PostgreSQL server on port 5432 at 192.168.99.100, whose logical name is `fulfillment`. Typically, you configure the {prodname} PostgreSQL connector in a `.json` file using the configuration properties available for the connector.
+Following is an example of the configuration for a PostgreSQL connector that connects to a PostgreSQL server on port 5432 at 192.168.99.100, whose logical name is `fulfillment`.
+Typically, you configure the {prodname} PostgreSQL connector in a JSON file by setting the configuration properties available for the connector.
 
-You can choose to produce events for a subset of the schemas and tables. Optionally, ignore, mask, or truncate columns that are sensitive, too large, or not needed.
+You can choose to produce events for a subset of the schemas and tables in a database.
+Optionally, you can ignore, mask, or truncate columns that contain sensitive data, are larger than a specified size, or that you do not need.
 
 [source,json]
 ----
