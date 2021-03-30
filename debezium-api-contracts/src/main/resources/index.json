@@ -1,0 +1,7 @@
+{
+  "connector_type_ids": [
+    "mongodb/mongodb-1.5.0.Final.json",
+    "mysql/mysql-1.5.0.Final.json",
+    "postgres/postgres-1.5.0.Final.json"
+  ]
+}

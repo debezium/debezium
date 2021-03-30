@@ -6,6 +6,7 @@
 package io.debezium.connector.mysql;
 
 import static org.fest.assertions.Assertions.assertThat;
+import static org.junit.Assert.assertEquals;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.ConfigKey;
@@ -38,7 +39,9 @@ public class MySqlConnectorTest {
                 assertThat(((Class<?>) key.defaultValue).getName()).isEqualTo((String) expected.defaultValue());
             }
             else if (!expected.equals(MySqlConnectorConfig.SERVER_ID)) {
-                assertThat(key.defaultValue).isEqualTo(expected.defaultValue());
+                assertEquals(
+                        "Wrong default value for Field \"" + key.name + "\"",
+                        expected.defaultValue(), key.defaultValue);
             }
             assertThat(key.dependents).isEqualTo(expected.dependents());
             assertThat(key.width).isNotNull();

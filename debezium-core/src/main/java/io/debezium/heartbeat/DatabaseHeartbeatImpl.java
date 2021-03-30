@@ -29,6 +29,7 @@ public class DatabaseHeartbeatImpl extends HeartbeatImpl {
     public static final Field HEARTBEAT_ACTION_QUERY = Field.create(HEARTBEAT_ACTION_QUERY_PROPERTY_NAME)
             .withDisplayName("An optional query to execute with every heartbeat")
             .withType(ConfigDef.Type.STRING)
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED_HEARTBEAT, 2))
             .withWidth(ConfigDef.Width.MEDIUM)
             .withImportance(ConfigDef.Importance.LOW)
             .withDescription("The query executed with every heartbeat.");

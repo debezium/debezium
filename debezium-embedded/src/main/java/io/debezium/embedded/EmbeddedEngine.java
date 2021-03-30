@@ -85,14 +85,14 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
      */
     public static final Field ENGINE_NAME = Field.create("name")
             .withDescription("Unique name for this connector instance.")
-            .withValidation(Field::isRequired);
+            .required();
 
     /**
      * A required field for an embedded connector that specifies the name of the normal Debezium connector's Java class.
      */
     public static final Field CONNECTOR_CLASS = Field.create("connector.class")
             .withDescription("The Java class for the connector")
-            .withValidation(Field::isRequired);
+            .required();
 
     /**
      * An optional field that specifies the name of the class that implements the {@link OffsetBackingStore} interface,

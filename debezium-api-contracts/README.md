@@ -1,0 +1,2 @@
+# Debezium OpenAPI Contracts
+

@@ -25,7 +25,7 @@ public class Filter<R extends ConnectRecord<R>> extends ScriptingTransformation<
             .withType(ConfigDef.Type.STRING)
             .withWidth(ConfigDef.Width.MEDIUM)
             .withImportance(ConfigDef.Importance.HIGH)
-            .withValidation(Field::isRequired)
+            .required()
             .withDescription("An expression determining whether the record should be filtered out. When evaluated to true the record is removed.");
 
     @Override
