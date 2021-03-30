@@ -128,19 +128,7 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
     }
 
     private Scn getCurrentScn(SnapshotContext ctx) throws SQLException {
-        if (connectorConfig.getAdapter().equals(OracleConnectorConfig.ConnectorAdapter.LOG_MINER)) {
-            return LogMinerHelper.getCurrentScn(jdbcConnection);
-        }
-
-        try (Statement statement = jdbcConnection.connection().createStatement();
-                ResultSet rs = statement.executeQuery("select CURRENT_SCN from V$DATABASE")) {
-
-            if (!rs.next()) {
-                throw new IllegalStateException("Couldn't get SCN");
-            }
-
-            return Scn.valueOf(rs.getString(1));
-        }
+        return jdbcConnection.getCurrentScn();
     }
 
     /**

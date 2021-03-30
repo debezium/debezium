@@ -36,11 +36,6 @@
             <scope>provided</scope>
         </dependency>
         <dependency>
-            <groupId>com.oracle.instantclient</groupId>
-            <artifactId>xstreams</artifactId>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
               <groupId>org.antlr</groupId>
               <artifactId>antlr4-runtime</artifactId>
         </dependency>
@@ -181,12 +176,78 @@
     -->
     <profiles>
         <profile>
+            <id>xstream-dependency</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+            <dependencies>
+                <dependency>
+                    <groupId>com.oracle.instantclient</groupId>
+                    <artifactId>xstreams</artifactId>
+                </dependency>
+            </dependencies>
+        </profile>
+        <profile>
             <id>assembly</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <dependencies>
+                <dependency>
+                    <groupId>com.oracle.instantclient</groupId>
+                    <artifactId>xstreams</artifactId>
+                </dependency>
+            </dependencies>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-assembly-plugin</artifactId>
+                        <dependencies>
+                            <dependency>
+                                <groupId>io.debezium</groupId>
+                                <artifactId>debezium-assembly-descriptors</artifactId>
+                                <version>${project.version}</version>
+                            </dependency>
+                        </dependencies>
+                        <executions>
+                            <execution>
+                                <id>default</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>single</goal>
+                                </goals>
+                                <configuration>
+                                    <finalName>${project.artifactId}-${project.version}</finalName>
+                                    <attach>true</attach>  <!-- we want attach & deploy these to Maven -->
+                                    <descriptorRefs>
+                                        <descriptorRef>connector-distribution</descriptorRef>
+                                    </descriptorRefs>
+                                    <tarLongFileMode>posix</tarLongFileMode>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <!-- Allows CI to build Oracle without the xstream.jar dependency -->
+            <id>oracle-ci</id>
             <activation>
                 <activeByDefault>false</activeByDefault>
             </activation>
             <build>
                 <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-compiler-plugin</artifactId>
+                        <configuration combine.self="override">
+                            <excludes>
+                                <exclude>**/io/debezium/connector/oracle/xstream/**</exclude>
+                            </excludes>
+                        </configuration>
+                    </plugin>
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-assembly-plugin</artifactId>
@@ -223,6 +284,12 @@
             <properties>
                 <adapter.name>xstream</adapter.name>
             </properties>
+            <dependencies>
+                <dependency>
+                    <groupId>com.oracle.instantclient</groupId>
+                    <artifactId>xstreams</artifactId>
+                </dependency>
+            </dependencies>
         </profile>
     </profiles>
 </project>
