@@ -97,6 +97,8 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
     public static final Field TOPIC = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "kafka.topic")
             .withDisplayName("Database history topic name")
             .withType(Type.STRING)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 32))
+            .required()
             .withWidth(Width.LONG)
             .withImportance(Importance.HIGH)
             .withDescription("The name of the topic for the database schema history")
@@ -105,6 +107,8 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
     public static final Field BOOTSTRAP_SERVERS = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "kafka.bootstrap.servers")
             .withDisplayName("Kafka broker addresses")
             .withType(Type.STRING)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 31))
+            .required()
             .withWidth(Width.LONG)
             .withImportance(Importance.HIGH)
             .withDescription("A list of host/port pairs that the connector will use for establishing the initial "
@@ -117,6 +121,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
             + "kafka.recovery.poll.interval.ms")
             .withDisplayName("Poll interval during database history recovery (ms)")
             .withType(Type.INT)
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 1))
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDescription("The number of milliseconds to wait while polling for persisted data during recovery.")
@@ -126,6 +131,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
     public static final Field RECOVERY_POLL_ATTEMPTS = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "kafka.recovery.attempts")
             .withDisplayName("Max attempts to recovery database history")
             .withType(Type.INT)
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 0))
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDescription("The number of attempts in a row that no data are returned from Kafka before recover completes. "

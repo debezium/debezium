@@ -38,7 +38,6 @@ import io.debezium.relational.Tables.ColumnNameFilter;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.relational.history.HistoryRecordComparator;
-import io.debezium.relational.history.KafkaDatabaseHistory;
 import io.debezium.util.Collect;
 
 /**
@@ -590,6 +589,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
     public static final Field ON_CONNECT_STATEMENTS = Field.create("database.initial.statements")
             .withDisplayName("Initial statements")
             .withType(Type.STRING)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 4))
             .withWidth(Width.LONG)
             .withImportance(Importance.LOW)
             .withDescription(
@@ -603,10 +603,12 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
     public static final Field SERVER_ID = Field.create("database.server.id")
             .withDisplayName("Cluster ID")
             .withType(Type.LONG)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 1))
             .withWidth(Width.LONG)
             .withImportance(Importance.HIGH)
             .withDefault(MySqlConnectorConfig::randomServerId)
-            .withValidation(Field::isRequired, Field::isPositiveLong)
+            .required()
+            .withValidation(Field::isPositiveLong)
             .withDescription("A numeric ID of this database client, which must be unique across all "
                     + "currently-running database processes in the cluster. This connector joins the "
                     + "MySQL database cluster as another server (with this unique ID) so it can read "
@@ -615,6 +617,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
     public static final Field SERVER_ID_OFFSET = Field.create("database.server.id.offset")
             .withDisplayName("Cluster ID offset")
             .withType(Type.LONG)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 0))
             .withWidth(Width.LONG)
             .withImportance(Importance.HIGH)
             .withDefault(10000L)
@@ -626,6 +629,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
     public static final Field SSL_MODE = Field.create("database.ssl.mode")
             .withDisplayName("SSL mode")
             .withEnum(SecureConnectionMode.class, SecureConnectionMode.DISABLED)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_SSL, 0))
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
             .withDescription("Whether to use an encrypted connection to MySQL. Options include"
@@ -640,6 +644,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
     public static final Field SSL_KEYSTORE = Field.create("database.ssl.keystore")
             .withDisplayName("SSL Keystore")
             .withType(Type.STRING)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_SSL, 1))
             .withWidth(Width.LONG)
             .withImportance(Importance.MEDIUM)
             .withDescription("Location of the Java keystore file containing an application process's own certificate and private key.");
@@ -647,6 +652,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
     public static final Field SSL_KEYSTORE_PASSWORD = Field.create("database.ssl.keystore.password")
             .withDisplayName("SSL Keystore Password")
             .withType(Type.PASSWORD)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_SSL, 2))
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
             .withDescription(
@@ -656,6 +662,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
     public static final Field SSL_TRUSTSTORE = Field.create("database.ssl.truststore")
             .withDisplayName("SSL Truststore")
             .withType(Type.STRING)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_SSL, 3))
             .withWidth(Width.LONG)
             .withImportance(Importance.MEDIUM)
             .withDescription("Location of the Java truststore file containing the collection of CA certificates trusted by this application process (trust store).");
@@ -663,6 +670,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
     public static final Field SSL_TRUSTSTORE_PASSWORD = Field.create("database.ssl.truststore.password")
             .withDisplayName("SSL Truststore Password")
             .withType(Type.PASSWORD)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_SSL, 4))
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
             .withDescription(
@@ -674,6 +682,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
     public static final Field JDBC_DRIVER = Field.create("database.jdbc.driver")
             .withDisplayName("Jdbc Driver Class Name")
             .withType(Type.CLASS)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 41))
             .withWidth(Width.MEDIUM)
             .withDefault(com.mysql.cj.jdbc.Driver.class.getName())
             .withImportance(Importance.LOW)
@@ -689,6 +698,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
     public static final Field GTID_SOURCE_INCLUDES = Field.create("gtid.source.includes")
             .withDisplayName("Include GTID sources")
             .withType(Type.LIST)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 24))
             .withWidth(Width.LONG)
             .withImportance(Importance.HIGH)
             .withDependents(TABLE_INCLUDE_LIST_NAME, TABLE_WHITELIST_NAME)
@@ -703,6 +713,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
     public static final Field GTID_SOURCE_EXCLUDES = Field.create("gtid.source.excludes")
             .withDisplayName("Exclude GTID sources")
             .withType(Type.STRING)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 25))
             .withWidth(Width.LONG)
             .withImportance(Importance.MEDIUM)
             .withValidation(MySqlConnectorConfig::validateGtidSetExcludes)
@@ -721,6 +732,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
     public static final Field GTID_SOURCE_FILTER_DML_EVENTS = Field.create("gtid.source.filter.dml.events")
             .withDisplayName("Filter DML events")
             .withType(Type.BOOLEAN)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 23))
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
             .withDefault(true)
@@ -734,6 +746,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
      *
      * Defaults to latest.
      */
+    @Deprecated
     public static final Field GTID_NEW_CHANNEL_POSITION = Field.create("gtid.new.channel.position")
             .withDisplayName("GTID start position")
             .withEnum(GtidNewChannelPosition.class, GtidNewChannelPosition.EARLIEST)
@@ -746,6 +759,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
     public static final Field CONNECTION_TIMEOUT_MS = Field.create("connect.timeout.ms")
             .withDisplayName("Connection Timeout (ms)")
             .withType(Type.INT)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 1))
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
             .withDescription(
@@ -756,6 +770,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
     public static final Field KEEP_ALIVE = Field.create("connect.keep.alive")
             .withDisplayName("Keep connection alive (true/false)")
             .withType(Type.BOOLEAN)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 2))
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDescription("Whether a separate thread should be used to ensure the connection is kept alive.")
@@ -765,6 +780,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
     public static final Field KEEP_ALIVE_INTERVAL_MS = Field.create("connect.keep.alive.interval.ms")
             .withDisplayName("Keep alive interval (ms)")
             .withType(Type.LONG)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 3))
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDescription("Interval for connection checking if keep alive thread is used, given in milliseconds Defaults to 1 minute (60,000 ms).")
@@ -773,7 +789,8 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
 
     public static final Field ROW_COUNT_FOR_STREAMING_RESULT_SETS = Field.create("min.row.count.to.stream.results")
             .withDisplayName("Stream result set of size")
-            .withType(Type.LONG)
+            .withType(Type.INT)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 2))
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.LOW)
             .withDescription("The number of rows a table must contain to stream results rather than pull "
@@ -785,6 +802,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
     public static final Field BUFFER_SIZE_FOR_BINLOG_READER = Field.create("binlog.buffer.size")
             .withDisplayName("Binlog reader buffer size")
             .withType(Type.INT)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 3))
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
             .withDescription("The size of a look-ahead buffer used by the  binlog reader to decide whether "
@@ -794,24 +812,10 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
             .withDefault(DEFAULT_BINLOG_BUFFER_SIZE)
             .withValidation(Field::isNonNegativeInteger);
 
-    /**
-     * The database history class is hidden in the {@link #configDef()} since that is designed to work with a user interface,
-     * and in these situations using Kafka is the only way to go.
-     */
-    public static final Field DATABASE_HISTORY = Field.create("database.history")
-            .withDisplayName("Database history class")
-            .withType(Type.CLASS)
-            .withWidth(Width.LONG)
-            .withImportance(Importance.LOW)
-            .withInvisibleRecommender()
-            .withDescription("The name of the DatabaseHistory class that should be used to store and recover database schema changes. "
-                    + "The configuration properties for the history are prefixed with the '"
-                    + DatabaseHistory.CONFIGURATION_FIELD_PREFIX_STRING + "' string.")
-            .withDefault(KafkaDatabaseHistory.class.getName());
-
     public static final Field INCLUDE_SQL_QUERY = Field.create("include.query")
             .withDisplayName("Include original SQL query with in change events")
             .withType(Type.BOOLEAN)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 0))
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
             .withDescription("Whether the connector should include the original SQL query that generated the change event. "
@@ -823,6 +827,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
     public static final Field SNAPSHOT_MODE = Field.create("snapshot.mode")
             .withDisplayName("Snapshot mode")
             .withEnum(SnapshotMode.class, SnapshotMode.INITIAL)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 0))
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDescription("The criteria for running a snapshot upon startup of the connector. "
@@ -837,6 +842,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
     public static final Field SNAPSHOT_LOCKING_MODE = Field.create("snapshot.locking.mode")
             .withDisplayName("Snapshot locking mode")
             .withEnum(SnapshotLockingMode.class, SnapshotLockingMode.MINIMAL)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 1))
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDescription("Controls how long the connector holds onto the global read lock while it is performing a snapshot. The default is 'minimal', "
@@ -852,6 +858,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
     public static final Field SNAPSHOT_NEW_TABLES = Field.create("snapshot.new.tables")
             .withDisplayName("Snapshot newly added tables")
             .withEnum(SnapshotNewTables.class, SnapshotNewTables.OFF)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 4))
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDescription("BETA FEATURE: On connector restart, the connector will check if there have been any new tables added to the configuration, "
@@ -864,6 +871,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
 
     public static final Field TIME_PRECISION_MODE = RelationalDatabaseConnectorConfig.TIME_PRECISION_MODE
             .withEnum(TemporalPrecisionMode.class, TemporalPrecisionMode.ADAPTIVE_TIME_MICROSECONDS)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 26))
             .withValidation(MySqlConnectorConfig::validateTimePrecisionMode)
             .withDescription("Time, date and timestamps can be represented with different kinds of precisions, including:"
                     + "'adaptive_time_microseconds': the precision of date and timestamp values is based the database column's precision; but time fields always use microseconds precision;"
@@ -873,6 +881,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
     public static final Field BIGINT_UNSIGNED_HANDLING_MODE = Field.create("bigint.unsigned.handling.mode")
             .withDisplayName("BIGINT UNSIGNED Handling")
             .withEnum(BigIntUnsignedHandlingMode.class, BigIntUnsignedHandlingMode.LONG)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 27))
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
             .withDescription("Specify how BIGINT UNSIGNED columns should be represented in change events, including:"
@@ -882,6 +891,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
     public static final Field EVENT_DESERIALIZATION_FAILURE_HANDLING_MODE = Field.create("event.deserialization.failure.handling.mode")
             .withDisplayName("Event deserialization failure handling")
             .withEnum(EventProcessingFailureHandlingMode.class, EventProcessingFailureHandlingMode.FAIL)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 21))
             .withValidation(MySqlConnectorConfig::validateEventDeserializationFailureHandlingModeNotSet)
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
@@ -893,6 +903,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
     public static final Field INCONSISTENT_SCHEMA_HANDLING_MODE = Field.create("inconsistent.schema.handling.mode")
             .withDisplayName("Inconsistent schema failure handling")
             .withEnum(EventProcessingFailureHandlingMode.class, EventProcessingFailureHandlingMode.FAIL)
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 2))
             .withValidation(MySqlConnectorConfig::validateInconsistentSchemaHandlingModeNotIgnore)
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
@@ -905,6 +916,7 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
     public static final Field ENABLE_TIME_ADJUSTER = Field.create("enable.time.adjuster")
             .withDisplayName("Enable Time Adjuster")
             .withType(Type.BOOLEAN)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 22))
             .withDefault(true)
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
@@ -947,7 +959,9 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
                     SNAPSHOT_NEW_TABLES,
                     BIGINT_UNSIGNED_HANDLING_MODE,
                     TIME_PRECISION_MODE,
-                    ENABLE_TIME_ADJUSTER)
+                    ENABLE_TIME_ADJUSTER,
+                    BINARY_HANDLING_MODE,
+                    ROW_COUNT_FOR_STREAMING_RESULT_SETS)
             .events(
                     INCLUDE_SQL_QUERY,
                     TABLE_IGNORE_BUILTIN,

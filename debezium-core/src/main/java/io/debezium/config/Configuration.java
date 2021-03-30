@@ -831,19 +831,19 @@ public interface Configuration {
      * @return the configuration; never null
      */
     public static <T> Configuration from(Map<String, T> properties, Function<T, String> conversion) {
-        Map<String, Object> props = new HashMap<>();
+        Map<String, T> props = new HashMap<>();
         if (properties != null) {
             props.putAll(properties);
         }
         return new Configuration() {
             @Override
             public String getString(String key) {
-                return conversion.apply(properties.get(key));
+                return conversion.apply(props.get(key));
             }
 
             @Override
             public Set<String> keys() {
-                return properties.keySet();
+                return props.keySet();
             }
 
             @Override
