@@ -18,17 +18,16 @@ import org.slf4j.LoggerFactory;
 
 import io.apicurio.registry.operator.api.model.ApicurioRegistry;
 import io.apicurio.registry.operator.api.model.ApicurioRegistryList;
-import io.apicurio.registry.operator.api.model.DoneableApicurioRegistry;
 import io.debezium.testing.openshift.tools.OpenShiftUtils;
 import io.debezium.testing.openshift.tools.OperatorController;
 import io.debezium.testing.openshift.tools.WaitConditions;
 import io.debezium.testing.openshift.tools.YAML;
 import io.debezium.testing.openshift.tools.kafka.KafkaController;
-import io.fabric8.kubernetes.api.model.apiextensions.CustomResourceDefinition;
+import io.fabric8.kubernetes.api.model.apiextensions.v1.CustomResourceDefinition;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.kubernetes.client.dsl.NonNamespaceOperation;
 import io.fabric8.kubernetes.client.dsl.Resource;
-import io.fabric8.kubernetes.internal.KubernetesDeserializer;
+import io.fabric8.kubernetes.client.dsl.base.CustomResourceDefinitionContext;
 import io.fabric8.openshift.api.model.DeploymentConfig;
 import io.fabric8.openshift.client.OpenShiftClient;
 
@@ -82,11 +81,12 @@ public class RegistryDeployer {
         return new RegistryController(registry, ocp, http);
     }
 
-    public NonNamespaceOperation<ApicurioRegistry, ApicurioRegistryList, DoneableApicurioRegistry, Resource<ApicurioRegistry, DoneableApicurioRegistry>> registryOperation() {
-        CustomResourceDefinition crd = ocp.customResourceDefinitions().load(RegistryDeployer.class.getResourceAsStream("/crds/apicur.io_apicurioregistries_crd.yaml"))
+    public NonNamespaceOperation<ApicurioRegistry, ApicurioRegistryList, Resource<ApicurioRegistry>> registryOperation() {
+        CustomResourceDefinition crd = ocp.apiextensions().v1().customResourceDefinitions()
+                .load(RegistryDeployer.class.getResourceAsStream("/crds/apicur.io_apicurioregistries_crd.yaml"))
                 .get();
-        KubernetesDeserializer.registerCustomKind("apicur.io/v1alpha1", "ApicurioRegistry", ApicurioRegistry.class);
-        return ocp.customResources(crd, ApicurioRegistry.class, ApicurioRegistryList.class, DoneableApicurioRegistry.class).inNamespace(project);
+        CustomResourceDefinitionContext context = CustomResourceDefinitionContext.fromCrd(crd);
+        return ocp.customResources(context, ApicurioRegistry.class, ApicurioRegistryList.class).inNamespace(project);
     }
 
     public ApicurioRegistry waitForRegistry(String name) throws InterruptedException {

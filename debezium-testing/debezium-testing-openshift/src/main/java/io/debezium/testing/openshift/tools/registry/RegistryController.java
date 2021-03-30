@@ -12,11 +12,11 @@ import org.slf4j.LoggerFactory;
 
 import io.apicurio.registry.operator.api.model.ApicurioRegistry;
 import io.apicurio.registry.operator.api.model.ApicurioRegistryList;
-import io.apicurio.registry.operator.api.model.DoneableApicurioRegistry;
 import io.debezium.testing.openshift.tools.ConfigProperties;
 import io.debezium.testing.openshift.tools.OpenShiftUtils;
 import io.fabric8.kubernetes.api.model.Service;
-import io.fabric8.kubernetes.api.model.apiextensions.CustomResourceDefinition;
+import io.fabric8.kubernetes.api.model.apiextensions.v1.CustomResourceDefinition;
+import io.fabric8.kubernetes.client.dsl.base.CustomResourceDefinitionContext;
 import io.fabric8.openshift.api.model.Route;
 import io.fabric8.openshift.client.OpenShiftClient;
 
@@ -84,7 +84,9 @@ public class RegistryController {
      * @return true if the CR was found and deleted
      */
     public boolean undeployRegistry() {
-        CustomResourceDefinition crd = ocp.customResourceDefinitions().load(RegistryDeployer.class.getResourceAsStream("/apicur.io_apicurioregistries_crd.yaml")).get();
-        return ocp.customResources(crd, ApicurioRegistry.class, ApicurioRegistryList.class, DoneableApicurioRegistry.class).inNamespace(project).delete(registry);
+        CustomResourceDefinition crd = ocp.apiextensions().v1().customResourceDefinitions()
+                .load(RegistryDeployer.class.getResourceAsStream("/apicur.io_apicurioregistries_crd.yaml")).get();
+        CustomResourceDefinitionContext context = CustomResourceDefinitionContext.fromCrd(crd);
+        return ocp.customResources(context, ApicurioRegistry.class, ApicurioRegistryList.class).inNamespace(project).delete(registry);
     }
 }

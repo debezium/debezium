@@ -13,10 +13,10 @@
   <name>Debezium OpenShift integration test-suite</name>
 
   <properties>
-    <version.fabric8.client>4.10.1</version.fabric8.client>
+    <version.fabric8.client>5.2.1</version.fabric8.client>
     <version.commons.codec>1.14</version.commons.codec>
     <version.commons.compress>1.20</version.commons.compress>
-    <version.strimzi>0.18.0</version.strimzi>
+    <version.strimzi>0.22.0</version.strimzi>
     <version.junit5>5.5.1</version.junit5>
     <version.junit5.pioneer>0.5.1</version.junit5.pioneer>
     <version.assertj>3.11.1</version.assertj>
@@ -247,7 +247,7 @@
     <dependency>
       <groupId>com.github.jcechace.apicurio-model-generator</groupId>
       <artifactId>kubernetes-apicurio-registry-model</artifactId>
-      <version>v0.0.4</version>
+      <version>a5c02b71</version>
     </dependency>
   </dependencies>
 
@@ -258,7 +258,7 @@
       <properties>
         <image.push.skip>true</image.push.skip>
         <image.version.strimzi>latest</image.version.strimzi>
-        <image.base.name>strimzi/kafka:${image.version.strimzi}-kafka-${version.kafka}</image.base.name>
+        <image.base.name>quay.io/strimzi/kafka:${image.version.strimzi}-kafka-${version.kafka}</image.base.name>
         <version.db2-connector>${project.version}</version.db2-connector>
       </properties>
 
