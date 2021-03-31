@@ -17,7 +17,7 @@ Please let us know if you encounter any problems while using this feature.
 Also please reach out if you have requirements for specific sinks to be supported by {prodname} Server or even would be interested in contributing the required implementation.
 ====
 
-{prodname} provides a ready-to-use application that streams change events from a source database to messaging infrastructure like Amazon Kinesis, Google Cloud Pub/Sub or Apache Pulsar.
+{prodname} provides a ready-to-use application that streams change events from a source database to messaging infrastructure like Amazon Kinesis, Google Cloud Pub/Sub, Apache Pulsar or Redis (Stream).
 For streaming change events to Apache Kafka, it is recommended to deploy the {prodname} connectors via Kafka Connect.
 
 == Installation
@@ -297,7 +297,6 @@ The most frequent used are:
 === Sink configuration
 
 Sink configuration is specific for each sink type.
-Currently the only supported sinks are https://aws.amazon.com/kinesis/[Amazon Kinesis] and https://cloud.google.com/pubsub/[Google Cloud Pub/Sub].
 
 The sink is selected by configuration property `debezium.sink.type`.
 
@@ -499,6 +498,64 @@ When the alternative implementations are not available then the default ones are
 |Custom configured instance of a `EventHubProducerClient` used to send messages.
 
 |===
+
+==== Redis (Stream)
+
+Redis is an open source (BSD licensed) in-memory data structure store, used as a database, cache and message broker.
+The Stream is a data type which models a _log data structure_ in a more abstract way. It implements powerful operations to overcome the limitations of a log file.
+
+[cols="35%a,10%a,55%a"]
+|===
+|Property
+|Default
+|Description
+
+|[[redis-type]]<<redis-type, `debezium.sink.type`>>
+|
+|Must be set to `redis`.
+
+|[[redis-address]]<<redis-address, `debezium.sink.redis.address`>>
+|
+|An address, formatted as `host:port`, at which the Redis target streams are provided.
+
+|[[redis-user]]<<redis-user, `debezium.sink.redis.user`>>
+|
+|(Optional) A user name used to communicate with Redis.
+
+|[[redis-password]]<<redis-password, `debezium.sink.redis.password`>>
+|
+|(Optional) A password (of respective user) used to communicate with Redis. A password must be set if a user is set.
+
+|[[redis-null-key]]<<redis-null-key, `debezium.sink.redis.null.key`>>
+|`default`
+|Redis does not support the notion of data without key.
+So this string will be used as key for records without primary key.
+
+|===
+
+
+===== Injection points
+
+The Redis sink behavior can be modified by a custom logic providing alternative implementations for specific functionalities.
+When the alternative implementations are not available then the default ones are used.
+
+[cols="35%a,10%a,55%a"]
+|===
+|Interface
+|CDI classifier
+|Description
+
+|[[redis-client]]<<redis-client, `redis.clients.jedis.Jedis`>>
+|`@CustomConsumerBuilder`
+|Custom configured instance of a `Jedis` used to send messages to target streams.
+
+|[[redis-ext-stream-name-mapper]]<<redis-ext-stream-name-mapper, `io.debezium.server.StreamNameMapper`>>
+|
+|Custom implementation maps the planned destination (topic) name into a physical Redis stream name.
+By default the same name is used.
+
+|===
+
 
 == Extensions
 

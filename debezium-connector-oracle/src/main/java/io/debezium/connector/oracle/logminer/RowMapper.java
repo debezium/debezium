@@ -14,6 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
+import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.relational.TableId;
 import io.debezium.util.HexConverter;
@@ -53,82 +54,82 @@ public class RowMapper {
     // private static final int RS_ID = 12;
     // private static final int SSN = 12;
 
-    public static String getOperation(TransactionalBufferMetrics metrics, ResultSet rs) {
+    public static String getOperation(OracleStreamingChangeEventSourceMetrics streamingMetrics, ResultSet rs) {
         try {
             return rs.getString(OPERATION);
         }
         catch (SQLException e) {
-            logError(metrics, e, "OPERATION");
+            logError(streamingMetrics, e, "OPERATION");
             return null;
         }
     }
 
-    public static String getUsername(TransactionalBufferMetrics metrics, ResultSet rs) {
+    public static String getUsername(OracleStreamingChangeEventSourceMetrics streamingMetrics, ResultSet rs) {
         try {
             return rs.getString(USERNAME);
         }
         catch (SQLException e) {
-            logError(metrics, e, "USERNAME");
+            logError(streamingMetrics, e, "USERNAME");
             return null;
         }
     }
 
-    public static int getOperationCode(TransactionalBufferMetrics metrics, ResultSet rs) {
+    public static int getOperationCode(OracleStreamingChangeEventSourceMetrics streamingMetrics, ResultSet rs) {
         try {
             return rs.getInt(OPERATION_CODE);
         }
         catch (SQLException e) {
-            logError(metrics, e, "OPERATION_CODE");
+            logError(streamingMetrics, e, "OPERATION_CODE");
             return 0;
         }
     }
 
-    public static String getTableName(TransactionalBufferMetrics metrics, ResultSet rs) {
+    public static String getTableName(OracleStreamingChangeEventSourceMetrics streamingMetrics, ResultSet rs) {
         try {
             return rs.getString(TABLE_NAME);
         }
         catch (SQLException e) {
-            logError(metrics, e, "TABLE_NAME");
+            logError(streamingMetrics, e, "TABLE_NAME");
             return "";
         }
     }
 
-    public static String getSegOwner(TransactionalBufferMetrics metrics, ResultSet rs) {
+    public static String getSegOwner(OracleStreamingChangeEventSourceMetrics streamingMetrics, ResultSet rs) {
         try {
             return rs.getString(SEG_OWNER);
         }
         catch (SQLException e) {
-            logError(metrics, e, "SEG_OWNER");
+            logError(streamingMetrics, e, "SEG_OWNER");
             return "";
         }
     }
 
-    public static Timestamp getChangeTime(TransactionalBufferMetrics metrics, ResultSet rs) {
+    public static Timestamp getChangeTime(OracleStreamingChangeEventSourceMetrics streamingMetrics, ResultSet rs) {
         try {
             return rs.getTimestamp(CHANGE_TIME);
         }
         catch (SQLException e) {
-            logError(metrics, e, "CHANGE_TIME");
+            logError(streamingMetrics, e, "CHANGE_TIME");
             return new Timestamp(Instant.now().getEpochSecond());
         }
     }
 
-    public static Scn getScn(TransactionalBufferMetrics metrics, ResultSet rs) {
+    public static Scn getScn(OracleStreamingChangeEventSourceMetrics streamingMetrics, ResultSet rs) {
         try {
             return Scn.valueOf(rs.getString(SCN));
         }
         catch (SQLException e) {
-            logError(metrics, e, "SCN");
+            logError(streamingMetrics, e, "SCN");
             return Scn.NULL;
         }
     }
 
-    public static String getTransactionId(TransactionalBufferMetrics metrics, ResultSet rs) {
+    public static String getTransactionId(OracleStreamingChangeEventSourceMetrics streamingMetrics, ResultSet rs) {
         try {
             return HexConverter.convertToHexString(rs.getBytes(TX_ID));
         }
         catch (SQLException e) {
-            logError(metrics, e, "TX_ID");
+            logError(streamingMetrics, e, "TX_ID");
             return "";
         }
     }
@@ -137,7 +138,7 @@ public class RowMapper {
      * It constructs REDO_SQL. If REDO_SQL  is in a few lines, it truncates after first 40_000 characters
      * It also records LogMiner history info if isDml is true
      *
-     * @param metrics metrics
+     * @param streaingMetrics the streaming metrics
      * @param rs result set
      * @param isDml flag indicating if operation code is a DML
      * @param historyRecorder history recorder
@@ -149,7 +150,7 @@ public class RowMapper {
      * @param txId transaction ID
      * @return the redo SQL
      */
-    public static String getSqlRedo(TransactionalBufferMetrics metrics, ResultSet rs, boolean isDml,
+    public static String getSqlRedo(OracleStreamingChangeEventSourceMetrics streaingMetrics, ResultSet rs, boolean isDml,
                                     HistoryRecorder historyRecorder, Scn scn, String tableName,
                                     String segOwner, int operationCode, Timestamp changeTime, String txId) {
         int lobLimitCounter = 9; // todo : decide on approach ( XStream chunk option) and Lob limit
@@ -184,13 +185,13 @@ public class RowMapper {
 
         }
         catch (SQLException e) {
-            logError(metrics, e, "SQL_REDO");
+            logError(streaingMetrics, e, "SQL_REDO");
         }
         return result.toString();
     }
 
-    private static void logError(TransactionalBufferMetrics metrics, SQLException e, String s) {
-        LogMinerHelper.logError(metrics, "Cannot get {}. This entry from LogMiner will be lost due to the {}", s, e);
+    private static void logError(OracleStreamingChangeEventSourceMetrics streamingMetrics, SQLException e, String s) {
+        LogMinerHelper.logError(streamingMetrics, "Cannot get {}. This entry from LogMiner will be lost due to the {}", s, e);
     }
 
     public static TableId getTableId(String catalogName, ResultSet rs) {

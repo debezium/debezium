@@ -32,6 +32,7 @@ import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.oracle.OracleConnector;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleOffsetContext;
+import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.OracleTaskContext;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
@@ -77,7 +78,7 @@ public class TransactionalBufferTest {
     private OracleTaskContext taskContext;
     private ErrorHandler errorHandler;
     private TransactionalBuffer transactionalBuffer;
-    private TransactionalBufferMetrics metrics;
+    private OracleStreamingChangeEventSourceMetrics streamingMetrics;
     private EventDispatcher<?> dispatcher;
 
     @Rule
@@ -98,8 +99,8 @@ public class TransactionalBufferTest {
 
         dispatcher = mock(EventDispatcher.class);
 
-        transactionalBuffer = new TransactionalBuffer(taskContext, errorHandler);
-        metrics = transactionalBuffer.getMetrics();
+        streamingMetrics = new OracleStreamingChangeEventSourceMetrics(taskContext, queue, null, connectorConfig);
+        transactionalBuffer = new TransactionalBuffer(errorHandler, streamingMetrics);
     }
 
     @After

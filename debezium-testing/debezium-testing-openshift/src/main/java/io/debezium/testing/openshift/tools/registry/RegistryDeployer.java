@@ -106,6 +106,6 @@ public class RegistryDeployer {
     }
 
     private List<DeploymentConfig> getRegistryDeployments(String name) {
-        return ocp.deploymentConfigs().inNamespace(project).withLabel("apicur.io/name", name).list().getItems();
+        return ocp.deploymentConfigs().inNamespace(project).withLabel("app", name).list().getItems();
     }
 }

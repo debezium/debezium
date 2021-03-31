@@ -33,7 +33,7 @@ import io.debezium.engine.format.SerializationFormat;
 import io.debezium.engine.spi.OffsetCommitPolicy;
 
 /**
- * A builder that creates a decorator around {@link EmbbeddedEngine} that is responsible for the conversion
+ * A builder that creates a decorator around {@link EmbeddedEngine} that is responsible for the conversion
  * to the final format.
  *
  * @author Jiri Pechanec
@@ -45,6 +45,7 @@ public class ConvertingEngineBuilder<R> implements Builder<R> {
     private static final String VALUE_CONVERTER_PREFIX = "value.converter";
     private static final String FIELD_CLASS = "class";
     private static final String TOPIC_NAME = "debezium";
+    private static final String APICURIO_SCHEMA_REGISTRY_URL_CONFIG = "apicurio.registry.url";
 
     private final Builder<SourceRecord> delegate;
     private final Class<? extends SerializationFormat<?>> formatKey;
@@ -165,10 +166,16 @@ public class ConvertingEngineBuilder<R> implements Builder<R> {
             toFormat = (record) -> {
                 final byte[] key = keyConverter.fromConnectData(TOPIC_NAME, record.keySchema(), record.key());
                 final byte[] value = valueConverter.fromConnectData(TOPIC_NAME, record.valueSchema(), record.value());
-                return (R) new EmbeddedEngineChangeEvent<String, String>(
-                        key != null ? new String(key) : null,
-                        value != null ? new String(value) : null,
-                        record);
+                return isFormat(formatKey, Json.class) && isFormat(formatValue, Json.class)
+                        || isFormat(formatValue, CloudEvents.class)
+                                ? (R) new EmbeddedEngineChangeEvent<String, String>(
+                                        key != null ? new String(key) : null,
+                                        value != null ? new String(value) : null,
+                                        record)
+                                : (R) new EmbeddedEngineChangeEvent<byte[], byte[]>(
+                                        key,
+                                        value,
+                                        record);
             };
         }
 
@@ -197,13 +204,23 @@ public class ConvertingEngineBuilder<R> implements Builder<R> {
         converterConfig = commonConverterConfig.edit().with(converterConfig).build();
 
         if (isFormat(format, Json.class)) {
-            converterConfig = converterConfig.edit().withDefault(FIELD_CLASS, "org.apache.kafka.connect.json.JsonConverter").build();
+            if (converterConfig.hasKey(APICURIO_SCHEMA_REGISTRY_URL_CONFIG)) {
+                converterConfig = converterConfig.edit().withDefault(FIELD_CLASS, "io.apicurio.registry.utils.converter.ExtJsonConverter").build();
+            }
+            else {
+                converterConfig = converterConfig.edit().withDefault(FIELD_CLASS, "org.apache.kafka.connect.json.JsonConverter").build();
+            }
         }
         else if (isFormat(format, CloudEvents.class)) {
             converterConfig = converterConfig.edit().withDefault(FIELD_CLASS, "io.debezium.converters.CloudEventsConverter").build();
         }
         else if (isFormat(format, Avro.class)) {
-            converterConfig = converterConfig.edit().withDefault(FIELD_CLASS, "io.confluent.connect.avro.AvroConverter").build();
+            if (converterConfig.hasKey(APICURIO_SCHEMA_REGISTRY_URL_CONFIG)) {
+                converterConfig = converterConfig.edit().withDefault(FIELD_CLASS, "io.apicurio.registry.utils.converter.AvroConverter").build();
+            }
+            else {
+                converterConfig = converterConfig.edit().withDefault(FIELD_CLASS, "io.confluent.connect.avro.AvroConverter").build();
+            }
         }
         else if (isFormat(format, Protobuf.class)) {
             converterConfig = converterConfig.edit().withDefault(FIELD_CLASS, "io.confluent.connect.protobuf.ProtobufConverter").build();

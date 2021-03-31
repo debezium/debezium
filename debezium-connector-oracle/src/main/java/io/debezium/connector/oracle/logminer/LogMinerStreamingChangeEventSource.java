@@ -44,6 +44,7 @@ import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OracleOffsetContext;
+import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.OracleTaskContext;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.jdbc.JdbcConfiguration;
@@ -75,18 +76,19 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
     private final OracleTaskContext taskContext;
     private final ErrorHandler errorHandler;
     private final boolean isContinuousMining;
+    private final OracleStreamingChangeEventSourceMetrics streamingMetrics;
+    private final OracleConnectorConfig connectorConfig;
+    private final Duration archiveLogRetention;
 
-    private OracleConnectorConfig connectorConfig;
-    private LogMinerMetrics logMinerMetrics;
     private Scn startScn;
     private Scn endScn;
-    private Duration archiveLogRetention;
     private List<BigInteger> currentRedoLogSequences;
 
     public LogMinerStreamingChangeEventSource(OracleConnectorConfig connectorConfig, OracleOffsetContext offsetContext,
                                               OracleConnection jdbcConnection, EventDispatcher<TableId> dispatcher,
                                               ErrorHandler errorHandler, Clock clock, OracleDatabaseSchema schema,
-                                              OracleTaskContext taskContext, Configuration jdbcConfig) {
+                                              OracleTaskContext taskContext, Configuration jdbcConfig,
+                                              OracleStreamingChangeEventSourceMetrics streamingMetrics) {
         this.jdbcConnection = jdbcConnection;
         this.dispatcher = dispatcher;
         this.clock = clock;
@@ -97,6 +99,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
         this.isContinuousMining = connectorConfig.isContinuousMining();
         this.errorHandler = errorHandler;
         this.taskContext = taskContext;
+        this.streamingMetrics = streamingMetrics;
         this.jdbcConfiguration = JdbcConfiguration.adapt(jdbcConfig);
         this.isRac = connectorConfig.isRacSystem();
         if (this.isRac) {
@@ -114,11 +117,8 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
      */
     @Override
     public void execute(ChangeEventSourceContext context) {
-        try (TransactionalBuffer transactionalBuffer = new TransactionalBuffer(taskContext, errorHandler)) {
+        try (TransactionalBuffer transactionalBuffer = new TransactionalBuffer(errorHandler, streamingMetrics)) {
             try {
-                // Perform registration
-                registerLogMinerMetrics();
-
                 long databaseTimeMs = getTimeDifference(jdbcConnection).toMillis();
                 LOGGER.trace("Current time {} ms, database difference {} ms", System.currentTimeMillis(), databaseTimeMs);
                 transactionalBuffer.setDatabaseTimeDifference(databaseTimeMs);
@@ -140,10 +140,10 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
 
                 try {
                     // todo: why can't OracleConnection be used rather than a Factory+JdbcConfiguration?
-                    historyRecorder.prepare(logMinerMetrics, jdbcConfiguration, connectorConfig.getLogMinerHistoryRetentionHours());
+                    historyRecorder.prepare(streamingMetrics, jdbcConfiguration, connectorConfig.getLogMinerHistoryRetentionHours());
 
                     final LogMinerQueryResultProcessor processor = new LogMinerQueryResultProcessor(context, jdbcConnection,
-                            connectorConfig, logMinerMetrics, transactionalBuffer, offsetContext, schema, dispatcher,
+                            connectorConfig, streamingMetrics, transactionalBuffer, offsetContext, schema, dispatcher,
                             clock, historyRecorder);
 
                     final String query = SqlUtils.logMinerContentsQuery(connectorConfig, jdbcConnection.username());
@@ -154,7 +154,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                         Stopwatch stopwatch = Stopwatch.reusable();
                         while (context.isRunning()) {
                             Instant start = Instant.now();
-                            endScn = getEndScn(jdbcConnection, startScn, logMinerMetrics, connectorConfig.getLogMiningBatchSizeDefault());
+                            endScn = getEndScn(jdbcConnection, startScn, streamingMetrics, connectorConfig.getLogMiningBatchSizeDefault());
                             flushLogWriter(jdbcConnection, jdbcConfiguration, isRac, racHosts);
 
                             if (hasLogSwitchOccurred()) {
@@ -174,7 +174,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                                 currentRedoLogSequences = getCurrentRedoLogSequences();
                             }
 
-                            startLogMining(jdbcConnection, startScn, endScn, strategy, isContinuousMining, logMinerMetrics);
+                            startLogMining(jdbcConnection, startScn, endScn, strategy, isContinuousMining, streamingMetrics);
 
                             stopwatch.start();
                             miningView.setFetchSize(connectorConfig.getMaxQueueSize());
@@ -183,7 +183,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                             miningView.setString(2, endScn.toString());
                             try (ResultSet rs = miningView.executeQuery()) {
                                 Duration lastDurationOfBatchCapturing = stopwatch.stop().durations().statistics().getTotal();
-                                logMinerMetrics.setLastDurationOfBatchCapturing(lastDurationOfBatchCapturing);
+                                streamingMetrics.setLastDurationOfBatchCapturing(lastDurationOfBatchCapturing);
                                 processor.processResult(rs);
 
                                 startScn = endScn;
@@ -194,7 +194,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                                 }
                             }
 
-                            logMinerMetrics.setCurrentBatchProcessingTime(Duration.between(start, Instant.now()));
+                            streamingMetrics.setCurrentBatchProcessingTime(Duration.between(start, Instant.now()));
                             pauseBetweenMiningSessions();
                         }
                     }
@@ -204,29 +204,14 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                 }
             }
             catch (Throwable t) {
-                logError(transactionalBuffer.getMetrics(), "Mining session stopped due to the {}", t);
+                logError(streamingMetrics, "Mining session stopped due to the {}", t);
                 errorHandler.setProducerThrowable(t);
             }
             finally {
                 LOGGER.info("startScn={}, endScn={}, offsetContext.getScn()={}", startScn, endScn, offsetContext.getScn());
-                LOGGER.info("Transactional buffer metrics dump: {}", transactionalBuffer.getMetrics().toString());
-                LOGGER.info("Transactional buffer dump: {}", transactionalBuffer.getMetrics().toString());
-                LOGGER.info("LogMiner metrics dump: {}", logMinerMetrics.toString());
-
-                // Perform unregistration
-                unregisterLogMinerMetrics();
+                LOGGER.info("Transactional buffer dump: {}", transactionalBuffer.toString());
+                LOGGER.info("Streaming metrics dump: {}", streamingMetrics.toString());
             }
-        }
-    }
-
-    private void registerLogMinerMetrics() {
-        logMinerMetrics = new LogMinerMetrics(taskContext, connectorConfig);
-        logMinerMetrics.register(LOGGER);
-    }
-
-    private void unregisterLogMinerMetrics() {
-        if (logMinerMetrics != null) {
-            logMinerMetrics.unregister(LOGGER);
         }
     }
 
@@ -292,9 +277,9 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
 
             final Set<String> fileNames = LogMinerHelper.getCurrentRedoLogFiles(jdbcConnection);
 
-            logMinerMetrics.setRedoLogStatus(logStatuses);
-            logMinerMetrics.setSwitchCount(logSwitchCount);
-            logMinerMetrics.setCurrentLogFileName(fileNames);
+            streamingMetrics.setRedoLogStatus(logStatuses);
+            streamingMetrics.setSwitchCount(logSwitchCount);
+            streamingMetrics.setCurrentLogFileName(fileNames);
 
             return true;
         }
@@ -322,7 +307,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
     }
 
     private void pauseBetweenMiningSessions() throws InterruptedException {
-        Duration period = Duration.ofMillis(logMinerMetrics.getMillisecondToSleepBetweenMiningQuery());
+        Duration period = Duration.ofMillis(streamingMetrics.getMillisecondToSleepBetweenMiningQuery());
         Metronome.sleeper(period, clock).pause();
     }
 

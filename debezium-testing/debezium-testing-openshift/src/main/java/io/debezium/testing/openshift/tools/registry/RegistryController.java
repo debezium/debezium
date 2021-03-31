@@ -71,7 +71,7 @@ public class RegistryController {
     }
 
     private Service getRegistryService() {
-        List<Service> items = ocp.services().inNamespace(project).withLabel("apicur.io/name=", registry.getMetadata().getName()).list().getItems();
+        List<Service> items = ocp.services().inNamespace(project).withLabel("app", registry.getMetadata().getName()).list().getItems();
         if (items.isEmpty()) {
             throw new IllegalStateException("No service for registry '" + registry.getMetadata().getName() + "'");
         }
