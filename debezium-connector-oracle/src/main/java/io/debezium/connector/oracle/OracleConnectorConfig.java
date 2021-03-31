@@ -26,6 +26,7 @@ import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.config.Field.ValidationOutput;
+import io.debezium.config.Instantiator;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.connector.oracle.logminer.HistoryRecorder;
@@ -381,12 +382,9 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.snapshotEnhancementToken = config.getString(SNAPSHOT_ENHANCEMENT_TOKEN);
         this.connectorAdapter = ConnectorAdapter.parse(config.getString(CONNECTOR_ADAPTER));
 
-        final String adapterClassName = this.connectorAdapter.getImplementationName();
-        try {
-            this.streamingAdapter = (StreamingAdapter) Class.forName(adapterClassName).getDeclaredConstructor().newInstance();
-        }
-        catch (Exception e) {
-            throw new DebeziumException("Failed to load connector adapter implementation: " + adapterClassName, e);
+        this.streamingAdapter = this.connectorAdapter.getInstance();
+        if (this.streamingAdapter == null) {
+            throw new DebeziumException("Unable to instantiate the connector adapter implementation");
         }
 
         // LogMiner
@@ -545,8 +543,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             }
 
             @Override
-            public String getImplementationName() {
-                return "io.debezium.connector.oracle.xstream.XStreamAdapter";
+            public StreamingAdapter getInstance() {
+                return Instantiator.getInstance("io.debezium.connector.oracle.xstream.XStreamAdapter", StreamingAdapter.class::getClassLoader, null);
             }
         },
 
@@ -560,14 +558,14 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             }
 
             @Override
-            public String getImplementationName() {
-                return "io.debezium.connector.oracle.logminer.LogMinerAdapter";
+            public StreamingAdapter getInstance() {
+                return Instantiator.getInstance("io.debezium.connector.oracle.logminer.LogMinerAdapter", StreamingAdapter.class::getClassLoader, null);
             }
         };
 
         public abstract String getConnectionUrl();
 
-        public abstract String getImplementationName();
+        public abstract StreamingAdapter getInstance();
 
         private final String value;
 
