@@ -285,7 +285,6 @@ A client can submit multiple DDL statements to be applied to multiple databases.
 See also: {link-prefix}:{link-mysql-connector}#mysql-schema-history-topic[schema history topic].
 
 // Type: concept
-// ModuleID: how-debezium-mysql-connectors-perform-database-snapshots
 // Title: How {prodname} MySQL connectors perform database snapshots
 [[mysql-snapshots]]
 === Snapshots
@@ -1759,39 +1758,21 @@ mysql> binlog_rows_query_log_events=ON
 ** `OFF` = disabled
 
 // Type: assembly
-// ModuleID: deploying-debezium-mysql-connectors
-// Title: Deploying {prodname} MySQL connectors
+// ModuleID: deployment-of-debezium-mysql-connectors
+// Title: Deployment of {prodname} MySQL connectors
 [[mysql-deploying-a-connector]]
 == Deployment
 
-To deploy a {prodname} MySQL connector, install the {prodname} MySQL connector archive, configure the connector, and start the connector by adding its configuration to Kafka Connect.
-
-ifdef::product[]
-Details are in the following topics:
-
-* xref:installing-debezium-mysql-connectors[]
-* xref:debezium-mysql-connector-configuration-example[]
-* xref:adding-debezium-mysql-connector-configuration-to-kafka-connect[]
-* xref:descriptions-of-debezium-mysql-connector-configuration-properties[]
-endif::product[]
-
-// Type: procedure
-// Title: Installing {prodname} MySQL connectors
-[id="installing-debezium-mysql-connectors"]
-=== Installing
-
-To install a {prodname} MySQL connector, download the connector archive, extract it to your Kafka Connect environment, and ensure that the plug-ins parent directory is specified in your Kafka Connect environment.
+ifdef::community[]
+To deploy a {prodname} MySQL connector, you install the {prodname} MySQL connector archive, configure the connector, and start the connector by adding its configuration to Kafka Connect.
 
 .Prerequisites
 
 * link:https://zookeeper.apache.org/[Zookeeper], link:http://kafka.apache.org/[Kafka], and link:{link-kafka-docs}.html#connect[Kafka Connect] are installed.
-* MySQL Server is installed and set up for {prodname}.
+* MySQL Server is installed and is {link-prefix}:{link-mysql-connector}#setting-up-mysql[set up to run the {prodname} connector].
 
 .Procedure
 
-ifdef::product[]
-. Download the link:https://access.redhat.com/jbossnetwork/restricted/listSoftware.html?product=red.hat.integration&downloadType=distributions[{prodname} MySQL connector].
-endif::product[]
 ifdef::community[]
 ifeval::['{page-version}' == 'master']
 . Download the {prodname} link:{link-mysql-plugin-snapshot}[MySQL connector plug-in].
@@ -1799,47 +1780,37 @@ endif::[]
 ifeval::['{page-version}' != 'master']
 . Download the {prodname} link:https://repo1.maven.org/maven2/io/debezium/debezium-connector-mysql/{debezium-version}/debezium-connector-mysql-{debezium-version}-plugin.tar.gz[MySQL connector plug-in].
 endif::[]
-endif::community[]
 . Extract the files into your Kafka Connect environment.
-. Add the plug-ins parent directory to your Kafka Connect `plugin.path`:
-+
-[source]
-----
-plugin.path=/kafka/connect
-----
-+
-The above example assumes that you extracted the {prodname} MySQL connector into the `/kafka/connect/debezium-connector-mysql` path.
+. Add the directory with the JAR files to {link-kafka-docs}/#connectconfigs[Kafka Connect's `plugin.path`].
+. {link-prefix}:{link-mysql-connector}#mysql-example-configuration[Configure the connector] and {link-prefix}:{link-mysql-connector}#mysql-adding-configuration[add the configuration to your Kafka Connect cluster.]
+. Restart your Kafka Connect process to pick up the new JAR files.
 
-. Restart your Kafka Connect process. This ensures that the new JAR files are picked up.
-
-// Type: concept
-// ModuleID: debezium-mysql-connector-configuration-example
-// Title: {prodname} MySQL connector configuration example
 [[mysql-example-configuration]]
 === Connector configuration example
 
-ifdef::community[]
-Typically, you configure a {prodname} MySQL connector in a `.json` file that sets configuration properties for the connector. Following is an example configuration for a MySQL connector that connects to a MySQL server on port 3306 at 192.168.99.100, whose logical name is `fullfillment`.
+Following is an example of the configuration for a connector instance that captures data from a MySQL server on port 3306 at 192.168.99.100, which we logically name `fullfillment`.
+Typically, you configure the {prodname} MySQL connector in a JSON file by setting the configuration properties that are available for the connector.
 
-For details, see {link-prefix}:{link-mysql-connector}#mysql-connector-properties[MySQL connector configuration properties].
+You can choose to produce events for a subset of the schemas and tables in a database.
+Optionally, you can ignore, mask, or truncate columns that contain sensitive data, that are larger than a specified size, or that you do not need.
 
 [source,json]
 ----
 {
-  "name": "inventory-connector", // <1>
-  "config": {
-    "connector.class": "io.debezium.connector.mysql.MySqlConnector", // <2>
-    "database.hostname": "192.168.99.100", // <3>
-    "database.port": "3306", // <4>
-    "database.user": "debezium-user", // <5>
-    "database.password": "debezium-user-pw", // <6>
-    "database.server.id": "184054", <7>
-    "database.server.name": "fullfillment", // <8>
-    "database.include.list": "inventory", // <9>
-    "database.history.kafka.bootstrap.servers": "kafka:9092", // <10>
-    "database.history.kafka.topic": "dbhistory.fullfillment", // <11>
-    "include.schema.changes": "true" // <12>
-  }
+    "name": "inventory-connector", // <1>
+    "config": {
+        "connector.class": "io.debezium.connector.mysql.MySqlConnector", // <2>
+        "database.hostname": "192.168.99.100", // <3>
+        "database.port": "3306", // <4>
+        "database.user": "debezium-user", // <5>
+        "database.password": "debezium-user-pw", // <6>
+        "database.server.id": "184054", <7>
+        "database.server.name": "fullfillment", // <8>
+        "database.include.list": "inventory", // <9>
+        "database.history.kafka.bootstrap.servers": "kafka:9092", // <10>
+        "database.history.kafka.topic": "dbhistory.fullfillment", // <11>
+        "include.schema.changes": "true" // <12>
+    }
 }
 ----
 <1> Connector's name when registered with the Kafka Connect service.
@@ -1857,13 +1828,169 @@ For details, see {link-prefix}:{link-mysql-connector}#mysql-connector-properties
 endif::community[]
 
 ifdef::product[]
+To deploy a {prodname} MySQL connector, you add the connector files to Kafka Connect, create a custom container to run the connector, and then add the connector configuration to your container.
+For details about deploying the {prodname} MySQL connector, see the following topics:
 
-Typically, you configure a {prodname} MySQL connector in a `.yaml` file that sets connector configuration properties. Following is an example of the configuration for a MySQL connector that connects to a MySQL server on port 3306 and captures changes to the `inventory` database.
-For details, see {link-prefix}:{link-mysql-connector}#mysql-connector-properties[MySQL connector configuration properties].
+* xref:deploying-debezium-mysql-connectors[]
+* xref:descriptions-of-debezium-mysql-connector-configuration-properties[]
+endif::product[]
 
-[source,yaml,options="nowrap"]
+ifdef::product[]
+// Type: procedure
+// ModuleID: deploying-debezium-mysql-connectors
+=== Deploying {prodname} MySQL connectors
+
+To deploy a {prodname} MySQL connector, you must build a custom Kafka Connect container image that contains the {prodname} connector archive, and then push this container image to a container registry.
+You then need to create the following custom resources (CRs):
+
+* A `KafkaConnect` CR that configures your Kafka Connector and that specifies the name of the image that you created to run your {prodname} connector.
+  You apply this CR to the OpenShift Kafka instance.
+
+* A `KafkaConnector` CR that configures your {prodname} MySQL connector.
+  You apply this CR to the OpenShift instance where Red Hat AMQ Streams is deployed.
+
+.Prerequisites
+
+* MySQL is running and you completed the steps to {LinkDebeziumUserGuide}#setting-up-mysql-to-run-a-debezium-connector[set up MySQL to run a {prodname} connector].
+
+* link:https://access.redhat.com/products/red-hat-amq#streams[Red Hat AMQ Streams] was used to set up and start running Apache Kafka and Kafka Connect on OpenShift.
+AMQ Streams offers operators and images that bring Kafka to OpenShift.
+
+* Podman or Docker is installed.
+
+* You have an account and permissions to create and manage containers in the container registry (such as `quay.io` or `docker.io`) to which you plan to add the container that will run your Debezium connector.
+
+.Procedure
+
+. Create the {prodname} MySQL container for Kafka Connect:
+.. Download the {prodname} link:https://access.redhat.com/jbossnetwork/restricted/listSoftware.html?product=red.hat.integration&downloadType=distributions[MySQL connector archive].
+
+.. Extract the {prodname} MySQL connector archive to create a directory structure for the connector plug-in, for example:
++
+[subs="+macros"]
 ----
-  apiVersion: kafka.strimzi.io/v1beta1
+./my-plugins/
+├── debezium-connector-mysql
+│   ├── ...
+----
+
+.. Create a Docker file that uses `{DockerKafkaConnect}` as the base image.
+For example, from a terminal window, enter the following, replacing `my-plugins` with the name of your plug-ins directory:
++
+[source,shell,subs="+attributes,+quotes"]
+----
+cat <<EOF >debezium-container-for-mysql.yaml // <1>
+FROM {DockerKafkaConnect}
+USER root:root
+COPY ./_<my-plugins>_/ /opt/kafka/plugins/ // <2>
+USER 1001
+EOF
+----
+<1> You can specify any file name that you want.
+<2> Replace `my-plugins` with the name of your plug-ins directory.
++
+The command creates a Docker file with the name `debezium-container-for-mysql.yaml` in the current directory.
+
+.. Build the container image from the `debezium-container-for-mysql.yaml` Docker file that you created in the previous step.
+From the directory that contains the file, open a terminal window and enter one of the following commands:
++
+[source,shell,options="nowrap"]
+----
+podman build -t debezium-container-for-mysql:latest .
+----
++
+[source,shell,options="nowrap"]
+----
+docker build -t debezium-container-for-mysql:latest .
+----
+The preceding command builds a container image with the name `debezium-container-for-mysql`.
+
+.. Push your custom image to a container registry, such as quay.io or an internal container registry.
+The container registry must be available to the OpenShift instance where you want to deploy the image.
+Enter one of the following commands:
++
+[source,shell,subs="+quotes"]
+----
+podman push _<myregistry.io>_/debezium-container-for-mysql:latest
+----
++
+[source,shell,subs="+quotes"]
+----
+docker push _<myregistry.io>_/debezium-container-for-mysql:latest
+----
+
+.. Create a new {prodname} MySQL KafkaConnect custom resource (CR).
+For example, create a KafkaConnect CR with the name `dbz-connect.yaml` that specifies `annotations` and `image` properties as shown in the following example:
++
+[source,yaml,subs="+attributes"]
+----
+apiVersion: {KafkaConnectApiVersion}
+kind: KafkaConnect
+metadata:
+  name: my-connect-cluster
+  annotations:
+    strimzi.io/use-connector-resources: "true" // <1>
+spec:
+  #...
+  image: debezium-container-for-mysql  // <2>
+----
+<1>  `metadata.annotations` indicates to the Cluster Operator that KafkaConnector resources are used to configure connectors in this Kafka Connect cluster.
+<2>  `spec.image` specifies the name of the image that you created to run your Debezium connector.
+This property overrides the `STRIMZI_DEFAULT_KAFKA_CONNECT_IMAGE` variable in the Cluster Operator.
+
+.. Apply the `KafkaConnect` CR to the OpenShift Kafka Connect environment by entering the following command:
++
+[source,shell,options="nowrap"]
+----
+oc create -f dbz-connect.yaml
+----
++
+The command adds a Kafka Connector instance that specifies the name of the image that you created to run your {prodname} connector.
+
+. Create a `KafkaConnector` custom resource that configures your {prodname} MySQL connector instance.
++
+You configure a {prodname} MySQL connector in a `.yaml` file that specifies the configuration properties for the connector.
+The connector configuration might instruct {prodname} to produce events for a subset of the schemas and tables, or it might set properties so that {prodname} ignores, masks, or truncates values in specified columns that are sensitive, too large, or not needed.
+endif::product[]
+For the complete list of the configuration properties that you can set for the {prodname} MySQL connector,
+see {link-prefix}:{link-mysql-connector}#mysql-connector-properties[MySQL connector configuration properties].
+
+
+ifdef::community[]
+
+You can send this configuration with a `POST` command to a running Kafka Connect service.
+The service records the configuration and starts one connector task that performs the following actions:
+
+* Connects to the MySQL database.
+* Reads change-data tables for tables in capture mode.
+* Streams change event records to Kafka topics.
+
+[[mysql-adding-configuration]]
+=== Adding connector configuration
+To start running a MySQL connector, configure a connector configuration, and add the configuration to your Kafka Connect cluster.
+
+.Prerequisites
+
+* {link-prefix}:{link-mysql-connector}#setting-up-mysql[MySQL server] is set up for a {prodname} connector.
+
+* The {prodname} MySQL connector is installed.
+
+.Procedure
+
+. Create a configuration for the MySQL connector.
+
+. Use the link:{link-kafka-docs}/#connect_rest[Kafka Connect REST API] to add that connector configuration to your Kafka Connect cluster.
+endif::community[]
+ifdef::product[]
++
+The following example configures a {prodname} connector that connects to a MySQL host, `192.168.99.100`, on port `3306`,
+and captures changes to the `inventory` database.
+`dbserver1` is the server's logical name.
++
+.MySQL `inventory-connector.yaml`
+[source,yaml,options="nowrap",subs="attributes"]
+----
+  apiVersion: {KafkaConnectApiVersion}
   kind: KafkaConnector
   metadata:
     name: inventory-connector  // <1>
@@ -1921,121 +2048,49 @@ Upon restart, the connector recovers the schemas of the database that existed at
 
 |===
 
-endif::product[]
-
-// Type: procedure
-// ModuleID: adding-debezium-mysql-connector-configuration-to-kafka-connect
-// Title: Adding {prodname} MySQL connector configuration to Kafka Connect
-[[mysql-adding-configuration]]
-=== Adding connector configuration
-ifdef::community[]
-To start running a MySQL connector, configure a connector and add the configuration to your Kafka Connect cluster.
-
-.Prerequisites
-
-* {link-prefix}:{link-mysql-connector}#setting-up-mysql[MySQL server] is
-set up for a {prodname} connector.
-
-* {prodname} MySQL connector is installed.
-
-.Procedure
-
-. Create a configuration for the MySQL connector.
-
-. Use the link:{link-kafka-docs}/#connect_rest[Kafka Connect REST API] to add that connector configuration to your Kafka Connect cluster.
-
-endif::community[]
-
-ifdef::product[]
-You can use a provided {prodname} container to deploy a {prodname} MySQL connector. In this procedure, you build a custom Kafka Connect container image for {prodname}, configure the {prodname} connector as needed, and then add your connector configuration to your Kafka Connect environment.
-
-.Prerequisites
-
-* Podman or Docker is installed.
-* You have sufficient rights to create and manage containers.
-* You downloaded the {prodname} MySQL connector archive.
-
-.Procedure
-
-. Extract the {prodname} MySQL connector archive to create a directory structure for the connector plug-in, for example:
-+
-[subs="+macros"]
-----
-pass:quotes[*tree ./my-plugins/*]
-./my-plugins/
-├── debezium-connector-mysql
-│   ├── ...
-----
-
-. Create and publish a custom image for running your {prodname} connector:
-
-.. Create a new `Dockerfile` by using `{DockerKafkaConnect}` as the base image. In the following example, you would replace _my-plugins_ with the name of your plug-ins directory:
-+
-[subs="+macros,+attributes"]
-----
-FROM {DockerKafkaConnect}
-USER root:root
-pass:quotes[COPY _./my-plugins/_ /opt/kafka/plugins/]
-USER 1001
-----
-+
-Before Kafka Connect starts running the connector, Kafka Connect loads any third-party plug-ins that are in the `/opt/kafka/plugins` directory.
-
-.. Build the container image. For example, if you saved the `Dockerfile` that you created in the previous step as `debezium-container-for-mysql`, and if `Dockerfile` is in the current directory, then you would run the following command:
-+
-`podman build -t debezium-container-for-mysql:latest .`
-
-.. Push your custom image to your container registry, for example:
-+
-`podman push debezium-container-for-mysql:latest`
-
-.. Point to the new container image. Do one of the following:
-+
-* Edit the `spec.image` property of the `KafkaConnector` custom resource. If set, this property overrides the `STRIMZI_DEFAULT_KAFKA_CONNECT_IMAGE` variable in the Cluster Operator. For example:
-+
-[source,yaml,subs="+attributes"]
-----
-apiVersion: {KafkaConnectApiVersion}
-kind: KafkaConnector
-metadata:
-  name: my-connect-cluster
-spec:
-  #...
-  image: debezium-container-for-mysql
-----
-+
-* In the `install/cluster-operator/050-Deployment-strimzi-cluster-operator.yaml` file, edit the `STRIMZI_DEFAULT_KAFKA_CONNECT_IMAGE` variable to point to the new container image and reinstall the Cluster Operator. If you edit this file you must apply it to your OpenShift cluster.
-
-. Create a `KafkaConnector` custom resource that defines your {prodname} MySQL connector instance. See {LinkDebeziumUserGuide}#mysql-example-configuration[the connector configuration example].
-
-. Apply the connector instance, for example:
-+
-`oc apply -f inventory-connector.yaml`
-+
-This registers `inventory-connector` and the connector starts to run against the `inventory` database.
-
-. Verify that the connector was created and has started to capture changes in the specified database. You can verify the connector instance by watching the Kafka Connect log output as, for example, `inventory-connector` starts.
-
-.. Display the Kafka Connect log output:
+. Create your connector instance with Kafka Connect.
+For example, if you saved your `KafkaConnector` resource in the `inventory-connector.yaml` file, you would run the following command:
 +
 [source,shell,options="nowrap"]
 ----
-oc logs $(oc get pods -o name -l strimzi.io/name=my-connect-cluster-connect)
+oc apply -f inventory-connector.yaml
+----
++
+The preceding command registers `inventory-connector` and the connector starts to run against the `inventory` database as defined in the `KafkaConnector` CR.
+
+. Verify that the connector was created and has started:
+.. Display the Kafka Connect log output to verify that the connector was created and has started to capture changes in the specified database:
++
+[source,shell,options="nowrap"]
+----
+oc logs $(oc get pods -o name -l strimzi.io/cluster=my-connect-cluster)
 ----
 
-.. Review the log output to verify that the initial snapshot has been executed. You should see something like the following lines:
+.. Review the log output to verify that {prodname} performs the initial snapshot.
+The log displays output that is similar to the following messages:
 +
 [source,shell,options="nowrap"]
 ----
 ... INFO Starting snapshot for ...
 ... INFO Snapshot is using user 'debezium' ...
 ----
++
+If the connector starts correctly without errors, it creates a topic for each table whose changes the connector is capturing.
+For the example CR, there would be a topic for the table specified in the `include.list` property.
+Downstream applications can subscribe to these topics.
 
+.. Verify that the connector created the topics by running the following command:
++
+[source,shell,options="nowrap"]
+----
+oc get kafkatopics
+----
 endif::product[]
 
 .Results
 
-When the connector starts, it {link-prefix}:{link-mysql-connector}#mysql-snapshots[performs a consistent snapshot] of the MySQL databases that the connector is configured for. The connector then starts generating data change events for row-level operations and streaming change event records to Kafka topics.
+When the connector starts, it {link-prefix}:{link-mysql-connector}#mysql-snapshots[performs a consistent snapshot] of the MySQL databases that the connector is configured for.
+The connector then starts generating data change events for row-level operations and streaming change event records to Kafka topics.
 
 // Type: reference
 // ModuleID: descriptions-of-debezium-mysql-connector-configuration-properties
@@ -2227,7 +2282,7 @@ endif::community[]
  +
 If you set this option to `true` then you must also configure MySQL with the `binlog_rows_query_log_events` option set to `ON`. When `include.query` is `true`, the query is not present for events that the snapshot process generates. +
  +
-Setting `include.query`to `true` might expose tables or fields that are explicitly excluded or masked by including the original SQL statement in the change event. For this reason, the default setting is `false`.
+Setting `include.query` to `true` might expose tables or fields that are explicitly excluded or masked by including the original SQL statement in the change event. For this reason, the default setting is `false`.
 
 |[[mysql-property-event-deserialization-failure-handling-mode]]<<mysql-property-event-deserialization-failure-handling-mode, `+event.deserialization.failure.handling.mode+`>>
 |`fail`
