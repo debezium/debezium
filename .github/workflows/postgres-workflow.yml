@@ -17,6 +17,7 @@ on:
       - 'debezium-parent/pom.xml'
       - 'debezium-bom/pom.xml'
       - 'pom.xml'
+      - '.github/workflows/postgres-workflow.yml'
   pull_request:
     paths:
       - 'support/checkstyle/**'
@@ -33,6 +34,7 @@ on:
       - 'debezium-parent/pom.xml'
       - 'debezium-bom/pom.xml'
       - 'pom.xml'
+      - '.github/workflows/postgres-workflow.yml'
 
 jobs:
   build:
