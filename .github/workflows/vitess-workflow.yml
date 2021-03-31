@@ -8,6 +8,7 @@ on:
       - 'debezium-parent/pom.xml'
       - 'debezium-bom/pom.xml'
       - 'pom.xml'
+      - '.github/workflows/vitess-workflow.yml'
   pull_request:
     paths:
       - 'debezium-core/**'
@@ -15,6 +16,7 @@ on:
       - 'debezium-parent/pom.xml'
       - 'debezium-bom/pom.xml'
       - 'pom.xml'
+      - '.github/workflows/vitess-workflow.yml'
 
 jobs:
   build:
