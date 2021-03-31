@@ -416,18 +416,22 @@ public class LogMinerDmlParser implements DmlParser {
                 index += 1;
                 start = index + 1;
             }
-            else if (c == '\'' && inColumnValue && nested == 0) {
+            else if (c == '\'' && inColumnValue) {
                 // Set clause single-quoted column value
                 if (inSingleQuote) {
                     inSingleQuote = false;
-                    columnValues.add(sql.substring(start + 1, index));
-                    start = index + 1;
-                    inColumnValue = false;
-                    inColumnName = false;
+                    if (nested == 0) {
+                        columnValues.add(sql.substring(start + 1, index));
+                        start = index + 1;
+                        inColumnValue = false;
+                        inColumnName = false;
+                    }
                     continue;
                 }
+                if (!inSpecial) {
+                    start = index;
+                }
                 inSingleQuote = true;
-                start = index;
             }
             else if (c == ',' && !inColumnValue && !inColumnName) {
                 // Set clause uses ', ' skip following space
@@ -539,18 +543,22 @@ public class LogMinerDmlParser implements DmlParser {
                     continue;
                 }
             }
-            else if (c == '\'' && inColumnValue && nested == 0) {
+            else if (c == '\'' && inColumnValue) {
                 // Where clause single-quoted column value
                 if (inSingleQuote) {
                     inSingleQuote = false;
-                    columnValues.add(sql.substring(start + 1, index));
-                    start = index + 1;
-                    inColumnValue = false;
-                    inColumnName = false;
+                    if (nested == 0) {
+                        columnValues.add(sql.substring(start + 1, index));
+                        start = index + 1;
+                        inColumnValue = false;
+                        inColumnName = false;
+                    }
                     continue;
                 }
+                if (!inSpecial) {
+                    start = index;
+                }
                 inSingleQuote = true;
-                start = index;
             }
             else if (inColumnValue && !inSingleQuote) {
                 if (!inSpecial) {
