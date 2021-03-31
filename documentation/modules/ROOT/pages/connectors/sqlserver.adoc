@@ -1817,8 +1817,7 @@ To run a {prodname} SQL Server connector, create a connector configuration and a
 
 .Prerequisites
 
-* SQL Server is set up to run a {prodname} connector.
-
+* {link-prefix}:{link-sqlserver-connector}#setting-up-sqlserver[SQL Server is set up to run a {prodname} connector].
 * A {prodname} SQL Server connector is installed.
 
 .Procedure
