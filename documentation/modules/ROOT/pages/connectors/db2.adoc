@@ -1692,7 +1692,7 @@ You can send this configuration with a `POST` command to a running Kafka Connect
 The service records the configuration and starts one connector task that performs the following actions:
 
 * Connects to the Db2 database.
-* Reads change-data tables for tables in capture mode.
+* Reads change-data tables for tables that are in capture mode.
 * Streams change event records to Kafka topics.
 
 [[db2-adding-connector-configuration]]
