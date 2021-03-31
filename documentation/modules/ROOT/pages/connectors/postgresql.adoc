@@ -2386,7 +2386,7 @@ The service records the configuration and starts one connector task that perform
 To run a {prodname} PostgreSQL connector, create a connector configuration and add the configuration to your Kafka Connect cluster.
 .Prerequisites
 
-* The {link-prefix}:{link-postgresql-connector}#postgresql-server-configuration[PostgreSQL server] is configured to support logical replication.
+* {link-prefix}:{link-postgresql-connector}#postgresql-server-configuration[PostgreSQL is configured to support logical replication].
 
 * The {link-prefix}:{link-postgresql-connector}#installing-postgresql-output-plugin[logical decoding plug-in] is installed.
 
