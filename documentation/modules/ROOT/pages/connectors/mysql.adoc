@@ -1832,7 +1832,7 @@ To deploy a {prodname} MySQL connector, you add the connector files to Kafka Con
 For details about deploying the {prodname} MySQL connector, see the following topics:
 
 * xref:deploying-debezium-mysql-connectors[]
-* xref:descriptions-of-debezium-mysql-connector-configuration-properties[]
+* xref:mysql-connector-properties[]
 endif::product[]
 
 ifdef::product[]
@@ -2093,7 +2093,6 @@ When the connector starts, it {link-prefix}:{link-mysql-connector}#mysql-snapsho
 The connector then starts generating data change events for row-level operations and streaming change event records to Kafka topics.
 
 // Type: reference
-// ModuleID: descriptions-of-debezium-mysql-connector-configuration-properties
 // Title: Description of {prodname} MySQL connector configuration properties
 [[mysql-connector-properties]]
 === Connector properties
