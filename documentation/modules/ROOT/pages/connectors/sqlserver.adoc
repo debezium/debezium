@@ -1615,25 +1615,29 @@ If the `continuous` parameter is set to `1`, the job pauses for the length of ti
 == Deployment
 
 ifdef::community[]
-With link:https://zookeeper.apache.org[Zookeeper], http://kafka.apache.org/[Kafka], and {link-kafka-docs}.html#connect[Kafka Connect] installed, the remaining tasks to deploy a {prodname} SQL Server connector are to download the https://repo1.maven.org/maven2/io/debezium/debezium-connector-sqlserver/{debezium-version}/debezium-connector-sqlserver-{debezium-version}-plugin.tar.gz[connector's plug-in archive], extract the JAR files into your Kafka Connect environment, and add the directory with the JAR files to {link-kafka-docs}/#connectconfigs[Kafka Connect's `plugin.path`].
-Restart your Kafka Connect process to pick up the new JAR files.
+To deploy a {prodname} SQL Server connector, you install the {prodname} SQL Server connector archive, configure the connector, and start the connector by adding its configuration to Kafka Connect.
+
+.Prerequisites
+* link:https://zookeeper.apache.org/[Zookeeper], link:http://kafka.apache.org/[Kafka], and link:{link-kafka-docs}.html#connect[Kafka Connect] are installed.
+* SQL Server is installed and is {link-prefix}:{link-sqlserver-connector}#setting-up-sqlserver[set up to run the {prodname} connector].
+
+.Procedure
+. Download the {prodname} https://repo1.maven.org/maven2/io/debezium/debezium-connector-sqlserver/{debezium-version}/debezium-connector-sqlserver-{debezium-version}-plugin.tar.gz[SQL Server connector plug-in archive]
+. Extract the files into your Kafka Connect environment.
+. Add the directory with the JAR files to {link-kafka-docs}/#connectconfigs[Kafka Connect's `plugin.path`].
+. {link-prefix}:{link-sqlserver-connector}#sqlserver-example-configuration[Configure the connector] and {link-prefix}:{link-sqlserver-connector}#sqlserver-adding-connector-configuration[add the configuration to your Kafka Connect cluster.]
+. Restart your Kafka Connect process to pick up the new JAR files.
 
 If you are working with immutable containers, see link:https://hub.docker.com/r/debezium/[{prodname}'s container images] for Zookeeper, Kafka, SQL Server and Kafka Connect with the SQL Server connector already installed and ready to run. You can also xref:operations/openshift.adoc[run {prodname} on Kubernetes and OpenShift].
 
 [[sqlserver-example-configuration]]
-=== Example configuration
-
-To use the connector to produce change events for a particular SQL Server database or cluster:
-
-. Enable the {link-prefix}:{link-sqlserver-connector}#setting-up-sqlserver[CDC on SQL Server] to publish the _CDC_ events in the database.
-. Create a configuration file for the SQL Server connector.
-
-When the connector starts, it will create a consistent snapshot of the schemas in your SQL Server database and start streaming changes, producing change event records for every row in which data was inserted, updated, or deleted.
-Optionally, you can configure the connector to produce change events for a subset of the schemas and tables in a database.
-For example you can ignore, mask, or truncate columns that contain sensitive data, that are larger than a specified size, or that you do not need.
+=== SQL Server connector configuration example
 
 Following is an example of the configuration for a connector instance that captures data from a SQL Server server at port 1433 on 192.168.99.100, which we logically name `fullfillment`.
-Typically, you configure the {prodname} SQL Server connector in a `.json` file using the configuration properties available for the connector.
+Typically, you configure the {prodname} SQL Server connector in a JSON file by setting the configuration properties that are available for the connector.
+
+You can choose to produce events for a subset of the schemas and tables in a database.
+Optionally, you can ignore, mask, or truncate columns that contain sensitive data, that are larger than a specified size, or that you do not need.
 
 [source,json]
 ----
@@ -1672,7 +1676,7 @@ To deploy a {prodname} SQL Server connector, you add the connector files to Kafk
 For details about deploying the {prodname} SQL Server connector, see the following topics:
 
 * xref:deploying-debezium-sql-server-connectors[]
-* xref:descriptions-of-debezium-sql-server-connector-configuration-properties[]
+* xref:sql-server-connector-properties[]
 endif::product[]
 
 ifdef::product[]
@@ -1799,7 +1803,12 @@ For the complete list of the configuration properties that you can set for the {
 
 ifdef::community[]
 
-This configuration can be sent via POST to a running Kafka Connect service, which will then record the configuration and start up the one connector task that will connect to the SQL Server database, read the transaction log, and record events to Kafka topics.
+You can send this configuration with a `POST` command to a running Kafka Connect service.
+The service records the configuration and start up the one connector task that performs the following tasks:
+
+* Connects to the SQL Server database.
+* Reads the transaction log.
+* Records change events to Kafka topics.
 
 [[sqlserver-adding-connector-configuration]]
 === Adding connector configuration
@@ -1934,7 +1943,6 @@ When the connector starts, it {link-prefix}:{link-sqlserver-connector}#sqlserver
 The connector then starts generating data change events for row-level operations and streaming the change event records to Kafka topics.
 
 // Type: reference
-// ModuleID: descriptions-of-debezium-sql-server-connector-configuration-properties
 // Title: Descriptions of {prodname} SQL Server connector configuration properties
 [[sqlserver-connector-properties]]
 === Connector properties
