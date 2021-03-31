@@ -1702,7 +1702,7 @@ To start running a Db2 connector, create a connector configuration and add the c
 
 .Prerequisites
 
-* {link-prefix}:{link-db2-connector}#setting-up-db2[Db2 replication] is enabled to expose change-data for tables that are in capture mode.
+* {link-prefix}:{link-db2-connector}#setting-up-db2[Db2 replication is enabled] to expose change data for tables that are in capture mode.
 
 * The Db2 connector is installed.
 
