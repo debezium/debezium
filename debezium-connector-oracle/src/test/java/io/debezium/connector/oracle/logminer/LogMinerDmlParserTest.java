@@ -284,4 +284,56 @@ public class LogMinerDmlParserTest {
         assertThat(entry.getNewValues().get(3).getColumnData()).isEqualTo("0");
         assertThat(entry.getNewValues().get(4).getColumnData()).isEqualTo("TO_DATE('2021-03-17 10:18:55', 'YYYY-MM-DD HH24:MI:SS')");
     }
+
+    @Test
+    @FixFor("DBZ-3367")
+    public void shouldParsingRedoSqlWithParenthesisInFunctionArgumentStrings() throws Exception {
+        final Table table = Table.editor()
+                .tableId(new TableId(null, "DEBEZIUM", "TEST"))
+                .addColumn(Column.editor().name("C1").create())
+                .addColumn(Column.editor().name("C2").create())
+                .create();
+
+        String sql = "insert into \"DEBEZIUM\".\"TEST\" (\"C1\", \"C2\") values (UNISTR('\\963F\\72F8\\5C0F\\706B\\8F66\\5BB6\\5EAD\\7968(\\60CA\\559C\\FF09\\FF082161\\FF09'), NULL);";
+
+        LogMinerDmlEntry entry = fastDmlParser.parse(sql, table, null);
+        assertThat(entry.getCommandType()).isEqualTo(Operation.CREATE);
+        assertThat(entry.getOldValues()).isEmpty();
+        assertThat(entry.getNewValues()).hasSize(2);
+        assertThat(entry.getNewValues().get(0).getColumnName()).isEqualTo("C1");
+        assertThat(entry.getNewValues().get(0).getColumnData())
+                .isEqualTo("UNISTR('\\963F\\72F8\\5C0F\\706B\\8F66\\5BB6\\5EAD\\7968(\\60CA\\559C\\FF09\\FF082161\\FF09')");
+        assertThat(entry.getNewValues().get(1).getColumnName()).isEqualTo("C2");
+        assertThat(entry.getNewValues().get(1).getColumnData()).isNull();
+
+        sql = "update \"DEBEZIUM\".\"TEST\" set " +
+                "\"C2\" = UNISTR('\\963F\\72F8\\5C0F\\706B\\8F66\\5BB6\\5EAD\\7968(\\60CA\\559C\\FF09\\FF082161\\FF09') " +
+                "where \"C1\" = UNISTR('\\963F\\72F8\\5C0F\\706B\\8F66\\5BB6\\5EAD\\7968(\\60CA\\559C\\FF09\\FF082161\\FF09');";
+        entry = fastDmlParser.parse(sql, table, null);
+        assertThat(entry.getCommandType()).isEqualTo(Operation.UPDATE);
+        assertThat(entry.getOldValues()).hasSize(2);
+        assertThat(entry.getOldValues().get(0).getColumnName()).isEqualTo("C1");
+        assertThat(entry.getOldValues().get(0).getColumnData())
+                .isEqualTo("UNISTR('\\963F\\72F8\\5C0F\\706B\\8F66\\5BB6\\5EAD\\7968(\\60CA\\559C\\FF09\\FF082161\\FF09')");
+        assertThat(entry.getOldValues().get(1).getColumnName()).isEqualTo("C2");
+        assertThat(entry.getOldValues().get(1).getColumnData()).isNull();
+        assertThat(entry.getNewValues()).hasSize(2);
+        assertThat(entry.getNewValues().get(0).getColumnName()).isEqualTo("C1");
+        assertThat(entry.getNewValues().get(0).getColumnData())
+                .isEqualTo("UNISTR('\\963F\\72F8\\5C0F\\706B\\8F66\\5BB6\\5EAD\\7968(\\60CA\\559C\\FF09\\FF082161\\FF09')");
+        assertThat(entry.getNewValues().get(1).getColumnName()).isEqualTo("C2");
+        assertThat(entry.getNewValues().get(1).getColumnData())
+                .isEqualTo("UNISTR('\\963F\\72F8\\5C0F\\706B\\8F66\\5BB6\\5EAD\\7968(\\60CA\\559C\\FF09\\FF082161\\FF09')");
+
+        sql = "delete from \"DEBEZIUM\".\"TEST\" where \"C1\" = UNISTR('\\963F\\72F8\\5C0F\\706B\\8F66\\5BB6\\5EAD\\7968(\\60CA\\559C\\FF09\\FF082161\\FF09');";
+        entry = fastDmlParser.parse(sql, table, null);
+        assertThat(entry.getCommandType()).isEqualTo(Operation.DELETE);
+        assertThat(entry.getOldValues()).hasSize(2);
+        assertThat(entry.getOldValues().get(0).getColumnName()).isEqualTo("C1");
+        assertThat(entry.getOldValues().get(0).getColumnData())
+                .isEqualTo("UNISTR('\\963F\\72F8\\5C0F\\706B\\8F66\\5BB6\\5EAD\\7968(\\60CA\\559C\\FF09\\FF082161\\FF09')");
+        assertThat(entry.getOldValues().get(1).getColumnName()).isEqualTo("C2");
+        assertThat(entry.getOldValues().get(1).getColumnData()).isNull();
+        assertThat(entry.getNewValues()).isEmpty();
+    }
 }
