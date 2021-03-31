@@ -1971,7 +1971,7 @@ To start running a MySQL connector, configure a connector configuration, and add
 
 .Prerequisites
 
-* {link-prefix}:{link-mysql-connector}#setting-up-mysql[MySQL server] is set up for a {prodname} connector.
+* {link-prefix}:{link-mysql-connector}#setting-up-mysql[MySQL is set up to run a {prodname} connector].
 
 * The {prodname} MySQL connector is installed.
 
