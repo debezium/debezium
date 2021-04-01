@@ -2352,7 +2352,12 @@ Optionally, you can ignore, mask, or truncate columns that contain sensitive dat
 
 See the {link-prefix}:{link-postgresql-connector}#postgresql-connector-properties[complete list of PostgreSQL connector properties] that can be specified in these configurations.
 
-You can send this configuration with a `POST` command to a running Kafka Connect service. The service records the configuration and starts the connector task that connects to the PostgreSQL database and streams change event records to Kafka topics.
+You can send this configuration with a `POST` command to a running Kafka Connect service.
+The service records the configuration and starts one connector task that performs the following actions:
+
+* Connects to the PostgreSQL database.
+* Reads the transaction log.
+* Streams change event records to Kafka topics.
 
 [[postgresql-adding-connector-configuration]]
 === Adding connector configuration
