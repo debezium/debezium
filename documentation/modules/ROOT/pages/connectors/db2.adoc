@@ -1572,7 +1572,7 @@ ifdef::product[]
 // ModuleID: deploying-debezium-db2-connectors
 === Deploying {prodname} Db2 connectors
 
-To deploy a {prodname} Db2 connector, you must build a custom Kafka Connect container image that contains the {prodname} connector archive, and then push this container image to a container registry.
+To deploy a {prodname} Db2 connector, you must build a custom Kafka Connect container image that contains the {prodname} connector archive, and then push this container image to a container registry. 
 You then need to create the following custom resources (CRs):
 
 * A `KafkaConnect` CR that configures your Kafka Connector and that specifies the name of the image that you created to run your {prodname} connector.
