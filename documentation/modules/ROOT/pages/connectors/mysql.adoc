@@ -39,7 +39,7 @@ Information and procedures for using a {prodname} MySQL connector are organized 
 * xref:descriptions-of-debezium-mysql-connector-data-change-events[]
 * xref:how-debezium-mysql-connectors-map-data-types[]
 * xref:setting-up-mysql-to-run-a-debezium-connector[]
-* xref:deploying-debezium-mysql-connectors[]
+* xref:deployment-of-debezium-mysql-connectors[]
 * xref:monitoring-debezium-mysql-connector-performance[]
 * xref:how-debezium-mysql-connectors-handle-faults-and-problems[]
 
@@ -59,7 +59,7 @@ Details are in the following topics:
 * xref:mysql-topologies-supported-by-debezium-connectors[]
 * xref:how-debezium-mysql-connectors-handle-database-schema-changes[]
 * xref:how-debezium-mysql-connectors-expose-database-schema-changes[]
-* xref:how-debezium-mysql-connectors-perform-database-snapshots[]
+* xref:mysql-snapshots[]
 * xref:default-names-of-kafka-topics-that-receive-debezium-mysql-change-event-records[]
 
 endif::product[]
