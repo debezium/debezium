@@ -1773,7 +1773,6 @@ To deploy a {prodname} MySQL connector, you install the {prodname} MySQL connect
 
 .Procedure
 
-ifdef::community[]
 ifeval::['{page-version}' == 'master']
 . Download the {prodname} link:{link-mysql-plugin-snapshot}[MySQL connector plug-in].
 endif::[]
@@ -1784,47 +1783,6 @@ endif::[]
 . Add the directory with the JAR files to {link-kafka-docs}/#connectconfigs[Kafka Connect's `plugin.path`].
 . {link-prefix}:{link-mysql-connector}#mysql-example-configuration[Configure the connector] and {link-prefix}:{link-mysql-connector}#mysql-adding-configuration[add the configuration to your Kafka Connect cluster.]
 . Restart your Kafka Connect process to pick up the new JAR files.
-
-[[mysql-example-configuration]]
-=== Connector configuration example
-
-Following is an example of the configuration for a connector instance that captures data from a MySQL server on port 3306 at 192.168.99.100, which we logically name `fullfillment`.
-Typically, you configure the {prodname} MySQL connector in a JSON file by setting the configuration properties that are available for the connector.
-
-You can choose to produce events for a subset of the schemas and tables in a database.
-Optionally, you can ignore, mask, or truncate columns that contain sensitive data, that are larger than a specified size, or that you do not need.
-
-[source,json]
-----
-{
-    "name": "inventory-connector", // <1>
-    "config": {
-        "connector.class": "io.debezium.connector.mysql.MySqlConnector", // <2>
-        "database.hostname": "192.168.99.100", // <3>
-        "database.port": "3306", // <4>
-        "database.user": "debezium-user", // <5>
-        "database.password": "debezium-user-pw", // <6>
-        "database.server.id": "184054", <7>
-        "database.server.name": "fullfillment", // <8>
-        "database.include.list": "inventory", // <9>
-        "database.history.kafka.bootstrap.servers": "kafka:9092", // <10>
-        "database.history.kafka.topic": "dbhistory.fullfillment", // <11>
-        "include.schema.changes": "true" // <12>
-    }
-}
-----
-<1> Connector's name when registered with the Kafka Connect service.
-<2> Connector's class name.
-<3> MySQL server address.
-<4> MySQL server port number.
-<5> MySQL user with the appropriate privileges.
-<6> MySQL user's password.
-<7> Unique ID of the connector.
-<8> Logical name of the MySQL server or cluster.
-<9> List of databases hosted by the specified server.
-<10> List of Kafka brokers that the connector uses to write and recover DDL statements to the database history topic.
-<11> Name of the database history topic. This topic is for internal use only and should not be used by consumers.
-<12> Flag that specifies if the connector should generate events for DDL changes and emit them to the `fulfillment` schema change topic for use by consumers.
 endif::community[]
 
 ifdef::product[]
@@ -1833,14 +1791,12 @@ For details about deploying the {prodname} MySQL connector, see the following to
 
 * xref:deploying-debezium-mysql-connectors[]
 * xref:mysql-connector-properties[]
-endif::product[]
 
-ifdef::product[]
 // Type: procedure
 // ModuleID: deploying-debezium-mysql-connectors
 === Deploying {prodname} MySQL connectors
 
-To deploy a {prodname} MySQL connector, you must build a custom Kafka Connect container image that contains the {prodname} connector archive, and then push this container image to a container registry. 
+To deploy a {prodname} MySQL connector, you must build a custom Kafka Connect container image that contains the {prodname} connector archive, and then push this container image to a container registry.
 You then need to create the following custom resources (CRs):
 
 * A `KafkaConnect` CR that configures your Kafka Connector and that specifies the name of the image that you created to run your {prodname} connector.
@@ -1905,7 +1861,7 @@ docker build -t debezium-container-for-mysql:latest .
 ----
 The preceding command builds a container image with the name `debezium-container-for-mysql`.
 
-.. Push your custom image to a container registry, such as quay.io or an internal container registry.
+.. Push your custom image to a container registry, such as `quay.io` or an internal container registry.
 The container registry must be available to the OpenShift instance where you want to deploy the image.
 Enter one of the following commands:
 +
@@ -1951,44 +1907,13 @@ The command adds a Kafka Connector instance that specifies the name of the image
 +
 You configure a {prodname} MySQL connector in a `.yaml` file that specifies the configuration properties for the connector.
 The connector configuration might instruct {prodname} to produce events for a subset of the schemas and tables, or it might set properties so that {prodname} ignores, masks, or truncates values in specified columns that are sensitive, too large, or not needed.
-endif::product[]
-For the complete list of the configuration properties that you can set for the {prodname} MySQL connector,
-see {link-prefix}:{link-mysql-connector}#mysql-connector-properties[MySQL connector configuration properties].
-
-
-ifdef::community[]
-
-You can send this configuration with a `POST` command to a running Kafka Connect service.
-The service records the configuration and starts one connector task that performs the following actions:
-
-* Connects to the MySQL database.
-* Reads change-data tables for tables in capture mode.
-* Streams change event records to Kafka topics.
-
-[[mysql-adding-configuration]]
-=== Adding connector configuration
-To start running a MySQL connector, configure a connector configuration, and add the configuration to your Kafka Connect cluster.
-
-.Prerequisites
-
-* {link-prefix}:{link-mysql-connector}#setting-up-mysql[MySQL is set up to run a {prodname} connector].
-
-* The {prodname} MySQL connector is installed.
-
-.Procedure
-
-. Create a configuration for the MySQL connector.
-
-. Use the link:{link-kafka-docs}/#connect_rest[Kafka Connect REST API] to add that connector configuration to your Kafka Connect cluster.
-endif::community[]
-ifdef::product[]
 +
 The following example configures a {prodname} connector that connects to a MySQL host, `192.168.99.100`, on port `3306`,
 and captures changes to the `inventory` database.
 `dbserver1` is the server's logical name.
 +
 .MySQL `inventory-connector.yaml`
-[source,yaml,options="nowrap",subs="attributes"]
+[source,yaml,options="nowrap",subs="+attributes"]
 ----
   apiVersion: {KafkaConnectApiVersion}
   kind: KafkaConnector
@@ -2005,10 +1930,10 @@ and captures changes to the `inventory` database.
       database.user: debezium
       database.password: dbz
       database.server.id: 184054  // <5>
-      database.server.name: dbserver1  // <5>
-      database.include.list: inventory  // <6>
-      database.history.kafka.bootstrap.servers: my-cluster-kafka-bootstrap:9092  // <7>
-      database.history.kafka.topic: schema-changes.inventory  // <7>
+      database.server.name: dbserver1 // <6>
+      database.include.list: inventory  // <7>
+      database.history.kafka.bootstrap.servers: my-cluster-kafka-bootstrap:9092  // <8>
+      database.history.kafka.topic: schema-changes.inventory  // <9>
 ----
 
 .Descriptions of connector configuration settings
@@ -2035,17 +1960,21 @@ those tasks will be redistributed to running services.
 |The database host, which is the name of the container running the MySQL server (`mysql`).
 
 |5
-|A unique server ID and name.
-The server name is the logical identifier for the MySQL server or cluster of servers.
-This name is used as the prefix for all Kafka topics.
+|Unique ID of the connector.
 
 |6
-|Changes in only the `inventory` database are captured.
+|Logical name of the MySQL server or cluster.
+This name is used as the prefix for all Kafka topics that receive change event records.
 
 |7
-|The connector stores the history of the database schemas in Kafka using this broker (the same broker to which you are sending events) and topic name.
+|Changes in only the `inventory` database are captured.
+
+|8
+|The list of Kafka brokers that this connector will use to write and recover DDL statements to the database history topic.
 Upon restart, the connector recovers the schemas of the database that existed at the point in time in the binlog when the connector should begin reading.
 
+|9
+|The name of the database history topic. This topic is for internal use only and should not be used by consumers.
 |===
 
 . Create your connector instance with Kafka Connect.
@@ -2086,9 +2015,76 @@ Downstream applications can subscribe to these topics.
 oc get kafkatopics
 ----
 endif::product[]
+For the complete list of the configuration properties that you can set for the {prodname} MySQL connector,
+see {link-prefix}:{link-mysql-connector}#mysql-connector-properties[MySQL connector configuration properties].
+
+ifdef::community[]
+[[mysql-example-configuration]]
+=== Connector configuration example
+
+Following is an example of the configuration for a connector instance that captures data from a MySQL server on port 3306 at 192.168.99.100, which we logically name `fullfillment`.
+Typically, you configure the {prodname} MySQL connector in a JSON file by setting the configuration properties that are available for the connector.
+
+You can choose to produce events for a subset of the schemas and tables in a database.
+Optionally, you can ignore, mask, or truncate columns that contain sensitive data, that are larger than a specified size, or that you do not need.
+
+[source,json]
+----
+{
+    "name": "inventory-connector", // <1>
+    "config": {
+        "connector.class": "io.debezium.connector.mysql.MySqlConnector", // <2>
+        "database.hostname": "192.168.99.100", // <3>
+        "database.port": "3306", // <4>
+        "database.user": "debezium-user", // <5>
+        "database.password": "debezium-user-pw", // <6>
+        "database.server.id": "184054", <7>
+        "database.server.name": "fullfillment", // <8>
+        "database.include.list": "inventory", // <9>
+        "database.history.kafka.bootstrap.servers": "kafka:9092", // <10>
+        "database.history.kafka.topic": "dbhistory.fullfillment", // <11>
+        "include.schema.changes": "true" // <12>
+    }
+}
+----
+<1> Connector's name when registered with the Kafka Connect service.
+<2> Connector's class name.
+<3> MySQL server address.
+<4> MySQL server port number.
+<5> MySQL user with the appropriate privileges.
+<6> MySQL user's password.
+<7> Unique ID of the connector.
+<8> Logical name of the MySQL server or cluster.
+<9> List of databases hosted by the specified server.
+<10> List of Kafka brokers that the connector uses to write and recover DDL statements to the database history topic.
+<11> Name of the database history topic. This topic is for internal use only and should not be used by consumers.
+<12> Flag that specifies if the connector should generate events for DDL changes and emit them to the `fulfillment` schema change topic for use by consumers.
+
+You can send this configuration with a `POST` command to a running Kafka Connect service.
+The service records the configuration and starts one connector task that performs the following actions:
+
+* Connects to the MySQL database.
+* Reads change-data tables for tables in capture mode.
+* Streams change event records to Kafka topics.
+
+[[mysql-adding-configuration]]
+=== Adding connector configuration
+To start running a MySQL connector, configure a connector configuration, and add the configuration to your Kafka Connect cluster.
+
+.Prerequisites
+
+* {link-prefix}:{link-mysql-connector}#setting-up-mysql[MySQL is set up to run a {prodname} connector].
+
+* The {prodname} MySQL connector is installed.
+
+.Procedure
+
+. Create a configuration for the MySQL connector.
+
+. Use the link:{link-kafka-docs}/#connect_rest[Kafka Connect REST API] to add that connector configuration to your Kafka Connect cluster.
+endif::community[]
 
 .Results
-
 When the connector starts, it {link-prefix}:{link-mysql-connector}#mysql-snapshots[performs a consistent snapshot] of the MySQL databases that the connector is configured for.
 The connector then starts generating data change events for row-level operations and streaming change event records to Kafka topics.
 
