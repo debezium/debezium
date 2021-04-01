@@ -1840,7 +1840,7 @@ ifdef::product[]
 // ModuleID: deploying-debezium-mysql-connectors
 === Deploying {prodname} MySQL connectors
 
-To deploy a {prodname} MySQL connector, you must build a custom Kafka Connect container image that contains the {prodname} connector archive, and then push this container image to a container registry.
+To deploy a {prodname} MySQL connector, you must build a custom Kafka Connect container image that contains the {prodname} connector archive, and then push this container image to a container registry. 
 You then need to create the following custom resources (CRs):
 
 * A `KafkaConnect` CR that configures your Kafka Connector and that specifies the name of the image that you created to run your {prodname} connector.
