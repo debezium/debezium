@@ -9,11 +9,6 @@
 
 toc::[]
 
-[NOTE]
-====
-This connector is currently in incubating state, i.e. exact semantics, configuration options etc. may change in future revisions, based on the feedback we receive. Please let us know if you encounter any problems.
-====
-
 {prodname}'s Oracle Connector can monitor and record all of the row-level changes in the databases on an Oracle server.
 Most notably, the connector does not yet provide full-blown support of changes to the structure of captured tables (e.g. `ALTER TABLE...`) after the initial snapshot has been completed
 (see {jira-url}/browse/DBZ-718[DBZ-718]).
@@ -25,8 +20,6 @@ For table schema changes an xref:surrogate-schema-evolution[auxilliary solution]
 == Overview
 
 {prodname} ingests change events from Oracle using the native LogMiner database package or the https://docs.oracle.com/database/121/XSTRM/xstrm_intro.htm#XSTRM72647[XStream API].
-In order to use the XStream API, you need to have a license for the GoldenGate product
-(though it is not required that GoldenGate itself is installed).
 
 [[how-the-oracle-connector-works]]
 == How the Oracle Connector Works
@@ -441,7 +434,7 @@ And of course, the _schema_ portion of the event message's value contains a sche
 
 Let's look at what a _create_ event value might look like for our `customers` table:
 
-[source,json,indent=0,subs="attributes"]
+[source,json,indent=0,subs="+attributes"]
 ----
 {
     "schema": {
@@ -569,7 +562,7 @@ Let's look at what a _create_ event value might look like for our `customers` ta
             "EMAIL": "annek@noanswer.org"
         },
         "source": {
-            "version": "0.9.0.Alpha1",
+            "version": "{debezium-version}",
             "name": "server1",
             "ts_ms": 1520085154000,
             "txId": "6.28.807",
@@ -605,7 +598,7 @@ It is possible and even recommended to use the link:/docs/faq/#avro-converter[Av
 The value of an _update_ change event on this table will actually have the exact same _schema_, and its payload will be structured the same but will hold different values.
 Here's an example:
 
-[source,json,indent=0,subs="attributes"]
+[source,json,indent=0,subs="+attributes"]
 ----
 {
     "schema": { ... },
@@ -623,7 +616,7 @@ Here's an example:
             "EMAIL": "anne@example.com"
         },
         "source": {
-            "version": "0.9.0.Alpha1",
+            "version": "{debezium-version}",
             "name": "server1",
             "ts_ms": 1520085811000,
             "txId": "6.9.809",
@@ -659,7 +652,7 @@ When the columns for a row's primary/unique key are updated, the value of the ro
 So far we've seen samples of _create_ and _update_ events.
 Now, let's look at the value of a _delete_ event for the same table. Once again, the `schema` portion of the value will be exactly the same as with the _create_ and _update_ events:
 
-[source,json,indent=0,subs="attributes"]
+[source,json,indent=0,subs="+attributes"]
 ----
 {
     "schema": { ... },
@@ -672,7 +665,7 @@ Now, let's look at the value of a _delete_ event for the same table. Once again,
         },
         "after": null,
         "source": {
-            "version": "0.9.0.Alpha1",
+            "version": "{debezium-version}",
             "name": "server1",
             "ts_ms": 1520085153000,
             "txId": "6.28.807",
@@ -708,9 +701,9 @@ To make this possible, {prodname}'s Oracle connector always follows the _delete_
 [[oracle-data-type-mappings]]
 == Data Type mappings
 
-The Oracle conenctor represents changes to rows with events that are structured like the table in which the rows exists. The event contains a field for each column value. How that value is represented in the event depends on the Oracle data type of the column. The following sections describe how the connector maps oracle data types to a _litearl type_ and a _semantic type_ in event fields.
+The Oracle connector represents changes to rows with events that are structured like the table in which the rows exists. The event contains a field for each column value. How that value is represented in the event depends on the Oracle data type of the column. The following sections describe how the connector maps oracle data types to a _litearl type_ and a _semantic type_ in event fields.
 
-* _litearl type_ describes how the value is literally represented using Kafka Connect schema types: `INT8`, `INT16`, `INT32`, `INT64`, `FLOAT32`, `FLOAT64`, `BOOLEAN`, `STRING`, `BYTES`, `ARRAY`, `MAP`, and `STRUCT`.
+* _literal type_ describes how the value is literally represented using Kafka Connect schema types: `INT8`, `INT16`, `INT32`, `INT64`, `FLOAT32`, `FLOAT64`, `BOOLEAN`, `STRING`, `BYTES`, `ARRAY`, `MAP`, and `STRUCT`.
 
 * _semantic type_ describes how the Kafka Connect schema captures the _meaning_ of the field using the name of the Kafka Connect schema for the field.
 
@@ -730,20 +723,32 @@ Please file a {jira-url}/browse/DBZ[JIRA issue] for any specific types that may 
 endif::[]
 
 [id="oracle-character-types"]
-=== Character types
+=== Character and BLOB types
 
-The following table describes how the connector maps character types.
+The following table describes how the connector maps character and blob types.
 
-.Mappings for Oracle character data types
+.Mappings for Oracle character and blob data types
 [cols="20%a,15%a,55%a",options="header"]
 |===
 |Oracle Data Type
 |Literal type (schema type)
 |Semantic type (schema name) and Notes
 
+|`BLOB`
+|n/a
+|_This data type is not yet supported._
+
 |`CHAR[(M)]`
 |`STRING`
 |n/a
+
+|`CLOB`
+|n/a
+|_This data type is not yet supported._
+
+|`LONG`
+|n/a
+|_This data type is not yet supported._
 
 |`NCHAR[(M)]`
 |`STRING`
@@ -807,21 +812,13 @@ Contains a structure with two fields: `scale` of type `INT32` that contains the 
  +
 `INTEGER` is mapped in Oracle to NUMBER(38,0) and hence can hold values larger than any of the `INT` types could store
 
-|`LONG`
-|`INT64`
-|n/a
-
 |`NUMBER[(P[, *])]`
 |`STRUCT`
 |`io.debezium.data.VariableScaleDecimal` +
  +
 Contains a structure with two fields: `scale` of type `INT32` that contains the scale of the transferred value and `value` of type `BYTES` containing the original value in an unscaled form.
 
-|`NUMBER(P, S > 0)`
-|`BYTES`
-|`org.apache.kafka.connect.data.Decimal`
-
-|`NUMBER(P, S <= 0)`
+|`NUMBER(P, S \<= 0)`
 |`INT8` / `INT16` / `INT32` / `INT64`
 |`NUMBER` columns with a scale of 0 represent integer numbers; a negative scale indicates rounding in Oracle, e.g. a scale of -2 will cause rounding to hundreds. +
  +
@@ -832,6 +829,10 @@ Depending on the precision and scale, a matching Kafka Connect integer type will
  * P - S < 10, `INT32` +
  * P - S < 19, `INT64` +
  * P - S >= 19, `BYTES` (`org.apache.kafka.connect.data.Decimal`).
+
+|`NUMBER(P, S > 0)`
+|`BYTES`
+|`org.apache.kafka.connect.data.Decimal`
 
 |`NUMERIC[(P, S)]`
 |`BYTES` / `INT8` / `INT16` / `INT32` / `INT64`
@@ -1031,25 +1032,6 @@ archive log list
 exit;
 ----
 
-.Configuration needed for Oracle XStream
-[source,indent=0]
-----
-ORACLE_SID=ORCLCDB dbz_oracle sqlplus /nolog
-
-CONNECT sys/top_secret AS SYSDBA
-alter system set db_recovery_file_dest_size = 5G;
-alter system set db_recovery_file_dest = '/opt/oracle/oradata/recovery_area' scope=spfile;
-alter system set enable_goldengate_replication=true;
-shutdown immediate
-startup mount
-alter database archivelog;
-alter database open;
--- Should show "Database log mode: Archive Mode"
-archive log list
-
-exit;
-----
-
 In addition, supplemental logging must be enabled for captured tables or the database in order for data changes to capture the _before_ state of changed database rows.
 The following illustrates how to configure this on a specific table, which is the ideal choice to minimize the amount of information captured in the Oracle redo logs.
 
@@ -1058,13 +1040,10 @@ The following illustrates how to configure this on a specific table, which is th
 ALTER TABLE inventory.customers ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS;
 ----
 
-=== Creating Users for the connector
+=== Creating users for the connector
 
 The {prodname} Oracle connector requires that users accounts be set up with specific permissions so that the connector can capture change events.
 The following briefly describes these user configurations using a multi-tenant database model.
-
-* <<oracle-create-users-logminer, `Creating users for Oracle LogMiner`>>
-* <<oracle-create-users-xstream, `Creating users for Oracle XStream`>>
 
 [[oracle-create-users-logminer]]
 .Creating the connector's LogMiner user
@@ -1116,117 +1095,6 @@ sqlplus sys/top_secret@//localhost:1521/ORCLCDB as sysdba
 
   exit;
 ----
-
-[[oracle-create-users-xstream]]
-.Creating an XStream Administrator user
-[source,indent=0]
-----
-sqlplus sys/top_secret@//localhost:1521/ORCLCDB as sysdba
-  CREATE TABLESPACE xstream_adm_tbs DATAFILE '/opt/oracle/oradata/ORCLCDB/xstream_adm_tbs.dbf'
-    SIZE 25M REUSE AUTOEXTEND ON MAXSIZE UNLIMITED;
-  exit;
-
-sqlplus sys/top_secret@//localhost:1521/ORCLPDB1 as sysdba
-  CREATE TABLESPACE xstream_adm_tbs DATAFILE '/opt/oracle/oradata/ORCLCDB/ORCLPDB1/xstream_adm_tbs.dbf'
-    SIZE 25M REUSE AUTOEXTEND ON MAXSIZE UNLIMITED;
-  exit;
-
-sqlplus sys/top_secret@//localhost:1521/ORCLCDB as sysdba
-  CREATE USER c##dbzadmin IDENTIFIED BY dbz
-    DEFAULT TABLESPACE xstream_adm_tbs
-    QUOTA UNLIMITED ON xstream_adm_tbs
-    CONTAINER=ALL;
-
-  GRANT CREATE SESSION, SET CONTAINER TO c##dbzadmin CONTAINER=ALL;
-
-  BEGIN
-     DBMS_XSTREAM_AUTH.GRANT_ADMIN_PRIVILEGE(
-        grantee                 => 'c##dbzadmin',
-        privilege_type          => 'CAPTURE',
-        grant_select_privileges => TRUE,
-        container               => 'ALL'
-     );
-  END;
-  /
-
-  exit;
-----
-
-.Creating the connector's XStream user
-[source,indent=0]
-----
-sqlplus sys/top_secret@//localhost:1521/ORCLCDB as sysdba
-  CREATE TABLESPACE xstream_tbs DATAFILE '/opt/oracle/oradata/ORCLCDB/xstream_tbs.dbf'
-    SIZE 25M REUSE AUTOEXTEND ON MAXSIZE UNLIMITED;
-  exit;
-
-sqlplus sys/top_secret@//localhost:1521/ORCLPDB1 as sysdba
-  CREATE TABLESPACE xstream_tbs DATAFILE '/opt/oracle/oradata/ORCLCDB/ORCLPDB1/xstream_tbs.dbf'
-    SIZE 25M REUSE AUTOEXTEND ON MAXSIZE UNLIMITED;
-  exit;
-
-sqlplus sys/top_secret@//localhost:1521/ORCLCDB as sysdba
-  CREATE USER c##dbzuser IDENTIFIED BY dbz
-    DEFAULT TABLESPACE xstream_tbs
-    QUOTA UNLIMITED ON xstream_tbs
-    CONTAINER=ALL;
-
-  GRANT CREATE SESSION TO c##dbzuser CONTAINER=ALL;
-  GRANT SET CONTAINER TO c##dbzuser CONTAINER=ALL;
-  GRANT SELECT ON V_$DATABASE to c##dbzuser CONTAINER=ALL;
-  GRANT FLASHBACK ANY TABLE TO c##dbzuser CONTAINER=ALL;
-  GRANT SELECT_CATALOG_ROLE TO c##dbzuser CONTAINER=ALL;
-  GRANT EXECUTE_CATALOG_ROLE TO c##dbzuser CONTAINER=ALL;
-  exit;
-----
-
-=== Create an XStream Outbound Server
-
-[NOTE]
-====
-If you're using the default adapter, LogMiner, then this step can be skipped.
-====
-
-Create an https://docs.oracle.com/cd/E11882_01/server.112/e16545/xstrm_cncpt.htm#XSTRM1088[XStream Outbound server]
-(given the right privileges, this may be done automatically by the connector going forward, see {jira-url}/browse/DBZ-721[DBZ-721]):
-
-.Create an XStream Outbound Server
-[source,indent=0]
-----
-sqlplus c##dbzadmin/dbz@//localhost:1521/ORCLCDB
-DECLARE
-  tables  DBMS_UTILITY.UNCL_ARRAY;
-  schemas DBMS_UTILITY.UNCL_ARRAY;
-BEGIN
-    tables(1)  := NULL;
-    schemas(1) := 'debezium';
-  DBMS_XSTREAM_ADM.CREATE_OUTBOUND(
-    server_name     =>  'dbzxout',
-    table_names     =>  tables,
-    schema_names    =>  schemas);
-END;
-/
-exit;
-----
-
-.Configure the XStream user account to connect to the XStream Outbound Server
-[source,indent=0]
-----
-sqlplus sys/top_secret@//localhost:1521/ORCLCDB as sysdba
-BEGIN
-  DBMS_XSTREAM_ADM.ALTER_OUTBOUND(
-    server_name  => 'dbzxout',
-    connect_user => 'c##dbzuser');
-END;
-/
-exit;
-----
-
-[NOTE]
-====
-A single XStream Outbound server cannot be shared by multiple {prodname} Oracle connectors.
-Each connector requires a unique XStream Outbound connector to be configured.
-====
 
 [[oracle-deploying-a-connector]]
 == Deploying a Connector
@@ -1335,40 +1203,9 @@ The {prodname} Oracle connector supports both deployment practices of pluggable 
 
 [WARNING]
 ====
-When using CDB installations, specify `database.pbd.name`. +
+When using CDB installations, specify `database.pdb.name`. +
 When using a non-CDB installation, do *not* specify the `database.pdb.name`.
 ====
-
-[[selecting-the-adapter]]
-=== Selecting the adapter
-
-{prodname} provides multiple ways to ingest change events from Oracle.
-By default {prodname} uses Oracle LogMiner but you may wish to use the Oracle XStream API for your installation.
-
-The following example configuration illustrates that by adding the `database.connection.adapter` and `database.out.server.name`,
-the connector can be toggled to use the XStream API implementation.
-
-[source,json,indent=0]
-----
-{
-    "name": "inventory-connector",
-    "config": {
-        "connector.class" : "io.debezium.connector.oracle.OracleConnector",
-        "tasks.max" : "1",
-        "database.server.name" : "server1",
-        "database.hostname" : "<oracle ip>",
-        "database.port" : "1521",
-        "database.user" : "c##dbzuser",
-        "database.password" : "dbz",
-        "database.dbname" : "ORCLCDB",
-        "database.pdb.name" : "ORCLPDB1",
-        "database.history.kafka.bootstrap.servers" : "kafka:9092",
-        "database.history.kafka.topic": "schema-changes.inventory",
-        "database.connection.adapter": "xstream",
-        "database.out.server.name" : "dbzxout",
-    }
-}
-----
 
 [[oracle-connector-properties]]
 === Connector Properties
@@ -1417,36 +1254,20 @@ The following configuration properties are _required_ unless a default value is 
 |
 |Raw database jdbc url. This property can be used when more flexibility is needed and can support raw TNS names or RAC connection strings.
 
-|[[oracle-property-database-oracle-version]]<<oracle-property-database-oracle-version, `+database.oracle.version+`>>
-|`12+`
-|Specifies how to decode the Oracle SCN values.
-`11` should be used when connecting to Oracle 11 databases.
-`12+` (the default) should be used when connecting to Oracle 12 or later databases.
-This field is only applicable when using the Oracle XStreams connector adapter.
-
 |[[oracle-property-database-pdb-name]]<<oracle-property-database-pdb-name, `+database.pdb.name+`>>
 |
 |Name of the PDB to connect to, when working with the CDB + PDB model.
-
-|[[oracle-property-database-out-server-name]]<<oracle-property-database-out-server-name, `+database.out.server.name+`>>
-|
-|Name of the XStream outbound server configured in the database.
 
 |[[oracle-property-database-server-name]]<<oracle-property-database-server-name, `+database.server.name+`>>
 |
 |Logical name that identifies and provides a namespace for the particular Oracle database server being monitored. The logical name should be unique across all other connectors, since it is used as a prefix for all Kafka topic names emanating from this connector.
 Only alphanumeric characters and underscores should be used.
 
-|[[oracle-property-database-connection-adapter]]<<oracle-database-connection-adapter, `+database.connection.adapter+`>>
+|[[oracle-property-database-connection-adapter]]<<oracle-property-database-connection-adapter, `+database.connection.adapter+`>>
 |`logminer`
 |The adapter implementation to be used to stream database changes.
 `logminer` (the default) to use the native Oracle LogMiner API;
 `xstream` to use the Oracle XStreams API.
-
-|[[oracle-property-rac-nodes]]<<oracle-property-rac-nodes, `+rac.nodes+`>>
-|
-|A comma-separated list of RAC node host names or addresses.
-This field is required to enable Oracle RAC support.
 
 |[[oracle-property-database-history-kafka-topic]]<<oracle-property-database-history-kafka-topic, `+database.history.kafka.topic+`>>
 |
@@ -1475,65 +1296,32 @@ This property contains a comma-separated list of fully-qualified tables _(SCHEMA
 |An optional, comma-separated list of regular expressions that match names of schemas for which you *do not* want to capture changes. Any schema whose name is not included in `schema.exclude.list` has its changes captured, with the exception of system schemas. Do not also set the `schema.include.list` property.  When using LogMiner, only POSIX regular expressions are supported.
 
 |[[oracle-property-table-include-list]]<<oracle-property-table-include-list, `+table.include.list+`>>
-|_empty string_
+|
 |An optional comma-separated list of regular expressions that match fully-qualified table identifiers for tables to be monitored; any table not included in the include list will be excluded from monitoring. Each identifier is of the form _schemaName_._tableName_. By default the connector will monitor every non-system table in each monitored database. May not be used with `table.exclude.list`.  When using LogMiner, only POSIX regular expressions are supported.
 
 |[[oracle-property-table-exclude-list]]<<oracle-property-table-exclude-list, `+table.exclude.list+`>>
-|_empty string_
+|
 |An optional comma-separated list of regular expressions that match fully-qualified table identifiers for tables to be excluded from monitoring; any table not included in the exclude list will be monitored. Each identifier is of the form _schemaName_._tableName_. May not be used with `table.include.list`.  When using LogMiner, only POSIX regular expressions are supported.
 
 |[[oracle-property-column-include-list]]<<oracle-property-column-include-list, `+column.include.list+`>>
-|_empty string_
+|
 |An optional comma-separated list of regular expressions that match the fully-qualified names of columns that should be included in the change event message values.
 Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_.
 Note that primary key columns are always included in the event's key, even if not included in the value.
 Do not also set the `column.exclude.list` property.
 
 |[[oracle-property-column-exclude-list]]<<oracle-property-column-exclude-list, `+column.exclude.list+`>>
-|_empty string_
+|
 |An optional comma-separated list of regular expressions that match the fully-qualified names of columns that should be excluded from change event message values.
 Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_.
 Note that primary key columns are always included in the event's key, also if excluded from the value.
 Do not also set the `column.include.list` property.
 
 |[[oracle-property-column-mask-hash]]<<oracle-property-column-mask-hash, `+column.mask.hash._hashAlgorithm_.with.salt._salt_+`>>
-|_n/a_
+|
 |An optional comma-separated list of regular expressions that match the fully-qualified names of character-based columns whose values should be pseudonyms in the change event message values with a field value consisting of the hashed value using the algorithm `_hashAlgorithm_` and salt `_salt_`.
 Based on the used hash function referential integrity is kept while data is pseudonymized. Supported hash functions are described in the {link-java7-standard-names}[MessageDigest section] of the Java Cryptography Architecture Standard Algorithm Name Documentation.
 The hash is automatically shortened to the length of the column.
-
-|[[oracle-property-log-mining-batch-size-min]]<<oracle-property-log-mining-batch-size-min, `+log.mining.batch.size.min+`>>
-|`1000`
-|The minimum SCN interval size that this connector will try to read from redo/archive logs. Active batch size will be also increased/decreased by this amount for tuning connector throughput when needed.
-
-|[[oracle-property-log-mining-batch-size-max]]<<oracle-property-log-mining-batch-size-max, `+log.mining.batch.size.max+`>>
-|`100000`
-|The maximum SCN interval size that this connector will use when reading from redo/archive logs.
-
-|[[oracle-property-log-mining-batch-size-default]]<<oracle-property-log-mining-batch-size-default, `+log.mining.batch.size.default+`>>
-|`20000`
-|The starting SCN interval size that the connector will use for reading data from redo/archive logs.
-
-|[[oracle-property-log-mining-sleep-time-min-ms]]<<oracle-property-log-mining-sleep-time-min-ms, `+log.mining.sleep.time.min.ms+`>>
-|`0`
-|The minimum amount of time that the connector will sleep after reading data from redo/archive logs and before starting reading data again. Value is in milliseconds.
-
-|[[oracle-property-log-mining-sleep-time-max-ms]]<<oracle-property-log-mining-sleep-time-max-ms, `+log.mining.sleep.time.max.ms+`>>
-|`3000`
-|The maximum amount of time that the connector will sleep after reading data from redo/archive logs and before starting reading data again. Value is in milliseconds.
-
-|[[oracle-property-log-mining-sleep-time-default-ms]]<<oracle-property-log-mining-sleep-time-default-ms, `+log.mining.sleep.time.default.ms+`>>
-|`1000`
-|The starting amount of time that the connector will sleep after reading data from redo/archive logs and before starting reading data again. Value is in milliseconds.
-
-|[[oracle-property-log-mining-sleep-time-increment-ms]]<<oracle-property-log-mining-sleep-time-increment-ms, `+log.mining.sleep.time.increment.ms+`>>
-|`200`
-|The maximum amount of time up or down that the connector will use to tune the optimal sleep time when reading data from logminer. Value is in milliseconds.
-
-|[[oracle-property-log-mining-view-fetch-size]]<<oracle-property-log-mining-view-fetch-size, `+log.mining.view.fetch.size+`>>
-|`10000`
-|The number of content records that will be fetched from the log miner content view.
-
 
 Multiple properties with different lengths can be used in a single configuration, although in each the length must be a positive integer or zero. Fully-qualified names for columns are of the form _pdbName_._schemaName_._tableName_._columnName_.
 
@@ -1547,7 +1335,7 @@ Note: Depending on the `_hashAlgorithm_` used, the `_salt_` selected and the act
 
 |[[oracle-property-decimal-handling-mode]]<<oracle-property-decimal-handling-mode, `+decimal.handling.mode+`>>
 |`precise`
-| Specifies how the connector should handle floating point values for `NUMBER`, `DECIMAL` and `NUMERIC` columns: `precise` (the default) represents them precisely using `java.math.BigDecimal` values represented in change events in a binary form; or `double` represents them using `double` values, which may result in a loss of precision but will be far easier to use. `string` option encodes values as formatted string which is easy to consume but a semantic information about the real type is lost. See <<decimal-values>>.
+| Specifies how the connector should handle floating point values for `NUMBER`, `DECIMAL` and `NUMERIC` columns: `precise` (the default) represents them precisely using `java.math.BigDecimal` values represented in change events in a binary form; or `double` represents them using `double` values, which may result in a loss of precision but will be far easier to use. `string` option encodes values as formatted string which is easy to consume but a semantic information about the real type is lost. See <<oracle-decimal-types>>.
 
 |[[oracle-property-event-processing-failure-handling-mode]]<<oracle-property-event-processing-failure-handling-mode, `+event.processing.failure.handling.mode+`>>
 |`fail`
@@ -1579,33 +1367,33 @@ When `true` the delete operations are represented by a delete event and a subseq
 Emitting the tombstone event (the default behavior) allows Kafka to completely delete all events pertaining to the given key once the source record got deleted.
 
 |[[oracle-property-message-key-columns]]<<oracle-property-message-key-columns, `+message.key.columns+`>>
-|_n/a_
+|
 | A semi-colon list of regular expressions that match fully-qualified tables and columns to map a primary key. +
 Each item (regular expression) must match the `<fully-qualified table>:<a comma-separated list of columns>` representing the custom key. +
 Fully-qualified tables could be defined as _pdbName_._schemaName_._tableName_.
 
 |[[oracle-property-column-truncate-to-length-chars]]<<oracle-property-column-truncate-to-length-chars, `+column.truncate.to._length_.chars+`>>
-|_n/a_
+|
 |An optional comma-separated list of regular expressions that match the fully-qualified names of character-based columns whose values should be truncated in the change event message values if the field values are longer than the specified number of characters. Multiple properties with different lengths can be used in a single configuration, although in each the length must be a positive integer. Fully-qualified names for columns are of the form _pdbName_._schemaName_._tableName_._columnName_.
 
 |[[oracle-property-column-mask-with-length-chars]]<<oracle-property-column-mask-with-length-chars, `+column.mask.with._length_.chars+`>>
-|_n/a_
+|
 |An optional comma-separated list of regular expressions that match the fully-qualified names of character-based columns whose values should be replaced in the change event message values with a field value consisting of the specified number of asterisk (`*`) characters. Multiple properties with different lengths can be used in a single configuration, although in each the length must be a positive integer or zero. Fully-qualified names for columns are of the form _pdbName_._schemaName_._tableName_._columnName_.
 
 |[[oracle-property-column-propagate-source-type]]<<oracle-property-column-propagate-source-type, `+column.propagate.source.type+`>>
-|_n/a_
+|
 |An optional comma-separated list of regular expressions that match the fully-qualified names of columns whose original type and length should be added as a parameter to the corresponding field schemas in the emitted change messages.
 The schema parameters `pass:[_]pass:[_]debezium.source.column.type`, `pass:[_]pass:[_]debezium.source.column.length` and `pass:[_]pass:[_]debezium.source.column.scale` will be used to propagate the original type name and length (for variable-width types), respectively.
 Useful to properly size corresponding columns in sink databases.
 Fully-qualified names for columns are of the form _tableName_._columnName_, or _schemaName_._tableName_._columnName_.
 
 |[[oracle-property-datatype-propagate-source-type]]<<oracle-property-datatype-propagate-source-type, `+datatype.propagate.source.type+`>>
-|_n/a_
+|
 |An optional comma-separated list of regular expressions that match the database-specific data type name of columns whose original type and length should be added as a parameter to the corresponding field schemas in the emitted change messages.
 The schema parameters `pass:[_]pass:[_]debezium.source.column.type`, `pass:[_]pass:[_]debezium.source.column.length` and `pass:[_]pass:[_]debezium.source.column.scale` will be used to propagate the original type name and length (for variable-width types), respectively.
 Useful to properly size corresponding columns in sink databases.
 Fully-qualified data type names are of the form _tableName_._typeName_, or _schemaName_._tableName_._typeName_.
-See the {link-prefix}:{link-oracle-connector}#oracle-data-types[list of Oracle-specific data type names].
+See the {link-prefix}:{link-oracle-connector}#oracle-data-type-mappings[list of Oracle-specific data type names].
 
 |[[oracle-property-heartbeat-interval-ms]]<<oracle-property-heartbeat-interval-ms, `+heartbeat.interval.ms+`>>
 |`0`
@@ -1647,6 +1435,38 @@ See {link-prefix}:{link-avro-serialization}#avro-naming[Avro naming] for more de
 
 See {link-prefix}:{link-oracle-connector}#oracle-transaction-metadata[Transaction Metadata] for additional details.
 
+|[[oracle-property-log-mining-batch-size-min]]<<oracle-property-log-mining-batch-size-min, `+log.mining.batch.size.min+`>>
+|`1000`
+|The minimum SCN interval size that this connector will try to read from redo/archive logs. Active batch size will be also increased/decreased by this amount for tuning connector throughput when needed.
+
+|[[oracle-property-log-mining-batch-size-max]]<<oracle-property-log-mining-batch-size-max, `+log.mining.batch.size.max+`>>
+|`100000`
+|The maximum SCN interval size that this connector will use when reading from redo/archive logs.
+
+|[[oracle-property-log-mining-batch-size-default]]<<oracle-property-log-mining-batch-size-default, `+log.mining.batch.size.default+`>>
+|`20000`
+|The starting SCN interval size that the connector will use for reading data from redo/archive logs.
+
+|[[oracle-property-log-mining-sleep-time-min-ms]]<<oracle-property-log-mining-sleep-time-min-ms, `+log.mining.sleep.time.min.ms+`>>
+|`0`
+|The minimum amount of time that the connector will sleep after reading data from redo/archive logs and before starting reading data again. Value is in milliseconds.
+
+|[[oracle-property-log-mining-sleep-time-max-ms]]<<oracle-property-log-mining-sleep-time-max-ms, `+log.mining.sleep.time.max.ms+`>>
+|`3000`
+|The maximum amount of time that the connector will sleep after reading data from redo/archive logs and before starting reading data again. Value is in milliseconds.
+
+|[[oracle-property-log-mining-sleep-time-default-ms]]<<oracle-property-log-mining-sleep-time-default-ms, `+log.mining.sleep.time.default.ms+`>>
+|`1000`
+|The starting amount of time that the connector will sleep after reading data from redo/archive logs and before starting reading data again. Value is in milliseconds.
+
+|[[oracle-property-log-mining-sleep-time-increment-ms]]<<oracle-property-log-mining-sleep-time-increment-ms, `+log.mining.sleep.time.increment.ms+`>>
+|`200`
+|The maximum amount of time up or down that the connector will use to tune the optimal sleep time when reading data from logminer. Value is in milliseconds.
+
+|[[oracle-property-log-mining-view-fetch-size]]<<oracle-property-log-mining-view-fetch-size, `+log.mining.view.fetch.size+`>>
+|`10000`
+|The number of content records that will be fetched from the log miner content view.
+
 |[[oracle-property-log-mining-history-recorder-class]]<<oracle-property-log-mining-history-recorder-class, `+log.mining.history.recorder.class+`>>
 |
 |The fully qualified class name to an implementation of `HistoryReader` to be used during LogMining streaming.
@@ -1655,11 +1475,6 @@ See {link-prefix}:{link-oracle-connector}#oracle-transaction-metadata[Transactio
 |`0`
 |The number of hours in the past from SYSDATE to mine archive logs.
 Using the default `0` will mine all archive logs.
-
-|[[oracle-property-database-history-retention-hours]]<<oracle-property-database-history-retention-hours, `+database.history.retention.hours+`>>
-|`0`
-|The number of hours to retain entries in log mining history table.
-When set to `0`, log mining history is is disabled.
 
 |[[oracle-property-log-mining-transaction-retention-hours]]<<oracle-property-log-mining-transaction-retention-hours, `log.mining.transaction.retention.hours`>>
 |`0`
@@ -1674,6 +1489,16 @@ Any transaction that exceeds this configured value will be discarded entirely an
 While this option allows the behavior to be configured on a case-by-case basis,
 we have plans to enhance this behavior in a future release by means of adding a scalable transaction buffer, (see {link-prefix}:{jira-url}/browse/DBZ-3123[DBZ-3123]).
 
+|[[oracle-property-database-history-retention-hours]]<<oracle-property-database-history-retention-hours, `+database.history.retention.hours+`>>
+|`0`
+|The number of hours to retain entries in log mining history table.
+When set to `0`, log mining history is is disabled.
+
+|[[oracle-property-rac-nodes]]<<oracle-property-rac-nodes, `+rac.nodes+`>>
+|
+|A comma-separated list of RAC node host names or addresses.
+This field is required to enable Oracle RAC support.
+
 |===
 
 [[oracle-monitoring]]
@@ -1683,7 +1508,6 @@ The {prodname} Oracle connector has three metric types in addition to the built-
 
 * <<oracle-snapshot-metrics, snapshot metrics>>; for monitoring the connector when performing snapshots
 * <<oracle-streaming-metrics, streaming metrics>>; for monitoring the connector when processing change events
-* <<oracle-monitoring-streaming-logminer, logminer metrics>>; additional metrics captured when using the LogMiner adpter to process change events
 * <<oracle-schema-history-metrics, schema history metrics>>; for monitoring the status of the connector's schema history
 
 Please refer to the {link-prefix}:{link-debezium-monitoring}#monitoring-debezium[monitoring documentation] for details of how to expose these metrics via JMX.
@@ -1704,136 +1528,209 @@ The *MBean* is `debezium.oracle:type=connector-metrics,context=streaming,server=
 
 include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-streaming-metrics.adoc[leveloffset=+1]
 
-[[oracle-monitoring-streaming-logminer]]
-=== LogMiner Metrics
+The {prodname} Oracle connector also provides the following additional streaming metrics:
 
-The *MBean* is `debezium.oracle:type=connector-metrics,context=log-miner,server=_<database.server.name>_`.
-
+.Descriptions of additional streaming metrics
 [cols="45%a,25%a,30%a"]
 |===
 |Attributes |Type |Description
 
-|[[log-miner-metrics-currentscn]]<<log-miner-metrics-currentscn, `+CurrentScn+`>>
+|[[oracle-streaming-metrics-currentscn]]<<oracle-streaming-metrics-currentscn, `+CurrentScn+`>>
 |`string`
-|The most recent SCN that has been processed.
+|The most recent system change number that has been processed.
 
-|[[log-miner-metrics-currentredologfilename]]<<log-miner-metrics-currentredologfilename, `+CurrentRedoLogFileName+`>>
+|[[oracle-streaming-metrics-oldest-scn]]<<oracle-streaming-metrics-oldest-scn, `+OldestScn+`>>
+|`string`
+|The oldest system change number in the transaction buffer.
+
+|[[oracle-streaming-metrics-committed-scn]]<<oracle-streaming-metrics-committed-scn, `+ComittedScn+`>>
+|`string`
+|The last committed system change number from the transaction buffer.
+
+|[[oracle-streaming-metrics-offset-scn]]<<oracle-streaming-metrics-offset-scn, `+OffsetScn+`>>
+|`string`
+|The system change number currently written to the connector's offsets.
+
+|[[oracle-streaming-metrics-currentredologfilename]]<<oracle-streaming-metrics-currentredologfilename, `+CurrentRedoLogFileName+`>>
 |`string[]`
 |Array of the log files that are currently mined.
 
-|[[log-miner-metrics-minimumminedlogcount]]<<log-miner-metrics-minimumminedlogcount, `+MinimumMinedLogCount+`>>
+|[[oracle-streaming-metrics-minimumminedlogcount]]<<oracle-streaming-metrics-minimumminedlogcount, `+MinimumMinedLogCount+`>>
 |`long`
 |The minimum number of logs specified for any LogMiner session.
 
-|[[log-miner-metrics-maximumminedlogcount]]<<log-miner-metrics-maximumminedlogcount, `+MaximumMinedLogCount+`>>
+|[[oracle-streaming-metrics-maximumminedlogcount]]<<oracle-streaming-metrics-maximumminedlogcount, `+MaximumMinedLogCount+`>>
 |`long`
 |The maximum number of logs specified for any LogMiner session.
 
-|[[log-miner-metrics-redologstatus]]<<log-miner-metrics-redologstatus, `+RedoLogStatus+`>>
+|[[oracle-streaming-metrics-redologstatus]]<<oracle-streaming-metrics-redologstatus, `+RedoLogStatus+`>>
 |`string[]`
 |Array of the current state for each mined logfile with the format `_filename_\|_status_`.
 
-|[[log-miner-metrics-switchcounter]]<<log-miner-metrics-switchcounter, `+SwitchCounter+`>>
+|[[oracle-streaming-metrics-switchcounter]]<<oracle-streaming-metrics-switchcounter, `+SwitchCounter+`>>
 |`int`
 |The number of times the database has performed a log switch for the last day.
 
-|[[log-miner-metrics-lastcaptureddmlcount]]<<log-miner-metrics-lastcaptureddmlcount, `+LastCapturedDmlCount+`>>
+|[[oracle-streaming-metrics-lastcaptureddmlcount]]<<oracle-streaming-metrics-lastcaptureddmlcount, `+LastCapturedDmlCount+`>>
 |`long`
 |The number of DML operations observed in the last LogMiner session query.
 
-|[[log-miner-metrics-maxcaptureddmlinbatch]]<<log-miner-metrics-maxcaptureddmlinbatch, `+MaxCapturedDmlInBatch+`>>
+|[[oracle-streaming-metrics-maxcaptureddmlinbatch]]<<oracle-streaming-metrics-maxcaptureddmlinbatch, `+MaxCapturedDmlInBatch+`>>
 |`long`
 |The maximum number of DML operations observed while processing a single LogMiner session query.
 
-|[[log-miner-metrics-totalcaptureddmlcount]]<<log-miner-metrics-totalcaptureddmlcount, `+TotalCapturedDmlCount+`>>
+|[[oracle-streaming-metrics-totalcaptureddmlcount]]<<oracle-streaming-metrics-totalcaptureddmlcount, `+TotalCapturedDmlCount+`>>
 |`long`
 |The total number of DML operations observed.
 
-|[[log-miner-metrics-fetchingquerycount]]<<log-miner-metrics-fetchingquerycount, `+FetchingQueryCount+`>>
+|[[oracle-streaming-metrics-fetchingquerycount]]<<oracle-streaming-metrics-fetchingquerycount, `+FetchingQueryCount+`>>
 |`long`
 |The total number of LogMiner session query (aka batches) performed.
 
-|[[log-miner-metrics-lastdurationoffetchqueryinmilliseconds]]<<log-miner-metrics-lastdurationoffetchqueryinmilliseconds, `+LastDurationOfFetchQueryInMilliseconds+`>>
+|[[oracle-streaming-metrics-lastdurationoffetchqueryinmilliseconds]]<<oracle-streaming-metrics-lastdurationoffetchqueryinmilliseconds, `+LastDurationOfFetchQueryInMilliseconds+`>>
 |`long`
 |The duration of the last LogMiner session query's fetch in milliseconds.
 
-|[[log-miner-metrics-maxdurationoffetchqueryinmilliseconds]]<<log-miner-metrics-maxdurationoffetchqueryinmilliseconds, `+MaxDurationOfFetchQueryInMilliseconds+`>>
+|[[oracle-streaming-metrics-maxdurationoffetchqueryinmilliseconds]]<<oracle-streaming-metrics-maxdurationoffetchqueryinmilliseconds, `+MaxDurationOfFetchQueryInMilliseconds+`>>
 |`long`
 |The maximum duration of any LogMiner session query's fetch in milliseconds.
 
-|[[log-miner-metrics-lastbatchprocessingtimeinmilliseconds]]<<log-miner-metrics-lastbatchprocessingtimeinmilliseconds, `+LastBatchProcessingTimeInMilliseconds+`>>
+|[[oracle-streaming-metrics-lastbatchprocessingtimeinmilliseconds]]<<oracle-streaming-metrics-lastbatchprocessingtimeinmilliseconds, `+LastBatchProcessingTimeInMilliseconds+`>>
 |`long`
 |The duration for processing the last LogMiner query batch results in milliseconds.
 
-|[[log-miner-metrics-totalparsetimeinmilliseconds]]<<log-miner-metrics-totalparsetimeinmilliseconds, `+TotalParseTimeInMilliseconds+`>>
+|[[oracle-streaming-metrics-totalparsetimeinmilliseconds]]<<oracle-streaming-metrics-totalparsetimeinmilliseconds, `+TotalParseTimeInMilliseconds+`>>
 |`long`
 |The time in milliseconds spent parsing DML event SQL sattements.
 
-|[[log-miner-metrics-lastminingsessionstarttimeinmilliseconds]]<<log-miner-metrics-lastminingsessionstarttimeinmilliseconds, `+LastMiningSessionStartTimeInMilliseconds+`>>
+|[[oracle-streaming-metrics-lastminingsessionstarttimeinmilliseconds]]<<oracle-streaming-metrics-lastminingsessionstarttimeinmilliseconds, `+LastMiningSessionStartTimeInMilliseconds+`>>
 |`long`
 |The duration in milliseconds to start the last LogMiner session.
 
-|[[log-miner-metrics-maxminingsessionstarttimeinmilliseconds]]<<log-miner-metrics-maxminingsessionstarttimeinmilliseconds, `+MaxMiningSessionStartTimeInMilliseconds+`>>
+|[[oracle-streaming-metrics-maxminingsessionstarttimeinmilliseconds]]<<oracle-streaming-metrics-maxminingsessionstarttimeinmilliseconds, `+MaxMiningSessionStartTimeInMilliseconds+`>>
 |`long`
 |The longest duration in milliseconds to start a LogMiner session.
 
-|[[log-miner-metrics-totalminingsessionstarttimeinmilliseconds]]<<log-miner-metrics-totalminingsessionstarttimeinmilliseconds, `+TotalMiningSessionStartTimeInMilliseconds+`>>
+|[[oracle-streaming-metrics-totalminingsessionstarttimeinmilliseconds]]<<oracle-streaming-metrics-totalminingsessionstarttimeinmilliseconds, `+TotalMiningSessionStartTimeInMilliseconds+`>>
 |`long`
 |The total duration in milliseconds spent by the connector starting LogMiner sessions.
 
-|[[log-miner-metrics-minbatchprocessingtimeinmilliseconds]]<<log-miner-metrics-minbatchprocessingtimeinmilliseconds, `+MinBatchProcessingTimeInMilliseconds+`>>
+|[[oracle-streaming-metrics-minbatchprocessingtimeinmilliseconds]]<<oracle-streaming-metrics-minbatchprocessingtimeinmilliseconds, `+MinBatchProcessingTimeInMilliseconds+`>>
 |`long`
 |The minimum duration in milliseconds spent processing results from a single LogMiner session.
 
-|[[log-miner-metrics-maxbatchprocessingtimeinmilliseconds]]<<log-miner-metrics-maxbatchprocessingtimeinmilliseconds, `+MaxBatchProcessingTimeInMilliseconds+`>>
+|[[oracle-streaming-metrics-maxbatchprocessingtimeinmilliseconds]]<<oracle-streaming-metrics-maxbatchprocessingtimeinmilliseconds, `+MaxBatchProcessingTimeInMilliseconds+`>>
 |`long`
 |The maximum duration in milliseconds spent processing results from a single LogMiner session.
 
-|[[log-miner-metrics-totalprocessingtimeinmilliseconds]]<<log-miner-metrics-totalprocessingtimeinmilliseconds, `+TotalProcessingTimeInMilliseconds+`>>
+|[[oracle-streaming-metrics-totalprocessingtimeinmilliseconds]]<<oracle-streaming-metrics-totalprocessingtimeinmilliseconds, `+TotalProcessingTimeInMilliseconds+`>>
 |`long`
 |The total duration in milliseconds spent processing results from LogMiner sessions.
 
-|[[log-miner-metrics-totalresultsetnexttimeinmilliseconds]]<<log-miner-metrics-totalresultsetnexttimeinmilliseconds, `+TotalResultSetNextTimeInMilliseconds+`>>
+|[[oracle-streaming-metrics-totalresultsetnexttimeinmilliseconds]]<<oracle-streaming-metrics-totalresultsetnexttimeinmilliseconds, `+TotalResultSetNextTimeInMilliseconds+`>>
 |`long`
 |The total duration in milliseconds spent by the JDBC driver fetching the next row to be processed from the log mining view.
 
-|[[log-miner-metrics-totalprocessedrows]]<<log-miner-metrics-totalprocessedrows, `+TotalProcessedRows+`>>
+|[[oracle-streaming-metrics-totalprocessedrows]]<<oracle-streaming-metrics-totalprocessedrows, `+TotalProcessedRows+`>>
 |`long`
 |The total number of rows processed from the log mining view across all sessions.
 
-|[[log-miner-metrics-batchsize]]<<log-miner-metrics-batchsize, `+BatchSize+`>>
+|[[oracle-streaming-metrics-batchsize]]<<oracle-streaming-metrics-batchsize, `+BatchSize+`>>
 |`int`
 |The number of entries fetched by the log mining query per database round-trip.
 
-|[[log-miner-metrics-millisecondtosleepbetweenminingquery]]<<log-miner-metrics-millisecondtosleepbetweenminingquery, `+MillisecondToSleepBetweenMiningQuery+`>>
+|[[oracle-streaming-metrics-millisecondtosleepbetweenminingquery]]<<oracle-streaming-metrics-millisecondtosleepbetweenminingquery, `+MillisecondToSleepBetweenMiningQuery+`>>
 |`long`
 |The number of milliseconds the connector sleeps before fetching another batch of results from the log mining view.
 
-|[[log-miner-metrics-maxbatchprocessingthroughput]]<<log-miner-metrics-maxbatchprocessingthroughput, `+MaxBatchProcessingThroughput+`>>
+|[[oracle-streaming-metrics-maxbatchprocessingthroughput]]<<oracle-streaming-metrics-maxbatchprocessingthroughput, `+MaxBatchProcessingThroughput+`>>
 |`long`
 |The maximum number of rows/second processed from the log mining view.
 
-|[[log-miner-metrics-averagebatchprocessingthroughput]]<<log-miner-metrics-averagebatchprocessingthroughput, `+AverageBatchProcessingThroughput+`>>
+|[[oracle-streaming-metrics-averagebatchprocessingthroughput]]<<oracle-streaming-metrics-averagebatchprocessingthroughput, `+AverageBatchProcessingThroughput+`>>
 |`long`
 |The average number of rows/second processed from the log mining.
 
-|[[log-miner-metrics-lastbatchprocessingthroughput]]<<log-miner-metrics-lastbatchprocessingthroughput, `+LastBatchProcessingThroughput+`>>
+|[[oracle-streaming-metrics-lastbatchprocessingthroughput]]<<oracle-streaming-metrics-lastbatchprocessingthroughput, `+LastBatchProcessingThroughput+`>>
 |`long`
 |The average number of rows/second processed from the log mining view for the last batch.
 
-|[[log-miner-metrics-networkconnectionproblemscounter]]<<log-miner-metrics-networkconnectionproblemscounter, `+NetworkConnectionProblemsCounter+`>>
+|[[oracle-streaming-metrics-networkconnectionproblemscounter]]<<oracle-streaming-metrics-networkconnectionproblemscounter, `+NetworkConnectionProblemsCounter+`>>
 |`long`
 |The number of connection problems detected.
 
-|[[log-miner-metrics-hourstokeeptransactioninbuffer]]<<log-miner-metrics-hourstokeeptransactioninbuffer, `+HoursToKeepTransactionInBuffer+`>>
+|[[oracle-streaming-metrics-hourstokeeptransactioninbuffer]]<<oracle-streaming-metrics-hourstokeeptransactioninbuffer, `+HoursToKeepTransactionInBuffer+`>>
 |`int`
 |The number of hours that transactions will be retained by the connector's in-memory buffer without being committed or rolled back before being discarded.
 See <<oracle-property-log-mining-transaction-retention-hours, `log.mining.transaction.retention`>> for more details.
 
-|[[log-miner-metrics-recordmininghistory]]<<log-miner-metrics-recordmininghistory, `+RecordMiningHistory+`>>
+|[[oracle-streaming-metrics-recordmininghistory]]<<oracle-streaming-metrics-recordmininghistory, `+RecordMiningHistory+`>>
 |`boolean`
 |Flag that indicates if the mining results are being recorded.
-See <<oracle-property-log-mining-history-recorder-class, `log.mining.history.recorder.clas`>> for more details.
+See <<oracle-property-log-mining-history-recorder-class, `log.mining.history.recorder.class`>> for more details.
+
+|[[oracle-streaming-metrics-number-of-active-transactions]]<<oracle-streaming-metrics-number-of-active-transactions, `+NumberOfActiveTransactions+`>>
+|`long`
+|The number of current active transactions in the transaction buffer.
+
+|[[oracle-streaming-metrics-number-of-committed-transactions]]<<oracle-streaming-metrics-number-of-committed-transactions, `+NumberOfCommittedTransactions+`>>
+|`long`
+|The number of committed transactions in the transaction buffer.
+
+|[[oracle-streaming-metrics-number-of-rolledback-transactions]]<<oracle-streaming-metrics-number-of-rolledback-transactions, `+NumberOfRolledBackTransactions+`>>
+|`long`
+|The number of rolled back transactions in the transaction buffer.
+
+|[[oracle-streaming-metrics-commit-throughput]]<<oracle-streaming-metrics-commit-throughput, `+CommitThroughput+`>>
+|`long`
+|The average number of committed transactions per second in the transaction buffer.
+
+|[[oracle-streaming-metrics-registered-dml-count]]<<oracle-streaming-metrics-registered-dml-count, `+RegisteredDmlCount+`>>
+|`long`
+|The number of registered DML operations in the transaction buffer.
+
+|[[oracle-streaming-metrics-lag-from-source-in-milliseconds]]<<oracle-streaming-metrics-lag-from-source-in-milliseconds, `+LagFromSourceInMilliseconds+`>>
+|`long`
+|The time difference in milliseconds between when a change occurred in the transaction logs and when its added to the transaction buffer.
+
+|[[oracle-streaming-metrics-max-lag-from-source-in-milliseconds]]<<oracle-streaming-metrics-max-lag-from-source-in-milliseconds, `+MaxLagFromSourceInMilliseconds+`>>
+|`long`
+|The maximum time difference in milliseconds between when a change occurred in the transaction logs and when its added to the transaction buffer.
+
+|[[oracle-streaming-metrics-min-lag-from-source-in-milliseconds]]<<oracle-streaming-metrics-min-lag-from-source-in-milliseconds, `+MinLagFromSourceInMilliseconds+`>>
+|`long`
+|The minimum time difference in milliseconds between when a change occurred in the transaction logs and when its added to the transaction buffer.
+
+|[[oracle-streaming-metrics-abandoned-transaction-ids]]<<oracle-streaming-metrics-abandoned-transaction-ids, `+AbandonedTransactionIds+`>>
+|`string[]`
+|An array of abandoned transaction identifiers removed from the transaction buffer due to their age.
+See <<oracle-property-log-mining-transaction-retention-hours, `log.mining.transaction.retention.hours`>> for details.
+
+|[[oracle-streaming-metrics-rolled-back-transaction-ids]]<<oracle-streaming-metrics-rolled-back-transaction-ids, `+RolledBackTransactionIds+`>>
+|`string[]`
+|An array of transaction identifiers that have been mined and rolled back in the transaction buffer.
+
+|[[oracle-streaming-metrics-last-commit-duration-in-milliseconds]]<<oracle-streaming-metrics-last-commit-duration-in-milliseconds, `+LastCommitDurationInMilliseconds+`>>
+|`long`
+|The duration of the last transaction buffer commit operation in milliseconds.
+
+|[[oracle-streaming-metrics-max-commit-duration-in-milliseconds]]<<oracle-streaming-metrics-max-commit-duration-in-milliseconds, `+MaxCommitDurationInMilliseconds+`>>
+|`long`
+|The duration of the longest transaction buffer commit operation in milliseconds.
+
+|[[oracle-streaming-metrics-error-count]]<<oracle-streaming-metrics-error-count, `+ErrorCount+`>>
+|`int`
+|The number of errors detected.
+
+|[[oracle-streaming-metrics-warning-count]]<<oracle-streaming-metrics-warning-count, `+WarningCount+`>>
+|`int`
+|The number of warnings detected.
+
+|[[oracle-streaming-metrics-scn-freeze-count]]<<oracle-streaming-metrics-scn-freeze-count, `+ScnFreezeCount+`>>
+|`int`
+|The number of times the system change number has been checked for advancement and remains unchanged.
+This is an indicator that long-running transaction(s) are ongoing and preventing the connector from flushing the latest processed system change number to the connector's offsets.
+Under optimal operations, this should always be or remain close to `0`.
 
 |===
 
@@ -2009,6 +1906,202 @@ The message does not contain the update to the schema, but the complete new sche
 
 |===
 
+[[oracle-xstreams-support]]
+== XStreams support
+
+The {prodname} Oracle connector by default ingests changes using native Oracle LogMiner.
+The connector can be toggled to use Oracle XStream instead and to do so specific database and connector configurations must be used that differ from that of LogMiner.
+In order to use the XStream API, you need to have a license for the GoldenGate product
+(though it is not required that GoldenGate itself is installed).
+
+=== Preparing the Database
+
+.Configuration needed for Oracle XStream
+[source,indent=0]
+----
+ORACLE_SID=ORCLCDB dbz_oracle sqlplus /nolog
+
+CONNECT sys/top_secret AS SYSDBA
+alter system set db_recovery_file_dest_size = 5G;
+alter system set db_recovery_file_dest = '/opt/oracle/oradata/recovery_area' scope=spfile;
+alter system set enable_goldengate_replication=true;
+shutdown immediate
+startup mount
+alter database archivelog;
+alter database open;
+-- Should show "Database log mode: Archive Mode"
+archive log list
+
+exit;
+----
+
+In addition, supplemental logging must be enabled for captured tables or the database in order for data changes to capture the _before_ state of changed database rows.
+The following illustrates how to configure this on a specific table, which is the ideal choice to minimize the amount of information captured in the Oracle redo logs.
+
+[source,indent=0]
+----
+ALTER TABLE inventory.customers ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS;
+----
+
+=== Creating users for the connector
+
+The {prodname} Oracle connector requires that users accounts be set up with specific permissions so that the connector can capture change events.
+The following briefly describes these user configurations using a multi-tenant database model.
+
+
+[[oracle-create-users-xstream]]
+.Creating an XStream Administrator user
+[source,indent=0]
+----
+sqlplus sys/top_secret@//localhost:1521/ORCLCDB as sysdba
+  CREATE TABLESPACE xstream_adm_tbs DATAFILE '/opt/oracle/oradata/ORCLCDB/xstream_adm_tbs.dbf'
+    SIZE 25M REUSE AUTOEXTEND ON MAXSIZE UNLIMITED;
+  exit;
+
+sqlplus sys/top_secret@//localhost:1521/ORCLPDB1 as sysdba
+  CREATE TABLESPACE xstream_adm_tbs DATAFILE '/opt/oracle/oradata/ORCLCDB/ORCLPDB1/xstream_adm_tbs.dbf'
+    SIZE 25M REUSE AUTOEXTEND ON MAXSIZE UNLIMITED;
+  exit;
+
+sqlplus sys/top_secret@//localhost:1521/ORCLCDB as sysdba
+  CREATE USER c##dbzadmin IDENTIFIED BY dbz
+    DEFAULT TABLESPACE xstream_adm_tbs
+    QUOTA UNLIMITED ON xstream_adm_tbs
+    CONTAINER=ALL;
+
+  GRANT CREATE SESSION, SET CONTAINER TO c##dbzadmin CONTAINER=ALL;
+
+  BEGIN
+     DBMS_XSTREAM_AUTH.GRANT_ADMIN_PRIVILEGE(
+        grantee                 => 'c##dbzadmin',
+        privilege_type          => 'CAPTURE',
+        grant_select_privileges => TRUE,
+        container               => 'ALL'
+     );
+  END;
+  /
+
+  exit;
+----
+
+.Creating the connector's XStream user
+[source,indent=0]
+----
+sqlplus sys/top_secret@//localhost:1521/ORCLCDB as sysdba
+  CREATE TABLESPACE xstream_tbs DATAFILE '/opt/oracle/oradata/ORCLCDB/xstream_tbs.dbf'
+    SIZE 25M REUSE AUTOEXTEND ON MAXSIZE UNLIMITED;
+  exit;
+
+sqlplus sys/top_secret@//localhost:1521/ORCLPDB1 as sysdba
+  CREATE TABLESPACE xstream_tbs DATAFILE '/opt/oracle/oradata/ORCLCDB/ORCLPDB1/xstream_tbs.dbf'
+    SIZE 25M REUSE AUTOEXTEND ON MAXSIZE UNLIMITED;
+  exit;
+
+sqlplus sys/top_secret@//localhost:1521/ORCLCDB as sysdba
+  CREATE USER c##dbzuser IDENTIFIED BY dbz
+    DEFAULT TABLESPACE xstream_tbs
+    QUOTA UNLIMITED ON xstream_tbs
+    CONTAINER=ALL;
+
+  GRANT CREATE SESSION TO c##dbzuser CONTAINER=ALL;
+  GRANT SET CONTAINER TO c##dbzuser CONTAINER=ALL;
+  GRANT SELECT ON V_$DATABASE to c##dbzuser CONTAINER=ALL;
+  GRANT FLASHBACK ANY TABLE TO c##dbzuser CONTAINER=ALL;
+  GRANT SELECT_CATALOG_ROLE TO c##dbzuser CONTAINER=ALL;
+  GRANT EXECUTE_CATALOG_ROLE TO c##dbzuser CONTAINER=ALL;
+  exit;
+----
+
+=== Create an XStream Outbound Server
+
+Create an https://docs.oracle.com/cd/E11882_01/server.112/e16545/xstrm_cncpt.htm#XSTRM1088[XStream Outbound server]
+(given the right privileges, this may be done automatically by the connector going forward, see {jira-url}/browse/DBZ-721[DBZ-721]):
+
+.Create an XStream Outbound Server
+[source,indent=0]
+----
+sqlplus c##dbzadmin/dbz@//localhost:1521/ORCLCDB
+DECLARE
+  tables  DBMS_UTILITY.UNCL_ARRAY;
+  schemas DBMS_UTILITY.UNCL_ARRAY;
+BEGIN
+    tables(1)  := NULL;
+    schemas(1) := 'debezium';
+  DBMS_XSTREAM_ADM.CREATE_OUTBOUND(
+    server_name     =>  'dbzxout',
+    table_names     =>  tables,
+    schema_names    =>  schemas);
+END;
+/
+exit;
+----
+
+.Configure the XStream user account to connect to the XStream Outbound Server
+[source,indent=0]
+----
+sqlplus sys/top_secret@//localhost:1521/ORCLCDB as sysdba
+BEGIN
+  DBMS_XSTREAM_ADM.ALTER_OUTBOUND(
+    server_name  => 'dbzxout',
+    connect_user => 'c##dbzuser');
+END;
+/
+exit;
+----
+
+[NOTE]
+====
+A single XStream Outbound server cannot be shared by multiple {prodname} Oracle connectors.
+Each connector requires a unique XStream Outbound connector to be configured.
+====
+
+[[selecting-the-adapter]]
+=== Configuring the XStream adapter
+
+By default {prodname} uses Oracle LogMiner to ingest change events from Oracle.
+In order to use Oracle XStreams, the connector configuration must be adjusted to enable this adapter.
+
+The following example configuration illustrates that by adding the `database.connection.adapter` and `database.out.server.name`,
+the connector can be toggled to use the XStream API implementation.
+
+[source,json,indent=0]
+----
+{
+    "name": "inventory-connector",
+    "config": {
+        "connector.class" : "io.debezium.connector.oracle.OracleConnector",
+        "tasks.max" : "1",
+        "database.server.name" : "server1",
+        "database.hostname" : "<oracle ip>",
+        "database.port" : "1521",
+        "database.user" : "c##dbzuser",
+        "database.password" : "dbz",
+        "database.dbname" : "ORCLCDB",
+        "database.pdb.name" : "ORCLPDB1",
+        "database.history.kafka.bootstrap.servers" : "kafka:9092",
+        "database.history.kafka.topic": "schema-changes.inventory",
+        "database.connection.adapter": "xstream",
+        "database.out.server.name" : "dbzxout"
+    }
+}
+----
+
+[[oracle-xstreams-connector-properties]]
+=== Connector properties
+
+The following configuration properties are _required_ when using XStreams unless a default value is available.
+
+[cols="30%a,25%a,45%a"]
+|===
+|Property
+|Default
+|Description
+
+|[[oracle-property-database-out-server-name]]<<oracle-property-database-out-server-name, `+database.out.server.name+`>>
+|
+|Name of the XStream outbound server configured in the database.
+
+|===
 
 [[oracle-when-things-go-wrong]]
 == Behavior when things go wrong

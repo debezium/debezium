@@ -18,6 +18,7 @@
         <module>debezium-server-pubsub</module>
         <module>debezium-server-pulsar</module>
         <module>debezium-server-eventhubs</module>
+        <module>debezium-server-redis</module>
         <module>debezium-server-dist</module>
     </modules>
 
@@ -101,6 +102,15 @@
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>testcontainers</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.apicurio</groupId>
+            <artifactId>apicurio-registry-utils-converter</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.confluent</groupId>
+            <artifactId>kafka-connect-protobuf-converter</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>

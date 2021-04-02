@@ -25,6 +25,7 @@ import org.junit.rules.TestRule;
 import org.mockito.Mockito;
 
 import io.debezium.DebeziumException;
+import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
@@ -38,7 +39,7 @@ public class RowMapperTest {
     private static final Scn SCN_ONE = new Scn(BigInteger.ONE);
 
     private ResultSet rs;
-    private TransactionalBufferMetrics metrics;
+    private OracleStreamingChangeEventSourceMetrics streamingMetrics;
 
     @Rule
     public TestRule skipRule = new SkipTestDependingOnAdapterNameRule();
@@ -46,16 +47,16 @@ public class RowMapperTest {
     @Before
     public void before() {
         rs = mock(ResultSet.class);
-        metrics = mock(TransactionalBufferMetrics.class);
+        streamingMetrics = mock(OracleStreamingChangeEventSourceMetrics.class);
     }
 
     @Test
     public void testChangeTime() throws SQLException {
         Mockito.when(rs.getTimestamp(4)).thenReturn(new Timestamp(1000L));
-        Timestamp time = RowMapper.getChangeTime(metrics, rs);
+        Timestamp time = RowMapper.getChangeTime(streamingMetrics, rs);
         assertThat(time.getTime()).isEqualTo(1000L);
         Mockito.when(rs.getTimestamp(4)).thenThrow(SQLException.class);
-        time = RowMapper.getChangeTime(metrics, rs);
+        time = RowMapper.getChangeTime(streamingMetrics, rs);
         assertThat(time.getTime() == new Timestamp(Instant.now().getEpochSecond()).getTime()).isTrue();
         verify(rs, times(2)).getTimestamp(4);
     }
@@ -63,11 +64,11 @@ public class RowMapperTest {
     @Test
     public void testOperationCode() throws SQLException {
         Mockito.when(rs.getInt(3)).thenReturn(100);
-        int operation = RowMapper.getOperationCode(metrics, rs);
+        int operation = RowMapper.getOperationCode(streamingMetrics, rs);
         assertThat(operation).isEqualTo(100);
         verify(rs).getInt(3);
         Mockito.when(rs.getInt(3)).thenThrow(SQLException.class);
-        operation = RowMapper.getOperationCode(metrics, rs);
+        operation = RowMapper.getOperationCode(streamingMetrics, rs);
         assertThat(operation).isEqualTo(0);
         verify(rs, times(2)).getInt(3);
     }
@@ -75,11 +76,11 @@ public class RowMapperTest {
     @Test
     public void testTableName() throws SQLException {
         Mockito.when(rs.getString(7)).thenReturn("table_name");
-        String tableName = RowMapper.getTableName(metrics, rs);
+        String tableName = RowMapper.getTableName(streamingMetrics, rs);
         assertThat(tableName.equals("table_name")).isTrue();
         verify(rs).getString(7);
         Mockito.when(rs.getString(7)).thenThrow(SQLException.class);
-        tableName = RowMapper.getTableName(metrics, rs);
+        tableName = RowMapper.getTableName(streamingMetrics, rs);
         assertThat(tableName.equals("")).isTrue();
         verify(rs, times(2)).getString(7);
     }
@@ -87,11 +88,11 @@ public class RowMapperTest {
     @Test
     public void testSeqOwner() throws SQLException {
         Mockito.when(rs.getString(8)).thenReturn("owner");
-        String owner = RowMapper.getSegOwner(metrics, rs);
+        String owner = RowMapper.getSegOwner(streamingMetrics, rs);
         assertThat(owner.equals("owner")).isTrue();
         verify(rs).getString(8);
         Mockito.when(rs.getString(8)).thenThrow(SQLException.class);
-        owner = RowMapper.getSegOwner(metrics, rs);
+        owner = RowMapper.getSegOwner(streamingMetrics, rs);
         assertThat(owner.equals("")).isTrue();
         verify(rs, times(2)).getString(8);
     }
@@ -99,11 +100,11 @@ public class RowMapperTest {
     @Test
     public void testGetScn() throws SQLException {
         Mockito.when(rs.getString(1)).thenReturn("1");
-        Scn scn = RowMapper.getScn(metrics, rs);
+        Scn scn = RowMapper.getScn(streamingMetrics, rs);
         assertThat(scn).isEqualTo(Scn.valueOf(1L));
         verify(rs).getString(1);
         Mockito.when(rs.getString(1)).thenThrow(SQLException.class);
-        scn = RowMapper.getScn(metrics, rs);
+        scn = RowMapper.getScn(streamingMetrics, rs);
         assertThat(scn).isEqualTo(Scn.NULL);
         verify(rs, times(2)).getString(1);
     }
@@ -111,11 +112,11 @@ public class RowMapperTest {
     @Test
     public void testGetTransactionId() throws SQLException {
         Mockito.when(rs.getBytes(5)).thenReturn("tr_id".getBytes());
-        String transactionId = RowMapper.getTransactionId(metrics, rs);
+        String transactionId = RowMapper.getTransactionId(streamingMetrics, rs);
         assertThat(transactionId).isEqualToIgnoringCase("74725F6964");
         verify(rs).getBytes(5);
         Mockito.when(rs.getBytes(5)).thenThrow(SQLException.class);
-        transactionId = RowMapper.getTransactionId(metrics, rs);
+        transactionId = RowMapper.getTransactionId(streamingMetrics, rs);
         assertThat(transactionId.equals("")).isTrue();
         verify(rs, times(2)).getBytes(5);
     }
@@ -124,14 +125,14 @@ public class RowMapperTest {
     public void testSqlRedo() throws SQLException {
         Mockito.when(rs.getInt(6)).thenReturn(0);
         Mockito.when(rs.getString(2)).thenReturn("short_sql");
-        String sql = RowMapper.getSqlRedo(metrics, rs, false, null, SCN_ONE, "", "", 1, null, "");
+        String sql = RowMapper.getSqlRedo(streamingMetrics, rs, false, null, SCN_ONE, "", "", 1, null, "");
         assertThat(sql.equals("short_sql")).isTrue();
         verify(rs).getInt(6);
         verify(rs).getString(2);
 
         Mockito.when(rs.getInt(6)).thenReturn(1).thenReturn(0);
         Mockito.when(rs.getString(2)).thenReturn("long").thenReturn("_sql");
-        sql = RowMapper.getSqlRedo(metrics, rs, false, null, SCN_ONE, "", "", 1, null, "");
+        sql = RowMapper.getSqlRedo(streamingMetrics, rs, false, null, SCN_ONE, "", "", 1, null, "");
         assertThat(sql.equals("long_sql")).isTrue();
         verify(rs, times(3)).getInt(6);
         verify(rs, times(3)).getString(2);
@@ -141,21 +142,21 @@ public class RowMapperTest {
         Arrays.fill(chars, 'a');
         Mockito.when(rs.getString(2)).thenReturn(new String(chars));
         Mockito.when(rs.getInt(6)).thenReturn(1);
-        sql = RowMapper.getSqlRedo(metrics, rs, false, null, SCN_ONE, "", "", 1, null, "");
+        sql = RowMapper.getSqlRedo(streamingMetrics, rs, false, null, SCN_ONE, "", "", 1, null, "");
         assertThat(sql.length()).isEqualTo(40_000);
         verify(rs, times(13)).getInt(6);
         verify(rs, times(13)).getString(2);
 
         Mockito.when(rs.getInt(6)).thenReturn(0);
         Mockito.when(rs.getString(2)).thenReturn(null);
-        sql = RowMapper.getSqlRedo(metrics, rs, false, null, SCN_ONE, "", "", 1, null, "");
+        sql = RowMapper.getSqlRedo(streamingMetrics, rs, false, null, SCN_ONE, "", "", 1, null, "");
         assertThat(sql).isNull();
         verify(rs, times(13)).getInt(6);
         verify(rs, times(14)).getString(2);
 
         Mockito.when(rs.getInt(6)).thenReturn(0);
         Mockito.when(rs.getString(2)).thenThrow(SQLException.class);
-        sql = RowMapper.getSqlRedo(metrics, rs, false, null, SCN_ONE, "", "", 1, null, "");
+        sql = RowMapper.getSqlRedo(streamingMetrics, rs, false, null, SCN_ONE, "", "", 1, null, "");
         assertThat(sql.equals("")).isTrue();
         verify(rs, times(13)).getInt(6);
         verify(rs, times(15)).getString(2);

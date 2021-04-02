@@ -75,22 +75,11 @@ public class SqlUtils {
     static final String FILES_FOR_MINING = "SELECT FILENAME AS NAME FROM V$LOGMNR_LOGS";
 
     // log writer flush statements
-    // todo: this table shifted from LOG_MINING_AUDIT to LOG_MINING_FLUSH.
-    // since this is only used during streaming to flush redo log buffer, accept this change?
     public static final String LOGMNR_FLUSH_TABLE = "LOG_MINING_FLUSH";
     static final String FLUSH_TABLE_NOT_EMPTY = "SELECT '1' AS ONE FROM " + LOGMNR_FLUSH_TABLE;
     static final String CREATE_FLUSH_TABLE = "CREATE TABLE " + LOGMNR_FLUSH_TABLE + "(LAST_SCN NUMBER(19,0))";
     static final String INSERT_FLUSH_TABLE = "INSERT INTO " + LOGMNR_FLUSH_TABLE + " VALUES(0)";
     static final String UPDATE_FLUSH_TABLE = "UPDATE " + LOGMNR_FLUSH_TABLE + " SET LAST_SCN =";
-
-    // history recording statements
-    static final String LOGMNR_HISTORY_TEMP_TABLE = "LOG_MINING_TEMP";
-    static final String LOGMNR_HISTORY_TABLE_PREFIX = "LM_HIST_";
-    private static final String LOGMNR_HISTORY_SEQUENCE = "LOG_MINING_HIST_SEQ";
-    static final String CREATE_LOGMINING_HISTORY_SEQUENCE = "CREATE SEQUENCE " + LOGMNR_HISTORY_SEQUENCE + " ORDER CACHE 10000";
-    static final String LOGMINING_HISTORY_SEQUENCE_EXISTS = "SELECT '1' AS ONE FROM USER_SEQUENCES WHERE SEQUENCE_NAME = '" + LOGMNR_HISTORY_SEQUENCE + "'";
-    static final String INSERT_INTO_TEMP_HISTORY_TABLE_STMT = "INSERT /*+ APPEND */ INTO " + LOGMNR_HISTORY_TEMP_TABLE +
-            " values(" + LOGMNR_HISTORY_SEQUENCE + ".nextVal, ?, ?, ?, ?, ?, ?, ?, ?)";
 
     static final String NLS_SESSION_PARAMETERS = "ALTER SESSION SET "
             + "  NLS_DATE_FORMAT = 'YYYY-MM-DD HH24:MI:SS'"
@@ -112,13 +101,16 @@ public class SqlUtils {
 
     static String switchHistoryQuery() {
         return String.format("SELECT 'TOTAL', COUNT(1) FROM %s WHERE FIRST_TIME > TRUNC(SYSDATE)" +
-                " AND DEST_ID IN (SELECT DEST_ID FROM %s WHERE STATUS='VALID' AND TYPE='LOCAL')",
-                ARCHIVED_LOG_VIEW,
-                ARCHIVE_DEST_STATUS_VIEW);
+                " AND DEST_ID IN (" + localArchiveLogDestinationsOnlyQuery() + ")",
+                ARCHIVED_LOG_VIEW);
     }
 
     static String currentRedoNameQuery() {
         return String.format("SELECT F.MEMBER FROM %s LOG, %s F  WHERE LOG.GROUP#=F.GROUP# AND LOG.STATUS='CURRENT'", LOG_VIEW, LOGFILE_VIEW);
+    }
+
+    static String currentRedoLogSequenceQuery() {
+        return String.format("SELECT SEQUENCE# FROM %s WHERE STATUS = 'CURRENT'", LOG_VIEW);
     }
 
     static String databaseSupplementalLoggingAllCheckQuery() {
@@ -138,13 +130,18 @@ public class SqlUtils {
     }
 
     static String oldestFirstChangeQuery(Duration archiveLogRetention) {
+        final StringBuilder sb = new StringBuilder();
+        sb.append("SELECT MIN(FIRST_CHANGE#) FROM (SELECT MIN(FIRST_CHANGE#) AS FIRST_CHANGE# ");
+        sb.append("FROM ").append(LOG_VIEW).append(" ");
+        sb.append("UNION SELECT MIN(FIRST_CHANGE#) AS FIRST_CHANGE# ");
+        sb.append("FROM ").append(ARCHIVED_LOG_VIEW).append(" ");
+        sb.append("WHERE DEST_ID IN (").append(localArchiveLogDestinationsOnlyQuery()).append(") ");
+
         if (!archiveLogRetention.isNegative() && !archiveLogRetention.isZero()) {
-            return String.format("SELECT MIN(FIRST_CHANGE#) FROM (SELECT MIN(FIRST_CHANGE#) AS FIRST_CHANGE# FROM %s " +
-                    "UNION SELECT MIN(FIRST_CHANGE#) AS FIRST_CHANGE# FROM %s " +
-                    "WHERE FIRST_TIME >= SYSDATE - (%d/24))", LOG_VIEW, ARCHIVED_LOG_VIEW, archiveLogRetention.toHours());
+            sb.append("AND FIRST_TIME >= SYSDATE - (").append(archiveLogRetention.toHours()).append("/24)");
         }
-        return String.format("SELECT MIN(FIRST_CHANGE#) FROM (SELECT MIN(FIRST_CHANGE#) AS FIRST_CHANGE# FROM %s " +
-                "UNION SELECT MIN(FIRST_CHANGE#) AS FIRST_CHANGE# FROM %s)", LOG_VIEW, ARCHIVED_LOG_VIEW);
+
+        return sb.append(")").toString();
     }
 
     public static String allOnlineLogsQuery() {
@@ -162,14 +159,29 @@ public class SqlUtils {
      * @return query
      */
     public static String archiveLogsQuery(Scn scn, Duration archiveLogRetention) {
+        final StringBuilder sb = new StringBuilder();
+        sb.append("SELECT NAME AS FILE_NAME, NEXT_CHANGE# AS NEXT_CHANGE, FIRST_CHANGE# AS FIRST_CHANGE ");
+        sb.append("FROM ").append(ARCHIVED_LOG_VIEW).append(" ");
+        sb.append("WHERE NAME IS NOT NULL ");
+        sb.append("AND ARCHIVED = 'YES' ");
+        sb.append("AND STATUS = 'A' ");
+        sb.append("AND NEXT_CHANGE# > ").append(scn).append(" ");
+        sb.append("AND DEST_ID IN (").append(localArchiveLogDestinationsOnlyQuery()).append(") ");
+
         if (!archiveLogRetention.isNegative() && !archiveLogRetention.isZero()) {
-            return String.format("SELECT NAME AS FILE_NAME, NEXT_CHANGE# AS NEXT_CHANGE, FIRST_CHANGE# AS FIRST_CHANGE FROM %s " +
-                    " WHERE NAME IS NOT NULL AND FIRST_TIME >= SYSDATE - (%d/24) AND ARCHIVED = 'YES' " +
-                    " AND STATUS = 'A' AND NEXT_CHANGE# > %s ORDER BY 2", ARCHIVED_LOG_VIEW, archiveLogRetention.toHours(), scn);
+            sb.append("AND FIRST_TIME >= SYSDATE - (").append(archiveLogRetention.toHours()).append("/24) ");
         }
-        return String.format("SELECT NAME AS FILE_NAME, NEXT_CHANGE# AS NEXT_CHANGE, FIRST_CHANGE# AS FIRST_CHANGE FROM %s " +
-                "WHERE NAME IS NOT NULL AND ARCHIVED = 'YES' " +
-                "AND STATUS = 'A' AND NEXT_CHANGE# > %s ORDER BY 2", ARCHIVED_LOG_VIEW, scn);
+
+        return sb.append("ORDER BY 2").toString();
+    }
+
+    /**
+     * Returns a SQL predicate clause that should be applied to any {@link #ARCHIVED_LOG_VIEW} queries
+     * so that the results are filtered to only include the local destinations and not those that may
+     * be generated by tools such as Oracle Data Guard.
+     */
+    private static String localArchiveLogDestinationsOnlyQuery() {
+        return String.format("SELECT DEST_ID FROM %s WHERE STATUS='VALID' AND TYPE='LOCAL' AND ROWNUM=1", ARCHIVE_DEST_STATUS_VIEW);
     }
 
     // ***** LogMiner methods ***
@@ -343,11 +355,7 @@ public class SqlUtils {
         return "SELECT '1' AS ONE FROM USER_TABLES WHERE TABLE_NAME = '" + tableName + "'";
     }
 
-    static String getHistoryTableNamesQuery() {
-        return "SELECT TABLE_NAME, '1' FROM USER_TABLES WHERE TABLE_NAME LIKE '" + LOGMNR_HISTORY_TABLE_PREFIX + "%'";
-    }
-
-    static String dropHistoryTableStatement(String tableName) {
+    static String dropTableStatement(String tableName) {
         return "DROP TABLE " + tableName.toUpperCase() + " PURGE";
     }
 
@@ -374,10 +382,6 @@ public class SqlUtils {
 
     static String truncateTableStatement(String tableName) {
         return "TRUNCATE TABLE " + tableName;
-    }
-
-    static String bulkHistoryInsertStmt(String currentHistoryTableName) {
-        return "INSERT  /*+ APPEND */ INTO " + currentHistoryTableName + " SELECT * FROM " + LOGMNR_HISTORY_TEMP_TABLE;
     }
 
     /**
@@ -413,15 +417,6 @@ public class SqlUtils {
                 e.getMessage().startsWith("ORA-00600") || // Oracle internal error on the RAC node shutdown could happen
                 e.getMessage().toUpperCase().contains("CONNECTION IS CLOSED") ||
                 e.getMessage().toUpperCase().startsWith("NO MORE DATA TO READ FROM SOCKET");
-    }
-
-    public static String buildHistoryTableName(LocalDateTime now) {
-        int year = now.getYear();
-        int month = now.getMonthValue();
-        int day = now.getDayOfMonth();
-        int hour = now.getHour();
-        int minute = now.getMinute();
-        return SqlUtils.LOGMNR_HISTORY_TABLE_PREFIX + year + "_" + month + "_" + day + "_" + hour + "_" + minute;
     }
 
     public static long parseRetentionFromName(String historyTableName) {

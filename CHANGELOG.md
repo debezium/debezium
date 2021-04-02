@@ -2,6 +2,76 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 1.5.0.CR1
+March 24th 2021 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12354265)
+
+### New features since 1.5.0.Beta2
+
+* Promote Oracle connector from "Incubating" to "Stable" [DBZ-3290](https://issues.jboss.org/browse/DBZ-3290)
+* Handle large SCN values in Offsets and SourceInfo block [DBZ-2994](https://issues.jboss.org/browse/DBZ-2994)
+
+
+### Breaking changes since 1.5.0.Beta2
+
+* Upgrade to Apache Kafka 2.7.0 [DBZ-2872](https://issues.jboss.org/browse/DBZ-2872)
+* Add more parameters to TLS support [DBZ-3262](https://issues.jboss.org/browse/DBZ-3262)
+
+
+### Fixes since 1.5.0.Beta2
+
+* Debezium logs "is not a valid Avro schema name" can be too verbose [DBZ-2511](https://issues.jboss.org/browse/DBZ-2511)
+* message.key.columns Regex Validation Time Complexity [DBZ-2957](https://issues.jboss.org/browse/DBZ-2957)
+* OID values don't fit to INT32 schema [DBZ-3033](https://issues.jboss.org/browse/DBZ-3033)
+* Connector automatically restart on ORA-26653 [DBZ-3236](https://issues.jboss.org/browse/DBZ-3236)
+* UI container has no assets (JS artifacts, fonts, etc) and randomly fails building [DBZ-3247](https://issues.jboss.org/browse/DBZ-3247)
+* Revert Clob behavior for Oracle LogMiner to avoid null values [DBZ-3257](https://issues.jboss.org/browse/DBZ-3257)
+* SQL Server misses description for decimal.handling.mode [DBZ-3267](https://issues.jboss.org/browse/DBZ-3267)
+* Oracle connector ignores time.precision.mode and just uses adaptive mode [DBZ-3268](https://issues.jboss.org/browse/DBZ-3268)
+* commons-logging JAR is missing from Debezium Server distro [DBZ-3277](https://issues.jboss.org/browse/DBZ-3277)
+* MongoDB timeouts crash the whole connector [DBZ-3278](https://issues.jboss.org/browse/DBZ-3278)
+* Prefer archive logs over redo logs of the same SCN range [DBZ-3292](https://issues.jboss.org/browse/DBZ-3292)
+* LogMiner mining query may unintentionally skip records [DBZ-3295](https://issues.jboss.org/browse/DBZ-3295)
+* IndexOutOfBoundsException when LogMiner DML update statement contains a function as last column's value [DBZ-3305](https://issues.jboss.org/browse/DBZ-3305)
+* Out of memory with mysql snapshots (regression of DBZ-94) [DBZ-3309](https://issues.jboss.org/browse/DBZ-3309)
+* Keyword ORDER is a valid identifier in MySQL grammar [DBZ-3310](https://issues.jboss.org/browse/DBZ-3310)
+* DDL statement couldn't be parsed for ROW_FORMAT=TOKUDB_QUICKLZ [DBZ-3311](https://issues.jboss.org/browse/DBZ-3311)
+* LogMiner can miss a log switch event if too many switches occur. [DBZ-3319](https://issues.jboss.org/browse/DBZ-3319)
+* Function MOD is missing from MySQL grammar [DBZ-3333](https://issues.jboss.org/browse/DBZ-3333)
+* Incorrect SR label names in OCP testusite [DBZ-3336](https://issues.jboss.org/browse/DBZ-3336)
+* DB2 upstream tests are still using master as the default branch [DBZ-3337](https://issues.jboss.org/browse/DBZ-3337)
+
+
+### Other changes since 1.5.0.Beta2
+
+* Demo: Exploring non-key joins of Kafka Streams 2.4 [DBZ-2100](https://issues.jboss.org/browse/DBZ-2100)
+* Publish Debezium BOM POM [DBZ-2145](https://issues.jboss.org/browse/DBZ-2145)
+* Use BigInteger as SCN rather than BigDecimal [DBZ-2457](https://issues.jboss.org/browse/DBZ-2457)
+* Document ChangeConsumer usage for Debezium Engine [DBZ-2520](https://issues.jboss.org/browse/DBZ-2520)
+* Add check that target release is set [DBZ-2536](https://issues.jboss.org/browse/DBZ-2536)
+* Consolidate multiple JMX beans during Oracle streaming with LogMiner [DBZ-2537](https://issues.jboss.org/browse/DBZ-2537)
+* Create script for listing all contributors of a release [DBZ-2592](https://issues.jboss.org/browse/DBZ-2592)
+* Explicitly mention Debezium Engine database history config for different connectors [DBZ-2665](https://issues.jboss.org/browse/DBZ-2665)
+* Cleanup by restructuring Debezium UI REST API structure [DBZ-3031](https://issues.jboss.org/browse/DBZ-3031)
+* Make Debezium main repo build checks artifacts for CI/CD checks in sibling repositories available on Maven Central  [DBZ-3142](https://issues.jboss.org/browse/DBZ-3142)
+* Handle duplicate warnings for deprecated options [DBZ-3218](https://issues.jboss.org/browse/DBZ-3218)
+* Upgrade Jackson as per AK 2.7 [DBZ-3221](https://issues.jboss.org/browse/DBZ-3221)
+* Document the need of qualified names in snapshot.include.collection.list [DBZ-3244](https://issues.jboss.org/browse/DBZ-3244)
+* Add snapshot.select.statement.override options to Oracle documentation [DBZ-3250](https://issues.jboss.org/browse/DBZ-3250)
+* Remove all possible backend calls from non-validation mode [DBZ-3255](https://issues.jboss.org/browse/DBZ-3255)
+* Document delayed TX END markers [DBZ-3261](https://issues.jboss.org/browse/DBZ-3261)
+* Extended scripting SMT docs with handling of non-data events [DBZ-3269](https://issues.jboss.org/browse/DBZ-3269)
+* Unify column inclusion/exclusion handling [DBZ-3271](https://issues.jboss.org/browse/DBZ-3271)
+* Downstream conditional spans topic boundary in db2 doc [DBZ-3272](https://issues.jboss.org/browse/DBZ-3272)
+* Add info about languge dependencies into scripting SMTs [DBZ-3280](https://issues.jboss.org/browse/DBZ-3280)
+* Copyright check script should take additional connector repos into consideration [DBZ-3281](https://issues.jboss.org/browse/DBZ-3281)
+* Intermittent failure of MyMetricsIT.testStreamingOnlyMetrics [DBZ-3304](https://issues.jboss.org/browse/DBZ-3304)
+* Remove references to supported configurations from Db2 connector documentation [DBZ-3308](https://issues.jboss.org/browse/DBZ-3308)
+* Use separate API calls to get the connector info(name, id etc) and details(Properties) [DBZ-3314](https://issues.jboss.org/browse/DBZ-3314)
+* Documentation updates should trigger a website build [DBZ-3320](https://issues.jboss.org/browse/DBZ-3320)
+* Cassandra connector is not part of core CI build [DBZ-3335](https://issues.jboss.org/browse/DBZ-3335)
+
+
+
 ## 1.5.0.Beta2
 March 12th 2021 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12354047)
 

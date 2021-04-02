@@ -15,6 +15,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
+import io.debezium.connector.oracle.OracleDatabaseVersion;
 import io.debezium.connector.oracle.OracleOffsetContext;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.SourceInfo;
@@ -23,6 +24,7 @@ import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.relational.TableId;
 import io.debezium.util.Clock;
+import io.debezium.util.Strings;
 
 import oracle.sql.NUMBER;
 import oracle.streams.StreamsException;
@@ -68,7 +70,7 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
         this.offsetContext = offsetContext;
         this.xStreamServerName = connectorConfig.getXoutServerName();
         this.tablenameCaseInsensitive = jdbcConnection.getTablenameCaseInsensitivity(connectorConfig);
-        this.posVersion = connectorConfig.getOracleVersion().getPosVersion();
+        this.posVersion = resolvePosVersion(jdbcConnection, connectorConfig);
     }
 
     @Override
@@ -152,5 +154,23 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
 
     PositionAndScn receivePublishedPosition() {
         return lcrMessage.getAndSet(null);
+    }
+
+    private static int resolvePosVersion(OracleConnection connection, OracleConnectorConfig connectorConfig) {
+        // Option 'internal.database.oracle.version' takes precedence
+        final String oracleVersion = connectorConfig.getOracleVersion();
+        if (!Strings.isNullOrEmpty(oracleVersion)) {
+            if ("11".equals(oracleVersion)) {
+                return XStreamUtility.POS_VERSION_V1;
+            }
+            return XStreamUtility.POS_VERSION_V2;
+        }
+
+        // As fallback, resolve this based on the OracleDatabaseVersion
+        final OracleDatabaseVersion databaseVersion = connection.getOracleVersion();
+        if (databaseVersion.getMajor() == 11) {
+            return XStreamUtility.POS_VERSION_V1;
+        }
+        return XStreamUtility.POS_VERSION_V2;
     }
 }

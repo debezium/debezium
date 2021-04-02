@@ -31,7 +31,6 @@ import io.debezium.connector.oracle.logminer.HistoryRecorder;
 import io.debezium.connector.oracle.logminer.NeverHistoryRecorder;
 import io.debezium.connector.oracle.logminer.SqlUtils;
 import io.debezium.connector.oracle.xstream.LcrPosition;
-import io.debezium.connector.oracle.xstream.OracleVersion;
 import io.debezium.document.Document;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.relational.ColumnFilterMode;
@@ -105,11 +104,11 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withImportance(Importance.LOW)
             .withDescription("Deprecated: Case insensitive table names; set to 'true' for Oracle 11g, 'false' (default) otherwise.");
 
-    public static final Field ORACLE_VERSION = Field.create("database.oracle.version")
+    public static final Field ORACLE_VERSION = Field.createInternal("database.oracle.version")
             .withDisplayName("Oracle version, 11 or 12+")
-            .withEnum(OracleVersion.class, OracleVersion.V12Plus)
+            .withType(Type.STRING)
             .withImportance(Importance.LOW)
-            .withDescription("For default Oracle 12+, use default pos_version value v2, for Oracle 11, use pos_version value v1.");
+            .withDescription("Deprecated: For default Oracle 12+, use default pos_version value v2, for Oracle 11, use pos_version value v1.");
 
     public static final Field SERVER_NAME = RelationalDatabaseConnectorConfig.SERVER_NAME
             .withValidation(CommonConnectorConfig::validateServerNameIsDifferentFromHistoryTopicName);
@@ -344,7 +343,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final SnapshotMode snapshotMode;
 
     private final Boolean tablenameCaseInsensitive;
-    private final OracleVersion oracleVersion;
+    private final String oracleVersion;
     private final HistoryRecorder logMiningHistoryRecorder;
     private final Configuration jdbcConfig;
     private final ConnectorAdapter connectorAdapter;
@@ -376,7 +375,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.xoutServerName = config.getString(XSTREAM_SERVER_NAME);
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE));
         this.tablenameCaseInsensitive = resolveTableNameCaseInsensitivity(config);
-        this.oracleVersion = OracleVersion.parse(config.getString(ORACLE_VERSION));
+        this.oracleVersion = config.getString(ORACLE_VERSION);
         this.logMiningHistoryRecorder = resolveLogMiningHistoryRecorder(config);
         this.jdbcConfig = config.subset(DATABASE_CONFIG_PREFIX, true);
         this.snapshotEnhancementToken = config.getString(SNAPSHOT_ENHANCEMENT_TOKEN);
@@ -442,7 +441,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         return Optional.ofNullable(tablenameCaseInsensitive);
     }
 
-    public OracleVersion getOracleVersion() {
+    public String getOracleVersion() {
         return oracleVersion;
     }
 

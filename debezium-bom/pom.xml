@@ -22,6 +22,7 @@
         <version.netty>4.1.51.Final</version.netty>
         <!-- check new release version at https://github.com/confluentinc/schema-registry/releases -->
         <version.confluent.platform>6.0.2</version.confluent.platform>
+        <version.apicurio>1.3.2.Final</version.apicurio>
 
         <!-- Database drivers, should align with databases in debezium-build-parent -->
         <version.postgresql.driver>42.2.14</version.postgresql.driver>
@@ -160,6 +161,16 @@
                 <groupId>io.confluent</groupId>
                 <artifactId>kafka-connect-avro-converter</artifactId>
                 <version>${version.confluent.platform}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.confluent</groupId>
+                <artifactId>kafka-connect-protobuf-converter</artifactId>
+                <version>${version.confluent.platform}</version>
+            </dependency>
+            <dependency>
+            <groupId>io.apicurio</groupId>
+            <artifactId>apicurio-registry-utils-converter</artifactId>
+            <version>${version.apicurio}</version>
             </dependency>
 
             <dependency>

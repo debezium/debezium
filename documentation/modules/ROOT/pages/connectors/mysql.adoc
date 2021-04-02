@@ -2227,9 +2227,9 @@ endif::community[]
  +
 If you set this option to `true` then you must also configure MySQL with the `binlog_rows_query_log_events` option set to `ON`. When `include.query` is `true`, the query is not present for events that the snapshot process generates. +
  +
-Setting `include.query`to `true` might expose tables or fields explicitly excluded or masked by including the original SQL statement in the change event. For this reason, the default setting is `false`.
+Setting `include.query`to `true` might expose tables or fields that are explicitly excluded or masked by including the original SQL statement in the change event. For this reason, the default setting is `false`.
 
-|[[mysql-property-event-processing-failure-handling-mode]]<<mysql-property-event-processing-failure-handling-mode, `+event.processing.failure.handling.mode+`>>
+|[[mysql-property-event-deserialization-failure-handling-mode]]<<mysql-property-event-deserialization-failure-handling-mode, `+event.deserialization.failure.handling.mode+`>>
 |`fail`
 |Specifies how the connector should react to exceptions during deserialization of binlog events. +
  +
@@ -2237,7 +2237,7 @@ Setting `include.query`to `true` might expose tables or fields explicitly exclud
  +
 `warn` logs the problematic event and its binlog offset and then skips the event. +
  +
-`skip` passes over the problematic event and does not log anything.
+`ignore` passes over the problematic event and does not log anything.
 
 |[[mysql-property-inconsistent-schema-handling-mode]]<<mysql-property-inconsistent-schema-handling-mode, `+inconsistent.schema.handling.mode+`>>
 |`fail`

@@ -61,7 +61,6 @@ It's important to remember, these are only required for Oracle 11 and should not
 
 ```json
 "database.tablename.case.insensitive": "true",
-"database.oracle.version": "11"
 ```
 
 Additionally, the connector ignores several built-in tables and schemas in Oracle 12+ but those tables differ in Oracle 11.

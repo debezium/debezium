@@ -13,6 +13,7 @@ import javax.inject.Inject;
 import org.awaitility.Awaitility;
 import org.fest.assertions.Assertions;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 
 import io.debezium.server.events.ConnectorCompletedEvent;
 import io.debezium.server.events.ConnectorStartedEvent;
@@ -28,6 +29,7 @@ import io.quarkus.test.junit.QuarkusTest;
  */
 @QuarkusTest
 @QuarkusTestResource(PostgresTestResourceLifecycleManager.class)
+@EnabledIfSystemProperty(named = "test.apicurio", matches = "false", disabledReason = "DebeziumServerIT doesn't run with apicurio profile.")
 public class DebeziumServerIT {
 
     private static final int MESSAGE_COUNT = 4;

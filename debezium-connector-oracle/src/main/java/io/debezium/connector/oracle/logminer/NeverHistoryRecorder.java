@@ -7,6 +7,7 @@ package io.debezium.connector.oracle.logminer;
 
 import java.sql.Timestamp;
 
+import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.jdbc.JdbcConfiguration;
 
@@ -17,7 +18,7 @@ import io.debezium.jdbc.JdbcConfiguration;
  */
 public class NeverHistoryRecorder implements HistoryRecorder {
     @Override
-    public void prepare(LogMinerMetrics metrics, JdbcConfiguration jdbcConfiguration, long retentionHours) {
+    public void prepare(OracleStreamingChangeEventSourceMetrics streamingMetrics, JdbcConfiguration jdbcConfiguration, long retentionHours) {
     }
 
     @Override

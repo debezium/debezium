@@ -3,12 +3,17 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.connector.oracle.logminer;
+package io.debezium.connector.oracle;
+
+import java.util.Set;
+
+import io.debezium.connector.oracle.logminer.HistoryRecorder;
+import io.debezium.pipeline.metrics.StreamingChangeEventSourceMetricsMXBean;
 
 /**
- * This interface is exposed for JMX
+ * The JMX exposed interface for Oracle streaming metrics.
  */
-public interface LogMinerMetricsMXBean {
+public interface OracleStreamingChangeEventSourceMetricsMXBean extends StreamingChangeEventSourceMetricsMXBean {
 
     /**
      * @return the current system change number of the database
@@ -196,6 +201,96 @@ public interface LogMinerMetricsMXBean {
      * @return the number of hours to keep transaction in buffer before abandoning
      */
     int getHoursToKeepTransactionInBuffer();
+
+    /**
+     * @return number of current active transactions in the transaction buffer
+     */
+    long getNumberOfActiveTransactions();
+
+    /**
+     * @return the number of committed transactions in the transaction buffer
+     */
+    long getNumberOfCommittedTransactions();
+
+    /**
+     * @return the number of rolled back transactions in the transaction buffer
+     */
+    long getNumberOfRolledBackTransactions();
+
+    /**
+     * @return average number of committed transactions per second in the transaction buffer
+     */
+    long getCommitThroughput();
+
+    /**
+     * @return the number of registered DML operations in the transaction buffer
+     */
+    long getRegisteredDmlCount();
+
+    /**
+     * @return the oldest SCN in the transaction buffer
+     */
+    String getOldestScn();
+
+    /**
+     * @return the last committed SCN from the transaction buffer
+     */
+    String getCommittedScn();
+
+    /**
+     * @return the current offset SCN
+     */
+    String getOffsetScn();
+
+    /**
+     * @return lag in milliseconds of latest captured change timestamp from transaction logs and it's placement in the transaction buffer.
+     */
+    long getLagFromSourceInMilliseconds();
+
+    /**
+     * @return maximum lag in milliseconds with the data source
+     */
+    long getMaxLagFromSourceInMilliseconds();
+
+    /**
+     * @return minimum lag in milliseconds with the data source
+     */
+    long getMinLagFromSourceInMilliseconds();
+
+    /**
+     * @return list of abandoned transaction ids from the transaction buffer
+     */
+    Set<String> getAbandonedTransactionIds();
+
+    /**
+     * @return slist of rolled back transaction ids from the transaction buffer
+     */
+    Set<String> getRolledBackTransactionIds();
+
+    /**
+     * @return total duration in milliseconds the last commit operation took in the transaction buffer
+     */
+    long getLastCommitDurationInMilliseconds();
+
+    /**
+     * @return the duration in milliseconds that the longest commit operation took in the transaction buffer
+     */
+    long getMaxCommitDurationInMilliseconds();
+
+    /**
+     * @return the number of errors detected in the connector's log
+     */
+    int getErrorCount();
+
+    /**
+     * @return the number of warnings detected in the connector's log
+     */
+    int getWarningCount();
+
+    /**
+     * @return the number of number of times the SCN does not change and is considered frozen
+     */
+    int getScnFreezeCount();
 
     /**
      * Resets metrics.

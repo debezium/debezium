@@ -20,6 +20,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -43,6 +44,7 @@ import io.debezium.connector.oracle.junit.SkipTestDependingOnDatabaseOptionRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIs;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.util.TestHelper;
+import io.debezium.data.Envelope;
 import io.debezium.data.Envelope.FieldName;
 import io.debezium.data.SchemaAndValueField;
 import io.debezium.data.VariableScaleDecimal;
@@ -1371,6 +1373,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
             final Configuration config = TestHelper.defaultConfig()
                     .with(OracleConnectorConfig.SNAPSHOT_MODE, OracleConnectorConfig.SnapshotMode.INITIAL)
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.\\#T70_Sid\\:582003931_1_ConnConne")
                     .build();
 
             start(OracleConnector.class, config);
@@ -1398,6 +1401,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
             final Configuration config = TestHelper.defaultConfig()
                     .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.XML_TABLE")
                     .build();
 
             start(OracleConnector.class, config);
@@ -1559,6 +1563,82 @@ public class OracleConnectorIT extends AbstractConnectorTest {
             TestHelper.dropTable(connection, "test_iot");
             // This makes sure all index-organized tables are cleared after dropping parent table
             TestHelper.purgeRecycleBin(connection);
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-3257")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER)
+    public void shouldSnapshotAndStreamClobDataTypes() throws Exception {
+        TestHelper.dropTable(connection, "clob_test");
+        try {
+            String ddl = "CREATE TABLE clob_test(id numeric(9,0) primary key, val_clob clob, val_nclob nclob)";
+            connection.execute(ddl);
+            TestHelper.streamTable(connection, "clob_test");
+
+            connection.execute("INSERT INTO clob_test values (1, 'TestClob', 'TestNClob')");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.CLOB_TEST")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            SourceRecords sourceRecords = consumeRecordsByTopic(1);
+            assertThat(sourceRecords.recordsForTopic("server1.DEBEZIUM.CLOB_TEST")).hasSize(1);
+
+            List<SourceRecord> records = sourceRecords.recordsForTopic("server1.DEBEZIUM.CLOB_TEST");
+            VerifyRecord.isValidRead(records.get(0), "ID", 1);
+            Struct after = (Struct) ((Struct) records.get(0).value()).get(Envelope.FieldName.AFTER);
+            assertThat(after.get("VAL_CLOB")).isEqualTo("TestClob");
+            assertThat(after.get("VAL_NCLOB")).isEqualTo("TestNClob");
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.execute("UPDATE clob_test SET val_clob = 'TestClob2', val_nclob = 'TestNClob2' WHERE ID = 1");
+
+            sourceRecords = consumeRecordsByTopic(1);
+            assertThat(sourceRecords.recordsForTopic("server1.DEBEZIUM.CLOB_TEST")).hasSize(1);
+
+            records = sourceRecords.recordsForTopic("server1.DEBEZIUM.CLOB_TEST");
+            VerifyRecord.isValidUpdate(records.get(0), "ID", 1);
+            after = (Struct) ((Struct) records.get(0).value()).get(Envelope.FieldName.AFTER);
+            assertThat(after.get("VAL_CLOB")).isEqualTo("TestClob2");
+            assertThat(after.get("VAL_NCLOB")).isEqualTo("TestNClob2");
+        }
+        finally {
+            TestHelper.dropTable(connection, "clob_test");
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-3347")
+    public void shouldContainPartitionInSchemaChangeEvent() throws Exception {
+        TestHelper.dropTable(connection, "dbz3347");
+        try {
+            connection.execute("create table dbz3347 (id number primary key, data varchar2(50))");
+            TestHelper.streamTable(connection, "dbz3347");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ3347")
+                    .with(OracleConnectorConfig.LOG_MINING_STRATEGY, "online_catalog")
+                    .with(OracleConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            SourceRecords schemaChanges = consumeRecordsByTopic(1);
+            SourceRecord change = schemaChanges.recordsForTopic(TestHelper.SERVER_NAME).get(0);
+            assertThat(change.sourcePartition()).isEqualTo(Collections.singletonMap("server", TestHelper.SERVER_NAME));
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz3347");
         }
     }
 

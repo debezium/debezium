@@ -32,6 +32,7 @@ import io.debezium.DebeziumException;
 import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
+import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
@@ -129,42 +130,43 @@ public class LogMinerHelper {
     }
 
     /**
-     * This method returns next SCN for mining  and also updates MBean metrics
+     * This method returns next SCN for mining and also updates streaming metrics.
+     *
      * We use a configurable limit, because the larger mining range, the slower query from LogMiner content view.
      * In addition capturing unlimited number of changes can blow up Java heap.
      * Gradual querying helps to catch up faster after long delays in mining.
      *
      * @param connection container level database connection
      * @param startScn start SCN
-     * @param metrics MBean accessible metrics
+     * @param streamingMetrics the streaming metrics
      * @return next SCN to mine up to
      * @throws SQLException if anything unexpected happens
      */
-    static Scn getEndScn(OracleConnection connection, Scn startScn, LogMinerMetrics metrics, int defaultBatchSize) throws SQLException {
+    static Scn getEndScn(OracleConnection connection, Scn startScn, OracleStreamingChangeEventSourceMetrics streamingMetrics, int defaultBatchSize) throws SQLException {
         Scn currentScn = getCurrentScn(connection);
-        metrics.setCurrentScn(currentScn);
+        streamingMetrics.setCurrentScn(currentScn);
 
-        Scn topScnToMine = startScn.add(Scn.valueOf(metrics.getBatchSize()));
+        Scn topScnToMine = startScn.add(Scn.valueOf(streamingMetrics.getBatchSize()));
 
         // adjust batch size
         boolean topMiningScnInFarFuture = false;
         if (topScnToMine.subtract(currentScn).compareTo(Scn.valueOf(defaultBatchSize)) > 0) {
-            metrics.changeBatchSize(false);
+            streamingMetrics.changeBatchSize(false);
             topMiningScnInFarFuture = true;
         }
         if (currentScn.subtract(topScnToMine).compareTo(Scn.valueOf(defaultBatchSize)) > 0) {
-            metrics.changeBatchSize(true);
+            streamingMetrics.changeBatchSize(true);
         }
 
         // adjust sleeping time to reduce DB impact
         if (currentScn.compareTo(topScnToMine) < 0) {
             if (!topMiningScnInFarFuture) {
-                metrics.changeSleepingTime(true);
+                streamingMetrics.changeSleepingTime(true);
             }
             return currentScn;
         }
         else {
-            metrics.changeSleepingTime(false);
+            streamingMetrics.changeSleepingTime(false);
             return topScnToMine;
         }
     }
@@ -219,18 +221,18 @@ public class LogMinerHelper {
      * @param endScn     the SCN to mine to
      * @param strategy this is about dictionary location
      * @param isContinuousMining works < 19 version only
-     * @param metrics log miner metrics
+     * @param streamingMetrics the streaming metrics
      * @throws SQLException if anything unexpected happens
      */
     static void startLogMining(OracleConnection connection, Scn startScn, Scn endScn,
-                               OracleConnectorConfig.LogMiningStrategy strategy, boolean isContinuousMining, LogMinerMetrics metrics)
+                               OracleConnectorConfig.LogMiningStrategy strategy, boolean isContinuousMining, OracleStreamingChangeEventSourceMetrics streamingMetrics)
             throws SQLException {
         LOGGER.trace("Starting log mining startScn={}, endScn={}, strategy={}, continuous={}", startScn, endScn, strategy, isContinuousMining);
         String statement = SqlUtils.startLogMinerStatement(startScn, endScn, strategy, isContinuousMining);
         try {
             Instant start = Instant.now();
             executeCallableStatement(connection, statement);
-            metrics.addCurrentMiningSessionStart(Duration.between(start, Instant.now()));
+            streamingMetrics.addCurrentMiningSessionStart(Duration.between(start, Instant.now()));
         }
         catch (SQLException e) {
             // Capture database state before throwing exception
@@ -244,20 +246,17 @@ public class LogMinerHelper {
     /**
      * This method query the database to get CURRENT online redo log file(s). Multiple is applicable for RAC systems.
      * @param connection connection to reuse
-     * @param metrics MBean accessible metrics
      * @return full redo log file name(s), including path
      * @throws SQLException if anything unexpected happens
      */
-    static Set<String> getCurrentRedoLogFiles(OracleConnection connection, LogMinerMetrics metrics) throws SQLException {
-        Set<String> fileNames = new HashSet<>();
-        try (PreparedStatement st = connection.connection(false).prepareStatement(SqlUtils.currentRedoNameQuery()); ResultSet result = st.executeQuery()) {
-            while (result.next()) {
-                fileNames.add(result.getString(1));
+    static Set<String> getCurrentRedoLogFiles(OracleConnection connection) throws SQLException {
+        final Set<String> fileNames = new HashSet<>();
+        connection.query(SqlUtils.currentRedoNameQuery(), rs -> {
+            while (rs.next()) {
+                fileNames.add(rs.getString(1));
             }
-            LOGGER.trace(" Current Redo log fileNames: {} ", fileNames);
-        }
-
-        updateRedoLogMetrics(connection, metrics, fileNames);
+        });
+        LOGGER.trace(" Current Redo log fileNames: {} ", fileNames);
         return fileNames;
     }
 
@@ -291,27 +290,6 @@ public class LogMinerHelper {
         connection.executeWithoutCommitting(SqlUtils.NLS_SESSION_PARAMETERS);
         // This is necessary so that TIMESTAMP WITH LOCAL TIME ZONE get returned in UTC
         connection.executeWithoutCommitting("ALTER SESSION SET TIME_ZONE = '00:00'");
-    }
-
-    /**
-     * This is to update MBean metrics associated with REDO LOG groups
-     * @param connection connection
-     * @param fileNames name of current REDO LOG files
-     * @param metrics current metrics
-     */
-    private static void updateRedoLogMetrics(OracleConnection connection, LogMinerMetrics metrics, Set<String> fileNames) {
-        try {
-            // update metrics
-            Map<String, String> logStatuses = getRedoLogStatus(connection);
-            metrics.setRedoLogStatus(logStatuses);
-
-            int counter = getSwitchCount(connection);
-            metrics.setSwitchCount(counter);
-            metrics.setCurrentLogFileName(fileNames);
-        }
-        catch (SQLException e) {
-            LOGGER.error("Cannot update metrics");
-        }
     }
 
     /**
@@ -483,7 +461,9 @@ public class LogMinerHelper {
         List<LogFile> onlineLogFilesForMining = getOnlineLogFilesForOffsetScn(connection, lastProcessedScn);
         List<LogFile> archivedLogFilesForMining = getArchivedLogFilesForOffsetScn(connection, lastProcessedScn, archiveLogRetention);
 
-        if (onlineLogFilesForMining.size() + archivedLogFilesForMining.size() == 0) {
+        final boolean hasOverlappingLogFile = onlineLogFilesForMining.stream().anyMatch(l -> l.getFirstScn().compareTo(lastProcessedScn) <= 0)
+                || archivedLogFilesForMining.stream().anyMatch(l -> l.getFirstScn().compareTo(lastProcessedScn) <= 0);
+        if (!hasOverlappingLogFile) {
             throw new IllegalStateException("None of log files contains offset SCN: " + lastProcessedScn + ", re-snapshot is required.");
         }
 
@@ -536,14 +516,14 @@ public class LogMinerHelper {
         }
     }
 
-    static void logWarn(TransactionalBufferMetrics metrics, String format, Object... args) {
+    static void logWarn(OracleStreamingChangeEventSourceMetrics streamingMetrics, String format, Object... args) {
         LOGGER.warn(format, args);
-        metrics.incrementWarningCounter();
+        streamingMetrics.incrementWarningCount();
     }
 
-    static void logError(TransactionalBufferMetrics metrics, String format, Object... args) {
+    static void logError(OracleStreamingChangeEventSourceMetrics streamingMetrics, String format, Object... args) {
         LOGGER.error(format, args);
-        metrics.incrementErrorCounter();
+        streamingMetrics.incrementErrorCount();
     }
 
     /**
