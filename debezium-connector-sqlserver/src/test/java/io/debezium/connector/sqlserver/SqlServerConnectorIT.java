@@ -936,7 +936,10 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         assertConnectorIsRunning();
 
         // Wait for snapshot completion
-        consumeRecordsByTopic(1);
+        final SourceRecords snapshotRecords = consumeRecordsByTopic(1);
+        final List<SourceRecord> tableBSnapshotRecords = snapshotRecords.recordsForTopic("server1.dbo.tableb");
+        final int snapshotRecordId = ((Struct) ((Struct) tableBSnapshotRecords.get(0).value()).get("after")).getInt32("id");
+        Assertions.assertThat(snapshotRecordId).isEqualTo(1);
 
         for (int i = 0; i < RECORDS_PER_TABLE; i++) {
             final int id = ID_START + i;
@@ -946,11 +949,17 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
                     "INSERT INTO tableb VALUES(" + id + ", 'b')");
         }
 
-        final SourceRecords records = consumeRecordsByTopic(RECORDS_PER_TABLE * TABLES);
-        final List<SourceRecord> tableA = records.recordsForTopic("server1.dbo.tablea");
-        final List<SourceRecord> tableB = records.recordsForTopic("server1.dbo.tableb");
+        final SourceRecords streamingRecords = consumeRecordsByTopic(RECORDS_PER_TABLE * TABLES);
+        final List<SourceRecord> tableA = streamingRecords.recordsForTopic("server1.dbo.tablea");
+        final List<SourceRecord> tableB = streamingRecords.recordsForTopic("server1.dbo.tableb");
         Assertions.assertThat(tableA == null || tableA.isEmpty()).isTrue();
         Assertions.assertThat(tableB).hasSize(RECORDS_PER_TABLE);
+        // Assert that tableB records have id's 10-14.
+        for (int i = 0; i < RECORDS_PER_TABLE; i++) {
+            final int expectedId = ID_START + i;
+            final int recordId = ((Struct) ((Struct) tableB.get(i).value()).get("after")).getInt32("id");
+            Assertions.assertThat(recordId).isEqualTo(expectedId);
+        }
 
         stopConnector();
     }
@@ -971,7 +980,10 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         assertConnectorIsRunning();
 
         // Wait for snapshot completion
-        consumeRecordsByTopic(1);
+        final SourceRecords snapshotRecords = consumeRecordsByTopic(1);
+        final List<SourceRecord> tableBSnapshotRecords = snapshotRecords.recordsForTopic("server1.dbo.tableb");
+        final int snapshotRecordId = ((Struct) ((Struct) tableBSnapshotRecords.get(0).value()).get("after")).getInt32("id");
+        Assertions.assertThat(snapshotRecordId).isEqualTo(1);
 
         for (int i = 0; i < RECORDS_PER_TABLE; i++) {
             final int id = ID_START + i;
@@ -986,6 +998,12 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         final List<SourceRecord> tableB = records.recordsForTopic("server1.dbo.tableb");
         Assertions.assertThat(tableA == null || tableA.isEmpty()).isTrue();
         Assertions.assertThat(tableB).hasSize(RECORDS_PER_TABLE);
+        // Assert that tableB records have id's 10-14.
+        for (int i = 0; i < RECORDS_PER_TABLE; i++) {
+            final int expectedId = ID_START + i;
+            final int recordId = ((Struct) ((Struct) tableB.get(i).value()).get("after")).getInt32("id");
+            Assertions.assertThat(recordId).isEqualTo(expectedId);
+        }
 
         stopConnector();
     }
