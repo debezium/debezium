@@ -13,7 +13,6 @@ import javax.inject.Inject;
 import org.awaitility.Awaitility;
 import org.fest.assertions.Assertions;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.DisabledIfSystemProperty;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 
 import io.debezium.server.events.ConnectorCompletedEvent;
@@ -22,18 +21,14 @@ import io.debezium.testing.testcontainers.PostgresTestResourceLifecycleManager;
 import io.debezium.util.Testing;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.junit.TestProfile;
 
-/**
- * Integration test that verifies basic reading from PostgreSQL database.
- *
- * @author Jiri Pechanec
- */
 @QuarkusTest
 @QuarkusTestResource(PostgresTestResourceLifecycleManager.class)
-@EnabledIfSystemProperty(named = "test.apicurio", matches = "false", disabledReason = "DebeziumServerIT doesn't run with apicurio profile.")
-@DisabledIfSystemProperty(named = "debezium.format.key", matches = "protobuf")
-@DisabledIfSystemProperty(named = "debezium.format.value", matches = "protobuf")
-public class DebeziumServerIT {
+@TestProfile(DebeziumServerSchemaRegistryProfile.class)
+@EnabledIfSystemProperty(named = "debezium.format.key", matches = "protobuf")
+@EnabledIfSystemProperty(named = "debezium.format.value", matches = "protobuf")
+public class DebeziumServerWithSchemaRegistryIT {
 
     private static final int MESSAGE_COUNT = 4;
     @Inject
@@ -57,13 +52,14 @@ public class DebeziumServerIT {
     }
 
     @Test
-    public void testPostgresWithJson() throws Exception {
+    public void testPostgresWithProtobuf() throws Exception {
         Testing.Print.enable();
         final TestConsumer testConsumer = (TestConsumer) server.getConsumer();
         Awaitility.await().atMost(Duration.ofSeconds(TestConfigSource.waitForSeconds()))
                 .until(() -> (testConsumer.getValues().size() >= MESSAGE_COUNT));
         Assertions.assertThat(testConsumer.getValues().size()).isEqualTo(MESSAGE_COUNT);
-        Assertions.assertThat(((String) testConsumer.getValues().get(MESSAGE_COUNT - 1))).contains(
-                "\"after\":{\"id\":1004,\"first_name\":\"Anne\",\"last_name\":\"Kretchmar\",\"email\":\"annek@noanswer.org\"}");
+        Assertions.assertThat(testConsumer.getValues().get(0)).isInstanceOf(byte[].class);
+        Assertions.assertThat(testConsumer.getValues().get(0)).isNotNull();
+        Assertions.assertThat(testConsumer.getValues().get(0).equals(0));
     }
 }

@@ -218,6 +218,18 @@
                                 </configuration>
                             </execution>
                             <execution>
+                                <id>integration-test-protobuf</id>
+                                <goals>
+                                    <goal>integration-test</goal>
+                                </goals>
+                                <configuration>
+                                    <systemPropertyVariables>
+                                        <debezium.format.key>protobuf</debezium.format.key>
+                                        <debezium.format.value>protobuf</debezium.format.value>
+                                    </systemPropertyVariables>
+                                </configuration>
+                            </execution>
+                            <execution>
                                 <id>verify</id>
                                 <goals>
                                     <goal>verify</goal>

@@ -52,7 +52,6 @@ public class TestConfigSource implements ConfigSource {
             formatValue = (formatValue != null) ? formatValue : Json.class.getSimpleName().toLowerCase();
             integrationTest.put("debezium.format.key", formatKey);
             integrationTest.put("debezium.format.value", formatValue);
-            integrationTest.put("debezium.format.schema.registry.url", "http://localhost:8081");
         }
 
         unitTest.put("debezium.sink.type", "test");
@@ -66,7 +65,6 @@ public class TestConfigSource implements ConfigSource {
         unitTest.put("debezium.transforms", "hoist");
         unitTest.put("debezium.transforms.hoist.type", "org.apache.kafka.connect.transforms.HoistField$Value");
         unitTest.put("debezium.transforms.hoist.field", "line");
-        unitTest.put("debezium.format.schema.registry.url", "http://localhost:8081");
 
         if (isItTest()) {
             config = integrationTest;
