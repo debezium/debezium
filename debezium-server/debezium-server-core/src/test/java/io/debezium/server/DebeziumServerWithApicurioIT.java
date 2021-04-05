@@ -60,6 +60,7 @@ public class DebeziumServerWithApicurioIT {
         assertThat(testConsumer.getValues().size()).isEqualTo(MESSAGE_COUNT);
         assertThat(testConsumer.getValues().get(0)).isInstanceOf(byte[].class);
         assertThat(testConsumer.getValues().get(0)).isNotNull();
+        assertThat(testConsumer.getValues().get(0).equals(0));
     }
 
     @Test
