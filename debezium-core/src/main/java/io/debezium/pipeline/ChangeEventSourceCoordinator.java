@@ -127,9 +127,9 @@ public class ChangeEventSourceCoordinator<P extends TaskPartition, O extends Off
                 final Metronome metronome = Metronome.sleeper(pollInterval, clock);
                 Map<P, StreamingResult<O>> partitionStreamingResults = new HashMap<>();
                 while (running) {
-                    for (Map.Entry<P, SnapshotResult<O>> entry : partitionState.entrySet()) {
+                    for (Map.Entry<P, O> entry : previousOffsetContext.getOffsets().entrySet()) {
                         partition = entry.getKey();
-                        SnapshotResult<O> snapshotResult = entry.getValue();
+                        SnapshotResult<O> snapshotResult = partitionState.get(partition);
                         if (running && snapshotResult.isCompletedOrSkipped()) {
                             StreamingResult<O> previousStreamingResult = null;
 

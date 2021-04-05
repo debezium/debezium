@@ -6,8 +6,8 @@
 package io.debezium.connector.common;
 
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -49,7 +49,7 @@ public class TaskOffsetContext<P extends TaskPartition, O extends OffsetContext>
 
             Map<Map<String, String>, Map<String, Object>> sourceOffsets = offsetReader.offsets(sourcePartitions);
 
-            Map<P, O> taskOffsets = new HashMap<>();
+            Map<P, O> taskOffsets = new LinkedHashMap<>();
             taskPartitions.forEach(taskPartition -> {
                 Map<String, String> sourcePartition = taskPartition.getSourcePartition();
                 Map<String, Object> sourceOffset = sourceOffsets.get(sourcePartition);
