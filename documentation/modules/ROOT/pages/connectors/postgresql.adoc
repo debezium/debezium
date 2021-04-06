@@ -2138,7 +2138,8 @@ To deploy a {prodname} PostgreSQL connector, add the connector files to Kafka Co
 [[postgresql-deploying-a-connector]]
 === Deploying connectors
 
-To deploy a {prodname} PostgreSQL connector, you need to build a custom Kafka Connect container image that contains the {prodname} connector archive and push this container image to a container registry.You then need to create two custom resources (CRs):
+To deploy a {prodname} PostgreSQL connector, you need to build a custom Kafka Connect container image that contains the {prodname} connector archive and push this container image to a container registry.
+You then need to create two custom resources (CRs):
 
 * A `KafkaConnect` CR that configures your Kafka Connector and that specifies the name of the image that you created to run your {prodname} connector. You apply this CR to the OpenShift Kafka instance.
 
@@ -2192,7 +2193,12 @@ The command creates a Docker file with the name `debezium-container-for-postgres
 podman build -t debezium-container-for-postgresql:latest .
 ----
 +
-This command builds a container image with the name `debezium-container-for-postgresql`.
+[source,shell,options="nowrap"]
+----
+docker build -t debezium-container-for-postgresql:latest .
+----
++
+The `build` command builds a container image with the name `debezium-container-for-postgresql`.
 
 .. Push your custom image to a container registry such as `quay.io` or any internal container registry. Ensure that this registry is reachable from your OpenShift instance. For example:
 +
