@@ -8,7 +8,6 @@ package io.debezium.server.kafka;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Properties;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
@@ -20,7 +19,6 @@ import javax.inject.Inject;
 import javax.inject.Named;
 
 import org.apache.kafka.clients.producer.KafkaProducer;
-import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.eclipse.microprofile.config.Config;
@@ -45,7 +43,7 @@ public class KafkaChangeConsumer extends BaseChangeConsumer implements DebeziumE
     private static final Logger LOGGER = LoggerFactory.getLogger(KafkaChangeConsumer.class);
 
     private static final String PROP_PREFIX = "debezium.sink.kafka.";
-    private static final String PROP_BOOTSTRAP_SERVERS = PROP_PREFIX + ProducerConfig.BOOTSTRAP_SERVERS_CONFIG;
+    private static final String PROP_PREFIX_PRODUCER = PROP_PREFIX + "producer.";
 
     private KafkaProducer<Object, Object> producer;
 
@@ -62,10 +60,7 @@ public class KafkaChangeConsumer extends BaseChangeConsumer implements DebeziumE
         }
 
         final Config config = ConfigProvider.getConfig();
-
-        final Properties props = new Properties();
-        props.put(PROP_BOOTSTRAP_SERVERS, config.getValue(PROP_BOOTSTRAP_SERVERS, String.class));
-        producer = new KafkaProducer<>(props);
+        producer = new KafkaProducer<>(getConfigSubset(config, PROP_PREFIX_PRODUCER));
         LOGGER.info("consumer started...");
     }
 
