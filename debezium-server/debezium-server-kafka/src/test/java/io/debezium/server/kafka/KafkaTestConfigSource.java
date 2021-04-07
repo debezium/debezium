@@ -20,6 +20,7 @@ public class KafkaTestConfigSource extends TestConfigSource {
         kafkaConfig.put("debezium.sink.type", "kafka");
         kafkaConfig.put("debezium.source.connector.class", "io.debezium.connector.postgresql.PostgresConnector");
         kafkaConfig.put("debezium.source." + StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
+
         kafkaConfig.put("debezium.source.offset.flush.interval.ms", "0");
         kafkaConfig.put("debezium.source.database.server.name", "testc");
         kafkaConfig.put("debezium.source.schema.include.list", "inventory");
