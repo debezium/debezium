@@ -50,6 +50,7 @@ Brandon Maguire
 Cheng Pan
 Ching Tsai
 Chris Cranford
+Chris Egerton
 Chris Riccomini
 Christian Posta
 Christopher Sang
@@ -130,6 +131,8 @@ Jaromir Hamala
 Javier Holguera
 Jeremy Finzel
 Jeremy Ford
+Jeremy Vigny
+Jessica Laughlin
 jinguangyang
 Jiri Pechanec
 Johan Rhedin
@@ -164,6 +167,7 @@ Luis Garcés-Erice
 Lukas Krejci
 Lukasz Korzeniowski
 lyidataminr
+M Sazzadul Hoque
 Maciej Bryński
 Mans Singh
 MaoXiang Pan
