@@ -64,7 +64,6 @@ require different installation steps
 
 The plug-ins' behaviour is not completely same for all cases. So far these differences have been identified
 
-* wal2json plug-in is not able to process quoted identifiers (https://github.com/eulerto/wal2json/issues/35[issue])
 * wal2json plug-in does not emit events for tables without primary keys
 * wal2json plug-in does not support special values (`NaN` or `infinity`) for floating point types
 
