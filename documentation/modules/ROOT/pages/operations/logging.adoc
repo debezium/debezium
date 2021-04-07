@@ -126,7 +126,16 @@ In general, {prodname} connectors send their log messages to loggers with names 
 {prodname} uses packages to organize code with similar or related functions.
 This means that you can control all of the log messages for a specific class or for all of the classes within or under a specific package.
 
-.Procedure
+.Dinamically changing logging level
+
+Kafka Connect allows to change logging level dinamically without restarting your server. For doing that, you can send a PUT request to the admin/loggers endpoint providing the package name for which you want to change log level. For example, if by any reason you wanted to get debug information for the Oracle connector you could send this request to your Debezium server:
+
+[source,shell,options="nowrap"]
+----
+curl -s -X PUT -H "Content-Type:application/json" http://localhost:8083/admin/loggers/io.debezium.connector.oracle.logminer -d '{"level": "DEBUG"}'
+----
+
+.Changing logging level permanently
 
 . Open the `log4j.properties` file.
 
