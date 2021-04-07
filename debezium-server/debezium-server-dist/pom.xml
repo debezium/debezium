@@ -88,6 +88,10 @@
                     <groupId>io.debezium</groupId>
                     <artifactId>debezium-server-redis</artifactId>
                 </dependency>
+                <dependency>
+                    <groupId>io.debezium</groupId>
+                    <artifactId>debezium-server-kafka</artifactId>
+                </dependency>
             </dependencies>
             <build>
                 <plugins>
