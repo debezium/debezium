@@ -41,6 +41,15 @@ public class BaseChangeConsumer {
         LOGGER.info("Using '{}' stream name mapper", streamNameMapper);
     }
 
+    /**
+     * Get a subset of the configuration properties that matches the given prefix.
+     * 
+     * @param config    The global configuration object to extract the subset from.
+     * @param prefix    The prefix to filter property names.
+     * 
+     * @return          A subset of the original configuration properties containing property names
+     *                  without the prefix.
+     */
     protected Map<String, Object> getConfigSubset(Config config, String prefix) {
         final Map<String, Object> ret = new HashMap<>();
 
