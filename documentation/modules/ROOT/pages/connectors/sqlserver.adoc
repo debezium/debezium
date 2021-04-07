@@ -61,7 +61,7 @@ After you set up CDC on the source database, the connector can capture row-level
 that occur in the database.
 The connector writes event records for each source table to a Kafka topic especially dedicated to that table.
 One topic exists for each captured table.
-Client applications read the Kafka topics for the database tables that they follow, and can respond to the row-level events they they consume from those topics.
+Client applications read the Kafka topics for the database tables that they follow, and can respond to the row-level events they consume from those topics.
 
 The first time that the connector connects to a SQL Server database or cluster, it takes a consistent snapshot of the schemas for all tables for which it is configured to capture changes,
 and streams this state to Kafka.
