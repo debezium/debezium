@@ -20,6 +20,7 @@
         <module>debezium-server-eventhubs</module>
         <module>debezium-server-redis</module>
         <module>debezium-server-dist</module>
+        <module>debezium-server-kafka</module>
     </modules>
 
     <dependencyManagement>
