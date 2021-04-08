@@ -2029,7 +2029,7 @@ A possible use case for setting these properties is large, append-only tables. Y
 
 |[[db2-property-skipped-operations]]<<db2-property-skipped-operations, `+skipped.operations+`>>
 |
-| comma-separated list of oplog operations that will be skipped during streaming.
+| comma-separated list of operation types that will be skipped during streaming.
 The operations include: `c` for inserts/create, `u` for updates, and `d` for deletes.
 By default, no operations are skipped.
 
