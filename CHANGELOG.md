@@ -30,6 +30,7 @@ None
 ### Other changes since 1.5.0.Beta2
 
 * Allow Debezium Server to be used with Apicurio converters [DBZ-2388](https://issues.jboss.org/browse/DBZ-2388)
+* Remove connector properties from descriptors on the /connector-types response  [DBZ-3316](https://issues.jboss.org/browse/DBZ-3316)
 * Literal attribute rendered in deployment instructions for the downstream PostgreSQL connector  [DBZ-3338](https://issues.jboss.org/browse/DBZ-3338)
 * Fix test failures due to existing database object artifacts [DBZ-3344](https://issues.jboss.org/browse/DBZ-3344)
 * Use correct repository level PAT for building debezium website  [DBZ-3345](https://issues.jboss.org/browse/DBZ-3345)
@@ -38,6 +39,7 @@ None
 * Trigger workflow on workflow definition update [DBZ-3358](https://issues.jboss.org/browse/DBZ-3358)
 * Prefer DDL before logical schema in history recovery [DBZ-3361](https://issues.jboss.org/browse/DBZ-3361)
 * Add missing space and omitted command to PostgreSQL connector doc  [DBZ-3372](https://issues.jboss.org/browse/DBZ-3372)
+* Wrong badge on Docker Hub  [DBZ-3383](https://issues.jboss.org/browse/DBZ-3383)
 
 
 
