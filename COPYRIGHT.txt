@@ -179,6 +179,7 @@ Matt Beary
 Matteo Capitanio
 Mathieu Rozieres
 Matthias Wessendorf
+Mauricio Scheffer
 Max Kaplan
 Martín Pérez
 Meng Qiu
@@ -218,6 +219,7 @@ Prannoy Mittal
 Preethi Sadagopan
 pushpavanthar
 Raf Liwoch
+Raghava Ponnam
 Ram Satish
 Ramesh Reddy
 Randall Hauch
