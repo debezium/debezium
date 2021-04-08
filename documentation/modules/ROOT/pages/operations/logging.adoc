@@ -218,7 +218,7 @@ To make persistent changes to the logging level, set the log level in `log4j.pro
 +
 [source,shell,subs="+attributes,+quotes", options="nowrap"]
 ----
-curl -s -X PUT -H "Content-Type:application/json" http://localhost:8083/admin/loggers/io.debezium.connector._<connector_package>_ -d '{"level": "_<level>_"}'
+curl -s -X PUT -H "Content-Type:application/json" http://localhost:8083/admin/loggers/io.debezium.connector._<connector_package>_ -d '{"level": "_<log_level>_"}'
 ----
 +
 For example, to log debug information for a {prodname} MySQL connector, send the following request to Kafka Connect:
