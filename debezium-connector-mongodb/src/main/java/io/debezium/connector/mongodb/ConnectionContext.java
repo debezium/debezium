@@ -24,7 +24,6 @@ import org.slf4j.LoggerFactory;
 import com.mongodb.MongoCredential;
 import com.mongodb.ServerAddress;
 import com.mongodb.client.MongoClient;
-import com.mongodb.connection.ClusterDescription;
 
 import io.debezium.config.Configuration;
 import io.debezium.function.BlockingConsumer;
@@ -433,22 +432,31 @@ public class ConnectionContext implements AutoCloseable {
      * @return the client, or {@code null} if no primary could be found for the replica set
      */
     protected MongoClient clientForPrimary(ReplicaSet replicaSet) {
+        LOGGER.info("finding clientForPrimary for replicaSet " + replicaSet.toString());
         MongoClient replicaSetClient = clientForReplicaSet(replicaSet);
-        final ClusterDescription clusterDescription = replicaSetClient.getClusterDescription();
-        if (clusterDescription == null) {
-            if (!this.useHostsAsSeeds) {
-                // No replica set status is available, but it may still be a replica set ...
-                return replicaSetClient;
-            }
-            // This is not a replica set, so there will be no oplog to read ...
-            throw new ConnectException("The MongoDB server(s) at '" + replicaSet +
-                    "' is not a valid replica set and cannot be used");
-        }
-        // It is a replica set ...
-        ServerAddress primaryAddress = MongoUtil.getPrimaryAddress(replicaSetClient);
-        if (primaryAddress != null) {
-            return pool.clientFor(primaryAddress);
-        }
-        return null;
+        return replicaSetClient;
+        /*
+         * final ClusterDescription clusterDescription = replicaSetClient.getClusterDescription();
+         * LOGGER.info("clusterDescription - " + clusterDescription);
+         * if (clusterDescription == null) {
+         * if (!this.useHostsAsSeeds) {
+         * LOGGER.info("replicaSetClient - " + replicaSetClient);
+         * // No replica set status is available, but it may still be a replica set ...
+         * return replicaSetClient;
+         * }
+         * // This is not a replica set, so there will be no oplog to read ...
+         * throw new ConnectException("The MongoDB server(s) at '" + replicaSet +
+         * "' is not a valid replica set and cannot be used");
+         * }
+         * // It is a replica set ...
+         * final List<ServerDescription> serverDescriptions = clusterDescription.getServerDescriptions();
+         * LOGGER.info("serverDescriptions- " + serverDescriptions);
+         * ServerAddress primaryAddress = MongoUtil.getPrimaryAddress(replicaSetClient);
+         * if (primaryAddress != null) {
+         * LOGGER.info("primaryAddress - " + primaryAddress);
+         * return pool.clientFor(primaryAddress);
+         * }
+         * return null;
+         */
     }
 }

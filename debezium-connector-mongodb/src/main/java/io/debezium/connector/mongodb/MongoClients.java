@@ -13,6 +13,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import com.mongodb.MongoClientSettings;
 import com.mongodb.MongoCredential;
+import com.mongodb.ReadPreference;
 import com.mongodb.ServerAddress;
 import com.mongodb.client.MongoClient;
 
@@ -40,7 +41,7 @@ public class MongoClients {
      * Configures and builds a ConnectionPool.
      */
     public static class Builder {
-        private final MongoClientSettings.Builder settingsBuilder = MongoClientSettings.builder();
+        private final MongoClientSettings.Builder settingsBuilder = MongoClientSettings.builder().readPreference(ReadPreference.secondary());
 
         /**
          * Add the given {@link MongoCredential} for use when creating clients.
