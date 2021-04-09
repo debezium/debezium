@@ -5,6 +5,8 @@
  */
 package io.debezium.server;
 
+import static org.fest.assertions.Assertions.assertThat;
+
 import java.time.Duration;
 
 import javax.enterprise.event.Observes;
@@ -60,6 +62,6 @@ public class DebeziumServerWithSchemaRegistryIT {
         Assertions.assertThat(testConsumer.getValues().size()).isEqualTo(MESSAGE_COUNT);
         Assertions.assertThat(testConsumer.getValues().get(0)).isInstanceOf(byte[].class);
         Assertions.assertThat(testConsumer.getValues().get(0)).isNotNull();
-        Assertions.assertThat(testConsumer.getValues().get(0).equals(0));
+        assertThat(((byte[]) testConsumer.getValues().get(0))[0]).isEqualTo((byte) 0);
     }
 }

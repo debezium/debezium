@@ -281,6 +281,18 @@
                                 </configuration>
                             </execution>
                             <execution>
+                                <id>integration-test-protobuf</id>
+                                <goals>
+                                    <goal>integration-test</goal>
+                                </goals>
+                                <configuration>
+                                    <systemPropertyVariables>
+                                        <debezium.format.key>protobuf</debezium.format.key>
+                                        <debezium.format.value>protobuf</debezium.format.value>
+                                    </systemPropertyVariables>
+                                </configuration>
+                            </execution>
+                            <execution>
                                 <id>verify</id>
                                 <goals>
                                     <goal>verify</goal>
@@ -323,6 +335,25 @@
                             <systemPropertyVariables>
                                 <test.apicurio.converter.format>avro</test.apicurio.converter.format>
                                 <test.apicurio>true</test.apicurio>
+                            </systemPropertyVariables>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>schema-registry-protobuf</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <configuration>
+                            <skipTests>${skipITs}</skipTests>
+                            <enableAssertions>true</enableAssertions>
+                            <systemPropertyVariables>
+                                <debezium.format.key>protobuf</debezium.format.key>
+                                <debezium.format.value>protobuf</debezium.format.value>
                             </systemPropertyVariables>
                         </configuration>
                     </plugin>
