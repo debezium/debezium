@@ -1782,6 +1782,10 @@ endif::[]
 . Add the directory with the JAR files to {link-kafka-docs}/#connectconfigs[Kafka Connect's `plugin.path`].
 . {link-prefix}:{link-mysql-connector}#mysql-example-configuration[Configure the connector] and {link-prefix}:{link-mysql-connector}#mysql-adding-configuration[add the configuration to your Kafka Connect cluster.]
 . Restart your Kafka Connect process to pick up the new JAR files.
+
+If you are working with immutable containers, see link:https://hub.docker.com/r/debezium/[{prodname}'s Container images] for Apache Zookeeper, Apache Kafka, MySQL, and Kafka Connect with the MySQL connector already installed and ready to run.
+
+You can also xref:operations/openshift.adoc[run {prodname} on Kubernetes and OpenShift].
 endif::community[]
 
 ifdef::product[]
