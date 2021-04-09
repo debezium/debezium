@@ -1502,8 +1502,8 @@ To deploy a {prodname} Db2 connector, you install the {prodname} Db2 connector a
 
 .Prerequisites
 
-* link:https://zookeeper.apache.org/[Zookeeper], link:http://kafka.apache.org/[Kafka], and link:{link-kafka-docs}.html#connect[Kafka Connect] are installed.
-* Db2 is installed and is {link-prefix}:{link-db2-connector}#setting-up-db2[set up to run the {prodname} connector].
+* link:https://zookeeper.apache.org/[Apache ZooKeeper], link:http://kafka.apache.org/[Apache Kafka], and link:{link-kafka-docs}.html#connect[Kafka Connect] are installed.
+* Db2 is installed and {link-prefix}:{link-db2-connector}#setting-up-db2[capture mode is enabled for tables] to prepare the database to be used with the {prodname} connector.
 
 .Procedure
 
@@ -1515,48 +1515,9 @@ To deploy a {prodname} Db2 connector, you install the {prodname} Db2 connector a
 . {link-prefix}:{link-db2-connector}#db2-adding-connector-configuration[Configure the connector and add the configuration to your Kafka Connect cluster.]
 . Restart your Kafka Connect process to pick up the new JAR files.
 
-If you are working with immutable containers, see link:https://hub.docker.com/r/debezium/[{prodname}'s Container images] for Zookeeper, Kafka and Kafka Connect with the Db2 connector already installed and ready to run.
+If you are working with immutable containers, see link:https://hub.docker.com/r/debezium/[{prodname}'s container images] for Apache ZooKeeper, Apache Kafka and Kafka Connect with the Db2 connector already installed and ready to run.
+
 You can also xref:operations/openshift.adoc[run {prodname} on Kubernetes and OpenShift].
-
-[[db2-example-configuration]]
-=== Connector configuration example
-
-Following is an example of the configuration for a connector instance that captures data from a Db2 server on port 50000 at 192.168.99.100, which we logically name `fullfillment`.
-Typically, you configure the {prodname} Db2 connector in a JSON file by setting the configuration properties that are available for the connector.
-
-You can choose to produce events for a subset of the schemas and tables in a database.
-Optionally, you can ignore, mask, or truncate columns that contain sensitive data, that are larger than a specified size, or that you do not need.
-
-[source,json]
-----
-{
-  "name": "db2-connector",  // <1>
-  "config": {
-    "connector.class": "io.debezium.connector.db2.Db2Connector", // <2>
-    "database.hostname": "192.168.99.100", // <3>
-    "database.port": "50000", // <4>
-    "database.user": "db2inst1", // <5>
-    "database.password": "Password!", // <6>
-    "database.dbname": "mydatabase", // <7>
-    "database.server.name": "fullfillment", // <8>
-    "table.include.list": "MYSCHEMA.CUSTOMERS", // <9>
-    "database.history.kafka.bootstrap.servers": "kafka:9092", // <10>
-    "database.history.kafka.topic": "dbhistory.fullfillment" // <11>
-  }
-}
-----
-<1> The name of the connector when registered with a Kafka Connect service.
-<2> The name of this Db2 connector class.
-<3> The address of the Db2 instance.
-<4> The port number of the Db2 instance.
-<5> The name of the Db2 user.
-<6> The password for the Db2 user.
-<7> The name of the database to capture changes from.
-<8> The logical name of the Db2 instance/cluster, which forms a namespace and is used in all the names of the Kafka topics to which the connector writes, the Kafka Connect schema names, and the namespaces of the corresponding Avro schema when the {link-prefix}:{link-avro-serialization}[Avro Connector] is used.
-<9> A list of all tables whose changes {prodname} should capture.
-<10> The list of Kafka brokers that this connector uses to write and recover DDL statements to the database history topic.
-<11> The name of the database history topic where the connector writes and recovers DDL statements. This topic is for internal use only and should not be used by consumers.
-
 endif::community[]
 
 ifdef::product[]
@@ -1565,28 +1526,27 @@ For details about deploying the {prodname} Db2 connector, see the following topi
 
 * xref:deploying-debezium-db2-connectors[]
 * xref:db2-connector-properties[]
-endif::product[]
 
-ifdef::product[]
 // Type: procedure
 // ModuleID: deploying-debezium-db2-connectors
 === Deploying {prodname} Db2 connectors
 
-To deploy a {prodname} Db2 connector, you must build a custom Kafka Connect container image that contains the {prodname} connector archive, and then push this container image to a container registry. 
+To deploy a {prodname} Db2 connector, you must build a custom Kafka Connect container image that contains the {prodname} connector archive, and then push this container image to a container registry.
 You then need to create the following custom resources (CRs):
 
-* A `KafkaConnect` CR that configures your Kafka Connector and that specifies the name of the image that you created to run your {prodname} connector.
-  You apply this CR to the OpenShift Kafka instance.
+* A `KafkaConnect` CR that defines your Kafka Connect instance.
+The `image` property in the CR specifies the name of the container image that you create to run your {prodname} connector.
+You apply this CR to the OpenShift instance where link:https://access.redhat.com/products/red-hat-amq#streams[Red Hat {StreamsName}] is deployed.
+{StreamsName} offers operators and images that bring Apache Kafka to OpenShift.
 
-* A `KafkaConnector` CR that configures your {prodname} Db2 connector.
-  You apply this CR to the OpenShift instance where Red Hat AMQ Streams is deployed.
+* A `KafkaConnector` CR that defines your {prodname} Db2 connector.
+Apply this CR to the same OpenShift instance where you applied the `KafkaConnect` CR.
 
 .Prerequisites
 
-* Db2 is running and you completed the steps to {LinkDebeziumUserGuide}#setting-up-db2-to-run-a-debezium-connector[set up Db2 to run a {prodname} connector].
+* Db2 is running and you completed the steps to {LinkDebeziumUserGuide}#setting-up-db2-to-run-a-debezium-connector[set up Db2 to work with a {prodname} connector].
 
-* link:https://access.redhat.com/products/red-hat-amq#streams[Red Hat AMQ Streams] was used to set up and start running Apache Kafka and Kafka Connect on OpenShift.
-    AMQ Streams offers operators and images that bring Kafka to OpenShift.
+* {StreamsName} is deployed on OpenShift and is running Apache Kafka and Kafka Connect.
 
 * Podman or Docker is installed.
 
@@ -1635,7 +1595,7 @@ podman build -t debezium-container-for-db2:latest .
 ----
 docker build -t debezium-container-for-db2:latest .
 ----
-The preceding command builds a container image with the name `debezium-container-for-db2`.
+The preceding commands build a container image with the name `debezium-container-for-db2`.
 
 .. Push your custom image to a container registry, such as quay.io or an internal container registry.
 The container registry must be available to the OpenShift instance where you want to deploy the image.
@@ -1651,8 +1611,8 @@ podman push _<myregistry.io>_/debezium-container-for-db2:latest
 docker push _<myregistry.io>_/debezium-container-for-db2:latest
 ----
 
-.. Create a new {prodname} Db2 KafkaConnect custom resource (CR).
-For example, create a KafkaConnect CR with the name `dbz-connect.yaml` that specifies `annotations` and `image` properties as shown in the following example:
+.. Create a new {prodname} Db2 `KafkaConnect` custom resource (CR).
+For example, create a `KafkaConnect` CR with the name `dbz-connect.yaml` that specifies `annotations` and `image` properties as shown in the following example:
 +
 [source,yaml,subs="+attributes"]
 ----
@@ -1666,7 +1626,7 @@ spec:
   #...
   image: debezium-container-for-db2  // <2>
 ----
-<1>  `metadata.annotations` indicates to the Cluster Operator that KafkaConnector resources are used to configure connectors in this Kafka Connect cluster.
+<1>  `metadata.annotations` indicates to the Cluster Operator that `KafkaConnector` resources are used to configure connectors in this Kafka Connect cluster.
 <2>  `spec.image` specifies the name of the image that you created to run your Debezium connector.
 This property overrides the `STRIMZI_DEFAULT_KAFKA_CONNECT_IMAGE` variable in the Cluster Operator.
 
@@ -1677,42 +1637,12 @@ This property overrides the `STRIMZI_DEFAULT_KAFKA_CONNECT_IMAGE` variable in th
 oc create -f dbz-connect.yaml
 ----
 +
-The command adds a Kafka Connector instance that specifies the name of the image that you created to run your {prodname} connector.
+The command adds a Kafka Connect instance that specifies the name of the image that you created to run your {prodname} connector.
 
 . Create a `KafkaConnector` custom resource that configures your {prodname} Db2 connector instance.
 +
 You configure a {prodname} Db2 connector in a `.yaml` file that specifies the configuration properties for the connector.
 The connector configuration might instruct {prodname} to produce events for a subset of the schemas and tables, or it might set properties so that {prodname} ignores, masks, or truncates values in specified columns that are sensitive, too large, or not needed.
-endif::product[]
-For the complete list of the configuration properties that you can set for the {prodname} Db2 connector, see {link-prefix}:{link-db2-connector}#db2-connector-properties[Db2 connector properties].
-
-ifdef::community[]
-
-You can send this configuration with a `POST` command to a running Kafka Connect service.
-The service records the configuration and starts one connector task that performs the following actions:
-
-* Connects to the Db2 database.
-* Reads change-data tables for tables that are in capture mode.
-* Streams change event records to Kafka topics.
-
-[[db2-adding-connector-configuration]]
-=== Adding connector configuration
-
-To start running a Db2 connector, create a connector configuration and add the configuration to your Kafka Connect cluster.
-
-.Prerequisites
-
-* {link-prefix}:{link-db2-connector}#setting-up-db2[Db2 replication is enabled] to expose change data for tables that are in capture mode.
-
-* The Db2 connector is installed.
-
-.Procedure
-
-. Create a configuration for the Db2 connector.
-
-. Use the link:{link-kafka-docs}/#connect_rest[Kafka Connect REST API] to add that connector configuration to your Kafka Connect cluster.
-endif::community[]
-ifdef::product[]
 +
 The following example configures a {prodname} connector that connects to a Db2 server host, `192.168.99.100`, on port `50000`.
 This host has a database named `mydatabase`, a table with the name `inventory`, and `fulfillment` is the server's logical name.
@@ -1819,6 +1749,76 @@ Downstream applications can subscribe to these topics.
 oc get kafkatopics
 ----
 endif::product[]
+
+ifdef::community[]
+[[db2-example-configuration]]
+=== Db2 connector configuration example
+
+Following is an example of the configuration for a connector instance that captures data from a Db2 server on port 50000 at 192.168.99.100, which we logically name `fullfillment`.
+Typically, you configure the {prodname} Db2 connector in a JSON file by setting the configuration properties that are available for the connector.
+
+You can choose to produce events for a subset of the schemas and tables in a database.
+Optionally, you can ignore, mask, or truncate columns that contain sensitive data, that are larger than a specified size, or that you do not need.
+
+[source,json]
+----
+{
+  "name": "db2-connector",  // <1>
+  "config": {
+    "connector.class": "io.debezium.connector.db2.Db2Connector", // <2>
+    "database.hostname": "192.168.99.100", // <3>
+    "database.port": "50000", // <4>
+    "database.user": "db2inst1", // <5>
+    "database.password": "Password!", // <6>
+    "database.dbname": "mydatabase", // <7>
+    "database.server.name": "fullfillment", // <8>
+    "table.include.list": "MYSCHEMA.CUSTOMERS", // <9>
+    "database.history.kafka.bootstrap.servers": "kafka:9092", // <10>
+    "database.history.kafka.topic": "dbhistory.fullfillment" // <11>
+  }
+}
+----
+<1> The name of the connector when registered with a Kafka Connect service.
+<2> The name of this Db2 connector class.
+<3> The address of the Db2 instance.
+<4> The port number of the Db2 instance.
+<5> The name of the Db2 user.
+<6> The password for the Db2 user.
+<7> The name of the database to capture changes from.
+<8> The logical name of the Db2 instance/cluster, which forms a namespace and is used in all the names of the Kafka topics to which the connector writes, the Kafka Connect schema names, and the namespaces of the corresponding Avro schema when the {link-prefix}:{link-avro-serialization}[Avro Connector] is used.
+<9> A list of all tables whose changes {prodname} should capture.
+<10> The list of Kafka brokers that this connector uses to write and recover DDL statements to the database history topic.
+<11> The name of the database history topic where the connector writes and recovers DDL statements. This topic is for internal use only and should not be used by consumers.
+
+endif::community[]
+
+For the complete list of the configuration properties that you can set for the {prodname} Db2 connector, see {link-prefix}:{link-db2-connector}#db2-connector-properties[Db2 connector properties].
+
+ifdef::community[]
+
+You can send this configuration with a `POST` command to a running Kafka Connect service.
+The service records the configuration and starts one connector task that performs the following actions:
+
+* Connects to the Db2 database.
+* Reads change-data tables for tables that are in capture mode.
+* Streams change event records to Kafka topics.
+
+[[db2-adding-connector-configuration]]
+=== Adding connector configuration
+
+To start running a Db2 connector, create a connector configuration and add the configuration to your Kafka Connect cluster.
+
+.Prerequisites
+
+* {link-prefix}:{link-db2-connector}#setting-up-db2[Db2 replication is enabled] to expose change data for tables that are in capture mode.
+* The Db2 connector is installed.
+
+.Procedure
+
+. Create a configuration for the Db2 connector.
+
+. Use the link:{link-kafka-docs}/#connect_rest[Kafka Connect REST API] to add that connector configuration to your Kafka Connect cluster.
+endif::community[]
 
 .Results
 
@@ -2124,7 +2124,7 @@ Also, the connector passes configuration properties that start with `database.` 
 [[db2-monitoring]]
 == Monitoring
 
-The {prodname} Db2 connector provides three types of metrics that are in addition to the built-in support for JMX metrics that Zookeeper, Kafka, and Kafka Connect provide.
+The {prodname} Db2 connector provides three types of metrics that are in addition to the built-in support for JMX metrics that Apache ZooKeeper, Apache Kafka, and Kafka Connect provide.
 
 * {link-prefix}:{link-db2-connector}#db2-snapshot-metrics[Snapshot metrics] provide information about connector operation while performing a snapshot.
 * {link-prefix}:{link-db2-connector}#db2-streaming-metrics[Streaming metrics] provide information about connector operation when the connector is capturing changes and streaming change event records.
