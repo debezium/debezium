@@ -140,7 +140,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
 
                 // Shouldn't happen if the agent is running, but it is better to guard against such situation
                 if (!maxLsnResult.getMaxLsn().isAvailable() || !maxLsnResult.getMaxTransactionalLsn().isAvailable()) {
-                    LOGGER.warn("No maximum LSN recorded in the database; please ensure that the SQL Server Agent is running");
+                    LOGGER.warn("No maximum LSN recorded in the database \"{}\"; please ensure that the SQL Server Agent is running", partition.getDatabaseName());
                     offsetContext.saveStreamingExecutionContext(schemaChangeCheckpoints, tablesSlot, lastProcessedPositionOnStart, lastProcessedEventSerialNoOnStart,
                             lastProcessedPosition, changesStoppedBeingMonotonic, shouldIncreaseFromLsn,
                             SqlServerStreamingExecutionState.StreamingResultStatus.NO_MAXIMUM_LSN_RECORDED);
