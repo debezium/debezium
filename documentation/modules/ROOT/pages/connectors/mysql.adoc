@@ -2486,17 +2486,11 @@ endif::community[]
 
 |[[mysql-property-skipped-operations]]<<mysql-property-skipped-operations, `+skipped.operations+`>>
 |
-|comma-separated list of operation types to skip during streaming. Values that you can specify are: `c` for inserts/create, `u` for updates, `d` for deletes. By default, no operations are skipped.
+|Comma-separated list of operation types to skip during streaming. The following values are possible: `c` for inserts/create, `u` for updates, `d` for deletes. By default, no operations are skipped.
 
 |[[mysql-property-provide-transaction-metadata]]<<mysql-property-provide-transaction-metadata, `provide.transaction{zwsp}.metadata`>>
 |`false`
 |Determines whether the connector generates events with transaction boundaries and enriches change event envelopes with transaction metadata. Specify `true` if you want the connector to do this. See {link-prefix}:{link-mysql-connector}#mysql-transaction-metadata[Transaction metadata] for details.
-
-|[[mysql-property-skipped-operations]]<<mysql-property-skipped-operations, `+skipped.operations+`>>
-|
-| comma-separated list of operation types that will be skipped during streaming.
-The operations include: `c` for inserts/create, `u` for updates, and `d` for deletes.
-By default, no operations are skipped.
 
 |===
 
