@@ -594,6 +594,11 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     }
 
     @Override
+    public boolean supportsOperationFiltering() {
+        return true;
+    }
+
+    @Override
     public String getContextName() {
         return Module.contextName();
     }
