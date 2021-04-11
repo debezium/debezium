@@ -119,7 +119,7 @@ public class EventDispatcher<T extends DataCollectionId, SourceRecord extends So
         this.emitTombstonesOnDelete = connectorConfig.isEmitTombstoneOnDelete();
         this.inconsistentSchemaHandler = inconsistentSchemaHandler != null ? inconsistentSchemaHandler : this::errorOnMissingSchema;
         this.skippedOperations = connectorConfig.getSkippedOps();
-        this.neverSkip = this.skippedOperations.isEmpty();
+        this.neverSkip = connectorConfig.supportsOperationFiltering() || this.skippedOperations.isEmpty();
 
         this.transactionMonitor = new TransactionMonitor<SourceRecord>(connectorConfig, metadataProvider, this::enqueueTransactionMessage);
         this.signal = new Signal(connectorConfig, this);

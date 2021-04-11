@@ -560,6 +560,10 @@ public abstract class CommonConnectorConfig {
         return customConverterRegistry;
     }
 
+    public boolean supportsOperationFiltering() {
+        return false;
+    }
+
     @SuppressWarnings("unchecked")
     private List<CustomConverter<SchemaBuilder, ConvertedField>> getCustomConverters() {
         final String converterNameList = config.getString(CUSTOM_CONVERTERS);

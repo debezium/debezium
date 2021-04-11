@@ -974,6 +974,11 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
 
     protected static final Set<String> BUILT_IN_DB_NAMES = Collect.unmodifiableSet("mysql", "performance_schema", "sys", "information_schema");
 
+    @Override
+    public boolean supportsOperationFiltering() {
+        return true;
+    }
+
     private final Configuration config;
     private final SnapshotMode snapshotMode;
     private final SnapshotLockingMode snapshotLockingMode;
