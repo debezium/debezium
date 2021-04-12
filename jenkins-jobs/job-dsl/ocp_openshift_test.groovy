@@ -21,7 +21,7 @@ pipelineJob('ocp-debezium-openshift-test') {
         stringParam('DBZ_CONNECT_IMAGE', "", "Kafka Connect Image with DBZ plugins.")
 //        STRIMZI CONFIG
         stringParam('STRZ_GIT_REPOSITORY', 'https://github.com/strimzi/strimzi-kafka-operator.git', 'Repository from which Strimzi is cloned')
-        stringParam('STRZ_GIT_BRANCH', 'master', 'A branch/tag from which Debezium is built')
+        stringParam('STRZ_GIT_BRANCH', 'main', 'A branch/tag from which Debezium is built')
         stringParam('STRZ_RESOURCES_ARCHIVE_URL', "", "URL to productised strimzi sources")
 //        TEST CONFIG
         stringParam('TEST_WAIT_SCALE', "1", "Wait time scaling factor")
