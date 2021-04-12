@@ -788,68 +788,237 @@ Following is an example of what a message looks like:
 }
 ----
 
+// Type: assembly
+// ModuleID: deployment-of-debezium-mongodb-connectors
+// Title: Deployment of {prodname} MongoDB connectors
+[[mysql-deploying-a-connector]]
 [[mongodb-deploying-a-connector]]
-== Deploying the MongoDB connector
+== Deployment
 
 ifdef::community[]
-With https://zookeeper.apache.org[Zookeeper], http://kafka.apache.org/[Kafka], and {link-kafka-docs}.html#connect[Kafka Connect] installed, the remaining tasks to deploy a {prodname} MongoDB connector are to
-download the
+To deploy a {prodname} MongoDB connector, you install the {prodname} MongoDB connector archive, configure the connector, and start the connector by adding its configuration to Kafka Connect.
+
+.Prerequisites
+* link:https://zookeeper.apache.org/[Apache Zookeeper], link:http://kafka.apache.org/[Apache Kafka], and link:{link-kafka-docs}.html#connect[Kafka Connect] are installed.
+* MongoDB is installed and is {link-prefix}:{link-mongodb-connector}#setting-up-mongodb[set up to work with the {prodname} connector].
+
+.Procedure
+. Download the
 ifeval::['{page-version}' == 'master']
 {link-mongodb-plugin-snapshot}[connector's plug-in archive],
 endif::[]
 ifeval::['{page-version}' != 'master']
 https://repo1.maven.org/maven2/io/debezium/debezium-connector-mongodb/{debezium-version}/debezium-connector-mongodb-{debezium-version}-plugin.tar.gz[connector's plug-in archive],
 endif::[]
-extract the JAR files into your Kafka Connect environment, and add the directory with the JAR files to  {link-kafka-docs}/#connectconfigs[Kafka Connect's `plugin.path`]. You then need to
-restart your Kafka Connect process to pick up the new JAR files.
+. Extract the JAR files into your Kafka Connect environment.
+. Add the directory with the JAR files to {link-kafka-docs}/#connectconfigs[Kafka Connect's `plugin.path`].
+. Restart your Kafka Connect process to pick up the new JAR files.
 
-If you are working with immutable containers, see link:https://hub.docker.com/r/debezium/[{prodname}'s Container images] for Zookeeper, Kafka, and Kafka Connect with the MongoDB connector already installed and ready to run. You can also xref:operations/openshift.adoc[run {prodname} on Kubernetes and OpenShift].
+If you are working with immutable containers, see link:https://hub.docker.com/r/debezium/[{prodname}'s Container images] for Apache Zookeeper, Apache Kafka, and Kafka Connect with the MongoDB connector already installed and ready to run.
+
+You can also xref:operations/openshift.adoc[run {prodname} on Kubernetes and OpenShift].
 
 The {prodname} xref:tutorial.adoc[tutorial] walks you through using these images, and this is a great way to learn about {prodname}.
 endif::community[]
 
 ifdef::product[]
-To deploy a {prodname} MongoDB connector, install the {prodname} MongoDB connector archive, configure the connector, and start the connector by adding its configuration to Kafka Connect.
+To deploy a {prodname} MongoDB connector, add the connector files to Kafka Connect, create a custom container to run the connector, and add the connector configuration to your container.
+Details are in the following topics:
 
-To install the MongoDB connector, follow the procedures in {LinkDebeziumInstallOpenShift}[{NameDebeziumInstallOpenShift}]. The main steps are:
+* xref:deploying-debezium-mongodb-connectors[]
+* xref:ongodb-connector-properties[]
 
-. Use link:https://access.redhat.com/products/red-hat-amq#streams[Red Hat AMQ Streams] to set up Apache Kafka and Kafka Connect on OpenShift. AMQ Streams offers operators and images that bring Kafka to OpenShift.
+// Type: procedure
+// ModuleID: deploying-debezium-mongodb-connectors
+=== Deploying {prodname} MongoDB connectors
 
-. Download the {prodname} link:https://access.redhat.com/jbossnetwork/restricted/listSoftware.html?product=red.hat.integration&downloadType=distributions[MongoDB connector].
+To deploy a {prodname} MongoDB connector, you must build a custom Kafka Connect container image that contains the {prodname} connector archive and then push this container image to a container registry.
+You then create two custom resources (CRs):
 
-. Extract the connector files into your Kafka Connect environment.
-. Add the connector plug-in's parent directory to your Kafka Connect `plugin.path`, for example:
+* A `KafkaConnect` CR that defines your Kafka Connect instance.
+  The `image` property in the CR specifies the name of the container image that you create to run your {prodname} connector.
+  You apply this CR to the OpenShift instance where link:https://access.redhat.com/products/red-hat-amq#streams[Red Hat {StreamsName}] is deployed.
+  {StreamsName} offers operators and images that bring Apache Kafka to OpenShift.
+
+* A `KafkaConnector` CR that defines your {prodname} MongoDB connector.
+  Apply this CR to the same OpenShift instance where you apply the `KafkaConnect` CR.
+
+.Prerequisites
+
+* MongoDB is running and you completed the steps to {LinkDebeziumUserGuide}#setting-up-mongodb[set up MongoDB to work with a {prodname} connector].
+
+* {StreamsName} is deployed on OpenShift and is running Apache Kafka and Kafka Connect.
+  For more information, see link:{LinkStreamsOpenShift}:/getting-started-str[{NameDebeziumInstallOpenShift}].
+
+* Podman or Docker is installed.
+
+* You have an account and permissions to create and manage containers in the container registry (such as `quay.io` or `docker.io`) to which you plan to add the container that will run your Debezium connector.
+
+.Procedure
+
+. Create the {prodname} MongoDB container for Kafka Connect:
+.. Download the {prodname} link:https://access.redhat.com/jbossnetwork/restricted/listSoftware.html?product=red.hat.integration&downloadType=distributions[MongoDB connector archive].
+.. Extract the {prodname} MongoDB connector archive to create a directory structure for the connector plug-in, for example:
 +
-[source]
+[subs="+macros"]
 ----
-plugin.path=/kafka/connect
+./my-plugins/
+├── debezium-connector-mongodb
+│   ├── ...
+----
+
+.. Create a Docker file that uses `{DockerKafkaConnect}` as the base image.
+For example, from a terminal window, enter the following, replacing `my-plugins` with the name of your plug-ins directory:
++
+[source,shell,subs="+attributes,+quotes"]
+----
+cat <<EOF >debezium-container-for-mongodb.yaml // <1>
+FROM {DockerKafkaConnect}
+USER root:root
+COPY ./_<my-plugins>_/ /opt/kafka/plugins/ // <2>
+USER 1001
+EOF
+----
+<1> You can specify any file name that you want.
+<2> Replace `my-plugins` with the name of your plug-ins directory.
++
+The command creates a Docker file with the name `debezium-container-for-mongodb.yaml` in the current directory.
+
+.. Build the container image from the `debezium-container-for-mongodb.yaml` Docker file that you created in the previous step.
+From the directory that contains the file, open a terminal window and enter one of the following commands:
++
+[source,shell,options="nowrap"]
+----
+podman build -t debezium-container-for-mongodb:latest .
 ----
 +
-The above example assumes that you extracted the {prodname} MongoDB connector to the `/kafka/connect/{prodname}-connector-mongodb` path.
+[source,shell,options="nowrap"]
+----
+docker build -t debezium-container-for-mongodb:latest .
+----
+The preceding commands build a container image with the name `debezium-container-for-mongodb`.
 
-. Restart your Kafka Connect process to ensure that the new JAR files are picked up.
+.. Push your custom image to a container registry, such as `quay.io` or an internal container registry.
+The container registry must be available to the OpenShift instance where you want to deploy the image.
+Enter one of the following commands:
++
+[source,shell,subs="+quotes"]
+----
+podman push _<myregistry.io>_/debezium-container-for-mongodb:latest
+----
++
+[source,shell,subs="+quotes"]
+----
+docker push _<myregistry.io>_/debezium-container-for-mongodb:latest
+----
 
-You also need to {LinkDebeziumUserGuide}#setting-up-mongodb[set up MongoDB] to run a {prodname} connector.
+.. Create a new {prodname} MongoDB `KafkaConnect` custom resource (CR).
+For example, create a `KafkaConnect` CR with the name `dbz-connect.yaml` that specifies `annotations` and `image` properties as shown in the following example:
++
+[source,yaml,subs="+attributes"]
+----
+apiVersion: {KafkaConnectApiVersion}
+kind: KafkaConnect
+metadata:
+  name: my-connect-cluster
+  annotations:
+    strimzi.io/use-connector-resources: "true" // <1>
+spec:
+  #...
+  image: debezium-container-for-mongodb  // <2>
+----
+<1>  `metadata.annotations` indicates to the Cluster Operator that `KafkaConnector` resources are used to configure connectors in this Kafka Connect cluster.
+<2>  `spec.image` specifies the name of the image that you created to run your Debezium connector.
+This property overrides the `STRIMZI_DEFAULT_KAFKA_CONNECT_IMAGE` variable in the Cluster Operator.
 
-.Additional resources
+.. Apply the `KafkaConnect` CR to the OpenShift Kafka Connect environment by entering the following command:
++
+[source,shell,options="nowrap"]
+----
+oc create -f dbz-connect.yaml
+----
++
+The command adds a Kafka Connect instance that specifies the name of the image that you created to run your {prodname} connector.
 
-For more information about the deployment process, and deploying connectors with AMQ Streams, see the {prodname} installation guides.
+. Create a `KafkaConnector` custom resource that configures your {prodname} MongoDB connector instance.
++
+You configure a {prodname} MongoDB connector in a `.yaml` file that specifies the configuration properties for the connector.
+The connector configuration might instruct {prodname} to produce change events for a subset of MongoDB replica sets or sharded clusters.
+Optionally, you can set properties that filter out collections that are not needed.
++
+The following example configures a {prodname} connector that connects to a MongoDB replica set `rs0` at port `27017` on `192.168.99.100`,
+and captures changes that occur in the `inventory` collection.
+`fullfillment` is the logical name of the replica set.
++
+.MongoDB `inventory-connector.yaml`
+[source,yaml,options="nowrap",subs="+attributes"]
+----
+apiVersion: {KafkaConnectApiVersion}
+  kind: KafkaConnector
+  metadata:
+    name: inventory-connector // <1>
+    labels: strimzi.io/cluster: my-connect-cluster
+  spec:
+    class: io.debezium.connector.mongodb.MongoDbConnector // <2>
+    config:
+     mongodb.hosts: rs0/192.168.99.100:27017 // <3>
+     mongodb.name: fulfillment // <4>
+     collection.include.list: inventory[.]* // <5>
+----
+<1> The name that is used to register the connector with Kafka Connect.
+<2> The name of the MongoDB connector class.
+<3> The host addresses to use to connect to the MongoDB replica set.
+<4> The _logical name_ of the MongoDB replica set, which forms a namespace for generated events and is used in all the names of the Kafka topics to which the connector writes, the Kafka Connect schema names, and the namespaces of the corresponding Avro schema when the Avro converter is used.
+<5> An optional list of regular expressions that match the collection namespaces (for example, <dbName>.<collectionName>) of all collections to be monitored.
 
-* {LinkDebeziumInstallOpenShift}[{NameDebeziumInstallOpenShift}]
-* {LinkDebeziumInstallRHEL}[{NameDebeziumInstallRHEL}]
+. Create your connector instance with Kafka Connect.
+For example, if you saved your `KafkaConnector` resource in the `inventory-connector.yaml` file, you would run the following command:
++
+[source,shell,options="nowrap"]
+----
+oc apply -f inventory-connector.yaml
+----
++
+The preceding command registers `inventory-connector` and the connector starts to run against the `inventory` collection as defined in the `KafkaConnector` CR.
+
+. Verify that the connector was created and has started:
+.. Display the Kafka Connect log output to verify that the connector was created and has started to capture changes in the specified database:
++
+[source,shell,options="nowrap"]
+----
+oc logs $(oc get pods -o name -l strimzi.io/cluster=my-connect-cluster)
+----
+
+.. Review the log output to verify that {prodname} performs the initial snapshot.
+The log displays output that is similar to the following messages:
++
+[source,shell,options="nowrap"]
+----
+... INFO Starting snapshot for ...
+... INFO Snapshot is using user 'debezium' ...
+----
++
+If the connector starts correctly without errors, it creates a topic for each collection from which the connector captures changes.
+For the CR in the preceding example, there would be a topic for the collection specified in the `collection.include.list` property.
+Downstream applications can subscribe to the topics that the connector creates.
+
+.. Verify that the connector created topics by running the following command:
++
+[source,shell,options="nowrap"]
+----
+oc get kafkatopics
+----
 endif::product[]
 
-[[mongodb-example-configuration]]
-=== Example configuration
-
-To use the connector to produce change events for a particular MongoDB replica set or sharded cluster, create a configuration file in JSON.
-When the connector starts, it will perform a snapshot of the collections in your MongoDB replica sets and start reading the replica sets' oplogs, producing events for every inserted, updated, and deleted document.
-Optionally filter out collections that are not needed.
-
 ifdef::community[]
+[[mongodb-example-configuration]]
+=== MongoDB connector configuration example
 
-Following is an example of the configuration for a MongoDB connector that monitors a MongoDB replica set `rs0` at port 27017 on 192.168.99.100, which we logically name `fullfillment`.
-Typically, you configure the {prodname} MongoDB connector in a `.json` file using the configuration properties available for the connector.
+Following is an example of the configuration for a connector instance that captures data from a MongoDB replica set `rs0` at port 27017 on 192.168.99.100, which we logically name `fullfillment`.
+Typically, you configure the {prodname} MongoDB connector in a JSON file by setting the configuration properties that are available for the connector.
+
+You can choose to produce events for a particular MongoDB replica set or sharded cluster.
+Optionally, you can filter out collections that are not needed.
 
 [source,json]
 ----
@@ -871,145 +1040,44 @@ Typically, you configure the {prodname} MongoDB connector in a `.json` file usin
 
 endif::community[]
 
-ifdef::product[]
-Following is an example of the configuration for a MongoDB connector that monitors a MongoDB replica set `rs0` at port 27017 on 192.168.99.100, which we logically name `fullfillment`.
-Typically, you configure the {prodname} MongoDB connector in a `.yaml` file using the configuration properties available for the connector.
+For the complete list of the configuration properties that you can set for the {prodname} MongoDB connector,
+see {link-prefix}:{link-mongodb-connector}#mongodb-connector-properties[MongoDB connector configuration properties].
 
-[source,yaml,options="nowrap",subs="+attributes"]
-----
-apiVersion: {KafkaConnectApiVersion}
-  kind: KafkaConnector
-  metadata:
-    name: inventory-connector // <1>
-    labels: strimzi.io/cluster: my-connect-cluster
-  spec:
-    class: io.debezium.connector.mongodb.MongoDbConnector // <2>
-    config:
-     mongodb.hosts: rs0/192.168.99.100:27017 // <3>
-     mongodb.name: fulfillment // <4>
-     collection.include.list: inventory[.]* // <5>
-----
-<1> The name of our connector when we register it with a Kafka Connect service.
-<2> The name of the MongoDB connector class.
-<3> The host addresses to use to connect to the MongoDB replica set.
-<4> The _logical name_ of the MongoDB replica set, which forms a namespace for generated events and is used in all the names of the Kafka topics to which the connector writes, the Kafka Connect schema names, and the namespaces of the corresponding Avro schema when the Avro converter is used.
-<5> A list of regular expressions that match the collection namespaces (for example, <dbName>.<collectionName>) of all collections to be monitored. This is optional.
+ifdef::community[]
+You can send this configuration with a `POST` command to a running Kafka Connect service.
+The service records the configuration and starts one connector task that performs the following actions:
 
-endif::product[]
-
-See the {link-prefix}:{link-mongodb-connector}#mongodb-connector-properties[complete list of connector properties] that can be specified in these configurations.
-
-This configuration can be sent via POST to a running Kafka Connect service, which will then record the configuration and start up the one connector task that will connect to the MongoDB replica set or sharded cluster, assign tasks for each replica set, perform a snapshot if necessary, read the oplog, and record events to Kafka topics.
+* Connects to the MongoDB replica set or sharded cluster.
+* Assigns tasks for each replica set.
+* Performs a snapshot, if necessary.
+* Reads the oplog.
+* Streams change event records to Kafka topics.
 
 [[mongodb-adding-connector-configuration]]
 === Adding connector configuration
 
-ifdef::community[]
-To run a {prodname} MongoDB connector, create a connector configuration and add the configuration to your Kafka Connect cluster.
+To start running a {prodname} MongoDB connector, create a connector configuration, and add the configuration to your Kafka Connect cluster.
 
 .Prerequisites
 
-* MongoDB is set up to run a {prodname} connector.
-
-* A {prodname} MongoDB connector is installed.
+* {link-prefix}:{link-mongodb-connector}#setting-up-mongodb[MongoDB is set up to work with a {prodname} connector].
+* The {prodname} MongoDB connector is installed.
 
 .Procedure
 
 . Create a configuration for the MongoDB connector.
 
 . Use the link:{link-kafka-docs}/#connect_rest[Kafka Connect REST API] to add that connector configuration to your Kafka Connect cluster.
-
 endif::community[]
 
-ifdef::product[]
-You can use a provided {prodname} container to deploy a {prodname} MongoDB connector. In this procedure, you build a custom Kafka Connect container image for {prodname}, configure the {prodname} connector as needed, and then add your connector configuration to your Kafka Connect environment.
-
-.Prerequisites
-
-* Podman or Docker is installed and you have sufficient rights to create and manage containers.
-* You installed the {prodname} MongoDB connector archive.
-
-.Procedure
-
-. Extract the {prodname} MongoDB connector archive to create a directory structure for the connector plug-in, for example:
-+
-[subs="+macros,+attributes"]
-----
-pass:quotes[*tree ./my-plugins/*]
-./my-plugins/
-├── debezium-connector-mongodb
-│   ├── ...
-----
-
-. Create and publish a custom image for running your {prodname} connector:
-
-.. Create a new `Dockerfile` by using `{DockerKafkaConnect}` as the base image. In the following example, you would replace _my-plugins_ with the name of your plug-ins directory:
-+
-[subs="+macros,+attributes"]
-----
-FROM {DockerKafkaConnect}
-USER root:root
-pass:quotes[COPY _./my-plugins/_ /opt/kafka/plugins/]
-USER 1001
-----
-+
-Before Kafka Connect starts running the connector, Kafka Connect loads any third-party plug-ins that are in the `/opt/kafka/plugins` directory.
-
-.. Build the container image. For example, if you saved the `Dockerfile` that you created in the previous step as `debezium-container-for-mongodb`, and if the `Dockerfile` is in the current directory, then you would run the following command:
-+
-`podman build -t debezium-container-for-mongodb:latest .`
-
-.. Push your custom image to your container registry, for example:
-+
-`podman push debezium-container-for-mongodb:latest`
-
-.. Point to the new container image. Do one of the following:
-+
-* Edit the `spec.image` property of the `KafkaConnector` custom resource. If set, this property overrides the `STRIMZI_DEFAULT_KAFKA_CONNECT_IMAGE` variable in the Cluster Operator. For example:
-+
-[source,yaml,subs="+attributes"]
-----
-apiVersion: {KafkaConnectApiVersion}
-kind: KafkaConnector
-metadata:
-  name: my-connect-cluster
-spec:
-  #...
-  image: debezium-container-for-mongodb
-----
-+
-* In the `install/cluster-operator/050-Deployment-strimzi-cluster-operator.yaml` file, edit the `STRIMZI_DEFAULT_KAFKA_CONNECT_IMAGE` variable to point to the new container image and reinstall the Cluster Operator. If you edit this file you must apply it to your OpenShift cluster.
-
-. Create a `KafkaConnector` custom resource that defines your {prodname} MongoDB connector instance. See {LinkDebeziumUserGuide}#mongodb-example-configuration[the connector configuration example].
-
-. Apply the connector instance, for example:
-+
-`oc apply -f inventory-connector.yaml`
-+
-This registers `inventory-connector` and the connector starts to run against the `inventory` database.
-
-. Verify that the connector was created and has started to capture changes in the specified database. You can verify the connector instance by watching the Kafka Connect log output as, for example, `inventory-connector` starts.
-
-.. Display the Kafka Connect log output:
-+
-[source,shell,options="nowrap"]
-----
-oc logs $(oc get pods -o name -l strimzi.io/name=my-connect-cluster-connect)
-----
-
-.. Review the log output to verify that the initial snapshot has been executed. You should see something like the following lines:
-+
-[source,shell,options="nowrap"]
-----
-... INFO Starting snapshot for ...
-... INFO Snapshot is using user 'debezium' ...
-----
-
-endif::product[]
-
 .Results
+When the connector starts, it completes the following actions:
 
-When the connector starts, it {link-prefix}:{link-mongodb-connector}#mongodb-performing-a-snapshot[performs a consistent snapshot] of the MongoDB databases that the connector is configured for. The connector then starts generating data change events for document-level operations and streaming change event records to Kafka topics.
+* {link-prefix}:{link-mongodb-connector}#mongodb-performing-a-snapshot[Performs a consistent snapshot] of the collections in your MongoDB replica sets.
+* Reads the oplogs for the replica sets.
+* Produces change events for every inserted, updated, and deleted document.
+* Streams change event records to Kafka topics.
+
 
 [[mongodb-monitoring]]
 === Monitoring
