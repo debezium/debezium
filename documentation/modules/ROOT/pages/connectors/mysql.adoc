@@ -2293,7 +2293,7 @@ endif::community[]
  +
 `false` - only a delete event is emitted. +
  +
-After a source record is deleted, emitting a tombstone event (the default behavior) allows Kafka to completely delete all events that pertain to the key of the deleted row.
+After a source record is deleted, emitting a tombstone event (the default behavior) allows Kafka to completely delete all events that pertain to the key of the deleted row (in case your topic is configured with compaction).
 
 |[[mysql-property-message-key-columns]]<<mysql-property-message-key-columns, `+message.key.columns+`>>
 |_n/a_
