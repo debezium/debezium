@@ -791,7 +791,6 @@ Following is an example of what a message looks like:
 // Type: assembly
 // ModuleID: deployment-of-debezium-mongodb-connectors
 // Title: Deployment of {prodname} MongoDB connectors
-[[mysql-deploying-a-connector]]
 [[mongodb-deploying-a-connector]]
 == Deployment
 
@@ -826,10 +825,10 @@ To deploy a {prodname} MongoDB connector, add the connector files to Kafka Conne
 Details are in the following topics:
 
 * xref:deploying-debezium-mongodb-connectors[]
-* xref:ongodb-connector-properties[]
+* xref:mongodb-connector-properties[]
 
 // Type: procedure
-// ModuleID: deploying-debezium-mongodb-connectors
+[id="deploying-debezium-mongodb-connectors"]
 === Deploying {prodname} MongoDB connectors
 
 To deploy a {prodname} MongoDB connector, you must build a custom Kafka Connect container image that contains the {prodname} connector archive and then push this container image to a container registry.
