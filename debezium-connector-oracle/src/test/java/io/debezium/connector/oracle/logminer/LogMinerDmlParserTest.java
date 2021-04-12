@@ -336,4 +336,38 @@ public class LogMinerDmlParserTest {
         assertThat(entry.getOldValues().get(1).getColumnData()).isNull();
         assertThat(entry.getNewValues()).isEmpty();
     }
+
+    @Test
+    @FixFor("DBZ-3413")
+    public void testParsingDoubleSingleQuoteInWhereClause() throws Exception {
+        final Table table = Table.editor()
+                .tableId(TableId.parse("DEBEZIUM.TEST"))
+                .addColumn(Column.editor().name("COL1").create())
+                .addColumn(Column.editor().name("COL2").create())
+                .create();
+
+        String sql = "update \"DEBEZIUM\".\"TEST\" set \"COL2\" = '1' where \"COL1\" = 'Bob''s dog' and \"COL2\" = '0';";
+        LogMinerDmlEntry entry = fastDmlParser.parse(sql, table, null);
+        assertThat(entry.getCommandType()).isEqualTo(Operation.UPDATE);
+        assertThat(entry.getOldValues()).hasSize(2);
+        assertThat(entry.getOldValues().get(0).getColumnName()).isEqualTo("COL1");
+        assertThat(entry.getOldValues().get(0).getColumnData()).isEqualTo("Bob''s dog");
+        assertThat(entry.getOldValues().get(1).getColumnName()).isEqualTo("COL2");
+        assertThat(entry.getOldValues().get(1).getColumnData()).isEqualTo("0");
+        assertThat(entry.getNewValues()).hasSize(2);
+        assertThat(entry.getNewValues().get(0).getColumnName()).isEqualTo("COL1");
+        assertThat(entry.getNewValues().get(0).getColumnData()).isEqualTo("Bob''s dog");
+        assertThat(entry.getNewValues().get(1).getColumnName()).isEqualTo("COL2");
+        assertThat(entry.getNewValues().get(1).getColumnData()).isEqualTo("1");
+
+        sql = "delete from \"DEBEZIUM\".\"TEST\" where \"COL1\" = 'Bob''s dog' and \"COL2\" = '1';";
+        entry = fastDmlParser.parse(sql, table, null);
+        assertThat(entry.getCommandType()).isEqualTo(Operation.DELETE);
+        assertThat(entry.getOldValues()).hasSize(2);
+        assertThat(entry.getOldValues().get(0).getColumnName()).isEqualTo("COL1");
+        assertThat(entry.getOldValues().get(0).getColumnData()).isEqualTo("Bob''s dog");
+        assertThat(entry.getOldValues().get(1).getColumnName()).isEqualTo("COL2");
+        assertThat(entry.getOldValues().get(1).getColumnData()).isEqualTo("1");
+        assertThat(entry.getNewValues()).isEmpty();
+    }
 }
