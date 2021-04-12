@@ -417,6 +417,11 @@ public class LogMinerDmlParser implements DmlParser {
                 start = index + 1;
             }
             else if (c == '\'' && inColumnValue) {
+                // Skip over double single quote
+                if (inSingleQuote && lookAhead == '\'') {
+                    index += 1;
+                    continue;
+                }
                 // Set clause single-quoted column value
                 if (inSingleQuote) {
                     inSingleQuote = false;
@@ -544,6 +549,11 @@ public class LogMinerDmlParser implements DmlParser {
                 }
             }
             else if (c == '\'' && inColumnValue) {
+                // Skip over double single quote
+                if (inSingleQuote && lookAhead == '\'') {
+                    index += 1;
+                    continue;
+                }
                 // Where clause single-quoted column value
                 if (inSingleQuote) {
                     inSingleQuote = false;
