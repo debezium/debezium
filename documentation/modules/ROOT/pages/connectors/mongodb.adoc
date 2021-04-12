@@ -1077,59 +1077,6 @@ When the connector starts, it completes the following actions:
 * Produces change events for every inserted, updated, and deleted document.
 * Streams change event records to Kafka topics.
 
-
-[[mongodb-monitoring]]
-=== Monitoring
-
-The {prodname} MongoDB connector has two metric types in addition to the built-in support for JMX metrics that Zookeeper, Kafka, and Kafka Connect have.
-
-* <<mongodb-snapshot-metrics, snapshot metrics>>; for monitoring the connector when performing snapshots
-* <<mongodb-streaming-metrics, streaming metrics>>; for monitoring the connector when processing oplog events
-
-Please refer to the {link-prefix}:{link-debezium-monitoring}#monitoring-debezium[monitoring documentation] for details of how to expose these metrics via JMX.
-
-[[mongodb-snapshot-metrics]]
-==== Snapshot Metrics
-
-The *MBean* is `debezium.mongodb:type=connector-metrics,context=snapshot,server=_<mongodb.name>_`.
-
-include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-snapshot-metrics.adoc[leveloffset=+1]
-
-The {prodname} MongoDB connector also provides the following custom snapshot metrics:
-
-[cols="3,2,5",options="header"]
-|===
-|Attribute |Type |Description
-
-|`NumberOfDisconnects`
-|`long`
-|Number of database disconnects.
-
-|===
-
-[[mongodb-streaming-metrics]]
-==== Streaming Metrics
-
-The *MBean* is `debezium.sql_server:type=connector-metrics,context=streaming,server=_<mongodb.name>_`.
-
-include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-streaming-metrics.adoc[leveloffset=+1]
-
-The {prodname} MongoDB connector also provides the following custom streaming metrics:
-
-[cols="3,2,5",options="header"]
-|===
-|Attribute |Type |Description
-
-|`NumberOfDisconnects`
-|`long`
-|Number of database disconnects.
-
-|`NumberOfPrimaryElections`
-|`long`
-|Number of primary node elections.
-
-|===
-
 [[mongodb-connector-properties]]
 === Connector properties
 
@@ -1354,6 +1301,58 @@ A value of `0` disables this behavior.
 |[[mongodb-property-mongodb-server-selection-timeout-ms]]<<mongodb-property-mongodb-server-selection-timeout-ms, `+mongodb.server.selection.timeout.ms+`>>
 |30000 (30 seconds)
 |The number of milliseconds the driver will wait to select a server before it times out and throws an error.
+
+|===
+
+[[mongodb-monitoring]]
+== Monitoring
+
+The {prodname} MongoDB connector has two metric types in addition to the built-in support for JMX metrics that Zookeeper, Kafka, and Kafka Connect have.
+
+* <<mongodb-snapshot-metrics, snapshot metrics>>; for monitoring the connector when performing snapshots
+* <<mongodb-streaming-metrics, streaming metrics>>; for monitoring the connector when processing oplog events
+
+Please refer to the {link-prefix}:{link-debezium-monitoring}#monitoring-debezium[monitoring documentation] for details of how to expose these metrics via JMX.
+
+[[mongodb-snapshot-metrics]]
+=== Snapshot Metrics
+
+The *MBean* is `debezium.mongodb:type=connector-metrics,context=snapshot,server=_<mongodb.name>_`.
+
+include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-snapshot-metrics.adoc[leveloffset=+1]
+
+The {prodname} MongoDB connector also provides the following custom snapshot metrics:
+
+[cols="3,2,5",options="header"]
+|===
+|Attribute |Type |Description
+
+|`NumberOfDisconnects`
+|`long`
+|Number of database disconnects.
+
+|===
+
+[[mongodb-streaming-metrics]]
+=== Streaming Metrics
+
+The *MBean* is `debezium.sql_server:type=connector-metrics,context=streaming,server=_<mongodb.name>_`.
+
+include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-streaming-metrics.adoc[leveloffset=+1]
+
+The {prodname} MongoDB connector also provides the following custom streaming metrics:
+
+[cols="3,2,5",options="header"]
+|===
+|Attribute |Type |Description
+
+|`NumberOfDisconnects`
+|`long`
+|Number of database disconnects.
+
+|`NumberOfPrimaryElections`
+|`long`
+|Number of primary node elections.
 
 |===
 
