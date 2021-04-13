@@ -10,6 +10,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Supplier;
 
 import org.apache.kafka.connect.data.Schema;
@@ -74,6 +75,8 @@ public class EventDispatcher<T extends DataCollectionId> {
     private final InconsistentSchemaHandler<T> inconsistentSchemaHandler;
     private final TransactionMonitor transactionMonitor;
     private final CommonConnectorConfig connectorConfig;
+    private final Set<Operation> skippedOperations;
+    private final boolean neverSkip;
 
     private final Schema schemaChangeKeySchema;
     private final Schema schemaChangeValueSchema;
@@ -114,6 +117,8 @@ public class EventDispatcher<T extends DataCollectionId> {
         this.streamingReceiver = new StreamingChangeRecordReceiver();
         this.emitTombstonesOnDelete = connectorConfig.isEmitTombstoneOnDelete();
         this.inconsistentSchemaHandler = inconsistentSchemaHandler != null ? inconsistentSchemaHandler : this::errorOnMissingSchema;
+        this.skippedOperations = connectorConfig.getSkippedOps();
+        this.neverSkip = this.skippedOperations.isEmpty();
 
         this.transactionMonitor = new TransactionMonitor(connectorConfig, metadataProvider, this::enqueueTransactionMessage);
         this.signal = new Signal(connectorConfig, this);
@@ -208,12 +213,15 @@ public class EventDispatcher<T extends DataCollectionId> {
                                              OffsetContext offset,
                                              ConnectHeaders headers)
                             throws InterruptedException {
-                        transactionMonitor.dataEvent(dataCollectionId, offset, key, value);
-                        eventListener.onEvent(dataCollectionId, offset, key, value);
                         if (operation == Operation.CREATE && signal.isSignal(dataCollectionId)) {
                             signal.process(value, offset);
                         }
-                        streamingReceiver.changeRecord(schema, operation, key, value, offset, headers);
+
+                        if (neverSkip || !skippedOperations.contains(operation)) {
+                            transactionMonitor.dataEvent(dataCollectionId, offset, key, value);
+                            eventListener.onEvent(dataCollectionId, offset, key, value);
+                            streamingReceiver.changeRecord(schema, operation, key, value, offset, headers);
+                        }
                     }
                 });
                 handled = true;
@@ -464,7 +472,7 @@ public class EventDispatcher<T extends DataCollectionId> {
                 final Integer partition = 0;
                 final Struct key = schemaChangeRecordKey(event);
                 final Struct value = schemaChangeRecordValue(event);
-                final SourceRecord record = new SourceRecord(null, event.getOffset(), topicName, partition,
+                final SourceRecord record = new SourceRecord(event.getPartition(), event.getOffset(), topicName, partition,
                         schemaChangeKeySchema, key, schemaChangeValueSchema, value);
                 enqueueSchemaChangeMessage(record);
             }

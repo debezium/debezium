@@ -12,6 +12,7 @@ import java.util.Map;
 import org.apache.kafka.connect.runtime.standalone.StandaloneConfig;
 import org.eclipse.microprofile.config.spi.ConfigSource;
 
+import io.debezium.data.Json;
 import io.debezium.util.Testing;
 
 /**
@@ -37,6 +38,21 @@ public class TestConfigSource implements ConfigSource {
         integrationTest.put("debezium.source.database.server.name", "testc");
         integrationTest.put("debezium.source.schema.include.list", "inventory");
         integrationTest.put("debezium.source.table.include.list", "inventory.customers");
+
+        String format = System.getProperty("test.apicurio.converter.format");
+        String formatKey = System.getProperty("debezium.format.key");
+        String formatValue = System.getProperty("debezium.format.value");
+
+        if (format != null && format.length() != 0) {
+            integrationTest.put("debezium.format.key", format);
+            integrationTest.put("debezium.format.value", format);
+        }
+        else {
+            formatKey = (formatKey != null) ? formatKey : Json.class.getSimpleName().toLowerCase();
+            formatValue = (formatValue != null) ? formatValue : Json.class.getSimpleName().toLowerCase();
+            integrationTest.put("debezium.format.key", formatKey);
+            integrationTest.put("debezium.format.value", formatValue);
+        }
 
         unitTest.put("debezium.sink.type", "test");
         unitTest.put("debezium.source.connector.class", "org.apache.kafka.connect.file.FileStreamSourceConnector");

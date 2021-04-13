@@ -11,7 +11,6 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collection;
@@ -65,6 +64,7 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
     private final List<SchemaChangeEvent> schemaEvents = new ArrayList<>();
     private Set<TableId> delayedSchemaSnapshotTables = Collections.emptySet();
     private final BlockingConsumer<Function<SourceRecord, SourceRecord>> lastEventProcessor;
+    private final MysqlFieldReader mysqlFieldReader;
 
     public MySqlSnapshotChangeEventSource(MySqlConnectorConfig connectorConfig, MySqlOffsetContext previousOffset, MySqlConnection connection,
                                           MySqlDatabaseSchema schema, EventDispatcher<TableId> dispatcher, Clock clock,
@@ -78,6 +78,7 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
         this.previousOffset = previousOffset;
         this.databaseSchema = schema;
         this.lastEventProcessor = lastEventProcessor;
+        this.mysqlFieldReader = connectorConfig.useCursorFetch() ? new MysqlBinaryProtocolFieldReader() : new MysqlTextProtocolFieldReader();
     }
 
     @Override
@@ -404,37 +405,7 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
 
     @Override
     protected Object getColumnValue(ResultSet rs, int columnIndex, Column column, Table table) throws SQLException {
-        if (column.jdbcType() == Types.TIME) {
-            return readTimeField(rs, columnIndex);
-        }
-        else if (column.jdbcType() == Types.DATE) {
-            return readDateField(rs, columnIndex, column, table);
-        }
-        // This is for DATETIME columns (a logical date + time without time zone)
-        // by reading them with a calendar based on the default time zone, we make sure that the value
-        // is constructed correctly using the database's (or connection's) time zone
-        else if (column.jdbcType() == Types.TIMESTAMP) {
-            return readTimestampField(rs, columnIndex, column, table);
-        }
-        // JDBC's rs.GetObject() will return a Boolean for all TINYINT(1) columns.
-        // TINYINT columns are reported as SMALLINT by JDBC driver
-        else if (column.jdbcType() == Types.TINYINT || column.jdbcType() == Types.SMALLINT) {
-            // It seems that rs.wasNull() returns false when default value is set and NULL is inserted
-            // We thus need to use getObject() to identify if the value was provided and if yes then
-            // read it again to get correct scale
-            return rs.getObject(columnIndex) == null ? null : rs.getInt(columnIndex);
-        }
-        // DBZ-2673
-        // It is necessary to check the type names as types like ENUM and SET are
-        // also reported as JDBC type char
-        else if ("CHAR".equals(column.typeName()) ||
-                "VARCHAR".equals(column.typeName()) ||
-                "TEXT".equals(column.typeName())) {
-            return rs.getBytes(columnIndex);
-        }
-        else {
-            return rs.getObject(columnIndex);
-        }
+        return mysqlFieldReader.readField(rs, columnIndex, column, table);
     }
 
     /**

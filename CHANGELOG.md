@@ -2,6 +2,47 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 1.5.0.Final
+April 7th 2021 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12354718)
+
+### New features since 1.5.0.CR1
+
+* Add support for Redis Streams target in Debezium Server [DBZ-2879](https://issues.jboss.org/browse/DBZ-2879)
+* Provide LSN coordinates as standardized sequence field [DBZ-2911](https://issues.jboss.org/browse/DBZ-2911)
+
+
+### Breaking changes since 1.5.0.CR1
+
+None
+
+### Fixes since 1.5.0.CR1
+
+* Do not mine Data Guard archive log entries [DBZ-3341](https://issues.jboss.org/browse/DBZ-3341)
+* Debezium stuck in an infinite loop on boot [DBZ-3343](https://issues.jboss.org/browse/DBZ-3343)
+* Schema change SourceRecords have null partition [DBZ-3347](https://issues.jboss.org/browse/DBZ-3347)
+* LogMiner can incorrectly resolve that SCN is available [DBZ-3348](https://issues.jboss.org/browse/DBZ-3348)
+* The event.deserialization.failure.handling.mode is documented incorrectly [DBZ-3353](https://issues.jboss.org/browse/DBZ-3353)
+* DB2 Function wrong [DBZ-3362](https://issues.jboss.org/browse/DBZ-3362)
+* LogMiner parser incorrectly parses UNISTR function [DBZ-3367](https://issues.jboss.org/browse/DBZ-3367)
+* Invalid Decimal schema: scale parameter not found [DBZ-3371](https://issues.jboss.org/browse/DBZ-3371)
+
+
+### Other changes since 1.5.0.Beta2
+
+* Allow Debezium Server to be used with Apicurio converters [DBZ-2388](https://issues.jboss.org/browse/DBZ-2388)
+* Remove connector properties from descriptors on the /connector-types response  [DBZ-3316](https://issues.jboss.org/browse/DBZ-3316)
+* Literal attribute rendered in deployment instructions for the downstream PostgreSQL connector  [DBZ-3338](https://issues.jboss.org/browse/DBZ-3338)
+* Fix test failures due to existing database object artifacts [DBZ-3344](https://issues.jboss.org/browse/DBZ-3344)
+* Use correct repository level PAT for building debezium website  [DBZ-3345](https://issues.jboss.org/browse/DBZ-3345)
+* Document configuration of max.request.size  [DBZ-3355](https://issues.jboss.org/browse/DBZ-3355)
+* Use Java 8 for Cassandra workflow [DBZ-3357](https://issues.jboss.org/browse/DBZ-3357)
+* Trigger workflow on workflow definition update [DBZ-3358](https://issues.jboss.org/browse/DBZ-3358)
+* Prefer DDL before logical schema in history recovery [DBZ-3361](https://issues.jboss.org/browse/DBZ-3361)
+* Add missing space and omitted command to PostgreSQL connector doc  [DBZ-3372](https://issues.jboss.org/browse/DBZ-3372)
+* Wrong badge on Docker Hub  [DBZ-3383](https://issues.jboss.org/browse/DBZ-3383)
+
+
+
 ## 1.5.0.CR1
 March 24th 2021 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12354265)
 

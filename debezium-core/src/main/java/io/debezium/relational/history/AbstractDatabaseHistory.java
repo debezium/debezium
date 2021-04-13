@@ -11,10 +11,14 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 
+import org.apache.kafka.common.config.ConfigDef.Importance;
+import org.apache.kafka.common.config.ConfigDef.Type;
+import org.apache.kafka.common.config.ConfigDef.Width;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
+import io.debezium.config.Field;
 import io.debezium.document.Array;
 import io.debezium.function.Predicates;
 import io.debezium.relational.Tables;
@@ -31,6 +35,17 @@ public abstract class AbstractDatabaseHistory implements DatabaseHistory {
 
     protected final Logger logger = LoggerFactory.getLogger(getClass());
 
+    // Temporary preference for DDL over logical schema due to DBZ-32
+    public static final Field INTERNAL_PREFER_DDL = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "prefer.ddl")
+            .withDisplayName("Prefer DDL for schema recovery")
+            .withType(Type.BOOLEAN)
+            .withDefault(false)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription("Prefer DDL for schema reovery in case logica schema is present")
+            .withInvisibleRecommender()
+            .withNoValidation();
+
     protected Configuration config;
     private HistoryRecordComparator comparator = HistoryRecordComparator.INSTANCE;
     private boolean skipUnparseableDDL;
@@ -38,6 +53,7 @@ public abstract class AbstractDatabaseHistory implements DatabaseHistory {
     private Function<String, Optional<Pattern>> ddlFilter = (x -> Optional.empty());
     private DatabaseHistoryListener listener = DatabaseHistoryListener.NOOP;
     private boolean useCatalogBeforeSchema;
+    private boolean preferDdl = false;
     private TableChanges.TableChangesSerializer<Array> tableChangesSerializer = new JsonTableChangeSerializer();
 
     protected AbstractDatabaseHistory() {
@@ -54,6 +70,7 @@ public abstract class AbstractDatabaseHistory implements DatabaseHistory {
         this.ddlFilter = (ddlFilter != null) ? Predicates.matchedBy(ddlFilter) : this.ddlFilter;
         this.listener = listener;
         this.useCatalogBeforeSchema = useCatalogBeforeSchema;
+        this.preferDdl = config.getBoolean(INTERNAL_PREFER_DDL);
     }
 
     @Override
@@ -87,7 +104,7 @@ public abstract class AbstractDatabaseHistory implements DatabaseHistory {
                 Array tableChanges = recovered.tableChanges();
                 String ddl = recovered.ddl();
 
-                if (tableChanges != null && !tableChanges.isEmpty()) {
+                if (!preferDdl && tableChanges != null && !tableChanges.isEmpty()) {
                     TableChanges changes = tableChangesSerializer.deserialize(tableChanges, useCatalogBeforeSchema);
                     for (TableChange entry : changes) {
                         if (entry.getType() == TableChangeType.CREATE || entry.getType() == TableChangeType.ALTER) {

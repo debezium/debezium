@@ -101,10 +101,11 @@ all of the loggers that {prodname} uses inherit the `rootLogger` configuration.
 == Configuring logging
 
 By default, {prodname} connectors write all `INFO`, `WARN`, and `ERROR` messages to the console.
-However, you can change this configuration in the following ways:
+You can change the default logging configuration by using one of the following methods:
 
-* xref:changing-logging-level[Changing the logging level]
-* xref:adding-mapped-diagnostic-contexts[Adding mapped diagnostic contexts]
+* xref:changing-logging-level[Setting the logging level by configuring loggers]
+* xref:setting-the-logging-level-with-the-kafka-connect-rest-api[Dynamically setting the logging level with the Kafka Connect REST API]
+* xref:adding-mapped-diagnostic-contexts[Setting the logging level by adding mapped diagnostic contexts]
 
 [NOTE]
 ====
@@ -114,13 +115,12 @@ For more information, search for tutorials about setting up and using appenders 
 
 // Type: procedure
 // ModuleID: changing-the-debezium-logging-level
-// Title: Changing the {prodname} logging level
+// Title: Changing the {prodname} logging level by configuring loggers
 [id="changing-logging-level"]
-=== Changing the logging level
+=== Setting the logging level by configuring loggers
 
 The default {prodname} logging level provides sufficient information to show whether a connector is healthy or not.
-However, if a connector is not healthy,
-you can change its logging level to troubleshoot the issue.
+However, if a connector is not healthy, you can change its logging level to troubleshoot the issue.
 
 In general, {prodname} connectors send their log messages to loggers with names that match the fully-qualified name of the Java class that is generating the log message.
 {prodname} uses packages to organize code with similar or related functions.
@@ -195,12 +195,44 @@ log4j.additivity.io.debezium.connector.mysql.BinlogReader=false
 ----
 --
 
+// Type: procedure
+// ModuleID: setting-the-debezium-logging-level-with-the-kafka-connect-rest-api
+// Title: Dynamically changing the {prodname} logging level with the Kafka Connect API
+[id="setting-the-logging-level-with-the-kafka-connect-rest-api"]
+=== Dynamically setting the logging level with the Kafka Connect REST API
+
+You can use the Kafka Connect REST API to set logging levels for a connector dynamically at runtime.
+Unlike log level changes that you set in `log4j.properties`, changes that you make via the API take effect immediately, and do not require you to restart the worker.
+
+The log level setting that you specify in the API applies only to the worker at the endpoint that receives the request.
+The log levels of other workers in the cluster remain unchanged.
+
+The specified level is not persisted after the worker restarts.
+To make persistent changes to the logging level, set the log level in `log4j.properties` by xref:changing-logging-level[configuring loggers] or xref:adding-mapped-diagnostic-contexts[adding mapped diagnostic contexts].
+
+.Procedure
+
+* Set the log level by sending a PUT request to the `admin/loggers` endpoint that specifies the following information:
+** The package for which you want to change the log level.
+** The log level that you want to set.
++
+[source,shell,subs="+attributes,+quotes", options="nowrap"]
+----
+curl -s -X PUT -H "Content-Type:application/json" http://localhost:8083/admin/loggers/io.debezium.connector._<connector_package>_ -d '{"level": "_<log_level>_"}'
+----
++
+For example, to log debug information for a {prodname} MySQL connector, send the following request to Kafka Connect:
++
+[source,shell,options="nowrap"]
+----
+curl -s -X PUT -H "Content-Type:application/json" http://localhost:8083/admin/loggers/io.debezium.connector.mysql -d '{"level": "DEBUG"}'
+----
 
 // Type: procedure
-// ModuleID: adding-debezium-mapped-diagonstic-contexts
-// Title: Adding {prodname} mapped diagnostic contexts
+// ModuleID: adding-debezium-mapped-diagnostic-contexts
+// Title: Changing the {prodname} logging levely by adding mapped diagnostic contexts
 [id="adding-mapped-diagnostic-contexts"]
-=== Adding mapped diagnostic contexts
+=== Setting the logging level with mapped diagnostic contexts
 
 Most {prodname} connectors (and the Kafka Connect workers) use multiple threads to perform different activities.
 This can make it difficult to look at a log file and find only those log messages for a particular logical activity.
@@ -286,7 +318,7 @@ The log messages are also written to files under the `/kafka/logs` directory.
 
 The containers use a `LOG_LEVEL` environment variable to set the log level for the root logger.
 You can use this environment variable to set the log level for the service running in the container.
-When you start the container and set the value of this environment variable to a log level (for example, `-e LOG_LEVEL=DEBUG`), 
+When you start the container and set the value of this environment variable to a log level (for example, `-e LOG_LEVEL=DEBUG`),
 all of the code within the container then uses that log level.
 
 There is also an option to override other log4j properties.  If you want to configure `log4j.rootLogger`

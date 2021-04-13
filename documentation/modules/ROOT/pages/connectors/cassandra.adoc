@@ -1013,6 +1013,12 @@ refreshing the cached Cassandra table schemas.
 |Whether field names will be sanitized to adhere to Avro naming requirements.
 See {link-prefix}:{link-avro-serialization}#avro-naming[Avro naming] for more details.
 
+|[[cassandra-property-skipped-operations]]<<cassandra-property-skipped-operations, `+skipped.operations+`>>
+|
+| comma-separated list of operation types that will be skipped during streaming.
+The operations include: `c` for inserts/create, `u` for updates, and `d` for deletes.
+By default, no operations are skipped.
+
 |===
 
 If the Cassandra agent use SSL to connect to Cassandra node, an SSL config file is required.

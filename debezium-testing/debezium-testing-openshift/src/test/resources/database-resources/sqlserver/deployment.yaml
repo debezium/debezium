@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
       - name: sqlserver
-        image: "microsoft/mssql-server-linux:2017-CU9-GDR2"
+        image: "mcr.microsoft.com/mssql/server:2017-latest"
         ports:
         - containerPort: 1433
           protocol: TCP

@@ -1110,13 +1110,13 @@ The following configuration properties are _required_ unless a default value is 
 
 |[[vitess-property-tombstones-on-delete]]<<vitess-property-tombstones-on-delete, `+tombstones.on.delete+`>>
 |`true`
-| Controls whether a tombstone event should be generated after a _delete_ event. +
+|Controls whether a _delete_ event is followed by a tombstone event. +
  +
-`true` - delete operations are represented by a _delete_ event and a subsequent tombstone event. +
+`true` - a delete operation is represented by a _delete_ event and a subsequent tombstone event.  +
  +
-`false` - only a _delete_ event is sent. +
+`false` - only a _delete_ event is emitted. +
  +
-After a _delete_ operation, emitting a tombstone event enables Kafka to delete all change event records that have the same key as the deleted row.
+After a source record is deleted, emitting a tombstone event (the default behavior) allows Kafka to completely delete all events that pertain to the key of the deleted row in case {link-kafka-docs}/#compaction[log compaction] is enabled for the topic.
 
 |[[vitess-property-message-key-columns]]<<vitess-property-message-key-columns, `+message.key.columns+`>>
 |_empty string_
@@ -1173,6 +1173,12 @@ The following _advanced_ configuration properties have defaults that work in mos
 |`true` if connector configuration sets the `key.converter` or `value.converter` property to the Avro converter. +
 `false` if not.
 |Indicates whether field names are sanitized to adhere to {link-prefix}:{link-avro-serialization}#avro-naming[Avro naming requirements].
+
+|[[vitess-property-skipped-operations]]<<vitess-property-skipped-operations, `+skipped.operations+`>>
+|
+| comma-separated list of operation types that will be skipped during streaming.
+The operations include: `c` for inserts/create, `u` for updates, and `d` for deletes.
+By default, no operations are skipped.
 
 |===
 

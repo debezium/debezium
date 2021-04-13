@@ -76,3 +76,6 @@ plarsson,Peter Larsson
 pln,Peter Larsson
 uidoyen,Hussain Ansari
 siufay325,SiuFay
+JeremyVigny,Jeremy Vigny
+JLDLaughlin,Jessica Laughlin
+RaghavaPonnam,Raghava Ponnam

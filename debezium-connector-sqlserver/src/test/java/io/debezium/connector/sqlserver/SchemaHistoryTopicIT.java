@@ -5,7 +5,10 @@
  */
 package io.debezium.connector.sqlserver;
 
+import static org.fest.assertions.Assertions.assertThat;
+
 import java.sql.SQLException;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -300,5 +303,26 @@ public class SchemaHistoryTopicIT extends AbstractConnectorTest {
         final SourceRecord schemaEventD = schemaEvents.get(schemaEvents.size() - 1);
         Assertions.assertThat(((Struct) schemaEventD.value()).getStruct("source").getString("schema")).isEqualTo("dbo");
         Assertions.assertThat(((Struct) schemaEventD.value()).getStruct("source").getString("table")).isEqualTo("tabled");
+    }
+
+    @Test
+    @FixFor("DBZ-3347")
+    public void shouldContainPartitionInSchemaChangeEvent() throws Exception {
+        connection.execute("create table dbz3347 (id int primary key, data varchar(50))");
+        TestHelper.enableTableCdc(connection, "dbz3347");
+
+        Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, "dbo\\.dbz3347")
+                .with(SqlServerConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+                .build();
+
+        start(SqlServerConnector.class, config);
+        assertConnectorIsRunning();
+
+        TestHelper.waitForStreamingStarted();
+
+        SourceRecords schemaChanges = consumeRecordsByTopic(1);
+        SourceRecord change = schemaChanges.recordsForTopic("server1").get(0);
+        assertThat(change.sourcePartition()).isEqualTo(Collections.singletonMap("server", "server1"));
     }
 }

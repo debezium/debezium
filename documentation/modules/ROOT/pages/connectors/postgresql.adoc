@@ -825,6 +825,7 @@ The following example shows the value portion of a change event that the connect
             "ts_ms": 1559033904863,
             "snapshot": true,
             "db": "postgres",
+            "sequence": "[\"24023119\",\"24023128\"]"
             "schema": "public",
             "table": "customers",
             "txId": 555,
@@ -890,6 +891,7 @@ a|Mandatory field that describes the source metadata for the event. This field c
 * {prodname} version
 * Connector type and name
 * Database and table that contains the new row
+* Stringified JSON array of additional offset information. The first value is always the last committed LSN, the second value is always the current LSN. Either value may be `null`.
 * Schema name
 * If the event was part of a snapshot
 * ID of the transaction in which the operation was performed
@@ -2118,7 +2120,19 @@ endif::community[]
 == Deployment
 
 ifdef::community[]
-With link:https://zookeeper.apache.org[Zookeeper], link:http://kafka.apache.org/[Kafka], and {link-kafka-docs}.html#connect[Kafka Connect] installed, the remaining tasks to deploy a {prodname} PostgreSQL connector are to download the link:https://repo1.maven.org/maven2/io/debezium/debezium-connector-postgres/{debezium-version}/debezium-connector-postgres-{debezium-version}-plugin.tar.gz[connector's plug-in archive], extract the JAR files into your Kafka Connect environment, and add the directory with the JAR files to {link-kafka-docs}/#connectconfigs[Kafka Connect's `plugin.path`]. You then need to restart your Kafka Connect process to pick up the new JAR files.
+To deploy a {prodname} PostgreSQL connector, you install the {prodname} PostgreSQL connector archive, configure the connector, and start the connector by adding its configuration to Kafka Connect.
+
+.Prerequisites
+
+* link:https://zookeeper.apache.org/[Zookeeper], link:http://kafka.apache.org/[Kafka], and link:{link-kafka-docs}.html#connect[Kafka Connect] are installed.
+* PostgreSQL is installed and is {link-prefix}:{link-postgresql-connector}#setting-up-postgresql[set up to run the {prodname} connector].
+
+.Procedure
+
+. Download the {prodname} link:https://repo1.maven.org/maven2/io/debezium/debezium-connector-postgres/{debezium-version}/debezium-connector-postgres-{debezium-version}-plugin.tar.gz[PostgreSQL connector plug-in archive].
+. Extract the files into your Kafka Connect environment.
+. Add the directory with the JAR files to {link-kafka-docs}/#connectconfigs[Kafka Connect's `plugin.path`].
+. Restart your Kafka Connect process to pick up the new JAR files.
 
 If you are working with immutable containers, see link:https://hub.docker.com/r/debezium/[{prodname}'s Container images] for Zookeeper, Kafka, PostgreSQL and Kafka Connect with the PostgreSQL connector already installed and ready to run. You can also xref:operations/openshift.adoc[run {prodname} on Kubernetes and OpenShift].
 endif::community[]
@@ -2127,7 +2141,7 @@ ifdef::product[]
 To deploy a {prodname} PostgreSQL connector, add the connector files to Kafka Connect, create a custom container to run the connector, and add connector configuration to your container. Details are in the following topics:
 
 * xref:deploying-debezium-postgresql-connectors[]
-* xref:descriptions-of-debezium-postgresql-connector-configuration-properties[]
+* xref:postgresql-connector-properties[]
 
 // Type: procedure
 // ModuleID: deploying-debezium-postgresql-connectors
@@ -2135,7 +2149,8 @@ To deploy a {prodname} PostgreSQL connector, add the connector files to Kafka Co
 [[postgresql-deploying-a-connector]]
 === Deploying connectors
 
-To deploy a {prodname} PostgreSQL connector, you need to build a custom Kafka Connect container image that contains the {prodname} connector archive and push this container image to a container registry.You then need to create two custom resources (CRs):
+To deploy a {prodname} PostgreSQL connector, you need to build a custom Kafka Connect container image that contains the {prodname} connector archive and push this container image to a container registry.
+You then need to create two custom resources (CRs):
 
 * A `KafkaConnect` CR that configures your Kafka Connector and that specifies the name of the image that you created to run your {prodname} connector. You apply this CR to the OpenShift Kafka instance.
 
@@ -2166,39 +2181,53 @@ To deploy a {prodname} PostgreSQL connector, you need to build a custom Kafka Co
 ----
 
 .. Create a Docker file that uses `{DockerKafkaConnect}` as the base image.
-For example, from a terminal window, enter the following:
+For example, from a terminal window, enter the following, replacing `my-plugins` with the name of your plug-ins directory:
 +
-[subs="+macros,+attributes"]
+[source,shell,subs="+attributes,+quotes"]
 ----
-pass:quotes[*cat &lt;&lt;EOF &gt;debezium-container-for-postgresql.yaml*] // <1>
-pass:quotes[*FROM {DockerKafkaConnect}*]
-pass:quotes[*USER root:root*]
-pass:quotes[*COPY ./my-plugins/ /opt/kafka/plugins/*] // <2>
-pass:quotes[*USER 1001*]
-pass:quotes[*EOF*]
+cat <<EOF >debezium-container-for-postgresql.yaml // <1>
+FROM {DockerKafkaConnect}
+USER root:root
+COPY ./_<my-plugins>_/ /opt/kafka/plugins/ // <2>
+USER 1001
+EOF
 ----
 <1> You can specify any file name that you want.
 <2> Replace `my-plugins` with the name of your plug-ins directory.
 +
 The command creates a Docker file with the name `debezium-container-for-postgresql.yaml` in the current directory.
 
-.. Build the container image from the `debezium-container-for-postgresql.yaml` Docker file that you created in the previous step. From the directory that contains the file, run the following command:
+.. Build the container image from the `debezium-container-for-postgresql.yaml` Docker file that you created in the previous step.
+From the directory that contains the file, open a terminal window and enter one of the following commands:
 +
 [source,shell,options="nowrap"]
 ----
 podman build -t debezium-container-for-postgresql:latest .
 ----
 +
-This command builds a container image with the name `debezium-container-for-postgresql`.
-
-.. Push your custom image to a container registry such as `quay.io` or any internal container registry. Ensure that this registry is reachable from your OpenShift instance. For example:
-+
 [source,shell,options="nowrap"]
 ----
-podman push debezium-container-for-postgresql:latest
+docker build -t debezium-container-for-postgresql:latest .
+----
++
+The `build` command builds a container image with the name `debezium-container-for-postgresql`.
+
+.. Push your custom image to a container registry such as `quay.io` or an internal container registry.
+The container registry must be available to the OpenShift instance where you want to deploy the image.
+Enter one of the following commands:
++
+[source,shell,subs="+quotes"]
+----
+podman push _<myregistry.io>_/debezium-container-for-postgresql:latest
+----
++
+[source,shell,subs="+quotes"]
+----
+docker push _<myregistry.io>_/debezium-container-for-postgresql:latest
 ----
 
-.. Create a new {prodname} PostgreSQL `KafkaConnect` custom resource (CR). For example, create a `KafkaConnect` CR with the name `dbz-connect.yaml` that specifies `annotations` and `image` properties as shown in the following example:
+.. Create a new {prodname} PostgreSQL `KafkaConnect` custom resource (CR).
+For example, create a `KafkaConnect` CR with the name `dbz-connect.yaml` that specifies `annotations` and `image` properties as shown in the following example:
 +
 [source,yaml,subs="+attributes"]
 ----
@@ -2224,7 +2253,9 @@ This updates your Kafka Connect environment in OpenShift to add a Kafka Connecto
 
 . Create a `KafkaConnector` custom resource that configures your {prodname} PostgreSQL connector instance.
 +
-You configure a {prodname} PostgreSQL connector in a `.yaml` file that sets connector configuration properties. A connector configuration might instruct {prodname} to produce events for a subset of the schemas and tables, or it might set properties so that {prodname} ignores, masks, or truncates values in specified columns that are sensitive, too large, or not needed. See the {link-prefix}:{link-postgresql-connector}#postgresql-connector-properties[complete list of PostgreSQL connector properties] that can be specified in these configurations.
+You configure a {prodname} PostgreSQL connector in a `.yaml` file that specifies the configuration properties for the connector.
+The connector configuration might instruct {prodname} to produce events for a subset of the schemas and tables, or it might set properties so that {prodname} ignores, masks, or truncates values in specified columns that are sensitive, too large, or not needed.
+For the complete list of the configuration properties that you can set for the {prodname} PostgreSQL connector, see {link-prefix}:{link-postgresql-connector}#postgresql-connector-properties[PostgreSQL connector properties].
 +
 The following example configures a {prodname} connector that connects to a PostgreSQL server host, `192.168.99.100`, on port `5432`. This host has a database named `sampledb`, a schema named `public`, and `fulfillment` is the server's logical name.
 +
@@ -2283,7 +2314,8 @@ This registers `fulfillment-connector` and the connector starts to run against t
 oc logs $(oc get pods -o name -l strimzi.io/cluster=my-connect-cluster)
 ----
 
-.. Review the log output to verify that the initial snapshot has been executed. You should see something like this:
+.. Review the log output to verify that {prodname} performs the initial snapshot.
+The log displays output that is similar to the following messages:
 +
 [source,shell,options="nowrap"]
 ----
@@ -2291,7 +2323,9 @@ oc logs $(oc get pods -o name -l strimzi.io/cluster=my-connect-cluster)
 ... INFO Snapshot is using user 'debezium' ...
 ----
 +
-If the connector starts correctly without errors, it creates a topic for each table whose changes the connector is capturing. For the example CR, there would be a topic for each table in the `public` schema. Downstream applications can subscribe to these topics.
+If the connector starts correctly without errors, it creates a topic for each table whose changes the connector is capturing.
+For the example CR, there would be a topic for each table in the `public` schema.
+Downstream applications can subscribe to these topics.
 
 .. Verify that the connector created the topics by running the following command:
 +
@@ -2299,10 +2333,6 @@ If the connector starts correctly without errors, it creates a topic for each ta
 ----
 oc get kafkatopics
 ----
-
-.Results
-
-When the connector starts, it {link-prefix}:{link-postgresql-connector}#postgresql-snapshots[performs a consistent snapshot] of the PostgreSQL server databases that the connector is configured for. The connector then starts generating data change events for row-level operations and streaming change event records to Kafka topics.
 
 endif::product[]
 
@@ -2314,9 +2344,11 @@ ifdef::community[]
 [[postgresql-example-configuration]]
 === Connector configuration example
 
-Following is an example of the configuration for a PostgreSQL connector that connects to a PostgreSQL server on port 5432 at 192.168.99.100, whose logical name is `fulfillment`. Typically, you configure the {prodname} PostgreSQL connector in a `.json` file using the configuration properties available for the connector.
+Following is an example of the configuration for a PostgreSQL connector that connects to a PostgreSQL server on port 5432 at 192.168.99.100, whose logical name is `fulfillment`.
+Typically, you configure the {prodname} PostgreSQL connector in a JSON file by setting the configuration properties available for the connector.
 
-You can choose to produce events for a subset of the schemas and tables. Optionally, ignore, mask, or truncate columns that are sensitive, too large, or not needed.
+You can choose to produce events for a subset of the schemas and tables in a database.
+Optionally, you can ignore, mask, or truncate columns that contain sensitive data, are larger than a specified size, or that you do not need.
 
 [source,json]
 ----
@@ -2347,16 +2379,20 @@ You can choose to produce events for a subset of the schemas and tables. Optiona
 
 See the {link-prefix}:{link-postgresql-connector}#postgresql-connector-properties[complete list of PostgreSQL connector properties] that can be specified in these configurations.
 
-You can send this configuration with a `POST` command to a running Kafka Connect service. The service records the configuration and starts the connector task that connects to the PostgreSQL database and streams change event records to Kafka topics.
+You can send this configuration with a `POST` command to a running Kafka Connect service.
+The service records the configuration and starts one connector task that performs the following actions:
+
+* Connects to the PostgreSQL database.
+* Reads the transaction log.
+* Streams change event records to Kafka topics.
 
 [[postgresql-adding-connector-configuration]]
 === Adding connector configuration
 
-To start running a PostgreSQL connector, create a connector configuration and add the configuration to your Kafka Connect cluster.
-
+To run a {prodname} PostgreSQL connector, create a connector configuration and add the configuration to your Kafka Connect cluster.
 .Prerequisites
 
-* The {link-prefix}:{link-postgresql-connector}#postgresql-server-configuration[PostgreSQL server] is configured to support logical replication.
+* {link-prefix}:{link-postgresql-connector}#postgresql-server-configuration[PostgreSQL is configured to support logical replication].
 
 * The {link-prefix}:{link-postgresql-connector}#installing-postgresql-output-plugin[logical decoding plug-in] is installed.
 
@@ -2370,8 +2406,12 @@ To start running a PostgreSQL connector, create a connector configuration and ad
 
 endif::community[]
 
+.Results
+
+When the connector starts, it {link-prefix}:{link-postgresql-connector}#postgresql-snapshots[performs a consistent snapshot] of the PostgreSQL server databases that the connector is configured for. The connector then starts generating data change events for row-level operations and streaming change event records to Kafka topics.
+
+
 // Type: reference
-// ModuleID: descriptions-of-debezium-postgresql-connector-configuration-properties
 // Title: Description of {prodname} PostgreSQL connector configuration properties
 [[postgresql-connector-properties]]
 === Connector configuration properties
@@ -2559,13 +2599,13 @@ If the publication already exists, either for all tables or configured with a su
 
 |[[postgresql-property-tombstones-on-delete]]<<postgresql-property-tombstones-on-delete, `+tombstones.on.delete+`>>
 |`true`
-| Controls whether a tombstone event should be generated after a _delete_ event. +
+|Controls whether a _delete_ event is followed by a tombstone event. +
  +
-`true` - delete operations are represented by a _delete_ event and a subsequent tombstone event. +
+`true` - a delete operation is represented by a _delete_ event and a subsequent tombstone event.  +
  +
-`false` - only a _delete_ event is sent. +
+`false` - only a _delete_ event is emitted. +
  +
-After a _delete_ operation, emitting a tombstone event enables Kafka to delete all change event records that have the same key as the deleted row.
+After a source record is deleted, emitting a tombstone event (the default behavior) allows Kafka to completely delete all events that pertain to the key of the deleted row in case {link-kafka-docs}/#compaction[log compaction] is enabled for the topic.
 
 |[[postgresql-property-column-truncate-to-length-chars]]<<postgresql-property-column-truncate-to-length-chars, `+column.truncate.to._length_.chars+`>>
 |_n/a_
@@ -2826,6 +2866,12 @@ If the setting of `toasted.value.placeholder` starts with the `hex:` prefix it i
 |[[postgresql-property-retriable-restart-connector-wait-ms]]<<postgresql-property-retriable-restart-connector-wait-ms, `+retriable.restart.connector.wait.ms+`>> +
 |10000 (10 seconds)
 |The number of milliseconds to wait before restarting a connector after a retriable error occurs.
+
+|[[postgresql-property-skipped-operations]]<<postgresql-property-skipped-operations, `+skipped.operations+`>>
+|
+| comma-separated list of operation types that will be skipped during streaming.
+The operations include: `c` for inserts/create, `u` for updates, and `d` for deletes.
+By default, no operations are skipped.
 
 |===
 

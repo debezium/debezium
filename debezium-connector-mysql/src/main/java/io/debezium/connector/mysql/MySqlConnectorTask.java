@@ -29,6 +29,7 @@ import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.relational.TableId;
+import io.debezium.relational.history.AbstractDatabaseHistory;
 import io.debezium.schema.TopicSelector;
 import io.debezium.util.Clock;
 import io.debezium.util.SchemaNameAdjuster;
@@ -59,15 +60,20 @@ public class MySqlConnectorTask extends BaseSourceTask {
     @Override
     public ChangeEventSourceCoordinator start(Configuration config) {
         final Clock clock = Clock.system();
-        final MySqlConnectorConfig connectorConfig = new MySqlConnectorConfig(config);
+        final MySqlConnectorConfig connectorConfig = new MySqlConnectorConfig(
+                config.edit()
+                        .with(AbstractDatabaseHistory.INTERNAL_PREFER_DDL, true)
+                        .build());
         final TopicSelector<TableId> topicSelector = MySqlTopicSelector.defaultSelector(connectorConfig);
         final SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create();
         final MySqlValueConverters valueConverters = getValueConverters(connectorConfig);
 
+        // DBZ-3238: automatically set "useCursorFetch" to true when a snapshot fetch size other than the default of -1 is given
         // By default do not load whole result sets into memory
         config = config.edit()
                 .withDefault("database.responseBuffering", "adaptive")
                 .withDefault("database.fetchSize", 10_000)
+                .withDefault("database.useCursorFetch", connectorConfig.useCursorFetch())
                 .build();
 
         connection = new MySqlConnection(new MySqlConnectionConfiguration(config));

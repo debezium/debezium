@@ -341,6 +341,22 @@ public class OracleConnection extends JdbcConnection {
         return configValue.orElse(getOracleVersion().getMajor() == 11);
     }
 
+    /**
+     * Get the current, most recent system change number.
+     *
+     * @return the current system change number
+     * @throws SQLException if an exception occurred
+     * @throws IllegalStateException if the query does not return at least one row
+     */
+    public Scn getCurrentScn() throws SQLException {
+        return queryAndMap("SELECT CURRENT_SCN FROM V$DATABASE", (rs) -> {
+            if (rs.next()) {
+                return Scn.valueOf(rs.getString(1));
+            }
+            throw new IllegalStateException("Could not get SCN");
+        });
+    }
+
     public OracleConnection executeLegacy(String... sqlStatements) throws SQLException {
         return executeLegacy(statement -> {
             for (String sqlStatement : sqlStatements) {

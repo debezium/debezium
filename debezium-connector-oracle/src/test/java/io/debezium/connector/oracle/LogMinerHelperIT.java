@@ -72,7 +72,7 @@ public class LogMinerHelperIT extends AbstractConnectorTest {
     @Test
     public void shouldAddRightArchivedRedoFiles() throws Exception {
         // case 1 : oldest scn = current scn
-        Scn currentScn = LogMinerHelper.getCurrentScn(conn);
+        Scn currentScn = conn.getCurrentScn();
         Map<String, String> archivedRedoFiles = LogMinerHelper.getMap(conn, SqlUtils.archiveLogsQuery(currentScn, Duration.ofHours(0L)), "-1");
         assertThat(archivedRedoFiles.size() == 0).isTrue();
 

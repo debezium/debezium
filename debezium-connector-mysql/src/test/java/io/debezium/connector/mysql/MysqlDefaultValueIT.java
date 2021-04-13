@@ -11,6 +11,8 @@ import static org.fest.assertions.Assertions.assertThat;
 import java.math.BigDecimal;
 import java.nio.file.Path;
 import java.sql.Connection;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.sql.Time;
 import java.time.Duration;
 import java.time.Instant;
@@ -325,6 +327,76 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
         assertThat(schemaG.defaultValue()).isEqualTo(null);
         assertThat(schemaH.defaultValue()).isEqualTo(null);
         assertEmptyFieldValue(record, "I");
+    }
+
+    @Test
+    @SkipWhenKafkaVersion(check = EqualityCheck.EQUAL, value = KafkaVersion.KAFKA_1XX, description = "Not compatible with Kafka 1.x")
+    public void databaseHistorySaveDefaultValuesTest() throws InterruptedException, SQLException {
+        config = DATABASE.defaultConfig()
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL)
+                .build();
+        start(MySqlConnector.class, config);
+
+        // Testing.Print.enable();
+
+        SourceRecords records = consumeRecordsByTopic(EVENT_COUNT);
+        SourceRecord record = records.recordsForTopic(DATABASE.topicForTable("STRING_TABLE")).get(0);
+        validate(record);
+
+        Schema schemaA = record.valueSchema().fields().get(1).schema().fields().get(0).schema();
+        Schema schemaB = record.valueSchema().fields().get(1).schema().fields().get(1).schema();
+        Schema schemaC = record.valueSchema().fields().get(1).schema().fields().get(2).schema();
+        Schema schemaD = record.valueSchema().fields().get(1).schema().fields().get(3).schema();
+        Schema schemaE = record.valueSchema().fields().get(1).schema().fields().get(4).schema();
+        Schema schemaF = record.valueSchema().fields().get(1).schema().fields().get(5).schema();
+        Schema schemaG = record.valueSchema().fields().get(1).schema().fields().get(6).schema();
+        Schema schemaH = record.valueSchema().fields().get(1).schema().fields().get(7).schema();
+        assertThat(schemaA.defaultValue()).isEqualTo("A");
+        assertThat(schemaB.defaultValue()).isEqualTo("b");
+        assertThat(schemaC.defaultValue()).isEqualTo("CC");
+        assertThat(schemaD.defaultValue()).isEqualTo("10");
+        assertThat(schemaE.defaultValue()).isEqualTo("0");
+        assertThat(schemaF.defaultValue()).isEqualTo(null);
+        assertThat(schemaG.defaultValue()).isEqualTo(null);
+        assertThat(schemaH.defaultValue()).isEqualTo(null);
+        assertEmptyFieldValue(record, "I");
+
+        stopConnector();
+        final String insert = "INSERT INTO STRING_TABLE\n"
+                + "VALUES (DEFAULT ,DEFAULT ,DEFAULT ,DEFAULT ,DEFAULT ,DEFAULT ,DEFAULT ,DEFAULT, NULL)";
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName());) {
+            try (JdbcConnection connection = db.connect()) {
+                final Connection jdbc = connection.connection();
+                final Statement statement = jdbc.createStatement();
+                statement.executeUpdate(insert);
+            }
+        }
+        start(MySqlConnector.class, config);
+
+        Testing.Print.enable();
+
+        records = consumeRecordsByTopic(1);
+        record = records.recordsForTopic(DATABASE.topicForTable("STRING_TABLE")).get(0);
+        validate(record);
+
+        schemaA = record.valueSchema().fields().get(1).schema().fields().get(0).schema();
+        schemaB = record.valueSchema().fields().get(1).schema().fields().get(1).schema();
+        schemaC = record.valueSchema().fields().get(1).schema().fields().get(2).schema();
+        schemaD = record.valueSchema().fields().get(1).schema().fields().get(3).schema();
+        schemaE = record.valueSchema().fields().get(1).schema().fields().get(4).schema();
+        schemaF = record.valueSchema().fields().get(1).schema().fields().get(5).schema();
+        schemaG = record.valueSchema().fields().get(1).schema().fields().get(6).schema();
+        schemaH = record.valueSchema().fields().get(1).schema().fields().get(7).schema();
+        assertThat(schemaA.defaultValue()).isEqualTo("A");
+        assertThat(schemaB.defaultValue()).isEqualTo("b");
+        assertThat(schemaC.defaultValue()).isEqualTo("CC");
+        assertThat(schemaD.defaultValue()).isEqualTo("10");
+        assertThat(schemaE.defaultValue()).isEqualTo("0");
+        assertThat(schemaF.defaultValue()).isEqualTo(null);
+        assertThat(schemaG.defaultValue()).isEqualTo(null);
+        assertThat(schemaH.defaultValue()).isEqualTo(null);
+        assertEmptyFieldValue(record, "I");
+
     }
 
     @Test

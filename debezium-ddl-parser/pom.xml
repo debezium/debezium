@@ -3,7 +3,7 @@
     <parent>
         <groupId>io.debezium</groupId>
         <artifactId>debezium-parent</artifactId>
-        <version>1.5.0-SNAPSHOT</version>
+        <version>1.6.0-SNAPSHOT</version>
 	<relativePath>../debezium-parent/pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
@@ -79,18 +79,35 @@
                 <groupId>com.khubla.antlr</groupId>
                 <artifactId>antlr4test-maven-plugin</artifactId>
                 <version>1.11</version>
-                <configuration>
-                    <verbose>false</verbose>
-                    <showTree>false</showTree>
-                    <entryPoint>root</entryPoint>
-                    <grammarName>MySql</grammarName>
-                    <packageName>io.debezium.ddl.parser.mysql.generated</packageName>
-                    <caseInsensitiveType>UPPER</caseInsensitiveType>
-                    <exampleFiles>src/test/resources/mysql/examples</exampleFiles>
-                    <enabled>${antlr.tests.enabled}</enabled>
-                </configuration>
                 <executions>
                     <execution>
+                        <id>MySql</id>
+                        <configuration>
+                            <verbose>false</verbose>
+                            <showTree>false</showTree>
+                            <entryPoint>root</entryPoint>
+                            <grammarName>MySql</grammarName>
+                            <packageName>io.debezium.ddl.parser.mysql.generated</packageName>
+                            <caseInsensitiveType>UPPER</caseInsensitiveType>
+                            <exampleFiles>src/test/resources/mysql/examples</exampleFiles>
+                            <enabled>${antlr.tests.enabled}</enabled>
+                        </configuration>
+                        <goals>
+                            <goal>test</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>Oracle</id>
+                        <configuration>
+                            <verbose>false</verbose>
+                            <showTree>false</showTree>
+                            <entryPoint>sql_script</entryPoint>
+                            <grammarName>PlSql</grammarName>
+                            <packageName>io.debezium.ddl.parser.oracle.generated</packageName>
+                            <caseInsensitiveType>UPPER</caseInsensitiveType>
+                            <exampleFiles>src/test/resources/oracle/examples</exampleFiles>
+                            <enabled>${antlr.tests.enabled}</enabled>
+                        </configuration>
                         <goals>
                             <goal>test</goal>
                         </goals>
