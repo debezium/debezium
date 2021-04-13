@@ -1155,9 +1155,13 @@ Must not be used with `collection.include.list`.
 
 |[[mongodb-property-tombstones-on-delete]]<<mongodb-property-tombstones-on-delete, `+tombstones.on.delete+`>>
 |`true`
-| Controls whether a tombstone event should be generated after a delete event. +
-When `true` the delete operations are represented by a delete event and a subsequent tombstone event. When `false` only a delete event is sent. +
-Emitting the tombstone event (the default behavior) allows Kafka to completely delete all events pertaining to the given key once the source record got deleted.
+|Controls whether a _delete_ event is followed by a tombstone event. +
+ +
+`true` - a delete operation is represented by a _delete_ event and a subsequent tombstone event.  +
+ +
+`false` - only a _delete_ event is emitted. +
+ +
+After a source record is deleted, emitting a tombstone event (the default behavior) allows Kafka to completely delete all events that pertain to the key of the deleted row in case {link-kafka-docs}/#compaction[log compaction] is enabled for the topic.
 
 |[[mongodb-property-snapshot-delay-ms]]<<mongodb-property-snapshot-delay-ms, `+snapshot.delay.ms+`>>
 |
