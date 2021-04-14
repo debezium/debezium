@@ -346,8 +346,18 @@ public class LogMinerDmlParserTest {
                 .addColumn(Column.editor().name("COL2").create())
                 .create();
 
-        String sql = "update \"DEBEZIUM\".\"TEST\" set \"COL2\" = '1' where \"COL1\" = 'Bob''s dog' and \"COL2\" = '0';";
+        String sql = "insert into \"DEBEZIUM\".\"TEST\"(\"COL1\",\"COL2\") values ('Bob''s dog','0');";
         LogMinerDmlEntry entry = fastDmlParser.parse(sql, table, null);
+        assertThat(entry.getCommandType()).isEqualTo(Operation.CREATE);
+        assertThat(entry.getOldValues()).isEmpty();
+        assertThat(entry.getNewValues()).hasSize(2);
+        assertThat(entry.getNewValues().get(0).getColumnName()).isEqualTo("COL1");
+        assertThat(entry.getNewValues().get(0).getColumnData()).isEqualTo("Bob''s dog");
+        assertThat(entry.getNewValues().get(1).getColumnName()).isEqualTo("COL2");
+        assertThat(entry.getNewValues().get(1).getColumnData()).isEqualTo("0");
+
+        sql = "update \"DEBEZIUM\".\"TEST\" set \"COL2\" = '1' where \"COL1\" = 'Bob''s dog' and \"COL2\" = '0';";
+        entry = fastDmlParser.parse(sql, table, null);
         assertThat(entry.getCommandType()).isEqualTo(Operation.UPDATE);
         assertThat(entry.getOldValues()).hasSize(2);
         assertThat(entry.getOldValues().get(0).getColumnName()).isEqualTo("COL1");
