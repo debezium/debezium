@@ -82,7 +82,8 @@ Kafka Connect automatic topic creation requires you to define the configuration 
 You specify topic configuration properties in the {prodname} connector configuration by defining topic groups, and then specifying the properties to apply to each group.
 The connector configuration defines a default topic creation group, and, optionally, one or more custom topic creation groups.
 Custom topic creation groups use lists of topic name patterns to specify the topics to which the group's settings apply.
-For details about how Kafka Connect matches topics to topic creation groups, see xref:topic-creation-groups[].
+
+For details about how Kafka Connect matches topics to topic creation groups, see xref:topic-creation-groups[Topic creation groups].
 For more information about how configuration properties are assigned to groups, see xref:topic-creation-group-configuration-properties[Topic creation group configuration properties].
 
 By default, topics that Kafka Connect creates are named based on the pattern `server.schema.table`, for example, `dbserver.myschema.inventory`.
