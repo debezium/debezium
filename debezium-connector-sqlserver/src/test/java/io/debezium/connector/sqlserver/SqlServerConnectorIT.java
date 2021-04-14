@@ -193,7 +193,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         assertConnectorIsRunning();
 
         // Wait for snapshot completion
-        TestHelper.waitForSnapshotToBeCompleted();
+        TestHelper.waitForAllDatabaseSnapshotsToBeCompleted();
         consumeRecordsByTopic(TestHelper.TEST_DATABASES.size());
 
         TestHelper.waitForStreamingStarted();
@@ -1282,7 +1282,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
-        waitForSnapshotToBeCompleted("sql_server", TestHelper.TEST_SERVER_NAME);
+        TestHelper.waitForAllDatabaseSnapshotsToBeCompleted();
 
         // Wait for snapshot completion
         consumeRecordsByTopic(TestHelper.TEST_DATABASES.size());
@@ -1474,9 +1474,9 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
-        waitForSnapshotToBeCompleted("sql_server", TestHelper.TEST_SERVER_NAME);
 
         TestHelper.forEachDatabase(databaseName -> {
+            TestHelper.waitForSnapshotToBeCompleted(databaseName);
             connection.execute("USE " + databaseName);
             connection.execute("INSERT INTO excluded_column_table_a VALUES(11, 'some_name', 120)");
         });
@@ -1531,9 +1531,9 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
-        waitForSnapshotToBeCompleted("sql_server", TestHelper.TEST_SERVER_NAME);
 
         TestHelper.forEachDatabase(databaseName -> {
+            TestHelper.waitForSnapshotToBeCompleted(databaseName);
             connection.execute("USE " + databaseName);
             connection.execute("INSERT INTO excluded_column_table_a VALUES(11, 'some_name', 120, 'a note')");
         });
@@ -1705,9 +1705,9 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
-        waitForSnapshotToBeCompleted("sql_server", TestHelper.TEST_SERVER_NAME);
 
         TestHelper.forEachDatabase(databaseName -> {
+            TestHelper.waitForSnapshotToBeCompleted(databaseName);
             connection.execute("USE " + databaseName);
             connection.execute("INSERT INTO exclude_list_column_table_a VALUES(11, 120, 'some_name')");
             TestHelper.waitForCdcRecord(connection, databaseName, "exclude_list_column_table_a", rs -> rs.getInt("id") == 11);
@@ -1760,9 +1760,9 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
-        waitForSnapshotToBeCompleted("sql_server", TestHelper.TEST_SERVER_NAME);
 
         TestHelper.forEachDatabase(databaseName -> {
+            TestHelper.waitForSnapshotToBeCompleted(databaseName);
             connection.execute("USE " + databaseName);
             connection.execute("INSERT INTO include_list_column_table_a VALUES(10, 120, 'some_name')");
             TestHelper.waitForCdcRecord(connection, databaseName, "include_list_column_table_a", rs -> rs.getInt("id") == 10);
@@ -1810,9 +1810,9 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
-        waitForSnapshotToBeCompleted("sql_server", TestHelper.TEST_SERVER_NAME);
 
         TestHelper.forEachDatabase(databaseName -> {
+            TestHelper.waitForSnapshotToBeCompleted(databaseName);
             connection.execute("USE " + databaseName);
             connection.execute("INSERT INTO exclude_list_column_table_a VALUES(10, 120, 'a note', 'some_name')");
             TestHelper.waitForCdcRecord(connection, databaseName, "exclude_list_column_table_a", rs -> rs.getInt("id") == 10);
@@ -1860,9 +1860,9 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
-        waitForSnapshotToBeCompleted("sql_server", TestHelper.TEST_SERVER_NAME);
 
         TestHelper.forEachDatabase(databaseName -> {
+            TestHelper.waitForSnapshotToBeCompleted(databaseName);
             connection.execute("USE " + databaseName);
             connection.execute("INSERT INTO include_list_column_table_a VALUES(10, 120, 'a note', 'some_name')");
             TestHelper.waitForCdcRecord(connection, databaseName, "include_list_column_table_a", rs -> rs.getInt("id") == 10);
@@ -2069,9 +2069,9 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
-        TestHelper.waitForSnapshotToBeCompleted();
 
         TestHelper.forEachDatabase(databaseName -> {
+            TestHelper.waitForSnapshotToBeCompleted(databaseName);
             connection.execute("USE " + databaseName);
             connection.execute(
                     "INSERT INTO table_schema_test (key_cola, key_colb, cola, colb, colc, cold) VALUES(1, 'a', 100, '2019-01-01 10:20:39.1234567 +02:00', 'some_value', 100.20)");
@@ -2184,9 +2184,9 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
-        waitForSnapshotToBeCompleted("sql_server", TestHelper.TEST_SERVER_NAME);
 
         TestHelper.forEachDatabase(databaseName -> {
+            TestHelper.waitForSnapshotToBeCompleted(databaseName);
             connection.execute("USE " + databaseName);
             connection.execute("INSERT INTO source_timestamp_mode VALUES(1, 'abc')");
         });
@@ -2431,9 +2431,9 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
-        waitForSnapshotToBeCompleted("sql_server", TestHelper.TEST_SERVER_NAME);
 
         TestHelper.forEachDatabase(databaseName -> {
+            TestHelper.waitForSnapshotToBeCompleted(databaseName);
             connection.execute("USE " + databaseName);
             connection.execute("INSERT INTO dt_table (id,c1,c2,c3a,c3b,f1,f2) values (1, 123, 456, 789.01, 'test', 1.228, 234.56)");
         });

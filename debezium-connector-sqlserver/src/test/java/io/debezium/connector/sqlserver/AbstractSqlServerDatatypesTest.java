@@ -324,6 +324,6 @@ public abstract class AbstractSqlServerDatatypesTest extends AbstractConnectorTe
                 .build();
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
-        TestHelper.waitForSnapshotToBeCompleted();
+        TestHelper.waitForAllDatabaseSnapshotsToBeCompleted();
     }
 }

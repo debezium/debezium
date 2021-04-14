@@ -103,7 +103,7 @@ public class TablesWithoutPrimaryKeyIT extends AbstractConnectorTest {
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                 .build());
         assertConnectorIsRunning();
-        TestHelper.waitForSnapshotToBeCompleted();
+        TestHelper.waitForAllDatabaseSnapshotsToBeCompleted();
 
         consumeRecordsByTopic(TestHelper.TEST_DATABASES.size());
 

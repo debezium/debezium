@@ -77,10 +77,10 @@ public class SqlServerBinaryModeIT extends AbstractConnectorTest {
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
-        TestHelper.waitForSnapshotToBeCompleted();
 
         SourceRecords records = consumeRecordsByTopic(TestHelper.TEST_DATABASES.size());
         TestHelper.forEachDatabase(databaseName -> {
+            TestHelper.waitForSnapshotToBeCompleted(databaseName);
             Struct data = getModified(records, databaseName);
             assertEquals(expectedValue, data.get("binary_col"));
             assertEquals(expectedValue, data.get("varbinary_col"));

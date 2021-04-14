@@ -6,6 +6,7 @@
 package io.debezium.pipeline;
 
 import java.time.Duration;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
@@ -58,7 +59,7 @@ public class ChangeEventSourceCoordinator<P extends TaskPartition, O extends Off
     private final TaskOffsetContext<P, O> previousOffsetContext;
     private final ErrorHandler errorHandler;
     private final ChangeEventSourceFactory<P, O> changeEventSourceFactory;
-    private final ChangeEventSourceMetricsFactory changeEventSourceMetricsFactory;
+    private final ChangeEventSourceMetricsFactory<P> changeEventSourceMetricsFactory;
     private final ExecutorService executor;
     private final EventDispatcher<P, O, ?> eventDispatcher;
     private final DatabaseSchema<?> schema;
@@ -68,14 +69,14 @@ public class ChangeEventSourceCoordinator<P extends TaskPartition, O extends Off
     private final ReentrantLock commitOffsetLock = new ReentrantLock();
 
     private SnapshotChangeEventSourceMetrics snapshotMetrics;
-    private StreamingChangeEventSourceMetrics streamingMetrics;
+    private StreamingChangeEventSourceMetrics<P> streamingMetrics;
     private final Clock clock;
     private final Duration pollInterval;
 
     public ChangeEventSourceCoordinator(TaskOffsetContext<P, O> previousOffsetContext, ErrorHandler errorHandler, Class<? extends SourceConnector> connectorType,
                                         CommonConnectorConfig connectorConfig,
                                         ChangeEventSourceFactory<P, O> changeEventSourceFactory,
-                                        ChangeEventSourceMetricsFactory changeEventSourceMetricsFactory, EventDispatcher<P, O, ?> eventDispatcher,
+                                        ChangeEventSourceMetricsFactory<P> changeEventSourceMetricsFactory, EventDispatcher<P, O, ?> eventDispatcher,
                                         DatabaseSchema<?> schema, Clock clock) {
         this.previousOffsetContext = previousOffsetContext;
         this.errorHandler = errorHandler;
@@ -91,8 +92,10 @@ public class ChangeEventSourceCoordinator<P extends TaskPartition, O extends Off
     public synchronized <T extends CdcSourceTaskContext> void start(T taskContext, ChangeEventQueueMetrics changeEventQueueMetrics,
                                                                     EventMetadataProvider metadataProvider) {
 
-        this.snapshotMetrics = changeEventSourceMetricsFactory.getSnapshotMetrics(taskContext, changeEventQueueMetrics, metadataProvider);
-        this.streamingMetrics = changeEventSourceMetricsFactory.getStreamingMetrics(taskContext, changeEventQueueMetrics, metadataProvider);
+        Collection<P> partitions = this.previousOffsetContext.getOffsets().keySet();
+
+        this.snapshotMetrics = changeEventSourceMetricsFactory.getSnapshotMetrics(taskContext, changeEventQueueMetrics, metadataProvider, partitions);
+        this.streamingMetrics = changeEventSourceMetricsFactory.getStreamingMetrics(taskContext, changeEventQueueMetrics, metadataProvider, partitions);
         running = true;
 
         // run the snapshot source on a separate thread so start() won't block

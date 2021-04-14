@@ -65,11 +65,11 @@ public abstract class RelationalSnapshotChangeEventSource<P extends TaskPartitio
     private final HistorizedRelationalDatabaseSchema<P, O> schema;
     protected final EventDispatcher<P, O, TableId> dispatcher;
     protected final Clock clock;
-    private final SnapshotProgressListener snapshotProgressListener;
+    private final SnapshotProgressListener<P> snapshotProgressListener;
 
     public RelationalSnapshotChangeEventSource(RelationalDatabaseConnectorConfig connectorConfig,
                                                JdbcConnection jdbcConnection, HistorizedRelationalDatabaseSchema<P, O> schema,
-                                               EventDispatcher<P, O, TableId> dispatcher, Clock clock, SnapshotProgressListener snapshotProgressListener) {
+                                               EventDispatcher<P, O, TableId> dispatcher, Clock clock, SnapshotProgressListener<P> snapshotProgressListener) {
         super(connectorConfig, snapshotProgressListener);
         this.connectorConfig = connectorConfig;
         this.jdbcConnection = jdbcConnection;
@@ -81,7 +81,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends TaskPartitio
 
     public RelationalSnapshotChangeEventSource(RelationalDatabaseConnectorConfig connectorConfig,
                                                JdbcConnection jdbcConnection,
-                                               EventDispatcher<P, O, TableId> dispatcher, Clock clock, SnapshotProgressListener snapshotProgressListener) {
+                                               EventDispatcher<P, O, TableId> dispatcher, Clock clock, SnapshotProgressListener<P> snapshotProgressListener) {
         this(connectorConfig, jdbcConnection, null, dispatcher, clock, snapshotProgressListener);
     }
 
@@ -107,7 +107,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends TaskPartitio
             // Note that there's a minor race condition here: a new table matching the filters could be created between
             // this call and the determination of the initial snapshot position below; this seems acceptable, though
             determineCapturedTables(ctx);
-            snapshotProgressListener.monitoredDataCollectionsDetermined(ctx.capturedTables);
+            snapshotProgressListener.monitoredDataCollectionsDetermined(partition, ctx.capturedTables);
 
             LOGGER.info("Snapshot step 3 - Locking captured tables {}", ctx.capturedTables);
 
@@ -332,7 +332,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends TaskPartitio
         final Optional<String> selectStatement = determineSnapshotSelect(partition, snapshotContext, table.id());
         if (!selectStatement.isPresent()) {
             LOGGER.warn("For table '{}' the select statement was not provided, skipping table", table.id());
-            snapshotProgressListener.dataCollectionSnapshotCompleted(table.id(), 0);
+            snapshotProgressListener.dataCollectionSnapshotCompleted(partition, table.id(), 0);
             return;
         }
         LOGGER.info("\t For table '{}' using select statement: '{}'", table.id(), selectStatement.get());
@@ -369,14 +369,15 @@ public abstract class RelationalSnapshotChangeEventSource<P extends TaskPartitio
                             LOGGER.info("\t Exported {} records for table '{}' after {}", rows, table.id(),
                                     Strings.duration(stop - exportStart));
                         }
-                        snapshotProgressListener.rowsScanned(table.id(), rows);
+                        snapshotProgressListener.rowsScanned(partition, table.id(), rows);
                         logTimer = getTableScanLogTimer();
                     }
 
                     if (snapshotContext.lastTable && snapshotContext.lastRecordInTable) {
                         lastSnapshotRecord(snapshotContext);
                     }
-                    dispatcher.dispatchSnapshotEvent(table.id(), getChangeRecordEmitter(snapshotContext, table.id(), row), snapshotReceiver);
+                    dispatcher.dispatchSnapshotEvent(partition, table.id(),
+                            getChangeRecordEmitter(snapshotContext, table.id(), row), snapshotReceiver);
                 }
             }
             else if (snapshotContext.lastTable) {
@@ -385,7 +386,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends TaskPartitio
 
             LOGGER.info("\t Finished exporting {} records for table '{}'; total duration '{}'", rows,
                     table.id(), Strings.duration(clock.currentTimeInMillis() - exportStart));
-            snapshotProgressListener.dataCollectionSnapshotCompleted(table.id(), rows);
+            snapshotProgressListener.dataCollectionSnapshotCompleted(partition, table.id(), rows);
         }
         catch (SQLException e) {
             throw new ConnectException("Snapshotting of table " + table.id() + " failed", e);

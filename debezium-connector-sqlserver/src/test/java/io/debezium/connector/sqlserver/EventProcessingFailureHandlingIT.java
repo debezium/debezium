@@ -70,9 +70,9 @@ public class EventProcessingFailureHandlingIT extends AbstractConnectorTest {
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
-        TestHelper.waitForSnapshotToBeCompleted();
 
         TestHelper.forEachDatabase(databaseName -> {
+            TestHelper.waitForSnapshotToBeCompleted(databaseName);
             connection.execute("USE " + databaseName);
             // Will allow insertion of strings into what was originally a BIGINT NOT NULL column
             // This will cause NumberFormatExceptions which return nulls and thus an error due to the column being NOT NULL
@@ -109,9 +109,9 @@ public class EventProcessingFailureHandlingIT extends AbstractConnectorTest {
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
-        TestHelper.waitForSnapshotToBeCompleted();
 
         TestHelper.forEachDatabase(databaseName -> {
+            TestHelper.waitForSnapshotToBeCompleted(databaseName);
             connection.execute("USE " + databaseName);
             // Will allow insertion of strings into what was originally a BIGINT NOT NULL column
             // This will cause NumberFormatExceptions which return nulls and thus an error due to the column being NOT NULL
@@ -142,7 +142,7 @@ public class EventProcessingFailureHandlingIT extends AbstractConnectorTest {
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
-        TestHelper.waitForSnapshotToBeCompleted();
+        TestHelper.waitForAllDatabaseSnapshotsToBeCompleted();
 
         // Connector fails on the 1st database
         String databaseName = TestHelper.TEST_FIRST_DATABASE;
