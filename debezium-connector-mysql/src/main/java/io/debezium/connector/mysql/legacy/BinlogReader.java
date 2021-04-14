@@ -308,7 +308,7 @@ public class BinlogReader extends AbstractReader {
     @Override
     protected void doStart() {
         context.dbSchema().assureNonEmptySchema();
-        Set<Operation> skippedOperations = context.getConnectorConfig().getSkippedOps();
+        Set<Operation> skippedOperations = context.getConnectorConfig().getSkippedOperations();
 
         // Register our event handlers ...
         eventHandlers.put(EventType.STOP, this::handleServerStop);

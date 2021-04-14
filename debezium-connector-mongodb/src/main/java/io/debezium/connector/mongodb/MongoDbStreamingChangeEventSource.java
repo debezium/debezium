@@ -237,7 +237,7 @@ public class MongoDbStreamingChangeEventSource<SourceRecord extends SourceRecord
     }
 
     private Bson getSkippedOperationsFilter() {
-        Set<Operation> skippedOperations = taskContext.getConnectorConfig().getSkippedOps();
+        Set<Operation> skippedOperations = taskContext.getConnectorConfig().getSkippedOperations();
 
         if (skippedOperations.isEmpty()) {
             return null;
