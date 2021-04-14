@@ -81,9 +81,9 @@ public class SchemaHistoryTopicIT extends AbstractConnectorTest {
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
-        TestHelper.waitForSnapshotToBeCompleted();
 
         TestHelper.forEachDatabase(databaseName -> {
+            TestHelper.waitForSnapshotToBeCompleted(databaseName);
             connection.execute("USE " + databaseName);
             for (int i = 0; i < RECORDS_PER_TABLE; i++) {
                 final int id = ID_START_1 + i;
@@ -232,7 +232,7 @@ public class SchemaHistoryTopicIT extends AbstractConnectorTest {
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
-        TestHelper.waitForSnapshotToBeCompleted();
+        TestHelper.waitForAllDatabaseSnapshotsToBeCompleted();
 
         // DDL for 3 tables + inserts for 2 tables
         final SourceRecords snapshotRecords = consumeRecordsByTopic((3 + RECORDS_PER_TABLE * TABLES) * TestHelper.TEST_DATABASES.size());
@@ -288,7 +288,7 @@ public class SchemaHistoryTopicIT extends AbstractConnectorTest {
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
-        TestHelper.waitForSnapshotToBeCompleted();
+        TestHelper.waitForAllDatabaseSnapshotsToBeCompleted();
 
         Testing.Print.enable();
         // 1 schema event + 1 data event

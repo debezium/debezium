@@ -5,6 +5,7 @@
  */
 package io.debezium.pipeline.source.spi;
 
+import io.debezium.connector.common.TaskPartition;
 import io.debezium.relational.TableId;
 import io.debezium.schema.DataCollectionId;
 
@@ -13,44 +14,45 @@ import io.debezium.schema.DataCollectionId;
  *
  * @author Jiri Pechanec
  */
-public interface SnapshotProgressListener {
+public interface SnapshotProgressListener<P extends TaskPartition> {
 
-    void snapshotStarted();
+    void snapshotStarted(P partition);
 
-    void monitoredDataCollectionsDetermined(Iterable<? extends DataCollectionId> dataCollectionIds);
+    void monitoredDataCollectionsDetermined(P partition, Iterable<? extends DataCollectionId> dataCollectionIds);
 
-    void snapshotCompleted();
+    void snapshotCompleted(P partition);
 
-    void snapshotAborted();
+    void snapshotAborted(P partition);
 
-    void dataCollectionSnapshotCompleted(DataCollectionId dataCollectionId, long numRows);
+    void dataCollectionSnapshotCompleted(P partition, DataCollectionId dataCollectionId, long numRows);
 
-    void rowsScanned(TableId tableId, long numRows);
+    void rowsScanned(P partition, TableId tableId, long numRows);
 
-    public static SnapshotProgressListener NO_OP = new SnapshotProgressListener() {
+    static <P extends TaskPartition> SnapshotProgressListener<P> NO_OP() {
+        return new SnapshotProgressListener<P>() {
+            @Override
+            public void snapshotStarted(P partition) {
+            }
 
-        @Override
-        public void snapshotStarted() {
-        }
+            @Override
+            public void rowsScanned(P partition, TableId tableId, long numRows) {
+            }
 
-        @Override
-        public void rowsScanned(TableId tableId, long numRows) {
-        }
+            @Override
+            public void monitoredDataCollectionsDetermined(P partition, Iterable<? extends DataCollectionId> dataCollectionIds) {
+            }
 
-        @Override
-        public void monitoredDataCollectionsDetermined(Iterable<? extends DataCollectionId> dataCollectionIds) {
-        }
+            @Override
+            public void dataCollectionSnapshotCompleted(P partition, DataCollectionId dataCollectionId, long numRows) {
+            }
 
-        @Override
-        public void dataCollectionSnapshotCompleted(DataCollectionId dataCollectionId, long numRows) {
-        }
+            @Override
+            public void snapshotCompleted(P partition) {
+            }
 
-        @Override
-        public void snapshotCompleted() {
-        }
-
-        @Override
-        public void snapshotAborted() {
-        }
-    };
+            @Override
+            public void snapshotAborted(P partition) {
+            }
+        };
+    }
 }

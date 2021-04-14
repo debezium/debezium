@@ -5,20 +5,24 @@
  */
 package io.debezium.pipeline.metrics;
 
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.function.Consumer;
+import java.util.function.Function;
 
 import org.apache.kafka.connect.data.Struct;
+import org.slf4j.Logger;
 
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.connector.base.ChangeEventQueueMetrics;
 import io.debezium.connector.common.CdcSourceTaskContext;
+import io.debezium.connector.common.TaskPartition;
 import io.debezium.metrics.Metrics;
 import io.debezium.pipeline.ConnectorEvent;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
-import io.debezium.pipeline.source.spi.EventMetadataProvider;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.schema.DataCollectionId;
-import io.debezium.util.Clock;
 
 /**
  * Base for metrics implementations.
@@ -26,87 +30,69 @@ import io.debezium.util.Clock;
  * @author Randall Hauch, Jiri Pechanec
  */
 @ThreadSafe
-public abstract class PipelineMetrics extends Metrics implements DataChangeEventListener, ChangeEventSourceMetricsMXBean {
+public abstract class PipelineMetrics<P extends TaskPartition, B extends ChangeEventSourcePartitionMetrics>
+        extends Metrics implements DataChangeEventListener<P>, ChangeEventSourceTaskMetricsMXBean {
 
-    protected final EventMetadataProvider metadataProvider;
-    protected final AtomicLong totalNumberOfEventsSeen = new AtomicLong();
-    private final AtomicLong numberOfEventsFiltered = new AtomicLong();
-    protected final AtomicLong numberOfErroneousEvents = new AtomicLong();
-    protected final AtomicLong lastEventTimestamp = new AtomicLong(-1);
-    private volatile String lastEvent;
-
-    protected final Clock clock;
     private final ChangeEventQueueMetrics changeEventQueueMetrics;
     protected final CdcSourceTaskContext taskContext;
+    private final Map<P, B> beans = new HashMap<>();
 
     protected <T extends CdcSourceTaskContext> PipelineMetrics(T taskContext, String contextName, ChangeEventQueueMetrics changeEventQueueMetrics,
-                                                               EventMetadataProvider metadataProvider) {
+                                                               Collection<P> partitions,
+                                                               Function<P, B> beanFactory) {
         super(taskContext, contextName);
         this.taskContext = taskContext;
-        this.clock = taskContext.getClock();
         this.changeEventQueueMetrics = changeEventQueueMetrics;
-        this.metadataProvider = metadataProvider;
+
+        for (P partition : partitions) {
+            beans.put(partition, beanFactory.apply(partition));
+        }
     }
 
     @Override
-    public void onEvent(DataCollectionId source, OffsetContext offset, Object key, Struct value) {
-        updateCommonEventMetrics();
-        lastEvent = metadataProvider.toSummaryString(source, offset, key, value);
-    }
+    public synchronized void register(Logger logger) {
+        super.register(logger);
 
-    private void updateCommonEventMetrics() {
-        totalNumberOfEventsSeen.incrementAndGet();
-        lastEventTimestamp.set(clock.currentTimeInMillis());
+        beans.values().forEach(bean -> bean.register(logger));
     }
 
     @Override
-    public void onFilteredEvent(String event) {
-        numberOfEventsFiltered.incrementAndGet();
-        updateCommonEventMetrics();
+    public synchronized void unregister(Logger logger) {
+        beans.values().forEach(bean -> bean.unregister(logger));
+
+        super.unregister(logger);
     }
 
     @Override
-    public void onErroneousEvent(String event) {
-        numberOfErroneousEvents.incrementAndGet();
-        updateCommonEventMetrics();
+    public void onEvent(P partition, DataCollectionId source, OffsetContext offset, Object key, Struct value) {
+        onPartitionEvent(partition, bean -> bean.onEvent(source, offset, key, value));
     }
 
     @Override
-    public void onConnectorEvent(ConnectorEvent event) {
+    public void onFilteredEvent(P partition, String event) {
+        onPartitionEvent(partition, bean -> bean.onFilteredEvent(event));
     }
 
     @Override
-    public String getLastEvent() {
-        return lastEvent;
+    public void onErroneousEvent(P partition, String event) {
+        onPartitionEvent(partition, bean -> bean.onErroneousEvent(event));
     }
 
     @Override
-    public long getMilliSecondsSinceLastEvent() {
-        return (lastEventTimestamp.get() == -1) ? -1 : (clock.currentTimeInMillis() - lastEventTimestamp.get());
+    public void onConnectorEvent(P partition, ConnectorEvent event) {
     }
 
-    @Override
-    public long getTotalNumberOfEventsSeen() {
-        return totalNumberOfEventsSeen.get();
-    }
-
-    @Override
-    public long getNumberOfEventsFiltered() {
-        return numberOfEventsFiltered.get();
-    }
-
-    @Override
-    public long getNumberOfErroneousEvents() {
-        return numberOfErroneousEvents.get();
+    protected void onPartitionEvent(P partition, Consumer<B> handler) {
+        B bean = beans.get(partition);
+        if (bean == null) {
+            throw new IllegalArgumentException("Metrics bean for partition " + partition + "is not registered");
+        }
+        handler.accept(bean);
     }
 
     @Override
     public void reset() {
-        totalNumberOfEventsSeen.set(0);
-        lastEventTimestamp.set(-1);
-        numberOfEventsFiltered.set(0);
-        numberOfErroneousEvents.set(0);
-        lastEvent = null;
+        beans.values().forEach(B::reset);
     }
 
     @Override

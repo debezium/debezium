@@ -6,6 +6,10 @@
 package io.debezium.metrics;
 
 import java.lang.management.ManagementFactory;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import javax.management.JMException;
 import javax.management.MBeanServer;
@@ -18,6 +22,7 @@ import org.slf4j.Logger;
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.common.CdcSourceTaskContext;
+import io.debezium.connector.common.TaskPartition;
 
 /**
  * Base for metrics implementations.
@@ -32,6 +37,11 @@ public abstract class Metrics {
 
     protected Metrics(CdcSourceTaskContext taskContext, String contextName) {
         this.name = metricName(taskContext.getConnectorType(), taskContext.getConnectorName(), contextName);
+    }
+
+    protected Metrics(CdcSourceTaskContext taskContext, String contextName, TaskPartition partition) {
+        this.name = metricName(taskContext.getConnectorType(), taskContext.getConnectorName(), contextName,
+                partition.getSourcePartition());
     }
 
     protected Metrics(CommonConnectorConfig connectorConfig, String contextName) {
@@ -61,7 +71,7 @@ public abstract class Metrics {
      * Unregisters a metrics MBean from the platform MBean server.
      * The method is intentionally synchronized to prevent preemption between registration and unregistration.
      */
-    public final void unregister(Logger logger) {
+    public synchronized void unregister(Logger logger) {
         if (this.name != null && registered) {
             try {
                 final MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
@@ -77,14 +87,26 @@ public abstract class Metrics {
         }
     }
 
+    protected ObjectName metricName(String connectorType, String connectorName, String contextName) {
+        return metricName(connectorType, connectorName, contextName, new HashMap<>());
+    }
+
     /**
      * Create a JMX metric name for the given metric.
      * @param contextName the name of the context
      * @return the JMX metric name
-     * @throws MalformedObjectNameException if the name is invalid
      */
-    public ObjectName metricName(String connectorType, String connectorName, String contextName) {
-        final String metricName = "debezium." + connectorType.toLowerCase() + ":type=connector-metrics,context=" + contextName + ",server=" + connectorName;
+    protected ObjectName metricName(String connectorType, String connectorName, String contextName,
+                                    Map<String, String> labels) {
+        Map<String, String> allLabels = new LinkedHashMap<>();
+        allLabels.put("context", contextName);
+        allLabels.put("server", connectorName);
+        allLabels.putAll(labels);
+
+        final String metricName = "debezium." + connectorType.toLowerCase() + ":type=connector-metrics,"
+                + allLabels.entrySet().stream()
+                        .map(e -> e.getKey() + "=" + e.getValue())
+                        .collect(Collectors.joining(","));
         try {
             return new ObjectName(metricName);
         }
