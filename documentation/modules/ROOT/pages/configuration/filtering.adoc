@@ -15,7 +15,7 @@ toc::[]
 endif::community[]
 By default, {prodname} delivers every data change event that it receives to the Kafka broker.
 However, in many cases, you might be interested in only a subset of the events emitted by the producer.
-To enable you to process only the records that are relevant to you, {prodname} provides the _filter_ link:https://cwiki.apache.org/confluence/display/KAFKA/KIP-66%3A+Single+Message+Transforms+for+Kafka+Connect[simple message transform] (SMT).
+To enable you to process only the records that are relevant to you, {prodname} provides the _filter_ link:https://cwiki.apache.org/confluence/display/KAFKA/KIP-66%3A+Single+Message+Transforms+for+Kafka+Connect[single message transform] (SMT).
 
 ifdef::community[]
 [NOTE]
