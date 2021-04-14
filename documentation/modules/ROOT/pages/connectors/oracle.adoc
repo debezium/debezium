@@ -252,7 +252,7 @@ In the following example, the `payload` field contains the key:
 [[oracle-transaction-metadata]]
 === Transaction Metadata
 
-{prodname} can generate events that represents tranaction metadata boundaries and enrich data messages.
+{prodname} can generate events that represents transaction metadata boundaries and enrich data messages.
 
 ==== Transaction boundaries
 {prodname} generates events for every transaction `BEGIN` and `END`.
