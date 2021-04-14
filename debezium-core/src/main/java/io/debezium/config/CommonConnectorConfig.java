@@ -9,6 +9,7 @@ import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -462,6 +463,7 @@ public abstract class CommonConnectorConfig {
     private final CustomConverterRegistry customConverterRegistry;
     private final BinaryHandlingMode binaryHandlingMode;
     private final String signalingDataCollection;
+    private final EnumSet<Operation> skippedOperations;
 
     protected CommonConnectorConfig(Configuration config, String logicalName, int defaultSnapshotFetchSize) {
         this.config = config;
@@ -484,6 +486,21 @@ public abstract class CommonConnectorConfig {
         this.customConverterRegistry = new CustomConverterRegistry(getCustomConverters());
         this.binaryHandlingMode = BinaryHandlingMode.parse(config.getString(BINARY_HANDLING_MODE));
         this.signalingDataCollection = config.getString(SIGNAL_DATA_COLLECTION);
+        this.skippedOperations = determineSkippedOperations(config);
+    }
+
+    private static EnumSet<Envelope.Operation> determineSkippedOperations(Configuration config) {
+        String operations = config.getString(SKIPPED_OPERATIONS);
+
+        if (operations != null) {
+            return EnumSet.copyOf(Arrays.stream(operations.split(","))
+                    .map(String::trim)
+                    .map(Operation::forCode)
+                    .collect(Collectors.toSet()));
+        }
+        else {
+            return EnumSet.noneOf(Envelope.Operation.class);
+        }
     }
 
     /**
@@ -560,6 +577,9 @@ public abstract class CommonConnectorConfig {
         return customConverterRegistry;
     }
 
+    /**
+     * Whether a particular connector supports an optimized way for implementing operation skipping, or not.
+     */
     public boolean supportsOperationFiltering() {
         return false;
     }
@@ -587,18 +607,8 @@ public abstract class CommonConnectorConfig {
         return sanitizeFieldNames;
     }
 
-    public Set<Envelope.Operation> getSkippedOps() {
-        String operations = config.getString(SKIPPED_OPERATIONS);
-
-        if (operations != null) {
-            return Arrays.stream(operations.split(","))
-                    .map(String::trim)
-                    .map(Operation::forCode)
-                    .collect(Collectors.toSet());
-        }
-        else {
-            return Collections.emptySet();
-        }
+    public EnumSet<Envelope.Operation> getSkippedOperations() {
+        return skippedOperations;
     }
 
     public Set<String> getDataCollectionsToBeSnapshotted() {

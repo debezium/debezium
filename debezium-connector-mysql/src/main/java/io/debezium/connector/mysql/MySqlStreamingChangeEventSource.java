@@ -797,7 +797,7 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
             return;
         }
         taskContext.getSchema().assureNonEmptySchema();
-        final Set<Operation> skippedOperations = connectorConfig.getSkippedOps();
+        final Set<Operation> skippedOperations = connectorConfig.getSkippedOperations();
 
         // Register our event handlers ...
         eventHandlers.put(EventType.STOP, this::handleServerStop);
