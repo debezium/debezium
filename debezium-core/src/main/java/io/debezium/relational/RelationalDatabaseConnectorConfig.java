@@ -707,7 +707,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
 
         Map<TableId, String> snapshotSelectOverridesByTable = new HashMap<>();
 
-        for (String table : tableList.split(",")) {
+        for (String table : tableList.trim().split("\\s*,\\s*")) {
             snapshotSelectOverridesByTable.put(
                     TableId.parse(table),
                     getConfig().getString(SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + "." + table));
