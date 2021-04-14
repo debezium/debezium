@@ -7,10 +7,10 @@ package io.debezium.pipeline;
 
 import java.time.temporal.ChronoUnit;
 import java.util.Collection;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
 import java.util.function.Supplier;
 
 import org.apache.kafka.connect.data.Schema;
@@ -75,7 +75,7 @@ public class EventDispatcher<T extends DataCollectionId> {
     private final InconsistentSchemaHandler<T> inconsistentSchemaHandler;
     private final TransactionMonitor transactionMonitor;
     private final CommonConnectorConfig connectorConfig;
-    private final Set<Operation> skippedOperations;
+    private final EnumSet<Operation> skippedOperations;
     private final boolean neverSkip;
 
     private final Schema schemaChangeKeySchema;
@@ -117,7 +117,7 @@ public class EventDispatcher<T extends DataCollectionId> {
         this.streamingReceiver = new StreamingChangeRecordReceiver();
         this.emitTombstonesOnDelete = connectorConfig.isEmitTombstoneOnDelete();
         this.inconsistentSchemaHandler = inconsistentSchemaHandler != null ? inconsistentSchemaHandler : this::errorOnMissingSchema;
-        this.skippedOperations = connectorConfig.getSkippedOps();
+        this.skippedOperations = connectorConfig.getSkippedOperations();
         this.neverSkip = connectorConfig.supportsOperationFiltering() || this.skippedOperations.isEmpty();
 
         this.transactionMonitor = new TransactionMonitor(connectorConfig, metadataProvider, this::enqueueTransactionMessage);
