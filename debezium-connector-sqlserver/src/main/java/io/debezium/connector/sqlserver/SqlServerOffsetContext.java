@@ -222,7 +222,16 @@ public class SqlServerOffsetContext implements OffsetContext {
 
     @Override
     public boolean eventsStreamed() {
-        return (streamingExecutionState.getStatus() == SqlServerStreamingExecutionState.StreamingResultStatus.NO_CHANGES_IN_DATABASE
-                || streamingExecutionState.getStatus() == SqlServerStreamingExecutionState.StreamingResultStatus.NO_MAXIMUM_LSN_RECORDED) == false;
+        if (streamingExecutionState == null) {
+            return false;
+        }
+
+        switch (streamingExecutionState.getStatus()) {
+            case NO_CHANGES_IN_DATABASE:
+            case NO_MAXIMUM_LSN_RECORDED:
+                return false;
+            default:
+                return true;
+        }
     }
 }
