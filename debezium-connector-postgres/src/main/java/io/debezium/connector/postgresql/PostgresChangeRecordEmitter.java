@@ -367,6 +367,13 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
                                     .nativeType(type.getRootType().getOid());
                             columnEditor.length(column.getTypeMetadata().getLength());
                             columnEditor.scale(column.getTypeMetadata().getScale());
+
+                            // as long as default value is not added to the decoded message metadata, we must apply
+                            // the current default read from the database
+                            Optional.ofNullable(table.columnWithName(column.getName()))
+                                    .map(Column::defaultValue)
+                                    .ifPresent(columnEditor::defaultValue);
+
                             return columnEditor.create();
                         })
                         .collect(Collectors.toList()));
