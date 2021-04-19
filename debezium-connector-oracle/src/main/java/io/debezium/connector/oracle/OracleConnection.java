@@ -134,7 +134,7 @@ public class OracleConnection extends JdbcConnection {
             }
             catch (SQLException e) {
                 // exception ignored
-                if (e.getMessage().contains("ORA-00904")) {
+                if (e.getMessage().contains("ORA-00904: \"BANNER_FULL\"")) {
                     LOGGER.debug("BANNER_FULL column not in V$VERSION, using BANNER column as fallback");
                     versionStr = null;
                 }
