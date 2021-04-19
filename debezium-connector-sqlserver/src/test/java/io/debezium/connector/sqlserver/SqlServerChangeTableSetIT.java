@@ -81,9 +81,9 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
-        TestHelper.waitForSnapshotToBeCompleted();
 
         TestHelper.forEachDatabase(databaseName -> {
+            TestHelper.waitForSnapshotToBeCompleted(databaseName);
             connection.execute("USE " + databaseName);
 
             for (int i = 0; i < RECORDS_PER_TABLE; i++) {
@@ -151,9 +151,9 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
-        TestHelper.waitForSnapshotToBeCompleted();
 
         TestHelper.forEachDatabase(databaseName -> {
+            TestHelper.waitForSnapshotToBeCompleted(databaseName);
             connection.execute("USE " + databaseName);
 
             for (int i = 0; i < RECORDS_PER_TABLE; i++) {
@@ -207,9 +207,9 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
-        TestHelper.waitForSnapshotToBeCompleted();
 
         TestHelper.forEachDatabase(databaseName -> {
+            TestHelper.waitForSnapshotToBeCompleted(databaseName);
             connection.execute("USE " + databaseName);
 
             for (int i = 0; i < RECORDS_PER_TABLE; i++) {
@@ -324,9 +324,9 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
-        TestHelper.waitForSnapshotToBeCompleted();
 
         TestHelper.forEachDatabase(databaseName -> {
+            TestHelper.waitForSnapshotToBeCompleted(databaseName);
             connection.execute("USE " + databaseName);
 
             for (int i = 0; i < RECORDS_PER_TABLE; i++) {
@@ -419,9 +419,9 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
-        TestHelper.waitForSnapshotToBeCompleted();
 
         TestHelper.forEachDatabase(databaseName -> {
+            TestHelper.waitForSnapshotToBeCompleted(databaseName);
             connection.execute("USE " + databaseName);
             for (int i = 0; i < RECORDS_PER_TABLE; i++) {
                 final int id = ID_START_1 + i;
@@ -456,9 +456,9 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
-        TestHelper.waitForSnapshotToBeCompleted();
 
         TestHelper.forEachDatabase(databaseName -> {
+            TestHelper.waitForSnapshotToBeCompleted(databaseName);
             connection.execute("USE " + databaseName);
 
             for (int i = 0; i < RECORDS_PER_TABLE; i++) {
@@ -666,9 +666,9 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
-        TestHelper.waitForSnapshotToBeCompleted();
 
         TestHelper.forEachDatabase(databaseName -> {
+            TestHelper.waitForSnapshotToBeCompleted(databaseName);
             connection.execute("USE " + databaseName);
 
             for (int i = 0; i < RECORDS_PER_TABLE; i++) {
@@ -757,9 +757,9 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
-        TestHelper.waitForSnapshotToBeCompleted();
 
         TestHelper.forEachDatabase(databaseName -> {
+            TestHelper.waitForSnapshotToBeCompleted(databaseName);
             connection.execute("USE " + databaseName);
 
             for (int i = 0; i < RECORDS_PER_TABLE; i++) {
@@ -854,9 +854,9 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
-        TestHelper.waitForSnapshotToBeCompleted();
 
         TestHelper.forEachDatabase(databaseName -> {
+            TestHelper.waitForSnapshotToBeCompleted(databaseName);
             connection.execute("USE " + databaseName);
 
             TestHelper.waitForStreamingStarted();
@@ -900,9 +900,9 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
-        TestHelper.waitForSnapshotToBeCompleted();
 
         TestHelper.forEachDatabase(databaseName -> {
+            TestHelper.waitForSnapshotToBeCompleted(databaseName);
             connection.execute("USE " + databaseName);
             connection.execute("INSERT INTO table_dv VALUES('1', 'some_value')");
             consumeRecordsByTopic(1);

@@ -448,12 +448,12 @@ public class TestHelper {
         connection.execute(disableCdcForTableStmt);
     }
 
-    public static void waitForSnapshotToBeCompleted() {
+    public static void waitForSnapshotToBeCompleted(String databaseName) {
         final MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
         try {
             Awaitility.await("Snapshot not completed").atMost(Duration.ofSeconds(60)).until(() -> {
                 try {
-                    return (boolean) mbeanServer.getAttribute(getObjectName("snapshot", TEST_SERVER_NAME), "SnapshotCompleted");
+                    return (boolean) mbeanServer.getAttribute(getObjectName("snapshot", TEST_SERVER_NAME, databaseName), "SnapshotCompleted");
                 }
                 catch (InstanceNotFoundException e) {
                     // Metrics has not started yet
@@ -464,6 +464,10 @@ public class TestHelper {
         catch (ConditionTimeoutException e) {
             throw new IllegalArgumentException("Snapshot did not complete", e);
         }
+    }
+
+    public static void waitForAllDatabaseSnapshotsToBeCompleted() {
+        forEachDatabase(TestHelper::waitForSnapshotToBeCompleted);
     }
 
     public static void waitForStreamingStarted() {
@@ -499,6 +503,10 @@ public class TestHelper {
 
     private static ObjectName getObjectName(String context, String serverName) throws MalformedObjectNameException {
         return new ObjectName("debezium.sql_server:type=connector-metrics,context=" + context + ",server=" + serverName);
+    }
+
+    private static ObjectName getObjectName(String context, String serverName, String databaseName) throws MalformedObjectNameException {
+        return new ObjectName("debezium.sql_server:type=connector-metrics,context=" + context + ",server=" + serverName + ",database=" + databaseName);
     }
 
     public static int waitTimeForRecords() {

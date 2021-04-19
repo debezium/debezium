@@ -10,7 +10,7 @@ import java.util.Map;
 /**
  * @author Randall Hauch, Jiri Pechanec
  */
-public interface SnapshotChangeEventSourceMetricsMXBean extends ChangeEventSourceMetricsMXBean {
+public interface SnapshotChangeEventSourcePartitionMetricsMXBean extends ChangeEventSourcePartitionMetricsMXBean {
 
     int getTotalTableCount();
 

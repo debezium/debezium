@@ -264,9 +264,9 @@ public class SnapshotIT extends AbstractConnectorTest {
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
-        TestHelper.waitForSnapshotToBeCompleted();
 
         TestHelper.forEachDatabase(databaseName -> {
+            TestHelper.waitForSnapshotToBeCompleted(databaseName);
             connection.execute("USE " + databaseName);
             testStreaming(databaseName);
         });
@@ -334,7 +334,7 @@ public class SnapshotIT extends AbstractConnectorTest {
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
 
-        TestHelper.waitForSnapshotToBeCompleted();
+        TestHelper.waitForAllDatabaseSnapshotsToBeCompleted();
         final SourceRecord record = consumeRecord();
         Assertions.assertThat(record).isNotNull();
         Assertions.assertThat(record.topic()).startsWith("__debezium-heartbeat");
@@ -439,9 +439,8 @@ public class SnapshotIT extends AbstractConnectorTest {
             Assertions.assertThat(tableB).isNull();
         });
 
-        TestHelper.waitForSnapshotToBeCompleted();
-
         TestHelper.forEachDatabase(databaseName -> {
+            TestHelper.waitForSnapshotToBeCompleted(databaseName);
             connection.execute("USE " + databaseName);
             connection.execute("INSERT INTO table_a VALUES(22, 'some_name', 556)");
             connection.execute("INSERT INTO table_b VALUES(24, 'some_name', 558)");

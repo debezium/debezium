@@ -5,8 +5,11 @@
  */
 package io.debezium.pipeline.metrics.spi;
 
+import java.util.Collection;
+
 import io.debezium.connector.base.ChangeEventQueueMetrics;
 import io.debezium.connector.common.CdcSourceTaskContext;
+import io.debezium.connector.common.TaskPartition;
 import io.debezium.pipeline.metrics.SnapshotChangeEventSourceMetrics;
 import io.debezium.pipeline.metrics.StreamingChangeEventSourceMetrics;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
@@ -16,7 +19,7 @@ import io.debezium.pipeline.source.spi.EventMetadataProvider;
  *
  * @author Chris Cranford
  */
-public interface ChangeEventSourceMetricsFactory {
+public interface ChangeEventSourceMetricsFactory<P extends TaskPartition> {
 
     /**
      * Returns the snapshot change event source metrics.
@@ -30,8 +33,9 @@ public interface ChangeEventSourceMetricsFactory {
      *
      * @return a snapshot change event source metrics
      */
-    <T extends CdcSourceTaskContext> SnapshotChangeEventSourceMetrics getSnapshotMetrics(T taskContext, ChangeEventQueueMetrics changeEventQueueMetrics,
-                                                                                         EventMetadataProvider eventMetadataProvider);
+    <T extends CdcSourceTaskContext> SnapshotChangeEventSourceMetrics<P> getSnapshotMetrics(T taskContext, ChangeEventQueueMetrics changeEventQueueMetrics,
+                                                                                            EventMetadataProvider eventMetadataProvider,
+                                                                                            Collection<P> partitions);
 
     /**
      * Returns the streaming change event source metrics.
@@ -45,8 +49,9 @@ public interface ChangeEventSourceMetricsFactory {
      *
      * @return a streaming change event source metrics
      */
-    <T extends CdcSourceTaskContext> StreamingChangeEventSourceMetrics getStreamingMetrics(T taskContext, ChangeEventQueueMetrics changeEventQueueMetrics,
-                                                                                           EventMetadataProvider eventMetadataProvider);
+    <T extends CdcSourceTaskContext> StreamingChangeEventSourceMetrics<P> getStreamingMetrics(T taskContext, ChangeEventQueueMetrics changeEventQueueMetrics,
+                                                                                              EventMetadataProvider eventMetadataProvider,
+                                                                                              Collection<P> partitions);
 
     default boolean connectionMetricHandledByCoordinator() {
         return true;

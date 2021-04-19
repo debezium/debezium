@@ -8,13 +8,11 @@ package io.debezium.pipeline.metrics;
 import java.util.Map;
 
 /**
- * Metrics specific to streaming change event sources
+ * Metrics specific to streaming change event sources scoped to a source partition
  *
  * @author Randall Hauch, Jiri Pechanec
  */
-public interface StreamingChangeEventSourceMetricsMXBean extends ChangeEventSourceMetricsMXBean {
-
-    boolean isConnected();
+public interface StreamingChangeEventSourcePartitionMetricsMXBean extends ChangeEventSourcePartitionMetricsMXBean {
 
     long getMilliSecondsBehindSource();
 

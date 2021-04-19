@@ -9,7 +9,7 @@ import static io.debezium.connector.sqlserver.SqlServerConnectorConfig.TASK_DATA
 
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -34,11 +34,20 @@ public class SqlServerTaskPartition implements TaskPartition {
 
     @Override
     public Map<String, String> getSourcePartition() {
-        Map<String, String> partition = new HashMap<>();
+        // partition components must be stored in a linked map because they are used to build JMX bean names
+        Map<String, String> partition = new LinkedHashMap<>();
         partition.put(SERVER_PARTITION_KEY, serverName);
         partition.put(DATABASE_PARTITION_KEY, databaseName);
 
         return partition;
+    }
+
+    @Override
+    public String toString() {
+        return "{" +
+                "server=" + serverName +
+                ", database=" + databaseName +
+                '}';
     }
 
     String getDatabaseName() {

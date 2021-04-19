@@ -5,18 +5,12 @@
  */
 package io.debezium.pipeline.metrics;
 
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.Collection;
 
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.connector.base.ChangeEventQueueMetrics;
 import io.debezium.connector.common.CdcSourceTaskContext;
+import io.debezium.connector.common.TaskPartition;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.relational.TableId;
@@ -28,129 +22,45 @@ import io.debezium.schema.DataCollectionId;
  * @author Randall Hauch, Jiri Pechanec
  */
 @ThreadSafe
-public class SnapshotChangeEventSourceMetrics extends PipelineMetrics implements SnapshotChangeEventSourceMetricsMXBean, SnapshotProgressListener {
-
-    private final AtomicBoolean snapshotRunning = new AtomicBoolean();
-    private final AtomicBoolean snapshotCompleted = new AtomicBoolean();
-    private final AtomicBoolean snapshotAborted = new AtomicBoolean();
-    private final AtomicLong startTime = new AtomicLong();
-    private final AtomicLong stopTime = new AtomicLong();
-    private final ConcurrentMap<String, Long> rowsScanned = new ConcurrentHashMap<String, Long>();
-
-    private final ConcurrentMap<String, String> remainingTables = new ConcurrentHashMap<>();
-
-    private final Set<String> monitoredTables = Collections.synchronizedSet(new HashSet<>());
+public class SnapshotChangeEventSourceMetrics<P extends TaskPartition>
+        extends PipelineMetrics<P, SnapshotChangeEventSourcePartitionMetrics>
+        implements ChangeEventSourceTaskMetricsMXBean, SnapshotProgressListener<P> {
 
     public <T extends CdcSourceTaskContext> SnapshotChangeEventSourceMetrics(T taskContext, ChangeEventQueueMetrics changeEventQueueMetrics,
-                                                                             EventMetadataProvider metadataProvider) {
-        super(taskContext, "snapshot", changeEventQueueMetrics, metadataProvider);
+                                                                             EventMetadataProvider metadataProvider,
+                                                                             Collection<P> partitions) {
+        super(taskContext, "snapshot", changeEventQueueMetrics, partitions,
+                (P partition) -> new SnapshotChangeEventSourcePartitionMetrics(taskContext, "snapshot",
+                        partition, metadataProvider));
     }
 
     @Override
-    public int getTotalTableCount() {
-        return this.monitoredTables.size();
+    public void monitoredDataCollectionsDetermined(P partition, Iterable<? extends DataCollectionId> dataCollectionIds) {
+        onPartitionEvent(partition, bean -> bean.monitoredDataCollectionsDetermined(dataCollectionIds));
     }
 
     @Override
-    public int getRemainingTableCount() {
-        return this.remainingTables.size();
+    public void dataCollectionSnapshotCompleted(P partition, DataCollectionId dataCollectionId, long numRows) {
+        onPartitionEvent(partition, bean -> bean.dataCollectionSnapshotCompleted(dataCollectionId, numRows));
     }
 
     @Override
-    public boolean getSnapshotRunning() {
-        return this.snapshotRunning.get();
+    public void snapshotStarted(P partition) {
+        onPartitionEvent(partition, SnapshotChangeEventSourcePartitionMetrics::snapshotStarted);
     }
 
     @Override
-    public boolean getSnapshotCompleted() {
-        return this.snapshotCompleted.get();
+    public void snapshotCompleted(P partition) {
+        onPartitionEvent(partition, SnapshotChangeEventSourcePartitionMetrics::snapshotCompleted);
     }
 
     @Override
-    public boolean getSnapshotAborted() {
-        return this.snapshotAborted.get();
+    public void snapshotAborted(P partition) {
+        onPartitionEvent(partition, SnapshotChangeEventSourcePartitionMetrics::snapshotAborted);
     }
 
     @Override
-    public long getSnapshotDurationInSeconds() {
-        final long startMillis = startTime.get();
-        if (startMillis <= 0L) {
-            return 0;
-        }
-        long stopMillis = stopTime.get();
-        if (stopMillis == 0L) {
-            stopMillis = clock.currentTimeInMillis();
-        }
-        return (stopMillis - startMillis) / 1000L;
-    }
-
-    @Override
-    public String[] getMonitoredTables() {
-        return monitoredTables.toArray(new String[monitoredTables.size()]);
-    }
-
-    @Override
-    public void monitoredDataCollectionsDetermined(Iterable<? extends DataCollectionId> dataCollectionIds) {
-        Iterator<? extends DataCollectionId> it = dataCollectionIds.iterator();
-        while (it.hasNext()) {
-            DataCollectionId dataCollectionId = it.next();
-
-            this.remainingTables.put(dataCollectionId.identifier(), "");
-            monitoredTables.add(dataCollectionId.identifier());
-        }
-    }
-
-    @Override
-    public void dataCollectionSnapshotCompleted(DataCollectionId dataCollectionId, long numRows) {
-        rowsScanned.put(dataCollectionId.identifier(), numRows);
-        remainingTables.remove(dataCollectionId.identifier());
-    }
-
-    @Override
-    public void snapshotStarted() {
-        this.snapshotRunning.set(true);
-        this.snapshotCompleted.set(false);
-        this.snapshotAborted.set(false);
-        this.startTime.set(clock.currentTimeInMillis());
-        this.stopTime.set(0L);
-    }
-
-    @Override
-    public void snapshotCompleted() {
-        this.snapshotCompleted.set(true);
-        this.snapshotAborted.set(false);
-        this.snapshotRunning.set(false);
-        this.stopTime.set(clock.currentTimeInMillis());
-    }
-
-    @Override
-    public void snapshotAborted() {
-        this.snapshotCompleted.set(false);
-        this.snapshotAborted.set(true);
-        this.snapshotRunning.set(false);
-        this.stopTime.set(clock.currentTimeInMillis());
-    }
-
-    @Override
-    public void rowsScanned(TableId tableId, long numRows) {
-        rowsScanned.put(tableId.toString(), numRows);
-    }
-
-    @Override
-    public ConcurrentMap<String, Long> getRowsScanned() {
-        return rowsScanned;
-    }
-
-    @Override
-    public void reset() {
-        super.reset();
-        snapshotRunning.set(false);
-        snapshotCompleted.set(false);
-        snapshotAborted.set(false);
-        startTime.set(0);
-        stopTime.set(0);
-        rowsScanned.clear();
-        remainingTables.clear();
-        monitoredTables.clear();
+    public void rowsScanned(P partition, TableId tableId, long numRows) {
+        onPartitionEvent(partition, bean -> bean.rowsScanned(tableId, numRows));
     }
 }

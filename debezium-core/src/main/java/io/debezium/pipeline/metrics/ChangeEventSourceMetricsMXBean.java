@@ -7,30 +7,11 @@ package io.debezium.pipeline.metrics;
 
 /**
  * Metrics that are common for both snapshot and streaming change event sources
+ * and source partition and task scopes.
  *
  * @author Jiri Pechanec
  */
 public interface ChangeEventSourceMetricsMXBean {
-
-    String getLastEvent();
-
-    long getMilliSecondsSinceLastEvent();
-
-    long getTotalNumberOfEventsSeen();
-
-    long getNumberOfEventsFiltered();
-
-    long getNumberOfErroneousEvents();
-
-    String[] getMonitoredTables();
-
-    int getQueueTotalCapacity();
-
-    int getQueueRemainingCapacity();
-
-    long getMaxQueueSizeInBytes();
-
-    long getCurrentQueueSizeInBytes();
 
     void reset();
 }
