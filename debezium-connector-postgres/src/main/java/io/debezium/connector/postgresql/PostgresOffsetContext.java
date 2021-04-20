@@ -275,4 +275,9 @@ public class PostgresOffsetContext implements OffsetContext {
     public TransactionContext getTransactionContext() {
         return transactionContext;
     }
+
+    @Override
+    public void incrementalSnapshotWindow() {
+        sourceInfo.setSnapshot(SnapshotRecord.INCREMENTAL);
+    }
 }

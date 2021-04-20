@@ -57,7 +57,7 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
     /**
      * Interval for showing a log statement with the progress while scanning a single table.
      */
-    private static final Duration LOG_INTERVAL = Duration.ofMillis(10_000);
+    public static final Duration LOG_INTERVAL = Duration.ofMillis(10_000);
 
     private final RelationalDatabaseConnectorConfig connectorConfig;
     private final OffsetContext previousOffset;

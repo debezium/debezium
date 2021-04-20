@@ -1124,7 +1124,8 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     HSTORE_HANDLING_MODE,
                     BINARY_HANDLING_MODE,
                     INTERVAL_HANDLING_MODE,
-                    SCHEMA_REFRESH_MODE)
+                    SCHEMA_REFRESH_MODE,
+                    INCREMENTAL_SNAPSHOT_CHUNK_SIZE)
             .excluding(INCLUDE_SCHEMA_CHANGES)
             .create();
 
