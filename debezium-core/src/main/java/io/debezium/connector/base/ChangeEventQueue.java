@@ -6,6 +6,7 @@
 package io.debezium.connector.base;
 
 import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -23,12 +24,13 @@ import org.slf4j.LoggerFactory;
 import io.debezium.annotation.SingleThreadAccess;
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.config.ConfigurationDefaults;
+import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.time.Temporals;
 import io.debezium.util.Clock;
+import io.debezium.util.ConnectObjectSizeCalc;
 import io.debezium.util.LoggingContext;
 import io.debezium.util.LoggingContext.PreviousContext;
 import io.debezium.util.Metronome;
-import io.debezium.util.ObjectSizeCalculator;
 import io.debezium.util.Threads;
 import io.debezium.util.Threads.Timer;
 
@@ -71,6 +73,9 @@ public class ChangeEventQueue<T> implements ChangeEventQueueMetrics {
     private final Supplier<PreviousContext> loggingContextSupplier;
     private final AtomicLong currentQueueSizeInBytes = new AtomicLong(0);
     private final Map<T, Long> objectMap = new ConcurrentHashMap<>();
+
+    private AtomicLong total = new AtomicLong(0);
+    private AtomicLong count = new AtomicLong(0);
 
     // Sometimes it is necessary to update the record before it is delivered depending on the content
     // of the following record. In that cases the easiest solution is to provide a single cell buffer
@@ -201,13 +206,25 @@ public class ChangeEventQueue<T> implements ChangeEventQueueMetrics {
         }
         // Waiting for queue to add more record.
         while (maxQueueSizeInBytes > 0 && currentQueueSizeInBytes.get() > maxQueueSizeInBytes) {
-            Thread.sleep(pollInterval.toMillis());
+            Metronome.parker(Duration.of(pollInterval.toMillis(), ChronoUnit.MILLIS), Clock.SYSTEM).pause();
         }
         // If we pass a positiveLong max.queue.size.in.bytes to enable handling queue size in bytes feature
-        if (maxQueueSizeInBytes > 0) {
-            long messageSize = ObjectSizeCalculator.getObjectSize(record);
+        if (maxQueueSizeInBytes > 0 && record instanceof DataChangeEvent) {
+            DataChangeEvent dataChangeEvent = (DataChangeEvent) record;
+            long current = System.nanoTime();
+            // long messageSize = ObjectSizeCalculator.getObjectSize(record);
+            long messageSize = ConnectObjectSizeCalc.calculateObjectSizeBasedOnSchemas(dataChangeEvent.getRecord());
+
+            total.addAndGet(System.nanoTime() - current);
+            count.incrementAndGet();
+            if (count.get() % 10 == 0) {
+                LOGGER.info(
+                        "Average processing time of the ConnectObjectSizeCalc.calculateObjectSizeBasedOnSchemas method: " + Math.round(total.get() / count.get()));
+            }
             objectMap.put(record, messageSize);
             currentQueueSizeInBytes.addAndGet(messageSize);
+
+            LOGGER.info("Message size in bytes: " + messageSize);
         }
 
         // this will also raise an InterruptedException if the thread is interrupted while waiting for space in the queue
