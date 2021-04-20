@@ -78,4 +78,12 @@ public interface OffsetContext {
      * @return transaction context
      */
     TransactionContext getTransactionContext();
+
+    default void incrementalSnapshotWindow() {
+
+    }
+
+    default void incrementalSnapshotStop() {
+
+    }
 }

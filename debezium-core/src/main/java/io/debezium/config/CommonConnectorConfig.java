@@ -323,6 +323,15 @@ public abstract class CommonConnectorConfig {
             .withDescription("The maximum number of records that should be loaded into memory while performing a snapshot")
             .withValidation(Field::isNonNegativeInteger);
 
+    public static final Field INCREMENTAL_SNAPSHOT_CHUNK_SIZE = Field.create("incremental.snapshot.chunk.size")
+            .withDisplayName("Incremental snapshot chunk size")
+            .withType(Type.INT)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("The maximum size of chunk for incremental snapshotting")
+            .withDefault(1024)
+            .withValidation(Field::isNonNegativeInteger);
+
     public static final Field SNAPSHOT_MODE_TABLES = Field.create("snapshot.include.collection.list")
             .withDisplayName("Snapshot mode include data collection")
             .withType(Type.LIST)
@@ -454,6 +463,7 @@ public abstract class CommonConnectorConfig {
     private final Duration snapshotDelayMs;
     private final Duration retriableRestartWait;
     private final int snapshotFetchSize;
+    private final int incrementalSnapshotChunkSize;
     private final int snapshotMaxThreads;
     private final Integer queryFetchSize;
     private final SourceInfoStructMaker<? extends AbstractSourceInfo> sourceInfoStructMaker;
@@ -479,6 +489,7 @@ public abstract class CommonConnectorConfig {
         this.snapshotFetchSize = config.getInteger(SNAPSHOT_FETCH_SIZE, defaultSnapshotFetchSize);
         this.snapshotMaxThreads = config.getInteger(SNAPSHOT_MAX_THREADS);
         this.queryFetchSize = config.getInteger(QUERY_FETCH_SIZE);
+        this.incrementalSnapshotChunkSize = config.getInteger(INCREMENTAL_SNAPSHOT_CHUNK_SIZE);
         this.sourceInfoStructMaker = getSourceInfoStructMaker(Version.parse(config.getString(SOURCE_STRUCT_MAKER_VERSION)));
         this.sanitizeFieldNames = config.getBoolean(SANITIZE_FIELD_NAMES) || isUsingAvroConverter(config);
         this.shouldProvideTransactionMetadata = config.getBoolean(PROVIDE_TRANSACTION_METADATA);
@@ -563,6 +574,10 @@ public abstract class CommonConnectorConfig {
 
     public int getQueryFetchSize() {
         return queryFetchSize;
+    }
+
+    public int getIncrementalSnashotChunkSize() {
+        return incrementalSnapshotChunkSize;
     }
 
     public boolean shouldProvideTransactionMetadata() {
