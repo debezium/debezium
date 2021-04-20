@@ -189,7 +189,8 @@ public class PostgresConnectorTask<SourceTaskContext extends SourceTaskContextWr
                     PostgresChangeRecordEmitter::updateSchema,
                     metadataProvider,
                     heartbeat,
-                    schemaNameAdjuster);
+                    schemaNameAdjuster,
+                    jdbcConnection);
 
             ChangeEventSourceCoordinator coordinator = new PostgresChangeEventSourceCoordinator(
                     previousOffset,

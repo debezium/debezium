@@ -29,7 +29,9 @@ import io.debezium.connector.common.SourceRecordWrapper;
 import io.debezium.data.Envelope;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.heartbeat.Heartbeat;
+import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.signal.Signal;
+import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
 import io.debezium.pipeline.spi.ChangeEventCreator;
@@ -83,6 +85,7 @@ public class EventDispatcher<T extends DataCollectionId, SourceRecord extends So
     private final Schema schemaChangeValueSchema;
     private final TableChangesSerializer<List<Struct>> tableChangesSerializer = new ConnectTableChangeSerializer();
     private final Signal signal;
+    private final IncrementalSnapshotChangeEventSource<T> incrementalSnapshotChangeEventSource;
 
     /**
      * Change event receiver for events dispatched from a streaming change event source.
@@ -92,7 +95,8 @@ public class EventDispatcher<T extends DataCollectionId, SourceRecord extends So
     public EventDispatcher(CommonConnectorConfig connectorConfig, TopicSelector<T> topicSelector,
                            DatabaseSchema<T> schema, ChangeEventQueue<DataChangeEvent> queue, DataCollectionFilter<T> filter,
                            ChangeEventCreator changeEventCreator, EventMetadataProvider metadataProvider, SchemaNameAdjuster schemaNameAdjuster) {
-        this(connectorConfig, topicSelector, schema, queue, filter, changeEventCreator, null, metadataProvider, null, schemaNameAdjuster);
+        this(connectorConfig, topicSelector, schema, queue, filter, changeEventCreator, null, metadataProvider,
+                null, schemaNameAdjuster);
     }
 
     public EventDispatcher(CommonConnectorConfig connectorConfig, TopicSelector<T> topicSelector,
@@ -177,6 +181,10 @@ public class EventDispatcher<T extends DataCollectionId, SourceRecord extends So
         return new BufferingSnapshotChangeRecordReceiver();
     }
 
+    public SnapshotReceiver getIncrementalSnapshotChangeEventReceiver() {
+        return new IncrementalSnapshotChangeRecordReceiver();
+    }
+
     /**
      * Dispatches one or more {@link DataChangeEvent}s. If the given data collection is included in the currently
      * captured set of collections, the given emitter will be invoked, so it can emit one or more events (in the common
@@ -221,6 +229,7 @@ public class EventDispatcher<T extends DataCollectionId, SourceRecord extends So
                         if (neverSkip || !skippedOperations.contains(operation)) {
                             transactionMonitor.dataEvent(dataCollectionId, offset, key, value);
                             eventListener.onEvent(dataCollectionId, offset, key, value);
+                            incrementalSnapshotChangeEventSource.processMessage(dataCollectionId, key);
                             streamingReceiver.changeRecord(schema, operation, key, value, offset, headers);
                         }
                     }
@@ -446,6 +455,37 @@ public class EventDispatcher<T extends DataCollectionId, SourceRecord extends So
         }
     }
 
+    private final class IncrementalSnapshotChangeRecordReceiver implements SnapshotReceiver {
+
+        @Override
+        public void changeRecord(DataCollectionSchema dataCollectionSchema,
+                                 Operation operation,
+                                 Object key, Struct value,
+                                 OffsetContext offsetContext,
+                                 ConnectHeaders headers)
+                throws InterruptedException {
+            Objects.requireNonNull(value, "value must not be null");
+
+            LOGGER.trace("Received change record for {} operation on key {}", operation, key);
+
+            Schema keySchema = dataCollectionSchema.keySchema();
+            String topicName = topicSelector.topicNameFor((T) dataCollectionSchema.id());
+
+            SourceRecord record = new SourceRecord(
+                    offsetContext.getPartition(),
+                    incrementalSnapshotChangeEventSource.store(offsetContext.getOffset()),
+                    topicName, null,
+                    keySchema, key,
+                    dataCollectionSchema.getEnvelopeSchema().schema(), value,
+                    null, headers);
+            queue.enqueue(changeEventCreator.createDataChangeEvent(record));
+        }
+
+        @Override
+        public void completeSnapshot() throws InterruptedException {
+        }
+    }
+
     private final class SchemaChangeEventReceiver implements SchemaChangeEventEmitter.Receiver {
 
         private Struct schemaChangeRecordKey(SchemaChangeEvent event) {
@@ -507,5 +547,9 @@ public class EventDispatcher<T extends DataCollectionId, SourceRecord extends So
 
     public HistorizedDatabaseSchema<T> getHistorizedSchema() {
         return historizedSchema;
+    }
+
+    public IncrementalSnapshotChangeEventSource<T> getIncrementalSnapshotChangeEventSource() {
+        return incrementalSnapshotChangeEventSource;
     }
 }
