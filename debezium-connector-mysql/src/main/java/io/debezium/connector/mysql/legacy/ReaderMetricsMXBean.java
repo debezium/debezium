@@ -13,6 +13,10 @@ package io.debezium.connector.mysql.legacy;
  */
 public interface ReaderMetricsMXBean {
 
+    /**
+     * @deprecated Superseded by the 'Captured Tables' metric. Use {@link #getCapturedTables()}.
+     * Scheduled for removal in a future release.
+     */
     @Deprecated
     String[] getMonitoredTables();
 
