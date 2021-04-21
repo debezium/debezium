@@ -326,6 +326,14 @@
                 </plugins>
             </build>
         </profile>
+        <profile>
+            <id>quick</id>
+            <properties>
+                <skipITs>true</skipITs>
+                <docker.skip>true</docker.skip>
+                <revapi.skip>true</revapi.skip>
+            </properties>
+        </profile>
         <!--  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
               Do not perform any Docker-related functionality
               To use, specify "-DskipITs" on the Maven command line.

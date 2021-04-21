@@ -232,6 +232,13 @@
             </build>
         </profile>
         <profile>
+            <id>quick</id>
+            <properties>
+                <skipITs>true</skipITs>
+                <docker.skip>true</docker.skip>
+            </properties>
+        </profile>
+        <profile>
             <!-- Allows CI to build Oracle without the xstream.jar dependency -->
             <id>oracle-ci</id>
             <activation>

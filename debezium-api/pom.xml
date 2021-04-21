@@ -81,4 +81,12 @@
             </resource>
         </resources>
     </build>
+    <profiles>
+        <profile>
+            <id>quick</id>
+            <properties>
+                <revapi.skip>true</revapi.skip>
+            </properties>
+        </profile>
+    </profiles>
 </project>
