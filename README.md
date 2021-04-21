@@ -98,7 +98,7 @@ First obtain the code by cloning the Git repository:
 
 Then build the code using Maven:
 
-    $ mvn clean install
+    $ mvn clean verify
 
 The build starts and uses several Docker containers for different DBMSes. Note that if Docker is not running or configured, you'll likely get an arcane error -- if this is the case, always verify that Docker is running, perhaps by using `docker ps` to list the running containers.
 
@@ -106,7 +106,15 @@ The build starts and uses several Docker containers for different DBMSes. Note t
 
 You can skip the integration tests and docker-builds with the following command:
 
-    $ mvn clean install -DskipITs
+    $ mvn clean verify -DskipITs
+
+### Building just the artifacs, without running tests, CheckStyle, etc.
+
+You can skip all non-essential plug-ins (tests, integration tests, CheckStyle, formatter, API compatibility check, etc.) using the "quick" build profile:
+
+    $ mvn clean verify -Pquick
+
+This comes in handy for producing connector JARs and/or archives as quickly as possible, e.g. for manual testing in Kafka Connect.
 
 ### Running tests of the Postgres connector using the wal2json or pgoutput logical decoding plug-ins
 

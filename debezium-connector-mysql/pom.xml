@@ -588,6 +588,13 @@
           <docker.skip>true</docker.skip>
         </properties>
       </profile>
+      <profile>
+        <id>quick</id>
+        <properties>
+          <skipITs>true</skipITs>
+          <docker.skip>true</docker.skip>
+        </properties>
+      </profile>
       <!--  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
             Use the alternative Docker image for MySQL.
             To use, specify "-Dmysql-gtids" or -Pmysql-gtids on the Maven command line.
