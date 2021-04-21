@@ -84,6 +84,10 @@ public class SnapshotChangeEventSourceMetrics extends PipelineMetrics implements
         return (stopMillis - startMillis) / 1000L;
     }
 
+    /**
+     * @deprecated Superseded by the 'Captured Tables' metric. Use {@link #getCapturedTables()}.
+     * Scheduled for removal in a future release.
+     */
     @Override
     @Deprecated
     public String[] getMonitoredTables() {

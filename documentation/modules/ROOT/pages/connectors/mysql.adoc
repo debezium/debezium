@@ -2416,6 +2416,15 @@ The safe default is `false`.
 Skipping should be used only with care as it can lead to data loss or mangling when the binlog is being processed.
 
 |[[mysql-property-database-history-store-only-monitored-tables-ddl]]<<mysql-property-database-history-store-only-monitored-tables-ddl, `+database.history.store.only.monitored.tables.ddl+`>>
+_deprecated and scheduled for removal in a future release_
+|`false`
+|A Boolean value that specifies whether the connector should record all DDL statements  +
+ +
+`true` records only those DDL statements that are relevant to tables whose changes are being captured by {prodname}. Set to `true` with care because missing data might become necessary if you change which tables have their changes captured. +
+ +
+The safe default is `false`.
+
+|[[mysql-property-database-history-store-only-captured-tables-ddl]]<<mysql-property-database-history-store-only-captured-tables-ddl, `+database.history.store.only.captured.tables.ddl+`>>
 |`false`
 |A Boolean value that specifies whether the connector should record all DDL statements  +
  +
