@@ -51,7 +51,13 @@ public class StreamingChangeEventSourceMetrics extends PipelineMetrics implement
     }
 
     @Override
+    @Deprecated
     public String[] getMonitoredTables() {
+        return taskContext.capturedDataCollections();
+    }
+
+    @Override
+    public String[] getCapturedTables() {
         return taskContext.capturedDataCollections();
     }
 

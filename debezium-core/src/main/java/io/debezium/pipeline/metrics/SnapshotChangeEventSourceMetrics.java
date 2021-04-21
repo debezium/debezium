@@ -39,7 +39,7 @@ public class SnapshotChangeEventSourceMetrics extends PipelineMetrics implements
 
     private final ConcurrentMap<String, String> remainingTables = new ConcurrentHashMap<>();
 
-    private final Set<String> monitoredTables = Collections.synchronizedSet(new HashSet<>());
+    private final Set<String> capturedTables = Collections.synchronizedSet(new HashSet<>());
 
     public <T extends CdcSourceTaskContext> SnapshotChangeEventSourceMetrics(T taskContext, ChangeEventQueueMetrics changeEventQueueMetrics,
                                                                              EventMetadataProvider metadataProvider) {
@@ -48,7 +48,7 @@ public class SnapshotChangeEventSourceMetrics extends PipelineMetrics implements
 
     @Override
     public int getTotalTableCount() {
-        return this.monitoredTables.size();
+        return this.capturedTables.size();
     }
 
     @Override
@@ -85,8 +85,14 @@ public class SnapshotChangeEventSourceMetrics extends PipelineMetrics implements
     }
 
     @Override
+    @Deprecated
     public String[] getMonitoredTables() {
-        return monitoredTables.toArray(new String[monitoredTables.size()]);
+        return capturedTables.toArray(new String[capturedTables.size()]);
+    }
+
+    @Override
+    public String[] getCapturedTables() {
+        return capturedTables.toArray(new String[capturedTables.size()]);
     }
 
     @Override
@@ -96,7 +102,7 @@ public class SnapshotChangeEventSourceMetrics extends PipelineMetrics implements
             DataCollectionId dataCollectionId = it.next();
 
             this.remainingTables.put(dataCollectionId.identifier(), "");
-            monitoredTables.add(dataCollectionId.identifier());
+            capturedTables.add(dataCollectionId.identifier());
         }
     }
 
@@ -151,6 +157,6 @@ public class SnapshotChangeEventSourceMetrics extends PipelineMetrics implements
         stopTime.set(0);
         rowsScanned.clear();
         remainingTables.clear();
-        monitoredTables.clear();
+        capturedTables.clear();
     }
 }
