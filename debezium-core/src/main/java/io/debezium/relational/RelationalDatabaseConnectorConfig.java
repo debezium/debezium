@@ -9,6 +9,7 @@ import java.math.BigDecimal;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -699,15 +700,15 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
      * Returns any SELECT overrides, if present.
      */
     public Map<TableId, String> getSnapshotSelectOverridesByTable() {
-        String tableList = getConfig().getString(SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE);
+        List<String> tableValues = getConfig().getStrings(SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE, "\\s*,\\s*");
 
-        if (tableList == null) {
+        if (tableValues == null) {
             return Collections.emptyMap();
         }
 
         Map<TableId, String> snapshotSelectOverridesByTable = new HashMap<>();
 
-        for (String table : tableList.split(",")) {
+        for (String table : tableValues) {
             snapshotSelectOverridesByTable.put(
                     TableId.parse(table),
                     getConfig().getString(SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + "." + table));
