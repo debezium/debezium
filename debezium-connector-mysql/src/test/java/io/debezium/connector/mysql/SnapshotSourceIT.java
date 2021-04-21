@@ -108,7 +108,7 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
     }
 
     @Test
-    public void shouldCreateSnapshotOfSingleDatabaseWithoutGlobalLockAndStoreOnlyMonitoredTables() throws Exception {
+    public void shouldCreateSnapshotOfSingleDatabaseWithoutGlobalLockAndStoreOnlyCapturedTables() throws Exception {
         snapshotOfSingleDatabase(false, true, true);
     }
 
@@ -123,11 +123,11 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
     }
 
     @Test
-    public void shouldCreateSnapshotOfSingleDatabaseWithoutGlobalLockAndStoreOnlyMonitoredTablesNoData() throws Exception {
+    public void shouldCreateSnapshotOfSingleDatabaseWithoutGlobalLockAndStoreOnlyCapturedTablesNoData() throws Exception {
         snapshotOfSingleDatabase(false, true, false);
     }
 
-    private void snapshotOfSingleDatabase(boolean useGlobalLock, boolean storeOnlyMonitoredTables, boolean data) throws Exception {
+    private void snapshotOfSingleDatabase(boolean useGlobalLock, boolean storeOnlyCapturedTables, boolean data) throws Exception {
         final LogInterceptor logInterceptor = new LogInterceptor();
 
         final Builder builder = simpleConfig()
@@ -138,7 +138,7 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
                     .with(MySqlConnectorConfig.PASSWORD, "cloudpass")
                     .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
                     .with(MySqlConnectorConfig.TEST_DISABLE_GLOBAL_LOCKING, "true")
-                    .with(DatabaseHistory.STORE_ONLY_MONITORED_TABLES_DDL, storeOnlyMonitoredTables);
+                    .with(DatabaseHistory.STORE_ONLY_CAPTURED_TABLES_DDL, storeOnlyCapturedTables);
         }
         if (!data) {
             builder.with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY);
@@ -153,7 +153,7 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
         // Testing.Print.enable();
         KeyValueStore store = KeyValueStore.createForTopicsBeginningWith(DATABASE.getServerName() + ".");
         SchemaChangeHistory schemaChanges = new SchemaChangeHistory(DATABASE.getServerName());
-        final int schemaEventsCount = !useGlobalLock ? (storeOnlyMonitoredTables ? 8 : 14) : 0;
+        final int schemaEventsCount = !useGlobalLock ? (storeOnlyCapturedTables ? 8 : 14) : 0;
         SourceRecords sourceRecords = consumeRecordsByTopic(schemaEventsCount + (data ? 9 + 4 : 0));
         for (Iterator<SourceRecord> i = sourceRecords.allRecordsInOrder().iterator(); i.hasNext();) {
             final SourceRecord record = i.next();

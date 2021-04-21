@@ -158,7 +158,7 @@ public interface DatabaseHistory {
      */
     void initializeStorage();
 
-    boolean storeOnlyMonitoredTables();
+    boolean storeOnlyCapturedTables();
 
     boolean skipUnparseableDdlStatements();
 

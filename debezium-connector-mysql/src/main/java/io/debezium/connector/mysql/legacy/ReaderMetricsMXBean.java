@@ -13,5 +13,9 @@ package io.debezium.connector.mysql.legacy;
  */
 public interface ReaderMetricsMXBean {
 
+    @Deprecated
     String[] getMonitoredTables();
+
+    String[] getCapturedTables();
+
 }

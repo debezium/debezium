@@ -236,7 +236,7 @@ public class MySqlSnapshotChangeEventSource<SourceRecord extends SourceRecordWra
                 for (Iterator<SchemaChangeEvent> i = schemaEvents.iterator(); i.hasNext();) {
                     final SchemaChangeEvent event = i.next();
 
-                    if (databaseSchema.storeOnlyMonitoredTables() && event.getDatabase() != null && event.getDatabase().length() != 0
+                    if (databaseSchema.storeOnlyCapturedTables() && event.getDatabase() != null && event.getDatabase().length() != 0
                             && !connectorConfig.getTableFilters().databaseFilter().test(event.getDatabase())) {
                         LOGGER.debug("Skipping schema event as it belongs to a non-captured database: '{}'", event);
                         continue;
@@ -315,7 +315,7 @@ public class MySqlSnapshotChangeEventSource<SourceRecord extends SourceRecordWra
             delayedSchemaSnapshotTables = Collect.minus(snapshotContext.capturedSchemaTables, snapshotContext.capturedTables);
             LOGGER.info("Tables for delayed schema capture: {}", delayedSchemaSnapshotTables);
         }
-        if (databaseSchema.storeOnlyMonitoredTables()) {
+        if (databaseSchema.storeOnlyCapturedTables()) {
             capturedSchemaTables = snapshotContext.capturedTables;
             LOGGER.info("Only monitored tables schema should be captured, capturing: {}", capturedSchemaTables);
         }
@@ -591,7 +591,7 @@ public class MySqlSnapshotChangeEventSource<SourceRecord extends SourceRecordWra
                 throw new InterruptedException("Interrupted while processing event " + event);
             }
 
-            if (databaseSchema.storeOnlyMonitoredTables() && event.getDatabase() != null && event.getDatabase().length() != 0
+            if (databaseSchema.storeOnlyCapturedTables() && event.getDatabase() != null && event.getDatabase().length() != 0
                     && !connectorConfig.getTableFilters().databaseFilter().test(event.getDatabase())) {
                 LOGGER.debug("Skipping schema event as it belongs to a non-captured database: '{}'", event);
                 continue;

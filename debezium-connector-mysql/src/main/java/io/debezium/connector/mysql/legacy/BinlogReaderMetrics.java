@@ -152,8 +152,14 @@ public class BinlogReaderMetrics extends PipelineMetrics implements BinlogReader
     }
 
     @Override
+    @Deprecated
     public String[] getMonitoredTables() {
-        return schema.monitoredTablesAsStringArray();
+        return schema.capturedTablesAsStringArray();
+    }
+
+    @Override
+    public String[] getCapturedTables() {
+        return schema.capturedTablesAsStringArray();
     }
 
     @Override

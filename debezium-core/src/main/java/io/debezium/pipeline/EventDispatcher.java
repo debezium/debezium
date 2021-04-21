@@ -277,7 +277,7 @@ public class EventDispatcher<T extends DataCollectionId, SourceRecord extends So
 
     public void dispatchSchemaChangeEvent(T dataCollectionId, SchemaChangeEventEmitter schemaChangeEventEmitter) throws InterruptedException {
         if (dataCollectionId != null && !filter.isIncluded(dataCollectionId)) {
-            if (historizedSchema == null || historizedSchema.storeOnlyMonitoredTables()) {
+            if (historizedSchema == null || historizedSchema.storeOnlyCapturedTables()) {
                 LOGGER.trace("Filtering schema change event for {}", dataCollectionId);
                 return;
             }
@@ -299,7 +299,7 @@ public class EventDispatcher<T extends DataCollectionId, SourceRecord extends So
             }
         }
         if (!anyNonfilteredEvent) {
-            if (historizedSchema == null || historizedSchema.storeOnlyMonitoredTables()) {
+            if (historizedSchema == null || historizedSchema.storeOnlyCapturedTables()) {
                 LOGGER.trace("Filtering schema change event for {}", dataCollectionIds);
                 return;
             }
