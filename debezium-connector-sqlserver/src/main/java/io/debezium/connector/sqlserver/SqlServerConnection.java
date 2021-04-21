@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Supplier;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -67,7 +68,9 @@ public class SqlServerConnection extends JdbcConnection {
     private static final String LOCK_TABLE = "SELECT * FROM [#] WITH (TABLOCKX)";
     private static final String SQL_SERVER_VERSION = "SELECT @@VERSION AS 'SQL Server Version'";
     private static final String INCREMENT_LSN = "SELECT [#db].sys.fn_cdc_increment_lsn(?)";
-    private static final String GET_ALL_CHANGES_FOR_TABLE = "SELECT * FROM [#db].cdc.[fn_cdc_get_all_changes_#](?, ?, N'all update old') order by [__$start_lsn] ASC, [__$seqval] ASC, [__$operation] ASC";
+    private static final String GET_ALL_CHANGES_FOR_TABLE = "SELECT *# FROM [#db].cdc.[fn_cdc_get_all_changes_#](?, ?, N'all update old') order by [__$start_lsn] ASC, [__$seqval] ASC, [__$operation] ASC";
+    protected static final String LSN_TIMESTAMP_SELECT_STATEMENT = "sys.fn_cdc_map_lsn_to_time([__$start_lsn])";
+    protected static final String AT_TIME_ZONE_UTC = "AT TIME ZONE 'UTC'";
     private static final String GET_LIST_OF_CDC_ENABLED_TABLES = "EXEC [#db].sys.sp_cdc_help_change_data_capture";
     private static final String GET_LIST_OF_NEW_CDC_ENABLED_TABLES = "SELECT * FROM [#db].cdc.change_tables WHERE start_lsn BETWEEN ? AND ?";
     private static final String GET_LIST_OF_KEY_COLUMNS = "SELECT * FROM [#db].cdc.index_columns WHERE object_id=?";
@@ -208,6 +211,8 @@ public class SqlServerConnection extends JdbcConnection {
      */
     public void getChangesForTable(TableId tableId, Lsn fromLsn, Lsn toLsn, ResultSetConsumer consumer, String databaseName) throws SQLException {
         final String query = GET_ALL_CHANGES_FOR_TABLE
+                .replaceFirst(STATEMENTS_PLACEHOLDER,
+                        Matcher.quoteReplacement(sourceTimestampMode.lsnTimestampSelectStatement(supportsAtTimeZone)))
                 .replace(DATABASE_NAME_PLACEHOLDER, databaseName)
                 .replace(STATEMENTS_PLACEHOLDER, cdcNameForTable(tableId));
         prepareQuery(query, statement -> {
@@ -235,6 +240,8 @@ public class SqlServerConnection extends JdbcConnection {
         int idx = 0;
         for (SqlServerChangeTable changeTable : changeTables) {
             final String query = GET_ALL_CHANGES_FOR_TABLE
+                    .replaceFirst(STATEMENTS_PLACEHOLDER,
+                            Matcher.quoteReplacement(sourceTimestampMode.lsnTimestampSelectStatement(supportsAtTimeZone)))
                     .replace(DATABASE_NAME_PLACEHOLDER, databaseName)
                     .replace(STATEMENTS_PLACEHOLDER, changeTable.getCaptureInstance());
             queries[idx] = query;
@@ -313,7 +320,7 @@ public class SqlServerConnection extends JdbcConnection {
         }, "LSN to timestamp query must return exactly one value"));
     }
 
-    private Instant normalize(Timestamp timestamp) {
+    protected Instant normalize(Timestamp timestamp) {
         Instant instant = timestamp.toInstant();
 
         // in case the incoming timestamp was not based on UTC, shift it as per the

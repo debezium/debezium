@@ -189,7 +189,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                         final SqlServerChangeTable[] tables = finalTablesSlot.get();
 
                         for (int i = 0; i < tableCount; i++) {
-                            changeTables[i] = new SqlServerChangeTablePointer(tables[i], resultSets[i]);
+                            changeTables[i] = new SqlServerChangeTablePointer(tables[i], resultSets[i], connectorConfig.getSourceTimestampMode());
                             changeTables[i].next();
                         }
 
@@ -276,7 +276,10 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                             offsetContext.setChangePosition(tableWithSmallestLsn.getChangePosition(), eventCount);
                             offsetContext.event(
                                     tableWithSmallestLsn.getChangeTable().getSourceTableId(),
-                                    metadataConnection.timestampOfLsn(tableWithSmallestLsn.getChangePosition().getCommitLsn(), partition.getDatabaseName()));
+                                    connectorConfig.getSourceTimestampMode().getTimestamp(
+                                            metadataConnection,
+                                            tableWithSmallestLsn.getResultSet(),
+                                            clock));
 
                             dispatcher
                                     .dispatchDataChangeEvent(

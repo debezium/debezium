@@ -47,16 +47,22 @@ public class SqlServerChangeTablePointer extends ChangeTableResultSet<SqlServerC
     private ResultSetMapper<Object[]> resultSetMapper;
     private final ResultSet resultSet;
     private final int columnDataOffset;
+    private final SourceTimestampMode sourceTimestampMode;
 
-    public SqlServerChangeTablePointer(SqlServerChangeTable changeTable, ResultSet resultSet) {
-        this(changeTable, resultSet, COL_DATA);
+    public SqlServerChangeTablePointer(SqlServerChangeTable changeTable, ResultSet resultSet, SourceTimestampMode sourceTimestampMode) {
+        this(changeTable, resultSet, sourceTimestampMode, COL_DATA);
     }
 
-    public SqlServerChangeTablePointer(SqlServerChangeTable changeTable, ResultSet resultSet, int columnDataOffset) {
+    public SqlServerChangeTablePointer(SqlServerChangeTable changeTable, ResultSet resultSet, SourceTimestampMode sourceTimestampMode, int columnDataOffset) {
         super(changeTable, resultSet, columnDataOffset);
         // Store references to these because we can't get them from our superclass
         this.resultSet = resultSet;
         this.columnDataOffset = columnDataOffset;
+        this.sourceTimestampMode = sourceTimestampMode;
+    }
+
+    protected ResultSet getResultSet() {
+        return resultSet;
     }
 
     @Override
@@ -128,7 +134,10 @@ public class SqlServerChangeTablePointer extends ChangeTableResultSet<SqlServerC
     }
 
     private List<String> getResultColumnNames() throws SQLException {
-        final int columnCount = resultSet.getMetaData().getColumnCount() - (columnDataOffset - 1);
+        int columnCount = resultSet.getMetaData().getColumnCount() - (columnDataOffset - 1);
+        if (SourceTimestampMode.COMMIT.equals(sourceTimestampMode)) {
+            columnCount -= 1;
+        }
         final List<String> columns = new ArrayList<>(columnCount);
         for (int i = 0; i < columnCount; ++i) {
             columns.add(resultSet.getMetaData().getColumnName(columnDataOffset + i));
