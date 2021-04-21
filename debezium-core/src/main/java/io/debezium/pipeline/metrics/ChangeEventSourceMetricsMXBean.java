@@ -22,7 +22,10 @@ public interface ChangeEventSourceMetricsMXBean {
 
     long getNumberOfErroneousEvents();
 
+    @Deprecated
     String[] getMonitoredTables();
+
+    String[] getCapturedTables();
 
     int getQueueTotalCapacity();
 
