@@ -872,7 +872,7 @@ public class BinlogReader extends AbstractReader {
      * {@link MySqlConnectorConfig#INCONSISTENT_SCHEMA_HANDLING_MODE} configuration.
      */
     private void informAboutUnknownTableIfRequired(Event event, TableId tableId, String typeToLog) {
-        if (tableId != null && context.dbSchema().isTableMonitored(tableId)) {
+        if (tableId != null && context.dbSchema().isTableCaptured(tableId)) {
             metrics.onErroneousEvent("source = " + tableId + ", event " + event);
             EventHeaderV4 eventHeader = event.getHeader();
 

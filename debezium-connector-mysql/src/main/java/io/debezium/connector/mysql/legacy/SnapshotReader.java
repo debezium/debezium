@@ -800,7 +800,7 @@ public class SnapshotReader extends AbstractReader {
             return false;
         }
 
-        return filters.tableFilter().test(id) || !schema.isStoreOnlyMonitoredTablesDdl();
+        return filters.tableFilter().test(id) || !schema.isStoreOnlyCapturedTablesDdl();
     }
 
     protected void readBinlogPosition(int step, SourceInfo source, JdbcConnection mysql, AtomicReference<String> sql) throws SQLException {

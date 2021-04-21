@@ -2551,7 +2551,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         }
 
         @Override
-        public boolean storeOnlyMonitoredTables() {
+        public boolean storeOnlyCapturedTables() {
             return false;
         }
 
