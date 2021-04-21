@@ -106,7 +106,7 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
      *
      * @return the array with the table names
      */
-    public String[] monitoredTablesAsStringArray() {
+    public String[] capturedTablesAsStringArray() {
         final Collection<TableId> tables = tableIds();
         String[] ret = new String[tables.size()];
         int i = 0;
@@ -180,7 +180,7 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
         // - all DDLs if configured
         // - or global SET variables
         // - or DDLs for monitored objects
-        if (!databaseHistory.storeOnlyMonitoredTables() || isGlobalSetVariableStatement(schemaChange.getDdl(), schemaChange.getDatabase())
+        if (!databaseHistory.storeOnlyCapturedTables() || isGlobalSetVariableStatement(schemaChange.getDdl(), schemaChange.getDatabase())
                 || schemaChange.getTables().stream().map(Table::id).anyMatch(filters.dataCollectionFilter()::isIncluded)) {
             LOGGER.debug("Recorded DDL statements for database '{}': {}", schemaChange.getDatabase(), schemaChange.getDdl());
             record(schemaChange, schemaChange.getTableChanges());
@@ -219,7 +219,7 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
         }
 
         // No need to send schema events or store DDL if no table has changed
-        if (!databaseHistory.storeOnlyMonitoredTables() || isGlobalSetVariableStatement(ddlStatements, databaseName) || ddlChanges.anyMatch(filters)) {
+        if (!databaseHistory.storeOnlyCapturedTables() || isGlobalSetVariableStatement(ddlStatements, databaseName) || ddlChanges.anyMatch(filters)) {
 
             // We are supposed to _also_ record the schema changes as SourceRecords, but these need to be filtered
             // by database. Unfortunately, the databaseName on the event might not be the same database as that
@@ -316,8 +316,8 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
     }
 
     @Override
-    public boolean storeOnlyMonitoredTables() {
-        return databaseHistory.storeOnlyMonitoredTables();
+    public boolean storeOnlyCapturedTables() {
+        return databaseHistory.storeOnlyCapturedTables();
     }
 
     /**

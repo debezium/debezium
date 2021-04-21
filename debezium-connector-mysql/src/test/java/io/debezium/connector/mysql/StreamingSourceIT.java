@@ -525,7 +525,7 @@ public class StreamingSourceIT extends AbstractConnectorTest {
 
     private void inconsistentSchema(EventProcessingFailureHandlingMode mode) throws InterruptedException, SQLException {
         Configuration.Builder builder = simpleConfig()
-                .with(DatabaseHistory.STORE_ONLY_MONITORED_TABLES_DDL, true)
+                .with(DatabaseHistory.STORE_ONLY_CAPTURED_TABLES_DDL, true)
                 .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("orders"));
 
         if (mode == null) {

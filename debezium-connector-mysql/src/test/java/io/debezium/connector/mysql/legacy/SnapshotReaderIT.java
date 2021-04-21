@@ -118,18 +118,18 @@ public class SnapshotReaderIT {
     }
 
     @Test
-    public void shouldCreateSnapshotOfSingleDatabaseWithoutGlobalLockAndStoreOnlyMonitoredTables() throws Exception {
+    public void shouldCreateSnapshotOfSingleDatabaseWithoutGlobalLockAndStoreOnlyCapturedTables() throws Exception {
         snapshotOfSingleDatabase(false, true);
     }
 
-    private void snapshotOfSingleDatabase(boolean useGlobalLock, boolean storeOnlyMonitoredTables) throws Exception {
+    private void snapshotOfSingleDatabase(boolean useGlobalLock, boolean storeOnlyCapturedTables) throws Exception {
         final Builder builder = simpleConfig();
         if (!useGlobalLock) {
             builder
                     .with(MySqlConnectorConfig.USER, "cloud")
                     .with(MySqlConnectorConfig.PASSWORD, "cloudpass")
                     .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
-                    .with(DatabaseHistory.STORE_ONLY_MONITORED_TABLES_DDL, storeOnlyMonitoredTables);
+                    .with(DatabaseHistory.STORE_ONLY_CAPTURED_TABLES_DDL, storeOnlyCapturedTables);
         }
         config = builder.build();
         context = new MySqlTaskContext(config, new Filters.Builder(config).build());
