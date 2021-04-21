@@ -136,6 +136,13 @@
         </resources>
     </build>
     <profiles>
+        <profile>
+            <id>quick</id>
+            <properties>
+                <skipITs>true</skipITs>
+                <docker.skip>true</docker.skip>
+            </properties>
+        </profile>
         <!--  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
               Do not perform any Docker-related functionality
               To use, specify "-DskipITs" on the Maven command line.

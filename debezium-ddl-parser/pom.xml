@@ -118,6 +118,12 @@
     </build>
     <profiles>
         <profile>
+            <id>quick</id>
+            <properties>
+                <antlr.tests.enabled>false</antlr.tests.enabled>
+            </properties>
+        </profile>
+        <profile>
             <id>skip-tests</id>
             <activation>
                 <activeByDefault>false</activeByDefault>

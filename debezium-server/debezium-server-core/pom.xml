@@ -360,5 +360,11 @@
                 </plugins>
             </build>
         </profile>
+        <profile>
+            <id>quick</id>
+            <properties>
+                <skipITs>true</skipITs>
+            </properties>
+        </profile>
     </profiles>
 </project>
