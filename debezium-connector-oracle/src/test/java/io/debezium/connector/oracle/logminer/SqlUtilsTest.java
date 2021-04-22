@@ -33,7 +33,7 @@ public class SqlUtilsTest {
     public TestRule skipRule = new SkipTestDependingOnAdapterNameRule();
 
     private static final String LOG_MINER_CONTENT_QUERY_TEMPLATE = "SELECT SCN, SQL_REDO, OPERATION_CODE, TIMESTAMP, " +
-            "XID, CSF, TABLE_NAME, SEG_OWNER, OPERATION, USERNAME " +
+            "XID, CSF, TABLE_NAME, SEG_OWNER, OPERATION, USERNAME, ROW_ID, ROLLBACK " +
             "FROM V$LOGMNR_CONTENTS WHERE SCN > ? AND SCN <= ? AND ((" +
             "OPERATION_CODE IN (5,34) AND USERNAME NOT IN ('SYS','SYSTEM','${user}') AND INFO NOT LIKE 'INTERNAL DDL%') " +
             "OR (OPERATION_CODE IN (7,36)) " +

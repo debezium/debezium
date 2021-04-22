@@ -121,6 +121,9 @@ class LogMinerQueryResultProcessor {
             String txId = RowMapper.getTransactionId(streamingMetrics, resultSet);
             String operation = RowMapper.getOperation(streamingMetrics, resultSet);
             String userName = RowMapper.getUsername(streamingMetrics, resultSet);
+            String rowId = RowMapper.getRowId(streamingMetrics, resultSet);
+            int rollbackFlag = RowMapper.getRollbackFlag(streamingMetrics, resultSet);
+
             boolean isDml = false;
             if (operationCode == RowMapper.INSERT || operationCode == RowMapper.UPDATE || operationCode == RowMapper.DELETE) {
                 isDml = true;
@@ -128,7 +131,8 @@ class LogMinerQueryResultProcessor {
             String redoSql = RowMapper.getSqlRedo(streamingMetrics, resultSet, isDml, historyRecorder, scn, tableName, segOwner, operationCode, changeTime,
                     txId);
 
-            LOGGER.trace("scn={}, operationCode={}, operation={}, table={}, segOwner={}, userName={}", scn, operationCode, operation, tableName, segOwner, userName);
+            LOGGER.trace("scn={}, operationCode={}, operation={}, table={}, segOwner={}, userName={}, rowId={}, rollbackFlag={}", scn, operationCode, operation,
+                    tableName, segOwner, userName, rowId, rollbackFlag);
 
             String logMessage = String.format("transactionId=%s, SCN=%s, table_name=%s, segOwner=%s, operationCode=%s, offsetSCN=%s, " +
                     " commitOffsetSCN=%s", txId, scn, tableName, segOwner, operationCode, offsetContext.getScn(), offsetContext.getCommitScn());
@@ -195,7 +199,7 @@ class LogMinerQueryResultProcessor {
             }
 
             // DML
-            if (operationCode == RowMapper.INSERT || operationCode == RowMapper.DELETE || operationCode == RowMapper.UPDATE) {
+            if (isDml) {
                 final TableId tableId = RowMapper.getTableId(connectorConfig.getCatalogName(), resultSet);
 
                 LOGGER.trace("DML,  {}, sql {}", logMessage, redoSql);
@@ -223,35 +227,23 @@ class LogMinerQueryResultProcessor {
                     continue;
                 }
 
+                if (rollbackFlag == 1) {
+                    // DML operation is to undo partial or all operations as a result of a rollback.
+                    // This can be situations where an insert or update causes a constraint violation
+                    // and a subsequent operation is written to the logs to revert the change.
+                    transactionalBuffer.undoDmlOperation(txId, rowId, tableId);
+                    continue;
+                }
+
                 final LogMinerDmlEntry dmlEntry = parse(redoSql, table, txId);
                 dmlEntry.setObjectOwner(segOwner);
                 dmlEntry.setSourceTime(changeTime);
                 dmlEntry.setTransactionId(txId);
                 dmlEntry.setObjectName(tableName);
                 dmlEntry.setScn(scn);
+                dmlEntry.setRowId(rowId);
 
-                try {
-                    transactionalBuffer.registerCommitCallback(txId, scn, changeTime.toInstant(), (timestamp, smallestScn, commitScn, counter) -> {
-                        // update SCN in offset context only if processed SCN less than SCN among other transactions
-                        if (smallestScn == null || scn.compareTo(smallestScn) < 0) {
-                            offsetContext.setScn(scn);
-                            streamingMetrics.setOldestScn(scn);
-                        }
-                        offsetContext.setTransactionId(txId);
-                        offsetContext.tableEvent(tableId, timestamp.toInstant());
-                        if (counter == 0) {
-                            offsetContext.setCommitScn(commitScn);
-                        }
-                        LOGGER.trace("Processing DML event {} scn {}", dmlEntry.toString(), scn);
-
-                        dispatcher.dispatchDataChangeEvent(tableId,
-                                new LogMinerChangeRecordEmitter(offsetContext, dmlEntry, schema.tableFor(tableId), clock));
-                    });
-
-                }
-                catch (Exception e) {
-                    LogMinerHelper.logError(streamingMetrics, "Following dmlEntry: {} cannot be dispatched due to the : {}", dmlEntry, e);
-                }
+                transactionalBuffer.registerDmlOperation(operationCode, txId, scn, tableId, dmlEntry, changeTime.toInstant(), rowId);
             }
         }
 
