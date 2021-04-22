@@ -1277,6 +1277,12 @@ Only alphanumeric characters and underscores must be used.
 |
 |A list of host/port pairs that the connector will use for establishing an initial connection to the Kafka cluster. This connection will be used for retrieving database schema history previously stored by the connector, and for writing each DDL statement read from the source database. This should point to the same Kafka cluster used by the Kafka Connect process.
 
+|[[oracle-property-database-history-skip-unparseable-ddl]]<<oracle-property-database-history-skip-unparseable-ddl, `+database.history.skip.unparseable.ddl+`>>
+|`false`
+|A Boolean value that specifies whether the connector should ignore malformed or unknown database statements or stop processing so a human can fix the issue.
+The safe default is `false`.
+Skipping should be used only with care as it can lead to data loss or mangling when the redo logs are being processed.
+
 |[[oracle-property-snapshot-mode]]<<oracle-property-snapshot-mode, `+snapshot.mode+`>>
 |_initial_
 |A mode for taking an initial snapshot of the structure and optionally data of captured tables. Supported values are _initial_ (will take a snapshot of structure and data of captured tables; useful if topics should be populated with a complete representation of the data from the captured tables) and _schema_only_ (will take a snapshot of the structure of captured tables only; useful if only changes happening from now onwards should be propagated to topics). Once the snapshot is complete, the connector will continue reading change events from the database's redo logs.
@@ -1741,6 +1747,11 @@ See <<oracle-property-log-mining-transaction-retention-hours, `log.mining.transa
 |The number of times the system change number has been checked for advancement and remains unchanged.
 This is an indicator that long-running transaction(s) are ongoing and preventing the connector from flushing the latest processed system change number to the connector's offsets.
 Under optimal operations, this should always be or remain close to `0`.
+
+|[[oracle-streaming-metrics-unparsable-ddl-count]]<<oracle-streaming-metrics-unparsable-ddl-count, `+UnparsableDdlCount+`>>
+|`int`
+|The number of DDL records that have been detected but could not be parsed by the DDL parser.
+This should always be `0`; however when allowing unparsable DDL to be skipped, this metric can be used to determine if any warnings have been written to the connector logs.
 
 |===
 

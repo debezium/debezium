@@ -9,11 +9,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
+import io.debezium.connector.oracle.OracleConnectorConfig;
+import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OracleOffsetContext;
+import io.debezium.connector.oracle.OracleSchemaChangeEventEmitter;
+import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.xstream.XstreamStreamingChangeEventSource.PositionAndScn;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
-import io.debezium.relational.RelationalDatabaseSchema;
 import io.debezium.relational.TableId;
 import io.debezium.util.Clock;
 
@@ -34,16 +37,20 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(LcrEventHandler.class);
 
+    private final OracleConnectorConfig connectorConfig;
     private final ErrorHandler errorHandler;
     private final EventDispatcher<TableId> dispatcher;
     private final Clock clock;
-    private final RelationalDatabaseSchema schema;
+    private final OracleDatabaseSchema schema;
     private final OracleOffsetContext offsetContext;
     private final boolean tablenameCaseInsensitive;
     private final XstreamStreamingChangeEventSource eventSource;
+    private final OracleStreamingChangeEventSourceMetrics streamingMetrics;
 
-    public LcrEventHandler(ErrorHandler errorHandler, EventDispatcher<TableId> dispatcher, Clock clock, RelationalDatabaseSchema schema,
-                           OracleOffsetContext offsetContext, boolean tablenameCaseInsensitive, XstreamStreamingChangeEventSource eventSource) {
+    public LcrEventHandler(OracleConnectorConfig connectorConfig, ErrorHandler errorHandler, EventDispatcher<TableId> dispatcher, Clock clock,
+                           OracleDatabaseSchema schema, OracleOffsetContext offsetContext, boolean tablenameCaseInsensitive,
+                           XstreamStreamingChangeEventSource eventSource, OracleStreamingChangeEventSourceMetrics streamingMetrics) {
+        this.connectorConfig = connectorConfig;
         this.errorHandler = errorHandler;
         this.dispatcher = dispatcher;
         this.clock = clock;
@@ -51,6 +58,7 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
         this.offsetContext = offsetContext;
         this.tablenameCaseInsensitive = tablenameCaseInsensitive;
         this.eventSource = eventSource;
+        this.streamingMetrics = streamingMetrics;
     }
 
     @Override
@@ -79,8 +87,7 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
         offsetContext.setScn(lcrPosition.getScn());
         offsetContext.setLcrPosition(lcrPosition.toString());
         offsetContext.setTransactionId(lcr.getTransactionId());
-        offsetContext.setSourceTime(lcr.getSourceTime().timestampValue().toInstant());
-        offsetContext.setTableId(new TableId(lcr.getSourceDatabaseName(), lcr.getObjectOwner(), lcr.getObjectName()));
+        offsetContext.tableEvent(new TableId(lcr.getSourceDatabaseName(), lcr.getObjectOwner(), lcr.getObjectName()), lcr.getSourceTime().timestampValue().toInstant());
 
         try {
             if (lcr instanceof RowLCR) {
@@ -125,7 +132,16 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
 
         dispatcher.dispatchSchemaChangeEvent(
                 tableId,
-                new XStreamSchemaChangeEventEmitter(offsetContext, tableId, ddlLcr));
+                new OracleSchemaChangeEventEmitter(
+                        connectorConfig,
+                        offsetContext,
+                        tableId,
+                        ddlLcr.getSourceDatabaseName(),
+                        ddlLcr.getObjectOwner(),
+                        ddlLcr.getDDLText(),
+                        schema,
+                        ddlLcr.getSourceTime().timestampValue().toInstant(),
+                        streamingMetrics));
     }
 
     private TableId getTableId(LCR lcr) {

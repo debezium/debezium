@@ -17,6 +17,7 @@ import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OracleDatabaseVersion;
 import io.debezium.connector.oracle.OracleOffsetContext;
+import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.SourceInfo;
 import io.debezium.pipeline.ErrorHandler;
@@ -42,15 +43,12 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
     private static final Logger LOGGER = LoggerFactory.getLogger(XstreamStreamingChangeEventSource.class);
 
     private final OracleConnection jdbcConnection;
-    private final EventDispatcher<TableId> dispatcher;
     private final ErrorHandler errorHandler;
-    private final Clock clock;
-    private final OracleDatabaseSchema schema;
     private final OracleOffsetContext offsetContext;
     private final String xStreamServerName;
     private volatile XStreamOut xsOut;
-    private final boolean tablenameCaseInsensitive;
     private final int posVersion;
+    private final LcrEventHandler eventHandler;
     /**
      * A message box between thread that is informed about committed offsets and the XStream thread.
      * When the last offset is committed its value is passed to the XStream thread and a watermark is
@@ -60,17 +58,19 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
      */
     private final AtomicReference<PositionAndScn> lcrMessage = new AtomicReference<>();
 
-    public XstreamStreamingChangeEventSource(OracleConnectorConfig connectorConfig, OracleOffsetContext offsetContext, OracleConnection jdbcConnection,
-                                             EventDispatcher<TableId> dispatcher, ErrorHandler errorHandler, Clock clock, OracleDatabaseSchema schema) {
+    public XstreamStreamingChangeEventSource(OracleConnectorConfig connectorConfig, OracleOffsetContext offsetContext,
+                                             OracleConnection jdbcConnection, EventDispatcher<TableId> dispatcher,
+                                             ErrorHandler errorHandler, Clock clock, OracleDatabaseSchema schema,
+                                             OracleStreamingChangeEventSourceMetrics streamingMetrics) {
         this.jdbcConnection = jdbcConnection;
-        this.dispatcher = dispatcher;
         this.errorHandler = errorHandler;
-        this.clock = clock;
-        this.schema = schema;
         this.offsetContext = offsetContext;
         this.xStreamServerName = connectorConfig.getXoutServerName();
-        this.tablenameCaseInsensitive = jdbcConnection.getTablenameCaseInsensitivity(connectorConfig);
         this.posVersion = resolvePosVersion(jdbcConnection, connectorConfig);
+
+        boolean tableNameCaseInsensitive = jdbcConnection.getTablenameCaseInsensitivity(connectorConfig);
+        this.eventHandler = new LcrEventHandler(connectorConfig, errorHandler, dispatcher, clock, schema, offsetContext, tableNameCaseInsensitive, this,
+                streamingMetrics);
     }
 
     @Override
@@ -90,13 +90,10 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
                 xsOut = XStreamOut.attach((oracle.jdbc.OracleConnection) xsConnection.connection(), xStreamServerName,
                         startPosition, 1, 1, XStreamOut.DEFAULT_MODE);
 
-                LcrEventHandler handler = new LcrEventHandler(errorHandler, dispatcher, clock, schema, offsetContext,
-                        this.tablenameCaseInsensitive, this);
-
                 // 2. receive events while running
                 while (context.isRunning()) {
                     LOGGER.trace("Receiving LCR");
-                    xsOut.receiveLCRCallback(handler, XStreamOut.DEFAULT_MODE);
+                    xsOut.receiveLCRCallback(eventHandler, XStreamOut.DEFAULT_MODE);
                 }
             }
             finally {

@@ -57,7 +57,9 @@ public class ValueHolderTest {
     @Before
     public void setUp() {
         OracleValueConverters converters = new OracleValueConverters(new OracleConnectorConfig(TestHelper.defaultConfig().build()), null);
-        ddlParser = new OracleDdlParser(true, CATALOG_NAME, SCHEMA_NAME);
+        ddlParser = new OracleDdlParser();
+        ddlParser.setCurrentSchema(SCHEMA_NAME);
+        ddlParser.setCurrentDatabase(CATALOG_NAME);
         sqlDmlParser = new SimpleDmlParser(CATALOG_NAME, converters);
         tables = new Tables();
     }

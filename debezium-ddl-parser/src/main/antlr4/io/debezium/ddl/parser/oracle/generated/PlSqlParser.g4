@@ -119,7 +119,7 @@ alter_function
     ;
 
 create_function_body
-    : CREATE (OR REPLACE)? FUNCTION function_name ('(' parameter (',' parameter)* ')')?
+    : CREATE (OR REPLACE)? FUNCTION function_name parameters_clause
       RETURN type_spec (invoker_rights_clause | parallel_enable_clause | result_cache_clause | DETERMINISTIC)*
       ((PIPELINED? (IS | AS) (DECLARE? seq_of_declare_specs? body | call_spec)) | (PIPELINED | AGGREGATE) USING implementation_type_name) ';'
     ;
@@ -178,11 +178,11 @@ package_obj_spec
     ;
 
 procedure_spec
-    : PROCEDURE identifier ('(' parameter ( ',' parameter )* ')')? ';'
+    : PROCEDURE identifier parameters_clause ';'
     ;
 
 function_spec
-    : FUNCTION identifier ('(' parameter ( ',' parameter)* ')')?
+    : FUNCTION identifier parameters_clause
       RETURN type_spec PIPELINED? DETERMINISTIC? (RESULT_CACHE)? ';'
     ;
 
@@ -209,19 +209,19 @@ alter_procedure
     ;
 
 function_body
-    : FUNCTION identifier ('(' parameter (',' parameter)* ')')?
+    : FUNCTION identifier parameters_clause
       RETURN type_spec (invoker_rights_clause | parallel_enable_clause | result_cache_clause | DETERMINISTIC)*
       ((PIPELINED? DETERMINISTIC? (IS | AS) (DECLARE? seq_of_declare_specs? body | call_spec)) | (PIPELINED | AGGREGATE) USING implementation_type_name) ';'
     ;
 
 procedure_body
-    : PROCEDURE identifier ('(' parameter (',' parameter)* ')')? (IS | AS)
+    : PROCEDURE identifier parameters_clause (IS | AS)?
       (DECLARE? seq_of_declare_specs? body | call_spec | EXTERNAL) ';'
     ;
 
 create_procedure_body
-    : CREATE (OR REPLACE)? PROCEDURE procedure_name ('(' parameter (',' parameter)* ')')?
-      invoker_rights_clause? (IS | AS)
+    : CREATE (OR REPLACE)? PROCEDURE procedure_name parameters_clause
+      invoker_rights_clause? (IS | AS)?
       (DECLARE? seq_of_declare_specs? body | call_spec | EXTERNAL) ';'
     ;
 
@@ -2140,7 +2140,7 @@ truncate_table
     ;
 
 drop_table
-    : DROP TABLE tableview_name PURGE? SEMICOLON
+    : DROP TABLE tableview_name (AS tableview_name)? PURGE? SEMICOLON
     ;
 
 drop_view
@@ -2659,7 +2659,8 @@ modify_col_substitutable
     ;
 
 add_column_clause
-    : ADD ('(' (column_definition | virtual_column_definition) (',' (column_definition
+    : ADD column_definition | virtual_column_definition
+    | ADD ('(' (column_definition | virtual_column_definition) (',' (column_definition
               | virtual_column_definition)
               )*
           ')'
@@ -2941,6 +2942,11 @@ c_agent_in_clause
 
 c_parameters_clause
     : PARAMETERS '(' (expressions | '.' '.' '.') ')'
+    ;
+
+parameters_clause
+    : ('(' parameter (',' parameter)* ')')?
+    | ('(' ')')?
     ;
 
 parameter

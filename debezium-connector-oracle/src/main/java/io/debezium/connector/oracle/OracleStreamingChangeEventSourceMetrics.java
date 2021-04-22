@@ -87,6 +87,7 @@ public class OracleStreamingChangeEventSourceMetrics extends StreamingChangeEven
     private final AtomicReference<Scn> oldestScn = new AtomicReference<>();
     private final AtomicReference<Scn> committedScn = new AtomicReference<>();
     private final AtomicReference<Scn> offsetScn = new AtomicReference<>();
+    private final AtomicInteger unparsableDdlCount = new AtomicInteger();
 
     // Constants for sliding window algorithm
     private final int batchSizeMin;
@@ -552,6 +553,11 @@ public class OracleStreamingChangeEventSourceMetrics extends StreamingChangeEven
         return scnFreezeCount.get();
     }
 
+    @Override
+    public int getUnparsableDdlCount() {
+        return unparsableDdlCount.get();
+    }
+
     public void setOldestScn(Scn scn) {
         oldestScn.set(scn);
     }
@@ -634,6 +640,10 @@ public class OracleStreamingChangeEventSourceMetrics extends StreamingChangeEven
         }
     }
 
+    public void incrementUnparsableDdlCount() {
+        unparsableDdlCount.incrementAndGet();
+    }
+
     @Override
     public String toString() {
         return "OracleStreamingChangeEventSourceMetrics{" +
@@ -693,6 +703,7 @@ public class OracleStreamingChangeEventSourceMetrics extends StreamingChangeEven
                 ", errorCount=" + errorCount.get() +
                 ", warningCount=" + warningCount.get() +
                 ", scnFreezeCount=" + scnFreezeCount.get() +
+                ", unparsableDdlCount=" + unparsableDdlCount.get() +
                 '}';
     }
 }

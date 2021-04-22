@@ -5,9 +5,6 @@
  */
 package io.debezium.connector.oracle.antlr.listener;
 
-import static io.debezium.connector.oracle.antlr.listener.ParserUtils.getColumnName;
-import static io.debezium.connector.oracle.antlr.listener.ParserUtils.getTableName;
-
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -20,6 +17,7 @@ import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableEditor;
 import io.debezium.relational.TableId;
+import io.debezium.text.ParsingException;
 
 public class CreateTableParserListener extends BaseParserListener {
 
@@ -29,6 +27,7 @@ public class CreateTableParserListener extends BaseParserListener {
     private String schemaName;
     private OracleDdlParser parser;
     private ColumnDefinitionParserListener columnDefinitionParserListener;
+    private String inlinePrimaryKey;
 
     CreateTableParserListener(final String catalogName, final String schemaName, final OracleDdlParser parser,
                               final List<ParseTreeListener> listeners) {
@@ -44,12 +43,21 @@ public class CreateTableParserListener extends BaseParserListener {
             throw new IllegalArgumentException("Only relational tables are supported");
         }
         TableId tableId = new TableId(catalogName, schemaName, getTableName(ctx.tableview_name()));
-        tableEditor = parser.databaseTables().editOrCreateTable(tableId);
-        super.enterCreate_table(ctx);
+        if (parser.databaseTables().forTable(tableId) == null) {
+            tableEditor = parser.databaseTables().editOrCreateTable(tableId);
+            super.enterCreate_table(ctx);
+        }
     }
 
     @Override
     public void exitCreate_table(PlSqlParser.Create_tableContext ctx) {
+        if (inlinePrimaryKey != null) {
+            if (!tableEditor.primaryKeyColumnNames().isEmpty()) {
+                throw new ParsingException(null, "Can only specify in-line or out-of-line primary keys but not both");
+            }
+            tableEditor.setPrimaryKeyNames(inlinePrimaryKey);
+        }
+
         Table table = getTable();
         assert table != null;
 
@@ -57,7 +65,7 @@ public class CreateTableParserListener extends BaseParserListener {
             listeners.remove(columnDefinitionParserListener);
             columnDefinitionParserListener = null;
             parser.databaseTables().overwriteTable(table);
-            // parser.signalCreateTable(tableEditor.tableId(), ctx); todo ?
+            parser.signalCreateTable(tableEditor.tableId(), ctx);
         }, tableEditor, table);
 
         super.exitCreate_table(ctx);
@@ -66,11 +74,10 @@ public class CreateTableParserListener extends BaseParserListener {
     @Override
     public void enterColumn_definition(PlSqlParser.Column_definitionContext ctx) {
         parser.runIfNotNull(() -> {
-            String columnName = ParserUtils.stripeQuotes(getColumnName(ctx.column_name()));
+            String columnName = getColumnName(ctx.column_name());
             ColumnEditor columnEditor = Column.editor().name(columnName);
             if (columnDefinitionParserListener == null) {
-                columnDefinitionParserListener = new ColumnDefinitionParserListener(tableEditor, columnEditor, parser.dataTypeResolver());
-                // todo: this explicit call is for the first column, should it be fixed?
+                columnDefinitionParserListener = new ColumnDefinitionParserListener(tableEditor, columnEditor, parser, listeners);
                 columnDefinitionParserListener.enterColumn_definition(ctx);
                 listeners.add(columnDefinitionParserListener);
             }
@@ -89,14 +96,30 @@ public class CreateTableParserListener extends BaseParserListener {
     }
 
     @Override
-    public void exitOut_of_line_constraint(PlSqlParser.Out_of_line_constraintContext ctx) {
+    public void exitInline_constraint(PlSqlParser.Inline_constraintContext ctx) {
         if (ctx.PRIMARY() != null) {
-            List<String> pkColumnNames = ctx.column_name().stream()
-                    .map(ParserUtils::getColumnName)
-                    .collect(Collectors.toList());
-
-            tableEditor.setPrimaryKeyNames(pkColumnNames);
+            if (ctx.getParent() instanceof PlSqlParser.Column_definitionContext) {
+                PlSqlParser.Column_definitionContext columnCtx = (PlSqlParser.Column_definitionContext) ctx.getParent();
+                inlinePrimaryKey = getColumnName(columnCtx.column_name());
+            }
         }
+        super.exitInline_constraint(ctx);
+    }
+
+    @Override
+    public void exitOut_of_line_constraint(PlSqlParser.Out_of_line_constraintContext ctx) {
+        parser.runIfNotNull(() -> {
+            if (ctx.PRIMARY() != null) {
+                if (inlinePrimaryKey != null) {
+                    throw new ParsingException(null, "Cannot specify inline and out of line primary keys");
+                }
+                List<String> pkColumnNames = ctx.column_name().stream()
+                        .map(this::getColumnName)
+                        .collect(Collectors.toList());
+
+                tableEditor.setPrimaryKeyNames(pkColumnNames);
+            }
+        }, tableEditor);
         super.exitOut_of_line_constraint(ctx);
     }
 

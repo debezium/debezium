@@ -41,7 +41,6 @@ import io.debezium.connector.oracle.OracleConnectorConfig.SnapshotMode;
 import io.debezium.connector.oracle.junit.RequireDatabaseOption;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnDatabaseOptionRule;
-import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIs;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope;
@@ -134,6 +133,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
     @AfterClass
     public static void closeConnection() throws SQLException {
         if (connection != null) {
+            TestHelper.dropTable(connection, "debezium.customer2");
             TestHelper.dropTable(connection, "customer");
             TestHelper.dropTable(connection, "masked_hashed_column_table");
             TestHelper.dropTable(connection, "truncated_column_table");
@@ -144,6 +144,8 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
     @Before
     public void before() throws SQLException {
+        TestHelper.dropTable(connection, "debezium.dbz800a");
+        TestHelper.dropTable(connection, "debezium.dbz800b");
         connection.execute("delete from debezium.customer");
         connection.execute("delete from debezium.masked_hashed_column_table");
         connection.execute("delete from debezium.truncated_column_table");
@@ -334,7 +336,6 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-1223")
-    @SkipWhenAdapterNameIs(value = SkipWhenAdapterNameIs.AdapterName.LOGMINER, reason = "sendTxBatch randomly fails")
     public void shouldStreamTransaction() throws Exception {
         Configuration config = TestHelper.defaultConfig()
                 .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.CUSTOMER")
@@ -441,7 +442,6 @@ public class OracleConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
-    @SkipWhenAdapterNameIs(value = SkipWhenAdapterNameIs.AdapterName.LOGMINER, reason = "Test randomly fails in sendTxBatch")
     public void shouldStreamAfterRestart() throws Exception {
         Configuration config = TestHelper.defaultConfig()
                 .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.CUSTOMER")
@@ -657,7 +657,6 @@ public class OracleConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
-    @SkipWhenAdapterNameIs(value = SkipWhenAdapterNameIs.AdapterName.LOGMINER, reason = "LogMiner does not yet support DDL during streaming")
     public void shouldReadChangeStreamForTableCreatedWhileStreaming() throws Exception {
         TestHelper.dropTable(connection, "debezium.customer2");
 
@@ -679,7 +678,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
                 ")";
 
         connection.execute(ddl);
-        connection.execute("GRANT SELECT ON debezium.customer2 to " + TestHelper.getConnectorUserName());
+        TestHelper.streamTable(connection, "debezium.customer2");
 
         connection.execute("INSERT INTO debezium.customer2 VALUES (2, 'Billie-Bob', 1234.56, TO_DATE('2018/02/22', 'yyyy-mm-dd'))");
         connection.execute("COMMIT");
@@ -699,7 +698,6 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-800")
-    @SkipWhenAdapterNameIs(value = SkipWhenAdapterNameIs.AdapterName.LOGMINER, reason = "LogMiner does not yet support DDL during streaming")
     public void shouldReceiveHeartbeatAlsoWhenChangingTableIncludeListTables() throws Exception {
         TestHelper.dropTable(connection, "debezium.dbz800a");
         TestHelper.dropTable(connection, "debezium.dbz800b");
@@ -725,12 +723,21 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         // expecting two heartbeat records and one actual change record
         List<SourceRecord> records = consumeRecordsByTopic(3).allRecordsInOrder();
 
-        // expecting no change record for s1.a but a heartbeat
-        verifyHeartbeatRecord(records.get(0));
+        if (TestHelper.adapter().equals(OracleConnectorConfig.ConnectorAdapter.XSTREAM)) {
+            // expecting no change record for s1.a but a heartbeat
+            verifyHeartbeatRecord(records.get(0));
 
-        // and then a change record for s1.b and a heartbeat
-        verifyHeartbeatRecord(records.get(1));
-        VerifyRecord.isValidInsert(records.get(2), "ID", 2);
+            // and then a change record for s1.b and a heartbeat
+            verifyHeartbeatRecord(records.get(1));
+            VerifyRecord.isValidInsert(records.get(2), "ID", 2);
+        }
+        else {
+            // Unlike Xstream, LogMiner's query will exclude the insert for dbz800a and
+            // so we won't actually emit a Heartbeat for that record at all but we will
+            // instead emit one when we detect dbz800b only.
+            verifyHeartbeatRecord(records.get(0));
+            VerifyRecord.isValidInsert(records.get(1), "ID", 2);
+        }
     }
 
     @Test

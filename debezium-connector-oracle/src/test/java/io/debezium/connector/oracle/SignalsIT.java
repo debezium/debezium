@@ -108,13 +108,13 @@ public class SignalsIT extends AbstractConnectorTest {
 
         connection.execute("INSERT INTO debezium.customer VALUES (2, 'Battle-Bug', 1234.56, TO_DATE('2018/02/22', 'yyyy-mm-dd'))");
 
-        // two schema changes, one data record, one signal record, one schema change, one data record
-        final int expected = 2 + 1 + 1 + 1 + 1;
+        // two schema changes, one data record, two schema changes (alters), one signal record, one schema change, one data record
+        final int expected = 2 + 1 + 2 + 1 + 1 + 1;
         List<SourceRecord> records = consumeRecordsByTopic(expected).allRecordsInOrder();
         assertThat(records).hasSize(expected);
 
         final SourceRecord pre = records.get(0);
-        final SourceRecord post = records.get(5);
+        final SourceRecord post = records.get(7);
 
         Assertions.assertThat(((Struct) pre.key()).schema().fields()).hasSize(1);
 
