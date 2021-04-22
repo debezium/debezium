@@ -117,7 +117,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
      */
     @Override
     public void execute(ChangeEventSourceContext context) {
-        try (TransactionalBuffer transactionalBuffer = new TransactionalBuffer(errorHandler, streamingMetrics)) {
+        try (TransactionalBuffer transactionalBuffer = new TransactionalBuffer(schema, clock, errorHandler, streamingMetrics)) {
             try {
                 long databaseTimeMs = getTimeDifference(jdbcConnection).toMillis();
                 LOGGER.trace("Current time {} ms, database difference {} ms", System.currentTimeMillis(), databaseTimeMs);
