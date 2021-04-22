@@ -27,15 +27,6 @@ public class ParserUtils {
     }
 
     /**
-     * This method returns pure column name without quotes
-     * @param ctx column name context
-     * @return column name
-     */
-    public static String getColumnName(final PlSqlParser.Column_nameContext ctx) {
-        return stripeQuotes(ctx.identifier().id_expression().getText());
-    }
-
-    /**
      * stripes double quotes that surrounds a string
      * @param text text
      * @return text without surrounding double quotes

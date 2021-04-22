@@ -53,7 +53,9 @@ public class OracleConnectorTask<SourceTaskContext extends SourceTaskContextWrap
 
         Configuration jdbcConfig = connectorConfig.jdbcConfig();
         jdbcConnection = new OracleConnection(jdbcConfig, () -> getClass().getClassLoader());
-        this.schema = new OracleDatabaseSchema(connectorConfig, schemaNameAdjuster, topicSelector, jdbcConnection);
+        OracleValueConverters valueConverters = new OracleValueConverters(connectorConfig, jdbcConnection);
+
+        this.schema = new OracleDatabaseSchema(connectorConfig, valueConverters, schemaNameAdjuster, topicSelector, jdbcConnection);
         this.schema.initializeStorage();
 
         OffsetContext previousOffset = getPreviousOffset(connectorConfig.getAdapter().getOffsetContextLoader(connectorConfig));

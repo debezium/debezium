@@ -241,7 +241,9 @@ public class SqlUtils {
         query.append("SCN > ? AND SCN <= ? ");
         query.append("AND (");
         // MISSING_SCN/DDL only when not performed by excluded users
-        query.append("(OPERATION_CODE IN (5,34) AND USERNAME NOT IN (").append(getExcludedUsers(logMinerUser)).append(")) ");
+        // For DDL, the `INTERNAL DDL%` info rows should be excluded as these are commands executed by the database that
+        // typically perform operations such as renaming a deleted object when dropped if the drop doesn't specify PURGE
+        query.append("(OPERATION_CODE IN (5,34) AND USERNAME NOT IN (").append(getExcludedUsers(logMinerUser)).append(") AND INFO NOT LIKE 'INTERNAL DDL%') ");
         // COMMIT/ROLLBACK
         query.append("OR (OPERATION_CODE IN (7,36)) ");
         // INSERT/UPDATE/DELETE

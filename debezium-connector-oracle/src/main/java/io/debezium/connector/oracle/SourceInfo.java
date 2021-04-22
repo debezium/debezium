@@ -6,6 +6,10 @@
 package io.debezium.connector.oracle;
 
 import java.time.Instant;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.connector.common.BaseSourceInfo;
@@ -25,7 +29,7 @@ public class SourceInfo extends BaseSourceInfo {
     private String lcrPosition;
     private String transactionId;
     private Instant sourceTime;
-    private TableId tableId;
+    private Set<TableId> tableIds;
 
     protected SourceInfo(OracleConnectorConfig connectorConfig) {
         super(connectorConfig);
@@ -71,12 +75,29 @@ public class SourceInfo extends BaseSourceInfo {
         this.sourceTime = sourceTime;
     }
 
-    public TableId getTableId() {
-        return tableId;
+    public String tableSchema() {
+        return tableIds.isEmpty() ? null
+                : tableIds.stream()
+                        .filter(x -> x != null)
+                        .map(TableId::schema)
+                        .distinct()
+                        .collect(Collectors.joining(","));
     }
 
-    public void setTableId(TableId tableId) {
-        this.tableId = tableId;
+    public String table() {
+        return tableIds.isEmpty() ? null
+                : tableIds.stream()
+                        .filter(x -> x != null)
+                        .map(TableId::table)
+                        .collect(Collectors.joining(","));
+    }
+
+    public void tableEvent(Set<TableId> tableIds) {
+        this.tableIds = new HashSet<>(tableIds);
+    }
+
+    public void tableEvent(TableId tableId) {
+        this.tableIds = Collections.singleton(tableId);
     }
 
     @Override
@@ -86,6 +107,6 @@ public class SourceInfo extends BaseSourceInfo {
 
     @Override
     protected String database() {
-        return tableId.catalog();
+        return tableIds.iterator().next().catalog();
     }
 }

@@ -301,6 +301,12 @@ public class TestHelper {
         }
     }
 
+    public static void dropTables(OracleConnection connection, String... tables) {
+        for (String table : tables) {
+            dropTable(connection, table);
+        }
+    }
+
     /**
      * Enables a given table to be streamed by Oracle.
      *
@@ -326,6 +332,50 @@ public class TestHelper {
         }
         catch (SQLException e) {
             throw new RuntimeException("Failed to clear user recyclebin", e);
+        }
+    }
+
+    /**
+     * Grants the specified role to the {@link TestHelper#SCHEMA_USER} or the user configured using the
+     * configuration option {@code database.user}, whichever has precedence.  If the configuration uses
+     * PDB, the grant will be performed in the PDB and not the CDB database.
+     *
+     * @param roleName role to be granted
+     * @throws RuntimeException if the role cannot be granted
+     */
+    public static void grantRole(String roleName) {
+        final String pdbName = defaultConfig().build().getString(OracleConnectorConfig.PDB_NAME);
+        final String userName = testJdbcConfig().getString(JdbcConfiguration.USER);
+        try (OracleConnection connection = adminConnection()) {
+            if (pdbName != null) {
+                connection.setSessionToPdb(pdbName);
+            }
+            connection.execute("GRANT " + roleName + " TO " + userName);
+        }
+        catch (SQLException e) {
+            throw new RuntimeException("Failed to grant role '" + roleName + "' for user " + userName, e);
+        }
+    }
+
+    /**
+     * Revokes the specified role from the {@link TestHelper#SCHEMA_USER} or the user configured using
+     * the configuration option {@code database.user}, whichever has precedence. If the configuration
+     * uses PDB, the revoke will be performed in the PDB and not the CDB instance.
+     *
+     * @param roleName role to be revoked
+     * @throws RuntimeException if the role cannot be revoked
+     */
+    public static void revokeRole(String roleName) {
+        final String pdbName = defaultConfig().build().getString(OracleConnectorConfig.PDB_NAME);
+        final String userName = testJdbcConfig().getString(JdbcConfiguration.USER);
+        try (OracleConnection connection = adminConnection()) {
+            if (pdbName != null) {
+                connection.setSessionToPdb(pdbName);
+            }
+            connection.execute("REVOKE " + roleName + " FROM " + userName);
+        }
+        catch (SQLException e) {
+            throw new RuntimeException("Failed to revoke role '" + roleName + "' for user " + userName, e);
         }
     }
 

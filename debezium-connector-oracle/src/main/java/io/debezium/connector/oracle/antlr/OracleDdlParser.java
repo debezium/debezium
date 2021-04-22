@@ -7,7 +7,6 @@ package io.debezium.connector.oracle.antlr;
 
 import java.sql.Types;
 import java.util.Arrays;
-import java.util.Locale;
 
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CommonTokenStream;
@@ -17,11 +16,13 @@ import io.debezium.antlr.AntlrDdlParser;
 import io.debezium.antlr.AntlrDdlParserListener;
 import io.debezium.antlr.DataTypeResolver;
 import io.debezium.antlr.DataTypeResolver.DataTypeEntry;
+import io.debezium.connector.oracle.OracleValueConverters;
 import io.debezium.connector.oracle.antlr.listener.OracleDdlParserListener;
 import io.debezium.ddl.parser.oracle.generated.PlSqlLexer;
 import io.debezium.ddl.parser.oracle.generated.PlSqlParser;
 import io.debezium.relational.SystemVariables;
 import io.debezium.relational.Tables;
+import io.debezium.relational.Tables.TableFilter;
 
 import oracle.jdbc.OracleTypes;
 
@@ -30,17 +31,28 @@ import oracle.jdbc.OracleTypes;
  */
 public class OracleDdlParser extends AntlrDdlParser<PlSqlLexer, PlSqlParser> {
 
+    private final TableFilter tableFilter;
+    private final OracleValueConverters converters;
+
     private String catalogName;
     private String schemaName;
 
     public OracleDdlParser() {
-        super(true);
+        this(null, TableFilter.includeAll());
     }
 
-    public OracleDdlParser(boolean throwErrorsFromTreeWalk, final String catalogName, final String schemaName) {
+    public OracleDdlParser(OracleValueConverters valueConverters) {
+        this(true, valueConverters, TableFilter.includeAll());
+    }
+
+    public OracleDdlParser(OracleValueConverters valueConverters, TableFilter tableFilter) {
+        this(true, valueConverters, tableFilter);
+    }
+
+    public OracleDdlParser(boolean throwErrorsFromTreeWalk, OracleValueConverters converters, TableFilter tableFilter) {
         super(throwErrorsFromTreeWalk);
-        this.catalogName = catalogName;
-        this.schemaName = schemaName;
+        this.converters = converters;
+        this.tableFilter = tableFilter;
     }
 
     @Override
@@ -48,7 +60,7 @@ public class OracleDdlParser extends AntlrDdlParser<PlSqlLexer, PlSqlParser> {
         if (!ddlContent.endsWith(";")) {
             ddlContent = ddlContent + ";";
         }
-        super.parse(toUpperCase(ddlContent), databaseTables);
+        super.parse(ddlContent, databaseTables);
     }
 
     @Override
@@ -146,8 +158,11 @@ public class OracleDdlParser extends AntlrDdlParser<PlSqlLexer, PlSqlParser> {
         function.run();
     }
 
-    // TODO excluded quoted identifiers
-    private String toUpperCase(String ddl) {
-        return ddl.toUpperCase(Locale.ENGLISH);
+    public OracleValueConverters getConverters() {
+        return converters;
+    }
+
+    public TableFilter getTableFilter() {
+        return tableFilter;
     }
 }

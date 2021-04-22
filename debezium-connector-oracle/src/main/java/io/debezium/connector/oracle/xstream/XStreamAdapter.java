@@ -78,6 +78,7 @@ public class XStreamAdapter extends AbstractStreamingAdapter {
                 dispatcher,
                 errorHandler,
                 clock,
-                schema);
+                schema,
+                streamingMetrics);
     }
 }

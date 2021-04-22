@@ -65,6 +65,10 @@ public class LogInterceptor extends AppenderSkeleton {
         return false;
     }
 
+    public long countOccurrences(String text) {
+        return events.stream().filter(e -> e.getMessage().toString().contains(text)).count();
+    }
+
     public boolean containsMessage(String text) {
         for (LoggingEvent event : events) {
             if (event.getMessage().toString().contains(text)) {

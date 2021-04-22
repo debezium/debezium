@@ -293,6 +293,11 @@ public interface OracleStreamingChangeEventSourceMetricsMXBean extends Streaming
     int getScnFreezeCount();
 
     /**
+     * @return the number of unparsable ddl statements
+     */
+    int getUnparsableDdlCount();
+
+    /**
      * Resets metrics.
      */
     void reset();
