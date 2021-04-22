@@ -47,8 +47,9 @@ public class RowMapper {
     private static final int SEG_OWNER = 8;
     private static final int OPERATION = 9;
     private static final int USERNAME = 10;
+    private static final int ROW_ID = 11;
+    private static final int ROLLBACK_FLAG = 12;
     // todo: add these for recording
-    // private static final int ROW_ID = 9;
     // private static final int SESSION_NUMBER = 10;
     // private static final int SERIAL_NUMBER = 11;
     // private static final int RS_ID = 12;
@@ -188,6 +189,26 @@ public class RowMapper {
             logError(streaingMetrics, e, "SQL_REDO");
         }
         return result.toString();
+    }
+
+    public static String getRowId(OracleStreamingChangeEventSourceMetrics streamingMetrics, ResultSet rs) {
+        try {
+            return rs.getString(ROW_ID);
+        }
+        catch (SQLException e) {
+            logError(streamingMetrics, e, "ROW_ID");
+            return null;
+        }
+    }
+
+    public static int getRollbackFlag(OracleStreamingChangeEventSourceMetrics streamingMetrics, ResultSet rs) {
+        try {
+            return rs.getInt(ROLLBACK_FLAG);
+        }
+        catch (SQLException e) {
+            logError(streamingMetrics, e, "ROLLBACK");
+            return 0;
+        }
     }
 
     private static void logError(OracleStreamingChangeEventSourceMetrics streamingMetrics, SQLException e, String s) {

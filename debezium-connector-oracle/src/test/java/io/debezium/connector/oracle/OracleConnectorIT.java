@@ -1693,6 +1693,84 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         }
     }
 
+    @Test
+    @FixFor("DBZ-3322")
+    public void shouldNotEmitEventsOnConstraintViolations() throws Exception {
+        TestHelper.dropTable(connection, "dbz3322");
+        try {
+            connection.execute("CREATE TABLE dbz3322 (id number(9,0), data varchar2(50))");
+            connection.execute("CREATE UNIQUE INDEX uk_dbz3322 ON dbz3322 (id)");
+            TestHelper.streamTable(connection, "dbz3322");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ3322")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            try {
+                connection.executeWithoutCommitting("INSERT INTO dbz3322 (id,data) values (1, 'Test')");
+                connection.executeWithoutCommitting("INSERT INTO dbz3322 (id,data) values (1, 'Test')");
+            }
+            catch (SQLException e) {
+                // ignore unique constraint violation
+                if (!e.getMessage().startsWith("ORA-00001")) {
+                    throw e;
+                }
+            }
+            finally {
+                connection.executeWithoutCommitting("COMMIT");
+            }
+
+            SourceRecords records = consumeRecordsByTopic(1);
+            assertThat(records.recordsForTopic("server1.DEBEZIUM.DBZ3322")).hasSize(1);
+            assertNoRecordsToConsume();
+
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz3322");
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-3322")
+    public void shouldNotEmitEventsInRollbackTransaction() throws Exception {
+        TestHelper.dropTable(connection, "dbz3322");
+        try {
+            connection.execute("CREATE TABLE dbz3322 (id number(9,0), data varchar2(50))");
+            connection.execute("CREATE UNIQUE INDEX uk_dbz3322 ON dbz3322 (id)");
+            TestHelper.streamTable(connection, "dbz3322");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ3322")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.executeWithoutCommitting("INSERT INTO dbz3322 (id,data) values (1, 'Test')");
+            connection.executeWithoutCommitting("INSERT INTO dbz3322 (id,data) values (2, 'Test')");
+            connection.executeWithoutCommitting("ROLLBACK");
+
+            connection.executeWithoutCommitting("INSERT INTO dbz3322 (id,data) values (3, 'Test')");
+            connection.executeWithoutCommitting("COMMIT");
+
+            SourceRecords records = consumeRecordsByTopic(1);
+            assertThat(records.recordsForTopic("server1.DEBEZIUM.DBZ3322")).hasSize(1);
+            Struct value = (Struct) records.recordsForTopic("server1.DEBEZIUM.DBZ3322").get(0).value();
+            assertThat(value.getStruct(Envelope.FieldName.AFTER).get("ID")).isEqualTo(3);
+            assertNoRecordsToConsume();
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz3322");
+        }
+    }
+
     private String generateAlphaNumericStringColumn(int size) {
         final String alphaNumericString = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz";
         final StringBuilder sb = new StringBuilder(size);
