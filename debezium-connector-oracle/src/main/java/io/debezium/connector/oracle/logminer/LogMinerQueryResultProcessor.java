@@ -14,11 +14,13 @@ import java.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
 import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleConnectorConfig.LogMiningDmlParser;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OracleOffsetContext;
+import io.debezium.connector.oracle.OracleSchemaChangeEventEmitter;
 import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.OracleValueConverters;
 import io.debezium.connector.oracle.Scn;
@@ -76,13 +78,12 @@ class LogMinerQueryResultProcessor {
         this.clock = clock;
         this.historyRecorder = historyRecorder;
         this.connectorConfig = connectorConfig;
-        this.dmlParser = resolveParser(connectorConfig, jdbcConnection);
+        this.dmlParser = resolveParser(connectorConfig, schema.getValueConverters());
     }
 
-    private static DmlParser resolveParser(OracleConnectorConfig connectorConfig, OracleConnection connection) {
+    private static DmlParser resolveParser(OracleConnectorConfig connectorConfig, OracleValueConverters valueConverters) {
         if (connectorConfig.getLogMiningDmlParser().equals(LogMiningDmlParser.LEGACY)) {
-            OracleValueConverters converter = new OracleValueConverters(connectorConfig, connection);
-            return new SimpleDmlParser(connectorConfig.getCatalogName(), converter);
+            return new SimpleDmlParser(connectorConfig.getCatalogName(), valueConverters);
         }
         return new LogMinerDmlParser();
     }
@@ -163,9 +164,26 @@ class LogMinerQueryResultProcessor {
 
             // DDL
             if (operationCode == RowMapper.DDL) {
-                // todo: DDL operations are not yet supported during streaming while using LogMiner.
                 historyRecorder.record(scn, tableName, segOwner, operationCode, changeTime, txId, 0, redoSql);
                 LOGGER.info("DDL: {}, REDO_SQL: {}", logMessage, redoSql);
+                try {
+                    assert tableName != null;
+                    final TableId tableId = RowMapper.getTableId(connectorConfig.getCatalogName(), resultSet);
+                    dispatcher.dispatchSchemaChangeEvent(tableId,
+                            new OracleSchemaChangeEventEmitter(
+                                    connectorConfig,
+                                    offsetContext,
+                                    tableId,
+                                    tableId.catalog(),
+                                    tableId.schema(),
+                                    redoSql,
+                                    schema,
+                                    changeTime.toInstant(),
+                                    streamingMetrics));
+                }
+                catch (InterruptedException e) {
+                    throw new DebeziumException("Failed to dispatch DDL event", e);
+                }
                 continue;
             }
 
@@ -220,8 +238,7 @@ class LogMinerQueryResultProcessor {
                             streamingMetrics.setOldestScn(scn);
                         }
                         offsetContext.setTransactionId(txId);
-                        offsetContext.setSourceTime(timestamp.toInstant());
-                        offsetContext.setTableId(tableId);
+                        offsetContext.tableEvent(tableId, timestamp.toInstant());
                         if (counter == 0) {
                             offsetContext.setCommitScn(commitScn);
                         }

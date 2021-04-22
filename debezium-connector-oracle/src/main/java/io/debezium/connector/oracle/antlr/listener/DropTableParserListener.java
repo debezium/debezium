@@ -5,17 +5,14 @@
  */
 package io.debezium.connector.oracle.antlr.listener;
 
-import static io.debezium.connector.oracle.antlr.listener.ParserUtils.getTableName;
-
 import io.debezium.connector.oracle.antlr.OracleDdlParser;
 import io.debezium.ddl.parser.oracle.generated.PlSqlParser;
-import io.debezium.ddl.parser.oracle.generated.PlSqlParserBaseListener;
 import io.debezium.relational.TableId;
 
 /**
  * This class is parsing Oracle drop table statements.
  */
-public class DropTableParserListener extends PlSqlParserBaseListener {
+public class DropTableParserListener extends BaseParserListener {
 
     private String catalogName;
     private String schemaName;
@@ -29,8 +26,9 @@ public class DropTableParserListener extends PlSqlParserBaseListener {
 
     @Override
     public void enterDrop_table(final PlSqlParser.Drop_tableContext ctx) {
-        TableId tableId = new TableId(catalogName, schemaName, getTableName(ctx.tableview_name()));
+        TableId tableId = new TableId(catalogName, schemaName, getTableName(ctx.tableview_name().get(0)));
         parser.databaseTables().removeTable(tableId);
+        parser.signalDropTable(tableId, ctx);
         super.enterDrop_table(ctx);
     }
 }

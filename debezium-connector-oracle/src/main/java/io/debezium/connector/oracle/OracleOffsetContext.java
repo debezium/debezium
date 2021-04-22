@@ -9,6 +9,7 @@ import java.time.Instant;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
@@ -184,7 +185,7 @@ public class OracleOffsetContext implements OffsetContext {
     }
 
     public void setTableId(TableId tableId) {
-        sourceInfo.setTableId(tableId);
+        sourceInfo.tableEvent(tableId);
     }
 
     @Override
@@ -229,8 +230,18 @@ public class OracleOffsetContext implements OffsetContext {
 
     @Override
     public void event(DataCollectionId tableId, Instant timestamp) {
-        sourceInfo.setTableId((TableId) tableId);
+        sourceInfo.tableEvent((TableId) tableId);
         sourceInfo.setSourceTime(timestamp);
+    }
+
+    public void tableEvent(TableId tableId, Instant timestamp) {
+        sourceInfo.setSourceTime(timestamp);
+        sourceInfo.tableEvent(tableId);
+    }
+
+    public void tableEvent(Set<TableId> tableIds, Instant timestamp) {
+        sourceInfo.setSourceTime(timestamp);
+        sourceInfo.tableEvent(tableIds);
     }
 
     @Override

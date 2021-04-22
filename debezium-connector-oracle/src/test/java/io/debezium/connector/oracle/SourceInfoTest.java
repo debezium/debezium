@@ -32,7 +32,7 @@ public class SourceInfoTest {
                         .build());
         source = new SourceInfo(connectorConfig);
         source.setSourceTime(Instant.now());
-        source.setTableId(new TableId("c", "s", "t"));
+        source.tableEvent(new TableId("c", "s", "t"));
     }
 
     @Test

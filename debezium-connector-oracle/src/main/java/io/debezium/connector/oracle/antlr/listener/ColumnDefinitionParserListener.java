@@ -6,8 +6,12 @@
 package io.debezium.connector.oracle.antlr.listener;
 
 import java.sql.Types;
+import java.util.List;
+
+import org.antlr.v4.runtime.tree.ParseTreeListener;
 
 import io.debezium.antlr.DataTypeResolver;
+import io.debezium.connector.oracle.antlr.OracleDdlParser;
 import io.debezium.ddl.parser.oracle.generated.PlSqlParser;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
@@ -16,19 +20,24 @@ import io.debezium.relational.TableEditor;
 import oracle.jdbc.OracleTypes;
 
 /**
- * This class parses column definitions of Oracle statements.
+ * Parser listener that parses column definitions of Oracle DDL statements.
  */
 public class ColumnDefinitionParserListener extends BaseParserListener {
 
+    private final OracleDdlParser parser;
     private final DataTypeResolver dataTypeResolver;
     private final TableEditor tableEditor;
+    private final List<ParseTreeListener> listeners;
+
     private ColumnEditor columnEditor;
 
-    ColumnDefinitionParserListener(final TableEditor tableEditor, final ColumnEditor columnEditor,
-                                   final DataTypeResolver dataTypeResolver) {
-        this.dataTypeResolver = dataTypeResolver;
+    ColumnDefinitionParserListener(final TableEditor tableEditor, final ColumnEditor columnEditor, OracleDdlParser parser,
+                                   List<ParseTreeListener> listeners) {
         this.tableEditor = tableEditor;
         this.columnEditor = columnEditor;
+        this.parser = parser;
+        this.dataTypeResolver = parser.dataTypeResolver();
+        this.listeners = listeners;
     }
 
     void setColumnEditor(ColumnEditor columnEditor) {
@@ -55,26 +64,63 @@ public class ColumnDefinitionParserListener extends BaseParserListener {
         super.enterPrimary_key_clause(ctx);
     }
 
+    @Override
+    public void enterModify_col_properties(PlSqlParser.Modify_col_propertiesContext ctx) {
+        resolveColumnDataType(ctx);
+        super.enterModify_col_properties(ctx);
+    }
+
     // todo use dataTypeResolver instead
     private void resolveColumnDataType(PlSqlParser.Column_definitionContext ctx) {
         columnEditor.name(getColumnName(ctx.column_name()));
-
-        PlSqlParser.Precision_partContext precisionPart = null;
-        if (ctx.datatype() != null) {
-            precisionPart = ctx.datatype().precision_part();
-        }
 
         if (ctx.datatype() == null) {
             if (ctx.type_name() != null && "\"MDSYS\".\"SDO_GEOMETRY\"".equalsIgnoreCase(ctx.type_name().getText())) {
                 columnEditor.jdbcType(Types.STRUCT).type("MDSYS.SDO_GEOMETRY");
             }
         }
-        else if (ctx.datatype().native_datatype_element() != null) {
-            if (ctx.datatype().native_datatype_element().INT() != null
-                    || ctx.datatype().native_datatype_element().INTEGER() != null
-                    || ctx.datatype().native_datatype_element().SMALLINT() != null
-                    || ctx.datatype().native_datatype_element().NUMERIC() != null
-                    || ctx.datatype().native_datatype_element().DECIMAL() != null) {
+        else {
+            resolveColumnDataType(ctx.datatype());
+
+            // todo move to enterExpression and apply type conversion
+            if (ctx.DEFAULT() != null) {
+                String defaultValue = ctx.expression().getText();
+                columnEditor.defaultValue(defaultValue);
+            }
+        }
+
+        boolean hasNotNullConstraint = ctx.inline_constraint().stream().anyMatch(c -> c.NOT() != null);
+        // todo move to nonNull
+        columnEditor.optional(!hasNotNullConstraint);
+    }
+
+    private void resolveColumnDataType(PlSqlParser.Modify_col_propertiesContext ctx) {
+        columnEditor.name(getColumnName(ctx.column_name()));
+
+        resolveColumnDataType(ctx.datatype());
+
+        boolean hasNullConstraint = ctx.inline_constraint().stream().anyMatch(c -> c.NULL_() != null);
+        boolean hasNotNullConstraint = ctx.inline_constraint().stream().anyMatch(c -> c.NOT() != null);
+        if (hasNotNullConstraint && columnEditor.isOptional()) {
+            columnEditor.optional(false);
+        }
+        else if (hasNullConstraint && !columnEditor.isOptional()) {
+            columnEditor.optional(true);
+        }
+    }
+
+    private void resolveColumnDataType(PlSqlParser.DatatypeContext ctx) {
+        PlSqlParser.Precision_partContext precisionPart = null;
+        if (ctx != null) {
+            precisionPart = ctx.precision_part();
+        }
+
+        if (ctx != null && ctx.native_datatype_element() != null) {
+            if (ctx.native_datatype_element().INT() != null
+                    || ctx.native_datatype_element().INTEGER() != null
+                    || ctx.native_datatype_element().SMALLINT() != null
+                    || ctx.native_datatype_element().NUMERIC() != null
+                    || ctx.native_datatype_element().DECIMAL() != null) {
                 // NUMERIC and DECIMAL types have by default zero scale
                 columnEditor
                         .jdbcType(Types.NUMERIC)
@@ -89,17 +135,17 @@ public class ColumnDefinitionParserListener extends BaseParserListener {
                     setScale(precisionPart, columnEditor);
                 }
             }
-            else if (ctx.datatype().native_datatype_element().DATE() != null) {
+            else if (ctx.native_datatype_element().DATE() != null) {
                 // JDBC driver reports type as timestamp but name DATE
                 columnEditor
                         .jdbcType(Types.TIMESTAMP)
                         .type("DATE");
             }
-            else if (ctx.datatype().native_datatype_element().TIMESTAMP() != null) {
-                if (ctx.datatype().WITH() != null
-                        && ctx.datatype().TIME() != null
-                        && ctx.datatype().ZONE() != null) {
-                    if (ctx.datatype().LOCAL() != null) {
+            else if (ctx.native_datatype_element().TIMESTAMP() != null) {
+                if (ctx.WITH() != null
+                        && ctx.TIME() != null
+                        && ctx.ZONE() != null) {
+                    if (ctx.LOCAL() != null) {
                         columnEditor
                                 .jdbcType(OracleTypes.TIMESTAMPLTZ)
                                 .type("TIMESTAMP WITH LOCAL TIME ZONE");
@@ -124,8 +170,8 @@ public class ColumnDefinitionParserListener extends BaseParserListener {
                 }
             }
             // VARCHAR is the same as VARCHAR2 in Oracle
-            else if (ctx.datatype().native_datatype_element().VARCHAR2() != null ||
-                    ctx.datatype().native_datatype_element().VARCHAR() != null) {
+            else if (ctx.native_datatype_element().VARCHAR2() != null ||
+                    ctx.native_datatype_element().VARCHAR() != null) {
                 columnEditor
                         .jdbcType(Types.VARCHAR)
                         .type("VARCHAR2");
@@ -137,7 +183,7 @@ public class ColumnDefinitionParserListener extends BaseParserListener {
                     setPrecision(precisionPart, columnEditor);
                 }
             }
-            else if (ctx.datatype().native_datatype_element().NVARCHAR2() != null) {
+            else if (ctx.native_datatype_element().NVARCHAR2() != null) {
                 columnEditor
                         .jdbcType(Types.NVARCHAR)
                         .type("NVARCHAR2");
@@ -149,31 +195,31 @@ public class ColumnDefinitionParserListener extends BaseParserListener {
                     setPrecision(precisionPart, columnEditor);
                 }
             }
-            else if (ctx.datatype().native_datatype_element().CHAR() != null) {
+            else if (ctx.native_datatype_element().CHAR() != null) {
                 columnEditor
                         .jdbcType(Types.CHAR)
                         .type("CHAR")
                         .length(1);
             }
-            else if (ctx.datatype().native_datatype_element().NCHAR() != null) {
+            else if (ctx.native_datatype_element().NCHAR() != null) {
                 columnEditor
                         .jdbcType(Types.NCHAR)
                         .type("NCHAR")
                         .length(1);
             }
-            else if (ctx.datatype().native_datatype_element().BINARY_FLOAT() != null) {
+            else if (ctx.native_datatype_element().BINARY_FLOAT() != null) {
                 columnEditor
                         .jdbcType(OracleTypes.BINARY_FLOAT)
                         .type("BINARY_FLOAT");
             }
-            else if (ctx.datatype().native_datatype_element().BINARY_DOUBLE() != null) {
+            else if (ctx.native_datatype_element().BINARY_DOUBLE() != null) {
                 columnEditor
                         .jdbcType(OracleTypes.BINARY_DOUBLE)
                         .type("BINARY_DOUBLE");
             }
             // PRECISION keyword is mandatory
-            else if (ctx.datatype().native_datatype_element().FLOAT() != null ||
-                    (ctx.datatype().native_datatype_element().DOUBLE() != null && ctx.datatype().native_datatype_element().PRECISION() != null)) {
+            else if (ctx.native_datatype_element().FLOAT() != null ||
+                    (ctx.native_datatype_element().DOUBLE() != null && ctx.native_datatype_element().PRECISION() != null)) {
                 columnEditor
                         .jdbcType(Types.FLOAT)
                         .type("FLOAT")
@@ -184,14 +230,14 @@ public class ColumnDefinitionParserListener extends BaseParserListener {
                     setPrecision(precisionPart, columnEditor);
                 }
             }
-            else if (ctx.datatype().native_datatype_element().REAL() != null) {
+            else if (ctx.native_datatype_element().REAL() != null) {
                 columnEditor
                         .jdbcType(Types.FLOAT)
                         .type("FLOAT")
                         // TODO float's precision is about bits not decimal digits; should be ok for now to over-size
                         .length(63);
             }
-            else if (ctx.datatype().native_datatype_element().NUMBER() != null) {
+            else if (ctx.native_datatype_element().NUMBER() != null) {
                 columnEditor
                         .jdbcType(Types.NUMERIC)
                         .type("NUMBER");
@@ -204,66 +250,56 @@ public class ColumnDefinitionParserListener extends BaseParserListener {
                     setScale(precisionPart, columnEditor);
                 }
             }
-            else if (ctx.datatype().native_datatype_element().BLOB() != null) {
+            else if (ctx.native_datatype_element().BLOB() != null) {
                 columnEditor
                         .jdbcType(Types.BLOB)
                         .type("BLOB");
             }
-            else if (ctx.datatype().native_datatype_element().CLOB() != null) {
+            else if (ctx.native_datatype_element().CLOB() != null) {
                 columnEditor
                         .jdbcType(Types.CLOB)
                         .type("CLOB");
             }
             else {
-                throw new IllegalArgumentException("Unsupported column type: " + ctx.datatype().native_datatype_element().getText());
+                throw new IllegalArgumentException("Unsupported column type: " + ctx.native_datatype_element().getText());
             }
         }
-        else if (ctx.datatype().INTERVAL() != null
-                && ctx.datatype().YEAR() != null
-                && ctx.datatype().TO() != null
-                && ctx.datatype().MONTH() != null) {
+        else if (ctx.INTERVAL() != null
+                && ctx.YEAR() != null
+                && ctx.TO() != null
+                && ctx.MONTH() != null) {
             columnEditor
                     .jdbcType(OracleTypes.INTERVALYM)
                     .type("INTERVAL YEAR TO MONTH")
                     .length(2);
-            if (!ctx.datatype().expression().isEmpty()) {
-                columnEditor.length(Integer.valueOf((ctx.datatype().expression(0).getText())));
+            if (!ctx.expression().isEmpty()) {
+                columnEditor.length(Integer.valueOf((ctx.expression(0).getText())));
             }
         }
-        else if (ctx.datatype().INTERVAL() != null
-                && ctx.datatype().DAY() != null
-                && ctx.datatype().TO() != null
-                && ctx.datatype().SECOND() != null) {
+        else if (ctx.INTERVAL() != null
+                && ctx.DAY() != null
+                && ctx.TO() != null
+                && ctx.SECOND() != null) {
             columnEditor
                     .jdbcType(OracleTypes.INTERVALDS)
                     .type("INTERVAL DAY TO SECOND")
                     .length(2)
                     .scale(6);
-            for (final PlSqlParser.ExpressionContext e : ctx.datatype().expression()) {
-                if (e.getSourceInterval().startsAfter(ctx.datatype().TO().getSourceInterval())) {
+            for (final PlSqlParser.ExpressionContext e : ctx.expression()) {
+                if (e.getSourceInterval().startsAfter(ctx.TO().getSourceInterval())) {
                     columnEditor.scale(Integer.valueOf(e.getText()));
                 }
                 else {
                     columnEditor.length(Integer.valueOf(e.getText()));
                 }
             }
-            if (!ctx.datatype().expression().isEmpty()) {
-                columnEditor.length(Integer.valueOf((ctx.datatype().expression(0).getText())));
+            if (!ctx.expression().isEmpty()) {
+                columnEditor.length(Integer.valueOf((ctx.expression(0).getText())));
             }
         }
         else {
-            throw new IllegalArgumentException("Unsupported column type: " + ctx.datatype().getText());
+            throw new IllegalArgumentException("Unsupported column type: " + ctx.getText());
         }
-
-        boolean hasNotNullConstraint = ctx.inline_constraint().stream().anyMatch(c -> c.NOT() != null);
-
-        // todo move to enterExpression and apply type conversion
-        if (ctx.DEFAULT() != null) {
-            String defaultValue = ctx.expression().getText();
-            columnEditor.defaultValue(defaultValue);
-        }
-        // todo move to nonNull
-        columnEditor.optional(!hasNotNullConstraint);
     }
 
     private int getVarCharDefaultLength() {
