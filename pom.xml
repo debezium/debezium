@@ -49,13 +49,15 @@
         </developer>
     </developers>
     <properties>
-        <!-- Instruct the build to use only UTF-8 encoding for source code -->
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
-        <release>8</release>
-        <!-- Enforce JDK 11 for building -->
+        <maven.compiler.release>8</maven.compiler.release>
+
+        <!-- Enforce JDK 11 for building (handled via JBoss parent POM)-->
         <jdk.min.version>11</jdk.min.version>
+        <modules.argline>--illegal-access=permit</modules.argline>
 
         <!-- Maven Plugins -->
         <version.compiler.plugin>3.8.1</version.compiler.plugin>
@@ -264,6 +266,7 @@
                 <configuration>
                     <source>${maven.compiler.source}</source>
                     <target>${maven.compiler.target}</target>
+                    <release>${maven.compiler.release}</release>
                     <encoding>${project.build.sourceEncoding}</encoding>
                 </configuration>
             </plugin>
@@ -382,15 +385,6 @@
                     </plugin>
                 </plugins>
             </build>
-        </profile>
-        <profile>
-            <id>jdk11</id>
-            <activation>
-                <jdk>11</jdk>
-            </activation>
-            <properties>
-                <modules.argline>--illegal-access=permit</modules.argline>
-            </properties>
         </profile>
         <profile>
             <id>oracle</id>
