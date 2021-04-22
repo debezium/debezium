@@ -235,7 +235,7 @@ public class SqlUtils {
      */
     static String logMinerContentsQuery(OracleConnectorConfig connectorConfig, String logMinerUser) {
         StringBuilder query = new StringBuilder();
-        query.append("SELECT SCN, SQL_REDO, OPERATION_CODE, TIMESTAMP, XID, CSF, TABLE_NAME, SEG_OWNER, OPERATION, USERNAME ");
+        query.append("SELECT SCN, SQL_REDO, OPERATION_CODE, TIMESTAMP, XID, CSF, TABLE_NAME, SEG_OWNER, OPERATION, USERNAME, ROW_ID, ROLLBACK ");
         query.append("FROM ").append(LOGMNR_CONTENTS_VIEW).append(" ");
         query.append("WHERE ");
         query.append("SCN > ? AND SCN <= ? ");

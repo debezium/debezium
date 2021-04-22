@@ -61,6 +61,11 @@ public interface LogMinerDmlEntry {
     Timestamp getSourceTime();
 
     /**
+     * @return unique row identifier
+     */
+    String getRowId();
+
+    /**
      * sets scn obtained from a LogMiner entry
      * @param scn it's value
      */
@@ -89,4 +94,8 @@ public interface LogMinerDmlEntry {
      */
     void setTransactionId(String id);
 
+    /**
+     * @param rowId unique row identifier
+     */
+    void setRowId(String rowId);
 }
