@@ -717,10 +717,10 @@ Details are in the following sections:
 
 endif::product[]
 
-ifndef::product[]
+ifdef::community[]
 Support for further data types will be added in subsequent releases.
 Please file a {jira-url}/browse/DBZ[JIRA issue] for any specific types that may be missing.
-endif::[]
+endif::community[]
 
 [id="oracle-character-types"]
 === Character and BLOB types
