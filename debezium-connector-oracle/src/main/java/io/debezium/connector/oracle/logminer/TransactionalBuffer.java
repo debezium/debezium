@@ -14,6 +14,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 import io.debezium.connector.common.SourceRecordWrapper;
@@ -22,12 +23,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.NotThreadSafe;
+import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OracleOffsetContext;
 import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.Scn;
+import io.debezium.connector.oracle.logminer.valueholder.LogMinerDmlEntry;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.ChangeEventSource;
+import io.debezium.relational.TableId;
+import io.debezium.util.Clock;
 
 /**
  * Buffer that stores transactions and related callbacks that will be executed when a transaction commits or discarded
@@ -41,6 +46,8 @@ public final class TransactionalBuffer<SourceRecord extends SourceRecordWrapper>
     private static final Logger LOGGER = LoggerFactory.getLogger(TransactionalBuffer.class);
 
     private final Map<String, Transaction> transactions;
+    private final OracleDatabaseSchema schema;
+    private final Clock clock;
     private final ErrorHandler errorHandler;
     private final Set<String> abandonedTransactionIds;
     private final Set<String> rolledBackTransactionIds;
@@ -54,8 +61,10 @@ public final class TransactionalBuffer<SourceRecord extends SourceRecordWrapper>
      * @param errorHandler the connector error handler
      * @param streamingMetrics the streaming metrics
      */
-    TransactionalBuffer(ErrorHandler errorHandler, OracleStreamingChangeEventSourceMetrics streamingMetrics) {
+    TransactionalBuffer(OracleDatabaseSchema schema, Clock clock, ErrorHandler errorHandler, OracleStreamingChangeEventSourceMetrics streamingMetrics) {
         this.transactions = new HashMap<>();
+        this.schema = schema;
+        this.clock = clock;
         this.errorHandler = errorHandler;
         this.lastCommittedScn = Scn.NULL;
         this.abandonedTransactionIds = new HashSet<>();
@@ -71,34 +80,55 @@ public final class TransactionalBuffer<SourceRecord extends SourceRecordWrapper>
     }
 
     /**
-     * Registers callback to execute when transaction commits.
+     * Register a DML operation with the transaction buffer.
      *
-     * @param transactionId transaction identifier
-     * @param scn           SCN
-     * @param changeTime    time of DML parsing completion
-     * @param callback      callback to execute when transaction commits
+     * @param operation operation type
+     * @param transactionId unique transaction identifier
+     * @param scn system change number
+     * @param tableId table identifier
+     * @param parseEntry parser entry
+     * @param changeTime time the DML operation occurred
+     * @param rowId unique row identifier
      */
-    void registerCommitCallback(String transactionId, Scn scn, Instant changeTime, CommitCallback callback) {
+    void registerDmlOperation(int operation, String transactionId, Scn scn, TableId tableId, LogMinerDmlEntry parseEntry, Instant changeTime, String rowId) {
         if (abandonedTransactionIds.contains(transactionId)) {
-            LogMinerHelper.logWarn(streamingMetrics, "Captured DML for abandoned transaction {}, ignored", transactionId);
+            LogMinerHelper.logWarn(streamingMetrics, "Captured DML for abandoned transaction {}, ignored.", transactionId);
             return;
         }
-        // this should never happen
         if (rolledBackTransactionIds.contains(transactionId)) {
-            LogMinerHelper.logWarn(streamingMetrics, "Captured DML for rolled-back transaction {}, ignored", transactionId);
+            LogMinerHelper.logWarn(streamingMetrics, "Captured DML for rolled back transaction {}, ignored.", transactionId);
             return;
         }
 
-        transactions.computeIfAbsent(transactionId, s -> new Transaction(scn));
+        Transaction transaction = transactions.computeIfAbsent(transactionId, s -> new Transaction(transactionId, scn));
+        transaction.events.add(new DmlEvent(operation, parseEntry, scn, tableId, rowId));
 
         streamingMetrics.setActiveTransactions(transactions.size());
         streamingMetrics.incrementRegisteredDmlCount();
         streamingMetrics.calculateLagMetrics(changeTime);
+    }
 
+    /**
+     * Undo a staged DML operation in the transaction buffer.
+     *
+     * @param transactionId unique transaction identifier
+     * @param undoRowId unique row identifier to be undone
+     * @param tableId table identifier
+     */
+    void undoDmlOperation(String transactionId, String undoRowId, TableId tableId) {
         Transaction transaction = transactions.get(transactionId);
-        if (transaction != null) {
-            transaction.commitCallbacks.add(callback);
+        if (transaction == null) {
+            LOGGER.warn("Cannot undo changes to {} with row id {} as transaction {} not found.", tableId, undoRowId, transactionId);
+            return;
         }
+
+        transaction.events.removeIf(o -> {
+            if (o.getRowId().equals(undoRowId)) {
+                LOGGER.trace("Undoing change to {} with row id {} in transaction {}", tableId, undoRowId, transactionId);
+                return true;
+            }
+            return false;
+        });
     }
 
     /**
@@ -115,7 +145,7 @@ public final class TransactionalBuffer<SourceRecord extends SourceRecordWrapper>
      * @return true if committed transaction is in the buffer, was not processed yet and processed now
      */
     boolean commit(String transactionId, Scn scn, OracleOffsetContext offsetContext, Timestamp timestamp,
-                   ChangeEventSource.ChangeEventSourceContext context, String debugMessage, EventDispatcher dispatcher) {
+                   ChangeEventSource.ChangeEventSourceContext context, String debugMessage, EventDispatcher<TableId> dispatcher) {
 
         Instant start = Instant.now();
         Transaction transaction = transactions.remove(transactionId);
@@ -137,27 +167,45 @@ public final class TransactionalBuffer<SourceRecord extends SourceRecordWrapper>
             return false;
         }
 
-        List<CommitCallback> commitCallbacks = transaction.commitCallbacks;
         LOGGER.trace("COMMIT, {}, smallest SCN: {}", debugMessage, smallestScn);
-        commit(context, offsetContext, start, commitCallbacks, timestamp, smallestScn, scn, dispatcher);
+        commit(context, offsetContext, start, transaction, timestamp, smallestScn, scn, dispatcher);
 
         return true;
     }
 
     private void commit(ChangeEventSource.ChangeEventSourceContext context, OracleOffsetContext offsetContext, Instant start,
-                        List<CommitCallback> commitCallbacks, Timestamp timestamp, Scn smallestScn, Scn scn, EventDispatcher<?, SourceRecord> dispatcher) {
+                        List<CommitCallback> commitCallbacks, Timestamp timestamp, Scn smallestScn, Scn scn, EventDispatcher<?> dispatcher) {
         try {
-            int counter = commitCallbacks.size();
-            for (CommitCallback callback : commitCallbacks) {
+            int counter = transaction.events.size();
+            for (DmlEvent event : transaction.events) {
                 if (!context.isRunning()) {
                     return;
                 }
-                callback.execute(timestamp, smallestScn, scn, --counter);
+
+                // Update SCN in offset context only if processed SCN less than SCN among other transactions
+                if (smallestScn == null || scn.compareTo(smallestScn) < 0) {
+                    offsetContext.setScn(event.getScn());
+                    streamingMetrics.setOldestScn(event.getScn());
+                }
+                offsetContext.setTransactionId(transaction.transactionId);
+                offsetContext.setSourceTime(timestamp.toInstant());
+                offsetContext.setTableId(event.getTableId());
+                if (--counter == 0) {
+                    offsetContext.setCommitScn(scn);
+                }
+
+                LOGGER.trace("Processing DML event {} with SCN {}", event.getEntry(), event.getScn());
+                dispatcher.dispatchDataChangeEvent(event.getTableId(),
+                        new LogMinerChangeRecordEmitter(
+                                offsetContext,
+                                event.getEntry(),
+                                schema.tableFor(event.getTableId()),
+                                clock));
             }
 
             lastCommittedScn = Scn.valueOf(scn.longValue());
 
-            if (!commitCallbacks.isEmpty()) {
+            if (!transaction.events.isEmpty()) {
                 dispatcher.dispatchTransactionCommittedEvent(offsetContext);
             }
         }
@@ -171,7 +219,7 @@ public final class TransactionalBuffer<SourceRecord extends SourceRecordWrapper>
         finally {
             streamingMetrics.incrementCommittedTransactions();
             streamingMetrics.setActiveTransactions(transactions.size());
-            streamingMetrics.incrementCommittedDmlCount(commitCallbacks.size());
+            streamingMetrics.incrementCommittedDmlCount(transaction.events.size());
             streamingMetrics.setCommittedScn(scn);
             streamingMetrics.setOffsetScn(offsetContext.getScn());
             streamingMetrics.setLastCommitDuration(Duration.between(start, Instant.now()));
@@ -292,40 +340,89 @@ public final class TransactionalBuffer<SourceRecord extends SourceRecordWrapper>
     }
 
     /**
-     * Callback is designed to execute when transaction commits.
+     * Represents a logical database transaction
      */
-    public interface CommitCallback {
-
-        /**
-         * Executes callback.
-         *
-         * @param timestamp      commit timestamp
-         * @param smallestScn    smallest SCN among other transactions
-         * @param commitScn      commit SCN
-         * @param callbackNumber number of the callback in the transaction
-         */
-        void execute(Timestamp timestamp, Scn smallestScn, Scn commitScn, int callbackNumber) throws InterruptedException;
-    }
-
-    @NotThreadSafe
     private static final class Transaction {
 
+        private final String transactionId;
         private final Scn firstScn;
         private Scn lastScn;
-        private final List<CommitCallback> commitCallbacks;
+        private final List<DmlEvent> events;
 
-        private Transaction(Scn firstScn) {
+        private Transaction(String transactionId, Scn firstScn) {
+            this.transactionId = transactionId;
             this.firstScn = firstScn;
-            this.commitCallbacks = new ArrayList<>();
+            this.events = new ArrayList<>();
             this.lastScn = firstScn;
         }
 
         @Override
         public String toString() {
             return "Transaction{" +
-                    "firstScn=" + firstScn +
+                    "transactionId=" + transactionId +
+                    ", firstScn=" + firstScn +
                     ", lastScn=" + lastScn +
                     '}';
+        }
+    }
+
+    /**
+     * Represents a DML event for a given table row.
+     */
+    private static class DmlEvent {
+        private final int operation;
+        private final LogMinerDmlEntry entry;
+        private final Scn scn;
+        private final TableId tableId;
+        private final String rowId;
+
+        public DmlEvent(int operation, LogMinerDmlEntry entry, Scn scn, TableId tableId, String rowId) {
+            this.operation = operation;
+            this.scn = scn;
+            this.tableId = tableId;
+            this.rowId = rowId;
+            this.entry = entry;
+        }
+
+        public int getOperation() {
+            return operation;
+        }
+
+        public LogMinerDmlEntry getEntry() {
+            return entry;
+        }
+
+        public Scn getScn() {
+            return scn;
+        }
+
+        public TableId getTableId() {
+            return tableId;
+        }
+
+        public String getRowId() {
+            return rowId;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+            DmlEvent dmlEvent = (DmlEvent) o;
+            return operation == dmlEvent.operation &&
+                    Objects.equals(entry, dmlEvent.entry) &&
+                    Objects.equals(scn, dmlEvent.scn) &&
+                    Objects.equals(tableId, dmlEvent.tableId) &&
+                    Objects.equals(rowId, dmlEvent.rowId);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(operation, entry, scn, tableId, rowId);
         }
     }
 }

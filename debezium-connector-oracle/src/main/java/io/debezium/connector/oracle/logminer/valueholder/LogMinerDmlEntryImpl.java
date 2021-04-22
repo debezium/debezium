@@ -26,6 +26,7 @@ public class LogMinerDmlEntryImpl implements LogMinerDmlEntry {
     private Timestamp sourceTime;
     private String transactionId;
     private Scn scn;
+    private String rowId;
 
     public LogMinerDmlEntryImpl(Envelope.Operation commandType, List<LogMinerColumnValue> newLmColumnValues, List<LogMinerColumnValue> oldLmColumnValues) {
         this.commandType = commandType;
@@ -69,6 +70,11 @@ public class LogMinerDmlEntryImpl implements LogMinerDmlEntry {
     }
 
     @Override
+    public String getRowId() {
+        return rowId;
+    }
+
+    @Override
     public void setObjectName(String name) {
         this.objectName = name;
     }
@@ -96,6 +102,11 @@ public class LogMinerDmlEntryImpl implements LogMinerDmlEntry {
     @Override
     public void setScn(Scn scn) {
         this.scn = scn;
+    }
+
+    @Override
+    public void setRowId(String rowId) {
+        this.rowId = rowId;
     }
 
     @Override
