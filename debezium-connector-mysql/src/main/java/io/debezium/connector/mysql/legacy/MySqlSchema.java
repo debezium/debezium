@@ -122,7 +122,7 @@ public class MySqlSchema extends RelationalDatabaseSchema {
                 .with(KafkaDatabaseHistory.INTERNAL_CONNECTOR_ID, configuration.getLogicalName())
                 .build();
         this.skipUnparseableDDL = dbHistoryConfig.getBoolean(DatabaseHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS);
-        this.storeOnlyCapturedTablesDdl = dbHistoryConfig.getBoolean(DatabaseHistory.STORE_ONLY_CAPTURED_TABLES_DDL);
+        this.storeOnlyCapturedTablesDdl = Boolean.valueOf(dbHistoryConfig.getFallbackStringPropertyWithWarning(DatabaseHistory.STORE_ONLY_CAPTURED_TABLES_DDL, DatabaseHistory.STORE_ONLY_MONITORED_TABLES_DDL));
 
         this.ddlParser = new MySqlAntlrDdlParser(getValueConverters(configuration), getTableFilter());
         this.ddlChanges = this.ddlParser.getDdlChanges();
