@@ -45,6 +45,16 @@ public interface DatabaseHistory {
                     + "which it cannot parse. If skipping is enabled then Debezium can miss metadata changes.")
             .withDefault(false);
 
+    public static final Field STORE_ONLY_CAPTURED_TABLES_DDL = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "store.only.captured.tables.ddl")
+            .withDisplayName("Store only DDL that modifies tables that are captured based on include/exclude lists")
+            .withType(Type.BOOLEAN)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription("Controls what DDL will Debezium store in database history. "
+                    + "By default (false) Debezium will store all incoming DDL statements. If set to true, "
+                    + "then only DDL that manipulates a captured table will be stored.")
+            .withDefault(false);
+
     @Deprecated
     public static final Field STORE_ONLY_MONITORED_TABLES_DDL = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "store.only.monitored.tables.ddl")
             .withDisplayName("Store only DDL that modifies tables that are captured based on include/exclude lists")
@@ -52,19 +62,10 @@ public interface DatabaseHistory {
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withValidation(DatabaseHistory::validateMonitoredTables)
-            .withDescription("Controls what DDL will Debezium store in database history."
-                    + "By default (false) Debezium will store all incoming DDL statements. If set to true"
-                    + "then only DDL that manipulates a monitored table will be stored.")
-            .withDefault(false);
-
-    public static final Field STORE_ONLY_CAPTURED_TABLES_DDL = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "store.only.captured.tables.ddl")
-            .withDisplayName("Store only DDL that modifies tables that are captured based on include/exclude lists")
-            .withType(Type.BOOLEAN)
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.LOW)
-            .withDescription("Controls what DDL will Debezium store in database history."
-                    + "By default (false) Debezium will store all incoming DDL statements. If set to true"
-                    + "then only DDL that manipulates a captured table will be stored.")
+            .withDescription("Controls what DDL will Debezium store in database history. "
+                    + "By default (false) Debezium will store all incoming DDL statements. If set to true, "
+                    + "then only DDL that manipulates a monitored table will be stored "
+                    + "(deprecated, use \"" + STORE_ONLY_CAPTURED_TABLES_DDL.name() + "\" instead)")
             .withDefault(false);
 
     public static final Field DDL_FILTER = Field.createInternal(CONFIGURATION_FIELD_PREFIX_STRING + "ddl.filter")
@@ -163,12 +164,9 @@ public interface DatabaseHistory {
     boolean skipUnparseableDdlStatements();
 
     static int validateMonitoredTables(Configuration config, Field field, Field.ValidationOutput problems) {
-        String msg = config.getFallbackStringPropertyWithWarning(STORE_ONLY_CAPTURED_TABLES_DDL, STORE_ONLY_MONITORED_TABLES_DDL);
-
-        if (msg != null) {
-            problems.accept(STORE_ONLY_MONITORED_TABLES_DDL, msg, "The store.only.monitored.tables.ddl option is deprecated.");
-            return 1;
-        }
+        // log a warning in case the deprecated option has been given, don't raise this
+        // as a problem though
+        config.getFallbackStringPropertyWithWarning(STORE_ONLY_CAPTURED_TABLES_DDL, STORE_ONLY_MONITORED_TABLES_DDL);
         return 0;
     }
 }

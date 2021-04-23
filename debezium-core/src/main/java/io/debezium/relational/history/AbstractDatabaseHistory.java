@@ -64,7 +64,8 @@ public abstract class AbstractDatabaseHistory implements DatabaseHistory {
         this.config = config;
         this.comparator = comparator != null ? comparator : HistoryRecordComparator.INSTANCE;
         this.skipUnparseableDDL = config.getBoolean(DatabaseHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS);
-        this.storeOnlyCapturedTablesDdl = config.getBoolean(DatabaseHistory.STORE_ONLY_CAPTURED_TABLES_DDL);
+        this.storeOnlyCapturedTablesDdl = Boolean
+                .valueOf(config.getFallbackStringPropertyWithWarning(DatabaseHistory.STORE_ONLY_CAPTURED_TABLES_DDL, DatabaseHistory.STORE_ONLY_MONITORED_TABLES_DDL));
 
         final String ddlFilter = config.getString(DatabaseHistory.DDL_FILTER);
         this.ddlFilter = (ddlFilter != null) ? Predicates.matchedBy(ddlFilter) : this.ddlFilter;
