@@ -19,7 +19,7 @@
 |The number of events that have been filtered by include/exclude list filtering rules configured on the connector.
 
 |[[connectors-strm-metric-monitoredtables_{context}]]<<connectors-strm-metric-monitoredtables_{context}, `MonitoredTables`>>
-_deprecated and scheduled for removal in a future release_
+_deprecated and scheduled for removal in a future release; use the 'CapturedTables' metric instead_
 |`string[]`
 |The list of tables that are monitored by the connector.
 
