@@ -822,7 +822,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         VerifyRecord.isValidInsert(insertRecord, PK_FIELD, 2);
         List<SchemaAndValueField> expectedSchemaAndValues = Arrays.asList(
                 new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "update"),
-                new SchemaAndValueField("default_column", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "default"));
+                new SchemaAndValueField("default_column", SchemaBuilder.string().optional().defaultValue("default").build(), "default"));
         assertRecordSchemaAndValues(expectedSchemaAndValues, insertRecord, Envelope.FieldName.AFTER);
     }
 
@@ -1426,11 +1426,13 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         assertRecordSchemaAndValues(Arrays.asList(
                 new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 10),
                 new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, toastedValue1),
-                new SchemaAndValueField("mandatory_text", SchemaBuilder.STRING_SCHEMA, toastedValue1)), consumer.remove(), Envelope.FieldName.AFTER);
+                new SchemaAndValueField("mandatory_text", SchemaBuilder.string().defaultValue(toastedValue3).build(), toastedValue1)), consumer.remove(),
+                Envelope.FieldName.AFTER);
         assertRecordSchemaAndValues(Arrays.asList(
                 new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 10),
                 new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, toastedValue2),
-                new SchemaAndValueField("mandatory_text", SchemaBuilder.STRING_SCHEMA, toastedValue2)), consumer.remove(), Envelope.FieldName.AFTER);
+                new SchemaAndValueField("mandatory_text", SchemaBuilder.string().defaultValue(toastedValue3).build(), toastedValue2)), consumer.remove(),
+                Envelope.FieldName.AFTER);
 
         statement = "UPDATE test_table SET not_toast = 2;"
                 + "UPDATE test_table SET not_toast = 3;";
@@ -1446,30 +1448,38 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         assertRecordSchemaAndValues(Arrays.asList(
                 new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 2),
                 new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "insert"),
-                new SchemaAndValueField("mandatory_text", SchemaBuilder.STRING_SCHEMA, "")), consumer.remove(), Envelope.FieldName.AFTER);
+                new SchemaAndValueField("mandatory_text", SchemaBuilder.string().defaultValue(toastedValue3).build(), "")), consumer.remove(), Envelope.FieldName.AFTER);
         assertRecordSchemaAndValues(Arrays.asList(
                 new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 2),
                 new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, DecoderDifferences.optionalToastedValuePlaceholder()),
-                new SchemaAndValueField("mandatory_text", SchemaBuilder.STRING_SCHEMA, DecoderDifferences.mandatoryToastedValuePlaceholder())), consumer.remove(),
+                new SchemaAndValueField("mandatory_text", SchemaBuilder.string().defaultValue(toastedValue3).build(),
+                        DecoderDifferences.mandatoryToastedValuePlaceholder())),
+                consumer.remove(),
                 Envelope.FieldName.AFTER);
         assertRecordSchemaAndValues(Arrays.asList(
                 new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 2),
                 new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, DecoderDifferences.optionalToastedValuePlaceholder()),
-                new SchemaAndValueField("mandatory_text", SchemaBuilder.STRING_SCHEMA, DecoderDifferences.mandatoryToastedValuePlaceholder())), consumer.remove(),
+                new SchemaAndValueField("mandatory_text", SchemaBuilder.string().defaultValue(toastedValue3).build(),
+                        DecoderDifferences.mandatoryToastedValuePlaceholder())),
+                consumer.remove(),
                 Envelope.FieldName.AFTER);
         assertRecordSchemaAndValues(Arrays.asList(
                 new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 3),
                 new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "insert"),
-                new SchemaAndValueField("mandatory_text", SchemaBuilder.STRING_SCHEMA, "")), consumer.remove(), Envelope.FieldName.AFTER);
+                new SchemaAndValueField("mandatory_text", SchemaBuilder.string().defaultValue(toastedValue3).build(), "")), consumer.remove(), Envelope.FieldName.AFTER);
         assertRecordSchemaAndValues(Arrays.asList(
                 new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 3),
                 new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, DecoderDifferences.optionalToastedValuePlaceholder()),
-                new SchemaAndValueField("mandatory_text", SchemaBuilder.STRING_SCHEMA, DecoderDifferences.mandatoryToastedValuePlaceholder())), consumer.remove(),
+                new SchemaAndValueField("mandatory_text", SchemaBuilder.string().defaultValue(toastedValue3).build(),
+                        DecoderDifferences.mandatoryToastedValuePlaceholder())),
+                consumer.remove(),
                 Envelope.FieldName.AFTER);
         assertRecordSchemaAndValues(Arrays.asList(
                 new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 3),
                 new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, DecoderDifferences.optionalToastedValuePlaceholder()),
-                new SchemaAndValueField("mandatory_text", SchemaBuilder.STRING_SCHEMA, DecoderDifferences.mandatoryToastedValuePlaceholder())), consumer.remove(),
+                new SchemaAndValueField("mandatory_text", SchemaBuilder.string().defaultValue(toastedValue3).build(),
+                        DecoderDifferences.mandatoryToastedValuePlaceholder())),
+                consumer.remove(),
                 Envelope.FieldName.AFTER);
     }
 
@@ -1489,7 +1499,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         assertInsert(
                 statement,
                 Arrays.asList(
-                        new SchemaAndValueField("id", SchemaBuilder.INT32_SCHEMA, 1), // SERIAL is NOT NULL implicitly
+                        new SchemaAndValueField("id", SchemaBuilder.int32().defaultValue(0).build(), 1), // SERIAL is NOT NULL implicitly
                         new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "a")));
 
         // UPDATE
@@ -1499,12 +1509,12 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         VerifyRecord.isValidUpdate(updatedRecord);
 
         List<SchemaAndValueField> expectedBefore = Arrays.asList(
-                new SchemaAndValueField("id", SchemaBuilder.INT32_SCHEMA, 1),
+                new SchemaAndValueField("id", SchemaBuilder.int32().defaultValue(0).build(), 1),
                 new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "a"));
         assertRecordSchemaAndValues(expectedBefore, updatedRecord, Envelope.FieldName.BEFORE);
 
         List<SchemaAndValueField> expectedAfter = Arrays.asList(
-                new SchemaAndValueField("id", SchemaBuilder.INT32_SCHEMA, 1),
+                new SchemaAndValueField("id", SchemaBuilder.int32().defaultValue(0).build(), 1),
                 new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "b"));
         assertRecordSchemaAndValues(expectedAfter, updatedRecord, Envelope.FieldName.AFTER);
 
@@ -1515,7 +1525,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         VerifyRecord.isValidDelete(deletedRecord);
 
         expectedBefore = Arrays.asList(
-                new SchemaAndValueField("id", SchemaBuilder.INT32_SCHEMA, 1),
+                new SchemaAndValueField("id", SchemaBuilder.int32().defaultValue(0).build(), 1),
                 new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "b"));
         assertRecordSchemaAndValues(expectedBefore, deletedRecord, Envelope.FieldName.BEFORE);
 
@@ -2007,7 +2017,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         assertSourceInfo(rec, "postgres", "public", "alias_table");
 
         List<SchemaAndValueField> expected = Arrays.asList(
-                new SchemaAndValueField("pk", SchemaBuilder.INT32_SCHEMA, 1),
+                new SchemaAndValueField("pk", SchemaBuilder.int32().defaultValue(0).build(), 1),
                 new SchemaAndValueField("data", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "hello"),
                 new SchemaAndValueField("salary", Decimal.builder(2).optional().build(), new BigDecimal(7.25)),
                 new SchemaAndValueField("salary2", Decimal.builder(2).optional().build(), new BigDecimal(8.25)));
@@ -2043,7 +2053,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         assertSourceInfo(rec, "postgres", "public", "alias_table");
 
         List<SchemaAndValueField> expected = Arrays.asList(
-                new SchemaAndValueField("pk", SchemaBuilder.INT32_SCHEMA, 1),
+                new SchemaAndValueField("pk", SchemaBuilder.int32().defaultValue(0).build(), 1),
                 new SchemaAndValueField("data", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "hello"),
                 new SchemaAndValueField("salary", Decimal.builder(2).optional().build(), new BigDecimal(7.25)),
                 new SchemaAndValueField("salary2", Decimal.builder(2).build(), new BigDecimal(8.25)),
@@ -2080,7 +2090,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         assertSourceInfo(rec, "postgres", "public", "alias_table");
 
         List<SchemaAndValueField> expected = Arrays.asList(
-                new SchemaAndValueField(PK_FIELD, SchemaBuilder.INT32_SCHEMA, 1),
+                new SchemaAndValueField(PK_FIELD, SchemaBuilder.int32().defaultValue(0).build(), 1),
                 new SchemaAndValueField("value", Bits.builder(3).build(), new byte[]{ 5 }));
 
         assertRecordSchemaAndValues(expected, rec, Envelope.FieldName.AFTER);
@@ -2109,7 +2119,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         assertSourceInfo(rec, "postgres", "public", "alias_table");
 
         List<SchemaAndValueField> expected = Arrays.asList(
-                new SchemaAndValueField(PK_FIELD, SchemaBuilder.INT32_SCHEMA, 1),
+                new SchemaAndValueField(PK_FIELD, SchemaBuilder.int32().defaultValue(0).build(), 1),
                 new SchemaAndValueField("value", SpecialValueDecimal.builder(DecimalMode.DOUBLE, 8, 2)
                         .optional()
                         .parameter(TestHelper.TYPE_NAME_PARAMETER_KEY, "NUMERICEX")
@@ -2303,7 +2313,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         assertSourceInfo(rec, "postgres", "public", "enum_table");
 
         List<SchemaAndValueField> expected = Arrays.asList(
-                new SchemaAndValueField(PK_FIELD, Schema.INT32_SCHEMA, 1),
+                new SchemaAndValueField(PK_FIELD, SchemaBuilder.int32().defaultValue(0).build(), 1),
                 new SchemaAndValueField("value", Enum.builder("V1,V2")
                         .parameter(TestHelper.TYPE_NAME_PARAMETER_KEY, "TEST_TYPE")
                         .parameter(TestHelper.TYPE_LENGTH_PARAMETER_KEY, String.valueOf(Integer.MAX_VALUE))
@@ -2340,7 +2350,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         assertSourceInfo(insertRec, "postgres", "public", "enum_array_table");
 
         List<SchemaAndValueField> expectedInsert = Arrays.asList(
-                new SchemaAndValueField(PK_FIELD, Schema.INT32_SCHEMA, 1),
+                new SchemaAndValueField(PK_FIELD, SchemaBuilder.int32().defaultValue(0).build(), 1),
                 new SchemaAndValueField("value", SchemaBuilder.array(Enum.builder("V1,V2"))
                         .parameter(TestHelper.TYPE_NAME_PARAMETER_KEY, "_TEST_TYPE")
                         .parameter(TestHelper.TYPE_LENGTH_PARAMETER_KEY, String.valueOf(Integer.MAX_VALUE))
@@ -2355,7 +2365,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         assertSourceInfo(updateRec, "postgres", "public", "enum_array_table");
 
         List<SchemaAndValueField> expectedUpdate = Arrays.asList(
-                new SchemaAndValueField(PK_FIELD, Schema.INT32_SCHEMA, 1),
+                new SchemaAndValueField(PK_FIELD, SchemaBuilder.int32().defaultValue(0).build(), 1),
                 new SchemaAndValueField("value", SchemaBuilder.array(Enum.builder("V1,V2"))
                         .parameter(TestHelper.TYPE_NAME_PARAMETER_KEY, "_TEST_TYPE")
                         .parameter(TestHelper.TYPE_LENGTH_PARAMETER_KEY, String.valueOf(Integer.MAX_VALUE))
@@ -2460,7 +2470,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         assertSourceInfo(rec, "postgres", "public", "enum_table");
 
         List<SchemaAndValueField> expected = Arrays.asList(
-                new SchemaAndValueField(PK_FIELD, Schema.INT32_SCHEMA, 1),
+                new SchemaAndValueField(PK_FIELD, SchemaBuilder.int32().defaultValue(0).build(), 1),
                 new SchemaAndValueField("data", Schema.STRING_SCHEMA, "hello"),
                 new SchemaAndValueField("value", Enum.builder("V1,V2")
                         .parameter(TestHelper.TYPE_NAME_PARAMETER_KEY, "TEST_TYPE")
@@ -2503,7 +2513,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         assertInsert(
                 statement,
                 Arrays.asList(
-                        new SchemaAndValueField("id", SchemaBuilder.INT32_SCHEMA, 1), // SERIAL is NOT NULL implicitly
+                        new SchemaAndValueField("id", SchemaBuilder.int32().defaultValue(0).build(), 1), // SERIAL is NOT NULL implicitly
                         new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 10),
                         new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, toastedValue)));
 
@@ -2514,20 +2524,20 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
         if (DecoderDifferences.areToastedValuesPresentInSchema() || mode == SchemaRefreshMode.COLUMNS_DIFF_EXCLUDE_UNCHANGED_TOAST) {
             assertRecordSchemaAndValues(Arrays.asList(
-                    new SchemaAndValueField("id", SchemaBuilder.INT32_SCHEMA, 1),
+                    new SchemaAndValueField("id", SchemaBuilder.int32().defaultValue(0).build(), 1),
                     new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 10),
                     new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, toastedValue)), updatedRecord, Envelope.FieldName.BEFORE);
             assertRecordSchemaAndValues(Arrays.asList(
-                    new SchemaAndValueField("id", SchemaBuilder.INT32_SCHEMA, 1),
+                    new SchemaAndValueField("id", SchemaBuilder.int32().defaultValue(0).build(), 1),
                     new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 20),
                     new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, toastedValue)), updatedRecord, Envelope.FieldName.AFTER);
         }
         else {
             assertRecordSchemaAndValues(Arrays.asList(
-                    new SchemaAndValueField("id", SchemaBuilder.INT32_SCHEMA, 1),
+                    new SchemaAndValueField("id", SchemaBuilder.int32().defaultValue(0).build(), 1),
                     new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 10)), updatedRecord, Envelope.FieldName.BEFORE);
             assertRecordSchemaAndValues(Arrays.asList(
-                    new SchemaAndValueField("id", SchemaBuilder.INT32_SCHEMA, 1),
+                    new SchemaAndValueField("id", SchemaBuilder.int32().defaultValue(0).build(), 1),
                     new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 20)), updatedRecord, Envelope.FieldName.AFTER);
         }
 
@@ -2540,13 +2550,13 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         assertThat(tombstoneRecord.valueSchema()).isNull();
         if (DecoderDifferences.areToastedValuesPresentInSchema() || mode == SchemaRefreshMode.COLUMNS_DIFF_EXCLUDE_UNCHANGED_TOAST) {
             assertRecordSchemaAndValues(Arrays.asList(
-                    new SchemaAndValueField("id", SchemaBuilder.INT32_SCHEMA, 1),
+                    new SchemaAndValueField("id", SchemaBuilder.int32().defaultValue(0).build(), 1),
                     new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 20),
                     new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, toastedValue)), deletedRecord, Envelope.FieldName.BEFORE);
         }
         else {
             assertRecordSchemaAndValues(Arrays.asList(
-                    new SchemaAndValueField("id", SchemaBuilder.INT32_SCHEMA, 1),
+                    new SchemaAndValueField("id", SchemaBuilder.int32().defaultValue(0).build(), 1),
                     new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 20)), deletedRecord, Envelope.FieldName.BEFORE);
         }
 
@@ -2556,7 +2566,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         assertInsert(
                 statement,
                 Arrays.asList(
-                        new SchemaAndValueField("id", SchemaBuilder.INT32_SCHEMA, 2), // SERIAL is NOT NULL implicitly
+                        new SchemaAndValueField("id", SchemaBuilder.int32().defaultValue(0).build(), 2), // SERIAL is NOT NULL implicitly
                         new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 100),
                         new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, null)));
 
@@ -2566,20 +2576,20 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         updatedRecord = consumer.remove();
         if (DecoderDifferences.areToastedValuesPresentInSchema() || mode == SchemaRefreshMode.COLUMNS_DIFF_EXCLUDE_UNCHANGED_TOAST) {
             assertRecordSchemaAndValues(Arrays.asList(
-                    new SchemaAndValueField("id", SchemaBuilder.INT32_SCHEMA, 2),
+                    new SchemaAndValueField("id", SchemaBuilder.int32().defaultValue(0).build(), 2),
                     new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 100),
                     new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, null)), updatedRecord, Envelope.FieldName.BEFORE);
             assertRecordSchemaAndValues(Arrays.asList(
-                    new SchemaAndValueField("id", SchemaBuilder.INT32_SCHEMA, 2),
+                    new SchemaAndValueField("id", SchemaBuilder.int32().defaultValue(0).build(), 2),
                     new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 200),
                     new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, null)), updatedRecord, Envelope.FieldName.AFTER);
         }
         else {
             assertRecordSchemaAndValues(Arrays.asList(
-                    new SchemaAndValueField("id", SchemaBuilder.INT32_SCHEMA, 2),
+                    new SchemaAndValueField("id", SchemaBuilder.int32().defaultValue(0).build(), 2),
                     new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 100)), updatedRecord, Envelope.FieldName.BEFORE);
             assertRecordSchemaAndValues(Arrays.asList(
-                    new SchemaAndValueField("id", SchemaBuilder.INT32_SCHEMA, 2),
+                    new SchemaAndValueField("id", SchemaBuilder.int32().defaultValue(0).build(), 2),
                     new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 200)), updatedRecord, Envelope.FieldName.AFTER);
         }
 
@@ -2592,13 +2602,13 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         assertThat(tombstoneRecord.valueSchema()).isNull();
         if (DecoderDifferences.areToastedValuesPresentInSchema() || mode == SchemaRefreshMode.COLUMNS_DIFF_EXCLUDE_UNCHANGED_TOAST) {
             assertRecordSchemaAndValues(Arrays.asList(
-                    new SchemaAndValueField("id", SchemaBuilder.INT32_SCHEMA, 2),
+                    new SchemaAndValueField("id", SchemaBuilder.int32().defaultValue(0).build(), 2),
                     new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 200),
                     new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, null)), deletedRecord, Envelope.FieldName.BEFORE);
         }
         else {
             assertRecordSchemaAndValues(Arrays.asList(
-                    new SchemaAndValueField("id", SchemaBuilder.INT32_SCHEMA, 2),
+                    new SchemaAndValueField("id", SchemaBuilder.int32().defaultValue(0).build(), 2),
                     new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 200)), deletedRecord, Envelope.FieldName.BEFORE);
         }
     }
