@@ -480,7 +480,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
 
         List<SchemaAndValueField> schemaAndValueFields = Arrays.asList(
-                new SchemaAndValueField("id", Schema.INT32_SCHEMA, 1),
+                new SchemaAndValueField("id", SchemaBuilder.int32().defaultValue(0).build(), 1),
                 new SchemaAndValueField("val", Schema.OPTIONAL_INT32_SCHEMA, 1000));
 
         consumer.process(record -> {
