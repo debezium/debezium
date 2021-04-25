@@ -234,8 +234,8 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
                 new SchemaAndValueField("db", Schema.OPTIONAL_FLOAT64_SCHEMA, 4.44d),
                 new SchemaAndValueField("r_int", Schema.OPTIONAL_FLOAT32_SCHEMA, 3.0f),
                 new SchemaAndValueField("db_int", Schema.OPTIONAL_FLOAT64_SCHEMA, 4.0d),
-                new SchemaAndValueField("ss", Schema.INT16_SCHEMA, (short) 1),
-                new SchemaAndValueField("bs", Schema.INT64_SCHEMA, 123L),
+                new SchemaAndValueField("ss", SchemaBuilder.int16().defaultValue((short) 0).build(), (short) 1),
+                new SchemaAndValueField("bs", SchemaBuilder.int64().defaultValue(0L).build(), 123L),
                 new SchemaAndValueField("b", Schema.OPTIONAL_BOOLEAN_SCHEMA, Boolean.TRUE),
                 new SchemaAndValueField("o", Schema.OPTIONAL_INT64_SCHEMA, 4_000_000_000L)));
         if (!DecoderDifferences.areSpecialFPValuesUnsupported()) {
@@ -923,7 +923,7 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
         final ByteBuffer polygonByteBuffer = ByteBuffer.wrap("((0.0,0.0),(0.0,1.0),(1.0,0.0),(0.0,0.0))".getBytes());
 
         return Arrays.asList(
-                new SchemaAndValueField(PK_FIELD, SchemaBuilder.INT32_SCHEMA, 1),
+                new SchemaAndValueField(PK_FIELD, SchemaBuilder.int32().defaultValue(0).build(), 1),
                 new SchemaAndValueField("bit_base", Bits.builder(3).build(), new byte[]{ 5 }),
                 new SchemaAndValueField("bit_alias", Bits.builder(3).build(), new byte[]{ 5 }),
                 new SchemaAndValueField("smallint_base", SchemaBuilder.INT16_SCHEMA, (short) 1),
