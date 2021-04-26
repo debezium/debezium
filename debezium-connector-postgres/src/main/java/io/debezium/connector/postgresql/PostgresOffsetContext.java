@@ -183,7 +183,7 @@ public class PostgresOffsetContext implements OffsetContext {
         return sourceInfo.xmin();
     }
 
-    public static class Loader implements OffsetContext.Loader {
+    public static class Loader implements OffsetContext.Loader<PostgresOffsetContext> {
 
         private final PostgresConnectorConfig connectorConfig;
 
@@ -203,7 +203,7 @@ public class PostgresOffsetContext implements OffsetContext {
 
         @SuppressWarnings("unchecked")
         @Override
-        public OffsetContext load(Map<String, ?> offset) {
+        public PostgresOffsetContext load(Map<String, ?> offset) {
             final Lsn lsn = Lsn.valueOf(readOptionalLong(offset, SourceInfo.LSN_KEY));
             final Lsn lastCompletelyProcessedLsn = Lsn.valueOf(readOptionalLong(offset, LAST_COMPLETELY_PROCESSED_LSN_KEY));
             final Lsn lastCommitLsn = Lsn.valueOf(readOptionalLong(offset, LAST_COMPLETELY_PROCESSED_LSN_KEY));

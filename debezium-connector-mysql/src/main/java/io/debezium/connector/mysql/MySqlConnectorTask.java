@@ -41,7 +41,7 @@ import io.debezium.util.SchemaNameAdjuster;
  * @author Jiri Pechanec
  *
  */
-public class MySqlConnectorTask extends BaseSourceTask {
+public class MySqlConnectorTask extends BaseSourceTask<MySqlOffsetContext> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MySqlConnectorTask.class);
     private static final String CONTEXT_NAME = "mysql-connector-task";
@@ -58,7 +58,7 @@ public class MySqlConnectorTask extends BaseSourceTask {
     }
 
     @Override
-    public ChangeEventSourceCoordinator start(Configuration config) {
+    public ChangeEventSourceCoordinator<MySqlOffsetContext> start(Configuration config) {
         final Clock clock = Clock.system();
         final MySqlConnectorConfig connectorConfig = new MySqlConnectorConfig(
                 config.edit()
@@ -129,7 +129,7 @@ public class MySqlConnectorTask extends BaseSourceTask {
 
         final MySqlStreamingChangeEventSourceMetrics streamingMetrics = new MySqlStreamingChangeEventSourceMetrics(taskContext, queue, metadataProvider);
 
-        ChangeEventSourceCoordinator coordinator = new ChangeEventSourceCoordinator(
+        ChangeEventSourceCoordinator<MySqlOffsetContext> coordinator = new ChangeEventSourceCoordinator<>(
                 previousOffset,
                 errorHandler,
                 MySqlConnector.class,

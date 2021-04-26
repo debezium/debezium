@@ -51,39 +51,37 @@ public class SqlServerConnection extends JdbcConnection {
     public static final String SERVER_TIMEZONE_PROP_NAME = "server.timezone";
     public static final String INSTANCE_NAME = "instance";
 
-    private static final String GET_DATABASE_NAME = "SELECT db_name()";
+    private static final String GET_DATABASE_NAME = "SELECT name FROM sys.databases WHERE name=?";
+    private static final String TEST_CONNECTION = "SELECT NULL";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SqlServerConnection.class);
 
     private static final String STATEMENTS_PLACEHOLDER = "#";
-    private static final String GET_MAX_LSN = "SELECT sys.fn_cdc_get_max_lsn()";
+    private static final String DATABASE_NAME_PLACEHOLDER = "[#db]";
+    private static final String GET_MAX_LSN = "SELECT [#db].sys.fn_cdc_get_max_lsn()";
+    private static final String GET_LSN_TO_TIMESTAMP = "SELECT [#db].sys.fn_cdc_map_lsn_to_time(?)";
 
-    private static final String GET_MAX_LSN_SKIP_LOW_ACTIVTY = "SELECT (SELECT MAX(start_lsn) FROM cdc.lsn_time_mapping), (SELECT MAX(start_lsn) FROM cdc.lsn_time_mapping WHERE tran_id <> 0x00)";
+    private static final String GET_MAX_LSN_SKIP_LOW_ACTIVTY = "SELECT (SELECT MAX(start_lsn) FROM [#db].cdc.lsn_time_mapping), (SELECT MAX(start_lsn) FROM [#db].cdc.lsn_time_mapping WHERE tran_id <> 0x00)";
 
-    private static final String GET_MIN_LSN = "SELECT sys.fn_cdc_get_min_lsn('#')";
+    private static final String GET_MIN_LSN = "SELECT [#db].sys.fn_cdc_get_min_lsn('#')";
     private static final String LOCK_TABLE = "SELECT * FROM [#] WITH (TABLOCKX)";
     private static final String SQL_SERVER_VERSION = "SELECT @@VERSION AS 'SQL Server Version'";
-    private final String lsnToTimestamp;
-    private static final String INCREMENT_LSN = "SELECT sys.fn_cdc_increment_lsn(?)";
-    private static final String GET_ALL_CHANGES_FOR_TABLE = "SELECT * FROM cdc.[fn_cdc_get_all_changes_#](?, ?, N'all update old') order by [__$start_lsn] ASC, [__$seqval] ASC, [__$operation] ASC";
-    private static final String GET_LIST_OF_CDC_ENABLED_TABLES = "EXEC sys.sp_cdc_help_change_data_capture";
-    private static final String GET_LIST_OF_NEW_CDC_ENABLED_TABLES = "SELECT * FROM cdc.change_tables WHERE start_lsn BETWEEN ? AND ?";
-    private static final String GET_LIST_OF_KEY_COLUMNS = "SELECT * FROM cdc.index_columns WHERE object_id=?";
+    private static final String INCREMENT_LSN = "SELECT [#db].sys.fn_cdc_increment_lsn(?)";
+    private static final String GET_ALL_CHANGES_FOR_TABLE = "SELECT * FROM [#db].cdc.[fn_cdc_get_all_changes_#](?, ?, N'all update old') order by [__$start_lsn] ASC, [__$seqval] ASC, [__$operation] ASC";
+    private static final String GET_LIST_OF_CDC_ENABLED_TABLES = "EXEC [#db].sys.sp_cdc_help_change_data_capture";
+    private static final String GET_LIST_OF_NEW_CDC_ENABLED_TABLES = "SELECT * FROM [#db].cdc.change_tables WHERE start_lsn BETWEEN ? AND ?";
+    private static final String GET_LIST_OF_KEY_COLUMNS = "SELECT * FROM [#db].cdc.index_columns WHERE object_id=?";
     private static final Pattern BRACKET_PATTERN = Pattern.compile("[\\[\\]]");
 
     private static final int CHANGE_TABLE_DATA_COLUMN_OFFSET = 5;
 
-    private static final String URL_PATTERN = "jdbc:sqlserver://${" + JdbcConfiguration.HOSTNAME + "}:${" + JdbcConfiguration.PORT + "};databaseName=${"
-            + JdbcConfiguration.DATABASE + "}";
+    private static final String URL_PATTERN = "jdbc:sqlserver://${" + JdbcConfiguration.HOSTNAME + "}:${" + JdbcConfiguration.PORT + "}";
     private static final ConnectionFactory FACTORY = JdbcConnection.patternBasedFactory(URL_PATTERN,
             SQLServerDriver.class.getName(),
             SqlServerConnection.class.getClassLoader(),
             JdbcConfiguration.PORT.withDefault(SqlServerConnectorConfig.PORT.defaultValueAsString()));
 
-    /**
-     * actual name of the database, which could differ in casing from the database name given in the connector config.
-     */
-    private final String realDatabaseName;
+    private final boolean supportsAtTimeZone;
     private final ZoneId transactionTimezone;
     private final SourceTimestampMode sourceTimestampMode;
     private final Clock clock;
@@ -117,10 +115,8 @@ public class SqlServerConnection extends JdbcConnection {
                                Supplier<ClassLoader> classLoaderSupplier) {
         super(config, FACTORY, classLoaderSupplier);
         lsnToInstantCache = new BoundedConcurrentHashMap<>(100);
-        realDatabaseName = retrieveRealDatabaseName();
-        boolean supportsAtTimeZone = supportsAtTimeZone();
-        transactionTimezone = retrieveTransactionTimezone(supportsAtTimeZone);
-        lsnToTimestamp = getLsnToTimestamp(supportsAtTimeZone);
+        supportsAtTimeZone = supportsAtTimeZone();
+        transactionTimezone = retrieveTransactionTimezone();
         this.clock = clock;
         this.sourceTimestampMode = sourceTimestampMode;
         defaultValueConverter = new SqlServerDefaultValueConverter(this::connection, valueConverters);
@@ -144,8 +140,8 @@ public class SqlServerConnection extends JdbcConnection {
      * required by the JDBC spec), and that same TZ will be applied when converting
      * the TIMESTAMP value into an {@code Instant}.
      */
-    private static String getLsnToTimestamp(boolean supportsAtTimeZone) {
-        String lsnToTimestamp = "SELECT sys.fn_cdc_map_lsn_to_time(?)";
+    private String getLsnToTimestamp(String databaseName) {
+        String lsnToTimestamp = GET_LSN_TO_TIMESTAMP.replace(DATABASE_NAME_PLACEHOLDER, databaseName);
 
         if (supportsAtTimeZone) {
             lsnToTimestamp = lsnToTimestamp + " AT TIME ZONE 'UTC'";
@@ -157,24 +153,27 @@ public class SqlServerConnection extends JdbcConnection {
     /**
      * @return the current largest log sequence number
      */
-    public Lsn getMaxLsn() throws SQLException {
-        return queryAndMap(GET_MAX_LSN, singleResultMapper(rs -> {
+    public Lsn getMaxLsn(String databaseName) throws SQLException {
+        return queryAndMap(GET_MAX_LSN.replace(DATABASE_NAME_PLACEHOLDER, databaseName), singleResultMapper(rs -> {
             final Lsn ret = Lsn.valueOf(rs.getBytes(1));
             LOGGER.trace("Current maximum lsn is {}", ret);
             return ret;
         }, "Maximum LSN query must return exactly one value"));
     }
 
-    public MaxLsnResult getMaxLsnResult(boolean skipLowActivityLsnsEnabled) throws SQLException {
+    public MaxLsnResult getMaxLsnResult(boolean skipLowActivityLsnsEnabled, String databaseName) throws SQLException {
+        String query = GET_MAX_LSN_SKIP_LOW_ACTIVTY.replace(DATABASE_NAME_PLACEHOLDER, databaseName);
         if (skipLowActivityLsnsEnabled) {
-            return prepareQueryAndMap(GET_MAX_LSN_SKIP_LOW_ACTIVTY, statement -> {
+            return prepareQueryAndMap(query, statement -> {
             }, singleResultMapper(rs -> {
                 final MaxLsnResult ret = new MaxLsnResult(Lsn.valueOf(rs.getBytes(1)), Lsn.valueOf(rs.getBytes(2)));
                 LOGGER.trace("Current maximum transactional LSN is {}", ret);
                 return ret;
             }, "Maximum transactional LSN query must return exactly one value"));
         }
-        Lsn maxLsn = prepareQueryAndMap(GET_MAX_LSN, statement -> {
+
+        query = GET_MAX_LSN.replace(DATABASE_NAME_PLACEHOLDER, databaseName);
+        Lsn maxLsn = prepareQueryAndMap(query, statement -> {
         }, singleResultMapper(rs -> {
             final Lsn ret = Lsn.valueOf(rs.getBytes(1));
             LOGGER.trace("Current maximum LSN is {}", ret);
@@ -186,8 +185,10 @@ public class SqlServerConnection extends JdbcConnection {
     /**
      * @return the smallest log sequence number of table
      */
-    public Lsn getMinLsn(String changeTableName) throws SQLException {
-        String query = GET_MIN_LSN.replace(STATEMENTS_PLACEHOLDER, changeTableName);
+    public Lsn getMinLsn(String databaseName, String changeTableName) throws SQLException {
+        String query = GET_MIN_LSN
+                .replace(DATABASE_NAME_PLACEHOLDER, databaseName)
+                .replace(STATEMENTS_PLACEHOLDER, changeTableName);
         return queryAndMap(query, singleResultMapper(rs -> {
             final Lsn ret = Lsn.valueOf(rs.getBytes(1));
             LOGGER.trace("Current minimum lsn is {}", ret);
@@ -202,10 +203,13 @@ public class SqlServerConnection extends JdbcConnection {
      * @param fromLsn - closed lower bound of interval of changes to be provided
      * @param toLsn  - closed upper bound of interval  of changes to be provided
      * @param consumer - the change processor
+     * @param databaseName - database name
      * @throws SQLException
      */
-    public void getChangesForTable(TableId tableId, Lsn fromLsn, Lsn toLsn, ResultSetConsumer consumer) throws SQLException {
-        final String query = GET_ALL_CHANGES_FOR_TABLE.replace(STATEMENTS_PLACEHOLDER, cdcNameForTable(tableId));
+    public void getChangesForTable(TableId tableId, Lsn fromLsn, Lsn toLsn, ResultSetConsumer consumer, String databaseName) throws SQLException {
+        final String query = GET_ALL_CHANGES_FOR_TABLE
+                .replace(DATABASE_NAME_PLACEHOLDER, databaseName)
+                .replace(STATEMENTS_PLACEHOLDER, cdcNameForTable(tableId));
         prepareQuery(query, statement -> {
             statement.setBytes(1, fromLsn.getBinary());
             statement.setBytes(2, toLsn.getBinary());
@@ -219,20 +223,24 @@ public class SqlServerConnection extends JdbcConnection {
      * @param intervalFromLsn - closed lower bound of interval of changes to be provided
      * @param intervalToLsn  - closed upper bound of interval  of changes to be provided
      * @param consumer - the change processor
+     * @param databaseName - database name
      * @throws SQLException
      */
-    public void getChangesForTables(SqlServerChangeTable[] changeTables, Lsn intervalFromLsn, Lsn intervalToLsn, BlockingMultiResultSetConsumer consumer)
+    public void getChangesForTables(SqlServerChangeTable[] changeTables, Lsn intervalFromLsn, Lsn intervalToLsn,
+                                    BlockingMultiResultSetConsumer consumer, String databaseName)
             throws SQLException, InterruptedException {
         final String[] queries = new String[changeTables.length];
         final StatementPreparer[] preparers = new StatementPreparer[changeTables.length];
 
         int idx = 0;
         for (SqlServerChangeTable changeTable : changeTables) {
-            final String query = GET_ALL_CHANGES_FOR_TABLE.replace(STATEMENTS_PLACEHOLDER, changeTable.getCaptureInstance());
+            final String query = GET_ALL_CHANGES_FOR_TABLE
+                    .replace(DATABASE_NAME_PLACEHOLDER, databaseName)
+                    .replace(STATEMENTS_PLACEHOLDER, changeTable.getCaptureInstance());
             queries[idx] = query;
             // If the table was added in the middle of queried buffer we need
             // to adjust from to the first LSN available
-            final Lsn fromLsn = getFromLsn(changeTable, intervalFromLsn);
+            final Lsn fromLsn = getFromLsn(changeTable, intervalFromLsn, databaseName);
             LOGGER.trace("Getting changes for table {} in range[{}, {}]", changeTable, fromLsn, intervalToLsn);
             preparers[idx] = statement -> {
                 if (queryFetchSize > 0) {
@@ -247,9 +255,9 @@ public class SqlServerConnection extends JdbcConnection {
         prepareQuery(queries, preparers, consumer);
     }
 
-    private Lsn getFromLsn(SqlServerChangeTable changeTable, Lsn intervalFromLsn) throws SQLException {
+    private Lsn getFromLsn(SqlServerChangeTable changeTable, Lsn intervalFromLsn, String databaseName) throws SQLException {
         Lsn fromLsn = changeTable.getStartLsn().compareTo(intervalFromLsn) > 0 ? changeTable.getStartLsn() : intervalFromLsn;
-        return fromLsn.getBinary() != null ? fromLsn : getMinLsn(changeTable.getCaptureInstance());
+        return fromLsn.getBinary() != null ? fromLsn : getMinLsn(databaseName, changeTable.getCaptureInstance());
     }
 
     /**
@@ -259,9 +267,8 @@ public class SqlServerConnection extends JdbcConnection {
      * @return LSN of the next position in the database
      * @throws SQLException
      */
-    public Lsn incrementLsn(Lsn lsn) throws SQLException {
-        final String query = INCREMENT_LSN;
-        return prepareQueryAndMap(query, statement -> {
+    public Lsn incrementLsn(Lsn lsn, String databaseName) throws SQLException {
+        return prepareQueryAndMap(INCREMENT_LSN.replace(DATABASE_NAME_PLACEHOLDER, databaseName), statement -> {
             statement.setBytes(1, lsn.getBinary());
         }, singleResultMapper(rs -> {
             final Lsn ret = Lsn.valueOf(rs.getBytes(1));
@@ -279,7 +286,7 @@ public class SqlServerConnection extends JdbcConnection {
      *         mode" option
      * @throws SQLException
      */
-    public Instant timestampOfLsn(Lsn lsn) throws SQLException {
+    public Instant timestampOfLsn(Lsn lsn, String databaseName) throws SQLException {
         if (SourceTimestampMode.PROCESSING.equals(sourceTimestampMode)) {
             return clock.currentTime();
         }
@@ -293,7 +300,7 @@ public class SqlServerConnection extends JdbcConnection {
             return cachedInstant;
         }
 
-        return prepareQueryAndMap(lsnToTimestamp, statement -> {
+        return prepareQueryAndMap(getLsnToTimestamp(databaseName), statement -> {
             statement.setBytes(1, lsn.getBinary());
         }, singleResultMapper(rs -> {
             final Timestamp ts = rs.getTimestamp(1);
@@ -359,15 +366,13 @@ public class SqlServerConnection extends JdbcConnection {
         }
     }
 
-    public Set<SqlServerChangeTable> listOfChangeTables() throws SQLException {
-        final String query = GET_LIST_OF_CDC_ENABLED_TABLES;
-
-        return queryAndMap(query, rs -> {
+    public Set<SqlServerChangeTable> listOfChangeTables(String databaseName) throws SQLException {
+        return queryAndMap(GET_LIST_OF_CDC_ENABLED_TABLES.replace(DATABASE_NAME_PLACEHOLDER, databaseName), rs -> {
             final Set<SqlServerChangeTable> changeTables = new HashSet<>();
             while (rs.next()) {
                 changeTables.add(
                         new SqlServerChangeTable(
-                                new TableId(realDatabaseName, rs.getString(1), rs.getString(2)),
+                                new TableId(databaseName, rs.getString(1), rs.getString(2)),
                                 rs.getString(3),
                                 rs.getInt(4),
                                 Lsn.valueOf(rs.getBytes(6)),
@@ -379,8 +384,8 @@ public class SqlServerConnection extends JdbcConnection {
         });
     }
 
-    public Set<SqlServerChangeTable> listOfNewChangeTables(Lsn fromLsn, Lsn toLsn) throws SQLException {
-        final String query = GET_LIST_OF_NEW_CDC_ENABLED_TABLES;
+    public Set<SqlServerChangeTable> listOfNewChangeTables(Lsn fromLsn, Lsn toLsn, String databaseName) throws SQLException {
+        final String query = GET_LIST_OF_NEW_CDC_ENABLED_TABLES.replace(DATABASE_NAME_PLACEHOLDER, databaseName);
 
         return prepareQueryAndMap(query,
                 ps -> {
@@ -400,12 +405,12 @@ public class SqlServerConnection extends JdbcConnection {
                 });
     }
 
-    public Table getTableSchemaFromTable(SqlServerChangeTable changeTable) throws SQLException {
+    public Table getTableSchemaFromTable(SqlServerChangeTable changeTable, String databaseName) throws SQLException {
         final DatabaseMetaData metadata = connection().getMetaData();
 
         List<Column> columns = new ArrayList<>();
         try (ResultSet rs = metadata.getColumns(
-                realDatabaseName,
+                databaseName,
                 changeTable.getSourceTableId().schema(),
                 changeTable.getSourceTableId().table(),
                 null)) {
@@ -428,12 +433,12 @@ public class SqlServerConnection extends JdbcConnection {
                 .create();
     }
 
-    public Table getTableSchemaFromChangeTable(SqlServerChangeTable changeTable) throws SQLException {
+    public Table getTableSchemaFromChangeTable(SqlServerChangeTable changeTable, String databaseName) throws SQLException {
         final DatabaseMetaData metadata = connection().getMetaData();
         final TableId changeTableId = changeTable.getChangeTableId();
 
         List<ColumnEditor> columnEditors = new ArrayList<>();
-        try (ResultSet rs = metadata.getColumns(realDatabaseName, changeTableId.schema(), changeTableId.table(), null)) {
+        try (ResultSet rs = metadata.getColumns(databaseName, changeTableId.schema(), changeTableId.table(), null)) {
             while (rs.next()) {
                 readTableColumn(rs, changeTableId, null).ifPresent(columnEditors::add);
             }
@@ -445,7 +450,8 @@ public class SqlServerConnection extends JdbcConnection {
                 .collect(Collectors.toList());
 
         final List<String> pkColumnNames = new ArrayList<>();
-        prepareQuery(GET_LIST_OF_KEY_COLUMNS, ps -> ps.setInt(1, changeTable.getChangeTableObjectId()), rs -> {
+        String query = GET_LIST_OF_KEY_COLUMNS.replace(DATABASE_NAME_PLACEHOLDER, databaseName);
+        prepareQuery(query, ps -> ps.setInt(1, changeTable.getChangeTableObjectId()), rs -> {
             while (rs.next()) {
                 pkColumnNames.add(rs.getString(2));
             }
@@ -462,11 +468,7 @@ public class SqlServerConnection extends JdbcConnection {
         return captureName + "_CT";
     }
 
-    public String getRealDatabaseName() {
-        return realDatabaseName;
-    }
-
-    private ZoneId retrieveTransactionTimezone(boolean supportsAtTimeZone) {
+    private ZoneId retrieveTransactionTimezone() {
         final String serverTimezoneConfig = config().getString(SERVER_TIMEZONE_PROP_NAME);
 
         if (supportsAtTimeZone) {
@@ -488,14 +490,25 @@ public class SqlServerConnection extends JdbcConnection {
         return serverTimezoneConfig == null ? ZoneId.of("UTC") : ZoneId.of(serverTimezoneConfig, ZoneId.SHORT_IDS);
     }
 
-    private String retrieveRealDatabaseName() {
+    public String retrieveRealDatabaseName(String databaseName) {
         try {
-            return queryAndMap(
-                    GET_DATABASE_NAME,
-                    singleResultMapper(rs -> rs.getString(1), "Could not retrieve database name"));
+            return prepareQueryAndMap(GET_DATABASE_NAME,
+                    ps -> ps.setString(1, databaseName),
+                    singleResultMapper(rs -> rs.getString(1), "Could not retrieve exactly one database name"));
         }
         catch (SQLException e) {
             throw new RuntimeException("Couldn't obtain database name", e);
+        }
+    }
+
+    public void test() {
+        try {
+            queryAndMap(
+                    TEST_CONNECTION,
+                    singleResultMapper(rs -> "OK", "Could not perform SELECT"));
+        }
+        catch (SQLException e) {
+            throw new RuntimeException("Connection failed", e);
         }
     }
 

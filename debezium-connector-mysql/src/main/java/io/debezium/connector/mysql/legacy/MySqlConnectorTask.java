@@ -31,6 +31,7 @@ import io.debezium.connector.mysql.Module;
 import io.debezium.connector.mysql.MySqlConnector;
 import io.debezium.connector.mysql.MySqlConnectorConfig;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
+import io.debezium.connector.mysql.MySqlOffsetContext;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.schema.TopicSelector;
 import io.debezium.util.Collect;
@@ -44,7 +45,7 @@ import io.debezium.util.LoggingContext.PreviousContext;
  * @author Randall Hauch
  */
 @NotThreadSafe
-public final class MySqlConnectorTask extends BaseSourceTask {
+public final class MySqlConnectorTask extends BaseSourceTask<MySqlOffsetContext> {
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
     private volatile MySqlTaskContext taskContext;
@@ -66,7 +67,7 @@ public final class MySqlConnectorTask extends BaseSourceTask {
     }
 
     @Override
-    public ChangeEventSourceCoordinator start(Configuration config) {
+    public ChangeEventSourceCoordinator<MySqlOffsetContext> start(Configuration config) {
         final String serverName = config.getString(MySqlConnectorConfig.SERVER_NAME);
         PreviousContext prevLoggingContext = LoggingContext.forConnector(Module.contextName(), serverName, "task");
 

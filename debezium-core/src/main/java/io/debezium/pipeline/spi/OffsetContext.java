@@ -26,10 +26,10 @@ public interface OffsetContext {
     /**
      * Implementations load a connector-specific offset context based on the offset values stored in Kafka.
      */
-    interface Loader {
+    interface Loader<O extends OffsetContext> {
         Map<String, ?> getPartition();
 
-        OffsetContext load(Map<String, ?> offset);
+        O load(Map<String, ?> partition, Map<String, ?> offset);
     }
 
     Map<String, ?> getPartition();
@@ -78,4 +78,6 @@ public interface OffsetContext {
      * @return transaction context
      */
     TransactionContext getTransactionContext();
+
+    boolean eventsStreamed();
 }

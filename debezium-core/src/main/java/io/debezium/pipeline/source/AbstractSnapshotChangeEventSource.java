@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.ConfigurationDefaults;
+import io.debezium.connector.common.TaskPartition;
 import io.debezium.pipeline.source.spi.SnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.spi.OffsetContext;
@@ -31,22 +32,20 @@ import io.debezium.util.Threads;
  *
  * @author Chris Cranford
  */
-public abstract class AbstractSnapshotChangeEventSource implements SnapshotChangeEventSource {
+public abstract class AbstractSnapshotChangeEventSource<P extends TaskPartition, O extends OffsetContext> implements SnapshotChangeEventSource<P, O> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractSnapshotChangeEventSource.class);
 
     private final CommonConnectorConfig connectorConfig;
-    protected final OffsetContext previousOffset;
     private final SnapshotProgressListener snapshotProgressListener;
 
-    public AbstractSnapshotChangeEventSource(CommonConnectorConfig connectorConfig, OffsetContext previousOffset, SnapshotProgressListener snapshotProgressListener) {
+    public AbstractSnapshotChangeEventSource(CommonConnectorConfig connectorConfig, SnapshotProgressListener snapshotProgressListener) {
         this.connectorConfig = connectorConfig;
-        this.previousOffset = previousOffset;
         this.snapshotProgressListener = snapshotProgressListener;
     }
 
     @Override
-    public SnapshotResult execute(ChangeEventSourceContext context) throws InterruptedException {
+    public SnapshotResult execute(ChangeEventSourceContext context, P partition, O previousOffset) throws InterruptedException {
         SnapshottingTask snapshottingTask = getSnapshottingTask(previousOffset);
         if (snapshottingTask.shouldSkipSnapshot()) {
             LOGGER.debug("Skipping snapshotting");
@@ -57,7 +56,7 @@ public abstract class AbstractSnapshotChangeEventSource implements SnapshotChang
 
         final SnapshotContext ctx;
         try {
-            ctx = prepare(context);
+            ctx = prepare(context, partition);
         }
         catch (Exception e) {
             LOGGER.error("Failed to initialize snapshot context.", e);
@@ -68,7 +67,7 @@ public abstract class AbstractSnapshotChangeEventSource implements SnapshotChang
 
         try {
             snapshotProgressListener.snapshotStarted();
-            SnapshotResult result = doExecute(context, ctx, snapshottingTask);
+            SnapshotResult result = doExecute(context, partition, previousOffset, ctx, snapshottingTask);
 
             return result;
         }
@@ -134,21 +133,25 @@ public abstract class AbstractSnapshotChangeEventSource implements SnapshotChang
      * pending transactions, releasing locks, etc.
      *
      * @param context contextual information for this source's execution
+     * @param partition
+     * @param previousOffset
      * @param snapshotContext mutable context information populated throughout the snapshot process
      * @param snapshottingTask immutable information about what tasks should be performed during snapshot
      * @return an indicator to the position at which the snapshot was taken
      */
-    protected abstract SnapshotResult doExecute(ChangeEventSourceContext context, SnapshotContext snapshotContext, SnapshottingTask snapshottingTask) throws Exception;
+    protected abstract SnapshotResult doExecute(ChangeEventSourceContext context, P partition, O previousOffset,
+                                                SnapshotContext snapshotContext, SnapshottingTask snapshottingTask)
+            throws Exception;
 
     /**
      * Returns the snapshotting task based on the previous offset (if available) and the connector's snapshotting mode.
      */
-    protected abstract SnapshottingTask getSnapshottingTask(OffsetContext previousOffset);
+    protected abstract SnapshottingTask getSnapshottingTask(O previousOffset);
 
     /**
      * Prepares the taking of a snapshot and returns an initial {@link SnapshotContext}.
      */
-    protected abstract SnapshotContext prepare(ChangeEventSourceContext changeEventSourceContext) throws Exception;
+    protected abstract SnapshotContext prepare(ChangeEventSourceContext changeEventSourceContext, P partition) throws Exception;
 
     /**
      * Completes the snapshot, doing any required clean-up (resource disposal etc.).

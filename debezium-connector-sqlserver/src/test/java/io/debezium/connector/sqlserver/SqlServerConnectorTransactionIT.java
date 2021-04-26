@@ -8,22 +8,16 @@ package io.debezium.connector.sqlserver;
 import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.assertNull;
 
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.awaitility.Awaitility;
 import org.fest.assertions.Assertions;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
@@ -31,26 +25,17 @@ import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
 import io.debezium.connector.sqlserver.util.TestHelper;
 import io.debezium.data.Envelope;
 import io.debezium.data.SchemaAndValueField;
+import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
-import io.debezium.junit.EqualityCheck;
-import io.debezium.junit.SkipTestRule;
-import io.debezium.junit.SkipWhenKafkaVersion;
-import io.debezium.junit.SkipWhenKafkaVersion.KafkaVersion;
-import io.debezium.util.Collect;
-import io.debezium.util.Testing;
 
 /**
  * Integration test for the Debezium SQL Server connector.
  *
  * @author Jiri Pechanec
  */
-@SkipWhenKafkaVersion(check = EqualityCheck.EQUAL, value = KafkaVersion.KAFKA_1XX, description = "Not compatible with Kafka 1.x")
-public class TransactionMetadataIT extends AbstractConnectorTest {
+public class SqlServerConnectorTransactionIT extends AbstractConnectorTest {
 
     private SqlServerConnection connection;
-
-    @Rule
-    public SkipTestRule skipRule = new SkipTestRule();
 
     @Before
     public void before() throws SQLException {
@@ -66,7 +51,7 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
         TestHelper.enableTableCdc(connection, databaseName, "tableb");
 
         initializeConnectorTestFramework();
-        Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
+        Files.delete(TestHelper.DB_HISTORY_PATH);
         // Testing.Print.enable();
     }
 
@@ -77,60 +62,6 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
         }
     }
 
-    @Test
-    public void transactionMetadata() throws Exception {
-        final int RECORDS_PER_TABLE = 5;
-        final int ID_START = 10;
-        final Configuration config = TestHelper.defaultSingleDatabaseConfig()
-                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
-                .with(SqlServerConnectorConfig.PROVIDE_TRANSACTION_METADATA, true)
-                .build();
-
-        start(SqlServerConnector.class, config);
-        assertConnectorIsRunning();
-
-        String databaseName = TestHelper.TEST_FIRST_DATABASE;
-
-        // Testing.Print.enable();
-        // Wait for snapshot completion
-        consumeRecordsByTopic(1);
-
-        connection.setAutoCommit(false);
-        final String[] inserts = new String[RECORDS_PER_TABLE * 2];
-        for (int i = 0; i < RECORDS_PER_TABLE; i++) {
-            final int id = ID_START + i;
-            inserts[2 * i] = "INSERT INTO tablea VALUES(" + id + ", 'a')";
-            inserts[2 * i + 1] = "INSERT INTO tableb VALUES(" + id + ", 'b')";
-        }
-        connection.execute(inserts);
-        connection.setAutoCommit(true);
-
-        connection.execute("INSERT INTO tableb VALUES(1000, 'b')");
-
-        // BEGIN, data, END, BEGIN, data
-        final SourceRecords records = consumeRecordsByTopic(1 + RECORDS_PER_TABLE * 2 + 1 + 1 + 1);
-        final List<SourceRecord> tableA = records.recordsForTopic(TestHelper.topicName(databaseName, "tablea"));
-        final List<SourceRecord> tableB = records.recordsForTopic(TestHelper.topicName(databaseName, "tableb"));
-        final List<SourceRecord> tx = records.recordsForTopic(TestHelper.TEST_SERVER_NAME + ".transaction");
-        Assertions.assertThat(tableA).hasSize(RECORDS_PER_TABLE);
-        Assertions.assertThat(tableB).hasSize(RECORDS_PER_TABLE + 1);
-        Assertions.assertThat(tx).hasSize(3);
-
-        final List<SourceRecord> all = records.allRecordsInOrder();
-        final String txId = assertBeginTransaction(all.get(0));
-
-        long counter = 1;
-        for (int i = 1; i <= 2 * RECORDS_PER_TABLE; i++) {
-            assertRecordTransactionMetadata(all.get(i), txId, counter, (counter + 1) / 2);
-            counter++;
-        }
-
-        assertEndTransaction(all.get(2 * RECORDS_PER_TABLE + 1), txId, 2 * RECORDS_PER_TABLE,
-                Collect.hashMapOf(TestHelper.tableName(databaseName, "tablea"), RECORDS_PER_TABLE,
-                        TestHelper.tableName(databaseName, "tableb"), RECORDS_PER_TABLE));
-        stopConnector();
-    }
-
     private void restartInTheMiddleOfTx(boolean restartJustAfterSnapshot, boolean afterStreaming) throws Exception {
         final int RECORDS_PER_TABLE = 30;
         final int TABLES = 2;
@@ -139,10 +70,7 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
         final int HALF_ID = ID_START + RECORDS_PER_TABLE / 2;
         final Configuration config = TestHelper.defaultSingleDatabaseConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
-                .with(SqlServerConnectorConfig.PROVIDE_TRANSACTION_METADATA, true)
                 .build();
-
-        // Testing.Print.enable();
 
         String databaseName = TestHelper.TEST_FIRST_DATABASE;
 
@@ -154,38 +82,6 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
             consumeRecordsByTopic(1);
             stopConnector();
             connection.execute("INSERT INTO tablea VALUES(-1, '-a')");
-
-            Awaitility.await().atMost(30, TimeUnit.SECONDS).until(() -> {
-                if (!connection.getMaxLsn(databaseName).isAvailable()) {
-                    return false;
-                }
-
-                for (SqlServerChangeTable ct : connection.listOfChangeTables(databaseName)) {
-                    final String tableName = ct.getChangeTableId().table();
-                    if (tableName.endsWith("dbo_" + connection.getNameOfChangeTable("tablea"))) {
-                        try {
-                            final Lsn minLsn = connection.getMinLsn(databaseName, tableName);
-                            final Lsn maxLsn = connection.getMaxLsn(databaseName);
-                            final AtomicReference<Boolean> found = new AtomicReference<>(false);
-                            SqlServerChangeTable[] tables = Collections.singletonList(ct).toArray(new SqlServerChangeTable[]{});
-                            connection.getChangesForTables(tables, minLsn, maxLsn, resultsets -> {
-                                final ResultSet rs = resultsets[0];
-                                while (rs.next()) {
-                                    if (rs.getInt("id") == -1) {
-                                        found.set(true);
-                                        break;
-                                    }
-                                }
-                            }, databaseName);
-                            return found.get();
-                        }
-                        catch (Exception e) {
-                            org.junit.Assert.fail("Failed to fetch changes for tablea: " + e.getMessage());
-                        }
-                    }
-                }
-                return false;
-            });
         }
 
         start(SqlServerConnector.class, config, record -> {
@@ -200,25 +96,16 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
         });
         assertConnectorIsRunning();
 
-        String firstTxId = null;
-        if (restartJustAfterSnapshot) {
-            // Transaction begin
-            SourceRecord begin = consumeRecordsByTopic(1).allRecordsInOrder().get(0);
-            firstTxId = assertBeginTransaction(begin);
-        }
-
         // Wait for snapshot to be completed or a first streaming message delivered
         consumeRecordsByTopic(1);
 
         if (afterStreaming) {
             connection.execute("INSERT INTO tablea VALUES(-2, '-a')");
-            final SourceRecords records = consumeRecordsByTopic(2);
+            final SourceRecords records = consumeRecordsByTopic(1);
             final List<SchemaAndValueField> expectedRow = Arrays.asList(
                     new SchemaAndValueField("id", Schema.INT32_SCHEMA, -2),
                     new SchemaAndValueField("cola", Schema.OPTIONAL_STRING_SCHEMA, "-a"));
-            assertRecord(((Struct) records.allRecordsInOrder().get(1).value()).getStruct(Envelope.FieldName.AFTER), expectedRow);
-            SourceRecord begin = records.allRecordsInOrder().get(0);
-            firstTxId = assertBeginTransaction(begin);
+            assertRecord(((Struct) records.allRecordsInOrder().get(0).value()).getStruct(Envelope.FieldName.AFTER), expectedRow);
         }
 
         connection.setAutoCommit(false);
@@ -231,25 +118,18 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
         }
         connection.connection().commit();
 
-        // End of previous TX, BEGIN of new TX, change records
-        final int txBeginIndex = firstTxId != null ? 1 : 0;
-        int expectedRecords = txBeginIndex + 1 + RECORDS_PER_TABLE;
-        List<SourceRecord> records = consumeRecordsByTopic(expectedRecords).allRecordsInOrder();
+        TestHelper.waitForCdcRecord(connection, databaseName, "tablea", rs -> rs.getInt("id") == (ID_START + RECORDS_PER_TABLE - 1));
+        TestHelper.waitForCdcRecord(connection, databaseName, "tableb", rs -> rs.getInt("id") == (ID_START + RECORDS_PER_TABLE - 1));
 
-        assertThat(records).hasSize(expectedRecords);
+        List<SourceRecord> records = consumeRecordsByTopic(RECORDS_PER_TABLE).allRecordsInOrder();
 
-        if (firstTxId != null) {
-            assertEndTransaction(records.get(0), firstTxId, 1, Collect.hashMapOf(TestHelper.tableName(databaseName, "tablea"), 1));
-        }
-        final String batchTxId = assertBeginTransaction(records.get(txBeginIndex));
-
-        SourceRecord lastRecordForOffset = records.get(RECORDS_PER_TABLE + txBeginIndex);
+        assertThat(records).hasSize(RECORDS_PER_TABLE);
+        SourceRecord lastRecordForOffset = records.get(RECORDS_PER_TABLE - 1);
         Struct value = (Struct) lastRecordForOffset.value();
         final List<SchemaAndValueField> expectedLastRow = Arrays.asList(
                 new SchemaAndValueField("id", Schema.INT32_SCHEMA, HALF_ID - 1),
                 new SchemaAndValueField("colb", Schema.OPTIONAL_STRING_SCHEMA, "b"));
         assertRecord((Struct) value.get("after"), expectedLastRow);
-        assertRecordTransactionMetadata(lastRecordForOffset, batchTxId, RECORDS_PER_TABLE, RECORDS_PER_TABLE / 2);
 
         stopConnector();
         start(SqlServerConnector.class, config);
@@ -279,9 +159,6 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
             final Struct valueB = (Struct) recordB.value();
             assertRecord((Struct) valueB.get("after"), expectedRowB);
             assertNull(valueB.get("before"));
-
-            assertRecordTransactionMetadata(recordA, batchTxId, RECORDS_PER_TABLE + 2 * i + 1, RECORDS_PER_TABLE / 2 + i + 1);
-            assertRecordTransactionMetadata(recordB, batchTxId, RECORDS_PER_TABLE + 2 * i + 2, RECORDS_PER_TABLE / 2 + i + 1);
         }
 
         for (int i = 0; i < RECORDS_PER_TABLE; i++) {
@@ -293,18 +170,15 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
             connection.connection().commit();
         }
 
-        // END of previous TX, data records, BEGIN of TX for every pair of record, END of TX for every pair of record but last
-        sourceRecords = consumeRecordsByTopic(1 + RECORDS_PER_TABLE * TABLES + (2 * RECORDS_PER_TABLE - 1));
+        TestHelper.waitForCdcRecord(connection, databaseName, "tablea", rs -> rs.getInt("id") == (ID_RESTART + RECORDS_PER_TABLE - 1));
+        TestHelper.waitForCdcRecord(connection, databaseName, "tableb", rs -> rs.getInt("id") == (ID_RESTART + RECORDS_PER_TABLE - 1));
+
+        sourceRecords = consumeRecordsByTopic(RECORDS_PER_TABLE * TABLES);
         tableA = sourceRecords.recordsForTopic(TestHelper.topicName(databaseName, "tablea"));
         tableB = sourceRecords.recordsForTopic(TestHelper.topicName(databaseName, "tableb"));
-        List<SourceRecord> txMetadata = sourceRecords.recordsForTopic(TestHelper.TEST_SERVER_NAME + ".transaction");
 
         Assertions.assertThat(tableA).hasSize(RECORDS_PER_TABLE);
         Assertions.assertThat(tableB).hasSize(RECORDS_PER_TABLE);
-        Assertions.assertThat(txMetadata).hasSize(1 + 2 * RECORDS_PER_TABLE - 1);
-        assertEndTransaction(txMetadata.get(0), batchTxId, 2 * RECORDS_PER_TABLE,
-                Collect.hashMapOf(TestHelper.tableName(databaseName, "tablea"), RECORDS_PER_TABLE,
-                        TestHelper.tableName(databaseName, "tableb"), RECORDS_PER_TABLE));
 
         for (int i = 0; i < RECORDS_PER_TABLE; i++) {
             final int id = i + ID_RESTART;
@@ -324,29 +198,23 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
             final Struct valueB = (Struct) recordB.value();
             assertRecord((Struct) valueB.get("after"), expectedRowB);
             assertNull(valueB.get("before"));
-
-            final String txId = assertBeginTransaction(txMetadata.get(2 * i + 1));
-            assertRecordTransactionMetadata(recordA, txId, 1, 1);
-            assertRecordTransactionMetadata(recordB, txId, 2, 1);
-            if (i < RECORDS_PER_TABLE - 1) {
-                assertEndTransaction(txMetadata.get(2 * i + 2), txId, 2,
-                        Collect.hashMapOf(TestHelper.tableName(databaseName, "tablea"), 1,
-                                TestHelper.tableName(databaseName, "tableb"), 1));
-            }
         }
     }
 
     @Test
+    @FixFor("DBZ-1128")
     public void restartInTheMiddleOfTxAfterSnapshot() throws Exception {
         restartInTheMiddleOfTx(true, false);
     }
 
     @Test
+    @FixFor("DBZ-1128")
     public void restartInTheMiddleOfTxAfterCompletedTx() throws Exception {
         restartInTheMiddleOfTx(false, true);
     }
 
     @Test
+    @FixFor("DBZ-1128")
     public void restartInTheMiddleOfTx() throws Exception {
         restartInTheMiddleOfTx(false, false);
     }

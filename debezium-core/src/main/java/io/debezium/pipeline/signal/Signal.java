@@ -17,6 +17,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.config.CommonConnectorConfig;
+import io.debezium.connector.common.TaskPartition;
 import io.debezium.data.Envelope;
 import io.debezium.document.Document;
 import io.debezium.document.DocumentReader;
@@ -86,11 +87,11 @@ public class Signal {
 
     private final CommonConnectorConfig connectorConfig;
     private final String signalDataCollectionId;
-    private final EventDispatcher<? extends DataCollectionId> dispatcher;
+    private final EventDispatcher<? extends TaskPartition, ? extends OffsetContext, ? extends DataCollectionId> dispatcher;
 
     private final Map<String, Action> signalActions = new HashMap<>();
 
-    public Signal(CommonConnectorConfig connectorConfig, EventDispatcher<? extends DataCollectionId> eventDispatcher) {
+    public Signal(CommonConnectorConfig connectorConfig, EventDispatcher<? extends TaskPartition, ? extends OffsetContext, ? extends DataCollectionId> eventDispatcher) {
         this.connectorConfig = connectorConfig;
         this.signalDataCollectionId = connectorConfig.getSignalingDataCollectionId();
         this.dispatcher = eventDispatcher;

@@ -17,11 +17,10 @@ import io.debezium.pipeline.source.spi.ChangeEventSourceFactory;
 import io.debezium.pipeline.source.spi.SnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
-import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.relational.TableId;
 import io.debezium.util.Clock;
 
-public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory {
+public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory<MySqlOffsetContext> {
 
     private final MySqlConnectorConfig configuration;
     private final MySqlConnection connection;
@@ -51,8 +50,8 @@ public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory {
     }
 
     @Override
-    public SnapshotChangeEventSource getSnapshotChangeEventSource(OffsetContext offsetContext, SnapshotProgressListener snapshotProgressListener) {
-        return new MySqlSnapshotChangeEventSource(configuration, (MySqlOffsetContext) offsetContext, connection, taskContext.getSchema(), dispatcher, clock,
+    public SnapshotChangeEventSource<MySqlOffsetContext> getSnapshotChangeEventSource(SnapshotProgressListener snapshotProgressListener) {
+        return new MySqlSnapshotChangeEventSource(configuration, connection, taskContext.getSchema(), dispatcher, clock,
                 (MySqlSnapshotChangeEventSourceMetrics) snapshotProgressListener, record -> modifyAndFlushLastRecord(record));
     }
 
@@ -62,11 +61,10 @@ public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory {
     }
 
     @Override
-    public StreamingChangeEventSource getStreamingChangeEventSource(OffsetContext offsetContext) {
+    public StreamingChangeEventSource<MySqlOffsetContext> getStreamingChangeEventSource() {
         queue.disableBuffering();
         return new MySqlStreamingChangeEventSource(
                 configuration,
-                (MySqlOffsetContext) offsetContext,
                 connection,
                 dispatcher,
                 errorHandler,

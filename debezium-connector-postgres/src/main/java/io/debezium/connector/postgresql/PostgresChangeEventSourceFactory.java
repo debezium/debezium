@@ -16,11 +16,10 @@ import io.debezium.pipeline.source.spi.ChangeEventSourceFactory;
 import io.debezium.pipeline.source.spi.SnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
-import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.relational.TableId;
 import io.debezium.util.Clock;
 
-public class PostgresChangeEventSourceFactory implements ChangeEventSourceFactory {
+public class PostgresChangeEventSourceFactory implements ChangeEventSourceFactory<PostgresOffsetContext> {
 
     private final PostgresConnectorConfig configuration;
     private final PostgresConnection jdbcConnection;
@@ -52,11 +51,10 @@ public class PostgresChangeEventSourceFactory implements ChangeEventSourceFactor
     }
 
     @Override
-    public SnapshotChangeEventSource getSnapshotChangeEventSource(OffsetContext offsetContext, SnapshotProgressListener snapshotProgressListener) {
+    public SnapshotChangeEventSource<PostgresOffsetContext> getSnapshotChangeEventSource(SnapshotProgressListener snapshotProgressListener) {
         return new PostgresSnapshotChangeEventSource(
                 configuration,
                 snapshotter,
-                (PostgresOffsetContext) offsetContext,
                 jdbcConnection,
                 schema,
                 dispatcher,
@@ -67,11 +65,10 @@ public class PostgresChangeEventSourceFactory implements ChangeEventSourceFactor
     }
 
     @Override
-    public StreamingChangeEventSource getStreamingChangeEventSource(OffsetContext offsetContext) {
+    public StreamingChangeEventSource<PostgresOffsetContext> getStreamingChangeEventSource() {
         return new PostgresStreamingChangeEventSource(
                 configuration,
                 snapshotter,
-                (PostgresOffsetContext) offsetContext,
                 jdbcConnection,
                 dispatcher,
                 errorHandler,

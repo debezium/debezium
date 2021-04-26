@@ -8,6 +8,9 @@ package io.debezium.connector.sqlserver;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.Map;
+import java.util.Queue;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
@@ -22,11 +25,12 @@ import io.debezium.util.Collect;
 public class SqlServerOffsetContext implements OffsetContext {
 
     private static final String SERVER_PARTITION_KEY = "server";
+    private static final String DATABASE_PARTITION_KEY = "database";
     private static final String SNAPSHOT_COMPLETED_KEY = "snapshot_completed";
 
     private final Schema sourceInfoSchema;
     private final SourceInfo sourceInfo;
-    private final Map<String, String> partition;
+    private final Map<String, ?> partition;
     private boolean snapshotCompleted;
     private final TransactionContext transactionContext;
 
@@ -35,14 +39,17 @@ public class SqlServerOffsetContext implements OffsetContext {
      */
     private long eventSerialNo;
 
-    public SqlServerOffsetContext(SqlServerConnectorConfig connectorConfig, TxLogPosition position, boolean snapshot, boolean snapshotCompleted, long eventSerialNo,
-                                  TransactionContext transactionContext) {
-        partition = Collections.singletonMap(SERVER_PARTITION_KEY, connectorConfig.getLogicalName());
-        sourceInfo = new SourceInfo(connectorConfig);
+    private SqlServerStreamingExecutionState streamingExecutionState;
 
+    public SqlServerOffsetContext(SqlServerConnectorConfig connectorConfig, Map<String, ?> partition, TxLogPosition position,
+                                  boolean snapshot, boolean snapshotCompleted, long eventSerialNo, TransactionContext transactionContext) {
+
+        sourceInfo = new SourceInfo(connectorConfig);
         sourceInfo.setCommitLsn(position.getCommitLsn());
         sourceInfo.setChangeLsn(position.getInTxLsn());
         sourceInfoSchema = sourceInfo.schema();
+
+        this.partition = partition;
 
         this.snapshotCompleted = snapshotCompleted;
         if (this.snapshotCompleted) {
@@ -53,10 +60,12 @@ public class SqlServerOffsetContext implements OffsetContext {
         }
         this.eventSerialNo = eventSerialNo;
         this.transactionContext = transactionContext;
+        this.streamingExecutionState = null;
     }
 
-    public SqlServerOffsetContext(SqlServerConnectorConfig connectorConfig, TxLogPosition position, boolean snapshot, boolean snapshotCompleted) {
-        this(connectorConfig, position, snapshot, snapshotCompleted, 1, new TransactionContext());
+    public SqlServerOffsetContext(SqlServerConnectorConfig connectorConfig, Map<String, ?> partition, TxLogPosition position,
+                                  boolean snapshot, boolean snapshotCompleted) {
+        this(connectorConfig, partition, position, snapshot, snapshotCompleted, 1, new TransactionContext());
     }
 
     @Override
@@ -136,7 +145,7 @@ public class SqlServerOffsetContext implements OffsetContext {
         sourceInfo.setSnapshot(SnapshotRecord.FALSE);
     }
 
-    public static class Loader implements OffsetContext.Loader {
+    public static class Loader implements OffsetContext.Loader<SqlServerOffsetContext> {
 
         private final SqlServerConnectorConfig connectorConfig;
 
@@ -150,7 +159,7 @@ public class SqlServerOffsetContext implements OffsetContext {
         }
 
         @Override
-        public OffsetContext load(Map<String, ?> offset) {
+        public SqlServerOffsetContext load(Map<String, ?> partition, Map<String, ?> offset) {
             final Lsn changeLsn = Lsn.valueOf((String) offset.get(SourceInfo.CHANGE_LSN_KEY));
             final Lsn commitLsn = Lsn.valueOf((String) offset.get(SourceInfo.COMMIT_LSN_KEY));
             boolean snapshot = Boolean.TRUE.equals(offset.get(SourceInfo.SNAPSHOT_KEY));
@@ -162,7 +171,7 @@ public class SqlServerOffsetContext implements OffsetContext {
                 eventSerialNo = Long.valueOf(0);
             }
 
-            return new SqlServerOffsetContext(connectorConfig, TxLogPosition.valueOf(commitLsn, changeLsn), snapshot, snapshotCompleted, eventSerialNo,
+            return new SqlServerOffsetContext(connectorConfig, partition, TxLogPosition.valueOf(commitLsn, changeLsn), snapshot, snapshotCompleted, eventSerialNo,
                     TransactionContext.load(offset));
         }
     }
@@ -192,5 +201,28 @@ public class SqlServerOffsetContext implements OffsetContext {
     @Override
     public TransactionContext getTransactionContext() {
         return transactionContext;
+    }
+
+    public void saveStreamingExecutionContext(Queue<SqlServerChangeTable> schemaChangeCheckpoints,
+                                              AtomicReference<SqlServerChangeTable[]> tablesSlot,
+                                              TxLogPosition lastProcessedPositionOnStart,
+                                              long lastProcessedEventSerialNoOnStart,
+                                              TxLogPosition lastProcessedPosition,
+                                              AtomicBoolean changesStoppedBeingMonotonic,
+                                              boolean shouldIncreaseFromLsn,
+                                              SqlServerStreamingExecutionState.StreamingResultStatus status) {
+        this.streamingExecutionState = new SqlServerStreamingExecutionState(
+                schemaChangeCheckpoints, tablesSlot, lastProcessedPositionOnStart, lastProcessedEventSerialNoOnStart,
+                lastProcessedPosition, changesStoppedBeingMonotonic, shouldIncreaseFromLsn, status);
+    }
+
+    public SqlServerStreamingExecutionState getStreamingExecutionState() {
+        return streamingExecutionState;
+    }
+
+    @Override
+    public boolean eventsStreamed() {
+        return (streamingExecutionState.getStatus() == SqlServerStreamingExecutionState.StreamingResultStatus.NO_CHANGES_IN_DATABASE
+                || streamingExecutionState.getStatus() == SqlServerStreamingExecutionState.StreamingResultStatus.NO_MAXIMUM_LSN_RECORDED) == false;
     }
 }

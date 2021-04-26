@@ -7,12 +7,16 @@ package io.debezium.pipeline.source.spi;
 
 import java.util.Map;
 
+import io.debezium.connector.common.TaskPartition;
+import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.pipeline.spi.StreamingResult;
+
 /**
  * A change event source that emits events from a DB log, such as MySQL's binlog or similar.
  *
  * @author Gunnar Morling
  */
-public interface StreamingChangeEventSource extends ChangeEventSource {
+public interface StreamingChangeEventSource<P extends TaskPartition, O extends OffsetContext> extends ChangeEventSource {
 
     /**
      * Executes this source. Implementations should regularly check via the given context if they should stop. If that's
@@ -21,11 +25,13 @@ public interface StreamingChangeEventSource extends ChangeEventSource {
      *
      * @param context
      *            contextual information for this source's execution
+     * @param partition
+     * @param offsetContext
      * @return an indicator to the position at which the snapshot was taken
      * @throws InterruptedException
      *             in case the snapshot was aborted before completion
      */
-    void execute(ChangeEventSourceContext context) throws InterruptedException;
+    StreamingResult<O> execute(ChangeEventSourceContext context, P partition, O offsetContext) throws InterruptedException;
 
     /**
      * Commits the given offset with the source database. Used by some connectors

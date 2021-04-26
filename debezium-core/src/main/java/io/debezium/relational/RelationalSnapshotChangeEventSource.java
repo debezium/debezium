@@ -25,6 +25,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
+import io.debezium.connector.common.TaskPartition;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.EventDispatcher.SnapshotReceiver;
@@ -50,7 +51,7 @@ import io.debezium.util.Threads.Timer;
  *
  * @author Gunnar Morling
  */
-public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapshotChangeEventSource {
+public abstract class RelationalSnapshotChangeEventSource<P extends TaskPartition, O extends OffsetContext> extends AbstractSnapshotChangeEventSource<P, O> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RelationalSnapshotChangeEventSource.class);
 
@@ -60,19 +61,17 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
     private static final Duration LOG_INTERVAL = Duration.ofMillis(10_000);
 
     private final RelationalDatabaseConnectorConfig connectorConfig;
-    private final OffsetContext previousOffset;
     private final JdbcConnection jdbcConnection;
-    private final HistorizedRelationalDatabaseSchema schema;
-    protected final EventDispatcher<TableId> dispatcher;
+    private final HistorizedRelationalDatabaseSchema<P, O> schema;
+    protected final EventDispatcher<P, O, TableId> dispatcher;
     protected final Clock clock;
     private final SnapshotProgressListener snapshotProgressListener;
 
     public RelationalSnapshotChangeEventSource(RelationalDatabaseConnectorConfig connectorConfig,
-                                               OffsetContext previousOffset, JdbcConnection jdbcConnection, HistorizedRelationalDatabaseSchema schema,
-                                               EventDispatcher<TableId> dispatcher, Clock clock, SnapshotProgressListener snapshotProgressListener) {
-        super(connectorConfig, previousOffset, snapshotProgressListener);
+                                               JdbcConnection jdbcConnection, HistorizedRelationalDatabaseSchema<P, O> schema,
+                                               EventDispatcher<P, O, TableId> dispatcher, Clock clock, SnapshotProgressListener snapshotProgressListener) {
+        super(connectorConfig, snapshotProgressListener);
         this.connectorConfig = connectorConfig;
-        this.previousOffset = previousOffset;
         this.jdbcConnection = jdbcConnection;
         this.schema = schema;
         this.dispatcher = dispatcher;
@@ -81,13 +80,14 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
     }
 
     public RelationalSnapshotChangeEventSource(RelationalDatabaseConnectorConfig connectorConfig,
-                                               OffsetContext previousOffset, JdbcConnection jdbcConnection,
-                                               EventDispatcher<TableId> dispatcher, Clock clock, SnapshotProgressListener snapshotProgressListener) {
-        this(connectorConfig, previousOffset, jdbcConnection, null, dispatcher, clock, snapshotProgressListener);
+                                               JdbcConnection jdbcConnection,
+                                               EventDispatcher<P, O, TableId> dispatcher, Clock clock, SnapshotProgressListener snapshotProgressListener) {
+        this(connectorConfig, jdbcConnection, null, dispatcher, clock, snapshotProgressListener);
     }
 
     @Override
-    public SnapshotResult doExecute(ChangeEventSourceContext context, SnapshotContext snapshotContext, SnapshottingTask snapshottingTask)
+    public SnapshotResult doExecute(ChangeEventSourceContext context, P partition, O previousOffset,
+                                    SnapshotContext snapshotContext, SnapshottingTask snapshottingTask)
             throws Exception {
         final RelationalSnapshotContext ctx = (RelationalSnapshotContext) snapshotContext;
 
@@ -112,14 +112,14 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
             LOGGER.info("Snapshot step 3 - Locking captured tables {}", ctx.capturedTables);
 
             if (snapshottingTask.snapshotSchema()) {
-                lockTablesForSchemaSnapshot(context, ctx);
+                lockTablesForSchemaSnapshot(context, partition, ctx);
             }
 
             LOGGER.info("Snapshot step 4 - Determining snapshot offset");
-            determineSnapshotOffset(ctx);
+            determineSnapshotOffset(partition, previousOffset, ctx);
 
             LOGGER.info("Snapshot step 5 - Reading structure of captured tables");
-            readTableStructure(context, ctx);
+            readTableStructure(context, partition, previousOffset, ctx);
 
             if (snapshottingTask.snapshotSchema()) {
                 LOGGER.info("Snapshot step 6 - Persisting schema history");
@@ -135,7 +135,7 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
 
             if (snapshottingTask.snapshotData()) {
                 LOGGER.info("Snapshot step 7 - Snapshotting data");
-                createDataEvents(context, ctx);
+                createDataEvents(context, partition, ctx);
             }
             else {
                 LOGGER.info("Snapshot step 7 - Skipping snapshotting of data");
@@ -222,7 +222,7 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
     /**
      * Locks all tables to be captured, so that no concurrent schema changes can be applied to them.
      */
-    protected abstract void lockTablesForSchemaSnapshot(ChangeEventSourceContext sourceContext, RelationalSnapshotContext snapshotContext) throws Exception;
+    protected abstract void lockTablesForSchemaSnapshot(ChangeEventSourceContext sourceContext, P partition, RelationalSnapshotContext snapshotContext) throws Exception;
 
     /**
      * Determines the current offset (MySQL binlog position, Oracle SCN etc.), storing it into the passed context
@@ -230,12 +230,14 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
      * completed, a {@link StreamingChangeEventSource} will be set up with this initial position to continue with stream
      * reading from there.
      */
-    protected abstract void determineSnapshotOffset(RelationalSnapshotContext snapshotContext) throws Exception;
+    protected abstract void determineSnapshotOffset(P partition, O previousOffset, RelationalSnapshotContext snapshotContext) throws Exception;
 
     /**
      * Reads the structure of all the captured tables, writing it to {@link RelationalSnapshotContext#tables}.
      */
-    protected abstract void readTableStructure(ChangeEventSourceContext sourceContext, RelationalSnapshotContext snapshotContext) throws Exception;
+    protected abstract void readTableStructure(ChangeEventSourceContext sourceContext, P partition, O offsetContext,
+                                               RelationalSnapshotContext snapshotContext)
+            throws Exception;
 
     /**
      * Releases all locks established in order to create a consistent schema snapshot.
@@ -285,7 +287,7 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
      */
     protected abstract SchemaChangeEvent getCreateTableEvent(RelationalSnapshotContext snapshotContext, Table table) throws Exception;
 
-    private void createDataEvents(ChangeEventSourceContext sourceContext, RelationalSnapshotContext snapshotContext) throws Exception {
+    private void createDataEvents(ChangeEventSourceContext sourceContext, P partition, RelationalSnapshotContext snapshotContext) throws Exception {
         SnapshotReceiver snapshotReceiver = dispatcher.getSnapshotChangeEventReceiver();
         tryStartingSnapshot(snapshotContext);
 
@@ -302,7 +304,7 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
 
             LOGGER.debug("Snapshotting table {}", tableId);
 
-            createDataEventsForTable(sourceContext, snapshotContext, snapshotReceiver, snapshotContext.tables.forTable(tableId), tableOrder++, tableCount);
+            createDataEventsForTable(sourceContext, partition, snapshotContext, snapshotReceiver, snapshotContext.tables.forTable(tableId), tableOrder++, tableCount);
         }
 
         releaseDataSnapshotLocks(snapshotContext);
@@ -320,14 +322,14 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
     /**
      * Dispatches the data change events for the records of a single table.
      */
-    private void createDataEventsForTable(ChangeEventSourceContext sourceContext, RelationalSnapshotContext snapshotContext,
+    private void createDataEventsForTable(ChangeEventSourceContext sourceContext, P partition, RelationalSnapshotContext snapshotContext,
                                           SnapshotReceiver snapshotReceiver, Table table, int tableOrder, int tableCount)
             throws InterruptedException {
 
         long exportStart = clock.currentTimeInMillis();
         LOGGER.info("\t Exporting data from table '{}' ({} of {} tables)", table.id(), tableOrder, tableCount);
 
-        final Optional<String> selectStatement = determineSnapshotSelect(snapshotContext, table.id());
+        final Optional<String> selectStatement = determineSnapshotSelect(partition, snapshotContext, table.id());
         if (!selectStatement.isPresent()) {
             LOGGER.warn("For table '{}' the select statement was not provided, skipping table", table.id());
             snapshotProgressListener.dataCollectionSnapshotCompleted(table.id(), 0);
@@ -417,27 +419,32 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
      * Returns a valid query string for the specified table, either given by the user via snapshot select overrides or
      * defaulting to a statement provided by the DB-specific change event source.
      *
+     * @param partition
+     * @param snapshotContext
      * @param tableId the table to generate a query for
      * @return a valid query string or empty if table will not be snapshotted
      */
-    private Optional<String> determineSnapshotSelect(RelationalSnapshotContext snapshotContext, TableId tableId) {
+    private Optional<String> determineSnapshotSelect(P partition, RelationalSnapshotContext snapshotContext, TableId tableId) {
         String overriddenSelect = connectorConfig.getSnapshotSelectOverridesByTable().get(tableId);
 
         // try without catalog id, as this might or might not be populated based on the given connector
         if (overriddenSelect == null) {
-            overriddenSelect = connectorConfig.getSnapshotSelectOverridesByTable().get(new TableId(null, tableId.schema(), tableId.table()));
+            overriddenSelect = connectorConfig.getSnapshotSelectOverridesByTable().get(new TableId(tableId.catalog(), tableId.schema(), tableId.table()));
         }
 
-        return overriddenSelect != null ? Optional.of(enhanceOverriddenSelect(snapshotContext, overriddenSelect, tableId)) : getSnapshotSelect(snapshotContext, tableId);
+        return overriddenSelect != null ? Optional.of(enhanceOverriddenSelect(partition, snapshotContext, overriddenSelect, tableId))
+                : getSnapshotSelect(partition, snapshotContext, tableId);
     }
 
     /**
      * This method is overridden for Oracle to implement "as of SCN" predicate
+     * @param partition
      * @param snapshotContext snapshot context, used for getting offset SCN
      * @param overriddenSelect conditional snapshot select
      * @return enhanced select statement. By default it just returns original select statements.
      */
-    protected String enhanceOverriddenSelect(RelationalSnapshotContext snapshotContext, String overriddenSelect, TableId tableId) {
+    protected String enhanceOverriddenSelect(P partition, RelationalSnapshotContext snapshotContext, String overriddenSelect,
+                                             TableId tableId) {
         return overriddenSelect;
     }
 
@@ -448,7 +455,7 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
     // TODO Should it be Statement or similar?
     // TODO Handle override option generically; a problem will be how to handle the dynamic part (Oracle's "... as of
     // scn xyz")
-    protected abstract Optional<String> getSnapshotSelect(RelationalSnapshotContext snapshotContext, TableId tableId);
+    protected abstract Optional<String> getSnapshotSelect(P partition, RelationalSnapshotContext snapshotContext, TableId tableId);
 
     protected Object getColumnValue(ResultSet rs, int columnIndex, Column column, Table table) throws SQLException {
         return getColumnValue(rs, columnIndex, column);

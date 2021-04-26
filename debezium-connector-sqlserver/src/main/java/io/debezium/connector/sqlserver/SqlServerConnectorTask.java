@@ -18,12 +18,12 @@ import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.common.BaseSourceTask;
+import io.debezium.connector.common.TaskOffsetContext;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.metrics.DefaultChangeEventSourceMetricsFactory;
-import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
 import io.debezium.relational.history.DatabaseHistory;
@@ -38,7 +38,7 @@ import io.debezium.util.SchemaNameAdjuster;
  * @author Jiri Pechanec
  *
  */
-public class SqlServerConnectorTask extends BaseSourceTask {
+public class SqlServerConnectorTask extends BaseSourceTask<SqlServerTaskPartition, SqlServerOffsetContext> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SqlServerConnectorTask.class);
     private static final String CONTEXT_NAME = "sql-server-connector-task";
@@ -56,7 +56,7 @@ public class SqlServerConnectorTask extends BaseSourceTask {
     }
 
     @Override
-    public ChangeEventSourceCoordinator start(Configuration config) {
+    public ChangeEventSourceCoordinator<SqlServerTaskPartition, SqlServerOffsetContext> start(Configuration config) {
         final Clock clock = Clock.system();
         final SqlServerConnectorConfig connectorConfig = new SqlServerConnectorConfig(config);
         final TopicSelector<TableId> topicSelector = SqlServerTopicSelector.defaultSelector(connectorConfig);
@@ -81,13 +81,16 @@ public class SqlServerConnectorTask extends BaseSourceTask {
         catch (SQLException e) {
             throw new ConnectException(e);
         }
-        this.schema = new SqlServerDatabaseSchema(connectorConfig, valueConverters, topicSelector, schemaNameAdjuster);
-        this.schema.initializeStorage();
 
-        final OffsetContext previousOffset = getPreviousOffset(new SqlServerOffsetContext.Loader(connectorConfig));
-        if (previousOffset != null) {
-            schema.recover(previousOffset);
-        }
+        TaskOffsetContext.Loader<SqlServerTaskPartition, SqlServerOffsetContext, SqlServerOffsetContext.Loader> loader = new TaskOffsetContext.Loader<>(
+                context.offsetStorageReader(),
+                new SqlServerOffsetContext.Loader(connectorConfig));
+        TaskOffsetContext<SqlServerTaskPartition, SqlServerOffsetContext> taskOffsetContext = loader.load(
+                new SqlServerTaskPartition.Provider(connectorConfig, config, metadataConnection).getPartitions());
+
+        schema = new SqlServerDatabaseSchema(connectorConfig, valueConverters, topicSelector, schemaNameAdjuster);
+        schema.initializeStorage();
+        schema.recover(taskOffsetContext);
 
         taskContext = new SqlServerTaskContext(connectorConfig, schema);
 
@@ -104,7 +107,7 @@ public class SqlServerConnectorTask extends BaseSourceTask {
 
         final SqlServerEventMetadataProvider metadataProvider = new SqlServerEventMetadataProvider();
 
-        final EventDispatcher<TableId> dispatcher = new EventDispatcher<>(
+        final EventDispatcher<SqlServerTaskPartition, SqlServerOffsetContext, TableId> dispatcher = new EventDispatcher<>(
                 connectorConfig,
                 topicSelector,
                 schema,
@@ -114,15 +117,16 @@ public class SqlServerConnectorTask extends BaseSourceTask {
                 metadataProvider,
                 schemaNameAdjuster);
 
-        ChangeEventSourceCoordinator coordinator = new ChangeEventSourceCoordinator(
-                previousOffset,
+        ChangeEventSourceCoordinator<SqlServerTaskPartition, SqlServerOffsetContext> coordinator = new ChangeEventSourceCoordinator<>(
+                taskOffsetContext,
                 errorHandler,
                 SqlServerConnector.class,
                 connectorConfig,
                 new SqlServerChangeEventSourceFactory(connectorConfig, dataConnection, metadataConnection, errorHandler, dispatcher, clock, schema),
                 new DefaultChangeEventSourceMetricsFactory(),
                 dispatcher,
-                schema);
+                schema,
+                clock);
 
         coordinator.start(taskContext, this.queue, metadataProvider);
 

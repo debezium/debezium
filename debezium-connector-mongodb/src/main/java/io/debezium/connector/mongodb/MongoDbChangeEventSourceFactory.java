@@ -12,7 +12,6 @@ import io.debezium.pipeline.source.spi.ChangeEventSourceFactory;
 import io.debezium.pipeline.source.spi.SnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
-import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.util.Clock;
 
 /**
@@ -20,7 +19,7 @@ import io.debezium.util.Clock;
  *
  * @author Chris Cranford
  */
-public class MongoDbChangeEventSourceFactory implements ChangeEventSourceFactory {
+public class MongoDbChangeEventSourceFactory implements ChangeEventSourceFactory<MongoDbOffsetContext> {
 
     private final MongoDbConnectorConfig configuration;
     private final ErrorHandler errorHandler;
@@ -40,12 +39,11 @@ public class MongoDbChangeEventSourceFactory implements ChangeEventSourceFactory
     }
 
     @Override
-    public SnapshotChangeEventSource getSnapshotChangeEventSource(OffsetContext offsetContext, SnapshotProgressListener snapshotProgressListener) {
+    public SnapshotChangeEventSource<MongoDbOffsetContext> getSnapshotChangeEventSource(SnapshotProgressListener snapshotProgressListener) {
         return new MongoDbSnapshotChangeEventSource(
                 configuration,
                 taskContext,
                 replicaSets,
-                (MongoDbOffsetContext) offsetContext,
                 dispatcher,
                 clock,
                 snapshotProgressListener,
@@ -53,12 +51,11 @@ public class MongoDbChangeEventSourceFactory implements ChangeEventSourceFactory
     }
 
     @Override
-    public StreamingChangeEventSource getStreamingChangeEventSource(OffsetContext offsetContext) {
+    public StreamingChangeEventSource<MongoDbOffsetContext> getStreamingChangeEventSource() {
         return new MongoDbStreamingChangeEventSource(
                 configuration,
                 taskContext,
                 replicaSets,
-                (MongoDbOffsetContext) offsetContext,
                 dispatcher,
                 errorHandler,
                 clock);

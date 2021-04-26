@@ -39,7 +39,7 @@ import io.debezium.util.Strings;
  *
  * @author Gunnar Morling
  */
-public abstract class BaseSourceTask extends SourceTask {
+public abstract class BaseSourceTask<P extends TaskPartition, O extends OffsetContext> extends SourceTask {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(BaseSourceTask.class);
     private static final long INITIAL_POLL_PERIOD_IN_MILLIS = TimeUnit.SECONDS.toMillis(5);
@@ -68,7 +68,7 @@ public abstract class BaseSourceTask extends SourceTask {
      * The change event source coordinator for those connectors adhering to the new
      * framework structure, {@code null} for legacy-style connectors.
      */
-    private ChangeEventSourceCoordinator coordinator;
+    private ChangeEventSourceCoordinator<P, O> coordinator;
 
     /**
      * The latest offset that has been acknowledged by the Kafka producer. Will be
@@ -141,7 +141,7 @@ public abstract class BaseSourceTask extends SourceTask {
      *            the task configuration; implementations should wrap it in a dedicated implementation of
      *            {@link CommonConnectorConfig} and work with typed access to configuration properties that way
      */
-    protected abstract ChangeEventSourceCoordinator start(Configuration config);
+    protected abstract ChangeEventSourceCoordinator<P, O> start(Configuration config);
 
     @Override
     public final List<SourceRecord> poll() throws InterruptedException {
@@ -302,7 +302,7 @@ public abstract class BaseSourceTask extends SourceTask {
         Map<String, ?> partition = loader.getPartition();
 
         if (lastOffset != null) {
-            OffsetContext offsetContext = loader.load(lastOffset);
+            OffsetContext offsetContext = loader.load(partition, lastOffset);
             LOGGER.info("Found previous offset after restart {}", offsetContext);
             return offsetContext;
         }
@@ -312,7 +312,7 @@ public abstract class BaseSourceTask extends SourceTask {
                 .get(partition);
 
         if (previousOffset != null) {
-            OffsetContext offsetContext = loader.load(previousOffset);
+            OffsetContext offsetContext = loader.load(partition, previousOffset);
             LOGGER.info("Found previous offset {}", offsetContext);
             return offsetContext;
         }
