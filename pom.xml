@@ -297,12 +297,23 @@
     </build>
     <profiles>
         <profile>
+            <id>qa</id>
+            <activation>
+                <property>
+                    <name>!quick</name>
+                </property>
+            </activation>
+        </profile>
+        <profile>
             <id>quick</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+                <property>
+                    <name>quick</name>
+                </property>
+            </activation>
             <properties>
                 <skipTests>true</skipTests>
-                <checkstyle.skip>true</checkstyle.skip>
-                <format.skip>true</format.skip>
-                <docker.skip>true</docker.skip>
             </properties>
         </profile>
         <profile>
