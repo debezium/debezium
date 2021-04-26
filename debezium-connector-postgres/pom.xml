@@ -243,23 +243,6 @@
                     </systemPropertyVariables>
                 </configuration>
             </plugin>
-            <plugin>
-                <groupId>org.revapi</groupId>
-                <artifactId>revapi-maven-plugin</artifactId>
-                <configuration>
-                    <analysisConfiguration combine.children="append">
-                        <revapi.java>
-                            <filter>
-                                <packages>
-                                    <include>
-                                        <item>io.debezium.connector.postgresql.spi</item>
-                                    </include>
-                                </packages>
-                            </filter>
-                        </revapi.java>
-                    </analysisConfiguration>
-                </configuration>
-            </plugin>
         </plugins>
         <resources>
             <!-- Apply the properties set in the POM to the resource files -->
@@ -327,11 +310,45 @@
             </build>
         </profile>
         <profile>
+            <id>qa</id>
+            <activation>
+                <property>
+                    <name>!quick</name>
+                </property>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.revapi</groupId>
+                        <artifactId>revapi-maven-plugin</artifactId>
+                        <configuration>
+                            <analysisConfiguration combine.children="append">
+                                <revapi.java>
+                                    <filter>
+                                        <packages>
+                                            <include>
+                                                <item>io.debezium.connector.postgresql.spi</item>
+                                            </include>
+                                        </packages>
+                                    </filter>
+                                </revapi.java>
+                            </analysisConfiguration>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
             <id>quick</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+                <property>
+                    <name>quick</name>
+                </property>
+            </activation>
             <properties>
                 <skipITs>true</skipITs>
                 <docker.skip>true</docker.skip>
-                <revapi.skip>true</revapi.skip>
             </properties>
         </profile>
         <!--  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
