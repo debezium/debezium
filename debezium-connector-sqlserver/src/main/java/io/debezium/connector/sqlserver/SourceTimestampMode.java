@@ -27,6 +27,14 @@ public enum SourceTimestampMode implements EnumeratedValue {
             return connection.normalize(resultSet.getTimestamp(resultSet.getMetaData().getColumnCount()));
         }
 
+        /**
+         * Returns the query for obtaining the LSN-to-TIMESTAMP query. On SQL Server
+         * 2016 and newer, the query will normalize the value to UTC. This means that
+         * the {@link SqlServerConnection#SERVER_TIMEZONE_PROP_NAME} is not necessary to be given. The
+         * returned TIMESTAMP will be adjusted by the JDBC driver using this VM's TZ (as
+         * required by the JDBC spec), and that same TZ will be applied when converting
+         * the TIMESTAMP value into an {@code Instant}.
+         */
         @Override
         protected String lsnTimestampSelectStatement(boolean supportsAtTimeZone) {
             String result = ", " + SqlServerConnection.LSN_TIMESTAMP_SELECT_STATEMENT;
