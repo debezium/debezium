@@ -298,6 +298,13 @@
           <type>zip</type>
           <version>${version.db2-connector}</version>
         </dependency>
+        <dependency>
+          <groupId>io.apicurio</groupId>
+          <artifactId>apicurio-registry-distro-connect-converter</artifactId>
+          <type>zip</type>
+          <version>${version.apicurio.converter}</version>
+          <classifier>converter</classifier>
+        </dependency>
       </dependencies>
 
       <build>
@@ -330,6 +337,41 @@
                             <outputDirectory>debezium-connector-db2</outputDirectory>
                             <includes>
                               <include>com.ibm.db2:jcc:jar</include>
+                            </includes>
+                          </dependencySet>
+                          <dependencySet>
+                            <outputDirectory>debezium-connector-mysql</outputDirectory>
+                            <unpack>true</unpack>
+                            <includes>
+                              <include>io.apicurio:apicurio-registry-distro-connect-converter:zip</include>
+                            </includes>
+                          </dependencySet>
+                          <dependencySet>
+                            <outputDirectory>debezium-connector-postgresql</outputDirectory>
+                            <unpack>true</unpack>
+                            <includes>
+                              <include>io.apicurio:apicurio-registry-distro-connect-converter:zip</include>
+                            </includes>
+                          </dependencySet>
+                          <dependencySet>
+                            <outputDirectory>debezium-connector-mongodb</outputDirectory>
+                            <unpack>true</unpack>
+                            <includes>
+                              <include>io.apicurio:apicurio-registry-distro-connect-converter:zip</include>
+                            </includes>
+                          </dependencySet>
+                          <dependencySet>
+                            <outputDirectory>debezium-connector-sqlserver</outputDirectory>
+                            <unpack>true</unpack>
+                            <includes>
+                              <include>io.apicurio:apicurio-registry-distro-connect-converter:zip</include>
+                            </includes>
+                          </dependencySet>
+                          <dependencySet>
+                            <outputDirectory>debezium-connector-db2</outputDirectory>
+                            <unpack>true</unpack>
+                            <includes>
+                              <include>io.apicurio:apicurio-registry-distro-connect-converter:zip</include>
                             </includes>
                           </dependencySet>
                         </dependencySets>
