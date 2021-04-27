@@ -2404,7 +2404,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-2582")
-    public void testMaxLsnSelectStatementWithDefault() throws Exception {
+    public void testMaxLsnSelectStatementWithoutLimit() throws Exception {
         final int RECORDS_PER_TABLE = 5;
         final int TABLES = 2;
         final int ID_START = 10;
@@ -2438,14 +2438,14 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-2582")
-    public void testMaxLsnSelectStatementWithFalse() throws Exception {
+    public void testMaxLsnSelectStatementWithLimit() throws Exception {
         final int RECORDS_PER_TABLE = 5;
         final int TABLES = 2;
         final int ID_START = 10;
 
         final Configuration config = TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
-                .with(SqlServerConnectorConfig.MAX_LSN_OPTIMIZATION, false)
+                .with(SqlServerConnectorConfig.MAX_TRANSACTIONS_PER_ITERATION, 1)
                 .build();
 
         start(SqlServerConnector.class, config);
