@@ -44,7 +44,7 @@ public class TestCalculator {
             sum += ObjectSizeCalculator.getObjectSize(data);
         }
         sw.stop();
-        System.out.println(sum + " " + sw.durations().statistics().getTotal());
+        System.out.println("Object:\t\t\t" + sum + " " + sw.durations().statistics().getTotal());
     }
 
     @Test
@@ -56,7 +56,7 @@ public class TestCalculator {
             sum += ObjectSizeCalculator.getObjectSize(data) - ObjectSizeCalculator.getObjectSize(data.schema());
         }
         sw.stop();
-        System.out.println(sum + " " + sw.durations().statistics().getTotal());
+        System.out.println("Object w/o schema:\t" + sum + " " + sw.durations().statistics().getTotal());
     }
 
     @Test
@@ -81,6 +81,6 @@ public class TestCalculator {
             sum += ApproximateStructSizeCalculator.getStructSize(data);
         }
         sw.stop();
-        System.out.println(sum + " " + sw.durations().statistics().getTotal());
+        System.out.println("Struct:\t\t\t" + sum + " " + sw.durations().statistics().getTotal());
     }
 }
