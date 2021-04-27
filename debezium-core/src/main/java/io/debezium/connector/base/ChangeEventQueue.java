@@ -8,11 +8,12 @@ package io.debezium.connector.base;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
@@ -22,13 +23,14 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.SingleThreadAccess;
 import io.debezium.annotation.ThreadSafe;
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.ConfigurationDefaults;
+import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.time.Temporals;
 import io.debezium.util.Clock;
 import io.debezium.util.LoggingContext;
 import io.debezium.util.LoggingContext.PreviousContext;
 import io.debezium.util.Metronome;
-import io.debezium.util.ObjectSizeCalculator;
 import io.debezium.util.Threads;
 import io.debezium.util.Threads.Timer;
 
@@ -58,7 +60,7 @@ import io.debezium.util.Threads.Timer;
  *            may be used.
  */
 @ThreadSafe
-public class ChangeEventQueue<T> implements ChangeEventQueueMetrics {
+public class ChangeEventQueue<T extends DataChangeEvent> implements ChangeEventQueueMetrics {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ChangeEventQueue.class);
 
@@ -69,8 +71,15 @@ public class ChangeEventQueue<T> implements ChangeEventQueueMetrics {
     private final BlockingQueue<T> queue;
     private final Metronome metronome;
     private final Supplier<PreviousContext> loggingContextSupplier;
+
+	/**
+	 * Approximate current size in bytes of the queue. Used to cap the size and
+	 * block further enqueuing when
+	 * {@link CommonConnectorConfig#MAX_QUEUE_SIZE_IN_BYTES} is enabled.
+	 */
     private final AtomicLong currentQueueSizeInBytes = new AtomicLong(0);
-    private final Map<T, Long> objectMap = new ConcurrentHashMap<>();
+    private final Lock lock = new ReentrantLock();
+    private final Condition canEnqueue = lock.newCondition();
 
     // Sometimes it is necessary to update the record before it is delivered depending on the content
     // of the following record. In that cases the easiest solution is to provide a single cell buffer
@@ -97,7 +106,7 @@ public class ChangeEventQueue<T> implements ChangeEventQueueMetrics {
         this.buffering = buffering;
     }
 
-    public static class Builder<T> {
+    public static class Builder<T extends DataChangeEvent> {
 
         private Duration pollInterval;
         private int maxQueueSize;
@@ -199,19 +208,26 @@ public class ChangeEventQueue<T> implements ChangeEventQueueMetrics {
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("Enqueuing source record '{}'", record);
         }
-        // Waiting for queue to add more record.
-        while (maxQueueSizeInBytes > 0 && currentQueueSizeInBytes.get() > maxQueueSizeInBytes) {
-            Thread.sleep(pollInterval.toMillis());
-        }
-        // If we pass a positiveLong max.queue.size.in.bytes to enable handling queue size in bytes feature
-        if (maxQueueSizeInBytes > 0) {
-            long messageSize = ObjectSizeCalculator.getObjectSize(record);
-            objectMap.put(record, messageSize);
-            currentQueueSizeInBytes.addAndGet(messageSize);
-        }
 
-        // this will also raise an InterruptedException if the thread is interrupted while waiting for space in the queue
-        queue.put(record);
+        if (queueHasMaxByteSize()) {
+            lock.lock();
+
+            try {
+                while (currentQueueSizeInBytes.get() >= maxQueueSizeInBytes) {
+                    canEnqueue.await();
+                }
+
+                queue.put(record);
+                currentQueueSizeInBytes.getAndAdd(record.getApproximateSizeInBytes());
+            }
+            finally {
+                lock.unlock();
+            }
+        }
+        else {
+            // this will also raise an InterruptedException if the thread is interrupted while waiting for space in the queue
+            queue.put(record);
+        }
     }
 
     /**
@@ -237,14 +253,27 @@ public class ChangeEventQueue<T> implements ChangeEventQueueMetrics {
                 metronome.pause();
                 LOGGER.debug("checking for more records...");
             }
-            if (maxQueueSizeInBytes > 0 && records.size() > 0) {
-                records.parallelStream().forEach((record) -> {
-                    if (objectMap.containsKey(record)) {
-                        currentQueueSizeInBytes.addAndGet(-objectMap.get(record));
-                        objectMap.remove(record);
+
+            if (queueHasMaxByteSize()) {
+                lock.lock();
+
+                try {
+                    long dequeuedSize = 0;
+                    for (T t : records) {
+                        dequeuedSize += t.getApproximateSizeInBytes();
                     }
-                });
+
+                    long currentQueueSize = currentQueueSizeInBytes.getAndAdd(-dequeuedSize);
+
+                    if (currentQueueSize < maxQueueSizeInBytes) {
+                        canEnqueue.signal();
+                    }
+                }
+                finally {
+                    lock.unlock();
+                }
             }
+
             return records;
         }
         finally {
@@ -280,5 +309,9 @@ public class ChangeEventQueue<T> implements ChangeEventQueueMetrics {
     @Override
     public long currentQueueSizeInBytes() {
         return currentQueueSizeInBytes.get();
+    }
+
+    private boolean queueHasMaxByteSize() {
+        return maxQueueSizeInBytes > 0;
     }
 }

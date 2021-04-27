@@ -5,7 +5,6 @@ import java.time.Instant;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import io.debezium.data.Envelope;
@@ -57,19 +56,6 @@ public class TestCalculator {
         }
         sw.stop();
         System.out.println("Object w/o schema:\t" + sum + " " + sw.durations().statistics().getTotal());
-    }
-
-    @Test
-    @Ignore
-    public void newC() {
-        long sum = 0;
-        Stopwatch sw = Stopwatch.reusable();
-        sw.start();
-        for (int i = 0; i < 250_000; i++) {
-            sum += NewObjectSizeCalculator.getObjectSize(data);
-        }
-        sw.stop();
-        System.out.println(sum + " " + sw.durations().statistics().getTotal());
     }
 
     @Test

@@ -7,10 +7,10 @@ package io.debezium.pipeline.spi;
 
 import org.apache.kafka.connect.source.SourceRecord;
 
-import io.debezium.pipeline.DataChangeEvent;
+import io.debezium.pipeline.SourceRecordChangeEvent;
 
 @FunctionalInterface
 public interface ChangeEventCreator {
 
-    DataChangeEvent createDataChangeEvent(SourceRecord sourceRecord);
+    SourceRecordChangeEvent createDataChangeEvent(SourceRecord sourceRecord);
 }
