@@ -5,22 +5,13 @@
  */
 package io.debezium.pipeline;
 
-import org.apache.kafka.connect.source.SourceRecord;
+/**
+ * Intermediary representation of data change events, as exchanged between producer threads (e.g. reading the MySQL binlog) and consumer threads (e.g. the Kafka Connect polling loop).
+ *
+ * @author Gunnar Morling
+ *
+ */
+public interface DataChangeEvent {
 
-public class DataChangeEvent {
-
-    private final SourceRecord record;
-
-    public DataChangeEvent(SourceRecord record) {
-        this.record = record;
-    }
-
-    public SourceRecord getRecord() {
-        return record;
-    }
-
-    @Override
-    public String toString() {
-        return "DataChangeEvent [record=" + record + "]";
-    }
+    long getApproximateSizeInBytes();
 }
