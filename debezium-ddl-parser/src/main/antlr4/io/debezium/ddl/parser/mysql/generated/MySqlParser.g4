@@ -477,24 +477,24 @@ partitionDefinition
           partitionDefinerAtom (',' partitionDefinerAtom)*
       ')'
       partitionOption*
-      (subpartitionDefinition (',' subpartitionDefinition)*)?       #partitionComparision
+      ( '(' subpartitionDefinition (',' subpartitionDefinition)* ')' )?       #partitionComparision
     | PARTITION uid VALUES LESS THAN
       partitionDefinerAtom partitionOption*
-      (subpartitionDefinition (',' subpartitionDefinition)*)?       #partitionComparision
+      ( '(' subpartitionDefinition (',' subpartitionDefinition)* ')' )?       #partitionComparision
     | PARTITION uid VALUES IN
       '('
           partitionDefinerAtom (',' partitionDefinerAtom)*
       ')'
       partitionOption*
-      (subpartitionDefinition (',' subpartitionDefinition)*)?       #partitionListAtom
+      ( '(' subpartitionDefinition (',' subpartitionDefinition)* ')' )?       #partitionListAtom
     | PARTITION uid VALUES IN
       '('
           partitionDefinerVector (',' partitionDefinerVector)*
       ')'
       partitionOption*
-      (subpartitionDefinition (',' subpartitionDefinition)*)?       #partitionListVector
+      ( '(' subpartitionDefinition (',' subpartitionDefinition)* ')' )?       #partitionListVector
     | PARTITION uid partitionOption*
-      (subpartitionDefinition (',' subpartitionDefinition)*)?       #partitionSimple
+      ( '(' subpartitionDefinition (',' subpartitionDefinition)* ')' )?       #partitionSimple
     ;
 
 partitionDefinerAtom
