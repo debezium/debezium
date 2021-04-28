@@ -59,14 +59,16 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
             .withType(ConfigDef.Type.STRING)
             .withWidth(ConfigDef.Width.LONG)
             .withImportance(ConfigDef.Importance.LOW)
-            .withValidation(Field::isRequired, Field::isRegex)
+            .required()
+            .withValidation(Field::isRegex)
             .withDescription("The regex used for extracting the name of the logical table from the original topic name.");
+
     private static final Field TOPIC_REPLACEMENT = Field.create("topic.replacement")
             .withDisplayName("Topic replacement")
             .withType(ConfigDef.Type.STRING)
             .withWidth(ConfigDef.Width.LONG)
             .withImportance(ConfigDef.Importance.LOW)
-            .withValidation(Field::isRequired)
+            .required()
             .withDescription("The replacement string used in conjunction with " + TOPIC_REGEX.name() +
                     ". This will be used to create the new topic name.");
     private static final Field KEY_ENFORCE_UNIQUENESS = Field.create("key.enforce.uniqueness")

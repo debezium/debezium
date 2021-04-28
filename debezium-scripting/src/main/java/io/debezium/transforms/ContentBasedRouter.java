@@ -27,7 +27,7 @@ public class ContentBasedRouter<R extends ConnectRecord<R>> extends ScriptingTra
             .withType(ConfigDef.Type.STRING)
             .withWidth(ConfigDef.Width.MEDIUM)
             .withImportance(ConfigDef.Importance.HIGH)
-            .withValidation(Field::isRequired)
+            .required()
             .withDescription("An expression determining the new name of the topic the record should use. When null the record is delivered to the original topic.");
 
     @Override
