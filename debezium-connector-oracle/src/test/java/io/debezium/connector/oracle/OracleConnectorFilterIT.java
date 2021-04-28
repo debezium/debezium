@@ -278,7 +278,7 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
             // Start streaming & wait for it
             waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
-            connection.execute("INSERT INTO debezium.table4 VALUES (2, 'Text-2', TO_DATE('1990-12-31'))");
+            connection.execute("INSERT INTO debezium.table4 VALUES (2, 'Text-2', TO_DATE('1990-12-31', 'yyyy-mm-dd'))");
             connection.execute("COMMIT");
 
             records = consumeRecordsByTopic(1);
