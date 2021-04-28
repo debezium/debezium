@@ -103,7 +103,7 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
         waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
         connection.executeWithoutCommitting("INSERT INTO debezium.customer VALUES (1, 'Billie-Bob', 1234.56, TO_DATE('2018/02/22', 'yyyy-mm-dd'))");
-        connection.executeWithoutCommitting("INSERT INTO debezium.orders VALUES (1, '01-FEB-2021', 1001, 1, 102)");
+        connection.executeWithoutCommitting("INSERT INTO debezium.orders VALUES (1, TO_DATE('2021-02-01', 'yyyy-mm-dd'), 1001, 1, 102)");
         connection.execute("COMMIT");
 
         // TX BEGIN, insert x2, TX END
@@ -163,8 +163,8 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
 
             // Create multiple transaction commits, notice commit order
             connection.executeWithoutCommitting("INSERT INTO debezium.customer VALUES (1, 'Billie-Bob', 1234.56, TO_DATE('2018/02/22', 'yyyy-mm-dd'))");
-            connection.executeWithoutCommitting("INSERT INTO debezium.orders VALUES (2, '01-FEB-2021', 1001, 2, 102)");
-            secondaryConn.executeWithoutCommitting("INSERT INTO debezium.orders VALUES (1, '01-FEB-2021', 1001, 1, 102)");
+            connection.executeWithoutCommitting("INSERT INTO debezium.orders VALUES (2, TO_DATE('2021-02-01', 'yyyy-mm-dd'), 1001, 2, 102)");
+            secondaryConn.executeWithoutCommitting("INSERT INTO debezium.orders VALUES (1, TO_DATE('2021-02-01', 'yyyy-mm-dd'), 1001, 1, 102)");
             secondaryConn.execute("COMMIT");
             connection.execute("COMMIT");
 
