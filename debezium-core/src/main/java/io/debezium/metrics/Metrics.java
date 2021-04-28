@@ -51,7 +51,7 @@ public abstract class Metrics {
         if (multiPartitionMode) {
             this.name = metricName(connectorType, Collect.linkMapOf(
                     "server", connectorName,
-                    "task", "0",
+                    "task", connectorConfig.getTaskId(),
                     "context", contextName));
         }
         else {

@@ -25,6 +25,7 @@ public class CdcSourceTaskContext {
 
     private final String connectorType;
     private final String connectorName;
+    private final String taskId;
     private final Clock clock;
 
     /**
@@ -32,12 +33,17 @@ public class CdcSourceTaskContext {
      */
     private final Supplier<Collection<? extends DataCollectionId>> collectionsSupplier;
 
-    public CdcSourceTaskContext(String connectorType, String connectorName, Supplier<Collection<? extends DataCollectionId>> collectionsSupplier) {
+    public CdcSourceTaskContext(String connectorType, String connectorName, String taskId, Supplier<Collection<? extends DataCollectionId>> collectionsSupplier) {
         this.connectorType = connectorType;
         this.connectorName = connectorName;
+        this.taskId = taskId;
         this.collectionsSupplier = collectionsSupplier != null ? collectionsSupplier : Collections::emptyList;
 
         this.clock = Clock.system();
+    }
+
+    public CdcSourceTaskContext(String connectorType, String connectorName, Supplier<Collection<? extends DataCollectionId>> collectionsSupplier) {
+        this(connectorType, connectorName, "0", collectionsSupplier);
     }
 
     /**
@@ -84,5 +90,9 @@ public class CdcSourceTaskContext {
 
     public String getConnectorName() {
         return connectorName;
+    }
+
+    public String getTaskId() {
+        return taskId;
     }
 }

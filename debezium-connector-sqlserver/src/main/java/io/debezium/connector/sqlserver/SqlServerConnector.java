@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.sqlserver;
 
+import static io.debezium.config.CommonConnectorConfig.TASK_ID;
+
 import java.sql.SQLException;
 import java.util.Collections;
 import java.util.HashMap;
@@ -64,6 +66,7 @@ public class SqlServerConnector extends RelationalBaseSourceConnector {
             final String realDatabaseName = connection.retrieveRealDatabaseName(databaseName);
             if (!sqlServerConfig.isMultiPartitionModeEnabled()) {
                 taskConfig.put(SqlServerConnectorConfig.DATABASE_NAME.name(), realDatabaseName);
+                taskConfig.put(TASK_ID, "0");
             }
             else {
                 taskConfig.put(SqlServerConnectorConfig.DATABASE_NAMES.name(), realDatabaseName);
