@@ -10,6 +10,7 @@ import static io.debezium.relational.RelationalDatabaseConnectorConfig.COLUMN_EX
 import static io.debezium.relational.RelationalDatabaseConnectorConfig.COLUMN_INCLUDE_LIST;
 import static io.debezium.relational.RelationalDatabaseConnectorConfig.COLUMN_WHITELIST;
 import static io.debezium.relational.RelationalDatabaseConnectorConfig.MSG_KEY_COLUMNS;
+import static io.debezium.relational.RelationalDatabaseConnectorConfig.SERVER_NAME;
 import static org.fest.assertions.Assertions.assertThat;
 
 import java.util.List;
@@ -282,5 +283,17 @@ public class ConfigurationTest {
         config = Configuration.create().with(MSG_KEY_COLUMNS, "t1:C1;foobar").build();
         errorList = config.validate(Field.setOf(MSG_KEY_COLUMNS)).get(MSG_KEY_COLUMNS.name()).errorMessages();
         assertThat(errorList.get(0)).isEqualTo("foobar has an invalid format (expecting '^\\s*([^\\s:]+):([^:\\s]+)\\s*$')");
+    }
+
+    @Test
+    @FixFor("DBZ-3427")
+    public void testServerNameValidation() {
+        List<String> errorList;
+        config = Configuration.create().with(SERVER_NAME, "server_11").build();
+        assertThat(config.validate(Field.setOf(SERVER_NAME)).get(SERVER_NAME.name()).errorMessages()).isEmpty();
+
+        config = Configuration.create().with(SERVER_NAME, "server-X").build();
+        errorList = config.validate(Field.setOf(SERVER_NAME)).get(SERVER_NAME.name()).errorMessages();
+        assertThat(errorList.get(0)).isEqualTo("server-X has invalid format (only the underscore and alphanumeric characters are allowed)");
     }
 }
