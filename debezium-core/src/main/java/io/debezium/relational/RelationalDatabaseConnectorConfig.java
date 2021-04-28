@@ -12,6 +12,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
@@ -50,6 +51,8 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     protected static final String TABLE_EXCLUDE_LIST_NAME = "table.exclude.list";
     protected static final String TABLE_WHITELIST_NAME = "table.whitelist";
     protected static final String TABLE_INCLUDE_LIST_NAME = "table.include.list";
+
+    protected static final Pattern SERVER_NAME_PATTERN = Pattern.compile("^[a-zA-Z0-9_]+$");
 
     public static final String TABLE_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG = "\"table.include.list\" is already specified";
     public static final String TABLE_WHITELIST_ALREADY_SPECIFIED_ERROR_MSG = "\"table.whitelist\" is already specified";
@@ -186,7 +189,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withType(Type.STRING)
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.HIGH)
-            .withValidation(Field::isRequired)
+            .withValidation(Field::isRequired, RelationalDatabaseConnectorConfig::validateServerName)
             .withDescription("Unique name that identifies the database server and all "
                     + "recorded offsets, and that is used as a prefix for all schemas and topics. "
                     + "Each distinct installation should have a separate namespace and be monitored by "
@@ -777,5 +780,17 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             }
         }
         return problemCount;
+    }
+
+    private static int validateServerName(Configuration config, Field field, Field.ValidationOutput problems) {
+        String serverName = config.getString(SERVER_NAME);
+
+        if (serverName != null) {
+            if (!SERVER_NAME_PATTERN.asPredicate().test(serverName)) {
+                problems.accept(SERVER_NAME, serverName, serverName + " has invalid format (only the underscore and alphanumeric characters are allowed)");
+                return 1;
+            }
+        }
+        return 0;
     }
 }
