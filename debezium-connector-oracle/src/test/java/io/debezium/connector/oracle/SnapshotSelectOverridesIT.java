@@ -38,7 +38,7 @@ public class SnapshotSelectOverridesIT extends AbstractConnectorTest {
     private static final String DDL = "CREATE TABLE %s (ID numeric(9,0) primary key, NAME varchar2(30), " +
             "PRICE numeric(8,2), TS date, SOFT_DELETED number(1))";
 
-    private static final String DML = "INSERT INTO %s VALUES (%s, '%s', %s, TO_DATE('%s','MON-DD-YYYY'), %s)";
+    private static final String DML = "INSERT INTO %s VALUES (%s, '%s', %s, TO_DATE('%s','yyyy-mm-dd'), %s)";
 
     private OracleConnection connection;
 
@@ -54,9 +54,9 @@ public class SnapshotSelectOverridesIT extends AbstractConnectorTest {
 
         // Populate database
         for (int i = 0; i < INITIAL_RECORDS_PER_TABLE; i++) {
-            connection.execute(String.format(DML, "table1", i, "name" + i, new BigDecimal(i + ".23"), "JUL-18-2018", i % 2));
-            connection.execute(String.format(DML, "table2", i, "name" + i, new BigDecimal(i + ".23"), "JUL-18-2018", i % 2));
-            connection.execute(String.format(DML, "table3", i, "name" + i, new BigDecimal(i + ".23"), "JUL-18-2018", i % 2));
+            connection.execute(String.format(DML, "table1", i, "name" + i, new BigDecimal(i + ".23"), "2018-07-18", i % 2));
+            connection.execute(String.format(DML, "table2", i, "name" + i, new BigDecimal(i + ".23"), "2018-07-18", i % 2));
+            connection.execute(String.format(DML, "table3", i, "name" + i, new BigDecimal(i + ".23"), "2018-07-18", i % 2));
         }
 
         // setup tables for streaming

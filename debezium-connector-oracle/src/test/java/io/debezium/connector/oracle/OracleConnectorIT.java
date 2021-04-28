@@ -970,15 +970,15 @@ public class OracleConnectorIT extends AbstractConnectorTest {
                     "birth_date DATE," +
                     "primary key(id)) " +
                     "PARTITION BY RANGE (birth_date) (" +
-                    "PARTITION p2019 VALUES LESS THAN (TO_DATE('01-JAN-2020', 'dd-MON-yyyy')), " +
-                    "PARTITION p2020 VALUES LESS THAN (TO_DATE('01-JAN-2021', 'dd-MON-yyyy'))" +
+                    "PARTITION p2019 VALUES LESS THAN (TO_DATE('2020-01-01', 'yyyy-mm-dd')), " +
+                    "PARTITION p2020 VALUES LESS THAN (TO_DATE('2021-01-01', 'yyyy-mm-dd'))" +
                     ")";
             connection.execute(ddl);
             connection.execute("GRANT SELECT ON debezium.players to " + TestHelper.getConnectorUserName());
             connection.execute("ALTER TABLE debezium.players ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
 
             // Insert a record to be captured by snapshot
-            connection.execute("INSERT INTO debezium.players (id, name, birth_date) VALUES (1, 'Roger Rabbit', '01-MAY-2019')");
+            connection.execute("INSERT INTO debezium.players (id, name, birth_date) VALUES (1, 'Roger Rabbit', TO_DATE('2019-05-01', 'yyyy-mm-dd'))");
             connection.commit();
 
             // Start connector
@@ -996,8 +996,8 @@ public class OracleConnectorIT extends AbstractConnectorTest {
             waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
             // Insert a record to be captured during streaming
-            connection.execute("INSERT INTO debezium.players (id, name, birth_date) VALUES (2, 'Bugs Bunny', '26-JUN-2019')");
-            connection.execute("INSERT INTO debezium.players (id, name, birth_date) VALUES (3, 'Elmer Fud', '01-NOV-2020')");
+            connection.execute("INSERT INTO debezium.players (id, name, birth_date) VALUES (2, 'Bugs Bunny', TO_DATE('2019-06-26', 'yyyy-mm-dd'))");
+            connection.execute("INSERT INTO debezium.players (id, name, birth_date) VALUES (3, 'Elmer Fud', TO_DATE('2020-11-01', 'yyyy-mm-dd'))");
             connection.commit();
 
             final SourceRecords streamRecords = consumeRecordsByTopic(2);
@@ -1162,7 +1162,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
             waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
-            connection.execute("INSERT INTO debezium.orders VALUES (10, '22-FEB-2018')");
+            connection.execute("INSERT INTO debezium.orders VALUES (10, TO_DATE('2018-02-22', 'yyyy-mm-dd'))");
             connection.execute("COMMIT");
 
             final SourceRecords streamRecords = consumeRecordsByTopic(1);
