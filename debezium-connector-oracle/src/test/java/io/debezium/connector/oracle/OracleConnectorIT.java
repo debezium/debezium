@@ -218,7 +218,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
                 .build();
 
         int expectedRecordCount = 0;
-        connection.execute("INSERT INTO debezium.customer VALUES (1, 'Billie-Bob', 1234.56, TO_DATE('2018/02/22', 'yyyy-mm-dd'))");
+        connection.execute("INSERT INTO debezium.customer VALUES (1, 'Billie-Bob', 1234.56, TO_DATE('2018-02-22', 'yyyy-mm-dd'))");
         connection.execute("INSERT INTO debezium.customer VALUES (2, 'Bruce', 2345.67, null)");
         connection.execute("COMMIT");
         expectedRecordCount += 2;
@@ -271,7 +271,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
     private void continueStreamingAfterSnapshot(Configuration config) throws Exception {
         int expectedRecordCount = 0;
-        connection.execute("INSERT INTO debezium.customer VALUES (1, 'Billie-Bob', 1234.56, TO_DATE('2018/02/22', 'yyyy-mm-dd'))");
+        connection.execute("INSERT INTO debezium.customer VALUES (1, 'Billie-Bob', 1234.56, TO_DATE('2018-02-22', 'yyyy-mm-dd'))");
         connection.execute("INSERT INTO debezium.customer VALUES (2, 'Bruce', 2345.67, null)");
         connection.execute("COMMIT");
         expectedRecordCount += 2;
@@ -343,7 +343,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
         // Testing.Print.enable();
         int expectedRecordCount = 0;
-        connection.execute("INSERT INTO debezium.customer VALUES (1, 'Billie-Bob', 1234.56, TO_DATE('2018/02/22', 'yyyy-mm-dd'))");
+        connection.execute("INSERT INTO debezium.customer VALUES (1, 'Billie-Bob', 1234.56, TO_DATE('2018-02-22', 'yyyy-mm-dd'))");
         connection.execute("INSERT INTO debezium.customer VALUES (2, 'Bruce', 2345.67, null)");
         connection.execute("COMMIT");
         expectedRecordCount += 2;
@@ -449,7 +449,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
         // Testing.Print.enable();
         int expectedRecordCount = 0;
-        connection.execute("INSERT INTO debezium.customer VALUES (1, 'Billie-Bob', 1234.56, TO_DATE('2018/02/22', 'yyyy-mm-dd'))");
+        connection.execute("INSERT INTO debezium.customer VALUES (1, 'Billie-Bob', 1234.56, TO_DATE('2018-02-22', 'yyyy-mm-dd'))");
         connection.execute("INSERT INTO debezium.customer VALUES (2, 'Bruce', 2345.67, null)");
         connection.execute("COMMIT");
         expectedRecordCount += 2;
@@ -493,7 +493,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
         // Testing.Print.enable();
         int expectedRecordCount = 0;
-        connection.execute("INSERT INTO debezium.customer VALUES (1, 'Billie-Bob', 1234.56, TO_DATE('2018/02/22', 'yyyy-mm-dd'))");
+        connection.execute("INSERT INTO debezium.customer VALUES (1, 'Billie-Bob', 1234.56, TO_DATE('2018-02-22', 'yyyy-mm-dd'))");
         connection.execute("INSERT INTO debezium.customer VALUES (2, 'Bruce', 2345.67, null)");
         connection.execute("COMMIT");
         expectedRecordCount += 2;
@@ -537,12 +537,12 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
         int expectedRecordCount = 0;
-        connection.execute("INSERT INTO debezium.customer VALUES (1, 'Billie-Bob', 1234.56, TO_DATE('2018/02/22', 'yyyy-mm-dd'))");
+        connection.execute("INSERT INTO debezium.customer VALUES (1, 'Billie-Bob', 1234.56, TO_DATE('2018-02-22', 'yyyy-mm-dd'))");
         connection.execute("COMMIT");
 
         expectedRecordCount += 1;
 
-        connection.execute("UPDATE debezium.customer SET name = 'Bruce', score = 2345.67, registered = TO_DATE('2018/03/23', 'yyyy-mm-dd') WHERE id = 1");
+        connection.execute("UPDATE debezium.customer SET name = 'Bruce', score = 2345.67, registered = TO_DATE('2018-03-23', 'yyyy-mm-dd') WHERE id = 1");
         connection.execute("COMMIT");
         expectedRecordCount += 1;
 
@@ -628,7 +628,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
         int expectedRecordCount = 0;
-        connection.execute("INSERT INTO debezium.customer VALUES (1, 'Billie-Bob', 1234.56, TO_DATE('2018/02/22', 'yyyy-mm-dd'))");
+        connection.execute("INSERT INTO debezium.customer VALUES (1, 'Billie-Bob', 1234.56, TO_DATE('2018-02-22', 'yyyy-mm-dd'))");
         connection.execute("COMMIT");
         expectedRecordCount += 1;
 
@@ -636,7 +636,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         connection.execute("COMMIT");
         expectedRecordCount += 1; // deletion, no tombstone
 
-        connection.execute("INSERT INTO debezium.customer VALUES (2, 'Billie-Bob', 1234.56, TO_DATE('2018/02/22', 'yyyy-mm-dd'))");
+        connection.execute("INSERT INTO debezium.customer VALUES (2, 'Billie-Bob', 1234.56, TO_DATE('2018-02-22', 'yyyy-mm-dd'))");
         connection.execute("COMMIT");
         expectedRecordCount += 1;
 
@@ -680,7 +680,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         connection.execute(ddl);
         TestHelper.streamTable(connection, "debezium.customer2");
 
-        connection.execute("INSERT INTO debezium.customer2 VALUES (2, 'Billie-Bob', 1234.56, TO_DATE('2018/02/22', 'yyyy-mm-dd'))");
+        connection.execute("INSERT INTO debezium.customer2 VALUES (2, 'Billie-Bob', 1234.56, TO_DATE('2018-02-22', 'yyyy-mm-dd'))");
         connection.execute("COMMIT");
 
         SourceRecords records = consumeRecordsByTopic(1);
@@ -842,7 +842,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
         waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
-        connection.execute("INSERT INTO debezium.customer VALUES (3, 'Nest', 1234.56, TO_DATE('2018/02/22', 'yyyy-mm-dd'))");
+        connection.execute("INSERT INTO debezium.customer VALUES (3, 'Nest', 1234.56, TO_DATE('2018-02-22', 'yyyy-mm-dd'))");
         connection.execute("COMMIT");
 
         SourceRecords records = consumeRecordsByTopic(1);

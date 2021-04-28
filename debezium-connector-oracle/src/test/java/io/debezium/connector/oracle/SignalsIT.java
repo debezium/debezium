@@ -98,7 +98,7 @@ public class SignalsIT extends AbstractConnectorTest {
 
         waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
-        connection.execute("INSERT INTO debezium.customer VALUES (1, 'Billie-Bob', 1234.56, TO_DATE('2018/02/22', 'yyyy-mm-dd'))");
+        connection.execute("INSERT INTO debezium.customer VALUES (1, 'Billie-Bob', 1234.56, TO_DATE('2018-02-22', 'yyyy-mm-dd'))");
 
         // Insert the signal record - add 'NAME' column to PK fields
         connection.execute("ALTER TABLE debezium.customer DROP CONSTRAINT mypk");
@@ -106,7 +106,7 @@ public class SignalsIT extends AbstractConnectorTest {
         connection.execute(
                 "INSERT INTO debezium.debezium_signal VALUES('1', 'schema-changes', '{\"database\": \"ORCLPDB1\", \"schema\": \"DEBEZIUM\", \"changes\":[{\"type\":\"ALTER\",\"id\":\"\\\"ORCLPDB1\\\".\\\"DEBEZIUM\\\".\\\"CUSTOMER\\\"\",\"table\":{\"defaultCharsetName\":null,\"primaryKeyColumnNames\":[\"ID\", \"NAME\"],\"columns\":[{\"name\":\"ID\",\"jdbcType\":2,\"typeName\":\"NUMBER\",\"typeExpression\":\"NUMBER\",\"charsetName\":null,\"length\":9,\"scale\":0,\"position\":1,\"optional\":false,\"autoIncremented\":false,\"generated\":false},{\"name\":\"NAME\",\"jdbcType\":12,\"typeName\":\"VARCHAR2\",\"typeExpression\":\"VARCHAR2\",\"charsetName\":null,\"length\":1000,\"position\":2,\"optional\":true,\"autoIncremented\":false,\"generated\":false},{\"name\":\"SCORE\",\"jdbcType\":2,\"typeName\":\"NUMBER\",\"typeExpression\":\"NUMBER\",\"charsetName\":null,\"length\":6,\"scale\":2,\"position\":3,\"optional\":true,\"autoIncremented\":false,\"generated\":false},{\"name\":\"REGISTERED\",\"jdbcType\":93,\"typeName\":\"TIMESTAMP(6)\",\"typeExpression\":\"TIMESTAMP(6)\",\"charsetName\":null,\"length\":6,\"position\":4,\"optional\":true,\"autoIncremented\":false,\"generated\":false}]}}]}')");
 
-        connection.execute("INSERT INTO debezium.customer VALUES (2, 'Battle-Bug', 1234.56, TO_DATE('2018/02/22', 'yyyy-mm-dd'))");
+        connection.execute("INSERT INTO debezium.customer VALUES (2, 'Battle-Bug', 1234.56, TO_DATE('2018-02-22', 'yyyy-mm-dd'))");
 
         // two schema changes, one data record, two schema changes (alters), one signal record, one schema change, one data record
         final int expected = 2 + 1 + 2 + 1 + 1 + 1;
@@ -128,7 +128,7 @@ public class SignalsIT extends AbstractConnectorTest {
         start(OracleConnector.class, config);
         assertConnectorIsRunning();
 
-        connection.execute("INSERT INTO debezium.customer VALUES (3, 'Crazy-Frog', 1234.56, TO_DATE('2018/02/22', 'yyyy-mm-dd'))");
+        connection.execute("INSERT INTO debezium.customer VALUES (3, 'Crazy-Frog', 1234.56, TO_DATE('2018-02-22', 'yyyy-mm-dd'))");
 
         // two schema changes, one data record, one signal record, one schema change, one data record
         records = consumeRecordsByTopic(1).allRecordsInOrder();
