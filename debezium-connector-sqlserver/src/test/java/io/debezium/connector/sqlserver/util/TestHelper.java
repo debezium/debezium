@@ -58,6 +58,7 @@ public class TestHelper {
     public static final String TEST_DATABASE = "testDB";
     private static final String TEST_PROPERTY_PREFIX = "debezium.test.";
 
+    private static final String TEST_TASK_ID = "0";
     private static final String STATEMENTS_PLACEHOLDER = "#";
 
     private static final String ENABLE_DB_CDC = "IF EXISTS(select 1 from sys.databases where name='#' AND is_cdc_enabled=0)\n"
@@ -467,7 +468,7 @@ public class TestHelper {
     private static ObjectName getObjectName(String context, String serverName, String databaseName) {
         return getObjectName(Collect.linkMapOf(
                 "server", serverName,
-                "task", "0",
+                "task", TEST_TASK_ID,
                 "context", context,
                 "database", databaseName));
     }

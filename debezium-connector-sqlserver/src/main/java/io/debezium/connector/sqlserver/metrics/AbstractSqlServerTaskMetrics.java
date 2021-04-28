@@ -40,7 +40,7 @@ abstract class AbstractSqlServerTaskMetrics<B extends AbstractSqlServerPartition
                                  Function<SqlServerPartition, B> beanFactory) {
         super(taskContext, Collect.linkMapOf(
                 "server", taskContext.getConnectorName(),
-                "task", "0",
+                "task", taskContext.getTaskId(),
                 "context", contextName));
         this.changeEventQueueMetrics = changeEventQueueMetrics;
 
