@@ -135,4 +135,50 @@ public class SnapshotWithSelectOverridesIT extends AbstractConnectorTest {
         // the ORDER BY clause should be applied, too
         assertThat(actualIdsForTable1.toString()).isEqualTo(expectedIdsForTable1);
     }
+
+    @Test
+    @FixFor("DBZ-3429")
+    public void takeSnapshotWithOverridesWithAdditionalWhitespace() throws Exception {
+        final Configuration config = TestHelper.defaultConfig()
+                .with(
+                        RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE,
+                        "  dbo.table1 , dbo.table3  ")
+                .with(
+                        RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + ".dbo.table1",
+                        "SELECT * FROM [dbo].[table1] where soft_deleted = 0 order by id desc")
+                .with(
+                        RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + ".dbo.table3",
+                        "SELECT * FROM [dbo].[table3] where soft_deleted = 0")
+                .build();
+
+        start(SqlServerConnector.class, config);
+        assertConnectorIsRunning();
+
+        SourceRecords records = consumeRecordsByTopic(INITIAL_RECORDS_PER_TABLE + (INITIAL_RECORDS_PER_TABLE + INITIAL_RECORDS_PER_TABLE) / 2);
+        List<SourceRecord> table1 = records.recordsForTopic("server1.dbo.table1");
+        List<SourceRecord> table2 = records.recordsForTopic("server1.dbo.table2");
+        List<SourceRecord> table3 = records.recordsForTopic("server1.dbo.table3");
+
+        // soft_deleted records should be excluded for table1 and table3
+        assertThat(table1).hasSize(INITIAL_RECORDS_PER_TABLE / 2);
+        assertThat(table2).hasSize(INITIAL_RECORDS_PER_TABLE);
+        assertThat(table3).hasSize(INITIAL_RECORDS_PER_TABLE / 2);
+
+        String expectedIdsForTable1 = "86420";
+        StringBuilder actualIdsForTable1 = new StringBuilder();
+
+        for (int i = 0; i < INITIAL_RECORDS_PER_TABLE / 2; i++) {
+            SourceRecord record = table1.get(i);
+
+            Struct key = (Struct) record.key();
+            actualIdsForTable1.append(key.get("id"));
+
+            // soft_deleted records should be excluded
+            Struct value = (Struct) record.value();
+            assertThat(((Struct) value.get("after")).get("soft_deleted")).isEqualTo(false);
+        }
+
+        // the ORDER BY clause should be applied, too
+        assertThat(actualIdsForTable1.toString()).isEqualTo(expectedIdsForTable1);
+    }
 }

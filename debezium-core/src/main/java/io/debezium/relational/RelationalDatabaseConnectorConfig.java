@@ -340,7 +340,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withImportance(Importance.MEDIUM)
             .withDescription(" This property contains a comma-separated list of fully-qualified tables (DB_NAME.TABLE_NAME) or (SCHEMA_NAME.TABLE_NAME), depending on the"
                     +
-                    "specific connectors . Select statements for the individual tables are " +
+                    "specific connectors. Select statements for the individual tables are " +
                     "specified in further configuration properties, one for each table, identified by the id 'snapshot.select.statement.overrides.[DB_NAME].[TABLE_NAME]' or "
                     +
                     "'snapshot.select.statement.overrides.[SCHEMA_NAME].[TABLE_NAME]', respectively. " +
@@ -700,7 +700,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
      * Returns any SELECT overrides, if present.
      */
     public Map<TableId, String> getSnapshotSelectOverridesByTable() {
-        List<String> tableValues = getConfig().getStrings(SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE, "\\s*,\\s*");
+        List<String> tableValues = getConfig().getTrimmedStrings(SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE, ",");
 
         if (tableValues == null) {
             return Collections.emptyMap();

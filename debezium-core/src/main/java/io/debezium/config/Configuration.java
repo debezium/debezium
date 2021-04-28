@@ -13,6 +13,7 @@ import java.io.Reader;
 import java.net.URL;
 import java.time.Duration;
 import java.time.temporal.TemporalUnit;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -1077,6 +1078,26 @@ public interface Configuration {
             return null;
         }
         return Collect.arrayListOf(value.split(regex));
+    }
+
+    /**
+     * Get the string value(s) associated with the given key, where the supplied regular expression is used to parse the single
+     * string value into multiple values. In addition, all values will be trimmed.
+     *
+     * @param field the field for the configuration property
+     * @param regex the delimiting regular expression
+     * @return the list of string values; null only if there is no such key-value pair in the configuration
+     * @see String#split(String)
+     */
+    default List<String> getTrimmedStrings(Field field, String regex) {
+        String value = getString(field);
+        if (value == null) {
+            return null;
+        }
+
+        return Arrays.stream(value.split(regex))
+                .map(String::trim)
+                .collect(Collectors.toList());
     }
 
     /**
