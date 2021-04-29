@@ -52,10 +52,10 @@ Debezium有很多非常有价值的使用场景，我们在这儿仅仅列出几
 
 使用Debezium代码库并在本地配置它需要以下软件：
 
-* [Git 2.2.1](https://git-scm.com) or later
-* [JDK 8](http://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html) or [OpenJDK 8](http://openjdk.java.net/projects/jdk8/)
-* [Maven 3.2.1](https://maven.apache.org/index.html) or later
-* [Docker Engine 1.9](http://docs.docker.com/engine/installation/) or later
+* [Git](https://git-scm.com) 2.2.1 or later
+* JDK 11 or later, e.g. [OpenJDK](http://openjdk.java.net/projects/jdk/)
+* [Apache Maven](https://maven.apache.org/index.html) 3.6.3 or later
+* [Docker Engine](https://docs.docker.com/engine/install/) or [Docker Desktop](https://docs.docker.com/desktop/) 1.9 or later
 
 有关平台上的安装说明，请参阅上面的链接。您可以通过以下指令查看安装版本
 
