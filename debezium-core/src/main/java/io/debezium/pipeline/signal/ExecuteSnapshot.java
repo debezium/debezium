@@ -42,7 +42,7 @@ public class ExecuteSnapshot implements Signal.Action {
     }
 
     @Override
-    public boolean arrived(Payload signalPayload) {
+    public boolean arrived(Payload signalPayload) throws InterruptedException {
         final Array dataCollectionsArray = signalPayload.data.getArray("data-collections");
         if (dataCollectionsArray == null || dataCollectionsArray.isEmpty()) {
             LOGGER.warn(

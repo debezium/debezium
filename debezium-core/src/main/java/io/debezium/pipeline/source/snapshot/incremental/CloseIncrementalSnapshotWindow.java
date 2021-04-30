@@ -24,7 +24,7 @@ public class CloseIncrementalSnapshotWindow implements Signal.Action {
     }
 
     @Override
-    public boolean arrived(Payload signalPayload) {
+    public boolean arrived(Payload signalPayload) throws InterruptedException {
         eventSource.closeWindow(signalPayload.offsetContext);
         return true;
     }

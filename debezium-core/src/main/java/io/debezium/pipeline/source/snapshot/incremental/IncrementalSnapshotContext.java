@@ -89,9 +89,8 @@ public class IncrementalSnapshotContext<T> {
             return HexConverter.convertToHexString(bos.toByteArray());
         }
         catch (IOException e) {
-            e.printStackTrace();
+            throw new DebeziumException(String.format("Cannot serialize chunk information %s", array));
         }
-        return null;
     }
 
     private Object[] serializedStringToArray(String field, String serialized) {
