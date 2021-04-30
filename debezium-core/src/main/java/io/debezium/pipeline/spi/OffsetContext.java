@@ -11,6 +11,8 @@ import java.util.Map;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 
+import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotChangeEventSource;
+import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
 import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.schema.DataCollectionId;
 
@@ -79,11 +81,16 @@ public interface OffsetContext {
      */
     TransactionContext getTransactionContext();
 
-    default void incrementalSnapshotWindow() {
-
+    default void incrementalSnapshotEvents() {
     }
 
-    default void incrementalSnapshotStop() {
-
-    }
+    /**
+     * Provide a context used by {@link IncrementalSnapshotChangeEventSource} so persist its internal state into offsets to survive
+     * between restarts.
+     *
+     * @return incremental snapshot context
+     */
+    default IncrementalSnapshotContext<?> getIncrementalSnapshotContext() {
+        return null;
+    };
 }

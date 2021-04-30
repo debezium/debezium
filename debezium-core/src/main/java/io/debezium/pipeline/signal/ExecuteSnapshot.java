@@ -35,9 +35,9 @@ public class ExecuteSnapshot implements Signal.Action {
         INCREMENTAL
     }
 
-    private final IncrementalSnapshotChangeEventSource eventSource;
+    private final IncrementalSnapshotChangeEventSource<?> eventSource;
 
-    public ExecuteSnapshot(IncrementalSnapshotChangeEventSource eventSource) {
+    public ExecuteSnapshot(IncrementalSnapshotChangeEventSource<?> eventSource) {
         this.eventSource = eventSource;
     }
 
@@ -60,7 +60,7 @@ public class ExecuteSnapshot implements Signal.Action {
         LOGGER.info("Requested '{}' snapshot of data collections '{}'", type, dataCollections);
         switch (type) {
             case INCREMENTAL:
-                eventSource.addDataCollectionNamesToSnapshot(dataCollections);
+                eventSource.addDataCollectionNamesToSnapshot(dataCollections, signalPayload.offsetContext);
                 break;
         }
         return true;

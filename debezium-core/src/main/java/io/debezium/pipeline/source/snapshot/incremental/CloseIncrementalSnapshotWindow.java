@@ -17,15 +17,15 @@ public class CloseIncrementalSnapshotWindow implements Signal.Action {
 
     public static final String NAME = "snapshot-window-close";
 
-    private IncrementalSnapshotChangeEventSource eventSource;
+    private IncrementalSnapshotChangeEventSource<?> eventSource;
 
-    public CloseIncrementalSnapshotWindow(IncrementalSnapshotChangeEventSource eventSource) {
+    public CloseIncrementalSnapshotWindow(IncrementalSnapshotChangeEventSource<?> eventSource) {
         this.eventSource = eventSource;
     }
 
     @Override
     public boolean arrived(Payload signalPayload) {
-        eventSource.windowClosed(signalPayload.offsetContext);
+        eventSource.closeWindow(signalPayload.offsetContext);
         return true;
     }
 
