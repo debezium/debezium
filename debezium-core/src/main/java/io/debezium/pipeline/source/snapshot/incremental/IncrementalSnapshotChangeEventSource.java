@@ -170,6 +170,7 @@ public class IncrementalSnapshotChangeEventSource<T extends DataCollectionId> {
             x.setString(1, UUID.randomUUID().toString());
             x.setString(2, OpenIncrementalSnapshotWindow.NAME);
         });
+        jdbcConnection.commit();
     }
 
     private void emitWindowClose() throws SQLException {
@@ -177,6 +178,7 @@ public class IncrementalSnapshotChangeEventSource<T extends DataCollectionId> {
             x.setString(1, UUID.randomUUID().toString());
             x.setString(2, CloseIncrementalSnapshotWindow.NAME);
         });
+        jdbcConnection.commit();
     }
 
     protected String buildChunkQuery(Table table) {
