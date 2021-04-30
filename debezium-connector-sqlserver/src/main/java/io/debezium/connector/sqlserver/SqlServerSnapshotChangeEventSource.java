@@ -254,9 +254,16 @@ public class SqlServerSnapshotChangeEventSource<SourceRecord extends SourceRecor
 
     private String checkExcludedColumns(TableId tableId) {
         Table table = sqlServerDatabaseSchema.tableFor(tableId);
-        return table.retrieveColumnNames().stream()
+        List<String> columnNames = table.retrieveColumnNames().stream()
                 .filter(columnName -> filterChangeTableColumns(tableId, columnName))
                 .filter(columnName -> connectorConfig.getColumnFilter().matches(tableId.catalog(), tableId.schema(), tableId.table(), columnName))
+                .collect(Collectors.toList());
+
+        if (columnNames.isEmpty()) {
+            throw new IllegalArgumentException("Filtered column list for table " + tableId + " is empty");
+        }
+
+        return columnNames.stream()
                 .map(columnName -> {
                     StringBuilder sb = new StringBuilder();
                     if (!columnName.contains(tableId.table())) {
