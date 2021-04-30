@@ -89,6 +89,34 @@ public class IncrementalSnapshotIT extends AbstractConnectorTest {
         return dbChanges;
     }
 
+    protected Map<Integer, Integer> consumeMixedWithIncrementalSnapshotVariableCount(int recordCount) throws InterruptedException {
+        final Map<Integer, Integer> dbChanges = new HashMap<>();
+        int noRecords = 0;
+        for (;;) {
+            final SourceRecords records = consumeRecordsByTopic(1);
+            final List<SourceRecord> dataRecords = records.recordsForTopic(TOPIC_NAME);
+            if (dataRecords == null || dataRecords.isEmpty()) {
+                noRecords++;
+                if (noRecords > MAXIMUM_NO_RECORDS_CONSUMES) {
+                    break;
+                }
+                continue;
+            }
+            noRecords = 0;
+            dataRecords.forEach(record -> {
+                final int id = ((Struct) record.key()).getInt32("pk");
+                final int value = ((Struct) record.value()).getStruct("after").getInt32("aa");
+                dbChanges.put(id, value);
+            });
+            if (dbChanges.size() > recordCount) {
+                break;
+            }
+        }
+
+        Assertions.assertThat(dbChanges).hasSize(recordCount);
+        return dbChanges;
+    }
+
     @Test
     public void snapshotOnly() throws Exception {
         Testing.Print.enable();
@@ -190,6 +218,44 @@ public class IncrementalSnapshotIT extends AbstractConnectorTest {
 
         final int expectedRecordCount = ROW_COUNT;
         final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
+        for (int i = 0; i < expectedRecordCount; i++) {
+            Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i + 1000));
+        }
+    }
+
+    @Test
+    public void updatesLargeChunk() throws Exception {
+        Testing.Print.enable();
+
+        TestHelper.dropDefaultReplicationSlot();
+        TestHelper.execute(SETUP_TABLES_STMT);
+        populateTable();
+        Configuration config = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.getValue())
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
+                .with(PostgresConnectorConfig.SIGNAL_DATA_COLLECTION, "s1.debezium_signal")
+                .with(PostgresConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, ROW_COUNT)
+                .build();
+        start(PostgresConnector.class, config);
+        assertConnectorIsRunning();
+        TestHelper.waitForDefaultReplicationSlotBeActive();
+
+        waitForAvailableRecords(100, TimeUnit.MILLISECONDS);
+        // there shouldn't be any snapshot records
+        assertNoRecordsToConsume();
+
+        // Insert the signal record
+        TestHelper.execute("INSERT INTO s1.debezium_signal VALUES('ad-hoc', 'execute-snapshot', '{\"data-collections\": [\"s1.a\"]}')");
+
+        final int batchSize = 10;
+        try (final PostgresConnection pgConnection = TestHelper.create()) {
+            for (int i = 0; i < ROW_COUNT / batchSize; i++) {
+                TestHelper.execute(String.format("UPDATE s1.a SET aa = aa + 1000 WHERE pk > %s AND pk <= %s", i * batchSize, (i + 1) * batchSize));
+            }
+        }
+
+        final int expectedRecordCount = ROW_COUNT;
+        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshotVariableCount(expectedRecordCount);
         for (int i = 0; i < expectedRecordCount; i++) {
             Assertions.assertThat(dbChanges).includes(MapAssert.entry(i + 1, i + 1000));
         }
