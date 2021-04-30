@@ -116,6 +116,9 @@ public class IncrementalSnapshotChangeEventSource<T extends DataCollectionId> {
     @SuppressWarnings("unchecked")
     public void processMessage(DataCollectionId dataCollectionId, Object key, OffsetContext offsetContext) {
         context = (IncrementalSnapshotContext<T>) offsetContext.getIncrementalSnapshotContext();
+        if (context == null) {
+            return;
+        }
         LOGGER.trace("Checking window for table '{}', key '{}', window contains '{}'", dataCollectionId, key, window);
         if (!context.deduplicationNeeded() || window.isEmpty()) {
             return;
