@@ -77,28 +77,23 @@ public class IncrementalSnapshotChangeEventSource<T extends DataCollectionId> {
     }
 
     @SuppressWarnings("unchecked")
-    public void closeWindow(OffsetContext offsetContext) {
+    public void closeWindow(OffsetContext offsetContext) throws InterruptedException {
         context = (IncrementalSnapshotContext<T>) offsetContext.getIncrementalSnapshotContext();
-        try {
-            context.closeWindow();
-            // TODO There is an issue here
-            // Events are emitted with tx log coordinates of the CloseIncrementalSnapshotWindow
-            // These means that if the connector is restarted in the middle of emptying the buffer
-            // then the rest of the buffer might not be resent or even the snapshotting restarted
-            // as there is no more of events.
-            // Most probably could be solved by injecting a sequence of windowOpen/Closed upon the start
-            offsetContext.incrementalSnapshotEvents();
-            for (Object[] row : window.values()) {
-                sendEvent(offsetContext, row);
-            }
-            offsetContext.postSnapshotCompletion();
-            window.clear();
-            readChunk();
+        context.closeWindow();
+        LOGGER.debug("Sending {} events from window buffer", window.size());
+        // TODO There is an issue here
+        // Events are emitted with tx log coordinates of the CloseIncrementalSnapshotWindow
+        // These means that if the connector is restarted in the middle of emptying the buffer
+        // then the rest of the buffer might not be resent or even the snapshotting restarted
+        // as there is no more of events.
+        // Most probably could be solved by injecting a sequence of windowOpen/Closed upon the start
+        offsetContext.incrementalSnapshotEvents();
+        for (Object[] row : window.values()) {
+            sendEvent(offsetContext, row);
         }
-        catch (InterruptedException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
+        offsetContext.postSnapshotCompletion();
+        window.clear();
+        readChunk();
     }
 
     protected void sendEvent(OffsetContext offsetContext, Object[] row) throws InterruptedException {
@@ -229,7 +224,7 @@ public class IncrementalSnapshotChangeEventSource<T extends DataCollectionId> {
     }
 
     @SuppressWarnings("unchecked")
-    public void addDataCollectionNamesToSnapshot(List<String> dataCollectionIds, OffsetContext offsetContext) {
+    public void addDataCollectionNamesToSnapshot(List<String> dataCollectionIds, OffsetContext offsetContext) throws InterruptedException {
         context = (IncrementalSnapshotContext<T>) offsetContext.getIncrementalSnapshotContext();
         boolean shouldReadChunk = false;
         if (!context.snapshotRunning()) {
@@ -237,13 +232,7 @@ public class IncrementalSnapshotChangeEventSource<T extends DataCollectionId> {
         }
         context.addDataCollectionNamesToSnapshot(dataCollectionIds);
         if (shouldReadChunk) {
-            try {
-                readChunk();
-            }
-            catch (InterruptedException e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
-            }
+            readChunk();
         }
     }
 
