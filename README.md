@@ -108,7 +108,7 @@ You can skip the integration tests and docker-builds with the following command:
 
     $ mvn clean verify -DskipITs
 
-### Building just the artifacs, without running tests, CheckStyle, etc.
+### Building just the artifacts, without running tests, CheckStyle, etc.
 
 You can skip all non-essential plug-ins (tests, integration tests, CheckStyle, formatter, API compatibility check, etc.) using the "quick" build profile:
 
