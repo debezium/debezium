@@ -108,7 +108,7 @@ public class Signal<SourceRecord extends SourceRecordWrapper> {
         }
         final IncrementalSnapshotChangeEventSource eventSource = eventDispatcher != null ? eventDispatcher.getIncrementalSnapshotChangeEventSource() : null;
         registerSignalAction(ExecuteSnapshot.NAME, new ExecuteSnapshot(eventSource));
-        registerSignalAction(OpenIncrementalSnapshotWindow.NAME, new OpenIncrementalSnapshotWindow(eventSource));
+        registerSignalAction(OpenIncrementalSnapshotWindow.NAME, new OpenIncrementalSnapshotWindow());
         registerSignalAction(CloseIncrementalSnapshotWindow.NAME, new CloseIncrementalSnapshotWindow(eventSource));
     }
 

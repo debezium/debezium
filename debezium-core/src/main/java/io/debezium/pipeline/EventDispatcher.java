@@ -229,7 +229,7 @@ public class EventDispatcher<T extends DataCollectionId, SourceRecord extends So
                         if (neverSkip || !skippedOperations.contains(operation)) {
                             transactionMonitor.dataEvent(dataCollectionId, offset, key, value);
                             eventListener.onEvent(dataCollectionId, offset, key, value);
-                            incrementalSnapshotChangeEventSource.processMessage(dataCollectionId, key);
+                            incrementalSnapshotChangeEventSource.processMessage(dataCollectionId, key, offset);
                             streamingReceiver.changeRecord(schema, operation, key, value, offset, headers);
                         }
                     }
@@ -473,7 +473,7 @@ public class EventDispatcher<T extends DataCollectionId, SourceRecord extends So
 
             SourceRecord record = new SourceRecord(
                     offsetContext.getPartition(),
-                    incrementalSnapshotChangeEventSource.store(offsetContext.getOffset()),
+                    offsetContext.getOffset(),
                     topicName, null,
                     keySchema, key,
                     dataCollectionSchema.getEnvelopeSchema().schema(), value,

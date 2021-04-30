@@ -5,21 +5,13 @@
  */
 package io.debezium.pipeline.source.snapshot.incremental;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.Arrays;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Queue;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -45,7 +37,6 @@ import io.debezium.schema.DataCollectionId;
 import io.debezium.schema.DatabaseSchema;
 import io.debezium.util.Clock;
 import io.debezium.util.ColumnUtils;
-import io.debezium.util.HexConverter;
 import io.debezium.util.Strings;
 import io.debezium.util.Threads;
 import io.debezium.util.Threads.Timer;
@@ -54,11 +45,6 @@ import io.debezium.util.Threads.Timer;
 public class IncrementalSnapshotChangeEventSource<T extends DataCollectionId> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(IncrementalSnapshotChangeEventSource.class);
-
-    public static final String INCREMENTAL_SNAPSHOT_KEY = "incremental_snapshot";
-    public static final String DATA_COLLECTIONS_TO_SNAPSHOT_KEY = INCREMENTAL_SNAPSHOT_KEY + "_collections";
-    public static final String EVENT_PRIMARY_KEY = INCREMENTAL_SNAPSHOT_KEY + "_primary_key";
-    public static final String TABLE_MAXIMUM_KEY = INCREMENTAL_SNAPSHOT_KEY + "_maximum_key";
 
     // TODO Metrics
     // Need to discuss and decide if
@@ -76,19 +62,9 @@ public class IncrementalSnapshotChangeEventSource<T extends DataCollectionId> {
     private final RelationalDatabaseSchema databaseSchema;
     private final EventDispatcher<T> dispatcher;
 
-    private boolean windowOpened = false;
-    private Object[] chunkEndPosition;
     private Table currentTable;
 
-    // TODO Extract into a separate IncrementalSnapshotContext
-    // TODO After extracting add into source info optional block incrementalSnapshotWindow{String from, String to}
-    // State to be stored and recovered from offsets
-    private final Queue<T> dataCollectionsToSnapshot = new LinkedList<>();
-    // The PK of the last record that was passed to Kafka Connect
-    // In case of connector restart the start of the first window will be populated from it
-    private Object[] lastEventSentKey;
-    // The largest PK in the table at the start of snapshot
-    private Object[] maximumKey;
+    private IncrementalSnapshotContext<T> context = null;
 
     public IncrementalSnapshotChangeEventSource(CommonConnectorConfig config, JdbcConnection jdbcConnection,
                                                 DatabaseSchema<?> databaseSchema, EventDispatcher<T> dispatcher) {
@@ -100,28 +76,24 @@ public class IncrementalSnapshotChangeEventSource<T extends DataCollectionId> {
         this.dispatcher = dispatcher;
     }
 
-    public void windowOpen() {
-        LOGGER.info("Opening window for incremental snapshot batch");
-        windowOpened = true;
-    }
-
-    public void windowClosed(OffsetContext offsetContext) {
+    @SuppressWarnings("unchecked")
+    public void closeWindow(OffsetContext offsetContext) {
+        context = (IncrementalSnapshotContext<T>) offsetContext.getIncrementalSnapshotContext();
         try {
-            LOGGER.info("Closing window for incremental snapshot chunk");
-            windowOpened = false;
+            context.closeWindow();
             // TODO There is an issue here
             // Events are emitted with tx log coordinates of the CloseIncrementalSnapshotWindow
             // These means that if the connector is restarted in the middle of emptying the buffer
             // then the rest of the buffer might not be resent or even the snapshotting restarted
             // as there is no more of events.
             // Most probably could be solved by injecting a sequence of windowOpen/Closed upon the start
-            offsetContext.incrementalSnapshotWindow();
+            offsetContext.incrementalSnapshotEvents();
             for (Object[] row : window.values()) {
-                sendEnvent(offsetContext, row);
+                sendEvent(offsetContext, row);
             }
             offsetContext.postSnapshotCompletion();
             window.clear();
-            populateWindow();
+            readChunk();
         }
         catch (InterruptedException e) {
             // TODO Auto-generated catch block
@@ -129,11 +101,11 @@ public class IncrementalSnapshotChangeEventSource<T extends DataCollectionId> {
         }
     }
 
-    protected void sendEnvent(OffsetContext offsetContext, Object[] row) throws InterruptedException {
-        lastEventSentKey = keyFromRow(row);
-        offsetContext.event((T) currentDataCollectionId(), clock.currentTimeAsInstant());
-        dispatcher.dispatchSnapshotEvent((T) currentDataCollectionId(),
-                getChangeRecordEmitter(currentDataCollectionId(), offsetContext, row),
+    protected void sendEvent(OffsetContext offsetContext, Object[] row) throws InterruptedException {
+        context.sendEvent(keyFromRow(row));
+        offsetContext.event((T) context.currentDataCollectionId(), clock.currentTimeAsInstant());
+        dispatcher.dispatchSnapshotEvent((T) context.currentDataCollectionId(),
+                getChangeRecordEmitter(context.currentDataCollectionId(), offsetContext, row),
                 dispatcher.getIncrementalSnapshotChangeEventReceiver());
     }
 
@@ -146,12 +118,14 @@ public class IncrementalSnapshotChangeEventSource<T extends DataCollectionId> {
         return new SnapshotChangeRecordEmitter(offsetContext, row, clock);
     }
 
-    public void processMessage(DataCollectionId dataCollectionId, Object key) {
+    @SuppressWarnings("unchecked")
+    public void processMessage(DataCollectionId dataCollectionId, Object key, OffsetContext offsetContext) {
+        context = (IncrementalSnapshotContext<T>) offsetContext.getIncrementalSnapshotContext();
         LOGGER.trace("Checking window for table '{}', key '{}', window contains '{}'", dataCollectionId, key, window);
-        if (!windowOpened || window.isEmpty()) {
+        if (!context.deduplicationNeeded() || window.isEmpty()) {
             return;
         }
-        if (!currentDataCollectionId().equals(dataCollectionId)) {
+        if (!context.currentDataCollectionId().equals(dataCollectionId)) {
             return;
         }
         if (key instanceof Struct) {
@@ -159,10 +133,6 @@ public class IncrementalSnapshotChangeEventSource<T extends DataCollectionId> {
                 LOGGER.info("Removed '{}' from window", key);
             }
         }
-    }
-
-    protected T currentDataCollectionId() {
-        return dataCollectionsToSnapshot.peek();
     }
 
     private void emitWindowOpen() throws SQLException {
@@ -186,7 +156,7 @@ public class IncrementalSnapshotChangeEventSource<T extends DataCollectionId> {
         sql.append(table.id().toString());
 
         // Add condition when this is not the first query
-        if (isNonInitialChunk()) {
+        if (context.isNonInitialChunk()) {
             // Window boundaries
             sql.append(" WHERE ");
             addKeyColumnsToCondition(table, sql, " >= ?");
@@ -204,10 +174,6 @@ public class IncrementalSnapshotChangeEventSource<T extends DataCollectionId> {
         return sql.toString();
     }
 
-    private boolean isNonInitialChunk() {
-        return chunkEndPosition != null;
-    }
-
     protected String buildMaxPrimaryKeyQuery(Table table) {
         final StringBuilder sql = new StringBuilder("SELECT * FROM ");
         sql.append(table.id().toString());
@@ -219,58 +185,37 @@ public class IncrementalSnapshotChangeEventSource<T extends DataCollectionId> {
         return sql.toString();
     }
 
-    public void nextChunk(Object[] end) {
-        chunkEndPosition = end;
-    }
-
-    private void resetChunk() {
-        chunkEndPosition = null;
-        maximumKey = null;
-    }
-
-    protected boolean tablesAvailable() {
-        return !dataCollectionsToSnapshot.isEmpty();
-    }
-
-    protected void setMaximumKey(Object[] key) {
-        maximumKey = key;
-    }
-
-    private boolean hasMaximumKey() {
-        return maximumKey != null;
-    }
-
-    private void populateWindow() throws InterruptedException {
-        if (!tablesAvailable()) {
+    private void readChunk() throws InterruptedException {
+        if (!context.snapshotRunning()) {
             return;
         }
         try {
             emitWindowOpen();
-            while (tablesAvailable()) {
-                final TableId currentTableId = (TableId) currentDataCollectionId();
+            while (context.snapshotRunning()) {
+                final TableId currentTableId = (TableId) context.currentDataCollectionId();
                 currentTable = databaseSchema.tableFor(currentTableId);
-                if (!hasMaximumKey()) {
-                    setMaximumKey(jdbcConnection.queryAndMap(buildMaxPrimaryKeyQuery(currentTable), rs -> {
+                if (!context.maximumKey().isPresent()) {
+                    context.maximumKey(jdbcConnection.queryAndMap(buildMaxPrimaryKeyQuery(currentTable), rs -> {
                         if (!rs.next()) {
                             return null;
                         }
                         return keyFromRow(rowToArray(currentTable, rs, ColumnUtils.toArray(rs, currentTable)));
                     }));
-                    if (!hasMaximumKey()) {
+                    if (!context.maximumKey().isPresent()) {
                         LOGGER.info(
                                 "No maximum key returned by the query, incremental snapshotting of table '{}' finished as it is empty",
                                 currentTableId);
-                        nextDataCollection();
+                        context.nextDataCollection();
                         continue;
                     }
                     LOGGER.info("Incremental snapshot for table '{}' will end at position {}", currentTableId,
-                            maximumKey);
+                            context.maximumKey());
                 }
-                createDataEventsForTable(dataCollectionsToSnapshot.size());
+                createDataEventsForTable();
                 if (window.isEmpty()) {
                     LOGGER.info("No data returned by the query, incremental snapshotting of table '{}' finished",
                             currentTableId);
-                    nextDataCollection();
+                    context.nextDataCollection();
                 }
                 else {
                     break;
@@ -283,31 +228,23 @@ public class IncrementalSnapshotChangeEventSource<T extends DataCollectionId> {
         }
     }
 
-    protected T nextDataCollection() {
-        resetChunk();
-        return dataCollectionsToSnapshot.poll();
-    }
-
-    private void addTablesIdsToSnapshot(List<T> dataCollectionIds) {
-        boolean shouldPopulateWindow = false;
-        if (!tablesAvailable()) {
-            shouldPopulateWindow = true;
+    @SuppressWarnings("unchecked")
+    public void addDataCollectionNamesToSnapshot(List<String> dataCollectionIds, OffsetContext offsetContext) {
+        context = (IncrementalSnapshotContext<T>) offsetContext.getIncrementalSnapshotContext();
+        boolean shouldReadChunk = false;
+        if (!context.snapshotRunning()) {
+            shouldReadChunk = true;
         }
-        dataCollectionsToSnapshot.addAll(dataCollectionIds);
-        if (shouldPopulateWindow) {
+        context.addDataCollectionNamesToSnapshot(dataCollectionIds);
+        if (shouldReadChunk) {
             try {
-                populateWindow();
+                readChunk();
             }
             catch (InterruptedException e) {
                 // TODO Auto-generated catch block
                 e.printStackTrace();
             }
         }
-    }
-
-    @SuppressWarnings("unchecked")
-    public void addDataCollectionNamesToSnapshot(List<String> dataCollectionIds) {
-        addTablesIdsToSnapshot(dataCollectionIds.stream().map(x -> (T) TableId.parse(x)).collect(Collectors.toList()));
     }
 
     protected void addKeyColumnsToCondition(Table table, StringBuilder sql, String predicate) {
@@ -323,13 +260,13 @@ public class IncrementalSnapshotChangeEventSource<T extends DataCollectionId> {
     /**
      * Dispatches the data change events for the records of a single table.
      */
-    private void createDataEventsForTable(int tableCount) throws InterruptedException {
+    private void createDataEventsForTable() throws InterruptedException {
         long exportStart = clock.currentTimeInMillis();
-        LOGGER.debug("Exporting data chunk from table '{}' (total {} tables)", currentTable.id(), tableCount);
+        LOGGER.debug("Exporting data chunk from table '{}' (total {} tables)", currentTable.id(), context.tablesToBeSnapshottedCount());
 
         final String selectStatement = buildChunkQuery(currentTable);
         LOGGER.debug("\t For table '{}' using select statement: '{}', key: '{}', maximum key: '{}'", currentTable.id(),
-                selectStatement, chunkEndPosition, maximumKey);
+                selectStatement, context.chunkEndPosititon(), context.maximumKey().get());
 
         final TableSchema tableSchema = databaseSchema.schemaFor(currentTable.id());
 
@@ -354,9 +291,9 @@ public class IncrementalSnapshotChangeEventSource<T extends DataCollectionId> {
                 }
                 lastRow = row;
             }
-            nextChunk(keyFromRow(lastRow));
+            context.nextChunk(keyFromRow(lastRow));
             if (lastRow != null) {
-                LOGGER.debug("\t Next window will resume from '{}'", chunkEndPosition);
+                LOGGER.debug("\t Next window will resume from '{}'", context.chunkEndPosititon());
             }
 
             LOGGER.debug("\t Finished exporting {} records for window of table table '{}'; total duration '{}'", rows,
@@ -377,7 +314,7 @@ public class IncrementalSnapshotChangeEventSource<T extends DataCollectionId> {
         return row;
     }
 
-    // TODO Parmetrize the method and extract it to JdbcConnection
+    // TODO Parameterize the method and extract it to JdbcConnection
     /**
      * Allow per-connector query creation to override for best database
      * performance depending on the table size.
@@ -385,7 +322,9 @@ public class IncrementalSnapshotChangeEventSource<T extends DataCollectionId> {
     protected PreparedStatement readTableStatement(String sql) throws SQLException {
         int fetchSize = connectorConfig.getSnapshotFetchSize();
         PreparedStatement statement = jdbcConnection.connection().prepareStatement(sql);
-        if (isNonInitialChunk()) {
+        if (context.isNonInitialChunk()) {
+            final Object[] maximumKey = context.maximumKey().get();
+            final Object[] chunkEndPosition = context.chunkEndPosititon();
             for (int i = 0; i < chunkEndPosition.length; i++) {
                 statement.setObject(i + 1, chunkEndPosition[i]);
                 statement.setObject(i + 1 + chunkEndPosition.length, chunkEndPosition[i]);
@@ -422,65 +361,7 @@ public class IncrementalSnapshotChangeEventSource<T extends DataCollectionId> {
         return key;
     }
 
-    private String arrayToSerializedString(Object[] array) {
-        try (final ByteArrayOutputStream bos = new ByteArrayOutputStream();
-                ObjectOutputStream oos = new ObjectOutputStream(bos)) {
-            oos.writeObject(array);
-            return HexConverter.convertToHexString(bos.toByteArray());
-        }
-        catch (IOException e) {
-            e.printStackTrace();
-        }
-        return null;
-    }
-
-    private Object[] serializedStringToArray(String field, String serialized) {
-        try (final ByteArrayInputStream bis = new ByteArrayInputStream(HexConverter.convertFromHex(serialized));
-                ObjectInputStream ois = new ObjectInputStream(bis)) {
-            return (Object[]) ois.readObject();
-        }
-        catch (Exception e) {
-            throw new DebeziumException(String.format("Failed to deserialize '%s' with value '%s'", field, serialized), e);
-        }
-    }
-
-    private String dataCollectionsToSnapshotAsString() {
-        // TODO Handle non-standard table ids containing dots, commas etc.
-        return dataCollectionsToSnapshot.stream()
-                .map(x -> x.toString())
-                .collect(Collectors.joining(","));
-    }
-
-    private List<String> stringToDataCollections(String dataCollectionsStr) {
-        return Arrays.asList(dataCollectionsStr.split(","));
-    }
-
-    public Map<String, ?> store(Map<String, ?> iOffset) {
-        @SuppressWarnings("unchecked")
-        final Map<String, Object> offset = (Map<String, Object>) iOffset;
-        if (!tablesAvailable()) {
-            return offset;
-        }
-        offset.put(EVENT_PRIMARY_KEY, arrayToSerializedString(lastEventSentKey));
-        offset.put(TABLE_MAXIMUM_KEY, arrayToSerializedString(maximumKey));
-        offset.put(DATA_COLLECTIONS_TO_SNAPSHOT_KEY, dataCollectionsToSnapshotAsString());
-        return offset;
-    }
-
-    // TODO Call on connector start
-    public void load(Map<String, ?> offsets) {
-        if (offsets == null) {
-            return;
-        }
-        final String lastEventSentKeyStr = (String) offsets.get(EVENT_PRIMARY_KEY);
-        chunkEndPosition = (lastEventSentKeyStr != null) ? serializedStringToArray(EVENT_PRIMARY_KEY, lastEventSentKeyStr) : null;
-        lastEventSentKey = null;
-        final String maximumKeyStr = (String) offsets.get(TABLE_MAXIMUM_KEY);
-        maximumKey = (maximumKeyStr != null) ? serializedStringToArray(TABLE_MAXIMUM_KEY, maximumKeyStr) : null;
-        final String dataCollectionsStr = (String) offsets.get(DATA_COLLECTIONS_TO_SNAPSHOT_KEY);
-        dataCollectionsToSnapshot.clear();
-        if (dataCollectionsStr != null) {
-            addDataCollectionNamesToSnapshot(stringToDataCollections(dataCollectionsStr));
-        }
+    protected void setContext(IncrementalSnapshotContext<T> context) {
+        this.context = context;
     }
 }
