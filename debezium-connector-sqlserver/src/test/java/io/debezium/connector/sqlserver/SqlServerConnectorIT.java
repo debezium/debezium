@@ -1222,6 +1222,25 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
+    @FixFor("DBZ-3505")
+    public void shouldFailOnInvalidColumnFilter() throws Exception {
+        final Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.COLUMN_INCLUDE_LIST, ".^")
+                .build();
+        final LogInterceptor logInterceptor = new LogInterceptor();
+
+        start(SqlServerConnector.class, config);
+        waitForConnectorShutdown("sql_server", "server1");
+
+        consumeRecord();
+        Awaitility.await()
+                .alias("Found error message in logs")
+                .atMost(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS)
+                .until(() -> logInterceptor.containsStacktraceElement("Filtered column list for table testDB.dbo.tablea is empty")
+                        && !engine.isRunning());
+    }
+
+    @Test
     @FixFor("DBZ-1692")
     public void shouldConsumeEventsWithMaskedHashedColumns() throws Exception {
         connection.execute(
