@@ -17,15 +17,12 @@ public class OpenIncrementalSnapshotWindow implements Signal.Action {
 
     public static final String NAME = "snapshot-window-open";
 
-    private IncrementalSnapshotChangeEventSource eventSource;
-
-    public OpenIncrementalSnapshotWindow(IncrementalSnapshotChangeEventSource eventSource) {
-        this.eventSource = eventSource;
+    public OpenIncrementalSnapshotWindow() {
     }
 
     @Override
     public boolean arrived(Payload signalPayload) {
-        eventSource.windowOpen();
+        signalPayload.offsetContext.getIncrementalSnapshotContext().openWindow();
         return true;
     }
 
