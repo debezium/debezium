@@ -57,7 +57,7 @@ public class SqlServerConnection extends JdbcConnection {
     private static final Logger LOGGER = LoggerFactory.getLogger(SqlServerConnection.class);
 
     private static final String STATEMENTS_PLACEHOLDER = "#";
-    private static final String DATABASE_NAME_PLACEHOLDER = "[#db]";
+    protected static final String DATABASE_NAME_PLACEHOLDER = "[#db]";
     private static final String GET_MAX_LSN = "SELECT [#db].sys.fn_cdc_get_max_lsn()";
     private static final String GET_LSN_TO_TIMESTAMP = "SELECT [#db].sys.fn_cdc_map_lsn_to_time(?)";
 
@@ -68,7 +68,7 @@ public class SqlServerConnection extends JdbcConnection {
     private static final String SQL_SERVER_VERSION = "SELECT @@VERSION AS 'SQL Server Version'";
     private static final String INCREMENT_LSN = "SELECT [#db].sys.fn_cdc_increment_lsn(?)";
     private static final String GET_ALL_CHANGES_FOR_TABLE = "SELECT *# FROM [#db].cdc.[fn_cdc_get_all_changes_#](?, ?, N'all update old') order by [__$start_lsn] ASC, [__$seqval] ASC, [__$operation] ASC";
-    protected static final String LSN_TIMESTAMP_SELECT_STATEMENT = "sys.fn_cdc_map_lsn_to_time([__$start_lsn])";
+    protected static final String LSN_TIMESTAMP_SELECT_STATEMENT = "[#db].sys.fn_cdc_map_lsn_to_time([__$start_lsn])";
     protected static final String AT_TIME_ZONE_UTC = "AT TIME ZONE 'UTC'";
     private static final String GET_LIST_OF_CDC_ENABLED_TABLES = "EXEC [#db].sys.sp_cdc_help_change_data_capture";
     private static final String GET_LIST_OF_NEW_CDC_ENABLED_TABLES = "SELECT * FROM [#db].cdc.change_tables WHERE start_lsn BETWEEN ? AND ?";
@@ -191,7 +191,7 @@ public class SqlServerConnection extends JdbcConnection {
     public void getChangesForTable(TableId tableId, Lsn fromLsn, Lsn toLsn, ResultSetConsumer consumer, String databaseName) throws SQLException {
         final String query = GET_ALL_CHANGES_FOR_TABLE
                 .replaceFirst(STATEMENTS_PLACEHOLDER,
-                        Matcher.quoteReplacement(sourceTimestampMode.lsnTimestampSelectStatement(supportsAtTimeZone)))
+                        Matcher.quoteReplacement(sourceTimestampMode.lsnTimestampSelectStatement(databaseName, supportsAtTimeZone)))
                 .replace(DATABASE_NAME_PLACEHOLDER, databaseName)
                 .replace(STATEMENTS_PLACEHOLDER, cdcNameForTable(tableId));
         prepareQuery(query, statement -> {
@@ -220,7 +220,7 @@ public class SqlServerConnection extends JdbcConnection {
         for (SqlServerChangeTable changeTable : changeTables) {
             final String query = GET_ALL_CHANGES_FOR_TABLE
                     .replaceFirst(STATEMENTS_PLACEHOLDER,
-                            Matcher.quoteReplacement(sourceTimestampMode.lsnTimestampSelectStatement(supportsAtTimeZone)))
+                            Matcher.quoteReplacement(sourceTimestampMode.lsnTimestampSelectStatement(databaseName, supportsAtTimeZone)))
                     .replace(DATABASE_NAME_PLACEHOLDER, databaseName)
                     .replace(STATEMENTS_PLACEHOLDER, changeTable.getCaptureInstance());
             queries[idx] = query;

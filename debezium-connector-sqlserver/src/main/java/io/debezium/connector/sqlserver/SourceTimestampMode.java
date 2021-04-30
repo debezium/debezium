@@ -36,8 +36,9 @@ public enum SourceTimestampMode implements EnumeratedValue {
          * the TIMESTAMP value into an {@code Instant}.
          */
         @Override
-        protected String lsnTimestampSelectStatement(boolean supportsAtTimeZone) {
-            String result = ", " + SqlServerConnection.LSN_TIMESTAMP_SELECT_STATEMENT;
+        protected String lsnTimestampSelectStatement(String databaseName, boolean supportsAtTimeZone) {
+            String result = ", " + SqlServerConnection.LSN_TIMESTAMP_SELECT_STATEMENT
+                    .replace(SqlServerConnection.DATABASE_NAME_PLACEHOLDER, databaseName);
             if (supportsAtTimeZone) {
                 result += " " + SqlServerConnection.AT_TIME_ZONE_UTC;
             }
@@ -55,7 +56,7 @@ public enum SourceTimestampMode implements EnumeratedValue {
         }
 
         @Override
-        protected String lsnTimestampSelectStatement(boolean supportsAtTimeZone) {
+        protected String lsnTimestampSelectStatement(String databaseName, boolean supportsAtTimeZone) {
             return "";
         }
     };
@@ -73,7 +74,7 @@ public enum SourceTimestampMode implements EnumeratedValue {
 
     protected abstract Instant getTimestamp(SqlServerConnection connection, ResultSet resultSet, Clock clock) throws SQLException;
 
-    protected abstract String lsnTimestampSelectStatement(boolean supportsAtTimeZone);
+    protected abstract String lsnTimestampSelectStatement(String databaseName, boolean supportsAtTimeZone);
 
     public static SourceTimestampMode getDefaultMode() {
         return COMMIT;

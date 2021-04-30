@@ -1661,6 +1661,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
             connection.execute("USE " + databaseName);
             connection.execute("INSERT INTO excluded_column_table_a VALUES(10, 'some_name', 120)");
             connection.execute("INSERT INTO excluded_column_table_a VALUES(11, 'some_name', 121)");
+            TestHelper.waitForCdcRecord(connection, databaseName, "excluded_column_table_a", rs -> rs.getInt("id") == 11);
         });
 
         final SourceRecords records = consumeRecordsByTopic(2 * TestHelper.TEST_DATABASES.size());
