@@ -226,7 +226,8 @@ public class PostgresOffsetContext implements OffsetContext {
         return "PostgresOffsetContext [sourceInfoSchema=" + sourceInfoSchema + ", sourceInfo=" + sourceInfo
                 + ", partition=" + partition + ", lastSnapshotRecord=" + lastSnapshotRecord
                 + ", lastCompletelyProcessedLsn=" + lastCompletelyProcessedLsn + ", lastCommitLsn=" + lastCommitLsn
-                + ", transactionContext=" + transactionContext + "]";
+                + ", streamingStoppingLsn=" + streamingStoppingLsn + ", transactionContext=" + transactionContext
+                + ", incrementalSnapshotContext=" + incrementalSnapshotContext + "]";
     }
 
     public static PostgresOffsetContext initialContext(PostgresConnectorConfig connectorConfig, PostgresConnection jdbcConnection, Clock clock) {

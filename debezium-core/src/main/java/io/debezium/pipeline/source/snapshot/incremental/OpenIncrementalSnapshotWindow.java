@@ -22,7 +22,7 @@ public class OpenIncrementalSnapshotWindow implements Signal.Action {
 
     @Override
     public boolean arrived(Payload signalPayload) {
-        signalPayload.offsetContext.getIncrementalSnapshotContext().openWindow();
+        signalPayload.offsetContext.getIncrementalSnapshotContext().openWindow(signalPayload.id);
         return true;
     }
 
