@@ -320,8 +320,8 @@ public class IncrementalSnapshotChangeEventSource<T extends DataCollectionId> {
     protected Object[] rowToArray(Table table, ResultSet rs, ColumnUtils.ColumnArray columnArray) throws SQLException {
         final Object[] row = new Object[columnArray.getGreatestColumnPosition()];
         for (int i = 0; i < columnArray.getColumns().length; i++) {
-            row[columnArray.getColumns()[i].position() - 1] = getColumnValue(rs, i + 1, columnArray.getColumns()[i],
-                    table);
+            row[columnArray.getColumns()[i].position() - 1] = jdbcConnection.getColumnValue(rs, i + 1,
+                    columnArray.getColumns()[i], table, databaseSchema);
         }
         return row;
     }
@@ -343,16 +343,6 @@ public class IncrementalSnapshotChangeEventSource<T extends DataCollectionId> {
 
     private Timer getTableScanLogTimer() {
         return Threads.timer(clock, RelationalSnapshotChangeEventSource.LOG_INTERVAL);
-    }
-
-    // TODO Extract these two methods from *SnapshotChangeEventSource to JdbcValueConverters or JdbcConnection
-    protected Object getColumnValue(ResultSet rs, int columnIndex, Column column, Table table) throws SQLException {
-        return getColumnValue(rs, columnIndex, column);
-    }
-
-    @Deprecated
-    protected Object getColumnValue(ResultSet rs, int columnIndex, Column column) throws SQLException {
-        return rs.getObject(columnIndex);
     }
 
     private Object[] keyFromRow(Object[] row) {

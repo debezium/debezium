@@ -457,7 +457,7 @@ public abstract class RelationalSnapshotChangeEventSource<SourceRecord extends S
 
     @Deprecated
     protected Object getColumnValue(ResultSet rs, int columnIndex, Column column) throws SQLException {
-        return rs.getObject(columnIndex);
+        return jdbcConnection.getColumnValue(rs, columnIndex, column, null, schema);
     }
 
     /**
