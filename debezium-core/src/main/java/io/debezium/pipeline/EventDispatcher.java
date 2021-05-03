@@ -95,7 +95,7 @@ public class EventDispatcher<T extends DataCollectionId> {
                            DatabaseSchema<T> schema, ChangeEventQueue<DataChangeEvent> queue, DataCollectionFilter<T> filter,
                            ChangeEventCreator changeEventCreator, EventMetadataProvider metadataProvider, SchemaNameAdjuster schemaNameAdjuster) {
         this(connectorConfig, topicSelector, schema, queue, filter, changeEventCreator, null, metadataProvider,
-                null, schemaNameAdjuster, null);
+                null, schemaNameAdjuster, null, null);
     }
 
     public EventDispatcher(CommonConnectorConfig connectorConfig, TopicSelector<T> topicSelector,
@@ -103,14 +103,14 @@ public class EventDispatcher<T extends DataCollectionId> {
                            ChangeEventCreator changeEventCreator, EventMetadataProvider metadataProvider,
                            Heartbeat heartbeat, SchemaNameAdjuster schemaNameAdjuster) {
         this(connectorConfig, topicSelector, schema, queue, filter, changeEventCreator, null, metadataProvider,
-                heartbeat, schemaNameAdjuster, null);
+                heartbeat, schemaNameAdjuster, null, null);
     }
 
     public EventDispatcher(CommonConnectorConfig connectorConfig, TopicSelector<T> topicSelector,
                            DatabaseSchema<T> schema, ChangeEventQueue<DataChangeEvent> queue, DataCollectionFilter<T> filter,
                            ChangeEventCreator changeEventCreator, InconsistentSchemaHandler<T> inconsistentSchemaHandler,
                            EventMetadataProvider metadataProvider, Heartbeat customHeartbeat, SchemaNameAdjuster schemaNameAdjuster,
-                           JdbcConnection jdbcConnection) {
+                           JdbcConnection jdbcConnection, IncrementalSnapshotChangeEventSource<T> incrementalSnapshotChangeEventSource) {
         this.connectorConfig = connectorConfig;
         this.topicSelector = topicSelector;
         this.schema = schema;
@@ -127,8 +127,7 @@ public class EventDispatcher<T extends DataCollectionId> {
         this.neverSkip = connectorConfig.supportsOperationFiltering() || this.skippedOperations.isEmpty();
 
         this.transactionMonitor = new TransactionMonitor(connectorConfig, metadataProvider, this::enqueueTransactionMessage);
-        this.incrementalSnapshotChangeEventSource = new IncrementalSnapshotChangeEventSource<T>(
-                connectorConfig, jdbcConnection, schema, this);
+        this.incrementalSnapshotChangeEventSource = incrementalSnapshotChangeEventSource;
         this.signal = new Signal(connectorConfig, this);
         if (customHeartbeat != null) {
             heartbeat = customHeartbeat;
@@ -232,7 +231,9 @@ public class EventDispatcher<T extends DataCollectionId> {
                         if (neverSkip || !skippedOperations.contains(operation)) {
                             transactionMonitor.dataEvent(dataCollectionId, offset, key, value);
                             eventListener.onEvent(dataCollectionId, offset, key, value);
-                            incrementalSnapshotChangeEventSource.processMessage(dataCollectionId, key, offset);
+                            if (incrementalSnapshotChangeEventSource != null) {
+                                incrementalSnapshotChangeEventSource.processMessage(dataCollectionId, key, offset);
+                            }
                             streamingReceiver.changeRecord(schema, operation, key, value, offset, headers);
                         }
                     }

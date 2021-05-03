@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Queue;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
@@ -63,19 +64,31 @@ public class IncrementalSnapshotContext<T> {
      */
     private Object[] lastEventKeySent;
 
+    private String currentChunkId;
+
     /**
      * The largest PK in the table at the start of snapshot.
      */
     private Object[] maximumKey;
 
-    public void openWindow() {
+    public boolean openWindow(String id) {
+        if (!id.startsWith(currentChunkId)) {
+            LOGGER.info("Arrived request to open window with id = '{}', expected = '{}', request ignored", id, currentChunkId);
+            return false;
+        }
         LOGGER.debug("Opening window for incremental snapshot chunk");
         windowOpened = true;
+        return true;
     }
 
-    public void closeWindow() {
+    public boolean closeWindow(String id) {
+        if (!id.startsWith(currentChunkId)) {
+            LOGGER.info("Arrived request to close window with id = '{}', expected = '{}', request ignored", id, currentChunkId);
+            return false;
+        }
         LOGGER.debug("Closing window for incremental snapshot chunk");
         windowOpened = false;
+        return true;
     }
 
     public boolean deduplicationNeeded() {
@@ -124,6 +137,7 @@ public class IncrementalSnapshotContext<T> {
         offset.put(EVENT_PRIMARY_KEY, arrayToSerializedString(lastEventKeySent));
         offset.put(TABLE_MAXIMUM_KEY, arrayToSerializedString(maximumKey));
         offset.put(DATA_COLLECTIONS_TO_SNAPSHOT_KEY, dataCollectionsToSnapshotAsString());
+        offset.put("test", Arrays.toString(lastEventKeySent));
         return offset;
     }
 
@@ -167,7 +181,7 @@ public class IncrementalSnapshotContext<T> {
         return dataCollectionsToSnapshot.size();
     }
 
-    public void nextChunk(Object[] end) {
+    public void nextChunkPosition(Object[] end) {
         chunkEndPosition = end;
     }
 
@@ -187,6 +201,14 @@ public class IncrementalSnapshotContext<T> {
     public T nextDataCollection() {
         resetChunk();
         return dataCollectionsToSnapshot.poll();
+    }
+
+    public void startNewChunk() {
+        currentChunkId = UUID.randomUUID().toString();
+    }
+
+    public String currentChunkId() {
+        return currentChunkId;
     }
 
     public void maximumKey(Object[] key) {

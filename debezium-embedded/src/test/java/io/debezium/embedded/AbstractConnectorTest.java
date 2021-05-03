@@ -239,6 +239,18 @@ public abstract class AbstractConnectorTest implements Testing {
 
     /**
      * Start the connector using the supplied connector configuration, where upon completion the status of the connector is
+     * logged. Records arriving after connector stop must not be ignored.
+     *
+     * @param connectorClass the connector class; may not be null
+     * @param connectorConfig the configuration for the connector; may not be null
+     */
+    protected void startAndConsumeTillEnd(Class<? extends SourceConnector> connectorClass, Configuration connectorConfig) {
+        start(connectorClass, connectorConfig, loggingCompletion(), null, x -> {
+        }, false);
+    }
+
+    /**
+     * Start the connector using the supplied connector configuration, where upon completion the status of the connector is
      * logged. The connector will stop immediately when the supplied predicate returns true.
      *
      * @param connectorClass the connector class; may not be null
@@ -277,7 +289,7 @@ public abstract class AbstractConnectorTest implements Testing {
     protected void start(Class<? extends SourceConnector> connectorClass, Configuration connectorConfig,
                          DebeziumEngine.CompletionCallback callback, Predicate<SourceRecord> isStopRecord) {
         start(connectorClass, connectorConfig, callback, isStopRecord, x -> {
-        });
+        }, true);
     }
 
     /**
@@ -290,10 +302,11 @@ public abstract class AbstractConnectorTest implements Testing {
      * @param callback the function that will be called when the engine fails to start the connector or when the connector
      *            stops running after completing successfully or due to an error; may be null
      * @param recordArrivedListener function invoked when a record arrives and is stored in the queue
+     * @param ignoreRecordsAfterStop {@code true} if records arriving after stop should be ignored
      */
     protected void start(Class<? extends SourceConnector> connectorClass, Configuration connectorConfig,
                          DebeziumEngine.CompletionCallback callback, Predicate<SourceRecord> isStopRecord,
-                         Consumer<SourceRecord> recordArrivedListener) {
+                         Consumer<SourceRecord> recordArrivedListener, boolean ignoreRecordsAfterStop) {
         Configuration config = Configuration.copy(connectorConfig)
                 .with(EmbeddedEngine.ENGINE_NAME, "testing-connector")
                 .with(EmbeddedEngine.CONNECTOR_CLASS, connectorClass.getName())
@@ -333,11 +346,11 @@ public abstract class AbstractConnectorTest implements Testing {
                         throw new ConnectException("Stopping connector after record as requested");
                     }
                     // Test stopped the connector, remaining records are ignored
-                    if (!engine.isRunning() || Thread.currentThread().isInterrupted()) {
+                    if (ignoreRecordsAfterStop && (!engine.isRunning() || Thread.currentThread().isInterrupted())) {
                         return;
                     }
                     while (!consumedLines.offer(record)) {
-                        if (!engine.isRunning() || Thread.currentThread().isInterrupted()) {
+                        if (ignoreRecordsAfterStop && (!engine.isRunning() || Thread.currentThread().isInterrupted())) {
                             return;
                         }
                     }
