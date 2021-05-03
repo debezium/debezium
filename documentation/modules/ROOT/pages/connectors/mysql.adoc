@@ -554,7 +554,7 @@ endif::product[]
 
 // Type: concept
 // ModuleID: about-keys-in-debezium-mysql-change-events
-// Title: About keys in {prodname} mysql change events
+// Title: About keys in {prodname} MySQL change events
 [[mysql-change-event-keys]]
 === Change event keys
 
