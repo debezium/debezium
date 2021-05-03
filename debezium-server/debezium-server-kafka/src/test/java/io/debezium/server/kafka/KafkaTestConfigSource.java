@@ -18,6 +18,10 @@ public class KafkaTestConfigSource extends TestConfigSource {
         final Map<String, String> kafkaConfig = new HashMap<>();
 
         kafkaConfig.put("debezium.sink.type", "kafka");
+        kafkaConfig.put("debezium.sink.kafka.producer.bootstrap.servers", KafkaTestResourceLifecycleManager.getBootstrapServers());
+        kafkaConfig.put("debezium.sink.kafka.producer.key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
+        kafkaConfig.put("debezium.sink.kafka.producer.value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
+
         kafkaConfig.put("debezium.source.connector.class", "io.debezium.connector.postgresql.PostgresConnector");
         kafkaConfig.put("debezium.source." + StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
 
