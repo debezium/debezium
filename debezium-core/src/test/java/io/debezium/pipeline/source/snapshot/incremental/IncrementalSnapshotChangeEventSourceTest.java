@@ -42,7 +42,7 @@ public class IncrementalSnapshotChangeEventSourceTest {
     @Test
     public void testBuildQuery() {
         final IncrementalSnapshotChangeEventSource<TableId> source = new IncrementalSnapshotChangeEventSource<>(
-                config(), new JdbcConnection(config().getConfig(), config -> null), null);
+                config(), new JdbcConnection(config().getConfig(), config -> null), null, null);
         final IncrementalSnapshotContext<TableId> context = new IncrementalSnapshotContext<>();
         source.setContext(context);
         final Column pk1 = Column.editor().name("pk1").create();
@@ -61,7 +61,7 @@ public class IncrementalSnapshotChangeEventSourceTest {
     @Test
     public void testMaxQuery() {
         final IncrementalSnapshotChangeEventSource<TableId> source = new IncrementalSnapshotChangeEventSource<>(
-                config(), new JdbcConnection(config().getConfig(), config -> null), null);
+                config(), new JdbcConnection(config().getConfig(), config -> null), null, null);
         final Column pk1 = Column.editor().name("pk1").create();
         final Column pk2 = Column.editor().name("pk2").create();
         final Column val1 = Column.editor().name("val1").create();
