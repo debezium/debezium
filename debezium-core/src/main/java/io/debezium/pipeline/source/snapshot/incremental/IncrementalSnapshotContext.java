@@ -38,6 +38,7 @@ public class IncrementalSnapshotContext<T> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(IncrementalSnapshotContext.class);
 
+    // TODO Consider which (if any) information should be exposed in source info
     public static final String INCREMENTAL_SNAPSHOT_KEY = "incremental_snapshot";
     public static final String DATA_COLLECTIONS_TO_SNAPSHOT_KEY = INCREMENTAL_SNAPSHOT_KEY + "_collections";
     public static final String EVENT_PRIMARY_KEY = INCREMENTAL_SNAPSHOT_KEY + "_primary_key";
@@ -137,7 +138,6 @@ public class IncrementalSnapshotContext<T> {
         offset.put(EVENT_PRIMARY_KEY, arrayToSerializedString(lastEventKeySent));
         offset.put(TABLE_MAXIMUM_KEY, arrayToSerializedString(maximumKey));
         offset.put(DATA_COLLECTIONS_TO_SNAPSHOT_KEY, dataCollectionsToSnapshotAsString());
-        offset.put("test", Arrays.toString(lastEventKeySent));
         return offset;
     }
 
@@ -205,6 +205,7 @@ public class IncrementalSnapshotContext<T> {
 
     public void startNewChunk() {
         currentChunkId = UUID.randomUUID().toString();
+        LOGGER.debug("Starting new chunk with id '{}'", currentChunkId);
     }
 
     public String currentChunkId() {
