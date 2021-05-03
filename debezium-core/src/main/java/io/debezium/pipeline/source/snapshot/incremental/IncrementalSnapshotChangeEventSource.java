@@ -13,6 +13,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.OptionalLong;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Struct;
@@ -281,7 +282,7 @@ public class IncrementalSnapshotChangeEventSource<T extends DataCollectionId> {
 
         final TableSchema tableSchema = databaseSchema.schemaFor(currentTable.id());
 
-        try (PreparedStatement statement = readTableStatement(selectStatement);
+        try (PreparedStatement statement = readTableChunkStatement(selectStatement);
                 ResultSet rs = statement.executeQuery()) {
 
             final ColumnUtils.ColumnArray columnArray = ColumnUtils.toArray(rs, currentTable);
@@ -325,14 +326,9 @@ public class IncrementalSnapshotChangeEventSource<T extends DataCollectionId> {
         return row;
     }
 
-    // TODO Parameterize the method and extract it to JdbcConnection
-    /**
-     * Allow per-connector query creation to override for best database
-     * performance depending on the table size.
-     */
-    protected PreparedStatement readTableStatement(String sql) throws SQLException {
-        int fetchSize = connectorConfig.getSnapshotFetchSize();
-        PreparedStatement statement = jdbcConnection.connection().prepareStatement(sql);
+    protected PreparedStatement readTableChunkStatement(String sql) throws SQLException {
+        final PreparedStatement statement = jdbcConnection.readTablePreparedStatement(connectorConfig, sql,
+                OptionalLong.empty());
         if (context.isNonInitialChunk()) {
             final Object[] maximumKey = context.maximumKey().get();
             final Object[] chunkEndPosition = context.chunkEndPosititon();
@@ -342,7 +338,6 @@ public class IncrementalSnapshotChangeEventSource<T extends DataCollectionId> {
                 statement.setObject(i + 1 + 2 * chunkEndPosition.length, maximumKey[i]);
             }
         }
-        statement.setFetchSize(fetchSize);
         return statement;
     }
 

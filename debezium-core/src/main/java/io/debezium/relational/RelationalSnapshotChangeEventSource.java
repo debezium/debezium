@@ -464,10 +464,7 @@ public abstract class RelationalSnapshotChangeEventSource<SourceRecord extends S
      * Allow per-connector query creation to override for best database performance depending on the table size.
      */
     protected Statement readTableStatement(OptionalLong tableSize) throws SQLException {
-        int fetchSize = connectorConfig.getSnapshotFetchSize();
-        Statement statement = jdbcConnection.connection().createStatement(); // the default cursor is FORWARD_ONLY
-        statement.setFetchSize(fetchSize);
-        return statement;
+        return jdbcConnection.readTableStatement(connectorConfig, tableSize);
     }
 
     private void rollbackTransaction(Connection connection) {
