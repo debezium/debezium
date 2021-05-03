@@ -19,24 +19,23 @@ import io.quarkus.test.common.QuarkusTestResourceLifecycleManager;
  */
 public class KafkaTestResourceLifecycleManager implements QuarkusTestResourceLifecycleManager {
 
+    @SuppressWarnings("deprecation")
     private static KafkaContainer kafkaContainer = new KafkaContainer();
 
     @Override
     public Map<String, String> start() {
         kafkaContainer.start();
-
-        Map<String, String> props = new HashMap<>();
-        return props;
+        return new HashMap<>();
     }
 
     @Override
     public void stop() {
-        if (kafkaContainer != null) {
-            kafkaContainer.stop();
-        }
+        kafkaContainer.stop();
     }
 
     public static String getBootstrapServers() {
+        // if container is already started, start() will return early
+        kafkaContainer.start();
         return kafkaContainer.getBootstrapServers();
     }
 }

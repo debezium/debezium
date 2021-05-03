@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 import javax.enterprise.event.Observes;
@@ -39,7 +40,7 @@ import io.quarkus.test.junit.QuarkusTest;
 @QuarkusTest
 @QuarkusTestResource(PostgresTestResourceLifecycleManager.class)
 @QuarkusTestResource(KafkaTestResourceLifecycleManager.class)
-public class KafkaITs {
+public class KafkaIT {
 
     private static final String TOPIC_NAME = "testc.inventory.customers";
     private static final int MESSAGE_COUNT = 4;
@@ -55,7 +56,9 @@ public class KafkaITs {
         Testing.Print.enable();
 
         final Map<String, Object> configs = new ConcurrentHashMap<>();
+
         configs.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, KafkaTestResourceLifecycleManager.getBootstrapServers());
+        configs.put(ConsumerConfig.GROUP_ID_CONFIG, "test-" + UUID.randomUUID());
 
         consumer = new KafkaConsumer<>(configs, new StringDeserializer(), new StringDeserializer());
     }

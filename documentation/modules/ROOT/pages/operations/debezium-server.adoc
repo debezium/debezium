@@ -556,6 +556,27 @@ By default the same name is used.
 
 |===
 
+==== Apache Kafka
+
+https://kafka.apache.org/[Apache Kafka] is a popular open-source platform for distributed event streaming. Debezium server supports publishing captured change events to a configured Kafka message broker.
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Property
+|Default
+|Description
+
+|[[kafka-type]]<<kafka-type, `debezium.sink.type`>>
+|
+|Must be set to `kafka`.
+
+|[[kafka-producer]]<<kafka-producer, `debezium.sink.kafka.producer.*`>>
+|
+|The Kafka sink adapter supports pass-through configuration.
+This means that all Kafka producer https://kafka.apache.org/documentation/#producerconfigs[configuration properties] are passed to the producer with the prefix removed.
+At least `bootstrap.servers`, `key.serializer` and `value.serializer` properties must be provided. The `topic` is set by Debezium.
+
+|===
 
 == Extensions
 
