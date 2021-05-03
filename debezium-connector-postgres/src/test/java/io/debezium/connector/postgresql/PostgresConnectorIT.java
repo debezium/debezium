@@ -1410,7 +1410,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
                 }
                 inserted.set(true);
             }
-        });
+        }, true);
         assertConnectorIsRunning();
 
         // Consume records from the snapshot
@@ -1462,7 +1462,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
                 }
                 inserted.set(true);
             }
-        });
+        }, true);
         assertConnectorIsRunning();
 
         // Consume records from the snapshot

@@ -12,7 +12,6 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Struct;
@@ -60,26 +59,26 @@ public class IncrementalSnapshotChangeEventSource<T extends DataCollectionId> {
     private final Clock clock = Clock.system();
     private final String signalWindowStatement;
     private final RelationalDatabaseSchema databaseSchema;
-    private final EventDispatcher<T> dispatcher;
 
     private Table currentTable;
 
     private IncrementalSnapshotContext<T> context = null;
 
     public IncrementalSnapshotChangeEventSource(CommonConnectorConfig config, JdbcConnection jdbcConnection,
-                                                DatabaseSchema<?> databaseSchema, EventDispatcher<T> dispatcher) {
+                                                DatabaseSchema<?> databaseSchema) {
         this.connectorConfig = config;
         this.jdbcConnection = jdbcConnection;
         signalWindowStatement = "INSERT INTO " + connectorConfig.getSignalingDataCollectionId()
                 + " VALUES (?, ?, null)";
         this.databaseSchema = (RelationalDatabaseSchema) databaseSchema;
-        this.dispatcher = dispatcher;
     }
 
     @SuppressWarnings("unchecked")
-    public void closeWindow(OffsetContext offsetContext) throws InterruptedException {
+    public void closeWindow(String id, EventDispatcher<T> dispatcher, OffsetContext offsetContext) throws InterruptedException {
         context = (IncrementalSnapshotContext<T>) offsetContext.getIncrementalSnapshotContext();
-        context.closeWindow();
+        if (!context.closeWindow(id)) {
+            return;
+        }
         LOGGER.debug("Sending {} events from window buffer", window.size());
         // TODO There is an issue here
         // Events are emitted with tx log coordinates of the CloseIncrementalSnapshotWindow
@@ -89,14 +88,14 @@ public class IncrementalSnapshotChangeEventSource<T extends DataCollectionId> {
         // Most probably could be solved by injecting a sequence of windowOpen/Closed upon the start
         offsetContext.incrementalSnapshotEvents();
         for (Object[] row : window.values()) {
-            sendEvent(offsetContext, row);
+            sendEvent(dispatcher, offsetContext, row);
         }
         offsetContext.postSnapshotCompletion();
         window.clear();
         readChunk();
     }
 
-    protected void sendEvent(OffsetContext offsetContext, Object[] row) throws InterruptedException {
+    protected void sendEvent(EventDispatcher<T> dispatcher, OffsetContext offsetContext, Object[] row) throws InterruptedException {
         context.sendEvent(keyFromRow(row));
         offsetContext.event((T) context.currentDataCollectionId(), clock.currentTimeAsInstant());
         dispatcher.dispatchSnapshotEvent((T) context.currentDataCollectionId(),
@@ -135,18 +134,16 @@ public class IncrementalSnapshotChangeEventSource<T extends DataCollectionId> {
 
     private void emitWindowOpen() throws SQLException {
         jdbcConnection.prepareUpdate(signalWindowStatement, x -> {
-            x.setString(1, UUID.randomUUID().toString());
+            x.setString(1, context.currentChunkId() + "-open");
             x.setString(2, OpenIncrementalSnapshotWindow.NAME);
         });
-        jdbcConnection.commit();
     }
 
     private void emitWindowClose() throws SQLException {
         jdbcConnection.prepareUpdate(signalWindowStatement, x -> {
-            x.setString(1, UUID.randomUUID().toString());
+            x.setString(1, context.currentChunkId() + "-close");
             x.setString(2, CloseIncrementalSnapshotWindow.NAME);
         });
-        jdbcConnection.commit();
     }
 
     protected String buildChunkQuery(Table table) {
@@ -183,15 +180,43 @@ public class IncrementalSnapshotChangeEventSource<T extends DataCollectionId> {
         return sql.toString();
     }
 
+    @SuppressWarnings("unchecked")
+    public void init(OffsetContext offsetContext) {
+        if (offsetContext == null) {
+            LOGGER.info("Empty incremental snapshot change event source started, no action needed");
+            return;
+        }
+        context = (IncrementalSnapshotContext<T>) offsetContext.getIncrementalSnapshotContext();
+        if (!context.snapshotRunning()) {
+            LOGGER.info("No incremental snapshot in progress, no action needed on start");
+            return;
+        }
+        LOGGER.info("Incremental snapshot in progress, need to read new chunk on start");
+        try {
+            readChunk();
+        }
+        catch (InterruptedException e) {
+            throw new DebeziumException("Reading of an initial chunk after connector restart has been interrupted");
+        }
+        LOGGER.info("Incremental snapshot in progress, loading of initial chunk completed");
+    }
+
     private void readChunk() throws InterruptedException {
         if (!context.snapshotRunning()) {
             return;
         }
         try {
+            // This commit should be unnecessary and might be removed later
+            jdbcConnection.commit();
+            context.startNewChunk();
             emitWindowOpen();
+            jdbcConnection.commit();
             while (context.snapshotRunning()) {
                 final TableId currentTableId = (TableId) context.currentDataCollectionId();
                 currentTable = databaseSchema.tableFor(currentTableId);
+                if (currentTable == null) {
+                    break;
+                }
                 if (!context.maximumKey().isPresent()) {
                     context.maximumKey(jdbcConnection.queryAndMap(buildMaxPrimaryKeyQuery(currentTable), rs -> {
                         if (!rs.next()) {
@@ -220,6 +245,7 @@ public class IncrementalSnapshotChangeEventSource<T extends DataCollectionId> {
                 }
             }
             emitWindowClose();
+            jdbcConnection.commit();
         }
         catch (SQLException e) {
             throw new DebeziumException("Database error while executing incremental snapshot", e);
@@ -283,7 +309,7 @@ public class IncrementalSnapshotChangeEventSource<T extends DataCollectionId> {
                 }
                 lastRow = row;
             }
-            context.nextChunk(keyFromRow(lastRow));
+            context.nextChunkPosition(keyFromRow(lastRow));
             if (lastRow != null) {
                 LOGGER.debug("\t Next window will resume from '{}'", context.chunkEndPosititon());
             }

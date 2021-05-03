@@ -40,7 +40,7 @@ public class IncrementalSnapshotChangeEventSourceTest {
 
     @Test
     public void testBuildQuery() {
-        final IncrementalSnapshotChangeEventSource<TableId> source = new IncrementalSnapshotChangeEventSource<>(config(), null, null, null);
+        final IncrementalSnapshotChangeEventSource<TableId> source = new IncrementalSnapshotChangeEventSource<>(config(), null, null);
         final IncrementalSnapshotContext<TableId> context = new IncrementalSnapshotContext<>();
         source.setContext(context);
         final Column pk1 = Column.editor().name("pk1").create();
@@ -50,7 +50,7 @@ public class IncrementalSnapshotChangeEventSourceTest {
         final Table table = Table.editor().tableId(new TableId(null, "s1", "table1")).addColumn(pk1).addColumn(pk2)
                 .addColumn(val1).addColumn(val2).setPrimaryKeyNames("pk1", "pk2").create();
         Assertions.assertThat(source.buildChunkQuery(table)).isEqualTo("SELECT * FROM s1.table1 ORDER BY pk1, pk2 LIMIT 1024");
-        context.nextChunk(new Object[]{ 1, 5 });
+        context.nextChunkPosition(new Object[]{ 1, 5 });
         context.maximumKey(new Object[]{ 10, 50 });
         Assertions.assertThat(source.buildChunkQuery(table)).isEqualTo(
                 "SELECT * FROM s1.table1 WHERE pk1 >= ? AND pk2 >= ? AND NOT (pk1 = ? AND pk2 = ?) AND pk1 <= ? AND pk2 <= ? ORDER BY pk1, pk2 LIMIT 1024");
@@ -58,7 +58,7 @@ public class IncrementalSnapshotChangeEventSourceTest {
 
     @Test
     public void testMaxQuery() {
-        final IncrementalSnapshotChangeEventSource<TableId> source = new IncrementalSnapshotChangeEventSource<>(config(), null, null, null);
+        final IncrementalSnapshotChangeEventSource<TableId> source = new IncrementalSnapshotChangeEventSource<>(config(), null, null);
         final Column pk1 = Column.editor().name("pk1").create();
         final Column pk2 = Column.editor().name("pk2").create();
         final Column val1 = Column.editor().name("val1").create();
