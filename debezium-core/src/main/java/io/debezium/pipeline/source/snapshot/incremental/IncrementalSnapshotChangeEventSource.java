@@ -12,6 +12,7 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Struct;
@@ -80,12 +81,6 @@ public class IncrementalSnapshotChangeEventSource<T extends DataCollectionId> {
             return;
         }
         LOGGER.debug("Sending {} events from window buffer", window.size());
-        // TODO There is an issue here
-        // Events are emitted with tx log coordinates of the CloseIncrementalSnapshotWindow
-        // These means that if the connector is restarted in the middle of emptying the buffer
-        // then the rest of the buffer might not be resent or even the snapshotting restarted
-        // as there is no more of events.
-        // Most probably could be solved by injecting a sequence of windowOpen/Closed upon the start
         offsetContext.incrementalSnapshotEvents();
         for (Object[] row : window.values()) {
             sendEvent(dispatcher, offsetContext, row);
@@ -147,13 +142,11 @@ public class IncrementalSnapshotChangeEventSource<T extends DataCollectionId> {
     }
 
     protected String buildChunkQuery(Table table) {
-        final StringBuilder sql = new StringBuilder("SELECT * FROM ");
-        sql.append(table.id().toString());
-
+        String condition = null;
         // Add condition when this is not the first query
         if (context.isNonInitialChunk()) {
+            final StringBuilder sql = new StringBuilder();
             // Window boundaries
-            sql.append(" WHERE ");
             addKeyColumnsToCondition(table, sql, " >= ?");
             sql.append(" AND NOT (");
             addKeyColumnsToCondition(table, sql, " = ?");
@@ -161,23 +154,23 @@ public class IncrementalSnapshotChangeEventSource<T extends DataCollectionId> {
             // Table boundaries
             sql.append(" AND ");
             addKeyColumnsToCondition(table, sql, " <= ?");
+            condition = sql.toString();
         }
-        // TODO limiting is db dialect based
-        sql.append(" ORDER BY ")
-                .append(table.primaryKeyColumns().stream().map(Column::name).collect(Collectors.joining(", ")))
-                .append(" LIMIT ").append(connectorConfig.getIncrementalSnashotChunkSize());
-        return sql.toString();
+        final String orderBy = table.primaryKeyColumns().stream()
+                .map(Column::name)
+                .collect(Collectors.joining(", "));
+        return jdbcConnection.buildSelectWithRowLimits(table.id(),
+                connectorConfig.getIncrementalSnashotChunkSize(),
+                "*",
+                Optional.ofNullable(condition),
+                orderBy);
     }
 
     protected String buildMaxPrimaryKeyQuery(Table table) {
-        final StringBuilder sql = new StringBuilder("SELECT * FROM ");
-        sql.append(table.id().toString());
-
-        // TODO limiting is db dialect based
-        sql.append(" ORDER BY ")
-                .append(table.primaryKeyColumns().stream().map(Column::name).collect(Collectors.joining(" DESC, ")))
-                .append(" DESC LIMIT ").append(1);
-        return sql.toString();
+        final String orderBy = table.primaryKeyColumns().stream()
+                .map(Column::name)
+                .collect(Collectors.joining(" DESC, ")) + " DESC";
+        return jdbcConnection.buildSelectWithRowLimits(table.id(), 1, "*", Optional.empty(), orderBy.toString());
     }
 
     @SuppressWarnings("unchecked")
