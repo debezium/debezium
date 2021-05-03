@@ -56,8 +56,7 @@ public class IncrementalSnapshotChangeEventSource<T extends DataCollectionId> {
     private Map<Struct, Object[]> window = new LinkedHashMap<>();
     private CommonConnectorConfig connectorConfig;
     private JdbcConnection jdbcConnection;
-    // TODO Pass Clock
-    private final Clock clock = Clock.system();
+    private final Clock clock;
     private final String signalWindowStatement;
     private final RelationalDatabaseSchema databaseSchema;
 
@@ -66,12 +65,13 @@ public class IncrementalSnapshotChangeEventSource<T extends DataCollectionId> {
     private IncrementalSnapshotContext<T> context = null;
 
     public IncrementalSnapshotChangeEventSource(CommonConnectorConfig config, JdbcConnection jdbcConnection,
-                                                DatabaseSchema<?> databaseSchema) {
+                                                DatabaseSchema<?> databaseSchema, Clock clock) {
         this.connectorConfig = config;
         this.jdbcConnection = jdbcConnection;
         signalWindowStatement = "INSERT INTO " + connectorConfig.getSignalingDataCollectionId()
                 + " VALUES (?, ?, null)";
         this.databaseSchema = (RelationalDatabaseSchema) databaseSchema;
+        this.clock = clock;
     }
 
     @SuppressWarnings("unchecked")

@@ -179,7 +179,7 @@ public class PostgresConnectorTask extends BaseSourceTask {
                     });
 
             final IncrementalSnapshotChangeEventSource<TableId> incrementalSnapshotChangeEventSource = new IncrementalSnapshotChangeEventSource<TableId>(
-                    connectorConfig, jdbcConnection, schema);
+                    connectorConfig, jdbcConnection, schema, clock);
             incrementalSnapshotChangeEventSource.init(previousOffset);
 
             final EventDispatcher<TableId> dispatcher = new EventDispatcher<>(

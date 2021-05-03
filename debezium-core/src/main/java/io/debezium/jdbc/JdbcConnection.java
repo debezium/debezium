@@ -36,7 +36,6 @@ import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
@@ -1410,20 +1409,20 @@ public class JdbcConnection implements AutoCloseable {
     public String buildSelectWithRowLimits(TableId tableId, int limit, String projection, Optional<String> condition, String orderBy) {
         final StringBuilder sql = new StringBuilder("SELECT ");
         sql
-            .append(projection)
-            .append(" FROM ");
+                .append(projection)
+                .append(" FROM ");
         // TODO Provide database based quoted format
         sql.append(tableId.toString());
         if (condition.isPresent()) {
             sql
-                .append(" WHERE ")
-                .append(condition.get());
+                    .append(" WHERE ")
+                    .append(condition.get());
         }
         sql
-            .append(" ORDER BY ")
-            .append(orderBy)
-            .append(" LIMIT ")
-            .append(limit);
+                .append(" ORDER BY ")
+                .append(orderBy)
+                .append(" LIMIT ")
+                .append(limit);
         return sql.toString();
     }
 }
