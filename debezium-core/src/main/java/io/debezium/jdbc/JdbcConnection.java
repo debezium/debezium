@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.OptionalLong;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
@@ -44,6 +45,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.DebeziumException;
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.annotation.ThreadSafe;
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.relational.Column;
@@ -1424,5 +1426,25 @@ public class JdbcConnection implements AutoCloseable {
                 .append(" LIMIT ")
                 .append(limit);
         return sql.toString();
+    }
+
+    /**
+     * Allow per-connector query creation to override for best database performance depending on the table size.
+     */
+    public Statement readTableStatement(CommonConnectorConfig connectorConfig, OptionalLong tableSize) throws SQLException {
+        int fetchSize = connectorConfig.getSnapshotFetchSize();
+        final Statement statement = connection().createStatement(); // the default cursor is FORWARD_ONLY
+        statement.setFetchSize(fetchSize);
+        return statement;
+    }
+
+    /**
+     * Allow per-connector prepared query creation to override for best database performance depending on the table size.
+     */
+    public PreparedStatement readTablePreparedStatement(CommonConnectorConfig connectorConfig, String sql, OptionalLong tableSize) throws SQLException {
+        int fetchSize = connectorConfig.getSnapshotFetchSize();
+        final PreparedStatement statement = connection().prepareStatement(sql); // the default cursor is FORWARD_ONLY
+        statement.setFetchSize(fetchSize);
+        return statement;
     }
 }
