@@ -51,10 +51,12 @@ import io.debezium.config.Field;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
+import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
 import io.debezium.relational.Tables.ColumnNameFilter;
 import io.debezium.relational.Tables.TableFilter;
+import io.debezium.schema.DatabaseSchema;
 import io.debezium.util.BoundedConcurrentHashMap;
 import io.debezium.util.BoundedConcurrentHashMap.Eviction;
 import io.debezium.util.BoundedConcurrentHashMap.EvictionListener;
@@ -1446,5 +1448,14 @@ public class JdbcConnection implements AutoCloseable {
         final PreparedStatement statement = connection().prepareStatement(sql); // the default cursor is FORWARD_ONLY
         statement.setFetchSize(fetchSize);
         return statement;
+    }
+
+    /**
+     * Reads a value from JDBC result set and execute per-connector conversion if needed
+     */
+    public <T extends DatabaseSchema<TableId>> Object getColumnValue(ResultSet rs, int columnIndex, Column column,
+                                                                     Table table, T schema)
+            throws SQLException {
+        return rs.getObject(columnIndex);
     }
 }
