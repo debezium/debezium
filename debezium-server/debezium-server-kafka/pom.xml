@@ -3,7 +3,7 @@
     <parent>
         <groupId>io.debezium</groupId>
         <artifactId>debezium-server</artifactId>
-        <version>1.5.0-SNAPSHOT</version>
+        <version>1.6.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
@@ -11,9 +11,6 @@
     <name>Debezium Server Kafka Sink Adapter</name>
     <packaging>jar</packaging>
 
-    <properties>
-        <skipITs>false</skipITs>
-    </properties>
     <dependencies>
         <dependency>
             <groupId>io.debezium</groupId>
@@ -97,6 +94,19 @@
         </resources>
     </build>
     <profiles>
+        <profile>
+            <id>quick</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+                <property>
+                    <name>quick</name>
+                </property>
+            </activation>
+            <properties>
+                <skipITs>true</skipITs>
+                <docker.skip>true</docker.skip>
+            </properties>
+        </profile>
         <!--  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
               Do not perform any Docker-related functionality
               To use, specify "-DskipITs" on the Maven command line.
