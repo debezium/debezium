@@ -2208,7 +2208,7 @@ If you set this option to `true` then you must also configure MySQL with the `bi
  +
 Setting `include.query` to `true` might expose tables or fields that are explicitly excluded or masked by including the original SQL statement in the change event. For this reason, the default setting is `false`.
 
-|[[mysql-property-event-processing-failure-handling-mode]]<<mysql-property-event-processing-failure-handling-mode, `+event.processing.failure.handling.mode+`>>
+|[[mysql-property-event-deserialization-failure-handling-mode]]<<mysql-property-event-deserialization-failure-handling-mode, `+event.deserialization.failure.handling.mode+`>>
 |`fail`
 |Specifies how the connector should react to exceptions during deserialization of binlog events. +
  +
