@@ -230,8 +230,8 @@ public class PostgresSnapshotChangeEventSource<SourceRecord extends SourceRecord
     }
 
     @Override
-    protected Object getColumnValue(ResultSet rs, int columnIndex, Column column) throws SQLException {
-        return jdbcConnection.getColumnValue(rs, columnIndex, column, null, schema);
+    protected Object getColumnValue(ResultSet rs, int columnIndex, Column column, Table table) throws SQLException {
+        return jdbcConnection.getColumnValue(rs, columnIndex, column, table, schema);
     }
 
     protected void setSnapshotTransactionIsolationLevel() throws SQLException {
