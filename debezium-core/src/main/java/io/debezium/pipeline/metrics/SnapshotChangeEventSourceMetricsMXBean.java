@@ -25,4 +25,10 @@ public interface SnapshotChangeEventSourceMetricsMXBean extends ChangeEventSourc
     long getSnapshotDurationInSeconds();
 
     Map<String, Long> getRowsScanned();
+
+    String getChunkId();
+
+    String getChunkFrom();
+
+    String getChunkTo();
 }
