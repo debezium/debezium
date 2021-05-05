@@ -93,44 +93,33 @@ class LogMinerQueryResultProcessor<SourceRecord extends SourceRecordWrapper> {
      * This method does all the job
      * @param resultSet the info from LogMiner view
      * @return number of processed DMLs from the given resultSet
+     * @throws SQLException thrown if any database exception occurs
      */
-    int processResult(ResultSet resultSet) {
+    void processResult(ResultSet resultSet) throws SQLException {
         int dmlCounter = 0, insertCounter = 0, updateCounter = 0, deleteCounter = 0;
         int commitCounter = 0;
         int rollbackCounter = 0;
         long rows = 0;
         Instant startTime = Instant.now();
-        while (context.isRunning()) {
-            try {
-                Instant rsNextStart = Instant.now();
-                if (!resultSet.next()) {
-                    break;
-                }
-                rows++;
-                streamingMetrics.addCurrentResultSetNext(Duration.between(rsNextStart, Instant.now()));
-            }
-            catch (SQLException e) {
-                LogMinerHelper.logError(streamingMetrics, "Closed resultSet");
-                return 0;
-            }
+        while (context.isRunning() && hasNext(resultSet)) {
+            rows++;
 
-            Scn scn = RowMapper.getScn(streamingMetrics, resultSet);
-            String tableName = RowMapper.getTableName(streamingMetrics, resultSet);
-            String segOwner = RowMapper.getSegOwner(streamingMetrics, resultSet);
-            int operationCode = RowMapper.getOperationCode(streamingMetrics, resultSet);
-            Timestamp changeTime = RowMapper.getChangeTime(streamingMetrics, resultSet);
-            String txId = RowMapper.getTransactionId(streamingMetrics, resultSet);
-            String operation = RowMapper.getOperation(streamingMetrics, resultSet);
-            String userName = RowMapper.getUsername(streamingMetrics, resultSet);
-            String rowId = RowMapper.getRowId(streamingMetrics, resultSet);
-            int rollbackFlag = RowMapper.getRollbackFlag(streamingMetrics, resultSet);
+            Scn scn = RowMapper.getScn(resultSet);
+            String tableName = RowMapper.getTableName(resultSet);
+            String segOwner = RowMapper.getSegOwner(resultSet);
+            int operationCode = RowMapper.getOperationCode(resultSet);
+            Timestamp changeTime = RowMapper.getChangeTime(resultSet);
+            String txId = RowMapper.getTransactionId(resultSet);
+            String operation = RowMapper.getOperation(resultSet);
+            String userName = RowMapper.getUsername(resultSet);
+            String rowId = RowMapper.getRowId(resultSet);
+            int rollbackFlag = RowMapper.getRollbackFlag(resultSet);
 
             boolean isDml = false;
             if (operationCode == RowMapper.INSERT || operationCode == RowMapper.UPDATE || operationCode == RowMapper.DELETE) {
                 isDml = true;
             }
-            String redoSql = RowMapper.getSqlRedo(streamingMetrics, resultSet, isDml, historyRecorder, scn, tableName, segOwner, operationCode, changeTime,
-                    txId);
+            String redoSql = RowMapper.getSqlRedo(resultSet, isDml, historyRecorder, scn, tableName, segOwner, operationCode, changeTime, txId);
 
             LOGGER.trace("scn={}, operationCode={}, operation={}, table={}, segOwner={}, userName={}, rowId={}, rollbackFlag={}", scn, operationCode, operation,
                     tableName, segOwner, userName, rowId, rollbackFlag);
@@ -138,9 +127,9 @@ class LogMinerQueryResultProcessor<SourceRecord extends SourceRecordWrapper> {
             String logMessage = String.format("transactionId=%s, SCN=%s, table_name=%s, segOwner=%s, operationCode=%s, offsetSCN=%s, " +
                     " commitOffsetSCN=%s", txId, scn, tableName, segOwner, operationCode, offsetContext.getScn(), offsetContext.getCommitScn());
 
-            if (scn == null) {
+            if (scn.isNull()) {
                 LogMinerHelper.logWarn(streamingMetrics, "Scn is null for {}", logMessage);
-                return 0;
+                return;
             }
 
             // Commit
@@ -268,7 +257,15 @@ class LogMinerQueryResultProcessor<SourceRecord extends SourceRecordWrapper> {
 
         streamingMetrics.addProcessedRows(rows);
         historyRecorder.flush();
-        return dmlCounter;
+    }
+
+    private boolean hasNext(ResultSet resultSet) throws SQLException {
+        Instant rsNextStart = Instant.now();
+        if (resultSet.next()) {
+            streamingMetrics.addCurrentResultSetNext(Duration.between(rsNextStart, Instant.now()));
+            return true;
+        }
+        return false;
     }
 
     /**
