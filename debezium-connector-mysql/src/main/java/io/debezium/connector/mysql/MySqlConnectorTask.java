@@ -28,6 +28,7 @@ import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotChangeEventSource;
 import io.debezium.relational.TableId;
 import io.debezium.relational.history.AbstractDatabaseHistory;
 import io.debezium.schema.TopicSelector;
@@ -117,6 +118,10 @@ public class MySqlConnectorTask extends BaseSourceTask {
 
         final MySqlEventMetadataProvider metadataProvider = new MySqlEventMetadataProvider();
 
+        final IncrementalSnapshotChangeEventSource<TableId> incrementalSnapshotChangeEventSource = new IncrementalSnapshotChangeEventSource<TableId>(
+                connectorConfig, connection, schema, clock);
+        incrementalSnapshotChangeEventSource.init(previousOffset);
+
         final EventDispatcher<TableId> dispatcher = new EventDispatcher<>(
                 connectorConfig,
                 topicSelector,
@@ -124,8 +129,12 @@ public class MySqlConnectorTask extends BaseSourceTask {
                 queue,
                 connectorConfig.getTableFilters().dataCollectionFilter(),
                 DataChangeEvent::new,
+                null,
                 metadataProvider,
-                schemaNameAdjuster);
+                null,
+                schemaNameAdjuster,
+                connection,
+                incrementalSnapshotChangeEventSource);
 
         final MySqlStreamingChangeEventSourceMetrics streamingMetrics = new MySqlStreamingChangeEventSourceMetrics(taskContext, queue, metadataProvider);
 

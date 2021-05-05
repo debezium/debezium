@@ -405,6 +405,7 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
 
     @Override
     protected Object getColumnValue(ResultSet rs, int columnIndex, Column column, Table table) throws SQLException {
+        // TODO Move to connection to support cursor fetch for incremental snapshot too
         return mysqlFieldReader.readField(rs, columnIndex, column, table);
     }
 
