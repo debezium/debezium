@@ -77,7 +77,9 @@ public class MySqlConnectorTask extends BaseSourceTask {
                 .withDefault("database.useCursorFetch", connectorConfig.useCursorFetch())
                 .build();
 
-        connection = new MySqlConnection(new MySqlConnectionConfiguration(config));
+        connection = new MySqlConnection(new MySqlConnectionConfiguration(config),
+                connectorConfig.useCursorFetch() ? new MysqlBinaryProtocolFieldReader()
+                        : new MysqlTextProtocolFieldReader());
         try {
             connection.setAutoCommit(false);
         }

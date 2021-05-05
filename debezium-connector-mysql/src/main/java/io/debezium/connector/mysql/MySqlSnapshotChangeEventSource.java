@@ -5,14 +5,11 @@
  */
 package io.debezium.connector.mysql;
 
-import java.io.UnsupportedEncodingException;
-import java.sql.Blob;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
@@ -38,7 +35,6 @@ import io.debezium.data.Envelope;
 import io.debezium.function.BlockingConsumer;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.spi.OffsetContext;
-import io.debezium.relational.Column;
 import io.debezium.relational.RelationalSnapshotChangeEventSource;
 import io.debezium.relational.RelationalTableFilters;
 import io.debezium.relational.Table;
@@ -64,7 +60,6 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
     private final List<SchemaChangeEvent> schemaEvents = new ArrayList<>();
     private Set<TableId> delayedSchemaSnapshotTables = Collections.emptySet();
     private final BlockingConsumer<Function<SourceRecord, SourceRecord>> lastEventProcessor;
-    private final MysqlFieldReader mysqlFieldReader;
 
     public MySqlSnapshotChangeEventSource(MySqlConnectorConfig connectorConfig, MySqlOffsetContext previousOffset, MySqlConnection connection,
                                           MySqlDatabaseSchema schema, EventDispatcher<TableId> dispatcher, Clock clock,
@@ -78,7 +73,6 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
         this.previousOffset = previousOffset;
         this.databaseSchema = schema;
         this.lastEventProcessor = lastEventProcessor;
-        this.mysqlFieldReader = connectorConfig.useCursorFetch() ? new MysqlBinaryProtocolFieldReader() : new MysqlTextProtocolFieldReader();
     }
 
     @Override
@@ -401,71 +395,6 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
     @Override
     protected Optional<String> getSnapshotSelect(RelationalSnapshotContext snapshotContext, TableId tableId) {
         return Optional.of(String.format("SELECT * FROM `%s`.`%s`", tableId.catalog(), tableId.table()));
-    }
-
-    @Override
-    protected Object getColumnValue(ResultSet rs, int columnIndex, Column column, Table table) throws SQLException {
-        // TODO Move to connection to support cursor fetch for incremental snapshot too
-        return mysqlFieldReader.readField(rs, columnIndex, column, table);
-    }
-
-    /**
-     * As MySQL connector/J implementation is broken for MySQL type "TIME" we have to use a binary-ish workaround
-     *
-     * @see https://issues.jboss.org/browse/DBZ-342
-     */
-    private Object readTimeField(ResultSet rs, int fieldNo) throws SQLException {
-        Blob b = rs.getBlob(fieldNo);
-        if (b == null) {
-            return null; // Don't continue parsing time field if it is null
-        }
-
-        try {
-            return MySqlValueConverters.stringToDuration(new String(b.getBytes(1, (int) (b.length())), "UTF-8"));
-        }
-        catch (UnsupportedEncodingException e) {
-            LOGGER.error("Could not read MySQL TIME value as UTF-8");
-            throw new RuntimeException(e);
-        }
-    }
-
-    /**
-     * In non-string mode the date field can contain zero in any of the date part which we need to handle as all-zero
-     *
-     */
-    private Object readDateField(ResultSet rs, int fieldNo, Column column, Table table) throws SQLException {
-        Blob b = rs.getBlob(fieldNo);
-        if (b == null) {
-            return null; // Don't continue parsing date field if it is null
-        }
-
-        try {
-            return MySqlValueConverters.stringToLocalDate(new String(b.getBytes(1, (int) (b.length())), "UTF-8"), column, table);
-        }
-        catch (UnsupportedEncodingException e) {
-            LOGGER.error("Could not read MySQL TIME value as UTF-8");
-            throw new RuntimeException(e);
-        }
-    }
-
-    /**
-     * In non-string mode the time field can contain zero in any of the date part which we need to handle as all-zero
-     *
-     */
-    private Object readTimestampField(ResultSet rs, int fieldNo, Column column, Table table) throws SQLException {
-        Blob b = rs.getBlob(fieldNo);
-        if (b == null) {
-            return null; // Don't continue parsing timestamp field if it is null
-        }
-
-        try {
-            return MySqlValueConverters.containsZeroValuesInDatePart((new String(b.getBytes(1, (int) (b.length())), "UTF-8")), column, table) ? null
-                    : rs.getTimestamp(fieldNo, Calendar.getInstance());
-        }
-        catch (UnsupportedEncodingException e) {
-            LOGGER.error("Could not read MySQL TIME value as UTF-8");
-            throw new RuntimeException(e);
-        }
     }
 
     private boolean isGloballyLocked() {
