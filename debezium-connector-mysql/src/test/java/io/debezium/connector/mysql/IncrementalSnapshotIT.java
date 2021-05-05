@@ -4,8 +4,9 @@
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
 
-package io.debezium.connector.postgresql;
+package io.debezium.connector.mysql;
 
+import java.nio.file.Path;
 import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.List;
@@ -25,41 +26,48 @@ import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
-import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
-import io.debezium.connector.postgresql.connection.PostgresConnection;
+import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
 import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.jdbc.JdbcConnection;
 import io.debezium.util.Testing;
 
 public class IncrementalSnapshotIT extends AbstractConnectorTest {
 
     private static final int ROW_COUNT = 1_000;
-    private static final String TOPIC_NAME = "test_server.s1.a";
     private static final int MAXIMUM_NO_RECORDS_CONSUMES = 2;
 
-    private static final String SETUP_TABLES_STMT = "DROP SCHEMA IF EXISTS s1 CASCADE;" + "CREATE SCHEMA s1; "
-            + "CREATE SCHEMA s2; " + "CREATE TABLE s1.a (pk SERIAL, aa integer, PRIMARY KEY(pk));"
-            + "CREATE TABLE s1.debezium_signal (id varchar(64), type varchar(32), data varchar(2048));";
+    private static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-is.txt").toAbsolutePath();
+
+    private static final String SERVER_NAME = "is_test";
+    private final UniqueDatabase DATABASE = new UniqueDatabase(SERVER_NAME, "incremental_snapshot_test").withDbHistoryPath(DB_HISTORY_PATH);
 
     @Before
     public void before() throws SQLException {
-        TestHelper.dropAllSchemas();
+        stopConnector();
+        DATABASE.createAndInitialize();
         initializeConnectorTestFramework();
+        Testing.Files.delete(DB_HISTORY_PATH);
     }
 
     @After
     public void after() {
-        stopConnector();
-        TestHelper.dropDefaultReplicationSlot();
-        TestHelper.dropPublication();
+        try {
+            stopConnector();
+        }
+        finally {
+            Testing.Files.delete(DB_HISTORY_PATH);
+        }
     }
 
     private void populateTable() throws SQLException {
-        try (final PostgresConnection pgConnection = TestHelper.create()) {
-            pgConnection.setAutoCommit(false);
-            for (int i = 0; i < ROW_COUNT; i++) {
-                pgConnection.executeWithoutCommitting(String.format("INSERT INTO s1.a (aa) VALUES (%s)", i));
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName());) {
+            try (JdbcConnection connection = db.connect()) {
+                connection.setAutoCommit(false);
+                for (int i = 0; i < ROW_COUNT; i++) {
+                    connection.executeWithoutCommitting(String.format("INSERT INTO a (aa) VALUES (%s)", i));
+                }
+                connection.commit();
             }
-            pgConnection.commit();
         }
     }
 
@@ -70,11 +78,12 @@ public class IncrementalSnapshotIT extends AbstractConnectorTest {
     protected Map<Integer, Integer> consumeMixedWithIncrementalSnapshot(int recordCount,
                                                                         Predicate<Map.Entry<Integer, Integer>> dataCompleted, Consumer<List<SourceRecord>> recordConsumer)
             throws InterruptedException {
+        final String topicName = DATABASE.topicForTable("a");
         final Map<Integer, Integer> dbChanges = new HashMap<>();
         int noRecords = 0;
         for (;;) {
             final SourceRecords records = consumeRecordsByTopic(1);
-            final List<SourceRecord> dataRecords = records.recordsForTopic(TOPIC_NAME);
+            final List<SourceRecord> dataRecords = records.recordsForTopic(topicName);
             if (records.allRecordsInOrder().isEmpty()) {
                 noRecords++;
                 Assertions.assertThat(noRecords).describedAs("Too many no data record results")
@@ -108,26 +117,16 @@ public class IncrementalSnapshotIT extends AbstractConnectorTest {
     public void snapshotOnly() throws Exception {
         Testing.Print.enable();
 
-        TestHelper.dropDefaultReplicationSlot();
-        TestHelper.execute(SETUP_TABLES_STMT);
         populateTable();
-        Configuration config = TestHelper.defaultConfig()
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.getValue())
-                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
-                .with(PostgresConnectorConfig.SIGNAL_DATA_COLLECTION, "s1.debezium_signal")
-                .with(PostgresConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 10)
-                .build();
-        start(PostgresConnector.class, config);
+        final Configuration config = config();
+        start(MySqlConnector.class, config);
         assertConnectorIsRunning();
-        TestHelper.waitForDefaultReplicationSlotBeActive();
 
         waitForAvailableRecords(100, TimeUnit.MILLISECONDS);
         // there shouldn't be any snapshot records
         assertNoRecordsToConsume();
 
-        // Insert the signal record
-        TestHelper.execute(
-                "INSERT INTO s1.debezium_signal VALUES('ad-hoc', 'execute-snapshot', '{\"data-collections\": [\"s1.a\"]}')");
+        sendAdHocSnapshotSignal();
 
         final int expectedRecordCount = ROW_COUNT;
         final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
@@ -136,34 +135,49 @@ public class IncrementalSnapshotIT extends AbstractConnectorTest {
         }
     }
 
+    protected void sendAdHocSnapshotSignal() throws SQLException {
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName());) {
+            try (JdbcConnection connection = db.connect()) {
+                connection.execute(
+                        "INSERT INTO debezium_signal VALUES('ad-hoc', 'execute-snapshot', '{\"data-collections\": [\"" + DATABASE.qualifiedTableName("a") + "\"]}')");
+            }
+        }
+    }
+
+    protected Configuration config() {
+        final Configuration config = DATABASE.defaultConfig()
+                .with(MySqlConnectorConfig.USER, "mysqluser")
+                .with(MySqlConnectorConfig.PASSWORD, "mysqlpw")
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY.getValue())
+                .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+                .with(MySqlConnectorConfig.SIGNAL_DATA_COLLECTION, DATABASE.qualifiedTableName("debezium_signal"))
+                .with(MySqlConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 10)
+                .build();
+        return config;
+    }
+
     @Test
     public void inserts() throws Exception {
         Testing.Print.enable();
 
-        TestHelper.dropDefaultReplicationSlot();
-        TestHelper.execute(SETUP_TABLES_STMT);
         populateTable();
-        Configuration config = TestHelper.defaultConfig()
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.getValue())
-                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
-                .with(PostgresConnectorConfig.SIGNAL_DATA_COLLECTION, "s1.debezium_signal")
-                .with(PostgresConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 10).build();
-        start(PostgresConnector.class, config);
+        final Configuration config = config();
+        start(MySqlConnector.class, config);
         assertConnectorIsRunning();
-        TestHelper.waitForDefaultReplicationSlotBeActive();
 
         waitForAvailableRecords(100, TimeUnit.MILLISECONDS);
         // there shouldn't be any snapshot records
         assertNoRecordsToConsume();
 
-        // Insert the signal record
-        TestHelper.execute(
-                "INSERT INTO s1.debezium_signal VALUES('ad-hoc', 'execute-snapshot', '{\"data-collections\": [\"s1.a\"]}')");
+        sendAdHocSnapshotSignal();
 
-        try (final PostgresConnection pgConnection = TestHelper.create()) {
-            for (int i = 0; i < ROW_COUNT; i++) {
-                pgConnection
-                        .executeWithoutCommitting(String.format("INSERT INTO s1.a (aa) VALUES (%s)", i + ROW_COUNT));
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName());) {
+            try (JdbcConnection connection = db.connect()) {
+                connection.setAutoCommit(false);
+                for (int i = 0; i < ROW_COUNT; i++) {
+                    connection.executeWithoutCommitting(String.format("INSERT INTO a (aa) VALUES (%s)", i + ROW_COUNT));
+                }
+                connection.commit();
             }
         }
 
@@ -178,35 +192,28 @@ public class IncrementalSnapshotIT extends AbstractConnectorTest {
     public void updates() throws Exception {
         Testing.Print.enable();
 
-        TestHelper.dropDefaultReplicationSlot();
-        TestHelper.execute(SETUP_TABLES_STMT);
         populateTable();
-        Configuration config = TestHelper.defaultConfig()
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.getValue())
-                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
-                .with(PostgresConnectorConfig.SIGNAL_DATA_COLLECTION, "s1.debezium_signal")
-                .with(PostgresConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 10)
-                .build();
-        start(PostgresConnector.class, config);
+        final Configuration config = config();
+        start(MySqlConnector.class, config);
         assertConnectorIsRunning();
-        TestHelper.waitForDefaultReplicationSlotBeActive();
 
         waitForAvailableRecords(100, TimeUnit.MILLISECONDS);
         // there shouldn't be any snapshot records
         assertNoRecordsToConsume();
 
-        // Insert the signal record
-        TestHelper.execute(
-                "INSERT INTO s1.debezium_signal VALUES('ad-hoc', 'execute-snapshot', '{\"data-collections\": [\"s1.a\"]}')");
+        sendAdHocSnapshotSignal();
 
         final int batchSize = 10;
-        try (final PostgresConnection pgConnection = TestHelper.create()) {
-            for (int i = 0; i < ROW_COUNT / batchSize; i++) {
-                TestHelper.execute(String.format("UPDATE s1.a SET aa = aa + 2000 WHERE pk > %s AND pk <= %s",
-                        i * batchSize, (i + 1) * batchSize));
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName());) {
+            try (JdbcConnection connection = db.connect()) {
+                connection.setAutoCommit(false);
+                for (int i = 0; i < ROW_COUNT; i++) {
+                    connection.executeWithoutCommitting(String.format("UPDATE a SET aa = aa + 2000 WHERE pk > %s AND pk <= %s",
+                            i * batchSize, (i + 1) * batchSize));
+                    connection.commit();
+                }
             }
         }
-
         final int expectedRecordCount = ROW_COUNT;
         final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount,
                 x -> x.getValue() >= 2000, null);
@@ -219,33 +226,26 @@ public class IncrementalSnapshotIT extends AbstractConnectorTest {
     public void updatesWithRestart() throws Exception {
         Testing.Print.enable();
 
-        TestHelper.dropDefaultReplicationSlot();
-        TestHelper.execute(SETUP_TABLES_STMT);
         populateTable();
-        Configuration config = TestHelper.defaultConfig()
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.getValue())
-                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
-                .with(PostgresConnectorConfig.SIGNAL_DATA_COLLECTION, "s1.debezium_signal")
-                .with(PostgresConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 10)
-                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, false)
-                .build();
-        startAndConsumeTillEnd(PostgresConnector.class, config);
+        final Configuration config = config();
+        startAndConsumeTillEnd(MySqlConnector.class, config);
         assertConnectorIsRunning();
-        TestHelper.waitForDefaultReplicationSlotBeActive();
 
         waitForAvailableRecords(100, TimeUnit.MILLISECONDS);
         // there shouldn't be any snapshot records
         assertNoRecordsToConsume();
 
-        // Insert the signal record
-        TestHelper.execute(
-                "INSERT INTO s1.debezium_signal VALUES('ad-hoc', 'execute-snapshot', '{\"data-collections\": [\"s1.a\"]}')");
+        sendAdHocSnapshotSignal();
 
         final int batchSize = 10;
-        try (final PostgresConnection pgConnection = TestHelper.create()) {
-            for (int i = 0; i < ROW_COUNT / batchSize; i++) {
-                TestHelper.execute(String.format("UPDATE s1.a SET aa = aa + 2000 WHERE pk > %s AND pk <= %s",
-                        i * batchSize, (i + 1) * batchSize));
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName());) {
+            try (JdbcConnection connection = db.connect()) {
+                connection.setAutoCommit(false);
+                for (int i = 0; i < ROW_COUNT; i++) {
+                    connection.executeWithoutCommitting(String.format("UPDATE a SET aa = aa + 2000 WHERE pk > %s AND pk <= %s",
+                            i * batchSize, (i + 1) * batchSize));
+                    connection.commit();
+                }
             }
         }
 
@@ -258,9 +258,8 @@ public class IncrementalSnapshotIT extends AbstractConnectorTest {
                         stopConnector();
                         assertConnectorNotRunning();
 
-                        start(PostgresConnector.class, config);
+                        start(MySqlConnector.class, config);
                         assertConnectorIsRunning();
-                        TestHelper.waitForDefaultReplicationSlotBeActive();
                         restarted.set(true);
                     }
                 });
@@ -273,29 +272,21 @@ public class IncrementalSnapshotIT extends AbstractConnectorTest {
     public void updatesLargeChunk() throws Exception {
         Testing.Print.enable();
 
-        TestHelper.dropDefaultReplicationSlot();
-        TestHelper.execute(SETUP_TABLES_STMT);
         populateTable();
-        Configuration config = TestHelper.defaultConfig()
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.getValue())
-                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
-                .with(PostgresConnectorConfig.SIGNAL_DATA_COLLECTION, "s1.debezium_signal")
-                .with(PostgresConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, ROW_COUNT)
-                .build();
-        start(PostgresConnector.class, config);
+        final Configuration config = config();
+        start(MySqlConnector.class, config);
         assertConnectorIsRunning();
-        TestHelper.waitForDefaultReplicationSlotBeActive();
 
         waitForAvailableRecords(100, TimeUnit.MILLISECONDS);
         // there shouldn't be any snapshot records
         assertNoRecordsToConsume();
 
-        // Insert the signal record
-        TestHelper.execute(
-                "INSERT INTO s1.debezium_signal VALUES('ad-hoc', 'execute-snapshot', '{\"data-collections\": [\"s1.a\"]}')");
+        sendAdHocSnapshotSignal();
 
-        try (final PostgresConnection pgConnection = TestHelper.create()) {
-            pgConnection.execute("UPDATE s1.a SET aa = aa + 2000");
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName());) {
+            try (JdbcConnection connection = db.connect()) {
+                connection.execute("UPDATE a SET aa = aa + 2000");
+            }
         }
 
         final int expectedRecordCount = ROW_COUNT;
@@ -310,28 +301,16 @@ public class IncrementalSnapshotIT extends AbstractConnectorTest {
     public void snapshotOnlyWithRestart() throws Exception {
         Testing.Print.enable();
 
-        TestHelper.dropDefaultReplicationSlot();
-        TestHelper.execute(SETUP_TABLES_STMT);
         populateTable();
-        Configuration config = TestHelper.defaultConfig()
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.getValue())
-                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
-                .with(PostgresConnectorConfig.SIGNAL_DATA_COLLECTION, "s1.debezium_signal")
-                .with(PostgresConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 10)
-                .with(PostgresConnectorConfig.MAX_BATCH_SIZE, 20)
-                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, false)
-                .build();
-        startAndConsumeTillEnd(PostgresConnector.class, config);
+        final Configuration config = config();
+        startAndConsumeTillEnd(MySqlConnector.class, config);
         assertConnectorIsRunning();
-        TestHelper.waitForDefaultReplicationSlotBeActive();
 
         waitForAvailableRecords(100, TimeUnit.MILLISECONDS);
         // there shouldn't be any snapshot records
         assertNoRecordsToConsume();
 
-        // Insert the signal record
-        TestHelper.execute(
-                "INSERT INTO s1.debezium_signal VALUES('ad-hoc', 'execute-snapshot', '{\"data-collections\": [\"s1.a\"]}')");
+        sendAdHocSnapshotSignal();
 
         final int expectedRecordCount = ROW_COUNT;
         final AtomicInteger recordCounter = new AtomicInteger();
@@ -342,9 +321,8 @@ public class IncrementalSnapshotIT extends AbstractConnectorTest {
                         stopConnector();
                         assertConnectorNotRunning();
 
-                        start(PostgresConnector.class, config);
+                        start(MySqlConnector.class, config);
                         assertConnectorIsRunning();
-                        TestHelper.waitForDefaultReplicationSlotBeActive();
                         restarted.set(true);
                     }
                 });
