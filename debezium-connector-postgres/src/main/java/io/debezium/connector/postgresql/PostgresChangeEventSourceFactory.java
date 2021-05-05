@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.postgresql;
 
+import java.util.Optional;
+
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.connector.postgresql.spi.SlotCreationResult;
@@ -12,12 +14,15 @@ import io.debezium.connector.postgresql.spi.SlotState;
 import io.debezium.connector.postgresql.spi.Snapshotter;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.ChangeEventSourceFactory;
+import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.SnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.relational.TableId;
+import io.debezium.schema.DataCollectionId;
 import io.debezium.util.Clock;
 
 public class PostgresChangeEventSourceFactory implements ChangeEventSourceFactory {
@@ -79,5 +84,20 @@ public class PostgresChangeEventSourceFactory implements ChangeEventSourceFactor
                 schema,
                 taskContext,
                 replicationConnection);
+    }
+
+    @Override
+    public Optional<IncrementalSnapshotChangeEventSource<? extends DataCollectionId>> getIncrementalSnapshotChangeEventSource(
+                                                                                                                              OffsetContext offsetContext,
+                                                                                                                              SnapshotProgressListener snapshotProgressListener,
+                                                                                                                              DataChangeEventListener dataChangeEventListener) {
+        final IncrementalSnapshotChangeEventSource<TableId> incrementalSnapshotChangeEventSource = new IncrementalSnapshotChangeEventSource<TableId>(
+                configuration,
+                jdbcConnection,
+                schema,
+                clock,
+                snapshotProgressListener,
+                dataChangeEventListener);
+        return Optional.of(incrementalSnapshotChangeEventSource);
     }
 }

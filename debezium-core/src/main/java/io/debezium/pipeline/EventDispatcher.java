@@ -84,7 +84,7 @@ public class EventDispatcher<T extends DataCollectionId> {
     private final Schema schemaChangeValueSchema;
     private final TableChangesSerializer<List<Struct>> tableChangesSerializer = new ConnectTableChangeSerializer();
     private final Signal signal;
-    private final IncrementalSnapshotChangeEventSource<T> incrementalSnapshotChangeEventSource;
+    private IncrementalSnapshotChangeEventSource<T> incrementalSnapshotChangeEventSource;
 
     /**
      * Change event receiver for events dispatched from a streaming change event source.
@@ -95,7 +95,7 @@ public class EventDispatcher<T extends DataCollectionId> {
                            DatabaseSchema<T> schema, ChangeEventQueue<DataChangeEvent> queue, DataCollectionFilter<T> filter,
                            ChangeEventCreator changeEventCreator, EventMetadataProvider metadataProvider, SchemaNameAdjuster schemaNameAdjuster) {
         this(connectorConfig, topicSelector, schema, queue, filter, changeEventCreator, null, metadataProvider,
-                null, schemaNameAdjuster, null, null);
+                null, schemaNameAdjuster, null);
     }
 
     public EventDispatcher(CommonConnectorConfig connectorConfig, TopicSelector<T> topicSelector,
@@ -103,14 +103,14 @@ public class EventDispatcher<T extends DataCollectionId> {
                            ChangeEventCreator changeEventCreator, EventMetadataProvider metadataProvider,
                            Heartbeat heartbeat, SchemaNameAdjuster schemaNameAdjuster) {
         this(connectorConfig, topicSelector, schema, queue, filter, changeEventCreator, null, metadataProvider,
-                heartbeat, schemaNameAdjuster, null, null);
+                heartbeat, schemaNameAdjuster, null);
     }
 
     public EventDispatcher(CommonConnectorConfig connectorConfig, TopicSelector<T> topicSelector,
                            DatabaseSchema<T> schema, ChangeEventQueue<DataChangeEvent> queue, DataCollectionFilter<T> filter,
                            ChangeEventCreator changeEventCreator, InconsistentSchemaHandler<T> inconsistentSchemaHandler,
                            EventMetadataProvider metadataProvider, Heartbeat customHeartbeat, SchemaNameAdjuster schemaNameAdjuster,
-                           JdbcConnection jdbcConnection, IncrementalSnapshotChangeEventSource<T> incrementalSnapshotChangeEventSource) {
+                           JdbcConnection jdbcConnection) {
         this.connectorConfig = connectorConfig;
         this.topicSelector = topicSelector;
         this.schema = schema;
@@ -127,7 +127,6 @@ public class EventDispatcher<T extends DataCollectionId> {
         this.neverSkip = connectorConfig.supportsOperationFiltering() || this.skippedOperations.isEmpty();
 
         this.transactionMonitor = new TransactionMonitor(connectorConfig, metadataProvider, this::enqueueTransactionMessage);
-        this.incrementalSnapshotChangeEventSource = incrementalSnapshotChangeEventSource;
         this.signal = new Signal(connectorConfig, this);
         if (customHeartbeat != null) {
             heartbeat = customHeartbeat;
@@ -183,8 +182,8 @@ public class EventDispatcher<T extends DataCollectionId> {
         return new BufferingSnapshotChangeRecordReceiver();
     }
 
-    public SnapshotReceiver getIncrementalSnapshotChangeEventReceiver() {
-        return new IncrementalSnapshotChangeRecordReceiver();
+    public SnapshotReceiver getIncrementalSnapshotChangeEventReceiver(DataChangeEventListener dataListener) {
+        return new IncrementalSnapshotChangeRecordReceiver(dataListener);
     }
 
     /**
@@ -462,6 +461,12 @@ public class EventDispatcher<T extends DataCollectionId> {
 
     private final class IncrementalSnapshotChangeRecordReceiver implements SnapshotReceiver {
 
+        public final DataChangeEventListener dataListener;
+
+        public IncrementalSnapshotChangeRecordReceiver(DataChangeEventListener dataListener) {
+            this.dataListener = dataListener;
+        }
+
         @Override
         public void changeRecord(DataCollectionSchema dataCollectionSchema,
                                  Operation operation,
@@ -483,6 +488,7 @@ public class EventDispatcher<T extends DataCollectionId> {
                     keySchema, key,
                     dataCollectionSchema.getEnvelopeSchema().schema(), value,
                     null, headers);
+            dataListener.onEvent(dataCollectionSchema.id(), offsetContext, keySchema, value);
             queue.enqueue(changeEventCreator.createDataChangeEvent(record));
         }
 
@@ -532,6 +538,15 @@ public class EventDispatcher<T extends DataCollectionId> {
      */
     public void setEventListener(DataChangeEventListener eventListener) {
         this.eventListener = eventListener;
+    }
+
+    /**
+     * Enable support for incremental snapshotting.
+     *
+     * @param eventListener
+     */
+    public void setIncrementalSnapshotChangeEventSource(Optional<IncrementalSnapshotChangeEventSource<? extends DataCollectionId>> incrementalSnapshotChangeEventSource) {
+        this.incrementalSnapshotChangeEventSource = (IncrementalSnapshotChangeEventSource<T>) incrementalSnapshotChangeEventSource.orElse(null);
     }
 
     /**

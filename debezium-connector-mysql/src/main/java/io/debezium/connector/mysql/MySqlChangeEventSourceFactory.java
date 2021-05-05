@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mysql;
 
+import java.util.Optional;
 import java.util.function.Function;
 
 import org.apache.kafka.connect.source.SourceRecord;
@@ -13,12 +14,15 @@ import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.ChangeEventSourceFactory;
+import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.SnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.relational.TableId;
+import io.debezium.schema.DataCollectionId;
 import io.debezium.util.Clock;
 
 public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory {
@@ -30,6 +34,7 @@ public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory {
     private final Clock clock;
     private final MySqlTaskContext taskContext;
     private final MySqlStreamingChangeEventSourceMetrics streamingMetrics;
+    private final MySqlDatabaseSchema schema;
     // MySQL snapshot requires buffering to modify the last record in the snapshot as sometimes it is
     // impossible to detect it till the snapshot is ended. Mainly when the last snapshotted table is empty.
     // Based on the DBZ-3113 the code can change in the future and it will be handled not in MySQL
@@ -48,6 +53,7 @@ public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory {
         this.taskContext = taskContext;
         this.streamingMetrics = streamingMetrics;
         this.queue = queue;
+        this.schema = schema;
     }
 
     @Override
@@ -73,5 +79,20 @@ public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory {
                 clock,
                 taskContext,
                 streamingMetrics);
+    }
+
+    @Override
+    public Optional<IncrementalSnapshotChangeEventSource<? extends DataCollectionId>> getIncrementalSnapshotChangeEventSource(
+                                                                                                                              OffsetContext offsetContext,
+                                                                                                                              SnapshotProgressListener snapshotProgressListener,
+                                                                                                                              DataChangeEventListener dataChangeEventListener) {
+        final IncrementalSnapshotChangeEventSource<TableId> incrementalSnapshotChangeEventSource = new IncrementalSnapshotChangeEventSource<TableId>(
+                configuration,
+                connection,
+                schema,
+                clock,
+                snapshotProgressListener,
+                dataChangeEventListener);
+        return Optional.of(incrementalSnapshotChangeEventSource);
     }
 }

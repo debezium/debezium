@@ -146,8 +146,10 @@ public class IncrementalSnapshotContext<T> {
     }
 
     @SuppressWarnings("unchecked")
-    public void addDataCollectionNamesToSnapshot(List<String> dataCollectionIds) {
-        addTablesIdsToSnapshot(dataCollectionIds.stream().map(x -> (T) TableId.parse(x)).collect(Collectors.toList()));
+    public List<T> addDataCollectionNamesToSnapshot(List<String> dataCollectionIds) {
+        final List<T> newDataCollectionIds = dataCollectionIds.stream().map(x -> (T) TableId.parse(x)).collect(Collectors.toList());
+        addTablesIdsToSnapshot(newDataCollectionIds);
+        return newDataCollectionIds;
     }
 
     public static <U> IncrementalSnapshotContext<U> load(Map<String, ?> offsets, Class<U> clazz) {

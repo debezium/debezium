@@ -19,18 +19,16 @@ public class CloseIncrementalSnapshotWindow implements Signal.Action {
 
     public static final String NAME = "snapshot-window-close";
 
-    private final IncrementalSnapshotChangeEventSource<?> eventSource;
     private final EventDispatcher<? extends DataCollectionId> dispatcher;
 
-    public CloseIncrementalSnapshotWindow(EventDispatcher<? extends DataCollectionId> dispatcher, IncrementalSnapshotChangeEventSource<?> eventSource) {
+    public CloseIncrementalSnapshotWindow(EventDispatcher<? extends DataCollectionId> dispatcher) {
         this.dispatcher = dispatcher;
-        this.eventSource = eventSource;
     }
 
     @SuppressWarnings({ "rawtypes", "unchecked" })
     @Override
     public boolean arrived(Payload signalPayload) throws InterruptedException {
-        eventSource.closeWindow(signalPayload.id, (EventDispatcher) dispatcher, signalPayload.offsetContext);
+        dispatcher.getIncrementalSnapshotChangeEventSource().closeWindow(signalPayload.id, (EventDispatcher) dispatcher, signalPayload.offsetContext);
         return true;
     }
 

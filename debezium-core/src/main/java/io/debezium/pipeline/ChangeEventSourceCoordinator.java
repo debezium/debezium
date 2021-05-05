@@ -7,6 +7,7 @@ package io.debezium.pipeline;
 
 import java.time.Duration;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
@@ -22,6 +23,7 @@ import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.pipeline.metrics.SnapshotChangeEventSourceMetrics;
 import io.debezium.pipeline.metrics.StreamingChangeEventSourceMetrics;
 import io.debezium.pipeline.metrics.spi.ChangeEventSourceMetricsFactory;
+import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.ChangeEventSource;
 import io.debezium.pipeline.source.spi.ChangeEventSource.ChangeEventSourceContext;
 import io.debezium.pipeline.source.spi.ChangeEventSourceFactory;
@@ -31,6 +33,7 @@ import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.SnapshotResult;
 import io.debezium.pipeline.spi.SnapshotResult.SnapshotResultStatus;
+import io.debezium.schema.DataCollectionId;
 import io.debezium.schema.DatabaseSchema;
 import io.debezium.util.Threads;
 
@@ -134,9 +137,13 @@ public class ChangeEventSourceCoordinator {
 
     protected void streamEvents(OffsetContext offsetContext, ChangeEventSourceContext context) throws InterruptedException {
         streamingSource = changeEventSourceFactory.getStreamingChangeEventSource(offsetContext);
+        final Optional<IncrementalSnapshotChangeEventSource<? extends DataCollectionId>> incrementalSnapshotChangeEventSource = changeEventSourceFactory
+                .getIncrementalSnapshotChangeEventSource(offsetContext, snapshotMetrics, snapshotMetrics);
+        eventDispatcher.setIncrementalSnapshotChangeEventSource(incrementalSnapshotChangeEventSource);
         eventDispatcher.setEventListener(streamingMetrics);
         streamingConnected(true);
         LOGGER.info("Starting streaming");
+        incrementalSnapshotChangeEventSource.ifPresent(x -> x.init(offsetContext));
         streamingSource.execute(context);
         LOGGER.info("Finished streaming");
     }

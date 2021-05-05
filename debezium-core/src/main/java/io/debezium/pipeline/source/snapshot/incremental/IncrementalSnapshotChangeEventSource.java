@@ -25,6 +25,8 @@ import io.debezium.annotation.NotThreadSafe;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.source.spi.DataChangeEventListener;
+import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.spi.ChangeRecordEmitter;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.relational.Column;
@@ -60,19 +62,25 @@ public class IncrementalSnapshotChangeEventSource<T extends DataCollectionId> {
     private final Clock clock;
     private final String signalWindowStatement;
     private final RelationalDatabaseSchema databaseSchema;
+    private final SnapshotProgressListener progressListener;
+    private final DataChangeEventListener dataListener;
+    private long totalRowsScanned = 0;
 
     private Table currentTable;
 
     private IncrementalSnapshotContext<T> context = null;
 
     public IncrementalSnapshotChangeEventSource(CommonConnectorConfig config, JdbcConnection jdbcConnection,
-                                                DatabaseSchema<?> databaseSchema, Clock clock) {
+                                                DatabaseSchema<?> databaseSchema, Clock clock, SnapshotProgressListener progressListener,
+                                                DataChangeEventListener dataChangeEventListener) {
         this.connectorConfig = config;
         this.jdbcConnection = jdbcConnection;
         signalWindowStatement = "INSERT INTO " + connectorConfig.getSignalingDataCollectionId()
                 + " VALUES (?, ?, null)";
         this.databaseSchema = (RelationalDatabaseSchema) databaseSchema;
         this.clock = clock;
+        this.progressListener = progressListener;
+        this.dataListener = dataChangeEventListener;
     }
 
     @SuppressWarnings("unchecked")
@@ -96,7 +104,7 @@ public class IncrementalSnapshotChangeEventSource<T extends DataCollectionId> {
         offsetContext.event((T) context.currentDataCollectionId(), clock.currentTimeAsInstant());
         dispatcher.dispatchSnapshotEvent((T) context.currentDataCollectionId(),
                 getChangeRecordEmitter(context.currentDataCollectionId(), offsetContext, row),
-                dispatcher.getIncrementalSnapshotChangeEventReceiver());
+                dispatcher.getIncrementalSnapshotChangeEventReceiver(dataListener));
     }
 
     /**
@@ -187,6 +195,7 @@ public class IncrementalSnapshotChangeEventSource<T extends DataCollectionId> {
         }
         LOGGER.info("Incremental snapshot in progress, need to read new chunk on start");
         try {
+            progressListener.snapshotStarted();
             readChunk();
         }
         catch (InterruptedException e) {
@@ -234,7 +243,11 @@ public class IncrementalSnapshotChangeEventSource<T extends DataCollectionId> {
                 if (window.isEmpty()) {
                     LOGGER.info("No data returned by the query, incremental snapshotting of table '{}' finished",
                             currentTableId);
+                    tableScanCompleted();
                     context.nextDataCollection();
+                    if (!context.snapshotRunning()) {
+                        progressListener.snapshotCompleted();
+                    }
                 }
                 else {
                     break;
@@ -255,8 +268,10 @@ public class IncrementalSnapshotChangeEventSource<T extends DataCollectionId> {
         if (!context.snapshotRunning()) {
             shouldReadChunk = true;
         }
-        context.addDataCollectionNamesToSnapshot(dataCollectionIds);
+        final List<T> newDataCollectionIds = context.addDataCollectionNamesToSnapshot(dataCollectionIds);
         if (shouldReadChunk) {
+            progressListener.snapshotStarted();
+            progressListener.monitoredDataCollectionsDetermined(newDataCollectionIds);
             readChunk();
         }
     }
@@ -312,10 +327,21 @@ public class IncrementalSnapshotChangeEventSource<T extends DataCollectionId> {
 
             LOGGER.debug("\t Finished exporting {} records for window of table table '{}'; total duration '{}'", rows,
                     currentTable.id(), Strings.duration(clock.currentTimeInMillis() - exportStart));
+            incrementTableRowsScanned(rows);
         }
         catch (SQLException e) {
             throw new DebeziumException("Snapshotting of table " + currentTable.id() + " failed", e);
         }
+    }
+
+    private void incrementTableRowsScanned(long rows) {
+        totalRowsScanned += rows;
+        progressListener.rowsScanned(currentTable.id(), totalRowsScanned);
+    }
+
+    private void tableScanCompleted() {
+        progressListener.dataCollectionSnapshotCompleted(currentTable.id(), totalRowsScanned);
+        totalRowsScanned = 0;
     }
 
     // Extract to JdbcConnection, same as in RelationalSnapshotChangeEventSource
