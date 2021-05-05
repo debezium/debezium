@@ -7,11 +7,9 @@ package io.debezium.connector.sqlserver;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Savepoint;
 import java.sql.Statement;
-import java.sql.Types;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -279,19 +277,6 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
         // ChangeTable will be null if cdc has not been enabled for it yet.
         // Return true to allow columns to be captured.
         return true;
-    }
-
-    @Override
-    protected Object getColumnValue(ResultSet rs, int columnIndex, Column column) throws SQLException {
-        final ResultSetMetaData metaData = rs.getMetaData();
-        final int columnType = metaData.getColumnType(columnIndex);
-
-        if (columnType == Types.TIME) {
-            return rs.getTimestamp(columnIndex);
-        }
-        else {
-            return super.getColumnValue(rs, columnIndex, column);
-        }
     }
 
     /**

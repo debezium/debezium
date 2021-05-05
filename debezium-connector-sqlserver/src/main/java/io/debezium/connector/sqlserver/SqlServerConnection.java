@@ -8,8 +8,10 @@ package io.debezium.connector.sqlserver;
 
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.sql.Types;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
@@ -37,6 +39,7 @@ import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
+import io.debezium.schema.DatabaseSchema;
 import io.debezium.util.BoundedConcurrentHashMap;
 import io.debezium.util.Clock;
 
@@ -541,5 +544,20 @@ public class SqlServerConnection extends JdbcConnection {
         // SQL Server provides indices also without index name
         // so we need to ignore them
         return indexName != null;
+    }
+
+    @Override
+    public <T extends DatabaseSchema<TableId>> Object getColumnValue(ResultSet rs, int columnIndex, Column column,
+                                                                     Table table, T schema)
+            throws SQLException {
+        final ResultSetMetaData metaData = rs.getMetaData();
+        final int columnType = metaData.getColumnType(columnIndex);
+
+        if (columnType == Types.TIME) {
+            return rs.getTimestamp(columnIndex);
+        }
+        else {
+            return super.getColumnValue(rs, columnIndex, column, table, schema);
+        }
     }
 }
