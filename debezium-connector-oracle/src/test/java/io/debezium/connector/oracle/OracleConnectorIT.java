@@ -1712,8 +1712,8 @@ public class OracleConnectorIT extends AbstractConnectorTest {
             waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
             try {
-                connection.executeWithoutCommitting("INSERT INTO dbz3322 (id,data) values (1, 'Test')");
-                connection.executeWithoutCommitting("INSERT INTO dbz3322 (id,data) values (1, 'Test')");
+                connection.executeWithoutCommitting("INSERT INTO dbz3322 (id,data) values (1, 'Test1')");
+                connection.executeWithoutCommitting("INSERT INTO dbz3322 (id,data) values (1, 'Test2')");
             }
             catch (SQLException e) {
                 // ignore unique constraint violation
@@ -1727,6 +1727,11 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
             SourceRecords records = consumeRecordsByTopic(1);
             assertThat(records.recordsForTopic("server1.DEBEZIUM.DBZ3322")).hasSize(1);
+
+            final Struct after = (((Struct) records.recordsForTopic("server1.DEBEZIUM.DBZ3322").get(0).value()).getStruct("after"));
+            assertThat(after.get("ID")).isEqualTo(1);
+            assertThat(after.get("DATA")).isEqualTo("Test1");
+
             assertNoRecordsToConsume();
 
         }
