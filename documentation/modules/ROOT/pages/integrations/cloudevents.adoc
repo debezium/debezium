@@ -42,7 +42,7 @@ To configure a {prodname} connector to emit change event records that conform to
 Currently, only structured mapping mode is supported. The CloudEvents change event envelope can be JSON or Avro and each envelope type supports JSON or Avro as the `data` format. It is expected that a future {prodname} release will support binary mapping mode. 
 
 ifdef::product[]
-Information about emmitting change events in CloudEvents format is organized as follows:  
+Information about emitting change events in CloudEvents format is organized as follows:  
 
 * xref:example-debezium-change-event-records-in-cloudevents-format[]
 * xref:example-of-configuring-debezium-cloudevents-converter[]
