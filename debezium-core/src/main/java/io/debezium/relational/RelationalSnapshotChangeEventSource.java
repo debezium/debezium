@@ -454,11 +454,6 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
         return jdbcConnection.getColumnValue(rs, columnIndex, column, table, schema);
     }
 
-    @Deprecated
-    protected Object getColumnValue(ResultSet rs, int columnIndex, Column column) throws SQLException {
-        return jdbcConnection.getColumnValue(rs, columnIndex, column, null, schema);
-    }
-
     /**
      * Allow per-connector query creation to override for best database performance depending on the table size.
      */
