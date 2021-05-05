@@ -47,6 +47,14 @@ public class MySqlDefaultValueConverter {
 
     private static final String EPOCH_DATE = "1970-01-01";
 
+    private static final DateTimeFormatter DATE_WITH_OPTIONAL_TIME_FORMATTER_BUILDER = new DateTimeFormatterBuilder()
+            .append(DateTimeFormatter.ISO_LOCAL_DATE)
+            .optionalStart()
+            .appendLiteral(" ")
+            .append(DateTimeFormatter.ISO_LOCAL_TIME)
+            .optionalEnd()
+            .toFormatter();
+
     private final MySqlValueConverters converters;
 
     public MySqlDefaultValueConverter(MySqlValueConverters converters) {
@@ -99,23 +107,24 @@ public class MySqlDefaultValueConverter {
     }
 
     /**
-     * Converts a string object for an object type of {@link LocalDate}.
+     * Converts a string object for an object type of {@link LocalDate} or {@link LocalDateTime} in case of MySql Date type.
      * If the column definition allows null and default value is 0000-00-00, we need return null;
      * else 0000-00-00 will be replaced with 1970-01-01;
      *
      * @param column the column definition describing the {@code data} value; never null
-     * @param value the string object to be converted into a {@link LocalDate} type;
+     * @param value the string object to be converted into a {@link LocalDate} type or {@link LocalDateTime} in case of MySql Date type;
      * @return the converted value;
      */
     private Object convertToLocalDate(Column column, String value) {
-        final boolean zero = EPOCH_EQUIVALENT_DATE.matcher(value).matches() || "0".equals(value);
+        final boolean zero = EPOCH_EQUIVALENT_DATE.matcher(value).matches() || EPOCH_EQUIVALENT_TIMESTAMP.matcher(value).matches() || "0".equals(value);
+
         if (zero && column.isOptional()) {
             return null;
         }
         if (zero) {
             value = EPOCH_DATE;
         }
-        return LocalDate.from(DateTimeFormatter.ISO_LOCAL_DATE.parse(value));
+        return LocalDate.from(DATE_WITH_OPTIONAL_TIME_FORMATTER_BUILDER.parse(value));
     }
 
     /**
