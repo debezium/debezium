@@ -452,7 +452,7 @@ public abstract class RelationalSnapshotChangeEventSource<SourceRecord extends S
     protected abstract Optional<String> getSnapshotSelect(RelationalSnapshotContext snapshotContext, TableId tableId);
 
     protected Object getColumnValue(ResultSet rs, int columnIndex, Column column, Table table) throws SQLException {
-        return getColumnValue(rs, columnIndex, column);
+        return jdbcConnection.getColumnValue(rs, columnIndex, column, table, schema);
     }
 
     @Deprecated
