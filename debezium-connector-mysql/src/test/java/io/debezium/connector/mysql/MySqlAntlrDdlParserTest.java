@@ -1658,13 +1658,90 @@ public class MySqlAntlrDdlParserTest {
     }
 
     @Test
-    @FixFor("DBZ-1411")
+    @FixFor({ "DBZ-1411", "DBZ-3499" })
     public void shouldParseGrantStatement() {
         parser.parse("GRANT ALL PRIVILEGES ON `mysql`.* TO 'mysqluser'@'%'", tables);
         parser.parse("GRANT ALL PRIVILEGES ON `mysql`.`t` TO 'mysqluser'@'%'", tables);
         parser.parse("GRANT ALL PRIVILEGES ON mysql.t TO 'mysqluser'@'%'", tables);
         parser.parse("GRANT ALL PRIVILEGES ON `mysql`.t TO 'mysqluser'@'%'", tables);
         parser.parse("GRANT ALL PRIVILEGES ON mysql.`t` TO 'mysqluser'@'%'", tables);
+
+        parser.parse("GRANT ALTER ON *.* TO 'mysqluser'@'localhost'", tables);
+        parser.parse("GRANT ALTER ROUTINE ON *.* TO 'mysqluser'@'localhost'", tables);
+        parser.parse("GRANT CREATE ON *.* TO 'mysqluser'@'localhost'", tables);
+        parser.parse("GRANT CREATE TEMPORARY TABLES ON *.* TO 'mysqluser'@'localhost'", tables);
+        parser.parse("GRANT CREATE ROUTINE ON *.* TO 'mysqluser'@'localhost'", tables);
+        parser.parse("GRANT CREATE VIEW ON *.* TO 'mysqluser'@'localhost'", tables);
+        parser.parse("GRANT CREATE USER ON *.* TO 'mysqluser'@'localhost'", tables);
+        parser.parse("GRANT CREATE TABLESPACE ON *.* TO 'mysqluser'@'localhost'", tables);
+        parser.parse("GRANT CREATE ROLE ON *.* TO 'mysqluser'@'localhost'", tables);
+        parser.parse("GRANT DELETE ON *.* TO 'mysqluser'@'localhost'", tables);
+        parser.parse("GRANT DROP ON *.* TO 'mysqluser'@'localhost'", tables);
+        parser.parse("GRANT DROP ROLE ON *.* TO 'mysqluser'@'localhost'", tables);
+        parser.parse("GRANT EVENT ON *.* TO 'mysqluser'@'localhost'", tables);
+        parser.parse("GRANT EXECUTE ON *.* TO 'mysqluser'@'localhost'", tables);
+        parser.parse("GRANT FILE ON *.* TO 'mysqluser'@'localhost'", tables);
+        parser.parse("GRANT GRANT OPTION ON *.* TO 'mysqluser'@'localhost'", tables);
+        parser.parse("GRANT INDEX ON *.* TO 'mysqluser'@'localhost'", tables);
+        parser.parse("GRANT INSERT ON *.* TO 'mysqluser'@'localhost'", tables);
+        parser.parse("GRANT LOCK TABLES ON *.* TO 'mysqluser'@'localhost'", tables);
+        parser.parse("GRANT PROCESS ON *.* TO 'mysqluser'@'localhost'", tables);
+        parser.parse("GRANT PROXY ON *.* TO 'mysqluser'@'localhost'", tables);
+        parser.parse("GRANT REFERENCES ON *.* TO 'mysqluser'@'localhost'", tables);
+        parser.parse("GRANT RELOAD ON *.* TO 'mysqluser'@'localhost'", tables);
+        parser.parse("GRANT REPLICATION CLIENT ON *.* TO 'mysqluser'@'localhost'", tables);
+        parser.parse("GRANT REPLICATION SLAVE ON *.* TO 'mysqluser'@'localhost'", tables);
+        parser.parse("GRANT REPLICATION REPLICA ON *.* TO 'mysqluser'@'localhost'", tables); // MariaDB
+        parser.parse("GRANT SELECT ON *.* TO 'mysqluser'@'localhost'", tables);
+        parser.parse("GRANT SHOW VIEW ON *.* TO 'mysqluser'@'localhost'", tables);
+        parser.parse("GRANT SHOW DATABASES ON *.* TO 'mysqluser'@'localhost'", tables);
+        parser.parse("GRANT SHUTDOWN ON *.* TO 'mysqluser'@'localhost'", tables);
+        parser.parse("GRANT SUPER ON *.* TO 'mysqluser'@'localhost'", tables);
+        parser.parse("GRANT TRIGGER ON *.* TO 'mysqluser'@'localhost'", tables);
+        parser.parse("GRANT UPDATE ON *.* TO 'mysqluser'@'localhost'", tables);
+        parser.parse("GRANT USAGE ON *.* TO 'mysqluser'@'localhost'", tables);
+
+        parser.parse("GRANT APPLICATION_PASSWORD_ADMIN ON *.* TO 'mysqluser'@'localhost'", tables);
+        parser.parse("GRANT AUDIT_ADMIN ON *.* TO 'mysqluser'@'localhost'", tables);
+        parser.parse("GRANT BACKUP_ADMIN ON *.* TO 'mysqluser'@'localhost'", tables);
+        parser.parse("GRANT BINLOG_ADMIN ON *.* TO 'mysqluser'@'localhost'", tables);
+        parser.parse("GRANT BINLOG_ENCRYPTION_ADMIN ON *.* TO 'mysqluser'@'localhost'", tables);
+        parser.parse("GRANT CLONE_ADMIN ON *.* TO 'mysqluser'@'localhost'", tables);
+        parser.parse("GRANT CONNECTION_ADMIN ON *.* TO 'mysqluser'@'localhost'", tables);
+        parser.parse("GRANT ENCRYPTION_KEY_ADMIN ON *.* TO 'mysqluser'@'localhost'", tables);
+        parser.parse("GRANT FIREWALL_ADMIN ON *.* TO 'mysqluser'@'localhost'", tables);
+        parser.parse("GRANT FIREWALL_USER ON *.* TO 'mysqluser'@'localhost'", tables);
+        parser.parse("GRANT FLUSH_OPTIMIZER_COSTS ON *.* TO 'mysqluser'@'localhost'", tables);
+        parser.parse("GRANT FLUSH_STATUS ON *.* TO 'mysqluser'@'localhost'", tables);
+        parser.parse("GRANT FLUSH_TABLES ON *.* TO 'mysqluser'@'localhost'", tables);
+        parser.parse("GRANT FLUSH_USER_RESOURCES ON *.* TO 'mysqluser'@'localhost'", tables);
+        parser.parse("GRANT GROUP_REPLICATION_ADMIN ON *.* TO 'mysqluser'@'localhost'", tables);
+        parser.parse("GRANT INNODB_REDO_LOG_ARCHIVE ON *.* TO 'mysqluser'@'localhost'", tables);
+        parser.parse("GRANT INNODB_REDO_LOG_ENABLE ON *.* TO 'mysqluser'@'localhost'", tables);
+        parser.parse("GRANT NDB_STORED_USER ON *.* TO 'mysqluser'@'localhost'", tables);
+        parser.parse("GRANT PERSIST_RO_VARIABLES_ADMIN ON *.* TO 'mysqluser'@'localhost'", tables);
+        parser.parse("GRANT REPLICATION_APPLIER ON *.* TO 'mysqluser'@'localhost'", tables);
+        parser.parse("GRANT REPLICATION_SLAVE_ADMIN ON *.* TO 'mysqluser'@'localhost'", tables);
+        parser.parse("GRANT RESOURCE_GROUP_ADMIN ON *.* TO 'mysqluser'@'localhost'", tables);
+        parser.parse("GRANT RESOURCE_GROUP_USER ON *.* TO 'mysqluser'@'localhost'", tables);
+        parser.parse("GRANT ROLE_ADMIN ON *.* TO 'mysqluser'@'localhost'", tables);
+        parser.parse("GRANT SERVICE_CONNECTION_ADMIN ON *.* TO 'mysqluser'@'localhost'", tables);
+        parser.parse("GRANT SESSION_VARIABLES_ADMIN ON *.* TO 'mysqluser'@'localhost'", tables);
+        parser.parse("GRANT SET_USER_ID ON *.* TO 'mysqluser'@'localhost'", tables);
+        parser.parse("GRANT SHOW_ROUTINE ON *.* TO 'mysqluser'@'localhost'", tables);
+        parser.parse("GRANT SYSTEM_USER ON *.* TO 'mysqluser'@'localhost'", tables);
+        parser.parse("GRANT SYSTEM_VARIABLES_ADMIN ON *.* TO 'mysqluser'@'localhost'", tables);
+        parser.parse("GRANT TABLE_ENCRYPTION_ADMIN ON *.* TO 'mysqluser'@'localhost'", tables);
+        parser.parse("GRANT VERSION_TOKEN_ADMIN ON *.* TO 'mysqluser'@'localhost'", tables);
+        parser.parse("GRANT XA_RECOVER_ADMIN ON *.* TO 'mysqluser'@'localhost'", tables);
+
+        // MariaDB
+        parser.parse("GRANT BINLOG_MONITOR ON *.* TO 'mysqluser'@'localhost'", tables);
+        parser.parse("GRANT BINLOG_REPLAY ON *.* TO 'mysqluser'@'localhost'", tables);
+        parser.parse("GRANT FEDERATED_ADMIN ON *.* TO 'mysqluser'@'localhost'", tables);
+        parser.parse("GRANT READ_ONLY_ADMIN ON *.* TO 'mysqluser'@'localhost'", tables);
+        parser.parse("GRANT REPLICATION_MASTER_ADMIN ON *.* TO 'mysqluser'@'localhost'", tables);
+
         assertThat(tables.size()).isEqualTo(0); // no tables
         assertThat(listener.total()).isEqualTo(0);
     }
