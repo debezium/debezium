@@ -225,8 +225,10 @@ public class IncrementalSnapshotChangeEventSource<T extends DataCollectionId> {
                         context.nextDataCollection();
                         continue;
                     }
-                    LOGGER.info("Incremental snapshot for table '{}' will end at position {}", currentTableId,
-                            context.maximumKey());
+                    if (LOGGER.isInfoEnabled()) {
+                        LOGGER.info("Incremental snapshot for table '{}' will end at position {}", currentTableId,
+                                context.maximumKey().orElse(new Object[0]));
+                    }
                 }
                 createDataEventsForTable();
                 if (window.isEmpty()) {
