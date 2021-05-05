@@ -18,7 +18,7 @@ import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 
-public class IncrementalSnapshotChangeEventSourceTest {
+public class SignalBasedSnapshotChangeEventSourceTest {
 
     protected CommonConnectorConfig config() {
         return new CommonConnectorConfig(
@@ -43,7 +43,7 @@ public class IncrementalSnapshotChangeEventSourceTest {
 
     @Test
     public void testBuildQuery() {
-        final IncrementalSnapshotChangeEventSource<TableId> source = new IncrementalSnapshotChangeEventSource<>(
+        final SignalBasedIncrementalSnapshotChangeEventSource<TableId> source = new SignalBasedIncrementalSnapshotChangeEventSource<>(
                 config(), new JdbcConnection(config().getConfig(), config -> null), null, null, SnapshotProgressListener.NO_OP, DataChangeEventListener.NO_OP);
         final IncrementalSnapshotContext<TableId> context = new IncrementalSnapshotContext<>();
         source.setContext(context);
@@ -62,7 +62,7 @@ public class IncrementalSnapshotChangeEventSourceTest {
 
     @Test
     public void testMaxQuery() {
-        final IncrementalSnapshotChangeEventSource<TableId> source = new IncrementalSnapshotChangeEventSource<>(
+        final SignalBasedIncrementalSnapshotChangeEventSource<TableId> source = new SignalBasedIncrementalSnapshotChangeEventSource<>(
                 config(), new JdbcConnection(config().getConfig(), config -> null), null, null, SnapshotProgressListener.NO_OP, DataChangeEventListener.NO_OP);
         final Column pk1 = Column.editor().name("pk1").create();
         final Column pk2 = Column.editor().name("pk2").create();
