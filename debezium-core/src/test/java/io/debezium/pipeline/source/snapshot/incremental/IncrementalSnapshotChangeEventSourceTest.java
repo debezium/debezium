@@ -12,6 +12,8 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.pipeline.source.spi.DataChangeEventListener;
+import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
@@ -42,7 +44,7 @@ public class IncrementalSnapshotChangeEventSourceTest {
     @Test
     public void testBuildQuery() {
         final IncrementalSnapshotChangeEventSource<TableId> source = new IncrementalSnapshotChangeEventSource<>(
-                config(), new JdbcConnection(config().getConfig(), config -> null), null, null);
+                config(), new JdbcConnection(config().getConfig(), config -> null), null, null, SnapshotProgressListener.NO_OP, DataChangeEventListener.NO_OP);
         final IncrementalSnapshotContext<TableId> context = new IncrementalSnapshotContext<>();
         source.setContext(context);
         final Column pk1 = Column.editor().name("pk1").create();
@@ -61,7 +63,7 @@ public class IncrementalSnapshotChangeEventSourceTest {
     @Test
     public void testMaxQuery() {
         final IncrementalSnapshotChangeEventSource<TableId> source = new IncrementalSnapshotChangeEventSource<>(
-                config(), new JdbcConnection(config().getConfig(), config -> null), null, null);
+                config(), new JdbcConnection(config().getConfig(), config -> null), null, null, SnapshotProgressListener.NO_OP, DataChangeEventListener.NO_OP);
         final Column pk1 = Column.editor().name("pk1").create();
         final Column pk2 = Column.editor().name("pk2").create();
         final Column val1 = Column.editor().name("val1").create();

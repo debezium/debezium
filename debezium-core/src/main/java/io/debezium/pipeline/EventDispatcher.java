@@ -85,7 +85,7 @@ public class EventDispatcher<T extends DataCollectionId, SourceRecord extends So
     private final Schema schemaChangeValueSchema;
     private final TableChangesSerializer<List<Struct>> tableChangesSerializer = new ConnectTableChangeSerializer();
     private final Signal signal;
-    private final IncrementalSnapshotChangeEventSource<T> incrementalSnapshotChangeEventSource;
+    private IncrementalSnapshotChangeEventSource<T> incrementalSnapshotChangeEventSource;
 
     /**
      * Change event receiver for events dispatched from a streaming change event source.
@@ -181,8 +181,8 @@ public class EventDispatcher<T extends DataCollectionId, SourceRecord extends So
         return new BufferingSnapshotChangeRecordReceiver();
     }
 
-    public SnapshotReceiver getIncrementalSnapshotChangeEventReceiver() {
-        return new IncrementalSnapshotChangeRecordReceiver();
+    public SnapshotReceiver getIncrementalSnapshotChangeEventReceiver(DataChangeEventListener dataListener) {
+        return new IncrementalSnapshotChangeRecordReceiver(dataListener);
     }
 
     /**
@@ -459,6 +459,12 @@ public class EventDispatcher<T extends DataCollectionId, SourceRecord extends So
 
     private final class IncrementalSnapshotChangeRecordReceiver implements SnapshotReceiver {
 
+        public final DataChangeEventListener dataListener;
+
+        public IncrementalSnapshotChangeRecordReceiver(DataChangeEventListener dataListener) {
+            this.dataListener = dataListener;
+        }
+
         @Override
         public void changeRecord(DataCollectionSchema dataCollectionSchema,
                                  Operation operation,
@@ -480,6 +486,7 @@ public class EventDispatcher<T extends DataCollectionId, SourceRecord extends So
                     keySchema, key,
                     dataCollectionSchema.getEnvelopeSchema().schema(), value,
                     null, headers);
+            dataListener.onEvent(dataCollectionSchema.id(), offsetContext, keySchema, value);
             queue.enqueue(changeEventCreator.createDataChangeEvent(record));
         }
 
@@ -529,6 +536,15 @@ public class EventDispatcher<T extends DataCollectionId, SourceRecord extends So
      */
     public void setEventListener(DataChangeEventListener eventListener) {
         this.eventListener = eventListener;
+    }
+
+    /**
+     * Enable support for incremental snapshotting.
+     *
+     * @param eventListener
+     */
+    public void setIncrementalSnapshotChangeEventSource(Optional<IncrementalSnapshotChangeEventSource<? extends DataCollectionId>> incrementalSnapshotChangeEventSource) {
+        this.incrementalSnapshotChangeEventSource = (IncrementalSnapshotChangeEventSource<T>) incrementalSnapshotChangeEventSource.orElse(null);
     }
 
     /**
