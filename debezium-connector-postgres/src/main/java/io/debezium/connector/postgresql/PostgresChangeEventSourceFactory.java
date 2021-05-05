@@ -16,6 +16,7 @@ import io.debezium.connector.postgresql.spi.Snapshotter;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotChangeEventSource;
+import io.debezium.pipeline.source.snapshot.incremental.SignalBasedIncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.ChangeEventSourceFactory;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.SnapshotChangeEventSource;
@@ -92,7 +93,7 @@ public class PostgresChangeEventSourceFactory<R extends SourceRecordWrapper> imp
                                                                                                                               OffsetContext offsetContext,
                                                                                                                               SnapshotProgressListener snapshotProgressListener,
                                                                                                                               DataChangeEventListener dataChangeEventListener) {
-        final IncrementalSnapshotChangeEventSource<TableId> incrementalSnapshotChangeEventSource = new IncrementalSnapshotChangeEventSource<TableId>(
+        final SignalBasedIncrementalSnapshotChangeEventSource<TableId> incrementalSnapshotChangeEventSource = new SignalBasedIncrementalSnapshotChangeEventSource<TableId>(
                 configuration,
                 jdbcConnection,
                 schema,
