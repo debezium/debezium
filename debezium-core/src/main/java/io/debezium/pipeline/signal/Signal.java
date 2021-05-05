@@ -22,7 +22,6 @@ import io.debezium.document.Document;
 import io.debezium.document.DocumentReader;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.snapshot.incremental.CloseIncrementalSnapshotWindow;
-import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.source.snapshot.incremental.OpenIncrementalSnapshotWindow;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig;
@@ -105,12 +104,10 @@ public class Signal {
         else {
             registerSignalAction(SchemaChanges.NAME, new SchemaChanges(dispatcher, false));
         }
-        final IncrementalSnapshotChangeEventSource<? extends DataCollectionId> eventSource = eventDispatcher != null
-                ? eventDispatcher.getIncrementalSnapshotChangeEventSource()
-                : null;
-        registerSignalAction(ExecuteSnapshot.NAME, new ExecuteSnapshot(eventSource));
+
+        registerSignalAction(ExecuteSnapshot.NAME, new ExecuteSnapshot(dispatcher));
         registerSignalAction(OpenIncrementalSnapshotWindow.NAME, new OpenIncrementalSnapshotWindow());
-        registerSignalAction(CloseIncrementalSnapshotWindow.NAME, new CloseIncrementalSnapshotWindow(dispatcher, eventSource));
+        registerSignalAction(CloseIncrementalSnapshotWindow.NAME, new CloseIncrementalSnapshotWindow(dispatcher));
     }
 
     Signal(CommonConnectorConfig connectorConfig) {

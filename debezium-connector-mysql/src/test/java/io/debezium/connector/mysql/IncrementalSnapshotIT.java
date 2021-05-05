@@ -152,6 +152,7 @@ public class IncrementalSnapshotIT extends AbstractConnectorTest {
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
                 .with(MySqlConnectorConfig.SIGNAL_DATA_COLLECTION, DATABASE.qualifiedTableName("debezium_signal"))
                 .with(MySqlConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 10)
+                .with(MySqlConnector.IMPLEMENTATION_PROP, "new")
                 .build();
         return config;
     }

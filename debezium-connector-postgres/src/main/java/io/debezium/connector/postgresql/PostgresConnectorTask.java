@@ -36,7 +36,6 @@ import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.metrics.DefaultChangeEventSourceMetricsFactory;
-import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotChangeEventSource;
 import io.debezium.relational.TableId;
 import io.debezium.schema.TopicSelector;
 import io.debezium.util.Clock;
@@ -178,10 +177,6 @@ public class PostgresConnectorTask extends BaseSourceTask {
                         }
                     });
 
-            final IncrementalSnapshotChangeEventSource<TableId> incrementalSnapshotChangeEventSource = new IncrementalSnapshotChangeEventSource<TableId>(
-                    connectorConfig, jdbcConnection, schema, clock);
-            incrementalSnapshotChangeEventSource.init(previousOffset);
-
             final EventDispatcher<TableId> dispatcher = new EventDispatcher<>(
                     connectorConfig,
                     topicSelector,
@@ -193,8 +188,7 @@ public class PostgresConnectorTask extends BaseSourceTask {
                     metadataProvider,
                     heartbeat,
                     schemaNameAdjuster,
-                    jdbcConnection,
-                    incrementalSnapshotChangeEventSource);
+                    jdbcConnection);
 
             ChangeEventSourceCoordinator coordinator = new PostgresChangeEventSourceCoordinator(
                     previousOffset,

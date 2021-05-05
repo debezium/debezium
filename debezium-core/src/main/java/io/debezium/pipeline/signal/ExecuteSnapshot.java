@@ -12,8 +12,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.document.Array;
+import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.signal.Signal.Payload;
-import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotChangeEventSource;
+import io.debezium.schema.DataCollectionId;
 
 /**
  * The action to trigger an ad-hoc snapshot.
@@ -35,10 +36,10 @@ public class ExecuteSnapshot implements Signal.Action {
         INCREMENTAL
     }
 
-    private final IncrementalSnapshotChangeEventSource<?> eventSource;
+    private final EventDispatcher<? extends DataCollectionId> dispatcher;
 
-    public ExecuteSnapshot(IncrementalSnapshotChangeEventSource<?> eventSource) {
-        this.eventSource = eventSource;
+    public ExecuteSnapshot(EventDispatcher<? extends DataCollectionId> dispatcher) {
+        this.dispatcher = dispatcher;
     }
 
     @Override
@@ -60,7 +61,7 @@ public class ExecuteSnapshot implements Signal.Action {
         LOGGER.info("Requested '{}' snapshot of data collections '{}'", type, dataCollections);
         switch (type) {
             case INCREMENTAL:
-                eventSource.addDataCollectionNamesToSnapshot(dataCollections, signalPayload.offsetContext);
+                dispatcher.getIncrementalSnapshotChangeEventSource().addDataCollectionNamesToSnapshot(dataCollections, signalPayload.offsetContext);
                 break;
         }
         return true;
