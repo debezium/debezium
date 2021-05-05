@@ -307,9 +307,13 @@ public class IncrementalSnapshotChangeEventSource<T extends DataCollectionId> {
             Timer logTimer = getTableScanLogTimer();
 
             Object[] lastRow = null;
+            Object[] firstRow = null;
             while (rs.next()) {
                 rows++;
                 final Object[] row = rowToArray(currentTable, rs, columnArray);
+                if (firstRow == null) {
+                    firstRow = row;
+                }
                 final Struct keyStruct = tableSchema.keyFromColumnData(row);
                 window.put(keyStruct, row);
                 if (logTimer.expired()) {
@@ -320,7 +324,10 @@ public class IncrementalSnapshotChangeEventSource<T extends DataCollectionId> {
                 }
                 lastRow = row;
             }
-            context.nextChunkPosition(keyFromRow(lastRow));
+            final Object[] firstKey = keyFromRow(firstRow);
+            final Object[] lastKey = keyFromRow(lastRow);
+            context.nextChunkPosition(lastKey);
+            progressListener.currentChunk(context.currentChunkId(), firstKey, lastKey);
             if (lastRow != null) {
                 LOGGER.debug("\t Next window will resume from '{}'", context.chunkEndPosititon());
             }

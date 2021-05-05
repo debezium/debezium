@@ -5,6 +5,7 @@
  */
 package io.debezium.pipeline.metrics;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -13,6 +14,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.connector.base.ChangeEventQueueMetrics;
@@ -38,6 +40,10 @@ public class SnapshotChangeEventSourceMetrics extends PipelineMetrics implements
     private final ConcurrentMap<String, Long> rowsScanned = new ConcurrentHashMap<String, Long>();
 
     private final ConcurrentMap<String, String> remainingTables = new ConcurrentHashMap<>();
+
+    private final AtomicReference<String> chunkId = new AtomicReference<>();
+    private final AtomicReference<Object[]> chunkFrom = new AtomicReference<>();
+    private final AtomicReference<Object[]> chunkTo = new AtomicReference<>();
 
     private final Set<String> capturedTables = Collections.synchronizedSet(new HashSet<>());
 
@@ -152,6 +158,28 @@ public class SnapshotChangeEventSourceMetrics extends PipelineMetrics implements
     }
 
     @Override
+    public void currentChunk(String chunkId, Object[] from, Object[] to) {
+        this.chunkId.set(chunkId);
+        this.chunkFrom.set(from);
+        this.chunkTo.set(to);
+    }
+
+    @Override
+    public String getChunkId() {
+        return chunkId.get();
+    }
+
+    @Override
+    public String getChunkFrom() {
+        return Arrays.toString(chunkFrom.get());
+    }
+
+    @Override
+    public String getChunkTo() {
+        return Arrays.toString(chunkTo.get());
+    }
+
+    @Override
     public void reset() {
         super.reset();
         snapshotRunning.set(false);
@@ -162,5 +190,8 @@ public class SnapshotChangeEventSourceMetrics extends PipelineMetrics implements
         rowsScanned.clear();
         remainingTables.clear();
         capturedTables.clear();
+        chunkId.set(null);
+        chunkFrom.set(null);
+        chunkTo.set(null);
     }
 }

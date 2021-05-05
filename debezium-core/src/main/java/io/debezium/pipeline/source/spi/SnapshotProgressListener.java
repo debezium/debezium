@@ -27,6 +27,8 @@ public interface SnapshotProgressListener {
 
     void rowsScanned(TableId tableId, long numRows);
 
+    void currentChunk(String chunkId, Object[] from, Object[] to);
+
     public static SnapshotProgressListener NO_OP = new SnapshotProgressListener() {
 
         @Override
@@ -51,6 +53,10 @@ public interface SnapshotProgressListener {
 
         @Override
         public void snapshotAborted() {
+        }
+
+        @Override
+        public void currentChunk(String chunkId, Object[] from, Object[] to) {
         }
     };
 }
