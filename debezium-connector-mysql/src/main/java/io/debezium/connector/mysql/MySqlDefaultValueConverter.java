@@ -47,7 +47,7 @@ public class MySqlDefaultValueConverter {
 
     private static final String EPOCH_DATE = "1970-01-01";
 
-    private static final DateTimeFormatter DATE_WITH_OPTIONAL_TIME_FORMATTER_BUILDER = new DateTimeFormatterBuilder()
+    private static final DateTimeFormatter ISO_LOCAL_DATE_WITH_OPTIONAL_TIME = new DateTimeFormatterBuilder()
             .append(DateTimeFormatter.ISO_LOCAL_DATE)
             .optionalStart()
             .appendLiteral(" ")
@@ -124,7 +124,7 @@ public class MySqlDefaultValueConverter {
         if (zero) {
             value = EPOCH_DATE;
         }
-        return LocalDate.from(DATE_WITH_OPTIONAL_TIME_FORMATTER_BUILDER.parse(value));
+        return LocalDate.from(ISO_LOCAL_DATE_WITH_OPTIONAL_TIME.parse(value));
     }
 
     /**
