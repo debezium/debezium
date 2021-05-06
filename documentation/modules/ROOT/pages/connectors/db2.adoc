@@ -1525,7 +1525,7 @@ To deploy a {prodname} Db2 connector, you add the connector files to Kafka Conne
 For details about deploying the {prodname} Db2 connector, see the following topics:
 
 * xref:deploying-debezium-db2-connectors[]
-* xref:db2-connector-properties[]
+* xref:descriptions-of-debezium-db2-connector-configuration-properties[]
 
 // Type: procedure
 // ModuleID: deploying-debezium-db2-connectors
@@ -1827,6 +1827,7 @@ The connector then starts generating data change events for row-level operations
 
 // Type: reference
 // Title: Description of {prodname} Db2 connector configuration properties
+// ModuleID: descriptions-of-debezium-db2-connector-configuration-properties
 [[db2-connector-properties]]
 === Connector properties
 
