@@ -79,3 +79,5 @@ siufay325,SiuFay
 JeremyVigny,Jeremy Vigny
 JLDLaughlin,Jessica Laughlin
 RaghavaPonnam,Raghava Ponnam
+kyleyj,Kyley Jex
+raphaelauv,Raphael Auv

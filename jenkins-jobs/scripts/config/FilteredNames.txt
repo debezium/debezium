@@ -3,3 +3,4 @@ Debezium Builder
 snyk-test
 dependabotb
 Luis GarcÃÂ©s-Erice
+Jiří Novotný
