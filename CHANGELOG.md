@@ -2,6 +2,69 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 1.6.0.Alpha1
+May 6th 2021 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12353176)
+
+### New features since 1.5.0.Final
+
+* Sink adapter for Apache Kafka [DBZ-3382](https://issues.jboss.org/browse/DBZ-3382)
+* Optimisation on MongoDB and MySQL connector for skipped.operations [DBZ-3403](https://issues.jboss.org/browse/DBZ-3403)
+* Incremental snapshotting [DBZ-3473](https://issues.jboss.org/browse/DBZ-3473)
+
+
+### Breaking changes since 1.5.0.Final
+
+* Build Debezium with Java 11 [DBZ-2870](https://issues.jboss.org/browse/DBZ-2870)
+
+
+### Fixes since 1.5.0.Final
+
+* io.debezium.text.ParsingException: no viable alternative at input 'IDNUMBER(4)GENERATEDBY' [DBZ-1721](https://issues.jboss.org/browse/DBZ-1721)
+* SKIPPED_OPERATIONS is added to CommonConnectorConfig.CONFIG_DEFINITION although it's not implemented in all connectors [DBZ-2699](https://issues.jboss.org/browse/DBZ-2699)
+* Snapshot fails when reading TIME, DATE, DATETIME fields in mysql from ResultSet [DBZ-3238](https://issues.jboss.org/browse/DBZ-3238)
+* Update to fabric8 kube client 5.x [DBZ-3349](https://issues.jboss.org/browse/DBZ-3349)
+* An exception in resolveOracleDatabaseVersion if system language is not English [DBZ-3397](https://issues.jboss.org/browse/DBZ-3397)
+* Change strimzi branch in jenkins openshift-test job to main [DBZ-3404](https://issues.jboss.org/browse/DBZ-3404)
+* Broken link in downstream Monitoring chapter 7.3 [DBZ-3409](https://issues.jboss.org/browse/DBZ-3409)
+* Broken link in content-based routing chapter to page for downloading the SMT scripting archive  [DBZ-3411](https://issues.jboss.org/browse/DBZ-3411)
+* LogMinerDmlParser mishandles double single quotes in WHERE clauses [DBZ-3413](https://issues.jboss.org/browse/DBZ-3413)
+* Incorrectly formatted links in downstream automatic topic creation doc [DBZ-3414](https://issues.jboss.org/browse/DBZ-3414)
+* SMT acronym incorrectly expanded in Debezium User Guide [DBZ-3415](https://issues.jboss.org/browse/DBZ-3415)
+* MariaDB -- support privilege DDL in parser [DBZ-3422](https://issues.jboss.org/browse/DBZ-3422)
+* Change oc apply in jenkins openshift-test job to oc create [DBZ-3423](https://issues.jboss.org/browse/DBZ-3423)
+* SQL Server property (snapshot.select.statement.overrides) only matches 1st entry if comma-separated list also contains spaces [DBZ-3429](https://issues.jboss.org/browse/DBZ-3429)
+* Permission issue when running docker-compose or docker build as user not having uid 1001 [DBZ-3453](https://issues.jboss.org/browse/DBZ-3453)
+* no viable alternative at input 'DROP TABLE IF EXISTS group' (Galera and MariaDB) [DBZ-3467](https://issues.jboss.org/browse/DBZ-3467)
+* Debezium MySQL connector does not process tables with partitions [DBZ-3468](https://issues.jboss.org/browse/DBZ-3468)
+* The building tools' version in README doc is outdated [DBZ-3478](https://issues.jboss.org/browse/DBZ-3478)
+* MySQL DATE default value parser rejects timestamp [DBZ-3497](https://issues.jboss.org/browse/DBZ-3497)
+* MySQL8 GRANT statement not parsable [DBZ-3499](https://issues.jboss.org/browse/DBZ-3499)
+
+
+### Other changes since 1.5.0.Final
+
+* Config validation for Db2 [DBZ-3118](https://issues.jboss.org/browse/DBZ-3118)
+* Add smoke test for UI [DBZ-3133](https://issues.jboss.org/browse/DBZ-3133)
+* Create new metric "CapturedTables" [DBZ-3161](https://issues.jboss.org/browse/DBZ-3161)
+* Handle deadlock issue for MySql build stuck for 6h [DBZ-3233](https://issues.jboss.org/browse/DBZ-3233)
+* Document using Connect REST API for log level changes [DBZ-3270](https://issues.jboss.org/browse/DBZ-3270)
+* User Guide corrections for SQL Server connector [DBZ-3297](https://issues.jboss.org/browse/DBZ-3297)
+* User Guide corrections for Db2 connector [DBZ-3298](https://issues.jboss.org/browse/DBZ-3298)
+* User Guide corrections for MySQL connector [DBZ-3299](https://issues.jboss.org/browse/DBZ-3299)
+* User Guide corrections for MongoDB connector [DBZ-3300](https://issues.jboss.org/browse/DBZ-3300)
+* Allow building the Oracle connector on CI [DBZ-3365](https://issues.jboss.org/browse/DBZ-3365)
+* Add tests for Protobuf Converter [DBZ-3369](https://issues.jboss.org/browse/DBZ-3369)
+* Use current SQL Server container image for testing and examples [DBZ-3379](https://issues.jboss.org/browse/DBZ-3379)
+* Reword prereq in downstream SQL Server connector doc  [DBZ-3392](https://issues.jboss.org/browse/DBZ-3392)
+* Duplicate entry in MySQL connector properties table for `mysql-property-skipped-operations`  [DBZ-3402](https://issues.jboss.org/browse/DBZ-3402)
+* Docs clarification around tombstone events [DBZ-3416](https://issues.jboss.org/browse/DBZ-3416)
+* Validate logical server name contains only alpha-numerical characters [DBZ-3427](https://issues.jboss.org/browse/DBZ-3427)
+* Provide a "quick" build profile [DBZ-3449](https://issues.jboss.org/browse/DBZ-3449)
+* Avoid warning about superfluous exclusion during packaging [DBZ-3458](https://issues.jboss.org/browse/DBZ-3458)
+* Upgrade binlog client [DBZ-3463](https://issues.jboss.org/browse/DBZ-3463)
+
+
+
 ## 1.5.0.Final
 April 7th 2021 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12354718)
 
