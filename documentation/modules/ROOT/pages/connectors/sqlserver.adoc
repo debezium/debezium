@@ -1639,7 +1639,7 @@ To deploy a {prodname} SQL Server connector, you add the connector files to Kafk
 For details about deploying the {prodname} SQL Server connector, see the following topics:
 
 * xref:deploying-debezium-sql-server-connectors[]
-* xref:sqlserver-connector-properties[]
+* xref:descriptions-of-debezium-sql-server-connector-configuration-properties[]
 
 // Type: procedure
 // ModuleID: deploying-debezium-sql-server-connectors
@@ -1944,6 +1944,7 @@ The connector then starts generating data change events for row-level operations
 
 // Type: reference
 // Title: Descriptions of {prodname} SQL Server connector configuration properties
+// ModuleID: descriptions-of-debezium-sql-server-connector-configuration-properties
 [[sqlserver-connector-properties]]
 === Connector properties
 
