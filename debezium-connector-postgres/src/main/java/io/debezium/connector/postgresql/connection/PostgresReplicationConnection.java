@@ -302,15 +302,27 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
             LOGGER.debug("starting streaming from LSN '{}'", lsn);
         }
 
-        try {
-            return createReplicationStream(lsn, walPosition);
-        }
-        catch (Exception e) {
-            String message = "Failed to start replication stream at " + lsn;
-            if (e.getMessage().matches(".*replication slot .* is active.*")) {
-                message += "; when setting up multiple connectors for the same database host, please make sure to use a distinct replication slot name for each.";
+        int maxRetries = config().getInteger(PostgresConnectorConfig.MAX_RETRIES);
+        int delay = config().getInteger(PostgresConnectorConfig.RETRY_DELAY_MS);
+        int tryCount = 0;
+        while (true) {
+            try {
+                return createReplicationStream(lsn, walPosition);
             }
-            throw new DebeziumException(message, e);
+            catch (Exception e) {
+                String message = "Failed to start replication stream at " + lsn;
+                if (++tryCount > maxRetries) {
+                    if (e.getMessage().matches(".*replication slot .* is active.*")) {
+                        message += "; when setting up multiple connectors for the same database host, please make sure to use a distinct replication slot name for each.";
+                    }
+                    throw new DebeziumException(message, e);
+                }
+                else {
+                    LOGGER.warn(message + ", waiting for {} ms and retrying, attempt number {} over {}", delay, tryCount, maxRetries);
+                    final Metronome metronome = Metronome.sleeper(Duration.ofMillis(delay), Clock.SYSTEM);
+                    metronome.pause();
+                }
+            }
         }
     }
 
