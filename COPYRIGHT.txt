@@ -12,6 +12,7 @@ Alex Soto
 Alexander Iskuskov
 Alexander Kovryga
 Alexander Schwartz
+Alfusainey Jallow
 Alisa Houskova
 Amit Sela
 Aman Garg
@@ -134,6 +135,7 @@ Jeremy Ford
 Jeremy Vigny
 Jessica Laughlin
 jinguangyang
+Jiri Novotny
 Jiri Pechanec
 Johan Rhedin
 Johan Venant
@@ -208,6 +210,7 @@ Olivier Lemasle
 Omar Al-Safi
 Ori Popowski
 Orr Ganani
+Patrick Chu
 Paul Mellor
 Peng Lyu
 Peter Goransson
@@ -270,6 +273,7 @@ Thomas Prelle
 Thomas Thornton
 Tom Bentley
 Tomaz Lemos Fernandes
+Tommy Karlsson
 Tony Rizko
 Tova Cohen
 Travis Elnicky
@@ -290,6 +294,7 @@ Wout Scheepers
 Xiao Fu
 Xuan Shen
 Yang Yang
+yangsanity
 Yilong Chang
 Yiming Liu
 Yoann Rodière
