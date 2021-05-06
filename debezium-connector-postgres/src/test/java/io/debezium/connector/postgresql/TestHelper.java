@@ -215,6 +215,8 @@ public final class TestHelper {
                 .withDefault(JdbcConfiguration.PORT, 5432)
                 .withDefault(JdbcConfiguration.USER, "postgres")
                 .withDefault(JdbcConfiguration.PASSWORD, "postgres")
+                .with(PostgresConnectorConfig.MAX_RETRIES, 2)
+                .with(PostgresConnectorConfig.RETRY_DELAY_MS, 2000)
                 .build();
     }
 
