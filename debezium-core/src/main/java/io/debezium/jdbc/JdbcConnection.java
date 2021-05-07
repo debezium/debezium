@@ -1416,8 +1416,7 @@ public class JdbcConnection implements AutoCloseable {
         sql
                 .append(projection)
                 .append(" FROM ");
-        // TODO Provide database based quoted format
-        sql.append(tableId.toString());
+        sql.append(quotedTableIdString(tableId));
         if (condition.isPresent()) {
             sql
                     .append(" WHERE ")
@@ -1472,5 +1471,9 @@ public class JdbcConnection implements AutoCloseable {
                     columnArray.getColumns()[i], table, databaseSchema);
         }
         return row;
+    }
+
+    public String quotedTableIdString(TableId tableId) {
+        return tableId.toDoubleQuotedString();
     }
 }
