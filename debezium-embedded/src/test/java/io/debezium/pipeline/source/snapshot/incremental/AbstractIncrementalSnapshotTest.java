@@ -53,7 +53,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
     protected void populateTable(JdbcConnection connection) throws SQLException {
         connection.setAutoCommit(false);
         for (int i = 0; i < ROW_COUNT; i++) {
-            connection.executeWithoutCommitting(String.format("INSERT INTO %s (aa) VALUES (%s)", tableName(), i));
+            connection.executeWithoutCommitting(String.format("INSERT INTO %s (pk, aa) VALUES (%s, %s)", tableName(), i + 1, i));
         }
         connection.commit();
     }
@@ -160,8 +160,10 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         try (JdbcConnection connection = databaseConnection()) {
             connection.setAutoCommit(false);
             for (int i = 0; i < ROW_COUNT; i++) {
-                connection.executeWithoutCommitting(
-                        String.format("INSERT INTO %s (aa) VALUES (%s)", tableName(), i + ROW_COUNT));
+                connection.executeWithoutCommitting(String.format("INSERT INTO %s (pk, aa) VALUES (%s, %s)",
+                        tableName(),
+                        i + ROW_COUNT + 1,
+                        i + ROW_COUNT));
             }
             connection.commit();
         }
