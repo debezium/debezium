@@ -10,7 +10,6 @@ import java.util.List;
 import java.util.Objects;
 
 import io.debezium.connector.oracle.Scn;
-import io.debezium.data.Envelope;
 
 /**
  * This class holds one parsed DML LogMiner record details
@@ -18,25 +17,26 @@ import io.debezium.data.Envelope;
  */
 public class LogMinerDmlEntryImpl implements LogMinerDmlEntry {
 
-    private Envelope.Operation commandType;
-    private List<LogMinerColumnValue> newLmColumnValues;
-    private List<LogMinerColumnValue> oldLmColumnValues;
+    private final int operation;
+    private final List<LogMinerColumnValue> newLmColumnValues;
+    private final List<LogMinerColumnValue> oldLmColumnValues;
     private String objectOwner;
     private String objectName;
     private Timestamp sourceTime;
     private String transactionId;
     private Scn scn;
     private String rowId;
+    private int sequence;
 
-    public LogMinerDmlEntryImpl(Envelope.Operation commandType, List<LogMinerColumnValue> newLmColumnValues, List<LogMinerColumnValue> oldLmColumnValues) {
-        this.commandType = commandType;
+    public LogMinerDmlEntryImpl(int operation, List<LogMinerColumnValue> newLmColumnValues, List<LogMinerColumnValue> oldLmColumnValues) {
+        this.operation = operation;
         this.newLmColumnValues = newLmColumnValues;
         this.oldLmColumnValues = oldLmColumnValues;
     }
 
     @Override
-    public Envelope.Operation getCommandType() {
-        return commandType;
+    public int getOperation() {
+        return operation;
     }
 
     @Override
@@ -75,6 +75,11 @@ public class LogMinerDmlEntryImpl implements LogMinerDmlEntry {
     }
 
     @Override
+    public int getSequence() {
+        return sequence;
+    }
+
+    @Override
     public void setObjectName(String name) {
         this.objectName = name;
     }
@@ -110,6 +115,11 @@ public class LogMinerDmlEntryImpl implements LogMinerDmlEntry {
     }
 
     @Override
+    public void setSequence(int sequence) {
+        this.sequence = sequence;
+    }
+
+    @Override
     public boolean equals(Object o) {
         if (this == o) {
             return true;
@@ -118,13 +128,18 @@ public class LogMinerDmlEntryImpl implements LogMinerDmlEntry {
             return false;
         }
         LogMinerDmlEntryImpl that = (LogMinerDmlEntryImpl) o;
-        return commandType == that.commandType &&
+        return operation == that.operation &&
                 Objects.equals(newLmColumnValues, that.newLmColumnValues) &&
                 Objects.equals(oldLmColumnValues, that.oldLmColumnValues);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(commandType, newLmColumnValues, oldLmColumnValues);
+        return Objects.hash(operation, newLmColumnValues, oldLmColumnValues);
+    }
+
+    @Override
+    public String toString() {
+        return "{LogMinerDmlEntryImpl={operation=" + operation + ",newColumns=" + newLmColumnValues + ",oldColumns=" + oldLmColumnValues + "}";
     }
 }

@@ -28,14 +28,13 @@ import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.logminer.parser.DmlParser;
 import io.debezium.connector.oracle.logminer.parser.DmlParserException;
 import io.debezium.connector.oracle.logminer.parser.LogMinerDmlParser;
+import io.debezium.connector.oracle.logminer.parser.SelectLobParser;
 import io.debezium.connector.oracle.logminer.parser.SimpleDmlParser;
 import io.debezium.connector.oracle.logminer.valueholder.LogMinerDmlEntry;
-import io.debezium.data.Envelope.Operation;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.ChangeEventSource.ChangeEventSourceContext;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
-import io.debezium.util.Clock;
 
 /**
  * This class process entries obtained from LogMiner view.
@@ -57,8 +56,8 @@ class LogMinerQueryResultProcessor<SourceRecord extends SourceRecordWrapper> {
     private final OracleDatabaseSchema schema;
     private final EventDispatcher<TableId, SourceRecord> dispatcher;
     private final OracleConnectorConfig connectorConfig;
-    private final Clock clock;
     private final HistoryRecorder historyRecorder;
+    private final SelectLobParser selectLobParser;
 
     private Scn currentOffsetScn = Scn.NULL;
     private Scn currentOffsetCommitScn = Scn.NULL;
@@ -68,7 +67,7 @@ class LogMinerQueryResultProcessor<SourceRecord extends SourceRecordWrapper> {
                                  OracleConnectorConfig connectorConfig, OracleStreamingChangeEventSourceMetrics streamingMetrics,
                                  TransactionalBuffer transactionalBuffer,
                                  OracleOffsetContext offsetContext, OracleDatabaseSchema schema,
-                                 EventDispatcher<TableId, SourceRecord> dispatcher,
+                                 EventDispatcher<TableId> dispatcher,
                                  Clock clock, HistoryRecorder historyRecorder) {
         this.context = context;
         this.streamingMetrics = streamingMetrics;
@@ -76,10 +75,10 @@ class LogMinerQueryResultProcessor<SourceRecord extends SourceRecordWrapper> {
         this.offsetContext = offsetContext;
         this.schema = schema;
         this.dispatcher = dispatcher;
-        this.clock = clock;
         this.historyRecorder = historyRecorder;
         this.connectorConfig = connectorConfig;
         this.dmlParser = resolveParser(connectorConfig, schema.getValueConverters());
+        this.selectLobParser = new SelectLobParser();
     }
 
     private static DmlParser resolveParser(OracleConnectorConfig connectorConfig, OracleValueConverters valueConverters) {
@@ -92,7 +91,6 @@ class LogMinerQueryResultProcessor<SourceRecord extends SourceRecordWrapper> {
     /**
      * This method does all the job
      * @param resultSet the info from LogMiner view
-     * @return number of processed DMLs from the given resultSet
      * @throws SQLException thrown if any database exception occurs
      */
     void processResult(ResultSet resultSet) throws SQLException {
@@ -105,6 +103,10 @@ class LogMinerQueryResultProcessor<SourceRecord extends SourceRecordWrapper> {
             rows++;
 
             Scn scn = RowMapper.getScn(resultSet);
+            if (scn.isNull()) {
+                throw new DebeziumException("Unexpected null SCN detected in LogMiner results");
+            }
+
             String tableName = RowMapper.getTableName(resultSet);
             String segOwner = RowMapper.getSegOwner(resultSet);
             int operationCode = RowMapper.getOperationCode(resultSet);
@@ -114,12 +116,12 @@ class LogMinerQueryResultProcessor<SourceRecord extends SourceRecordWrapper> {
             String userName = RowMapper.getUsername(resultSet);
             String rowId = RowMapper.getRowId(resultSet);
             int rollbackFlag = RowMapper.getRollbackFlag(resultSet);
+            int sequence = RowMapper.getSequence(resultSet);
+            Object rsId = RowMapper.getRsId(resultSet);
+            long hash = RowMapper.getHash(resultSet);
+            boolean dml = isDmlOperation(operationCode);
 
-            boolean isDml = false;
-            if (operationCode == RowMapper.INSERT || operationCode == RowMapper.UPDATE || operationCode == RowMapper.DELETE) {
-                isDml = true;
-            }
-            String redoSql = RowMapper.getSqlRedo(resultSet, isDml, historyRecorder, scn, tableName, segOwner, operationCode, changeTime, txId);
+            String redoSql = RowMapper.getSqlRedo(resultSet, dml, historyRecorder, scn, tableName, segOwner, operationCode, changeTime, txId);
 
             LOGGER.trace("scn={}, operationCode={}, operation={}, table={}, segOwner={}, userName={}, rowId={}, rollbackFlag={}", scn, operationCode, operation,
                     tableName, segOwner, userName, rowId, rollbackFlag);
@@ -127,114 +129,139 @@ class LogMinerQueryResultProcessor<SourceRecord extends SourceRecordWrapper> {
             String logMessage = String.format("transactionId=%s, SCN=%s, table_name=%s, segOwner=%s, operationCode=%s, offsetSCN=%s, " +
                     " commitOffsetSCN=%s", txId, scn, tableName, segOwner, operationCode, offsetContext.getScn(), offsetContext.getCommitScn());
 
-            if (scn.isNull()) {
-                LogMinerHelper.logWarn(streamingMetrics, "Scn is null for {}", logMessage);
-                return;
-            }
-
-            // Commit
-            if (operationCode == RowMapper.COMMIT) {
-                if (transactionalBuffer.isTransactionRegistered(txId)) {
+            switch (operationCode) {
+                case RowMapper.START: {
+                    // Register start transaction.
+                    // If already registered, does nothing due to overlapping mining strategy.
+                    transactionalBuffer.registerTransaction(txId, scn);
+                    break;
+                }
+                case RowMapper.COMMIT: {
+                    // Commits a transaction
+                    if (transactionalBuffer.isTransactionRegistered(txId)) {
+                        historyRecorder.record(scn, tableName, segOwner, operationCode, changeTime, txId, 0, redoSql);
+                        if (transactionalBuffer.commit(txId, scn, offsetContext, changeTime, context, logMessage, dispatcher)) {
+                            LOGGER.trace("COMMIT, {}", logMessage);
+                            commitCounter++;
+                        }
+                    }
+                    break;
+                }
+                case RowMapper.ROLLBACK: {
+                    // Rollback a transaction
+                    if (transactionalBuffer.isTransactionRegistered(txId)) {
+                        historyRecorder.record(scn, tableName, segOwner, operationCode, changeTime, txId, 0, redoSql);
+                        if (transactionalBuffer.rollback(txId, logMessage)) {
+                            LOGGER.trace("ROLLBACK, {}", logMessage);
+                            rollbackCounter++;
+                        }
+                    }
+                    break;
+                }
+                case RowMapper.DDL: {
                     historyRecorder.record(scn, tableName, segOwner, operationCode, changeTime, txId, 0, redoSql);
-                }
-                if (transactionalBuffer.commit(txId, scn, offsetContext, changeTime, context, logMessage, dispatcher)) {
-                    LOGGER.trace("COMMIT, {}", logMessage);
-                    commitCounter++;
-                }
-                continue;
-            }
-
-            // Rollback
-            if (operationCode == RowMapper.ROLLBACK) {
-                if (transactionalBuffer.isTransactionRegistered(txId)) {
-                    historyRecorder.record(scn, tableName, segOwner, operationCode, changeTime, txId, 0, redoSql);
-                }
-                if (transactionalBuffer.rollback(txId, logMessage)) {
-                    LOGGER.trace("ROLLBACK, {}", logMessage);
-                    rollbackCounter++;
-                }
-                continue;
-            }
-
-            // DDL
-            if (operationCode == RowMapper.DDL) {
-                historyRecorder.record(scn, tableName, segOwner, operationCode, changeTime, txId, 0, redoSql);
-                LOGGER.info("DDL: {}, REDO_SQL: {}", logMessage, redoSql);
-                try {
-                    if (tableName != null) {
-                        final TableId tableId = RowMapper.getTableId(connectorConfig.getCatalogName(), resultSet);
-                        dispatcher.dispatchSchemaChangeEvent(tableId,
-                                new OracleSchemaChangeEventEmitter(
-                                        connectorConfig,
-                                        offsetContext,
-                                        tableId,
-                                        tableId.catalog(),
-                                        tableId.schema(),
-                                        redoSql,
-                                        schema,
-                                        changeTime.toInstant(),
-                                        streamingMetrics));
+                    LOGGER.info("DDL: {}, REDO_SQL: {}", logMessage, redoSql);
+                    try {
+                        if (tableName != null) {
+                            final TableId tableId = RowMapper.getTableId(connectorConfig.getCatalogName(), resultSet);
+                            dispatcher.dispatchSchemaChangeEvent(tableId,
+                                     new OracleSchemaChangeEventEmitter(
+                                             connectorConfig,
+                                             offsetContext,
+                                             tableId,
+                                             tableId.catalog(),
+                                             tableId.schema(),
+                                             redoSql,
+                                             schema,
+                                             changeTime.toInstant(),
+                                             streamingMetrics));
+                        }
+                    }
+                    catch (InterruptedException e) {
+                        throw new DebeziumException("Failed to dispatch DDL event", e);
                     }
                 }
-                catch (InterruptedException e) {
-                    throw new DebeziumException("Failed to dispatch DDL event", e);
+                case RowMapper.MISSING_SCN: {
+                    historyRecorder.record(scn, tableName, segOwner, operationCode, changeTime, txId, 0, redoSql);
+                    LogMinerHelper.logWarn(streamingMetrics, "Missing SCN, {}", logMessage);
+                    break;
                 }
-                continue;
-            }
-
-            // MISSING_SCN
-            if (operationCode == RowMapper.MISSING_SCN) {
-                historyRecorder.record(scn, tableName, segOwner, operationCode, changeTime, txId, 0, redoSql);
-                LogMinerHelper.logWarn(streamingMetrics, "Missing SCN,  {}", logMessage);
-                continue;
-            }
-
-            // DML
-            if (isDml) {
-                final TableId tableId = RowMapper.getTableId(connectorConfig.getCatalogName(), resultSet);
-
-                LOGGER.trace("DML,  {}, sql {}", logMessage, redoSql);
-                if (redoSql == null) {
-                    LOGGER.trace("Redo SQL was empty, DML operation skipped.");
-                    continue;
+                case RowMapper.SELECT_LOB_LOCATOR: {
+                    final TableId tableId = RowMapper.getTableId(connectorConfig.getCatalogName(), resultSet);
+                    final LogMinerDmlEntry entry = selectLobParser.parse(redoSql);
+                    entry.setObjectOwner(segOwner);
+                    entry.setSourceTime(changeTime);
+                    entry.setTransactionId(txId);
+                    entry.setObjectName(tableName);
+                    entry.setScn(scn);
+                    entry.setRowId(rowId);
+                    entry.setSequence(sequence);
+                    transactionalBuffer.registerSelectLobOperation(operationCode, txId, scn, tableId, entry,
+                            selectLobParser.getColumnName(), selectLobParser.isBinary(), changeTime.toInstant(), rowId, rsId, hash);
+                    break;
                 }
-
-                dmlCounter++;
-                switch (operationCode) {
-                    case RowMapper.INSERT:
-                        insertCounter++;
-                        break;
-                    case RowMapper.UPDATE:
-                        updateCounter++;
-                        break;
-                    case RowMapper.DELETE:
-                        deleteCounter++;
-                        break;
+                case RowMapper.LOB_WRITE: {
+                    final TableId tableId = RowMapper.getTableId(connectorConfig.getCatalogName(), resultSet);
+                    transactionalBuffer.registerLobWriteOperation(operationCode, txId, scn, tableId, redoSql,
+                            changeTime.toInstant(), rowId, rsId, hash);
+                    break;
                 }
-
-                final Table table = schema.tableFor(tableId);
-                if (table == null) {
-                    LogMinerHelper.logWarn(streamingMetrics, "DML for table '{}' that is not known to this connector, skipping.", tableId);
-                    continue;
+                case RowMapper.LOB_ERASE: {
+                    final TableId tableId = RowMapper.getTableId(connectorConfig.getCatalogName(), resultSet);
+                    transactionalBuffer.registerLobEraseOperation(operationCode, txId, scn, tableId, changeTime.toInstant(), rowId, rsId, hash);
+                    break;
                 }
+                case RowMapper.INSERT:
+                case RowMapper.UPDATE:
+                case RowMapper.DELETE: {
+                    LOGGER.trace("DML, {}, sql {}", logMessage, redoSql);
+                    if (redoSql != null) {
+                        final TableId tableId = RowMapper.getTableId(connectorConfig.getCatalogName(), resultSet);
+                        dmlCounter++;
+                        switch (operationCode) {
+                            case RowMapper.INSERT:
+                                insertCounter++;
+                                break;
+                            case RowMapper.UPDATE:
+                                updateCounter++;
+                                break;
+                            case RowMapper.DELETE:
+                                deleteCounter++;
+                                break;
+                        }
 
-                if (rollbackFlag == 1) {
-                    // DML operation is to undo partial or all operations as a result of a rollback.
-                    // This can be situations where an insert or update causes a constraint violation
-                    // and a subsequent operation is written to the logs to revert the change.
-                    transactionalBuffer.undoDmlOperation(txId, rowId, tableId);
-                    continue;
+                        final Table table = schema.tableFor(tableId);
+                        if (table == null) {
+                            LogMinerHelper.logWarn(streamingMetrics, "DML for table '{}' that is not known to this connector, skipping.", tableId);
+                            continue;
+                        }
+
+                        if (rollbackFlag == 1) {
+                            // DML operation is to undo partial or all operations as a result of a rollback.
+                            // This can be situations where an insert or update causes a constraint violation
+                            // and a subsequent operation is written to the logs to revert the change.
+                            transactionalBuffer.undoDmlOperation(txId, rowId, tableId);
+                            continue;
+                        }
+
+                        final LogMinerDmlEntry dmlEntry = parse(redoSql, table, txId);
+                        dmlEntry.setObjectOwner(segOwner);
+                        dmlEntry.setSourceTime(changeTime);
+                        dmlEntry.setTransactionId(txId);
+                        dmlEntry.setObjectName(tableName);
+                        dmlEntry.setScn(scn);
+                        dmlEntry.setRowId(rowId);
+                        dmlEntry.setSequence(sequence);
+
+                        transactionalBuffer.registerDmlOperation(operationCode, txId, scn, tableId, dmlEntry,
+                                changeTime.toInstant(), rowId, rsId, hash);
+                    }
+                    else {
+                        LOGGER.trace("Redo SQL was empty, DML operation skipped.");
+                    }
+
+                    break;
                 }
-
-                final LogMinerDmlEntry dmlEntry = parse(redoSql, table, txId);
-                dmlEntry.setObjectOwner(segOwner);
-                dmlEntry.setSourceTime(changeTime);
-                dmlEntry.setTransactionId(txId);
-                dmlEntry.setObjectName(tableName);
-                dmlEntry.setScn(scn);
-                dmlEntry.setRowId(rowId);
-
-                transactionalBuffer.registerDmlOperation(operationCode, txId, scn, tableId, dmlEntry, changeTime.toInstant(), rowId);
             }
         }
 
@@ -312,12 +339,23 @@ class LogMinerQueryResultProcessor<SourceRecord extends SourceRecordWrapper> {
         }
 
         if (dmlEntry.getOldValues().isEmpty()) {
-            if (Operation.UPDATE.equals(dmlEntry.getCommandType()) || Operation.DELETE.equals(dmlEntry.getCommandType())) {
+            if (RowMapper.UPDATE == dmlEntry.getOperation() || RowMapper.DELETE == dmlEntry.getOperation()) {
                 LOGGER.warn("The DML event '{}' contained no before state.", redoSql);
                 streamingMetrics.incrementWarningCount();
             }
         }
 
         return dmlEntry;
+    }
+
+    private static boolean isDmlOperation(int operationCode) {
+        switch (operationCode) {
+            case RowMapper.INSERT:
+            case RowMapper.UPDATE:
+            case RowMapper.DELETE:
+                return true;
+            default:
+                return false;
+        }
     }
 }

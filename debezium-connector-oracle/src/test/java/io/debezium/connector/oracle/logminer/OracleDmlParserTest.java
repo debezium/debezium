@@ -36,7 +36,6 @@ import io.debezium.connector.oracle.logminer.parser.SimpleDmlParser;
 import io.debezium.connector.oracle.logminer.valueholder.LogMinerColumnValue;
 import io.debezium.connector.oracle.logminer.valueholder.LogMinerDmlEntry;
 import io.debezium.connector.oracle.util.TestHelper;
-import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
@@ -275,7 +274,7 @@ public class OracleDmlParserTest {
                 "and COL8 = TO_TIMESTAMP('2019-05-14 02:28:32') and col11 = " + SPATIAL_DATA + ";";
 
         LogMinerDmlEntry record = sqlDmlParser.parse(dml, tables.forTable(TABLE_ID), "");
-        boolean pass = record.getCommandType().equals(Envelope.Operation.UPDATE)
+        boolean pass = record.getOperation() == RowMapper.UPDATE
                 && record.getOldValues().size() == record.getNewValues().size()
                 && record.getNewValues().containsAll(record.getOldValues());
         assertThat(pass);
@@ -355,7 +354,7 @@ public class OracleDmlParserTest {
 
     private void verifyUpdate(LogMinerDmlEntry record, boolean checkGeometry, boolean checkOldValues, int oldValuesNumber) {
         // validate
-        assertThat(record.getCommandType()).isEqualTo(Envelope.Operation.UPDATE);
+        assertThat(record.getOperation()).isEqualTo(RowMapper.UPDATE);
         List<LogMinerColumnValue> newValues = record.getNewValues();
         assertThat(newValues.size()).isEqualTo(14);
         String concatenatedNames = newValues.stream().map(LogMinerColumnValue::getColumnName).collect(Collectors.joining());
@@ -462,7 +461,7 @@ public class OracleDmlParserTest {
         List<LogMinerColumnValue> oldValues = record.getOldValues();
         assertThat(oldValues.size()).isEqualTo(0);
 
-        assertThat(record.getCommandType()).isEqualTo(Envelope.Operation.CREATE);
+        assertThat(record.getOperation()).isEqualTo(RowMapper.INSERT);
 
         List<LogMinerColumnValue> newValues = record.getNewValues();
         assertThat(newValues.size()).isEqualTo(14);
@@ -483,7 +482,7 @@ public class OracleDmlParserTest {
     }
 
     private void verifyDelete(LogMinerDmlEntry record, boolean checkOldValues) {
-        assertThat(record.getCommandType()).isEqualTo(Envelope.Operation.DELETE);
+        assertThat(record.getOperation()).isEqualTo(RowMapper.DELETE);
         List<LogMinerColumnValue> newValues = record.getNewValues();
         assertThat(newValues.size()).isEqualTo(0);
 

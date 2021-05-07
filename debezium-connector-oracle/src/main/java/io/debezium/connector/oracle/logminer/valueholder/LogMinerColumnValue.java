@@ -19,6 +19,16 @@ public interface LogMinerColumnValue {
     String getColumnName();
 
     /**
+     * @return {@code true} if the column value is an empty clob function call, otherwise {@code false}.
+     */
+    boolean isEmptyClobFunction();
+
+    /**
+     * @return {@code true} if the column value is an empty blob function call, otherwise {@code false}.
+     */
+    boolean isEmptyBlobFunction();
+
+    /**
      * This sets the database record value with the exception of LOBs
      * @param columnData data
      */

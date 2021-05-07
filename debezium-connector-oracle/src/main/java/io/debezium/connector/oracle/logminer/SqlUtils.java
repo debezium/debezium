@@ -8,7 +8,6 @@ package io.debezium.connector.oracle.logminer;
 import java.io.IOException;
 import java.sql.SQLRecoverableException;
 import java.time.Duration;
-import java.time.LocalDateTime;
 import java.util.Iterator;
 import java.util.List;
 import java.util.regex.Pattern;
@@ -282,7 +281,8 @@ public class SqlUtils {
      */
     static String logMinerContentsQuery(OracleConnectorConfig connectorConfig, String logMinerUser) {
         StringBuilder query = new StringBuilder();
-        query.append("SELECT SCN, SQL_REDO, OPERATION_CODE, TIMESTAMP, XID, CSF, TABLE_NAME, SEG_OWNER, OPERATION, USERNAME, ROW_ID, ROLLBACK ");
+        query.append("SELECT SCN, SQL_REDO, OPERATION_CODE, TIMESTAMP, XID, CSF, TABLE_NAME, SEG_OWNER, OPERATION, USERNAME, ");
+        query.append("ROW_ID, ROLLBACK, SEQUENCE#, RS_ID, ORA_HASH(SCN||OPERATION||RS_ID||SEQUENCE#||RTRIM(SUBSTR(SQL_REDO,1,256))) ");
         query.append("FROM ").append(LOGMNR_CONTENTS_VIEW).append(" ");
         query.append("WHERE ");
         query.append("SCN > ? AND SCN <= ? ");
@@ -290,9 +290,9 @@ public class SqlUtils {
         // MISSING_SCN/DDL only when not performed by excluded users
         // For DDL, the `INTERNAL DDL%` info rows should be excluded as these are commands executed by the database that
         // typically perform operations such as renaming a deleted object when dropped if the drop doesn't specify PURGE
-        query.append("(OPERATION_CODE IN (5,34) AND USERNAME NOT IN (").append(getExcludedUsers(logMinerUser)).append(") AND INFO NOT LIKE 'INTERNAL DDL%') ");
+        query.append("(OPERATION_CODE IN (5,9,10,11,29,34) AND USERNAME NOT IN (").append(getExcludedUsers(logMinerUser)).append(") AND INFO NOT LIKE 'INTERNAL DDL%') ");
         // COMMIT/ROLLBACK
-        query.append("OR (OPERATION_CODE IN (7,36)) ");
+        query.append("OR (OPERATION_CODE IN (6,7,36)) ");
         // INSERT/UPDATE/DELETE
         query.append("OR ");
         query.append("(OPERATION_CODE IN (1,2,3) ");
@@ -467,19 +467,5 @@ public class SqlUtils {
                 e.getMessage().startsWith("ORA-00600") || // Oracle internal error on the RAC node shutdown could happen
                 e.getMessage().toUpperCase().contains("CONNECTION IS CLOSED") ||
                 e.getMessage().toUpperCase().startsWith("NO MORE DATA TO READ FROM SOCKET");
-    }
-
-    public static long parseRetentionFromName(String historyTableName) {
-        String[] tokens = historyTableName.split("_");
-        if (tokens.length != 7) {
-            return 0;
-        }
-        LocalDateTime recorded = LocalDateTime.of(
-                Integer.parseInt(tokens[2]), // year
-                Integer.parseInt(tokens[3]), // month
-                Integer.parseInt(tokens[4]), // days
-                Integer.parseInt(tokens[5]), // hours
-                Integer.parseInt(tokens[6])); // minutes
-        return Duration.between(recorded, LocalDateTime.now()).toHours();
     }
 }
