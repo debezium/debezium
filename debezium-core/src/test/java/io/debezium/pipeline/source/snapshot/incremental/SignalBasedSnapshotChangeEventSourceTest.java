@@ -53,11 +53,11 @@ public class SignalBasedSnapshotChangeEventSourceTest {
         final Column val2 = Column.editor().name("val2").create();
         final Table table = Table.editor().tableId(new TableId(null, "s1", "table1")).addColumn(pk1).addColumn(pk2)
                 .addColumn(val1).addColumn(val2).setPrimaryKeyNames("pk1", "pk2").create();
-        Assertions.assertThat(source.buildChunkQuery(table)).isEqualTo("SELECT * FROM s1.table1 ORDER BY pk1, pk2 LIMIT 1024");
+        Assertions.assertThat(source.buildChunkQuery(table)).isEqualTo("SELECT * FROM \"s1\".\"table1\" ORDER BY pk1, pk2 LIMIT 1024");
         context.nextChunkPosition(new Object[]{ 1, 5 });
         context.maximumKey(new Object[]{ 10, 50 });
         Assertions.assertThat(source.buildChunkQuery(table)).isEqualTo(
-                "SELECT * FROM s1.table1 WHERE pk1 >= ? AND pk2 >= ? AND NOT (pk1 = ? AND pk2 = ?) AND pk1 <= ? AND pk2 <= ? ORDER BY pk1, pk2 LIMIT 1024");
+                "SELECT * FROM \"s1\".\"table1\" WHERE pk1 >= ? AND pk2 >= ? AND NOT (pk1 = ? AND pk2 = ?) AND pk1 <= ? AND pk2 <= ? ORDER BY pk1, pk2 LIMIT 1024");
     }
 
     @Test
@@ -70,6 +70,6 @@ public class SignalBasedSnapshotChangeEventSourceTest {
         final Column val2 = Column.editor().name("val2").create();
         final Table table = Table.editor().tableId(new TableId(null, "s1", "table1")).addColumn(pk1).addColumn(pk2)
                 .addColumn(val1).addColumn(val2).setPrimaryKeyNames("pk1", "pk2").create();
-        Assertions.assertThat(source.buildMaxPrimaryKeyQuery(table)).isEqualTo("SELECT * FROM s1.table1 ORDER BY pk1 DESC, pk2 DESC LIMIT 1");
+        Assertions.assertThat(source.buildMaxPrimaryKeyQuery(table)).isEqualTo("SELECT * FROM \"s1\".\"table1\" ORDER BY pk1 DESC, pk2 DESC LIMIT 1");
     }
 }
