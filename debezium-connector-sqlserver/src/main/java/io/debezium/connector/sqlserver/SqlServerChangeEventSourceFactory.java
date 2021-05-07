@@ -5,15 +5,18 @@
  */
 package io.debezium.connector.sqlserver;
 
-import io.debezium.connector.common.SourceRecordWrapper;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotChangeEventSource;
+import io.debezium.pipeline.source.snapshot.incremental.SignalBasedIncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.ChangeEventSourceFactory;
+import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.SnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.relational.TableId;
+import io.debezium.schema.DataCollectionId;
 import io.debezium.util.Clock;
 
 public class SqlServerChangeEventSourceFactory<SourceRecord extends SourceRecordWrapper> implements ChangeEventSourceFactory {
@@ -54,5 +57,20 @@ public class SqlServerChangeEventSourceFactory<SourceRecord extends SourceRecord
                 errorHandler,
                 clock,
                 schema);
+    }
+
+    @Override
+    public Optional<IncrementalSnapshotChangeEventSource<? extends DataCollectionId>> getIncrementalSnapshotChangeEventSource(
+                                                                                                                              OffsetContext offsetContext,
+                                                                                                                              SnapshotProgressListener snapshotProgressListener,
+                                                                                                                              DataChangeEventListener dataChangeEventListener) {
+        final SignalBasedIncrementalSnapshotChangeEventSource<TableId> incrementalSnapshotChangeEventSource = new SignalBasedIncrementalSnapshotChangeEventSource<TableId>(
+                configuration,
+                dataConnection,
+                schema,
+                clock,
+                snapshotProgressListener,
+                dataChangeEventListener);
+        return Optional.of(incrementalSnapshotChangeEventSource);
     }
 }
