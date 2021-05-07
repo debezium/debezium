@@ -570,4 +570,9 @@ public class MySqlConnection extends JdbcConnection {
             throws SQLException {
         return mysqlFieldReader.readField(rs, columnIndex, column, table);
     }
+
+    @Override
+    public String quotedTableIdString(TableId tableId) {
+        return tableId.toQuotedString('`');
+    }
 }
