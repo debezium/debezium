@@ -2520,7 +2520,7 @@ For example, if the database server name is `fulfillment`, the default topic nam
 |[[mysql-property-database-initial-statements]]<<mysql-property-database-initial-statements, `+database.initial.statements+`>>
 |
 |A semicolon separated list of SQL statements to be executed when a JDBC connection, not the connection that is reading the transaction log, to the database is established.
-To specify a semicolon as a character in a SQ statement and not as a delimiter, use two semicolons, (`;;`). +
+To specify a semicolon as a character in a SQL statement and not as a delimiter, use two semicolons, (`;;`). +
  +
 The connector might establish JDBC connections at its own discretion, so this property is ony for configuring session parameters. It is not for executing DML statements.
 
