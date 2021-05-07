@@ -503,8 +503,8 @@ public class OracleClobDataTypeIT extends AbstractConnectorTest {
         waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
         // Insert record
-        Clob clob1 = createClob(part(JSON_DATA, 0, 5000));
-        NClob nclob1 = createNClob(part(JSON_DATA2, 0, 5000));
+        Clob clob1 = createClob(part(JSON_DATA, 0, 25000));
+        NClob nclob1 = createNClob(part(JSON_DATA2, 0, 25000));
         connection.prepareQuery("INSERT INTO CLOB_TEST VALUES (1, ?, ?)", ps -> {
             ps.setClob(1, clob1);
             ps.setNClob(2, nclob1);
@@ -523,14 +523,14 @@ public class OracleClobDataTypeIT extends AbstractConnectorTest {
         assertThat(after.get("VAL_NCLOB")).isEqualTo(getClobString(nclob1));
 
         // Insert multiple records, same transaction
-        Clob clob2 = createClob(part(JSON_DATA, 1, 4450));
-        NClob nclob2 = createNClob(part(JSON_DATA2, 1, 4450));
+        Clob clob2 = createClob(part(JSON_DATA, 1, 24450));
+        NClob nclob2 = createNClob(part(JSON_DATA2, 1, 24450));
         connection.prepareQuery("INSERT INTO CLOB_TEST VALUES (2, ?, ?)", ps -> {
             ps.setClob(1, clob2);
             ps.setNClob(2, nclob2);
         }, null);
-        Clob clob3 = createClob(part(JSON_DATA, 3, 4450));
-        NClob nclob3 = createNClob(part(JSON_DATA2, 3, 4450));
+        Clob clob3 = createClob(part(JSON_DATA, 3, 24450));
+        NClob nclob3 = createNClob(part(JSON_DATA2, 3, 24450));
         connection.prepareQuery("INSERT INTO CLOB_TEST VALUES (3, ?, ?)", ps -> {
             ps.setClob(1, clob3);
             ps.setNClob(2, nclob3);
@@ -557,8 +557,8 @@ public class OracleClobDataTypeIT extends AbstractConnectorTest {
         assertThat(after.get("VAL_NCLOB")).isEqualTo(getClobString(nclob3));
 
         // Update record
-        Clob clob1Update = createClob(part(JSON_DATA, 1, 4500));
-        NClob nclob1Update = createNClob(part(JSON_DATA2, 1, 4500));
+        Clob clob1Update = createClob(part(JSON_DATA, 1, 24500));
+        NClob nclob1Update = createNClob(part(JSON_DATA2, 1, 24500));
         connection.prepareQuery("UPDATE CLOB_TEST SET val_clob=?, val_nclob=? WHERE id = 1", ps -> {
             ps.setClob(1, clob1Update);
             ps.setNClob(2, nclob1Update);
@@ -577,14 +577,14 @@ public class OracleClobDataTypeIT extends AbstractConnectorTest {
         assertThat(after.get("VAL_NCLOB")).isEqualTo(getClobString(nclob1Update));
 
         // Update multiple records, same transaction
-        Clob clob2Update = createClob(part(JSON_DATA, 2, 5000));
-        NClob nclob2Update = createNClob(part(JSON_DATA2, 2, 5000));
+        Clob clob2Update = createClob(part(JSON_DATA, 2, 25000));
+        NClob nclob2Update = createNClob(part(JSON_DATA2, 2, 25000));
         connection.prepareQuery("UPDATE CLOB_TEST SET val_clob=?, val_nclob=? WHERE id = 2", ps -> {
             ps.setClob(1, clob2Update);
             ps.setNClob(2, nclob2Update);
         }, null);
-        Clob clob3Update = createClob(part(JSON_DATA, 3, 5000));
-        NClob nclob3Update = createNClob(part(JSON_DATA2, 3, 5000));
+        Clob clob3Update = createClob(part(JSON_DATA, 3, 25000));
+        NClob nclob3Update = createNClob(part(JSON_DATA2, 3, 25000));
         connection.prepareQuery("UPDATE CLOB_TEST SET val_clob=?, val_nclob=? WHERE id = 3", ps -> {
             ps.setClob(1, clob3Update);
             ps.setNClob(2, nclob3Update);
@@ -683,8 +683,8 @@ public class OracleClobDataTypeIT extends AbstractConnectorTest {
         waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
         // Insert record
-        Clob clob1 = createClob(part(JSON_DATA, 0, 5000));
-        NClob nclob1 = createNClob(part(JSON_DATA2, 0, 5000));
+        Clob clob1 = createClob(part(JSON_DATA, 0, 25000));
+        NClob nclob1 = createNClob(part(JSON_DATA2, 0, 25000));
         connection.prepareQuery("INSERT INTO clob_test VALUES (1, ?, ?, 'Test1')", ps -> {
             ps.setClob(1, clob1);
             ps.setNClob(2, nclob1);
@@ -704,14 +704,14 @@ public class OracleClobDataTypeIT extends AbstractConnectorTest {
         assertThat(after.get("VAL_DATA")).isEqualTo("Test1");
 
         // Insert multiple records, same transaction
-        Clob clob2 = createClob(part(JSON_DATA, 1, 4450));
-        NClob nclob2 = createNClob(part(JSON_DATA2, 2, 4450));
+        Clob clob2 = createClob(part(JSON_DATA, 1, 24450));
+        NClob nclob2 = createNClob(part(JSON_DATA2, 2, 24450));
         connection.prepareQuery("INSERT INTO clob_test VALUES (2, ?, ?, 'Test2')", ps -> {
             ps.setClob(1, clob2);
             ps.setNClob(2, nclob2);
         }, null);
-        Clob clob3 = createClob(part(JSON_DATA, 3, 4450));
-        NClob nclob3 = createNClob(part(JSON_DATA2, 4, 4450));
+        Clob clob3 = createClob(part(JSON_DATA, 3, 24450));
+        NClob nclob3 = createNClob(part(JSON_DATA2, 4, 24450));
         connection.prepareQuery("INSERT INTO clob_test VALUES (3, ?, ?, 'Test3')", ps -> {
             ps.setClob(1, clob3);
             ps.setNClob(2, nclob3);
@@ -740,8 +740,8 @@ public class OracleClobDataTypeIT extends AbstractConnectorTest {
         assertThat(after.get("VAL_DATA")).isEqualTo("Test3");
 
         // Update record
-        Clob clob1Update = createClob(part(JSON_DATA, 1, 4500));
-        NClob nclob1Update = createNClob(part(JSON_DATA2, 1, 4500));
+        Clob clob1Update = createClob(part(JSON_DATA, 1, 24500));
+        NClob nclob1Update = createNClob(part(JSON_DATA2, 1, 24500));
         connection.prepareQuery("UPDATE clob_test SET val_clob=?, val_nclob=?, val_data='Test1U' WHERE id = 1", ps -> {
             ps.setClob(1, clob1Update);
             ps.setNClob(2, nclob1Update);
@@ -761,14 +761,14 @@ public class OracleClobDataTypeIT extends AbstractConnectorTest {
         assertThat(after.get("VAL_DATA")).isEqualTo("Test1U");
 
         // Update multiple records, same transaction
-        Clob clob2Update = createClob(part(JSON_DATA, 2, 5000));
-        NClob nclob2Update = createNClob(part(JSON_DATA2, 2, 5000));
+        Clob clob2Update = createClob(part(JSON_DATA, 2, 25000));
+        NClob nclob2Update = createNClob(part(JSON_DATA2, 2, 25000));
         connection.prepareQuery("UPDATE clob_test SET val_clob=?, val_nclob=?, val_data='Test2U' WHERE id = 2", ps -> {
             ps.setClob(1, clob2Update);
             ps.setNClob(2, nclob2Update);
         }, null);
-        Clob clob3Update = createClob(part(JSON_DATA, 3, 5000));
-        NClob nclob3Update = createNClob(part(JSON_DATA2, 3, 5000));
+        Clob clob3Update = createClob(part(JSON_DATA, 3, 25000));
+        NClob nclob3Update = createNClob(part(JSON_DATA2, 3, 25000));
         connection.prepareQuery("UPDATE clob_test SET val_clob=?, val_nclob=?, val_data='Test3U' WHERE id = 3", ps -> {
             ps.setClob(1, clob3Update);
             ps.setNClob(2, nclob3Update);
@@ -873,8 +873,8 @@ public class OracleClobDataTypeIT extends AbstractConnectorTest {
         waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
         // Insert record
-        Clob clob1 = createClob(part(JSON_DATA, 0, 5000));
-        NClob nclob1 = createNClob(part(JSON_DATA2, 0, 5000));
+        Clob clob1 = createClob(part(JSON_DATA, 0, 25000));
+        NClob nclob1 = createNClob(part(JSON_DATA2, 0, 25000));
         connection.prepareQuery("INSERT INTO clob_test VALUES (1, ?, ?, 'ClobTest', 'NClobTest', 'Test1')", ps -> {
             ps.setClob(1, clob1);
             ps.setNClob(2, nclob1);
@@ -896,14 +896,14 @@ public class OracleClobDataTypeIT extends AbstractConnectorTest {
         assertThat(after.get("VAL_VARCHAR2")).isEqualTo("Test1");
 
         // Insert multiple records, same transaction
-        Clob clob2 = createClob(part(JSON_DATA, 1, 4450));
-        NClob nclob2 = createNClob(part(JSON_DATA2, 2, 4450));
+        Clob clob2 = createClob(part(JSON_DATA, 1, 24450));
+        NClob nclob2 = createNClob(part(JSON_DATA2, 2, 24450));
         connection.prepareQuery("INSERT INTO clob_test VALUES (2, ?, ?, 'ClobTest2', 'NClobTest2', 'Test2')", ps -> {
             ps.setClob(1, clob2);
             ps.setNClob(2, nclob2);
         }, null);
-        Clob clob3 = createClob(part(JSON_DATA, 3, 4450));
-        NClob nclob3 = createNClob(part(JSON_DATA2, 4, 4450));
+        Clob clob3 = createClob(part(JSON_DATA, 3, 24450));
+        NClob nclob3 = createNClob(part(JSON_DATA2, 4, 24450));
         connection.prepareQuery("INSERT INTO clob_test VALUES (3, ?, ?, 'ClobTest3', 'NClobTest3', 'Test3')", ps -> {
             ps.setClob(1, clob3);
             ps.setNClob(2, nclob3);
@@ -936,8 +936,8 @@ public class OracleClobDataTypeIT extends AbstractConnectorTest {
         assertThat(after.get("VAL_VARCHAR2")).isEqualTo("Test3");
 
         // Update record
-        Clob clob1Update = createClob(part(JSON_DATA, 1, 4500));
-        NClob nclob1Update = createNClob(part(JSON_DATA2, 1, 4500));
+        Clob clob1Update = createClob(part(JSON_DATA, 1, 24500));
+        NClob nclob1Update = createNClob(part(JSON_DATA2, 1, 24500));
         connection.prepareQuery("UPDATE clob_test SET val_clob=?, val_nclob=?, val_clobs=?, val_nclobs=?, val_varchar2='Test1U' WHERE id = 1", ps -> {
             ps.setClob(1, clob1Update);
             ps.setNClob(2, nclob1Update);
@@ -961,16 +961,16 @@ public class OracleClobDataTypeIT extends AbstractConnectorTest {
         assertThat(after.get("VAL_VARCHAR2")).isEqualTo("Test1U");
 
         // Update multiple records, same transaction
-        Clob clob2Update = createClob(part(JSON_DATA, 2, 5000));
-        NClob nclob2Update = createNClob(part(JSON_DATA2, 2, 5000));
+        Clob clob2Update = createClob(part(JSON_DATA, 2, 25000));
+        NClob nclob2Update = createNClob(part(JSON_DATA2, 2, 25000));
         connection.prepareQuery("UPDATE clob_test SET val_clob=?, val_nclob=?, val_clobs=?, val_nclobs=?, val_varchar2='Test2U' WHERE id = 2", ps -> {
             ps.setClob(1, clob2Update);
             ps.setNClob(2, nclob2Update);
             ps.setString(3, "ClobTest2Updated");
             ps.setString(4, "NClobTest2Updated");
         }, null);
-        Clob clob3Update = createClob(part(JSON_DATA, 3, 5000));
-        NClob nclob3Update = createNClob(part(JSON_DATA2, 3, 5000));
+        Clob clob3Update = createClob(part(JSON_DATA, 3, 25000));
+        NClob nclob3Update = createNClob(part(JSON_DATA2, 3, 25000));
         connection.prepareQuery("UPDATE clob_test SET val_clob=?, val_nclob=?, val_clobs=?, val_nclobs=?, val_varchar2='Test3U' WHERE id = 3", ps -> {
             ps.setClob(1, clob3Update);
             ps.setNClob(2, nclob3Update);
@@ -1078,7 +1078,7 @@ public class OracleClobDataTypeIT extends AbstractConnectorTest {
         waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
         // Insert record
-        Clob clob1 = createClob(part(JSON_DATA, 0, 5000));
+        Clob clob1 = createClob(part(JSON_DATA, 0, 25000));
         connection.prepareQuery("INSERT INTO CLOB_TEST VALUES (1, ?)", ps -> ps.setClob(1, clob1), null);
         connection.commit();
 
@@ -1127,8 +1127,8 @@ public class OracleClobDataTypeIT extends AbstractConnectorTest {
         waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
         // Insert record
-        Clob clob1 = createClob(part(JSON_DATA, 0, 5000));
-        NClob nclob1 = createNClob(part(JSON_DATA2, 0, 5000));
+        Clob clob1 = createClob(part(JSON_DATA, 0, 25000));
+        NClob nclob1 = createNClob(part(JSON_DATA2, 0, 25000));
         connection.prepareQuery("INSERT INTO clob_test VALUES (1, ?, ?, 'ClobTest', 'NClobTest', 'Test1')", ps -> {
             ps.setClob(1, clob1);
             ps.setNClob(2, nclob1);
@@ -1150,8 +1150,8 @@ public class OracleClobDataTypeIT extends AbstractConnectorTest {
         assertThat(after.get("VAL_VARCHAR2")).isEqualTo("Test1");
 
         // Update record, including primary key
-        Clob clob1Update = createClob(part(JSON_DATA, 1, 4500));
-        NClob nclob1Update = createNClob(part(JSON_DATA2, 1, 4500));
+        Clob clob1Update = createClob(part(JSON_DATA, 1, 24500));
+        NClob nclob1Update = createNClob(part(JSON_DATA2, 1, 24500));
         connection.prepareQuery("UPDATE clob_test SET id=2, val_clob=?, val_nclob=?, val_clobs=?, val_nclobs=?, val_varchar2='Test1U' WHERE id = 1", ps -> {
             ps.setClob(1, clob1Update);
             ps.setNClob(2, nclob1Update);
@@ -1204,8 +1204,8 @@ public class OracleClobDataTypeIT extends AbstractConnectorTest {
         waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
         // Insert record
-        Clob clob1 = createClob(part(JSON_DATA, 0, 5000));
-        NClob nclob1 = createNClob(part(JSON_DATA2, 0, 5000));
+        Clob clob1 = createClob(part(JSON_DATA, 0, 25000));
+        NClob nclob1 = createNClob(part(JSON_DATA2, 0, 25000));
         connection.prepareQuery("INSERT INTO clob_test VALUES (1, ?, ?, 'ClobTest', 'NClobTest', 'Test1')", ps -> {
             ps.setClob(1, clob1);
             ps.setNClob(2, nclob1);
@@ -1227,14 +1227,14 @@ public class OracleClobDataTypeIT extends AbstractConnectorTest {
         assertThat(after.get("VAL_VARCHAR2")).isEqualTo("Test1");
 
         // Insert multiple records, same transaction
-        Clob clob2 = createClob(part(JSON_DATA, 1, 4450));
-        NClob nclob2 = createNClob(part(JSON_DATA2, 2, 4450));
+        Clob clob2 = createClob(part(JSON_DATA, 1, 24450));
+        NClob nclob2 = createNClob(part(JSON_DATA2, 2, 24450));
         connection.prepareQuery("INSERT INTO clob_test VALUES (2, ?, ?, 'ClobTest2', 'NClobTest2', 'Test2')", ps -> {
             ps.setClob(1, clob2);
             ps.setNClob(2, nclob2);
         }, null);
-        Clob clob3 = createClob(part(JSON_DATA, 3, 4450));
-        NClob nclob3 = createNClob(part(JSON_DATA2, 4, 4450));
+        Clob clob3 = createClob(part(JSON_DATA, 3, 24450));
+        NClob nclob3 = createNClob(part(JSON_DATA2, 4, 24450));
         connection.prepareQuery("INSERT INTO clob_test VALUES (3, ?, ?, 'ClobTest3', 'NClobTest3', 'Test3')", ps -> {
             ps.setClob(1, clob3);
             ps.setNClob(2, nclob3);
@@ -1267,8 +1267,8 @@ public class OracleClobDataTypeIT extends AbstractConnectorTest {
         assertThat(after.get("VAL_VARCHAR2")).isEqualTo("Test3");
 
         // Update record
-        Clob clob1Update = createClob(part(JSON_DATA, 1, 4500));
-        NClob nclob1Update = createNClob(part(JSON_DATA2, 1, 4500));
+        Clob clob1Update = createClob(part(JSON_DATA, 1, 24500));
+        NClob nclob1Update = createNClob(part(JSON_DATA2, 1, 24500));
         connection.prepareQuery("UPDATE clob_test SET val_clob=?, val_nclob=?, val_clobs=?, val_nclobs=?, val_varchar2='Test1U' WHERE id = 1", ps -> {
             ps.setClob(1, clob1Update);
             ps.setNClob(2, nclob1Update);
@@ -1292,16 +1292,16 @@ public class OracleClobDataTypeIT extends AbstractConnectorTest {
         assertThat(after.get("VAL_VARCHAR2")).isEqualTo("Test1U");
 
         // Update multiple records, same transaction
-        Clob clob2Update = createClob(part(JSON_DATA, 2, 5000));
-        NClob nclob2Update = createNClob(part(JSON_DATA2, 2, 5000));
+        Clob clob2Update = createClob(part(JSON_DATA, 2, 25000));
+        NClob nclob2Update = createNClob(part(JSON_DATA2, 2, 25000));
         connection.prepareQuery("UPDATE clob_test SET val_clob=?, val_nclob=?, val_clobs=?, val_nclobs=?, val_varchar2='Test2U' WHERE id = 2", ps -> {
             ps.setClob(1, clob2Update);
             ps.setNClob(2, nclob2Update);
             ps.setString(3, "ClobTest2Updated");
             ps.setString(4, "NClobTest2Updated");
         }, null);
-        Clob clob3Update = createClob(part(JSON_DATA, 3, 5000));
-        NClob nclob3Update = createNClob(part(JSON_DATA2, 3, 5000));
+        Clob clob3Update = createClob(part(JSON_DATA, 3, 25000));
+        NClob nclob3Update = createNClob(part(JSON_DATA2, 3, 25000));
         connection.prepareQuery("UPDATE clob_test SET val_clob=?, val_nclob=?, val_clobs=?, val_nclobs=?, val_varchar2='Test3U' WHERE id = 3", ps -> {
             ps.setClob(1, clob3Update);
             ps.setNClob(2, nclob3Update);

@@ -137,7 +137,7 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
 
         Struct after = after(record);
         assertThat(after.get("ID")).isEqualTo(1);
-        assertThat(after.get("VAL_BLOB")).isEqualTo(ByteBuffer.wrap(blob1.getBytes(1, 100)));
+        assertThat(after.get("VAL_BLOB")).isEqualTo(getByteBufferFromBlob(blob1));
 
         // Insert multiple records, same transaction
         Blob blob2 = createBlob(part(BIN_DATA, 0, 200));
@@ -154,14 +154,14 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
 
         after = after(record);
         assertThat(after.get("ID")).isEqualTo(2);
-        assertThat(after.get("VAL_BLOB")).isEqualTo(ByteBuffer.wrap(blob2.getBytes(1, 200)));
+        assertThat(after.get("VAL_BLOB")).isEqualTo(getByteBufferFromBlob(blob2));
 
         record = records.recordsForTopic(topicName("BLOB_TEST")).get(1);
         VerifyRecord.isValidInsert(record, "ID", 3);
 
         after = after(record);
         assertThat(after.get("ID")).isEqualTo(3);
-        assertThat(after.get("VAL_BLOB")).isEqualTo(ByteBuffer.wrap(blob3.getBytes(1, 300)));
+        assertThat(after.get("VAL_BLOB")).isEqualTo(getByteBufferFromBlob(blob3));
 
         // Update record
         Blob blob1Update = createBlob(part(BIN_DATA, 1, 201));
@@ -176,7 +176,7 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
 
         after = after(record);
         assertThat(after.get("ID")).isEqualTo(1);
-        assertThat(after.get("VAL_BLOB")).isEqualTo(ByteBuffer.wrap(blob1Update.getBytes(1, 200)));
+        assertThat(after.get("VAL_BLOB")).isEqualTo(getByteBufferFromBlob(blob1Update));
 
         // Update multiple records, same transaction
         Blob blob2Update = createBlob(part(BIN_DATA, 2, 202));
@@ -193,14 +193,14 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
 
         after = after(record);
         assertThat(after.get("ID")).isEqualTo(2);
-        assertThat(after.get("VAL_BLOB")).isEqualTo(ByteBuffer.wrap(blob2Update.getBytes(1, 200)));
+        assertThat(after.get("VAL_BLOB")).isEqualTo(getByteBufferFromBlob(blob2Update));
 
         record = records.recordsForTopic(topicName("BLOB_TEST")).get(1);
         VerifyRecord.isValidUpdate(record, "ID", 3);
 
         after = after(record);
         assertThat(after.get("ID")).isEqualTo(3);
-        assertThat(after.get("VAL_BLOB")).isEqualTo(ByteBuffer.wrap(blob3Update.getBytes(1, 300)));
+        assertThat(after.get("VAL_BLOB")).isEqualTo(getByteBufferFromBlob(blob3Update));
 
         // Delete record
         connection.execute("DELETE FROM debezium.blob_test WHERE id = 1");
@@ -282,7 +282,7 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
 
         Struct after = after(record);
         assertThat(after.get("ID")).isEqualTo(1);
-        assertThat(after.get("VAL_BLOB")).isEqualTo(ByteBuffer.wrap(blob1.getBytes(1, 100)));
+        assertThat(after.get("VAL_BLOB")).isEqualTo(getByteBufferFromBlob(blob1));
         assertThat(after.get("VAL_DATA")).isEqualTo("Test1");
 
         // Insert multiple records, same transaction
@@ -300,7 +300,7 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
 
         after = after(record);
         assertThat(after.get("ID")).isEqualTo(2);
-        assertThat(after.get("VAL_BLOB")).isEqualTo(ByteBuffer.wrap(blob2.getBytes(1, 200)));
+        assertThat(after.get("VAL_BLOB")).isEqualTo(getByteBufferFromBlob(blob2));
         assertThat(after.get("VAL_DATA")).isEqualTo("Test2");
 
         record = records.recordsForTopic(topicName("BLOB_TEST")).get(1);
@@ -308,7 +308,7 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
 
         after = after(record);
         assertThat(after.get("ID")).isEqualTo(3);
-        assertThat(after.get("VAL_BLOB")).isEqualTo(ByteBuffer.wrap(blob3.getBytes(1, 300)));
+        assertThat(after.get("VAL_BLOB")).isEqualTo(getByteBufferFromBlob(blob3));
         assertThat(after.get("VAL_DATA")).isEqualTo("Test3");
 
         // Update record
@@ -324,7 +324,7 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
 
         after = after(record);
         assertThat(after.get("ID")).isEqualTo(1);
-        assertThat(after.get("VAL_BLOB")).isEqualTo(ByteBuffer.wrap(blob1Update.getBytes(1, 200)));
+        assertThat(after.get("VAL_BLOB")).isEqualTo(getByteBufferFromBlob(blob1Update));
         assertThat(after.get("VAL_DATA")).isEqualTo("Test1U");
 
         // Update multiple records, same transaction
@@ -342,7 +342,7 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
 
         after = after(record);
         assertThat(after.get("ID")).isEqualTo(2);
-        assertThat(after.get("VAL_BLOB")).isEqualTo(ByteBuffer.wrap(blob2Update.getBytes(1, 200)));
+        assertThat(after.get("VAL_BLOB")).isEqualTo(getByteBufferFromBlob(blob2Update));
         assertThat(after.get("VAL_DATA")).isEqualTo("Test2U");
 
         record = records.recordsForTopic(topicName("BLOB_TEST")).get(1);
@@ -350,7 +350,7 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
 
         after = after(record);
         assertThat(after.get("ID")).isEqualTo(3);
-        assertThat(after.get("VAL_BLOB")).isEqualTo(ByteBuffer.wrap(blob3Update.getBytes(1, 300)));
+        assertThat(after.get("VAL_BLOB")).isEqualTo(getByteBufferFromBlob(blob3Update));
         assertThat(after.get("VAL_DATA")).isEqualTo("Test3U");
 
         // Delete record
@@ -423,7 +423,7 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
         waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
         // Insert record
-        Blob blob1 = createBlob(part(BIN_DATA, 0, 4000));
+        Blob blob1 = createBlob(part(BIN_DATA, 0, 24000));
         connection.prepareQuery("INSERT INTO debezium.blob_test values (1, ?)", p -> p.setBlob(1, blob1), null);
         connection.commit();
 
@@ -435,12 +435,12 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
 
         Struct after = after(record);
         assertThat(after.get("ID")).isEqualTo(1);
-        assertThat(after.get("VAL_BLOB")).isEqualTo(ByteBuffer.wrap(blob1.getBytes(1, 4000)));
+        assertThat(after.get("VAL_BLOB")).isEqualTo(getByteBufferFromBlob(blob1));
 
         // Insert multiple records, same transaction
-        Blob blob2 = createBlob(part(BIN_DATA, 10, 4010));
+        Blob blob2 = createBlob(part(BIN_DATA, 10, 24010));
         connection.prepareQuery("INSERT INTO debezium.blob_test values (2, ?)", p -> p.setBlob(1, blob2), null);
-        Blob blob3 = createBlob(part(BIN_DATA, 50, 4050));
+        Blob blob3 = createBlob(part(BIN_DATA, 50, 24050));
         connection.prepareQuery("INSERT INTO debezium.blob_test values (3, ?)", p -> p.setBlob(1, blob3), null);
         connection.commit();
 
@@ -452,17 +452,17 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
 
         after = after(record);
         assertThat(after.get("ID")).isEqualTo(2);
-        assertThat(after.get("VAL_BLOB")).isEqualTo(ByteBuffer.wrap(blob2.getBytes(1, 4000)));
+        assertThat(after.get("VAL_BLOB")).isEqualTo(getByteBufferFromBlob(blob2));
 
         record = records.recordsForTopic(topicName("BLOB_TEST")).get(1);
         VerifyRecord.isValidInsert(record, "ID", 3);
 
         after = after(record);
         assertThat(after.get("ID")).isEqualTo(3);
-        assertThat(after.get("VAL_BLOB")).isEqualTo(ByteBuffer.wrap(blob3.getBytes(1, 4000)));
+        assertThat(after.get("VAL_BLOB")).isEqualTo(getByteBufferFromBlob(blob3));
 
         // Update record
-        Blob blob1Update = createBlob(part(BIN_DATA, 1, 4001));
+        Blob blob1Update = createBlob(part(BIN_DATA, 1, 24001));
         connection.prepareQuery("UPDATE debezium.blob_test SET val_blob = ? WHERE id = 1", p -> p.setBlob(1, blob1Update), null);
         connection.commit();
 
@@ -474,12 +474,12 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
 
         after = after(record);
         assertThat(after.get("ID")).isEqualTo(1);
-        assertThat(after.get("VAL_BLOB")).isEqualTo(ByteBuffer.wrap(blob1Update.getBytes(1, 4000)));
+        assertThat(after.get("VAL_BLOB")).isEqualTo(getByteBufferFromBlob(blob1Update));
 
         // Update multiple records, same transaction
-        Blob blob2Update = createBlob(part(BIN_DATA, 2, 4002));
+        Blob blob2Update = createBlob(part(BIN_DATA, 2, 24002));
         connection.prepareQuery("UPDATE debezium.blob_test SET val_blob = ? WHERE id = 2", p -> p.setBlob(1, blob2Update), null);
-        Blob blob3Update = createBlob(part(BIN_DATA, 3, 4003));
+        Blob blob3Update = createBlob(part(BIN_DATA, 3, 24003));
         connection.prepareQuery("UPDATE debezium.blob_test SET val_blob = ? WHERE id = 3", p -> p.setBlob(1, blob3Update), null);
         connection.commit();
 
@@ -491,14 +491,14 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
 
         after = after(record);
         assertThat(after.get("ID")).isEqualTo(2);
-        assertThat(after.get("VAL_BLOB")).isEqualTo(ByteBuffer.wrap(blob2Update.getBytes(1, 4000)));
+        assertThat(after.get("VAL_BLOB")).isEqualTo(getByteBufferFromBlob(blob2Update));
 
         record = records.recordsForTopic(topicName("BLOB_TEST")).get(1);
         VerifyRecord.isValidUpdate(record, "ID", 3);
 
         after = after(record);
         assertThat(after.get("ID")).isEqualTo(3);
-        assertThat(after.get("VAL_BLOB")).isEqualTo(ByteBuffer.wrap(blob3Update.getBytes(1, 4000)));
+        assertThat(after.get("VAL_BLOB")).isEqualTo(getByteBufferFromBlob(blob3Update));
 
         // Delete record
         connection.execute("DELETE FROM debezium.blob_test WHERE id = 1");
@@ -569,7 +569,7 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
         waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
         // Insert record
-        Blob blob1 = createBlob(part(BIN_DATA, 0, 4000));
+        Blob blob1 = createBlob(part(BIN_DATA, 0, 24000));
         connection.prepareQuery("INSERT INTO debezium.blob_test values (1, ?, 'Test1')", p -> p.setBlob(1, blob1), null);
         connection.commit();
 
@@ -581,13 +581,13 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
 
         Struct after = after(record);
         assertThat(after.get("ID")).isEqualTo(1);
-        assertThat(after.get("VAL_BLOB")).isEqualTo(ByteBuffer.wrap(blob1.getBytes(1, 4000)));
+        assertThat(after.get("VAL_BLOB")).isEqualTo(getByteBufferFromBlob(blob1));
         assertThat(after.get("VAL_DATA")).isEqualTo("Test1");
 
         // Insert multiple records, same transaction
-        Blob blob2 = createBlob(part(BIN_DATA, 10, 4010));
+        Blob blob2 = createBlob(part(BIN_DATA, 10, 24010));
         connection.prepareQuery("INSERT INTO debezium.blob_test values (2, ?, 'Test2')", p -> p.setBlob(1, blob2), null);
-        Blob blob3 = createBlob(part(BIN_DATA, 50, 4050));
+        Blob blob3 = createBlob(part(BIN_DATA, 50, 24050));
         connection.prepareQuery("INSERT INTO debezium.blob_test values (3, ?, 'Test3')", p -> p.setBlob(1, blob3), null);
         connection.commit();
 
@@ -599,7 +599,7 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
 
         after = after(record);
         assertThat(after.get("ID")).isEqualTo(2);
-        assertThat(after.get("VAL_BLOB")).isEqualTo(ByteBuffer.wrap(blob2.getBytes(1, 4000)));
+        assertThat(after.get("VAL_BLOB")).isEqualTo(getByteBufferFromBlob(blob2));
         assertThat(after.get("VAL_DATA")).isEqualTo("Test2");
 
         record = records.recordsForTopic(topicName("BLOB_TEST")).get(1);
@@ -607,11 +607,11 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
 
         after = after(record);
         assertThat(after.get("ID")).isEqualTo(3);
-        assertThat(after.get("VAL_BLOB")).isEqualTo(ByteBuffer.wrap(blob3.getBytes(1, 4000)));
+        assertThat(after.get("VAL_BLOB")).isEqualTo(getByteBufferFromBlob(blob3));
         assertThat(after.get("VAL_DATA")).isEqualTo("Test3");
 
         // Update record
-        Blob blob1Update = createBlob(part(BIN_DATA, 1, 4001));
+        Blob blob1Update = createBlob(part(BIN_DATA, 1, 24001));
         connection.prepareQuery("UPDATE debezium.blob_test SET val_blob = ?, val_data = 'Test1U' WHERE id = 1", p -> p.setBlob(1, blob1Update), null);
         connection.commit();
 
@@ -623,13 +623,13 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
 
         after = after(record);
         assertThat(after.get("ID")).isEqualTo(1);
-        assertThat(after.get("VAL_BLOB")).isEqualTo(ByteBuffer.wrap(blob1Update.getBytes(1, 4000)));
+        assertThat(after.get("VAL_BLOB")).isEqualTo(getByteBufferFromBlob(blob1Update));
         assertThat(after.get("VAL_DATA")).isEqualTo("Test1U");
 
         // Update multiple records, same transaction
-        Blob blob2Update = createBlob(part(BIN_DATA, 2, 4002));
+        Blob blob2Update = createBlob(part(BIN_DATA, 2, 24002));
         connection.prepareQuery("UPDATE debezium.blob_test SET val_blob = ?, val_data = 'Test2U' WHERE id = 2", p -> p.setBlob(1, blob2Update), null);
-        Blob blob3Update = createBlob(part(BIN_DATA, 3, 4003));
+        Blob blob3Update = createBlob(part(BIN_DATA, 3, 24003));
         connection.prepareQuery("UPDATE debezium.blob_test SET val_blob = ?, val_data = 'Test3U' WHERE id = 3", p -> p.setBlob(1, blob3Update), null);
         connection.commit();
 
@@ -641,7 +641,7 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
 
         after = after(record);
         assertThat(after.get("ID")).isEqualTo(2);
-        assertThat(after.get("VAL_BLOB")).isEqualTo(ByteBuffer.wrap(blob2Update.getBytes(1, 4000)));
+        assertThat(after.get("VAL_BLOB")).isEqualTo(getByteBufferFromBlob(blob2Update));
         assertThat(after.get("VAL_DATA")).isEqualTo("Test2U");
 
         record = records.recordsForTopic(topicName("BLOB_TEST")).get(1);
@@ -649,7 +649,7 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
 
         after = after(record);
         assertThat(after.get("ID")).isEqualTo(3);
-        assertThat(after.get("VAL_BLOB")).isEqualTo(ByteBuffer.wrap(blob3Update.getBytes(1, 4000)));
+        assertThat(after.get("VAL_BLOB")).isEqualTo(getByteBufferFromBlob(blob3Update));
         assertThat(after.get("VAL_DATA")).isEqualTo("Test3U");
 
         // Delete record
@@ -726,7 +726,7 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
 
         // Insert record
         Blob blob1a = createBlob(part(BIN_DATA, 1, 201));
-        Blob blob1b = createBlob(part(BIN_DATA, 0, 4000));
+        Blob blob1b = createBlob(part(BIN_DATA, 0, 24000));
         connection.prepareQuery("INSERT INTO debezium.blob_test values (1, ?, ?, 'Test1')", p -> {
             p.setBlob(1, blob1a);
             p.setBlob(2, blob1b);
@@ -741,19 +741,19 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
 
         Struct after = after(record);
         assertThat(after.get("ID")).isEqualTo(1);
-        assertThat(after.get("VAL_BLOBS")).isEqualTo(ByteBuffer.wrap(blob1a.getBytes(1, 200)));
-        assertThat(after.get("VAL_BLOB")).isEqualTo(ByteBuffer.wrap(blob1b.getBytes(1, 4000)));
+        assertThat(after.get("VAL_BLOBS")).isEqualTo(getByteBufferFromBlob(blob1a));
+        assertThat(after.get("VAL_BLOB")).isEqualTo(getByteBufferFromBlob(blob1b));
         assertThat(after.get("VAL_DATA")).isEqualTo("Test1");
 
         // Insert multiple records, same transaction
         Blob blob2a = createBlob(part(BIN_DATA, 10, 210));
-        Blob blob2b = createBlob(part(BIN_DATA, 10, 4010));
+        Blob blob2b = createBlob(part(BIN_DATA, 10, 24010));
         connection.prepareQuery("INSERT INTO debezium.blob_test values (2, ?, ?, 'Test2')", p -> {
             p.setBlob(1, blob2a);
             p.setBlob(2, blob2b);
         }, null);
         Blob blob3a = createBlob(part(BIN_DATA, 50, 250));
-        Blob blob3b = createBlob(part(BIN_DATA, 50, 4050));
+        Blob blob3b = createBlob(part(BIN_DATA, 50, 24050));
         connection.prepareQuery("INSERT INTO debezium.blob_test values (3, ?, ?, 'Test3')", p -> {
             p.setBlob(1, blob3a);
             p.setBlob(2, blob3b);
@@ -768,8 +768,8 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
 
         after = after(record);
         assertThat(after.get("ID")).isEqualTo(2);
-        assertThat(after.get("VAL_BLOBS")).isEqualTo(ByteBuffer.wrap(blob2a.getBytes(1, 200)));
-        assertThat(after.get("VAL_BLOB")).isEqualTo(ByteBuffer.wrap(blob2b.getBytes(1, 4000)));
+        assertThat(after.get("VAL_BLOBS")).isEqualTo(getByteBufferFromBlob(blob2a));
+        assertThat(after.get("VAL_BLOB")).isEqualTo(getByteBufferFromBlob(blob2b));
         assertThat(after.get("VAL_DATA")).isEqualTo("Test2");
 
         record = records.recordsForTopic(topicName("BLOB_TEST")).get(1);
@@ -777,13 +777,13 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
 
         after = after(record);
         assertThat(after.get("ID")).isEqualTo(3);
-        assertThat(after.get("VAL_BLOBS")).isEqualTo(ByteBuffer.wrap(blob3a.getBytes(1, 200)));
-        assertThat(after.get("VAL_BLOB")).isEqualTo(ByteBuffer.wrap(blob3b.getBytes(1, 4000)));
+        assertThat(after.get("VAL_BLOBS")).isEqualTo(getByteBufferFromBlob(blob3a));
+        assertThat(after.get("VAL_BLOB")).isEqualTo(getByteBufferFromBlob(blob3b));
         assertThat(after.get("VAL_DATA")).isEqualTo("Test3");
 
         // Update record
         Blob blob1aUpdate = createBlob(part(BIN_DATA, 5, 205));
-        Blob blob1bUpdate = createBlob(part(BIN_DATA, 1, 4001));
+        Blob blob1bUpdate = createBlob(part(BIN_DATA, 1, 24001));
         connection.prepareQuery("UPDATE debezium.blob_test SET val_blobs = ?, val_blob = ?, val_data = 'Test1U' WHERE id = 1", p -> {
             p.setBlob(1, blob1aUpdate);
             p.setBlob(2, blob1bUpdate);
@@ -798,19 +798,19 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
 
         after = after(record);
         assertThat(after.get("ID")).isEqualTo(1);
-        assertThat(after.get("VAL_BLOBS")).isEqualTo(ByteBuffer.wrap(blob1aUpdate.getBytes(1, 200)));
-        assertThat(after.get("VAL_BLOB")).isEqualTo(ByteBuffer.wrap(blob1bUpdate.getBytes(1, 4000)));
+        assertThat(after.get("VAL_BLOBS")).isEqualTo(getByteBufferFromBlob(blob1aUpdate));
+        assertThat(after.get("VAL_BLOB")).isEqualTo(getByteBufferFromBlob(blob1bUpdate));
         assertThat(after.get("VAL_DATA")).isEqualTo("Test1U");
 
         // Update multiple records, same transaction
         Blob blob2aUpdate = createBlob(part(BIN_DATA, 2, 202));
-        Blob blob2bUpdate = createBlob(part(BIN_DATA, 2, 4002));
+        Blob blob2bUpdate = createBlob(part(BIN_DATA, 2, 24002));
         connection.prepareQuery("UPDATE debezium.blob_test SET val_blobs = ?, val_blob = ?, val_data = 'Test2U' WHERE id = 2", p -> {
             p.setBlob(1, blob2aUpdate);
             p.setBlob(2, blob2bUpdate);
         }, null);
         Blob blob3aUpdate = createBlob(part(BIN_DATA, 3, 203));
-        Blob blob3bUpdate = createBlob(part(BIN_DATA, 3, 4003));
+        Blob blob3bUpdate = createBlob(part(BIN_DATA, 3, 24003));
         connection.prepareQuery("UPDATE debezium.blob_test SET val_blobs = ?, val_blob = ?, val_data = 'Test3U' WHERE id = 3", p -> {
             p.setBlob(1, blob3aUpdate);
             p.setBlob(2, blob3bUpdate);
@@ -825,8 +825,8 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
 
         after = after(record);
         assertThat(after.get("ID")).isEqualTo(2);
-        assertThat(after.get("VAL_BLOBS")).isEqualTo(ByteBuffer.wrap(blob2aUpdate.getBytes(1, 200)));
-        assertThat(after.get("VAL_BLOB")).isEqualTo(ByteBuffer.wrap(blob2bUpdate.getBytes(1, 4000)));
+        assertThat(after.get("VAL_BLOBS")).isEqualTo(getByteBufferFromBlob(blob2aUpdate));
+        assertThat(after.get("VAL_BLOB")).isEqualTo(getByteBufferFromBlob(blob2bUpdate));
         assertThat(after.get("VAL_DATA")).isEqualTo("Test2U");
 
         record = records.recordsForTopic(topicName("BLOB_TEST")).get(1);
@@ -834,8 +834,8 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
 
         after = after(record);
         assertThat(after.get("ID")).isEqualTo(3);
-        assertThat(after.get("VAL_BLOBS")).isEqualTo(ByteBuffer.wrap(blob3aUpdate.getBytes(1, 200)));
-        assertThat(after.get("VAL_BLOB")).isEqualTo(ByteBuffer.wrap(blob3bUpdate.getBytes(1, 4000)));
+        assertThat(after.get("VAL_BLOBS")).isEqualTo(getByteBufferFromBlob(blob3aUpdate));
+        assertThat(after.get("VAL_BLOB")).isEqualTo(getByteBufferFromBlob(blob3bUpdate));
         assertThat(after.get("VAL_DATA")).isEqualTo("Test3U");
 
         // Delete record
@@ -913,7 +913,7 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
         waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
         // Insert record
-        Blob blob1 = createBlob(part(BIN_DATA, 0, 4000));
+        Blob blob1 = createBlob(part(BIN_DATA, 0, 24000));
         connection.prepareQuery("INSERT INTO debezium.blob_test values (1, ?)", p -> p.setBlob(1, blob1), null);
         connection.commit();
 
@@ -925,7 +925,7 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
 
         Struct after = after(record);
         assertThat(after.get("ID")).isEqualTo(1);
-        assertThat(after.get("VAL_BLOB")).isEqualTo(ByteBuffer.wrap(blob1.getBytes(1, 4000)));
+        assertThat(after.get("VAL_BLOB")).isEqualTo(getByteBufferFromBlob(blob1));
 
         // Execute LOB_ERASE
         connection.execute("DECLARE loc_b BLOB; amount integer; BEGIN "
@@ -961,7 +961,7 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
 
         // Insert record
         Blob blob1a = createBlob(part(BIN_DATA, 1, 201));
-        Blob blob1b = createBlob(part(BIN_DATA, 0, 4000));
+        Blob blob1b = createBlob(part(BIN_DATA, 0, 24000));
         connection.prepareQuery("INSERT INTO debezium.blob_test values (1, ?, ?, 'Test1')", p -> {
             p.setBlob(1, blob1a);
             p.setBlob(2, blob1b);
@@ -976,13 +976,13 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
 
         Struct after = after(record);
         assertThat(after.get("ID")).isEqualTo(1);
-        assertThat(after.get("VAL_BLOBS")).isEqualTo(ByteBuffer.wrap(blob1a.getBytes(1, 200)));
-        assertThat(after.get("VAL_BLOB")).isEqualTo(ByteBuffer.wrap(blob1b.getBytes(1, 4000)));
+        assertThat(after.get("VAL_BLOBS")).isEqualTo(getByteBufferFromBlob(blob1a));
+        assertThat(after.get("VAL_BLOB")).isEqualTo(getByteBufferFromBlob(blob1b));
         assertThat(after.get("VAL_DATA")).isEqualTo("Test1");
 
         // Update record, including primary key
         Blob blob1aUpdate = createBlob(part(BIN_DATA, 5, 205));
-        Blob blob1bUpdate = createBlob(part(BIN_DATA, 1, 4001));
+        Blob blob1bUpdate = createBlob(part(BIN_DATA, 1, 24001));
         connection.prepareQuery("UPDATE debezium.blob_test SET id = 2, val_blobs = ?, val_blob = ?, val_data = 'Test1U' WHERE id = 1", p -> {
             p.setBlob(1, blob1aUpdate);
             p.setBlob(2, blob1bUpdate);
@@ -998,8 +998,8 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
 
         after = after(record);
         assertThat(after.get("ID")).isEqualTo(2);
-        assertThat(after.get("VAL_BLOBS")).isEqualTo(ByteBuffer.wrap(blob1aUpdate.getBytes(1, 200)));
-        assertThat(after.get("VAL_BLOB")).isEqualTo(ByteBuffer.wrap(blob1bUpdate.getBytes(1, 4000)));
+        assertThat(after.get("VAL_BLOBS")).isEqualTo(getByteBufferFromBlob(blob1aUpdate));
+        assertThat(after.get("VAL_BLOB")).isEqualTo(getByteBufferFromBlob(blob1bUpdate));
         assertThat(after.get("VAL_DATA")).isEqualTo("Test1U");
     }
 
@@ -1033,5 +1033,9 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
         final Blob blob = connection.connection().createBlob();
         blob.setBytes(1, data);
         return blob;
+    }
+
+    private static ByteBuffer getByteBufferFromBlob(Blob blob) throws SQLException {
+        return ByteBuffer.wrap(blob.getBytes(1, (int) blob.length()));
     }
 }
