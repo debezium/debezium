@@ -233,8 +233,8 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
             new SchemaAndValueField("VAL_INT_YTM", MicroDuration.builder().optional().build(), -110451600_000_000L),
             new SchemaAndValueField("VAL_INT_DTS", MicroDuration.builder().optional().build(), -93784_560_000L));
 
-    private static final String CLOB_JSON = Testing.Files.readResourceAsString("data/test_clob_data.json");
-    private static final String NCLOB_JSON = Testing.Files.readResourceAsString("data/test_clob_data2.json");
+    private static final String CLOB_JSON = Testing.Files.readResourceAsString("data/test_lob_data.json");
+    private static final String NCLOB_JSON = Testing.Files.readResourceAsString("data/test_lob_data2.json");
 
     private static final List<SchemaAndValueField> EXPECTED_CLOB = Arrays.asList(
             new SchemaAndValueField("VAL_CLOB_INLINE", Schema.OPTIONAL_STRING_SCHEMA, "TestClob123"),
