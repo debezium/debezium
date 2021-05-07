@@ -68,7 +68,6 @@ public class LogMinerAdapter extends AbstractStreamingAdapter {
                 errorHandler,
                 clock,
                 schema,
-                taskContext,
                 jdbcConfig,
                 streamingMetrics);
     }

@@ -33,10 +33,15 @@ public class RowMapper {
     public static final int DELETE = 2;
     public static final int UPDATE = 3;
     public static final int DDL = 5;
+    public static final int START = 6;
     public static final int COMMIT = 7;
+    public static final int SELECT_LOB_LOCATOR = 9;
+    public static final int LOB_WRITE = 10;
+    public static final int LOB_ERASE = 29;
     public static final int MISSING_SCN = 34;
     public static final int ROLLBACK = 36;
 
+    // columns mapped by index based on query in SqlUtils#logMinerContentsQuery
     private static final int SCN = 1;
     private static final int SQL_REDO = 2;
     private static final int OPERATION_CODE = 3;
@@ -49,12 +54,15 @@ public class RowMapper {
     private static final int USERNAME = 10;
     private static final int ROW_ID = 11;
     private static final int ROLLBACK_FLAG = 12;
+    private static final int SEQUENCE = 13;
+    private static final int RS_ID = 14;
+    private static final int HASH = 15;
+
     private static final Calendar UTC_CALENDAR = Calendar.getInstance(TimeZone.getTimeZone(ZoneOffset.UTC));
+
     // todo: add these for recording
     // private static final int SESSION_NUMBER = 10;
     // private static final int SERIAL_NUMBER = 11;
-    // private static final int RS_ID = 12;
-    // private static final int SSN = 12;
 
     public static String getOperation(ResultSet rs) throws SQLException {
         return rs.getString(OPERATION);
@@ -111,6 +119,7 @@ public class RowMapper {
      * @param changeTime time of change
      * @param txId transaction ID
      * @return the redo SQL
+     * @throws SQLException if an exception occurred while interacting with the data source
      */
     public static String getSqlRedo(ResultSet rs, boolean isDml, HistoryRecorder historyRecorder, Scn scn, String tableName,
                                     String segOwner, int operationCode, Timestamp changeTime, String txId)
@@ -137,10 +146,12 @@ public class RowMapper {
                 LOGGER.warn("LOB value was truncated due to the connector limitation of {} MB", 40);
                 break;
             }
-            result.append(rs.getString(SQL_REDO));
+
+            redoSql = rs.getString(SQL_REDO);
+            result.append(redoSql);
             csf = rs.getInt(CSF);
             if (isDml) {
-                historyRecorder.record(scn, tableName, segOwner, operationCode, changeTime, txId, csf, rs.getString(SQL_REDO));
+                historyRecorder.record(scn, tableName, segOwner, operationCode, changeTime, txId, csf, redoSql);
             }
         }
 
@@ -159,4 +170,15 @@ public class RowMapper {
         return new TableId(catalogName, rs.getString(SEG_OWNER), rs.getString(TABLE_NAME));
     }
 
+    public static int getSequence(ResultSet rs) throws SQLException {
+        return rs.getInt(SEQUENCE);
+    }
+
+    public static Object getRsId(ResultSet rs) throws SQLException {
+        return rs.getObject(RS_ID);
+    }
+
+    public static long getHash(ResultSet rs) throws SQLException {
+        return rs.getLong(HASH);
+    }
 }

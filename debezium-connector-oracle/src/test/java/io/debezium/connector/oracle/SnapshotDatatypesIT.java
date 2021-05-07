@@ -38,6 +38,7 @@ public class SnapshotDatatypesIT extends AbstractOracleDatatypesTest {
         insertFpTypes();
         insertIntTypes();
         insertTimeTypes();
+        insertClobTypes();
     }
 
     @Before
@@ -81,6 +82,8 @@ public class SnapshotDatatypesIT extends AbstractOracleDatatypesTest {
             case "timeTypesAsAdaptiveMicroseconds":
             case "timeTypesAsConnect":
                 return "debezium.type_time";
+            case "clobTypes":
+                return "debezium.type_clob";
             default:
                 throw new IllegalArgumentException("Unexpected test method: " + name.getMethodName());
         }

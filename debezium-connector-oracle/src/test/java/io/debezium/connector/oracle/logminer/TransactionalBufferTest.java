@@ -40,7 +40,6 @@ import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot.AdapterName;
 import io.debezium.connector.oracle.logminer.valueholder.LogMinerDmlEntry;
 import io.debezium.connector.oracle.logminer.valueholder.LogMinerDmlEntryImpl;
 import io.debezium.connector.oracle.util.TestHelper;
-import io.debezium.data.Envelope;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
@@ -65,7 +64,7 @@ public class TransactionalBufferTest {
     private static final TableId TABLE_ID = new TableId(TestHelper.SERVER_NAME, "DEBEZIUM", "TEST");
     private static final String ROW_ID = "AAABCD871DFAA";
     private static final String OTHER_ROW_ID = "BAABCD871DFAA";
-    private static final LogMinerDmlEntry DML_ENTRY = new LogMinerDmlEntryImpl(Envelope.Operation.CREATE, Collections.emptyList(), Collections.emptyList());
+    private static final LogMinerDmlEntry DML_ENTRY = new LogMinerDmlEntryImpl(RowMapper.INSERT, Collections.emptyList(), Collections.emptyList());
 
     private static final Configuration config = new Configuration() {
         @Override
@@ -227,6 +226,6 @@ public class TransactionalBufferTest {
     }
 
     private void registerDmlOperation(String txId, Scn scn, String rowId) {
-        transactionalBuffer.registerDmlOperation(RowMapper.INSERT, txId, scn, TABLE_ID, DML_ENTRY, Instant.now(), rowId);
+        transactionalBuffer.registerDmlOperation(RowMapper.INSERT, txId, scn, TABLE_ID, DML_ENTRY, Instant.now(), rowId, null, 0L);
     }
 }

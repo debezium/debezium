@@ -8,6 +8,7 @@ package io.debezium.connector.oracle.logminer;
 import java.util.Arrays;
 import java.util.List;
 
+import io.debezium.DebeziumException;
 import io.debezium.connector.oracle.BaseChangeRecordEmitter;
 import io.debezium.connector.oracle.logminer.valueholder.LogMinerColumnValue;
 import io.debezium.connector.oracle.logminer.valueholder.LogMinerDmlEntry;
@@ -21,7 +22,7 @@ import io.debezium.util.Clock;
  */
 public class LogMinerChangeRecordEmitter extends BaseChangeRecordEmitter<LogMinerColumnValue> {
 
-    private LogMinerDmlEntry dmlEntry;
+    private final LogMinerDmlEntry dmlEntry;
     protected final Table table;
 
     public LogMinerChangeRecordEmitter(OffsetContext offset, LogMinerDmlEntry dmlEntry, Table table, Clock clock) {
@@ -32,7 +33,17 @@ public class LogMinerChangeRecordEmitter extends BaseChangeRecordEmitter<LogMine
 
     @Override
     protected Operation getOperation() {
-        return dmlEntry.getCommandType();
+        switch (dmlEntry.getOperation()) {
+            case RowMapper.INSERT:
+                return Operation.CREATE;
+            case RowMapper.UPDATE:
+            case RowMapper.SELECT_LOB_LOCATOR:
+                return Operation.UPDATE;
+            case RowMapper.DELETE:
+                return Operation.DELETE;
+            default:
+                throw new DebeziumException("Unsupported operation type: " + dmlEntry.getOperation());
+        }
     }
 
     @Override
