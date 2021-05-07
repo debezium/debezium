@@ -7,7 +7,7 @@ package io.debezium.outbox.quarkus.deployment;
 
 import java.util.Optional;
 
-import io.debezium.outbox.quarkus.internal.EventDispatcher;
+import io.debezium.outbox.quarkus.internal.DebeziumTracerEventDispatcher;
 import io.quarkus.runtime.annotations.ConfigGroup;
 import io.quarkus.runtime.annotations.ConfigItem;
 import io.quarkus.runtime.annotations.ConfigPhase;
@@ -69,6 +69,12 @@ public class DebeziumOutboxConfig {
      */
     @ConfigItem
     public DebeziumOutboxConfigTracingSpan tracingSpan;
+
+    /**
+     * Whether or not smallrye-opentracing extension is present.
+     */
+    @ConfigItem(name = "tracing.enabled", defaultValue = "false")
+    public boolean tracingEnabled;
 
     @ConfigGroup
     public static class DebeziumOutboxConfigId {
@@ -200,7 +206,7 @@ public class DebeziumOutboxConfig {
         /**
          * The column name.
          */
-        @ConfigItem(defaultValue = EventDispatcher.TRACING_SPAN_CONTEXT)
+        @ConfigItem(defaultValue = DebeziumTracerEventDispatcher.TRACING_SPAN_CONTEXT)
         public String name;
 
         /**
