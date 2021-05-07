@@ -8,6 +8,8 @@ package io.debezium.connector.oracle;
 import static org.fest.assertions.Assertions.assertThat;
 
 import java.math.BigDecimal;
+import java.sql.Clob;
+import java.sql.NClob;
 import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -22,10 +24,14 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestRule;
 
 import io.debezium.config.Configuration;
 import io.debezium.config.Configuration.Builder;
+import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
+import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIs;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.SchemaAndValueField;
 import io.debezium.data.VariableScaleDecimal;
@@ -112,6 +118,17 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
             "  val_tsltz timestamp with local time zone, " +
             "  val_int_ytm interval year to month, " +
             "  val_int_dts interval day(3) to second(2), " +
+            "  primary key (id)" +
+            ")";
+
+    private static final String DDL_CLOB = "create table debezium.type_clob (" +
+            "  id numeric(9,0) not null, " +
+            "  val_clob_inline clob, " +
+            "  val_nclob_inline nclob, " +
+            "  val_clob_short clob, " +
+            "  val_nclob_short nclob, " +
+            "  val_clob_long clob, " +
+            "  val_nclob_long nclob, " +
             "  primary key (id)" +
             ")";
 
@@ -216,19 +233,43 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
             new SchemaAndValueField("VAL_INT_YTM", MicroDuration.builder().optional().build(), -110451600_000_000L),
             new SchemaAndValueField("VAL_INT_DTS", MicroDuration.builder().optional().build(), -93784_560_000L));
 
+    private static final String CLOB_JSON = Testing.Files.readResourceAsString("data/test_clob_data.json");
+    private static final String NCLOB_JSON = Testing.Files.readResourceAsString("data/test_clob_data2.json");
+
+    private static final List<SchemaAndValueField> EXPECTED_CLOB = Arrays.asList(
+            new SchemaAndValueField("VAL_CLOB_INLINE", Schema.OPTIONAL_STRING_SCHEMA, "TestClob123"),
+            new SchemaAndValueField("VAL_NCLOB_INLINE", Schema.OPTIONAL_STRING_SCHEMA, "TestNClob123"),
+            new SchemaAndValueField("VAL_CLOB_SHORT", Schema.OPTIONAL_STRING_SCHEMA, part(CLOB_JSON, 0, 512)),
+            new SchemaAndValueField("VAL_NCLOB_SHORT", Schema.OPTIONAL_STRING_SCHEMA, part(NCLOB_JSON, 0, 512)),
+            new SchemaAndValueField("VAL_CLOB_LONG", Schema.OPTIONAL_STRING_SCHEMA, part(CLOB_JSON, 0, 5000)),
+            new SchemaAndValueField("VAL_NCLOB_LONG", Schema.OPTIONAL_STRING_SCHEMA, part(NCLOB_JSON, 0, 5000)));
+
+    private static final List<SchemaAndValueField> EXPECTED_CLOB_UPDATE = Arrays.asList(
+            new SchemaAndValueField("VAL_CLOB_INLINE", Schema.OPTIONAL_STRING_SCHEMA, "TestClob123Update"),
+            new SchemaAndValueField("VAL_NCLOB_INLINE", Schema.OPTIONAL_STRING_SCHEMA, "TestNClob123Update"),
+            new SchemaAndValueField("VAL_CLOB_SHORT", Schema.OPTIONAL_STRING_SCHEMA, part(CLOB_JSON, 1, 512)),
+            new SchemaAndValueField("VAL_NCLOB_SHORT", Schema.OPTIONAL_STRING_SCHEMA, part(NCLOB_JSON, 1, 512)),
+            new SchemaAndValueField("VAL_CLOB_LONG", Schema.OPTIONAL_STRING_SCHEMA, part(CLOB_JSON, 1, 5000)),
+            new SchemaAndValueField("VAL_NCLOB_LONG", Schema.OPTIONAL_STRING_SCHEMA, part(NCLOB_JSON, 1, 5000)));
+
     private static final String[] ALL_TABLES = {
             "debezium.type_string",
             "debezium.type_fp",
             "debezium.type_int",
-            "debezium.type_time"
+            "debezium.type_time",
+            "debezium.type_clob"
     };
 
     private static final String[] ALL_DDLS = {
             DDL_STRING,
             DDL_FP,
             DDL_INT,
-            DDL_TIME
+            DDL_TIME,
+            DDL_CLOB
     };
+
+    @Rule
+    public final TestRule skipAdapterRule = new SkipTestDependingOnAdapterNameRule();
 
     private static OracleConnection connection;
 
@@ -551,6 +592,54 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
         assertRecord(after, EXPECTED_TIME_AS_CONNECT);
     }
 
+    @Test
+    @SkipWhenAdapterNameIs(value = SkipWhenAdapterNameIs.AdapterName.XSTREAM, reason = "XStream doesn't yet support CLOB data types")
+    public void clobTypes() throws Exception {
+        int expectedRecordCount = 0;
+
+        if (insertRecordsDuringTest()) {
+            insertClobTypes();
+        }
+
+        Testing.debug("Inserted");
+        expectedRecordCount++;
+
+        SourceRecords records = consumeRecordsByTopic(expectedRecordCount);
+
+        List<SourceRecord> testTableRecords = records.recordsForTopic("server1.DEBEZIUM.TYPE_CLOB");
+        assertThat(testTableRecords).hasSize(expectedRecordCount);
+        SourceRecord record = testTableRecords.get(0);
+
+        VerifyRecord.isValid(record);
+
+        // insert
+        if (insertRecordsDuringTest()) {
+            VerifyRecord.isValidInsert(record, "ID", 1);
+        }
+        else {
+            VerifyRecord.isValidRead(record, "ID", 1);
+        }
+
+        Struct after = (Struct) ((Struct) record.value()).get("after");
+        assertRecord(after, EXPECTED_CLOB);
+
+        if (insertRecordsDuringTest()) {
+            // Update clob types
+            updateClobTypes();
+
+            records = consumeRecordsByTopic(1);
+            testTableRecords = records.recordsForTopic("server1.DEBEZIUM.TYPE_CLOB");
+            assertThat(testTableRecords).hasSize(1);
+            record = testTableRecords.get(0);
+
+            VerifyRecord.isValid(record);
+            VerifyRecord.isValidUpdate(record, "ID", 1);
+
+            after = (Struct) ((Struct) record.value()).get("after");
+            assertRecord(after, EXPECTED_CLOB_UPDATE);
+        }
+    }
+
     protected static void insertStringTypes() throws SQLException {
         connection.execute("INSERT INTO debezium.type_string VALUES (1, 'v\u010d2', 'v\u010d2', 'nv\u010d2', 'c', 'n\u010d')");
         connection.execute("COMMIT");
@@ -581,6 +670,59 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
                 + ", INTERVAL '-1 2:3:4.56' DAY TO SECOND"
                 + ")");
         connection.execute("COMMIT");
+    }
+
+    protected static void insertClobTypes() throws SQLException {
+        Clob clob1 = connection.connection().createClob();
+        clob1.setString(1, part(CLOB_JSON, 0, 512));
+
+        Clob clob2 = connection.connection().createClob();
+        clob2.setString(1, part(CLOB_JSON, 0, 5000));
+
+        NClob nclob1 = connection.connection().createNClob();
+        nclob1.setString(1, part(NCLOB_JSON, 0, 512));
+
+        NClob nclob2 = connection.connection().createNClob();
+        nclob2.setString(1, part(NCLOB_JSON, 0, 5000));
+
+        connection.prepareQuery("INSERT INTO debezium.type_clob VALUES (1, ?, ?, ?, ?, ?, ?)", ps -> {
+            ps.setString(1, "TestClob123");
+            ps.setString(2, "TestNClob123");
+            ps.setClob(3, clob1);
+            ps.setNClob(4, nclob1);
+            ps.setClob(5, clob2);
+            ps.setNClob(6, nclob2);
+        }, null);
+        connection.commit();
+    }
+
+    protected static void updateClobTypes() throws Exception {
+        Clob clob1 = connection.connection().createClob();
+        clob1.setString(1, part(CLOB_JSON, 1, 512));
+
+        Clob clob2 = connection.connection().createClob();
+        clob2.setString(1, part(CLOB_JSON, 1, 5000));
+
+        NClob nclob1 = connection.connection().createNClob();
+        nclob1.setString(1, part(NCLOB_JSON, 1, 512));
+
+        NClob nclob2 = connection.connection().createNClob();
+        nclob2.setString(1, part(NCLOB_JSON, 1, 5000));
+
+        connection.prepareQuery("UPDATE debezium.type_clob SET VAL_CLOB_INLINE=?, VAL_NCLOB_INLINE=?, VAL_CLOB_SHORT=?, "
+                + "VAL_NCLOB_SHORT=?, VAL_CLOB_LONG=?, VAL_NCLOB_LONG=? WHERE ID = 1", ps -> {
+                    ps.setString(1, "TestClob123Update");
+                    ps.setString(2, "TestNClob123Update");
+                    ps.setClob(3, clob1);
+                    ps.setNClob(4, nclob1);
+                    ps.setClob(5, clob2);
+                    ps.setNClob(6, nclob2);
+                }, null);
+        connection.commit();
+    }
+
+    private static String part(String text, int start, int length) {
+        return text == null ? "" : text.substring(start, Math.min(length, text.length()));
     }
 
     private void assertRecord(Struct record, List<SchemaAndValueField> expected) {

@@ -33,10 +33,11 @@ public class SqlUtilsTest {
     public TestRule skipRule = new SkipTestDependingOnAdapterNameRule();
 
     private static final String LOG_MINER_CONTENT_QUERY_TEMPLATE = "SELECT SCN, SQL_REDO, OPERATION_CODE, TIMESTAMP, " +
-            "XID, CSF, TABLE_NAME, SEG_OWNER, OPERATION, USERNAME, ROW_ID, ROLLBACK " +
+            "XID, CSF, TABLE_NAME, SEG_OWNER, OPERATION, USERNAME, ROW_ID, ROLLBACK, SEQUENCE#, RS_ID, " +
+            "ORA_HASH(SCN||OPERATION||RS_ID||SEQUENCE#||RTRIM(SUBSTR(SQL_REDO,1,256))) " +
             "FROM V$LOGMNR_CONTENTS WHERE SCN > ? AND SCN <= ? AND ((" +
-            "OPERATION_CODE IN (5,34) AND USERNAME NOT IN ('SYS','SYSTEM','${user}') AND INFO NOT LIKE 'INTERNAL DDL%') " +
-            "OR (OPERATION_CODE IN (7,36)) " +
+            "OPERATION_CODE IN (5,9,10,11,29,34) AND USERNAME NOT IN ('SYS','SYSTEM','${user}') AND INFO NOT LIKE 'INTERNAL DDL%') " +
+            "OR (OPERATION_CODE IN (6,7,36)) " +
             "OR (OPERATION_CODE IN (1,2,3) " +
             "AND TABLE_NAME != '" + SqlUtils.LOGMNR_FLUSH_TABLE + "' " +
             "${systemTablePredicate}" +

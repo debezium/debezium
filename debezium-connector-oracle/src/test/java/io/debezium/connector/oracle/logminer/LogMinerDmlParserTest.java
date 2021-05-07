@@ -12,7 +12,6 @@ import org.junit.Test;
 
 import io.debezium.connector.oracle.logminer.parser.LogMinerDmlParser;
 import io.debezium.connector.oracle.logminer.valueholder.LogMinerDmlEntry;
-import io.debezium.data.Envelope.Operation;
 import io.debezium.doc.FixFor;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
@@ -56,7 +55,7 @@ public class LogMinerDmlParserTest {
                 "TO_DATE('2020-02-01 00:00:00', 'YYYY-MM-DD HH24:MI:SS'),Unsupported Type,NULL,NULL);";
 
         LogMinerDmlEntry entry = fastDmlParser.parse(sql, table, null);
-        assertThat(entry.getCommandType()).isEqualTo(Operation.CREATE);
+        assertThat(entry.getOperation()).isEqualTo(RowMapper.INSERT);
         assertThat(entry.getOldValues()).isEmpty();
         assertThat(entry.getNewValues()).hasSize(9);
         assertThat(entry.getNewValues().get(0).getColumnName()).isEqualTo("ID");
@@ -104,7 +103,7 @@ public class LogMinerDmlParserTest {
                 "\"UT2\" = Unsupported Type and \"C1\" = NULL and \"IS\" IS NULL and \"IS2\" IS NULL;";
 
         LogMinerDmlEntry entry = fastDmlParser.parse(sql, table, null);
-        assertThat(entry.getCommandType()).isEqualTo(Operation.UPDATE);
+        assertThat(entry.getOperation()).isEqualTo(RowMapper.UPDATE);
         assertThat(entry.getOldValues()).hasSize(10);
         assertThat(entry.getOldValues().get(0).getColumnName()).isEqualTo("ID");
         assertThat(entry.getOldValues().get(1).getColumnName()).isEqualTo("NAME");
@@ -170,7 +169,7 @@ public class LogMinerDmlParserTest {
                 "\"IS\" IS NULL and \"IS2\" IS NULL;";
 
         LogMinerDmlEntry entry = fastDmlParser.parse(sql, table, null);
-        assertThat(entry.getCommandType()).isEqualTo(Operation.DELETE);
+        assertThat(entry.getOperation()).isEqualTo(RowMapper.DELETE);
         assertThat(entry.getOldValues()).hasSize(8);
         assertThat(entry.getOldValues().get(0).getColumnName()).isEqualTo("ID");
         assertThat(entry.getOldValues().get(1).getColumnName()).isEqualTo("NAME");
@@ -205,7 +204,7 @@ public class LogMinerDmlParserTest {
         String sql = "update \"DEBEZIUM\".\"TEST\" set \"COL1\" = '1', \"COL2\" = NULL, \"COL3\" = 'Hello';";
 
         LogMinerDmlEntry entry = fastDmlParser.parse(sql, table, null);
-        assertThat(entry.getCommandType()).isEqualTo(Operation.UPDATE);
+        assertThat(entry.getOperation()).isEqualTo(RowMapper.UPDATE);
         assertThat(entry.getOldValues()).isEmpty();
         assertThat(entry.getNewValues()).hasSize(4);
         assertThat(entry.getNewValues().get(0).getColumnName()).isEqualTo("COL1");
@@ -232,7 +231,7 @@ public class LogMinerDmlParserTest {
         String sql = "delete from \"DEBEZIUM\".\"TEST\";";
 
         LogMinerDmlEntry entry = fastDmlParser.parse(sql, table, null);
-        assertThat(entry.getCommandType()).isEqualTo(Operation.DELETE);
+        assertThat(entry.getOperation()).isEqualTo(RowMapper.DELETE);
         assertThat(entry.getOldValues()).isEmpty();
         assertThat(entry.getNewValues()).isEmpty();
     }
@@ -248,7 +247,7 @@ public class LogMinerDmlParserTest {
         String sql = "insert into \"UNKNOWN\".\"OBJ# 74858\"(\"COL 1\") values (1)";
 
         LogMinerDmlEntry entry = fastDmlParser.parse(sql, table, null);
-        assertThat(entry.getCommandType()).isEqualTo(Operation.CREATE);
+        assertThat(entry.getOperation()).isEqualTo(RowMapper.INSERT);
         assertThat(entry.getOldValues()).isEmpty();
         assertThat(entry.getNewValues()).hasSize(1);
         assertThat(entry.getNewValues().get(0).getColumnName()).isEqualTo("COL 1");
@@ -270,7 +269,7 @@ public class LogMinerDmlParserTest {
                 "\"PAY_STATUS\" = '10111015', \"IS_DEL\" = '0', \"TM_UPDATE\" = TO_DATE('2021-03-17 10:18:55', 'YYYY-MM-DD HH24:MI:SS');";
 
         LogMinerDmlEntry entry = fastDmlParser.parse(sql, table, null);
-        assertThat(entry.getCommandType()).isEqualTo(Operation.UPDATE);
+        assertThat(entry.getOperation()).isEqualTo(RowMapper.UPDATE);
         assertThat(entry.getOldValues()).isEmpty();
         assertThat(entry.getNewValues()).hasSize(5);
         assertThat(entry.getNewValues().get(0).getColumnName()).isEqualTo("AMOUNT_PAID");
@@ -297,7 +296,7 @@ public class LogMinerDmlParserTest {
         String sql = "insert into \"DEBEZIUM\".\"TEST\" (\"C1\", \"C2\") values (UNISTR('\\963F\\72F8\\5C0F\\706B\\8F66\\5BB6\\5EAD\\7968(\\60CA\\559C\\FF09\\FF082161\\FF09'), NULL);";
 
         LogMinerDmlEntry entry = fastDmlParser.parse(sql, table, null);
-        assertThat(entry.getCommandType()).isEqualTo(Operation.CREATE);
+        assertThat(entry.getOperation()).isEqualTo(RowMapper.INSERT);
         assertThat(entry.getOldValues()).isEmpty();
         assertThat(entry.getNewValues()).hasSize(2);
         assertThat(entry.getNewValues().get(0).getColumnName()).isEqualTo("C1");
@@ -310,7 +309,7 @@ public class LogMinerDmlParserTest {
                 "\"C2\" = UNISTR('\\963F\\72F8\\5C0F\\706B\\8F66\\5BB6\\5EAD\\7968(\\60CA\\559C\\FF09\\FF082161\\FF09') " +
                 "where \"C1\" = UNISTR('\\963F\\72F8\\5C0F\\706B\\8F66\\5BB6\\5EAD\\7968(\\60CA\\559C\\FF09\\FF082161\\FF09');";
         entry = fastDmlParser.parse(sql, table, null);
-        assertThat(entry.getCommandType()).isEqualTo(Operation.UPDATE);
+        assertThat(entry.getOperation()).isEqualTo(RowMapper.UPDATE);
         assertThat(entry.getOldValues()).hasSize(2);
         assertThat(entry.getOldValues().get(0).getColumnName()).isEqualTo("C1");
         assertThat(entry.getOldValues().get(0).getColumnData())
@@ -327,7 +326,7 @@ public class LogMinerDmlParserTest {
 
         sql = "delete from \"DEBEZIUM\".\"TEST\" where \"C1\" = UNISTR('\\963F\\72F8\\5C0F\\706B\\8F66\\5BB6\\5EAD\\7968(\\60CA\\559C\\FF09\\FF082161\\FF09');";
         entry = fastDmlParser.parse(sql, table, null);
-        assertThat(entry.getCommandType()).isEqualTo(Operation.DELETE);
+        assertThat(entry.getOperation()).isEqualTo(RowMapper.DELETE);
         assertThat(entry.getOldValues()).hasSize(2);
         assertThat(entry.getOldValues().get(0).getColumnName()).isEqualTo("C1");
         assertThat(entry.getOldValues().get(0).getColumnData())
@@ -348,7 +347,7 @@ public class LogMinerDmlParserTest {
 
         String sql = "insert into \"DEBEZIUM\".\"TEST\"(\"COL1\",\"COL2\") values ('Bob''s dog','0');";
         LogMinerDmlEntry entry = fastDmlParser.parse(sql, table, null);
-        assertThat(entry.getCommandType()).isEqualTo(Operation.CREATE);
+        assertThat(entry.getOperation()).isEqualTo(RowMapper.INSERT);
         assertThat(entry.getOldValues()).isEmpty();
         assertThat(entry.getNewValues()).hasSize(2);
         assertThat(entry.getNewValues().get(0).getColumnName()).isEqualTo("COL1");
@@ -358,7 +357,7 @@ public class LogMinerDmlParserTest {
 
         sql = "update \"DEBEZIUM\".\"TEST\" set \"COL2\" = '1' where \"COL1\" = 'Bob''s dog' and \"COL2\" = '0';";
         entry = fastDmlParser.parse(sql, table, null);
-        assertThat(entry.getCommandType()).isEqualTo(Operation.UPDATE);
+        assertThat(entry.getOperation()).isEqualTo(RowMapper.UPDATE);
         assertThat(entry.getOldValues()).hasSize(2);
         assertThat(entry.getOldValues().get(0).getColumnName()).isEqualTo("COL1");
         assertThat(entry.getOldValues().get(0).getColumnData()).isEqualTo("Bob''s dog");
@@ -372,7 +371,7 @@ public class LogMinerDmlParserTest {
 
         sql = "delete from \"DEBEZIUM\".\"TEST\" where \"COL1\" = 'Bob''s dog' and \"COL2\" = '1';";
         entry = fastDmlParser.parse(sql, table, null);
-        assertThat(entry.getCommandType()).isEqualTo(Operation.DELETE);
+        assertThat(entry.getOperation()).isEqualTo(RowMapper.DELETE);
         assertThat(entry.getOldValues()).hasSize(2);
         assertThat(entry.getOldValues().get(0).getColumnName()).isEqualTo("COL1");
         assertThat(entry.getOldValues().get(0).getColumnData()).isEqualTo("Bob''s dog");

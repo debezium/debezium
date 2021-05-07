@@ -1573,6 +1573,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         }
     }
 
+    // todo: should this test be removed since its now covered in OracleClobDataTypesIT?
     @Test
     @FixFor("DBZ-3257")
     @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER)

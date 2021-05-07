@@ -5,7 +5,6 @@
  */
 package io.debezium.connector.oracle;
 
-import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -340,23 +339,31 @@ public class OracleConnection extends JdbcConnection {
         });
     }
 
-    public OracleConnection executeLegacy(String... sqlStatements) throws SQLException {
-        return executeLegacy(statement -> {
-            for (String sqlStatement : sqlStatements) {
-                if (sqlStatement != null) {
-                    statement.execute(sqlStatement);
-                }
-            }
-        });
-    }
-
-    public OracleConnection executeLegacy(Operations operations) throws SQLException {
-        Connection conn = connection();
-        try (Statement statement = conn.createStatement()) {
-            operations.apply(statement);
-            commit();
+    /**
+     * Get a byte-array value from a given {@code HEXTORAW} argument.
+     *
+     * The provided {@code hexToRawValue} may be provided as the direct hex-string argument or the entire
+     * value may be wrapped with the {@code HEXTORAW} function call, which will be omitted.
+     *
+     * @param hexToRawValue the hex-to-raw string, never {@code null}
+     * @return byte array of decoded value, may be {@code null}
+     * @throws SQLException if there is a database exception
+     */
+    public byte[] getHexToRawByteArray(String hexToRawValue) throws SQLException {
+        final String data;
+        if (hexToRawValue.startsWith("HEXTORAW('") && hexToRawValue.endsWith("')")) {
+            data = hexToRawValue.substring(10, hexToRawValue.length() - 2);
         }
-        return this;
+        else {
+            data = hexToRawValue;
+        }
+
+        return prepareQueryAndMap("select HEXTORAW(?) FROM DUAL", ps -> ps.setString(1, data), rs -> {
+            if (rs.next()) {
+                return rs.getBytes(1);
+            }
+            return null;
+        });
     }
 
     public static String connectionString(Configuration config) {
