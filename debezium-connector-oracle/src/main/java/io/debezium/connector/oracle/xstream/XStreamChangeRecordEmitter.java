@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.oracle.xstream;
 
+import java.util.Map;
+
 import io.debezium.connector.oracle.BaseChangeRecordEmitter;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.pipeline.spi.OffsetContext;
@@ -22,10 +24,12 @@ import oracle.streams.RowLCR;
 public class XStreamChangeRecordEmitter extends BaseChangeRecordEmitter<ColumnValue> {
 
     private final RowLCR lcr;
+    private final Map<String, Object> chunkValues;
 
-    public XStreamChangeRecordEmitter(OffsetContext offset, RowLCR lcr, Table table, Clock clock) {
+    public XStreamChangeRecordEmitter(OffsetContext offset, RowLCR lcr, Map<String, Object> chunkValues, Table table, Clock clock) {
         super(offset, table, clock);
         this.lcr = lcr;
+        this.chunkValues = chunkValues;
     }
 
     @Override
@@ -60,5 +64,18 @@ public class XStreamChangeRecordEmitter extends BaseChangeRecordEmitter<ColumnVa
     @Override
     protected Object getColumnData(ColumnValue columnValue) {
         return columnValue.getColumnData();
+    }
+
+    @Override
+    protected Object[] getColumnValues(ColumnValue[] columnValues) {
+        Object[] values = super.getColumnValues(columnValues);
+
+        // Overlay chunk values into non-chunk value array
+        for (Map.Entry<String, Object> entry : chunkValues.entrySet()) {
+            final int index = table.columnWithName(entry.getKey()).position() - 1;
+            values[index] = entry.getValue();
+        }
+
+        return values;
     }
 }
