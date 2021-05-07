@@ -503,4 +503,30 @@ public class SqlServerConnection extends JdbcConnection {
             return super.getColumnValue(rs, columnIndex, column, table, schema);
         }
     }
+
+    @Override
+    public String buildSelectWithRowLimits(TableId tableId, int limit, String projection, Optional<String> condition,
+                                           String orderBy) {
+        final StringBuilder sql = new StringBuilder("SELECT TOP ");
+        sql
+                .append(limit)
+                .append(' ')
+                .append(projection)
+                .append(" FROM ");
+        sql.append(quotedTableIdString(tableId));
+        if (condition.isPresent()) {
+            sql
+                    .append(" WHERE ")
+                    .append(condition.get());
+        }
+        sql
+                .append(" ORDER BY ")
+                .append(orderBy);
+        return sql.toString();
+    }
+
+    @Override
+    public String quotedTableIdString(TableId tableId) {
+        return "[" + tableId.schema() + "].[" + tableId.table() + "]";
+    }
 }
