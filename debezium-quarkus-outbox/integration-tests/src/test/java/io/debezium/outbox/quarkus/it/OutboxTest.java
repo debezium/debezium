@@ -64,7 +64,7 @@ public class OutboxTest {
         myService.doSomething();
 
         Query q = entityManager
-                .createNativeQuery("SELECT CAST(id as varchar), aggregateId, aggregateType, type, timestamp, payload, tracingspancontext FROM OutboxEvent");
+                .createNativeQuery("SELECT CAST(id as varchar), aggregateId, aggregateType, type, timestamp, payload FROM OutboxEvent");
         Object[] row = (Object[]) q.getSingleResult();
 
         assertNotNull(UUID.fromString((String) row[0]));
@@ -73,6 +73,5 @@ public class OutboxTest {
         assertEquals("SomeType", row[3]);
         assertTrue(((Timestamp) row[4]).toInstant().isBefore(Instant.now()));
         assertEquals("Some amazing payload", row[5]);
-        assertNotNull(row[6]);
     }
 }
