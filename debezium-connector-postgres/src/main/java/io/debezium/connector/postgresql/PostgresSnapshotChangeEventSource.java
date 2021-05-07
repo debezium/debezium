@@ -5,7 +5,6 @@
  */
 package io.debezium.connector.postgresql;
 
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.util.Optional;
@@ -23,7 +22,7 @@ import io.debezium.connector.postgresql.spi.Snapshotter;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.spi.OffsetContext;
-import io.debezium.relational.Column;
+import io.debezium.relational.RelationalDatabaseSchema;
 import io.debezium.relational.RelationalSnapshotChangeEventSource;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
@@ -229,8 +228,8 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
     }
 
     @Override
-    protected Object getColumnValue(ResultSet rs, int columnIndex, Column column, Table table) throws SQLException {
-        return jdbcConnection.getColumnValue(rs, columnIndex, column, table, schema);
+    protected RelationalDatabaseSchema schema() {
+        return schema;
     }
 
     protected void setSnapshotTransactionIsolationLevel() throws SQLException {
