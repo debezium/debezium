@@ -31,7 +31,6 @@ import org.junit.rules.TestRule;
 import io.debezium.config.Configuration;
 import io.debezium.config.Configuration.Builder;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
-import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIs;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.SchemaAndValueField;
 import io.debezium.data.VariableScaleDecimal;
@@ -593,7 +592,6 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
     }
 
     @Test
-    @SkipWhenAdapterNameIs(value = SkipWhenAdapterNameIs.AdapterName.XSTREAM, reason = "XStream doesn't yet support CLOB data types")
     public void clobTypes() throws Exception {
         int expectedRecordCount = 0;
 
