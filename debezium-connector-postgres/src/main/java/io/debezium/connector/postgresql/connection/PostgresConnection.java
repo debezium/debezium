@@ -101,6 +101,19 @@ public class PostgresConnection extends JdbcConnection {
         }
     }
 
+    public PostgresConnection(Configuration config, TypeRegistry typeRegistry) {
+        super(config, FACTORY, PostgresConnection::validateServerVersion, PostgresConnection::defaultSettings);
+        if (Objects.isNull(typeRegistry)) {
+            this.typeRegistry = null;
+            this.defaultValueConverter = null;
+        }
+        else {
+            this.typeRegistry = typeRegistry;
+            final PostgresValueConverter valueConverter = PostgresValueConverter.of(new PostgresConnectorConfig(config), this.getDatabaseCharset(), typeRegistry);
+            this.defaultValueConverter = new PostgresDefaultValueConverter(valueConverter, this.getTimestampUtils());
+        }
+    }
+
     /**
      * Creates a Postgres connection using the supplied configuration.
      * The connector is the regular one without datatype resolution capabilities.
@@ -108,7 +121,7 @@ public class PostgresConnection extends JdbcConnection {
      * @param config {@link Configuration} instance, may not be null.
      */
     public PostgresConnection(Configuration config) {
-        this(config, null);
+        this(config, (TypeRegistry) null);
     }
 
     /**
@@ -493,6 +506,16 @@ public class PostgresConnection extends JdbcConnection {
 
     @Override
     protected Optional<ColumnEditor> readTableColumn(ResultSet columnMetadata, TableId tableId, Tables.ColumnNameFilter columnFilter) throws SQLException {
+        return doReadTableColumn(columnMetadata, tableId, columnFilter);
+    }
+
+    public Optional<Column> readColumnForDecoder(ResultSet columnMetadata, TableId tableId, Tables.ColumnNameFilter columnNameFilter)
+            throws SQLException {
+        return doReadTableColumn(columnMetadata, tableId, columnNameFilter).map(ColumnEditor::create);
+    }
+
+    private Optional<ColumnEditor> doReadTableColumn(ResultSet columnMetadata, TableId tableId, Tables.ColumnNameFilter columnFilter)
+            throws SQLException {
         final String columnName = columnMetadata.getString(4);
         if (columnFilter == null || columnFilter.matches(tableId.catalog(), tableId.schema(), tableId.table(), columnName)) {
             final ColumnEditor column = Column.editor().name(columnName);

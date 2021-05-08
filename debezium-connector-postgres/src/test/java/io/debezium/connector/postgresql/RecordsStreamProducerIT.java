@@ -563,13 +563,13 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         consumer.expects(1);
         TestHelper.execute("ALTER TABLE test_table DROP CONSTRAINT test_table_pkey CASCADE;");
         statement = "INSERT INTO test_table (pk, text) VALUES (4, 'no_pk_and_full');";
-        assertInsert(statement, Arrays.asList(new SchemaAndValueField("pk", SchemaBuilder.INT32_SCHEMA, 4),
+        assertInsert(statement, Arrays.asList(new SchemaAndValueField("pk", SchemaBuilder.int32().defaultValue(0).build(), 4),
                 new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "no_pk_and_full")));
 
         consumer.expects(1);
         TestHelper.execute("ALTER TABLE test_table REPLICA IDENTITY DEFAULT;");
         statement = "INSERT INTO test_table (pk, text) VALUES (5, 'no_pk_and_default');";
-        assertInsert(statement, Arrays.asList(new SchemaAndValueField("pk", SchemaBuilder.INT32_SCHEMA, 5),
+        assertInsert(statement, Arrays.asList(new SchemaAndValueField("pk", SchemaBuilder.int32().defaultValue(0).build(), 5),
                 new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "no_pk_and_default")));
     }
 

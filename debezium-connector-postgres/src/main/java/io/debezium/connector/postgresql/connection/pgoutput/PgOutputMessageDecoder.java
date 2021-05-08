@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.postgresql.connection.pgoutput;
 
+import static java.util.stream.Collectors.toMap;
+
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.sql.DatabaseMetaData;
@@ -17,7 +19,6 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -259,12 +260,19 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
         LOGGER.trace("Schema: '{}', Table: '{}'", schemaName, tableName);
 
         // Perform several out-of-bands database metadata queries
+        Map<String, Optional<Object>> columnDefaults;
         Map<String, Boolean> columnOptionality;
         List<String> primaryKeyColumns;
-        try (final PostgresConnection connection = new PostgresConnection(config.getConfiguration())) {
+        try (final PostgresConnection connection = new PostgresConnection(config.getConfiguration(), config.getSchema().getTypeRegistry())) {
             final DatabaseMetaData databaseMetadata = connection.connection().getMetaData();
             final TableId tableId = new TableId(null, schemaName, tableName);
-            columnOptionality = getTableColumnOptionalityFromDatabase(databaseMetadata, schemaName, tableName);
+
+            final List<io.debezium.relational.Column> readColumns = getTableColumnsFromDatabase(connection, databaseMetadata, tableId);
+            columnDefaults = readColumns.stream()
+                    .filter(io.debezium.relational.Column::hasDefaultValue)
+                    .collect(toMap(io.debezium.relational.Column::name, column -> Optional.ofNullable(column.defaultValue())));
+
+            columnOptionality = readColumns.stream().collect(toMap(io.debezium.relational.Column::name, io.debezium.relational.Column::isOptional));
             primaryKeyColumns = connection.readPrimaryKeyNames(databaseMetadata, tableId);
             if (primaryKeyColumns == null || primaryKeyColumns.isEmpty()) {
                 LOGGER.warn("Primary keys are not defined for table '{}', defaulting to unique indices", tableName);
@@ -289,7 +297,10 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
                 optional = true;
             }
 
-            columns.add(new ColumnMetaData(columnName, postgresType, key, optional, attypmod));
+            final boolean hasDefault = columnDefaults.containsKey(columnName);
+            final Object defaultValue = columnDefaults.getOrDefault(columnName, Optional.empty()).orElse(null);
+
+            columns.add(new ColumnMetaData(columnName, postgresType, key, optional, hasDefault, defaultValue, attypmod));
             columnNames.add(columnName);
         }
 
@@ -314,20 +325,24 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
         config.getSchema().applySchemaChangesForTable(relationId, table);
     }
 
-    private Map<String, Boolean> getTableColumnOptionalityFromDatabase(DatabaseMetaData databaseMetadata, String schemaName, String tableName) {
-        Map<String, Boolean> columnOptionality = new HashMap<>();
+    private List<io.debezium.relational.Column> getTableColumnsFromDatabase(PostgresConnection connection, DatabaseMetaData databaseMetadata, TableId tableId) {
+        final PostgresConnectorConfig connectorConfig = new PostgresConnectorConfig(config.getConfiguration());
+
+        List<io.debezium.relational.Column> readColumns = new ArrayList<>();
         try {
-            try (ResultSet resultSet = databaseMetadata.getColumns(null, schemaName, tableName, null)) {
-                while (resultSet.next()) {
-                    columnOptionality.put(resultSet.getString("COLUMN_NAME"), resultSet.getString("IS_NULLABLE").equals("YES"));
+            try (ResultSet columnMetadata = databaseMetadata.getColumns(null, tableId.schema(), tableId.table(), null)) {
+                while (columnMetadata.next()) {
+                    connection.readColumnForDecoder(columnMetadata, tableId, connectorConfig.getColumnFilter())
+                            .ifPresent(readColumns::add);
                 }
             }
         }
         catch (SQLException e) {
-            LOGGER.warn("Failed to read column optionality metadata for '{}.{}'", schemaName, tableName);
+            LOGGER.warn("Failed to read column metadata for '{}.{}'", tableId.schema(), tableId.table());
             // todo: DBZ-766 Should this throw the exception or just log the warning?
         }
-        return columnOptionality;
+
+        return readColumns;
     }
 
     private boolean isColumnInPrimaryKey(String schemaName, String tableName, String columnName, List<String> primaryKeyColumns) {
@@ -566,6 +581,10 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
                     .type(columnMetadata.getPostgresType().getName(), columnMetadata.getTypeName())
                     .length(columnMetadata.getLength())
                     .scale(columnMetadata.getScale());
+
+            if (columnMetadata.hasDefaultValue()) {
+                editor.defaultValue(columnMetadata.getDefaultValue());
+            }
 
             columns.add(editor.create());
         }
