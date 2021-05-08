@@ -574,7 +574,15 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
                     "ALTER TABLE default_change.test_table ALTER COLUMN text SET DEFAULT 'baz';",
                     "INSERT INTO default_change.test_table(i, text) VALUES (DEFAULT, DEFAULT);");
 
-            // check records which should have i=1, text='foo', without refresh
+            final Integer secondIntDefault = 2;
+            final String secondTextDefault = "bar";
+            final Integer thirdIntDefault = 3;
+            final String thirdTextDefault = "baz";
+
+            final Integer schemaIntDefaultAfterAlter = DecoderDifferences.areDefaultValuesRefreshedEagerly() ? thirdIntDefault : snapshotIntDefault;
+            final String schemaTextDefaultAfterAlter = DecoderDifferences.areDefaultValuesRefreshedEagerly() ? thirdTextDefault : snapshotTextDefault;
+
+            // check records inserted with i=1, text='foo' default
             final SourceRecords firstBatchRecords = consumeRecordsByTopic(2);
 
             firstBatchRecords.recordsForTopic(topicName).forEach(snapshotRecord -> {
@@ -582,13 +590,11 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
                 assertValueField(snapshotRecord, "after/text", snapshotTextDefault);
 
                 assertThat(readRecordFieldDefault(snapshotRecord, "pk")).isEqualTo(pkExpectedDefault);
-                assertThat(readRecordFieldDefault(snapshotRecord, "i")).isEqualTo(snapshotIntDefault);
-                assertThat(readRecordFieldDefault(snapshotRecord, "text")).isEqualTo(snapshotTextDefault);
+                assertThat(readRecordFieldDefault(snapshotRecord, "i")).isEqualTo(schemaIntDefaultAfterAlter);
+                assertThat(readRecordFieldDefault(snapshotRecord, "text")).isEqualTo(schemaTextDefaultAfterAlter);
             });
 
-            // check records which should have i=2, text='bar', without refresh
-            final Integer secondIntDefault = 2;
-            final String secondTextDefault = "bar";
+            // check records inserted with i=2, text='bar' default
             final SourceRecords secondBatchRecords = consumeRecordsByTopic(1);
 
             secondBatchRecords.recordsForTopic(topicName).forEach(snapshotRecord -> {
@@ -596,13 +602,11 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
                 assertValueField(snapshotRecord, "after/text", secondTextDefault);
 
                 assertThat(readRecordFieldDefault(snapshotRecord, "pk")).isEqualTo(pkExpectedDefault);
-                assertThat(readRecordFieldDefault(snapshotRecord, "i")).isEqualTo(snapshotIntDefault);
-                assertThat(readRecordFieldDefault(snapshotRecord, "text")).isEqualTo(snapshotTextDefault);
+                assertThat(readRecordFieldDefault(snapshotRecord, "i")).isEqualTo(schemaIntDefaultAfterAlter);
+                assertThat(readRecordFieldDefault(snapshotRecord, "text")).isEqualTo(schemaTextDefaultAfterAlter);
             });
 
-            // check records which should have i=3, text='baz', without refresh
-            final Integer thirdIntDefault = 3;
-            final String thirdTextDefault = "baz";
+            // check records inserted with i=3, text='baz' default
             final SourceRecords thirdBatchRecords = consumeRecordsByTopic(1);
 
             thirdBatchRecords.recordsForTopic(topicName).forEach(snapshotRecord -> {
@@ -610,8 +614,8 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
                 assertValueField(snapshotRecord, "after/text", thirdTextDefault);
 
                 assertThat(readRecordFieldDefault(snapshotRecord, "pk")).isEqualTo(pkExpectedDefault);
-                assertThat(readRecordFieldDefault(snapshotRecord, "i")).isEqualTo(snapshotIntDefault);
-                assertThat(readRecordFieldDefault(snapshotRecord, "text")).isEqualTo(snapshotTextDefault);
+                assertThat(readRecordFieldDefault(snapshotRecord, "i")).isEqualTo(schemaIntDefaultAfterAlter);
+                assertThat(readRecordFieldDefault(snapshotRecord, "text")).isEqualTo(schemaTextDefaultAfterAlter);
             });
 
             // restart the connector, starting with a new record which should have refreshed schema
@@ -642,7 +646,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
                     "ALTER TABLE default_change.test_table ADD COLUMN tstz TIMESTAMPTZ DEFAULT '2021-03-20 14:44:28 +1'::TIMESTAMPTZ;",
                     "INSERT INTO default_change.test_table(i, text, tstz) VALUES (DEFAULT, DEFAULT, DEFAULT);");
 
-            // check that the schema defaults will be in-sync after restart refreshes schema
+            // check that the schema defaults will be in-sync after column changes refreshes schema
             final Integer refreshedIntDefault = 4;
             final String refreshedTextDefault = "boo";
             final String refreshedTstzDefault = Instant.ofEpochSecond(1616247868).toString();
