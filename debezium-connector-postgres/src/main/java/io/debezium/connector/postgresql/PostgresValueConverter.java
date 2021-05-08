@@ -153,6 +153,21 @@ public class PostgresValueConverter extends JdbcValueConverters {
     private final String toastPlaceholderString;
     private final byte[] toastPlaceholderBinary;
 
+    public static PostgresValueConverter of(PostgresConnectorConfig connectorConfig, Charset databaseCharset, TypeRegistry typeRegistry) {
+        return new PostgresValueConverter(
+                databaseCharset,
+                connectorConfig.getDecimalMode(),
+                connectorConfig.getTemporalPrecisionMode(),
+                ZoneOffset.UTC,
+                null,
+                connectorConfig.includeUnknownDatatypes(),
+                typeRegistry,
+                connectorConfig.hStoreHandlingMode(),
+                connectorConfig.binaryHandlingMode(),
+                connectorConfig.intervalHandlingMode(),
+                connectorConfig.toastedValuePlaceholder());
+    }
+
     protected PostgresValueConverter(Charset databaseCharset, DecimalMode decimalMode,
                                      TemporalPrecisionMode temporalPrecisionMode, ZoneOffset defaultOffset,
                                      BigIntUnsignedMode bigIntUnsignedMode, boolean includeUnknownDatatypes, TypeRegistry typeRegistry,

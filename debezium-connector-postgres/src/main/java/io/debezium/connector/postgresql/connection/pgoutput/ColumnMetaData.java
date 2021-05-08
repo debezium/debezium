@@ -21,6 +21,8 @@ public class ColumnMetaData {
     private final PostgresType postgresType;
     private final boolean key;
     private final boolean optional;
+    private final boolean hasDefaultValue;
+    private final Object defaultValue;
     private final int length;
     private final int scale;
     private final String typeName;
@@ -34,11 +36,13 @@ public class ColumnMetaData {
      * @param optional {@code true} if the column is considered optional, {@code false} otherwise
      * @param typeModifier the attribute type modifier
      */
-    ColumnMetaData(String columnName, PostgresType postgresType, boolean key, boolean optional, int typeModifier) {
+    ColumnMetaData(String columnName, PostgresType postgresType, boolean key, boolean optional, boolean hasDefaultValue, Object defaultValue, int typeModifier) {
         this.columnName = columnName;
         this.postgresType = postgresType;
         this.key = key;
         this.optional = optional;
+        this.hasDefaultValue = hasDefaultValue;
+        this.defaultValue = defaultValue;
 
         // todo: investigate whether this can be removed and PostgresType updated to always delegate
         // Currently PostgresType only delegates calls to length and scale with an attribute modifier
@@ -76,6 +80,14 @@ public class ColumnMetaData {
 
     public boolean isOptional() {
         return optional;
+    }
+
+    public boolean hasDefaultValue() {
+        return hasDefaultValue;
+    }
+
+    public Object getDefaultValue() {
+        return defaultValue;
     }
 
     public int getLength() {

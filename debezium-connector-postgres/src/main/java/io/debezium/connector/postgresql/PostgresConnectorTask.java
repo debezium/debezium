@@ -9,7 +9,6 @@ package io.debezium.connector.postgresql;
 import java.nio.charset.Charset;
 import java.sql.SQLException;
 import java.time.Duration;
-import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.function.Function;
@@ -75,18 +74,10 @@ public class PostgresConnectorTask extends BaseSourceTask {
         heartbeatConnection = new PostgresConnection(connectorConfig.jdbcConfig());
         final Charset databaseCharset = heartbeatConnection.getDatabaseCharset();
 
-        final Function<TypeRegistry, PostgresValueConverter> valueConverterBuilder = (typeRegistry) -> new PostgresValueConverter(
+        final Function<TypeRegistry, PostgresValueConverter> valueConverterBuilder = (typeRegistry) -> PostgresValueConverter.of(
+                connectorConfig,
                 databaseCharset,
-                connectorConfig.getDecimalMode(),
-                connectorConfig.getTemporalPrecisionMode(),
-                ZoneOffset.UTC,
-                null,
-                connectorConfig.includeUnknownDatatypes(),
-                typeRegistry,
-                connectorConfig.hStoreHandlingMode(),
-                connectorConfig.binaryHandlingMode(),
-                connectorConfig.intervalHandlingMode(),
-                connectorConfig.toastedValuePlaceholder());
+                typeRegistry);
 
         // Global JDBC connection used both for snapshotting and streaming.
         // Must be able to resolve datatypes.
