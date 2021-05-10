@@ -37,6 +37,7 @@ public class OracleErrorHandler extends ErrorHandler {
                 throwable.getMessage().startsWith("ORA-01333") || // Failed to establish LogMiner dictionary
                 throwable.getMessage().startsWith("ORA-01284") || // Redo/Archive log cannot be opened, likely locked
                 throwable.getMessage().startsWith("ORA-26653") || // Apply DBZXOUT did not start properly and is currently in state INITIALI
+                throwable.getMessage().startsWith("ORA-01291") || // missing logfile
                 throwable.getCause() instanceof IOException ||
                 throwable instanceof SQLRecoverableException ||
                 throwable.getMessage().toUpperCase().startsWith("NO MORE DATA TO READ FROM SOCKET") ||
