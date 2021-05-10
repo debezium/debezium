@@ -171,6 +171,99 @@ endif::community[]
 
 |===
 
+[[postgresql-adhoc-snapshot]]
+==== Ad-hoc snapshot
+
+When the initial snapshot is completed then it is not executed again as further data are acquired via streaming.
+
+Sometimes it would be really useful to re-execute the snapshot, either full or for only a subset of tables.
+Examples for such use cases contain
+
+* a new table was added into the list of captured tables
+* some of the topics were deleted and their content needs to be rebuild
+* the data were corrupted due to a configuration error
+
+Debezium can be requested via mechanism of {link-prefix}:{link-signalling}[signalling table] to execute the new snapshot of defined table list.
+The signal is named `execute-snapshot` and accepts message in format
+
+.Example of a signal record
+[cols="2,2,6",options="header"]
+|===
+|Field | Default | Value
+
+|`type`
+|`incremental`
+| The type of the snapshot to be executed. Currently only `incremental` is supported. +
+See the next section for more details.
+
+|`data-collections`
+|_N/A_
+| Array of qualified table names, to be snapshotted like `schema1.table`
+
+|===
+
+An example of the signal to be triggered is
+
+[source,sql,indent=0,subs="+attributes"]
+----
+INSERT INTO myschema.debezium_signal VALUES('ad-hoc-1', 'execute-snapshot', '{"data-collections": ["schema1.table1", "schema1.table2"]}')
+----
+
+[[postgresql-incremental-snapshot]]
+==== Incremental snapshot
+
+The initial snapshot is a great mechanism to obtain a consistent set of all data stored in database upfront.
+Its strengths are outweighed by some negatives
+
+* For larger datasets it can take very long to complete; hours or even days.
+* The snapshot must be completed before the start of the streaming.
+* Snapshot is not resumable.
+If it is not completed it must be restarted from scratch.
+* New tables that are added among the captured ones later are not snapshotted.
+
+To mitigate the negatives a new mechanism calle incremental snapshot has been introduced.
+
+[NOTE]
+====
+Incremental snapshot can be started current only as an ad-hoc snapshot.
+====
+
+[NOTE]
+====
+Configuration option {link-prefix}:{link-postgresql-connector}#postgresql-property-signal-data-collection[signal.data.collection] must be set.
+====
+
+Incremental snapshot is base on link:https://github.com/debezium/debezium-design-documents/blob/main/DDD-3.md[DDD-3] design document.
+In this case the table is snapshotted in chunks and streaming and snapshot events are blended together.
+The snaphot events are still denoted using operation `r` and the `snapshot` field in `source` info block is set to `incremental`.
+
+.Example
+[source,json,index=0]
+----
+{
+   "before":null,
+   "after": {
+      "pk":"1",
+      "value":"New data"
+   },
+   "source": {
+...
+      "snapshot":"incremental"
+   },
+   "op":"r",
+   "ts_ms":"1620393591654",
+   "transaction":null
+}
+----
+
+The incremental snapshot events should be understand in a different way then events for the initial snapshot.
+The `read` events shoudl be understand like a materialization of data in a certain period of time.
+This means that contrary to initial snapshot semantics in case of incremental snapshots
+
+* `update` and `delete` events can arrive before `read` events
+* if `delete` event arrives first then `read` event is never delivered
+* if `update` event arrives first then `read` event will either not be delivered at all or it will be delivered with the updated value
+
 ifdef::community[]
 [[postgresql-custom-snapshot]]
 === Custom snapshotter SPI
@@ -2872,6 +2965,11 @@ If the setting of `toasted.value.placeholder` starts with the `hex:` prefix it i
 | comma-separated list of operation types that will be skipped during streaming.
 The operations include: `c` for inserts/create, `u` for updates, and `d` for deletes.
 By default, no operations are skipped.
+
+|[[postgresql-property-signal-data-collection]]<<postgresql-property-signal-data-collection, `+signal.data.collection+`>>
+|
+| Fully-qualified name of data collection that is use to send {link-prefix}:{link-signalling}[signals] to the connector.
+The name format is _schema-name.table-name_
 
 |===
 

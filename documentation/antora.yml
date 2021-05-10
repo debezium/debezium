@@ -41,6 +41,7 @@ asciidoc:
     link-postgresql-connector: 'connectors/postgresql.adoc'
     link-postgresql-plugins: 'postgres-plugins.adoc'
     link-serdes: 'integrations/serdes.adoc'
+    link-signalling: 'configuration/signalling.adoc'
     link-sqlserver-connector: 'connectors/sqlserver.adoc'
     link-topic-routing: 'configuration/topic-routing.adoc'
     link-tutorial: 'tutorial.adoc'
