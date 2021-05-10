@@ -7,6 +7,7 @@ package io.debezium.connector.oracle;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -622,7 +623,7 @@ public class OracleStreamingChangeEventSourceMetrics extends StreamingChangeEven
     public void calculateLagMetrics(Instant changeTime) {
         if (changeTime != null) {
             final Instant correctedChangeTime = changeTime.plus(Duration.ofMillis(timeDifference.longValue()));
-            final Duration lag = Duration.between(correctedChangeTime, Instant.now()).abs();
+            final Duration lag = Duration.between(correctedChangeTime, Instant.now().atOffset(ZoneOffset.UTC)).abs();
             lagFromTheSourceDuration.set(lag);
 
             if (maxLagFromTheSourceDuration.get().toMillis() < lag.toMillis()) {

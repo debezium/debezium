@@ -141,8 +141,8 @@ public class OracleStreamingMetricsTest {
         Instant dbEventTime = Instant.now().minusMillis(2000);
         metrics.calculateLagMetrics(dbEventTime);
         lag = metrics.getLagFromSourceInMilliseconds();
-        assertThat(lag).isEqualTo(2000);
-        assertThat(metrics.getMaxLagFromSourceInMilliseconds()).isEqualTo(2000);
+        assertThat(lag).isGreaterThanOrEqualTo(2000).isLessThanOrEqualTo(2999);
+        assertThat(metrics.getMaxLagFromSourceInMilliseconds()).isGreaterThanOrEqualTo(2000);
         assertThat(metrics.getMinLagFromSourceInMilliseconds()).isEqualTo(0);
 
         // not realistic scenario
@@ -150,7 +150,7 @@ public class OracleStreamingMetricsTest {
         metrics.calculateLagMetrics(dbEventTime);
         lag = metrics.getLagFromSourceInMilliseconds();
         assertThat(lag).isGreaterThanOrEqualTo(1999).isLessThanOrEqualTo(2000);
-        assertThat(metrics.getMaxLagFromSourceInMilliseconds()).isEqualTo(2000);
+        assertThat(metrics.getMaxLagFromSourceInMilliseconds()).isGreaterThanOrEqualTo(2000);
         assertThat(metrics.getMinLagFromSourceInMilliseconds()).isEqualTo(0);
 
         metrics.reset();
@@ -161,15 +161,15 @@ public class OracleStreamingMetricsTest {
         dbEventTime = Instant.now().minusMillis(2000);
         metrics.calculateLagMetrics(dbEventTime);
         lag = metrics.getLagFromSourceInMilliseconds();
-        assertThat(lag).isEqualTo(3000);
-        assertThat(metrics.getMaxLagFromSourceInMilliseconds()).isEqualTo(3000);
+        assertThat(lag).isGreaterThanOrEqualTo(3000).isLessThanOrEqualTo(3999);
+        assertThat(metrics.getMaxLagFromSourceInMilliseconds()).isGreaterThanOrEqualTo(3000);
         assertThat(metrics.getMinLagFromSourceInMilliseconds()).isEqualTo(0);
 
         dbEventTime = Instant.now().minusMillis(3000);
         metrics.calculateLagMetrics(dbEventTime);
         lag = metrics.getLagFromSourceInMilliseconds();
-        assertThat(lag).isEqualTo(4000);
-        assertThat(metrics.getMaxLagFromSourceInMilliseconds()).isEqualTo(4000);
+        assertThat(lag).isGreaterThanOrEqualTo(4000).isLessThanOrEqualTo(4999);
+        assertThat(metrics.getMaxLagFromSourceInMilliseconds()).isGreaterThanOrEqualTo(4000);
         assertThat(metrics.getMinLagFromSourceInMilliseconds()).isEqualTo(0);
 
         metrics.reset();
@@ -180,8 +180,8 @@ public class OracleStreamingMetricsTest {
         dbEventTime = Instant.now().minusMillis(2000);
         metrics.calculateLagMetrics(dbEventTime);
         lag = metrics.getLagFromSourceInMilliseconds();
-        assertThat(lag).isEqualTo(1000);
-        assertThat(metrics.getMaxLagFromSourceInMilliseconds()).isEqualTo(1000);
+        assertThat(lag).isGreaterThanOrEqualTo(1000).isLessThanOrEqualTo(1999);
+        assertThat(metrics.getMaxLagFromSourceInMilliseconds()).isGreaterThanOrEqualTo(1000);
         assertThat(metrics.getMinLagFromSourceInMilliseconds()).isEqualTo(0);
     }
 
