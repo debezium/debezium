@@ -60,7 +60,7 @@ public class ReadToInsertEvent<R extends ConnectRecord<R>> implements Transforma
 
     @Override
     public ConfigDef config() {
-        return null;
+        return new ConfigDef();
     }
 
     @Override
