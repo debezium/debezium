@@ -87,8 +87,8 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
                 continue;
             }
             dataRecords.forEach(record -> {
-                final int id = ((Struct) record.key()).getInt32("pk");
-                final int value = ((Struct) record.value()).getStruct("after").getInt32("aa");
+                final int id = ((Struct) record.key()).getInt32(pkFieldName());
+                final int value = ((Struct) record.value()).getStruct("after").getInt32(valueFieldName());
                 dbChanges.put(id, value);
             });
             if (recordConsumer != null) {
@@ -103,6 +103,14 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
 
         Assertions.assertThat(dbChanges).hasSize(recordCount);
         return dbChanges;
+    }
+
+    protected String valueFieldName() {
+        return "aa";
+    }
+
+    protected String pkFieldName() {
+        return "pk";
     }
 
     protected void sendAdHocSnapshotSignal() throws SQLException {
