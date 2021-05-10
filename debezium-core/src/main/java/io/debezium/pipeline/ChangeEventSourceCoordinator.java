@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.slf4j.Logger;
@@ -36,6 +37,7 @@ import io.debezium.pipeline.spi.SnapshotResult;
 import io.debezium.pipeline.spi.SnapshotResult.SnapshotResultStatus;
 import io.debezium.schema.DataCollectionId;
 import io.debezium.schema.DatabaseSchema;
+import io.debezium.util.LoggingContext;
 import io.debezium.util.Threads;
 
 /**
@@ -84,51 +86,61 @@ public class ChangeEventSourceCoordinator<SourceRecord extends SourceRecordWrapp
 
     public synchronized <T extends CdcSourceTaskContext> void start(T taskContext, ChangeEventQueueMetrics changeEventQueueMetrics,
                                                                     EventMetadataProvider metadataProvider) {
-        this.snapshotMetrics = changeEventSourceMetricsFactory.getSnapshotMetrics(taskContext, changeEventQueueMetrics, metadataProvider);
-        this.streamingMetrics = changeEventSourceMetricsFactory.getStreamingMetrics(taskContext, changeEventQueueMetrics, metadataProvider);
-        running = true;
+        AtomicReference<LoggingContext.PreviousContext> previousLogContext = new AtomicReference<>();
+        try {
+            this.snapshotMetrics = changeEventSourceMetricsFactory.getSnapshotMetrics(taskContext, changeEventQueueMetrics, metadataProvider);
+            this.streamingMetrics = changeEventSourceMetricsFactory.getStreamingMetrics(taskContext, changeEventQueueMetrics, metadataProvider);
+            running = true;
 
-        // run the snapshot source on a separate thread so start() won't block
-        executor.submit(() -> {
-            try {
-                snapshotMetrics.register(LOGGER);
-                streamingMetrics.register(LOGGER);
-                LOGGER.info("Metrics registered");
+            // run the snapshot source on a separate thread so start() won't block
+            executor.submit(() -> {
+                try {
+                    previousLogContext.set(taskContext.configureLoggingContext("snapshot"));
+                    snapshotMetrics.register(LOGGER);
+                    streamingMetrics.register(LOGGER);
+                    LOGGER.info("Metrics registered");
 
-                ChangeEventSourceContext context = new ChangeEventSourceContextImpl();
-                LOGGER.info("Context created");
+                    ChangeEventSourceContext context = new ChangeEventSourceContextImpl();
+                    LOGGER.info("Context created");
 
-                SnapshotChangeEventSource snapshotSource = changeEventSourceFactory.getSnapshotChangeEventSource(previousOffset, snapshotMetrics);
-                CatchUpStreamingResult catchUpStreamingResult = executeCatchUpStreaming(previousOffset, context, snapshotSource);
-                if (catchUpStreamingResult.performedCatchUpStreaming) {
+                    SnapshotChangeEventSource snapshotSource = changeEventSourceFactory.getSnapshotChangeEventSource(previousOffset, snapshotMetrics);
+                    CatchUpStreamingResult catchUpStreamingResult = executeCatchUpStreaming(previousOffset, context, snapshotSource);
+                    if (catchUpStreamingResult.performedCatchUpStreaming) {
+                        streamingConnected(false);
+                        commitOffsetLock.lock();
+                        streamingSource = null;
+                        commitOffsetLock.unlock();
+                    }
+                    eventDispatcher.setEventListener(snapshotMetrics);
+                    SnapshotResult snapshotResult = snapshotSource.execute(context);
+                    LOGGER.info("Snapshot ended with {}", snapshotResult);
+
+                    if (snapshotResult.getStatus() == SnapshotResultStatus.COMPLETED || schema.tableInformationComplete()) {
+                        schema.assureNonEmptySchema();
+                    }
+
+                    if (running && snapshotResult.isCompletedOrSkipped()) {
+                        previousLogContext.set(taskContext.configureLoggingContext("streaming"));
+                        streamEvents(snapshotResult.getOffset(), context);
+                    }
+                }
+                catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    LOGGER.warn("Change event source executor was interrupted", e);
+                }
+                catch (Throwable e) {
+                    errorHandler.setProducerThrowable(e);
+                }
+                finally {
                     streamingConnected(false);
-                    commitOffsetLock.lock();
-                    streamingSource = null;
-                    commitOffsetLock.unlock();
                 }
-                eventDispatcher.setEventListener(snapshotMetrics);
-                SnapshotResult snapshotResult = snapshotSource.execute(context);
-                LOGGER.info("Snapshot ended with {}", snapshotResult);
-
-                if (snapshotResult.getStatus() == SnapshotResultStatus.COMPLETED || schema.tableInformationComplete()) {
-                    schema.assureNonEmptySchema();
-                }
-
-                if (running && snapshotResult.isCompletedOrSkipped()) {
-                    streamEvents(snapshotResult.getOffset(), context);
-                }
+            });
+        }
+        finally {
+            if (previousLogContext.get() != null) {
+                previousLogContext.get().restore();
             }
-            catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                LOGGER.warn("Change event source executor was interrupted", e);
-            }
-            catch (Throwable e) {
-                errorHandler.setProducerThrowable(e);
-            }
-            finally {
-                streamingConnected(false);
-            }
-        });
+        }
     }
 
     protected CatchUpStreamingResult executeCatchUpStreaming(OffsetContext previousOffset, ChangeEventSourceContext context,
