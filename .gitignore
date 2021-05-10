@@ -14,6 +14,7 @@ activemq-data/
 .gradle/
 .vscode/
 build/
+debezium-ddl-parser/gen
 deploy/
 target/
 mods/
