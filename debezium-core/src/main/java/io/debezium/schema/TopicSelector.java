@@ -140,7 +140,7 @@ public class TopicSelector<I extends DataCollectionId> {
          * Whether the given character is a legal character of a Kafka topic name. Legal characters are
          * {@code [a-zA-Z0-9._-]}.
          *
-         * @see https://github.com/apache/kafka/blob/trunk/clients/src/main/java/org/apache/kafka/common/internals/Topic.java
+         * @link https://github.com/apache/kafka/blob/trunk/clients/src/main/java/org/apache/kafka/common/internals/Topic.java
          */
         private boolean isValidTopicNameCharacter(char c) {
             return c == '.' || c == '_' || c == '-' || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9');

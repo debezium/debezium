@@ -26,7 +26,7 @@ import org.graalvm.polyglot.proxy.ProxyObject;
  *
  * @author Jiri Pechanec
  *
- * @see https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/proxy/ProxyObject.html
+ * @link https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/proxy/ProxyObject.html
  */
 public class GraalJsEngine extends Jsr223Engine {
 
