@@ -121,6 +121,8 @@ The level of the lock is determined by the `snapshot.isolation.mode` connector  
 .. Emits each _read_ event to the Kafka topic that has the same name as the table.
 . Records the successful completion of the snapshot in the connector offsets.
 
+include::{partialsdir}/modules/all-connectors/ref-connector-incremental-snapshot.adoc[leveloffset=+3]
+
 // Type: concept
 // Title: How {prodname} Db2 connectors read change-data tables
 [id="how-debezium-db2-connectors-read-change-data-tables"]
@@ -2091,6 +2093,11 @@ A possible use case for setting these properties is large, append-only tables. Y
 | comma-separated list of operation types that will be skipped during streaming.
 The operations include: `c` for inserts/create, `u` for updates, and `d` for deletes.
 By default, no operations are skipped.
+
+|[[db2-property-signal-data-collection]]<<db2-property-signal-data-collection, `+signal.data.collection+`>>
+|
+| Fully-qualified name of data collections that is used to send {link-prefix}:{link-signalling}[signals] to the connector.
+The name format is _schema-name.table-name_.
 
 |===
 

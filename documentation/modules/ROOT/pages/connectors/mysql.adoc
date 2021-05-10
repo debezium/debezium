@@ -374,6 +374,8 @@ a|Records the completed snapshot in the connector offsets.
 
 |===
 
+include::{partialsdir}/modules/all-connectors/ref-connector-incremental-snapshot.adoc[leveloffset=+3]
+
 ifdef::community[]
 
 // Type: continue
@@ -2558,6 +2560,11 @@ endif::community[]
 |[[mysql-property-skipped-operations]]<<mysql-property-skipped-operations, `+skipped.operations+`>>
 |
 |Comma-separated list of operation types to skip during streaming. The following values are possible: `c` for inserts/create, `u` for updates, `d` for deletes. By default, no operations are skipped.
+
+|[[mysql-property-signal-data-collection]]<<mysql-property-signal-data-collection, `+signal.data.collection+`>>
+|
+| Fully-qualified name of data collections that is used to send {link-prefix}:{link-signalling}[signals] to the connector.
+The name format is _database-name.table-name_.
 
 |[[mysql-property-provide-transaction-metadata]]<<mysql-property-provide-transaction-metadata, `provide.transaction.metadata`>>
 |`false`
