@@ -61,7 +61,7 @@ public class ReadToInsertEvent<R extends ConnectRecordWrapper<R>> implements Tra
 
     @Override
     public ConfigDef config() {
-        return null;
+        return new ConfigDef();
     }
 
     @Override
