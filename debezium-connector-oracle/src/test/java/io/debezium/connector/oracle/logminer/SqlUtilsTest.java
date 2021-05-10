@@ -236,7 +236,7 @@ public class SqlUtilsTest {
         result = SqlUtils.oldestFirstChangeQuery(Duration.ofHours(0L));
         expected = "SELECT MIN(FIRST_CHANGE#) FROM (SELECT MIN(FIRST_CHANGE#) AS FIRST_CHANGE# FROM V$LOG UNION SELECT MIN(FIRST_CHANGE#)" +
                 " AS FIRST_CHANGE# FROM V$ARCHIVED_LOG WHERE DEST_ID IN (SELECT DEST_ID FROM V$ARCHIVE_DEST_STATUS" +
-                " WHERE STATUS='VALID' AND TYPE='LOCAL' AND ROWNUM=1) )";
+                " WHERE STATUS='VALID' AND TYPE='LOCAL' AND ROWNUM=1) AND STATUS='A')";
         assertThat(result).isEqualTo(expected);
 
         result = SqlUtils.allOnlineLogsQuery();

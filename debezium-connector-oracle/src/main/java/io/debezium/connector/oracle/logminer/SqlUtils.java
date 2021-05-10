@@ -136,6 +136,7 @@ public class SqlUtils {
         sb.append("UNION SELECT MIN(FIRST_CHANGE#) AS FIRST_CHANGE# ");
         sb.append("FROM ").append(ARCHIVED_LOG_VIEW).append(" ");
         sb.append("WHERE DEST_ID IN (").append(localArchiveLogDestinationsOnlyQuery()).append(") ");
+        sb.append("AND STATUS='A'");
 
         if (!archiveLogRetention.isNegative() && !archiveLogRetention.isZero()) {
             sb.append("AND FIRST_TIME >= SYSDATE - (").append(archiveLogRetention.toHours()).append("/24)");
