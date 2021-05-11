@@ -117,9 +117,8 @@ public class PostgresConnectorTask<SourceTaskContext extends SourceTaskContextWr
             ReplicationConnection replicationConnection = null;
             SlotCreationResult slotCreatedInfo = null;
             if (snapshotter.shouldStream()) {
-                final boolean shouldExport = snapshotter.exportSnapshot();
                 final boolean doSnapshot = snapshotter.shouldSnapshot();
-                replicationConnection = createReplicationConnection(this.taskContext, shouldExport,
+                replicationConnection = createReplicationConnection(this.taskContext, true,
                         doSnapshot, connectorConfig.maxRetries(), connectorConfig.retryDelay());
 
                 // we need to create the slot before we start streaming if it doesn't exist

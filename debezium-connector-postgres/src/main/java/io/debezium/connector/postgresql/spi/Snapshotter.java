@@ -55,14 +55,6 @@ public interface Snapshotter {
     }
 
     /**
-     * @return true if when creating a slot, a snapshot should be exported, which
-     * can be used as an alternative to taking a lock
-     */
-    default boolean exportSnapshot() {
-        return false;
-    }
-
-    /**
      * Generate a valid postgres query string for the specified table, or an empty {@link Optional}
      * to skip snapshotting this table (but that table will still be streamed from)
      *

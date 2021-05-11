@@ -17,6 +17,8 @@ import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
 import org.apache.kafka.common.config.ConfigValue;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.debezium.config.ConfigDefinition;
 import io.debezium.config.Configuration;
@@ -32,7 +34,6 @@ import io.debezium.connector.postgresql.connection.pgproto.PgProtoMessageDecoder
 import io.debezium.connector.postgresql.connection.wal2json.NonStreamingWal2JsonMessageDecoder;
 import io.debezium.connector.postgresql.connection.wal2json.StreamingWal2JsonMessageDecoder;
 import io.debezium.connector.postgresql.snapshot.AlwaysSnapshotter;
-import io.debezium.connector.postgresql.snapshot.ExportedSnapshotter;
 import io.debezium.connector.postgresql.snapshot.InitialOnlySnapshotter;
 import io.debezium.connector.postgresql.snapshot.InitialSnapshotter;
 import io.debezium.connector.postgresql.snapshot.NeverSnapshotter;
@@ -51,6 +52,8 @@ import io.debezium.util.Strings;
  * @author Horia Chiorean
  */
 public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(PostgresConnectorConfig.class);
 
     /**
      * The set of predefined HStoreHandlingMode options or aliases
@@ -202,7 +205,8 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         /**
          * Perform an exported snapshot
          */
-        EXPORTED("exported", (c) -> new ExportedSnapshotter()),
+        @Deprecated
+        EXPORTED("exported", (c) -> new InitialSnapshotter()),
 
         /**
          * Inject a custom snapshotter, which allows for more control over snapshots.
@@ -841,13 +845,20 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withEnum(SnapshotMode.class, SnapshotMode.INITIAL)
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
+            .withValidation((config, field, output) -> {
+                if (config.getString(field).toLowerCase().equals(SnapshotMode.EXPORTED.getValue())) {
+                    LOGGER.warn("Value '{}' of 'snapshot.mode' option is deprecated, use '{}' instead",
+                            SnapshotMode.EXPORTED.getValue(), SnapshotMode.INITIAL.getValue());
+                }
+                return 0;
+            })
             .withDescription("The criteria for running a snapshot upon startup of the connector. "
                     + "Options include: "
                     + "'always' to specify that the connector run a snapshot each time it starts up; "
                     + "'initial' (the default) to specify the connector can run a snapshot only when no offsets are available for the logical server name; "
                     + "'initial_only' same as 'initial' except the connector should stop after completing the snapshot and before it would normally start emitting changes;"
                     + "'never' to specify the connector should never run a snapshot and that upon first startup the connector should read from the last position (LSN) recorded by the server; and"
-                    + "'exported' to specify the connector should run a snapshot based on the position when the replication slot was created; "
+                    + "'exported' deprecated, use 'initial' instead; "
                     + "'custom' to specify a custom class with 'snapshot.custom_class' which will be loaded and used to determine the snapshot, see docs for more details.");
 
     public static final Field SNAPSHOT_MODE_CLASS = Field.create("snapshot.custom.class")
