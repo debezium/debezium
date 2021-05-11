@@ -2141,7 +2141,7 @@ ifdef::product[]
 To deploy a {prodname} PostgreSQL connector, add the connector files to Kafka Connect, create a custom container to run the connector, and add connector configuration to your container. Details are in the following topics:
 
 * xref:deploying-debezium-postgresql-connectors[]
-* xref:postgresql-connector-properties[]
+* xref:descriptions-of-debezium-postgresql-connector-configuration-properties[]
 
 // Type: procedure
 // ModuleID: deploying-debezium-postgresql-connectors
@@ -2260,7 +2260,7 @@ This updates your Kafka Connect environment in OpenShift to add a Kafka Connecto
 +
 You configure a {prodname} PostgreSQL connector in a `.yaml` file that specifies the configuration properties for the connector.
 The connector configuration might instruct {prodname} to produce events for a subset of the schemas and tables, or it might set properties so that {prodname} ignores, masks, or truncates values in specified columns that are sensitive, too large, or not needed.
-For the complete list of the configuration properties that you can set for the {prodname} PostgreSQL connector, see {link-prefix}:{link-postgresql-connector}#postgresql-connector-properties[PostgreSQL connector properties].
+For the complete list of the configuration properties that you can set for the {prodname} PostgreSQL connector, see {link-prefix}:{link-postgresql-connector}#descriptions-of-debezium-sql-server-connector-configuration-properties[PostgreSQL connector properties].
 +
 The following example configures a {prodname} connector that connects to a PostgreSQL server host, `192.168.99.100`, on port `5432`. This host has a database named `sampledb`, a schema named `public`, and `fulfillment` is the server's logical name.
 +
@@ -2418,6 +2418,7 @@ When the connector starts, it {link-prefix}:{link-postgresql-connector}#postgres
 
 // Type: reference
 // Title: Description of {prodname} PostgreSQL connector configuration properties
+// ModuleID: descriptions-of-debezium-postgresql-connector-configuration-properties
 [[postgresql-connector-properties]]
 === Connector configuration properties
 
