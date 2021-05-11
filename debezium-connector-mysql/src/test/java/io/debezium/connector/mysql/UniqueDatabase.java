@@ -41,12 +41,12 @@ public class UniqueDatabase {
 
     private static final String DEFAULT_DATABASE = "mysql";
     private static final String[] CREATE_DATABASE_DDL = new String[]{
-            "CREATE DATABASE $DBNAME$;",
-            "USE $DBNAME$;"
+            "CREATE DATABASE `$DBNAME$`;",
+            "USE `$DBNAME$`;"
     };
     private static final String[] CREATE_DATABASE_WITH_CHARSET_DDL = new String[]{
-            "CREATE DATABASE $DBNAME$ CHARSET $CHARSET$;",
-            "USE $DBNAME$;"
+            "CREATE DATABASE `$DBNAME$` CHARSET $CHARSET$;",
+            "USE `$DBNAME$`;"
     };
     private static final Pattern COMMENT_PATTERN = Pattern.compile("^(.*)--.*$");
 
