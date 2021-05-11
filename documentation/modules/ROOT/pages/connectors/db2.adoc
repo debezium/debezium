@@ -92,7 +92,7 @@ To optimally configure and run a {prodname} Db2 connector, it is helpful to unde
 ifdef::product[]
 Details are in the following topics:
 
-* xref:db2-snapshots[]
+* xref:how-debezium-db2-connectors-perform-database-snapshots[]
 * xref:how-debezium-db2-connectors-read-change-data-tables[]
 * xref:default-names-of-kafka-topics-that-receive-db2-change-event-records[]
 * xref:about-the-debezium-db2-connector-schema-change-topic[]
@@ -101,6 +101,7 @@ Details are in the following topics:
 endif::product[]
 
 // Type: concept
+// ModuleID: how-debezium-db2-connectors-perform-database-snapshots
 // Title: How {prodname} Db2 connectors perform database snapshots
 [[db2-snapshots]]
 === Snapshots
