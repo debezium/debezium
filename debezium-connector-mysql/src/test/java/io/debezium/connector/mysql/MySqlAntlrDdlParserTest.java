@@ -1079,7 +1079,7 @@ public class MySqlAntlrDdlParserTest {
         parser.parse(ddl, tables);
         assertThat(tables.size()).isEqualTo(0); // table created and dropped
         listener.assertNext().createTableNamed("foo").ddlStartsWith("CREATE TABLE foo (");
-        listener.assertNext().dropTableNamed("foo").ddlMatches("DROP TABLE foo");
+        listener.assertNext().dropTableNamed("foo").ddlMatches("DROP TABLE `foo`");
     }
 
     @Test
