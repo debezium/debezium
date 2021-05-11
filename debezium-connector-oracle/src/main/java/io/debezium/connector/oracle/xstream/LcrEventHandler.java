@@ -256,7 +256,8 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
                             break;
 
                         default:
-                            throw new DebeziumException("An unsupported chunk type '" + type + "' for column '" + columnName + "'");
+                            LOGGER.trace("Received an unsupported chunk type '{}' for column '{}', ignored.", type, columnName);
+                            break;
                     }
                 }
 
