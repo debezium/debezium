@@ -112,12 +112,7 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
         else {
             // if we are not in an exported snapshot, this may result in some inconsistencies.
             // Let the user know
-            if (!snapshotter.exportSnapshot()) {
-                LOGGER.warn("Step 2: skipping locking each table, this may result in inconsistent schema!");
-            }
-            else {
-                LOGGER.info("Step 2: skipping locking each table in an exported snapshot");
-            }
+            LOGGER.info("Skipping locking each table in an exported snapshot");
         }
     }
 
@@ -161,7 +156,7 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
     }
 
     private Lsn getTransactionStartLsn() throws SQLException {
-        if (snapshotter.exportSnapshot() && slotCreatedInfo != null) {
+        if (slotCreatedInfo != null) {
             // When performing an exported snapshot based on a newly created replication slot, the txLogStart position
             // should be based on the replication slot snapshot transaction point. This is crucial so that if any
             // SQL operations occur mid-snapshot that they'll be properly captured when streaming begins; otherwise

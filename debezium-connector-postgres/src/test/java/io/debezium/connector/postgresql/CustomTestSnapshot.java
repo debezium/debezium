@@ -39,11 +39,6 @@ public class CustomTestSnapshot implements Snapshotter {
     }
 
     @Override
-    public boolean exportSnapshot() {
-        return true;
-    }
-
-    @Override
     public Optional<String> buildSnapshotQuery(TableId tableId) {
         // on an empty state, don't read from s2 schema, but afterwards, do
         if (!hasState && tableId.schema().equals("s2")) {
