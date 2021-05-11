@@ -92,7 +92,7 @@ ifdef::product[]
 
 For details about how the connector works, see the following sections:
 
-* xref:sqlserver-snapshots[]
+* xref:how-debezium-sql-server-connectors-perform-database-snapshots[]
 * xref:how-the-debezium-sql-server-connector-reads-change-data-tables[]
 * xref:default-names-of-kafka-topics-that-receive-debezium-sql-server-change-event-records[]
 * xref:how-the-debezium-sql-server-connector-uses-the-schema-change-topic[]
@@ -103,6 +103,7 @@ endif::product[]
 
 // Type: concept
 // Title: How {prodname} SQL Server connectors perform database snapshots
+// ModuleID: how-debezium-sql-server-connectors-perform-database-snapshots
 [[sqlserver-snapshots]]
 === Snapshots
 
