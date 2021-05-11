@@ -1439,6 +1439,17 @@ See {link-prefix}:{link-avro-serialization}#avro-naming[Avro naming] for more de
 
 See {link-prefix}:{link-oracle-connector}#oracle-transaction-metadata[Transaction Metadata] for additional details.
 
+|[[oracle-property-log-mining-strategy]]<<oracle-property-log-mining-strategy, `+log.mining.strategy+`>>
+|`redo_log_catalog`
+|The mining strategy controls how Oracle LogMiner builds and uses a given data dictionary for resolving table and column ids to names. +
+ +
+`redo_log_catalog` - Writes the data dictionary to the online redo logs causing more archive logs to be generated over time.
+This also enables tracking DDL changes against monitored tables, so if the schema changes frequently this is the ideal choice. +
+ +
+`online_catalog` - Uess the database's current data dictionary to resolve object ids and does not write any extra information to the online redo logs.
+This allows LogMiner to mine substantially faster but at the expense that DDL changes cannot be tracked.
+If the monitored table(s) schema changes infrequently or never, this is the ideal choice.
+
 |[[oracle-property-log-mining-batch-size-min]]<<oracle-property-log-mining-batch-size-min, `+log.mining.batch.size.min+`>>
 |`1000`
 |The minimum SCN interval size that this connector will try to read from redo/archive logs. Active batch size will be also increased/decreased by this amount for tuning connector throughput when needed.
