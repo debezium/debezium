@@ -28,7 +28,7 @@ public class MySqlDatabaseHistoryIT extends AbstractConnectorTest {
     private static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-json.txt")
             .toAbsolutePath();
 
-    private static final int TABLE_COUNT = 1;
+    private static final int TABLE_COUNT = 2;
 
     private UniqueDatabase DATABASE;
 
@@ -57,7 +57,7 @@ public class MySqlDatabaseHistoryIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-3485")
-    public void shouldConsumeAllEventsFromDatabaseUsingBinlogAndNoSnapshot() throws SQLException, InterruptedException {
+    public void shouldUseQuotedNameInDrop() throws SQLException, InterruptedException {
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.SCHEMA_ONLY)
                 .build();
@@ -68,6 +68,81 @@ public class MySqlDatabaseHistoryIT extends AbstractConnectorTest {
         Testing.Print.enable();
         // SET + USE + Drop DB + create DB + CREATE/DROP for each table
         SourceRecords records = consumeRecordsByTopic(1 + 1 + 1 + 1 + TABLE_COUNT * 2);
+
+        stopConnector();
+
+        start(MySqlConnector.class, config);
+        assertConnectorIsRunning();
+        stopConnector();
+    }
+
+    @Test
+    @FixFor("DBZ-3399")
+    public void shouldStoreSingleRename() throws SQLException, InterruptedException {
+        config = DATABASE.defaultConfig()
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.SCHEMA_ONLY)
+                .build();
+
+        // Start the connector ...
+        start(MySqlConnector.class, config);
+
+        Testing.Print.enable();
+        // SET + USE + Drop DB + create DB + CREATE/DROP for each table
+        SourceRecords records = consumeRecordsByTopic(1 + 1 + 1 + 1 + TABLE_COUNT * 2);
+        try (MySqlTestConnection connection = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
+            connection.execute("RENAME TABLE `t-1` TO `new-t-1`");
+        }
+        records = consumeRecordsByTopic(1);
+
+        stopConnector();
+
+        start(MySqlConnector.class, config);
+        assertConnectorIsRunning();
+        stopConnector();
+    }
+
+    @Test
+    @FixFor("DBZ-3399")
+    public void shouldStoreMultipleRenames() throws SQLException, InterruptedException {
+        config = DATABASE.defaultConfig()
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.SCHEMA_ONLY)
+                .build();
+
+        // Start the connector ...
+        start(MySqlConnector.class, config);
+
+        Testing.Print.enable();
+        // SET + USE + Drop DB + create DB + CREATE/DROP for each table
+        SourceRecords records = consumeRecordsByTopic(1 + 1 + 1 + 1 + TABLE_COUNT * 2);
+        try (MySqlTestConnection connection = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
+            connection.execute("RENAME TABLE `t-1` TO `new-t-1`, `t.2` TO `new.t.2`");
+        }
+        records = consumeRecordsByTopic(2);
+
+        stopConnector();
+
+        start(MySqlConnector.class, config);
+        assertConnectorIsRunning();
+        stopConnector();
+    }
+
+    @Test
+    @FixFor("DBZ-3399")
+    public void shouldStoreAlterRename() throws SQLException, InterruptedException {
+        config = DATABASE.defaultConfig()
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.SCHEMA_ONLY)
+                .build();
+
+        // Start the connector ...
+        start(MySqlConnector.class, config);
+
+        Testing.Print.enable();
+        // SET + USE + Drop DB + create DB + CREATE/DROP for each table
+        SourceRecords records = consumeRecordsByTopic(1 + 1 + 1 + 1 + TABLE_COUNT * 2);
+        try (MySqlTestConnection connection = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
+            connection.execute("ALTER TABLE `t-1` RENAME TO `new-t-1`");
+        }
+        records = consumeRecordsByTopic(1);
 
         stopConnector();
 
