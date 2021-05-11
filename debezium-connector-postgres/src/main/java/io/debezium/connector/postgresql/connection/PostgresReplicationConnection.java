@@ -315,7 +315,8 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                         message += "; when setting up multiple connectors for the same database host, please make sure to use a distinct replication slot name for each.";
                     }
                     throw new DebeziumException(message, e);
-                } else {
+                }
+                else {
                     LOGGER.warn(message);
                     LOGGER.warn("Waiting 2s and retrying, attempt number " + tryCount + " over " + maxRetries);
                     try {
