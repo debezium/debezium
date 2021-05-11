@@ -59,7 +59,7 @@ Details are in the following topics:
 * xref:mysql-topologies-supported-by-debezium-connectors[]
 * xref:how-debezium-mysql-connectors-handle-database-schema-changes[]
 * xref:how-debezium-mysql-connectors-expose-database-schema-changes[]
-* xref:mysql-snapshots[]
+* xref:how-debezium-mysql-connectors-perform-database-snapshots[]
 * xref:default-names-of-kafka-topics-that-receive-debezium-mysql-change-event-records[]
 
 endif::product[]
@@ -288,6 +288,7 @@ See also: {link-prefix}:{link-mysql-connector}#mysql-schema-history-topic[schema
 
 // Type: concept
 // Title: How {prodname} MySQL connectors perform database snapshots
+// ModuleID: how-debezium-mysql-connectors-perform-database-snapshots
 [[mysql-snapshots]]
 === Snapshots
 
