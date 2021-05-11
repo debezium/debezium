@@ -2,4 +2,5 @@
 -- DATABASE:  history
 -- ----------------------------------------------------------------------------------------------------------------
 
-CREATE TABLE `t-1` (ID INT PRIMARY KEY);
+CREATE TABLE `t-1` (ID1 INT PRIMARY KEY);
+CREATE TABLE `t.2` (ID2 INT PRIMARY KEY);
