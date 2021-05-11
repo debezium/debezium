@@ -11,6 +11,7 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import javax.annotation.PostConstruct;
@@ -73,6 +74,8 @@ public class DebeziumServer {
     private static final String FORMAT_JSON = Json.class.getSimpleName().toLowerCase();
     private static final String FORMAT_AVRO = Avro.class.getSimpleName().toLowerCase();
     private static final String FORMAT_PROTOBUF = Protobuf.class.getSimpleName().toLowerCase();
+
+    private static final Pattern PROPERTY_NAME_PATTERN = Pattern.compile("([a-z]*\\.[a-z]*)+$");
 
     private ExecutorService executor = Executors.newSingleThreadExecutor();
 
@@ -150,6 +153,9 @@ public class DebeziumServer {
 
     private void configToProperties(Config config, Properties props, String oldPrefix, String newPrefix) {
         for (String name : config.getPropertyNames()) {
+            if (!PROPERTY_NAME_PATTERN.asPredicate().test(name)) {
+                name = name.replace("_", ".").toLowerCase();
+            }
             if (name.startsWith(oldPrefix)) {
                 props.setProperty(newPrefix + name.substring(oldPrefix.length()), config.getValue(name, String.class));
             }
