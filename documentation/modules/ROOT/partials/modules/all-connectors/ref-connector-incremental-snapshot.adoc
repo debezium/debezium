@@ -32,7 +32,8 @@ See the next section for more details.
 
 |`data-collections`
 |_N/A_
-| Array of qualified names of table to be snapshotted, for instance `schema1.table`
+| An array of qualified names of table to be snapshotted. +
+The format of the names is the same as for {link-prefix}:#{context}-property-signal-data-collection[signal.data.collection] configuration option.
 
 |===
 
