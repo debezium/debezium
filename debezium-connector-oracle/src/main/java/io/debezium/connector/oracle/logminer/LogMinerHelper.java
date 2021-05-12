@@ -429,41 +429,22 @@ public class LogMinerHelper {
 
     /**
      * This method substitutes CONTINUOUS_MINE functionality
+     *
      * @param connection connection
      * @param lastProcessedScn current offset
      * @param archiveLogRetention the duration that archive logs will be mined
      * @throws SQLException if anything unexpected happens
      */
     // todo: check RAC resiliency
-    public static void setRedoLogFilesForMining(OracleConnection connection, Scn lastProcessedScn, Duration archiveLogRetention) throws SQLException {
-
+    public static void setLogFilesForMining(OracleConnection connection, Scn lastProcessedScn, Duration archiveLogRetention) throws SQLException {
         removeLogFilesFromMining(connection);
 
-        List<LogFile> onlineLogFilesForMining = getOnlineLogFilesForOffsetScn(connection, lastProcessedScn);
-        List<LogFile> archivedLogFilesForMining = getArchivedLogFilesForOffsetScn(connection, lastProcessedScn, archiveLogRetention);
-
-        final boolean hasOverlappingLogFile = onlineLogFilesForMining.stream().anyMatch(l -> l.getFirstScn().compareTo(lastProcessedScn) <= 0)
-                || archivedLogFilesForMining.stream().anyMatch(l -> l.getFirstScn().compareTo(lastProcessedScn) <= 0);
-        if (!hasOverlappingLogFile) {
+        List<LogFile> logFilesForMining = getLogFilesForOffsetScn(connection, lastProcessedScn, archiveLogRetention);
+        if (!logFilesForMining.stream().anyMatch(l -> l.getFirstScn().compareTo(lastProcessedScn) <= 0)) {
             throw new IllegalStateException("None of log files contains offset SCN: " + lastProcessedScn + ", re-snapshot is required.");
         }
 
-        // Deduplicate log files with the same SCn ranges.
-        // todo: could this be eliminated by restricting the online log query to those there 'ARCHIVED="NO"'?
-        List<String> logFilesNames = archivedLogFilesForMining.stream().map(LogFile::getFileName).collect(Collectors.toList());
-        for (LogFile redoLog : onlineLogFilesForMining) {
-            boolean found = false;
-            for (LogFile archiveLog : archivedLogFilesForMining) {
-                if (archiveLog.isSameRange(redoLog)) {
-                    found = true;
-                    break;
-                }
-            }
-            if (!found) {
-                logFilesNames.add(redoLog.getFileName());
-            }
-        }
-
+        List<String> logFilesNames = logFilesForMining.stream().map(LogFile::getFileName).collect(Collectors.toList());
         for (String file : logFilesNames) {
             LOGGER.trace("Adding log file {} to mining session", file);
             String addLogFileStatement = SqlUtils.addLogFileStatement("DBMS_LOGMNR.ADDFILE", file);
@@ -508,32 +489,47 @@ public class LogMinerHelper {
     }
 
     /**
-     * This method returns all online log files, starting from one which contains offset SCN and ending with one containing largest SCN
-     * 18446744073709551615 on Ora 19c is the max value of the nextScn in the current redo
+     * Get all log files that should be mined.
+     *
+     * @param connection database connection
+     * @param offsetScn offset system change number
+     * @param archiveLogRetention duration that archive logs should be mined
+     * @return list of log files
+     * @throws SQLException if a database exception occurs
      */
-    public static List<LogFile> getOnlineLogFilesForOffsetScn(OracleConnection connection, Scn offsetScn) throws SQLException {
-        LOGGER.trace("Getting online redo logs for offset scn {}", offsetScn);
-        List<LogFile> redoLogFiles = new ArrayList<>();
+    public static List<LogFile> getLogFilesForOffsetScn(OracleConnection connection, Scn offsetScn, Duration archiveLogRetention) throws SQLException {
+        LOGGER.trace("Getting logs to be mined for offset scn {}", offsetScn);
 
-        try (PreparedStatement s = connection.connection(false).prepareStatement(SqlUtils.allOnlineLogsQuery())) {
-            try (ResultSet rs = s.executeQuery()) {
-                while (rs.next()) {
-                    String fileName = rs.getString(1);
-                    Scn nextChangeNumber = getScnFromString(rs.getString(2));
-                    Scn firstChangeNumber = getScnFromString(rs.getString(4));
-                    String status = rs.getString(5);
-                    LogFile logFile = new LogFile(fileName, firstChangeNumber, nextChangeNumber, CURRENT.equalsIgnoreCase(status));
+        final List<LogFile> logFiles = new ArrayList<>();
+        connection.query(SqlUtils.allMinableLogsQuery(offsetScn, archiveLogRetention), rs -> {
+            while (rs.next()) {
+                String fileName = rs.getString(1);
+                Scn firstScn = getScnFromString(rs.getString(2));
+                Scn nextScn = getScnFromString(rs.getString(3));
+                String status = rs.getString(5);
+                String type = rs.getString(6);
+                if ("ARCHIVED".equals(type)) {
+                    // archive log record
+                    LogFile logFile = new LogFile(fileName, firstScn, nextScn);
+                    if (logFile.getNextScn().compareTo(offsetScn) >= 0) {
+                        LOGGER.trace("Archive log {} with SCN range {} to {} to be added.", fileName, firstScn, nextScn);
+                        logFiles.add(logFile);
+                    }
+                }
+                else if ("ONLINE".equals(type)) {
+                    LogFile logFile = new LogFile(fileName, firstScn, nextScn, CURRENT.equalsIgnoreCase(status));
                     if (logFile.isCurrent() || logFile.getNextScn().compareTo(offsetScn) >= 0) {
-                        LOGGER.trace("Online redo log {} with SCN range {} to {} ({}) to be added.", fileName, firstChangeNumber, nextChangeNumber, status);
-                        redoLogFiles.add(logFile);
+                        LOGGER.trace("Online redo log {} with SCN range {} to {} ({}) to be added.", fileName, firstScn, nextScn, status);
+                        logFiles.add(logFile);
                     }
                     else {
-                        LOGGER.trace("Online redo log {} with SCN range {} to {} ({}) to be excluded.", fileName, firstChangeNumber, nextChangeNumber, status);
+                        LOGGER.trace("Online redo log {} with SCN range {} to {} ({}) to be excluded.", fileName, firstScn, nextScn, status);
                     }
                 }
             }
-        }
-        return redoLogFiles;
+        });
+
+        return logFiles;
     }
 
     private static Scn getScnFromString(String value) {
@@ -619,32 +615,6 @@ public class LogMinerHelper {
                 LOGGER.debug("{}", columnValues);
             }
         });
-    }
-
-    /**
-     * This method returns all archived log files for one day, containing given offset scn
-     * @param connection      connection
-     * @param offsetScn       offset scn
-     * @param archiveLogRetention duration that archive logs will be mined
-     * @return                list of archive logs
-     * @throws SQLException   if something happens
-     */
-    public static List<LogFile> getArchivedLogFilesForOffsetScn(OracleConnection connection, Scn offsetScn, Duration archiveLogRetention) throws SQLException {
-        final List<LogFile> archiveLogFiles = new ArrayList<>();
-        try (PreparedStatement s = connection.connection(false).prepareStatement(SqlUtils.archiveLogsQuery(offsetScn, archiveLogRetention))) {
-            try (ResultSet rs = s.executeQuery()) {
-                while (rs.next()) {
-                    String fileName = rs.getString(1);
-                    Scn firstChangeNumber = Scn.valueOf(rs.getString(3));
-                    Scn nextChangeNumber = rs.getString(2) == null ? Scn.MAX : Scn.valueOf(rs.getString(2));
-                    if (LOGGER.isTraceEnabled()) {
-                        LOGGER.trace("Archive log {} with SCN range {} to {} to be added.", fileName, firstChangeNumber, nextChangeNumber);
-                    }
-                    archiveLogFiles.add(new LogFile(fileName, firstChangeNumber, nextChangeNumber));
-                }
-            }
-        }
-        return archiveLogFiles;
     }
 
     /**

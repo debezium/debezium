@@ -13,9 +13,7 @@ import java.sql.SQLException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -28,8 +26,8 @@ import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.logminer.LogFile;
 import io.debezium.connector.oracle.logminer.LogMinerHelper;
-import io.debezium.connector.oracle.logminer.SqlUtils;
 import io.debezium.connector.oracle.util.TestHelper;
+import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.util.Testing;
 
@@ -70,47 +68,32 @@ public class LogMinerHelperIT extends AbstractConnectorTest {
     }
 
     @Test
-    public void shouldAddRightArchivedRedoFiles() throws Exception {
+    @FixFor("DBZ-3256")
+    public void shouldAddCorrectLogFiles() throws Exception {
         // case 1 : oldest scn = current scn
         Scn currentScn = conn.getCurrentScn();
-        Map<String, String> archivedRedoFiles = LogMinerHelper.getMap(conn, SqlUtils.archiveLogsQuery(currentScn, Duration.ofHours(0L)), "-1");
-        assertThat(archivedRedoFiles.size() == 0).isTrue();
+        List<LogFile> files = LogMinerHelper.getLogFilesForOffsetScn(conn, currentScn, Duration.ofHours(0L));
+        assertThat(files).hasSize(1); // just the current redo log
 
-        // case 2: oldest scn = oldest in not cleared archive
+        // case 2 : oldest scn = oldest in not cleared archive
         List<Scn> oneDayArchivedNextScn = getOneDayArchivedLogNextScn(conn);
         Scn oldestArchivedScn = getOldestArchivedScn(oneDayArchivedNextScn);
-        List<LogFile> archivedLogsForMining = LogMinerHelper.getArchivedLogFilesForOffsetScn(conn, oldestArchivedScn, Duration.ofHours(0L));
-        if (oneDayArchivedNextScn.isEmpty()) {
-            assertThat(archivedLogsForMining.size()).isEqualTo(oneDayArchivedNextScn.size());
-        }
-        else {
-            assertThat(archivedLogsForMining.size()).isEqualTo(oneDayArchivedNextScn.size() - 1);
-        }
+        files = LogMinerHelper.getLogFilesForOffsetScn(conn, oldestArchivedScn, Duration.ofHours(0L));
+        assertThat(files.size()).isEqualTo(oneDayArchivedNextScn.size());
 
-        archivedRedoFiles = LogMinerHelper.getMap(conn, SqlUtils.archiveLogsQuery(oldestArchivedScn.subtract(Scn.valueOf(1L)), Duration.ofHours(0L)), "-1");
-        assertThat(archivedRedoFiles.size() == (oneDayArchivedNextScn.size())).isTrue();
+        files = LogMinerHelper.getLogFilesForOffsetScn(conn, oldestArchivedScn.subtract(Scn.valueOf(1L)), Duration.ofHours(0L));
+        assertThat(files.size()).isEqualTo(oneDayArchivedNextScn.size() + 1);
     }
 
     @Test
-    public void shouldAddRightRedoFiles() throws Exception {
+    @FixFor("DBZ-3256")
+    public void shouldSetCorrectLogFiles() throws Exception {
         List<Scn> oneDayArchivedNextScn = getOneDayArchivedLogNextScn(conn);
         Scn oldestArchivedScn = getOldestArchivedScn(oneDayArchivedNextScn);
-        LogMinerHelper.setRedoLogFilesForMining(conn, oldestArchivedScn, Duration.ofHours(0L));
+        LogMinerHelper.setLogFilesForMining(conn, oldestArchivedScn, Duration.ofHours(0L));
 
-        // eliminate duplications
-        List<LogFile> onlineLogFilesForMining = LogMinerHelper.getOnlineLogFilesForOffsetScn(conn, oldestArchivedScn);
-        List<LogFile> archivedLogFilesForMining = LogMinerHelper.getArchivedLogFilesForOffsetScn(conn, oldestArchivedScn, Duration.ofHours(0L));
-        List<String> redoLogFiles = onlineLogFilesForMining.stream().filter(e -> {
-            for (LogFile log : archivedLogFilesForMining) {
-                if (log.isSameRange(e)) {
-                    return false;
-                }
-            }
-            return true;
-        }).map(LogFile::getFileName).collect(Collectors.toList());
-        int redoLogFilesCount = redoLogFiles.size();
-
-        assertThat(redoLogFilesCount + archivedLogFilesForMining.size()).isEqualTo(getNumberOfAddedLogFiles(conn));
+        List<LogFile> files = LogMinerHelper.getLogFilesForOffsetScn(conn, oldestArchivedScn, Duration.ofHours(0L));
+        assertThat(files.size()).isEqualTo(getNumberOfAddedLogFiles(conn));
     }
 
     private Scn getOldestArchivedScn(List<Scn> oneDayArchivedNextScn) {

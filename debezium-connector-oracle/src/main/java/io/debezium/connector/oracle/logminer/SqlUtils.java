@@ -145,35 +145,38 @@ public class SqlUtils {
         return sb.append(")").toString();
     }
 
-    public static String allOnlineLogsQuery() {
-        return String.format("SELECT MIN(F.MEMBER) AS FILE_NAME, L.NEXT_CHANGE# AS NEXT_CHANGE, F.GROUP#, L.FIRST_CHANGE# AS FIRST_CHANGE, L.STATUS " +
-                " FROM %s L, %s F " +
-                " WHERE F.GROUP# = L.GROUP# AND L.NEXT_CHANGE# > 0 " +
-                " GROUP BY F.GROUP#, L.NEXT_CHANGE#, L.FIRST_CHANGE#, L.STATUS ORDER BY 3", LOG_VIEW, LOGFILE_VIEW);
-    }
-
     /**
-     * Obtain the query to be used to fetch archive logs.
+     * Obtain a query to fetch all available minable logs, both archive and online redo logs.
      *
-     * @param scn oldest scn to search for
+     * @param scn oldest system change number to search by
      * @param archiveLogRetention duration archive logs will be mined
-     * @return query
+     * @return the query string to obtain minable log files
      */
-    public static String archiveLogsQuery(Scn scn, Duration archiveLogRetention) {
+    public static String allMinableLogsQuery(Scn scn, Duration archiveLogRetention) {
         final StringBuilder sb = new StringBuilder();
-        sb.append("SELECT NAME AS FILE_NAME, NEXT_CHANGE# AS NEXT_CHANGE, FIRST_CHANGE# AS FIRST_CHANGE ");
-        sb.append("FROM ").append(ARCHIVED_LOG_VIEW).append(" ");
-        sb.append("WHERE NAME IS NOT NULL ");
-        sb.append("AND ARCHIVED = 'YES' ");
-        sb.append("AND STATUS = 'A' ");
-        sb.append("AND NEXT_CHANGE# > ").append(scn).append(" ");
-        sb.append("AND DEST_ID IN (").append(localArchiveLogDestinationsOnlyQuery()).append(") ");
+        sb.append("SELECT MIN(F.MEMBER) AS FILE_NAME, L.FIRST_CHANGE# FIRST_CHANGE, L.NEXT_CHANGE# NEXT_CHANGE, L.ARCHIVED, ");
+        sb.append("L.STATUS, 'ONLINE' AS TYPE, L.SEQUENCE# AS SEQ, 'NO' AS DICT_START, 'NO' AS DICT_END ");
+        sb.append("FROM ").append(LOGFILE_VIEW).append(" F, ").append(LOG_VIEW).append(" L ");
+        sb.append("LEFT JOIN ").append(ARCHIVED_LOG_VIEW).append(" A ");
+        sb.append("ON A.FIRST_CHANGE# = L.FIRST_CHANGE# AND A.NEXT_CHANGE# = L.NEXT_CHANGE# ");
+        sb.append("WHERE A.FIRST_CHANGE# IS NULL ");
+        sb.append("AND F.GROUP# = L.GROUP# ");
+        sb.append("GROUP BY F.GROUP#, L.FIRST_CHANGE#, L.NEXT_CHANGE#, L.STATUS, L.ARCHIVED, L.SEQUENCE# ");
+        sb.append("UNION ");
+        sb.append("SELECT A.NAME AS FILE_NAME, A.FIRST_CHANGE# FIRST_CHANGE, A.NEXT_CHANGE# NEXT_CHANGE, 'YES', ");
+        sb.append("NULL, 'ARCHIVED', A.SEQUENCE# AS SEQ, A.DICTIONARY_BEGIN, A.DICTIONARY_END ");
+        sb.append("FROM ").append(ARCHIVED_LOG_VIEW).append(" A ");
+        sb.append("WHERE A.NAME IS NOT NULL ");
+        sb.append("AND A.ARCHIVED = 'YES' ");
+        sb.append("AND A.STATUS = 'A' ");
+        sb.append("AND A.NEXT_CHANGE# > ").append(scn).append(" ");
+        sb.append("AND A.DEST_ID IN (").append(localArchiveLogDestinationsOnlyQuery()).append(") ");
 
         if (!archiveLogRetention.isNegative() && !archiveLogRetention.isZero()) {
-            sb.append("AND FIRST_TIME >= SYSDATE - (").append(archiveLogRetention.toHours()).append("/24) ");
+            sb.append("AND A.FIRST_TIME >= SYSDATE - (").append(archiveLogRetention.toHours()).append("/24) ");
         }
 
-        return sb.append("ORDER BY 2").toString();
+        return sb.append("ORDER BY 7").toString();
     }
 
     /**
