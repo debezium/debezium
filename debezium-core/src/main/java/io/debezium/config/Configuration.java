@@ -788,12 +788,12 @@ public interface Configuration {
         return new Configuration() {
             @Override
             public String getString(String key) {
-                return properties.getProperty(key);
+                return props.getProperty(key);
             }
 
             @Override
             public Set<String> keys() {
-                return properties.stringPropertyNames();
+                return props.stringPropertyNames();
             }
 
             @Override
@@ -839,12 +839,12 @@ public interface Configuration {
         return new Configuration() {
             @Override
             public String getString(String key) {
-                return conversion.apply(properties.get(key));
+                return conversion.apply((T) props.get(key));
             }
 
             @Override
             public Set<String> keys() {
-                return properties.keySet();
+                return props.keySet();
             }
 
             @Override
