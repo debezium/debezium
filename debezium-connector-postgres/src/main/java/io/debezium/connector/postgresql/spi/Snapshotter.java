@@ -29,10 +29,11 @@ import io.debezium.relational.TableId;
  * or true for both.
  */
 @Incubating
-public interface Snapshotter {
+public interface Snapshotter
+        extends io.debezium.spi.snapshot.Snapshotter<PostgresConnectorConfig, SnapshotState, TableId> {
 
-    void init(PostgresConnectorConfig config, OffsetState sourceInfo,
-              SlotState slotState);
+    @Deprecated
+    void init(PostgresConnectorConfig config, OffsetState sourceInfo, SlotState slotState);
 
     /**
      * @return true if the snapshotter should take a snapshot
@@ -69,6 +70,7 @@ public interface Snapshotter {
      * @param newSlotInfo if a new slow was created for snapshotting, this contains information from
      *                    the `create_replication_slot` command
      */
+    @Deprecated
     default String snapshotTransactionIsolationLevelStatement(SlotCreationResult newSlotInfo) {
         // we're using the same isolation level that pg_backup uses
         return "SET TRANSACTION ISOLATION LEVEL SERIALIZABLE, READ ONLY, DEFERRABLE;";
@@ -78,6 +80,7 @@ public interface Snapshotter {
      * Returns a SQL statement for locking the given tables during snapshotting, if required by the specific snapshotter
      * implementation.
      */
+    @Deprecated
     default Optional<String> snapshotTableLockingStatement(Duration lockTimeout, Set<TableId> tableIds) {
         String lineSeparator = System.lineSeparator();
         StringBuilder statements = new StringBuilder();
@@ -97,5 +100,20 @@ public interface Snapshotter {
      */
     default void snapshotCompleted() {
         // no operation
+    }
+
+    @Override
+    default void init(PostgresConnectorConfig config, SnapshotState snapshotState) {
+        throw new UnsupportedOperationException("Implemented with DBZ-2385");
+    }
+
+    @Override
+    default String snapshotTransactionIsolationLevelStatement() {
+        throw new UnsupportedOperationException("Implemented with DBZ-2385");
+    }
+
+    @Override
+    default Optional<String> snapshotDataCollectionLockingStatement(Set<TableId> dataCollectionIds) {
+        throw new UnsupportedOperationException("Implemented with DBZ-2385");
     }
 }
