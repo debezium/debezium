@@ -66,6 +66,9 @@ public class TestConfigSource implements ConfigSource {
         unitTest.put("debezium.transforms.hoist.type", "org.apache.kafka.connect.transforms.HoistField$Value");
         unitTest.put("debezium.transforms.hoist.field", "line");
 
+        // DBZ-2622 For testing properties passed via smallrye/microprofile environment variables
+        unitTest.put("DEBEZIUM_SOURCE_TABLE_WHITELIST", "public.table_name");
+
         if (isItTest()) {
             config = integrationTest;
         }
