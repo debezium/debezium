@@ -90,6 +90,7 @@ public class DebeziumServer {
     private CreationalContext<ChangeConsumer<ChangeEvent<Object, Object>>> consumerBeanCreationalContext;
     private DebeziumEngine.ChangeConsumer<ChangeEvent<Object, Object>> consumer;
     private DebeziumEngine<?> engine;
+    private final Properties props = new Properties();
 
     @SuppressWarnings("unchecked")
     @PostConstruct
@@ -116,7 +117,6 @@ public class DebeziumServer {
 
         final Class<Any> keyFormat = (Class<Any>) getFormat(config, PROP_KEY_FORMAT);
         final Class<Any> valueFormat = (Class<Any>) getFormat(config, PROP_VALUE_FORMAT);
-        final Properties props = new Properties();
         configToProperties(config, props, PROP_SOURCE_PREFIX, "");
         configToProperties(config, props, PROP_FORMAT_PREFIX, "key.converter.");
         configToProperties(config, props, PROP_FORMAT_PREFIX, "value.converter.");
@@ -153,10 +153,14 @@ public class DebeziumServer {
 
     private void configToProperties(Config config, Properties props, String oldPrefix, String newPrefix) {
         for (String name : config.getPropertyNames()) {
+            String updatedPropertyName = null;
             if (!PROPERTY_NAME_PATTERN.asPredicate().test(name)) {
-                name = name.replace("_", ".").toLowerCase();
+                updatedPropertyName = name.replace("_", ".").toLowerCase();
             }
-            if (name.startsWith(oldPrefix)) {
+            if (updatedPropertyName != null && updatedPropertyName.startsWith(oldPrefix)) {
+                props.setProperty(newPrefix + updatedPropertyName.substring(oldPrefix.length()), config.getValue(name, String.class));
+            }
+            else if (name.startsWith(oldPrefix)) {
                 props.setProperty(newPrefix + name.substring(oldPrefix.length()), config.getValue(name, String.class));
             }
         }
@@ -195,5 +199,9 @@ public class DebeziumServer {
      */
     DebeziumEngine.ChangeConsumer<?> getConsumer() {
         return consumer;
+    }
+
+    public Properties getProps() {
+        return props;
     }
 }
