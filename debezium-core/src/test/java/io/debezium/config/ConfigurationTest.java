@@ -57,6 +57,25 @@ public class ConfigurationTest {
         assertThat(config.getBoolean("1")).isNull(); // not a boolean
     }
 
+    /**
+     * Test verifying that a Configuration object cannot be modified after creation.
+     */
+    @Test
+    @FixFor("DBZ-3514")
+    public void shouldNotBeModifiedAfterCreation() {
+        // GIVEN a list of configuration properties
+        Properties props = new Properties();
+        props.setProperty("1", "one");
+        props.setProperty("2", "two");
+
+        // WHEN a configuration object is created from the properties list
+        config = Configuration.from(props);
+
+        // THEN changes to the properties list does not change the configuration object.
+        props.setProperty("1", "newValue");
+        assertThat(config.getString("1")).isEqualTo("one");
+    }
+
     @Test
     public void shouldCreateInternalFields() {
         config = Configuration.create().with(Field.createInternal("a"), "a1").build();
