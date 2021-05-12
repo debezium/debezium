@@ -299,7 +299,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
     private List<BigInteger> getCurrentRedoLogSequences() throws SQLException {
         return jdbcConnection.queryAndMap(SqlUtils.currentRedoLogSequenceQuery(), rs -> {
             List<BigInteger> sequences = new ArrayList<>();
-            if (rs.next()) {
+            while (rs.next()) {
                 sequences.add(new BigInteger(rs.getString(1)));
             }
             return sequences;
