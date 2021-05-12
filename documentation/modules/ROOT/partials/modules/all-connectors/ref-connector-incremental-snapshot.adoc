@@ -2,6 +2,12 @@
 
 = Ad-hoc snapshot
 
+[NOTE]
+====
+This feature is currently in incubating state, i.e. exact semantics, configuration options etc. may change in future revisions, based on the feedback we receive.
+Please let us know if you encounter any problems while using this extension.
+====
+
 When the initial snapshot is completed then it is not executed again as further data are acquired via streaming.
 
 Sometimes it would be really useful to re-execute a snapshot, either completely, or for only a subset of tables.
@@ -40,6 +46,12 @@ INSERT INTO myschema.debezium_signal VALUES('ad-hoc-1', 'execute-snapshot', '{"d
 [[{context}-incremental-snapshot]]
 
 = Incremental snapshot
+
+[NOTE]
+====
+This feature is currently in incubating state, i.e. exact semantics, configuration options etc. may change in future revisions, based on the feedback we receive.
+Please let us know if you encounter any problems while using this extension.
+====
 
 Initial snapshots are a great way to obtain a consistent set of all data stored in a database upfront.
 But there are also some downsides to this approach, though:
