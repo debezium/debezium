@@ -9,7 +9,6 @@ import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 
 import org.apache.kafka.common.config.ConfigDef;
@@ -95,14 +94,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     + "Options include: "
                     + "'initial' (the default) to specify the connector should run a snapshot only when no offsets are available for the logical server name; "
                     + "'schema_only' to specify the connector should run a snapshot of the schema when no offsets are available for the logical server name. ");
-
-    @Deprecated
-    public static final Field TABLENAME_CASE_INSENSITIVE = Field.create("database.tablename.case.insensitive")
-            .withDisplayName("Case insensitive table names")
-            .withType(Type.BOOLEAN)
-            .withDefault(false)
-            .withImportance(Importance.LOW)
-            .withDescription("Deprecated: Case insensitive table names; set to 'true' for Oracle 11g, 'false' (default) otherwise.");
 
     public static final Field ORACLE_VERSION = Field.createInternal("database.oracle.version")
             .withDisplayName("Oracle version, 11 or 12+")
@@ -304,7 +295,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     CONNECTOR_ADAPTER,
                     LOG_MINING_STRATEGY,
                     URL,
-                    TABLENAME_CASE_INSENSITIVE,
                     ORACLE_VERSION)
             .connector(
                     SNAPSHOT_ENHANCEMENT_TOKEN,
@@ -342,7 +332,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final String xoutServerName;
     private final SnapshotMode snapshotMode;
 
-    private final Boolean tablenameCaseInsensitive;
     private final String oracleVersion;
     private final HistoryRecorder logMiningHistoryRecorder;
     private final Configuration jdbcConfig;
@@ -375,7 +364,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.pdbName = toUpperCase(config.getString(PDB_NAME));
         this.xoutServerName = config.getString(XSTREAM_SERVER_NAME);
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE));
-        this.tablenameCaseInsensitive = resolveTableNameCaseInsensitivity(config);
         this.oracleVersion = config.getString(ORACLE_VERSION);
         this.logMiningHistoryRecorder = resolveLogMiningHistoryRecorder(config);
         this.jdbcConfig = config.subset(DATABASE_CONFIG_PREFIX, true);
@@ -434,17 +422,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
     public SnapshotMode getSnapshotMode() {
         return snapshotMode;
-    }
-
-    /**
-     * Returns whether table name case is insensitive or not.  The method may return {@code null}
-     * which indicates the connector configuration does not specify a value and should therefore
-     * be resolved by the {@link OracleConnection}.
-     *
-     * @return whether table case is insensitive, may be {@code null}.
-     */
-    public Optional<Boolean> getTablenameCaseInsensitive() {
-        return Optional.ofNullable(tablenameCaseInsensitive);
     }
 
     public String getOracleVersion() {
@@ -923,11 +900,4 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         return 0;
     }
 
-    private static Boolean resolveTableNameCaseInsensitivity(Configuration config) {
-        if (config.hasKey(TABLENAME_CASE_INSENSITIVE.name())) {
-            LOGGER.warn("The option '{}' is deprecated and will be removed in the future.", TABLENAME_CASE_INSENSITIVE.name());
-            return config.getBoolean(TABLENAME_CASE_INSENSITIVE);
-        }
-        return null;
-    }
 }

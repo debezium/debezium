@@ -10,6 +10,7 @@ import io.debezium.connector.oracle.AbstractStreamingAdapter;
 import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
+import io.debezium.connector.oracle.OracleDatabaseVersion;
 import io.debezium.connector.oracle.OracleOffsetContext;
 import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.OracleTaskContext;
@@ -80,5 +81,11 @@ public class XStreamAdapter extends AbstractStreamingAdapter {
                 clock,
                 schema,
                 streamingMetrics);
+    }
+
+    @Override
+    public boolean getTablenameCaseInsensitivity(OracleDatabaseVersion databaseVersion) {
+        // Always use tablename case insensitivity true when on Oracle 11, otherwise false.
+        return databaseVersion.getMajor() == 11;
     }
 }

@@ -31,4 +31,6 @@ public interface StreamingAdapter {
                                          OracleConnection connection, EventDispatcher<TableId> dispatcher, ErrorHandler errorHandler, Clock clock,
                                          OracleDatabaseSchema schema, OracleTaskContext taskContext, Configuration jdbcConfig,
                                          OracleStreamingChangeEventSourceMetrics streamingMetrics);
+
+    boolean getTablenameCaseInsensitivity(OracleDatabaseVersion databaseVersion);
 }

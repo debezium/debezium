@@ -66,9 +66,9 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
         this.errorHandler = errorHandler;
         this.offsetContext = offsetContext;
         this.xStreamServerName = connectorConfig.getXoutServerName();
+        this.tablenameCaseInsensitive = connectorConfig.getAdapter().getTablenameCaseInsensitivity(jdbcConnection.getOracleVersion());
         this.posVersion = resolvePosVersion(jdbcConnection, connectorConfig);
 
-        boolean tableNameCaseInsensitive = jdbcConnection.getTablenameCaseInsensitivity(connectorConfig);
         this.eventHandler = new LcrEventHandler(connectorConfig, errorHandler, dispatcher, clock, schema, offsetContext, tableNameCaseInsensitive, this,
                 streamingMetrics);
     }

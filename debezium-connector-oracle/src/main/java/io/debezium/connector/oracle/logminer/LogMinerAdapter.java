@@ -10,6 +10,7 @@ import io.debezium.connector.oracle.AbstractStreamingAdapter;
 import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
+import io.debezium.connector.oracle.OracleDatabaseVersion;
 import io.debezium.connector.oracle.OracleOffsetContext;
 import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.OracleTaskContext;
@@ -71,5 +72,11 @@ public class LogMinerAdapter extends AbstractStreamingAdapter {
                 taskContext,
                 jdbcConfig,
                 streamingMetrics);
+    }
+
+    @Override
+    public boolean getTablenameCaseInsensitivity(OracleDatabaseVersion databaseVersion) {
+        // LogMiner does not support this, always return false.
+        return false;
     }
 }
