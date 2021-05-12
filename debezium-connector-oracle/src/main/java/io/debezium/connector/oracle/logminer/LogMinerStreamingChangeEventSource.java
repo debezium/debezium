@@ -16,8 +16,8 @@ import static io.debezium.connector.oracle.logminer.LogMinerHelper.getLastScnToA
 import static io.debezium.connector.oracle.logminer.LogMinerHelper.getTimeDifference;
 import static io.debezium.connector.oracle.logminer.LogMinerHelper.instantiateFlushConnections;
 import static io.debezium.connector.oracle.logminer.LogMinerHelper.logError;
+import static io.debezium.connector.oracle.logminer.LogMinerHelper.setLogFilesForMining;
 import static io.debezium.connector.oracle.logminer.LogMinerHelper.setNlsSessionParameters;
-import static io.debezium.connector.oracle.logminer.LogMinerHelper.setRedoLogFilesForMining;
 import static io.debezium.connector.oracle.logminer.LogMinerHelper.startLogMining;
 
 import java.math.BigInteger;
@@ -235,7 +235,7 @@ public class LogMinerStreamingChangeEventSource<SourceRecord extends SourceRecor
                 buildDataDictionary(connection);
             }
             if (!isContinuousMining) {
-                setRedoLogFilesForMining(connection, startScn, archiveLogRetention);
+                setLogFilesForMining(connection, startScn, archiveLogRetention);
             }
         }
         else {
@@ -243,7 +243,7 @@ public class LogMinerStreamingChangeEventSource<SourceRecord extends SourceRecor
                 if (OracleConnectorConfig.LogMiningStrategy.CATALOG_IN_REDO.equals(strategy)) {
                     buildDataDictionary(connection);
                 }
-                setRedoLogFilesForMining(connection, startScn, archiveLogRetention);
+                setLogFilesForMining(connection, startScn, archiveLogRetention);
             }
         }
     }
