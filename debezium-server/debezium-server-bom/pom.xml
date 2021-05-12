@@ -23,6 +23,21 @@
 
     <dependencyManagement>
         <dependencies>
+            <!-- Aligning versions/fixing scopes -->
+            <dependency>
+                <groupId>commons-logging</groupId>
+                <artifactId>commons-logging</artifactId>
+                <version>${version.commons.logging}</version>
+                <scope>runtime</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>org.apache.kafka</groupId>
+                <artifactId>kafka-clients</artifactId>
+                <version>${version.kafka}</version>
+            </dependency>
+
+            <!-- Quarkus dependencies -->
             <dependency>
                 <groupId>io.quarkus</groupId>
                 <artifactId>quarkus-bom</artifactId>
@@ -107,14 +122,6 @@
                 <artifactId>debezium-testing-testcontainers</artifactId>
                 <version>${project.version}</version>
                 <scope>test</scope>
-            </dependency>
-
-            <!-- Aligning versions/fixing scopes -->
-            <dependency>
-                <groupId>commons-logging</groupId>
-                <artifactId>commons-logging</artifactId>
-                <version>${version.commons.logging}</version>
-                <scope>runtime</scope>
             </dependency>
         </dependencies>
     </dependencyManagement>
