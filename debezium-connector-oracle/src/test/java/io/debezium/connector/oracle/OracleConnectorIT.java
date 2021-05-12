@@ -1642,6 +1642,50 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         }
     }
 
+    @Test
+    @FixFor("DBZ-832")
+    public void shouldSnapshotAndStreamTablesWithNoPrimaryKey() throws Exception {
+        TestHelper.dropTable(connection, "dbz832");
+        try {
+            connection.execute("create table dbz832 (id numeric(9,0), data varchar2(50))");
+            TestHelper.streamTable(connection, "dbz832");
+
+            connection.execute("INSERT INTO dbz832 values (1, 'Test')");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ832")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            SourceRecords records = consumeRecordsByTopic(1);
+            assertThat(records.recordsForTopic("server1.DEBEZIUM.DBZ832")).hasSize(1);
+            SourceRecord record = records.recordsForTopic("server1.DEBEZIUM.DBZ832").get(0);
+            assertThat(record.key()).isNull();
+            Struct after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.get("ID")).isEqualTo(1);
+            assertThat(after.get("DATA")).isEqualTo("Test");
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.execute("INSERT INTO dbz832 values (2, 'Test2')");
+            records = consumeRecordsByTopic(1);
+            assertThat(records.recordsForTopic("server1.DEBEZIUM.DBZ832")).hasSize(1);
+            record = records.recordsForTopic("server1.DEBEZIUM.DBZ832").get(0);
+            assertThat(record.key()).isNull();
+            after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.get("ID")).isEqualTo(2);
+            assertThat(after.get("DATA")).isEqualTo("Test2");
+
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz832");
+        }
+    }
+
     private String generateAlphaNumericStringColumn(int size) {
         final String alphaNumericString = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz";
         final StringBuilder sb = new StringBuilder(size);
