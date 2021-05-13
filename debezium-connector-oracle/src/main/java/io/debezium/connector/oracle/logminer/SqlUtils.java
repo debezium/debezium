@@ -168,7 +168,7 @@ public class SqlUtils {
         // GROUP BY F.GROUP#, L.FIRST_CHANGE#, L.NEXT_CHANGE#, L.STATUS, L.ARCHIVED, L.SEQUENCE#
         //
         // The above query joins the redo logs view with the archived logs view, excluding any redo log that has
-        // already been archived and has a matching redo log SCN range in the archive logs view.  This allows
+        // already been archived and has a matching redo log SCN range in the archive logs view. This allows
         // the database to de-duplicate logs between redo and archive based on SCN ranges so we don't need to do
         // this in Java and avoids the need to execute two separate queries that could introduce some state
         // change between them by Oracle.
@@ -186,14 +186,14 @@ public class SqlUtils {
         // AND A.FIRST_TIME >= START - (hours/24)
         //
         // The above query obtains a list of all available archive logs that should be mined that have an SCN range
-        // which either includes or comes after the SCN where mining is to begin.  The predicates in this query are
-        // to capture only archive logs that are available and haven't been deleted.  Additionally the DEST_ID
+        // which either includes or comes after the SCN where mining is to begin. The predicates in this query are
+        // to capture only archive logs that are available and haven't been deleted. Additionally the DEST_ID
         // predicate makes sure that if archive logs are being dually written for other Oracle services that we
-        // only fetch the local/valid instances.  The last predicate is optional and is meant to restrict the
+        // only fetch the local/valid instances. The last predicate is optional and is meant to restrict the
         // archive logs to only those in the past X hours if log.mining.archive.log.hours is greater than 0.
         //
-        // Lastly the query applies "ORDER BY 7" to order the results by SEQ (sequence number).  Each Oracle log
-        // is assigned a unique sequence.  This order has no technical impact on LogMiner but its used mainly as
+        // Lastly the query applies "ORDER BY 7" to order the results by SEQ (sequence number). Each Oracle log
+        // is assigned a unique sequence. This order has no technical impact on LogMiner but its used mainly as
         // a way to make it easier when looking at debug logs to identify gaps in the log sequences when several
         // logs may be added to a single mining session.
 
