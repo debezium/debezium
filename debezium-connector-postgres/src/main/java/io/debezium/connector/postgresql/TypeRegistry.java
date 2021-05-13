@@ -458,7 +458,12 @@ public class TypeRegistry {
             // get custom type mappings from the map which was built up with a single query
             else {
                 try {
-                    return sqlTypesByPgTypeNames.get(typeName);
+                    final Integer pgType = sqlTypesByPgTypeNames.get(typeName);
+                    if (pgType != null) {
+                        return pgType;
+                    }
+                    LOGGER.info("Failed to obtain SQL type information for type {} via custom statement, falling back to TypeInfo#getSQLType()", typeName);
+                    return typeInfo.getSQLType(typeName);
                 }
                 catch (Exception e) {
                     LOGGER.warn("Failed to obtain SQL type information for type {} via custom statement, falling back to TypeInfo#getSQLType()", typeName, e);
