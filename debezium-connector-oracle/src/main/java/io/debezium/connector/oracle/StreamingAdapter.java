@@ -21,16 +21,18 @@ import io.debezium.util.Clock;
  */
 public interface StreamingAdapter {
 
+    void configure(OracleConnectorConfig connectorConfig, OracleConnection connection);
+
     String getType();
 
     HistoryRecordComparator getHistoryRecordComparator();
 
-    OffsetContext.Loader getOffsetContextLoader(OracleConnectorConfig connectorConfig);
+    OffsetContext.Loader getOffsetContextLoader();
 
-    StreamingChangeEventSource getSource(OracleConnectorConfig connectorConfig, OffsetContext offsetContext,
-                                         OracleConnection connection, EventDispatcher<TableId> dispatcher, ErrorHandler errorHandler, Clock clock,
-                                         OracleDatabaseSchema schema, OracleTaskContext taskContext, Configuration jdbcConfig,
+    StreamingChangeEventSource getSource(OffsetContext offsetContext, EventDispatcher<TableId> dispatcher,
+                                         ErrorHandler errorHandler, Clock clock, OracleDatabaseSchema schema,
+                                         OracleTaskContext taskContext, Configuration jdbcConfig,
                                          OracleStreamingChangeEventSourceMetrics streamingMetrics);
 
-    boolean getTablenameCaseInsensitivity(OracleDatabaseVersion databaseVersion);
+    boolean getTablenameCaseInsensitivity();
 }

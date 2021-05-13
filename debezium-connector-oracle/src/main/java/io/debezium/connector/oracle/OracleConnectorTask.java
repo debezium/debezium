@@ -51,12 +51,13 @@ public class OracleConnectorTask extends BaseSourceTask {
 
         Configuration jdbcConfig = connectorConfig.jdbcConfig();
         jdbcConnection = new OracleConnection(jdbcConfig, () -> getClass().getClassLoader());
-        OracleValueConverters valueConverters = new OracleValueConverters(connectorConfig, jdbcConnection);
+        connectorConfig.getAdapter().configure(connectorConfig, jdbcConnection);
 
+        OracleValueConverters valueConverters = new OracleValueConverters(connectorConfig, jdbcConnection);
         this.schema = new OracleDatabaseSchema(connectorConfig, valueConverters, schemaNameAdjuster, topicSelector, jdbcConnection);
         this.schema.initializeStorage();
 
-        OffsetContext previousOffset = getPreviousOffset(connectorConfig.getAdapter().getOffsetContextLoader(connectorConfig));
+        OffsetContext previousOffset = getPreviousOffset(connectorConfig.getAdapter().getOffsetContextLoader());
 
         if (previousOffset != null) {
             schema.recover(previousOffset);

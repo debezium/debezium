@@ -30,7 +30,7 @@ public class OracleOffsetContextTest {
     @Before
     public void beforeEach() throws Exception {
         this.connectorConfig = new OracleConnectorConfig(TestHelper.defaultConfig().build());
-        this.offsetLoader = connectorConfig.getAdapter().getOffsetContextLoader(connectorConfig);
+        this.offsetLoader = connectorConfig.getAdapter().getOffsetContextLoader();
     }
 
     @Test

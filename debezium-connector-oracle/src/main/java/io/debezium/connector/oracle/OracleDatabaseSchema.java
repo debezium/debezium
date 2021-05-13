@@ -41,7 +41,7 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
                         connectorConfig.customConverterRegistry(),
                         connectorConfig.getSourceInfoStructMaker().schema(),
                         connectorConfig.getSanitizeFieldNames()),
-                connectorConfig.getAdapter().getTablenameCaseInsensitivity(connection.getOracleVersion()),
+                connectorConfig.getAdapter().getTablenameCaseInsensitivity(),
                 connectorConfig.getKeyMapper());
 
         this.ddlParser = new OracleDdlParser(valueConverters, connectorConfig.getTableFilters().dataCollectionFilter());

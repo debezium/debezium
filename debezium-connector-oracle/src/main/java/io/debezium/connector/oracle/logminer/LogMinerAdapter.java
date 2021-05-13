@@ -7,10 +7,7 @@ package io.debezium.connector.oracle.logminer;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.AbstractStreamingAdapter;
-import io.debezium.connector.oracle.OracleConnection;
-import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
-import io.debezium.connector.oracle.OracleDatabaseVersion;
 import io.debezium.connector.oracle.OracleOffsetContext;
 import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.OracleTaskContext;
@@ -46,14 +43,12 @@ public class LogMinerAdapter extends AbstractStreamingAdapter {
     }
 
     @Override
-    public OffsetContext.Loader getOffsetContextLoader(OracleConnectorConfig connectorConfig) {
+    public OffsetContext.Loader getOffsetContextLoader() {
         return new LogMinerOracleOffsetContextLoader(connectorConfig);
     }
 
     @Override
-    public StreamingChangeEventSource getSource(OracleConnectorConfig connectorConfig,
-                                                OffsetContext offsetContext,
-                                                OracleConnection connection,
+    public StreamingChangeEventSource getSource(OffsetContext offsetContext,
                                                 EventDispatcher<TableId> dispatcher,
                                                 ErrorHandler errorHandler,
                                                 Clock clock,
@@ -75,7 +70,7 @@ public class LogMinerAdapter extends AbstractStreamingAdapter {
     }
 
     @Override
-    public boolean getTablenameCaseInsensitivity(OracleDatabaseVersion databaseVersion) {
+    public boolean getTablenameCaseInsensitivity() {
         // LogMiner does not support this, always return false.
         return false;
     }
