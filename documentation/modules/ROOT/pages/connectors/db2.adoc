@@ -2143,7 +2143,6 @@ The {prodname} Db2 connector provides three types of metrics that are in additio
 // Type: reference
 // ModuleID: monitoring-debezium-during-snapshots-of-db2-databases
 // Title: Monitoring {prodname} during snapshots of Db2 databases
-[[db2-monitoring-snapshots]]
 [[db2-snapshot-metrics]]
 === Snapshot metrics
 
@@ -2154,7 +2153,6 @@ include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-snapshot-
 // Type: reference
 // ModuleID: monitoring-debezium-db2-connector-record-streaming
 // Title: Monitoring {prodname} Db2 connector record streaming
-[[db2-monitoring-streaming]]
 [[db2-streaming-metrics]]
 === Streaming metrics
 
@@ -2163,9 +2161,8 @@ The *MBean* is `debezium.db2:type=connector-metrics,context=streaming,server=_<d
 include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-streaming-metrics.adoc[leveloffset=+1]
 
 // Type: reference
-// ModuleID: monitoring-debezium-db2-connector-schema history
+// ModuleID: monitoring-debezium-db2-connector-schema-history
 // Title: Monitoring {prodname} Db2 connector schema history
-[[db2-monitoring-schema-history]]
 [[db2-schema-history-metrics]]
 === Schema history metrics
 
