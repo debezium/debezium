@@ -153,6 +153,50 @@ public class SqlUtils {
      * @return the query string to obtain minable log files
      */
     public static String allMinableLogsQuery(Scn scn, Duration archiveLogRetention) {
+        // The generated query performs a union in order to obtain a list of all archive logs that should be mined
+        // combined with a list of redo logs that should be mined.
+        //
+        // The first part of the union query generated is as follows:
+        //
+        // SELECT MIN(F.MEMBER) AS FILE_NAME, L.FIRST_CHANGE# FIRST_CHANGE, L.NEXT_CHANGE# NEXT_CHANGE, L.ARCHIVED,
+        // L.STATUS, 'ONLINE' AS TYPE, L.SEQUENCE# AS SEQ, 'NO' AS DICT_START, 'NO AS DICT_END
+        // FROM V$LOGFILE F, V$LOG L
+        // LEFT JOIN V$ARCHIVED_LOG A
+        // ON A.FIRST_CHANGE# = L.FIRST_CHANGE# AND A.NEXT_CHANGE# = L.NEXT_CHANGE#
+        // WHERE A.FIRST_CHANGE# IS NULL
+        // AND F.GROUP# = L.GROUP#
+        // GROUP BY F.GROUP#, L.FIRST_CHANGE#, L.NEXT_CHANGE#, L.STATUS, L.ARCHIVED, L.SEQUENCE#
+        //
+        // The above query joins the redo logs view with the archived logs view, excluding any redo log that has
+        // already been archived and has a matching redo log SCN range in the archive logs view.  This allows
+        // the database to de-duplicate logs between redo and archive based on SCN ranges so we don't need to do
+        // this in Java and avoids the need to execute two separate queries that could introduce some state
+        // change between them by Oracle.
+        //
+        // The second part of the union query:
+        //
+        // SELECT A.NAME AS FILE_NAME, A.FIRST_CHANGE# FIRST_CHANGE, A.NEXT_CHANGE# NEXT_CHANGE, 'YES',
+        // NULL, 'ARCHIVED', A.SEQUENCE# AS SEQ, A.DICTIONARY_BEGIN, A.DICTIONARY_END
+        // FROM V$ARCHIVED_LOG A
+        // WHERE A.NAME IS NOT NULL
+        // AND A.ARCHIVED = 'YES'
+        // AND A.STATUS = 'A'
+        // AND A.NEXT_CHANGE# > scn
+        // AND A.DEST_ID IN ( SELECT DEST_ID FROM V$ARCHIVED_DEST_STATUS WHERE STATUS='VALID' AND TYPE='LOCAL' AND ROWNUM=1)
+        // AND A.FIRST_TIME >= START - (hours/24)
+        //
+        // The above query obtains a list of all available archive logs that should be mined that have an SCN range
+        // which either includes or comes after the SCN where mining is to begin.  The predicates in this query are
+        // to capture only archive logs that are available and haven't been deleted.  Additionally the DEST_ID
+        // predicate makes sure that if archive logs are being dually written for other Oracle services that we
+        // only fetch the local/valid instances.  The last predicate is optional and is meant to restrict the
+        // archive logs to only those in the past X hours if log.mining.archive.log.hours is greater than 0.
+        //
+        // Lastly the query applies "ORDER BY 7" to order the results by SEQ (sequence number).  Each Oracle log
+        // is assigned a unique sequence.  This order has no technical impact on LogMiner but its used mainly as
+        // a way to make it easier when looking at debug logs to identify gaps in the log sequences when several
+        // logs may be added to a single mining session.
+
         final StringBuilder sb = new StringBuilder();
         sb.append("SELECT MIN(F.MEMBER) AS FILE_NAME, L.FIRST_CHANGE# FIRST_CHANGE, L.NEXT_CHANGE# NEXT_CHANGE, L.ARCHIVED, ");
         sb.append("L.STATUS, 'ONLINE' AS TYPE, L.SEQUENCE# AS SEQ, 'NO' AS DICT_START, 'NO' AS DICT_END ");
