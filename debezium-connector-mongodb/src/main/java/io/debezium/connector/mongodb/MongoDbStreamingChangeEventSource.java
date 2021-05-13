@@ -33,6 +33,7 @@ import com.mongodb.client.MongoCursor;
 import com.mongodb.client.model.Filters;
 
 import io.debezium.connector.common.SourceRecordWrapper;
+import io.debezium.DebeziumException;
 import io.debezium.connector.mongodb.ConnectionContext.MongoPrimary;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.pipeline.ErrorHandler;
@@ -173,6 +174,11 @@ public class MongoDbStreamingChangeEventSource<SourceRecord extends SourceRecord
 
         // Include none of the cluster-internal operations and only those events since the previous timestamp
         MongoCollection<Document> oplog = primary.getDatabase("local").getCollection("oplog.rs");
+
+        // DBZ-3331 Verify that the start position is in the oplog; throw exception if not.
+        if (oplog.countDocuments(Filters.eq("ts", oplogStart)) == 0L) {
+            throw new DebeziumException("Failed to find starting position '" + oplogStart + "' in oplog");
+        }
 
         ReplicaSetOplogContext oplogContext = new ReplicaSetOplogContext(rsOffsetContext, primaryClient, replicaSet);
 
