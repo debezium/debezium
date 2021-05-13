@@ -13,6 +13,7 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.Optional;
 
 import org.bson.Document;
 import org.bson.types.Binary;
@@ -29,6 +30,8 @@ import com.mongodb.connection.ServerDescription;
 import io.debezium.DebeziumException;
 import io.debezium.function.BlockingConsumer;
 import io.debezium.util.Strings;
+
+import com.mongodb.connection.ClusterType;
 
 /**
  * Utilities for working with MongoDB.
@@ -341,7 +344,32 @@ public class MongoUtil {
         if (serverDescriptions == null || serverDescriptions.size() == 0) {
             throw new DebeziumException("Unable to read server descriptions from MongoDB connection, got '" + serverDescriptions + "'");
         }
-        ServerAddress serverAddress = serverDescriptions.get(0).getAddress();
+
+        Optional<ServerDescription> serverDescription;
+        if (ClusterType.REPLICA_SET.equals(clusterDescription.getType())){
+            serverDescription = serverDescriptions.stream().filter(ServerDescription::isPrimary).findFirst();
+            if (!serverDescription.isPresent()){
+                serverDescription = serverDescriptions.stream().filter(ServerDescription::isSecondary).findFirst();
+                if (!serverDescription.isPresent()){
+                    // log that neither primary or secondary was found
+                    serverDescription = Optional.of(serverDescriptions.get(1));
+                } else {
+                    // log that secondary was found is going to be used
+                }
+            }
+        } else if (ClusterType.STANDALONE.equals(clusterDescription.getType())){
+            serverDescription = serverDescriptions.stream().filter(ServerDescription::isStandAlone).findFirst();
+            // is this check redundant?
+            if (!serverDescription.isPresent()){
+                // not sure if this really is a situation that could occur
+                serverDescription = Optional.of(serverDescriptions.get(1));
+            }
+        } else {
+            // log this case? are sharded or unknown possible?
+            serverDescription = Optional.of(serverDescriptions.get(1));
+        }
+
+        ServerAddress serverAddress = serverDescription.get().getAddress();
         return new ServerAddress(serverAddress.getHost(), serverAddress.getPort());
     }
 
