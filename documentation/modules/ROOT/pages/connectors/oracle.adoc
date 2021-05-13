@@ -1040,6 +1040,13 @@ The following illustrates how to configure this on a specific table, which is th
 ALTER TABLE inventory.customers ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS;
 ----
 
+Minimal supplemental logging must be enabled at the database level and can be configured as follows.
+
+[source,indent=0]
+----
+ALTER DATABASE ADD SUPPLEMENTAL LOG DATA;
+----
+
 === Creating users for the connector
 
 The {prodname} Oracle connector requires that users accounts be set up with specific permissions so that the connector can capture change events.
