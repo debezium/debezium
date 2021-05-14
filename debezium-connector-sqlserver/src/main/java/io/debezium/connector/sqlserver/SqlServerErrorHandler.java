@@ -23,6 +23,10 @@ public class SqlServerErrorHandler extends ErrorHandler {
 
     @Override
     protected boolean isRetriable(Throwable throwable) {
+        if (!(throwable instanceof SQLServerException) && throwable.getCause() instanceof SQLServerException) {
+            throwable = throwable.getCause();
+        }
+
         return throwable instanceof SQLServerException
                 && (throwable.getMessage().contains("Connection timed out (Read failed)")
                         || throwable.getMessage().contains("Connection timed out (Write failed)")
