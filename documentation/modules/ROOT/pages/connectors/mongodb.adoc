@@ -1,3 +1,5 @@
+// Category: debezium-using
+// Type: assembly
 [id="debezium-connector-for-mongodb"]
 = {prodname} connector for MongoDB
 
@@ -45,70 +47,20 @@ In this way the connector is able to dynamically adjust to changes in replica se
 
 .Additional resources
 
-* https://docs.mongodb.com/manual/replication/[Replication mechanism]
+* link:https://docs.mongodb.com/manual/replication/[Replication mechanism]
 * link:https://docs.mongodb.com/manual/tutorial/deploy-replica-set/[Replica set]
 * link:https://docs.mongodb.com/manual/core/replica-set-elections/[Replica set elections]
 * link:https://docs.mongodb.com/manual/core/sharded-cluster-components/[Sharded cluster]
 * link:https://docs.mongodb.com/manual/tutorial/add-shards-to-shard-cluster/[Shard addition]
 * link:https://docs.mongodb.com/manual/tutorial/remove-shards-from-cluster/[Shard removal]
 
-[[setting-up-mongodb]]
-== Setting up MongoDB
-
-The MongoDB connector uses MongoDB's oplog to capture the changes, so the connector works only with MongoDB replica sets or with sharded clusters where each shard is a separate replica set.
-See the MongoDB documentation for setting up a https://docs.mongodb.com/manual/replication/[replica set] or https://docs.mongodb.com/manual/sharding/[sharded cluster].
-Also, be sure to understand how to enable https://docs.mongodb.com/manual/tutorial/deploy-replica-set-with-keyfile-access-control/#deploy-repl-set-with-auth[access control and authentication] with replica sets.
-
-You must also have a MongoDB user that has the appropriate roles to read the `admin` database where the oplog can be read. Additionally, the user must also be able to read the `config` database in the configuration server of a sharded cluster and must have `listDatabases` privilege action.
-
-[[supported-mongodb-topologies]]
-== Supported MongoDB topologies
-
-The MongoDB connector can be used with a variety of MongoDB topologies.
-
-[[mongodb-replicaset]]
-=== MongoDB replica set
-
-The MongoDB connector can capture changes from a single https://docs.mongodb.com/manual/replication/[MongoDB replica set].
-Production replica sets require a minimum of https://docs.mongodb.com/manual/core/replica-set-architecture-three-members/[at least three members].
-
-To use the MongoDB connector with a replica set, provide the addresses of one or more replica set servers as _seed addresses_ through the connector's `mongodb.hosts` property.
-The connector will use these seeds to connect to the replica set, and then once connected will get from the replica set the complete set of members and which member is primary.
-The connector will start a task to connect to the primary and capture the changes from the primary's oplog.
-When the replica set elects a new primary, the task will automatically switch over to the new primary.
-
-[NOTE]
-====
-When MongoDB is fronted by a proxy (such as with Docker on OS X or Windows), then when a client connects to the replica set and discovers the members, the MongoDB client will exclude the proxy as a valid member and will attempt and fail to connect directly to the members rather than go through the proxy.
-
-In such a case, set the connector's optional `mongodb.members.auto.discover` configuration property to `false` to instruct the connector to forgo membership discovery and instead simply use the first seed address (specified via the `mongodb.hosts` property) as the primary node.
-This may work, but still make cause issues when election occurs.
-====
-
-[[mongodb-sharded-cluster]]
-=== MongoDB sharded cluster
-
-A https://docs.mongodb.com/manual/sharding/[MongoDB sharded cluster] consists of:
-
-* One or more _shards_, each deployed as a replica set;
-* A separate replica set that acts as the cluster's _configuration server_
-* One or more _routers_ (also called `mongos`) to which clients connect and that routes requests to the appropriate shards
-
-To use the MongoDB connector with a sharded cluster, configure the connector with the host addresses of the _configuration server_ replica set. When the connector connects to this replica set, it discovers that it is acting as the configuration server for a sharded cluster, discovers the information about each replica set used as a shard in the cluster, and will then start up a separate task to capture the changes from each replica set. If new shards are added to the cluster or existing shards removed, the connector will automatically adjust its tasks accordingly.
-
-[[mongodb-standalone-server]]
-=== MongoDB standalone server
-
-The MongoDB connector is not capable of monitoring the changes of a standalone MongoDB server, since standalone servers do not have an oplog.
-The connector will work if the standalone server is converted to a replica set with one member.
-
-[NOTE]
-====
-MongoDB https://docs.mongodb.com/manual/core/replica-set-architectures/[does not recommend] running a standalone server in production.
-====
-
+// Type: assembly
+// ModuleID: how-debezium-mongodb-connectors-work
+// Title: How {prodname} MongoDB connectors work
 [[how-the-mongodb-connector-works]]
 == How the MongoDB connector works
+
+An overview of the MongoDB topologies that the connector supports is useful for planning your application.
 
 When a MongoDB connector is configured and deployed, it starts by connecting to the MongoDB servers at the seed addresses, and determines the details about each of the available replica sets.
 Since each replica set has its own independent oplog, the connector will try to use a separate task for each replica set.
@@ -120,6 +72,68 @@ When running the connector against a sharded cluster, use a value of `tasks.max`
 This will allow the connector to create one task for each replica set, and will let Kafka Connect coordinate, distribute, and manage the tasks across all of the available worker processes.
 ====
 
+ifdef::product[]
+The following topics provide details about how the {prodname} MongoDB connector works:
+
+* xref:mongodb-topologies-supported-by-debezium-connectors[]
+* xref:how-debezium-mongodb-connectors-use-logical-names-for-replica-sets-and-sharded-clusters[]
+* xref:how-debezium-mongodb-connectors-perform-snapshots[]
+* xref:how-the-debezium-mongodb-connector-streams-change-event-records[]
+* xref:default-names-of-kafka-topics-that-receive-mongodb-change-event-records[]
+* xref:how-event-keys-control-topic-partitioning-for-the-debezium-mongodb-connector[]
+* xref:debezium-mongodb-connector-generated-events-that-represent-transaction-boundaries[]
+
+endif::product[]
+
+// Type: concept
+// ModuleID: mongodb-topologies-supported-by-debezium-connectors
+// Title: MongoDB topologies supported by {prodname} connectors
+[[supported-mongodb-topologies]]
+=== Supported MongoDB topologies
+
+The MongoDB connector supports the following MongoDB topologies:
+
+[[mongodb-replicaset]]
+MongoDB replica set::
+The {prodname} MongoDB connector can capture changes from a single https://docs.mongodb.com/manual/replication/[MongoDB replica set].
+Production replica sets require a minimum of https://docs.mongodb.com/manual/core/replica-set-architecture-three-members/[at least three members].
++
+To use the MongoDB connector with a replica set, provide the addresses of one or more replica set servers as _seed addresses_ through the connector's `mongodb.hosts` property.
+The connector will use these seeds to connect to the replica set, and then once connected will get from the replica set the complete set of members and which member is primary.
+The connector will start a task to connect to the primary and capture the changes from the primary's oplog.
+When the replica set elects a new primary, the task will automatically switch over to the new primary.
++
+[NOTE]
+====
+When MongoDB is fronted by a proxy (such as with Docker on OS X or Windows), then when a client connects to the replica set and discovers the members, the MongoDB client will exclude the proxy as a valid member and will attempt and fail to connect directly to the members rather than go through the proxy.
+
+In such a case, set the connector's optional `mongodb.members.auto.discover` configuration property to `false` to instruct the connector to forgo membership discovery and instead simply use the first seed address (specified via the `mongodb.hosts` property) as the primary node.
+This may work, but still make cause issues when election occurs.
+====
+
+[[mongodb-sharded-cluster]]
+MongoDB sharded cluster::
+A https://docs.mongodb.com/manual/sharding/[MongoDB sharded cluster] consists of:
+* One or more _shards_, each deployed as a replica set;
+* A separate replica set that acts as the cluster's _configuration server_
+* One or more _routers_ (also called `mongos`) to which clients connect and that routes requests to the appropriate shards
++
+To use the MongoDB connector with a sharded cluster, configure the connector with the host addresses of the _configuration server_ replica set. When the connector connects to this replica set, it discovers that it is acting as the configuration server for a sharded cluster, discovers the information about each replica set used as a shard in the cluster, and will then start up a separate task to capture the changes from each replica set. If new shards are added to the cluster or existing shards removed, the connector will automatically adjust its tasks accordingly.
+
+[[mongodb-standalone-server]]
+MongoDB standalone server::
+The MongoDB connector is not capable of monitoring the changes of a standalone MongoDB server, since standalone servers do not have an oplog.
+The connector will work if the standalone server is converted to a replica set with one member.
+
+[NOTE]
+====
+MongoDB does not recommend running a standalone server in production.
+For more information, see the https://docs.mongodb.com/manual/core/replica-set-architectures/[MongoDB documentation].
+====
+
+// Type: concept
+// Title: How {prodname} MongoDB connectors use logical names for replica sets and sharded clusters
+// ModuleID: how-debezium-mongodb-connectors-use-logical-names-for-replica-sets-and-sharded-clusters
 [[mongodb-logical-connector-name]]
 === Logical connector name
 
@@ -129,6 +143,9 @@ The connector uses the logical name in a number of ways: as the prefix for all t
 You should give each MongoDB connector a unique logical name that meaningfully describes the source MongoDB system.
 We recommend logical names begin with an alphabetic or underscore character, and remaining characters that are alphanumeric or underscore.
 
+// Type: concept
+// Title: How {prodname} MongoDB connectors perform snapshots
+// ModuleID: how-debezium-mongodb-connectors-perform-snapshots
 [[mongodb-performing-a-snapshot]]
 === Performing a snapshot
 
@@ -149,13 +166,18 @@ If the connector is stopped before the tasks' snapshots are completed, upon rest
 Try to avoid task reassignment and reconfiguration while the connector is performing a snapshot of any replica sets. The connector does log messages with the progress of the snapshot. For utmost control, run a separate cluster of Kafka Connect for each connector.
 ====
 
+// Type: concept
+// ModuleID: how-the-debezium-mongodb-connector-streams-change-event-records
+// Title: How the {prodname} MongoDB connector streams change event records
 [[mongodb-tailing-the-oplog]]
 [[mongodb-streaming-changes]]
 === Streaming changes
 
-Once the connector task for a replica set has an offset, it uses the offset to determine the position in the oplog where it should start streaming changes.
-The task will then connect to the replica set's primary node and start streaming changes from that position, processing all of the create, insert, and delete operations and converting them into {prodname} {link-prefix}:{link-mongodb-connector}#mongodb-events[change events]. Each change event includes the position in the oplog where the operation was found, and the connector periodically records this as its most recent offset. The interval at which the offset is recorded is governed by link:https://kafka.apache.org/documentation/#offset.flush.interval.ms[`offset.flush.interval.ms`], which is a Kafka Connect worker configuration property.
-
+After the connector task for a replica set records an offset, it uses the offset to determine the position in the oplog where it should start streaming changes.
+The task then connects to the replica set's primary node and start streaming changes from that position.
+It processes all of create, insert, and delete operations, and converts them into {prodname} {link-prefix}:{link-mongodb-connector}#mongodb-events[change events].
+Each change event includes the position in the oplog where the operation was found, and the connector periodically records this as its most recent offset.
+The interval at which the offset is recorded is governed by link:https://kafka.apache.org/documentation/#offset.flush.interval.ms[`offset.flush.interval.ms`], which is a Kafka Connect worker configuration property.
 
 When the connector is stopped gracefully, the last offset processed is recorded so that, upon restart, the connector will continue exactly where it left off.
 If the connector's tasks terminate unexpectedly, however, then the tasks may have processed and generated events after it last records the offset but before the last offset is recorded; upon restart, the connector begins at the last _recorded_ offset, possibly generating some the same events that were previously generated just prior to the crash.
@@ -169,8 +191,11 @@ As mentioned above, the connector tasks always use the replica set's primary nod
 
 To summarize, the MongoDB connector continues running in most situations. Communication problems might cause the connector to wait until the problems are resolved.
 
+// Type: concept
+// ModuleID: default-names-of-kafka-topics-that-receive-debezium-mongodb-change-event-records
+// Title: Default names of Kafka topics that receive {prodname} MongoDB change event records
 [[mongodb-topic-names]]
-=== Topics names
+=== Topic names
 
 The MongoDB connector writes events for all insert, update, and delete operations to documents in each collection to a single Kafka topic.
 The name of the Kafka topics always takes the form _logicalName_._databaseName_._collectionName_, where _logicalName_ is the {link-prefix}:{link-mongodb-connector}#mongodb-logical-connector-name[logical name] of the connector as specified with the `mongodb.name` configuration property, _databaseName_ is the name of the database where the operation occurred, and _collectionName_ is the name of the MongoDB collection in which the affected document existed.
@@ -189,18 +214,101 @@ As a result, all changes to a sharded collection (where each shard contains a su
 You can set up Kafka to {link-kafka-docs}.html#basic_ops_add_topic[auto-create] the topics as they are needed.
 If not, then you must use Kafka administration tools to create the topics before starting the connector.
 
+// Type: concept
+// ModuleID: how-event-keys-control-topic-partitioning-for-the-debezium-mongodb-connector
+// Title: How event keys control topic partitioning for the {prodname} MongoDB connector
 [[mongodb-partitions]]
 === Partitions
 
-The MongoDB connector does not make any explicit determination of the topic partitions for events.
-Instead, it allows Kafka to determine the partition based on the key.
-You can change Kafka's partitioning logic by defining in the Kafka Connect worker configuration the name of the `Partitioner` implementation.
+The MongoDB connector does not make any explicit determination about how to partition topics for events.
+Instead, it allows Kafka to determine how to partition topics based on event keys.
+You can change Kafka's partitioning logic by defining the name of the `Partitioner` implementation in the Kafka Connect worker configuration.
 
 Kafka maintains total order only for events written to a single topic partition.
-Partitioning the events by key does mean that all events with the same key always go to the same partition. This ensures that all events for a specific document are always totally ordered.
+Partitioning the events by key does mean that all events with the same key always go to the same partition.
+This ensures that all events for a specific document are always totally ordered.
 
+
+// Type: concept
+// ModuleID: debezium-mongodb-connector-generated-events-that-represent-transaction-boundaries
+// Title: {prodname} MongoDB connector-generated events that represent transaction boundaries
+[[mongodb-transaction-metadata]]
+=== Transaction Metadata
+
+{prodname} can generate events that represents transaction metadata boundaries and enrich change data event messages.
+For every transaction `BEGIN` and `END`, {prodname} generates an event that contains the following fields:
+
+`status`:: `BEGIN` or `END`
+`id`:: String representation of unique transaction identifier.
+`event_count` (for `END` events):: Total number of events emitted by the transaction.
+`data_collections` (for `END` events):: An array of pairs of `data_collection` and `event_count` that provides number of events emitted by changes originating from given data collection.
+
+The following example shows a typical message:
+
+[source,json,indent=0,subs="+attributes"]
+----
+{
+  "status": "BEGIN",
+  "id": "1462833718356672513",
+  "event_count": null,
+  "data_collections": null
+}
+
+{
+  "status": "END",
+  "id": "1462833718356672513",
+  "event_count": 2,
+  "data_collections": [
+    {
+      "data_collection": "rs0.testDB.tablea",
+      "event_count": 1
+    },
+    {
+      "data_collection": "rs0.testDB.tableb",
+      "event_count": 1
+    }
+  ]
+}
+----
+
+The transaction events are written to the topic named `<database.server.name>.transaction`.
+
+.Change data event enrichment
+When transaction metadata is enabled, the data message `Envelope` is enriched with a new `transaction` field.
+This field provides information about every event in the form of a composite of fields:
+
+`id`:: String representation of unique transaction identifier.
+`total_order`:: The absolute position of the event among all events generated by the transaction.
+`data_collection_order`:: The per-data collection position of the event among all events that were emitted by the transaction.
+
+Following is an example of what a message looks like:
+
+[source,json,indent=0,subs="+attributes"]
+----
+{
+  "before": null,
+  "after": {
+    "pk": "2",
+    "aa": "1"
+  },
+  "source": {
+...
+  },
+  "op": "c",
+  "ts_ms": "1580390884335",
+  "transaction": {
+    "id": "1462833718356672513",
+    "total_order": "1",
+    "data_collection_order": "1"
+  }
+}
+----
+
+// Type: assembly
+// ModuleID: descriptions-of-debezium-mongodb-connector-data-change-events
+// Title: Descriptions of {prodname} MongoDB connector data change events
 [[mongodb-events]]
-=== Data change events
+== Data change events
 
 The {prodname} MongoDB connector generates a data change event for each document-level operation that inserts, updates, or deletes data. Each event contains a key and a value. The structure of the key and the value depends on the collection that was changed.
 
@@ -258,8 +366,20 @@ The MongoDB connector ensures that all Kafka Connect schema names adhere to the 
 This can lead to unexpected conflicts if the logical server name, a database name, or a collection name contains invalid characters, and the only characters that distinguish names from one another are invalid and thus replaced with underscores.
 ====
 
+
+ifdef::product[]
+For more information, see the following topics:
+
+* xref:about-keys-in-debezium-mongodb-change-events[]
+* xref:about-values-in-debezium-mongodb-change-events[]
+endif::product[]
+
+
+// Type: concept
+// ModuleID: about-keys-in-debezium-mongodb-change-events
+// Title: About keys in {prodname} MongoDB change events
 [[mongodb-change-events-key]]
-==== Change event keys
+=== Change event keys
 
 A change event's key contains the schema for the changed document's key and the changed document's actual key. For a given collection, both the schema and its corresponding payload contain a single `id` field.
 The value of this field is the document's identifier represented as a string that is derived from link:https://docs.mongodb.com/manual/reference/mongodb-extended-json/[MongoDB extended JSON serialization strict mode].
@@ -346,8 +466,11 @@ This example uses a document with an integer identifier, but any valid MongoDB d
 |Binary  |`BinData("a2Fma2E=",0)`|`{ "id" : "{\"$binary\" : \"a2Fma2E=\", \"$type\" : \"00\"}" }`
 |===
 
+// Type: concept
+// ModuleID: about-values-in-debezium-mongodb-change-events
+// Title: About values in {prodname} MongoDB change events
 [[mongodb-change-events-value]]
-==== Change event values
+=== Change event values
 
 The value in a change event is a bit more complicated than the key. Like the key, the value has a `schema` section and a `payload` section. The `schema` section contains the schema that describes the `Envelope` structure of the `payload` section, including its nested fields. Change events for operations that create, update or delete data all have a value payload with an envelope structure.
 
@@ -372,7 +495,7 @@ The value portion of a change event for a change to this document is described f
 * <<mongodb-delete-events,_delete_ events>>
 
 [id="mongodb-create-events"]
-==== _create_ events
+=== _create_ events
 
 The following example shows the value portion of a change event that the connector generates for an operation that creates data in the `customers` collection:
 
@@ -561,7 +684,7 @@ In the `source` object, `ts_ms` indicates the time that the change was made in t
 |===
 
 [id="mongodb-update-events"]
-==== _update_ events
+=== _update_ events
 
 The value of a change event for an update in the sample `customers` collection has the same schema as a _create_ event for that collection. Likewise, the event value's payload has the same structure. However, the event value payload contains different values in an _update_ event. An _update_ event does not have an `after` value. Instead, it has these two fields:
 
@@ -646,7 +769,7 @@ In MongoDB's oplog, _update_ events do not contain the _before_ or _after_ state
 ====
 
 [id="mongodb-delete-events"]
-==== _delete_ events
+=== _delete_ events
 
 The value in a _delete_ change event has the same `schema` portion as _create_ and _update_ events for the same collection. The `payload` portion in a _delete_ event contains values that are different from _create_ and _update_ events for the same collection. In particular, a _delete_ event contains neither an `after` value nor a `patch` value. Here is an example of a _delete_ event for a document in the `customers` collection:
 
@@ -713,80 +836,19 @@ MongoDB connector events are designed to work with link:{link-kafka-docs}/#compa
 .Tombstone events
 All MongoDB connector events for a uniquely identified document have exactly the same key. When a document is deleted, the _delete_ event value still works with log compaction because Kafka can remove all earlier messages that have that same key. However, for Kafka to remove all messages that have that key, the message value must be `null`. To make this possible, after {prodname}’s MongoDB connector emits a _delete_ event, the connector emits a special tombstone event that has the same key but a `null` value. A tombstone event informs Kafka that all messages with that same key can be removed.
 
-[[mongodb-transaction-metadata]]
-=== Transaction Metadata
 
-{prodname} can generate events that represents transaction metadata boundaries and enrich data messages.
+// Type: assembly
+// ModuleID: setting-up-mongodb-to-work-with-debezium
+// Title: Setting up MongoDB to work with a {prodname} connector
+[[setting-up-mongodb]]
+== Setting up MongoDB
 
-==== Transaction boundaries
-{prodname} generates events for every transaction `BEGIN` and `END`.
-Every event contains
+The MongoDB connector uses MongoDB's oplog to capture the changes, so the connector works only with MongoDB replica sets or with sharded clusters where each shard is a separate replica set.
+See the MongoDB documentation for setting up a https://docs.mongodb.com/manual/replication/[replica set] or https://docs.mongodb.com/manual/sharding/[sharded cluster].
+Also, be sure to understand how to enable https://docs.mongodb.com/manual/tutorial/deploy-replica-set-with-keyfile-access-control/#deploy-repl-set-with-auth[access control and authentication] with replica sets.
 
-* `status` - `BEGIN` or `END`
-* `id` - string representation of unique transaction identifier
-* `event_count` (for `END` events) - total number of events emmitted by the transaction
-* `data_collections` (for `END` events) - an array of pairs of `data_collection` and `event_count` that provides number of events emitted by changes originating from given data collection
+You must also have a MongoDB user that has the appropriate roles to read the `admin` database where the oplog can be read. Additionally, the user must also be able to read the `config` database in the configuration server of a sharded cluster and must have `listDatabases` privilege action.
 
-Following is an example of what a message looks like:
-
-[source,json,indent=0,subs="+attributes"]
-----
-{
-  "status": "BEGIN",
-  "id": "1462833718356672513",
-  "event_count": null,
-  "data_collections": null
-}
-
-{
-  "status": "END",
-  "id": "1462833718356672513",
-  "event_count": 2,
-  "data_collections": [
-    {
-      "data_collection": "rs0.testDB.tablea",
-      "event_count": 1
-    },
-    {
-      "data_collection": "rs0.testDB.tableb",
-      "event_count": 1
-    }
-  ]
-}
-----
-
-The transaction events are written to the topic named `<database.server.name>.transaction`.
-
-==== Data events enrichment
-When transaction metadata is enabled the data message `Envelope` is enriched with a new `transaction` field.
-This field provides information about every event in the form of a composite of fields:
-
-* `id` - string representation of unique transaction identifier
-* `total_order` - the absolute position of the event among all events generated by the transaction
-* `data_collection_order` - the per-data collection position of the event among all events that were emitted by the transaction
-
-Following is an example of what a message looks like:
-
-[source,json,indent=0,subs="+attributes"]
-----
-{
-  "before": null,
-  "after": {
-    "pk": "2",
-    "aa": "1"
-  },
-  "source": {
-...
-  },
-  "op": "c",
-  "ts_ms": "1580390884335",
-  "transaction": {
-    "id": "1462833718356672513",
-    "total_order": "1",
-    "data_collection_order": "1"
-  }
-}
-----
 
 // Type: assembly
 // ModuleID: deployment-of-debezium-mongodb-connectors
@@ -847,7 +909,7 @@ You then create two custom resources (CRs):
 * MongoDB is running and you completed the steps to {LinkDebeziumUserGuide}#setting-up-mongodb[set up MongoDB to work with a {prodname} connector].
 
 * {StreamsName} is deployed on OpenShift and is running Apache Kafka and Kafka Connect.
-  For more information, see link:{LinkStreamsOpenShift}:/getting-started-str[{NameDebeziumInstallOpenShift}].
+  For more information, see link:{LinkDeployStreamsOpenShift}[{NameDeployStreamsOpenShift}].
 
 * Podman or Docker is installed.
 
@@ -1077,11 +1139,21 @@ When the connector starts, it completes the following actions:
 * Produces change events for every inserted, updated, and deleted document.
 * Streams change event records to Kafka topics.
 
+// Type: reference
+// Title: Description of {prodname} Db2 connector configuration properties
 [[mongodb-connector-properties]]
 === Connector properties
 
+The {prodname} MongoDB connector has numerous configuration properties that you can use to achieve the right connector behavior for your application.
+Many properties have default values. Information about the properties is organized as follows:
+
+* xref:debezium-mongodb-connector-required-configuration-properties[Required {prodname} MongoDB connector configuration properties]
+* xref:debezium-mongodb-connector-advanced-configuration-properties[Advanced {prodname} MongoDB connector configuration properties]
+
 The following configuration properties are _required_ unless a default value is available.
 
+[id="debezium-mongodb-connector-required-configuration-properties"]
+.Required {prodname} MongoDB connector configuration properties
 [cols="30%a,25%a,45%a",options="header"]
 |===
 |Property |Default |Description
@@ -1190,9 +1262,10 @@ Defaults to 0, which indicates that the server chooses an appropriate fetch size
 
 |===
 
-
 The following _advanced_ configuration properties have good defaults that will work in most situations and therefore rarely need to be specified in the connector's configuration.
 
+[id="debezium-mongodb-connector-advanced-configuration-properties"]
+.Required {prodname} MongoDB connector advanced configuration properties
 [cols="30%a,25%a,45%a",options="header"]
 |===
 |Property
@@ -1308,16 +1381,22 @@ A value of `0` disables this behavior.
 
 |===
 
+// Type: assembly
+// ModuleID: monitoring-debezium-mongodb-connector-performance
+// Title: Monitoring {prodname} MongoDB connector performance
 [[mongodb-monitoring]]
 == Monitoring
 
 The {prodname} MongoDB connector has two metric types in addition to the built-in support for JMX metrics that Zookeeper, Kafka, and Kafka Connect have.
 
-* <<mongodb-snapshot-metrics, snapshot metrics>>; for monitoring the connector when performing snapshots
-* <<mongodb-streaming-metrics, streaming metrics>>; for monitoring the connector when processing oplog events
+* <<mongodb-snapshot-metrics, Snapshot metrics>> provide information about connector operation while performing a snapshot.
+* <<mongodb-streaming-metrics, Streaming metrics>> provide information about connector operation when the connector is capturing changes and streaming change event records.
 
-Please refer to the {link-prefix}:{link-debezium-monitoring}#monitoring-debezium[monitoring documentation] for details of how to expose these metrics via JMX.
+The {link-prefix}:{link-debezium-monitoring}#monitoring-debezium[{prodname} monitoring documentation] provides details about how to expose these metrics by using JMX.
 
+// Type: reference
+// ModuleID: monitoring-debezium-during-mongodb-snapshots
+// Title: Monitoring {prodname} during MongoDB snapshots
 [[mongodb-snapshot-metrics]]
 === Snapshot Metrics
 
@@ -1337,6 +1416,9 @@ The {prodname} MongoDB connector also provides the following custom snapshot met
 
 |===
 
+// Type: reference
+// ModuleID: monitoring-debezium-mongodb-connector-record-streaming
+// Title: Monitoring {prodname} MongoDB connector record streaming
 [[mongodb-streaming-metrics]]
 === Streaming Metrics
 
@@ -1360,20 +1442,51 @@ The {prodname} MongoDB connector also provides the following custom streaming me
 
 |===
 
+// Type: concept
+// ModuleID: how-debezium-mongodb-connectors-handle-faults-and-problems
+// Title: How {prodname} MongoDB connectors handle faults and problems
 [[mongodb-fault-tolerance]]
 [[mongodb-when-things-go-wrong]]
 == MongoDB connector common issues
 
-{prodname} is a distributed system that captures all changes in multiple upstream databases, and will never miss or lose an event. Of course, when the system is operating nominally or being administered carefully, then {prodname} provides _exactly once_ delivery of every change event. However, if a fault does happen then the system will still not lose any events, although while it is recovering from the fault it may repeat some change events. Thus, in these abnormal situations {prodname} (like Kafka) provides _at least once_ delivery of change events.
+{prodname} is a distributed system that captures all changes in multiple upstream databases, and will never miss or lose an event.
+When the system is operating normally and is managed carefully, then {prodname} provides _exactly once_ delivery of every change event.
 
+If a fault occurs, the system does not lose any events.
+However, while it is recovering from the fault, it might repeat some change events.
+In such situations, {prodname}, like Kafka, provides _at least once_ delivery of change events.
+
+ifdef::community[]
 The rest of this section describes how {prodname} handles various kinds of faults and problems.
+endif::community[]
 
+ifdef::product[]
+The following topics provide details about how the {prodname} MongoDB connector handles various kinds of faults and problems.
+
+* xref:debezium-mongodb-connector-configuration-and-startup-errors[]
+* xref:mongodb-becomes-unavailable-while-debezium-is-running[]
+* xref:debezium-mongodb-kafka-connect-process-stops-gracefully[]
+* xref:debezium-mongodb-kafka-connect-process-crashes[]
+* xref:debezium-mongodb-kafka-process-becomes-unavailable[]
+* xref:debezium-mongodb-connector-is-stopped-for-a-long-interval[]
+* xref:mongodb-crash-results-in-lost-commits[]
+
+endif::product[]
+
+[id="debezium-mongodb-connector-configuration-and-startup-errors"]
 === Configuration and startup errors
 
-The connector will fail upon startup, report an error/exception in the log, and stop running when the connector's configuration is invalid, or when the connector repeatedly fails to connect to MongoDB using the specified connectivity parameters. Reconnection is done using exponential backoff, and the maximum number of attempts is configurable.
+In the following situations, the connector fails when trying to start, reports an error or exception in the log, and stops running:
+
+* The connector's configuration is invalid.
+* The connector cannot successfully connect to MongoDB by using the specified connection parameters.
+
+After a failuer, the connector attempts to reconnect by using exponential backoff.
+You can configure the maximum number of reconnection attempts.
 
 In these cases, the error will have more details about the problem and possibly a suggested work around. The connector can be restarted when the configuration has been corrected or the MongoDB problem has been addressed.
 
+[id="mongodb-becomes-unavailable-while-debezium-is-running"]
 === MongoDB becomes unavailable
 
 Once the connector is running, if the primary node of any of the MongoDB replica sets become unavailable or unreachable, the connector will repeatedly attempt to reconnect to the primary node, using exponential backoff to prevent saturating the network or servers. If the primary remains unavailable after the configurable number of connection attempts, the connector will fail.
@@ -1410,7 +1523,7 @@ Each delay is double that of the prior delay, up to the maximum delay. Given the
 |16 |120|20:07
 |===
 
-
+[id="debezium-mongodb-kafka-connect-process-stops-gracefully"]
 === Kafka Connect process stops gracefully
 
 If Kafka Connect is being run in distributed mode, and a Kafka Connect process is stopped gracefully, then prior to shutdown of that processes Kafka Connect will migrate all of the process' connector tasks to another Kafka Connect process in that group, and the new connector tasks will pick up exactly where the prior tasks left off.
@@ -1418,6 +1531,7 @@ There is a short delay in processing while the connector tasks are stopped grace
 
 If the group contains only one process and that process is stopped gracefully, then Kafka Connect will stop the connector and record the last offset for each replica set. Upon restart, the replica set tasks will continue exactly where they left off.
 
+[id="debezium-mongodb-kafka-connect-process-crashes"]
 === Kafka Connect process crashes
 
 If the Kafka Connector process stops unexpectedly, then any connector tasks it was running will terminate without recording their most recently-processed offsets.
@@ -1432,17 +1546,21 @@ Because there is a chance that some events may be duplicated during a recovery f
 {prodname} also includes with each change event message the source-specific information about the origin of the event, including the MongoDB event's unique transaction identifier (`h`) and timestamp (`sec` and `ord`). Consumers can keep track of other of these values to know whether it has already seen a particular event.
 ====
 
+[id="debezium-mongodb-kafka-process-becomes-unavailable"]
 === Kafka becomes unavailable
 
 As the connector generates change events, the Kafka Connect framework records those events in Kafka using the Kafka producer API. Kafka Connect will also periodically record the latest offset that appears in those change events, at a frequency that you have specified in the Kafka Connect worker configuration. If the Kafka brokers become unavailable, the Kafka Connect worker process running the connectors will simply repeatedly attempt to reconnect to the Kafka brokers. In other words, the connector tasks will simply pause until a connection can be reestablished, at which point the connectors will resume exactly where they left off.
 
-=== Connector is stopped for a duration
+[id="debezium-mongodb-connector-is-stopped-for-a-long-interval"]
+=== Connector is stopped for a long interval
 
 If the connector is gracefully stopped, the replica sets can continue to be used and any new changes are recorded in MongoDB's oplog.
-When the connector is restarted, it will resume streaming changes for each replica set where it last left off, recording change events for all of the changes that were made while the connector was stopped. If the connector is stopped long enough such that MongoDB purges from its oplog some operations that the connector has not read, then upon startup the connector will perform a snapshot.
+When the connector is restarted, it will resume streaming changes for each replica set where it last left off, recording change events for all of the changes that were made while the connector was stopped.
+If the connector is stopped long enough such that MongoDB purges from its oplog some operations that the connector has not read, then upon startup the connector will perform a snapshot.
 
 A properly configured Kafka cluster is capable of massive throughput.
-Kafka Connect is written with Kafka best practices, and given enough resources will also be able to handle very large numbers of database change events. Because of this, when a connector has been restarted after a while, it is very likely to catch up with the database, though how quickly will depend upon the capabilities and performance of Kafka and the volume of changes being made to the data in MongoDB.
+Kafka Connect is written with Kafka best practices, and given enough resources will also be able to handle very large numbers of database change events.
+Because of this, when a connector has been restarted after a while, it is very likely to catch up with the database, though how quickly will depend upon the capabilities and performance of Kafka and the volume of changes being made to the data in MongoDB.
 
 [NOTE]
 ====
@@ -1450,8 +1568,11 @@ If the connector remains stopped for long enough, MongoDB might purge older oplo
 In this case, when the connector configured with _initial_ snapshot mode (the default) is finally restarted, the MongoDB server will no longer have the starting point and the connector will fail with an error.
 ====
 
+[id="mongodb-crash-results-in-lost-commits"]
 === MongoDB loses writes
 
-It is possible for MongoDB to lose commits in specific failure situations. For example, if the primary applies a change and records it in its oplog before it then crashes unexpectedly, the secondary nodes may not have had a chance to read those changes from the primary's oplog before the primary crashed. If one such secondary is then elected as primary, its oplog is missing the last changes that the old primary had recorded and no longer has those changes.
+In certain failure situations, MongoDB can lose commits, which results in the MongoDB connector being unable to capture the lost changes.
+For example, if the primary crashes suddenly after it applies a change and records the change to its oplog, the oplog might become unavailable before secondary nodes can read its contents.
+As a result, the secondary node that is elected as the new primary node might be missing the most recent changes from its oplog.
 
-In these cases where MongoDB loses changes recorded in a primary's oplog, it is possible that the MongoDB connector may or may not capture these lost changes. At this time, there is no way to prevent this side effect of MongoDB.
+At this time, there is no way to prevent this side effect in MongoDB.
