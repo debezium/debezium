@@ -7,6 +7,8 @@ package io.debezium.connector.oracle.logminer;
 
 import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.fail;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -16,6 +18,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.Arrays;
+import java.util.Calendar;
 
 import org.junit.Before;
 import org.junit.Rule;
@@ -47,10 +50,10 @@ public class RowMapperTest {
 
     @Test
     public void testChangeTime() throws SQLException {
-        Mockito.when(rs.getTimestamp(4)).thenReturn(new Timestamp(1000L));
+        Mockito.when(rs.getTimestamp(eq(4), any(Calendar.class))).thenReturn(new Timestamp(1000L));
         Timestamp time = RowMapper.getChangeTime(rs);
         assertThat(time.getTime()).isEqualTo(1000L);
-        Mockito.when(rs.getTimestamp(4)).thenThrow(SQLException.class);
+        Mockito.when(rs.getTimestamp(eq(4), any(Calendar.class))).thenThrow(SQLException.class);
         try {
             time = RowMapper.getChangeTime(rs);
             fail("Should have thrown a SQLException");
@@ -58,7 +61,7 @@ public class RowMapperTest {
         catch (SQLException e) {
             // expected
         }
-        verify(rs, times(2)).getTimestamp(4);
+        verify(rs, times(2)).getTimestamp(eq(4), any(Calendar.class));
     }
 
     @Test

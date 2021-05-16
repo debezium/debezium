@@ -8,6 +8,9 @@ package io.debezium.connector.oracle.logminer;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.time.ZoneOffset;
+import java.util.Calendar;
+import java.util.TimeZone;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,6 +49,7 @@ public class RowMapper {
     private static final int USERNAME = 10;
     private static final int ROW_ID = 11;
     private static final int ROLLBACK_FLAG = 12;
+    private static final Calendar UTC_CALENDAR = Calendar.getInstance(TimeZone.getTimeZone(ZoneOffset.UTC));
     // todo: add these for recording
     // private static final int SESSION_NUMBER = 10;
     // private static final int SERIAL_NUMBER = 11;
@@ -73,7 +77,12 @@ public class RowMapper {
     }
 
     public static Timestamp getChangeTime(ResultSet rs) throws SQLException {
-        return rs.getTimestamp(CHANGE_TIME);
+        // CHANGE_TIME is in the database server time zone but does not store the time zone.
+        // Without passing any calendar the timestamp is considered to be in the JVM time zone.
+        // This would lead to incorrect conversions when calling e.g. Timestamp#toInstant() if database
+        // server time zone is not the same as JVM time zone. By passing UTC calendar CHANGE_TIME is considered
+        // to be in UTC and no conversion happens on Timestamp#toInstant().
+        return rs.getTimestamp(CHANGE_TIME, UTC_CALENDAR);
     }
 
     public static Scn getScn(ResultSet rs) throws SQLException {
