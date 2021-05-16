@@ -5,8 +5,10 @@
  */
 package io.debezium.connector.oracle;
 
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -84,6 +86,7 @@ public class OracleStreamingChangeEventSourceMetrics extends StreamingChangeEven
     private final AtomicInteger warningCount = new AtomicInteger();
     private final AtomicInteger scnFreezeCount = new AtomicInteger();
     private final AtomicLong timeDifference = new AtomicLong();
+    private final AtomicInteger offsetSeconds = new AtomicInteger();
     private final AtomicReference<Scn> oldestScn = new AtomicReference<>();
     private final AtomicReference<Scn> committedScn = new AtomicReference<>();
     private final AtomicReference<Scn> offsetScn = new AtomicReference<>();
@@ -102,13 +105,27 @@ public class OracleStreamingChangeEventSourceMetrics extends StreamingChangeEven
 
     private final Instant startTime;
 
+    private final Clock clock;
+
     public OracleStreamingChangeEventSourceMetrics(CdcSourceTaskContext taskContext, ChangeEventQueueMetrics changeEventQueueMetrics,
                                                    EventMetadataProvider metadataProvider,
                                                    OracleConnectorConfig connectorConfig) {
+        this(taskContext, changeEventQueueMetrics, metadataProvider, connectorConfig, Clock.systemUTC());
+    }
+
+    /**
+     * Constructor that allows providing a clock to be used for Tests.
+     */
+    OracleStreamingChangeEventSourceMetrics(CdcSourceTaskContext taskContext, ChangeEventQueueMetrics changeEventQueueMetrics,
+                                            EventMetadataProvider metadataProvider,
+                                            OracleConnectorConfig connectorConfig,
+                                            Clock clock) {
         super(taskContext, changeEventQueueMetrics, metadataProvider);
 
-        startTime = Instant.now();
+        this.clock = clock;
+        startTime = clock.instant();
         timeDifference.set(0L);
+        offsetSeconds.set(0);
 
         currentScn.set(Scn.NULL);
         oldestScn.set(Scn.NULL);
@@ -479,7 +496,7 @@ public class OracleStreamingChangeEventSourceMetrics extends StreamingChangeEven
 
     @Override
     public long getCommitThroughput() {
-        long timeSpent = Duration.between(startTime, Instant.now()).toMillis();
+        long timeSpent = Duration.between(startTime, clock.instant()).toMillis();
         return committedTransactions.get() * MILLIS_PER_SECOND / (timeSpent != 0 ? timeSpent : 1);
     }
 
@@ -621,14 +638,21 @@ public class OracleStreamingChangeEventSourceMetrics extends StreamingChangeEven
         }
     }
 
-    public void setTimeDifference(long timeDifference) {
-        this.timeDifference.set(timeDifference);
+    public void calculateTimeDifference(OffsetDateTime databaseSystemTime) {
+        int offsetSeconds = databaseSystemTime.getOffset().getTotalSeconds();
+        this.offsetSeconds.set(offsetSeconds);
+        LOGGER.trace("Timezone offset of database system time is {} seconds", offsetSeconds);
+
+        Instant now = clock.instant();
+        long timeDiffMillis = Duration.between(databaseSystemTime.toInstant(), now).toMillis();
+        this.timeDifference.set(timeDiffMillis);
+        LOGGER.trace("Current time {} ms, database difference {} ms", now.toEpochMilli(), timeDiffMillis);
     }
 
     public void calculateLagMetrics(Instant changeTime) {
         if (changeTime != null) {
-            final Instant correctedChangeTime = changeTime.plus(Duration.ofMillis(timeDifference.longValue()));
-            final Duration lag = Duration.between(correctedChangeTime, Instant.now()).abs();
+            final Instant correctedChangeTime = changeTime.plusMillis(timeDifference.longValue()).minusSeconds(offsetSeconds.longValue());
+            final Duration lag = Duration.between(correctedChangeTime, clock.instant()).abs();
             lagFromTheSourceDuration.set(lag);
 
             if (maxLagFromTheSourceDuration.get().toMillis() < lag.toMillis()) {

@@ -10,9 +10,9 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -176,18 +176,13 @@ public class LogMinerHelper {
     }
 
     /**
-     * Calculate time difference between database and connector timers. It could be negative if DB time is ahead.
+     * Get the database time in the time zone of the system this database is running on
+     *
      * @param connection connection
-     * @return the time difference as a {@link Duration}
+     * @return the database system time
      */
-    static Duration getTimeDifference(OracleConnection connection) throws SQLException {
-        Timestamp dbCurrentMillis = (Timestamp) getSingleResult(connection, SqlUtils.CURRENT_TIMESTAMP, DATATYPE.TIMESTAMP);
-        if (dbCurrentMillis == null) {
-            return Duration.ZERO;
-        }
-        Instant fromDb = dbCurrentMillis.toInstant();
-        Instant now = Instant.now();
-        return Duration.between(fromDb, now);
+    static OffsetDateTime getSystime(OracleConnection connection) throws SQLException {
+        return getSingleResult(connection, SqlUtils.SELECT_SYSTIMESTAMP, OffsetDateTime.class);
     }
 
     /**
@@ -671,6 +666,16 @@ public class LogMinerHelper {
                     case FLOAT:
                         return rs.getFloat(1);
                 }
+            }
+            return null;
+        }
+    }
+
+    public static <T> T getSingleResult(OracleConnection connection, String query, Class<T> type) throws SQLException {
+        try (PreparedStatement statement = connection.connection(false).prepareStatement(query);
+                ResultSet rs = statement.executeQuery()) {
+            if (rs.next()) {
+                return rs.getObject(1, type);
             }
             return null;
         }
