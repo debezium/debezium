@@ -9,17 +9,11 @@
 
 toc::[]
 
-{prodname}'s Oracle Connector can monitor and record all of the row-level changes in the databases on an Oracle server.
-Most notably, the connector does not yet provide full-blown support of changes to the structure of captured tables (e.g. `ALTER TABLE...`) after the initial snapshot has been completed
-(see {jira-url}/browse/DBZ-718[DBZ-718]).
-It is supported though to capture tables newly added while the connector is running
-(provided the new table's name matches the connector's filter configuration).
-For table schema changes an xref:surrogate-schema-evolution[auxilliary solution] could be used.
-
 [[oracle-overview]]
 == Overview
 
 {prodname} ingests change events from Oracle using the native LogMiner database package or the https://docs.oracle.com/database/121/XSTRM/xstrm_intro.htm#XSTRM72647[XStream API].
+Oracle versions 11, 12, and 19 are supported.
 
 [[how-the-oracle-connector-works]]
 == How the Oracle Connector Works
@@ -78,7 +72,7 @@ the connector writes all of these events to a Kafka topic named `<serverName>`, 
 The schema change topic message format is in an incubating state and may change without notice.
 ====
 
-{prodname} emits a new message to this topic whenever a new table is streamed from or when the structure of the table is altered ({link-prefix}:{link-oracle-connector}#oracle-schema-evolution[schema evolution procedure must be followed]).
+{prodname} emits a new message to this topic whenever a new table is streamed from or when the structure of the table is altered.
 The message contains a logical representation of the table schema.
 
 The example of the message is:
@@ -210,6 +204,7 @@ a|Describes the kind of change. The value is one of the following:
 |5
 |`id`
 |Full identifier of the table that was created, altered, or dropped.
+In the case of a table rename, this will be a concatenation of `<old>,<new>` table names.
 
 |6
 |`table`
@@ -228,7 +223,7 @@ a|Describes the kind of change. The value is one of the following:
 In messages that the connector sends to the schema change topic, the key is the name of the database that contains the schema change.
 In the following example, the `payload` field contains the key:
 
-[source,json,indent=0,subs="attributes"]
+[source,json,indent=0,subs="+attributes"]
 ----
 {
   "schema": {
@@ -364,7 +359,7 @@ CREATE TABLE customers (
 If the `database.server.name` configuration property has the value `server1`,
 every change event for the `customers` table while it has this definition will feature the same key structure, which in JSON looks like this:
 
-[source,json,indent=0]
+[source,json,indent=0,sub="attributes"]
 ----
 {
     "schema": {
@@ -701,7 +696,7 @@ To make this possible, {prodname}'s Oracle connector always follows the _delete_
 [[oracle-data-type-mappings]]
 == Data Type mappings
 
-The Oracle connector represents changes to rows with events that are structured like the table in which the rows exists. The event contains a field for each column value. How that value is represented in the event depends on the Oracle data type of the column. The following sections describe how the connector maps oracle data types to a _litearl type_ and a _semantic type_ in event fields.
+The Oracle connector represents changes to rows with events that are structured like the table in which the rows exists. The event contains a field for each column value. How that value is represented in the event depends on the Oracle data type of the column. The following sections describe how the connector maps oracle data types to a _literal type_ and a _semantic type_ in event fields.
 
 * _literal type_ describes how the value is literally represented using Kafka Connect schema types: `INT8`, `INT16`, `INT32`, `INT64`, `FLOAT32`, `FLOAT64`, `BOOLEAN`, `STRING`, `BYTES`, `ARRAY`, `MAP`, and `STRUCT`.
 
@@ -1766,8 +1761,11 @@ include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-schema-hi
 [[surrogate-schema-evolution]]
 == Surrogate schema evolution
 
-Oracle connector does not yet support updates in table schemas parsing DDL `ALTER TABLE` statements.
-It is possible to use {prodname} link:/documentation/reference/configuration/signalling[signalling] to trigger the update of the database schema.
+The Oracle connector will automatically track and apply table schema changes by parsing DDL from the redo logs.
+In the event that the DDL parser encounters an unsupported statement, the connector offers an alternative way to handle applying the schema change should the need arise.
+
+By default, the connector will stop when an unparseable DDL statement is encountered.
+This DDL can be manually performed by using {prodname} link:/documentation/reference/configuration/signalling[signalling] to trigger the update of the database schema.
 
 The type of the schema update action is `schema-changes`.
 It will update the schema of all tables enumerated in the signal parameters.
@@ -1839,6 +1837,9 @@ The message does not contain the update to the schema, but the complete new sche
 |Boolean `true` if column value is automatically calculated
 
 |===
+
+Once the `schema-changes` signal has been inserted, the connector will need to be restarted with an altered configuration that includes specifying the  <<oracle-property-database-history-skip-unparseable-ddl, `+database.history.skip.unparseable.ddl+`>> option as `true`.
+Once the connector's commit SCN has advanced beyond the DDL change, it's recommended that the connector's configuration be returned to its previous state so that unparseable DDL statements aren't skipped unexpectedly.
 
 .Example of a logging record
 [cols="1,9a",options="header"]
