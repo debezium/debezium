@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
@@ -107,23 +108,32 @@ public class OracleDmlParserTest {
 
     @Test
     public void shouldParseTimestampFormats() throws Exception {
-        String createStatement = IoUtil.read(IoUtil.getResourceAsStream("ddl/create_table.sql", null, getClass(), null, null));
-        ddlParser.parse(createStatement, tables);
-        String format1 = "TO_TIMESTAMP('2020-09-22 00:09:37.302000')";
-        String format2 = "TO_TIMESTAMP('2020-09-22 00:09:37.')";
-        String format3 = "TO_TIMESTAMP('2020-09-22 00:09:37')";
-        String format4 = "TO_TIMESTAMP('22-SEP-20 12.09.37 AM')";
-        String format5 = "TO_TIMESTAMP('22-SEP-20 12.09.37 PM')";
-        String format6 = "TO_TIMESTAMP('29-SEP-20 06.02.24.777000 PM')";
-        String format7 = "TO_TIMESTAMP('2020-09-22 00:09:37.0')";
+        Locale defaultLocale = Locale.getDefault();
+        try {
+            String createStatement = IoUtil.read(IoUtil.getResourceAsStream("ddl/create_table.sql", null, getClass(), null, null));
+            ddlParser.parse(createStatement, tables);
+            String format1 = "TO_TIMESTAMP('2020-09-22 00:09:37.302000')";
+            String format2 = "TO_TIMESTAMP('2020-09-22 00:09:37.')";
+            String format3 = "TO_TIMESTAMP('2020-09-22 00:09:37')";
+            String format4 = "TO_TIMESTAMP('22-SEP-20 12.09.37 AM')";
+            String format5 = "TO_TIMESTAMP('22-SEP-20 12.09.37 PM')";
+            String format6 = "TO_TIMESTAMP('29-SEP-20 06.02.24.777000 PM')";
+            String format7 = "TO_TIMESTAMP('2020-09-22 00:09:37.0')";
 
-        parseTimestamp(format1, false);
-        parseTimestamp(format2, true);
-        parseTimestamp(format3, true);
-        parseTimestamp(format4, true);
-        parseTimestamp(format5, false);
-        parseTimestamp(format6, false);
-        parseTimestamp(format7, true);
+            parseTimestamp(format1, false);
+            parseTimestamp(format2, true);
+            parseTimestamp(format3, true);
+            // Change to locale that does not recognize SEP in pattern MMM
+            Locale.setDefault(Locale.GERMAN);
+            parseTimestamp(format4, true);
+            parseTimestamp(format5, false);
+            parseTimestamp(format6, false);
+            Locale.setDefault(defaultLocale);
+            parseTimestamp(format7, true);
+        }
+        finally {
+            Locale.setDefault(defaultLocale);
+        }
     }
 
     @Test
