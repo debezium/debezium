@@ -260,11 +260,11 @@ The following example shows a typical message:
   "event_count": 2,
   "data_collections": [
     {
-      "data_collection": "rs0.testDB.tablea",
+      "data_collection": "rs0.testDB.collectiona",
       "event_count": 1
     },
     {
-      "data_collection": "rs0.testDB.tableb",
+      "data_collection": "rs0.testDB.collectionb",
       "event_count": 1
     }
   ]
@@ -1481,7 +1481,7 @@ In the following situations, the connector fails when trying to start, reports a
 * The connector's configuration is invalid.
 * The connector cannot successfully connect to MongoDB by using the specified connection parameters.
 
-After a failuer, the connector attempts to reconnect by using exponential backoff.
+After a failure, the connector attempts to reconnect by using exponential backoff.
 You can configure the maximum number of reconnection attempts.
 
 In these cases, the error will have more details about the problem and possibly a suggested work around. The connector can be restarted when the configuration has been corrected or the MongoDB problem has been addressed.
