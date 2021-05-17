@@ -20,6 +20,7 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoField;
+import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -76,7 +77,7 @@ public class OracleValueConverters extends JdbcValueConverters {
             .appendFraction(ChronoField.NANO_OF_SECOND, 0, 9, false)
             .optionalEnd()
             .appendPattern(" a")
-            .toFormatter();
+            .toFormatter(Locale.ENGLISH);
 
     private static final DateTimeFormatter TIMESTAMP_TZ_FORMATTER = new DateTimeFormatterBuilder()
             .parseCaseInsensitive()
