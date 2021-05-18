@@ -32,7 +32,8 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
     private final OracleValueConverters valueConverters;
 
     public OracleDatabaseSchema(OracleConnectorConfig connectorConfig, OracleValueConverters valueConverters,
-                                SchemaNameAdjuster schemaNameAdjuster, TopicSelector<TableId> topicSelector) {
+                                SchemaNameAdjuster schemaNameAdjuster, TopicSelector<TableId> topicSelector,
+                                TableNameCaseSensitivity tableNameCaseSensitivity) {
         super(connectorConfig, topicSelector, connectorConfig.getTableFilters().dataCollectionFilter(),
                 connectorConfig.getColumnFilter(),
                 new TableSchemaBuilder(
@@ -41,7 +42,7 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
                         connectorConfig.customConverterRegistry(),
                         connectorConfig.getSourceInfoStructMaker().schema(),
                         connectorConfig.getSanitizeFieldNames()),
-                TableNameCaseSensitivity.INSENSITIVE.equals(connectorConfig.getAdapter().getTableNameCaseSensitivity()),
+                TableNameCaseSensitivity.INSENSITIVE.equals(tableNameCaseSensitivity),
                 connectorConfig.getKeyMapper());
 
         this.ddlParser = new OracleDdlParser(valueConverters, connectorConfig.getTableFilters().dataCollectionFilter());

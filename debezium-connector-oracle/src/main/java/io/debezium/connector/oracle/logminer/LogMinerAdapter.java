@@ -7,6 +7,8 @@ package io.debezium.connector.oracle.logminer;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.AbstractStreamingAdapter;
+import io.debezium.connector.oracle.OracleConnection;
+import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OracleOffsetContext;
 import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
@@ -26,6 +28,10 @@ import io.debezium.util.Clock;
 public class LogMinerAdapter extends AbstractStreamingAdapter {
 
     private static final String TYPE = "logminer";
+
+    public LogMinerAdapter(OracleConnectorConfig connectorConfig) {
+        super(connectorConfig);
+    }
 
     @Override
     public String getType() {
@@ -49,6 +55,7 @@ public class LogMinerAdapter extends AbstractStreamingAdapter {
 
     @Override
     public StreamingChangeEventSource getSource(OffsetContext offsetContext,
+                                                OracleConnection connection,
                                                 EventDispatcher<TableId> dispatcher,
                                                 ErrorHandler errorHandler,
                                                 Clock clock,

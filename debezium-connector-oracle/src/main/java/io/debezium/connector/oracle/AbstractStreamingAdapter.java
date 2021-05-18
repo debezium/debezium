@@ -14,12 +14,10 @@ import io.debezium.document.Document;
  */
 public abstract class AbstractStreamingAdapter implements StreamingAdapter {
 
-    protected OracleConnectorConfig connectorConfig;
-    protected OracleConnection connection;
+    protected final OracleConnectorConfig connectorConfig;
 
-    public void configure(OracleConnectorConfig connectorConfig, OracleConnection connection) {
+    public AbstractStreamingAdapter(OracleConnectorConfig connectorConfig) {
         this.connectorConfig = connectorConfig;
-        this.connection = connection;
     }
 
     protected Scn resolveScn(Document document) {

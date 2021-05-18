@@ -17,6 +17,7 @@ import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.common.BaseSourceTask;
+import io.debezium.connector.oracle.StreamingAdapter.TableNameCaseSensitivity;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
@@ -51,10 +52,10 @@ public class OracleConnectorTask extends BaseSourceTask {
 
         Configuration jdbcConfig = connectorConfig.jdbcConfig();
         jdbcConnection = new OracleConnection(jdbcConfig, () -> getClass().getClassLoader());
-        connectorConfig.getAdapter().configure(connectorConfig, jdbcConnection);
 
         OracleValueConverters valueConverters = new OracleValueConverters(connectorConfig, jdbcConnection);
-        this.schema = new OracleDatabaseSchema(connectorConfig, valueConverters, schemaNameAdjuster, topicSelector);
+        TableNameCaseSensitivity tableNameCaseSensitivity = connectorConfig.getAdapter().getTableNameCaseSensitivity(jdbcConnection);
+        this.schema = new OracleDatabaseSchema(connectorConfig, valueConverters, schemaNameAdjuster, topicSelector, tableNameCaseSensitivity);
         this.schema.initializeStorage();
 
         OffsetContext previousOffset = getPreviousOffset(connectorConfig.getAdapter().getOffsetContextLoader());

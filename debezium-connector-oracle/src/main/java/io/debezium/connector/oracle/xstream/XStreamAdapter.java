@@ -7,6 +7,8 @@ package io.debezium.connector.oracle.xstream;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.AbstractStreamingAdapter;
+import io.debezium.connector.oracle.OracleConnection;
+import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OracleOffsetContext;
 import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
@@ -30,6 +32,10 @@ import io.debezium.util.Clock;
 public class XStreamAdapter extends AbstractStreamingAdapter {
 
     private static final String TYPE = "xstream";
+
+    public XStreamAdapter(OracleConnectorConfig connectorConfig) {
+        super(connectorConfig);
+    }
 
     @Override
     public String getType() {
@@ -60,6 +66,7 @@ public class XStreamAdapter extends AbstractStreamingAdapter {
 
     @Override
     public StreamingChangeEventSource getSource(OffsetContext offsetContext,
+                                                OracleConnection connection,
                                                 EventDispatcher<TableId> dispatcher,
                                                 ErrorHandler errorHandler,
                                                 Clock clock,
@@ -79,11 +86,11 @@ public class XStreamAdapter extends AbstractStreamingAdapter {
     }
 
     @Override
-    public TableNameCaseSensitivity getTableNameCaseSensitivity() {
+    public TableNameCaseSensitivity getTableNameCaseSensitivity(OracleConnection connection) {
         // Always use tablename case insensitivity true when on Oracle 11, otherwise false.
         if (connection.getOracleVersion().getMajor() == 11) {
             return TableNameCaseSensitivity.SENSITIVE;
         }
-        return super.getTableNameCaseSensitivity();
+        return super.getTableNameCaseSensitivity(connection);
     }
 }

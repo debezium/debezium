@@ -42,7 +42,6 @@ public interface StreamingAdapter {
         INSENSITIVE
     };
 
-    void configure(OracleConnectorConfig connectorConfig, OracleConnection connection);
 
     String getType();
 
@@ -50,7 +49,7 @@ public interface StreamingAdapter {
 
     OffsetContext.Loader getOffsetContextLoader();
 
-    StreamingChangeEventSource getSource(OffsetContext offsetContext, EventDispatcher<TableId> dispatcher,
+    StreamingChangeEventSource getSource(OffsetContext offsetContext, OracleConnection connection, EventDispatcher<TableId> dispatcher,
                                          ErrorHandler errorHandler, Clock clock, OracleDatabaseSchema schema,
                                          OracleTaskContext taskContext, Configuration jdbcConfig,
                                          OracleStreamingChangeEventSourceMetrics streamingMetrics);
@@ -63,9 +62,10 @@ public interface StreamingAdapter {
      * table is created using double-quotes to preserve case.  The adapter aligns with the driver's
      * behavior and enforces that table names are case sensitive by default.
      *
+     * @param connection database connection, should never be {@code null}
      * @return the case sensitivity setting for table names used by the connector's runtime adapter
      */
-    default TableNameCaseSensitivity getTableNameCaseSensitivity() {
+    default TableNameCaseSensitivity getTableNameCaseSensitivity(OracleConnection connection) {
         return TableNameCaseSensitivity.SENSITIVE;
     }
 }

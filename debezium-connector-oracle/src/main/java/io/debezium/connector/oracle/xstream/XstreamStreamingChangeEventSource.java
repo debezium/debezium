@@ -70,7 +70,7 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
         this.posVersion = resolvePosVersion(jdbcConnection, connectorConfig);
 
         this.eventHandler = new LcrEventHandler(connectorConfig, errorHandler, dispatcher, clock, schema, offsetContext,
-                TableNameCaseSensitivity.INSENSITIVE.equals(connectorConfig.getAdapter().getTableNameCaseSensitivity()), this,
+                TableNameCaseSensitivity.INSENSITIVE.equals(connectorConfig.getAdapter().getTableNameCaseSensitivity(jdbcConnection)), this,
                 streamingMetrics);
     }
 

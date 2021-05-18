@@ -53,6 +53,7 @@ public class OracleChangeEventSourceFactory implements ChangeEventSourceFactory 
     public StreamingChangeEventSource getStreamingChangeEventSource(OffsetContext offsetContext) {
         return configuration.getAdapter().getSource(
                 offsetContext,
+                jdbcConnection,
                 dispatcher,
                 errorHandler,
                 clock,
