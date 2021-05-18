@@ -34,6 +34,8 @@ public class ColumnMetaData {
      * @param postgresType postgres database type; must not be null
      * @param key {@code true} if column is part of the primary key, {@code false} otherwise
      * @param optional {@code true} if the column is considered optional, {@code false} otherwise
+     * @param hasDefaultValue {@code true} if the column has a default value specified, {@code false} otherwise
+     * @param defaultValue the parsed default value for the column
      * @param typeModifier the attribute type modifier
      */
     ColumnMetaData(String columnName, PostgresType postgresType, boolean key, boolean optional, boolean hasDefaultValue, Object defaultValue, int typeModifier) {

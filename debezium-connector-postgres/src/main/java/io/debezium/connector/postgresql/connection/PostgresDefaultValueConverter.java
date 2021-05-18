@@ -38,7 +38,7 @@ class PostgresDefaultValueConverter {
     private static Logger LOGGER = LoggerFactory.getLogger(PostgresDefaultValueConverter.class);
 
     private static final Pattern LITERAL_DEFAULT_PATTERN = Pattern.compile("'(.*?)'");
-    private static final Pattern FUNCTION_DEFAULT_PATTERN = Pattern.compile("[A-Za-z0-9_]+\\((?:.+(?:, ?.+)*)?\\)");
+    private static final Pattern FUNCTION_DEFAULT_PATTERN = Pattern.compile("^[(]?[A-Za-z0-9_]+\\((?:.+(?:, ?.+)*)?\\)");
 
     /**
      * Converts JDBC string representation of a default column value to an object.
