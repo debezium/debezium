@@ -5,6 +5,8 @@
  */
 package io.debezium.testing.openshift;
 
+import static io.debezium.testing.openshift.tools.ConfigProperties.STRIMZI_CRD_VERSION;
+
 import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
@@ -45,9 +47,9 @@ public abstract class ConnectorTestBase {
     protected static KafkaAssertions assertions;
 
     // Kafka resources
-    public static final String KAFKA = "/kafka-resources/010-kafka.yaml";
-    public static final String KAFKA_CONNECT_S2I_LOGGING = "/kafka-resources/020-kafka-connect-logging.yaml";
-    public static final String KAFKA_CONNECT_S2I = "/kafka-resources/021-kafka-connect.yaml";
+    public static final String KAFKA = "/kafka-resources/" + STRIMZI_CRD_VERSION + "/010-kafka.yaml";
+    public static final String KAFKA_CONNECT_S2I_LOGGING = "/kafka-resources/" + STRIMZI_CRD_VERSION + "/020-kafka-connect-cfg.yaml";
+    public static final String KAFKA_CONNECT_S2I = "/kafka-resources/" + STRIMZI_CRD_VERSION + "/021-kafka-connect.yaml";
 
     // Service registry resources
     public static final String REGISTRY_DEPLOYMENT_PATH = "/registry-resources/030-registry-streams.yaml";
