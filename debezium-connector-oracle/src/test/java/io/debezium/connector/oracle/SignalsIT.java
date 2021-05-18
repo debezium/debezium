@@ -68,6 +68,8 @@ public class SignalsIT extends AbstractConnectorTest {
     @AfterClass
     public static void closeConnection() throws SQLException {
         if (connection != null) {
+            TestHelper.dropTable(connection, "debezium.debezium_signal");
+            TestHelper.dropTable(connection, "debezium.customer");
             connection.close();
         }
     }
