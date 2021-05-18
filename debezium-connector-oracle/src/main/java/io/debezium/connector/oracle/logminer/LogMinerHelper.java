@@ -182,7 +182,14 @@ public class LogMinerHelper {
      * @return the database system time
      */
     static OffsetDateTime getSystime(OracleConnection connection) throws SQLException {
-        return getSingleResult(connection, SqlUtils.SELECT_SYSTIMESTAMP, OffsetDateTime.class);
+        return connection.queryAndMap(SqlUtils.SELECT_SYSTIMESTAMP, rs -> {
+            if (rs.next()) {
+                return rs.getObject(1, OffsetDateTime.class);
+            }
+            else {
+                return null;
+            }
+        });
     }
 
     /**
@@ -666,16 +673,6 @@ public class LogMinerHelper {
                     case FLOAT:
                         return rs.getFloat(1);
                 }
-            }
-            return null;
-        }
-    }
-
-    public static <T> T getSingleResult(OracleConnection connection, String query, Class<T> type) throws SQLException {
-        try (PreparedStatement statement = connection.connection(false).prepareStatement(query);
-                ResultSet rs = statement.executeQuery()) {
-            if (rs.next()) {
-                return rs.getObject(1, type);
             }
             return null;
         }

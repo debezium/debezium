@@ -17,6 +17,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
+import io.debezium.annotation.VisibleForTesting;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -107,6 +108,7 @@ public class OracleStreamingChangeEventSourceMetrics extends StreamingChangeEven
 
     private final Clock clock;
 
+    @VisibleForTesting
     public OracleStreamingChangeEventSourceMetrics(CdcSourceTaskContext taskContext, ChangeEventQueueMetrics changeEventQueueMetrics,
                                                    EventMetadataProvider metadataProvider,
                                                    OracleConnectorConfig connectorConfig) {
@@ -638,6 +640,13 @@ public class OracleStreamingChangeEventSourceMetrics extends StreamingChangeEven
         }
     }
 
+    /**
+     * Calculates the time difference between the database server and the connector.
+     * Along with the time difference also the offset of the database server time to UTC is stored.
+     * Both values are required to calculate lag metrics.
+     *
+     * @param databaseSystemTime the system time (<code>SYSTIMESTAMP</code>) of the database
+     */
     public void calculateTimeDifference(OffsetDateTime databaseSystemTime) {
         int offsetSeconds = databaseSystemTime.getOffset().getTotalSeconds();
         this.offsetSeconds.set(offsetSeconds);
