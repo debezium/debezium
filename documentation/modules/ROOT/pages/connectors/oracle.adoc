@@ -13,7 +13,7 @@ toc::[]
 == Overview
 
 {prodname} ingests change events from Oracle using the native LogMiner database package or the https://docs.oracle.com/database/121/XSTRM/xstrm_intro.htm#XSTRM72647[XStream API].
-Oracle versions 11, 12, and 19 are supported.
+While the connector may work with a variety of Oracle versions and editions, only Oracle EE 12 and 19 have been tested.
 
 [[how-the-oracle-connector-works]]
 == How the Oracle Connector Works
