@@ -164,16 +164,16 @@ class LogMinerQueryResultProcessor {
                         if (tableName != null) {
                             final TableId tableId = RowMapper.getTableId(connectorConfig.getCatalogName(), resultSet);
                             dispatcher.dispatchSchemaChangeEvent(tableId,
-                                     new OracleSchemaChangeEventEmitter(
-                                             connectorConfig,
-                                             offsetContext,
-                                             tableId,
-                                             tableId.catalog(),
-                                             tableId.schema(),
-                                             redoSql,
-                                             schema,
-                                             changeTime.toInstant(),
-                                             streamingMetrics));
+                                    new OracleSchemaChangeEventEmitter(
+                                            connectorConfig,
+                                            offsetContext,
+                                            tableId,
+                                            tableId.catalog(),
+                                            tableId.schema(),
+                                            redoSql,
+                                            schema,
+                                            changeTime.toInstant(),
+                                            streamingMetrics));
                         }
                     }
                     catch (InterruptedException e) {
@@ -186,6 +186,7 @@ class LogMinerQueryResultProcessor {
                     break;
                 }
                 case RowMapper.SELECT_LOB_LOCATOR: {
+                    LOGGER.trace("SEL_LOB_LOCATOR: {}, REDO_SQL: {}", logMessage, redoSql);
                     final TableId tableId = RowMapper.getTableId(connectorConfig.getCatalogName(), resultSet);
                     final LogMinerDmlEntry entry = selectLobParser.parse(redoSql);
                     entry.setObjectOwner(segOwner);
