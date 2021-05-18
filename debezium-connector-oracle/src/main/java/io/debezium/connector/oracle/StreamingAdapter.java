@@ -42,7 +42,6 @@ public interface StreamingAdapter {
         INSENSITIVE
     };
 
-
     String getType();
 
     HistoryRecordComparator getHistoryRecordComparator();
