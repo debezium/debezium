@@ -7,7 +7,11 @@ package io.debezium.connector.mysql;
 
 import java.nio.file.Path;
 import java.sql.SQLException;
+import java.util.List;
 
+import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.source.SourceRecord;
+import org.fest.assertions.Assertions;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -68,7 +72,7 @@ public class MySqlDatabaseHistoryIT extends AbstractConnectorTest {
         Testing.Print.enable();
         // SET + USE + Drop DB + create DB + CREATE/DROP for each table
         SourceRecords records = consumeRecordsByTopic(1 + 1 + 1 + 1 + TABLE_COUNT * 2);
-
+        assertDdls(records);
         stopConnector();
 
         start(MySqlConnector.class, config);
@@ -89,10 +93,13 @@ public class MySqlDatabaseHistoryIT extends AbstractConnectorTest {
         Testing.Print.enable();
         // SET + USE + Drop DB + create DB + CREATE/DROP for each table
         SourceRecords records = consumeRecordsByTopic(1 + 1 + 1 + 1 + TABLE_COUNT * 2);
+        assertDdls(records);
         try (MySqlTestConnection connection = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
             connection.execute("RENAME TABLE `t-1` TO `new-t-1`");
         }
         records = consumeRecordsByTopic(1);
+        final List<SourceRecord> schemaChanges = records.recordsForTopic(DATABASE.getServerName());
+        Assertions.assertThat(getDdl(schemaChanges, 0)).startsWith("RENAME TABLE `t-1` TO `new-t-1`");
 
         stopConnector();
 
@@ -106,6 +113,7 @@ public class MySqlDatabaseHistoryIT extends AbstractConnectorTest {
     public void shouldStoreMultipleRenames() throws SQLException, InterruptedException {
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.SCHEMA_ONLY)
+                .with(MySqlConnector.IMPLEMENTATION_PROP, "new")
                 .build();
 
         // Start the connector ...
@@ -118,6 +126,9 @@ public class MySqlDatabaseHistoryIT extends AbstractConnectorTest {
             connection.execute("RENAME TABLE `t-1` TO `new-t-1`, `t.2` TO `new.t.2`");
         }
         records = consumeRecordsByTopic(2);
+        final List<SourceRecord> schemaChanges = records.recordsForTopic(DATABASE.getServerName());
+        Assertions.assertThat(getDdl(schemaChanges, 0)).startsWith("RENAME TABLE `t-1` TO `new-t-1`");
+        Assertions.assertThat(getDdl(schemaChanges, 1)).startsWith("RENAME TABLE `t.2` TO `new.t.2`");
 
         stopConnector();
 
@@ -143,11 +154,30 @@ public class MySqlDatabaseHistoryIT extends AbstractConnectorTest {
             connection.execute("ALTER TABLE `t-1` RENAME TO `new-t-1`");
         }
         records = consumeRecordsByTopic(1);
+        final List<SourceRecord> schemaChanges = records.recordsForTopic(DATABASE.getServerName());
+        Assertions.assertThat(getDdl(schemaChanges, 0)).startsWith("ALTER TABLE `t-1` RENAME TO `new-t-1`");
 
         stopConnector();
 
         start(MySqlConnector.class, config);
         assertConnectorIsRunning();
         stopConnector();
+    }
+
+    private void assertDdls(SourceRecords records) {
+        final List<SourceRecord> schemaChanges = records.recordsForTopic(DATABASE.getServerName());
+        int index = 0;
+        Assertions.assertThat(getDdl(schemaChanges, index++)).startsWith("SET");
+        Assertions.assertThat(getDdl(schemaChanges, index++)).startsWith("DROP TABLE IF EXISTS `" + DATABASE.getDatabaseName() + "`.`t-1`");
+        Assertions.assertThat(getDdl(schemaChanges, index++)).startsWith("DROP TABLE IF EXISTS `" + DATABASE.getDatabaseName() + "`.`t.2`");
+        Assertions.assertThat(getDdl(schemaChanges, index++)).startsWith("DROP DATABASE IF EXISTS `" + DATABASE.getDatabaseName() + "`");
+        Assertions.assertThat(getDdl(schemaChanges, index++)).startsWith("CREATE DATABASE `" + DATABASE.getDatabaseName() + "`");
+        Assertions.assertThat(getDdl(schemaChanges, index++)).startsWith("USE `" + DATABASE.getDatabaseName() + "`");
+        Assertions.assertThat(getDdl(schemaChanges, index++)).startsWith("CREATE TABLE `t-1`");
+        Assertions.assertThat(getDdl(schemaChanges, index++)).startsWith("CREATE TABLE `t.2`");
+    }
+
+    private String getDdl(final List<SourceRecord> schemaChanges, int index) {
+        return ((Struct) schemaChanges.get(index).value()).getString("ddl");
     }
 }
