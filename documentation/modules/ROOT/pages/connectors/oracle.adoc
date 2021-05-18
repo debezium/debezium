@@ -730,28 +730,40 @@ The following table describes how the connector maps character and blob types.
 |Semantic type (schema name) and Notes
 
 |`BLOB`
-|n/a
-|_This data type is not yet supported._
+|`BYTES`
+|The raw bytes.
 
 |`CHAR[(M)]`
 |`STRING`
 |n/a
 
 |`CLOB`
+|`STRING`
 |n/a
-|_This data type is not yet supported._
 
 |`LONG`
 |n/a
-|_This data type is not yet supported._
+|_This data type is not supported._
+
+|`LONG RAW`
+|n/a
+|_This data type is not supported._
 
 |`NCHAR[(M)]`
+|`STRING`
+|n/a
+
+|`NCLOB`
 |`STRING`
 |n/a
 
 |`NVARCHAR2[(M)]`
 |`STRING`
 |n/a
+
+|`RAW`
+|n/a
+|_This data type is not supported._
 
 |`VARCHAR[(M)]`
 |`STRING`
