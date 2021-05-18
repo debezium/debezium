@@ -421,6 +421,7 @@ public class PostgresSchemaIT {
                 "real FLOAT4 default 1234567890.5, " +
                 "smallint INT2 default 32767, " +
                 "text TEXT default 'asdf', " +
+                "text_parens TEXT default 'text(parens)'," +
                 "text_func3 TEXT default concat('foo', 'bar', 'baz'), " +
                 "time_hm TIME default '12:34'::time, " +
                 "time_hms TIME default '12:34:56'::time, " +
@@ -481,6 +482,7 @@ public class PostgresSchemaIT {
             assertColumnDefault("smallint", (short) 32767, columns);
 
             assertColumnDefault("text", "asdf", columns);
+            assertColumnDefault("text_parens", "text(parens)", columns);
             assertColumnDefault("text_func3", "", columns);
 
             assertColumnDefault("time_hm", TimeUnit.SECONDS.toMicros(LocalTime.of(12, 34).toSecondOfDay()), columns);
