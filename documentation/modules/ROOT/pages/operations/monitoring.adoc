@@ -314,9 +314,10 @@ These dashboards are not part of {prodname} itself and are maintained on a best-
 [id="java-flight-recorder"]
 == Java Flight Recording
 
-Debezium Connect image also provides easy-to-use support for https://openjdk.java.net/jeps/328[Java Flight Recorder].
+The {prodname} container image for Kafka Connect also provides easy-to-use support for https://openjdk.java.net/jeps/328[JDK Flight Recorder].
 To enable the recording it is necessary to set the environment variable `ENABLE_JFR=true`.
 The recording will then be started automatically upon container start.
+By default, the recording is enabled, i.e. a continuous recording with default settings is done, which you then can dump using _jcmd_ or JDK Mission Control.
 
 It is possible to modify the recorder's behaviour.
 For that, you need to set either environment variables prefixed with `JFR_RECORDING_` to set recording parameters.
