@@ -1106,7 +1106,7 @@ Optionally, you can filter out collections that are not needed.
     "connector.class": "io.debezium.connector.mongodb.MongoDbConnector", // <2>
     "mongodb.hosts": "rs0/192.168.99.100:27017", // <3>
     "mongodb.name": "fullfillment", // <4>
-    "collection.include.list": "inventory[.]*", // <5>
+    "collection.include.list": "inventory[.]*" // <5>
   }
 }
 ----
