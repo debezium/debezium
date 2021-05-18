@@ -20,6 +20,7 @@ import io.debezium.connector.oracle.OracleOffsetContext;
 import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.SourceInfo;
+import io.debezium.connector.oracle.StreamingAdapter.TableNameCaseSensitivity;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
@@ -66,10 +67,10 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
         this.errorHandler = errorHandler;
         this.offsetContext = offsetContext;
         this.xStreamServerName = connectorConfig.getXoutServerName();
-        this.tablenameCaseInsensitive = connectorConfig.getAdapter().getTablenameCaseInsensitivity();
         this.posVersion = resolvePosVersion(jdbcConnection, connectorConfig);
 
-        this.eventHandler = new LcrEventHandler(connectorConfig, errorHandler, dispatcher, clock, schema, offsetContext, tableNameCaseInsensitive, this,
+        this.eventHandler = new LcrEventHandler(connectorConfig, errorHandler, dispatcher, clock, schema, offsetContext,
+                TableNameCaseSensitivity.INSENSITIVE.equals(connectorConfig.getAdapter().getTableNameCaseSensitivity()), this,
                 streamingMetrics);
     }
 

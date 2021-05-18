@@ -79,8 +79,11 @@ public class XStreamAdapter extends AbstractStreamingAdapter {
     }
 
     @Override
-    public boolean getTablenameCaseInsensitivity() {
+    public TableNameCaseSensitivity getTableNameCaseSensitivity() {
         // Always use tablename case insensitivity true when on Oracle 11, otherwise false.
-        return connection.getOracleVersion().getMajor() == 11;
+        if (connection.getOracleVersion().getMajor() == 11) {
+            return TableNameCaseSensitivity.SENSITIVE;
+        }
+        return super.getTableNameCaseSensitivity();
     }
 }

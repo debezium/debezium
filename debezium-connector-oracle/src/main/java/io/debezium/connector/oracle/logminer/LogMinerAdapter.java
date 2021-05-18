@@ -69,9 +69,4 @@ public class LogMinerAdapter extends AbstractStreamingAdapter {
                 streamingMetrics);
     }
 
-    @Override
-    public boolean getTablenameCaseInsensitivity() {
-        // LogMiner does not support this, always return false.
-        return false;
-    }
 }
