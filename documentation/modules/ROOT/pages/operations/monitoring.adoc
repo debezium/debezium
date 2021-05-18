@@ -311,5 +311,16 @@ You can find an example for the required configuration and example dashboards fo
 These dashboards are not part of {prodname} itself and are maintained on a best-effort basis.
 ====
 
+[id="java-flight-recorder"]
+== Java Flight Recording
 
+Debezium Connect image also provides easy-to-use support for https://openjdk.java.net/jeps/328[Java Flight Recorder].
+To enable the recording it is necessary to set the environment variable `ENABLE_JFR=true`.
+The recording will then be started automatically upon container start.
+
+It is possible to modify the recorder's behaviour.
+For that, you need to set either environment variables prefixed with `JFR_RECORDING_` to set recording parameters.
+The part after the prefix is converted to lowercase and underscores are replaced with dashes so `JFR_RECORDING_PATH_TO_GC_ROOTS=true` becomes `path-to-gc-roots=true`.
+
+Flight Recorder control options can be configured via `JFR_OPT_` prefixed environment variables.
 endif::community[]
