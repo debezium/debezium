@@ -2149,14 +2149,6 @@ twice - once in initial snapshot and once in streaming phase. Nonetheless, that 
 data mirroring.
 For `read_uncommitted` there are no data consistency guarantees at all (some data might be lost or corrupted).
 
-|[[sqlserver-property-source-timestamp-mode]]<<sqlserver-property-source-timestamp-mode, `+source.timestamp.mode+`>>
-|_commit_
-a|String that represents the criteria of the attached timestamp within the source record (ts_ms).
-
-* `commit` (default) sets the source timestamp to the time when the record was committed to the database.
-* `processing` sets the source timestamp to the time when {prodname} accesses the record in the change table.
-Use the `processing` option if you want {prodname] to set the top level `ts_ms` value, or if you want to avoid the additional cost of {prodname} querying the database to extract the LSN timestamps.
-
 |[[sqlserver-property-event-processing-failure-handling-mode]]<<sqlserver-property-event-processing-failure-handling-mode, `+event.processing.failure.handling.mode+`>>
 |`fail`
 | Specifies how the connector should react to exceptions during processing of events.
