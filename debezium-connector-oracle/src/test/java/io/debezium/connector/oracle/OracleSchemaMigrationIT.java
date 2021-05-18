@@ -1076,7 +1076,7 @@ public class OracleSchemaMigrationIT extends AbstractConnectorTest {
                 Awaitility.await()
                         .atMost(TestHelper.defaultMessageConsumerPollTimeout(), TimeUnit.SECONDS)
                         .until(() -> {
-                            if (logInterceptor.countOccurrences("Processing DDL event ") == expected) {
+                            if (logInterceptor.countOccurrences("DDL: ") == expected) {
                                 return true;
                             }
                             return false;
