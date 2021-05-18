@@ -109,11 +109,6 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
             // now that we have the locks, refresh the schema
             schema.refresh(jdbcConnection, false);
         }
-        else {
-            // if we are not in an exported snapshot, this may result in some inconsistencies.
-            // Let the user know
-            LOGGER.info("Skipping locking each table in an exported snapshot");
-        }
     }
 
     @Override
