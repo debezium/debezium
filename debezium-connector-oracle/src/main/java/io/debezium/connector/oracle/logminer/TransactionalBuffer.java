@@ -330,8 +330,13 @@ public final class TransactionalBuffer<SourceRecord extends SourceRecordWrapper>
      */
     Scn updateOffsetContext(OracleOffsetContext offsetContext) {
         if (transactions.isEmpty()) {
-            LOGGER.trace("Transaction buffer is empty, updating offset SCN to '{}'", maxCommittedScn);
-            offsetContext.setScn(maxCommittedScn);
+            if (!maxCommittedScn.isNull()) {
+                LOGGER.trace("Transaction buffer is empty, updating offset SCN to '{}'", maxCommittedScn);
+                offsetContext.setScn(maxCommittedScn);
+            }
+            else {
+                LOGGER.trace("No max committed SCN detected, offset SCN still '{}'", offsetContext.getScn());
+            }
         }
         else {
             Scn minStartScn = transactions.values().stream().map(t -> t.firstScn).min(Scn::compareTo).orElse(Scn.NULL);
