@@ -15,6 +15,7 @@ import io.debezium.connector.oracle.logminer.valueholder.LogMinerColumnValue;
 import io.debezium.connector.oracle.logminer.valueholder.LogMinerColumnValueImpl;
 import io.debezium.connector.oracle.logminer.valueholder.LogMinerDmlEntry;
 import io.debezium.connector.oracle.logminer.valueholder.LogMinerDmlEntryImpl;
+import io.debezium.text.ParsingException;
 
 /**
  * Simple text-based parser implementation for Oracle LogMiner SEL_LOB_LOCATOR Redo SQL.
@@ -127,11 +128,25 @@ public class SelectLobParser {
 
     private int parseColumnValue(String sql, int index, Consumer<String> collector) {
         boolean inSingleQuotes = false;
-        int start = -1, last = -1;
+        int start = -1, last = -1, nested = 0;
         for (int i = index; i < sql.length(); ++i) {
             char c = sql.charAt(i);
-            char lookAhead = (index + 1 < sql.length()) ? sql.charAt(i + 1) : 0;
-            if (c == '\'') {
+            char lookAhead = (i + 1 < sql.length()) ? sql.charAt(i + 1) : 0;
+            if (i == index && c != '\'') {
+                start = i;
+            }
+            else if (c == '(' && !inSingleQuotes) {
+                nested++;
+            }
+            else if (c == ')' && !inSingleQuotes) {
+                nested--;
+                if (nested == 0) {
+                    last = i + 1;
+                    index = i + 1;
+                    break;
+                }
+            }
+            else if (c == '\'') {
                 // skip over double single quote
                 if (inSingleQuotes && lookAhead == '\'') {
                     index += 1;
@@ -139,17 +154,28 @@ public class SelectLobParser {
                 }
                 if (inSingleQuotes) {
                     inSingleQuotes = false;
-                    last = i;
-                    index = i + 1;
-                    break;
+                    if (nested == 0) {
+                        last = i;
+                        index = i + 1;
+                        break;
+                    }
+                    continue;
                 }
                 inSingleQuotes = true;
-                start = i + 1;
+                if (nested == 0) {
+                    start = i + 1;
+                }
+            }
+            else if (c == ' ' && !inSingleQuotes && nested == 0) {
+                last = i;
+                index = i;
+                break;
             }
         }
 
         if (start != -1 && last != -1) {
-            collector.accept(sql.substring(start, last));
+            final String value = sql.substring(start, last);
+            collector.accept(value.equalsIgnoreCase("null") ? null : value);
         }
 
         return index;
@@ -160,7 +186,7 @@ public class SelectLobParser {
             // parse column name
             StringBuilder columnName = new StringBuilder();
             index = parseQuotedValue(sql, index, columnName::append);
-            index += 3; // space, equals, space
+            index = parseOperator(sql, index);
             final LogMinerColumnValueImpl column = new LogMinerColumnValueImpl(columnName.toString());
             index = parseColumnValue(sql, index, column::setColumnData);
             index += 1; // space
@@ -178,6 +204,34 @@ public class SelectLobParser {
                 // 'for update' detected
                 // this signifies the end of the where clause
                 break;
+            }
+        }
+        return index;
+    }
+
+    private int parseOperator(String sql, int index) {
+        boolean initialSpace = false;
+        for (int i = index; i < sql.length(); ++i) {
+            char c = sql.charAt(i);
+            char lookAhead = (i + 1 < sql.length()) ? sql.charAt(i + 1) : 0;
+            if (!initialSpace && c == ' ') {
+                initialSpace = true;
+            }
+            else if (initialSpace && c == '=' && lookAhead == ' ') {
+                // equals operator
+                index += 3;
+                break;
+            }
+            else if (initialSpace && c == 'i' && lookAhead == 's') {
+                char lookAhead2 = (i + 2 < sql.length()) ? sql.charAt(i + 2) : 0;
+                if (lookAhead2 == ' ') {
+                    index += 4;
+                    break;
+                }
+                throw new ParsingException(null, "Expected 'is' at index " + i + ": " + sql);
+            }
+            else {
+                throw new ParsingException(null, "Failed to parse operator at index " + i + ": " + sql);
             }
         }
         return index;
