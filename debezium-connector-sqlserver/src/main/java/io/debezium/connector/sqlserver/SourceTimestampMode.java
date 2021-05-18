@@ -50,7 +50,10 @@ public enum SourceTimestampMode implements EnumeratedValue {
 
     /**
      * This mode will set the source timestamp field (ts_ms) of when the record was processed by Debezium.
+     *
+     * @deprecated Use {@link #COMMIT} instead.
      */
+    @Deprecated
     PROCESSING("processing") {
         @Override
         protected Instant getTimestamp(SqlServerConnection connection, Clock clock, ResultSet resultSet) {
