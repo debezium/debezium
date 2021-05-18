@@ -101,6 +101,11 @@ public class PostgresConnection extends JdbcConnection {
         }
     }
 
+    /**
+     * Create a Postgres connection using the supplied configuration and {@link TypeRegistry}
+     * @param config {@link Configuration} instance, may not be null.
+     * @param typeRegistry an existing/already-primed {@link TypeRegistry} instance
+     */
     public PostgresConnection(Configuration config, TypeRegistry typeRegistry) {
         super(config, FACTORY, PostgresConnection::validateServerVersion, PostgresConnection::defaultSettings);
         if (Objects.isNull(typeRegistry)) {
