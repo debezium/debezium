@@ -5,7 +5,6 @@
  */
 package io.debezium.connector.oracle;
 
-import java.sql.Clob;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Savepoint;
@@ -244,27 +243,16 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
 
     @Override
     protected SchemaChangeEvent getCreateTableEvent(RelationalSnapshotContext snapshotContext, Table table) throws SQLException {
-        try (Statement statement = jdbcConnection.connection().createStatement();
-                ResultSet rs = statement.executeQuery("select dbms_metadata.get_ddl( 'TABLE', '" + table.id().table() + "', '" + table.id().schema() + "' ) from dual")) {
-
-            if (!rs.next()) {
-                throw new IllegalStateException("Couldn't get metadata");
-            }
-
-            Object res = rs.getObject(1);
-            String ddl = ((Clob) res).getSubString(1, (int) ((Clob) res).length());
-
-            return new SchemaChangeEvent(
-                    snapshotContext.offset.getPartition(),
-                    snapshotContext.offset.getOffset(),
-                    snapshotContext.offset.getSourceInfo(),
-                    snapshotContext.catalogName,
-                    table.id().schema(),
-                    ddl,
-                    table,
-                    SchemaChangeEventType.CREATE,
-                    true);
-        }
+        return new SchemaChangeEvent(
+                snapshotContext.offset.getPartition(),
+                snapshotContext.offset.getOffset(),
+                snapshotContext.offset.getSourceInfo(),
+                snapshotContext.catalogName,
+                table.id().schema(),
+                jdbcConnection.getTableMetadataDdl(table.id()),
+                table,
+                SchemaChangeEventType.CREATE,
+                true);
     }
 
     @Override

@@ -7,6 +7,7 @@ package io.debezium.connector.oracle.xstream;
 
 import java.nio.ByteBuffer;
 import java.sql.SQLException;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -18,6 +19,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
+import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OracleOffsetContext;
@@ -26,6 +28,7 @@ import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.xstream.XstreamStreamingChangeEventSource.PositionAndScn;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.util.Clock;
 
@@ -151,6 +154,27 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
 
         TableId tableId = getTableId(lcr);
 
+        Table table = schema.tableFor(tableId);
+        if (table == null) {
+            if (connectorConfig.getTableFilters().dataCollectionFilter().isIncluded(tableId)) {
+                LOGGER.info("Table {} is new and will be monitored.", tableId);
+                dispatcher.dispatchSchemaChangeEvent(
+                        tableId,
+                        new OracleSchemaChangeEventEmitter(
+                                connectorConfig,
+                                offsetContext,
+                                tableId,
+                                tableId.catalog(),
+                                tableId.schema(),
+                                getTableMetadataDdl(tableId),
+                                schema,
+                                Instant.now(),
+                                streamingMetrics));
+
+                table = schema.tableFor(tableId);
+            }
+        }
+
         dispatcher.dispatchDataChangeEvent(
                 tableId,
                 new XStreamChangeRecordEmitter(offsetContext, lcr, chunkValues, schema.tableFor(tableId), clock));
@@ -183,6 +207,21 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
         }
         else {
             return new TableId(lcr.getSourceDatabaseName(), lcr.getObjectOwner(), lcr.getObjectName().toLowerCase());
+        }
+    }
+
+    private String getTableMetadataDdl(TableId tableId) {
+        final String pdbName = connectorConfig.getPdbName();
+        // A separate connection must be used for this out-of-bands query while processing the Xstream callback.
+        // This should have negligible overhead as this should happen rarely.
+        try (OracleConnection connection = new OracleConnection(connectorConfig.jdbcConfig(), () -> getClass().getClassLoader())) {
+            if (pdbName != null) {
+                connection.setSessionToPdb(pdbName);
+            }
+            return connection.getTableMetadataDdl(tableId);
+        }
+        catch (SQLException e) {
+            throw new DebeziumException("Failed to get table DDL metadata for: " + tableId, e);
         }
     }
 

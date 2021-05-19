@@ -1776,6 +1776,69 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         }
     }
 
+    @Test
+    @FixFor("DBZ-3062")
+    public void shouldSelectivelySnapshotTables() throws Exception {
+        TestHelper.dropTables(connection, "dbz3062a", "dbz3062b");
+        try {
+            connection.execute("CREATE TABLE dbz3062a (id number(9,0), data varchar2(50))");
+            connection.execute("CREATE TABLE dbz3062b (id number(9,0), data varchar2(50))");
+            TestHelper.streamTable(connection, "dbz3062a");
+            TestHelper.streamTable(connection, "dbz3062b");
+
+            connection.execute("INSERT INTO dbz3062a VALUES (1, 'Test1')");
+            connection.execute("INSERT INTO dbz3062b VALUES (2, 'Test2')");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ3062.*")
+                    .with(OracleConnectorConfig.SNAPSHOT_MODE_TABLES, "[A-z].*DEBEZIUM\\.DBZ3062A")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            SourceRecords records = consumeRecordsByTopic(1);
+            List<SourceRecord> tableA = records.recordsForTopic("server1.DEBEZIUM.DBZ3062A");
+            List<SourceRecord> tableB = records.recordsForTopic("server1.DEBEZIUM.DBZ3062B");
+
+            assertThat(tableA).hasSize(1);
+            assertThat(tableB).isNull();
+
+            Struct after = ((Struct) tableA.get(0).value()).getStruct(AFTER);
+            assertThat(after.get("ID")).isEqualTo(1);
+            assertThat(after.get("DATA")).isEqualTo("Test1");
+
+            assertNoRecordsToConsume();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.executeWithoutCommitting("INSERT INTO dbz3062a VALUES (3, 'Test3')");
+            connection.executeWithoutCommitting("INSERT INTO dbz3062b VALUES (4, 'Test4')");
+            connection.commit();
+
+            records = consumeRecordsByTopic(2);
+            tableA = records.recordsForTopic("server1.DEBEZIUM.DBZ3062A");
+            tableB = records.recordsForTopic("server1.DEBEZIUM.DBZ3062B");
+
+            assertThat(tableA).hasSize(1);
+            assertThat(tableB).hasSize(1);
+
+            after = ((Struct) tableA.get(0).value()).getStruct(AFTER);
+            assertThat(after.get("ID")).isEqualTo(3);
+            assertThat(after.get("DATA")).isEqualTo("Test3");
+
+            after = ((Struct) tableB.get(0).value()).getStruct(AFTER);
+            assertThat(after.get("ID")).isEqualTo(4);
+            assertThat(after.get("DATA")).isEqualTo("Test4");
+        }
+        finally {
+            TestHelper.dropTables(connection, "dbz3062a", "dbz3062b");
+        }
+    }
+
     private String generateAlphaNumericStringColumn(int size) {
         final String alphaNumericString = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz";
         final StringBuilder sb = new StringBuilder(size);
