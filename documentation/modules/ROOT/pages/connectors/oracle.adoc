@@ -1309,6 +1309,10 @@ a|Controls whether and how long the connector holds a table lock, which prevents
  +
 `none` - prevents the connector from acquiring any table locks during the snapshot. This setting is only safe to use if and _only_ if no schema changes are happening while the snapshot is running.
 
+|[[oracle-property-snapshot-include-collection-list]]<<oracle-property-snapshot-include-collection-list, `+snapshot.include.collection.list+`>>
+| All tables specified in `table.include.list`
+|An optional, comma-separated list of regular expressions that match names of *fully-qualified* table names (`<db-name>.<schema-name>.<name>`) included in `table.include.list` for which you *want* to take the snapshot.
+
 |[[oracle-property-snapshot-select-statement-overrides]]<<oracle-property-snapshot-select-statement-overrides, `+snapshot.select.statement.overrides+`>>
 |
 |Controls which rows from tables are included in snapshot. +
