@@ -47,31 +47,33 @@ public class PostgreSqlConnectorIT extends ConnectorTestBase {
 
     public static final String CONNECTOR_NAME = "inventory-connector-postgresql";
 
-    private static PostgreSqlDeployer dbDeployer;
     private static SqlDatabaseController dbController;
     private static ConnectorFactories connectorFactories = new ConnectorFactories();
     private static ConnectorConfigBuilder connectorConfig;
     private static String connectorName;
+    private static String dbServerName;
 
     @BeforeAll
     public static void setupDatabase() throws IOException, InterruptedException, ClassNotFoundException {
+        Class.forName("org.postgresql.Driver");
+
         if (!ConfigProperties.DATABASE_MYSQL_HOST.isPresent()) {
-            dbDeployer = new PostgreSqlDeployer(ocp)
+            dbController = new PostgreSqlDeployer(ocp)
                     .withProject(ConfigProperties.OCP_PROJECT_POSTGRESQL)
                     .withDeployment(DB_DEPLOYMENT_PATH)
-                    .withServices(DB_SERVICE_PATH_LB, DB_SERVICE_PATH);
-            dbController = dbDeployer.deploy();
+                    .withServices(DB_SERVICE_PATH_LB, DB_SERVICE_PATH)
+                    .deploy();
         }
 
-        String id = testUtils.getUniqueId();
-        connectorName = CONNECTOR_NAME + "-" + id;
-        connectorConfig = connectorFactories.postgresql()
-                .put("database.server.name", connectorName);
+        connectorName = CONNECTOR_NAME + "-" + testUtils.getUniqueId();
+        dbServerName = connectorName.replaceAll("-", "_");
+        connectorConfig = connectorFactories.postgresql(dbServerName);
+
         if (ConfigProperties.DEPLOY_SERVICE_REGISTRY) {
             connectorConfig.addApicurioAvroSupport(registryController.getRegistryApiAddress());
         }
+
         kafkaConnectController.deployConnector(connectorName, connectorConfig);
-        Class.forName("org.postgresql.Driver");
     }
 
     @AfterAll
@@ -104,25 +106,25 @@ public class PostgreSqlConnectorIT extends ConnectorTestBase {
     @Order(2)
     public void shouldCreateKafkaTopics() {
         assertions.assertTopicsExist(
-                connectorName + ".inventory.customers",
-                connectorName + ".inventory.orders",
-                connectorName + ".inventory.products",
-                connectorName + ".inventory.products_on_hand");
+                dbServerName + ".inventory.customers",
+                dbServerName + ".inventory.orders",
+                dbServerName + ".inventory.products",
+                dbServerName + ".inventory.products_on_hand");
     }
 
     @Test
     @Order(3)
     public void shouldContainRecordsInCustomersTopic() throws IOException {
-        kafkaConnectController.waitForPostgreSqlSnapshot(connectorName);
-        awaitAssert(() -> assertions.assertRecordsCount(connectorName + ".inventory.customers", 4));
+        kafkaConnectController.waitForPostgreSqlSnapshot(dbServerName);
+        awaitAssert(() -> assertions.assertRecordsCount(dbServerName + ".inventory.customers", 4));
     }
 
     @Test
     @Order(4)
     public void shouldStreamChanges() throws SQLException {
         insertCustomer("Tom", "Tester", "tom@test.com");
-        awaitAssert(() -> assertions.assertRecordsCount(connectorName + ".inventory.customers", 5));
-        awaitAssert(() -> assertions.assertRecordsContain(connectorName + ".inventory.customers", "tom@test.com"));
+        awaitAssert(() -> assertions.assertRecordsCount(dbServerName + ".inventory.customers", 5));
+        awaitAssert(() -> assertions.assertRecordsContain(dbServerName + ".inventory.customers", "tom@test.com"));
     }
 
     @Test
@@ -130,15 +132,15 @@ public class PostgreSqlConnectorIT extends ConnectorTestBase {
     public void shouldBeDown() throws SQLException, IOException {
         kafkaConnectController.undeployConnector(connectorName);
         insertCustomer("Jerry", "Tester", "jerry@test.com");
-        awaitAssert(() -> assertions.assertRecordsCount(connectorName + ".inventory.customers", 5));
+        awaitAssert(() -> assertions.assertRecordsCount(dbServerName + ".inventory.customers", 5));
     }
 
     @Test
     @Order(6)
     public void shouldResumeStreamingAfterRedeployment() throws IOException, InterruptedException {
         kafkaConnectController.deployConnector(connectorName, connectorConfig);
-        awaitAssert(() -> assertions.assertRecordsCount(connectorName + ".inventory.customers", 6));
-        awaitAssert(() -> assertions.assertRecordsContain(connectorName + ".inventory.customers", "jerry@test.com"));
+        awaitAssert(() -> assertions.assertRecordsCount(dbServerName + ".inventory.customers", 6));
+        awaitAssert(() -> assertions.assertRecordsContain(dbServerName + ".inventory.customers", "jerry@test.com"));
     }
 
     @Test
@@ -147,7 +149,7 @@ public class PostgreSqlConnectorIT extends ConnectorTestBase {
         operatorController.disable();
         kafkaConnectController.destroy();
         insertCustomer("Nibbles", "Tester", "nibbles@test.com");
-        awaitAssert(() -> assertions.assertRecordsCount(connectorName + ".inventory.customers", 6));
+        awaitAssert(() -> assertions.assertRecordsCount(dbServerName + ".inventory.customers", 6));
     }
 
     @Test
@@ -155,7 +157,7 @@ public class PostgreSqlConnectorIT extends ConnectorTestBase {
     public void shouldResumeStreamingAfterCrash() throws InterruptedException {
         operatorController.enable();
         kafkaConnectController.waitForConnectCluster();
-        awaitAssert(() -> assertions.assertMinimalRecordsCount(connectorName + ".inventory.customers", 7));
-        awaitAssert(() -> assertions.assertRecordsContain(connectorName + ".inventory.customers", "nibbles@test.com"));
+        awaitAssert(() -> assertions.assertMinimalRecordsCount(dbServerName + ".inventory.customers", 7));
+        awaitAssert(() -> assertions.assertRecordsContain(dbServerName + ".inventory.customers", "nibbles@test.com"));
     }
 }
