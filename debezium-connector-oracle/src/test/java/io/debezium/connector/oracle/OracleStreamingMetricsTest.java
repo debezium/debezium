@@ -10,8 +10,11 @@ import static io.debezium.config.CommonConnectorConfig.DEFAULT_MAX_QUEUE_SIZE;
 import static org.fest.assertions.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.Collections;
@@ -40,6 +43,7 @@ public class OracleStreamingMetricsTest {
 
     private OracleConnectorConfig connectorConfig;
     private OracleStreamingChangeEventSourceMetrics metrics;
+    private Clock fixedClock;
 
     @Before
     public void before() {
@@ -138,7 +142,7 @@ public class OracleStreamingMetricsTest {
         // no time difference between connector and database
         long lag = metrics.getLagFromSourceInMilliseconds();
         assertThat(lag).isEqualTo(0);
-        Instant dbEventTime = Instant.now().minusMillis(2000);
+        Instant dbEventTime = fixedClock.instant().minusMillis(2000);
         metrics.calculateLagMetrics(dbEventTime);
         lag = metrics.getLagFromSourceInMilliseconds();
         assertThat(lag).isEqualTo(2000);
@@ -146,26 +150,28 @@ public class OracleStreamingMetricsTest {
         assertThat(metrics.getMinLagFromSourceInMilliseconds()).isEqualTo(0);
 
         // not realistic scenario
-        dbEventTime = Instant.now().plusMillis(2000);
+        dbEventTime = fixedClock.instant().plusMillis(2000);
         metrics.calculateLagMetrics(dbEventTime);
         lag = metrics.getLagFromSourceInMilliseconds();
-        assertThat(lag).isGreaterThanOrEqualTo(1999).isLessThanOrEqualTo(2000);
+        assertThat(lag).isEqualTo(2000);
         assertThat(metrics.getMaxLagFromSourceInMilliseconds()).isEqualTo(2000);
         assertThat(metrics.getMinLagFromSourceInMilliseconds()).isEqualTo(0);
 
         metrics.reset();
 
         // ##########################
-        // the database time is ahead
-        metrics.setTimeDifference(-1000);
-        dbEventTime = Instant.now().minusMillis(2000);
+        // the database time is ahead 1s and has an offset of +12h
+        OffsetDateTime dbTime = OffsetDateTime.parse("2021-05-16T00:30:01.00+12:00");
+        metrics.calculateTimeDifference(dbTime);
+
+        dbEventTime = Instant.parse("2021-05-16T00:29:58.00Z");
         metrics.calculateLagMetrics(dbEventTime);
         lag = metrics.getLagFromSourceInMilliseconds();
         assertThat(lag).isEqualTo(3000);
         assertThat(metrics.getMaxLagFromSourceInMilliseconds()).isEqualTo(3000);
         assertThat(metrics.getMinLagFromSourceInMilliseconds()).isEqualTo(0);
 
-        dbEventTime = Instant.now().minusMillis(3000);
+        dbEventTime = Instant.parse("2021-05-16T00:29:57.00Z");
         metrics.calculateLagMetrics(dbEventTime);
         lag = metrics.getLagFromSourceInMilliseconds();
         assertThat(lag).isEqualTo(4000);
@@ -175,9 +181,77 @@ public class OracleStreamingMetricsTest {
         metrics.reset();
 
         // ##########################
-        // the database time is behind
-        metrics.setTimeDifference(1000);
-        dbEventTime = Instant.now().minusMillis(2000);
+        // the database time is ahead 1s and has an offset of +0h (UTC)
+        dbTime = OffsetDateTime.parse("2021-05-15T12:30:01.00Z");
+        metrics.calculateTimeDifference(dbTime);
+
+        dbEventTime = Instant.parse("2021-05-15T12:29:58.00Z");
+        metrics.calculateLagMetrics(dbEventTime);
+        lag = metrics.getLagFromSourceInMilliseconds();
+        assertThat(lag).isEqualTo(3000);
+        assertThat(metrics.getMaxLagFromSourceInMilliseconds()).isEqualTo(3000);
+        assertThat(metrics.getMinLagFromSourceInMilliseconds()).isEqualTo(0);
+
+        dbEventTime = Instant.parse("2021-05-15T12:29:57.00Z");
+        metrics.calculateLagMetrics(dbEventTime);
+        lag = metrics.getLagFromSourceInMilliseconds();
+        assertThat(lag).isEqualTo(4000);
+        assertThat(metrics.getMaxLagFromSourceInMilliseconds()).isEqualTo(4000);
+        assertThat(metrics.getMinLagFromSourceInMilliseconds()).isEqualTo(0);
+
+        metrics.reset();
+
+        // ##########################
+        // the database time is ahead 1s and has an offset of -12h
+        dbTime = OffsetDateTime.parse("2021-05-15T00:30:01.00-12:00");
+        metrics.calculateTimeDifference(dbTime);
+
+        dbEventTime = Instant.parse("2021-05-15T00:29:58.00Z");
+        metrics.calculateLagMetrics(dbEventTime);
+        lag = metrics.getLagFromSourceInMilliseconds();
+        assertThat(lag).isEqualTo(3000);
+        assertThat(metrics.getMaxLagFromSourceInMilliseconds()).isEqualTo(3000);
+        assertThat(metrics.getMinLagFromSourceInMilliseconds()).isEqualTo(0);
+
+        dbEventTime = Instant.parse("2021-05-15T00:29:57.00Z");
+        metrics.calculateLagMetrics(dbEventTime);
+        lag = metrics.getLagFromSourceInMilliseconds();
+        assertThat(lag).isEqualTo(4000);
+        assertThat(metrics.getMaxLagFromSourceInMilliseconds()).isEqualTo(4000);
+        assertThat(metrics.getMinLagFromSourceInMilliseconds()).isEqualTo(0);
+
+        metrics.reset();
+
+        // ##########################
+        // the database time is behind 1s and has an offset of +12h
+        dbTime = OffsetDateTime.parse("2021-05-16T00:29:59.00+12:00");
+        metrics.calculateTimeDifference(dbTime);
+
+        dbEventTime = Instant.parse("2021-05-16T00:29:58.00Z");
+        metrics.calculateLagMetrics(dbEventTime);
+        lag = metrics.getLagFromSourceInMilliseconds();
+        assertThat(lag).isEqualTo(1000);
+        assertThat(metrics.getMaxLagFromSourceInMilliseconds()).isEqualTo(1000);
+        assertThat(metrics.getMinLagFromSourceInMilliseconds()).isEqualTo(0);
+
+        // ##########################
+        // the database time is behind 1s and has an offset of +0h (UTC)
+        dbTime = OffsetDateTime.parse("2021-05-15T12:29:59.00Z");
+        metrics.calculateTimeDifference(dbTime);
+
+        dbEventTime = Instant.parse("2021-05-15T12:29:58.00Z");
+        metrics.calculateLagMetrics(dbEventTime);
+        lag = metrics.getLagFromSourceInMilliseconds();
+        assertThat(lag).isEqualTo(1000);
+        assertThat(metrics.getMaxLagFromSourceInMilliseconds()).isEqualTo(1000);
+        assertThat(metrics.getMinLagFromSourceInMilliseconds()).isEqualTo(0);
+
+        // ##########################
+        // the database time is behind 1s and has an offset of -12h
+        dbTime = OffsetDateTime.parse("2021-05-15T00:29:59.00-12:00");
+        metrics.calculateTimeDifference(dbTime);
+
+        dbEventTime = Instant.parse("2021-05-15T00:29:58.00Z");
         metrics.calculateLagMetrics(dbEventTime);
         lag = metrics.getLagFromSourceInMilliseconds();
         assertThat(lag).isEqualTo(1000);
@@ -258,6 +332,7 @@ public class OracleStreamingMetricsTest {
         Mockito.when(taskContext.getConnectorType()).thenReturn("connector type");
 
         final OracleEventMetadataProvider metadataProvider = new OracleEventMetadataProvider();
-        this.metrics = new OracleStreamingChangeEventSourceMetrics(taskContext, queue, metadataProvider, connectorConfig);
+        fixedClock = Clock.fixed(Instant.parse("2021-05-15T12:30:00.00Z"), ZoneOffset.UTC);
+        this.metrics = new OracleStreamingChangeEventSourceMetrics(taskContext, queue, metadataProvider, connectorConfig, fixedClock);
     }
 }

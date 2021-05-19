@@ -313,15 +313,6 @@ public final class TransactionalBuffer<SourceRecord extends SourceRecordWrapper>
         return transactions.isEmpty();
     }
 
-    /**
-     * Set the database time difference.
-     *
-     * @param difference the time difference in milliseconds
-     */
-    void setDatabaseTimeDifference(long difference) {
-        streamingMetrics.setTimeDifference(difference);
-    }
-
     @Override
     public String toString() {
         StringBuilder result = new StringBuilder();

@@ -10,10 +10,11 @@ import static io.debezium.connector.oracle.logminer.LogMinerHelper.checkSuppleme
 import static io.debezium.connector.oracle.logminer.LogMinerHelper.createFlushTable;
 import static io.debezium.connector.oracle.logminer.LogMinerHelper.endMining;
 import static io.debezium.connector.oracle.logminer.LogMinerHelper.flushLogWriter;
+import static io.debezium.connector.oracle.logminer.LogMinerHelper.getCurrentRedoLogFiles;
 import static io.debezium.connector.oracle.logminer.LogMinerHelper.getEndScn;
 import static io.debezium.connector.oracle.logminer.LogMinerHelper.getFirstOnlineLogScn;
 import static io.debezium.connector.oracle.logminer.LogMinerHelper.getLastScnToAbandon;
-import static io.debezium.connector.oracle.logminer.LogMinerHelper.getTimeDifference;
+import static io.debezium.connector.oracle.logminer.LogMinerHelper.getSystime;
 import static io.debezium.connector.oracle.logminer.LogMinerHelper.instantiateFlushConnections;
 import static io.debezium.connector.oracle.logminer.LogMinerHelper.logError;
 import static io.debezium.connector.oracle.logminer.LogMinerHelper.setLogFilesForMining;
@@ -120,10 +121,6 @@ public class LogMinerStreamingChangeEventSource<SourceRecord extends SourceRecor
     public void execute(ChangeEventSourceContext context) {
         try (TransactionalBuffer transactionalBuffer = new TransactionalBuffer(schema, clock, errorHandler, streamingMetrics)) {
             try {
-                long databaseTimeMs = getTimeDifference(jdbcConnection).toMillis();
-                LOGGER.trace("Current time {} ms, database difference {} ms", System.currentTimeMillis(), databaseTimeMs);
-                transactionalBuffer.setDatabaseTimeDifference(databaseTimeMs);
-
                 startScn = offsetContext.getScn();
                 createFlushTable(jdbcConnection);
 
@@ -154,6 +151,9 @@ public class LogMinerStreamingChangeEventSource<SourceRecord extends SourceRecor
                         currentRedoLogSequences = getCurrentRedoLogSequences();
                         Stopwatch stopwatch = Stopwatch.reusable();
                         while (context.isRunning()) {
+                            // Calculate time difference before each mining session to detect time zone offset changes (e.g. DST) on database server
+                            streamingMetrics.calculateTimeDifference(getSystime(jdbcConnection));
+
                             Instant start = Instant.now();
                             endScn = getEndScn(jdbcConnection, startScn, streamingMetrics, connectorConfig.getLogMiningBatchSizeDefault());
                             flushLogWriter(jdbcConnection, jdbcConfiguration, isRac, racHosts);
@@ -276,7 +276,7 @@ public class LogMinerStreamingChangeEventSource<SourceRecord extends SourceRecor
                 return 0;
             });
 
-            final Set<String> fileNames = LogMinerHelper.getCurrentRedoLogFiles(jdbcConnection);
+            final Set<String> fileNames = getCurrentRedoLogFiles(jdbcConnection);
 
             streamingMetrics.setRedoLogStatus(logStatuses);
             streamingMetrics.setSwitchCount(logSwitchCount);
