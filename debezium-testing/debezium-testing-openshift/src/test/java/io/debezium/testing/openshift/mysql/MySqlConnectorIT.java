@@ -46,35 +46,38 @@ public class MySqlConnectorIT extends ConnectorTestBase {
 
     public static final String CONNECTOR_NAME = "inventory-connector-mysql";
 
-    private static MySqlDeployer dbDeployer;
     private static SqlDatabaseController dbController;
     private static ConnectorFactories connectorFactories = new ConnectorFactories();
     private static ConnectorConfigBuilder connectorConfig;
     private static String connectorName;
+    private static String dbServerName;
 
     @BeforeAll
     public static void setupDatabase() throws IOException, InterruptedException, ClassNotFoundException {
+        Class.forName("com.mysql.cj.jdbc.Driver");
+
         if (!ConfigProperties.DATABASE_MYSQL_HOST.isPresent()) {
-            dbDeployer = new MySqlDeployer(ocp)
+            dbController = new MySqlDeployer(ocp)
                     .withProject(ConfigProperties.OCP_PROJECT_MYSQL)
                     .withDeployment(DB_DEPLOYMENT_PATH)
-                    .withServices(DB_SERVICE_PATH_LB, DB_SERVICE_PATH);
-            dbController = dbDeployer.deploy();
+                    .withServices(DB_SERVICE_PATH_LB, DB_SERVICE_PATH)
+                    .deploy();
         }
 
         connectorName = CONNECTOR_NAME + "-" + testUtils.getUniqueId();
-        connectorConfig = connectorFactories.mysql()
-                .put("database.server.name", connectorName);
+        dbServerName = connectorName.replaceAll("-", "_");
+        connectorConfig = connectorFactories.mysql(dbServerName);
+
         if (ConfigProperties.DEPLOY_SERVICE_REGISTRY) {
             connectorConfig.addApicurioAvroSupport(registryController.getRegistryApiAddress());
         }
+
         kafkaConnectController.deployConnector(connectorName, connectorConfig);
-        Class.forName("com.mysql.cj.jdbc.Driver");
     }
 
     @AfterAll
     public static void tearDownDatabase() throws IOException, InterruptedException {
-        // kafkaConnectController.undeployConnector(connectorName);
+        kafkaConnectController.undeployConnector(connectorName);
         dbController.reload();
     }
 
@@ -102,27 +105,27 @@ public class MySqlConnectorIT extends ConnectorTestBase {
     @Order(2)
     public void shouldCreateKafkaTopics() {
         assertions.assertTopicsExist(
-                connectorName + ".inventory.addresses",
-                connectorName + ".inventory.customers",
-                connectorName + ".inventory.geom",
-                connectorName + ".inventory.orders",
-                connectorName + ".inventory.products",
-                connectorName + ".inventory.products_on_hand");
+                dbServerName + ".inventory.addresses",
+                dbServerName + ".inventory.customers",
+                dbServerName + ".inventory.geom",
+                dbServerName + ".inventory.orders",
+                dbServerName + ".inventory.products",
+                dbServerName + ".inventory.products_on_hand");
     }
 
     @Test
     @Order(3)
     public void shouldSnapshotChanges() throws IOException {
-        kafkaConnectController.waitForMySqlSnapshot(connectorName);
-        awaitAssert(() -> assertions.assertRecordsCount(connectorName + ".inventory.customers", 4));
+        kafkaConnectController.waitForMySqlSnapshot(dbServerName);
+        awaitAssert(() -> assertions.assertRecordsCount(dbServerName + ".inventory.customers", 4));
     }
 
     @Test
     @Order(4)
     public void shouldStreamChanges() throws SQLException {
         insertCustomer("Tom", "Tester", "tom@test.com");
-        awaitAssert(() -> assertions.assertRecordsCount(connectorName + ".inventory.customers", 5));
-        awaitAssert(() -> assertions.assertRecordsContain(connectorName + ".inventory.customers", "tom@test.com"));
+        awaitAssert(() -> assertions.assertRecordsCount(dbServerName + ".inventory.customers", 5));
+        awaitAssert(() -> assertions.assertRecordsContain(dbServerName + ".inventory.customers", "tom@test.com"));
     }
 
     @Test
@@ -130,15 +133,15 @@ public class MySqlConnectorIT extends ConnectorTestBase {
     public void shouldBeDown() throws SQLException, IOException {
         kafkaConnectController.undeployConnector(connectorName);
         insertCustomer("Jerry", "Tester", "jerry@test.com");
-        awaitAssert(() -> assertions.assertRecordsCount(connectorName + ".inventory.customers", 5));
+        awaitAssert(() -> assertions.assertRecordsCount(dbServerName + ".inventory.customers", 5));
     }
 
     @Test
     @Order(6)
     public void shouldResumeStreamingAfterRedeployment() throws IOException, InterruptedException {
         kafkaConnectController.deployConnector(connectorName, connectorConfig);
-        awaitAssert(() -> assertions.assertRecordsCount(connectorName + ".inventory.customers", 6));
-        awaitAssert(() -> assertions.assertRecordsContain(connectorName + ".inventory.customers", "jerry@test.com"));
+        awaitAssert(() -> assertions.assertRecordsCount(dbServerName + ".inventory.customers", 6));
+        awaitAssert(() -> assertions.assertRecordsContain(dbServerName + ".inventory.customers", "jerry@test.com"));
     }
 
     @Test
@@ -147,7 +150,7 @@ public class MySqlConnectorIT extends ConnectorTestBase {
         operatorController.disable();
         kafkaConnectController.destroy();
         insertCustomer("Nibbles", "Tester", "nibbles@test.com");
-        awaitAssert(() -> assertions.assertRecordsCount(connectorName + ".inventory.customers", 6));
+        awaitAssert(() -> assertions.assertRecordsCount(dbServerName + ".inventory.customers", 6));
     }
 
     @Test
@@ -155,8 +158,8 @@ public class MySqlConnectorIT extends ConnectorTestBase {
     public void shouldResumeStreamingAfterCrash() throws InterruptedException {
         operatorController.enable();
         kafkaConnectController.waitForConnectCluster();
-        awaitAssert(() -> assertions.assertMinimalRecordsCount(connectorName + ".inventory.customers", 7));
-        awaitAssert(() -> assertions.assertRecordsContain(connectorName + ".inventory.customers", "nibbles@test.com"));
+        awaitAssert(() -> assertions.assertMinimalRecordsCount(dbServerName + ".inventory.customers", 7));
+        awaitAssert(() -> assertions.assertRecordsContain(dbServerName + ".inventory.customers", "nibbles@test.com"));
     }
 
 }
