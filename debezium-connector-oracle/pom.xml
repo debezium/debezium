@@ -184,6 +184,7 @@
                 <dependency>
                     <groupId>com.oracle.instantclient</groupId>
                     <artifactId>xstreams</artifactId>
+                    <scope>provided</scope>
                 </dependency>
             </dependencies>
         </profile>
@@ -196,6 +197,7 @@
                 <dependency>
                     <groupId>com.oracle.instantclient</groupId>
                     <artifactId>xstreams</artifactId>
+                    <scope>provided</scope>
                 </dependency>
             </dependencies>
             <build>
@@ -301,6 +303,7 @@
                 <dependency>
                     <groupId>com.oracle.instantclient</groupId>
                     <artifactId>xstreams</artifactId>
+                    <scope>provided</scope>
                 </dependency>
             </dependencies>
         </profile>
