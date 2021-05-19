@@ -33,6 +33,10 @@ public class XStreamAdapter extends AbstractStreamingAdapter {
 
     private static final String TYPE = "xstream";
 
+    public XStreamAdapter(OracleConnectorConfig connectorConfig) {
+        super(connectorConfig);
+    }
+
     @Override
     public String getType() {
         return TYPE;
@@ -56,13 +60,12 @@ public class XStreamAdapter extends AbstractStreamingAdapter {
     }
 
     @Override
-    public OffsetContext.Loader getOffsetContextLoader(OracleConnectorConfig connectorConfig) {
+    public OffsetContext.Loader getOffsetContextLoader() {
         return new XStreamOracleOffsetContextLoader(connectorConfig);
     }
 
     @Override
-    public StreamingChangeEventSource getSource(OracleConnectorConfig connectorConfig,
-                                                OffsetContext offsetContext,
+    public StreamingChangeEventSource getSource(OffsetContext offsetContext,
                                                 OracleConnection connection,
                                                 EventDispatcher<TableId> dispatcher,
                                                 ErrorHandler errorHandler,
@@ -80,5 +83,14 @@ public class XStreamAdapter extends AbstractStreamingAdapter {
                 clock,
                 schema,
                 streamingMetrics);
+    }
+
+    @Override
+    public TableNameCaseSensitivity getTableNameCaseSensitivity(OracleConnection connection) {
+        // Always use tablename case insensitivity true when on Oracle 11, otherwise false.
+        if (connection.getOracleVersion().getMajor() == 11) {
+            return TableNameCaseSensitivity.SENSITIVE;
+        }
+        return super.getTableNameCaseSensitivity(connection);
     }
 }

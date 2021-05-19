@@ -29,6 +29,10 @@ public class LogMinerAdapter extends AbstractStreamingAdapter {
 
     private static final String TYPE = "logminer";
 
+    public LogMinerAdapter(OracleConnectorConfig connectorConfig) {
+        super(connectorConfig);
+    }
+
     @Override
     public String getType() {
         return TYPE;
@@ -45,13 +49,12 @@ public class LogMinerAdapter extends AbstractStreamingAdapter {
     }
 
     @Override
-    public OffsetContext.Loader getOffsetContextLoader(OracleConnectorConfig connectorConfig) {
+    public OffsetContext.Loader getOffsetContextLoader() {
         return new LogMinerOracleOffsetContextLoader(connectorConfig);
     }
 
     @Override
-    public StreamingChangeEventSource getSource(OracleConnectorConfig connectorConfig,
-                                                OffsetContext offsetContext,
+    public StreamingChangeEventSource getSource(OffsetContext offsetContext,
                                                 OracleConnection connection,
                                                 EventDispatcher<TableId> dispatcher,
                                                 ErrorHandler errorHandler,
@@ -72,4 +75,5 @@ public class LogMinerAdapter extends AbstractStreamingAdapter {
                 jdbcConfig,
                 streamingMetrics);
     }
+
 }

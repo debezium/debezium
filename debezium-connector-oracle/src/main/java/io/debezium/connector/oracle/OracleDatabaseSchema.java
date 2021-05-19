@@ -8,6 +8,7 @@ package io.debezium.connector.oracle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.connector.oracle.StreamingAdapter.TableNameCaseSensitivity;
 import io.debezium.connector.oracle.antlr.OracleDdlParser;
 import io.debezium.relational.HistorizedRelationalDatabaseSchema;
 import io.debezium.relational.Table;
@@ -32,7 +33,7 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
 
     public OracleDatabaseSchema(OracleConnectorConfig connectorConfig, OracleValueConverters valueConverters,
                                 SchemaNameAdjuster schemaNameAdjuster, TopicSelector<TableId> topicSelector,
-                                OracleConnection connection) {
+                                TableNameCaseSensitivity tableNameCaseSensitivity) {
         super(connectorConfig, topicSelector, connectorConfig.getTableFilters().dataCollectionFilter(),
                 connectorConfig.getColumnFilter(),
                 new TableSchemaBuilder(
@@ -41,7 +42,7 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
                         connectorConfig.customConverterRegistry(),
                         connectorConfig.getSourceInfoStructMaker().schema(),
                         connectorConfig.getSanitizeFieldNames()),
-                connection.getTablenameCaseInsensitivity(connectorConfig),
+                TableNameCaseSensitivity.INSENSITIVE.equals(tableNameCaseSensitivity),
                 connectorConfig.getKeyMapper());
 
         this.ddlParser = new OracleDdlParser(valueConverters, connectorConfig.getTableFilters().dataCollectionFilter());
