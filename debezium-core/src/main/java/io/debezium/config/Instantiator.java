@@ -41,8 +41,8 @@ public class Instantiator {
     }
 
     @SuppressWarnings("unchecked")
-    private static <T, C> T getInstanceWithProvidedConstructorType(String className, Supplier<ClassLoader> classloaderSupplier, Class<C> constructorType,
-                                                                   C constructorValue) {
+    public static <T, C> T getInstanceWithProvidedConstructorType(String className, Supplier<ClassLoader> classloaderSupplier, Class<C> constructorType,
+                                                                  C constructorValue) {
         if (className != null) {
             ClassLoader classloader = classloaderSupplier != null ? classloaderSupplier.get()
                     : Configuration.class.getClassLoader();

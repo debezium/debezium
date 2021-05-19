@@ -25,13 +25,12 @@ import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.config.Field.ValidationOutput;
+import io.debezium.config.Instantiator;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.connector.oracle.logminer.HistoryRecorder;
-import io.debezium.connector.oracle.logminer.LogMinerAdapter;
 import io.debezium.connector.oracle.logminer.NeverHistoryRecorder;
 import io.debezium.connector.oracle.logminer.SqlUtils;
-import io.debezium.connector.oracle.xstream.XStreamAdapter;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.relational.ColumnFilterMode;
 import io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig;
@@ -522,7 +521,11 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
             @Override
             public StreamingAdapter getInstance(OracleConnectorConfig connectorConfig) {
-                return new XStreamAdapter(connectorConfig);
+                return Instantiator.getInstanceWithProvidedConstructorType(
+                        "io.debezium.connector.oracle.xstream.XStreamAdapter",
+                        StreamingAdapter.class::getClassLoader,
+                        OracleConnectorConfig.class,
+                        connectorConfig);
             }
         },
 
@@ -537,7 +540,11 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
             @Override
             public StreamingAdapter getInstance(OracleConnectorConfig connectorConfig) {
-                return new LogMinerAdapter(connectorConfig);
+                return Instantiator.getInstanceWithProvidedConstructorType(
+                        "io.debezium.connector.oracle.logminer.LogMinerAdapter",
+                        StreamingAdapter.class::getClassLoader,
+                        OracleConnectorConfig.class,
+                        connectorConfig);
             }
         };
 
