@@ -9,12 +9,12 @@ import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 
 /**
- * Integration tests for the Debezium Outbox extension, using default configuration from application.properties.
+ * Integration tests for the Debezium Outbox extension, enabling OpenTracing behavior by default.
  *
  * @author Chris Cranford
  */
 @QuarkusTest
-@TestProfile(OutboxProfiles.Default.class)
-public class OutboxTest extends AbstractOutboxTest {
+@TestProfile(OutboxProfiles.OpenTracing.class)
+public class OutboxOpenTracingTest extends AbstractOutboxTest {
 
 }

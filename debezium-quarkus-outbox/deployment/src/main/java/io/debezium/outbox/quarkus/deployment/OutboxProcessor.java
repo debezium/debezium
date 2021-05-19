@@ -27,13 +27,15 @@ import com.fasterxml.jackson.databind.JsonNode;
 
 import io.debezium.outbox.quarkus.ExportedEvent;
 import io.debezium.outbox.quarkus.internal.DebeziumTracerEventDispatcher;
-import io.debezium.outbox.quarkus.internal.EventDispatcher;
+import io.debezium.outbox.quarkus.internal.DefaultEventDispatcher;
 import io.quarkus.arc.deployment.AdditionalBeanBuildItem;
 import io.quarkus.deployment.Capabilities;
 import io.quarkus.deployment.Capability;
 import io.quarkus.deployment.annotations.BuildProducer;
 import io.quarkus.deployment.annotations.BuildStep;
-import io.quarkus.deployment.builditem.*;
+import io.quarkus.deployment.builditem.CombinedIndexBuildItem;
+import io.quarkus.deployment.builditem.FeatureBuildItem;
+import io.quarkus.deployment.builditem.GeneratedResourceBuildItem;
 import io.quarkus.deployment.builditem.nativeimage.ReflectiveClassBuildItem;
 import io.quarkus.hibernate.orm.deployment.PersistenceUnitDescriptorBuildItem;
 import io.quarkus.hibernate.orm.deployment.integration.HibernateOrmIntegrationStaticConfiguredBuildItem;
@@ -149,7 +151,9 @@ public final class OutboxProcessor {
             additionalBeanProducer.produce(AdditionalBeanBuildItem.unremovableOf(DebeziumTracerEventDispatcher.class));
             buildItemBuildProducer.produce(new OutboxOpenTracingBuildItem(true));
         }
-        additionalBeanProducer.produce(AdditionalBeanBuildItem.unremovableOf(EventDispatcher.class));
+        else {
+            additionalBeanProducer.produce(AdditionalBeanBuildItem.unremovableOf(DefaultEventDispatcher.class));
+        }
         generateHbmMapping(outboxBuildItem, generatedResourcesProducer);
     }
 
