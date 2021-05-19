@@ -63,9 +63,8 @@ class LogMinerQueryResultProcessor<SourceRecord extends SourceRecordWrapper> {
     private Scn currentOffsetCommitScn = Scn.NULL;
     private long stuckScnCounter = 0;
 
-    LogMinerQueryResultProcessor(ChangeEventSourceContext context, OracleConnection jdbcConnection,
-                                 OracleConnectorConfig connectorConfig, OracleStreamingChangeEventSourceMetrics streamingMetrics,
-                                 TransactionalBuffer transactionalBuffer,
+    LogMinerQueryResultProcessor(ChangeEventSourceContext context, OracleConnectorConfig connectorConfig,
+                                 OracleStreamingChangeEventSourceMetrics streamingMetrics, TransactionalBuffer transactionalBuffer,
                                  OracleOffsetContext offsetContext, OracleDatabaseSchema schema,
                                  EventDispatcher<TableId> dispatcher,
                                  Clock clock, HistoryRecorder historyRecorder) {
@@ -225,10 +224,15 @@ class LogMinerQueryResultProcessor<SourceRecord extends SourceRecordWrapper> {
                                 break;
                         }
 
-                        final Table table = schema.tableFor(tableId);
+                        Table table = schema.tableFor(tableId);
                         if (table == null) {
-                            LogMinerHelper.logWarn(streamingMetrics, "DML for table '{}' that is not known to this connector, skipping.", tableId);
-                            continue;
+                            if (connectorConfig.getTableFilters().dataCollectionFilter().isIncluded(tableId)) {
+                                table = dispatchSchemaChangeEventAndGetTableForNewMonitoredTable(tableId);
+                            }
+                            else {
+                                LogMinerHelper.logWarn(streamingMetrics, "DML for table '{}' that is not known to this connector, skipping.", tableId);
+                                continue;
+                            }
                         }
 
                         if (rollbackFlag == 1) {
@@ -284,6 +288,42 @@ class LogMinerQueryResultProcessor<SourceRecord extends SourceRecordWrapper> {
             return true;
         }
         return false;
+    }
+
+    private Table dispatchSchemaChangeEventAndGetTableForNewMonitoredTable(TableId tableId) throws SQLException {
+        try {
+            LOGGER.info("Table {} is new and will be monitored.", tableId);
+            offsetContext.event(tableId, Instant.now());
+            dispatcher.dispatchSchemaChangeEvent(
+                    tableId,
+                    new OracleSchemaChangeEventEmitter(
+                            connectorConfig,
+                            offsetContext,
+                            tableId,
+                            tableId.catalog(),
+                            tableId.schema(),
+                            getTableMetadataDdl(tableId),
+                            schema,
+                            Instant.now(),
+                            streamingMetrics));
+
+            return schema.tableFor(tableId);
+        }
+        catch (InterruptedException e) {
+            throw new DebeziumException("Failed to dispatch schema change event", e);
+        }
+    }
+
+    private String getTableMetadataDdl(TableId tableId) throws SQLException {
+        final String pdbName = connectorConfig.getPdbName();
+        // A separate connection must be used for this out-of-bands query while processing the LogMiner query results.
+        // This should have negligible overhead as this should happen rarely.
+        try (OracleConnection connection = new OracleConnection(connectorConfig.jdbcConfig(), () -> getClass().getClassLoader())) {
+            if (pdbName != null) {
+                connection.setSessionToPdb(pdbName);
+            }
+            return connection.getTableMetadataDdl(tableId);
+        }
     }
 
     /**

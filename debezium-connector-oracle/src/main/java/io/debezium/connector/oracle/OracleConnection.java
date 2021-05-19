@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.oracle;
 
+import java.sql.Clob;
 import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -25,6 +26,7 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.oracle.OracleConnectorConfig.ConnectorAdapter;
@@ -337,6 +339,32 @@ public class OracleConnection extends JdbcConnection {
             }
             throw new IllegalStateException("Could not get SCN");
         });
+    }
+
+    /**
+     * Generate a given table's DDL metadata.
+     *
+     * @param tableId table identifier, should never be {@code null}
+     * @return generated DDL
+     * @throws SQLException if an exception occurred obtaining the DDL metadata
+     */
+    public String getTableMetadataDdl(TableId tableId) throws SQLException {
+        try {
+            // The storage and segment attributes aren't necessary
+            executeWithoutCommitting("begin dbms_metadata.set_transform_param(DBMS_METADATA.SESSION_TRANSFORM, 'STORAGE', false); end;");
+            executeWithoutCommitting("begin dbms_metadata.set_transform_param(DBMS_METADATA.SESSION_TRANSFORM, 'SEGMENT_ATTRIBUTES', false); end;");
+            return queryAndMap("SELECT dbms_metadata.get_ddl('TABLE','" + tableId.table() + "','" + tableId.schema() + "') FROM DUAL", rs -> {
+                if (!rs.next()) {
+                    throw new DebeziumException("Could not get DDL metadata for table: " + tableId);
+                }
+
+                Object res = rs.getObject(1);
+                return ((Clob) res).getSubString(1, (int) ((Clob) res).length());
+            });
+        }
+        finally {
+            executeWithoutCommitting("begin dbms_metadata.set_transform_param(DBMS_METADATA.SESSION_TRANSFORM, 'DEFAULT'); end;");
+        }
     }
 
     public static String connectionString(Configuration config) {
