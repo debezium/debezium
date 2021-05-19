@@ -243,6 +243,9 @@ public interface OracleStreamingChangeEventSourceMetricsMXBean extends Streaming
     String getOffsetScn();
 
     /**
+     * Lag can temporarily be inaccurate on DST changes.
+     * This is because the timestamps received from LogMiner are in the database local time and do not contain time zone information.
+     *
      * @return lag in milliseconds of latest captured change timestamp from transaction logs and it's placement in the transaction buffer.
      */
     long getLagFromSourceInMilliseconds();
