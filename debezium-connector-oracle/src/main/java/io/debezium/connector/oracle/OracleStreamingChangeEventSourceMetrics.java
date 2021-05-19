@@ -108,7 +108,6 @@ public class OracleStreamingChangeEventSourceMetrics extends StreamingChangeEven
 
     private final Clock clock;
 
-    @VisibleForTesting
     public OracleStreamingChangeEventSourceMetrics(CdcSourceTaskContext taskContext, ChangeEventQueueMetrics changeEventQueueMetrics,
                                                    EventMetadataProvider metadataProvider,
                                                    OracleConnectorConfig connectorConfig) {
@@ -118,6 +117,7 @@ public class OracleStreamingChangeEventSourceMetrics extends StreamingChangeEven
     /**
      * Constructor that allows providing a clock to be used for Tests.
      */
+    @VisibleForTesting
     OracleStreamingChangeEventSourceMetrics(CdcSourceTaskContext taskContext, ChangeEventQueueMetrics changeEventQueueMetrics,
                                             EventMetadataProvider metadataProvider,
                                             OracleConnectorConfig connectorConfig,
