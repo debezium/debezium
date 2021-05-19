@@ -30,6 +30,8 @@ public class OracleErrorHandler extends ErrorHandler {
             return false;
         }
 
+        System.out.println(throwable.getMessage());
+
         return throwable.getMessage().startsWith("ORA-03135") || // connection lost
                 throwable.getMessage().startsWith("ORA-12543") || // TNS:destination host unreachable
                 throwable.getMessage().startsWith("ORA-00604") || // error occurred at recursive SQL level 1
@@ -40,7 +42,7 @@ public class OracleErrorHandler extends ErrorHandler {
                 throwable.getMessage().startsWith("ORA-01291") || // missing logfile
                 throwable.getCause() instanceof IOException ||
                 throwable instanceof SQLRecoverableException ||
-                throwable.getMessage().toUpperCase().startsWith("NO MORE DATA TO READ FROM SOCKET") ||
+                throwable.getMessage().toUpperCase().contains("NO MORE DATA TO READ FROM SOCKET") ||
                 (throwable.getCause() != null && throwable.getCause().getCause() instanceof NetException);
     }
 }
