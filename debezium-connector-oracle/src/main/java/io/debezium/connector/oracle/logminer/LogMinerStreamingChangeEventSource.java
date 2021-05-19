@@ -135,7 +135,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                     // todo: why can't OracleConnection be used rather than a Factory+JdbcConfiguration?
                     historyRecorder.prepare(streamingMetrics, jdbcConfiguration, connectorConfig.getLogMinerHistoryRetentionHours());
 
-                    final LogMinerQueryResultProcessor processor = new LogMinerQueryResultProcessor(context, jdbcConnection,
+                    final LogMinerQueryResultProcessor processor = new LogMinerQueryResultProcessor(context,
                             connectorConfig, streamingMetrics, transactionalBuffer, offsetContext, schema, dispatcher,
                             historyRecorder);
 
