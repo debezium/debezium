@@ -50,7 +50,9 @@ public class OutboxEventHbmWriter {
         entityType.getAttributes().add(createTypeAttribute(config));
         entityType.getAttributes().add(createTimestampAttribute(config));
         entityType.getAttributes().add(createPayloadAttribute(config, outboxEventEntityBuildItem));
-        entityType.getAttributes().add(createTracingSpanAttribute(config));
+        if (config.tracingEnabled) {
+            entityType.getAttributes().add(createTracingSpanAttribute(config));
+        }
 
         return mapping;
     }

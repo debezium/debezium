@@ -42,8 +42,7 @@ public abstract class AbstractEventDispatcher implements EventDispatcher {
     /**
      * Persists the map of key/value pairs to the database.
      *
-     * @param dataMap
-     *              the data map, should never be {@code null}
+     * @param dataMap the data map, should never be {@code null}
      */
     protected void persist(Map<String, Object> dataMap) {
         // Unwrap to Hibernate session and save
