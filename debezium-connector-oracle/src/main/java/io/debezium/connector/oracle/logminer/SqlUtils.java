@@ -56,7 +56,7 @@ public class SqlUtils {
 
     // LogMiner statements
     static final String BUILD_DICTIONARY = "BEGIN DBMS_LOGMNR_D.BUILD (options => DBMS_LOGMNR_D.STORE_IN_REDO_LOGS); END;";
-    static final String CURRENT_TIMESTAMP = "SELECT CURRENT_TIMESTAMP FROM DUAL";
+    static final String SELECT_SYSTIMESTAMP = "SELECT SYSTIMESTAMP FROM DUAL";
     static final String END_LOGMNR = "BEGIN SYS.DBMS_LOGMNR.END_LOGMNR(); END;";
 
     /**
