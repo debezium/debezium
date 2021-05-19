@@ -48,32 +48,34 @@ public class DB2ConnectorIT extends ConnectorTestBase {
 
     public static final String CONNECTOR_NAME = "inventory-connector-db2";
 
-    private static DB2Deployer dbDeployer;
     private static DB2Controller dbController;
     private static OkHttpClient httpClient = new OkHttpClient();
     private static ConnectorFactories connectorFactories = new ConnectorFactories();
     private static ConnectorConfigBuilder connectorConfig;
     private static String connectorName;
+    private static String dbServerName;
 
     @BeforeAll
     public static void setupDatabase() throws IOException, InterruptedException, ClassNotFoundException {
         Class.forName("com.ibm.db2.jcc.DB2Driver");
+
         if (!ConfigProperties.DATABASE_DB2_HOST.isPresent()) {
-            dbDeployer = new DB2Deployer(ocp)
+            dbController = new DB2Deployer(ocp)
                     .withProject(ConfigProperties.OCP_PROJECT_DB2)
                     .withDeployment(DB_DEPLOYMENT_PATH)
-                    .withServices(DB_SERVICE_PATH_LB, DB_SERVICE_PATH);
-            dbController = dbDeployer.deploy();
+                    .withServices(DB_SERVICE_PATH_LB, DB_SERVICE_PATH)
+                    .deploy();
             dbController.initialize();
         }
 
-        String id = testUtils.getUniqueId();
-        connectorName = CONNECTOR_NAME + "-" + id;
-        connectorConfig = connectorFactories.db2()
-                .put("database.server.name", connectorName);
+        connectorName = CONNECTOR_NAME + "-" + testUtils.getUniqueId();
+        dbServerName = connectorName.replaceAll("-", "_");
+        connectorConfig = connectorFactories.db2(dbServerName);
+
         if (ConfigProperties.DEPLOY_SERVICE_REGISTRY) {
             connectorConfig.addApicurioAvroSupport(registryController.getRegistryApiAddress());
         }
+
         kafkaConnectController.deployConnector(connectorName, connectorConfig);
     }
 
@@ -107,25 +109,25 @@ public class DB2ConnectorIT extends ConnectorTestBase {
     @Order(2)
     public void shouldCreateKafkaTopics() {
         assertions.assertTopicsExist(
-                connectorName + ".DB2INST1.CUSTOMERS",
-                connectorName + ".DB2INST1.ORDERS",
-                connectorName + ".DB2INST1.PRODUCTS",
-                connectorName + ".DB2INST1.PRODUCTS_ON_HAND");
+                dbServerName + ".DB2INST1.CUSTOMERS",
+                dbServerName + ".DB2INST1.ORDERS",
+                dbServerName + ".DB2INST1.PRODUCTS",
+                dbServerName + ".DB2INST1.PRODUCTS_ON_HAND");
     }
 
     @Test
     @Order(3)
     public void shouldContainRecordsInCustomersTopic() throws IOException {
-        kafkaConnectController.waitForDB2Snapshot(connectorName);
-        awaitAssert(() -> assertions.assertRecordsCount(connectorName + ".DB2INST1.CUSTOMERS", 4));
+        kafkaConnectController.waitForDB2Snapshot(dbServerName);
+        awaitAssert(() -> assertions.assertRecordsCount(dbServerName + ".DB2INST1.CUSTOMERS", 4));
     }
 
     @Test
     @Order(4)
     public void shouldStreamChanges() throws SQLException {
         insertCustomer("Tom", "Tester", "tom@test.com");
-        awaitAssert(() -> assertions.assertRecordsCount(connectorName + ".DB2INST1.CUSTOMERS", 5));
-        awaitAssert(() -> assertions.assertRecordsContain(connectorName + ".DB2INST1.CUSTOMERS", "tom@test.com"));
+        awaitAssert(() -> assertions.assertRecordsCount(dbServerName + ".DB2INST1.CUSTOMERS", 5));
+        awaitAssert(() -> assertions.assertRecordsContain(dbServerName + ".DB2INST1.CUSTOMERS", "tom@test.com"));
     }
 
     @Test
@@ -133,15 +135,15 @@ public class DB2ConnectorIT extends ConnectorTestBase {
     public void shouldBeDown() throws SQLException, IOException {
         kafkaConnectController.undeployConnector(connectorName);
         insertCustomer("Jerry", "Tester", "jerry@test.com");
-        awaitAssert(() -> assertions.assertRecordsCount(connectorName + ".DB2INST1.CUSTOMERS", 5));
+        awaitAssert(() -> assertions.assertRecordsCount(dbServerName + ".DB2INST1.CUSTOMERS", 5));
     }
 
     @Test
     @Order(6)
     public void shouldResumeStreamingAfterRedeployment() throws IOException, InterruptedException {
         kafkaConnectController.deployConnector(connectorName, connectorConfig);
-        awaitAssert(() -> assertions.assertRecordsCount(connectorName + ".DB2INST1.CUSTOMERS", 6));
-        awaitAssert(() -> assertions.assertRecordsContain(connectorName + ".DB2INST1.CUSTOMERS", "jerry@test.com"));
+        awaitAssert(() -> assertions.assertRecordsCount(dbServerName + ".DB2INST1.CUSTOMERS", 6));
+        awaitAssert(() -> assertions.assertRecordsContain(dbServerName + ".DB2INST1.CUSTOMERS", "jerry@test.com"));
     }
 
     @Test
@@ -150,7 +152,7 @@ public class DB2ConnectorIT extends ConnectorTestBase {
         operatorController.disable();
         kafkaConnectController.destroy();
         insertCustomer("Nibbles", "Tester", "nibbles@test.com");
-        awaitAssert(() -> assertions.assertRecordsCount(connectorName + ".DB2INST1.CUSTOMERS", 6));
+        awaitAssert(() -> assertions.assertRecordsCount(dbServerName + ".DB2INST1.CUSTOMERS", 6));
     }
 
     @Test
@@ -158,7 +160,7 @@ public class DB2ConnectorIT extends ConnectorTestBase {
     public void shouldResumeStreamingAfterCrash() throws InterruptedException {
         operatorController.enable();
         kafkaConnectController.waitForConnectCluster();
-        awaitAssert(() -> assertions.assertMinimalRecordsCount(connectorName + ".DB2INST1.CUSTOMERS", 7));
-        awaitAssert(() -> assertions.assertRecordsContain(connectorName + ".DB2INST1.CUSTOMERS", "nibbles@test.com"));
+        awaitAssert(() -> assertions.assertMinimalRecordsCount(dbServerName + ".DB2INST1.CUSTOMERS", 7));
+        awaitAssert(() -> assertions.assertRecordsContain(dbServerName + ".DB2INST1.CUSTOMERS", "nibbles@test.com"));
     }
 }
