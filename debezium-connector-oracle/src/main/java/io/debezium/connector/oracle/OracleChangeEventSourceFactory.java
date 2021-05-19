@@ -55,7 +55,6 @@ public class OracleChangeEventSourceFactory<SourceRecord extends SourceRecordWra
     @Override
     public StreamingChangeEventSource getStreamingChangeEventSource(OffsetContext offsetContext) {
         return configuration.getAdapter().getSource(
-                configuration,
                 offsetContext,
                 jdbcConnection,
                 dispatcher,

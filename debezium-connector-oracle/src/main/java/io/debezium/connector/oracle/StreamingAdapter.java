@@ -21,14 +21,50 @@ import io.debezium.util.Clock;
  */
 public interface StreamingAdapter {
 
+    /**
+     * Controls whether table names are viewed as case-sensitive or not.
+     */
+    enum TableNameCaseSensitivity {
+        /**
+         * Sensitive case implies that the table names are taken from the JDBC driver and kept as-is
+         * in the in-memory relational objects.  Any {@link TableId} that is obtained will always
+         * have a table-name in the case that the driver provided.  This is the default behavior
+         * for almost all cases.
+         */
+        SENSITIVE,
+
+        /**
+         * Insensitive case implies that the table names are taken from the JDBC driver and converted
+         * to lower-case in the in-memory relational objects.  Any {@link TableId} that is obtained
+         * will always have a table-name in lower case regardless of how it may be represented in
+         * the database.
+         */
+        INSENSITIVE
+    };
+
     String getType();
 
     HistoryRecordComparator getHistoryRecordComparator();
 
-    OffsetContext.Loader getOffsetContextLoader(OracleConnectorConfig connectorConfig);
+    OffsetContext.Loader getOffsetContextLoader();
 
-    StreamingChangeEventSource getSource(OracleConnectorConfig connectorConfig, OffsetContext offsetContext,
-                                         OracleConnection connection, EventDispatcher<TableId> dispatcher, ErrorHandler errorHandler, Clock clock,
-                                         OracleDatabaseSchema schema, OracleTaskContext taskContext, Configuration jdbcConfig,
+    StreamingChangeEventSource getSource(OffsetContext offsetContext, OracleConnection connection, EventDispatcher<TableId> dispatcher,
+                                         ErrorHandler errorHandler, Clock clock, OracleDatabaseSchema schema,
+                                         OracleTaskContext taskContext, Configuration jdbcConfig,
                                          OracleStreamingChangeEventSourceMetrics streamingMetrics);
+
+    /**
+     * Returns whether table names are case sensitive.
+     *
+     * By default the Oracle driver returns table names that are case sensitive.  The table names will
+     * be returned in upper-case by default and will only be returned in lower or mixed case when the
+     * table is created using double-quotes to preserve case.  The adapter aligns with the driver's
+     * behavior and enforces that table names are case sensitive by default.
+     *
+     * @param connection database connection, should never be {@code null}
+     * @return the case sensitivity setting for table names used by the connector's runtime adapter
+     */
+    default TableNameCaseSensitivity getTableNameCaseSensitivity(OracleConnection connection) {
+        return TableNameCaseSensitivity.SENSITIVE;
+    }
 }

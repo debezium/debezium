@@ -13,6 +13,13 @@ import io.debezium.document.Document;
  * @author Chris Cranford
  */
 public abstract class AbstractStreamingAdapter implements StreamingAdapter {
+
+    protected final OracleConnectorConfig connectorConfig;
+
+    public AbstractStreamingAdapter(OracleConnectorConfig connectorConfig) {
+        this.connectorConfig = connectorConfig;
+    }
+
     protected Scn resolveScn(Document document) {
         final String scn = document.getString(SourceInfo.SCN_KEY);
         if (scn == null) {
