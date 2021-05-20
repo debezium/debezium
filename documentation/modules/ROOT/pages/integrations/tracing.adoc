@@ -96,6 +96,12 @@ When an outbox even is emitted the extension will:
 * inject the span context into that `java.util.Properties` instance that is serialized into the `tracingspancontext` column
 * write the record into the database
 
+[NOTE]
+====
+The `smallrye-opentracing` dependency is an optional dependency in the Outbox extension. It can be disabled by setting an option `quarkus.debezium-outbox.tracing.enabled=false`
+in the Quarkus `application.properties` file.
+====
+
 == Event Router SMT
 
 The link:/documentation/reference/configuration/outbox-event-router[Event Router SMT] acts as an Outbox extension counterpart, it executes the same steps as the `ActivateTracingSpan` SMT, and is used instead of it.
