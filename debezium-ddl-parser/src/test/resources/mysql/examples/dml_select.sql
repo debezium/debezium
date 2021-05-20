@@ -136,3 +136,4 @@ SELECT trigger.num FROM test `trigger`;
 SELECT * FROM test LIMIT LIMIT1,LIMIT2;
 -- Functions
 SELECT mod(3,2);
+SELECT SCHEMA();
