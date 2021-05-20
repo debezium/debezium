@@ -40,7 +40,7 @@ public class OracleErrorHandler extends ErrorHandler {
                 throwable.getMessage().startsWith("ORA-01291") || // missing logfile
                 throwable.getCause() instanceof IOException ||
                 throwable instanceof SQLRecoverableException ||
-                throwable.getMessage().toUpperCase().startsWith("NO MORE DATA TO READ FROM SOCKET") ||
+                throwable.getMessage().toUpperCase().contains("NO MORE DATA TO READ FROM SOCKET") ||
                 (throwable.getCause() != null && throwable.getCause().getCause() instanceof NetException);
     }
 }
