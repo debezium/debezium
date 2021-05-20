@@ -101,7 +101,7 @@ public class SelectLobParserTest {
                 "BEGIN\n" +
                 " select \"CLOB_COL\" into loc_c from \"DEBEZIUM\".\"BIG_TABLE\" where \"ID\" = '651900002' and \"NAME\" = " +
                 "'person number 651900002' and \"AGE\" = '125' and \"ADRESS\" = 'street:651900002 av: 651900002 house: 651900002'" +
-                " and \"TD\" = TO_DATE('15-MAY-21', 'DD-MON-RR') and \"FLAG\" is null for update;";
+                " and \"TD\" = TO_DATE('15-MAY-21', 'DD-MON-RR') and \"FLAG\" IS NULL for update;";
 
         LogMinerDmlEntry entry = parser.parse(redoSql);
 
@@ -152,7 +152,7 @@ public class SelectLobParserTest {
                 "BEGIN\n" +
                 " select \"BLOB_COL\" into loc_b from \"DEBEZIUM\".\"BIG_TABLE\" where \"ID\" = '651900002' and \"NAME\" = " +
                 "'person number 651900002' and \"AGE\" = '125' and \"ADRESS\" = 'street:651900002 av: 651900002 house: 651900002'" +
-                " and \"TD\" = TO_DATE('15-MAY-21', 'DD-MON-RR') and \"FLAG\" is null for update;";
+                " and \"TD\" = TO_DATE('15-MAY-21', 'DD-MON-RR') and \"FLAG\" IS NULL for update;";
 
         LogMinerDmlEntry entry = parser.parse(redoSql);
 

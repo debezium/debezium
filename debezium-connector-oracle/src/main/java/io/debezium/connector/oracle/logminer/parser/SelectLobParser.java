@@ -222,13 +222,13 @@ public class SelectLobParser {
                 index += 3;
                 break;
             }
-            else if (initialSpace && c == 'i' && lookAhead == 's') {
+            else if (initialSpace && c == 'I' && lookAhead == 'S') {
                 char lookAhead2 = (i + 2 < sql.length()) ? sql.charAt(i + 2) : 0;
                 if (lookAhead2 == ' ') {
                     index += 4;
                     break;
                 }
-                throw new ParsingException(null, "Expected 'is' at index " + i + ": " + sql);
+                throw new ParsingException(null, "Expected 'IS' at index " + i + ": " + sql);
             }
             else {
                 throw new ParsingException(null, "Failed to parse operator at index " + i + ": " + sql);
