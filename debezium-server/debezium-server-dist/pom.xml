@@ -92,6 +92,10 @@
                     <groupId>io.debezium</groupId>
                     <artifactId>debezium-server-kafka</artifactId>
                 </dependency>
+                <dependency>
+                    <groupId>io.debezium</groupId>
+                    <artifactId>debezium-server-pravega</artifactId>
+                </dependency>
             </dependencies>
             <build>
                 <plugins>
