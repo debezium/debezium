@@ -53,6 +53,14 @@ endif::product[]
 
 An overview of the MySQL topologies that the connector supports is useful for planning your application. To optimally configure and run a {prodname} MySQL connector, it is helpful to understand how the connector tracks the structure of tables, exposes schema changes, performs snapshots, and determines Kafka topic names.
 
+ifdef::community[]
+[NOTE]
+====
+The {prodname} MySQL connector has yet to be tested with MariaDB, but multiple reports from the community indicate successful usage of the connector with this database.
+Official support for MariaDB is planned for a future {prodname} version.
+====
+endif::community[]
+
 ifdef::product[]
 Details are in the following topics:
 
