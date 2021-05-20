@@ -17,6 +17,7 @@
         <version.pulsar>2.5.2</version.pulsar>
         <version.eventhubs>5.1.1</version.eventhubs>
         <version.jedis>3.5.2</version.jedis>
+        <version.pravega>0.9.0</version.pravega>
 
         <version.commons.logging>1.2</version.commons.logging>
     </properties>
@@ -121,6 +122,23 @@
                 <groupId>io.debezium</groupId>
                 <artifactId>debezium-testing-testcontainers</artifactId>
                 <version>${project.version}</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>io.pravega</groupId>
+                <artifactId>pravega-client</artifactId>
+                <version>${version.pravega}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.pravega</groupId>
+                <artifactId>pravega-standalone</artifactId>
+                <version>${version.pravega}</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>io.pravega</groupId>
+                <artifactId>pravega-test-testcommon</artifactId>
+                <version>${version.pravega}</version>
                 <scope>test</scope>
             </dependency>
         </dependencies>
