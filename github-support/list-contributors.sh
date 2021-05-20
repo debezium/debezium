@@ -32,6 +32,7 @@ jq -r '.github_url + " " + .name' $CONTRIBUTORS_LIST_JSON > $CONTRIBUTORS_NAMES
 
 while IFS=" " read -r URL NAME;
 do
+  NAME=`echo "$NAME" | tr "/" " "`
   if [[ -z "$NAME" ]]; then
     if grep -qi "^$URL" $CONTRIBUTORS_ALIASES; then
         REAL_NAME=`grep -i "^$URL" $CONTRIBUTORS_ALIASES | head -1 | awk '{split($0,a,","); print a[2]}'`
