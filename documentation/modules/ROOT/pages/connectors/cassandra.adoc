@@ -167,13 +167,11 @@ For example, consider a Cassandra installation with an `inventory` keyspace that
 [[cassandra-schema-evolution]]
 === Schema Evolution
 
-DDLs are not recorded in commit logs. When the schema of a table change, this change is issued from one of the Cassandra node and propagated to other nodes via Gossip Protocol. This implies detection of schema changes are achieved on a best-effort basis. This is done by periodically polling the schema of each cdc-enabled table in the cluster via a Cassandra driver, and then update the cached version of the schema. Because of this implementation, if a new column is added to a table and then writes are issued against that column immediately, it is possible that data from that column will not be reflected in the CDC event. This is why it is recommened to pause for some time (configured with `schema.refresh.interval.ms`) after issuing a schema change.
+DDLs are not recorded in commit logs. When the schema of a table change, this change is issued from one of the Cassandra node and propagated to other nodes via Gossip Protocol.
 
-**TODO**: it may be possible to reactively refresh schema whenever an unexpect column appears in a mutation to improve schema change detection; worth looking into.
+Schema changes in Cassandra will be detected less than 1s by the implemented SchemaChangeListener, which will then update the Schema Instance loaded from Cassandra as well as the Kafka key value schemas cached upon starting.
 
 When sending a message to a topic, the Kafka Connect schema for the key and the value will be automatically registered in the Confluent Schema Registry under the subject t-key and t-value, respectively, if the compatibility test passes. Although it is possible to replay a history of all table schemas via the Schema Registry, only the latest schema of each table is used to generate CDC events.
-
-**TODO**: look into whether it is possible to leverage schema history to rebuild schema that exist at the specific position in the commit log, rather than the current schema, when restarting the connector. I don't think it is possible right now, because writes to Cassandra node are not received in order.
 
 [[cassandra-events]]
 === Events
