@@ -21,6 +21,7 @@
         <module>debezium-server-redis</module>
         <module>debezium-server-dist</module>
         <module>debezium-server-kafka</module>
+        <module>debezium-server-pravega</module>
     </modules>
 
     <dependencyManagement>
