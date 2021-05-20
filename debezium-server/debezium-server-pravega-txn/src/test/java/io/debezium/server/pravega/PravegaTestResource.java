@@ -34,7 +34,8 @@ public class PravegaTestResource implements QuarkusTestResourceLifecycleManager 
                 .build();
         try {
             localPravega.start();
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             throw new RuntimeException(e);
         }
         return Collections.singletonMap("pravega.controller.uri", getControllerUri());
@@ -44,7 +45,8 @@ public class PravegaTestResource implements QuarkusTestResourceLifecycleManager 
     public void stop() {
         try {
             localPravega.close();
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             throw new RuntimeException(e);
         }
     }

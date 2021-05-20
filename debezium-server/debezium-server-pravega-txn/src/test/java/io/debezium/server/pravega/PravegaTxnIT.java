@@ -58,8 +58,8 @@ public class PravegaTxnIT {
 
         URI controllerURI = URI.create(PravegaTestResource.getControllerUri());
         ClientConfig clientConfig = ClientConfig.builder()
-        		.controllerURI(controllerURI)
-        		.build();
+                .controllerURI(controllerURI)
+                .build();
         ReaderGroupConfig readerGroupConfig = ReaderGroupConfig.builder()
                 .stream(Stream.of(STREAM_NAME, STREAM_NAME))
                 .disableAutomaticCheckpoints()
@@ -67,7 +67,7 @@ public class PravegaTxnIT {
         try (final StreamManager streamManager = StreamManager.create(controllerURI)) {
             streamManager.createScope(STREAM_NAME);
             StreamConfiguration streamConfig = StreamConfiguration.builder()
-            		.scalingPolicy(ScalingPolicy.fixed(1))
+                    .scalingPolicy(ScalingPolicy.fixed(1))
                     .build();
             streamManager.createStream(STREAM_NAME, STREAM_NAME, streamConfig);
         }
@@ -78,7 +78,7 @@ public class PravegaTxnIT {
 
         ReaderConfig readerConfig = ReaderConfig.builder().build();
         reader = EventStreamClientFactory.withScope(STREAM_NAME, clientConfig)
-        		.createReader("0", STREAM_NAME, new UTF8StringSerializer(), readerConfig);
+                .createReader("0", STREAM_NAME, new UTF8StringSerializer(), readerConfig);
     }
 
     void connectorCompleted(@Observes ConnectorCompletedEvent event) throws Exception {

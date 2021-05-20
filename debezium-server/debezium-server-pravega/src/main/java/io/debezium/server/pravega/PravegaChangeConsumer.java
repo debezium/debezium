@@ -29,7 +29,7 @@ import io.pravega.client.stream.EventWriterConfig;
 import io.pravega.client.stream.impl.ByteArraySerializer;
 
 @Named("pravega")
-public class PravegaChangeConsumer extends BaseChangeConsumer implements ChangeConsumer<ChangeEvent<Object,Object>> {
+public class PravegaChangeConsumer extends BaseChangeConsumer implements ChangeConsumer<ChangeEvent<Object, Object>> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PravegaChangeConsumer.class);
 
@@ -37,7 +37,7 @@ public class PravegaChangeConsumer extends BaseChangeConsumer implements ChangeC
     private static final String PROP_CONTROLLER = PROP_PREFIX + "controller.uri";
     private static final String PROP_SCOPE = PROP_PREFIX + "scope";
 
-    private final Map<String,EventStreamWriter<byte[]>> writers = new HashMap<>();
+    private final Map<String, EventStreamWriter<byte[]>> writers = new HashMap<>();
 
     @ConfigProperty(name = PROP_CONTROLLER, defaultValue = "tcp://localhost:9090")
     URI controllerUri;
@@ -68,14 +68,15 @@ public class PravegaChangeConsumer extends BaseChangeConsumer implements ChangeC
     }
 
     @Override
-    public void handleBatch(List<ChangeEvent<Object,Object>> records, RecordCommitter<ChangeEvent<Object,Object>> committer) throws InterruptedException {
+    public void handleBatch(List<ChangeEvent<Object, Object>> records, RecordCommitter<ChangeEvent<Object, Object>> committer) throws InterruptedException {
         for (ChangeEvent<Object, Object> changeEvent : records) {
             String streamName = streamNameMapper.map(changeEvent.destination());
             final EventStreamWriter<byte[]> writer = writers.computeIfAbsent(streamName, (stream) -> createWriter(stream));
             if (changeEvent.key() != null) {
                 writer.writeEvent(getString(changeEvent.key()), getBytes(changeEvent.value()));
-            } else {
-                writer.writeEvent(getBytes(changeEvent.value()));                
+            }
+            else {
+                writer.writeEvent(getBytes(changeEvent.value()));
             }
             committer.markProcessed(changeEvent);
         }

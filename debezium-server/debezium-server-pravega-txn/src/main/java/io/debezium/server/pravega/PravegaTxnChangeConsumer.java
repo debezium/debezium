@@ -31,7 +31,7 @@ import io.pravega.client.stream.TxnFailedException;
 import io.pravega.client.stream.impl.ByteArraySerializer;
 
 @Named("pravega-txn")
-public class PravegaTxnChangeConsumer extends BaseChangeConsumer implements ChangeConsumer<ChangeEvent<Object,Object>> {
+public class PravegaTxnChangeConsumer extends BaseChangeConsumer implements ChangeConsumer<ChangeEvent<Object, Object>> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PravegaTxnChangeConsumer.class);
 
@@ -39,8 +39,8 @@ public class PravegaTxnChangeConsumer extends BaseChangeConsumer implements Chan
     private static final String PROP_CONTROLLER = PROP_PREFIX + "controller.uri";
     private static final String PROP_SCOPE = PROP_PREFIX + "scope";
 
-    private final Map<String,TransactionalEventStreamWriter<byte[]>> writers = new HashMap<>();
-    private final Map<String,Transaction<byte[]>> txns = new HashMap<>();
+    private final Map<String, TransactionalEventStreamWriter<byte[]>> writers = new HashMap<>();
+    private final Map<String, Transaction<byte[]>> txns = new HashMap<>();
 
     @ConfigProperty(name = PROP_CONTROLLER, defaultValue = "tcp://localhost:9090")
     URI controllerUri;
@@ -71,17 +71,19 @@ public class PravegaTxnChangeConsumer extends BaseChangeConsumer implements Chan
     }
 
     @Override
-    public void handleBatch(List<ChangeEvent<Object,Object>> records, RecordCommitter<ChangeEvent<Object,Object>> committer) throws InterruptedException {
+    public void handleBatch(List<ChangeEvent<Object, Object>> records, RecordCommitter<ChangeEvent<Object, Object>> committer) throws InterruptedException {
         for (ChangeEvent<Object, Object> changeEvent : records) {
             String streamName = streamNameMapper.map(changeEvent.destination());
             final Transaction<byte[]> txn = txns.computeIfAbsent(streamName, (stream) -> createTxn(stream));
             try {
                 if (changeEvent.key() != null) {
                     txn.writeEvent(getString(changeEvent.key()), getBytes(changeEvent.value()));
-                } else {
-                    txn.writeEvent(getBytes(changeEvent.value()));                
                 }
-            } catch (TxnFailedException e) {
+                else {
+                    txn.writeEvent(getBytes(changeEvent.value()));
+                }
+            }
+            catch (TxnFailedException e) {
                 throw new RuntimeException(e);
             }
             committer.markProcessed(changeEvent);
@@ -89,7 +91,8 @@ public class PravegaTxnChangeConsumer extends BaseChangeConsumer implements Chan
         txns.values().forEach(t -> {
             try {
                 t.commit();
-            } catch (TxnFailedException e) {
+            }
+            catch (TxnFailedException e) {
                 throw new RuntimeException(e);
             }
         });
