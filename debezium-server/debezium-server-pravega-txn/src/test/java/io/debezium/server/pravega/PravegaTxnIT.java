@@ -91,7 +91,10 @@ public class PravegaTxnIT {
     public void testPravega() throws Exception {
         final List<String> records = new ArrayList<>();
         Awaitility.await().atMost(Duration.ofSeconds(TestConfigSource.waitForSeconds())).until(() -> {
-            records.add(reader.readNextEvent(2000).getEvent());
+            String event;
+            if ((event = reader.readNextEvent(2000).getEvent()) != null) {
+                records.add(event);
+            }
             return records.size() >= MESSAGE_COUNT;
         });
     }
