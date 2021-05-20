@@ -1473,6 +1473,13 @@ public class JdbcConnection implements AutoCloseable {
         return row;
     }
 
+    /**
+     * Converts a table id into a string with all components of the id quoted so non-alphanumeric
+     * characters are properly handled.
+     *
+     * @param tableId
+     * @return formatted string
+     */
     public String quotedTableIdString(TableId tableId) {
         return tableId.toDoubleQuotedString();
     }
