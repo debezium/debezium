@@ -30,8 +30,6 @@ public class OracleErrorHandler extends ErrorHandler {
             return false;
         }
 
-        System.out.println(throwable.getMessage());
-
         return throwable.getMessage().startsWith("ORA-03135") || // connection lost
                 throwable.getMessage().startsWith("ORA-12543") || // TNS:destination host unreachable
                 throwable.getMessage().startsWith("ORA-00604") || // error occurred at recursive SQL level 1
