@@ -83,11 +83,11 @@ public class EventDispatcher {
                 .withTag(TYPE, event.getAggregateType())
                 .withTag(TIMESTAMP, event.getTimestamp().toString());
 
-        try (final Scope outboxSpanScope = spanBuilder.startActive(true)) {
+        try (final Scope outboxSpanScope = tracer.scopeManager().activate(spanBuilder.start())) {
+            final Span activeSpan = tracer.scopeManager().activeSpan();
 
-            Tags.COMPONENT.set(outboxSpanScope.span(), TRACING_COMPONENT);
-            tracer.inject(outboxSpanScope.span().context(),
-                    Format.Builtin.TEXT_MAP, exportedSpanData);
+            Tags.COMPONENT.set(activeSpan, TRACING_COMPONENT);
+            tracer.inject(activeSpan.context(), Format.Builtin.TEXT_MAP, exportedSpanData);
 
             // Define the entity map-mode object using property names and values
             final HashMap<String, Object> dataMap = new HashMap<>();
