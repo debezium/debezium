@@ -227,7 +227,7 @@ class LogMinerQueryResultProcessor<SourceRecord extends SourceRecordWrapper> {
                         Table table = schema.tableFor(tableId);
                         if (table == null) {
                             if (connectorConfig.getTableFilters().dataCollectionFilter().isIncluded(tableId)) {
-                                table = dispatchSchemaChangeEventAndGetTableForNewMonitoredTable(tableId);
+                                table = dispatchSchemaChangeEventAndGetTableForNewCapturedTable(tableId);
                             }
                             else {
                                 LogMinerHelper.logWarn(streamingMetrics, "DML for table '{}' that is not known to this connector, skipping.", tableId);
@@ -290,9 +290,9 @@ class LogMinerQueryResultProcessor<SourceRecord extends SourceRecordWrapper> {
         return false;
     }
 
-    private Table dispatchSchemaChangeEventAndGetTableForNewMonitoredTable(TableId tableId) throws SQLException {
+    private Table dispatchSchemaChangeEventAndGetTableForNewCapturedTable(TableId tableId) throws SQLException {
         try {
-            LOGGER.info("Table {} is new and will be monitored.", tableId);
+            LOGGER.info("Table {} is new and will be captured.", tableId);
             offsetContext.event(tableId, Instant.now());
             dispatcher.dispatchSchemaChangeEvent(
                     tableId,
