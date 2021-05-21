@@ -157,7 +157,7 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
         Table table = schema.tableFor(tableId);
         if (table == null) {
             if (connectorConfig.getTableFilters().dataCollectionFilter().isIncluded(tableId)) {
-                LOGGER.info("Table {} is new and will be monitored.", tableId);
+                LOGGER.info("Table {} is new and will be captured.", tableId);
                 dispatcher.dispatchSchemaChangeEvent(
                         tableId,
                         new OracleSchemaChangeEventEmitter(
