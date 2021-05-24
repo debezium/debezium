@@ -5,11 +5,14 @@
  */
 package io.debezium.server.pravega;
 
+import java.time.Duration;
 import java.util.Collections;
 import java.util.Map;
 
-import io.pravega.local.LocalPravegaEmulator;
-import io.pravega.test.common.TestUtils;
+import org.testcontainers.containers.FixedHostPortGenericContainer;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.wait.strategy.Wait;
+
 import io.quarkus.test.common.QuarkusTestResourceLifecycleManager;
 
 /**
@@ -20,39 +23,40 @@ import io.quarkus.test.common.QuarkusTestResourceLifecycleManager;
  */
 public class PravegaTestResource implements QuarkusTestResourceLifecycleManager {
 
-    static LocalPravegaEmulator localPravega;
+    private static final String PRAVEGA_VERSION = "0.9.0";
+    public static final int CONTROLLER_PORT = 9090;
+    public static final int SEGMENT_STORE_PORT = 12345;
+    public static final String PRAVEGA_IMAGE = "pravega/pravega:" + PRAVEGA_VERSION;
+
+    @SuppressWarnings("deprecation")
+    private static final GenericContainer<?> container = new FixedHostPortGenericContainer<>(PRAVEGA_IMAGE)
+            .withFixedExposedPort(CONTROLLER_PORT, CONTROLLER_PORT)
+            .withFixedExposedPort(SEGMENT_STORE_PORT, SEGMENT_STORE_PORT)
+            .withStartupTimeout(Duration.ofSeconds(90))
+            .waitingFor(Wait.forLogMessage(".*Starting gRPC server listening on port: 9090.*", 1))
+            .withCommand("standalone");
 
     @Override
     public Map<String, String> start() {
-        localPravega = LocalPravegaEmulator.builder()
-                .controllerPort(TestUtils.getAvailableListenPort())
-                .segmentStorePort(TestUtils.getAvailableListenPort())
-                .zkPort(TestUtils.getAvailableListenPort())
-                .enableRestServer(false)
-                .enableAuth(false)
-                .enableTls(false)
-                .build();
-        try {
-            localPravega.start();
-        }
-        catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+        container.start();
+
         return Collections.singletonMap("pravega.controller.uri", getControllerUri());
     }
 
     @Override
     public void stop() {
         try {
-            localPravega.close();
+            if (container != null) {
+                container.stop();
+            }
         }
         catch (Exception e) {
-            throw new RuntimeException(e);
+            // ignored
         }
     }
 
     public static String getControllerUri() {
-        return localPravega.getInProcPravegaCluster().getControllerURI();
+        return "tcp://" + container.getHost() + ":" + container.getMappedPort(CONTROLLER_PORT);
     }
 
 }
