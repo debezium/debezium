@@ -5,7 +5,6 @@
  */
 package io.debezium.server.pravega;
 
-import java.io.IOException;
 import java.net.URI;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -50,12 +49,22 @@ public class PravegaIT {
         Testing.Files.createTestingFile(TestConfigSource.OFFSET_STORE_PATH);
     }
 
+    void setupDependencies(@Observes ConnectorStartedEvent event) {
+        Testing.Print.enable();
+    }
+
+    void connectorCompleted(@Observes ConnectorCompletedEvent event) {
+        if (!event.isSuccess()) {
+            throw new RuntimeException(event.getError().get());
+        }
+    }
+
     /**
      * Creates a reader where scope name, stream name and reader group name are STREAM_NAME.
+     * Consumes 4 events using the reader.
      */
-    void setupDependencies(@Observes ConnectorStartedEvent event) throws IOException {
-        Testing.Print.enable();
-
+    @Test
+    public void testPravega() {
         URI controllerURI = URI.create(PravegaTestResource.getControllerUri());
         ClientConfig clientConfig = ClientConfig.builder()
                 .controllerURI(controllerURI)
@@ -79,16 +88,7 @@ public class PravegaIT {
         ReaderConfig readerConfig = ReaderConfig.builder().build();
         reader = EventStreamClientFactory.withScope(STREAM_NAME, clientConfig)
                 .createReader("0", STREAM_NAME, new UTF8StringSerializer(), readerConfig);
-    }
 
-    void connectorCompleted(@Observes ConnectorCompletedEvent event) throws Exception {
-        if (!event.isSuccess()) {
-            throw new RuntimeException(event.getError().get());
-        }
-    }
-
-    @Test
-    public void testPravega() throws Exception {
         final List<String> records = new ArrayList<>();
         Awaitility.await().atMost(Duration.ofSeconds(TestConfigSource.waitForSeconds())).until(() -> {
             String event;
