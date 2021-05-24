@@ -8,7 +8,7 @@ We currently have the following connectors:
 * xref:connectors/mysql.adoc[MySQL]
 * xref:connectors/postgresql.adoc[PostgreSQL]
 * xref:connectors/sqlserver.adoc[SQL Server]
-* xref:connectors/oracle.adoc[Oracle] (Incubating)
+* xref:connectors/oracle.adoc[Oracle]
 * xref:connectors/db2.adoc[Db2]
 * xref:connectors/cassandra.adoc[Cassandra] (Incubating)
 * xref:connectors/vitess.adoc[Vitess] (Incubating)

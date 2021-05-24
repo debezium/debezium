@@ -1021,7 +1021,8 @@ public class JdbcValueConverters implements ValueConverterProvider {
     }
 
     protected Object toBigDecimal(Column column, Field fieldDefn, Object data) {
-        return convertValue(column, fieldDefn, data, BigDecimal.ZERO, (r) -> {
+        BigDecimal fallback = withScaleAdjustedIfNeeded(column, BigDecimal.ZERO);
+        return convertValue(column, fieldDefn, data, fallback, (r) -> {
             if (data instanceof BigDecimal) {
                 r.deliver(data);
             }

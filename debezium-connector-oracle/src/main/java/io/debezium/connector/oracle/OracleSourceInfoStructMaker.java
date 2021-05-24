@@ -39,13 +39,13 @@ public class OracleSourceInfoStructMaker extends AbstractSourceInfoStructMaker<S
         final String commitScn = sourceInfo.getCommitScn() == null ? null : sourceInfo.getCommitScn().toString();
 
         final Struct ret = super.commonStruct(sourceInfo)
-                .put(SourceInfo.SCHEMA_NAME_KEY, sourceInfo.getTableId().schema())
-                .put(SourceInfo.TABLE_NAME_KEY, sourceInfo.getTableId().table())
+                .put(SourceInfo.SCHEMA_NAME_KEY, sourceInfo.tableSchema())
+                .put(SourceInfo.TABLE_NAME_KEY, sourceInfo.table())
                 .put(SourceInfo.TXID_KEY, sourceInfo.getTransactionId())
                 .put(SourceInfo.SCN_KEY, scn);
 
         if (sourceInfo.getLcrPosition() != null) {
-            ret.put(SourceInfo.LCR_POSITION_KEY, sourceInfo.getLcrPosition().toString());
+            ret.put(SourceInfo.LCR_POSITION_KEY, sourceInfo.getLcrPosition());
         }
         if (commitScn != null) {
             ret.put(SourceInfo.COMMIT_SCN_KEY, commitScn);

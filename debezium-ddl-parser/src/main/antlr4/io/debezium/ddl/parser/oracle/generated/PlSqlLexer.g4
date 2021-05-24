@@ -5,7 +5,7 @@
  * Oracle(c) PL/SQL 11g Parser
  *
  * Copyright (c) 2009-2011 Alexandre Porcelli <alexandre.porcelli@gmail.com>
- * Copyright (c) 2015-2017 Ivan Kochurkin (KvanTTT, kvanttt@gmail.com, Positive Technologies).
+ * Copyright (c) 2015-2019 Ivan Kochurkin (KvanTTT, kvanttt@gmail.com, Positive Technologies).
  * Copyright (c) 2017 Mark Adams <madams51703@gmail.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,6 +22,18 @@
  */
 
 lexer grammar PlSqlLexer;
+
+options {
+    superClass=PlSqlLexerBase;
+}
+
+@header {
+    import io.debezium.ddl.parser.oracle.PlSqlLexerBase;
+}
+
+@lexer::postinclude {
+#include <PlSqlLexerBase.h>
+}
 
 ABORT:                        'ABORT';
 ABS:                          'ABS';
@@ -106,6 +118,7 @@ AUTHID:                       'AUTHID';
 AUTHORIZATION:                'AUTHORIZATION';
 AUTOALLOCATE:                 'AUTOALLOCATE';
 AUTO:                         'AUTO';
+AUTOBACKUP:                   'AUTOBACKUP';
 AUTOEXTEND:                   'AUTOEXTEND';
 AUTO_LOGIN:                   'AUTO_LOGIN';
 AUTOMATIC:                    'AUTOMATIC';
@@ -115,6 +128,7 @@ AVAILABILITY:                 'AVAILABILITY';
 AVRO:                         'AVRO';
 BACKGROUND:                   'BACKGROUND';
 BACKUP:                       'BACKUP';
+BACKUPSET:                    'BACKUPSET';
 BASIC:                        'BASIC';
 BASICFILE:                    'BASICFILE';
 BATCH:                        'BATCH';
@@ -193,6 +207,7 @@ CERTIFICATE:                  'CERTIFICATE';
 CFILE:                        'CFILE';
 CHAINED:                      'CHAINED';
 CHANGE:                       'CHANGE';
+CHANGETRACKING:               'CHANGETRACKING';
 CHANGE_DUPKEY_ERROR_INDEX:    'CHANGE_DUPKEY_ERROR_INDEX';
 CHARACTER:                    'CHARACTER';
 CHAR:                         'CHAR';
@@ -339,6 +354,7 @@ DATABASE:                     'DATABASE';
 DATA:                         'DATA';
 DATAFILE:                     'DATAFILE';
 DATAFILES:                    'DATAFILES';
+DATAGUARDCONFIG:              'DATAGUARDCONFIG';
 DATAMOVEMENT:                 'DATAMOVEMENT';
 DATAOBJNO:                    'DATAOBJNO';
 DATAOBJ_TO_MAT_PARTITION:     'DATAOBJ_TO_MAT_PARTITION';
@@ -411,6 +427,7 @@ DISCARD:                      'DISCARD';
 DISCONNECT:                   'DISCONNECT';
 DISK:                         'DISK';
 DISKGROUP:                    'DISKGROUP';
+DISKGROUP_PLUS:               '\'+ DISKGROUP';
 DISKS:                        'DISKS';
 DISMOUNT:                     'DISMOUNT';
 DISTINCT:                     'DISTINCT';
@@ -433,6 +450,7 @@ DROP_GROUP:                   'DROP_GROUP';
 DSINTERVAL_UNCONSTRAINED:     'DSINTERVAL_UNCONSTRAINED';
 DST_UPGRADE_INSERT_CONV:      'DST_UPGRADE_INSERT_CONV';
 DUMP:                         'DUMP';
+DUMPSET:                      'DUMPSET';
 DUPLICATE:                    'DUPLICATE';
 DV:                           'DV';
 DYNAMIC:                      'DYNAMIC';
@@ -506,6 +524,7 @@ EXPLOSION:                    'EXPLOSION';
 EXPORT:                       'EXPORT';
 EXPR_CORR_CHECK:              'EXPR_CORR_CHECK';
 EXPRESS:                      'EXPRESS';
+EXTENDED:                     'EXTENDED';
 EXTENDS:                      'EXTENDS';
 EXTENT:                       'EXTENT';
 EXTENTS:                      'EXTENTS';
@@ -1113,7 +1132,7 @@ NO_XML_QUERY_REWRITE:         'NO_XML_QUERY_REWRITE';
 NO_ZONEMAP:                   'NO_ZONEMAP';
 NTH_VALUE:                    'NTH_VALUE';
 NULLIF:                       'NULLIF';
-NULL:                         'NULL';
+NULL_:                        'NULL';
 NULLS:                        'NULLS';
 NUMBER:                       'NUMBER';
 NUMERIC:                      'NUMERIC';
@@ -1142,6 +1161,7 @@ OLTP:                         'OLTP';
 OMIT:                         'OMIT';
 ONE:                          'ONE';
 ONLINE:                       'ONLINE';
+ONLINELOG:                    'ONLINELOG';
 ONLY:                         'ONLY';
 ON:                           'ON';
 OPAQUE:                       'OPAQUE';
@@ -1211,6 +1231,7 @@ PACKAGES:                     'PACKAGES';
 PARALLEL_ENABLE:              'PARALLEL_ENABLE';
 PARALLEL_INDEX:               'PARALLEL_INDEX';
 PARALLEL:                     'PARALLEL';
+PARAMETERFILE:                'PARAMETERFILE';
 PARAMETERS:                   'PARAMETERS';
 PARAM:                        'PARAM';
 PARENT:                       'PARENT';
@@ -1247,14 +1268,14 @@ PCTTHRESHOLD:                 'PCTTHRESHOLD';
 PCTUSED:                      'PCTUSED';
 PCTVERSION:                   'PCTVERSION';
 PENDING:                      'PENDING';
-PERCENT_FOUND:                '%FOUND';
-PERCENT_ISOPEN:               '%ISOPEN';
-PERCENT_NOTFOUND:             '%NOTFOUND';
+PERCENT_FOUND:                '%' SPACE* 'FOUND';
+PERCENT_ISOPEN:               '%' SPACE* 'ISOPEN';
+PERCENT_NOTFOUND:             '%' SPACE* 'NOTFOUND';
 PERCENT_KEYWORD:              'PERCENT';
 PERCENT_RANKM:                'PERCENT_RANKM';
-PERCENT_ROWCOUNT:             '%ROWCOUNT';
-PERCENT_ROWTYPE:              '%ROWTYPE';
-PERCENT_TYPE:                 '%TYPE';
+PERCENT_ROWCOUNT:             '%' SPACE* 'ROWCOUNT';
+PERCENT_ROWTYPE:              '%' SPACE* 'ROWTYPE';
+PERCENT_TYPE:                 '%' SPACE* 'TYPE';
 PERFORMANCE:                  'PERFORMANCE';
 PERIOD_KEYWORD:               'PERIOD';
 PERMANENT:                    'PERMANENT';
@@ -1512,6 +1533,7 @@ SEMI_TO_INNER:                'SEMI_TO_INNER';
 SEQUENCED:                    'SEQUENCED';
 SEQUENCE:                     'SEQUENCE';
 SEQUENTIAL:                   'SEQUENTIAL';
+SEQ:                          'SEQ';
 SERIALIZABLE:                 'SERIALIZABLE';
 SERIALLY_REUSABLE:            'SERIALLY_REUSABLE';
 SERIAL:                       'SERIAL';
@@ -2180,6 +2202,7 @@ XML:                          'XML';
 XPATHTABLE:                   'XPATHTABLE';
 XS_SYS_CONTEXT:               'XS_SYS_CONTEXT';
 XS:                           'XS';
+XTRANSPORT:                   'XTRANSPORT';
 YEARS:                        'YEARS';
 YEAR:                         'YEAR';
 YES:                          'YES';
@@ -2245,7 +2268,7 @@ DOUBLE_PERIOD:  '..';
 PERIOD:         '.';
 
 //{ Rule #238 <EXACT_NUM_LIT>
-//  This rule is a bit tricky - it resolves the ambiguity with <PERIOD> 
+//  This rule is a bit tricky - it resolves the ambiguity with <PERIOD>
 //  It also incorporates <mantisa> and <exponent> for the <APPROXIMATE_NUM_LIT>
 //  Rule #501 <signed_integer> was incorporated directly in the token <APPROXIMATE_NUM_LIT>
 //  See also the rule #617 <unsigned_num_lit>
@@ -2265,20 +2288,21 @@ APPROXIMATE_NUM_LIT: FLOAT_FRAGMENT ('E' ('+'|'-')? (FLOAT_FRAGMENT | [0-9]+))? 
 
 // Rule #--- <CHAR_STRING> is a base for Rule #065 <char_string_lit> , it incorporates <character_representation>
 // and a superfluous subtoken typecasting of the "QUOTE"
-CHAR_STRING: '\'' (~('\'' | '\r' | '\n') | '\'' '\'' | NEWLINE)* '\'';
+CHAR_STRING: '\''  (~('\'' | '\r' | '\n') | '\'' '\'' | NEWLINE)* '\'';
 
-// Perl-style quoted string, see Oracle SQL reference, chapter String Literals
-CHAR_STRING_PERL    : 'Q' ( QS_ANGLE | QS_BRACE | QS_BRACK | QS_PAREN) -> type(CHAR_STRING);
-fragment QUOTE      : '\'' ;
-fragment QS_ANGLE   : QUOTE '<' .*? '>' QUOTE ;
-fragment QS_BRACE   : QUOTE '{' .*? '}' QUOTE ;
-fragment QS_BRACK   : QUOTE '[' .*? ']' QUOTE ;
-fragment QS_PAREN   : QUOTE '(' .*? ')' QUOTE ;
-fragment QS_OTHER_CH: ~('<' | '{' | '[' | '(' | ' ' | '\t' | '\n' | '\r');
+// See https://livesql.oracle.com/apex/livesql/file/content_CIREYU9EA54EOKQ7LAMZKRF6P.html
+// TODO: context sensitive string quotes (any characted after quote)
+CHAR_STRING_PERL    : 'Q' '\'' (QS_ANGLE | QS_BRACE | QS_BRACK | QS_PAREN | QS_EXCLAM | QS_SHARP | QS_QUOTE | QS_DQUOTE) '\'' -> type(CHAR_STRING);
+fragment QS_ANGLE   : '<' .*? '>';
+fragment QS_BRACE   : '{' .*? '}';
+fragment QS_BRACK   : '[' .*? ']';
+fragment QS_PAREN   : '(' .*? ')';
+fragment QS_EXCLAM  : '!' .*? '!';
+fragment QS_SHARP   : '#' .*? '#';
+fragment QS_QUOTE   : '\'' .*? '\'';
+fragment QS_DQUOTE  : '"' .*? '"';
 
 DELIMITED_ID: '"' (~('"' | '\r' | '\n') | '"' '"')+ '"' ;
-
-// SQL_SPECIAL_CHAR was split into single rules
 
 PERCENT:                   '%';
 AMPERSAND:                 '&';
@@ -2292,8 +2316,6 @@ COMMA:                     ',';
 SOLIDUS:                   '/';
 AT_SIGN:                   '@';
 ASSIGN_OP:                 ':=';
-
-// See OCI reference for more information about this
 
 BINDVAR
     : ':' SIMPLE_LETTER  (SIMPLE_LETTER | [0-9] | '_')*
@@ -2315,76 +2337,41 @@ LESS_THAN_OP:              '<';
 COLON:                     ':';
 SEMICOLON:                 ';';
 
-fragment
-QUESTION_MARK: '?';
-
-// protected UNDERSCORE : '_' SEPARATOR ; // subtoken typecast within <INTRODUCER>
-BAR: '|';
+BAR:       '|';
 EQUALS_OP: '=';
 
-// Rule #532 <SQL_EMBDD_LANGUAGE_CHAR> was split into single rules:
-LEFT_BRACKET: '[';
+LEFT_BRACKET:  '[';
 RIGHT_BRACKET: ']';
 
-//{ Rule #319 <INTRODUCER>
-INTRODUCER
-    : '_' //(SEPARATOR {$type = UNDERSCORE;})?
-    ;
+INTRODUCER: '_';
 
-//{ Rule #479 <SEPARATOR>
-//  It was originally a protected rule set to be filtered out but the <COMMENT> and <'-'> clashed. 
-/*SEPARATOR
-    : '-' -> type('-')
-    | COMMENT -> channel(HIDDEN)
-    | (SPACE | NEWLINE)+ -> channel(HIDDEN)
-    ;*/
-//}
+// Comments https://docs.oracle.com/cd/E11882_01/server.112/e41084/sql_elements006.htm
 
-SPACES: [ \t\r\n]+ -> skip;
+SINGLE_LINE_COMMENT: '--' ~('\r' | '\n')* NEWLINE_EOF                 -> channel(HIDDEN);
+MULTI_LINE_COMMENT:  '/*' .*? '*/'                                    -> channel(HIDDEN);
+// https://docs.oracle.com/cd/E11882_01/server.112/e16604/ch_twelve034.htm#SQPUG054
+REMARK_COMMENT:      'REM' {IsNewlineAtPos(-4)}? 'ARK'? (' ' ~('\r' | '\n')*)? NEWLINE_EOF -> channel(HIDDEN);
 
-    
-// Rule #504 <SIMPLE_LETTER> - simple_latin _letter was generalised into SIMPLE_LETTER
-//  Unicode is yet to be implemented - see NSF0
-fragment
-SIMPLE_LETTER
-    : [A-Z]
-    ;
+// https://docs.oracle.com/cd/E11882_01/server.112/e16604/ch_twelve032.htm#SQPUG052
+PROMPT_MESSAGE:      'PRO' {IsNewlineAtPos(-4)}? 'MPT'? (' ' ~('\r' | '\n')*)? NEWLINE_EOF;
 
-fragment
-FLOAT_FRAGMENT
-    : UNSIGNED_INTEGER* '.'? UNSIGNED_INTEGER+
-    ;
-
-// Rule #097 <COMMENT>
-
-SINGLE_LINE_COMMENT: '--' ~('\r' | '\n')* (NEWLINE | EOF)   -> channel(HIDDEN);
-MULTI_LINE_COMMENT:  '/*' .*? '*/'                          -> channel(HIDDEN);
-
-// SQL*Plus prompt
-// TODO should be grammar rule, but tricky to implement
-
-PROMPT
-    : 'prompt' SPACE ( ~('\r' | '\n') )* (NEWLINE|EOF)
-    ;
-
+// TODO: should starts with newline
 START_CMD
-    // TODO When using full word START there is a conflict with START WITH in sequences and CONNECT BY queries
-    // 'start' SPACE ( ~( '\r' | '\n') )* (NEWLINE|EOF)
-    : 'sta' SPACE ( ~('\r' | '\n') )* (NEWLINE|EOF)
-    // TODO Single @ conflicts with a database link name, like employees@remote
-    // | '@' ( ~('\r' | '\n') )* (NEWLINE|EOF)
-    | '@@' ( ~('\r' | '\n') )* (NEWLINE|EOF)
+    //: 'STA' 'RT'? SPACE ~('\r' | '\n')* NEWLINE_EOF
+    // https://docs.oracle.com/cd/B19306_01/server.102/b14357/ch12002.htm
+    // https://docs.oracle.com/cd/B19306_01/server.102/b14357/ch12003.htm
+    : '@' {IsNewlineAtPos(-2)}? '@'? ~('\r' | '\n')* NEWLINE_EOF
     ;
-
-fragment
-NEWLINE: '\r'? '\n';
-    
-fragment
-SPACE: [ \t];
-
-//{ Rule #442 <REGULAR_ID> additionally encapsulates a few STRING_LITs.
-//  Within testLiterals all reserved and non-reserved words are being resolved
 
 REGULAR_ID: SIMPLE_LETTER (SIMPLE_LETTER | '$' | '_' | '#' | [0-9])*;
 
-ZV: '@!' -> channel(HIDDEN);
+SPACES: [ \t\r\n]+ -> channel(HIDDEN);
+
+// Fragment rules
+
+fragment NEWLINE_EOF    : NEWLINE | EOF;
+fragment QUESTION_MARK  : '?';
+fragment SIMPLE_LETTER  : [A-Z];
+fragment FLOAT_FRAGMENT : UNSIGNED_INTEGER* '.'? UNSIGNED_INTEGER+;
+fragment NEWLINE        : '\r'? '\n';
+fragment SPACE          : [ \t];

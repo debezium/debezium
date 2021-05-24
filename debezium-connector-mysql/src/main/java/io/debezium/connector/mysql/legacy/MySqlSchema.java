@@ -79,7 +79,7 @@ public class MySqlSchema extends RelationalDatabaseSchema {
     private final DdlChanges ddlChanges;
     private final HistoryRecordComparator historyComparator;
     private final boolean skipUnparseableDDL;
-    private final boolean storeOnlyMonitoredTablesDdl;
+    private final boolean storeOnlyCapturedTablesDdl;
     private boolean recoveredTables;
 
     /**
@@ -122,7 +122,8 @@ public class MySqlSchema extends RelationalDatabaseSchema {
                 .with(KafkaDatabaseHistory.INTERNAL_CONNECTOR_ID, configuration.getLogicalName())
                 .build();
         this.skipUnparseableDDL = dbHistoryConfig.getBoolean(DatabaseHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS);
-        this.storeOnlyMonitoredTablesDdl = dbHistoryConfig.getBoolean(DatabaseHistory.STORE_ONLY_MONITORED_TABLES_DDL);
+        this.storeOnlyCapturedTablesDdl = Boolean.valueOf(
+                dbHistoryConfig.getFallbackStringPropertyWithWarning(DatabaseHistory.STORE_ONLY_CAPTURED_TABLES_DDL, DatabaseHistory.STORE_ONLY_MONITORED_TABLES_DDL));
 
         this.ddlParser = new MySqlAntlrDdlParser(getValueConverters(configuration), getTableFilter());
         this.ddlChanges = this.ddlParser.getDdlChanges();
@@ -202,7 +203,7 @@ public class MySqlSchema extends RelationalDatabaseSchema {
      *
      * @return the array with the table names
      */
-    public String[] monitoredTablesAsStringArray() {
+    public String[] capturedTablesAsStringArray() {
         final Collection<TableId> tables = tableIds();
         String[] ret = new String[tables.size()];
         int i = 0;
@@ -218,7 +219,7 @@ public class MySqlSchema extends RelationalDatabaseSchema {
      * @param id the fully-qualified table identifier; may be null
      * @return true if events from the table are captured
      */
-    public boolean isTableMonitored(TableId id) {
+    public boolean isTableCaptured(TableId id) {
         return filters.tableFilter().test(id);
     }
 
@@ -338,7 +339,7 @@ public class MySqlSchema extends RelationalDatabaseSchema {
         }
         changes = tables().drainChanges();
         // No need to send schema events or store DDL if no table has changed
-        if (!storeOnlyMonitoredTablesDdl || ddlChanges.anyMatch(filters.databaseFilter(), filters.tableFilter())) {
+        if (!storeOnlyCapturedTablesDdl || ddlChanges.anyMatch(filters.databaseFilter(), filters.tableFilter())) {
             if (statementConsumer != null) {
 
                 // We are supposed to _also_ record the schema changes as SourceRecords, but these need to be filtered
@@ -377,7 +378,7 @@ public class MySqlSchema extends RelationalDatabaseSchema {
             // - all DDLs if configured
             // - or global SET variables
             // - or DDLs for monitored objects
-            if (!storeOnlyMonitoredTablesDdl || isGlobalSetVariableStatement(ddlStatements, databaseName) || changes.stream().anyMatch(filters().tableFilter()::test)) {
+            if (!storeOnlyCapturedTablesDdl || isGlobalSetVariableStatement(ddlStatements, databaseName) || changes.stream().anyMatch(filters().tableFilter()::test)) {
                 dbHistory.record(source.partition(), source.offset(), databaseName, ddlStatements);
             }
         }
@@ -403,10 +404,10 @@ public class MySqlSchema extends RelationalDatabaseSchema {
     }
 
     /**
-     * @return true if only monitored tables should be stored in database history, false if all tables should be stored
+     * @return true if only captured tables should be stored in database history, false if all tables should be stored
      */
-    public boolean isStoreOnlyMonitoredTablesDdl() {
-        return storeOnlyMonitoredTablesDdl;
+    public boolean isStoreOnlyCapturedTablesDdl() {
+        return storeOnlyCapturedTablesDdl;
     }
 
     @Override

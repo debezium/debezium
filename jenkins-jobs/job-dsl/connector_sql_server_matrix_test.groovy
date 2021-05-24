@@ -64,8 +64,8 @@ fi
 
 # Select image
 case $SQL_SERVER_VERSION in
-  "2017") DATABASE_IMAGE="microsoft/mssql-server-linux:2017-CU9-GDR2" ;;
-  "2019") DATABASE_IMAGE="mcr.microsoft.com/mssql/server:2019-GA-ubuntu-16.04" ;;
+  "2017") DATABASE_IMAGE="mcr.microsoft.com/mssql/server:2017-latest" ;;
+  "2019") DATABASE_IMAGE="mcr.microsoft.com/mssql/server:2019-latest" ;;
    *) status=$status ;;
 esac
                     

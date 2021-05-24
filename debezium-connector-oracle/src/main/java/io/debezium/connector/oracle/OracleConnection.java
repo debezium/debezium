@@ -5,7 +5,6 @@
  */
 package io.debezium.connector.oracle;
 
-import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -18,7 +17,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
@@ -134,7 +132,7 @@ public class OracleConnection extends JdbcConnection {
             }
             catch (SQLException e) {
                 // exception ignored
-                if (e.getMessage().contains("ORA-00904: \"BANNER_FULL\": invalid identifier")) {
+                if (e.getMessage().contains("ORA-00904: \"BANNER_FULL\"")) {
                     LOGGER.debug("BANNER_FULL column not in V$VERSION, using BANNER column as fallback");
                     versionStr = null;
                 }
@@ -326,38 +324,46 @@ public class OracleConnection extends JdbcConnection {
     }
 
     /**
-     * Resolve the table name case insensitivity used by the schema based on the following rules:
+     * Get the current, most recent system change number.
      *
-     * <ul>
-     *     <li>If option is provided in connector configuration, it will be used.</li>
-     *     <li>Otherwise resolved by database version where Oracle 11 will be {@code true}; otherwise {@code false}.</li>
-     * </ul>
-     *
-     * @param connectorConfig the connector configuration
-     * @return whether table name case insensitivity is used
+     * @return the current system change number
+     * @throws SQLException if an exception occurred
+     * @throws IllegalStateException if the query does not return at least one row
      */
-    public boolean getTablenameCaseInsensitivity(OracleConnectorConfig connectorConfig) {
-        Optional<Boolean> configValue = connectorConfig.getTablenameCaseInsensitive();
-        return configValue.orElse(getOracleVersion().getMajor() == 11);
-    }
-
-    public OracleConnection executeLegacy(String... sqlStatements) throws SQLException {
-        return executeLegacy(statement -> {
-            for (String sqlStatement : sqlStatements) {
-                if (sqlStatement != null) {
-                    statement.execute(sqlStatement);
-                }
+    public Scn getCurrentScn() throws SQLException {
+        return queryAndMap("SELECT CURRENT_SCN FROM V$DATABASE", (rs) -> {
+            if (rs.next()) {
+                return Scn.valueOf(rs.getString(1));
             }
+            throw new IllegalStateException("Could not get SCN");
         });
     }
 
-    public OracleConnection executeLegacy(Operations operations) throws SQLException {
-        Connection conn = connection();
-        try (Statement statement = conn.createStatement()) {
-            operations.apply(statement);
-            commit();
+    /**
+     * Get a byte-array value from a given {@code HEXTORAW} argument.
+     *
+     * The provided {@code hexToRawValue} may be provided as the direct hex-string argument or the entire
+     * value may be wrapped with the {@code HEXTORAW} function call, which will be omitted.
+     *
+     * @param hexToRawValue the hex-to-raw string, never {@code null}
+     * @return byte array of decoded value, may be {@code null}
+     * @throws SQLException if there is a database exception
+     */
+    public byte[] getHexToRawByteArray(String hexToRawValue) throws SQLException {
+        final String data;
+        if (hexToRawValue.startsWith("HEXTORAW('") && hexToRawValue.endsWith("')")) {
+            data = hexToRawValue.substring(10, hexToRawValue.length() - 2);
         }
-        return this;
+        else {
+            data = hexToRawValue;
+        }
+
+        return prepareQueryAndMap("select HEXTORAW(?) FROM DUAL", ps -> ps.setString(1, data), rs -> {
+            if (rs.next()) {
+                return rs.getBytes(1);
+            }
+            return null;
+        });
     }
 
     public static String connectionString(Configuration config) {

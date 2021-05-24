@@ -260,7 +260,8 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
                     "Options include:" +
                     "'" + SourceTimestampMode.COMMIT.getValue() + "', (default) the source timestamp is set to the instant where the record was committed in the database"
                     +
-                    "'" + SourceTimestampMode.PROCESSING.getValue() + "', the source timestamp is set to the instant where the record was processed by Debezium.");
+                    "'" + SourceTimestampMode.PROCESSING.getValue()
+                    + "', (deprecated) the source timestamp is set to the instant where the record was processed by Debezium.");
 
     public static final Field SNAPSHOT_MODE = Field.create("snapshot.mode")
             .withDisplayName("Snapshot mode")

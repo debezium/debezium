@@ -12,6 +12,7 @@ Alex Soto
 Alexander Iskuskov
 Alexander Kovryga
 Alexander Schwartz
+Alfusainey Jallow
 Alisa Houskova
 Amit Sela
 Aman Garg
@@ -47,9 +48,11 @@ Braden Groom
 Braden Staudacher
 Brandon Brown
 Brandon Maguire
+Cao Manh Dat
 Cheng Pan
 Ching Tsai
 Chris Cranford
+Chris Egerton
 Chris Riccomini
 Christian Posta
 Christopher Sang
@@ -130,13 +133,17 @@ Jaromir Hamala
 Javier Holguera
 Jeremy Finzel
 Jeremy Ford
+Jeremy Vigny
+Jessica Laughlin
 jinguangyang
+Jiri Novotny
 Jiri Pechanec
 Johan Rhedin
 Johan Venant
 John Graf
 John Martin
 John Psoroulas
+John Wu
 Jon Casstevens
 Jonas Lins
 Jordan Bragg
@@ -150,10 +157,12 @@ Jun Du
 Jure Kajzer
 Justin Hiza
 Kaushik Iyer
+Kazuki MATSUDA / 松田一樹
 Keith Barber
 Kevin Pullin
 Kewei Shang
 Krizhan Mariampillai
+Kyley Jex
 Leo Mei
 Lev Zemlyanov
 Linh Nguyen Hoang
@@ -164,6 +173,7 @@ Luis Garcés-Erice
 Lukas Krejci
 Lukasz Korzeniowski
 lyidataminr
+M Sazzadul Hoque
 Maciej Bryński
 Mans Singh
 MaoXiang Pan
@@ -175,6 +185,7 @@ Matt Beary
 Matteo Capitanio
 Mathieu Rozieres
 Matthias Wessendorf
+Mauricio Scheffer
 Max Kaplan
 Martín Pérez
 Meng Qiu
@@ -198,10 +209,12 @@ Nishant Singh
 Nitin Agarwal
 Olavi Mustanoja
 Oliver Weiler
+Olivier Jacquemart
 Olivier Lemasle
 Omar Al-Safi
 Ori Popowski
 Orr Ganani
+Patrick Chu
 Paul Mellor
 Peng Lyu
 Peter Goransson
@@ -214,9 +227,11 @@ Prannoy Mittal
 Preethi Sadagopan
 pushpavanthar
 Raf Liwoch
+Raghava Ponnam
 Ram Satish
 Ramesh Reddy
 Randall Hauch
+Raphael Auv
 Raúl Tovar
 Renato Mefi
 René Kerner
@@ -249,6 +264,7 @@ SiuFay
 Siddhant Agnihotry
 Stanley Shyiko
 Stathis Souris
+Stefan Miklosovic
 Stephen Powis
 Steven Siahetiong
 Syed Muhammad Sufyian
@@ -257,11 +273,13 @@ Tautvydas Januskevicius
 Taylor Rolison
 Theofanis Despoudis
 Thierry De Leeuw
+Thomas Aregger
 Thomas Deblock
 Thomas Prelle
 Thomas Thornton
 Tom Bentley
 Tomaz Lemos Fernandes
+Tommy Karlsson
 Tony Rizko
 Tova Cohen
 Travis Elnicky
@@ -282,6 +300,7 @@ Wout Scheepers
 Xiao Fu
 Xuan Shen
 Yang Yang
+yangsanity
 Yilong Chang
 Yiming Liu
 Yoann Rodière

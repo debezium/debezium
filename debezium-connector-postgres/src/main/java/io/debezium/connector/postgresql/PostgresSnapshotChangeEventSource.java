@@ -5,15 +5,12 @@
  */
 package io.debezium.connector.postgresql;
 
-import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import org.postgresql.util.PGmoney;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,11 +19,10 @@ import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.spi.SlotCreationResult;
 import io.debezium.connector.postgresql.spi.SlotState;
 import io.debezium.connector.postgresql.spi.Snapshotter;
-import io.debezium.data.SpecialValueDecimal;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.spi.OffsetContext;
-import io.debezium.relational.Column;
+import io.debezium.relational.RelationalDatabaseSchema;
 import io.debezium.relational.RelationalSnapshotChangeEventSource;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
@@ -112,16 +108,6 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
             // now that we have the locks, refresh the schema
             schema.refresh(jdbcConnection, false);
         }
-        else {
-            // if we are not in an exported snapshot, this may result in some inconsistencies.
-            // Let the user know
-            if (!snapshotter.exportSnapshot()) {
-                LOGGER.warn("Step 2: skipping locking each table, this may result in inconsistent schema!");
-            }
-            else {
-                LOGGER.info("Step 2: skipping locking each table in an exported snapshot");
-            }
-        }
     }
 
     @Override
@@ -164,7 +150,7 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
     }
 
     private Lsn getTransactionStartLsn() throws SQLException {
-        if (snapshotter.exportSnapshot() && slotCreatedInfo != null) {
+        if (slotCreatedInfo != null) {
             // When performing an exported snapshot based on a newly created replication slot, the txLogStart position
             // should be based on the replication slot snapshot transaction point. This is crucial so that if any
             // SQL operations occur mid-snapshot that they'll be properly captured when streaming begins; otherwise
@@ -232,61 +218,8 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
     }
 
     @Override
-    protected Object getColumnValue(ResultSet rs, int columnIndex, Column column) throws SQLException {
-        try {
-            final ResultSetMetaData metaData = rs.getMetaData();
-            final String columnTypeName = metaData.getColumnTypeName(columnIndex);
-            final PostgresType type = schema.getTypeRegistry().get(columnTypeName);
-
-            LOGGER.trace("Type of incoming data is: {}", type.getOid());
-            LOGGER.trace("ColumnTypeName is: {}", columnTypeName);
-            LOGGER.trace("Type is: {}", type);
-
-            if (type.isArrayType()) {
-                return rs.getArray(columnIndex);
-            }
-
-            switch (type.getOid()) {
-                case PgOid.MONEY:
-                    // TODO author=Horia Chiorean date=14/11/2016 description=workaround for https://github.com/pgjdbc/pgjdbc/issues/100
-                    final String sMoney = rs.getString(columnIndex);
-                    if (sMoney == null) {
-                        return sMoney;
-                    }
-                    if (sMoney.startsWith("-")) {
-                        // PGmoney expects negative values to be provided in the format of "($XXXXX.YY)"
-                        final String negativeMoney = "(" + sMoney.substring(1) + ")";
-                        return new PGmoney(negativeMoney).val;
-                    }
-                    return new PGmoney(sMoney).val;
-                case PgOid.BIT:
-                    return rs.getString(columnIndex);
-                case PgOid.NUMERIC:
-                    final String s = rs.getString(columnIndex);
-                    if (s == null) {
-                        return s;
-                    }
-
-                    Optional<SpecialValueDecimal> value = PostgresValueConverter.toSpecialValue(s);
-                    return value.isPresent() ? value.get() : new SpecialValueDecimal(rs.getBigDecimal(columnIndex));
-                case PgOid.TIME:
-                    // To handle time 24:00:00 supported by TIME columns, read the column as a string.
-                case PgOid.TIMETZ:
-                    // In order to guarantee that we resolve TIMETZ columns with proper microsecond precision,
-                    // read the column as a string instead and then re-parse inside the converter.
-                    return rs.getString(columnIndex);
-                default:
-                    Object x = rs.getObject(columnIndex);
-                    if (x != null) {
-                        LOGGER.trace("rs getobject returns class: {}; rs getObject value is: {}", x.getClass(), x);
-                    }
-                    return x;
-            }
-        }
-        catch (SQLException e) {
-            // not a known type
-            return super.getColumnValue(rs, columnIndex, column);
-        }
+    protected RelationalDatabaseSchema schema() {
+        return schema;
     }
 
     protected void setSnapshotTransactionIsolationLevel() throws SQLException {

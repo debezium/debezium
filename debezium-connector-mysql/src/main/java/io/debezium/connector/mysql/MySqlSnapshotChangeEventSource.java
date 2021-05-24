@@ -5,15 +5,11 @@
  */
 package io.debezium.connector.mysql;
 
-import java.io.UnsupportedEncodingException;
-import java.sql.Blob;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.sql.Types;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
@@ -39,7 +35,6 @@ import io.debezium.data.Envelope;
 import io.debezium.function.BlockingConsumer;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.spi.OffsetContext;
-import io.debezium.relational.Column;
 import io.debezium.relational.RelationalSnapshotChangeEventSource;
 import io.debezium.relational.RelationalTableFilters;
 import io.debezium.relational.Table;
@@ -235,7 +230,7 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
                 for (Iterator<SchemaChangeEvent> i = schemaEvents.iterator(); i.hasNext();) {
                     final SchemaChangeEvent event = i.next();
 
-                    if (databaseSchema.storeOnlyMonitoredTables() && event.getDatabase() != null && event.getDatabase().length() != 0
+                    if (databaseSchema.storeOnlyCapturedTables() && event.getDatabase() != null && event.getDatabase().length() != 0
                             && !connectorConfig.getTableFilters().databaseFilter().test(event.getDatabase())) {
                         LOGGER.debug("Skipping schema event as it belongs to a non-captured database: '{}'", event);
                         continue;
@@ -314,7 +309,7 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
             delayedSchemaSnapshotTables = Collect.minus(snapshotContext.capturedSchemaTables, snapshotContext.capturedTables);
             LOGGER.info("Tables for delayed schema capture: {}", delayedSchemaSnapshotTables);
         }
-        if (databaseSchema.storeOnlyMonitoredTables()) {
+        if (databaseSchema.storeOnlyCapturedTables()) {
             capturedSchemaTables = snapshotContext.capturedTables;
             LOGGER.info("Only monitored tables schema should be captured, capturing: {}", capturedSchemaTables);
         }
@@ -400,100 +395,6 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
     @Override
     protected Optional<String> getSnapshotSelect(RelationalSnapshotContext snapshotContext, TableId tableId) {
         return Optional.of(String.format("SELECT * FROM `%s`.`%s`", tableId.catalog(), tableId.table()));
-    }
-
-    @Override
-    protected Object getColumnValue(ResultSet rs, int columnIndex, Column column, Table table) throws SQLException {
-        if (column.jdbcType() == Types.TIME) {
-            return readTimeField(rs, columnIndex);
-        }
-        else if (column.jdbcType() == Types.DATE) {
-            return readDateField(rs, columnIndex, column, table);
-        }
-        // This is for DATETIME columns (a logical date + time without time zone)
-        // by reading them with a calendar based on the default time zone, we make sure that the value
-        // is constructed correctly using the database's (or connection's) time zone
-        else if (column.jdbcType() == Types.TIMESTAMP) {
-            return readTimestampField(rs, columnIndex, column, table);
-        }
-        // JDBC's rs.GetObject() will return a Boolean for all TINYINT(1) columns.
-        // TINYINT columns are reported as SMALLINT by JDBC driver
-        else if (column.jdbcType() == Types.TINYINT || column.jdbcType() == Types.SMALLINT) {
-            // It seems that rs.wasNull() returns false when default value is set and NULL is inserted
-            // We thus need to use getObject() to identify if the value was provided and if yes then
-            // read it again to get correct scale
-            return rs.getObject(columnIndex) == null ? null : rs.getInt(columnIndex);
-        }
-        // DBZ-2673
-        // It is necessary to check the type names as types like ENUM and SET are
-        // also reported as JDBC type char
-        else if ("CHAR".equals(column.typeName()) ||
-                "VARCHAR".equals(column.typeName()) ||
-                "TEXT".equals(column.typeName())) {
-            return rs.getBytes(columnIndex);
-        }
-        else {
-            return rs.getObject(columnIndex);
-        }
-    }
-
-    /**
-     * As MySQL connector/J implementation is broken for MySQL type "TIME" we have to use a binary-ish workaround
-     *
-     * @see https://issues.jboss.org/browse/DBZ-342
-     */
-    private Object readTimeField(ResultSet rs, int fieldNo) throws SQLException {
-        Blob b = rs.getBlob(fieldNo);
-        if (b == null) {
-            return null; // Don't continue parsing time field if it is null
-        }
-
-        try {
-            return MySqlValueConverters.stringToDuration(new String(b.getBytes(1, (int) (b.length())), "UTF-8"));
-        }
-        catch (UnsupportedEncodingException e) {
-            LOGGER.error("Could not read MySQL TIME value as UTF-8");
-            throw new RuntimeException(e);
-        }
-    }
-
-    /**
-     * In non-string mode the date field can contain zero in any of the date part which we need to handle as all-zero
-     *
-     */
-    private Object readDateField(ResultSet rs, int fieldNo, Column column, Table table) throws SQLException {
-        Blob b = rs.getBlob(fieldNo);
-        if (b == null) {
-            return null; // Don't continue parsing date field if it is null
-        }
-
-        try {
-            return MySqlValueConverters.stringToLocalDate(new String(b.getBytes(1, (int) (b.length())), "UTF-8"), column, table);
-        }
-        catch (UnsupportedEncodingException e) {
-            LOGGER.error("Could not read MySQL TIME value as UTF-8");
-            throw new RuntimeException(e);
-        }
-    }
-
-    /**
-     * In non-string mode the time field can contain zero in any of the date part which we need to handle as all-zero
-     *
-     */
-    private Object readTimestampField(ResultSet rs, int fieldNo, Column column, Table table) throws SQLException {
-        Blob b = rs.getBlob(fieldNo);
-        if (b == null) {
-            return null; // Don't continue parsing timestamp field if it is null
-        }
-
-        try {
-            return MySqlValueConverters.containsZeroValuesInDatePart((new String(b.getBytes(1, (int) (b.length())), "UTF-8")), column, table) ? null
-                    : rs.getTimestamp(fieldNo, Calendar.getInstance());
-        }
-        catch (UnsupportedEncodingException e) {
-            LOGGER.error("Could not read MySQL TIME value as UTF-8");
-            throw new RuntimeException(e);
-        }
     }
 
     private boolean isGloballyLocked() {
@@ -621,7 +522,7 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
                 throw new InterruptedException("Interrupted while processing event " + event);
             }
 
-            if (databaseSchema.storeOnlyMonitoredTables() && event.getDatabase() != null && event.getDatabase().length() != 0
+            if (databaseSchema.storeOnlyCapturedTables() && event.getDatabase() != null && event.getDatabase().length() != 0
                     && !connectorConfig.getTableFilters().databaseFilter().test(event.getDatabase())) {
                 LOGGER.debug("Skipping schema event as it belongs to a non-captured database: '{}'", event);
                 continue;

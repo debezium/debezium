@@ -15,13 +15,14 @@ import io.debezium.connector.oracle.antlr.listener.ParserUtils;
  */
 public class LogMinerColumnValueImpl implements LogMinerColumnValue {
 
+    private static final String EMPTY_CLOB_FUNCTION = "EMPTY_CLOB()";
+    private static final String EMPTY_BLOB_FUNCTION = "EMPTY_BLOB()";
+
     private String columnName;
     private Object columnData;
-    private int columnType;
 
-    public LogMinerColumnValueImpl(String columnName, int columnType) {
+    public LogMinerColumnValueImpl(String columnName) {
         this.columnName = columnName;
-        this.columnType = columnType;
     }
 
     @Override
@@ -45,6 +46,20 @@ public class LogMinerColumnValueImpl implements LogMinerColumnValue {
     }
 
     @Override
+    public boolean isEmptyClobFunction() {
+        return EMPTY_CLOB_FUNCTION.equals(columnData);
+    }
+
+    @Override
+    public boolean isEmptyBlobFunction() {
+        return EMPTY_BLOB_FUNCTION.equals(columnData);
+    }
+
+    public void setColumnName(String columnName) {
+        this.columnName = columnName;
+    }
+
+    @Override
     public boolean equals(Object o) {
         if (this == o) {
             return true;
@@ -53,13 +68,17 @@ public class LogMinerColumnValueImpl implements LogMinerColumnValue {
             return false;
         }
         LogMinerColumnValueImpl that = (LogMinerColumnValueImpl) o;
-        return columnType == that.columnType &&
-                Objects.equals(columnName, that.columnName) &&
+        return Objects.equals(columnName, that.columnName) &&
                 Objects.equals(columnData, that.columnData);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(columnName, columnData, columnType);
+        return Objects.hash(columnName, columnData);
+    }
+
+    @Override
+    public String toString() {
+        return "LogMinerColumnValueImpl{columnName=" + columnName + ", columnData=" + columnData + "}";
     }
 }

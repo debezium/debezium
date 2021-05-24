@@ -947,7 +947,8 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
                     SNAPSHOT_NEW_TABLES,
                     BIGINT_UNSIGNED_HANDLING_MODE,
                     TIME_PRECISION_MODE,
-                    ENABLE_TIME_ADJUSTER)
+                    ENABLE_TIME_ADJUSTER,
+                    INCREMENTAL_SNAPSHOT_CHUNK_SIZE)
             .events(
                     INCLUDE_SQL_QUERY,
                     TABLE_IGNORE_BUILTIN,
@@ -973,6 +974,11 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
     protected static Field.Set EXPOSED_FIELDS = ALL_FIELDS;
 
     protected static final Set<String> BUILT_IN_DB_NAMES = Collect.unmodifiableSet("mysql", "performance_schema", "sys", "information_schema");
+
+    @Override
+    public boolean supportsOperationFiltering() {
+        return true;
+    }
 
     private final Configuration config;
     private final SnapshotMode snapshotMode;
@@ -1025,6 +1031,10 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
         this.ddlFilter = (ddlFilter != null) ? Predicates.includes(ddlFilter) : (x -> false);
 
         this.sourceInfoStructMaker = getSourceInfoStructMaker(Version.parse(config.getString(SOURCE_STRUCT_MAKER_VERSION)));
+    }
+
+    public boolean useCursorFetch() {
+        return this.getSnapshotFetchSize() > 0;
     }
 
     public SnapshotLockingMode getSnapshotLockingMode() {

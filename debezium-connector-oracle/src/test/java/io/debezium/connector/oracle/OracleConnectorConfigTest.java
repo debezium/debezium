@@ -12,7 +12,6 @@ import static org.junit.Assert.assertTrue;
 
 import java.time.Duration;
 import java.util.Collections;
-import java.util.Optional;
 
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -21,15 +20,11 @@ import org.slf4j.LoggerFactory;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.doc.FixFor;
-import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.relational.history.KafkaDatabaseHistory;
 
 public class OracleConnectorConfigTest {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(OracleConnectorConfigTest.class);
-
-    private static final String TABLENAME_CASE_INSENSITIVE_WARNING = "The option '" + OracleConnectorConfig.TABLENAME_CASE_INSENSITIVE
-            + "' is deprecated and will be removed in the future.";
 
     @Test
     public void validXtreamNoUrl() throws Exception {
@@ -188,36 +183,4 @@ public class OracleConnectorConfigTest {
         assertThat(config.validateAndRecord(Collections.singletonList(transactionRetentionField), LOGGER::error)).isFalse();
     }
 
-    @Test
-    @FixFor("DBZ-3190")
-    public void shouldLogDeprecationWarningForTablenameCaseInsensitiveTrue() throws Exception {
-        final LogInterceptor logInterceptor = new LogInterceptor();
-
-        final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(
-                Configuration.create().with(OracleConnectorConfig.TABLENAME_CASE_INSENSITIVE, true).build());
-
-        assertThat(connectorConfig.getTablenameCaseInsensitive()).isEqualTo(Optional.of(true));
-        assertThat(logInterceptor.containsMessage(TABLENAME_CASE_INSENSITIVE_WARNING)).isTrue();
-    }
-
-    @Test
-    @FixFor("DBZ-3190")
-    public void shouldLogDeprecationWarningForTablenameCaseInsensitiveFalse() throws Exception {
-        final LogInterceptor logInterceptor = new LogInterceptor();
-
-        final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(
-                Configuration.create().with(OracleConnectorConfig.TABLENAME_CASE_INSENSITIVE, false).build());
-
-        assertThat(connectorConfig.getTablenameCaseInsensitive()).isEqualTo(Optional.of(false));
-        assertThat(logInterceptor.containsMessage(TABLENAME_CASE_INSENSITIVE_WARNING)).isTrue();
-    }
-
-    @Test
-    @FixFor("DBZ-3190")
-    public void shouldNotBePresentWhenTablenameCaseInsensitiveNotSupplied() throws Exception {
-        final LogInterceptor logInterceptor = new LogInterceptor();
-        final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(Configuration.create().build());
-        assertThat(connectorConfig.getTablenameCaseInsensitive()).isEqualTo(Optional.empty());
-        assertThat(logInterceptor.containsMessage(TABLENAME_CASE_INSENSITIVE_WARNING)).isFalse();
-    }
 }

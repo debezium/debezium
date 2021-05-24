@@ -9,6 +9,7 @@ import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -322,6 +323,15 @@ public abstract class CommonConnectorConfig {
             .withDescription("The maximum number of records that should be loaded into memory while performing a snapshot")
             .withValidation(Field::isNonNegativeInteger);
 
+    public static final Field INCREMENTAL_SNAPSHOT_CHUNK_SIZE = Field.create("incremental.snapshot.chunk.size")
+            .withDisplayName("Incremental snapshot chunk size")
+            .withType(Type.INT)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("The maximum size of chunk for incremental snapshotting")
+            .withDefault(1024)
+            .withValidation(Field::isNonNegativeInteger);
+
     public static final Field SNAPSHOT_MODE_TABLES = Field.create("snapshot.include.collection.list")
             .withDisplayName("Snapshot mode include data collection")
             .withType(Type.LIST)
@@ -453,6 +463,7 @@ public abstract class CommonConnectorConfig {
     private final Duration snapshotDelayMs;
     private final Duration retriableRestartWait;
     private final int snapshotFetchSize;
+    private final int incrementalSnapshotChunkSize;
     private final int snapshotMaxThreads;
     private final Integer queryFetchSize;
     private final SourceInfoStructMaker<? extends AbstractSourceInfo> sourceInfoStructMaker;
@@ -462,6 +473,7 @@ public abstract class CommonConnectorConfig {
     private final CustomConverterRegistry customConverterRegistry;
     private final BinaryHandlingMode binaryHandlingMode;
     private final String signalingDataCollection;
+    private final EnumSet<Operation> skippedOperations;
 
     protected CommonConnectorConfig(Configuration config, String logicalName, int defaultSnapshotFetchSize) {
         this.config = config;
@@ -477,6 +489,7 @@ public abstract class CommonConnectorConfig {
         this.snapshotFetchSize = config.getInteger(SNAPSHOT_FETCH_SIZE, defaultSnapshotFetchSize);
         this.snapshotMaxThreads = config.getInteger(SNAPSHOT_MAX_THREADS);
         this.queryFetchSize = config.getInteger(QUERY_FETCH_SIZE);
+        this.incrementalSnapshotChunkSize = config.getInteger(INCREMENTAL_SNAPSHOT_CHUNK_SIZE);
         this.sourceInfoStructMaker = getSourceInfoStructMaker(Version.parse(config.getString(SOURCE_STRUCT_MAKER_VERSION)));
         this.sanitizeFieldNames = config.getBoolean(SANITIZE_FIELD_NAMES) || isUsingAvroConverter(config);
         this.shouldProvideTransactionMetadata = config.getBoolean(PROVIDE_TRANSACTION_METADATA);
@@ -484,6 +497,21 @@ public abstract class CommonConnectorConfig {
         this.customConverterRegistry = new CustomConverterRegistry(getCustomConverters());
         this.binaryHandlingMode = BinaryHandlingMode.parse(config.getString(BINARY_HANDLING_MODE));
         this.signalingDataCollection = config.getString(SIGNAL_DATA_COLLECTION);
+        this.skippedOperations = determineSkippedOperations(config);
+    }
+
+    private static EnumSet<Envelope.Operation> determineSkippedOperations(Configuration config) {
+        String operations = config.getString(SKIPPED_OPERATIONS);
+
+        if (operations != null) {
+            return EnumSet.copyOf(Arrays.stream(operations.split(","))
+                    .map(String::trim)
+                    .map(Operation::forCode)
+                    .collect(Collectors.toSet()));
+        }
+        else {
+            return EnumSet.noneOf(Envelope.Operation.class);
+        }
     }
 
     /**
@@ -548,6 +576,10 @@ public abstract class CommonConnectorConfig {
         return queryFetchSize;
     }
 
+    public int getIncrementalSnashotChunkSize() {
+        return incrementalSnapshotChunkSize;
+    }
+
     public boolean shouldProvideTransactionMetadata() {
         return shouldProvideTransactionMetadata;
     }
@@ -558,6 +590,13 @@ public abstract class CommonConnectorConfig {
 
     public CustomConverterRegistry customConverterRegistry() {
         return customConverterRegistry;
+    }
+
+    /**
+     * Whether a particular connector supports an optimized way for implementing operation skipping, or not.
+     */
+    public boolean supportsOperationFiltering() {
+        return false;
     }
 
     @SuppressWarnings("unchecked")
@@ -583,18 +622,8 @@ public abstract class CommonConnectorConfig {
         return sanitizeFieldNames;
     }
 
-    public Set<Envelope.Operation> getSkippedOps() {
-        String operations = config.getString(SKIPPED_OPERATIONS);
-
-        if (operations != null) {
-            return Arrays.stream(operations.split(","))
-                    .map(String::trim)
-                    .map(Operation::forCode)
-                    .collect(Collectors.toSet());
-        }
-        else {
-            return Collections.emptySet();
-        }
+    public EnumSet<Envelope.Operation> getSkippedOperations() {
+        return skippedOperations;
     }
 
     public Set<String> getDataCollectionsToBeSnapshotted() {

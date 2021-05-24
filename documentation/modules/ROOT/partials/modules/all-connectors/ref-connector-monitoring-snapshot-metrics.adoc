@@ -19,8 +19,13 @@
 | The number of events that have been filtered by include/exclude list filtering rules configured on the connector.
 
 |[[connectors-snaps-metric-monitoredtables_{context}]]<<connectors-snaps-metric-monitoredtables_{context}, `MonitoredTables`>>
+_deprecated and scheduled for removal in a future release; use the 'CapturedTables' metric instead_
 |`string[]`
 |The list of tables that are monitored by the connector.
+
+|[[connectors-snaps-metric-capturedtables_{context}]]<<connectors-snaps-metric-capturedtables__{context}, `MonitoredTables`>>
+|`string[]`
+|The list of tables that are captured by the connector.
 
 |[[connectors-snaps-metric-queuetotalcapacity_{context}]]<<connectors-snaps-metric-queuetotalcapacity_{context}, `QueueTotalCapacity`>>
 |`int`

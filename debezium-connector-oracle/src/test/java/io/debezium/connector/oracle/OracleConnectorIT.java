@@ -41,7 +41,6 @@ import io.debezium.connector.oracle.OracleConnectorConfig.SnapshotMode;
 import io.debezium.connector.oracle.junit.RequireDatabaseOption;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnDatabaseOptionRule;
-import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIs;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope;
@@ -134,6 +133,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
     @AfterClass
     public static void closeConnection() throws SQLException {
         if (connection != null) {
+            TestHelper.dropTable(connection, "debezium.customer2");
             TestHelper.dropTable(connection, "customer");
             TestHelper.dropTable(connection, "masked_hashed_column_table");
             TestHelper.dropTable(connection, "truncated_column_table");
@@ -144,6 +144,8 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
     @Before
     public void before() throws SQLException {
+        TestHelper.dropTable(connection, "debezium.dbz800a");
+        TestHelper.dropTable(connection, "debezium.dbz800b");
         connection.execute("delete from debezium.customer");
         connection.execute("delete from debezium.masked_hashed_column_table");
         connection.execute("delete from debezium.truncated_column_table");
@@ -216,7 +218,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
                 .build();
 
         int expectedRecordCount = 0;
-        connection.execute("INSERT INTO debezium.customer VALUES (1, 'Billie-Bob', 1234.56, TO_DATE('2018/02/22', 'yyyy-mm-dd'))");
+        connection.execute("INSERT INTO debezium.customer VALUES (1, 'Billie-Bob', 1234.56, TO_DATE('2018-02-22', 'yyyy-mm-dd'))");
         connection.execute("INSERT INTO debezium.customer VALUES (2, 'Bruce', 2345.67, null)");
         connection.execute("COMMIT");
         expectedRecordCount += 2;
@@ -269,7 +271,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
     private void continueStreamingAfterSnapshot(Configuration config) throws Exception {
         int expectedRecordCount = 0;
-        connection.execute("INSERT INTO debezium.customer VALUES (1, 'Billie-Bob', 1234.56, TO_DATE('2018/02/22', 'yyyy-mm-dd'))");
+        connection.execute("INSERT INTO debezium.customer VALUES (1, 'Billie-Bob', 1234.56, TO_DATE('2018-02-22', 'yyyy-mm-dd'))");
         connection.execute("INSERT INTO debezium.customer VALUES (2, 'Bruce', 2345.67, null)");
         connection.execute("COMMIT");
         expectedRecordCount += 2;
@@ -334,7 +336,6 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-1223")
-    @SkipWhenAdapterNameIs(value = SkipWhenAdapterNameIs.AdapterName.LOGMINER, reason = "sendTxBatch randomly fails")
     public void shouldStreamTransaction() throws Exception {
         Configuration config = TestHelper.defaultConfig()
                 .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.CUSTOMER")
@@ -342,7 +343,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
         // Testing.Print.enable();
         int expectedRecordCount = 0;
-        connection.execute("INSERT INTO debezium.customer VALUES (1, 'Billie-Bob', 1234.56, TO_DATE('2018/02/22', 'yyyy-mm-dd'))");
+        connection.execute("INSERT INTO debezium.customer VALUES (1, 'Billie-Bob', 1234.56, TO_DATE('2018-02-22', 'yyyy-mm-dd'))");
         connection.execute("INSERT INTO debezium.customer VALUES (2, 'Bruce', 2345.67, null)");
         connection.execute("COMMIT");
         expectedRecordCount += 2;
@@ -441,7 +442,6 @@ public class OracleConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
-    @SkipWhenAdapterNameIs(value = SkipWhenAdapterNameIs.AdapterName.LOGMINER, reason = "Test randomly fails in sendTxBatch")
     public void shouldStreamAfterRestart() throws Exception {
         Configuration config = TestHelper.defaultConfig()
                 .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.CUSTOMER")
@@ -449,7 +449,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
         // Testing.Print.enable();
         int expectedRecordCount = 0;
-        connection.execute("INSERT INTO debezium.customer VALUES (1, 'Billie-Bob', 1234.56, TO_DATE('2018/02/22', 'yyyy-mm-dd'))");
+        connection.execute("INSERT INTO debezium.customer VALUES (1, 'Billie-Bob', 1234.56, TO_DATE('2018-02-22', 'yyyy-mm-dd'))");
         connection.execute("INSERT INTO debezium.customer VALUES (2, 'Bruce', 2345.67, null)");
         connection.execute("COMMIT");
         expectedRecordCount += 2;
@@ -493,7 +493,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
         // Testing.Print.enable();
         int expectedRecordCount = 0;
-        connection.execute("INSERT INTO debezium.customer VALUES (1, 'Billie-Bob', 1234.56, TO_DATE('2018/02/22', 'yyyy-mm-dd'))");
+        connection.execute("INSERT INTO debezium.customer VALUES (1, 'Billie-Bob', 1234.56, TO_DATE('2018-02-22', 'yyyy-mm-dd'))");
         connection.execute("INSERT INTO debezium.customer VALUES (2, 'Bruce', 2345.67, null)");
         connection.execute("COMMIT");
         expectedRecordCount += 2;
@@ -537,12 +537,12 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
         int expectedRecordCount = 0;
-        connection.execute("INSERT INTO debezium.customer VALUES (1, 'Billie-Bob', 1234.56, TO_DATE('2018/02/22', 'yyyy-mm-dd'))");
+        connection.execute("INSERT INTO debezium.customer VALUES (1, 'Billie-Bob', 1234.56, TO_DATE('2018-02-22', 'yyyy-mm-dd'))");
         connection.execute("COMMIT");
 
         expectedRecordCount += 1;
 
-        connection.execute("UPDATE debezium.customer SET name = 'Bruce', score = 2345.67, registered = TO_DATE('2018/03/23', 'yyyy-mm-dd') WHERE id = 1");
+        connection.execute("UPDATE debezium.customer SET name = 'Bruce', score = 2345.67, registered = TO_DATE('2018-03-23', 'yyyy-mm-dd') WHERE id = 1");
         connection.execute("COMMIT");
         expectedRecordCount += 1;
 
@@ -628,7 +628,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
         int expectedRecordCount = 0;
-        connection.execute("INSERT INTO debezium.customer VALUES (1, 'Billie-Bob', 1234.56, TO_DATE('2018/02/22', 'yyyy-mm-dd'))");
+        connection.execute("INSERT INTO debezium.customer VALUES (1, 'Billie-Bob', 1234.56, TO_DATE('2018-02-22', 'yyyy-mm-dd'))");
         connection.execute("COMMIT");
         expectedRecordCount += 1;
 
@@ -636,7 +636,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         connection.execute("COMMIT");
         expectedRecordCount += 1; // deletion, no tombstone
 
-        connection.execute("INSERT INTO debezium.customer VALUES (2, 'Billie-Bob', 1234.56, TO_DATE('2018/02/22', 'yyyy-mm-dd'))");
+        connection.execute("INSERT INTO debezium.customer VALUES (2, 'Billie-Bob', 1234.56, TO_DATE('2018-02-22', 'yyyy-mm-dd'))");
         connection.execute("COMMIT");
         expectedRecordCount += 1;
 
@@ -657,7 +657,6 @@ public class OracleConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
-    @SkipWhenAdapterNameIs(value = SkipWhenAdapterNameIs.AdapterName.LOGMINER, reason = "LogMiner does not yet support DDL during streaming")
     public void shouldReadChangeStreamForTableCreatedWhileStreaming() throws Exception {
         TestHelper.dropTable(connection, "debezium.customer2");
 
@@ -679,9 +678,9 @@ public class OracleConnectorIT extends AbstractConnectorTest {
                 ")";
 
         connection.execute(ddl);
-        connection.execute("GRANT SELECT ON debezium.customer2 to " + TestHelper.getConnectorUserName());
+        TestHelper.streamTable(connection, "debezium.customer2");
 
-        connection.execute("INSERT INTO debezium.customer2 VALUES (2, 'Billie-Bob', 1234.56, TO_DATE('2018/02/22', 'yyyy-mm-dd'))");
+        connection.execute("INSERT INTO debezium.customer2 VALUES (2, 'Billie-Bob', 1234.56, TO_DATE('2018-02-22', 'yyyy-mm-dd'))");
         connection.execute("COMMIT");
 
         SourceRecords records = consumeRecordsByTopic(1);
@@ -699,7 +698,6 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-800")
-    @SkipWhenAdapterNameIs(value = SkipWhenAdapterNameIs.AdapterName.LOGMINER, reason = "LogMiner does not yet support DDL during streaming")
     public void shouldReceiveHeartbeatAlsoWhenChangingTableIncludeListTables() throws Exception {
         TestHelper.dropTable(connection, "debezium.dbz800a");
         TestHelper.dropTable(connection, "debezium.dbz800b");
@@ -725,12 +723,21 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         // expecting two heartbeat records and one actual change record
         List<SourceRecord> records = consumeRecordsByTopic(3).allRecordsInOrder();
 
-        // expecting no change record for s1.a but a heartbeat
-        verifyHeartbeatRecord(records.get(0));
+        if (TestHelper.adapter().equals(OracleConnectorConfig.ConnectorAdapter.XSTREAM)) {
+            // expecting no change record for s1.a but a heartbeat
+            verifyHeartbeatRecord(records.get(0));
 
-        // and then a change record for s1.b and a heartbeat
-        verifyHeartbeatRecord(records.get(1));
-        VerifyRecord.isValidInsert(records.get(2), "ID", 2);
+            // and then a change record for s1.b and a heartbeat
+            verifyHeartbeatRecord(records.get(1));
+            VerifyRecord.isValidInsert(records.get(2), "ID", 2);
+        }
+        else {
+            // Unlike Xstream, LogMiner's query will exclude the insert for dbz800a and
+            // so we won't actually emit a Heartbeat for that record at all but we will
+            // instead emit one when we detect dbz800b only.
+            verifyHeartbeatRecord(records.get(0));
+            VerifyRecord.isValidInsert(records.get(1), "ID", 2);
+        }
     }
 
     @Test
@@ -835,7 +842,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
         waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
-        connection.execute("INSERT INTO debezium.customer VALUES (3, 'Nest', 1234.56, TO_DATE('2018/02/22', 'yyyy-mm-dd'))");
+        connection.execute("INSERT INTO debezium.customer VALUES (3, 'Nest', 1234.56, TO_DATE('2018-02-22', 'yyyy-mm-dd'))");
         connection.execute("COMMIT");
 
         SourceRecords records = consumeRecordsByTopic(1);
@@ -970,15 +977,15 @@ public class OracleConnectorIT extends AbstractConnectorTest {
                     "birth_date DATE," +
                     "primary key(id)) " +
                     "PARTITION BY RANGE (birth_date) (" +
-                    "PARTITION p2019 VALUES LESS THAN (TO_DATE('01-JAN-2020', 'dd-MON-yyyy')), " +
-                    "PARTITION p2020 VALUES LESS THAN (TO_DATE('01-JAN-2021', 'dd-MON-yyyy'))" +
+                    "PARTITION p2019 VALUES LESS THAN (TO_DATE('2020-01-01', 'yyyy-mm-dd')), " +
+                    "PARTITION p2020 VALUES LESS THAN (TO_DATE('2021-01-01', 'yyyy-mm-dd'))" +
                     ")";
             connection.execute(ddl);
             connection.execute("GRANT SELECT ON debezium.players to " + TestHelper.getConnectorUserName());
             connection.execute("ALTER TABLE debezium.players ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
 
             // Insert a record to be captured by snapshot
-            connection.execute("INSERT INTO debezium.players (id, name, birth_date) VALUES (1, 'Roger Rabbit', '01-MAY-2019')");
+            connection.execute("INSERT INTO debezium.players (id, name, birth_date) VALUES (1, 'Roger Rabbit', TO_DATE('2019-05-01', 'yyyy-mm-dd'))");
             connection.commit();
 
             // Start connector
@@ -996,8 +1003,8 @@ public class OracleConnectorIT extends AbstractConnectorTest {
             waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
             // Insert a record to be captured during streaming
-            connection.execute("INSERT INTO debezium.players (id, name, birth_date) VALUES (2, 'Bugs Bunny', '26-JUN-2019')");
-            connection.execute("INSERT INTO debezium.players (id, name, birth_date) VALUES (3, 'Elmer Fud', '01-NOV-2020')");
+            connection.execute("INSERT INTO debezium.players (id, name, birth_date) VALUES (2, 'Bugs Bunny', TO_DATE('2019-06-26', 'yyyy-mm-dd'))");
+            connection.execute("INSERT INTO debezium.players (id, name, birth_date) VALUES (3, 'Elmer Fud', TO_DATE('2020-11-01', 'yyyy-mm-dd'))");
             connection.commit();
 
             final SourceRecords streamRecords = consumeRecordsByTopic(2);
@@ -1162,7 +1169,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
             waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
-            connection.execute("INSERT INTO debezium.orders VALUES (10, '22-FEB-2018')");
+            connection.execute("INSERT INTO debezium.orders VALUES (10, TO_DATE('2018-02-22', 'yyyy-mm-dd'))");
             connection.execute("COMMIT");
 
             final SourceRecords streamRecords = consumeRecordsByTopic(1);
@@ -1566,9 +1573,9 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         }
     }
 
+    // todo: should this test be removed since its now covered in OracleClobDataTypesIT?
     @Test
     @FixFor("DBZ-3257")
-    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER)
     public void shouldSnapshotAndStreamClobDataTypes() throws Exception {
         TestHelper.dropTable(connection, "clob_test");
         try {
@@ -1639,6 +1646,133 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         }
         finally {
             TestHelper.dropTable(connection, "dbz3347");
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-832")
+    public void shouldSnapshotAndStreamTablesWithNoPrimaryKey() throws Exception {
+        TestHelper.dropTable(connection, "dbz832");
+        try {
+            connection.execute("create table dbz832 (id numeric(9,0), data varchar2(50))");
+            TestHelper.streamTable(connection, "dbz832");
+
+            connection.execute("INSERT INTO dbz832 values (1, 'Test')");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ832")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            SourceRecords records = consumeRecordsByTopic(1);
+            assertThat(records.recordsForTopic("server1.DEBEZIUM.DBZ832")).hasSize(1);
+            SourceRecord record = records.recordsForTopic("server1.DEBEZIUM.DBZ832").get(0);
+            assertThat(record.key()).isNull();
+            Struct after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.get("ID")).isEqualTo(1);
+            assertThat(after.get("DATA")).isEqualTo("Test");
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.execute("INSERT INTO dbz832 values (2, 'Test2')");
+            records = consumeRecordsByTopic(1);
+            assertThat(records.recordsForTopic("server1.DEBEZIUM.DBZ832")).hasSize(1);
+            record = records.recordsForTopic("server1.DEBEZIUM.DBZ832").get(0);
+            assertThat(record.key()).isNull();
+            after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.get("ID")).isEqualTo(2);
+            assertThat(after.get("DATA")).isEqualTo("Test2");
+
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz832");
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-3322")
+    public void shouldNotEmitEventsOnConstraintViolations() throws Exception {
+        TestHelper.dropTable(connection, "dbz3322");
+        try {
+            connection.execute("CREATE TABLE dbz3322 (id number(9,0), data varchar2(50))");
+            connection.execute("CREATE UNIQUE INDEX uk_dbz3322 ON dbz3322 (id)");
+            TestHelper.streamTable(connection, "dbz3322");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ3322")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            try {
+                connection.executeWithoutCommitting("INSERT INTO dbz3322 (id,data) values (1, 'Test1')");
+                connection.executeWithoutCommitting("INSERT INTO dbz3322 (id,data) values (1, 'Test2')");
+            }
+            catch (SQLException e) {
+                // ignore unique constraint violation
+                if (!e.getMessage().startsWith("ORA-00001")) {
+                    throw e;
+                }
+            }
+            finally {
+                connection.executeWithoutCommitting("COMMIT");
+            }
+
+            SourceRecords records = consumeRecordsByTopic(1);
+            assertThat(records.recordsForTopic("server1.DEBEZIUM.DBZ3322")).hasSize(1);
+
+            final Struct after = (((Struct) records.recordsForTopic("server1.DEBEZIUM.DBZ3322").get(0).value()).getStruct("after"));
+            assertThat(after.get("ID")).isEqualTo(1);
+            assertThat(after.get("DATA")).isEqualTo("Test1");
+
+            assertNoRecordsToConsume();
+
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz3322");
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-3322")
+    public void shouldNotEmitEventsInRollbackTransaction() throws Exception {
+        TestHelper.dropTable(connection, "dbz3322");
+        try {
+            connection.execute("CREATE TABLE dbz3322 (id number(9,0), data varchar2(50))");
+            connection.execute("CREATE UNIQUE INDEX uk_dbz3322 ON dbz3322 (id)");
+            TestHelper.streamTable(connection, "dbz3322");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ3322")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.executeWithoutCommitting("INSERT INTO dbz3322 (id,data) values (1, 'Test')");
+            connection.executeWithoutCommitting("INSERT INTO dbz3322 (id,data) values (2, 'Test')");
+            connection.executeWithoutCommitting("ROLLBACK");
+
+            connection.executeWithoutCommitting("INSERT INTO dbz3322 (id,data) values (3, 'Test')");
+            connection.executeWithoutCommitting("COMMIT");
+
+            SourceRecords records = consumeRecordsByTopic(1);
+            assertThat(records.recordsForTopic("server1.DEBEZIUM.DBZ3322")).hasSize(1);
+            Struct value = (Struct) records.recordsForTopic("server1.DEBEZIUM.DBZ3322").get(0).value();
+            assertThat(value.getStruct(Envelope.FieldName.AFTER).get("ID")).isEqualTo(3);
+            assertNoRecordsToConsume();
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz3322");
         }
     }
 

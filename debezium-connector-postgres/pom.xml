@@ -3,7 +3,7 @@
     <parent>
         <groupId>io.debezium</groupId>
         <artifactId>debezium-parent</artifactId>
-        <version>1.5.0-SNAPSHOT</version>
+        <version>1.6.0-SNAPSHOT</version>
 	<relativePath>../debezium-parent/pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
@@ -243,23 +243,6 @@
                     </systemPropertyVariables>
                 </configuration>
             </plugin>
-            <plugin>
-                <groupId>org.revapi</groupId>
-                <artifactId>revapi-maven-plugin</artifactId>
-                <configuration>
-                    <analysisConfiguration combine.children="append">
-                        <revapi.java>
-                            <filter>
-                                <packages>
-                                    <include>
-                                        <item>io.debezium.connector.postgresql.spi</item>
-                                    </include>
-                                </packages>
-                            </filter>
-                        </revapi.java>
-                    </analysisConfiguration>
-                </configuration>
-            </plugin>
         </plugins>
         <resources>
             <!-- Apply the properties set in the POM to the resource files -->
@@ -325,6 +308,48 @@
                     </plugin>
                 </plugins>
             </build>
+        </profile>
+        <profile>
+            <id>qa</id>
+            <activation>
+                <property>
+                    <name>!quick</name>
+                </property>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.revapi</groupId>
+                        <artifactId>revapi-maven-plugin</artifactId>
+                        <configuration>
+                            <analysisConfiguration combine.children="append">
+                                <revapi.java>
+                                    <filter>
+                                        <packages>
+                                            <include>
+                                                <item>io.debezium.connector.postgresql.spi</item>
+                                            </include>
+                                        </packages>
+                                    </filter>
+                                </revapi.java>
+                            </analysisConfiguration>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>quick</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+                <property>
+                    <name>quick</name>
+                </property>
+            </activation>
+            <properties>
+                <skipITs>true</skipITs>
+                <docker.skip>true</docker.skip>
+            </properties>
         </profile>
         <!--  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
               Do not perform any Docker-related functionality

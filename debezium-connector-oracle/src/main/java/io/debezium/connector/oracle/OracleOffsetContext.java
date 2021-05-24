@@ -9,12 +9,12 @@ import java.time.Instant;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.connector.SnapshotRecord;
-import io.debezium.connector.oracle.xstream.LcrPosition;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.relational.TableId;
@@ -22,8 +22,8 @@ import io.debezium.schema.DataCollectionId;
 
 public class OracleOffsetContext implements OffsetContext {
 
-    private static final String SERVER_PARTITION_KEY = "server";
-    private static final String SNAPSHOT_COMPLETED_KEY = "snapshot_completed";
+    public static final String SERVER_PARTITION_KEY = "server";
+    public static final String SNAPSHOT_COMPLETED_KEY = "snapshot_completed";
 
     private final Schema sourceInfoSchema;
     private final Map<String, String> partition;
@@ -36,14 +36,14 @@ public class OracleOffsetContext implements OffsetContext {
      */
     private boolean snapshotCompleted;
 
-    public OracleOffsetContext(OracleConnectorConfig connectorConfig, Scn scn, Scn commitScn, LcrPosition lcrPosition,
+    public OracleOffsetContext(OracleConnectorConfig connectorConfig, Scn scn, Scn commitScn, String lcrPosition,
                                boolean snapshot, boolean snapshotCompleted, TransactionContext transactionContext) {
         this(connectorConfig, scn, lcrPosition, snapshot, snapshotCompleted, transactionContext);
         sourceInfo.setCommitScn(commitScn);
     }
 
-    private OracleOffsetContext(OracleConnectorConfig connectorConfig, Scn scn, LcrPosition lcrPosition,
-                                boolean snapshot, boolean snapshotCompleted, TransactionContext transactionContext) {
+    public OracleOffsetContext(OracleConnectorConfig connectorConfig, Scn scn, String lcrPosition,
+                               boolean snapshot, boolean snapshotCompleted, TransactionContext transactionContext) {
         partition = Collections.singletonMap(SERVER_PARTITION_KEY, connectorConfig.getLogicalName());
 
         sourceInfo = new SourceInfo(connectorConfig);
@@ -66,7 +66,7 @@ public class OracleOffsetContext implements OffsetContext {
 
         private OracleConnectorConfig connectorConfig;
         private Scn scn;
-        private LcrPosition lcrPosition;
+        private String lcrPosition;
         private boolean snapshot;
         private boolean snapshotCompleted;
         private TransactionContext transactionContext;
@@ -81,7 +81,7 @@ public class OracleOffsetContext implements OffsetContext {
             return this;
         }
 
-        public Builder lcrPosition(LcrPosition lcrPosition) {
+        public Builder lcrPosition(String lcrPosition) {
             this.lcrPosition = lcrPosition;
             return this;
         }
@@ -130,7 +130,7 @@ public class OracleOffsetContext implements OffsetContext {
         else {
             final Map<String, Object> offset = new HashMap<>();
             if (sourceInfo.getLcrPosition() != null) {
-                offset.put(SourceInfo.LCR_POSITION_KEY, sourceInfo.getLcrPosition().toString());
+                offset.put(SourceInfo.LCR_POSITION_KEY, sourceInfo.getLcrPosition());
             }
             else {
                 final Scn scn = sourceInfo.getScn();
@@ -168,11 +168,11 @@ public class OracleOffsetContext implements OffsetContext {
         return sourceInfo.getCommitScn();
     }
 
-    public void setLcrPosition(LcrPosition lcrPosition) {
+    public void setLcrPosition(String lcrPosition) {
         sourceInfo.setLcrPosition(lcrPosition);
     }
 
-    public LcrPosition getLcrPosition() {
+    public String getLcrPosition() {
         return sourceInfo.getLcrPosition();
     }
 
@@ -185,7 +185,7 @@ public class OracleOffsetContext implements OffsetContext {
     }
 
     public void setTableId(TableId tableId) {
-        sourceInfo.setTableId(tableId);
+        sourceInfo.tableEvent(tableId);
     }
 
     @Override
@@ -230,63 +230,23 @@ public class OracleOffsetContext implements OffsetContext {
 
     @Override
     public void event(DataCollectionId tableId, Instant timestamp) {
-        sourceInfo.setTableId((TableId) tableId);
+        sourceInfo.tableEvent((TableId) tableId);
         sourceInfo.setSourceTime(timestamp);
+    }
+
+    public void tableEvent(TableId tableId, Instant timestamp) {
+        sourceInfo.setSourceTime(timestamp);
+        sourceInfo.tableEvent(tableId);
+    }
+
+    public void tableEvent(Set<TableId> tableIds, Instant timestamp) {
+        sourceInfo.setSourceTime(timestamp);
+        sourceInfo.tableEvent(tableIds);
     }
 
     @Override
     public TransactionContext getTransactionContext() {
         return transactionContext;
-    }
-
-    public static class Loader implements OffsetContext.Loader {
-
-        private final OracleConnectorConfig connectorConfig;
-        private final OracleConnectorConfig.ConnectorAdapter adapter;
-
-        // todo resolve adapter from the config rather than passing it
-        public Loader(OracleConnectorConfig connectorConfig, OracleConnectorConfig.ConnectorAdapter adapter) {
-            this.connectorConfig = connectorConfig;
-            this.adapter = adapter;
-        }
-
-        @Override
-        public Map<String, ?> getPartition() {
-            return Collections.singletonMap(SERVER_PARTITION_KEY, connectorConfig.getLogicalName());
-        }
-
-        @Override
-        public OffsetContext load(Map<String, ?> offset) {
-            boolean snapshot = Boolean.TRUE.equals(offset.get(SourceInfo.SNAPSHOT_KEY));
-            boolean snapshotCompleted = Boolean.TRUE.equals(offset.get(SNAPSHOT_COMPLETED_KEY));
-            Scn scn;
-            if (adapter == OracleConnectorConfig.ConnectorAdapter.LOG_MINER) {
-                scn = getScnFromOffsetMapByKey(offset, SourceInfo.SCN_KEY);
-                Scn commitScn = getScnFromOffsetMapByKey(offset, SourceInfo.COMMIT_SCN_KEY);
-                return new OracleOffsetContext(connectorConfig, scn, commitScn, null, snapshot, snapshotCompleted, TransactionContext.load(offset));
-            }
-            else {
-                LcrPosition lcrPosition = LcrPosition.valueOf((String) offset.get(SourceInfo.LCR_POSITION_KEY));
-                scn = (lcrPosition != null ? lcrPosition.getScn() : getScnFromOffsetMapByKey(offset, SourceInfo.SCN_KEY));
-                return new OracleOffsetContext(connectorConfig, scn, lcrPosition, snapshot, snapshotCompleted, TransactionContext.load(offset));
-            }
-
-        }
-
-        public static Scn getScnFromOffset(Map<String, ?> offset, LcrPosition lcrPosition) {
-            if (lcrPosition != null) {
-                return lcrPosition.getScn();
-            }
-            // Prioritize string-based SCN key over the numeric-based SCN key
-            Object scn = offset.get(SourceInfo.SCN_KEY);
-            if (scn instanceof String) {
-                return Scn.valueOf((String) scn);
-            }
-            else if (scn != null) {
-                return Scn.valueOf((Long) scn);
-            }
-            return null;
-        }
     }
 
     /**

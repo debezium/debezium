@@ -13,7 +13,7 @@
 
 toc::[]
 
-You can use the JMX metrics provided by link:https://zookeeper.apache.org/doc/r3.1.2/zookeeperJMX.html[Zookeeper] and link:http://docs.confluent.io/3.0.0/kafka/monitoring.html[Kafka] to monitor {prodname}.
+You can use the JMX metrics provided by link:https://zookeeper.apache.org/doc/r3.1.2/zookeeperJMX.html[Apache Zookeeper], link:https://kafka.apache.org/documentation/#monitoring[Apache Kafka], and https://kafka.apache.org/documentation/#connect_monitoring[Kafka Connect] to monitor {prodname}.
 To use these metrics, you must enable them when you start the Zookeeper, Kafka, and Kafka Connect services.
 Enabling JMX involves setting the correct environment variables.
 ifdef::community[]
@@ -38,7 +38,7 @@ each connector provides additional metrics that you can use to monitor their act
 
 * {link-prefix}:{link-mysql-connector}#mysql-monitoring[MySQL connector metrics]
 * {link-prefix}:{link-mongodb-connector}#mongodb-monitoring[MongoDB connector metrics]
-* {link-prefix}:{link-postgresql-connector}#postgresql-monitoring[PosgreSQL connector metrics]
+* {link-prefix}:{link-postgresql-connector}#postgresql-monitoring[PostgreSQL connector metrics]
 * {link-prefix}:{link-sqlserver-connector}#sqlserver-monitoring[SQL Server connector metrics]
 * {link-prefix}:{link-db2-connector}#db2-monitoring[Db2 connector metrics]
 ifdef::community[]
@@ -139,18 +139,18 @@ ifdef::product[]
 == Monitoring {prodname} on OpenShift
 
 If you are using {prodname} on OpenShift, you can obtain JMX metrics by opening a JMX port on `9999`.
-For more information, see link:{LinkStreamsOpenShift}#assembly-jmx-options-deployment-configuration-kafka[JMX Options].
+For more information, see link:{LinkStreamsOpenShift}#assembly-jmx-options-deployment-configuration-kafka[JMX Options] in {NameStreamsOpenShift}.
 
 In addition, you can use Prometheus and Grafana to monitor the JMX metrics.
-For more information, see link:{LinkStreamsOpenShift}/#assembly-metrics-setup-str[Introducing Metrics].
+For more information, see link:{LinkDeployStreamsOpenShift}/#assembly-metrics-str[Introducing Metrics to Kafka], in {NameDeployStreamsOpenShift}.
 
 endif::product[]
 
 ifdef::community[]
 [id="enabling-jmx-docker"]
-=== Enabling JMX in Docker
+== Enabling JMX in Docker
 
-If you are running Zookeeper, Kafka, and Kafka Connect in Docker containers,
+If you are running Zookeeper, Kafka, and Kafka Connect in via the {prodname} container images,
 enabling JMX requires several additional environment variables that are not typically needed when running on a local machine.
 This is because the JVM requires the host name to which it will advertise itself to JMX clients.
 Thus, {prodname}'s Docker images for Zookeeper, Kafka, and Kafka Connect use several environment variables to enable and configure JMX.
@@ -311,5 +311,17 @@ You can find an example for the required configuration and example dashboards fo
 These dashboards are not part of {prodname} itself and are maintained on a best-effort basis.
 ====
 
+[id="java-flight-recorder"]
+== Java Flight Recording
 
+The {prodname} container image for Kafka Connect also provides easy-to-use support for https://openjdk.java.net/jeps/328[JDK Flight Recorder].
+To enable the recording it is necessary to set the environment variable `ENABLE_JFR=true`.
+The recording will then be started automatically upon container start.
+By default, the recording is enabled, i.e. a continuous recording with default settings is done, which you then can dump using _jcmd_ or JDK Mission Control.
+
+It is possible to modify the recorder's behaviour.
+For that, you need to set either environment variables prefixed with `JFR_RECORDING_` to set recording parameters.
+The part after the prefix is converted to lowercase and underscores are replaced with dashes so `JFR_RECORDING_PATH_TO_GC_ROOTS=true` becomes `path-to-gc-roots=true`.
+
+Flight Recorder control options can be configured via `JFR_OPT_` prefixed environment variables.
 endif::community[]

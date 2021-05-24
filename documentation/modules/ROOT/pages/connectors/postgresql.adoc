@@ -126,21 +126,12 @@ For more information about PostgreSQL logical replication security, see the link
 Most PostgreSQL servers are configured to not retain the complete history of the database in the WAL segments. This means that the PostgreSQL connector would be unable to see the entire history of the database by reading only the WAL. Consequently, the first time that the connector starts, it performs an initial _consistent snapshot_ of the database. The default behavior for performing a snapshot consists of the following steps. You can change this behavior by setting the {link-prefix}:{link-postgresql-connector}#postgresql-property-snapshot-mode[`snapshot.mode` connector configuration property] to a value other than `initial`.
 
 . Start a transaction with a link:https://www.postgresql.org/docs/current/static/sql-set-transaction.html[SERIALIZABLE, READ ONLY, DEFERRABLE] isolation level to ensure that subsequent reads in this transaction are against a single consistent version of the data. Any changes to the data due to subsequent `INSERT`, `UPDATE`, and `DELETE` operations by other clients are not visible to this transaction.
-. Obtain an `ACCESS SHARE MODE` lock on each of the tables being tracked to ensure that no structural changes can occur to any of the tables while the snapshot is taking place. These locks do not prevent table `INSERT`, `UPDATE` and `DELETE` operations from taking place during the snapshot.
-+
-_This step is omitted when `snapshot.mode` is set to `exported`, which allows the connector to perform a lock-free snapshot_.
 . Read the current position in the server's transaction log.
 . Scan the database tables and schemas, generate a `READ` event for each row and write that event to the appropriate table-specific Kafka topic.
 . Commit the transaction.
 . Record the successful completion of the snapshot in the connector offsets.
 
 If the connector fails, is rebalanced, or stops after Step 1 begins but before Step 6 completes, upon restart the connector begins a new snapshot. After the connector completes its initial snapshot, the PostgreSQL connector continues streaming from the position that it read in step 3. This ensures that the connector does not miss any updates. If the connector stops again for any reason, upon restart, the connector continues streaming changes from where it previously left off.
-
-[WARNING]
-====
-It is strongly recommended that you configure a PostgreSQL connector to set `snapshot.mode` to `exported`. The `initial`, `initial only` and `always` modes can lose a few events while a connector switches from performing the snapshot to streaming change event records when a database is under heavy load.
-This is a known issue and the affected snapshot modes will be reworked to use `exported` mode internally (link:https://issues.redhat.com/browse/DBZ-2337[DBZ-2337]).
-====
 
 [id="snapshot-mode-settings"]
 .Settings for `snapshot.mode` connector configuration property
@@ -162,7 +153,7 @@ This is a known issue and the affected snapshot modes will be reworked to use `e
 |The connector performs a database snapshot and stops before streaming any change event records. If the connector had started but did not complete a snapshot before stopping, the connector restarts the snapshot process and stops when the snapshot completes.
 
 |`exported`
-|The connector performs a database snapshot based on the point in time when the replication slot was created. This mode is an excellent way to perform a snapshot in a lock-free way.
+|Deprecated, all modes are lockless.
 
 ifdef::community[]
 |`custom`
@@ -170,6 +161,8 @@ ifdef::community[]
 endif::community[]
 
 |===
+
+include::{partialsdir}/modules/all-connectors/ref-connector-incremental-snapshot.adoc[leveloffset=+3]
 
 ifdef::community[]
 [[postgresql-custom-snapshot]]
@@ -220,14 +213,6 @@ public interface Snapshotter {
      */
     default boolean shouldStreamEventsStartingFromSnapshot() {
         return true;
-    }
-
-    /**
-     * @return true if when creating a slot, a snapshot should be exported, which
-     * can be used as an alternative to taking a lock
-     */
-    default boolean exportSnapshot() {
-        return false;
     }
 
     /**
@@ -2141,7 +2126,7 @@ ifdef::product[]
 To deploy a {prodname} PostgreSQL connector, add the connector files to Kafka Connect, create a custom container to run the connector, and add connector configuration to your container. Details are in the following topics:
 
 * xref:deploying-debezium-postgresql-connectors[]
-* xref:postgresql-connector-properties[]
+* xref:descriptions-of-debezium-postgresql-connector-configuration-properties[]
 
 // Type: procedure
 // ModuleID: deploying-debezium-postgresql-connectors
@@ -2149,7 +2134,8 @@ To deploy a {prodname} PostgreSQL connector, add the connector files to Kafka Co
 [[postgresql-deploying-a-connector]]
 === Deploying connectors
 
-To deploy a {prodname} PostgreSQL connector, you need to build a custom Kafka Connect container image that contains the {prodname} connector archive and push this container image to a container registry.You then need to create two custom resources (CRs):
+To deploy a {prodname} PostgreSQL connector, you need to build a custom Kafka Connect container image that contains the {prodname} connector archive and push this container image to a container registry.
+You then need to create two custom resources (CRs):
 
 * A `KafkaConnect` CR that configures your Kafka Connector and that specifies the name of the image that you created to run your {prodname} connector. You apply this CR to the OpenShift Kafka instance.
 
@@ -2204,6 +2190,11 @@ From the directory that contains the file, open a terminal window and enter one 
 podman build -t debezium-container-for-postgresql:latest .
 ----
 +
+[source,shell,options="nowrap"]
+----
+docker build -t debezium-container-for-postgresql:latest .
+----
++
 The `build` command builds a container image with the name `debezium-container-for-postgresql`.
 
 .. Push your custom image to a container registry such as `quay.io` or an internal container registry.
@@ -2249,7 +2240,7 @@ This updates your Kafka Connect environment in OpenShift to add a Kafka Connecto
 +
 You configure a {prodname} PostgreSQL connector in a `.yaml` file that specifies the configuration properties for the connector.
 The connector configuration might instruct {prodname} to produce events for a subset of the schemas and tables, or it might set properties so that {prodname} ignores, masks, or truncates values in specified columns that are sensitive, too large, or not needed.
-For the complete list of the configuration properties that you can set for the {prodname} PostgreSQL connector, see {link-prefix}:{link-postgresql-connector}#postgresql-connector-properties[PostgreSQL connector properties].
+For the complete list of the configuration properties that you can set for the {prodname} PostgreSQL connector, see {link-prefix}:{link-postgresql-connector}#descriptions-of-debezium-sql-server-connector-configuration-properties[PostgreSQL connector properties].
 +
 The following example configures a {prodname} connector that connects to a PostgreSQL server host, `192.168.99.100`, on port `5432`. This host has a database named `sampledb`, a schema named `public`, and `fulfillment` is the server's logical name.
 +
@@ -2407,6 +2398,7 @@ When the connector starts, it {link-prefix}:{link-postgresql-connector}#postgres
 
 // Type: reference
 // Title: Description of {prodname} PostgreSQL connector configuration properties
+// ModuleID: descriptions-of-debezium-postgresql-connector-configuration-properties
 [[postgresql-connector-properties]]
 === Connector configuration properties
 
@@ -2497,7 +2489,7 @@ If the publication already exists, either for all tables or configured with a su
 
 |[[postgresql-property-database-server-name]]<<postgresql-property-database-server-name, `+database.server.name+`>>
 |
-|Logical name that identifies and provides a namespace for the particular PostgreSQL database server or cluster in which {prodname} is capturing changes. Only alphanumeric characters and underscores should be used in the database server logical name. The logical name should be unique across all other connectors, since it is used as a topic name prefix for all Kafka topics that receive records from this connector.
+|Logical name that identifies and provides a namespace for the particular PostgreSQL database server or cluster in which {prodname} is capturing changes. Only alphanumeric characters and underscores must be used in the database server logical name. The logical name should be unique across all other connectors, since it is used as a topic name prefix for all Kafka topics that receive records from this connector.
 
 |[[postgresql-property-schema-include-list]]<<postgresql-property-schema-include-list, `+schema.include.list+`>>
 |
@@ -2593,13 +2585,13 @@ If the publication already exists, either for all tables or configured with a su
 
 |[[postgresql-property-tombstones-on-delete]]<<postgresql-property-tombstones-on-delete, `+tombstones.on.delete+`>>
 |`true`
-| Controls whether a tombstone event should be generated after a _delete_ event. +
+|Controls whether a _delete_ event is followed by a tombstone event. +
  +
-`true` - delete operations are represented by a _delete_ event and a subsequent tombstone event. +
+`true` - a delete operation is represented by a _delete_ event and a subsequent tombstone event.  +
  +
-`false` - only a _delete_ event is sent. +
+`false` - only a _delete_ event is emitted. +
  +
-After a _delete_ operation, emitting a tombstone event enables Kafka to delete all change event records that have the same key as the deleted row.
+After a source record is deleted, emitting a tombstone event (the default behavior) allows Kafka to completely delete all events that pertain to the key of the deleted row in case {link-kafka-docs}/#compaction[log compaction] is enabled for the topic.
 
 |[[postgresql-property-column-truncate-to-length-chars]]<<postgresql-property-column-truncate-to-length-chars, `+column.truncate.to._length_.chars+`>>
 |_n/a_
@@ -2711,7 +2703,7 @@ The following _advanced_ configuration properties have defaults that work in mos
  +
 `initial_only` - The connector performs an initial snapshot and then stops, without processing any subsequent changes. +
  +
-`exported` -  The connector performs a snapshot based on the point in time when the replication slot was created. This is an excellent way to perform the snapshot in a lock-free way. +
+`exported` -  deprecated +
  +
 ifdef::community[]
 `custom` - The connector performs a snapshot according to the setting for the `snapshot.custom.class` property, which is a custom implementation of the `io.debezium.connector.postgresql.spi.Snapshotter` interface. +
@@ -2860,6 +2852,17 @@ If the setting of `toasted.value.placeholder` starts with the `hex:` prefix it i
 |[[postgresql-property-retriable-restart-connector-wait-ms]]<<postgresql-property-retriable-restart-connector-wait-ms, `+retriable.restart.connector.wait.ms+`>> +
 |10000 (10 seconds)
 |The number of milliseconds to wait before restarting a connector after a retriable error occurs.
+
+|[[postgresql-property-skipped-operations]]<<postgresql-property-skipped-operations, `+skipped.operations+`>>
+|
+| comma-separated list of operation types that will be skipped during streaming.
+The operations include: `c` for inserts/create, `u` for updates, and `d` for deletes.
+By default, no operations are skipped.
+
+|[[postgresql-property-signal-data-collection]]<<postgresql-property-signal-data-collection, `+signal.data.collection+`>>
+|
+| Fully-qualified name of the data collection that is used to send {link-prefix}:{link-signalling}[signals] to the connector.
+The name format is _schema-name.table-name_.
 
 |===
 

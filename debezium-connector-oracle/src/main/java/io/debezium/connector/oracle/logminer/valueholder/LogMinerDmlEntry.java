@@ -9,7 +9,6 @@ import java.sql.Timestamp;
 import java.util.List;
 
 import io.debezium.connector.oracle.Scn;
-import io.debezium.data.Envelope;
 
 public interface LogMinerDmlEntry {
     /**
@@ -27,10 +26,9 @@ public interface LogMinerDmlEntry {
     List<LogMinerColumnValue> getNewValues();
 
     /**
-     * this getter
-     * @return Envelope.Operation enum
+     * @return LogMiner event operation type
      */
-    Envelope.Operation getCommandType();
+    int getOperation();
 
     /**
      * the scn obtained from a LogMiner entry.
@@ -61,6 +59,16 @@ public interface LogMinerDmlEntry {
     Timestamp getSourceTime();
 
     /**
+     * @return unique row identifier
+     */
+    String getRowId();
+
+    /**
+     * @return the sequence
+     */
+    int getSequence();
+
+    /**
      * sets scn obtained from a LogMiner entry
      * @param scn it's value
      */
@@ -89,4 +97,13 @@ public interface LogMinerDmlEntry {
      */
     void setTransactionId(String id);
 
+    /**
+     * @param rowId unique row identifier
+     */
+    void setRowId(String rowId);
+
+    /**
+     * @param sequence operation sequence
+     */
+    void setSequence(int sequence);
 }

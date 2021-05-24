@@ -25,7 +25,11 @@ public enum SnapshotRecord {
     /**
      * Record is from streaming phase.
      */
-    FALSE;
+    FALSE,
+    /**
+     * Record is from incremental snapshot window.
+     */
+    INCREMENTAL;
 
     public static SnapshotRecord fromSource(Struct source) {
         if (source.schema().field(AbstractSourceInfo.SNAPSHOT_KEY) != null

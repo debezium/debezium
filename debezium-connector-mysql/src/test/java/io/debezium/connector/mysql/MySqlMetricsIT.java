@@ -72,7 +72,7 @@ public class MySqlMetricsIT extends AbstractConnectorTest {
                         .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
                         .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("simple"))
                         .with(MySqlConnectorConfig.TABLES_IGNORE_BUILTIN, Boolean.TRUE)
-                        .with(DatabaseHistory.STORE_ONLY_MONITORED_TABLES_DDL, Boolean.TRUE)
+                        .with(DatabaseHistory.STORE_ONLY_CAPTURED_TABLES_DDL, Boolean.TRUE)
                         .build());
 
         assertConnectorIsRunning();
@@ -120,7 +120,7 @@ public class MySqlMetricsIT extends AbstractConnectorTest {
                         .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
                         .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("simple"))
                         .with(MySqlConnectorConfig.TABLES_IGNORE_BUILTIN, Boolean.TRUE)
-                        .with(DatabaseHistory.STORE_ONLY_MONITORED_TABLES_DDL, Boolean.TRUE)
+                        .with(DatabaseHistory.STORE_ONLY_CAPTURED_TABLES_DDL, Boolean.TRUE)
                         .build());
 
         assertSnapshotMetrics();
@@ -151,7 +151,7 @@ public class MySqlMetricsIT extends AbstractConnectorTest {
                         .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
                         .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("simple"))
                         .with(MySqlConnectorConfig.TABLES_IGNORE_BUILTIN, Boolean.TRUE)
-                        .with(DatabaseHistory.STORE_ONLY_MONITORED_TABLES_DDL, Boolean.TRUE)
+                        .with(DatabaseHistory.STORE_ONLY_CAPTURED_TABLES_DDL, Boolean.TRUE)
                         .build());
 
         assertSnapshotMetrics();
@@ -168,7 +168,7 @@ public class MySqlMetricsIT extends AbstractConnectorTest {
                         .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
                         .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("simple"))
                         .with(MySqlConnectorConfig.TABLES_IGNORE_BUILTIN, Boolean.TRUE)
-                        .with(DatabaseHistory.STORE_ONLY_MONITORED_TABLES_DDL, Boolean.TRUE)
+                        .with(DatabaseHistory.STORE_ONLY_CAPTURED_TABLES_DDL, Boolean.TRUE)
                         .build());
 
         // CREATE DATABASE, CREATE TABLE, and 2 INSERT

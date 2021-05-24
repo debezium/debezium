@@ -81,7 +81,6 @@ public abstract class DatabaseController<C extends DatabaseClient<?, ?>> {
                 .withName(name)
                 .waitUntilCondition(WaitConditions::deploymentAvailableCondition, scaled(5), TimeUnit.MINUTES);
         LOGGER.info("Deployment '" + name + "' is available");
-        initialize();
     }
 
     public abstract void initialize() throws InterruptedException;

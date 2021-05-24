@@ -63,6 +63,7 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
         if (connection != null) {
             TestHelper.dropTable(connection, "debezium.table1");
             TestHelper.dropTable(connection, "debezium.table2");
+            TestHelper.dropTable(connection, "debezium.table3");
             connection.close();
         }
     }
@@ -184,7 +185,7 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
             connection.execute("GRANT SELECT ON debezium.table4 TO " + TestHelper.getConnectorUserName());
             connection.execute("ALTER TABLE debezium.table4 ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
 
-            connection.execute("INSERT INTO debezium.table4 VALUES (1, 'Text-1', '01-JAN-1990')");
+            connection.execute("INSERT INTO debezium.table4 VALUES (1, 'Text-1', TO_DATE('1990-01-01', 'yyyy-mm-dd'))");
             connection.execute("COMMIT");
 
             Configuration config = TestHelper.defaultConfig()
@@ -213,7 +214,7 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
             // Start streaming & wait for it
             waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
-            connection.execute("INSERT INTO debezium.table4 VALUES (2, 'Text-2', '31-DEC-1990')");
+            connection.execute("INSERT INTO debezium.table4 VALUES (2, 'Text-2', TO_DATE('1990-12-31', 'yyyy-mm-dd'))");
             connection.execute("COMMIT");
 
             records = consumeRecordsByTopic(1);
@@ -248,7 +249,7 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
             connection.execute("GRANT SELECT ON debezium.table4 TO " + TestHelper.getConnectorUserName());
             connection.execute("ALTER TABLE debezium.table4 ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
 
-            connection.execute("INSERT INTO debezium.table4 VALUES (1, 'Text-1', '01-JAN-1990')");
+            connection.execute("INSERT INTO debezium.table4 VALUES (1, 'Text-1', TO_DATE('1990-01-01', 'yyyy-mm-dd'))");
             connection.execute("COMMIT");
 
             Configuration config = TestHelper.defaultConfig()
@@ -277,7 +278,7 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
             // Start streaming & wait for it
             waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
-            connection.execute("INSERT INTO debezium.table4 VALUES (2, 'Text-2', '31-DEC-1990')");
+            connection.execute("INSERT INTO debezium.table4 VALUES (2, 'Text-2', TO_DATE('1990-12-31', 'yyyy-mm-dd'))");
             connection.execute("COMMIT");
 
             records = consumeRecordsByTopic(1);

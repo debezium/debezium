@@ -1,0 +1,54 @@
+name: Build Oracle Connector
+
+on:
+  push:
+    paths:
+      - 'support/checkstyle/**'
+      - 'support/ide-configs/**'
+      - 'support/revapi/**'
+      - 'debezium-api/**'
+      - 'debezium-ddl-parser/**'
+      - 'debezium-assembly-descriptors/**'
+      - 'debezium-core/**'
+      - 'debezium-embedded/**'
+      - 'debezium-connector-oracle/**'
+      - 'debezium-microbenchmark/**'
+      - 'debezium-e2e-benchmark/**'
+      - 'debezium-scripting/**'
+      - 'debezium-parent/pom.xml'
+      - 'debezium-bom/pom.xml'
+      - 'pom.xml'
+      - '.github/workflows/oracle-workflow.yml'
+  pull_request:
+    paths:
+      - 'support/checkstyle/**'
+      - 'support/ide-configs/**'
+      - 'support/revapi/**'
+      - 'debezium-api/**'
+      - 'debezium-ddl-parser/**'
+      - 'debezium-assembly-descriptors/**'
+      - 'debezium-core/**'
+      - 'debezium-embedded/**'
+      - 'debezium-connector-oracle/**'
+      - 'debezium-microbenchmark/**'
+      - 'debezium-e2e-benchmark/**'
+      - 'debezium-scripting/**'
+      - 'debezium-parent/pom.xml'
+      - 'debezium-bom/pom.xml'
+      - 'pom.xml'
+      - '.github/workflows/oracle-workflow.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Cache local Maven repository
+        uses: actions/cache@v2
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+      - name: Check changes in Debezium Connector Oracle LogMiner
+        run: mvn clean install -B -pl debezium-connector-oracle -am -Poracle,oracle-ci,-xstream-dependency -DskipITs=true -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120

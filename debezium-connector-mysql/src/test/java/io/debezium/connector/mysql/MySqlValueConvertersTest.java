@@ -6,7 +6,9 @@
 package io.debezium.connector.mysql;
 
 import static org.fest.assertions.Assertions.assertThat;
+import static org.junit.Assert.assertEquals;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Month;
@@ -155,6 +157,29 @@ public class MySqlValueConvertersTest {
         Column colA = table.columnWithName("A");
         Field fieldA = new Field(colA.name(), -1, converters.schemaBuilder(colA).optional().build());
         converters.converter(colA, fieldA).convert(INVALID_JSON);
+    }
+
+    @Test
+    @FixFor("DBC-3371")
+    public void testFallbackDecimalValueScale() {
+        int scale = 42;
+        String sql = "CREATE TABLE DECIMAL_TABLE (A DECIMAL(3, " + scale + ") NOT NULL);";
+
+        MySqlValueConverters converters = new MySqlValueConverters(JdbcValueConverters.DecimalMode.PRECISE,
+                TemporalPrecisionMode.CONNECT, JdbcValueConverters.BigIntUnsignedMode.LONG, BinaryHandlingMode.BYTES,
+                x -> x, (message, exception) -> {
+                    throw new DebeziumException(message, exception);
+                });
+
+        DdlParser parser = new MySqlAntlrDdlParser();
+        Tables tables = new Tables();
+        parser.parse(sql, tables);
+        Table table = tables.forTable(new TableId(null, null, "DECIMAL_TABLE"));
+
+        Column colA = table.columnWithName("A");
+        Field fieldA = new Field(colA.name(), -1, converters.schemaBuilder(colA).build());
+
+        assertEquals(BigDecimal.ZERO.setScale(scale), converters.converter(colA, fieldA).convert(null));
     }
 
     protected LocalDate localDateWithYear(int year) {

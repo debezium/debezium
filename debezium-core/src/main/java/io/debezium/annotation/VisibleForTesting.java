@@ -18,7 +18,7 @@ import java.lang.annotation.Target;
  * @author Gunnar Morling
  */
 @Documented
-@Target({ ElementType.TYPE, ElementType.FIELD, ElementType.METHOD })
+@Target({ ElementType.TYPE, ElementType.FIELD, ElementType.METHOD, ElementType.CONSTRUCTOR })
 @Retention(RetentionPolicy.SOURCE)
 public @interface VisibleForTesting {
 }

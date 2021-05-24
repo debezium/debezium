@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.StandardOpenOption;
 import java.time.Duration;
+import java.util.Properties;
 
 import javax.enterprise.event.Observes;
 import javax.inject.Inject;
@@ -46,6 +47,13 @@ public class DebeziumServerTest {
 
     @Inject
     DebeziumServer server;
+
+    @Test
+    public void testProps() {
+        Properties properties = server.getProps();
+        Assertions.assertThat(properties.getProperty("table.whitelist")).isNotNull();
+        Assertions.assertThat(properties.getProperty("table.whitelist")).isEqualTo("public.table_name");
+    }
 
     @Test
     public void testJson() throws Exception {

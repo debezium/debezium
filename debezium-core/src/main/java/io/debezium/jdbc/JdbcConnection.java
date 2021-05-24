@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.OptionalLong;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
@@ -44,19 +45,23 @@ import org.slf4j.LoggerFactory;
 import io.debezium.DebeziumException;
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.annotation.ThreadSafe;
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
+import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
 import io.debezium.relational.Tables.ColumnNameFilter;
 import io.debezium.relational.Tables.TableFilter;
+import io.debezium.schema.DatabaseSchema;
 import io.debezium.util.BoundedConcurrentHashMap;
 import io.debezium.util.BoundedConcurrentHashMap.Eviction;
 import io.debezium.util.BoundedConcurrentHashMap.EvictionListener;
 import io.debezium.util.Collect;
+import io.debezium.util.ColumnUtils;
 import io.debezium.util.Strings;
 
 /**
@@ -1404,5 +1409,78 @@ public class JdbcConnection implements AutoCloseable {
             }
             throw new IllegalStateException("Exactly one result expected.");
         }
+    }
+
+    public String buildSelectWithRowLimits(TableId tableId, int limit, String projection, Optional<String> condition, String orderBy) {
+        final StringBuilder sql = new StringBuilder("SELECT ");
+        sql
+                .append(projection)
+                .append(" FROM ");
+        sql.append(quotedTableIdString(tableId));
+        if (condition.isPresent()) {
+            sql
+                    .append(" WHERE ")
+                    .append(condition.get());
+        }
+        sql
+                .append(" ORDER BY ")
+                .append(orderBy)
+                .append(" LIMIT ")
+                .append(limit);
+        return sql.toString();
+    }
+
+    /**
+     * Allow per-connector query creation to override for best database performance depending on the table size.
+     */
+    public Statement readTableStatement(CommonConnectorConfig connectorConfig, OptionalLong tableSize) throws SQLException {
+        int fetchSize = connectorConfig.getSnapshotFetchSize();
+        final Statement statement = connection().createStatement(); // the default cursor is FORWARD_ONLY
+        statement.setFetchSize(fetchSize);
+        return statement;
+    }
+
+    /**
+     * Allow per-connector prepared query creation to override for best database performance depending on the table size.
+     */
+    public PreparedStatement readTablePreparedStatement(CommonConnectorConfig connectorConfig, String sql, OptionalLong tableSize) throws SQLException {
+        int fetchSize = connectorConfig.getSnapshotFetchSize();
+        final PreparedStatement statement = connection().prepareStatement(sql); // the default cursor is FORWARD_ONLY
+        statement.setFetchSize(fetchSize);
+        return statement;
+    }
+
+    /**
+     * Reads a value from JDBC result set and execute per-connector conversion if needed
+     */
+    public <T extends DatabaseSchema<TableId>> Object getColumnValue(ResultSet rs, int columnIndex, Column column,
+                                                                     Table table, T schema)
+            throws SQLException {
+        return rs.getObject(columnIndex);
+    }
+
+    /**
+     * Converts a {@link ResultSet} row to an array of Objects
+     */
+    public <T extends DatabaseSchema<TableId>> Object[] rowToArray(Table table, T databaseSchema, ResultSet rs,
+                                                                   ColumnUtils.ColumnArray columnArray)
+            throws SQLException {
+        final Object[] row = new Object[columnArray.getGreatestColumnPosition()];
+        for (int i = 0; i < columnArray.getColumns().length; i++) {
+            row[columnArray.getColumns()[i].position() - 1] = getColumnValue(rs, i + 1,
+                    columnArray.getColumns()[i], table, databaseSchema);
+        }
+        return row;
+    }
+
+    /**
+     * Converts a table id into a string with all components of the id quoted so non-alphanumeric
+     * characters are properly handled.
+     *
+     * @param tableId
+     * @return formatted string
+     */
+    public String quotedTableIdString(TableId tableId) {
+        return tableId.toDoubleQuotedString();
     }
 }

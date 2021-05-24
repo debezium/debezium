@@ -115,9 +115,8 @@ public class PostgresConnectorTask extends BaseSourceTask {
             ReplicationConnection replicationConnection = null;
             SlotCreationResult slotCreatedInfo = null;
             if (snapshotter.shouldStream()) {
-                final boolean shouldExport = snapshotter.exportSnapshot();
                 final boolean doSnapshot = snapshotter.shouldSnapshot();
-                replicationConnection = createReplicationConnection(this.taskContext, shouldExport,
+                replicationConnection = createReplicationConnection(this.taskContext, true,
                         doSnapshot, connectorConfig.maxRetries(), connectorConfig.retryDelay());
 
                 // we need to create the slot before we start streaming if it doesn't exist
@@ -187,7 +186,8 @@ public class PostgresConnectorTask extends BaseSourceTask {
                     PostgresChangeRecordEmitter::updateSchema,
                     metadataProvider,
                     heartbeat,
-                    schemaNameAdjuster);
+                    schemaNameAdjuster,
+                    jdbcConnection);
 
             ChangeEventSourceCoordinator coordinator = new PostgresChangeEventSourceCoordinator(
                     previousOffset,

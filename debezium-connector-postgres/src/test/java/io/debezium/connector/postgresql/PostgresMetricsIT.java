@@ -222,7 +222,7 @@ public class PostgresMetricsIT extends AbstractRecordsProducerTest {
                 throw new RuntimeException(e);
             }
             LOGGER.info("Record processing completed");
-        });
+        }, true);
 
         waitForStreamingToStart();
         TestHelper.execute(INSERT_STATEMENTS);

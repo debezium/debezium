@@ -27,10 +27,14 @@ import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.PodList;
 import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.api.model.ServiceAccount;
+import io.fabric8.kubernetes.api.model.ServiceAccountBuilder;
+import io.fabric8.kubernetes.api.model.ServiceBuilder;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
-import io.fabric8.kubernetes.api.model.networking.NetworkPolicy;
-import io.fabric8.kubernetes.api.model.networking.NetworkPolicyPort;
+import io.fabric8.kubernetes.api.model.networking.v1.NetworkPolicy;
+import io.fabric8.kubernetes.api.model.networking.v1.NetworkPolicyBuilder;
+import io.fabric8.kubernetes.api.model.networking.v1.NetworkPolicyPort;
 import io.fabric8.openshift.api.model.Route;
+import io.fabric8.openshift.api.model.RouteBuilder;
 import io.fabric8.openshift.client.OpenShiftClient;
 
 /**
@@ -56,38 +60,39 @@ public class OpenShiftUtils {
      * @return {@link Route} object for created route
      */
     public Route createRoute(String project, String name, String service, String port, Map<String, String> labels) {
-        Route route = client.routes().inNamespace(project).createOrReplaceWithNew()
-                .withNewMetadata()
-                .withName(name)
-                .withLabels(labels)
-                .endMetadata()
-                .withNewSpec()
-                .withNewTo()
-                .withKind("Service")
-                .withName(service)
-                .endTo()
-                .withNewPort()
-                .withNewTargetPort(port)
-                .endPort()
-                .endSpec()
-                .done();
-        return route;
+        return client.routes().inNamespace(project).createOrReplace(
+                new RouteBuilder()
+                        .withNewMetadata()
+                        .withName(name)
+                        .withLabels(labels)
+                        .endMetadata()
+                        .withNewSpec()
+                        .withNewTo()
+                        .withKind("Service")
+                        .withName(service)
+                        .endTo()
+                        .withNewPort()
+                        .withNewTargetPort(port)
+                        .endPort()
+                        .endSpec()
+                        .build());
     }
 
     public Service createService(String project, String name, String portName, int port, Map<String, String> selector, Map<String, String> labels) {
-        Service service = client.services().inNamespace(project).createOrReplaceWithNew()
-                .withNewMetadata()
-                .withName(name)
-                .withLabels(labels)
-                .endMetadata()
-                .withNewSpec()
-                .addNewPort()
-                .withProtocol("TCP")
-                .withName(portName).withPort(port).withTargetPort(new IntOrString(port))
-                .endPort()
-                .withSelector(selector)
-                .endSpec().done();
-        return service;
+        return client.services().inNamespace(project).createOrReplace(
+                new ServiceBuilder()
+                        .withNewMetadata()
+                        .withName(name)
+                        .withLabels(labels)
+                        .endMetadata()
+                        .withNewSpec()
+                        .addNewPort()
+                        .withProtocol("TCP")
+                        .withName(portName).withPort(port).withTargetPort(new IntOrString(port))
+                        .endPort()
+                        .withSelector(selector)
+                        .endSpec()
+                        .build());
     }
 
     /**
@@ -99,21 +104,21 @@ public class OpenShiftUtils {
      * @return {@link NetworkPolicy} object for created policy
      */
     public NetworkPolicy createNetworkPolicy(String project, String name, Map<String, String> podSelectorLabels, List<NetworkPolicyPort> ports) {
-        NetworkPolicy policy = client.network().networkPolicies().inNamespace(project)
-                .createOrReplaceWithNew()
-                .withNewMetadata()
-                .withName(name)
-                .endMetadata()
-                .withNewSpec()
-                .withNewPodSelector()
-                .withMatchLabels(podSelectorLabels)
-                .endPodSelector()
-                .addNewIngress()
-                .addToPorts(ports.toArray(new NetworkPolicyPort[ports.size()]))
-                .endIngress()
-                .withPolicyTypes("Ingress")
-                .endSpec()
-                .done();
+        NetworkPolicy policy = client.network().networkPolicies().inNamespace(project).createOrReplace(
+                new NetworkPolicyBuilder()
+                        .withNewMetadata()
+                        .withName(name)
+                        .endMetadata()
+                        .withNewSpec()
+                        .withNewPodSelector()
+                        .withMatchLabels(podSelectorLabels)
+                        .endPodSelector()
+                        .addNewIngress()
+                        .addToPorts(ports.toArray(new NetworkPolicyPort[0]))
+                        .endIngress()
+                        .withPolicyTypes("Ingress")
+                        .endSpec()
+                        .build());
 
         return policy;
     }
@@ -121,18 +126,18 @@ public class OpenShiftUtils {
     /**
      * Links pull secret to service account
      * @param project project where this operation happens
-     * @param sa service account name
+     * @param account service account name
      * @param secret secret name
      * @return {@link} Service account object to which this secret was linked
      */
-    public ServiceAccount linkPullSecret(String project, String sa, String secret) {
-        ServiceAccount serviceAccount = client.serviceAccounts().inNamespace(project).withName(sa).get();
+    public ServiceAccount linkPullSecret(String project, String account, String secret) {
+        ServiceAccount serviceAccount = client.serviceAccounts().inNamespace(project).withName(account).get();
         boolean linked = serviceAccount.getImagePullSecrets().stream().anyMatch(r -> r.getName().equals(secret));
         if (!linked) {
-            return client.serviceAccounts().inNamespace(project).withName(sa).edit()
+            return client.serviceAccounts().inNamespace(project).withName(account).edit(sa -> new ServiceAccountBuilder(sa)
                     .addNewImagePullSecret().withName(secret).endImagePullSecret()
                     .addNewSecret().withName(secret).endSecret()
-                    .done();
+                    .build());
         }
         return serviceAccount;
     }

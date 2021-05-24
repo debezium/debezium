@@ -9,17 +9,11 @@
 
 toc::[]
 
-{prodname}'s Oracle Connector can monitor and record all of the row-level changes in the databases on an Oracle server.
-Most notably, the connector does not yet provide full-blown support of changes to the structure of captured tables (e.g. `ALTER TABLE...`) after the initial snapshot has been completed
-(see {jira-url}/browse/DBZ-718[DBZ-718]).
-It is supported though to capture tables newly added while the connector is running
-(provided the new table's name matches the connector's filter configuration).
-For table schema changes an xref:surrogate-schema-evolution[auxilliary solution] could be used.
-
 [[oracle-overview]]
 == Overview
 
 {prodname} ingests change events from Oracle using the native LogMiner database package or the https://docs.oracle.com/database/121/XSTRM/xstrm_intro.htm#XSTRM72647[XStream API].
+While the connector may work with a variety of Oracle versions and editions, only Oracle EE 12 and 19 have been tested.
 
 [[how-the-oracle-connector-works]]
 == How the Oracle Connector Works
@@ -78,7 +72,7 @@ the connector writes all of these events to a Kafka topic named `<serverName>`, 
 The schema change topic message format is in an incubating state and may change without notice.
 ====
 
-{prodname} emits a new message to this topic whenever a new table is streamed from or when the structure of the table is altered ({link-prefix}:{link-oracle-connector}#oracle-schema-evolution[schema evolution procedure must be followed]).
+{prodname} emits a new message to this topic whenever a new table is streamed from or when the structure of the table is altered.
 The message contains a logical representation of the table schema.
 
 The example of the message is:
@@ -210,6 +204,7 @@ a|Describes the kind of change. The value is one of the following:
 |5
 |`id`
 |Full identifier of the table that was created, altered, or dropped.
+In the case of a table rename, this will be a concatenation of `<old>,<new>` table names.
 
 |6
 |`table`
@@ -228,7 +223,7 @@ a|Describes the kind of change. The value is one of the following:
 In messages that the connector sends to the schema change topic, the key is the name of the database that contains the schema change.
 In the following example, the `payload` field contains the key:
 
-[source,json,indent=0,subs="attributes"]
+[source,json,indent=0,subs="+attributes"]
 ----
 {
   "schema": {
@@ -252,7 +247,7 @@ In the following example, the `payload` field contains the key:
 [[oracle-transaction-metadata]]
 === Transaction Metadata
 
-{prodname} can generate events that represents tranaction metadata boundaries and enrich data messages.
+{prodname} can generate events that represents transaction metadata boundaries and enrich data messages.
 
 ==== Transaction boundaries
 {prodname} generates events for every transaction `BEGIN` and `END`.
@@ -364,7 +359,7 @@ CREATE TABLE customers (
 If the `database.server.name` configuration property has the value `server1`,
 every change event for the `customers` table while it has this definition will feature the same key structure, which in JSON looks like this:
 
-[source,json,indent=0]
+[source,json,indent=0,sub="attributes"]
 ----
 {
     "schema": {
@@ -701,7 +696,7 @@ To make this possible, {prodname}'s Oracle connector always follows the _delete_
 [[oracle-data-type-mappings]]
 == Data Type mappings
 
-The Oracle connector represents changes to rows with events that are structured like the table in which the rows exists. The event contains a field for each column value. How that value is represented in the event depends on the Oracle data type of the column. The following sections describe how the connector maps oracle data types to a _litearl type_ and a _semantic type_ in event fields.
+The Oracle connector represents changes to rows with events that are structured like the table in which the rows exists. The event contains a field for each column value. How that value is represented in the event depends on the Oracle data type of the column. The following sections describe how the connector maps oracle data types to a _literal type_ and a _semantic type_ in event fields.
 
 * _literal type_ describes how the value is literally represented using Kafka Connect schema types: `INT8`, `INT16`, `INT32`, `INT64`, `FLOAT32`, `FLOAT64`, `BOOLEAN`, `STRING`, `BYTES`, `ARRAY`, `MAP`, and `STRUCT`.
 
@@ -717,10 +712,10 @@ Details are in the following sections:
 
 endif::product[]
 
-ifndef::product[]
+ifdef::community[]
 Support for further data types will be added in subsequent releases.
 Please file a {jira-url}/browse/DBZ[JIRA issue] for any specific types that may be missing.
-endif::[]
+endif::community[]
 
 [id="oracle-character-types"]
 === Character and BLOB types
@@ -735,28 +730,40 @@ The following table describes how the connector maps character and blob types.
 |Semantic type (schema name) and Notes
 
 |`BLOB`
-|n/a
-|_This data type is not yet supported._
+|`BYTES`
+|The raw bytes.
 
 |`CHAR[(M)]`
 |`STRING`
 |n/a
 
 |`CLOB`
+|`STRING`
 |n/a
-|_This data type is not yet supported._
 
 |`LONG`
 |n/a
-|_This data type is not yet supported._
+|_This data type is not supported._
+
+|`LONG RAW`
+|n/a
+|_This data type is not supported._
 
 |`NCHAR[(M)]`
+|`STRING`
+|n/a
+
+|`NCLOB`
 |`STRING`
 |n/a
 
 |`NVARCHAR2[(M)]`
 |`STRING`
 |n/a
+
+|`RAW`
+|n/a
+|_This data type is not supported._
 
 |`VARCHAR[(M)]`
 |`STRING`
@@ -1040,6 +1047,13 @@ The following illustrates how to configure this on a specific table, which is th
 ALTER TABLE inventory.customers ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS;
 ----
 
+Minimal supplemental logging must be enabled at the database level and can be configured as follows.
+
+[source,indent=0]
+----
+ALTER DATABASE ADD SUPPLEMENTAL LOG DATA;
+----
+
 === Creating users for the connector
 
 The {prodname} Oracle connector requires that users accounts be set up with specific permissions so that the connector can capture change events.
@@ -1261,7 +1275,7 @@ The following configuration properties are _required_ unless a default value is 
 |[[oracle-property-database-server-name]]<<oracle-property-database-server-name, `+database.server.name+`>>
 |
 |Logical name that identifies and provides a namespace for the particular Oracle database server being monitored. The logical name should be unique across all other connectors, since it is used as a prefix for all Kafka topic names emanating from this connector.
-Only alphanumeric characters and underscores should be used.
+Only alphanumeric characters and underscores must be used.
 
 |[[oracle-property-database-connection-adapter]]<<oracle-property-database-connection-adapter, `+database.connection.adapter+`>>
 |`logminer`
@@ -1276,6 +1290,12 @@ Only alphanumeric characters and underscores should be used.
 |[[oracle-property-database-history-kafka-bootstrap-servers]]<<oracle-property-database-history-kafka-bootstrap-servers, `+database.history.kafka.bootstrap.servers+`>>
 |
 |A list of host/port pairs that the connector will use for establishing an initial connection to the Kafka cluster. This connection will be used for retrieving database schema history previously stored by the connector, and for writing each DDL statement read from the source database. This should point to the same Kafka cluster used by the Kafka Connect process.
+
+|[[oracle-property-database-history-skip-unparseable-ddl]]<<oracle-property-database-history-skip-unparseable-ddl, `+database.history.skip.unparseable.ddl+`>>
+|`false`
+|A Boolean value that specifies whether the connector should ignore malformed or unknown database statements or stop processing so a human can fix the issue.
+The safe default is `false`.
+Skipping should be used only with care as it can lead to data loss or mangling when the redo logs are being processed.
 
 |[[oracle-property-snapshot-mode]]<<oracle-property-snapshot-mode, `+snapshot.mode+`>>
 |_initial_
@@ -1362,9 +1382,13 @@ Note: Depending on the `_hashAlgorithm_` used, the `_salt_` selected and the act
 
 |[[oracle-property-tombstones-on-delete]]<<oracle-property-tombstones-on-delete, `+tombstones.on.delete+`>>
 |`true`
-| Controls whether a tombstone event should be generated after a delete event. +
-When `true` the delete operations are represented by a delete event and a subsequent tombstone event. When `false` only a delete event is sent. +
-Emitting the tombstone event (the default behavior) allows Kafka to completely delete all events pertaining to the given key once the source record got deleted.
+|Controls whether a _delete_ event is followed by a tombstone event. +
+ +
+`true` - a delete operation is represented by a _delete_ event and a subsequent tombstone event.  +
+ +
+`false` - only a _delete_ event is emitted. +
+ +
+After a source record is deleted, emitting a tombstone event (the default behavior) allows Kafka to completely delete all events that pertain to the key of the deleted row in case {link-kafka-docs}/#compaction[log compaction] is enabled for the topic.
 
 |[[oracle-property-message-key-columns]]<<oracle-property-message-key-columns, `+message.key.columns+`>>
 |
@@ -1435,6 +1459,17 @@ See {link-prefix}:{link-avro-serialization}#avro-naming[Avro naming] for more de
 
 See {link-prefix}:{link-oracle-connector}#oracle-transaction-metadata[Transaction Metadata] for additional details.
 
+|[[oracle-property-log-mining-strategy]]<<oracle-property-log-mining-strategy, `+log.mining.strategy+`>>
+|`redo_log_catalog`
+|The mining strategy controls how Oracle LogMiner builds and uses a given data dictionary for resolving table and column ids to names. +
+ +
+`redo_log_catalog` - Writes the data dictionary to the online redo logs causing more archive logs to be generated over time.
+This also enables tracking DDL changes against captured tables, so if the schema changes frequently this is the ideal choice. +
+ +
+`online_catalog` - Uses the database's current data dictionary to resolve object ids and does not write any extra information to the online redo logs.
+This allows LogMiner to mine substantially faster but at the expense that DDL changes cannot be tracked.
+If the captured table(s) schema changes infrequently or never, this is the ideal choice.
+
 |[[oracle-property-log-mining-batch-size-min]]<<oracle-property-log-mining-batch-size-min, `+log.mining.batch.size.min+`>>
 |`1000`
 |The minimum SCN interval size that this connector will try to read from redo/archive logs. Active batch size will be also increased/decreased by this amount for tuning connector throughput when needed.
@@ -1498,6 +1533,12 @@ When set to `0`, log mining history is is disabled.
 |
 |A comma-separated list of RAC node host names or addresses.
 This field is required to enable Oracle RAC support.
+
+|[[oracle-property-skipped-operations]]<<oracle-property-skipped-operations, `+skipped.operations+`>>
+|
+| comma-separated list of operation types that will be skipped during streaming.
+The operations include: `c` for inserts/create, `u` for updates, and `d` for deletes.
+By default, no operations are skipped.
 
 |===
 
@@ -1732,6 +1773,11 @@ See <<oracle-property-log-mining-transaction-retention-hours, `log.mining.transa
 This is an indicator that long-running transaction(s) are ongoing and preventing the connector from flushing the latest processed system change number to the connector's offsets.
 Under optimal operations, this should always be or remain close to `0`.
 
+|[[oracle-streaming-metrics-unparsable-ddl-count]]<<oracle-streaming-metrics-unparsable-ddl-count, `+UnparsableDdlCount+`>>
+|`int`
+|The number of DDL records that have been detected but could not be parsed by the DDL parser.
+This should always be `0`; however when allowing unparsable DDL to be skipped, this metric can be used to determine if any warnings have been written to the connector logs.
+
 |===
 
 [[oracle-monitoring-schema-history]]
@@ -1745,8 +1791,11 @@ include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-schema-hi
 [[surrogate-schema-evolution]]
 == Surrogate schema evolution
 
-Oracle connector does not yet support updates in table schemas parsing DDL `ALTER TABLE` statements.
-It is possible to use {prodname} link:/documentation/reference/configuration/signalling[signalling] to trigger the update of the database schema.
+The Oracle connector will automatically track and apply table schema changes by parsing DDL from the redo logs.
+In the event that the DDL parser encounters an unsupported statement, the connector offers an alternative way to handle applying the schema change should the need arise.
+
+By default, the connector will stop when an unparseable DDL statement is encountered.
+This DDL can be manually performed by using {prodname} link:/documentation/reference/configuration/signalling[signalling] to trigger the update of the database schema.
 
 The type of the schema update action is `schema-changes`.
 It will update the schema of all tables enumerated in the signal parameters.
@@ -1818,6 +1867,9 @@ The message does not contain the update to the schema, but the complete new sche
 |Boolean `true` if column value is automatically calculated
 
 |===
+
+Once the `schema-changes` signal has been inserted, the connector will need to be restarted with an altered configuration that includes specifying the  <<oracle-property-database-history-skip-unparseable-ddl, `+database.history.skip.unparseable.ddl+`>> option as `true`.
+Once the connector's commit SCN has advanced beyond the DDL change, it's recommended that the connector's configuration be returned to its previous state so that unparseable DDL statements aren't skipped unexpectedly.
 
 .Example of a logging record
 [cols="1,9a",options="header"]

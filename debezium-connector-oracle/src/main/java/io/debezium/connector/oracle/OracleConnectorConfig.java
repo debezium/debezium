@@ -9,7 +9,6 @@ import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 
 import org.apache.kafka.common.config.ConfigDef;
@@ -19,19 +18,19 @@ import org.apache.kafka.common.config.ConfigDef.Width;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.ConfigDefinition;
 import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.config.Field.ValidationOutput;
+import io.debezium.config.Instantiator;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.connector.oracle.logminer.HistoryRecorder;
 import io.debezium.connector.oracle.logminer.NeverHistoryRecorder;
 import io.debezium.connector.oracle.logminer.SqlUtils;
-import io.debezium.connector.oracle.xstream.LcrPosition;
-import io.debezium.document.Document;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.relational.ColumnFilterMode;
 import io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig;
@@ -95,14 +94,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     + "Options include: "
                     + "'initial' (the default) to specify the connector should run a snapshot only when no offsets are available for the logical server name; "
                     + "'schema_only' to specify the connector should run a snapshot of the schema when no offsets are available for the logical server name. ");
-
-    @Deprecated
-    public static final Field TABLENAME_CASE_INSENSITIVE = Field.create("database.tablename.case.insensitive")
-            .withDisplayName("Case insensitive table names")
-            .withType(Type.BOOLEAN)
-            .withDefault(false)
-            .withImportance(Importance.LOW)
-            .withDescription("Deprecated: Case insensitive table names; set to 'true' for Oracle 11g, 'false' (default) otherwise.");
 
     public static final Field ORACLE_VERSION = Field.createInternal("database.oracle.version")
             .withDisplayName("Oracle version, 11 or 12+")
@@ -304,7 +295,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     CONNECTOR_ADAPTER,
                     LOG_MINING_STRATEGY,
                     URL,
-                    TABLENAME_CASE_INSENSITIVE,
                     ORACLE_VERSION)
             .connector(
                     SNAPSHOT_ENHANCEMENT_TOKEN,
@@ -342,11 +332,11 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final String xoutServerName;
     private final SnapshotMode snapshotMode;
 
-    private final Boolean tablenameCaseInsensitive;
     private final String oracleVersion;
     private final HistoryRecorder logMiningHistoryRecorder;
     private final Configuration jdbcConfig;
-    private final ConnectorAdapter connectorAdapter;
+    private ConnectorAdapter connectorAdapter;
+    private final StreamingAdapter streamingAdapter;
     private final String snapshotEnhancementToken;
 
     // LogMiner options
@@ -374,14 +364,18 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.pdbName = toUpperCase(config.getString(PDB_NAME));
         this.xoutServerName = config.getString(XSTREAM_SERVER_NAME);
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE));
-        this.tablenameCaseInsensitive = resolveTableNameCaseInsensitivity(config);
         this.oracleVersion = config.getString(ORACLE_VERSION);
         this.logMiningHistoryRecorder = resolveLogMiningHistoryRecorder(config);
         this.jdbcConfig = config.subset(DATABASE_CONFIG_PREFIX, true);
         this.snapshotEnhancementToken = config.getString(SNAPSHOT_ENHANCEMENT_TOKEN);
+        this.connectorAdapter = ConnectorAdapter.parse(config.getString(CONNECTOR_ADAPTER));
+
+        this.streamingAdapter = this.connectorAdapter.getInstance(this);
+        if (this.streamingAdapter == null) {
+            throw new DebeziumException("Unable to instantiate the connector adapter implementation");
+        }
 
         // LogMiner
-        this.connectorAdapter = ConnectorAdapter.parse(config.getString(CONNECTOR_ADAPTER));
         this.logMiningStrategy = LogMiningStrategy.parse(config.getString(LOG_MINING_STRATEGY));
         this.logMiningHistoryRetentionHours = config.getLong(LOG_MINING_HISTORY_RETENTION);
         this.racNodes = Strings.setOf(config.getString(RAC_NODES), String::new);
@@ -430,55 +424,13 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         return snapshotMode;
     }
 
-    /**
-     * Returns whether table name case is insensitive or not.  The method may return {@code null}
-     * which indicates the connector configuration does not specify a value and should therefore
-     * be resolved by the {@link OracleConnection}.
-     *
-     * @return whether table case is insensitive, may be {@code null}.
-     */
-    public Optional<Boolean> getTablenameCaseInsensitive() {
-        return Optional.ofNullable(tablenameCaseInsensitive);
-    }
-
     public String getOracleVersion() {
         return oracleVersion;
     }
 
     @Override
     protected HistoryRecordComparator getHistoryRecordComparator() {
-        return new HistoryRecordComparator() {
-            @Override
-            protected boolean isPositionAtOrBefore(Document recorded, Document desired) {
-                Scn recordedScn;
-                Scn desiredScn;
-                if (getAdapter() == OracleConnectorConfig.ConnectorAdapter.XSTREAM) {
-                    final LcrPosition recordedPosition = LcrPosition.valueOf(recorded.getString(SourceInfo.LCR_POSITION_KEY));
-                    final LcrPosition desiredPosition = LcrPosition.valueOf(desired.getString(SourceInfo.LCR_POSITION_KEY));
-                    recordedScn = recordedPosition != null ? recordedPosition.getScn() : resolveScn(recorded);
-                    desiredScn = desiredPosition != null ? desiredPosition.getScn() : resolveScn(desired);
-                    return (recordedPosition != null && desiredPosition != null)
-                            ? recordedPosition.compareTo(desiredPosition) < 1
-                            : recordedScn.compareTo(desiredScn) < 1;
-                }
-                else {
-                    recordedScn = resolveScn(recorded);
-                    desiredScn = resolveScn(desired);
-                    return recordedScn.compareTo(desiredScn) < 1;
-                }
-
-            }
-
-            private Scn resolveScn(Document document) {
-                // prioritize reading scn as string and if not found, fallback to long data types
-                final String scn = document.getString(SourceInfo.SCN_KEY);
-                if (scn == null) {
-                    Long scnValue = document.getLong(SourceInfo.SCN_KEY);
-                    Scn.valueOf(scnValue == null ? 0 : scnValue);
-                }
-                return Scn.valueOf(scn);
-            }
-        };
+        return getAdapter().getHistoryRecordComparator();
     }
 
     /**
@@ -566,6 +518,15 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             public String getConnectionUrl() {
                 return "jdbc:oracle:oci:@${" + JdbcConfiguration.HOSTNAME + "}:${" + JdbcConfiguration.PORT + "}/${" + JdbcConfiguration.DATABASE + "}";
             }
+
+            @Override
+            public StreamingAdapter getInstance(OracleConnectorConfig connectorConfig) {
+                return Instantiator.getInstanceWithProvidedConstructorType(
+                        "io.debezium.connector.oracle.xstream.XStreamAdapter",
+                        StreamingAdapter.class::getClassLoader,
+                        OracleConnectorConfig.class,
+                        connectorConfig);
+            }
         },
 
         /**
@@ -576,9 +537,20 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             public String getConnectionUrl() {
                 return "jdbc:oracle:thin:@${" + JdbcConfiguration.HOSTNAME + "}:${" + JdbcConfiguration.PORT + "}/${" + JdbcConfiguration.DATABASE + "}";
             }
+
+            @Override
+            public StreamingAdapter getInstance(OracleConnectorConfig connectorConfig) {
+                return Instantiator.getInstanceWithProvidedConstructorType(
+                        "io.debezium.connector.oracle.logminer.LogMinerAdapter",
+                        StreamingAdapter.class::getClassLoader,
+                        OracleConnectorConfig.class,
+                        connectorConfig);
+            }
         };
 
         public abstract String getConnectionUrl();
+
+        public abstract StreamingAdapter getInstance(OracleConnectorConfig connectorConfig);
 
         private final String value;
 
@@ -755,10 +727,10 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     }
 
     /**
-     * @return connection adapter
+     * @return the streaming adapter implementation
      */
-    public ConnectorAdapter getAdapter() {
-        return connectorAdapter;
+    public StreamingAdapter getAdapter() {
+        return streamingAdapter;
     }
 
     /**
@@ -936,11 +908,4 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         return 0;
     }
 
-    private static Boolean resolveTableNameCaseInsensitivity(Configuration config) {
-        if (config.hasKey(TABLENAME_CASE_INSENSITIVE.name())) {
-            LOGGER.warn("The option '{}' is deprecated and will be removed in the future.", TABLENAME_CASE_INSENSITIVE.name());
-            return config.getBoolean(TABLENAME_CASE_INSENSITIVE);
-        }
-        return null;
-    }
 }

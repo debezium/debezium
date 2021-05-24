@@ -49,7 +49,7 @@ public abstract class AbstractDatabaseHistory implements DatabaseHistory {
     protected Configuration config;
     private HistoryRecordComparator comparator = HistoryRecordComparator.INSTANCE;
     private boolean skipUnparseableDDL;
-    private boolean storeOnlyMonitoredTablesDdl;
+    private boolean storeOnlyCapturedTablesDdl;
     private Function<String, Optional<Pattern>> ddlFilter = (x -> Optional.empty());
     private DatabaseHistoryListener listener = DatabaseHistoryListener.NOOP;
     private boolean useCatalogBeforeSchema;
@@ -64,7 +64,8 @@ public abstract class AbstractDatabaseHistory implements DatabaseHistory {
         this.config = config;
         this.comparator = comparator != null ? comparator : HistoryRecordComparator.INSTANCE;
         this.skipUnparseableDDL = config.getBoolean(DatabaseHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS);
-        this.storeOnlyMonitoredTablesDdl = config.getBoolean(DatabaseHistory.STORE_ONLY_MONITORED_TABLES_DDL);
+        this.storeOnlyCapturedTablesDdl = Boolean
+                .valueOf(config.getFallbackStringPropertyWithWarning(DatabaseHistory.STORE_ONLY_CAPTURED_TABLES_DDL, DatabaseHistory.STORE_ONLY_MONITORED_TABLES_DDL));
 
         final String ddlFilter = config.getString(DatabaseHistory.DDL_FILTER);
         this.ddlFilter = (ddlFilter != null) ? Predicates.matchedBy(ddlFilter) : this.ddlFilter;
@@ -165,8 +166,8 @@ public abstract class AbstractDatabaseHistory implements DatabaseHistory {
     }
 
     @Override
-    public boolean storeOnlyMonitoredTables() {
-        return storeOnlyMonitoredTablesDdl;
+    public boolean storeOnlyCapturedTables() {
+        return storeOnlyCapturedTablesDdl;
     }
 
     @Override

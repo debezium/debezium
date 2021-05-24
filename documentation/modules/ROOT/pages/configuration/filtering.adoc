@@ -14,8 +14,8 @@ ifdef::community[]
 toc::[]
 endif::community[]
 By default, {prodname} delivers every data change event that it receives to the Kafka broker.
-However, in many cases, you might be interested in only a subset of the events emitted by the producer. 
-To enable you to process only the records that are relevant to you, {prodname} provides the _filter_ link:https://cwiki.apache.org/confluence/display/KAFKA/KIP-66%3A+Single+Message+Transforms+for+Kafka+Connect[simple message transform] (SMT).
+However, in many cases, you might be interested in only a subset of the events emitted by the producer.
+To enable you to process only the records that are relevant to you, {prodname} provides the _filter_ link:https://cwiki.apache.org/confluence/display/KAFKA/KIP-66%3A+Single+Message+Transforms+for+Kafka+Connect[single message transform] (SMT).
 
 ifdef::community[]
 [NOTE]
@@ -67,7 +67,7 @@ endif::community[]
 
 ifdef::product[]
 .Procedure
-. Download the {prodname} scripting SMT archive (`debezium-scripting-{debezium-version}.tar.gz`) from https://access.redhat.com/jbossnetwork/restricted/listSoftware.html?product=red.hat.integration&downloadType=distributions.
+. From a browser, open the link:{DebeziumDownload}, and download the {prodname} scripting SMT archive (`debezium-scripting-{debezium-version}.tar.gz`).
 . Extract the contents of the archive into the {prodname} plug-in directories of your Kafka Connect environment.
 . Obtain a JSR-223 script engine implementation and add its contents to the {prodname} plug-in directories of your Kafka Connect environment.
 . Restart the Kafka Connect process to pick up the new JAR files.
@@ -96,7 +96,7 @@ As the filter SMT processes the event stream, it evaluates each event against th
 Only events that meet the criteria of the filter conditions are passed to the broker.
 
 To configure a {prodname} connector to filter change event records, configure the `Filter` SMT in the Kafka Connect configuration for the {prodname} connector.
-Configuration of the filter SMT requires you to specify a regular expression that defines the filtering criteria. 
+Configuration of the filter SMT requires you to specify a regular expression that defines the filtering criteria.
 
 For example, you might add the following configuration in your connector configuration.
 
@@ -119,7 +119,7 @@ The regular expression `value.op == 'u' && value.before.id == 2` removes all mes
 
 {prodname} binds certain variables into the evaluation context for the filter SMT.
 When you create expressions to specify filter conditions, you can use the variables that {prodname} binds into the evaluation context.
-By binding variables, {prodname} enables the SMT to look up and interpret their values as it evaluates the conditions in an expression. 
+By binding variables, {prodname} enables the SMT to look up and interpret their values as it evaluates the conditions in an expression.
 
 The following table lists the variables that {prodname} binds into the evaluation context for the filter SMT:
 
@@ -133,19 +133,19 @@ The following table lists the variables that {prodname} binds into the evaluatio
 |`valueSchema`|Schema of the message value.| `org.apache.kafka.connect{zwsp}.data{zwsp}.Schema`
 |`topic`|Name of the target topic.| String
 |`headers`
-a|A Java map of message headers. The key field is the header name. 
+a|A Java map of message headers. The key field is the header name.
 The `headers` variable exposes the following properties:
 
-* `value` (of type `Object`) 
+* `value` (of type `Object`)
 
 * `schema` (of type `org.apache.kafka{zwsp}.connect{zwsp}.data{zwsp}.Schema`)
 
 | `java.util.Map{zwsp}<String, {zwsp}io.debezium.transforms{zwsp}.scripting{zwsp}.RecordHeader>`
 |===
 
-An expression can invoke arbitrary methods on its variables. 
+An expression can invoke arbitrary methods on its variables.
 Expressions should resolve to a Boolean value that determines how the SMT dispositions the message.
-When the filter condition in an expression evaluates to `true`, the message is retained. 
+When the filter condition in an expression evaluates to `true`, the message is retained.
 When the filter condition evaluates to `false`, the message is removed.
 
 Expressions should not result in any side-effects. That is, they should not modify any variables that they pass.
@@ -159,12 +159,12 @@ It is recommended to use either the xref:filter-topic-regex[topic.regex] configu
 
 // Type: reference
 // ModuleID: filter-condition-configuration-for-other-scripting-languages
-// Title: Filter condition configuration for other scripting languages 
+// Title: Filter condition configuration for other scripting languages
 == Language specifics
 
 The way that you express filtering conditions depends on the scripting language that you use.
 
-For example, as shown in the {link-prefix}:{link-filtering}#example-basic-filter-configuration-example[basic configuration example], when you use `Groovy` as the expression language, 
+For example, as shown in the {link-prefix}:{link-filtering}#example-basic-filter-configuration-example[basic configuration example], when you use `Groovy` as the expression language,
 the following expression removes all messages, except for update records that have `id` values set to `2`:
 
 [source,groovy]
@@ -216,13 +216,13 @@ The following table lists the configuration options that you can use with the fi
 
 |[[filter-topic-regex]]<<filter-topic-regex, `topic.regex`>>
 |
-|An optional regular expression that evaluates the name of the destination topic for an event to determine whether to apply filtering logic. 
+|An optional regular expression that evaluates the name of the destination topic for an event to determine whether to apply filtering logic.
 If the name of the destination topic matches the value in `topic.regex`, the transformation applies the filter logic before it passes the event to the topic.
 If the name of the topic does not match the value in `topic.regex`, the SMT passes the event to the topic unmodified.
 
 |[[filter-language]]<<filter-language, `language`>>
 |
-|The language in which the expression is written. Must begin with `jsr223.`, for example, `jsr223.groovy`, or `jsr223.graal.js`. 
+|The language in which the expression is written. Must begin with `jsr223.`, for example, `jsr223.groovy`, or `jsr223.graal.js`.
 {prodname} supports bootstrapping through the https://jcp.org/en/jsr/detail?id=223[JSR 223 API ("Scripting for the Java (TM) Platform")] only.
 
 |[[filter-condition]]<<filter-condition, `condition`>>
@@ -231,7 +231,7 @@ If the name of the topic does not match the value in `topic.regex`, the SMT pass
 
 |[[filter-null-handling-mode]]<<filter-null-handling-mode, `null.handling.mode`>>
 |`keep`
-a|Specifies how the transformation handles `null` (tombstone) messages. You can specify one of the following options: 
+a|Specifies how the transformation handles `null` (tombstone) messages. You can specify one of the following options:
 
 `keep`:: (Default) Pass the messages through.
 `drop`:: Remove the messages completely.

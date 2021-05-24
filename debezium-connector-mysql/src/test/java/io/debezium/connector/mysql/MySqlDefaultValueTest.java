@@ -394,7 +394,8 @@ public class MySqlDefaultValueTest {
                 "  E date NOT NULL DEFAULT '9999-09-09'," +
                 "  F date NOT NULL DEFAULT '1111-11-11'," +
                 "  G date NOT NULL DEFAULT '2018-08-31'," +
-                "  H date NOT NULL DEFAULT 0" +
+                "  H date NOT NULL DEFAULT '2050-01-01 00:00:00'," +
+                "  I date NOT NULL DEFAULT 0" +
                 ");";
         parser.parse(sql, tables);
         Table table = tables.forTable(new TableId(null, null, "DATE_TABLE"));
@@ -405,7 +406,8 @@ public class MySqlDefaultValueTest {
         assertThat(table.columnWithName("E").defaultValue()).isEqualTo(Date.from(ZonedDateTime.of(9999, 9, 9, 0, 0, 0, 0, ZoneOffset.UTC).toInstant()));
         assertThat(table.columnWithName("F").defaultValue()).isEqualTo(Date.from(ZonedDateTime.of(1111, 11, 11, 0, 0, 0, 0, ZoneOffset.UTC).toInstant()));
         assertThat(table.columnWithName("G").defaultValue()).isEqualTo(Date.from(ZonedDateTime.of(2018, 8, 31, 0, 0, 0, 0, ZoneOffset.UTC).toInstant()));
-        assertThat(table.columnWithName("H").defaultValue()).isEqualTo((Date.from(Instant.ofEpochMilli(0))));
+        assertThat(table.columnWithName("H").defaultValue()).isEqualTo(Date.from(ZonedDateTime.of(2050, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC).toInstant()));
+        assertThat(table.columnWithName("I").defaultValue()).isEqualTo((Date.from(Instant.ofEpochMilli(0))));
     }
 
     @Test

@@ -7,6 +7,7 @@
 package io.debezium.connector.mysql;
 
 import java.sql.Connection;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -28,8 +29,11 @@ import io.debezium.config.Field;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
 import io.debezium.connector.mysql.legacy.MySqlJdbcContext.DatabaseLocales;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.relational.Column;
+import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.history.DatabaseHistory;
+import io.debezium.schema.DatabaseSchema;
 import io.debezium.util.Strings;
 
 /**
@@ -50,20 +54,27 @@ public class MySqlConnection extends JdbcConnection {
 
     private final Map<String, String> originalSystemProperties = new HashMap<>();
     private final MySqlConnectionConfiguration connectionConfig;
+    private final MysqlFieldReader mysqlFieldReader;
 
     /**
      * Creates a new connection using the supplied configuration.
      *
-     * @param config {@link Configuration} instance, may not be null.
-     * @param sourceTimestampMode strategy for populating {@code source.ts_ms}.
-     * @param config
-     *            {@link Configuration} instance, may not be null.
-     * @param valueConverters
-     *            {@link SqlServerValueConverters} instance
+     * @param connectionConfig {@link MySqlConnectionConfiguration} instance, may not be null.
+     * @param fieldReader binary or text protocol based readers
      */
-    public MySqlConnection(MySqlConnectionConfiguration connectionConfig) {
+    public MySqlConnection(MySqlConnectionConfiguration connectionConfig, MysqlFieldReader fieldReader) {
         super(connectionConfig.config(), connectionConfig.factory());
         this.connectionConfig = connectionConfig;
+        this.mysqlFieldReader = fieldReader;
+    }
+
+    /**
+     * Creates a new connection using the supplied configuration.
+     *
+     * @param connectionConfig {@link MySqlConnectionConfiguration} instance, may not be null.
+     */
+    public MySqlConnection(MySqlConnectionConfiguration connectionConfig) {
+        this(connectionConfig, new MysqlTextProtocolFieldReader());
     }
 
     @Override
@@ -551,5 +562,17 @@ public class MySqlConnection extends JdbcConnection {
             String mode = config.getString(MySqlConnectorConfig.INCONSISTENT_SCHEMA_HANDLING_MODE);
             return EventProcessingFailureHandlingMode.parse(mode);
         }
+    }
+
+    @Override
+    public <T extends DatabaseSchema<TableId>> Object getColumnValue(ResultSet rs, int columnIndex, Column column,
+                                                                     Table table, T schema)
+            throws SQLException {
+        return mysqlFieldReader.readField(rs, columnIndex, column, table);
+    }
+
+    @Override
+    public String quotedTableIdString(TableId tableId) {
+        return tableId.toQuotedString('`');
     }
 }

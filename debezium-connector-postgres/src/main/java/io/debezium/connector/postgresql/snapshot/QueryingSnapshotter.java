@@ -5,10 +5,13 @@
  */
 package io.debezium.connector.postgresql.snapshot;
 
+import java.time.Duration;
 import java.util.Optional;
+import java.util.Set;
 
 import io.debezium.connector.postgresql.PostgresConnectorConfig;
 import io.debezium.connector.postgresql.spi.OffsetState;
+import io.debezium.connector.postgresql.spi.SlotCreationResult;
 import io.debezium.connector.postgresql.spi.SlotState;
 import io.debezium.connector.postgresql.spi.Snapshotter;
 import io.debezium.relational.TableId;
@@ -26,5 +29,19 @@ public abstract class QueryingSnapshotter implements Snapshotter {
         q.append("SELECT * FROM ");
         q.append(tableId.toDoubleQuotedString());
         return Optional.of(q.toString());
+    }
+
+    @Override
+    public Optional<String> snapshotTableLockingStatement(Duration lockTimeout, Set<TableId> tableIds) {
+        return Optional.empty();
+    }
+
+    @Override
+    public String snapshotTransactionIsolationLevelStatement(SlotCreationResult newSlotInfo) {
+        if (newSlotInfo != null) {
+            String snapSet = String.format("SET TRANSACTION SNAPSHOT '%s';", newSlotInfo.snapshotName());
+            return "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ; \n" + snapSet;
+        }
+        return Snapshotter.super.snapshotTransactionIsolationLevelStatement(newSlotInfo);
     }
 }

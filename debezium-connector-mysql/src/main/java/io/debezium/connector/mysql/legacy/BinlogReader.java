@@ -267,6 +267,15 @@ public class BinlogReader extends AbstractReader {
                 }
                 // DBZ-217 In case an event couldn't be read we create a pseudo-event for the sake of logging
                 catch (EventDataDeserializationException edde) {
+                    // DBZ-3233 As of Java 15, when reaching EOF in the binlog stream, the polling loop in
+                    // BinaryLogClient#listenForEventPackets() keeps returning values != -1 from peek();
+                    // this causes the loop to never finish
+                    // Propagating the exception (either EOF or socket closed) causes the loop to be aborted
+                    // in this case
+                    if (edde.getCause() instanceof IOException) {
+                        throw edde;
+                    }
+
                     EventHeaderV4 header = new EventHeaderV4();
                     header.setEventType(EventType.INCIDENT);
                     header.setTimestamp(edde.getEventHeader().getTimestamp());
@@ -323,7 +332,7 @@ public class BinlogReader extends AbstractReader {
     @Override
     protected void doStart() {
         context.dbSchema().assureNonEmptySchema();
-        Set<Operation> skippedOperations = context.getConnectorConfig().getSkippedOps();
+        Set<Operation> skippedOperations = context.getConnectorConfig().getSkippedOperations();
 
         // Register our event handlers ...
         eventHandlers.put(EventType.STOP, this::handleServerStop);
@@ -863,7 +872,7 @@ public class BinlogReader extends AbstractReader {
      * {@link MySqlConnectorConfig#INCONSISTENT_SCHEMA_HANDLING_MODE} configuration.
      */
     private void informAboutUnknownTableIfRequired(Event event, TableId tableId, String typeToLog) {
-        if (tableId != null && context.dbSchema().isTableMonitored(tableId)) {
+        if (tableId != null && context.dbSchema().isTableCaptured(tableId)) {
             metrics.onErroneousEvent("source = " + tableId + ", event " + event);
             EventHeaderV4 eventHeader = event.getHeader();
 

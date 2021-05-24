@@ -22,7 +22,14 @@ public interface ChangeEventSourceMetricsMXBean {
 
     long getNumberOfErroneousEvents();
 
+    /**
+     * @deprecated Superseded by the 'Captured Tables' metric. Use {@link #getCapturedTables()}.
+     * Scheduled for removal in a future release.
+     */
+    @Deprecated
     String[] getMonitoredTables();
+
+    String[] getCapturedTables();
 
     int getQueueTotalCapacity();
 

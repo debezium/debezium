@@ -23,6 +23,10 @@ public class SqlServerErrorHandler extends ErrorHandler {
 
     @Override
     protected boolean isRetriable(Throwable throwable) {
+        if (!(throwable instanceof SQLServerException) && throwable.getCause() instanceof SQLServerException) {
+            throwable = throwable.getCause();
+        }
+
         return throwable instanceof SQLServerException
                 && (throwable.getMessage().contains("Connection timed out (Read failed)")
                         || throwable.getMessage().contains("Connection timed out (Write failed)")
@@ -30,6 +34,7 @@ public class SqlServerErrorHandler extends ErrorHandler {
                         || throwable.getMessage().contains("Connection reset")
                         || throwable.getMessage().contains("SHUTDOWN is in progress")
                         || throwable.getMessage().contains("The server failed to resume the transaction")
+                        || throwable.getMessage().contains("Connection refused (Connection refused)")
                         || throwable.getMessage()
                                 .startsWith("An insufficient number of arguments were supplied for the procedure or function cdc.fn_cdc_get_all_changes_")
                         || throwable.getMessage()

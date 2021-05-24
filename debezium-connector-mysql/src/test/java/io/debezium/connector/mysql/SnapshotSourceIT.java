@@ -62,6 +62,7 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
     private final UniqueDatabase DATABASE = new UniqueDatabase("logical_server_name", "connector_test_ro")
             .withDbHistoryPath(DB_HISTORY_PATH);
     private final UniqueDatabase OTHER_DATABASE = new UniqueDatabase("logical_server_name", "connector_test", DATABASE);
+    private final UniqueDatabase BINARY_FIELD_DATABASE = new UniqueDatabase("logical_server_name", "connector_read_binary_field_test");
 
     private Configuration config;
 
@@ -73,6 +74,7 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
         Testing.Files.delete(DB_HISTORY_PATH);
         DATABASE.createAndInitialize();
         OTHER_DATABASE.createAndInitialize();
+        BINARY_FIELD_DATABASE.createAndInitialize();
     }
 
     @After
@@ -106,7 +108,7 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
     }
 
     @Test
-    public void shouldCreateSnapshotOfSingleDatabaseWithoutGlobalLockAndStoreOnlyMonitoredTables() throws Exception {
+    public void shouldCreateSnapshotOfSingleDatabaseWithoutGlobalLockAndStoreOnlyCapturedTables() throws Exception {
         snapshotOfSingleDatabase(false, true, true);
     }
 
@@ -121,11 +123,11 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
     }
 
     @Test
-    public void shouldCreateSnapshotOfSingleDatabaseWithoutGlobalLockAndStoreOnlyMonitoredTablesNoData() throws Exception {
+    public void shouldCreateSnapshotOfSingleDatabaseWithoutGlobalLockAndStoreOnlyCapturedTablesNoData() throws Exception {
         snapshotOfSingleDatabase(false, true, false);
     }
 
-    private void snapshotOfSingleDatabase(boolean useGlobalLock, boolean storeOnlyMonitoredTables, boolean data) throws Exception {
+    private void snapshotOfSingleDatabase(boolean useGlobalLock, boolean storeOnlyCapturedTables, boolean data) throws Exception {
         final LogInterceptor logInterceptor = new LogInterceptor();
 
         final Builder builder = simpleConfig()
@@ -136,7 +138,7 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
                     .with(MySqlConnectorConfig.PASSWORD, "cloudpass")
                     .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
                     .with(MySqlConnectorConfig.TEST_DISABLE_GLOBAL_LOCKING, "true")
-                    .with(DatabaseHistory.STORE_ONLY_MONITORED_TABLES_DDL, storeOnlyMonitoredTables);
+                    .with(DatabaseHistory.STORE_ONLY_CAPTURED_TABLES_DDL, storeOnlyCapturedTables);
         }
         if (!data) {
             builder.with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY);
@@ -151,7 +153,7 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
         // Testing.Print.enable();
         KeyValueStore store = KeyValueStore.createForTopicsBeginningWith(DATABASE.getServerName() + ".");
         SchemaChangeHistory schemaChanges = new SchemaChangeHistory(DATABASE.getServerName());
-        final int schemaEventsCount = !useGlobalLock ? (storeOnlyMonitoredTables ? 8 : 14) : 0;
+        final int schemaEventsCount = !useGlobalLock ? (storeOnlyCapturedTables ? 8 : 14) : 0;
         SourceRecords sourceRecords = consumeRecordsByTopic(schemaEventsCount + (data ? 9 + 4 : 0));
         for (Iterator<SourceRecord> i = sourceRecords.allRecordsInOrder().iterator(); i.hasNext();) {
             final SourceRecord record = i.next();
@@ -303,6 +305,46 @@ public class SnapshotSourceIT extends AbstractConnectorTest {
 
         Collection orders = store.collection(DATABASE.getDatabaseName(), "orders");
         assertThat(orders).isNull();
+    }
+
+    @Test
+    @FixFor("DBZ-3238")
+    public void shouldSnapshotCorrectlyReadFields() throws Exception {
+        config = simpleConfig()
+                .with(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, "connector_read_binary_field_test_" + BINARY_FIELD_DATABASE.getIdentifier())
+                .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, BINARY_FIELD_DATABASE.qualifiedTableName("binary_field"))
+                .with(MySqlConnectorConfig.ROW_COUNT_FOR_STREAMING_RESULT_SETS, "0")
+                .with(MySqlConnectorConfig.SNAPSHOT_FETCH_SIZE, "101")
+                // .with("internal.implementation", "legacy")
+                .build();
+
+        // Start the connector ...
+        start(MySqlConnector.class, config);
+        waitForSnapshotToBeCompleted("mysql", BINARY_FIELD_DATABASE.getServerName());
+
+        // Poll for records ...
+        KeyValueStore store = KeyValueStore.createForTopicsBeginningWith(BINARY_FIELD_DATABASE.getServerName() + ".");
+        SchemaChangeHistory schemaChanges = new SchemaChangeHistory(BINARY_FIELD_DATABASE.getServerName());
+        SourceRecords sourceRecords = consumeRecordsByTopic(1);
+        sourceRecords.allRecordsInOrder().forEach(record -> {
+            VerifyRecord.isValid(record);
+            VerifyRecord.hasNoSourceQuery(record);
+            store.add(record);
+            schemaChanges.add(record);
+        });
+
+        // There should be no schema changes ...
+        assertThat(schemaChanges.recordCount()).isEqualTo(0);
+
+        // Check the records via the store ...
+        assertThat(store.databases()).contains(BINARY_FIELD_DATABASE.getDatabaseName());
+        assertThat(store.collectionCount()).isEqualTo(1);
+
+        Collection customers = store.collection(BINARY_FIELD_DATABASE.getDatabaseName(), "binary_field");
+        assertThat(customers.numberOfCreates()).isEqualTo(0);
+        assertThat(customers.numberOfUpdates()).isEqualTo(0);
+        assertThat(customers.numberOfDeletes()).isEqualTo(0);
+        assertThat(customers.numberOfReads()).isEqualTo(1);
     }
 
     @Test

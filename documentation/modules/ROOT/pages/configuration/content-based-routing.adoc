@@ -15,7 +15,7 @@ toc::[]
 endif::community[]
 By default, {prodname} streams all of the change events that it reads from a table to a single static topic.
 However, there might be situations in which you might want to reroute selected events to other topics, based on the event content.
-The process of routing messages based on their content is described in the https://www.enterpriseintegrationpatterns.com/patterns/messaging/ContentBasedRouter.html[Content-based routing] messaging pattern. 
+The process of routing messages based on their content is described in the https://www.enterpriseintegrationpatterns.com/patterns/messaging/ContentBasedRouter.html[Content-based routing] messaging pattern.
 To apply this pattern in {prodname}, you use the content-based routing link:https://cwiki.apache.org/confluence/display/KAFKA/KIP-66%3A+Single+Message+Transforms+for+Kafka+Connect[single message transform] (SMT) to write expressions that are evaluated for each event.
 Depending how an event is evaluated, the SMT either routes the event message to the original destination topic, or reroutes it to the topic that you specify in the expression.
 
@@ -43,7 +43,7 @@ The content-based routing SMT supports scripting languages that integrate with h
 
 {prodname} does not come with any implementations of the JSR 223 API.
 To use an expression language with {prodname}, you must download the JSR 223 script engine implementation for the language, and add to your {prodname} connector plug-in directories, along any other JAR files used by the language implementation.
-For example, for Groovy 3, you can download its JSR 223 implementation from https://groovy-lang.org/. 
+For example, for Groovy 3, you can download its JSR 223 implementation from https://groovy-lang.org/.
 The JSR 223 implementation for GraalVM JavaScript is available at https://github.com/graalvm/graaljs.
 
 // Type: procedure
@@ -70,7 +70,7 @@ endif::community[]
 
 ifdef::product[]
 .Procedure
-. Download the {prodname} scripting SMT archive (`debezium-scripting-{debezium-version}.tar.gz`) from https://access.redhat.com/jbossnetwork/restricted/listSoftware.html?product=red.hat.integration&downloadType=distributions.
+. From a browser, open the link:{DebeziumDownload}, and download the {prodname} scripting SMT archive (`debezium-scripting-{debezium-version}.tar.gz`).
 . Extract the contents of the archive into the {prodname} plug-in directories of your Kafka Connect environment.
 . Obtain a JSR-223 script engine implementation and add its contents to the {prodname} plug-in directories of your Kafka Connect environment.
 . Restart the Kafka Connect process to pick up the new JAR files.
@@ -89,16 +89,16 @@ The JavaScript language needs the following libraries on the classpath:
 
 // Type: concept
 // ModuleID: example-debezium-basic-content-based-routing-configuration
-// Title: Example: {prodname} basic content-based routing configuration 
+// Title: Example: {prodname} basic content-based routing configuration
 [[example-basic-content-based-routing-configuration]]
 == Example: Basic configuration
 
 To configure a {prodname} connector to route change event records based on the event content, you configure the `ContentBasedRouter` SMT in the Kafka Connect configuration for the connector.
 
-Configuration of the content-based routing SMT requires you to specify a regular expression that defines the filtering criteria. 
-In the configuration, you create a regular expression that defines routing criteria. 
+Configuration of the content-based routing SMT requires you to specify a regular expression that defines the filtering criteria.
+In the configuration, you create a regular expression that defines routing criteria.
 The expression defines a pattern for evaluating event records.
-It also specifies the name of a destination topic where events that match the pattern are routed. 
+It also specifies the name of a destination topic where events that match the pattern are routed.
 The pattern that you specify might designate an event type, such as a table insert, update, or delete operation.
 You might also define a pattern that matches a value in a specific column or row.
 
@@ -124,8 +124,8 @@ Records that do not match the pattern are routed to the default topic.
 == Variables for use in content-based routing expressions
 
 {prodname} binds certain variables into the evaluation context for the SMT.
-When you create expressions to specify conditions to control the routing destination, 
-the SMT can look up and interpret the values of these variables to evaluate conditions in an expression. 
+When you create expressions to specify conditions to control the routing destination,
+the SMT can look up and interpret the values of these variables to evaluate conditions in an expression.
 
 The following table lists the variables that {prodname} binds into the evaluation context for the content-based routing SMT:
 
@@ -139,19 +139,19 @@ The following table lists the variables that {prodname} binds into the evaluatio
 |`valueSchema`|Schema of the message value.| `org.apache.kafka.connect{zwsp}.data{zwsp}.Schema`
 |`topic`|Name of the target topic.| String
 |`headers`
-a|A Java map of message headers. The key field is the header name. 
+a|A Java map of message headers. The key field is the header name.
 The `headers` variable exposes the following properties:
 
-* `value` (of type `Object`) 
+* `value` (of type `Object`)
 
 * `schema` (of type `org.apache.kafka{zwsp}.connect{zwsp}.data{zwsp}.Schema`)
 
 | `java.util.Map{zwsp}<String,{zwsp} io.debezium{zwsp}.transforms{zwsp}.scripting{zwsp}.RecordHeader>`
 |===
 
-An expression can invoke arbitrary methods on its variables. 
+An expression can invoke arbitrary methods on its variables.
 Expressions should resolve to a Boolean value that determines how the SMT dispositions the message.
-When the routing condition in an expression evaluates to `true`, the message is retained. 
+When the routing condition in an expression evaluates to `true`, the message is retained.
 When the routing condition evaluates to `false`, the message is removed.
 
 Expressions should not result in any side-effects. That is, they should not modify any variables that they pass.
@@ -165,11 +165,11 @@ It is recommended to use either the xref:content-based-router-topic-regex[topic.
 
 // Type: reference
 // ModuleID: configuration-of-content-based-routing-conditions-for-other-scripting-languages
-// Title: Configuration of content-based routing conditions for other scripting languages 
+// Title: Configuration of content-based routing conditions for other scripting languages
 == Language specifics
 
 The way that you express content-based routing conditions depends on the scripting language that you use.
-For example, as shown in the {link-prefix}:{link-content-based-routing}#example-basic-content-based-routing-configuration[basic configuration example], when you use `Groovy` as the expression language, 
+For example, as shown in the xref:example-basic-content-based-routing-configuration[basic configuration example], when you use `Groovy` as the expression language,
 the following expression reroutes all update (`u`) records to the `updates` topic, while routing other records to the default topic:
 
 [source,groovy]
@@ -219,7 +219,7 @@ value.op == 'u' ? 'updates' : null
 
 |[[content-based-router-topic-regex]]<<content-based-router-topic-regex, `topic.regex`>>
 |
-|An optional regular expression that evaluates the name of the destination topic for an event to determine whether to apply the condition logic. 
+|An optional regular expression that evaluates the name of the destination topic for an event to determine whether to apply the condition logic.
 If the name of the destination topic matches the value in `topic.regex`, the transformation applies the condition logic before it passes the event to the topic.
 If the name of the topic does not match the value in `topic.regex`, the SMT passes the event to the topic unmodified.
 
@@ -233,7 +233,7 @@ If the name of the topic does not match the value in `topic.regex`, the SMT pass
 
 |[[content-based-router-null-handling-mode]]<<content-based-router-null-handling-mode, `null.handling.mode`>>
 |`keep`
-a|Specifies how the transformation handles `null` (tombstone) messages. You can specify one of the following options: 
+a|Specifies how the transformation handles `null` (tombstone) messages. You can specify one of the following options:
 
 `keep`:: (Default) Pass the messages through.
 `drop`:: Remove the messages completely.

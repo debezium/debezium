@@ -8,7 +8,6 @@ package io.debezium.connector.oracle.logminer;
 import java.io.IOException;
 import java.sql.SQLRecoverableException;
 import java.time.Duration;
-import java.time.LocalDateTime;
 import java.util.Iterator;
 import java.util.List;
 import java.util.regex.Pattern;
@@ -56,7 +55,7 @@ public class SqlUtils {
 
     // LogMiner statements
     static final String BUILD_DICTIONARY = "BEGIN DBMS_LOGMNR_D.BUILD (options => DBMS_LOGMNR_D.STORE_IN_REDO_LOGS); END;";
-    static final String CURRENT_TIMESTAMP = "SELECT CURRENT_TIMESTAMP FROM DUAL";
+    static final String SELECT_SYSTIMESTAMP = "SELECT SYSTIMESTAMP FROM DUAL";
     static final String END_LOGMNR = "BEGIN SYS.DBMS_LOGMNR.END_LOGMNR(); END;";
 
     /**
@@ -136,6 +135,7 @@ public class SqlUtils {
         sb.append("UNION SELECT MIN(FIRST_CHANGE#) AS FIRST_CHANGE# ");
         sb.append("FROM ").append(ARCHIVED_LOG_VIEW).append(" ");
         sb.append("WHERE DEST_ID IN (").append(localArchiveLogDestinationsOnlyQuery()).append(") ");
+        sb.append("AND STATUS='A'");
 
         if (!archiveLogRetention.isNegative() && !archiveLogRetention.isZero()) {
             sb.append("AND FIRST_TIME >= SYSDATE - (").append(archiveLogRetention.toHours()).append("/24)");
@@ -144,35 +144,82 @@ public class SqlUtils {
         return sb.append(")").toString();
     }
 
-    public static String allOnlineLogsQuery() {
-        return String.format("SELECT MIN(F.MEMBER) AS FILE_NAME, L.NEXT_CHANGE# AS NEXT_CHANGE, F.GROUP#, L.FIRST_CHANGE# AS FIRST_CHANGE, L.STATUS " +
-                " FROM %s L, %s F " +
-                " WHERE F.GROUP# = L.GROUP# AND L.NEXT_CHANGE# > 0 " +
-                " GROUP BY F.GROUP#, L.NEXT_CHANGE#, L.FIRST_CHANGE#, L.STATUS ORDER BY 3", LOG_VIEW, LOGFILE_VIEW);
-    }
-
     /**
-     * Obtain the query to be used to fetch archive logs.
+     * Obtain a query to fetch all available minable logs, both archive and online redo logs.
      *
-     * @param scn oldest scn to search for
+     * @param scn oldest system change number to search by
      * @param archiveLogRetention duration archive logs will be mined
-     * @return query
+     * @return the query string to obtain minable log files
      */
-    public static String archiveLogsQuery(Scn scn, Duration archiveLogRetention) {
+    public static String allMinableLogsQuery(Scn scn, Duration archiveLogRetention) {
+        // The generated query performs a union in order to obtain a list of all archive logs that should be mined
+        // combined with a list of redo logs that should be mined.
+        //
+        // The first part of the union query generated is as follows:
+        //
+        // SELECT MIN(F.MEMBER) AS FILE_NAME, L.FIRST_CHANGE# FIRST_CHANGE, L.NEXT_CHANGE# NEXT_CHANGE, L.ARCHIVED,
+        // L.STATUS, 'ONLINE' AS TYPE, L.SEQUENCE# AS SEQ, 'NO' AS DICT_START, 'NO AS DICT_END
+        // FROM V$LOGFILE F, V$LOG L
+        // LEFT JOIN V$ARCHIVED_LOG A
+        // ON A.FIRST_CHANGE# = L.FIRST_CHANGE# AND A.NEXT_CHANGE# = L.NEXT_CHANGE#
+        // WHERE A.FIRST_CHANGE# IS NULL
+        // AND F.GROUP# = L.GROUP#
+        // GROUP BY F.GROUP#, L.FIRST_CHANGE#, L.NEXT_CHANGE#, L.STATUS, L.ARCHIVED, L.SEQUENCE#
+        //
+        // The above query joins the redo logs view with the archived logs view, excluding any redo log that has
+        // already been archived and has a matching redo log SCN range in the archive logs view. This allows
+        // the database to de-duplicate logs between redo and archive based on SCN ranges so we don't need to do
+        // this in Java and avoids the need to execute two separate queries that could introduce some state
+        // change between them by Oracle.
+        //
+        // The second part of the union query:
+        //
+        // SELECT A.NAME AS FILE_NAME, A.FIRST_CHANGE# FIRST_CHANGE, A.NEXT_CHANGE# NEXT_CHANGE, 'YES',
+        // NULL, 'ARCHIVED', A.SEQUENCE# AS SEQ, A.DICTIONARY_BEGIN, A.DICTIONARY_END
+        // FROM V$ARCHIVED_LOG A
+        // WHERE A.NAME IS NOT NULL
+        // AND A.ARCHIVED = 'YES'
+        // AND A.STATUS = 'A'
+        // AND A.NEXT_CHANGE# > scn
+        // AND A.DEST_ID IN ( SELECT DEST_ID FROM V$ARCHIVED_DEST_STATUS WHERE STATUS='VALID' AND TYPE='LOCAL' AND ROWNUM=1)
+        // AND A.FIRST_TIME >= START - (hours/24)
+        //
+        // The above query obtains a list of all available archive logs that should be mined that have an SCN range
+        // which either includes or comes after the SCN where mining is to begin. The predicates in this query are
+        // to capture only archive logs that are available and haven't been deleted. Additionally the DEST_ID
+        // predicate makes sure that if archive logs are being dually written for other Oracle services that we
+        // only fetch the local/valid instances. The last predicate is optional and is meant to restrict the
+        // archive logs to only those in the past X hours if log.mining.archive.log.hours is greater than 0.
+        //
+        // Lastly the query applies "ORDER BY 7" to order the results by SEQ (sequence number). Each Oracle log
+        // is assigned a unique sequence. This order has no technical impact on LogMiner but its used mainly as
+        // a way to make it easier when looking at debug logs to identify gaps in the log sequences when several
+        // logs may be added to a single mining session.
+
         final StringBuilder sb = new StringBuilder();
-        sb.append("SELECT NAME AS FILE_NAME, NEXT_CHANGE# AS NEXT_CHANGE, FIRST_CHANGE# AS FIRST_CHANGE ");
-        sb.append("FROM ").append(ARCHIVED_LOG_VIEW).append(" ");
-        sb.append("WHERE NAME IS NOT NULL ");
-        sb.append("AND ARCHIVED = 'YES' ");
-        sb.append("AND STATUS = 'A' ");
-        sb.append("AND NEXT_CHANGE# > ").append(scn).append(" ");
-        sb.append("AND DEST_ID IN (").append(localArchiveLogDestinationsOnlyQuery()).append(") ");
+        sb.append("SELECT MIN(F.MEMBER) AS FILE_NAME, L.FIRST_CHANGE# FIRST_CHANGE, L.NEXT_CHANGE# NEXT_CHANGE, L.ARCHIVED, ");
+        sb.append("L.STATUS, 'ONLINE' AS TYPE, L.SEQUENCE# AS SEQ, 'NO' AS DICT_START, 'NO' AS DICT_END ");
+        sb.append("FROM ").append(LOGFILE_VIEW).append(" F, ").append(LOG_VIEW).append(" L ");
+        sb.append("LEFT JOIN ").append(ARCHIVED_LOG_VIEW).append(" A ");
+        sb.append("ON A.FIRST_CHANGE# = L.FIRST_CHANGE# AND A.NEXT_CHANGE# = L.NEXT_CHANGE# ");
+        sb.append("WHERE A.FIRST_CHANGE# IS NULL ");
+        sb.append("AND F.GROUP# = L.GROUP# ");
+        sb.append("GROUP BY F.GROUP#, L.FIRST_CHANGE#, L.NEXT_CHANGE#, L.STATUS, L.ARCHIVED, L.SEQUENCE# ");
+        sb.append("UNION ");
+        sb.append("SELECT A.NAME AS FILE_NAME, A.FIRST_CHANGE# FIRST_CHANGE, A.NEXT_CHANGE# NEXT_CHANGE, 'YES', ");
+        sb.append("NULL, 'ARCHIVED', A.SEQUENCE# AS SEQ, A.DICTIONARY_BEGIN, A.DICTIONARY_END ");
+        sb.append("FROM ").append(ARCHIVED_LOG_VIEW).append(" A ");
+        sb.append("WHERE A.NAME IS NOT NULL ");
+        sb.append("AND A.ARCHIVED = 'YES' ");
+        sb.append("AND A.STATUS = 'A' ");
+        sb.append("AND A.NEXT_CHANGE# > ").append(scn).append(" ");
+        sb.append("AND A.DEST_ID IN (").append(localArchiveLogDestinationsOnlyQuery()).append(") ");
 
         if (!archiveLogRetention.isNegative() && !archiveLogRetention.isZero()) {
-            sb.append("AND FIRST_TIME >= SYSDATE - (").append(archiveLogRetention.toHours()).append("/24) ");
+            sb.append("AND A.FIRST_TIME >= SYSDATE - (").append(archiveLogRetention.toHours()).append("/24) ");
         }
 
-        return sb.append("ORDER BY 2").toString();
+        return sb.append("ORDER BY 7").toString();
     }
 
     /**
@@ -234,15 +281,18 @@ public class SqlUtils {
      */
     static String logMinerContentsQuery(OracleConnectorConfig connectorConfig, String logMinerUser) {
         StringBuilder query = new StringBuilder();
-        query.append("SELECT SCN, SQL_REDO, OPERATION_CODE, TIMESTAMP, XID, CSF, TABLE_NAME, SEG_OWNER, OPERATION, USERNAME ");
+        query.append("SELECT SCN, SQL_REDO, OPERATION_CODE, TIMESTAMP, XID, CSF, TABLE_NAME, SEG_OWNER, OPERATION, USERNAME, ");
+        query.append("ROW_ID, ROLLBACK, SEQUENCE#, RS_ID, ORA_HASH(SCN||OPERATION||RS_ID||SEQUENCE#||RTRIM(SUBSTR(SQL_REDO,1,256))) ");
         query.append("FROM ").append(LOGMNR_CONTENTS_VIEW).append(" ");
         query.append("WHERE ");
         query.append("SCN > ? AND SCN <= ? ");
         query.append("AND (");
         // MISSING_SCN/DDL only when not performed by excluded users
-        query.append("(OPERATION_CODE IN (5,34) AND USERNAME NOT IN (").append(getExcludedUsers(logMinerUser)).append(")) ");
+        // For DDL, the `INTERNAL DDL%` info rows should be excluded as these are commands executed by the database that
+        // typically perform operations such as renaming a deleted object when dropped if the drop doesn't specify PURGE
+        query.append("(OPERATION_CODE IN (5,9,10,11,29,34) AND USERNAME NOT IN (").append(getExcludedUsers(logMinerUser)).append(") AND INFO NOT LIKE 'INTERNAL DDL%') ");
         // COMMIT/ROLLBACK
-        query.append("OR (OPERATION_CODE IN (7,36)) ");
+        query.append("OR (OPERATION_CODE IN (6,7,36)) ");
         // INSERT/UPDATE/DELETE
         query.append("OR ");
         query.append("(OPERATION_CODE IN (1,2,3) ");
@@ -417,19 +467,5 @@ public class SqlUtils {
                 e.getMessage().startsWith("ORA-00600") || // Oracle internal error on the RAC node shutdown could happen
                 e.getMessage().toUpperCase().contains("CONNECTION IS CLOSED") ||
                 e.getMessage().toUpperCase().startsWith("NO MORE DATA TO READ FROM SOCKET");
-    }
-
-    public static long parseRetentionFromName(String historyTableName) {
-        String[] tokens = historyTableName.split("_");
-        if (tokens.length != 7) {
-            return 0;
-        }
-        LocalDateTime recorded = LocalDateTime.of(
-                Integer.parseInt(tokens[2]), // year
-                Integer.parseInt(tokens[3]), // month
-                Integer.parseInt(tokens[4]), // days
-                Integer.parseInt(tokens[5]), // hours
-                Integer.parseInt(tokens[6])); // minutes
-        return Duration.between(recorded, LocalDateTime.now()).toHours();
     }
 }

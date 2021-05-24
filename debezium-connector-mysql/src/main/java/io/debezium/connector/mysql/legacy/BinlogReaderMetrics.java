@@ -151,9 +151,19 @@ public class BinlogReaderMetrics extends PipelineMetrics implements BinlogReader
         milliSecondsBehindMaster.set(value);
     }
 
+    /**
+     * @deprecated Superseded by the 'Captured Tables' metric. Use {@link #getCapturedTables()}.
+     * Scheduled for removal in a future release.
+     */
     @Override
+    @Deprecated
     public String[] getMonitoredTables() {
-        return schema.monitoredTablesAsStringArray();
+        return schema.capturedTablesAsStringArray();
+    }
+
+    @Override
+    public String[] getCapturedTables() {
+        return schema.capturedTablesAsStringArray();
     }
 
     @Override

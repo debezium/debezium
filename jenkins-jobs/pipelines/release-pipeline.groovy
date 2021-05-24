@@ -35,8 +35,8 @@ DEBEZIUM_DIR = 'debezium'
 IMAGES_DIR = 'images'
 UI_DIR = 'ui'
 POSTGRES_DECODER_DIR = 'postgres-decoder'
-ORACLE_ARTIFACT_DIR = "$HOME_DIR/oracle-libs/12.2.0.1.0"
-ORACLE_ARTIFACT_VERSION = '12.2.0.1'
+ORACLE_ARTIFACT_DIR = "$HOME_DIR/oracle-libs/21.1.0.0.0"
+ORACLE_ARTIFACT_VERSION = '21.1.0.0'
 
 VERSION_TAG = "v$RELEASE_VERSION"
 VERSION_PARTS = RELEASE_VERSION.split('\\.')
@@ -240,6 +240,7 @@ def mvnRelease(repoDir, repoName, branchName, buildArgs = '') {
             repoId = match[0][1]
             echo "Using staging repository $repoId"
         }
+        sh "mvn install -DskipTests -DskipITs -Passembly $buildArgs"
     }
     return repoId
 }

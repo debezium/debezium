@@ -23,8 +23,6 @@ import io.fabric8.openshift.client.OpenShiftClient;
 import io.strimzi.api.kafka.Crds;
 import io.strimzi.api.kafka.KafkaConnectList;
 import io.strimzi.api.kafka.KafkaList;
-import io.strimzi.api.kafka.model.DoneableKafka;
-import io.strimzi.api.kafka.model.DoneableKafkaConnect;
 import io.strimzi.api.kafka.model.Kafka;
 import io.strimzi.api.kafka.model.KafkaConnect;
 import io.strimzi.api.kafka.model.KafkaConnectBuilder;
@@ -83,10 +81,10 @@ public class KafkaDeployer {
      * @param useConnectorResources true if connector deployment should be managed by operator
      * @return {@link KafkaController} instance for deployed cluster
      */
-    public KafkaConnectController deployKafkaConnectCluster(String yamlPath, String loggingYamlPath, boolean useConnectorResources) throws InterruptedException {
+    public KafkaConnectController deployKafkaConnectCluster(String yamlPath, String cfgYamlPath, boolean useConnectorResources) throws InterruptedException {
         LOGGER.info("Deploying KafkaConnect from " + yamlPath);
 
-        ocp.configMaps().inNamespace(project).createOrReplace(YAML.fromResource(loggingYamlPath, ConfigMap.class));
+        ocp.configMaps().inNamespace(project).createOrReplace(YAML.fromResource(cfgYamlPath, ConfigMap.class));
 
         KafkaConnect kafkaConnect = YAML.fromResource(yamlPath, KafkaConnect.class);
         if (useConnectorResources) {
@@ -103,10 +101,12 @@ public class KafkaDeployer {
     }
 
     public Kafka waitForKafkaCluster(String name) throws InterruptedException {
+        LOGGER.info("Waiting for Kafka cluster '" + name + "'");
         return kafkaOperation().withName(name).waitUntilCondition(WaitConditions::kafkaReadyCondition, scaled(5), MINUTES);
     }
 
     public KafkaConnect waitForConnectCluster(String name) throws InterruptedException {
+        LOGGER.info("Waiting for Kafka Connect cluster '" + name + "'");
         return kafkaConnectOperation().withName(name).waitUntilCondition(WaitConditions::kafkaReadyCondition, scaled(5), MINUTES);
     }
 
@@ -120,11 +120,11 @@ public class KafkaDeployer {
         return ocp.secrets().inNamespace(project).createOrReplace(YAML.from(yamlPath, Secret.class));
     }
 
-    private NonNamespaceOperation<Kafka, KafkaList, DoneableKafka, Resource<Kafka, DoneableKafka>> kafkaOperation() {
+    private NonNamespaceOperation<Kafka, KafkaList, Resource<Kafka>> kafkaOperation() {
         return Crds.kafkaOperation(ocp).inNamespace(project);
     }
 
-    private NonNamespaceOperation<KafkaConnect, KafkaConnectList, DoneableKafkaConnect, Resource<KafkaConnect, DoneableKafkaConnect>> kafkaConnectOperation() {
+    private NonNamespaceOperation<KafkaConnect, KafkaConnectList, Resource<KafkaConnect>> kafkaConnectOperation() {
         return Crds.kafkaConnectOperation(ocp).inNamespace(project);
     }
 

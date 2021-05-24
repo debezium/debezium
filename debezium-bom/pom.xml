@@ -3,7 +3,7 @@
     <parent>
         <groupId>io.debezium</groupId>
         <artifactId>debezium-build-parent</artifactId>
-        <version>1.5.0-SNAPSHOT</version>
+        <version>1.6.0-SNAPSHOT</version>
 	<relativePath>../pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
@@ -12,14 +12,6 @@
     <packaging>pom</packaging>
 
     <properties>
-        <!-- Kafka and it's dependencies MUST reflect what the Kafka version uses -->
-        <version.kafka>2.7.0</version.kafka>
-        <version.curator>4.2.0</version.curator>
-        <version.zookeeper>3.5.8</version.zookeeper>
-        <version.jackson>2.10.5</version.jackson>
-        <version.org.slf4j>1.7.30</version.org.slf4j>
-        <version.log4j>1.2.17</version.log4j>
-        <version.netty>4.1.51.Final</version.netty>
         <!-- check new release version at https://github.com/confluentinc/schema-registry/releases -->
         <version.confluent.platform>6.0.2</version.confluent.platform>
         <version.apicurio>1.3.2.Final</version.apicurio>
@@ -27,10 +19,10 @@
         <!-- Database drivers, should align with databases in debezium-build-parent -->
         <version.postgresql.driver>42.2.14</version.postgresql.driver>
         <version.mysql.driver>8.0.21</version.mysql.driver>
-        <version.mysql.binlog>0.25.0</version.mysql.binlog>
+        <version.mysql.binlog>0.25.1</version.mysql.binlog>
         <version.mongo.driver>4.2.1</version.mongo.driver>
         <version.sqlserver.driver>7.2.2.jre8</version.sqlserver.driver>
-        <version.oracle.driver>12.2.0.1</version.oracle.driver>
+        <version.oracle.driver>21.1.0.0</version.oracle.driver>
         <version.db2.driver>11.5.0.0</version.db2.driver>
         <version.cassandra.driver>3.5.0</version.cassandra.driver>
 

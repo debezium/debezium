@@ -437,7 +437,7 @@ The following is a JSON representation of a value schema for a _create_ event fo
             "type": "int"
           },
           {
-            "name": "ts_micro",
+            "name": "ts_ms",
             "type": "long",
             "logicalType": "timestamp-micros"
           }
@@ -511,7 +511,7 @@ The value payload in JSON representation would look like this:
     "table": "customers",
     "file": "commitlog-6-123456.log",
     "pos": 54,
-    "ts_micro": 1562202942666382
+    "ts_ms": 1562202942666382
   }
 }
 ----
@@ -560,7 +560,7 @@ The value payload in JSON representation would look like this:
     "table": "customers",
     "file": "commitlog-6-123456.log",
     "pos": 102,
-    "ts_micro": 1562202942666490
+    "ts_ms": 1562202942666490
   }
 }
 ----
@@ -611,7 +611,7 @@ The value payload in JSON representation would look like this:
     "table": "customers",
     "file": "commitlog-6-123456.log",
     "pos": 102,
-    "ts_micro": 1562202942666490
+    "ts_ms": 1562202942666490
   }
 }
 ----
@@ -939,23 +939,23 @@ Cassandra connector has built-in support for JMX metrics. The Cassandra driver a
 
 |[[cassandra-property-commit-log-relocation-dir]]<<cassandra-property-commit-log-relocation-dir, `commit.log.relocation.dir`>>
 |
-|The local directory which commit logs get relocated to once processed.
+|The local directory where commit logs get relocated to from cdc_raw dir once processed.
 
 |[[cassandra-property-commit-log-post-processing-enabled]]<<cassandra-property-commit-log-post-processing-enabled, `commit.log.post.processing.enabled`>>
 |`true`
-|Determines whether or not the CommitLogPostProcessor should run. If disabled, commit logs would not be deleted post-process.
+|Determines whether or not the CommitLogPostProcessor should run to move processed commit logs from relocation dir. If disabled, commit logs would not be moved out of relocation dir.
+
+|[[cassandra-property-commit-log-relocation-dir-poll-interval-ms]]<<cassandra-property-commit-log-relocation-dir-poll-interval-ms, `commit.log.relocation.dir.poll.interval.ms`>>
+|10000
+|The amount of time the CommitLogPostProcessor should wait to re-fetch all processed commit logs in relocation dir.
 
 |[[cassandra-property-commit-log-transfer-class]]<<cassandra-property-commit-log-transfer-class, `commit.log.transfer.class`>>
 |`io.debezium.connector.cassandra.BlackHoleCommitLogTransfer`
-|The fully qualified {@link CommitLogTransfer} class used to transfer commit logs. Built-in transfers are `BlackHoleCommitLogTransfer` and `GCSCommitLogTransfer`.
+|The class used by CommitLogPostProcessor to move processed commit logs from relocation dir. The built-in transfer class is `BlackHoleCommitLogTransfer`, which simply removes all processed commit logs from relocation dir. Users are supposed to implement their own customized commit log transfer class if needed.
 
-|[[cassandra-property-remote-commit-log-relocation-dir]]<<cassandra-property-remote-commit-log-relocation-dir, `remote.commit.log.relocation.dir`>>
-|
-|The remote base directory to transfer commit log to. Required to be specified if GCSCommitLogTransfer is used as COMMIT_LOG_TRANSFER_CLASS. For example: "gcs://bucket-name/prefix-name".
-
-|[[cassandra-property-storage-credential-key-file]]<<cassandra-property-storage-credential-key-file, `storage.credential.key.file`>>
-|
-|The path of the storage key file used for setting up credential to access remote storage service. If {@link GCSCommitLogTransfer} is used and this config is not provided, then Application Default Credential would be used.
+|[[cassandra-property-commit-log-error-reprocessing-enabled]]<<cassandra-property-commit-log-error-reprocessing-enabled, `commit.log.error.reprocessing.enabled`>>
+|false
+|Determines whether or not the CommitLogProcessor should re-process error commit logs.
 
 |[[cassandra-property-offset-backing-store-dir]]<<cassandra-property-offset-backing-store-dir, `offset.backing.store.dir`>>
 |
@@ -1008,10 +1008,20 @@ refreshing the cached Cassandra table schemas.
 |
 |A comma-separated list of fully-qualified names of fields that should be excluded from change event message values. Fully-qualified names for fields are in the form keyspace_name>.<field_name>.<nested_field_name>.
 
+|[[cassandra-property-num-of-change-event-queues]]<<cassandra-property-num-of-change-event-queues, `num.of.change.event.queues`>>
+|`1`
+|The number of change event queues and queue processors. Defaults to 1.
+
 |[[cassandra-property-sanitize-field-names]]<<cassandra-property-sanitize-field-names, `sanitize.field.names`>>
 |`true` when connector configuration explicitly specifies the `key.converter` or `value.converter` parameters to use Avro, otherwise defaults to `false`.
 |Whether field names will be sanitized to adhere to Avro naming requirements.
 See {link-prefix}:{link-avro-serialization}#avro-naming[Avro naming] for more details.
+
+|[[cassandra-property-skipped-operations]]<<cassandra-property-skipped-operations, `+skipped.operations+`>>
+|
+| comma-separated list of operation types that will be skipped during streaming.
+The operations include: `c` for inserts/create, `u` for updates, and `d` for deletes.
+By default, no operations are skipped.
 
 |===
 

@@ -17,7 +17,6 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.connector.oracle.logminer.LogMinerHelper;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
@@ -128,19 +127,7 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
     }
 
     private Scn getCurrentScn(SnapshotContext ctx) throws SQLException {
-        if (connectorConfig.getAdapter().equals(OracleConnectorConfig.ConnectorAdapter.LOG_MINER)) {
-            return LogMinerHelper.getCurrentScn(jdbcConnection);
-        }
-
-        try (Statement statement = jdbcConnection.connection().createStatement();
-                ResultSet rs = statement.executeQuery("select CURRENT_SCN from V$DATABASE")) {
-
-            if (!rs.next()) {
-                throw new IllegalStateException("Couldn't get SCN");
-            }
-
-            return Scn.valueOf(rs.getString(1));
-        }
+        return jdbcConnection.getCurrentScn();
     }
 
     /**

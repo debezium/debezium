@@ -5,7 +5,11 @@
  */
 package io.debezium.pipeline.source.spi;
 
+import java.util.Optional;
+
+import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.schema.DataCollectionId;
 
 /**
  * A factory for creating {@link ChangeEventSource}s specific to one database.
@@ -34,4 +38,21 @@ public interface ChangeEventSourceFactory {
      * Returns a streaming change event source that starts streaming at the given offset.
      */
     StreamingChangeEventSource getStreamingChangeEventSource(OffsetContext offsetContext);
+
+    /**
+     * Returns and incremental snapshot change event source that can run in parallel with streaming
+     * and read and send data collection content in chunk.
+     *
+     * @param offsetContext
+     *            A context representing a restored offset from an earlier run of this connector. May be {@code null}.
+     * @param snapshotProgressListener
+     *            A listener called for changes in the state of snapshot. May be {@code null}.
+     *
+     * @return An incremental snapshot change event source
+     */
+    default Optional<IncrementalSnapshotChangeEventSource<? extends DataCollectionId>> getIncrementalSnapshotChangeEventSource(OffsetContext offsetContext,
+                                                                                                                               SnapshotProgressListener snapshotProgressListener,
+                                                                                                                               DataChangeEventListener dataChangeEventListener) {
+        return Optional.empty();
+    }
 }

@@ -16,6 +16,7 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 
 import io.debezium.connector.SnapshotRecord;
+import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.relational.TableId;
@@ -35,6 +36,7 @@ public class MySqlOffsetContext implements OffsetContext {
     private final Map<String, String> partition;
     private boolean snapshotCompleted;
     private final TransactionContext transactionContext;
+    private final IncrementalSnapshotContext<TableId> incrementalSnapshotContext;
     private String restartGtidSet;
     private String currentGtidSet;
     private String restartBinlogFilename;
@@ -46,7 +48,8 @@ public class MySqlOffsetContext implements OffsetContext {
     private String transactionId = null;
 
     public MySqlOffsetContext(MySqlConnectorConfig connectorConfig, boolean snapshot, boolean snapshotCompleted,
-                              TransactionContext transactionContext, SourceInfo sourceInfo) {
+                              TransactionContext transactionContext, IncrementalSnapshotContext<TableId> incrementalSnapshotContext,
+                              SourceInfo sourceInfo) {
         partition = Collections.singletonMap(SERVER_PARTITION_KEY, connectorConfig.getLogicalName());
         this.sourceInfo = sourceInfo;
         sourceInfoSchema = sourceInfo.schema();
@@ -59,10 +62,12 @@ public class MySqlOffsetContext implements OffsetContext {
             sourceInfo.setSnapshot(snapshot ? SnapshotRecord.TRUE : SnapshotRecord.FALSE);
         }
         this.transactionContext = transactionContext;
+        this.incrementalSnapshotContext = incrementalSnapshotContext;
     }
 
     public MySqlOffsetContext(MySqlConnectorConfig connectorConfig, boolean snapshot, boolean snapshotCompleted, SourceInfo sourceInfo) {
-        this(connectorConfig, snapshot, snapshotCompleted, new TransactionContext(), sourceInfo);
+        this(connectorConfig, snapshot, snapshotCompleted, new TransactionContext(), new IncrementalSnapshotContext<>(),
+                sourceInfo);
     }
 
     /**
@@ -88,7 +93,7 @@ public class MySqlOffsetContext implements OffsetContext {
             }
         }
         else {
-            return transactionContext.store(offset);
+            return incrementalSnapshotContext.store(transactionContext.store(offset));
         }
         return offset;
     }
@@ -206,7 +211,7 @@ public class MySqlOffsetContext implements OffsetContext {
             long binlogPosition = longOffsetValue(offset, SourceInfo.BINLOG_POSITION_OFFSET_KEY);
 
             final MySqlOffsetContext offsetContext = new MySqlOffsetContext(connectorConfig, snapshot,
-                    snapshotCompleted, TransactionContext.load(offset),
+                    snapshotCompleted, TransactionContext.load(offset), IncrementalSnapshotContext.load(offset, TableId.class),
                     new SourceInfo(connectorConfig));
             offsetContext.setBinlogStartPoint(binlogFilename, binlogPosition);
             offsetContext.setInitialSkips(longOffsetValue(offset, EVENTS_TO_SKIP_OFFSET_KEY),
@@ -258,6 +263,16 @@ public class MySqlOffsetContext implements OffsetContext {
     @Override
     public TransactionContext getTransactionContext() {
         return transactionContext;
+    }
+
+    @Override
+    public void incrementalSnapshotEvents() {
+        sourceInfo.setSnapshot(SnapshotRecord.INCREMENTAL);
+    }
+
+    @Override
+    public IncrementalSnapshotContext<?> getIncrementalSnapshotContext() {
+        return incrementalSnapshotContext;
     }
 
     /**
@@ -441,6 +456,7 @@ public class MySqlOffsetContext implements OffsetContext {
                 + ", restartBinlogFilename=" + restartBinlogFilename + ", restartBinlogPosition="
                 + restartBinlogPosition + ", restartRowsToSkip=" + restartRowsToSkip + ", restartEventsToSkip="
                 + restartEventsToSkip + ", currentEventLengthInBytes=" + currentEventLengthInBytes + ", inTransaction="
-                + inTransaction + ", transactionId=" + transactionId + "]";
+                + inTransaction + ", transactionId=" + transactionId
+                + ", incrementalSnapshotContext =" + incrementalSnapshotContext + "]";
     }
 }

@@ -1222,6 +1222,25 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
+    @FixFor("DBZ-3505")
+    public void shouldFailOnInvalidColumnFilter() throws Exception {
+        final Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.COLUMN_INCLUDE_LIST, ".^")
+                .build();
+        final LogInterceptor logInterceptor = new LogInterceptor();
+
+        start(SqlServerConnector.class, config);
+        waitForConnectorShutdown("sql_server", "server1");
+
+        consumeRecord();
+        Awaitility.await()
+                .alias("Found error message in logs")
+                .atMost(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS)
+                .until(() -> logInterceptor.containsStacktraceElement("Filtered column list for table testDB.dbo.tablea is empty")
+                        && !engine.isRunning());
+    }
+
+    @Test
     @FixFor("DBZ-1692")
     public void shouldConsumeEventsWithMaskedHashedColumns() throws Exception {
         connection.execute(
@@ -2452,6 +2471,42 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         stopConnector();
     }
 
+    @Test
+    @FixFor("DBZ-2699")
+    public void shouldEmitNoEventsForSkippedUpdateAndDeleteOperations() throws Exception {
+        final Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .with(SqlServerConnectorConfig.SKIPPED_OPERATIONS, "u,d")
+                .build();
+
+        start(SqlServerConnector.class, config);
+        assertConnectorIsRunning();
+        // Wait for snapshot completion
+        TestHelper.waitForSnapshotToBeCompleted();
+        consumeRecordsByTopic(1);
+
+        connection.execute("INSERT INTO tablea VALUES(201, 'insert201')");
+        connection.execute("UPDATE tablea SET cola='insert201-update' WHERE id=201");
+        connection.execute("INSERT INTO tablea VALUES(202, 'insert202')");
+        connection.execute("DELETE FROM tablea WHERE id=202");
+        connection.execute("INSERT INTO tablea VALUES(203, 'insert203')");
+
+        final SourceRecords records = consumeRecordsByTopic(3);
+        final List<SourceRecord> tableA = records.recordsForTopic("server1.dbo.tablea");
+        Assertions.assertThat(tableA).hasSize(3);
+        tableA.forEach((SourceRecord record) -> {
+            Struct value = (Struct) record.value();
+            assertThat(value.get("op")).isEqualTo(Envelope.Operation.CREATE.code());
+            assertThat(value.get("op")).isNotEqualTo(Envelope.Operation.UPDATE.code());
+            assertThat(value.get("op")).isNotEqualTo(Envelope.Operation.DELETE.code());
+        });
+
+        assertInsert(tableA.get(0), "id", 201);
+        assertInsert(tableA.get(1), "id", 202);
+        assertInsert(tableA.get(2), "id", 203);
+
+    }
+
     private void assertRecord(Struct record, List<SchemaAndValueField> expected) {
         expected.forEach(schemaAndValueField -> schemaAndValueField.assertFor(record));
     }
@@ -2515,7 +2570,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         }
 
         @Override
-        public boolean storeOnlyMonitoredTables() {
+        public boolean storeOnlyCapturedTables() {
             return false;
         }
 

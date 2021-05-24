@@ -22,9 +22,12 @@ import java.util.Set;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.postgresql.core.BaseConnection;
 import org.postgresql.core.TypeInfo;
+import org.postgresql.jdbc.PgDatabaseMetaData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
+import io.debezium.annotation.Immutable;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.util.Collect;
 
@@ -98,7 +101,9 @@ public class TypeRegistry {
     private final Map<String, PostgresType> nameToType = new HashMap<>();
     private final Map<Integer, PostgresType> oidToType = new HashMap<>();
 
-    private final PostgresConnection connection;
+    private final Connection connection;
+    private final TypeInfo typeInfo;
+    private final SqlTypeMapper sqlTypeMapper;
 
     private int geometryOid = Integer.MIN_VALUE;
     private int geographyOid = Integer.MIN_VALUE;
@@ -113,8 +118,16 @@ public class TypeRegistry {
     private int ltreeArrayOid = Integer.MIN_VALUE;
 
     public TypeRegistry(PostgresConnection connection) {
-        this.connection = connection;
-        prime();
+        try {
+            this.connection = connection.connection();
+            typeInfo = ((BaseConnection) this.connection).getTypeInfo();
+            sqlTypeMapper = new SqlTypeMapper(this.connection, typeInfo);
+
+            prime();
+        }
+        catch (SQLException e) {
+            throw new DebeziumException("Couldn't initialize type registry", e);
+        }
     }
 
     private void addType(PostgresType type) {
@@ -299,49 +312,31 @@ public class TypeRegistry {
     /**
      * Prime the {@link TypeRegistry} with all existing database types
      */
-    private void prime() {
-        Connection pgConnection = null;
-        try {
-            pgConnection = connection.connection();
+    private void prime() throws SQLException {
+        try (final Statement statement = connection.createStatement();
+                final ResultSet rs = statement.executeQuery(SQL_TYPES)) {
+            final List<PostgresType.Builder> delayResolvedBuilders = new ArrayList<>();
+            while (rs.next()) {
+                PostgresType.Builder builder = createTypeBuilderFromResultSet(rs);
 
-            final TypeInfo typeInfo = ((BaseConnection) pgConnection).getTypeInfo();
-            final SqlTypeMapper sqlTypeMapper = new SqlTypeMapper(pgConnection, typeInfo);
-
-            try (final Statement statement = pgConnection.createStatement()) {
-                try (final ResultSet rs = statement.executeQuery(SQL_TYPES)) {
-                    final List<PostgresType.Builder> delayResolvedBuilders = new ArrayList<>();
-                    while (rs.next()) {
-                        PostgresType.Builder builder = createTypeBuilderFromResultSet(pgConnection, rs, typeInfo, sqlTypeMapper);
-
-                        // If the type does have have a base type, we can build/add immediately.
-                        if (!builder.hasParentType()) {
-                            addType(builder.build());
-                            continue;
-                        }
-
-                        // For types with base type mappings, they need to be delayed.
-                        delayResolvedBuilders.add(builder);
-                    }
-
-                    // Resolve delayed builders
-                    for (PostgresType.Builder builder : delayResolvedBuilders) {
-                        addType(builder.build());
-                    }
+                // If the type does have have a base type, we can build/add immediately.
+                if (!builder.hasParentType()) {
+                    addType(builder.build());
+                    continue;
                 }
+
+                // For types with base type mappings, they need to be delayed.
+                delayResolvedBuilders.add(builder);
             }
 
-        }
-        catch (SQLException e) {
-            if (pgConnection == null) {
-                throw new ConnectException("Could not create PG connection", e);
-            }
-            else {
-                throw new ConnectException("Could not initialize type registry", e);
+            // Resolve delayed builders
+            for (PostgresType.Builder builder : delayResolvedBuilders) {
+                addType(builder.build());
             }
         }
     }
 
-    private PostgresType.Builder createTypeBuilderFromResultSet(Connection connection, ResultSet rs, TypeInfo typeInfo, SqlTypeMapper sqlTypeMapper) throws SQLException {
+    private PostgresType.Builder createTypeBuilderFromResultSet(ResultSet rs) throws SQLException {
         // Coerce long to int so large unsigned values are represented as signed
         // Same technique is used in TypeInfoCache
         final int oid = (int) rs.getLong("oid");
@@ -371,11 +366,10 @@ public class TypeRegistry {
     private PostgresType resolveUnknownType(String name) {
         try {
             LOGGER.trace("Type '{}' not cached, attempting to lookup from database.", name);
-            final Connection connection = this.connection.connection();
 
             try (final PreparedStatement statement = connection.prepareStatement(SQL_NAME_LOOKUP)) {
                 statement.setString(1, name);
-                return loadType(connection, statement);
+                return loadType(statement);
             }
         }
         catch (SQLException e) {
@@ -386,11 +380,10 @@ public class TypeRegistry {
     private PostgresType resolveUnknownType(int lookupOid) {
         try {
             LOGGER.trace("Type OID '{}' not cached, attempting to lookup from database.", lookupOid);
-            final Connection connection = this.connection.connection();
 
             try (final PreparedStatement statement = connection.prepareStatement(SQL_OID_LOOKUP)) {
                 statement.setInt(1, lookupOid);
-                return loadType(connection, statement);
+                return loadType(statement);
             }
         }
         catch (SQLException e) {
@@ -398,12 +391,10 @@ public class TypeRegistry {
         }
     }
 
-    private PostgresType loadType(Connection connection, PreparedStatement statement) throws SQLException {
-        final TypeInfo typeInfo = ((BaseConnection) connection).getTypeInfo();
-        final SqlTypeMapper sqlTypeMapper = new SqlTypeMapper(connection, typeInfo);
+    private PostgresType loadType(PreparedStatement statement) throws SQLException {
         try (final ResultSet rs = statement.executeQuery()) {
             while (rs.next()) {
-                PostgresType result = createTypeBuilderFromResultSet(connection, rs, typeInfo, sqlTypeMapper).build();
+                PostgresType result = createTypeBuilderFromResultSet(rs).build();
                 addType(result);
                 return result;
             }
@@ -440,13 +431,17 @@ public class TypeRegistry {
                 + " ORDER BY typname, sp.r, pg_type.oid;";
 
         private final TypeInfo typeInfo;
+
+        @Immutable
         private final Set<String> preloadedSqlTypes;
+
+        @Immutable
         private final Map<String, Integer> sqlTypesByPgTypeNames;
 
         private SqlTypeMapper(Connection db, TypeInfo typeInfo) throws SQLException {
             this.typeInfo = typeInfo;
             this.preloadedSqlTypes = Collect.unmodifiableSet(typeInfo.getPGTypeNamesWithSQLTypes());
-            this.sqlTypesByPgTypeNames = getSqlTypes(db, typeInfo);
+            this.sqlTypesByPgTypeNames = Collections.unmodifiableMap(getSqlTypes(db, typeInfo));
         }
 
         public int getSqlType(String typeName) throws SQLException {
@@ -463,7 +458,12 @@ public class TypeRegistry {
             // get custom type mappings from the map which was built up with a single query
             else {
                 try {
-                    return sqlTypesByPgTypeNames.get(typeName);
+                    final Integer pgType = sqlTypesByPgTypeNames.get(typeName);
+                    if (pgType != null) {
+                        return pgType;
+                    }
+                    LOGGER.info("Failed to obtain SQL type information for type {} via custom statement, falling back to TypeInfo#getSQLType()", typeName);
+                    return typeInfo.getSQLType(typeName);
                 }
                 catch (Exception e) {
                     LOGGER.warn("Failed to obtain SQL type information for type {} via custom statement, falling back to TypeInfo#getSQLType()", typeName, e);

@@ -57,7 +57,7 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
     /**
      * Interval for showing a log statement with the progress while scanning a single table.
      */
-    private static final Duration LOG_INTERVAL = Duration.ofMillis(10_000);
+    public static final Duration LOG_INTERVAL = Duration.ofMillis(10_000);
 
     private final RelationalDatabaseConnectorConfig connectorConfig;
     private final OffsetContext previousOffset;
@@ -351,10 +351,7 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
                     }
 
                     rows++;
-                    final Object[] row = new Object[columnArray.getGreatestColumnPosition()];
-                    for (int i = 0; i < columnArray.getColumns().length; i++) {
-                        row[columnArray.getColumns()[i].position() - 1] = getColumnValue(rs, i + 1, columnArray.getColumns()[i], table);
-                    }
+                    final Object[] row = jdbcConnection.rowToArray(table, schema(), rs, columnArray);
 
                     snapshotContext.lastRecordInTable = !rs.next();
                     if (logTimer.expired()) {
@@ -450,23 +447,19 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
     // scn xyz")
     protected abstract Optional<String> getSnapshotSelect(RelationalSnapshotContext snapshotContext, TableId tableId);
 
-    protected Object getColumnValue(ResultSet rs, int columnIndex, Column column, Table table) throws SQLException {
-        return getColumnValue(rs, columnIndex, column);
+    protected RelationalDatabaseSchema schema() {
+        return schema;
     }
 
-    @Deprecated
-    protected Object getColumnValue(ResultSet rs, int columnIndex, Column column) throws SQLException {
-        return rs.getObject(columnIndex);
+    protected Object getColumnValue(ResultSet rs, int columnIndex, Column column, Table table) throws SQLException {
+        return jdbcConnection.getColumnValue(rs, columnIndex, column, table, schema());
     }
 
     /**
      * Allow per-connector query creation to override for best database performance depending on the table size.
      */
     protected Statement readTableStatement(OptionalLong tableSize) throws SQLException {
-        int fetchSize = connectorConfig.getSnapshotFetchSize();
-        Statement statement = jdbcConnection.connection().createStatement(); // the default cursor is FORWARD_ONLY
-        statement.setFetchSize(fetchSize);
-        return statement;
+        return jdbcConnection.readTableStatement(connectorConfig, tableSize);
     }
 
     private void rollbackTransaction(Connection connection) {

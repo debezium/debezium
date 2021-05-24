@@ -4,7 +4,7 @@
   <parent>
     <groupId>io.debezium</groupId>
     <artifactId>debezium-testing</artifactId>
-    <version>1.5.0-SNAPSHOT</version>
+    <version>1.6.0-SNAPSHOT</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
 
@@ -13,10 +13,10 @@
   <name>Debezium OpenShift integration test-suite</name>
 
   <properties>
-    <version.fabric8.client>4.10.1</version.fabric8.client>
+    <version.fabric8.client>5.2.1</version.fabric8.client>
     <version.commons.codec>1.14</version.commons.codec>
     <version.commons.compress>1.20</version.commons.compress>
-    <version.strimzi>0.18.0</version.strimzi>
+    <version.strimzi>0.23.0</version.strimzi>
     <version.junit5>5.5.1</version.junit5>
     <version.junit5.pioneer>0.5.1</version.junit5.pioneer>
     <version.assertj>3.11.1</version.assertj>
@@ -247,7 +247,7 @@
     <dependency>
       <groupId>com.github.jcechace.apicurio-model-generator</groupId>
       <artifactId>kubernetes-apicurio-registry-model</artifactId>
-      <version>v0.0.4</version>
+      <version>a5c02b71</version>
     </dependency>
   </dependencies>
 
@@ -258,7 +258,7 @@
       <properties>
         <image.push.skip>true</image.push.skip>
         <image.version.strimzi>latest</image.version.strimzi>
-        <image.base.name>strimzi/kafka:${image.version.strimzi}-kafka-${version.kafka}</image.base.name>
+        <image.base.name>quay.io/strimzi/kafka:${image.version.strimzi}-kafka-${version.kafka}</image.base.name>
         <version.db2-connector>${project.version}</version.db2-connector>
       </properties>
 
@@ -298,6 +298,13 @@
           <type>zip</type>
           <version>${version.db2-connector}</version>
         </dependency>
+        <dependency>
+          <groupId>io.apicurio</groupId>
+          <artifactId>apicurio-registry-distro-connect-converter</artifactId>
+          <type>zip</type>
+          <version>${version.apicurio.converter}</version>
+          <classifier>converter</classifier>
+        </dependency>
       </dependencies>
 
       <build>
@@ -330,6 +337,41 @@
                             <outputDirectory>debezium-connector-db2</outputDirectory>
                             <includes>
                               <include>com.ibm.db2:jcc:jar</include>
+                            </includes>
+                          </dependencySet>
+                          <dependencySet>
+                            <outputDirectory>debezium-connector-mysql</outputDirectory>
+                            <unpack>true</unpack>
+                            <includes>
+                              <include>io.apicurio:apicurio-registry-distro-connect-converter:zip</include>
+                            </includes>
+                          </dependencySet>
+                          <dependencySet>
+                            <outputDirectory>debezium-connector-postgresql</outputDirectory>
+                            <unpack>true</unpack>
+                            <includes>
+                              <include>io.apicurio:apicurio-registry-distro-connect-converter:zip</include>
+                            </includes>
+                          </dependencySet>
+                          <dependencySet>
+                            <outputDirectory>debezium-connector-mongodb</outputDirectory>
+                            <unpack>true</unpack>
+                            <includes>
+                              <include>io.apicurio:apicurio-registry-distro-connect-converter:zip</include>
+                            </includes>
+                          </dependencySet>
+                          <dependencySet>
+                            <outputDirectory>debezium-connector-sqlserver</outputDirectory>
+                            <unpack>true</unpack>
+                            <includes>
+                              <include>io.apicurio:apicurio-registry-distro-connect-converter:zip</include>
+                            </includes>
+                          </dependencySet>
+                          <dependencySet>
+                            <outputDirectory>debezium-connector-db2</outputDirectory>
+                            <unpack>true</unpack>
+                            <includes>
+                              <include>io.apicurio:apicurio-registry-distro-connect-converter:zip</include>
                             </includes>
                           </dependencySet>
                         </dependencySets>
@@ -381,7 +423,9 @@
                 <test.ocp.project.mongo>${ocp.project.mongo}</test.ocp.project.mongo>
                 <test.ocp.project.sqlserver>${ocp.project.sqlserver}</test.ocp.project.sqlserver>
                 <test.ocp.project.db2>${ocp.project.db2}</test.ocp.project.db2>
+
                 <test.strimzi.operator.connectors>${strimzi.operator.connectors}</test.strimzi.operator.connectors>
+                <test.strimzi.crd.version>v1beta2</test.strimzi.crd.version>
 
                 <test.database.mysql.host>${database.mysql.host}</test.database.mysql.host>
                 <test.database.mysql.username>${database.mysql.username}</test.database.mysql.username>

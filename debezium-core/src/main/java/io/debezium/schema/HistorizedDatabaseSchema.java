@@ -36,7 +36,7 @@ public interface HistorizedDatabaseSchema<I extends DataCollectionId> extends Da
 
     void initializeStorage();
 
-    default boolean storeOnlyMonitoredTables() {
+    default boolean storeOnlyCapturedTables() {
         return false;
     }
 }

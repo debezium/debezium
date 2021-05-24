@@ -8,16 +8,14 @@ package io.debezium.connector.oracle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.connector.oracle.StreamingAdapter.TableNameCaseSensitivity;
 import io.debezium.connector.oracle.antlr.OracleDdlParser;
 import io.debezium.relational.HistorizedRelationalDatabaseSchema;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchemaBuilder;
 import io.debezium.relational.Tables;
-import io.debezium.relational.ddl.DdlParser;
-import io.debezium.relational.history.TableChanges;
 import io.debezium.schema.SchemaChangeEvent;
-import io.debezium.schema.SchemaChangeEvent.SchemaChangeEventType;
 import io.debezium.schema.TopicSelector;
 import io.debezium.util.SchemaNameAdjuster;
 
@@ -30,51 +28,61 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(OracleDatabaseSchema.class);
 
-    public OracleDatabaseSchema(OracleConnectorConfig connectorConfig, SchemaNameAdjuster schemaNameAdjuster, TopicSelector<TableId> topicSelector,
-                                OracleConnection connection) {
-        super(connectorConfig, topicSelector, connectorConfig.getTableFilters().dataCollectionFilter(), connectorConfig.getColumnFilter(),
+    private final OracleDdlParser ddlParser;
+    private final OracleValueConverters valueConverters;
+
+    public OracleDatabaseSchema(OracleConnectorConfig connectorConfig, OracleValueConverters valueConverters,
+                                SchemaNameAdjuster schemaNameAdjuster, TopicSelector<TableId> topicSelector,
+                                TableNameCaseSensitivity tableNameCaseSensitivity) {
+        super(connectorConfig, topicSelector, connectorConfig.getTableFilters().dataCollectionFilter(),
+                connectorConfig.getColumnFilter(),
                 new TableSchemaBuilder(
-                        new OracleValueConverters(connectorConfig, connection),
+                        valueConverters,
                         schemaNameAdjuster,
                         connectorConfig.customConverterRegistry(),
                         connectorConfig.getSourceInfoStructMaker().schema(),
                         connectorConfig.getSanitizeFieldNames()),
-                connection.getTablenameCaseInsensitivity(connectorConfig),
+                TableNameCaseSensitivity.INSENSITIVE.equals(tableNameCaseSensitivity),
                 connectorConfig.getKeyMapper());
+
+        this.ddlParser = new OracleDdlParser(valueConverters, connectorConfig.getTableFilters().dataCollectionFilter());
+        this.valueConverters = valueConverters;
     }
 
     public Tables getTables() {
         return tables();
     }
 
+    public OracleValueConverters getValueConverters() {
+        return valueConverters;
+    }
+
     @Override
-    protected DdlParser getDdlParser() {
-        return new OracleDdlParser();
+    public OracleDdlParser getDdlParser() {
+        return ddlParser;
     }
 
     @Override
     public void applySchemaChange(SchemaChangeEvent schemaChange) {
         LOGGER.debug("Applying schema change event {}", schemaChange);
 
-        // just a single table per DDL event for Oracle
-        Table table = schemaChange.getTables().iterator().next();
-        buildAndRegisterSchema(table);
-        tables().overwriteTable(table);
-
-        TableChanges tableChanges = null;
-        if (schemaChange.getType() == SchemaChangeEventType.CREATE) {
-            tableChanges = new TableChanges();
-            tableChanges.create(table);
-        }
-        else if (schemaChange.getType() == SchemaChangeEventType.ALTER) {
-            tableChanges = new TableChanges();
-            tableChanges.alter(table);
-        }
-        else if (schemaChange.getType() == SchemaChangeEventType.DROP) {
-            tableChanges = new TableChanges();
-            tableChanges.drop(table);
+        switch (schemaChange.getType()) {
+            case CREATE:
+            case ALTER:
+                schemaChange.getTableChanges().forEach(x -> {
+                    buildAndRegisterSchema(x.getTable());
+                    tables().overwriteTable(x.getTable());
+                });
+                break;
+            case DROP:
+                schemaChange.getTableChanges().forEach(x -> removeSchema(x.getId()));
+                break;
+            default:
         }
 
-        record(schemaChange, tableChanges);
+        if (schemaChange.getTables().stream().map(Table::id).anyMatch(getTableFilter()::isIncluded)) {
+            LOGGER.debug("Recorded DDL statements for database '{}': {}", schemaChange.getDatabase(), schemaChange.getDdl());
+            record(schemaChange, schemaChange.getTableChanges());
+        }
     }
 }

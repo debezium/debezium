@@ -5,8 +5,9 @@
  */
 package io.debezium.connector.oracle;
 
+import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 
@@ -23,6 +24,7 @@ import org.mockito.Mockito;
 
 import io.debezium.connector.oracle.logminer.LogFile;
 import io.debezium.connector.oracle.logminer.LogMinerHelper;
+import io.debezium.jdbc.JdbcConnection;
 
 public class LogMinerHelperTest {
 
@@ -42,52 +44,61 @@ public class LogMinerHelperTest {
         Mockito.when(connection.connection(false)).thenReturn(conn);
 
         PreparedStatement pstmt = Mockito.mock(PreparedStatement.class);
+        JdbcConnection.StatementFactory factory = Mockito.mock(JdbcConnection.StatementFactory.class);
+        Mockito.when(factory.createStatement(conn)).thenReturn(pstmt);
+
         Mockito.when(conn.prepareStatement(anyString())).thenReturn(pstmt);
         Mockito.when(pstmt.executeQuery()).thenReturn(rs);
         Mockito.when(rs.next()).thenAnswer(it -> ++current > mockRows.length ? false : true);
         Mockito.when(rs.getString(anyInt())).thenAnswer(it -> {
             return mockRows[current - 1][(Integer) it.getArguments()[0] - 1];
         });
+
+        Mockito.doAnswer(a -> {
+            JdbcConnection.ResultSetConsumer consumer = a.getArgument(1);
+            consumer.accept(rs);
+            return null;
+        }).when(connection).query(anyString(), any(JdbcConnection.ResultSetConsumer.class));
     }
 
     @Test
     public void logsWithRegularScns() throws Exception {
 
         mockRows = new String[][]{
-                new String[]{ "logfile1", "103400", "11", "103700", "ACTIVE" },
-                new String[]{ "logfile2", "103700", "12", "104000", "ACTIVE" }
+                new String[]{ "logfile1", "103400", "103700", "YES", null, "ARCHIVED", "1", "YES", "YES" },
+                new String[]{ "logfile2", "103700", "104000", "NO", "ACTIVE", "ONLINE", "2", "NO", "NO" }
         };
 
-        List<LogFile> onlineLogs = LogMinerHelper.getOnlineLogFilesForOffsetScn(connection, Scn.valueOf(10L));
-        assertEquals(onlineLogs.size(), 2);
-        assertEquals(getLogFileNextScnByName(onlineLogs, "logfile1"), Scn.valueOf(103400L));
-        assertEquals(getLogFileNextScnByName(onlineLogs, "logfile2"), Scn.valueOf(103700L));
+        List<LogFile> logs = LogMinerHelper.getLogFilesForOffsetScn(connection, Scn.valueOf(10L), Duration.ofDays(60));
+        assertThat(logs).hasSize(2);
+        assertThat(getLogFileNextScnByName(logs, "logfile1")).isEqualTo(Scn.valueOf(103700L));
+        assertThat(getLogFileNextScnByName(logs, "logfile2")).isEqualTo(Scn.valueOf(104000L));
     }
 
     @Test
     public void excludeLogsBeforeOffsetScn() throws Exception {
 
         mockRows = new String[][]{
-                new String[]{ "logfile1", "103400", "11", "103700", "ACTIVE" },
-                new String[]{ "logfile2", "103700", "12", "104000", "ACTIVE" },
-                new String[]{ "logfile3", "500", "13", "103100", "ACTIVE" },
+                new String[]{ "logfile3", "103300", "103400", "YES", null, "ARCHIVED", "1", "YES", "YES" },
+                new String[]{ "logfile1", "103400", "103700", "YES", null, "ARCHIVED", "2", "YES", "YES" },
+                new String[]{ "logfile2", "103700", "104000", "NO", "ACTIVE", "ONLINE", "3", "NO", "NO" }
         };
 
-        List<LogFile> onlineLogs = LogMinerHelper.getOnlineLogFilesForOffsetScn(connection, Scn.valueOf(600L));
-        assertEquals(onlineLogs.size(), 2);
-        assertNull(getLogFileNextScnByName(onlineLogs, "logfile3"));
+        List<LogFile> logs = LogMinerHelper.getLogFilesForOffsetScn(connection, Scn.valueOf(103401), Duration.ofDays(60));
+        assertThat(logs).hasSize(2);
+        assertThat(getLogFileNextScnByName(logs, "logfile3")).isNull();
     }
 
     @Test
     public void nullsHandledAsMaxScn() throws Exception {
 
         mockRows = new String[][]{
-                new String[]{ "logfile1", "103400", "11", "103700", "ACTIVE" },
-                new String[]{ "logfile2", "103700", "12", "104000", "ACTIVE" },
-                new String[]{ "logfile3", null, "13", "103100", "CURRENT" },
+                new String[]{ "logfile1", "103400", "103700", "YES", null, "ARCHIVED", "1", "YES", "YES" },
+                new String[]{ "logfile2", "103700", "104000", "YES", null, "ARCHIVED", "2", "YES", "YES" },
+                new String[]{ "logfile3", "104000", null, "NO", "CURRENT", "ONLINE", "3", "NO", "NO" }
         };
 
-        List<LogFile> onlineLogs = LogMinerHelper.getOnlineLogFilesForOffsetScn(connection, Scn.valueOf(600L));
+        List<LogFile> onlineLogs = LogMinerHelper.getLogFilesForOffsetScn(connection, Scn.valueOf(600L), Duration.ofDays(60));
         assertEquals(onlineLogs.size(), 3);
         assertEquals(getLogFileNextScnByName(onlineLogs, "logfile3"), Scn.MAX);
     }
@@ -96,12 +107,12 @@ public class LogMinerHelperTest {
     public void canHandleMaxScn() throws Exception {
 
         mockRows = new String[][]{
-                new String[]{ "logfile1", "103400", "11", "103700", "ACTIVE" },
-                new String[]{ "logfile2", "103700", "12", "104000", "ACTIVE" },
-                new String[]{ "logfile3", "18446744073709551615", "13", "104300", "CURRENT" },
+                new String[]{ "logfile1", "103400", "103700", "YES", null, "ARCHIVED", "1", "YES", "YES" },
+                new String[]{ "logfile2", "103700", "104000", "YES", null, "ARCHIVED", "2", "YES", "YES" },
+                new String[]{ "logfile3", "104000", "18446744073709551615", "NO", "CURRENT", "ONLINE", "3", "NO", "NO" }
         };
 
-        List<LogFile> onlineLogs = LogMinerHelper.getOnlineLogFilesForOffsetScn(connection, Scn.valueOf(600L));
+        List<LogFile> onlineLogs = LogMinerHelper.getLogFilesForOffsetScn(connection, Scn.valueOf(600L), Duration.ofDays(60));
         assertEquals(onlineLogs.size(), 3);
         assertEquals(getLogFileNextScnByName(onlineLogs, "logfile3"), Scn.MAX);
     }
@@ -112,72 +123,12 @@ public class LogMinerHelperTest {
         String scnLonger = "18446744073709551615";
 
         mockRows = new String[][]{
-                new String[]{ "logfile1", "103400", "11", "103700", "ACTIVE" },
-                new String[]{ "logfile2", "103700", "12", "104000", "ACTIVE" },
-                new String[]{ "logfile3", scnLonger, "13", "104300", "ACTIVE" },
+                new String[]{ "logfile1", "103400", "103700", "YES", null, "ARCHIVED", "1", "YES", "YES" },
+                new String[]{ "logfile2", "103700", "104000", "YES", null, "ARCHIVED", "2", "YES", "YES" },
+                new String[]{ "logfile3", "104000", "18446744073709551615", "NO", "ACTIVE", "ONLINE", "3", "NO", "NO" }
         };
 
-        List<LogFile> onlineLogs = LogMinerHelper.getOnlineLogFilesForOffsetScn(connection, Scn.valueOf(600L));
-        assertEquals(onlineLogs.size(), 3);
-        assertEquals(getLogFileNextScnByName(onlineLogs, "logfile3"), Scn.valueOf(scnLonger));
-    }
-
-    @Test
-    public void archiveLogsWithRegularScns() throws Exception {
-
-        mockRows = new String[][]{
-                new String[]{ "logfile1", "103400", "11", "ACTIVE" },
-                new String[]{ "logfile2", "103700", "12", "ACTIVE" }
-        };
-
-        List<LogFile> onlineLogs = LogMinerHelper.getArchivedLogFilesForOffsetScn(connection, Scn.valueOf(500L), Duration.ofDays(60));
-        assertEquals(onlineLogs.size(), 2);
-        assertEquals(getLogFileNextScnByName(onlineLogs, "logfile1"), Scn.valueOf(103400L));
-        assertEquals(getLogFileNextScnByName(onlineLogs, "logfile2"), Scn.valueOf(103700L));
-    }
-
-    // Following are the same set of tests used for online logs but on archived logs
-    @Test
-    public void archiveExcludeLogsBeforeOffsetScn() throws Exception {
-
-        mockRows = new String[][]{
-                new String[]{ "logfile1", "103400", "11", },
-                new String[]{ "logfile2", "103700", "12" },
-                // the following would be omitted due to being older than 60 days
-                // new String[]{ "logfile3", "500", "13" },
-        };
-
-        List<LogFile> onlineLogs = LogMinerHelper.getArchivedLogFilesForOffsetScn(connection, Scn.valueOf(600L), Duration.ofDays(60));
-        assertEquals(onlineLogs.size(), 2);
-        assertNull(getLogFileNextScnByName(onlineLogs, "logfile3"));
-    }
-
-    @Test
-    public void archiveNullsHandledAsMaxScn() throws Exception {
-
-        mockRows = new String[][]{
-                new String[]{ "logfile1", "103400", "11", "103700" },
-                new String[]{ "logfile2", "103700", "12", "104000" },
-                new String[]{ "logfile3", null, "13", "104300" },
-        };
-
-        List<LogFile> onlineLogs = LogMinerHelper.getArchivedLogFilesForOffsetScn(connection, Scn.valueOf(500L), Duration.ofDays(60));
-        assertEquals(onlineLogs.size(), 3);
-        assertEquals(getLogFileNextScnByName(onlineLogs, "logfile3"), Scn.MAX);
-    }
-
-    @Test
-    public void archiveLogsWithVeryLargeScnAreSupported() throws Exception {
-        // Proves that a SCN larger than what long data type supports, is still handled appropriately
-        String scnLonger = "18446744073709551615";
-
-        mockRows = new String[][]{
-                new String[]{ "logfile1", "103400", "11" },
-                new String[]{ "logfile2", "103700", "12" },
-                new String[]{ "logfile3", scnLonger, "13" },
-        };
-
-        List<LogFile> onlineLogs = LogMinerHelper.getArchivedLogFilesForOffsetScn(connection, Scn.valueOf(500L), Duration.ofDays(60));
+        List<LogFile> onlineLogs = LogMinerHelper.getLogFilesForOffsetScn(connection, Scn.valueOf(600L), Duration.ofDays(60));
         assertEquals(onlineLogs.size(), 3);
         assertEquals(getLogFileNextScnByName(onlineLogs, "logfile3"), Scn.valueOf(scnLonger));
     }

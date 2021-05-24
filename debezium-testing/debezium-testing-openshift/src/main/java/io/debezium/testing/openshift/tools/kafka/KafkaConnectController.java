@@ -27,16 +27,15 @@ import io.debezium.testing.openshift.tools.OpenShiftUtils;
 import io.debezium.testing.openshift.tools.WaitConditions;
 import io.fabric8.kubernetes.api.model.IntOrString;
 import io.fabric8.kubernetes.api.model.Service;
-import io.fabric8.kubernetes.api.model.networking.NetworkPolicy;
-import io.fabric8.kubernetes.api.model.networking.NetworkPolicyPort;
-import io.fabric8.kubernetes.api.model.networking.NetworkPolicyPortBuilder;
+import io.fabric8.kubernetes.api.model.networking.v1.NetworkPolicy;
+import io.fabric8.kubernetes.api.model.networking.v1.NetworkPolicyPort;
+import io.fabric8.kubernetes.api.model.networking.v1.NetworkPolicyPortBuilder;
 import io.fabric8.kubernetes.client.dsl.NonNamespaceOperation;
 import io.fabric8.kubernetes.client.dsl.Resource;
 import io.fabric8.openshift.api.model.Route;
 import io.fabric8.openshift.client.OpenShiftClient;
 import io.strimzi.api.kafka.Crds;
 import io.strimzi.api.kafka.KafkaConnectorList;
-import io.strimzi.api.kafka.model.DoneableKafkaConnector;
 import io.strimzi.api.kafka.model.KafkaConnect;
 import io.strimzi.api.kafka.model.KafkaConnector;
 
@@ -86,8 +85,9 @@ public class KafkaConnectController {
      */
     public void disable() {
         LOGGER.info("Disabling KafkaConnect deployment (scaling to ZERO).");
-        ocp.apps().deployments().inNamespace(project).withName(this.kafkaConnect.getMetadata().getName() + "-connect")
-                .edit().editSpec().withReplicas(0).endSpec().done();
+        ocp.apps().deployments().inNamespace(project)
+                .withName(this.kafkaConnect.getMetadata().getName() + "-connect")
+                .scale(0);
         await()
                 .atMost(30, SECONDS)
                 .pollDelay(5, SECONDS)
@@ -133,8 +133,7 @@ public class KafkaConnectController {
                 .map(p -> new NetworkPolicyPortBuilder().withProtocol("TCP").withPort(p).build())
                 .collect(Collectors.toList());
 
-        NetworkPolicy policy = ocpUtils.createNetworkPolicy(project, kafkaConnect.getMetadata().getName() + "-allowed", labels, ports);
-        return policy;
+        return ocpUtils.createNetworkPolicy(project, kafkaConnect.getMetadata().getName() + "-allowed", labels, ports);
     }
 
     /**
@@ -232,7 +231,7 @@ public class KafkaConnectController {
         return kafkaConnectorOperation().withName(name).waitUntilCondition(WaitConditions::kafkaReadyCondition, 5, MINUTES);
     }
 
-    private NonNamespaceOperation<KafkaConnector, KafkaConnectorList, DoneableKafkaConnector, Resource<KafkaConnector, DoneableKafkaConnector>> kafkaConnectorOperation() {
+    private NonNamespaceOperation<KafkaConnector, KafkaConnectorList, Resource<KafkaConnector>> kafkaConnectorOperation() {
         return Crds.kafkaConnectorOperation(ocp).inNamespace(project);
     }
 
