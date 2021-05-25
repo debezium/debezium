@@ -1301,6 +1301,16 @@ Skipping should be used only with care as it can lead to data loss or mangling w
 |_initial_
 |A mode for taking an initial snapshot of the structure and optionally data of captured tables. Supported values are _initial_ (will take a snapshot of structure and data of captured tables; useful if topics should be populated with a complete representation of the data from the captured tables) and _schema_only_ (will take a snapshot of the structure of captured tables only; useful if only changes happening from now onwards should be propagated to topics). Once the snapshot is complete, the connector will continue reading change events from the database's redo logs.
 
+|[[oracle-property-snapshot-locking-mode]]<<oracle-property-snapshot-locking-mode, `+snapshot.locking.mode+`>>
+|_exclusive_
+a|Controls whether and how long the connector holds a table lock, which prevents any updates to the database, while the connector is performing a snapshot. Possible settings are: +
+ +
+`exclusive` - the connector holds an exclusive table lock for the initial portion of the snapshot during which the connector reads the database schemas and other metadata. The remaining work in a snapshot involves selecting all rows from each table using flashback queries.  +
+ +
+`shared` - allows concurrent access to the table but prevents any session from acquring a table exclusive lock. +
+ +
+`none` - prevents the connector from acquiring any table locks during the snapshot. This setting is only safe to use if and _only_ if no schema changes are happening while the snapshot is running.
+
 |[[oracle-property-snapshot-select-statement-overrides]]<<oracle-property-snapshot-select-statement-overrides, `+snapshot.select.statement.overrides+`>>
 |
 |Controls which rows from tables are included in snapshot. +
