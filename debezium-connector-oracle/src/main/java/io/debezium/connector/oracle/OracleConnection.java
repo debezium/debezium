@@ -37,6 +37,7 @@ import io.debezium.relational.Tables.ColumnNameFilter;
 import io.debezium.relational.Tables.TableFilter;
 
 import oracle.jdbc.OracleTypes;
+import oracle.sql.RAW;
 
 public class OracleConnection extends JdbcConnection {
 
@@ -350,20 +351,10 @@ public class OracleConnection extends JdbcConnection {
      * @throws SQLException if there is a database exception
      */
     public byte[] getHexToRawByteArray(String hexToRawValue) throws SQLException {
-        final String data;
         if (hexToRawValue.startsWith("HEXTORAW('") && hexToRawValue.endsWith("')")) {
-            data = hexToRawValue.substring(10, hexToRawValue.length() - 2);
+            return RAW.hexString2Bytes(hexToRawValue.substring(10, hexToRawValue.length() - 2));
         }
-        else {
-            data = hexToRawValue;
-        }
-
-        return prepareQueryAndMap("select HEXTORAW(?) FROM DUAL", ps -> ps.setString(1, data), rs -> {
-            if (rs.next()) {
-                return rs.getBytes(1);
-            }
-            return null;
-        });
+        return RAW.hexString2Bytes(hexToRawValue);
     }
 
     public static String connectionString(Configuration config) {
