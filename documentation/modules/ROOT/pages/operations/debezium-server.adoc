@@ -578,6 +578,50 @@ At least `bootstrap.servers`, `key.serializer` and `value.serializer` properties
 
 |===
 
+==== Pravega
+
+https://pravega.io/[Pravega] is a cloud-native storage system for event streams and data streams. This sink offers two modes: non-transactional and transactional. The non-transactional sink individually writes each event in a Debezium batch to Pravega. The transactional sink writes the Debezium batch to a Pravega transaction that commits when the batch is completed.
+
+The Pravega sink expects destination scope and streams to already be created.
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Property
+|Default
+|Description
+
+|[[pravega-type]]<<pravega-type, `debezium.sink.type`>>
+|
+|Set to `pravega` for non-transactional writer. Set to `pravega-txn` for transactional writer.
+
+|[[pravega-url]]<<pravega-url, `debezium.sink.pravega.controller.uri`>>
+|`tcp://localhost:9090`
+|The connection string to a Controller in the Pravega cluster.
+
+|[[pravega-scope]]<<pravega-scope, `debezium.sink.pravega.scope`>>
+|
+|The name of the scope in which to find the destination streams.
+
+|===
+
+===== Injection points
+
+Pravega sink behavior can be modified by custom logic providing alternative implementations for specific functionalities.
+When the alternative implementations are not available then the default ones are used.
+
+[cols="35%a,10%a,55%a"]
+|===
+|Interface
+|CDI classifier
+|Description
+
+|[[pravega-ext-stream-name-mapper]]<<pravega-ext-stream-name-mapper, `io.debezium.server.StreamNameMapper`>>
+|
+|Custom implementation maps the planned destination (stream) name into a physical Pravega stream name.
+By default the same name is used.
+
+|===
+
 == Extensions
 
 {prodname} Server uses the https://quarkus.io/[Quarkus framework] and relies on dependency injection to enable developer to extend its behaviour.
