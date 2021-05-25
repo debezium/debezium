@@ -8,6 +8,7 @@ package io.debezium.connector.mongodb;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -17,6 +18,7 @@ import java.util.regex.Pattern;
 import org.bson.Document;
 import org.bson.types.Binary;
 
+import com.mongodb.ReadPreference;
 import com.mongodb.ServerAddress;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
@@ -333,16 +335,36 @@ public class MongoUtil {
     }
 
     protected static ServerAddress getPrimaryAddress(MongoClient client) {
-        final ClusterDescription clusterDescription = client.getClusterDescription();
+
+        ClusterDescription clusterDescription = client.getClusterDescription();
+
+        if (clusterDescription == null || !clusterDescription.hasReadableServer(ReadPreference.primaryPreferred())) {
+            client.listDatabaseNames().first(); // force connection attempt and make async client wait/block
+            clusterDescription = client.getClusterDescription();
+        }
+
         if (clusterDescription == null) {
-            throw new DebeziumException("Unable to read cluster description from MongoDB connection");
+            throw new DebeziumException("Unable to read cluster description from MongoDB connection.");
         }
-        final List<ServerDescription> serverDescriptions = clusterDescription.getServerDescriptions();
+        else if (!clusterDescription.hasReadableServer(ReadPreference.primaryPreferred())) {
+            throw new DebeziumException("Unable to use cluster description from MongoDB connection: " + clusterDescription);
+        }
+
+        List<ServerDescription> serverDescriptions = clusterDescription.getServerDescriptions();
+
         if (serverDescriptions == null || serverDescriptions.size() == 0) {
-            throw new DebeziumException("Unable to read server descriptions from MongoDB connection, got '" + serverDescriptions + "'");
+            throw new DebeziumException("Unable to read server descriptions from MongoDB connection (Null or empty list).");
         }
-        ServerAddress serverAddress = serverDescriptions.get(0).getAddress();
-        return new ServerAddress(serverAddress.getHost(), serverAddress.getPort());
+
+        Optional<ServerDescription> primaryDescription = serverDescriptions.stream().filter(ServerDescription::isPrimary).findFirst();
+
+        if (!primaryDescription.isPresent()) {
+            throw new DebeziumException("Unable to find primary from MongoDB connection, got '" + serverDescriptions + "'");
+        }
+
+        ServerAddress primaryAddress = primaryDescription.get().getAddress();
+
+        return new ServerAddress(primaryAddress.getHost(), primaryAddress.getPort());
     }
 
     private MongoUtil() {
