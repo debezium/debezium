@@ -1,7 +1,3 @@
-// Category: debezium-using
-// Type: assembly
-// ModuleID: customization-of-kafka-connect-automatic-topic-creation
-// Title: Sending signals to a Debezium connector
 [id="sending-signals-to-a-debezium-connector"]
 = Sending signals to a Debezium connector
 
