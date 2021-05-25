@@ -22,6 +22,10 @@ import org.openjdk.jmh.annotations.Warmup;
 
 import io.debezium.connector.oracle.logminer.parser.DmlParser;
 import io.debezium.connector.oracle.logminer.parser.LogMinerDmlParser;
+import io.debezium.relational.Column;
+import io.debezium.relational.Table;
+import io.debezium.relational.TableEditor;
+import io.debezium.relational.TableId;
 
 /**
  * A basic test to determine the performance of the new LogMiner DML parser for Oracle.
@@ -37,6 +41,7 @@ public class LogMinerDmlParserPerf {
         public String updateDml;
         public String deleteDml;
         public String txId;
+        public Table table;
 
         @Param({ "1", "2", "5", "10", "20", "50" })
         public int columnCount;
@@ -44,10 +49,23 @@ public class LogMinerDmlParserPerf {
         @Setup(Level.Trial)
         public void doSetup() {
             dmlParser = new LogMinerDmlParser();
+            this.table = createTable();
             this.insertDml = insertStatement();
             this.updateDml = updateStatement();
             this.deleteDml = deleteStatement();
             this.txId = "1234567890";
+        }
+
+        private Table createTable() {
+            TableEditor editor = Table.editor()
+                    .tableId(TableId.parse("DEBEZIUM.TEST"))
+                    .addColumn(Column.editor().name("ID").create());
+
+            for (int i = 0; i < columnCount; ++i) {
+                editor.addColumn(Column.editor().name("COL" + i).create());
+            }
+
+            return editor.create();
         }
 
         private String insertStatement() {
@@ -101,8 +119,7 @@ public class LogMinerDmlParserPerf {
     @Warmup(iterations = 10, time = 1, timeUnit = TimeUnit.SECONDS)
     @Measurement(iterations = 3, time = 2, timeUnit = TimeUnit.SECONDS)
     public void testInserts(ParserState state) {
-        // Disabled due to DBZ-3257 signature change
-        // state.dmlParser.parse(state.insertDml, null, null, state.txId);
+        state.dmlParser.parse(state.insertDml, state.table, state.txId);
     }
 
     @Benchmark
@@ -112,8 +129,7 @@ public class LogMinerDmlParserPerf {
     @Warmup(iterations = 10, time = 1, timeUnit = TimeUnit.SECONDS)
     @Measurement(iterations = 3, time = 2, timeUnit = TimeUnit.SECONDS)
     public void testUpdates(ParserState state) {
-        // Disabled due to DBZ-3257 signature change
-        // state.dmlParser.parse(state.deleteDml, null, null, state.txId);
+        state.dmlParser.parse(state.deleteDml, state.table, state.txId);
     }
 
     @Benchmark
@@ -123,7 +139,6 @@ public class LogMinerDmlParserPerf {
     @Warmup(iterations = 10, time = 1, timeUnit = TimeUnit.SECONDS)
     @Measurement(iterations = 3, time = 2, timeUnit = TimeUnit.SECONDS)
     public void testDeletes(ParserState state) {
-        // Disabled due to DBZ-3257 signature change
-        // state.dmlParser.parse(state.deleteDml, null, null, state.txId);
+        state.dmlParser.parse(state.deleteDml, state.table, state.txId);
     }
 }
