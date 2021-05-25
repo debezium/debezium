@@ -105,6 +105,7 @@ public class EndToEndPerf {
             }
             try {
                 connection.execute("CREATE TABLE debezium.test (id numeric(9,0) primary key, name varchar2(50))");
+                connection.execute("ALTER TABLE debezium.test add supplemental log data (all) columns");
             }
             catch (SQLException e) {
                 throw new RuntimeException("Failed to create table", e);
