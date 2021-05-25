@@ -5,14 +5,19 @@
  */
 package io.debezium.server.pravega;
 
+import java.net.URI;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.Map;
 
+import org.eclipse.microprofile.config.ConfigProvider;
 import org.testcontainers.containers.FixedHostPortGenericContainer;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 
+import io.pravega.client.admin.StreamManager;
+import io.pravega.client.stream.ScalingPolicy;
+import io.pravega.client.stream.StreamConfiguration;
 import io.quarkus.test.common.QuarkusTestResourceLifecycleManager;
 
 /**
@@ -39,6 +44,15 @@ public class PravegaTestResource implements QuarkusTestResourceLifecycleManager 
     @Override
     public Map<String, String> start() {
         container.start();
+
+        String scope = ConfigProvider.getConfig().getValue("debezium.sink.pravega.scope", String.class);
+        try (final StreamManager streamManager = StreamManager.create(URI.create(getControllerUri()))) {
+            streamManager.createScope(scope);
+            StreamConfiguration streamConfig = StreamConfiguration.builder()
+                    .scalingPolicy(ScalingPolicy.fixed(1))
+                    .build();
+            streamManager.createStream(scope, scope, streamConfig);
+        }
 
         return Collections.singletonMap("pravega.controller.uri", getControllerUri());
     }

@@ -23,13 +23,10 @@ import io.debezium.util.Testing;
 import io.pravega.client.ClientConfig;
 import io.pravega.client.EventStreamClientFactory;
 import io.pravega.client.admin.ReaderGroupManager;
-import io.pravega.client.admin.StreamManager;
 import io.pravega.client.stream.EventStreamReader;
 import io.pravega.client.stream.ReaderConfig;
 import io.pravega.client.stream.ReaderGroupConfig;
-import io.pravega.client.stream.ScalingPolicy;
 import io.pravega.client.stream.Stream;
-import io.pravega.client.stream.StreamConfiguration;
 import io.pravega.client.stream.impl.UTF8StringSerializer;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
@@ -73,13 +70,6 @@ public class PravegaIT {
                 .stream(Stream.of(STREAM_NAME, STREAM_NAME))
                 .disableAutomaticCheckpoints()
                 .build();
-        try (final StreamManager streamManager = StreamManager.create(controllerURI)) {
-            streamManager.createScope(STREAM_NAME);
-            StreamConfiguration streamConfig = StreamConfiguration.builder()
-                    .scalingPolicy(ScalingPolicy.fixed(1))
-                    .build();
-            streamManager.createStream(STREAM_NAME, STREAM_NAME, streamConfig);
-        }
 
         try (final ReaderGroupManager readerGroupManager = ReaderGroupManager.withScope(STREAM_NAME, clientConfig)) {
             readerGroupManager.createReaderGroup(STREAM_NAME, readerGroupConfig);
