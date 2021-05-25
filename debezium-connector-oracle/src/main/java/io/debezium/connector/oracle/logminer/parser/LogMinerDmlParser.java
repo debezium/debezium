@@ -8,7 +8,6 @@ package io.debezium.connector.oracle.logminer.parser;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 
 import io.debezium.DebeziumException;
 import io.debezium.connector.oracle.logminer.RowMapper;
@@ -50,7 +49,6 @@ import io.debezium.relational.Table;
  */
 public class LogMinerDmlParser implements DmlParser {
 
-    private static final String SINGLE_QUOTE = "'";
     private static final String NULL = "NULL";
     private static final String INSERT_INTO = "insert into ";
     private static final String UPDATE = "update ";
@@ -90,22 +88,6 @@ public class LogMinerDmlParser implements DmlParser {
         throw new DmlParserException("Unknown supported SQL '" + sql + "'");
     }
 
-    private void addMissingColumns(List<LogMinerColumnValue> columnValues, Table table) {
-        // Make sure that any column in the table schema but wasn't in the DDL is added
-        // but with a null value to indicate it wasn't provided.
-        for (Column column : table.columns()) {
-            boolean found = false;
-            for (LogMinerColumnValue columnValue : columnValues) {
-                if (columnValue.getColumnName().equals(column.name())) {
-                    found = true;
-                }
-            }
-            if (!found) {
-                columnValues.add(new LogMinerColumnValueImpl(column.name()));
-            }
-        }
-    }
-
     /**
      * Parse an {@code INSERT} SQL statement.
      *
@@ -126,9 +108,8 @@ public class LogMinerDmlParser implements DmlParser {
             index = parseColumnListClause(sql, index, newValues);
 
             // capture values
-            index = parseColumnValuesClause(sql, index, newValues);
+            parseColumnValuesClause(sql, index, newValues);
 
-            addMissingColumns(newValues, table);
             return new LogMinerDmlEntryImpl(RowMapper.INSERT, newValues, Collections.emptyList());
         }
         catch (Exception e) {
@@ -163,21 +144,17 @@ public class LogMinerDmlParser implements DmlParser {
             if (!newValues.isEmpty()) {
                 for (int i = 0; i < table.columns().size(); ++i) {
                     final Column column = table.columns().get(i);
-                    if (newValues.stream().noneMatch(c -> c.getColumnName().equals(column.name()))) {
-                        LogMinerColumnValue value = new LogMinerColumnValueImpl(column.name());
-                        Optional<LogMinerColumnValue> oldValue = oldValues.stream().filter(c -> c.getColumnName().equals(column.name())).findFirst();
-                        oldValue.ifPresent(logMinerColumnValue -> {
-                            value.setColumnData(logMinerColumnValue.getColumnData());
-                            newValues.add(value);
-                        });
+                    if (getColumnValueByName(newValues, column.name()) == null) {
+                        // No new column value with column name, needs to be added with current value if exists
+                        LogMinerColumnValue oldValue = getColumnValueByName(oldValues, column.name());
+                        if (oldValue != null) {
+                            LogMinerColumnValue newValue = new LogMinerColumnValueImpl(column.name());
+                            newValue.setColumnData(oldValue.getColumnData());
+                            newValues.add(newValue);
+                        }
                     }
                 }
             }
-
-            if (!oldValues.isEmpty()) {
-                addMissingColumns(oldValues, table);
-            }
-            addMissingColumns(newValues, table);
 
             return new LogMinerDmlEntryImpl(RowMapper.UPDATE, newValues, oldValues);
         }
@@ -205,9 +182,6 @@ public class LogMinerDmlParser implements DmlParser {
             List<LogMinerColumnValue> oldValues = new ArrayList<>(table.columns().size());
             parseWhereClause(sql, index, oldValues);
 
-            if (!oldValues.isEmpty()) {
-                addMissingColumns(oldValues, table);
-            }
             return new LogMinerDmlEntryImpl(RowMapper.DELETE, Collections.emptyList(), oldValues);
         }
         catch (Exception e) {
@@ -585,5 +559,21 @@ public class LogMinerDmlParser implements DmlParser {
         }
 
         return index;
+    }
+
+    /**
+     * Search the provided array for a column value with the given name, returning {@code null} if not found.
+     *
+     * @param values column values array, should not be {@code null}
+     * @param columnName column name to find
+     * @return column value instance or {@code null} if not found.
+     */
+    private LogMinerColumnValue getColumnValueByName(List<LogMinerColumnValue> values, String columnName) {
+        for (LogMinerColumnValue value : values) {
+            if (value.getColumnName().equals(columnName)) {
+                return value;
+            }
+        }
+        return null;
     }
 }
