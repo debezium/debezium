@@ -183,4 +183,30 @@ public class OracleConnectorConfigTest {
         assertThat(config.validateAndRecord(Collections.singletonList(transactionRetentionField), LOGGER::error)).isFalse();
     }
 
+    @Test
+    @FixFor("DBZ-3557")
+    public void testSnapshotLockMode() throws Exception {
+        final Field snapshotLockMode = OracleConnectorConfig.SNAPSHOT_LOCKING_MODE;
+
+        Configuration config = Configuration.create().with(snapshotLockMode, "shared").build();
+        assertThat(config.validateAndRecord(Collections.singletonList(snapshotLockMode), LOGGER::error)).isTrue();
+
+        OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
+        assertThat(connectorConfig.getSnapshotLockingMode().usesLocking()).isTrue();
+        assertThat(connectorConfig.getSnapshotLockingMode().usesExclusiveLocking()).isFalse();
+
+        config = Configuration.create().with(snapshotLockMode, "exclusive").build();
+        assertThat(config.validateAndRecord(Collections.singletonList(snapshotLockMode), LOGGER::error)).isTrue();
+
+        connectorConfig = new OracleConnectorConfig(config);
+        assertThat(connectorConfig.getSnapshotLockingMode().usesLocking()).isTrue();
+        assertThat(connectorConfig.getSnapshotLockingMode().usesExclusiveLocking()).isTrue();
+
+        config = Configuration.create().with(snapshotLockMode, "none").build();
+        assertThat(config.validateAndRecord(Collections.singletonList(snapshotLockMode), LOGGER::error)).isTrue();
+
+        connectorConfig = new OracleConnectorConfig(config);
+        assertThat(connectorConfig.getSnapshotLockingMode().usesLocking()).isFalse();
+        assertThat(connectorConfig.getSnapshotLockingMode().usesExclusiveLocking()).isFalse();
+    }
 }

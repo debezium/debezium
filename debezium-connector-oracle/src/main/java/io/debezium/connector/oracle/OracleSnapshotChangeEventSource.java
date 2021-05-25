@@ -87,24 +87,32 @@ public class OracleSnapshotChangeEventSource<SourceRecord extends SourceRecordWr
     @Override
     protected void lockTablesForSchemaSnapshot(ChangeEventSourceContext sourceContext, RelationalSnapshotContext snapshotContext)
             throws SQLException, InterruptedException {
-        ((OracleSnapshotContext) snapshotContext).preSchemaSnapshotSavepoint = jdbcConnection.connection().setSavepoint("dbz_schema_snapshot");
+        if (connectorConfig.getSnapshotLockingMode().usesLocking()) {
+            ((OracleSnapshotContext) snapshotContext).preSchemaSnapshotSavepoint = jdbcConnection.connection().setSavepoint("dbz_schema_snapshot");
 
-        try (Statement statement = jdbcConnection.connection().createStatement()) {
-            for (TableId tableId : snapshotContext.capturedTables) {
-                if (!sourceContext.isRunning()) {
-                    throw new InterruptedException("Interrupted while locking table " + tableId);
+            try (Statement statement = jdbcConnection.connection().createStatement()) {
+                for (TableId tableId : snapshotContext.capturedTables) {
+                    if (!sourceContext.isRunning()) {
+                        throw new InterruptedException("Interrupted while locking table " + tableId);
+                    }
+
+                    LOGGER.debug("Locking table {}", tableId);
+                    if (connectorConfig.getSnapshotLockingMode().usesExclusiveLocking()) {
+                        statement.execute("LOCK TABLE " + quote(tableId) + " IN EXCLUSIVE MODE");
+                    }
+                    else {
+                        statement.execute("LOCK TABLE " + quote(tableId) + " IN SHARE UPDATE MODE");
+                    }
                 }
-
-                LOGGER.debug("Locking table {}", tableId);
-
-                statement.execute("LOCK TABLE " + quote(tableId) + " IN EXCLUSIVE MODE");
             }
         }
     }
 
     @Override
     protected void releaseSchemaSnapshotLocks(RelationalSnapshotContext snapshotContext) throws SQLException {
-        jdbcConnection.connection().rollback(((OracleSnapshotContext) snapshotContext).preSchemaSnapshotSavepoint);
+        if (connectorConfig.getSnapshotLockingMode().usesLocking()) {
+            jdbcConnection.connection().rollback(((OracleSnapshotContext) snapshotContext).preSchemaSnapshotSavepoint);
+        }
     }
 
     @Override
