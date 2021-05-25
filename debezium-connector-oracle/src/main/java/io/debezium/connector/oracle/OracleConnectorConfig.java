@@ -15,8 +15,6 @@ import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig;
@@ -46,8 +44,6 @@ import io.debezium.util.Strings;
  * @author Gunnar Morling
  */
 public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnectorConfig {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(OracleConnectorConfig.class);
 
     protected static final int DEFAULT_PORT = 1528;
 
@@ -94,6 +90,19 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     + "Options include: "
                     + "'initial' (the default) to specify the connector should run a snapshot only when no offsets are available for the logical server name; "
                     + "'schema_only' to specify the connector should run a snapshot of the schema when no offsets are available for the logical server name. ");
+
+    public static final Field SNAPSHOT_LOCKING_MODE = Field.create("snapshot.locking.mode")
+            .withDisplayName("Snapshot locking mode")
+            .withEnum(SnapshotLockingMode.class, SnapshotLockingMode.EXCLUSIVE)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription("Controls how the connector holds locks on tables while performing the schema snapshot. The default is 'exclusive', "
+                    + "which means the connector will hold an exclusive table lock (prevents any updates) for just the initial portion of the snapshot "
+                    + "while the database schemas and other metadata are being read. The remaining work in a snapshot involves selecting all rows from "
+                    + "each table, and this is done using a flashback query that requires no locks. However, in some cases it may be desirable to allow "
+                    + "concurrent access to the table but prevent locking the entire table; in such ases set this property to 'shared'. Using a value of "
+                    + "'none' will prevent the connector from acquiring any locks during the snapshot process. This mode is only safe to use if no schema "
+                    + "changes are happening while the snapshot is taken.");
 
     public static final Field ORACLE_VERSION = Field.createInternal("database.oracle.version")
             .withDisplayName("Oracle version, 11 or 12+")
@@ -302,6 +311,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     ORACLE_VERSION)
             .connector(
                     SNAPSHOT_ENHANCEMENT_TOKEN,
+                    SNAPSHOT_LOCKING_MODE,
                     RAC_SYSTEM,
                     RAC_NODES,
                     LOG_MINING_HISTORY_RECORDER_CLASS,
@@ -342,6 +352,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private ConnectorAdapter connectorAdapter;
     private final StreamingAdapter streamingAdapter;
     private final String snapshotEnhancementToken;
+    private final SnapshotLockingMode snapshotLockingMode;
 
     // LogMiner options
     private final LogMiningStrategy logMiningStrategy;
@@ -373,6 +384,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.jdbcConfig = config.subset(DATABASE_CONFIG_PREFIX, true);
         this.snapshotEnhancementToken = config.getString(SNAPSHOT_ENHANCEMENT_TOKEN);
         this.connectorAdapter = ConnectorAdapter.parse(config.getString(CONNECTOR_ADAPTER));
+        this.snapshotLockingMode = SnapshotLockingMode.parse(config.getString(SNAPSHOT_LOCKING_MODE), SNAPSHOT_LOCKING_MODE.defaultValueAsString());
 
         this.streamingAdapter = this.connectorAdapter.getInstance(this);
         if (this.streamingAdapter == null) {
@@ -429,6 +441,10 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
     public SnapshotMode getSnapshotMode() {
         return snapshotMode;
+    }
+
+    public SnapshotLockingMode getSnapshotLockingMode() {
+        return snapshotLockingMode;
     }
 
     public String getOracleVersion() {
@@ -511,6 +527,79 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                 mode = parse(defaultValue);
             }
 
+            return mode;
+        }
+    }
+
+    public enum SnapshotLockingMode implements EnumeratedValue {
+        /**
+         * This mode will block all updates and writes for the duration of lock.
+         * This is the default mode.
+         */
+        EXCLUSIVE("exclusive"),
+
+        /**
+         * This mode will allow concurrent access to the table during the snapshot but prevents any
+         * session from acquiring any table-level exclusive lock.
+         */
+        SHARED("shared"),
+
+        /**
+         * This mode will avoid using ANY table locks during the snapshot process.
+         * This mode should be used carefully only when no schema changes are to occur.
+         */
+        NONE("none");
+
+        private final String value;
+
+        private SnapshotLockingMode(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        public boolean usesExclusiveLocking() {
+            return value.equals(EXCLUSIVE.value);
+        }
+
+        public boolean usesLocking() {
+            return !value.equals(NONE.value);
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be {@code null}
+         * @return the matching option, or null if no match is found
+         */
+        public static SnapshotLockingMode parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+            for (SnapshotLockingMode option : SnapshotLockingMode.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
+            }
+            return null;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be {@code null}
+         * @param defaultValue the default value; may be {@code null}
+         * @return the matching option, or null if no match is found and the non-null default is invalid
+         */
+        public static SnapshotLockingMode parse(String value, String defaultValue) {
+            SnapshotLockingMode mode = parse(value);
+            if (mode == null && defaultValue != null) {
+                mode = parse(defaultValue);
+            }
             return mode;
         }
     }
