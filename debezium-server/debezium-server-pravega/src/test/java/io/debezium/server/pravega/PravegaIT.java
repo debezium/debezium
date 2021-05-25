@@ -14,6 +14,7 @@ import javax.enterprise.event.Observes;
 
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 
 import io.debezium.server.TestConfigSource;
 import io.debezium.server.events.ConnectorCompletedEvent;
@@ -34,6 +35,7 @@ import io.quarkus.test.junit.QuarkusTest;
 @QuarkusTest
 @QuarkusTestResource(PostgresTestResourceLifecycleManager.class)
 @QuarkusTestResource(PravegaTestResource.class)
+@EnabledIfSystemProperty(named = "debezium.sink.type", matches = "pravega")
 public class PravegaIT {
 
     private static final int MESSAGE_COUNT = 4;

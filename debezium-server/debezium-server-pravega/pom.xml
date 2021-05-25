@@ -121,10 +121,28 @@
                 <artifactId>maven-failsafe-plugin</artifactId>
                 <executions>
                     <execution>
-                        <id>integration-test</id>
+                        <id>integration-test-pravega</id>
                         <goals>
                             <goal>integration-test</goal>
                         </goals>
+                        <configuration>
+                            <systemPropertyVariables>
+                                <debezium.sink.type>pravega</debezium.sink.type>
+                                <debezium.sink.pravega.scope>testc.inventory.customers</debezium.sink.pravega.scope>
+                            </systemPropertyVariables>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>integration-test-pravega-txn</id>
+                        <goals>
+                            <goal>integration-test</goal>
+                        </goals>
+                        <configuration>
+                            <systemPropertyVariables>
+                                <debezium.sink.type>pravega-txn</debezium.sink.type>
+                                <debezium.sink.pravega.scope>testc.inventory.customers</debezium.sink.pravega.scope>
+                            </systemPropertyVariables>
+                        </configuration>
                     </execution>
                     <execution>
                         <id>verify</id>

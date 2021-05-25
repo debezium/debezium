@@ -1,1 +1,1 @@
-io.debezium.server.pravega.PravegaTestConfigSource
+io.debezium.server.TestConfigSource
