@@ -45,7 +45,7 @@ Information and procedures for using a {prodname} Db2 connector is organized as 
 * xref:descriptions-of-debezium-db2-connector-data-change-events[]
 * xref:how-debezium-db2-connectors-map-data-types[]
 * xref:setting-up-db2-to-run-a-debezium-connector[]
-* xref:deploying-debezium-db2-connectors[]
+* xref:deployment-of-debezium-db2-connectors[]
 * xref:monitoring-debezium-db2-connector-performance[]
 * xref:managing-debezium-db2-connectors[]
 * xref:updating-schemas-for-db2-tables-in-capture-mode-for-debezium-connectors[]
