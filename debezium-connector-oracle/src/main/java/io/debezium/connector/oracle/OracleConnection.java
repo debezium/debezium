@@ -35,6 +35,7 @@ import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
 import io.debezium.relational.Tables.ColumnNameFilter;
 import io.debezium.relational.Tables.TableFilter;
+
 import oracle.jdbc.OracleTypes;
 
 public class OracleConnection extends JdbcConnection {
