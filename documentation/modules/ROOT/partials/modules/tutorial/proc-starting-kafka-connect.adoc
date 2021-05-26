@@ -43,6 +43,14 @@ $ sudo podman run -it --rm --name connect --pod dbz -e GROUP_ID=1 -e CONFIG_STOR
 ====
 endif::community[]
 
+[NOTE]
+====
+If you provide a `--hostname` command option then Kafka Connect REST API will *not* listen on the `localhost` interface.
+This can cause issues when the REST port is being exposed.
+
+If this is a problem then set environment variable `REST_HOST_NAME=0.0.0.0` which will ensure that REST API will be accessible from all interfaces.
+====
+
 . Verify that Kafka Connect started and is ready to accept connections.
 +
 --
