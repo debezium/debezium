@@ -11,7 +11,6 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.Timestamp;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 import org.junit.Before;
@@ -75,7 +74,7 @@ public class ValueHolderTest {
         List<LogMinerColumnValue> newValues = new ArrayList<>();
         newValues.add(column1);
         newValues.add(column2);
-        LogMinerDmlEntryImpl dmlEntryExpected = new LogMinerDmlEntryImpl(RowMapper.INSERT, newValues, Collections.emptyList());
+        LogMinerDmlEntry dmlEntryExpected = LogMinerDmlEntryImpl.forInsert(newValues);
         dmlEntryExpected.setTransactionId("transaction_id");
         dmlEntryExpected.setObjectName(TABLE_NAME);
         dmlEntryExpected.setObjectOwner(SCHEMA_NAME);
