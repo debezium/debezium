@@ -276,7 +276,9 @@ public final class TransactionalBuffer implements AutoCloseable {
                 dispatcher.dispatchDataChangeEvent(event.getTableId(),
                         new LogMinerChangeRecordEmitter(
                                 offsetContext,
-                                event.getEntry(),
+                                event.getOperation(),
+                                event.getEntry().getOldValues(),
+                                event.getEntry().getNewValues(),
                                 schema.tableFor(event.getTableId()),
                                 clock));
 

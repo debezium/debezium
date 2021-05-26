@@ -54,7 +54,6 @@ public class RowMapper {
     private static final int USERNAME = 10;
     private static final int ROW_ID = 11;
     private static final int ROLLBACK_FLAG = 12;
-    private static final int SEQUENCE = 13;
     private static final int RS_ID = 14;
     private static final int HASH = 15;
 
@@ -168,10 +167,6 @@ public class RowMapper {
 
     public static TableId getTableId(String catalogName, ResultSet rs) throws SQLException {
         return new TableId(catalogName, rs.getString(SEG_OWNER), rs.getString(TABLE_NAME));
-    }
-
-    public static int getSequence(ResultSet rs) throws SQLException {
-        return rs.getInt(SEQUENCE);
     }
 
     public static Object getRsId(ResultSet rs) throws SQLException {

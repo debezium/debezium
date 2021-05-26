@@ -5,13 +5,11 @@
  */
 package io.debezium.connector.oracle.logminer.valueholder;
 
-import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.logminer.RowMapper;
 
 /**
@@ -25,11 +23,6 @@ public class LogMinerDmlEntryImpl implements LogMinerDmlEntry {
     private final List<LogMinerColumnValue> oldLmColumnValues;
     private String objectOwner;
     private String objectName;
-    private Timestamp sourceTime;
-    private String transactionId;
-    private Scn scn;
-    private String rowId;
-    private int sequence;
 
     private LogMinerDmlEntryImpl(int operation, List<LogMinerColumnValue> newLmColumnValues, List<LogMinerColumnValue> oldLmColumnValues) {
         this.operation = operation;
@@ -70,11 +63,6 @@ public class LogMinerDmlEntryImpl implements LogMinerDmlEntry {
     }
 
     @Override
-    public String getTransactionId() {
-        return transactionId;
-    }
-
-    @Override
     public String getObjectOwner() {
         return objectOwner;
     }
@@ -85,21 +73,6 @@ public class LogMinerDmlEntryImpl implements LogMinerDmlEntry {
     }
 
     @Override
-    public Timestamp getSourceTime() {
-        return sourceTime;
-    }
-
-    @Override
-    public String getRowId() {
-        return rowId;
-    }
-
-    @Override
-    public int getSequence() {
-        return sequence;
-    }
-
-    @Override
     public void setObjectName(String name) {
         this.objectName = name;
     }
@@ -107,36 +80,6 @@ public class LogMinerDmlEntryImpl implements LogMinerDmlEntry {
     @Override
     public void setObjectOwner(String name) {
         this.objectOwner = name;
-    }
-
-    @Override
-    public void setSourceTime(Timestamp changeTime) {
-        this.sourceTime = changeTime;
-    }
-
-    @Override
-    public void setTransactionId(String id) {
-        this.transactionId = id;
-    }
-
-    @Override
-    public Scn getScn() {
-        return scn;
-    }
-
-    @Override
-    public void setScn(Scn scn) {
-        this.scn = scn;
-    }
-
-    @Override
-    public void setRowId(String rowId) {
-        this.rowId = rowId;
-    }
-
-    @Override
-    public void setSequence(int sequence) {
-        this.sequence = sequence;
     }
 
     @Override
