@@ -32,7 +32,7 @@ public class TopicNameSanitizationIT extends AbstractConnectorTest {
 
     private static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-topic-name-sanitization.txt")
             .toAbsolutePath();
-    private final UniqueDatabase DATABASE = new UniqueDatabase("topic_name_sanitization_it", "topic_name_sanitization_test")
+    private final UniqueDatabase DATABASE = new UniqueDatabase("topic-name-sanitization-it", "topic_name_sanitization_test")
             .withDbHistoryPath(DB_HISTORY_PATH);
 
     private Configuration config;
