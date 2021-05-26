@@ -12,11 +12,11 @@ import java.util.List;
 import java.util.Map;
 
 import io.debezium.DebeziumException;
+import io.debezium.connector.oracle.logminer.RowMapper;
 import io.debezium.connector.oracle.logminer.valueholder.LogMinerColumnValue;
 import io.debezium.connector.oracle.logminer.valueholder.LogMinerColumnValueImpl;
 import io.debezium.connector.oracle.logminer.valueholder.LogMinerDmlEntry;
 import io.debezium.connector.oracle.logminer.valueholder.LogMinerDmlEntryImpl;
-import io.debezium.data.Envelope;
 import io.debezium.relational.Table;
 
 /**
@@ -126,7 +126,7 @@ public class LogMinerDmlParser implements DmlParser {
                 newValues.add(createColumnValue(columnName, columnValue));
             }
 
-            return new LogMinerDmlEntryImpl(Envelope.Operation.CREATE, newValues, Collections.emptyList());
+            return new LogMinerDmlEntryImpl(RowMapper.INSERT, newValues, Collections.emptyList());
         }
         catch (Exception e) {
             throw new DmlParserException("Failed to parse insert DML: '" + sql + "'", e);
@@ -190,12 +190,12 @@ public class LogMinerDmlParser implements DmlParser {
                 for (int i = 0; i < table.columns().size(); ++i) {
                     String columnName = table.columns().get(i).name();
                     if (afterColumnMap.containsKey(columnName)) {
-                        LogMinerColumnValue value = new LogMinerColumnValueImpl(columnName, 0);
+                        LogMinerColumnValue value = new LogMinerColumnValueImpl(columnName);
                         value.setColumnData(afterColumnMap.get(columnName));
                         newValues.add(value);
                     }
                     else {
-                        LogMinerColumnValue value = new LogMinerColumnValueImpl(columnName, 0);
+                        LogMinerColumnValue value = new LogMinerColumnValueImpl(columnName);
                         value.setColumnData(beforeColumnMap.get(columnName));
                         newValues.add(value);
                     }
@@ -205,7 +205,7 @@ public class LogMinerDmlParser implements DmlParser {
                 newValues = Collections.emptyList();
             }
 
-            return new LogMinerDmlEntryImpl(Envelope.Operation.UPDATE, newValues, oldValues);
+            return new LogMinerDmlEntryImpl(RowMapper.UPDATE, newValues, oldValues);
         }
         catch (Exception e) {
             throw new DmlParserException("Failed to parse update DML: '" + sql + "'", e);
@@ -247,7 +247,7 @@ public class LogMinerDmlParser implements DmlParser {
                 oldValues = Collections.emptyList();
             }
 
-            return new LogMinerDmlEntryImpl(Envelope.Operation.DELETE, Collections.emptyList(), oldValues);
+            return new LogMinerDmlEntryImpl(RowMapper.DELETE, Collections.emptyList(), oldValues);
         }
         catch (Exception e) {
             throw new DmlParserException("Failed to parse delete DML: '" + sql + "'", e);
@@ -639,7 +639,7 @@ public class LogMinerDmlParser implements DmlParser {
      * @return the LogMiner column value object
      */
     private static LogMinerColumnValue createColumnValue(String columnName, String columnValue) {
-        LogMinerColumnValue value = new LogMinerColumnValueImpl(columnName, 0);
+        LogMinerColumnValue value = new LogMinerColumnValueImpl(columnName);
         if (columnValue != null && !columnValue.equals(NULL)) {
             value.setColumnData(columnValue);
         }

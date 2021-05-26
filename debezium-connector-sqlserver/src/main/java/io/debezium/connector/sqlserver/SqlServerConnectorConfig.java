@@ -40,7 +40,9 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     private static final Logger LOGGER = LoggerFactory.getLogger(SqlServerConnectorConfig.class);
 
     public static final String SOURCE_TIMESTAMP_MODE_CONFIG_NAME = "source.timestamp.mode";
+    public static final String MAX_TRANSACTIONS_PER_ITERATION_CONFIG_NAME = "max.iteration.transactions";
     protected static final int DEFAULT_PORT = 1433;
+    protected static final int DEFAULT_MAX_TRANSACTIONS_PER_ITERATION = 0;
     private static final String READ_ONLY_INTENT = "ReadOnly";
     private static final String APPLICATION_INTENT_KEY = "database.applicationIntent";
 
@@ -250,6 +252,14 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
             .withImportance(Importance.LOW)
             .withDescription("This property can be used to enable/disable an optimization that prevents querying the cdc tables on LSNs not correlated to changes.");
 
+    public static final Field MAX_TRANSACTIONS_PER_ITERATION = Field.create(MAX_TRANSACTIONS_PER_ITERATION_CONFIG_NAME)
+            .withDisplayName("Max transactions per iteration")
+            .withDefault(DEFAULT_MAX_TRANSACTIONS_PER_ITERATION)
+            .withType(Type.INT)
+            .withImportance(Importance.MEDIUM)
+            .withValidation(Field::isNonNegativeInteger)
+            .withDescription("This property can be used to reduce the connector memory usage footprint when changes are streamed from multiple tables per database.");
+
     public static final Field SOURCE_TIMESTAMP_MODE = Field.create(SOURCE_TIMESTAMP_MODE_CONFIG_NAME)
             .withDisplayName("Source timestamp mode")
             .withDefault(SourceTimestampMode.COMMIT.getValue())
@@ -305,7 +315,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
                     SNAPSHOT_MODE,
                     SNAPSHOT_ISOLATION_MODE,
                     SOURCE_TIMESTAMP_MODE,
-                    MAX_LSN_OPTIMIZATION,
+                    MAX_TRANSACTIONS_PER_ITERATION,
                     BINARY_HANDLING_MODE)
             .excluding(
                     SCHEMA_WHITELIST,
@@ -329,7 +339,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     private final SnapshotIsolationMode snapshotIsolationMode;
     private final SourceTimestampMode sourceTimestampMode;
     private final boolean readOnlyDatabaseConnection;
-    private final boolean skipLowActivityLsnsEnabled;
+    private final int maxTransactionsPerIteration;
 
     public SqlServerConnectorConfig(Configuration config) {
         super(SqlServerConnector.class, config, config.getString(SERVER_NAME), new SystemTablesPredicate(), x -> x.schema() + "." + x.table(), true,
@@ -349,7 +359,11 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
         }
 
         this.sourceTimestampMode = SourceTimestampMode.fromMode(config.getString(SOURCE_TIMESTAMP_MODE_CONFIG_NAME));
-        this.skipLowActivityLsnsEnabled = config.getBoolean(MAX_LSN_OPTIMIZATION);
+        this.maxTransactionsPerIteration = config.getInteger(MAX_TRANSACTIONS_PER_ITERATION);
+
+        if (!config.getBoolean(MAX_LSN_OPTIMIZATION)) {
+            LOGGER.warn("The option '{}' is no longer taken into account. The optimization is always enabled.", MAX_LSN_OPTIMIZATION.name());
+        }
     }
 
     public Configuration jdbcConfig() {
@@ -380,8 +394,8 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
         return readOnlyDatabaseConnection;
     }
 
-    public boolean isSkipLowActivityLsnsEnabled() {
-        return skipLowActivityLsnsEnabled;
+    public int getMaxTransactionsPerIteration() {
+        return maxTransactionsPerIteration;
     }
 
     @Override

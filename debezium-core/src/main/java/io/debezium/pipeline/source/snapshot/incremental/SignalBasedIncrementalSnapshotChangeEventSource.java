@@ -49,7 +49,6 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<T extends DataColle
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SignalBasedIncrementalSnapshotChangeEventSource.class);
 
-    // List needs to be used as key as it implements hashCode/equals contract
     private Map<Struct, Object[]> window = new LinkedHashMap<>();
     private CommonConnectorConfig connectorConfig;
     private JdbcConnection jdbcConnection;
@@ -222,7 +221,8 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<T extends DataColle
                         if (!rs.next()) {
                             return null;
                         }
-                        return keyFromRow(rowToArray(currentTable, rs, ColumnUtils.toArray(rs, currentTable)));
+                        return keyFromRow(jdbcConnection.rowToArray(currentTable, databaseSchema, rs,
+                                ColumnUtils.toArray(rs, currentTable)));
                     }));
                     if (!context.maximumKey().isPresent()) {
                         LOGGER.info(
@@ -308,7 +308,7 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<T extends DataColle
             Object[] firstRow = null;
             while (rs.next()) {
                 rows++;
-                final Object[] row = rowToArray(currentTable, rs, columnArray);
+                final Object[] row = jdbcConnection.rowToArray(currentTable, databaseSchema, rs, columnArray);
                 if (firstRow == null) {
                     firstRow = row;
                 }
@@ -347,16 +347,6 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<T extends DataColle
     private void tableScanCompleted() {
         progressListener.dataCollectionSnapshotCompleted(currentTable.id(), totalRowsScanned);
         totalRowsScanned = 0;
-    }
-
-    // Extract to JdbcConnection, same as in RelationalSnapshotChangeEventSource
-    protected Object[] rowToArray(Table table, ResultSet rs, ColumnUtils.ColumnArray columnArray) throws SQLException {
-        final Object[] row = new Object[columnArray.getGreatestColumnPosition()];
-        for (int i = 0; i < columnArray.getColumns().length; i++) {
-            row[columnArray.getColumns()[i].position() - 1] = jdbcConnection.getColumnValue(rs, i + 1,
-                    columnArray.getColumns()[i], table, databaseSchema);
-        }
-        return row;
     }
 
     protected PreparedStatement readTableChunkStatement(String sql) throws SQLException {

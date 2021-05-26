@@ -53,6 +53,14 @@ endif::product[]
 
 An overview of the MySQL topologies that the connector supports is useful for planning your application. To optimally configure and run a {prodname} MySQL connector, it is helpful to understand how the connector tracks the structure of tables, exposes schema changes, performs snapshots, and determines Kafka topic names.
 
+ifdef::community[]
+[NOTE]
+====
+The {prodname} MySQL connector has yet to be tested with MariaDB, but multiple reports from the community indicate successful usage of the connector with this database.
+Official support for MariaDB is planned for a future {prodname} version.
+====
+endif::community[]
+
 ifdef::product[]
 Details are in the following topics:
 
@@ -109,7 +117,7 @@ When the connector restarts after having crashed or been stopped gracefully, the
 This database history topic is for connector use only. The connector can optionally See {link-prefix}:{link-mysql-connector}#mysql-schema-change-topic[emit schema change events to a different topic that is intended for consumer applications].
 
 When the MySQL connector captures changes in a table to which a schema change tool such as `gh-ost` or `pt-online-schema-change` is applied there are helper tables created during the migration process.
-The connector needs to be configured to capture change to these helper tables. 
+The connector needs to be configured to capture change to these helper tables.
 If consumers do not need the records generated for helper tables then a single message transform can be applied to filter them out.
 
 See {link-prefix}:{link-mysql-connector}#mysql-topic-names[default names for topics] that receive {prodname} event records.
@@ -1820,7 +1828,7 @@ You then need to create the following custom resources (CRs):
 * MySQL is running and you completed the steps to {LinkDebeziumUserGuide}#setting-up-mysql-to-run-a-debezium-connector[set up MySQL to work with a {prodname} connector].
 
 * {StreamsName} is deployed on OpenShift and is running Apache Kafka and Kafka Connect.
-  For more information, see link:{LinkStreamsOpenShift}:/getting-started-str[{NameDebeziumInstallOpenShift}].
+For more information, see link:{LinkDeployStreamsOpenShift}[{NameDeployStreamsOpenShift}].
 
 * Podman or Docker is installed.
 
@@ -2467,6 +2475,8 @@ NOTE: This feature is incubating. Feedback is encouraged. It is expected that th
 |Specifies the criteria for running a snapshot when the connector starts. Possible settings are: +
  +
 `initial` - the connector runs a snapshot only when no offsets have been recorded for the logical server name. +
+ +
+`initial_only` - the connector runs a snapshot only when no offsets have been recorded for the logical server name and then stops; i.e. it will not read change events from the binlog. +
  +
 `when_needed` - the connector runs a snapshot upon startup whenever it deems it necessary. That is, when no offsets are available, or when a previously recorded offset specifies a binlog location or GTID that is not available in the server. +
  +

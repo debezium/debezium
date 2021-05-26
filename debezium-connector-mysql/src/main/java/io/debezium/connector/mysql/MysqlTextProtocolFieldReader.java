@@ -24,7 +24,7 @@ public class MysqlTextProtocolFieldReader extends AbstractMysqlFieldReader {
     /**
      * As MySQL connector/J implementation is broken for MySQL type "TIME" we have to use a binary-ish workaround
      *
-     * @see https://issues.jboss.org/browse/DBZ-342
+     * @link https://issues.jboss.org/browse/DBZ-342
      */
     @Override
     protected Object readTimeField(ResultSet rs, int columnIndex) throws SQLException {

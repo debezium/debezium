@@ -17,12 +17,12 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.oracle.OracleValueConverters;
 import io.debezium.connector.oracle.antlr.listener.ParserUtils;
+import io.debezium.connector.oracle.logminer.RowMapper;
 import io.debezium.connector.oracle.logminer.valueholder.LogMinerColumnValue;
 import io.debezium.connector.oracle.logminer.valueholder.LogMinerColumnValueImpl;
 import io.debezium.connector.oracle.logminer.valueholder.LogMinerColumnValueWrapper;
 import io.debezium.connector.oracle.logminer.valueholder.LogMinerDmlEntry;
 import io.debezium.connector.oracle.logminer.valueholder.LogMinerDmlEntryImpl;
-import io.debezium.data.Envelope;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.text.ParsingException;
@@ -104,21 +104,21 @@ public class SimpleDmlParser implements DmlParser {
                         .filter(LogMinerColumnValueWrapper::isProcessed).map(LogMinerColumnValueWrapper::getColumnValue).collect(Collectors.toList());
                 List<LogMinerColumnValue> actualOldValues = oldColumnValues.values().stream()
                         .filter(LogMinerColumnValueWrapper::isProcessed).map(LogMinerColumnValueWrapper::getColumnValue).collect(Collectors.toList());
-                return new LogMinerDmlEntryImpl(Envelope.Operation.UPDATE, actualNewValues, actualOldValues);
+                return new LogMinerDmlEntryImpl(RowMapper.UPDATE, actualNewValues, actualOldValues);
 
             }
             else if (st instanceof Insert) {
                 parseInsert(table, (Insert) st);
                 List<LogMinerColumnValue> actualNewValues = newColumnValues.values()
                         .stream().map(LogMinerColumnValueWrapper::getColumnValue).collect(Collectors.toList());
-                return new LogMinerDmlEntryImpl(Envelope.Operation.CREATE, actualNewValues, Collections.emptyList());
+                return new LogMinerDmlEntryImpl(RowMapper.INSERT, actualNewValues, Collections.emptyList());
 
             }
             else if (st instanceof Delete) {
                 parseDelete(table, (Delete) st);
                 List<LogMinerColumnValue> actualOldValues = oldColumnValues.values()
                         .stream().map(LogMinerColumnValueWrapper::getColumnValue).collect(Collectors.toList());
-                return new LogMinerDmlEntryImpl(Envelope.Operation.DELETE, Collections.emptyList(), actualOldValues);
+                return new LogMinerDmlEntryImpl(RowMapper.DELETE, Collections.emptyList(), actualOldValues);
 
             }
             else {
@@ -137,11 +137,10 @@ public class SimpleDmlParser implements DmlParser {
         this.table = table;
         for (int i = 0; i < table.columns().size(); i++) {
             Column column = table.columns().get(i);
-            int type = column.jdbcType();
             String key = column.name();
             String name = ParserUtils.stripeQuotes(column.name().toUpperCase());
-            newColumnValues.put(key, new LogMinerColumnValueWrapper(new LogMinerColumnValueImpl(name, type)));
-            oldColumnValues.put(key, new LogMinerColumnValueWrapper(new LogMinerColumnValueImpl(name, type)));
+            newColumnValues.put(key, new LogMinerColumnValueWrapper(new LogMinerColumnValueImpl(name)));
+            oldColumnValues.put(key, new LogMinerColumnValueWrapper(new LogMinerColumnValueImpl(name)));
         }
     }
 

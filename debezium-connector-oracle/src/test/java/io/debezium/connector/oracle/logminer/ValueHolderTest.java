@@ -10,7 +10,6 @@ import static org.fest.assertions.Assertions.assertThat;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.Timestamp;
-import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -34,7 +33,6 @@ import io.debezium.connector.oracle.logminer.valueholder.LogMinerColumnValueWrap
 import io.debezium.connector.oracle.logminer.valueholder.LogMinerDmlEntry;
 import io.debezium.connector.oracle.logminer.valueholder.LogMinerDmlEntryImpl;
 import io.debezium.connector.oracle.util.TestHelper;
-import io.debezium.data.Envelope;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
 import io.debezium.util.IoUtil;
@@ -66,18 +64,18 @@ public class ValueHolderTest {
 
     @Test
     public void testValueHolders() throws Exception {
-        LogMinerColumnValue column1 = new LogMinerColumnValueImpl("COLUMN1", Types.NUMERIC);
+        LogMinerColumnValue column1 = new LogMinerColumnValueImpl("COLUMN1");
         assertThat(column1.equals(column1)).isTrue();
         assertThat(column1.equals(null)).isFalse();
         assertThat(new LogMinerColumnValueWrapper(column1).isProcessed()).isFalse();
 
         column1.setColumnData(new BigDecimal(5));
-        LogMinerColumnValue column2 = new LogMinerColumnValueImpl("COLUMN2", Types.VARCHAR);
+        LogMinerColumnValue column2 = new LogMinerColumnValueImpl("COLUMN2");
         column2.setColumnData("Text");
         List<LogMinerColumnValue> newValues = new ArrayList<>();
         newValues.add(column1);
         newValues.add(column2);
-        LogMinerDmlEntryImpl dmlEntryExpected = new LogMinerDmlEntryImpl(Envelope.Operation.CREATE, newValues, Collections.emptyList());
+        LogMinerDmlEntryImpl dmlEntryExpected = new LogMinerDmlEntryImpl(RowMapper.INSERT, newValues, Collections.emptyList());
         dmlEntryExpected.setTransactionId("transaction_id");
         dmlEntryExpected.setObjectName(TABLE_NAME);
         dmlEntryExpected.setObjectOwner(SCHEMA_NAME);
@@ -91,7 +89,7 @@ public class ValueHolderTest {
         LogMinerDmlEntry dmlEntryParsed = sqlDmlParser.parse(dml, tables.forTable(TABLE_ID), "1");
 
         assertThat(dmlEntryParsed.equals(dmlEntryExpected)).isTrue();
-        assertThat(dmlEntryExpected.getCommandType() == Envelope.Operation.CREATE).isTrue();
+        assertThat(dmlEntryExpected.getOperation()).isEqualTo(RowMapper.INSERT);
         assertThat(dmlEntryExpected.getScn().equals(SCN_ONE)).isTrue();
         assertThat(dmlEntryExpected.getSourceTime().equals(new Timestamp(1000))).isTrue();
         assertThat(dmlEntryExpected.getTransactionId().equals("transaction_id")).isTrue();

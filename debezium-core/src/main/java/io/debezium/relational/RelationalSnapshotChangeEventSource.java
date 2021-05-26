@@ -351,10 +351,7 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
                     }
 
                     rows++;
-                    final Object[] row = new Object[columnArray.getGreatestColumnPosition()];
-                    for (int i = 0; i < columnArray.getColumns().length; i++) {
-                        row[columnArray.getColumns()[i].position() - 1] = getColumnValue(rs, i + 1, columnArray.getColumns()[i], table);
-                    }
+                    final Object[] row = jdbcConnection.rowToArray(table, schema(), rs, columnArray);
 
                     snapshotContext.lastRecordInTable = !rs.next();
                     if (logTimer.expired()) {
@@ -450,8 +447,12 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
     // scn xyz")
     protected abstract Optional<String> getSnapshotSelect(RelationalSnapshotContext snapshotContext, TableId tableId);
 
+    protected RelationalDatabaseSchema schema() {
+        return schema;
+    }
+
     protected Object getColumnValue(ResultSet rs, int columnIndex, Column column, Table table) throws SQLException {
-        return jdbcConnection.getColumnValue(rs, columnIndex, column, table, schema);
+        return jdbcConnection.getColumnValue(rs, columnIndex, column, table, schema());
     }
 
     /**

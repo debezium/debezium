@@ -59,6 +59,7 @@ public class IncrementalSnapshotContext<T> {
     // State to be stored and recovered from offsets
     private final Queue<T> dataCollectionsToSnapshot = new LinkedList<>();
 
+    private final boolean useCatalogBeforeSchema;
     /**
      * The PK of the last record that was passed to Kafka Connect. In case of
      * connector restart the start of the first chunk will be populated from it.
@@ -71,6 +72,14 @@ public class IncrementalSnapshotContext<T> {
      * The largest PK in the table at the start of snapshot.
      */
     private Object[] maximumKey;
+
+    public IncrementalSnapshotContext() {
+        this(true);
+    }
+
+    public IncrementalSnapshotContext(boolean useCatalogBeforeSchema) {
+        this.useCatalogBeforeSchema = useCatalogBeforeSchema;
+    }
 
     public boolean openWindow(String id) {
         if (!id.startsWith(currentChunkId)) {
@@ -147,13 +156,15 @@ public class IncrementalSnapshotContext<T> {
 
     @SuppressWarnings("unchecked")
     public List<T> addDataCollectionNamesToSnapshot(List<String> dataCollectionIds) {
-        final List<T> newDataCollectionIds = dataCollectionIds.stream().map(x -> (T) TableId.parse(x)).collect(Collectors.toList());
+        final List<T> newDataCollectionIds = dataCollectionIds.stream()
+                .map(x -> (T) TableId.parse(x, useCatalogBeforeSchema))
+                .collect(Collectors.toList());
         addTablesIdsToSnapshot(newDataCollectionIds);
         return newDataCollectionIds;
     }
 
-    public static <U> IncrementalSnapshotContext<U> load(Map<String, ?> offsets, Class<U> clazz) {
-        final IncrementalSnapshotContext<U> context = new IncrementalSnapshotContext<>();
+    public static <U> IncrementalSnapshotContext<U> load(Map<String, ?> offsets, boolean useCatalogBeforeSchema, Class<U> clazz) {
+        final IncrementalSnapshotContext<U> context = new IncrementalSnapshotContext<>(useCatalogBeforeSchema);
 
         final String lastEventSentKeyStr = (String) offsets.get(EVENT_PRIMARY_KEY);
         context.chunkEndPosition = (lastEventSentKeyStr != null)
@@ -169,6 +180,10 @@ public class IncrementalSnapshotContext<T> {
             context.addDataCollectionNamesToSnapshot(context.stringToDataCollections(dataCollectionsStr));
         }
         return context;
+    }
+
+    public static <U> IncrementalSnapshotContext<U> load(Map<String, ?> offsets, Class<U> clazz) {
+        return load(offsets, true, clazz);
     }
 
     public void sendEvent(Object[] key) {

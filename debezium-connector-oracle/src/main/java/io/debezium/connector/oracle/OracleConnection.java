@@ -5,7 +5,6 @@
  */
 package io.debezium.connector.oracle;
 
-import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -338,25 +337,6 @@ public class OracleConnection extends JdbcConnection {
             }
             throw new IllegalStateException("Could not get SCN");
         });
-    }
-
-    public OracleConnection executeLegacy(String... sqlStatements) throws SQLException {
-        return executeLegacy(statement -> {
-            for (String sqlStatement : sqlStatements) {
-                if (sqlStatement != null) {
-                    statement.execute(sqlStatement);
-                }
-            }
-        });
-    }
-
-    public OracleConnection executeLegacy(Operations operations) throws SQLException {
-        Connection conn = connection();
-        try (Statement statement = conn.createStatement()) {
-            operations.apply(statement);
-            commit();
-        }
-        return this;
     }
 
     public static String connectionString(Configuration config) {

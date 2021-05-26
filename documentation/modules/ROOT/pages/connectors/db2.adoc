@@ -45,7 +45,7 @@ Information and procedures for using a {prodname} Db2 connector is organized as 
 * xref:descriptions-of-debezium-db2-connector-data-change-events[]
 * xref:how-debezium-db2-connectors-map-data-types[]
 * xref:setting-up-db2-to-run-a-debezium-connector[]
-* xref:deploying-debezium-db2-connectors[]
+* xref:deployment-of-debezium-db2-connectors[]
 * xref:monitoring-debezium-db2-connector-performance[]
 * xref:managing-debezium-db2-connectors[]
 * xref:updating-schemas-for-db2-tables-in-capture-mode-for-debezium-connectors[]
@@ -1550,6 +1550,7 @@ Apply this CR to the same OpenShift instance where you applied the `KafkaConnect
 * Db2 is running and you completed the steps to {LinkDebeziumUserGuide}#setting-up-db2-to-run-a-debezium-connector[set up Db2 to work with a {prodname} connector].
 
 * {StreamsName} is deployed on OpenShift and is running Apache Kafka and Kafka Connect.
+For more information, see link:{LinkDeployStreamsOpenShift}[{NameDeployStreamsOpenShift}].
 
 * Podman or Docker is installed.
 

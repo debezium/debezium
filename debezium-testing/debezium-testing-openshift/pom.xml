@@ -16,7 +16,7 @@
     <version.fabric8.client>5.2.1</version.fabric8.client>
     <version.commons.codec>1.14</version.commons.codec>
     <version.commons.compress>1.20</version.commons.compress>
-    <version.strimzi>0.22.0</version.strimzi>
+    <version.strimzi>0.23.0</version.strimzi>
     <version.junit5>5.5.1</version.junit5>
     <version.junit5.pioneer>0.5.1</version.junit5.pioneer>
     <version.assertj>3.11.1</version.assertj>
@@ -423,7 +423,9 @@
                 <test.ocp.project.mongo>${ocp.project.mongo}</test.ocp.project.mongo>
                 <test.ocp.project.sqlserver>${ocp.project.sqlserver}</test.ocp.project.sqlserver>
                 <test.ocp.project.db2>${ocp.project.db2}</test.ocp.project.db2>
+
                 <test.strimzi.operator.connectors>${strimzi.operator.connectors}</test.strimzi.operator.connectors>
+                <test.strimzi.crd.version>v1beta2</test.strimzi.crd.version>
 
                 <test.database.mysql.host>${database.mysql.host}</test.database.mysql.host>
                 <test.database.mysql.username>${database.mysql.username}</test.database.mysql.username>

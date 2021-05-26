@@ -8,6 +8,8 @@ package io.debezium.connector.oracle;
 import static io.debezium.util.NumberConversions.BYTE_FALSE;
 
 import java.math.BigDecimal;
+import java.nio.Buffer;
+import java.nio.ByteBuffer;
 import java.sql.Blob;
 import java.sql.Clob;
 import java.sql.SQLException;
@@ -20,6 +22,8 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoField;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -50,6 +54,7 @@ import oracle.sql.DATE;
 import oracle.sql.INTERVALDS;
 import oracle.sql.INTERVALYM;
 import oracle.sql.NUMBER;
+import oracle.sql.RAW;
 import oracle.sql.TIMESTAMP;
 import oracle.sql.TIMESTAMPLTZ;
 import oracle.sql.TIMESTAMPTZ;
@@ -254,7 +259,10 @@ public class OracleValueConverters extends JdbcValueConverters {
         }
         if (data instanceof String) {
             String s = (String) data;
-            if (s.startsWith("UNISTR('") && s.endsWith("')")) {
+            if (s.equals("EMPTY_CLOB()")) {
+                return null;
+            }
+            else if (s.startsWith("UNISTR('") && s.endsWith("')")) {
                 return convertOracleUnistr(column, fieldDefn, s.substring(8, s.length() - 2));
             }
         }
@@ -290,16 +298,49 @@ public class OracleValueConverters extends JdbcValueConverters {
 
     @Override
     protected Object convertBinary(Column column, Field fieldDefn, Object data, BinaryHandlingMode mode) {
-        if (data instanceof Blob) {
-            try {
+        try {
+            if (data instanceof String) {
+                String str = (String) data;
+                if (str.equals("EMPTY_BLOB()")) {
+                    return null;
+                }
+                else if (str.startsWith("HEXTORAW('") && str.endsWith("')")) {
+                    data = getHexToRawByteArray(str);
+                }
+            }
+            else if (data instanceof BlobChunkList) {
+                data = convertBlobChunkList((BlobChunkList) data);
+            }
+            else if (data instanceof Blob) {
                 Blob blob = (Blob) data;
-                return blob.getBytes(0, Long.valueOf(blob.length()).intValue());
+                data = blob.getBytes(1, Long.valueOf(blob.length()).intValue());
             }
-            catch (SQLException e) {
-                throw new DebeziumException("Couldn't convert value for column " + column.name(), e);
-            }
+
+            return super.convertBinary(column, fieldDefn, data, mode);
         }
-        return super.convertBinary(column, fieldDefn, data, mode);
+        catch (SQLException e) {
+            throw new DebeziumException("Couldn't convert value for column " + column.name(), e);
+        }
+    }
+
+    private byte[] convertBlobChunkList(BlobChunkList chunks) throws SQLException {
+        if (chunks.isEmpty()) {
+            // if there are no chunks, simply return null
+            return null;
+        }
+
+        // Iterate each chunk's hex-string and generate a ByteBuffer for each chunk
+        // Oracle internal string limits enforce doing the chunk processing one-at-a-time.
+        List<ByteBuffer> buffers = new ArrayList<>(chunks.size());
+        for (String chunk : chunks) {
+            buffers.add(ByteBuffer.wrap(getHexToRawByteArray(chunk)));
+        }
+
+        // Combine ByteBuffer instances into a single ByteBuffer
+        ByteBuffer buffer = ByteBuffer.allocate(buffers.stream().mapToInt(Buffer::remaining).sum());
+        buffers.forEach(b -> buffer.put(b.duplicate()));
+
+        return buffer.array();
     }
 
     @Override
@@ -679,5 +720,22 @@ public class OracleValueConverters extends JdbcValueConverters {
                     sign * Integer.valueOf(Strings.pad(m.group(6), 6, '0')),
                     MicroDuration.DAYS_PER_MONTH_AVG));
         }
+    }
+
+    /**
+     * Get a byte-array value from a given {@code HEXTORAW} argument.
+     *
+     * The provided {@code hexToRawValue} may be provided as the direct hex-string argument or the entire
+     * value may be wrapped with the {@code HEXTORAW} function call, which will be omitted.
+     *
+     * @param hexToRawValue the hex-to-raw string, never {@code null}
+     * @return byte array of decoded value, may be {@code null}
+     * @throws SQLException if there is a database exception
+     */
+    private byte[] getHexToRawByteArray(String hexToRawValue) throws SQLException {
+        if (hexToRawValue.startsWith("HEXTORAW('") && hexToRawValue.endsWith("')")) {
+            return RAW.hexString2Bytes(hexToRawValue.substring(10, hexToRawValue.length() - 2));
+        }
+        return RAW.hexString2Bytes(hexToRawValue);
     }
 }

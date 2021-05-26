@@ -32,6 +32,7 @@ import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.schema.SchemaChangeEvent.SchemaChangeEventType;
 import io.debezium.util.Clock;
+import io.debezium.util.ElapsedTimeStrategy;
 import io.debezium.util.Metronome;
 
 /**
@@ -61,6 +62,9 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SqlServerStreamingChangeEventSource.class);
 
+    private static final Duration DEFAULT_INTERVAL_BETWEEN_COMMITS = Duration.ofMinutes(1);
+    private static final int INTERVAL_BETWEEN_COMMITS_BASED_ON_POLL_FACTOR = 3;
+
     /**
      * Connection used for reading CDC tables.
      */
@@ -70,7 +74,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
      * A separate connection for retrieving timestamps; without it, adaptive
      * buffering will not work.
      *
-     * @see https://docs.microsoft.com/en-us/sql/connect/jdbc/using-adaptive-buffering?view=sql-server-2017#guidelines-for-using-adaptive-buffering
+     * @link https://docs.microsoft.com/en-us/sql/connect/jdbc/using-adaptive-buffering?view=sql-server-2017#guidelines-for-using-adaptive-buffering
      */
     private final SqlServerConnection metadataConnection;
 
@@ -81,6 +85,8 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
     private final SqlServerOffsetContext offsetContext;
     private final Duration pollInterval;
     private final SqlServerConnectorConfig connectorConfig;
+
+    private final ElapsedTimeStrategy pauseBetweenCommits;
 
     public SqlServerStreamingChangeEventSource(SqlServerConnectorConfig connectorConfig, SqlServerOffsetContext offsetContext, SqlServerConnection dataConnection,
                                                SqlServerConnection metadataConnection, EventDispatcher<TableId> dispatcher, ErrorHandler errorHandler, Clock clock,
@@ -94,6 +100,12 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
         this.schema = schema;
         this.offsetContext = offsetContext;
         this.pollInterval = connectorConfig.getPollInterval();
+        final Duration intervalBetweenCommitsBasedOnPoll = this.pollInterval.multipliedBy(INTERVAL_BETWEEN_COMMITS_BASED_ON_POLL_FACTOR);
+        this.pauseBetweenCommits = ElapsedTimeStrategy.constant(clock,
+                DEFAULT_INTERVAL_BETWEEN_COMMITS.compareTo(intervalBetweenCommitsBasedOnPoll) > 0
+                        ? DEFAULT_INTERVAL_BETWEEN_COMMITS.toMillis()
+                        : intervalBetweenCommitsBasedOnPoll.toMillis());
+        this.pauseBetweenCommits.hasElapsed();
     }
 
     @Override
@@ -112,6 +124,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
             final long lastProcessedEventSerialNoOnStart = offsetContext.getEventSerialNo();
             LOGGER.info("Last position recorded in offsets is {}[{}]", lastProcessedPositionOnStart, lastProcessedEventSerialNoOnStart);
             final AtomicBoolean changesStoppedBeingMonotonic = new AtomicBoolean(false);
+            final int maxTransactionsPerIteration = connectorConfig.getMaxTransactionsPerIteration();
 
             TxLogPosition lastProcessedPosition = lastProcessedPositionOnStart;
 
@@ -119,22 +132,17 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
             // otherwise we might skip an incomplete transaction after restart
             boolean shouldIncreaseFromLsn = offsetContext.isSnapshotCompleted();
             while (context.isRunning()) {
-                // When reading from read-only Always On replica the default and only transaction isolation
-                // is snapshot. This means that CDC metadata are not visible for long-running transactions.
-                // It is thus necessary to restart the transaction before every read.
-                if (connectorConfig.isReadOnlyDatabaseConnection()) {
-                    dataConnection.commit();
-                }
-                final MaxLsnResult maxLsnResult = dataConnection.getMaxLsnResult(connectorConfig.isSkipLowActivityLsnsEnabled());
+                commitTransaction();
+                final Lsn toLsn = getToLsn(dataConnection, lastProcessedPosition, maxTransactionsPerIteration);
 
                 // Shouldn't happen if the agent is running, but it is better to guard against such situation
-                if (!maxLsnResult.getMaxLsn().isAvailable() || !maxLsnResult.getMaxTransactionalLsn().isAvailable()) {
+                if (!toLsn.isAvailable()) {
                     LOGGER.warn("No maximum LSN recorded in the database; please ensure that the SQL Server Agent is running");
                     metronome.pause();
                     continue;
                 }
                 // There is no change in the database
-                if (maxLsnResult.getMaxTransactionalLsn().compareTo(lastProcessedPosition.getCommitLsn()) <= 0 && shouldIncreaseFromLsn) {
+                if (toLsn.compareTo(lastProcessedPosition.getCommitLsn()) <= 0 && shouldIncreaseFromLsn) {
                     LOGGER.debug("No change in the database");
                     metronome.pause();
                     continue;
@@ -150,18 +158,18 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                 while (!schemaChangeCheckpoints.isEmpty()) {
                     migrateTable(schemaChangeCheckpoints);
                 }
-                if (!dataConnection.listOfNewChangeTables(fromLsn, maxLsnResult.getMaxLsn()).isEmpty()) {
+                if (!dataConnection.listOfNewChangeTables(fromLsn, toLsn).isEmpty()) {
                     final SqlServerChangeTable[] tables = getCdcTablesToQuery();
                     tablesSlot.set(tables);
                     for (SqlServerChangeTable table : tables) {
-                        if (table.getStartLsn().isBetween(fromLsn, maxLsnResult.getMaxLsn())) {
+                        if (table.getStartLsn().isBetween(fromLsn, toLsn)) {
                             LOGGER.info("Schema will be changed for {}", table);
                             schemaChangeCheckpoints.add(table);
                         }
                     }
                 }
                 try {
-                    dataConnection.getChangesForTables(tablesSlot.get(), fromLsn, maxLsnResult.getMaxLsn(), resultSets -> {
+                    dataConnection.getChangesForTables(tablesSlot.get(), fromLsn, toLsn, resultSets -> {
 
                         long eventSerialNoInInitialTx = 1;
                         final int tableCount = resultSets.length;
@@ -272,7 +280,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                             tableWithSmallestLsn.next();
                         }
                     });
-                    lastProcessedPosition = TxLogPosition.valueOf(maxLsnResult.getMaxLsn());
+                    lastProcessedPosition = TxLogPosition.valueOf(toLsn);
                     // Terminate the transaction otherwise CDC could not be disabled for tables
                     dataConnection.rollback();
                 }
@@ -283,6 +291,16 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
         }
         catch (Exception e) {
             errorHandler.setProducerThrowable(e);
+        }
+    }
+
+    private void commitTransaction() throws SQLException {
+        // When reading from read-only Always On replica the default and only transaction isolation
+        // is snapshot. This means that CDC metadata are not visible for long-running transactions.
+        // It is thus necessary to restart the transaction before every read.
+        // For R/W database it is important to execute regular commits to maintain the size of TempDB
+        if (connectorConfig.isReadOnlyDatabaseConnection() || pauseBetweenCommits.hasElapsed()) {
+            dataConnection.commit();
         }
     }
 
@@ -374,4 +392,23 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
         return tables.toArray(new SqlServerChangeTable[tables.size()]);
     }
 
+    /**
+     * @return the log sequence number up until which the connector should query changes from the database.
+     */
+    private Lsn getToLsn(SqlServerConnection connection, TxLogPosition lastProcessedPosition,
+                         int maxTransactionsPerIteration)
+            throws SQLException {
+
+        if (maxTransactionsPerIteration == 0) {
+            return connection.getMaxTransactionLsn();
+        }
+
+        final Lsn fromLsn = lastProcessedPosition.getCommitLsn();
+
+        if (!fromLsn.isAvailable()) {
+            return connection.getNthTransactionLsnFromBeginning(maxTransactionsPerIteration);
+        }
+
+        return connection.getNthTransactionLsnFromLast(fromLsn, maxTransactionsPerIteration);
+    }
 }

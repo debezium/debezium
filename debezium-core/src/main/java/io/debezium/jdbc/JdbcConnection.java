@@ -61,6 +61,7 @@ import io.debezium.util.BoundedConcurrentHashMap;
 import io.debezium.util.BoundedConcurrentHashMap.Eviction;
 import io.debezium.util.BoundedConcurrentHashMap.EvictionListener;
 import io.debezium.util.Collect;
+import io.debezium.util.ColumnUtils;
 import io.debezium.util.Strings;
 
 /**
@@ -1415,8 +1416,7 @@ public class JdbcConnection implements AutoCloseable {
         sql
                 .append(projection)
                 .append(" FROM ");
-        // TODO Provide database based quoted format
-        sql.append(tableId.toString());
+        sql.append(quotedTableIdString(tableId));
         if (condition.isPresent()) {
             sql
                     .append(" WHERE ")
@@ -1457,5 +1457,30 @@ public class JdbcConnection implements AutoCloseable {
                                                                      Table table, T schema)
             throws SQLException {
         return rs.getObject(columnIndex);
+    }
+
+    /**
+     * Converts a {@link ResultSet} row to an array of Objects
+     */
+    public <T extends DatabaseSchema<TableId>> Object[] rowToArray(Table table, T databaseSchema, ResultSet rs,
+                                                                   ColumnUtils.ColumnArray columnArray)
+            throws SQLException {
+        final Object[] row = new Object[columnArray.getGreatestColumnPosition()];
+        for (int i = 0; i < columnArray.getColumns().length; i++) {
+            row[columnArray.getColumns()[i].position() - 1] = getColumnValue(rs, i + 1,
+                    columnArray.getColumns()[i], table, databaseSchema);
+        }
+        return row;
+    }
+
+    /**
+     * Converts a table id into a string with all components of the id quoted so non-alphanumeric
+     * characters are properly handled.
+     *
+     * @param tableId
+     * @return formatted string
+     */
+    public String quotedTableIdString(TableId tableId) {
+        return tableId.toDoubleQuotedString();
     }
 }
