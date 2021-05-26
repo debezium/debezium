@@ -115,7 +115,6 @@ class LogMinerQueryResultProcessor {
             String userName = RowMapper.getUsername(resultSet);
             String rowId = RowMapper.getRowId(resultSet);
             int rollbackFlag = RowMapper.getRollbackFlag(resultSet);
-            int sequence = RowMapper.getSequence(resultSet);
             Object rsId = RowMapper.getRsId(resultSet);
             long hash = RowMapper.getHash(resultSet);
             boolean dml = isDmlOperation(operationCode);
@@ -190,12 +189,7 @@ class LogMinerQueryResultProcessor {
                     final TableId tableId = RowMapper.getTableId(connectorConfig.getCatalogName(), resultSet);
                     final LogMinerDmlEntry entry = selectLobParser.parse(redoSql);
                     entry.setObjectOwner(segOwner);
-                    entry.setSourceTime(changeTime);
-                    entry.setTransactionId(txId);
                     entry.setObjectName(tableName);
-                    entry.setScn(scn);
-                    entry.setRowId(rowId);
-                    entry.setSequence(sequence);
                     transactionalBuffer.registerSelectLobOperation(operationCode, txId, scn, tableId, entry,
                             selectLobParser.getColumnName(), selectLobParser.isBinary(), changeTime.toInstant(), rowId, rsId, hash);
                     break;
@@ -246,12 +240,7 @@ class LogMinerQueryResultProcessor {
 
                         final LogMinerDmlEntry dmlEntry = parse(redoSql, table, txId);
                         dmlEntry.setObjectOwner(segOwner);
-                        dmlEntry.setSourceTime(changeTime);
-                        dmlEntry.setTransactionId(txId);
                         dmlEntry.setObjectName(tableName);
-                        dmlEntry.setScn(scn);
-                        dmlEntry.setRowId(rowId);
-                        dmlEntry.setSequence(sequence);
 
                         transactionalBuffer.registerDmlOperation(operationCode, txId, scn, tableId, dmlEntry,
                                 changeTime.toInstant(), rowId, rsId, hash);

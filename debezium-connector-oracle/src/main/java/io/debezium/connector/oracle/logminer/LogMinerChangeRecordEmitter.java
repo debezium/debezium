@@ -22,18 +22,23 @@ import io.debezium.util.Clock;
  */
 public class LogMinerChangeRecordEmitter extends BaseChangeRecordEmitter<LogMinerColumnValue> {
 
-    private final LogMinerDmlEntry dmlEntry;
+    private final int operation;
+    private final List<LogMinerColumnValue> oldValues;
+    private final List<LogMinerColumnValue> newValues;
     protected final Table table;
 
-    public LogMinerChangeRecordEmitter(OffsetContext offset, LogMinerDmlEntry dmlEntry, Table table, Clock clock) {
+    public LogMinerChangeRecordEmitter(OffsetContext offset, int operation, List<LogMinerColumnValue> oldValues,
+                                       List<LogMinerColumnValue> newValues, Table table, Clock clock) {
         super(offset, table, clock);
-        this.dmlEntry = dmlEntry;
+        this.operation = operation;
+        this.oldValues = oldValues;
+        this.newValues = newValues;
         this.table = table;
     }
 
     @Override
     protected Operation getOperation() {
-        switch (dmlEntry.getOperation()) {
+        switch (operation) {
             case RowMapper.INSERT:
                 return Operation.CREATE;
             case RowMapper.UPDATE:
@@ -42,22 +47,18 @@ public class LogMinerChangeRecordEmitter extends BaseChangeRecordEmitter<LogMine
             case RowMapper.DELETE:
                 return Operation.DELETE;
             default:
-                throw new DebeziumException("Unsupported operation type: " + dmlEntry.getOperation());
+                throw new DebeziumException("Unsupported operation type: " + operation);
         }
     }
 
     @Override
     protected Object[] getOldColumnValues() {
-        List<LogMinerColumnValue> valueList = dmlEntry.getOldValues();
-        LogMinerColumnValue[] result = Arrays.copyOf(valueList.toArray(), valueList.size(), LogMinerColumnValue[].class);
-        return getColumnValues(result);
+        return getColumnValues(Arrays.copyOf(oldValues.toArray(), oldValues.size(), LogMinerColumnValue[].class));
     }
 
     @Override
     protected Object[] getNewColumnValues() {
-        List<LogMinerColumnValue> valueList = dmlEntry.getNewValues();
-        LogMinerColumnValue[] result = Arrays.copyOf(valueList.toArray(), valueList.size(), LogMinerColumnValue[].class);
-        return getColumnValues(result);
+        return getColumnValues(Arrays.copyOf(newValues.toArray(), newValues.size(), LogMinerColumnValue[].class));
     }
 
     @Override

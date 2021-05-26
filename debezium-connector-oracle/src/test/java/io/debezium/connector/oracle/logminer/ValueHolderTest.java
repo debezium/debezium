@@ -9,7 +9,6 @@ import static org.fest.assertions.Assertions.assertThat;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -75,11 +74,8 @@ public class ValueHolderTest {
         newValues.add(column1);
         newValues.add(column2);
         LogMinerDmlEntry dmlEntryExpected = LogMinerDmlEntryImpl.forInsert(newValues);
-        dmlEntryExpected.setTransactionId("transaction_id");
         dmlEntryExpected.setObjectName(TABLE_NAME);
         dmlEntryExpected.setObjectOwner(SCHEMA_NAME);
-        dmlEntryExpected.setScn(SCN_ONE);
-        dmlEntryExpected.setSourceTime(new Timestamp(1000));
 
         String createStatement = IoUtil.read(IoUtil.getResourceAsStream("ddl/create_small_table.sql", null, getClass(), null, null));
         ddlParser.parse(createStatement, tables);
@@ -89,9 +85,6 @@ public class ValueHolderTest {
 
         assertThat(dmlEntryParsed.equals(dmlEntryExpected)).isTrue();
         assertThat(dmlEntryExpected.getOperation()).isEqualTo(RowMapper.INSERT);
-        assertThat(dmlEntryExpected.getScn().equals(SCN_ONE)).isTrue();
-        assertThat(dmlEntryExpected.getSourceTime().equals(new Timestamp(1000))).isTrue();
-        assertThat(dmlEntryExpected.getTransactionId().equals("transaction_id")).isTrue();
         assertThat(dmlEntryExpected.getObjectOwner().equals(SCHEMA_NAME)).isTrue();
         assertThat(dmlEntryExpected.getObjectName().equals(TABLE_NAME)).isTrue();
 
