@@ -52,7 +52,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     protected static final String TABLE_WHITELIST_NAME = "table.whitelist";
     protected static final String TABLE_INCLUDE_LIST_NAME = "table.include.list";
 
-    protected static final Pattern SERVER_NAME_PATTERN = Pattern.compile("^[a-zA-Z0-9_]+$");
+    protected static final Pattern SERVER_NAME_PATTERN = Pattern.compile("^[a-zA-Z0-9_\\-]+$");
 
     public static final String TABLE_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG = "\"table.include.list\" is already specified";
     public static final String TABLE_WHITELIST_ALREADY_SPECIFIED_ERROR_MSG = "\"table.whitelist\" is already specified";
@@ -787,7 +787,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
 
         if (serverName != null) {
             if (!SERVER_NAME_PATTERN.asPredicate().test(serverName)) {
-                problems.accept(SERVER_NAME, serverName, serverName + " has invalid format (only the underscore and alphanumeric characters are allowed)");
+                problems.accept(SERVER_NAME, serverName, serverName + " has invalid format (only the underscore, hyphen and alphanumeric characters are allowed)");
                 return 1;
             }
         }
