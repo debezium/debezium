@@ -129,18 +129,6 @@
                 <artifactId>pravega-client</artifactId>
                 <version>${version.pravega}</version>
             </dependency>
-            <dependency>
-                <groupId>io.pravega</groupId>
-                <artifactId>pravega-standalone</artifactId>
-                <version>${version.pravega}</version>
-                <scope>test</scope>
-            </dependency>
-            <dependency>
-                <groupId>io.pravega</groupId>
-                <artifactId>pravega-test-testcommon</artifactId>
-                <version>${version.pravega}</version>
-                <scope>test</scope>
-            </dependency>
         </dependencies>
     </dependencyManagement>
 </project>
