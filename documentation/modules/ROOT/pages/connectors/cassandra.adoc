@@ -173,6 +173,10 @@ Schema changes in Cassandra will be detected less than 1s by the implemented Sch
 
 When sending a message to a topic, the Kafka Connect schema for the key and the value will be automatically registered in the Confluent Schema Registry under the subject t-key and t-value, respectively, if the compatibility test passes. Although it is possible to replay a history of all table schemas via the Schema Registry, only the latest schema of each table is used to generate CDC events.
 
+Please note that with this schema evolution approach, Cassandra Connector won't be able provide accurate data change information in the following schema change situations:
+1). If CDC is disabled for a table, data changes which have happened before CDC gets disabled will be skipped.
+2). If a column is removed from a table, data changes involving this column before it's removed cannot be deserialized correctly and will be skipped.
+
 [[cassandra-events]]
 === Events
 
