@@ -45,6 +45,47 @@ import io.debezium.relational.Table;
  * The new value for {@code C1} would be {@code TO_TIMESTAMP('2020-02-02 00:00:00', 'YYYY-MM-DD HH24:MI:SS')}.
  * The old value for {@code C1} would be {@code TO_TIMESTAMP('2020-02-01 00:00:00', 'YYYY-MM-DD HH24:MI:SS')}.
  *
+ * It is important to note that the parser produces a {@link LogMinerDmlEntry} instance that holds
+ * two collections of {@link LogMinerColumnValue}, each representing either the before or after
+ * state from the parsed DML statement.
+ *
+ * Not all DML statements contain all columns and so the collections of {@link LogMinerColumnValue}
+ * will only contain a subset of the table's column values.  In addition, the order of the elements
+ * in these collections are based on the order in which the column name/value was parsed in the DML
+ * and is not indicative of the column index order in the relational table.
+ *
+ * As an example, lets take a table with CLOB data type:
+ *
+ * <pre>
+ *     create table "schema"."table" ("ID" numeric(9,0), "DATA" clob, "CREATED" date, primary key(id));
+ * </pre>
+ *
+ * When data is first inserted the rows are materialized in the LogMiner view as follows:
+ *
+ * <pre>
+ *     insert into "schema"."table" ("ID","DATA","CREATED") values ('1',EMPTY_CLOB(),TO_DATE(...));
+ *     update "schema"."table" set "DATA"=lob_c WHERE "ID"='1' AND "CREATED"=TO_DATE(...);
+ * </pre>
+ *
+ * The multiple rows are irrelevant, just know that these two DML statements are parsed separately
+ * but will be merged to represent a single logical {@code INSERT} event.
+ *
+ * Taking the same row, a user may then decide to update the same row only modifying the CLOB data,
+ * which would be materialized in the LogMiner view as follows:
+ *
+ * <pre>
+ *     update "schema"."table" set "DATA"=lob_c WHERE "ID"='1' AND "CREATED"=TO_DATE('...');
+ * </pre>
+ *
+ * In the above scenario, the old values will only contain the "ID" and "CREATED" columns in said
+ * order while the new values will contain "DATA", "ID", and "CREATED" in said order.  This order
+ * does not reflect the column index order of the table which is "ID", "DATA", and "CREATED".
+ *
+ * The BaseChangeRecordEmitter class is responsible in a later step to reorder the values read
+ * from the {@link LogMinerColumnValue} collections so that the value array is in the correct
+ * column index order of the relational table so that the right values correspond to the correct
+ * fields in the emitted event.
+ *
  * @author Chris Cranford
  */
 public class LogMinerDmlParser implements DmlParser {
