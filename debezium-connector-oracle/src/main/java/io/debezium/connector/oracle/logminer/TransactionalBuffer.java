@@ -284,7 +284,9 @@ public final class TransactionalBuffer<SourceRecord extends SourceRecordWrapper>
                 dispatcher.dispatchDataChangeEvent(event.getTableId(),
                         new LogMinerChangeRecordEmitter(
                                 offsetContext,
-                                event.getEntry(),
+                                event.getOperation(),
+                                event.getEntry().getOldValues(),
+                                event.getEntry().getNewValues(),
                                 schema.tableFor(event.getTableId()),
                                 clock));
 
