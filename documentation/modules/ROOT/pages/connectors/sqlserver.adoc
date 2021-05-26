@@ -1997,7 +1997,7 @@ The following configuration properties are _required_ unless a default value is 
 |[[sqlserver-property-database-server-name]]<<sqlserver-property-database-server-name, `+database.server.name+`>>
 |
 |Logical name that identifies and provides a namespace for the SQL Server database server that you want {prodname} to capture. The logical name should be unique across all other connectors, since it is used as a prefix for all Kafka topic names emanating from this connector.
-Only alphanumeric characters and underscores must be used.
+Only alphanumeric characters, hyphens and underscores must be used.
 
 |[[sqlserver-property-database-history-kafka-topic]]<<sqlserver-property-database-history-kafka-topic, `+database.history.kafka.topic+`>>
 |
