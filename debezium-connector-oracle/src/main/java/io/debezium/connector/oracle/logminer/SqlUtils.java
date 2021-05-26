@@ -290,7 +290,8 @@ public class SqlUtils {
         // MISSING_SCN/DDL only when not performed by excluded users
         // For DDL, the `INTERNAL DDL%` info rows should be excluded as these are commands executed by the database that
         // typically perform operations such as renaming a deleted object when dropped if the drop doesn't specify PURGE
-        query.append("(OPERATION_CODE IN (5,9,10,11,29,34) AND USERNAME NOT IN (").append(getExcludedUsers(logMinerUser)).append(") AND INFO NOT LIKE 'INTERNAL DDL%') ");
+        query.append("(OPERATION_CODE IN (5,9,10,11,29,34) AND USERNAME NOT IN (").append(getExcludedUsers(logMinerUser)).append(") AND INFO NOT LIKE 'INTERNAL DDL%' ");
+        query.append("AND " + getExcludedDdlTables() + ") ");
         // COMMIT/ROLLBACK
         query.append("OR (OPERATION_CODE IN (6,7,36)) ");
         // INSERT/UPDATE/DELETE
@@ -329,6 +330,10 @@ public class SqlUtils {
 
     private static String getExcludedUsers(String logMinerUser) {
         return "'SYS','SYSTEM','" + logMinerUser.toUpperCase() + "'";
+    }
+
+    private static String getExcludedDdlTables() {
+        return "(TABLE_NAME IS NULL OR TABLE_NAME NOT LIKE 'ORA_TEMP_%')";
     }
 
     private static String buildSchemaPredicate(OracleConnectorConfig connectorConfig) {
