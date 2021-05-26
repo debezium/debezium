@@ -298,7 +298,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
         // When reading from read-only Always On replica the default and only transaction isolation
         // is snapshot. This means that CDC metadata are not visible for long-running transactions.
         // It is thus necessary to restart the transaction before every read.
-        // For R/W database it is improtant to execute regular commits to maintain the size of TempDB
+        // For R/W database it is important to execute regular commits to maintain the size of TempDB
         if (connectorConfig.isReadOnlyDatabaseConnection() || pauseBetweenCommits.hasElapsed()) {
             dataConnection.commit();
         }
