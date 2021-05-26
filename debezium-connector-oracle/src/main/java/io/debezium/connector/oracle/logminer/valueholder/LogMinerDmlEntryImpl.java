@@ -6,10 +6,13 @@
 package io.debezium.connector.oracle.logminer.valueholder;
 
 import java.sql.Timestamp;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
 import io.debezium.connector.oracle.Scn;
+import io.debezium.connector.oracle.logminer.RowMapper;
 
 /**
  * This class holds one parsed DML LogMiner record details
@@ -28,10 +31,27 @@ public class LogMinerDmlEntryImpl implements LogMinerDmlEntry {
     private String rowId;
     private int sequence;
 
-    public LogMinerDmlEntryImpl(int operation, List<LogMinerColumnValue> newLmColumnValues, List<LogMinerColumnValue> oldLmColumnValues) {
+    private LogMinerDmlEntryImpl(int operation, List<LogMinerColumnValue> newLmColumnValues, List<LogMinerColumnValue> oldLmColumnValues) {
         this.operation = operation;
         this.newLmColumnValues = newLmColumnValues;
         this.oldLmColumnValues = oldLmColumnValues;
+    }
+
+    public static LogMinerDmlEntry forInsert(List<LogMinerColumnValue> newLmColumnValues) {
+        return new LogMinerDmlEntryImpl(RowMapper.INSERT, newLmColumnValues, Collections.emptyList());
+    }
+
+    public static LogMinerDmlEntry forUpdate(List<LogMinerColumnValue> newLmColumnValues, List<LogMinerColumnValue> oldLmColumnValues) {
+        return new LogMinerDmlEntryImpl(RowMapper.UPDATE, newLmColumnValues, oldLmColumnValues);
+    }
+
+    public static LogMinerDmlEntry forDelete(List<LogMinerColumnValue> oldLmColumnValues) {
+        return new LogMinerDmlEntryImpl(RowMapper.DELETE, Collections.emptyList(), oldLmColumnValues);
+    }
+
+    public static LogMinerDmlEntry forLobLocator(List<LogMinerColumnValue> newLmColumnValues) {
+        // TODO: can that copy be avoided?
+        return new LogMinerDmlEntryImpl(RowMapper.SELECT_LOB_LOCATOR, new ArrayList<>(newLmColumnValues), newLmColumnValues);
     }
 
     @Override

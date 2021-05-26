@@ -10,7 +10,6 @@ import java.util.List;
 import java.util.function.Consumer;
 
 import io.debezium.annotation.NotThreadSafe;
-import io.debezium.connector.oracle.logminer.RowMapper;
 import io.debezium.connector.oracle.logminer.valueholder.LogMinerColumnValue;
 import io.debezium.connector.oracle.logminer.valueholder.LogMinerColumnValueImpl;
 import io.debezium.connector.oracle.logminer.valueholder.LogMinerDmlEntry;
@@ -81,7 +80,7 @@ public class SelectLobParser {
             }
         }
 
-        LogMinerDmlEntryImpl entry = new LogMinerDmlEntryImpl(RowMapper.SELECT_LOB_LOCATOR, new ArrayList<>(columns), columns);
+        LogMinerDmlEntry entry = LogMinerDmlEntryImpl.forLobLocator(columns);
         entry.setObjectOwner(schemaName);
         entry.setObjectName(tableName);
         return entry;
