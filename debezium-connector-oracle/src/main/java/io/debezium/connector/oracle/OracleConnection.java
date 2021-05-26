@@ -35,9 +35,7 @@ import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
 import io.debezium.relational.Tables.ColumnNameFilter;
 import io.debezium.relational.Tables.TableFilter;
-
 import oracle.jdbc.OracleTypes;
-import oracle.sql.RAW;
 
 public class OracleConnection extends JdbcConnection {
 
@@ -338,23 +336,6 @@ public class OracleConnection extends JdbcConnection {
             }
             throw new IllegalStateException("Could not get SCN");
         });
-    }
-
-    /**
-     * Get a byte-array value from a given {@code HEXTORAW} argument.
-     *
-     * The provided {@code hexToRawValue} may be provided as the direct hex-string argument or the entire
-     * value may be wrapped with the {@code HEXTORAW} function call, which will be omitted.
-     *
-     * @param hexToRawValue the hex-to-raw string, never {@code null}
-     * @return byte array of decoded value, may be {@code null}
-     * @throws SQLException if there is a database exception
-     */
-    public byte[] getHexToRawByteArray(String hexToRawValue) throws SQLException {
-        if (hexToRawValue.startsWith("HEXTORAW('") && hexToRawValue.endsWith("')")) {
-            return RAW.hexString2Bytes(hexToRawValue.substring(10, hexToRawValue.length() - 2));
-        }
-        return RAW.hexString2Bytes(hexToRawValue);
     }
 
     public static String connectionString(Configuration config) {
