@@ -100,7 +100,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     + "which means the connector will hold an exclusive table lock (prevents any updates) for just the initial portion of the snapshot "
                     + "while the database schemas and other metadata are being read. The remaining work in a snapshot involves selecting all rows from "
                     + "each table, and this is done using a flashback query that requires no locks. However, in some cases it may be desirable to allow "
-                    + "concurrent access to the table but prevent locking the entire table; in such ases set this property to 'shared'. Using a value of "
+                    + "concurrent access to the table but prevent locking the entire table; in such cases set this property to 'shared'. Using a value of "
                     + "'none' will prevent the connector from acquiring any locks during the snapshot process. This mode is only safe to use if no schema "
                     + "changes are happening while the snapshot is taken.");
 
