@@ -33,6 +33,7 @@ import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.schema.SchemaChangeEvent.SchemaChangeEventType;
 import io.debezium.util.Clock;
+import io.debezium.util.ElapsedTimeStrategy;
 import io.debezium.util.Metronome;
 
 /**
@@ -62,6 +63,9 @@ public class SqlServerStreamingChangeEventSource<SourceRecord extends SourceReco
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SqlServerStreamingChangeEventSource.class);
 
+    private static final Duration DEFAULT_INTERVAL_BETWEEN_COMMITS = Duration.ofMinutes(1);
+    private static final int INTERVAL_BETWEEN_COMMITS_BASED_ON_POLL_FACTOR = 3;
+
     /**
      * Connection used for reading CDC tables.
      */
@@ -83,6 +87,8 @@ public class SqlServerStreamingChangeEventSource<SourceRecord extends SourceReco
     private final Duration pollInterval;
     private final SqlServerConnectorConfig connectorConfig;
 
+    private final ElapsedTimeStrategy pauseBetweenCommits;
+
     public SqlServerStreamingChangeEventSource(SqlServerConnectorConfig connectorConfig, SqlServerOffsetContext offsetContext, SqlServerConnection dataConnection,
                                                SqlServerConnection metadataConnection, EventDispatcher<TableId, SourceRecord> dispatcher, ErrorHandler errorHandler, Clock clock,
                                                SqlServerDatabaseSchema schema) {
@@ -95,6 +101,12 @@ public class SqlServerStreamingChangeEventSource<SourceRecord extends SourceReco
         this.schema = schema;
         this.offsetContext = offsetContext;
         this.pollInterval = connectorConfig.getPollInterval();
+        final Duration intervalBetweenCommitsBasedOnPoll = this.pollInterval.multipliedBy(INTERVAL_BETWEEN_COMMITS_BASED_ON_POLL_FACTOR);
+        this.pauseBetweenCommits = ElapsedTimeStrategy.constant(clock,
+                DEFAULT_INTERVAL_BETWEEN_COMMITS.compareTo(intervalBetweenCommitsBasedOnPoll) > 0
+                        ? DEFAULT_INTERVAL_BETWEEN_COMMITS.toMillis()
+                        : intervalBetweenCommitsBasedOnPoll.toMillis());
+        this.pauseBetweenCommits.hasElapsed();
     }
 
     @Override
@@ -121,12 +133,7 @@ public class SqlServerStreamingChangeEventSource<SourceRecord extends SourceReco
             // otherwise we might skip an incomplete transaction after restart
             boolean shouldIncreaseFromLsn = offsetContext.isSnapshotCompleted();
             while (context.isRunning()) {
-                // When reading from read-only Always On replica the default and only transaction isolation
-                // is snapshot. This means that CDC metadata are not visible for long-running transactions.
-                // It is thus necessary to restart the transaction before every read.
-                if (connectorConfig.isReadOnlyDatabaseConnection()) {
-                    dataConnection.commit();
-                }
+                commitTransaction();
                 final Lsn toLsn = getToLsn(dataConnection, lastProcessedPosition, maxTransactionsPerIteration);
 
                 // Shouldn't happen if the agent is running, but it is better to guard against such situation
@@ -285,6 +292,16 @@ public class SqlServerStreamingChangeEventSource<SourceRecord extends SourceReco
         }
         catch (Exception e) {
             errorHandler.setProducerThrowable(e);
+        }
+    }
+
+    private void commitTransaction() throws SQLException {
+        // When reading from read-only Always On replica the default and only transaction isolation
+        // is snapshot. This means that CDC metadata are not visible for long-running transactions.
+        // It is thus necessary to restart the transaction before every read.
+        // For R/W database it is important to execute regular commits to maintain the size of TempDB
+        if (connectorConfig.isReadOnlyDatabaseConnection() || pauseBetweenCommits.hasElapsed()) {
+            dataConnection.commit();
         }
     }
 
