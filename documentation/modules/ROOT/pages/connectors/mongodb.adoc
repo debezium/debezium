@@ -16,6 +16,23 @@ endif::community[]
 {prodname}'s MongoDB connector tracks a MongoDB replica set or a MongoDB sharded cluster for document changes in databases and collections, recording those changes as events in Kafka topics.
 The connector automatically handles the addition or removal of shards in a sharded cluster, changes in membership of each replica set, elections within each replica set, and awaiting the resolution of communications problems.
 
+ifdef::product[]
+
+Information and procedures for using a {prodname} MongoDB connector is organized as follows:
+
+* xref:overview-of-debezium-mongodb-connector[]
+* xref:how-debezium-mongodb-connectors-work[]
+* xref:descriptions-of-debezium-mongodb-connector-data-change-events[]
+* xref:setting-up-mongodb-to-work-with-debezium[]
+* xref:deployment-of-debezium-mongodb-connectors[]
+* xref:monitoring-debezium-mongodb-connector-performance[]
+* xref:how-debezium-mongodb-connectors-handle-faults-and-problems[]
+
+endif::product[]
+
+// Type: concept
+// Title: Overview of {prodname} MongoDB connector
+// ModuleID: overview-of-debezium-mongodb-connector
 [[mongodb-overview]]
 == Overview
 
@@ -1290,7 +1307,6 @@ A value of `0` disables this behavior.
 
 |===
 
-[[mongodb-fault-tolerance]]
 [[mongodb-when-things-go-wrong]]
 == MongoDB connector common issues
 

@@ -109,7 +109,7 @@ When the connector restarts after having crashed or been stopped gracefully, the
 This database history topic is for connector use only. The connector can optionally See {link-prefix}:{link-mysql-connector}#mysql-schema-change-topic[emit schema change events to a different topic that is intended for consumer applications].
 
 When the MySQL connector captures changes in a table to which a schema change tool such as `gh-ost` or `pt-online-schema-change` is applied there are helper tables created during the migration process.
-The connector needs to be configured to capture change to these helper tables. 
+The connector needs to be configured to capture change to these helper tables.
 If consumers do not need the records generated for helper tables then a single message transform can be applied to filter them out.
 
 See {link-prefix}:{link-mysql-connector}#mysql-topic-names[default names for topics] that receive {prodname} event records.
@@ -1817,7 +1817,7 @@ You then need to create the following custom resources (CRs):
 * MySQL is running and you completed the steps to {LinkDebeziumUserGuide}#setting-up-mysql-to-run-a-debezium-connector[set up MySQL to work with a {prodname} connector].
 
 * {StreamsName} is deployed on OpenShift and is running Apache Kafka and Kafka Connect.
-  For more information, see link:{LinkStreamsOpenShift}:/getting-started-str[{NameDebeziumInstallOpenShift}].
+For more information, see link:{LinkDeployStreamsOpenShift}[{NameDeployStreamsOpenShift}].
 
 * Podman or Docker is installed.
 

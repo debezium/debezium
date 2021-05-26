@@ -2152,15 +2152,20 @@ To deploy a {prodname} PostgreSQL connector, add the connector files to Kafka Co
 To deploy a {prodname} PostgreSQL connector, you need to build a custom Kafka Connect container image that contains the {prodname} connector archive and push this container image to a container registry.
 You then need to create two custom resources (CRs):
 
-* A `KafkaConnect` CR that configures your Kafka Connector and that specifies the name of the image that you created to run your {prodname} connector. You apply this CR to the OpenShift Kafka instance.
+* A `KafkaConnect` CR that defines your Kafka Connect instance.
+The `image` property in the CR specifies the name of the container image that you create to run your {prodname} connector.
+You apply this CR to the OpenShift instance where link:https://access.redhat.com/products/red-hat-amq#streams[Red Hat {StreamsName}] is deployed.
+{StreamsName} offers operators and images that bring Apache Kafka to OpenShift.
 
-* A `KafkaConnector` CR that configures your {prodname} PostgreSQL connector. You apply this CR to the OpenShift instance where Red Hat AMQ Streams is deployed.
+* A `KafkaConnector` CR that defines your {prodname} Db2 connector.
+Apply this CR to the same OpenShift instance where you applied the `KafkaConnect` CR.
 
 .Prerequisites
 
 * PostgreSQL is running and you performed the steps to {LinkDebeziumUserGuide}#setting-up-postgresql-to-run-a-debezium-connector[set up PostgreSQL to run a {prodname} connector].
 
-* link:https://access.redhat.com/products/red-hat-amq#streams[Red Hat AMQ Streams] was used to set up and start running Apache Kafka and Kafka Connect on OpenShift. AMQ Streams offers operators and images that bring Kafka to OpenShift.
+* {StreamsName} is deployed on OpenShift and is running Apache Kafka and Kafka Connect.
+  For more information, see link:{LinkDeployStreamsOpenShift}[{NameDeployStreamsOpenShift}].
 
 * Podman or Docker is installed.
 
