@@ -6,7 +6,6 @@
 package io.debezium.connector.oracle.logminer.parser;
 
 import java.io.StringReader;
-import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -17,7 +16,6 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.oracle.OracleValueConverters;
 import io.debezium.connector.oracle.antlr.listener.ParserUtils;
-import io.debezium.connector.oracle.logminer.RowMapper;
 import io.debezium.connector.oracle.logminer.valueholder.LogMinerColumnValue;
 import io.debezium.connector.oracle.logminer.valueholder.LogMinerColumnValueImpl;
 import io.debezium.connector.oracle.logminer.valueholder.LogMinerColumnValueWrapper;
@@ -75,6 +73,7 @@ public class SimpleDmlParser implements DmlParser {
      * @param table the table
      * @return parsed value holder class
      */
+    @Override
     public LogMinerDmlEntry parse(String dmlContent, Table table, String txId) {
         try {
 
@@ -104,22 +103,21 @@ public class SimpleDmlParser implements DmlParser {
                         .filter(LogMinerColumnValueWrapper::isProcessed).map(LogMinerColumnValueWrapper::getColumnValue).collect(Collectors.toList());
                 List<LogMinerColumnValue> actualOldValues = oldColumnValues.values().stream()
                         .filter(LogMinerColumnValueWrapper::isProcessed).map(LogMinerColumnValueWrapper::getColumnValue).collect(Collectors.toList());
-                return new LogMinerDmlEntryImpl(RowMapper.UPDATE, actualNewValues, actualOldValues);
+                return LogMinerDmlEntryImpl.forUpdate(actualNewValues, actualOldValues);
 
             }
             else if (st instanceof Insert) {
                 parseInsert(table, (Insert) st);
                 List<LogMinerColumnValue> actualNewValues = newColumnValues.values()
                         .stream().map(LogMinerColumnValueWrapper::getColumnValue).collect(Collectors.toList());
-                return new LogMinerDmlEntryImpl(RowMapper.INSERT, actualNewValues, Collections.emptyList());
+                return LogMinerDmlEntryImpl.forInsert(actualNewValues);
 
             }
             else if (st instanceof Delete) {
                 parseDelete(table, (Delete) st);
                 List<LogMinerColumnValue> actualOldValues = oldColumnValues.values()
                         .stream().map(LogMinerColumnValueWrapper::getColumnValue).collect(Collectors.toList());
-                return new LogMinerDmlEntryImpl(RowMapper.DELETE, Collections.emptyList(), actualOldValues);
-
+                return LogMinerDmlEntryImpl.forDelete(actualOldValues);
             }
             else {
                 throw new DmlParserException("Unexpected DML operation not supported");

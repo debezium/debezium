@@ -6,11 +6,9 @@
 package io.debezium.connector.oracle.logminer.parser;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 import io.debezium.DebeziumException;
-import io.debezium.connector.oracle.logminer.RowMapper;
 import io.debezium.connector.oracle.logminer.valueholder.LogMinerColumnValue;
 import io.debezium.connector.oracle.logminer.valueholder.LogMinerColumnValueImpl;
 import io.debezium.connector.oracle.logminer.valueholder.LogMinerDmlEntry;
@@ -151,7 +149,7 @@ public class LogMinerDmlParser implements DmlParser {
             // capture values
             parseColumnValuesClause(sql, index, newValues);
 
-            return new LogMinerDmlEntryImpl(RowMapper.INSERT, newValues, Collections.emptyList());
+            return LogMinerDmlEntryImpl.forInsert(newValues);
         }
         catch (Exception e) {
             throw new DmlParserException("Failed to parse insert DML: '" + sql + "'", e);
@@ -197,7 +195,7 @@ public class LogMinerDmlParser implements DmlParser {
                 }
             }
 
-            return new LogMinerDmlEntryImpl(RowMapper.UPDATE, newValues, oldValues);
+            return LogMinerDmlEntryImpl.forUpdate(newValues, oldValues);
         }
         catch (Exception e) {
             throw new DmlParserException("Failed to parse update DML: '" + sql + "'", e);
@@ -223,7 +221,7 @@ public class LogMinerDmlParser implements DmlParser {
             List<LogMinerColumnValue> oldValues = new ArrayList<>(table.columns().size());
             parseWhereClause(sql, index, oldValues);
 
-            return new LogMinerDmlEntryImpl(RowMapper.DELETE, Collections.emptyList(), oldValues);
+            return LogMinerDmlEntryImpl.forDelete(oldValues);
         }
         catch (Exception e) {
             throw new DmlParserException("Failed to parse delete DML: '" + sql + "'", e);
