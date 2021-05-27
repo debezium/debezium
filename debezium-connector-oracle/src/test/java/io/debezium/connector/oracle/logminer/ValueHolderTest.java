@@ -9,8 +9,6 @@ import static org.fest.assertions.Assertions.assertThat;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.util.ArrayList;
-import java.util.List;
 
 import org.junit.Before;
 import org.junit.Rule;
@@ -25,9 +23,6 @@ import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot.AdapterName;
 import io.debezium.connector.oracle.logminer.parser.SimpleDmlParser;
-import io.debezium.connector.oracle.logminer.valueholder.LogMinerColumnValue;
-import io.debezium.connector.oracle.logminer.valueholder.LogMinerColumnValueImpl;
-import io.debezium.connector.oracle.logminer.valueholder.LogMinerColumnValueWrapper;
 import io.debezium.connector.oracle.logminer.valueholder.LogMinerDmlEntry;
 import io.debezium.connector.oracle.logminer.valueholder.LogMinerDmlEntryImpl;
 import io.debezium.connector.oracle.util.TestHelper;
@@ -62,17 +57,10 @@ public class ValueHolderTest {
 
     @Test
     public void testValueHolders() throws Exception {
-        LogMinerColumnValue column1 = new LogMinerColumnValueImpl("COLUMN1");
-        assertThat(column1.equals(column1)).isTrue();
-        assertThat(column1.equals(null)).isFalse();
-        assertThat(new LogMinerColumnValueWrapper(column1).isProcessed()).isFalse();
+        final Object[] newValues = new Object[2];
+        newValues[0] = new BigDecimal(5);
+        newValues[1] = "Text";
 
-        column1.setColumnData(new BigDecimal(5));
-        LogMinerColumnValue column2 = new LogMinerColumnValueImpl("COLUMN2");
-        column2.setColumnData("Text");
-        List<LogMinerColumnValue> newValues = new ArrayList<>();
-        newValues.add(column1);
-        newValues.add(column2);
         LogMinerDmlEntry dmlEntryExpected = LogMinerDmlEntryImpl.forInsert(newValues);
         dmlEntryExpected.setObjectName(TABLE_NAME);
         dmlEntryExpected.setObjectOwner(SCHEMA_NAME);

@@ -12,7 +12,10 @@ package io.debezium.connector.oracle.logminer.valueholder;
  * The "false" value means the this value was not parsed yet
  * The "processed" flag helps to filter the resulting collection of "new" and "old" values.
  *
+ * @deprecated This has been deprecated and should no longer be used.
+ * This will be removed in conjunction with {@link io.debezium.connector.oracle.logminer.parser.SimpleDmlParser}.
  */
+@Deprecated
 public class LogMinerColumnValueWrapper {
 
     private boolean processed;

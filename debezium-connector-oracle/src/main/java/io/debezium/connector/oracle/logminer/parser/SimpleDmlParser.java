@@ -9,7 +9,7 @@ import java.io.StringReader;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -99,24 +99,20 @@ public class SimpleDmlParser implements DmlParser {
             Statement st = pm.parse(new StringReader(dmlContent));
             if (st instanceof Update) {
                 parseUpdate(table, (Update) st);
-                List<LogMinerColumnValue> actualNewValues = newColumnValues.values().stream()
-                        .filter(LogMinerColumnValueWrapper::isProcessed).map(LogMinerColumnValueWrapper::getColumnValue).collect(Collectors.toList());
-                List<LogMinerColumnValue> actualOldValues = oldColumnValues.values().stream()
-                        .filter(LogMinerColumnValueWrapper::isProcessed).map(LogMinerColumnValueWrapper::getColumnValue).collect(Collectors.toList());
+                Object[] actualNewValues = getColumnValueArray(newColumnValues, false);
+                Object[] actualOldValues = getColumnValueArray(oldColumnValues, false);
                 return LogMinerDmlEntryImpl.forUpdate(actualNewValues, actualOldValues);
 
             }
             else if (st instanceof Insert) {
                 parseInsert(table, (Insert) st);
-                List<LogMinerColumnValue> actualNewValues = newColumnValues.values()
-                        .stream().map(LogMinerColumnValueWrapper::getColumnValue).collect(Collectors.toList());
+                Object[] actualNewValues = getColumnValueArray(newColumnValues, false);
                 return LogMinerDmlEntryImpl.forInsert(actualNewValues);
 
             }
             else if (st instanceof Delete) {
                 parseDelete(table, (Delete) st);
-                List<LogMinerColumnValue> actualOldValues = oldColumnValues.values()
-                        .stream().map(LogMinerColumnValueWrapper::getColumnValue).collect(Collectors.toList());
+                Object[] actualOldValues = getColumnValueArray(oldColumnValues, false);
                 return LogMinerDmlEntryImpl.forDelete(actualOldValues);
             }
             else {
@@ -126,6 +122,20 @@ public class SimpleDmlParser implements DmlParser {
         catch (Throwable e) {
             throw new DmlParserException("Cannot parse DML: " + dmlContent, e);
         }
+    }
+
+    private static Object[] getColumnValueArray(Map<String, LogMinerColumnValueWrapper> map, boolean processed) {
+        // Internally this parser still uses the LogMinerColumnValue and LogMinerColumnValueWrapper classes as
+        // intermediate storage objects. Since this parser will be removed in the near future, it seemed
+        // appropriate to only bridge the changes when creating the LogMinerDmlEntry rather than adjust the
+        // inner workings of this parser entirely.
+        Stream<LogMinerColumnValueWrapper> stream = map.values().stream();
+        if (processed) {
+            stream = stream.filter(LogMinerColumnValueWrapper::isProcessed);
+        }
+        return stream.map(LogMinerColumnValueWrapper::getColumnValue)
+                .map(LogMinerColumnValue::getColumnData)
+                .toArray();
     }
 
     private void initColumns(Table table, String tableName) {

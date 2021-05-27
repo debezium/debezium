@@ -25,18 +25,4 @@ public abstract class BaseChangeRecordEmitter<T> extends RelationalChangeRecordE
 
     abstract protected Operation getOperation();
 
-    abstract protected String getColumnName(T columnValue);
-
-    abstract protected Object getColumnData(T columnValue);
-
-    protected Object[] getColumnValues(T[] columnValues) {
-        Object[] values = new Object[table.columns().size()];
-
-        for (T columnValue : columnValues) {
-            int index = table.columnWithName(getColumnName(columnValue)).position() - 1;
-            values[index] = getColumnData(columnValue);
-        }
-
-        return values;
-    }
 }

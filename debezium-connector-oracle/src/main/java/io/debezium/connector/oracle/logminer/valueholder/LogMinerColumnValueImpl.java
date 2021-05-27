@@ -12,11 +12,11 @@ import io.debezium.connector.oracle.antlr.listener.ParserUtils;
 /**
  * This class stores parsed column info
  *
+ * @deprecated This has been deprecated and should no longer be used.
+ * This will be removed in conjunction with {@link io.debezium.connector.oracle.logminer.parser.SimpleDmlParser}.
  */
+@Deprecated
 public class LogMinerColumnValueImpl implements LogMinerColumnValue {
-
-    private static final String EMPTY_CLOB_FUNCTION = "EMPTY_CLOB()";
-    private static final String EMPTY_BLOB_FUNCTION = "EMPTY_BLOB()";
 
     private String columnName;
     private Object columnData;
@@ -43,16 +43,6 @@ public class LogMinerColumnValueImpl implements LogMinerColumnValue {
         else {
             this.columnData = columnData;
         }
-    }
-
-    @Override
-    public boolean isEmptyClobFunction() {
-        return EMPTY_CLOB_FUNCTION.equals(columnData);
-    }
-
-    @Override
-    public boolean isEmptyBlobFunction() {
-        return EMPTY_BLOB_FUNCTION.equals(columnData);
     }
 
     public void setColumnName(String columnName) {
