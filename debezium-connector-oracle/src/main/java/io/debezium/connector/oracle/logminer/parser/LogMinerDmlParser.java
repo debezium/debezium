@@ -5,15 +5,10 @@
  */
 package io.debezium.connector.oracle.logminer.parser;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import io.debezium.DebeziumException;
-import io.debezium.connector.oracle.logminer.valueholder.LogMinerColumnValue;
-import io.debezium.connector.oracle.logminer.valueholder.LogMinerColumnValueImpl;
+import io.debezium.connector.oracle.logminer.LogMinerHelper;
 import io.debezium.connector.oracle.logminer.valueholder.LogMinerDmlEntry;
 import io.debezium.connector.oracle.logminer.valueholder.LogMinerDmlEntryImpl;
-import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 
 /**
@@ -42,47 +37,6 @@ import io.debezium.relational.Table;
  *
  * The new value for {@code C1} would be {@code TO_TIMESTAMP('2020-02-02 00:00:00', 'YYYY-MM-DD HH24:MI:SS')}.
  * The old value for {@code C1} would be {@code TO_TIMESTAMP('2020-02-01 00:00:00', 'YYYY-MM-DD HH24:MI:SS')}.
- *
- * It is important to note that the parser produces a {@link LogMinerDmlEntry} instance that holds
- * two collections of {@link LogMinerColumnValue}, each representing either the before or after
- * state from the parsed DML statement.
- *
- * Not all DML statements contain all columns and so the collections of {@link LogMinerColumnValue}
- * will only contain a subset of the table's column values.  In addition, the order of the elements
- * in these collections are based on the order in which the column name/value was parsed in the DML
- * and is not indicative of the column index order in the relational table.
- *
- * As an example, lets take a table with CLOB data type:
- *
- * <pre>
- *     create table "schema"."table" ("ID" numeric(9,0), "DATA" clob, "CREATED" date, primary key(id));
- * </pre>
- *
- * When data is first inserted the rows are materialized in the LogMiner view as follows:
- *
- * <pre>
- *     insert into "schema"."table" ("ID","DATA","CREATED") values ('1',EMPTY_CLOB(),TO_DATE(...));
- *     update "schema"."table" set "DATA"=lob_c WHERE "ID"='1' AND "CREATED"=TO_DATE(...);
- * </pre>
- *
- * The multiple rows are irrelevant, just know that these two DML statements are parsed separately
- * but will be merged to represent a single logical {@code INSERT} event.
- *
- * Taking the same row, a user may then decide to update the same row only modifying the CLOB data,
- * which would be materialized in the LogMiner view as follows:
- *
- * <pre>
- *     update "schema"."table" set "DATA"=lob_c WHERE "ID"='1' AND "CREATED"=TO_DATE('...');
- * </pre>
- *
- * In the above scenario, the old values will only contain the "ID" and "CREATED" columns in said
- * order while the new values will contain "DATA", "ID", and "CREATED" in said order.  This order
- * does not reflect the column index order of the table which is "ID", "DATA", and "CREATED".
- *
- * The BaseChangeRecordEmitter class is responsible in a later step to reorder the values read
- * from the {@link LogMinerColumnValue} collections so that the value array is in the correct
- * column index order of the relational table so that the right values correspond to the correct
- * fields in the emitted event.
  *
  * @author Chris Cranford
  */
@@ -143,11 +97,12 @@ public class LogMinerDmlParser implements DmlParser {
             index = parseTableName(sql, index);
 
             // capture column names
-            List<LogMinerColumnValue> newValues = new ArrayList<>(table.columns().size());
-            index = parseColumnListClause(sql, index, newValues);
+            String[] columnNames = new String[table.columns().size()];
+            index = parseColumnListClause(sql, index, columnNames);
 
             // capture values
-            parseColumnValuesClause(sql, index, newValues);
+            Object[] newValues = new Object[table.columns().size()];
+            parseColumnValuesClause(sql, index, columnNames, newValues, table);
 
             return LogMinerDmlEntryImpl.forInsert(newValues);
         }
@@ -172,25 +127,19 @@ public class LogMinerDmlParser implements DmlParser {
             index = parseTableName(sql, index);
 
             // parse set
-            List<LogMinerColumnValue> newValues = new ArrayList<>(table.columns().size());
-            index = parseSetClause(sql, index, newValues);
+            Object[] newValues = new Object[table.columns().size()];
+            index = parseSetClause(sql, index, newValues, table);
 
             // parse where
-            List<LogMinerColumnValue> oldValues = new ArrayList<>(table.columns().size());
-            parseWhereClause(sql, index, oldValues);
+            Object[] oldValues = new Object[table.columns().size()];
+            parseWhereClause(sql, index, oldValues, table);
 
             // set after
-            if (!newValues.isEmpty()) {
-                for (int i = 0; i < table.columns().size(); ++i) {
-                    final Column column = table.columns().get(i);
-                    if (getColumnValueByName(newValues, column.name()) == null) {
-                        // No new column value with column name, needs to be added with current value if exists
-                        LogMinerColumnValue oldValue = getColumnValueByName(oldValues, column.name());
-                        if (oldValue != null) {
-                            LogMinerColumnValue newValue = new LogMinerColumnValueImpl(column.name());
-                            newValue.setColumnData(oldValue.getColumnData());
-                            newValues.add(newValue);
-                        }
+            if (!isEmptyArray(newValues)) {
+                // There is after state, make sure all non-provided before state is copied to after.
+                for (int i = 0; i < oldValues.length; ++i) {
+                    if (newValues[i] == null && oldValues[i] != null) {
+                        newValues[i] = oldValues[i];
                     }
                 }
             }
@@ -218,8 +167,8 @@ public class LogMinerDmlParser implements DmlParser {
             index = parseTableName(sql, index);
 
             // parse where
-            List<LogMinerColumnValue> oldValues = new ArrayList<>(table.columns().size());
-            parseWhereClause(sql, index, oldValues);
+            Object[] oldValues = new Object[table.columns().size()];
+            parseWhereClause(sql, index, oldValues, table);
 
             return LogMinerDmlEntryImpl.forDelete(oldValues);
         }
@@ -260,12 +209,13 @@ public class LogMinerDmlParser implements DmlParser {
      *
      * @param sql the sql statement
      * @param start the index into the sql statement to begin parsing
-     * @param columns the list that will be populated with the column names
+     * @param columnNames the list that will be populated with the column names
      * @return the index into the sql string where the column-list clause ended
      */
-    private int parseColumnListClause(String sql, int start, List<LogMinerColumnValue> columns) {
+    private int parseColumnListClause(String sql, int start, String[] columnNames) {
         int index = start;
         boolean inQuote = false;
+        int columnIndex = 0;
         for (; index < sql.length(); ++index) {
             char c = sql.charAt(index);
             if (c == '(' && !inQuote) {
@@ -278,7 +228,7 @@ public class LogMinerDmlParser implements DmlParser {
             else if (c == '"') {
                 if (inQuote) {
                     inQuote = false;
-                    columns.add(new LogMinerColumnValueImpl(sql.substring(start + 1, index)));
+                    columnNames[columnIndex++] = sql.substring(start + 1, index);
                     start = index + 2;
                     continue;
                 }
@@ -293,10 +243,12 @@ public class LogMinerDmlParser implements DmlParser {
      *
      * @param sql the sql statement
      * @param start the index into the sql statement to begin parsing
-     * @param columns the list of that will populated with the column values
+     * @param columnNames the column names array, already indexed based on relational table column order
+     * @param values the values array that will be populated with column values
+     * @param table the relational table
      * @return the index into the sql string where the column-values clause ended
      */
-    private int parseColumnValuesClause(String sql, int start, List<LogMinerColumnValue> columns) {
+    private int parseColumnValuesClause(String sql, int start, String[] columnNames, Object[] values, Table table) {
         int index = start;
         int nested = 0;
         boolean inQuote = false;
@@ -336,13 +288,15 @@ public class LogMinerDmlParser implements DmlParser {
 
                 if (sql.charAt(start) == '\'' && sql.charAt(index - 1) == '\'') {
                     // value is single-quoted at the start/end, substring without the quotes.
-                    columns.get(columnIndex).setColumnData(sql.substring(start + 1, index - 1));
+                    int position = LogMinerHelper.getColumnIndexByName(columnNames[columnIndex], table);
+                    values[position] = sql.substring(start + 1, index - 1);
                 }
                 else {
                     // use value as-is
                     String s = sql.substring(start, index);
                     if (!s.equals(UNSUPPORTED_TYPE) && !s.equals(NULL)) {
-                        columns.get(columnIndex).setColumnData(s);
+                        int position = LogMinerHelper.getColumnIndexByName(columnNames[columnIndex], table);
+                        values[position] = s;
                     }
                 }
 
@@ -359,10 +313,11 @@ public class LogMinerDmlParser implements DmlParser {
      *
      * @param sql the sql statement
      * @param start the index into the sql statement to begin parsing
-     * @param columns the list of the changed columns that will be populated
+     * @param newValues the new values array to be populated
+     * @param table the relational table
      * @return the index into the sql string where the set-clause ended
      */
-    private int parseSetClause(String sql, int start, List<LogMinerColumnValue> columns) {
+    private int parseSetClause(String sql, int start, Object[] newValues, Table table) {
         boolean inDoubleQuote = false;
         boolean inSingleQuote = false;
         boolean inColumnName = true;
@@ -377,7 +332,7 @@ public class LogMinerDmlParser implements DmlParser {
         start += SET_LENGTH;
 
         int index = start;
-        int columnIndex = 0;
+        String currentColumnName = null;
         for (; index < sql.length(); ++index) {
             char c = sql.charAt(index);
             char lookAhead = (index + 1 < sql.length()) ? sql.charAt(index + 1) : 0;
@@ -385,7 +340,7 @@ public class LogMinerDmlParser implements DmlParser {
                 // Set clause column names are double-quoted
                 if (inDoubleQuote) {
                     inDoubleQuote = false;
-                    columns.add(new LogMinerColumnValueImpl(sql.substring(start + 1, index)));
+                    currentColumnName = sql.substring(start + 1, index);
                     start = index + 1;
                     inColumnName = false;
                     continue;
@@ -409,7 +364,8 @@ public class LogMinerDmlParser implements DmlParser {
                 if (inSingleQuote) {
                     inSingleQuote = false;
                     if (nested == 0) {
-                        columns.get(columnIndex++).setColumnData(sql.substring(start + 1, index));
+                        int position = LogMinerHelper.getColumnIndexByName(currentColumnName, table);
+                        newValues[position] = sql.substring(start + 1, index);
                         start = index + 1;
                         inColumnValue = false;
                         inColumnName = false;
@@ -442,7 +398,6 @@ public class LogMinerDmlParser implements DmlParser {
                 else if ((c == ',' || c == ' ' || c == ';') && nested == 0) {
                     String value = sql.substring(start, index);
                     if (value.equals(NULL) || value.equals(UNSUPPORTED_TYPE)) {
-                        columnIndex++;
                         start = index + 1;
                         inColumnValue = false;
                         inSpecial = false;
@@ -452,7 +407,8 @@ public class LogMinerDmlParser implements DmlParser {
                     else if (value.equals(UNSUPPORTED)) {
                         continue;
                     }
-                    columns.get(columnIndex++).setColumnData(value);
+                    int position = LogMinerHelper.getColumnIndexByName(currentColumnName, table);
+                    newValues[position] = value;
                     start = index + 1;
                     inColumnValue = false;
                     inSpecial = false;
@@ -475,10 +431,11 @@ public class LogMinerDmlParser implements DmlParser {
      *
      * @param sql the sql statement
      * @param start the index into the sql statement to begin parsing
-     * @param columns the columns parsed from the clause
+     * @param values the column values to be parsed from the where clause
+     * @param table the relational table
      * @return the index into the sql string to continue parsing
      */
-    private int parseWhereClause(String sql, int start, List<LogMinerColumnValue> columns) {
+    private int parseWhereClause(String sql, int start, Object[] values, Table table) {
         int nested = 0;
         boolean inColumnName = true;
         boolean inColumnValue = false;
@@ -500,7 +457,7 @@ public class LogMinerDmlParser implements DmlParser {
         start += WHERE_LENGTH;
 
         int index = start;
-        int columnIndex = 0;
+        String currentColumnName = null;
         for (; index < sql.length(); ++index) {
             char c = sql.charAt(index);
             char lookAhead = (index + 1 < sql.length()) ? sql.charAt(index + 1) : 0;
@@ -508,7 +465,7 @@ public class LogMinerDmlParser implements DmlParser {
                 // Where clause column names are double-quoted
                 if (inDoubleQuote) {
                     inDoubleQuote = false;
-                    columns.add(new LogMinerColumnValueImpl(sql.substring(start + 1, index)));
+                    currentColumnName = sql.substring(start + 1, index);
                     start = index + 1;
                     inColumnName = false;
                     continue;
@@ -524,7 +481,6 @@ public class LogMinerDmlParser implements DmlParser {
             }
             else if (c == 'I' && !inColumnName && !inColumnValue) {
                 if (sql.indexOf(IS_NULL, index) == index) {
-                    columnIndex++;
                     index += 6;
                     start = index;
                     continue;
@@ -540,7 +496,8 @@ public class LogMinerDmlParser implements DmlParser {
                 if (inSingleQuote) {
                     inSingleQuote = false;
                     if (nested == 0) {
-                        columns.get(columnIndex++).setColumnData(sql.substring(start + 1, index));
+                        int position = LogMinerHelper.getColumnIndexByName(currentColumnName, table);
+                        values[position] = sql.substring(start + 1, index);
                         start = index + 1;
                         inColumnValue = false;
                         inColumnName = false;
@@ -566,7 +523,6 @@ public class LogMinerDmlParser implements DmlParser {
                 else if ((c == ';' || c == ' ') && nested == 0) {
                     String value = sql.substring(start, index);
                     if (value.equals(NULL) || value.equals(UNSUPPORTED_TYPE)) {
-                        columnIndex++;
                         start = index + 1;
                         inColumnValue = false;
                         inSpecial = false;
@@ -576,7 +532,8 @@ public class LogMinerDmlParser implements DmlParser {
                     else if (value.equals(UNSUPPORTED)) {
                         continue;
                     }
-                    columns.get(columnIndex++).setColumnData(value);
+                    int position = LogMinerHelper.getColumnIndexByName(currentColumnName, table);
+                    values[position] = value;
                     start = index + 1;
                     inColumnValue = false;
                     inSpecial = false;
@@ -601,18 +558,17 @@ public class LogMinerDmlParser implements DmlParser {
     }
 
     /**
-     * Search the provided array for a column value with the given name, returning {@code null} if not found.
+     * Returns whether the given array has no elements or all elements are {@code null}, thus empty.
      *
-     * @param values column values array, should not be {@code null}
-     * @param columnName column name to find
-     * @return column value instance or {@code null} if not found.
+     * @param array the array to inspect
+     * @return true if the array is considered empty, false otherwise
      */
-    private LogMinerColumnValue getColumnValueByName(List<LogMinerColumnValue> values, String columnName) {
-        for (LogMinerColumnValue value : values) {
-            if (value.getColumnName().equals(columnName)) {
-                return value;
+    private boolean isEmptyArray(Object[] array) {
+        for (int i = 0; i < array.length; ++i) {
+            if (array[i] != null) {
+                return false;
             }
         }
-        return null;
+        return true;
     }
 }

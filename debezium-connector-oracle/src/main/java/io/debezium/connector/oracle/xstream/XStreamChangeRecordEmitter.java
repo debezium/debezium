@@ -56,19 +56,12 @@ public class XStreamChangeRecordEmitter extends BaseChangeRecordEmitter<ColumnVa
         return getColumnValues(lcr.getNewValues());
     }
 
-    @Override
-    protected String getColumnName(ColumnValue columnValue) {
-        return columnValue.getColumnName();
-    }
-
-    @Override
-    protected Object getColumnData(ColumnValue columnValue) {
-        return columnValue.getColumnData();
-    }
-
-    @Override
-    protected Object[] getColumnValues(ColumnValue[] columnValues) {
-        Object[] values = super.getColumnValues(columnValues);
+    private Object[] getColumnValues(ColumnValue[] columnValues) {
+        Object[] values = new Object[table.columns().size()];
+        for (ColumnValue columnValue : columnValues) {
+            int index = table.columnWithName(columnValue.getColumnName()).position() - 1;
+            values[index] = columnValue.getColumnData();
+        }
 
         // Overlay chunk values into non-chunk value array
         for (Map.Entry<String, Object> entry : chunkValues.entrySet()) {
@@ -78,4 +71,5 @@ public class XStreamChangeRecordEmitter extends BaseChangeRecordEmitter<ColumnVa
 
         return values;
     }
+
 }

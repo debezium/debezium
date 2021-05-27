@@ -188,7 +188,7 @@ class LogMinerQueryResultProcessor<SourceRecord extends SourceRecordWrapper> {
                 case RowMapper.SELECT_LOB_LOCATOR: {
                     LOGGER.trace("SEL_LOB_LOCATOR: {}, REDO_SQL: {}", logMessage, redoSql);
                     final TableId tableId = RowMapper.getTableId(connectorConfig.getCatalogName(), resultSet);
-                    final LogMinerDmlEntry entry = selectLobParser.parse(redoSql);
+                    final LogMinerDmlEntry entry = selectLobParser.parse(redoSql, schema.tableFor(tableId));
                     entry.setObjectOwner(segOwner);
                     entry.setObjectName(tableName);
                     transactionalBuffer.registerSelectLobOperation(operationCode, txId, scn, tableId, entry,
@@ -328,7 +328,7 @@ class LogMinerQueryResultProcessor<SourceRecord extends SourceRecordWrapper> {
             throw new DmlParserException(message.toString(), e);
         }
 
-        if (dmlEntry.getOldValues().isEmpty()) {
+        if (dmlEntry.getOldValues().length == 0) {
             if (RowMapper.UPDATE == dmlEntry.getOperation() || RowMapper.DELETE == dmlEntry.getOperation()) {
                 LOGGER.warn("The DML event '{}' contained no before state.", redoSql);
                 streamingMetrics.incrementWarningCount();

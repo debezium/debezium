@@ -57,23 +57,16 @@ public class LogMinerDmlParserTest {
         LogMinerDmlEntry entry = fastDmlParser.parse(sql, table, null);
         assertThat(entry.getOperation()).isEqualTo(RowMapper.INSERT);
         assertThat(entry.getOldValues()).isEmpty();
-        assertThat(entry.getNewValues()).hasSize(8);
-        assertThat(entry.getNewValues().get(0).getColumnName()).isEqualTo("ID");
-        assertThat(entry.getNewValues().get(1).getColumnName()).isEqualTo("NAME");
-        assertThat(entry.getNewValues().get(2).getColumnName()).isEqualTo("TS");
-        assertThat(entry.getNewValues().get(3).getColumnName()).isEqualTo("UT");
-        assertThat(entry.getNewValues().get(4).getColumnName()).isEqualTo("DATE");
-        assertThat(entry.getNewValues().get(5).getColumnName()).isEqualTo("UT2");
-        assertThat(entry.getNewValues().get(6).getColumnName()).isEqualTo("C1");
-        assertThat(entry.getNewValues().get(7).getColumnName()).isEqualTo("C2");
-        assertThat(entry.getNewValues().get(0).getColumnData()).isEqualTo("1");
-        assertThat(entry.getNewValues().get(1).getColumnData()).isEqualTo("Acme");
-        assertThat(entry.getNewValues().get(2).getColumnData()).isEqualTo("TO_TIMESTAMP('2020-02-01 00:00:00.')");
-        assertThat(entry.getNewValues().get(3).getColumnData()).isNull();
-        assertThat(entry.getNewValues().get(4).getColumnData()).isEqualTo("TO_DATE('2020-02-01 00:00:00', 'YYYY-MM-DD HH24:MI:SS')");
-        assertThat(entry.getNewValues().get(5).getColumnData()).isNull();
-        assertThat(entry.getNewValues().get(6).getColumnData()).isNull();
-        assertThat(entry.getNewValues().get(7).getColumnData()).isNull();
+        assertThat(entry.getNewValues()).hasSize(9);
+        assertThat(entry.getNewValues()[0]).isEqualTo("1");
+        assertThat(entry.getNewValues()[1]).isEqualTo("Acme");
+        assertThat(entry.getNewValues()[2]).isEqualTo("TO_TIMESTAMP('2020-02-01 00:00:00.')");
+        assertThat(entry.getNewValues()[3]).isNull();
+        assertThat(entry.getNewValues()[4]).isEqualTo("TO_DATE('2020-02-01 00:00:00', 'YYYY-MM-DD HH24:MI:SS')");
+        assertThat(entry.getNewValues()[5]).isNull();
+        assertThat(entry.getNewValues()[6]).isNull();
+        assertThat(entry.getNewValues()[7]).isNull();
+        assertThat(entry.getNewValues()[8]).isNull();
     }
 
     @Test
@@ -102,44 +95,28 @@ public class LogMinerDmlParserTest {
 
         LogMinerDmlEntry entry = fastDmlParser.parse(sql, table, null);
         assertThat(entry.getOperation()).isEqualTo(RowMapper.UPDATE);
-        assertThat(entry.getOldValues()).hasSize(9);
-        assertThat(entry.getOldValues().get(0).getColumnName()).isEqualTo("ID");
-        assertThat(entry.getOldValues().get(1).getColumnName()).isEqualTo("NAME");
-        assertThat(entry.getOldValues().get(2).getColumnName()).isEqualTo("TS");
-        assertThat(entry.getOldValues().get(3).getColumnName()).isEqualTo("UT");
-        assertThat(entry.getOldValues().get(4).getColumnName()).isEqualTo("DATE");
-        assertThat(entry.getOldValues().get(5).getColumnName()).isEqualTo("UT2");
-        assertThat(entry.getOldValues().get(6).getColumnName()).isEqualTo("C1");
-        assertThat(entry.getOldValues().get(7).getColumnName()).isEqualTo("IS");
-        assertThat(entry.getOldValues().get(8).getColumnName()).isEqualTo("IS2");
-        assertThat(entry.getOldValues().get(0).getColumnData()).isEqualTo("1");
-        assertThat(entry.getOldValues().get(1).getColumnData()).isEqualTo("Acme");
-        assertThat(entry.getOldValues().get(2).getColumnData()).isEqualTo("TO_TIMESTAMP('2020-02-01 00:00:00.')");
-        assertThat(entry.getOldValues().get(3).getColumnData()).isNull();
-        assertThat(entry.getOldValues().get(4).getColumnData()).isEqualTo("TO_DATE('2020-02-01 00:00:00', 'YYYY-MM-DD HH24:MI:SS')");
-        assertThat(entry.getOldValues().get(5).getColumnData()).isNull();
-        assertThat(entry.getOldValues().get(6).getColumnData()).isNull();
-        assertThat(entry.getOldValues().get(7).getColumnData()).isNull();
-        assertThat(entry.getOldValues().get(8).getColumnData()).isNull();
-        assertThat(entry.getNewValues()).hasSize(9);
-        assertThat(entry.getNewValues().get(0).getColumnName()).isEqualTo("NAME");
-        assertThat(entry.getNewValues().get(1).getColumnName()).isEqualTo("TS");
-        assertThat(entry.getNewValues().get(2).getColumnName()).isEqualTo("UT");
-        assertThat(entry.getNewValues().get(3).getColumnName()).isEqualTo("DATE");
-        assertThat(entry.getNewValues().get(4).getColumnName()).isEqualTo("UT2");
-        assertThat(entry.getNewValues().get(5).getColumnName()).isEqualTo("C1");
-        assertThat(entry.getNewValues().get(6).getColumnName()).isEqualTo("ID");
-        assertThat(entry.getNewValues().get(7).getColumnName()).isEqualTo("IS");
-        assertThat(entry.getNewValues().get(8).getColumnName()).isEqualTo("IS2");
-        assertThat(entry.getNewValues().get(0).getColumnData()).isEqualTo("Bob");
-        assertThat(entry.getNewValues().get(1).getColumnData()).isEqualTo("TO_TIMESTAMP('2020-02-02 00:00:00.')");
-        assertThat(entry.getNewValues().get(2).getColumnData()).isNull();
-        assertThat(entry.getNewValues().get(3).getColumnData()).isEqualTo("TO_DATE('2020-02-02 00:00:00', 'YYYY-MM-DD HH24:MI:SS')");
-        assertThat(entry.getNewValues().get(4).getColumnData()).isNull();
-        assertThat(entry.getNewValues().get(5).getColumnData()).isNull();
-        assertThat(entry.getNewValues().get(6).getColumnData()).isEqualTo("1");
-        assertThat(entry.getNewValues().get(7).getColumnData()).isNull();
-        assertThat(entry.getNewValues().get(8).getColumnData()).isNull();
+        assertThat(entry.getOldValues()).hasSize(10);
+        assertThat(entry.getOldValues()[0]).isEqualTo("1");
+        assertThat(entry.getOldValues()[1]).isEqualTo("Acme");
+        assertThat(entry.getOldValues()[2]).isEqualTo("TO_TIMESTAMP('2020-02-01 00:00:00.')");
+        assertThat(entry.getOldValues()[3]).isNull();
+        assertThat(entry.getOldValues()[4]).isEqualTo("TO_DATE('2020-02-01 00:00:00', 'YYYY-MM-DD HH24:MI:SS')");
+        assertThat(entry.getOldValues()[5]).isNull();
+        assertThat(entry.getOldValues()[6]).isNull();
+        assertThat(entry.getOldValues()[7]).isNull();
+        assertThat(entry.getOldValues()[8]).isNull();
+        assertThat(entry.getOldValues()[9]).isNull();
+        assertThat(entry.getNewValues()).hasSize(10);
+        assertThat(entry.getNewValues()[0]).isEqualTo("1");
+        assertThat(entry.getNewValues()[1]).isEqualTo("Bob");
+        assertThat(entry.getNewValues()[2]).isEqualTo("TO_TIMESTAMP('2020-02-02 00:00:00.')");
+        assertThat(entry.getNewValues()[3]).isNull();
+        assertThat(entry.getNewValues()[4]).isEqualTo("TO_DATE('2020-02-02 00:00:00', 'YYYY-MM-DD HH24:MI:SS')");
+        assertThat(entry.getNewValues()[5]).isNull();
+        assertThat(entry.getNewValues()[6]).isNull();
+        assertThat(entry.getNewValues()[7]).isNull();
+        assertThat(entry.getNewValues()[8]).isNull();
+        assertThat(entry.getNewValues()[9]).isNull();
     }
 
     @Test
@@ -164,21 +141,15 @@ public class LogMinerDmlParserTest {
 
         LogMinerDmlEntry entry = fastDmlParser.parse(sql, table, null);
         assertThat(entry.getOperation()).isEqualTo(RowMapper.DELETE);
-        assertThat(entry.getOldValues()).hasSize(7);
-        assertThat(entry.getOldValues().get(0).getColumnName()).isEqualTo("ID");
-        assertThat(entry.getOldValues().get(1).getColumnName()).isEqualTo("NAME");
-        assertThat(entry.getOldValues().get(2).getColumnName()).isEqualTo("TS");
-        assertThat(entry.getOldValues().get(3).getColumnName()).isEqualTo("UT");
-        assertThat(entry.getOldValues().get(4).getColumnName()).isEqualTo("DATE");
-        assertThat(entry.getOldValues().get(5).getColumnName()).isEqualTo("IS");
-        assertThat(entry.getOldValues().get(6).getColumnName()).isEqualTo("IS2");
-        assertThat(entry.getOldValues().get(0).getColumnData()).isEqualTo("1");
-        assertThat(entry.getOldValues().get(1).getColumnData()).isEqualTo("Acme");
-        assertThat(entry.getOldValues().get(2).getColumnData()).isEqualTo("TO_TIMESTAMP('2020-02-01 00:00:00.')");
-        assertThat(entry.getOldValues().get(3).getColumnData()).isNull();
-        assertThat(entry.getOldValues().get(4).getColumnData()).isEqualTo("TO_DATE('2020-02-01 00:00:00', 'YYYY-MM-DD HH24:MI:SS')");
-        assertThat(entry.getOldValues().get(5).getColumnData()).isNull();
-        assertThat(entry.getOldValues().get(6).getColumnData()).isNull();
+        assertThat(entry.getOldValues()).hasSize(8);
+        assertThat(entry.getOldValues()[0]).isEqualTo("1");
+        assertThat(entry.getOldValues()[1]).isEqualTo("Acme");
+        assertThat(entry.getOldValues()[2]).isEqualTo("TO_TIMESTAMP('2020-02-01 00:00:00.')");
+        assertThat(entry.getOldValues()[3]).isNull();
+        assertThat(entry.getOldValues()[4]).isEqualTo("TO_DATE('2020-02-01 00:00:00', 'YYYY-MM-DD HH24:MI:SS')");
+        assertThat(entry.getOldValues()[5]).isNull();
+        assertThat(entry.getOldValues()[6]).isNull();
+        assertThat(entry.getOldValues()[7]).isNull();
         assertThat(entry.getNewValues()).isEmpty();
     }
 
@@ -197,14 +168,16 @@ public class LogMinerDmlParserTest {
 
         LogMinerDmlEntry entry = fastDmlParser.parse(sql, table, null);
         assertThat(entry.getOperation()).isEqualTo(RowMapper.UPDATE);
-        assertThat(entry.getOldValues()).isEmpty();
-        assertThat(entry.getNewValues()).hasSize(3);
-        assertThat(entry.getNewValues().get(0).getColumnName()).isEqualTo("COL1");
-        assertThat(entry.getNewValues().get(0).getColumnData()).isEqualTo("1");
-        assertThat(entry.getNewValues().get(1).getColumnName()).isEqualTo("COL2");
-        assertThat(entry.getNewValues().get(1).getColumnData()).isNull();
-        assertThat(entry.getNewValues().get(2).getColumnName()).isEqualTo("COL3");
-        assertThat(entry.getNewValues().get(2).getColumnData()).isEqualTo("Hello");
+        assertThat(entry.getOldValues()).hasSize(4);
+        assertThat(entry.getOldValues()[0]).isNull();
+        assertThat(entry.getOldValues()[1]).isNull();
+        assertThat(entry.getOldValues()[2]).isNull();
+        assertThat(entry.getOldValues()[3]).isNull();
+        assertThat(entry.getNewValues()).hasSize(4);
+        assertThat(entry.getNewValues()[0]).isEqualTo("1");
+        assertThat(entry.getNewValues()[1]).isNull();
+        assertThat(entry.getNewValues()[2]).isEqualTo("Hello");
+        assertThat(entry.getNewValues()[3]).isNull();
     }
 
     @Test
@@ -222,7 +195,11 @@ public class LogMinerDmlParserTest {
 
         LogMinerDmlEntry entry = fastDmlParser.parse(sql, table, null);
         assertThat(entry.getOperation()).isEqualTo(RowMapper.DELETE);
-        assertThat(entry.getOldValues()).isEmpty();
+        assertThat(entry.getOldValues()).hasSize(4);
+        assertThat(entry.getOldValues()[0]).isNull();
+        assertThat(entry.getOldValues()[1]).isNull();
+        assertThat(entry.getOldValues()[2]).isNull();
+        assertThat(entry.getOldValues()[3]).isNull();
         assertThat(entry.getNewValues()).isEmpty();
     }
 
@@ -240,8 +217,7 @@ public class LogMinerDmlParserTest {
         assertThat(entry.getOperation()).isEqualTo(RowMapper.INSERT);
         assertThat(entry.getOldValues()).isEmpty();
         assertThat(entry.getNewValues()).hasSize(1);
-        assertThat(entry.getNewValues().get(0).getColumnName()).isEqualTo("COL 1");
-        assertThat(entry.getNewValues().get(0).getColumnData()).isEqualTo("1");
+        assertThat(entry.getNewValues()[0]).isEqualTo("1");
     }
 
     @Test
@@ -260,18 +236,18 @@ public class LogMinerDmlParserTest {
 
         LogMinerDmlEntry entry = fastDmlParser.parse(sql, table, null);
         assertThat(entry.getOperation()).isEqualTo(RowMapper.UPDATE);
-        assertThat(entry.getOldValues()).isEmpty();
+        assertThat(entry.getOldValues()).hasSize(5);
+        assertThat(entry.getOldValues()[0]).isNull();
+        assertThat(entry.getOldValues()[1]).isNull();
+        assertThat(entry.getOldValues()[2]).isNull();
+        assertThat(entry.getOldValues()[3]).isNull();
+        assertThat(entry.getOldValues()[4]).isNull();
         assertThat(entry.getNewValues()).hasSize(5);
-        assertThat(entry.getNewValues().get(0).getColumnName()).isEqualTo("AMOUNT_PAID");
-        assertThat(entry.getNewValues().get(1).getColumnName()).isEqualTo("AMOUNT_UNPAID");
-        assertThat(entry.getNewValues().get(2).getColumnName()).isEqualTo("PAY_STATUS");
-        assertThat(entry.getNewValues().get(3).getColumnName()).isEqualTo("IS_DEL");
-        assertThat(entry.getNewValues().get(4).getColumnName()).isEqualTo("TM_UPDATE");
-        assertThat(entry.getNewValues().get(0).getColumnData()).isEqualTo("0");
-        assertThat(entry.getNewValues().get(1).getColumnData()).isEqualTo("540");
-        assertThat(entry.getNewValues().get(2).getColumnData()).isEqualTo("10111015");
-        assertThat(entry.getNewValues().get(3).getColumnData()).isEqualTo("0");
-        assertThat(entry.getNewValues().get(4).getColumnData()).isEqualTo("TO_DATE('2021-03-17 10:18:55', 'YYYY-MM-DD HH24:MI:SS')");
+        assertThat(entry.getNewValues()[0]).isEqualTo("0");
+        assertThat(entry.getNewValues()[1]).isEqualTo("540");
+        assertThat(entry.getNewValues()[2]).isEqualTo("10111015");
+        assertThat(entry.getNewValues()[3]).isEqualTo("0");
+        assertThat(entry.getNewValues()[4]).isEqualTo("TO_DATE('2021-03-17 10:18:55', 'YYYY-MM-DD HH24:MI:SS')");
     }
 
     @Test
@@ -289,36 +265,32 @@ public class LogMinerDmlParserTest {
         assertThat(entry.getOperation()).isEqualTo(RowMapper.INSERT);
         assertThat(entry.getOldValues()).isEmpty();
         assertThat(entry.getNewValues()).hasSize(2);
-        assertThat(entry.getNewValues().get(0).getColumnName()).isEqualTo("C1");
-        assertThat(entry.getNewValues().get(0).getColumnData())
+        assertThat(entry.getNewValues()[0])
                 .isEqualTo("UNISTR('\\963F\\72F8\\5C0F\\706B\\8F66\\5BB6\\5EAD\\7968(\\60CA\\559C\\FF09\\FF082161\\FF09')");
-        assertThat(entry.getNewValues().get(1).getColumnName()).isEqualTo("C2");
-        assertThat(entry.getNewValues().get(1).getColumnData()).isNull();
+        assertThat(entry.getNewValues()[1]).isNull();
 
         sql = "update \"DEBEZIUM\".\"TEST\" set " +
                 "\"C2\" = UNISTR('\\963F\\72F8\\5C0F\\706B\\8F66\\5BB6\\5EAD\\7968(\\60CA\\559C\\FF09\\FF082161\\FF09') " +
                 "where \"C1\" = UNISTR('\\963F\\72F8\\5C0F\\706B\\8F66\\5BB6\\5EAD\\7968(\\60CA\\559C\\FF09\\FF082161\\FF09');";
         entry = fastDmlParser.parse(sql, table, null);
         assertThat(entry.getOperation()).isEqualTo(RowMapper.UPDATE);
-        assertThat(entry.getOldValues()).hasSize(1);
-        assertThat(entry.getOldValues().get(0).getColumnName()).isEqualTo("C1");
-        assertThat(entry.getOldValues().get(0).getColumnData())
+        assertThat(entry.getOldValues()).hasSize(2);
+        assertThat(entry.getOldValues()[0])
                 .isEqualTo("UNISTR('\\963F\\72F8\\5C0F\\706B\\8F66\\5BB6\\5EAD\\7968(\\60CA\\559C\\FF09\\FF082161\\FF09')");
+        assertThat(entry.getOldValues()[1]).isNull();
         assertThat(entry.getNewValues()).hasSize(2);
-        assertThat(entry.getNewValues().get(0).getColumnName()).isEqualTo("C2");
-        assertThat(entry.getNewValues().get(0).getColumnData())
+        assertThat(entry.getNewValues()[0])
                 .isEqualTo("UNISTR('\\963F\\72F8\\5C0F\\706B\\8F66\\5BB6\\5EAD\\7968(\\60CA\\559C\\FF09\\FF082161\\FF09')");
-        assertThat(entry.getNewValues().get(1).getColumnName()).isEqualTo("C1");
-        assertThat(entry.getNewValues().get(1).getColumnData())
+        assertThat(entry.getNewValues()[1])
                 .isEqualTo("UNISTR('\\963F\\72F8\\5C0F\\706B\\8F66\\5BB6\\5EAD\\7968(\\60CA\\559C\\FF09\\FF082161\\FF09')");
 
         sql = "delete from \"DEBEZIUM\".\"TEST\" where \"C1\" = UNISTR('\\963F\\72F8\\5C0F\\706B\\8F66\\5BB6\\5EAD\\7968(\\60CA\\559C\\FF09\\FF082161\\FF09');";
         entry = fastDmlParser.parse(sql, table, null);
         assertThat(entry.getOperation()).isEqualTo(RowMapper.DELETE);
-        assertThat(entry.getOldValues()).hasSize(1);
-        assertThat(entry.getOldValues().get(0).getColumnName()).isEqualTo("C1");
-        assertThat(entry.getOldValues().get(0).getColumnData())
+        assertThat(entry.getOldValues()).hasSize(2);
+        assertThat(entry.getOldValues()[0])
                 .isEqualTo("UNISTR('\\963F\\72F8\\5C0F\\706B\\8F66\\5BB6\\5EAD\\7968(\\60CA\\559C\\FF09\\FF082161\\FF09')");
+        assertThat(entry.getOldValues()[1]).isNull();
         assertThat(entry.getNewValues()).isEmpty();
     }
 
@@ -336,33 +308,25 @@ public class LogMinerDmlParserTest {
         assertThat(entry.getOperation()).isEqualTo(RowMapper.INSERT);
         assertThat(entry.getOldValues()).isEmpty();
         assertThat(entry.getNewValues()).hasSize(2);
-        assertThat(entry.getNewValues().get(0).getColumnName()).isEqualTo("COL1");
-        assertThat(entry.getNewValues().get(0).getColumnData()).isEqualTo("Bob''s dog");
-        assertThat(entry.getNewValues().get(1).getColumnName()).isEqualTo("COL2");
-        assertThat(entry.getNewValues().get(1).getColumnData()).isEqualTo("0");
+        assertThat(entry.getNewValues()[0]).isEqualTo("Bob''s dog");
+        assertThat(entry.getNewValues()[1]).isEqualTo("0");
 
         sql = "update \"DEBEZIUM\".\"TEST\" set \"COL2\" = '1' where \"COL1\" = 'Bob''s dog' and \"COL2\" = '0';";
         entry = fastDmlParser.parse(sql, table, null);
         assertThat(entry.getOperation()).isEqualTo(RowMapper.UPDATE);
         assertThat(entry.getOldValues()).hasSize(2);
-        assertThat(entry.getOldValues().get(0).getColumnName()).isEqualTo("COL1");
-        assertThat(entry.getOldValues().get(0).getColumnData()).isEqualTo("Bob''s dog");
-        assertThat(entry.getOldValues().get(1).getColumnName()).isEqualTo("COL2");
-        assertThat(entry.getOldValues().get(1).getColumnData()).isEqualTo("0");
+        assertThat(entry.getOldValues()[0]).isEqualTo("Bob''s dog");
+        assertThat(entry.getOldValues()[1]).isEqualTo("0");
         assertThat(entry.getNewValues()).hasSize(2);
-        assertThat(entry.getNewValues().get(0).getColumnName()).isEqualTo("COL2");
-        assertThat(entry.getNewValues().get(0).getColumnData()).isEqualTo("1");
-        assertThat(entry.getNewValues().get(1).getColumnName()).isEqualTo("COL1");
-        assertThat(entry.getNewValues().get(1).getColumnData()).isEqualTo("Bob''s dog");
+        assertThat(entry.getNewValues()[0]).isEqualTo("Bob''s dog");
+        assertThat(entry.getNewValues()[1]).isEqualTo("1");
 
         sql = "delete from \"DEBEZIUM\".\"TEST\" where \"COL1\" = 'Bob''s dog' and \"COL2\" = '1';";
         entry = fastDmlParser.parse(sql, table, null);
         assertThat(entry.getOperation()).isEqualTo(RowMapper.DELETE);
         assertThat(entry.getOldValues()).hasSize(2);
-        assertThat(entry.getOldValues().get(0).getColumnName()).isEqualTo("COL1");
-        assertThat(entry.getOldValues().get(0).getColumnData()).isEqualTo("Bob''s dog");
-        assertThat(entry.getOldValues().get(1).getColumnName()).isEqualTo("COL2");
-        assertThat(entry.getOldValues().get(1).getColumnData()).isEqualTo("1");
+        assertThat(entry.getOldValues()[0]).isEqualTo("Bob''s dog");
+        assertThat(entry.getOldValues()[1]).isEqualTo("1");
         assertThat(entry.getNewValues()).isEmpty();
     }
 }

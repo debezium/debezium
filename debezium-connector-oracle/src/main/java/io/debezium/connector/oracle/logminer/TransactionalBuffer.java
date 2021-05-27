@@ -30,8 +30,6 @@ import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OracleOffsetContext;
 import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.Scn;
-import io.debezium.connector.oracle.logminer.valueholder.LogMinerColumnValue;
-import io.debezium.connector.oracle.logminer.valueholder.LogMinerColumnValueImpl;
 import io.debezium.connector.oracle.logminer.valueholder.LogMinerDmlEntry;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
@@ -568,6 +566,8 @@ public final class TransactionalBuffer<SourceRecord extends SourceRecordWrapper>
     private boolean shouldMergeSelectLobLocatorEvent(Transaction transaction, int index, SelectLobLocatorEvent event, LogMinerEvent prevEvent) {
         LOGGER.trace("\tDetected SelectLobLocatorEvent for column '{}'", event.getColumnName());
 
+        final int columnIndex = LogMinerHelper.getColumnIndexByName(event.getColumnName(), schema.tableFor(event.getTableId()));
+
         // Read and combine all LOB_WRITE events that follow SEL_LOB_LOCATOR
         Object lobData = null;
         final List<String> lobWrites = readAndCombineLobWriteEvents(transaction, index, event.isBinaryData());
@@ -607,7 +607,7 @@ public final class TransactionalBuffer<SourceRecord extends SourceRecordWrapper>
         if (prevEvent == null) {
             // There is no prior event, add column to this SelectLobLocatorEvent and don't merge.
             LOGGER.trace("\tAdding column '{}' to current event", event.getColumnName());
-            event.getEntry().getNewValues().add(createColumnValue(event.getColumnName(), lobData));
+            event.getEntry().getNewValues()[columnIndex] = lobData;
             return false;
         }
 
@@ -617,13 +617,13 @@ public final class TransactionalBuffer<SourceRecord extends SourceRecordWrapper>
             // and if the INSERT's column value is EMPTY_CLOB() or EMPTY_BLOB()
             if (isForSameTableOrScn(event, prevEvent)) {
                 LOGGER.trace("\tMerging SEL_LOB_LOCATOR with previous INSERT event");
-                LogMinerColumnValue prevColumn = getColumnByName(prevEvent.getEntry().getNewValues(), event.getColumnName());
-                if (prevColumn == null || (!prevColumn.isEmptyClobFunction() && !prevColumn.isEmptyBlobFunction())) {
+                Object prevValue = prevEvent.getEntry().getNewValues()[columnIndex];
+                if (!"EMPTY_CLOB()".equals(prevValue) && !"EMPTY_BLOB()".equals(prevValue)) {
                     throw new DebeziumException("Expected to find column '" + event.getColumnName() + "' in table '"
                             + prevEvent.getTableId() + "' to be initialized as an empty LOB value.'");
                 }
 
-                prevColumn.setColumnData(lobData);
+                prevEvent.getEntry().getNewValues()[columnIndex] = lobData;
 
                 // Remove the SEL_LOB_LOCATOR event from event list and indicate merged.
                 transaction.events.remove(index);
@@ -634,16 +634,8 @@ public final class TransactionalBuffer<SourceRecord extends SourceRecordWrapper>
             // Previous event is an UPDATE operation.
             // Only merge the SEL_LOB_LOCATOR event if the previous UPDATE is for the same table/row
             if (isForSameTableOrScn(event, prevEvent) && isSameTableRow(event, prevEvent)) {
-                LOGGER.trace("\tMerging SEL_LOB_LOCATOR with previous UPDATE event");
-                LogMinerColumnValue prevColumn = getColumnByName(prevEvent.getEntry().getNewValues(), event.getColumnName());
-                if (prevColumn == null) {
-                    LOGGER.trace("\tAdding SEL_LOB_LOCATOR column '{}' to previous UPDATE event", event.getColumnName());
-                    prevEvent.getEntry().getNewValues().add(createColumnValue(event.getColumnName(), lobData));
-                }
-                else {
-                    LOGGER.trace("\tMerging SEL_LOB_LOCATOR column '{}' to previous UPDATE event", event.getColumnName());
-                    prevColumn.setColumnData(lobData);
-                }
+                LOGGER.trace("\tUpdating SEL_LOB_LOCATOR column '{}' to previous UPDATE event", event.getColumnName());
+                prevEvent.getEntry().getNewValues()[columnIndex] = lobData;
 
                 // Remove the SEL_LOB_LOCATOR event from event list and indicate merged.
                 transaction.events.remove(index);
@@ -655,7 +647,7 @@ public final class TransactionalBuffer<SourceRecord extends SourceRecordWrapper>
             // Only merge the two SEL_LOB_LOCATOR events if they're for the same table/row
             if (isForSameTableOrScn(event, prevEvent) && isSameTableRow(event, prevEvent)) {
                 LOGGER.trace("\tAdding column '{}' to previous SEL_LOB_LOCATOR event", event.getColumnName());
-                prevEvent.getEntry().getNewValues().add(createColumnValue(event.getColumnName(), lobData));
+                prevEvent.getEntry().getNewValues()[columnIndex] = lobData;
 
                 // Remove the SEL_LOB_LOCATOR event from event list and indicate merged.
                 transaction.events.remove(index);
@@ -668,7 +660,7 @@ public final class TransactionalBuffer<SourceRecord extends SourceRecordWrapper>
 
         LOGGER.trace("\tSEL_LOB_LOCATOR event is for different row, merge skipped.");
         LOGGER.trace("\tAdding column '{}' to current event", event.getColumnName());
-        event.getEntry().getNewValues().add(createColumnValue(event.getColumnName(), lobData));
+        event.getEntry().getNewValues()[columnIndex] = lobData;
         return false;
     }
 
@@ -678,7 +670,7 @@ public final class TransactionalBuffer<SourceRecord extends SourceRecordWrapper>
      * @param transaction transaction being processed, never {@code null}
      * @param index event index being processed
      * @param event event being processed, never {@code null}
-     * @param prevEvent previous event in the transaction, can be {@ode null}
+     * @param prevEvent previous event in the transaction, can be {@code null}
      * @return true if the event is merged, false if the event was not merged
      */
     private boolean shouldMergeDmlEvent(Transaction transaction, int index, DmlEvent event, LogMinerEvent prevEvent) {
@@ -725,17 +717,12 @@ public final class TransactionalBuffer<SourceRecord extends SourceRecordWrapper>
             if (RowMapper.UPDATE == event.getOperation()) {
                 if (isForSameTableOrScn(event, prevEvent) && isSameTableRow(event, prevEvent)) {
                     LOGGER.trace("\tMerging UPDATE event with previous SEL_LOB_LOCATOR event");
-                    for (LogMinerColumnValue value : event.getEntry().getNewValues()) {
-                        boolean found = false;
-                        for (LogMinerColumnValue prevValue : prevEvent.getEntry().getNewValues()) {
-                            if (prevValue.getColumnName().equals(value.getColumnName())) {
-                                found = true;
-                                break;
-                            }
-                        }
-                        if (!found && value.getColumnData() != null) {
-                            LOGGER.trace("\tAdding column '{}' to previous SEL_LOB_LOCATOR event", value.getColumnName());
-                            prevEvent.getEntry().getNewValues().add(value);
+                    for (int i = 0; i < event.getEntry().getNewValues().length; ++i) {
+                        Object value = event.getEntry().getNewValues()[i];
+                        Object prevValue = prevEvent.getEntry().getNewValues()[i];
+                        if (prevValue == null && value != null) {
+                            LOGGER.trace("\tAdding column index {} to previous SEL_LOB_LOCATOR event", i);
+                            prevEvent.getEntry().getNewValues()[i] = value;
                         }
                     }
 
@@ -813,19 +800,6 @@ public final class TransactionalBuffer<SourceRecord extends SourceRecordWrapper>
     }
 
     /**
-     * Utility method to create a {@link LogMinerColumnValue} from a provided column name nad value.
-     *
-     * @param columnName column name, never {@code null}
-     * @param columnValue column value, may be {@code null}
-     * @return the constructed {@link LogMinerColumnValue} instance
-     */
-    private LogMinerColumnValue createColumnValue(String columnName, Object columnValue) {
-        final LogMinerColumnValueImpl column = new LogMinerColumnValueImpl(columnName);
-        column.setColumnData(columnValue);
-        return column;
-    }
-
-    /**
      * Checks whether the two events are for the same table or participate in the same system change.
      *
      * @param event current event being processed, never {@code null}
@@ -856,15 +830,16 @@ public final class TransactionalBuffer<SourceRecord extends SourceRecordWrapper>
             return false;
         }
         for (String columnName : table.primaryKeyColumnNames()) {
-            LogMinerColumnValue prevValue = getColumnByName(prevEvent.getEntry().getNewValues(), columnName);
+            int position = LogMinerHelper.getColumnIndexByName(columnName, table);
+            Object prevValue = prevEvent.getEntry().getNewValues()[position];
             if (prevValue == null) {
                 throw new DebeziumException("Could not find column " + columnName + " in previous event");
             }
-            LogMinerColumnValue value = getColumnByName(event.getEntry().getNewValues(), columnName);
+            Object value = event.getEntry().getNewValues()[position];
             if (value == null) {
                 throw new DebeziumException("Could not find column " + columnName + " in event");
             }
-            if (!Objects.equals(value.getColumnData(), prevValue.getColumnData())) {
+            if (!Objects.equals(value, prevValue)) {
                 return false;
             }
         }
@@ -872,7 +847,7 @@ public final class TransactionalBuffer<SourceRecord extends SourceRecordWrapper>
     }
 
     /**
-     * Merge {@link LogMinerColumnValue} instances from provided {@code event} with {@code prevEvent}.
+     * Merge column values from {@code event} with {@code prevEvent}.
      *
      * @param event current event being processed, never {@code null}
      * @param prevEvent previous/parent parent that has been processed, never {@code null}
@@ -880,48 +855,22 @@ public final class TransactionalBuffer<SourceRecord extends SourceRecordWrapper>
     private void mergeNewColumns(LogMinerEvent event, LogMinerEvent prevEvent) {
         final boolean prevEventIsInsert = RowMapper.INSERT == prevEvent.getOperation();
 
-        for (LogMinerColumnValue value : event.getEntry().getNewValues()) {
-            boolean found = false;
-            for (LogMinerColumnValue prevValue : prevEvent.getEntry().getNewValues()) {
-                if (prevValue.getColumnName().equals(value.getColumnName())) {
-                    if (prevEventIsInsert && prevValue.isEmptyClobFunction()) {
-                        LOGGER.trace("\tAssigning column '{}' with updated CLOB value.", prevValue.getColumnName());
-                        prevValue.setColumnData(value.getColumnData());
-                    }
-                    else if (prevEventIsInsert && prevValue.isEmptyBlobFunction()) {
-                        LOGGER.trace("\tAssigning column '{}' with updated BLOB value.", prevValue.getColumnName());
-                        prevValue.setColumnData(value.getColumnData());
-                    }
-                    else if (!prevEventIsInsert && value.getColumnData() != null) {
-                        LOGGER.trace("\tUpdating column '{}' in previous event", prevValue.getColumnName());
-                        prevValue.setColumnData(value.getColumnData());
-                    }
-                    found = true;
-                    break;
-                }
+        for (int i = 0; i < event.getEntry().getNewValues().length; ++i) {
+            Object value = event.getEntry().getNewValues()[i];
+            Object prevValue = prevEvent.getEntry().getNewValues()[i];
+            if (prevEventIsInsert && "EMPTY_CLOB()".equals(prevValue)) {
+                LOGGER.trace("\tAssigning column index {} with updated CLOB value.", i);
+                prevEvent.getEntry().getNewValues()[i] = value;
             }
-            if (!found) {
-                if (prevEventIsInsert) {
-                    // INSERTs as previous events should have a previous value of EMPTY_CLOB()
-                    // If they don't we should throw an exception for sanity sake
-                    throw new DebeziumException("Expected to find column '" + value.getColumnName() + "' with EMPTY_CLOB()");
-                }
-
-                // UPDATEs as previous events where we don't find the column will simply be added
-                prevEvent.getEntry().getNewValues().add(value);
+            else if (prevEventIsInsert && "EMPTY_BLOB()".equals(prevValue)) {
+                LOGGER.trace("\tAssigning column index {} with updated BLOB value.", i);
+                prevEvent.getEntry().getNewValues()[i] = value;
+            }
+            else if (!prevEventIsInsert && value != null) {
+                LOGGER.trace("\tUpdating column index {} in previous event", i);
+                prevEvent.getEntry().getNewValues()[i] = value;
             }
         }
-    }
-
-    /**
-     * Locate a {@link LogMinerColumnValue} in a collection by column name.
-     *
-     * @param columns collection of LogMiner column values
-     * @param columnName name of the column to find
-     * @return column value instance for the specified column name, may be {@code null} if no column with name exists
-     */
-    private static LogMinerColumnValue getColumnByName(List<LogMinerColumnValue> columns, String columnName) {
-        return columns.stream().filter(c -> c.getColumnName().equals(columnName)).findFirst().orElse(null);
     }
 
     /**

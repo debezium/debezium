@@ -282,7 +282,7 @@ public class SqlUtils {
     static String logMinerContentsQuery(OracleConnectorConfig connectorConfig, String logMinerUser) {
         StringBuilder query = new StringBuilder();
         query.append("SELECT SCN, SQL_REDO, OPERATION_CODE, TIMESTAMP, XID, CSF, TABLE_NAME, SEG_OWNER, OPERATION, USERNAME, ");
-        query.append("ROW_ID, ROLLBACK, SEQUENCE#, RS_ID, ORA_HASH(SCN||OPERATION||RS_ID||SEQUENCE#||RTRIM(SUBSTR(SQL_REDO,1,256))) ");
+        query.append("ROW_ID, ROLLBACK, RS_ID, ORA_HASH(SCN||OPERATION||RS_ID||SEQUENCE#||RTRIM(SUBSTR(SQL_REDO,1,256))) ");
         query.append("FROM ").append(LOGMNR_CONTENTS_VIEW).append(" ");
         query.append("WHERE ");
         query.append("SCN > ? AND SCN <= ? ");

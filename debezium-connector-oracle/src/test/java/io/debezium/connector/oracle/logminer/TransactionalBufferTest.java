@@ -64,7 +64,7 @@ public class TransactionalBufferTest {
     private static final TableId TABLE_ID = new TableId(TestHelper.SERVER_NAME, "DEBEZIUM", "TEST");
     private static final String ROW_ID = "AAABCD871DFAA";
     private static final String OTHER_ROW_ID = "BAABCD871DFAA";
-    private static final LogMinerDmlEntry DML_ENTRY = LogMinerDmlEntryImpl.forInsert(Collections.emptyList());
+    private static final LogMinerDmlEntry DML_ENTRY = LogMinerDmlEntryImpl.forInsert(new Object[0]);
 
     private static final Configuration config = new Configuration() {
         @Override

@@ -54,8 +54,8 @@ public class RowMapper {
     private static final int USERNAME = 10;
     private static final int ROW_ID = 11;
     private static final int ROLLBACK_FLAG = 12;
-    private static final int RS_ID = 14;
-    private static final int HASH = 15;
+    private static final int RS_ID = 13;
+    private static final int HASH = 14;
 
     private static final Calendar UTC_CALENDAR = Calendar.getInstance(TimeZone.getTimeZone(ZoneOffset.UTC));
 

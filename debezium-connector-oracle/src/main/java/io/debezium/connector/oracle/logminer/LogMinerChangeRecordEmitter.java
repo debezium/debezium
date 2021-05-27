@@ -5,12 +5,8 @@
  */
 package io.debezium.connector.oracle.logminer;
 
-import java.util.Arrays;
-import java.util.List;
-
 import io.debezium.DebeziumException;
 import io.debezium.connector.oracle.BaseChangeRecordEmitter;
-import io.debezium.connector.oracle.logminer.valueholder.LogMinerColumnValue;
 import io.debezium.connector.oracle.logminer.valueholder.LogMinerDmlEntry;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.pipeline.spi.OffsetContext;
@@ -20,15 +16,15 @@ import io.debezium.util.Clock;
 /**
  * Emits change record based on a single {@link LogMinerDmlEntry} event.
  */
-public class LogMinerChangeRecordEmitter extends BaseChangeRecordEmitter<LogMinerColumnValue> {
+public class LogMinerChangeRecordEmitter extends BaseChangeRecordEmitter<Object> {
 
     private final int operation;
-    private final List<LogMinerColumnValue> oldValues;
-    private final List<LogMinerColumnValue> newValues;
+    private final Object[] oldValues;
+    private final Object[] newValues;
     protected final Table table;
 
-    public LogMinerChangeRecordEmitter(OffsetContext offset, int operation, List<LogMinerColumnValue> oldValues,
-                                       List<LogMinerColumnValue> newValues, Table table, Clock clock) {
+    public LogMinerChangeRecordEmitter(OffsetContext offset, int operation, Object[] oldValues,
+                                       Object[] newValues, Table table, Clock clock) {
         super(offset, table, clock);
         this.operation = operation;
         this.oldValues = oldValues;
@@ -53,20 +49,11 @@ public class LogMinerChangeRecordEmitter extends BaseChangeRecordEmitter<LogMine
 
     @Override
     protected Object[] getOldColumnValues() {
-        return getColumnValues(Arrays.copyOf(oldValues.toArray(), oldValues.size(), LogMinerColumnValue[].class));
+        return oldValues;
     }
 
     @Override
     protected Object[] getNewColumnValues() {
-        return getColumnValues(Arrays.copyOf(newValues.toArray(), newValues.size(), LogMinerColumnValue[].class));
-    }
-
-    @Override
-    protected String getColumnName(LogMinerColumnValue columnValue) {
-        return columnValue.getColumnName();
-    }
-
-    protected Object getColumnData(LogMinerColumnValue columnValue) {
-        return columnValue.getColumnData();
+        return newValues;
     }
 }
