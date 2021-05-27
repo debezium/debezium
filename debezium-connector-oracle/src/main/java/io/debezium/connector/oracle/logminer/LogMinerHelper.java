@@ -36,6 +36,8 @@ import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.relational.Column;
+import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.util.Clock;
 import io.debezium.util.Metronome;
@@ -676,5 +678,21 @@ public class LogMinerHelper {
             }
             return null;
         }
+    }
+
+    /**
+     * Returns a 0-based index offset for the column name in the relational table.
+     *
+     * @param columnName the column name, should not be {@code null}.
+     * @param table the relational table, should not be {@code null}.
+     * @return the 0-based index offset for the column name
+     */
+    public static int getColumnIndexByName(String columnName, Table table) {
+        final Column column = table.columnWithName(columnName);
+        if (column == null) {
+            throw new DebeziumException("No column '" + columnName + "' found in table '" + table.id() + "'");
+        }
+        // want to return a 0-based index and column positions are 1-based
+        return column.position() - 1;
     }
 }

@@ -5,9 +5,7 @@
  */
 package io.debezium.connector.oracle.logminer.valueholder;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.Arrays;
 import java.util.Objects;
 
 import io.debezium.connector.oracle.logminer.RowMapper;
@@ -19,32 +17,33 @@ import io.debezium.connector.oracle.logminer.RowMapper;
 public class LogMinerDmlEntryImpl implements LogMinerDmlEntry {
 
     private final int operation;
-    private final List<LogMinerColumnValue> newLmColumnValues;
-    private final List<LogMinerColumnValue> oldLmColumnValues;
+    private final Object[] newValues;
+    private final Object[] oldValues;
     private String objectOwner;
     private String objectName;
 
-    private LogMinerDmlEntryImpl(int operation, List<LogMinerColumnValue> newLmColumnValues, List<LogMinerColumnValue> oldLmColumnValues) {
+    private LogMinerDmlEntryImpl(int operation, Object[] newValues, Object[] oldValues) {
         this.operation = operation;
-        this.newLmColumnValues = newLmColumnValues;
-        this.oldLmColumnValues = oldLmColumnValues;
+        this.newValues = newValues;
+        this.oldValues = oldValues;
     }
 
-    public static LogMinerDmlEntry forInsert(List<LogMinerColumnValue> newLmColumnValues) {
-        return new LogMinerDmlEntryImpl(RowMapper.INSERT, newLmColumnValues, Collections.emptyList());
+    public static LogMinerDmlEntry forInsert(Object[] newColumnValues) {
+        return new LogMinerDmlEntryImpl(RowMapper.INSERT, newColumnValues, new Object[0]);
     }
 
-    public static LogMinerDmlEntry forUpdate(List<LogMinerColumnValue> newLmColumnValues, List<LogMinerColumnValue> oldLmColumnValues) {
-        return new LogMinerDmlEntryImpl(RowMapper.UPDATE, newLmColumnValues, oldLmColumnValues);
+    public static LogMinerDmlEntry forUpdate(Object[] newColumnValues, Object[] oldColumnValues) {
+        return new LogMinerDmlEntryImpl(RowMapper.UPDATE, newColumnValues, oldColumnValues);
     }
 
-    public static LogMinerDmlEntry forDelete(List<LogMinerColumnValue> oldLmColumnValues) {
-        return new LogMinerDmlEntryImpl(RowMapper.DELETE, Collections.emptyList(), oldLmColumnValues);
+    public static LogMinerDmlEntry forDelete(Object[] oldColumnValues) {
+        return new LogMinerDmlEntryImpl(RowMapper.DELETE, new Object[0], oldColumnValues);
     }
 
-    public static LogMinerDmlEntry forLobLocator(List<LogMinerColumnValue> newLmColumnValues) {
+    public static LogMinerDmlEntry forLobLocator(Object[] newColumnValues) {
         // TODO: can that copy be avoided?
-        return new LogMinerDmlEntryImpl(RowMapper.SELECT_LOB_LOCATOR, new ArrayList<>(newLmColumnValues), newLmColumnValues);
+        final Object[] oldColumnValues = Arrays.copyOf(newColumnValues, newColumnValues.length);
+        return new LogMinerDmlEntryImpl(RowMapper.SELECT_LOB_LOCATOR, newColumnValues, oldColumnValues);
     }
 
     @Override
@@ -53,13 +52,13 @@ public class LogMinerDmlEntryImpl implements LogMinerDmlEntry {
     }
 
     @Override
-    public List<LogMinerColumnValue> getOldValues() {
-        return oldLmColumnValues;
+    public Object[] getOldValues() {
+        return oldValues;
     }
 
     @Override
-    public List<LogMinerColumnValue> getNewValues() {
-        return newLmColumnValues;
+    public Object[] getNewValues() {
+        return newValues;
     }
 
     @Override
@@ -92,17 +91,17 @@ public class LogMinerDmlEntryImpl implements LogMinerDmlEntry {
         }
         LogMinerDmlEntryImpl that = (LogMinerDmlEntryImpl) o;
         return operation == that.operation &&
-                Objects.equals(newLmColumnValues, that.newLmColumnValues) &&
-                Objects.equals(oldLmColumnValues, that.oldLmColumnValues);
+                Arrays.equals(newValues, that.newValues) &&
+                Arrays.equals(oldValues, that.oldValues);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(operation, newLmColumnValues, oldLmColumnValues);
+        return Objects.hash(operation, newValues, oldValues);
     }
 
     @Override
     public String toString() {
-        return "{LogMinerDmlEntryImpl={operation=" + operation + ",newColumns=" + newLmColumnValues + ",oldColumns=" + oldLmColumnValues + "}";
+        return "{LogMinerDmlEntryImpl={operation=" + operation + ",newColumns=" + newValues + ",oldColumns=" + oldValues + "}";
     }
 }

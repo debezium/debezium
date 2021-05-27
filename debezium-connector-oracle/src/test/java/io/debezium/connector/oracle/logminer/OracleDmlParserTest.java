@@ -11,10 +11,8 @@ import static org.mockito.Mockito.mock;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Iterator;
-import java.util.List;
 import java.util.Locale;
-import java.util.stream.Collectors;
+import java.util.Objects;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.connect.data.Struct;
@@ -33,7 +31,6 @@ import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot.AdapterName;
 import io.debezium.connector.oracle.logminer.parser.DmlParser;
 import io.debezium.connector.oracle.logminer.parser.DmlParserException;
 import io.debezium.connector.oracle.logminer.parser.SimpleDmlParser;
-import io.debezium.connector.oracle.logminer.valueholder.LogMinerColumnValue;
 import io.debezium.connector.oracle.logminer.valueholder.LogMinerDmlEntry;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.doc.FixFor;
@@ -97,7 +94,7 @@ public class OracleDmlParserTest {
                 "and a.COL8 = TO_TIMESTAMP('2019-05-14 02:28:32.') and a.col11 is null;";
 
         LogMinerDmlEntry record = sqlDmlParser.parse(dml, tables.forTable(TABLE_ID), "1");
-        verifyUpdate(record, false, true, 9);
+        verifyUpdate(record, false, true, 14);
     }
 
     @Test
@@ -149,8 +146,8 @@ public class OracleDmlParserTest {
         assertThat(record.getOldValues()).isNotEmpty();
 
         if (validateDate) {
-            assertThat(record.getNewValues().get(7).getColumnData()).isEqualTo(1519257600000L);
-            assertThat(record.getNewValues().get(13).getColumnData()).isEqualTo(1519257600000L);
+            assertThat(record.getNewValues()[7]).isEqualTo(1519257600000L);
+            assertThat(record.getNewValues()[13]).isEqualTo(1519257600000L);
         }
     }
 
@@ -166,7 +163,7 @@ public class OracleDmlParserTest {
         assertThat(record.getOldValues()).isNotEmpty();
 
         if (validateTimestamp) {
-            assertThat(record.getNewValues().get(8).getColumnData()).isEqualTo(1600733377000000L);
+            assertThat(record.getNewValues()[8]).isEqualTo(1600733377000000L);
         }
     }
 
@@ -249,7 +246,7 @@ public class OracleDmlParserTest {
                 "and COL8 = TO_TIMESTAMP('2019-05-14 02:28:32') and col11 = " + SPATIAL_DATA + " and COL13 = TO_DATE('2018-02-22 00:00:00', 'YYYY-MM-DD HH24:MI:SS');";
 
         LogMinerDmlEntry record = sqlDmlParser.parse(dml, tables.forTable(TABLE_ID), "");
-        verifyUpdate(record, true, true, 11);
+        verifyUpdate(record, true, true, 14);
 
         dml = "update \"" + FULL_TABLE_NAME
                 + "\" set \"col1\" = '9', col2 = '$2a$10$aHo.lQk.YAkGl5AkXbjJhODBqwNLkqF94slP5oZ3boNzm0d04WnE2', col3 = NULL, col4 = '123', col6 = '5.2', " +
@@ -275,10 +272,10 @@ public class OracleDmlParserTest {
 
         LogMinerDmlEntry record = sqlDmlParser.parse(dml, tables.forTable(TABLE_ID), "");
         boolean pass = record.getOperation() == RowMapper.UPDATE
-                && record.getOldValues().size() == record.getNewValues().size()
-                && record.getNewValues().containsAll(record.getOldValues());
+                && record.getOldValues().length == record.getNewValues().length
+                && Objects.equals(record.getNewValues(), record.getOldValues());
         assertThat(pass);
-        assertThat(record.getOldValues().get(4).getColumnData()).isNull();
+        assertThat(record.getOldValues()[4]).isNull();
     }
 
     @Test
@@ -292,8 +289,7 @@ public class OracleDmlParserTest {
 
         LogMinerDmlEntry result = sqlDmlParser.parse(dml, tables.forTable(TABLE_ID), "1");
         assertThat(result).isNotNull();
-        LogMinerColumnValue value = result.getNewValues().get(2);
-        assertThat(value.getColumnData().toString()).contains("\\");
+        assertThat(result.getNewValues()[2].toString().contains("\\"));
 
         dml = "delete from \"" + FULL_TABLE_NAME +
                 "\" where id = 6 and col1 = 2 and col2 = 'te\\xt' and col3 = 'tExt\\' and col4 is null and col5 is null " +
@@ -301,8 +297,7 @@ public class OracleDmlParserTest {
 
         result = sqlDmlParser.parse(dml, tables.forTable(TABLE_ID), "");
         assertThat(result).isNotNull();
-        value = result.getOldValues().get(3);
-        assertThat(value.getColumnData().toString()).contains("\\");
+        assertThat(result.getOldValues()[3].toString().contains("\\"));
     }
 
     @Test
@@ -328,14 +323,13 @@ public class OracleDmlParserTest {
                 " where id = 6 and col1 = 2 and col2 = 'te\\xt' and col3 = 'tExt\\' and col4 is null and col5 is null " +
                 " and col6 is null and col8 is null and col9 is null and col10 is null and col11 is null and col12 is null and col20 is null";
         result = sqlDmlParser.parse(dml, tables.forTable(TABLE_ID), "");
-        assertThat(result.getOldValues().size()).isEqualTo(12);
-        assertThat(result.getOldValues().size() == 12).isTrue();
+        assertThat(result.getOldValues()).hasSize(14);
 
         dml = "update \"" + FULL_TABLE_NAME + "\" set col1 = 3 " +
                 " where id = 6 and col1 = 2 and col2 = 'te\\xt' and col30 = 'tExt\\' and col4 is null and col5 is null " +
                 " and col6 is null and col8 is null and col9 is null and col10 is null and col11 is null and col21 is null";
         result = sqlDmlParser.parse(dml, tables.forTable(TABLE_ID), "");
-        assertThat(result.getNewValues().size()).isEqualTo(14);
+        assertThat(result.getNewValues()).hasSize(14);
 
         dml = "update table1, \"" + FULL_TABLE_NAME + "\" set col1 = 3 " +
                 " where id = 6 and col1 = 2 and col2 = 'te\\xt' and col3 = 'tExt\\' and col4 is null and col5 is null " +
@@ -355,102 +349,97 @@ public class OracleDmlParserTest {
     private void verifyUpdate(LogMinerDmlEntry record, boolean checkGeometry, boolean checkOldValues, int oldValuesNumber) {
         // validate
         assertThat(record.getOperation()).isEqualTo(RowMapper.UPDATE);
-        List<LogMinerColumnValue> newValues = record.getNewValues();
-        assertThat(newValues.size()).isEqualTo(14);
-        String concatenatedNames = newValues.stream().map(LogMinerColumnValue::getColumnName).collect(Collectors.joining());
-        assertThat("IDCOL1COL2COL3COL4COL5COL6COL7COL8COL9COL10COL11COL12COL13".equals(concatenatedNames));
-        for (LogMinerColumnValue newValue : newValues) {
-            String columnName = newValue.getColumnName();
-            switch (columnName) {
-                case "COL1":
-                    assertThat(newValue.getColumnData()).isEqualTo(BigDecimal.valueOf(900, 2));
+        assertThat(record.getNewValues()).hasSize(14);
+
+        for (int i = 0; i < record.getNewValues().length; ++i) {
+            Object newValue = record.getNewValues()[i];
+            switch (i) {
+                case 1:
+                    assertThat(newValue).isEqualTo(BigDecimal.valueOf(900, 2));
                     break;
-                case "COL2":
-                    assertThat(newValue.getColumnData()).isEqualTo("diFFerent");
+                case 2:
+                    assertThat(newValue).isEqualTo("diFFerent");
                     break;
-                case "COL3":
-                    assertThat(newValue.getColumnData()).isEqualTo("anotheR");
+                case 3:
+                    assertThat(newValue).isEqualTo("anotheR");
                     break;
-                case "COL4":
-                    assertThat(newValue.getColumnData()).isEqualTo("123");
+                case 4:
+                    assertThat(newValue).isEqualTo("123");
                     break;
-                case "COL6":
-                    assertThat(((Struct) newValue.getColumnData()).get("scale")).isEqualTo(1);
-                    assertThat(((byte[]) ((Struct) newValue.getColumnData()).get("value"))[0]).isEqualTo((byte) 52);
+                case 6:
+                    assertThat(((Struct) newValue).get("scale")).isEqualTo(1);
+                    assertThat(((byte[]) ((Struct) newValue).get("value"))[0]).isEqualTo((byte) 52);
                     break;
-                case "COL7":
-                case "COL13":
-                    assertThat(newValue.getColumnData()).isInstanceOf(Long.class);
-                    assertThat(newValue.getColumnData()).isEqualTo(1519257600000L);
+                case 7:
+                case 13:
+                    assertThat(newValue).isInstanceOf(Long.class);
+                    assertThat(newValue).isEqualTo(1519257600000L);
                     break;
-                case "COL8":
-                    assertThat(newValue.getColumnData()).isInstanceOf(Long.class);
-                    assertThat(newValue.getColumnData()).isEqualTo(1557800912302000L);
+                case 8:
+                    assertThat(newValue).isInstanceOf(Long.class);
+                    assertThat(newValue).isEqualTo(1557800912302000L);
                     break;
-                case "COL10":
-                    assertThat(newValue.getColumnData()).isInstanceOf(String.class);
-                    assertThat(newValue.getColumnData().toString().contains("clob_")).isTrue();
+                case 10:
+                    assertThat(newValue).isInstanceOf(String.class);
+                    assertThat(newValue.toString().contains("clob_")).isTrue();
                     break;
-                case "COL11":
+                case 11:
                     if (checkGeometry) {
-                        assertThat(newValue.getColumnData()).isInstanceOf(String.class);
-                        assertThat(newValue.getColumnData().toString().contains("SDO_GEOMETRY")).isTrue();
+                        assertThat(newValue).isInstanceOf(String.class);
+                        assertThat(newValue.toString().contains("SDO_GEOMETRY")).isTrue();
                     }
                     else {
-                        assertThat(newValue.getColumnData()).isNull();
+                        assertThat(newValue).isNull();
                     }
                     break;
-                case "COL12":
-                    assertThat(newValue.getColumnData()).isInstanceOf(Byte.class);
-                    assertThat(newValue.getColumnData()).isEqualTo(Byte.valueOf("1"));
+                case 12:
+                    assertThat(newValue).isInstanceOf(Byte.class);
+                    assertThat(newValue).isEqualTo(Byte.valueOf("1"));
                     break;
             }
         }
 
-        List<LogMinerColumnValue> oldValues = record.getOldValues();
         if (!checkOldValues) {
-            assertThat(oldValues.size()).isEqualTo(0);
+            assertThat(record.getOldValues()).hasSize(0);
         }
         else {
-            assertThat(oldValues.size()).isEqualTo(oldValuesNumber);
-            concatenatedNames = oldValues.stream().map(LogMinerColumnValue::getColumnName).collect(Collectors.joining());
-            assertThat("IDCOL1COL2COL3COL4COL6COL8COL11COL12".equals(concatenatedNames));
-            for (LogMinerColumnValue oldValue : oldValues) {
-                String columnName = oldValue.getColumnName();
-                switch (columnName) {
-                    case "COL1":
-                        assertThat(oldValue.getColumnData()).isEqualTo(BigDecimal.valueOf(600, 2));
+            assertThat(record.getOldValues()).hasSize(oldValuesNumber);
+            for (int i = 0; i < record.getOldValues().length; ++i) {
+                Object oldValue = record.getOldValues()[i];
+                switch (i) {
+                    case 1:
+                        assertThat(oldValue).isEqualTo(BigDecimal.valueOf(600, 2));
                         break;
-                    case "COL2":
-                        assertThat(oldValue.getColumnData()).isEqualTo("text");
+                    case 2:
+                        assertThat(oldValue).isEqualTo("text");
                         break;
-                    case "COL3":
-                        assertThat(oldValue.getColumnData()).isEqualTo("text");
+                    case 3:
+                        assertThat(oldValue).isEqualTo("text");
                         break;
-                    case "COL4":
-                        assertThat(oldValue.getColumnData()).isNull();
+                    case 4:
+                        assertThat(oldValue).isNull();
                         break;
-                    case "COL5":
-                        assertThat(oldValue.getColumnData()).isNull();
+                    case 5:
+                        assertThat(oldValue).isNull();
                         break;
-                    case "COL6":
-                        assertThat(oldValue.getColumnData()).isNull();
+                    case 6:
+                        assertThat(oldValue).isNull();
                         break;
-                    case "COL8":
-                        assertThat(oldValue.getColumnData()).isInstanceOf(Long.class);
-                        assertThat(oldValue.getColumnData()).isEqualTo(1557800912000000L);
+                    case 8:
+                        assertThat(oldValue).isInstanceOf(Long.class);
+                        assertThat(oldValue).isEqualTo(1557800912000000L);
                         break;
-                    case "COL11":
+                    case 11:
                         if (checkGeometry) {
-                            assertThat(oldValue.getColumnData()).isInstanceOf(String.class);
-                            assertThat(oldValue.getColumnData().toString().contains("SDO_GEOMETRY")).isTrue();
+                            assertThat(oldValue).isInstanceOf(String.class);
+                            assertThat(oldValue.toString().contains("SDO_GEOMETRY")).isTrue();
                         }
                         else {
-                            assertThat(oldValue.getColumnData()).isNull();
+                            assertThat(oldValue).isNull();
                         }
                         break;
-                    case "ID":
-                        assertThat(oldValue.getColumnData()).isEqualTo(new BigDecimal(5));
+                    case 0:
+                        assertThat(oldValue).isEqualTo(new BigDecimal(5));
                         break;
                 }
             }
@@ -458,23 +447,18 @@ public class OracleDmlParserTest {
     }
 
     private void verifyInsert(LogMinerDmlEntry record) {
-        List<LogMinerColumnValue> oldValues = record.getOldValues();
-        assertThat(oldValues.size()).isEqualTo(0);
-
+        assertThat(record.getOldValues()).hasSize(0);
         assertThat(record.getOperation()).isEqualTo(RowMapper.INSERT);
+        assertThat(record.getNewValues()).hasSize(14);
 
-        List<LogMinerColumnValue> newValues = record.getNewValues();
-        assertThat(newValues.size()).isEqualTo(14);
-
-        Iterator<LogMinerColumnValue> iterator = newValues.iterator();
-        assertThat(iterator.next().getColumnData()).isEqualTo(new BigDecimal(5));
-        assertThat(iterator.next().getColumnData()).isEqualTo(BigDecimal.valueOf(400, 2));
-        assertThat(iterator.next().getColumnData()).isEqualTo("tExt");
-        assertThat(iterator.next().getColumnData()).isEqualTo("text");
-        assertThat(iterator.next().getColumnData()).isNull();
-        assertThat(iterator.next().getColumnData()).isNull();
-        assertThat(iterator.next().getColumnData()).isNull();
-        assertThat(iterator.next().getColumnData()).isNull();
+        assertThat(record.getNewValues()[0]).isEqualTo(new BigDecimal(5));
+        assertThat(record.getNewValues()[1]).isEqualTo(BigDecimal.valueOf(400, 2));
+        assertThat(record.getNewValues()[2]).isEqualTo("tExt");
+        assertThat(record.getNewValues()[3]).isEqualTo("text");
+        assertThat(record.getNewValues()[4]).isNull();
+        assertThat(record.getNewValues()[5]).isNull();
+        assertThat(record.getNewValues()[6]).isNull();
+        assertThat(record.getNewValues()[7]).isNull();
         // todo handle LOBS
         // assertThat(iterator.next().getColumnData()).isNull();
         // assertThat(iterator.next().getColumnData()).isNull();
@@ -483,30 +467,25 @@ public class OracleDmlParserTest {
 
     private void verifyDelete(LogMinerDmlEntry record, boolean checkOldValues) {
         assertThat(record.getOperation()).isEqualTo(RowMapper.DELETE);
-        List<LogMinerColumnValue> newValues = record.getNewValues();
-        assertThat(newValues.size()).isEqualTo(0);
+        assertThat(record.getNewValues()).hasSize(0);
 
-        List<LogMinerColumnValue> oldValues = record.getOldValues();
         if (!checkOldValues) {
-            assertThat(oldValues.size()).isEqualTo(0);
+            assertThat(record.getOldValues()).hasSize(0);
         }
         else {
-            assertThat(oldValues.size()).isEqualTo(14);
-            String concatenatedColumnNames = oldValues.stream().map(LogMinerColumnValue::getColumnName).collect(Collectors.joining());
-            assertThat("IDCOL1COL2COL3COL4COL5COL6COL8COL9COL10COL11COL12".equals(concatenatedColumnNames));
+            assertThat(record.getOldValues()).hasSize(14);
 
-            Iterator<LogMinerColumnValue> iterator = oldValues.iterator();
-            assertThat(iterator.next().getColumnData()).isEqualTo(new BigDecimal(6));
-            assertThat(iterator.next().getColumnData()).isEqualTo(BigDecimal.valueOf(200, 2));
-            assertThat(iterator.next().getColumnData()).isEqualTo("text");
-            assertThat(iterator.next().getColumnData()).isEqualTo("tExt");
-            assertThat(iterator.next().getColumnData()).isNull();
-            assertThat(iterator.next().getColumnData()).isNull();
-            assertThat(iterator.next().getColumnData()).isNull();
-            assertThat(iterator.next().getColumnData()).isNull();
-            assertThat(iterator.next().getColumnData()).isNull();
-            assertThat(iterator.next().getColumnData()).isNull();
-            assertThat(iterator.next().getColumnData()).isNull();
+            assertThat(record.getOldValues()[0]).isEqualTo(new BigDecimal(6));
+            assertThat(record.getOldValues()[1]).isEqualTo(BigDecimal.valueOf(200, 2));
+            assertThat(record.getOldValues()[2]).isEqualTo("text");
+            assertThat(record.getOldValues()[3]).isEqualTo("tExt");
+            assertThat(record.getOldValues()[4]).isNull();
+            assertThat(record.getOldValues()[5]).isNull();
+            assertThat(record.getOldValues()[6]).isNull();
+            assertThat(record.getOldValues()[7]).isNull();
+            assertThat(record.getOldValues()[8]).isNull();
+            assertThat(record.getOldValues()[9]).isNull();
+            assertThat(record.getOldValues()[10]).isNull();
         }
     }
 }

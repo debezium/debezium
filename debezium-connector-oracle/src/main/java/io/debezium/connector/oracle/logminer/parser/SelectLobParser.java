@@ -5,15 +5,13 @@
  */
 package io.debezium.connector.oracle.logminer.parser;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.function.Consumer;
 
 import io.debezium.annotation.NotThreadSafe;
-import io.debezium.connector.oracle.logminer.valueholder.LogMinerColumnValue;
-import io.debezium.connector.oracle.logminer.valueholder.LogMinerColumnValueImpl;
+import io.debezium.connector.oracle.logminer.LogMinerHelper;
 import io.debezium.connector.oracle.logminer.valueholder.LogMinerDmlEntry;
 import io.debezium.connector.oracle.logminer.valueholder.LogMinerDmlEntryImpl;
+import io.debezium.relational.Table;
 import io.debezium.text.ParsingException;
 
 /**
@@ -38,49 +36,55 @@ public class SelectLobParser {
     private String schemaName;
     private String tableName;
     private boolean binary;
-    private List<LogMinerColumnValue> columns;
+    private Object[] columnValues;
 
     /**
      * Parse the supplied SEL_LOB_LOCATOR event redo SQL statement.
      *
      * @param sql SQL statement expression to be parsed
+     * @param table the relational table
      * @return instance of {@link LogMinerDmlEntry} for the parsed fragment.
      */
-    public LogMinerDmlEntry parse(String sql) {
+    public LogMinerDmlEntry parse(String sql, Table table) {
         // Reset internal state
-        reset();
+        reset(table);
 
         if (sql != null) {
-            int start = sql.indexOf(BEGIN);
-            if (start != -1) {
-                start = sql.indexOf(" ", start + 1) + 1;
-                if (sql.indexOf(SELECT, start) == start) {
-                    start = sql.indexOf(" ", start) + 1;
-                    start = parseQuotedValue(sql, start, s -> columnName = s);
-                    start = sql.indexOf(" ", start) + 1; // skip leading space
-                    start = sql.indexOf(" ", start) + 1; // skip into
-                    if (sql.indexOf(BLOB_LOCATOR, start) == start || sql.indexOf(BLOB_BUFFER, start) == start) {
-                        binary = true;
-                    }
-                    start = sql.indexOf(" ", start) + 1; // skip loc_xxxx variable name
-                    if (sql.indexOf(FROM, start) == start) {
+            try {
+                int start = sql.indexOf(BEGIN);
+                if (start != -1) {
+                    start = sql.indexOf(" ", start + 1) + 1;
+                    if (sql.indexOf(SELECT, start) == start) {
                         start = sql.indexOf(" ", start) + 1;
-                        start = parseQuotedValue(sql, start, s -> schemaName = s);
-                        if (sql.indexOf('.', start) == start) {
-                            start += 1; // dot
-                            start = parseQuotedValue(sql, start, s -> tableName = s);
-                            start += 1; // space
-                            if (sql.indexOf(WHERE, start) == start) {
-                                start += WHERE.length() + 1;
-                                parseWhere(sql, start);
+                        start = parseQuotedValue(sql, start, s -> columnName = s);
+                        start = sql.indexOf(" ", start) + 1; // skip leading space
+                        start = sql.indexOf(" ", start) + 1; // skip into
+                        if (sql.indexOf(BLOB_LOCATOR, start) == start || sql.indexOf(BLOB_BUFFER, start) == start) {
+                            binary = true;
+                        }
+                        start = sql.indexOf(" ", start) + 1; // skip loc_xxxx variable name
+                        if (sql.indexOf(FROM, start) == start) {
+                            start = sql.indexOf(" ", start) + 1;
+                            start = parseQuotedValue(sql, start, s -> schemaName = s);
+                            if (sql.indexOf('.', start) == start) {
+                                start += 1; // dot
+                                start = parseQuotedValue(sql, start, s -> tableName = s);
+                                start += 1; // space
+                                if (sql.indexOf(WHERE, start) == start) {
+                                    start += WHERE.length() + 1;
+                                    parseWhere(sql, start, table);
+                                }
                             }
                         }
                     }
                 }
             }
+            catch (Throwable t) {
+                throw new ParsingException(null, "Parsing failed for SEL_LOB_LOCATOR sql: '" + sql + "'", t);
+            }
         }
 
-        LogMinerDmlEntry entry = LogMinerDmlEntryImpl.forLobLocator(columns);
+        LogMinerDmlEntry entry = LogMinerDmlEntryImpl.forLobLocator(columnValues);
         entry.setObjectOwner(schemaName);
         entry.setObjectName(tableName);
         return entry;
@@ -125,7 +129,7 @@ public class SelectLobParser {
         return index;
     }
 
-    private int parseColumnValue(String sql, int index, Consumer<String> collector) {
+    private int parseColumnValue(String sql, int index, int columnIndex) {
         boolean inSingleQuotes = false;
         int start = -1, last = -1, nested = 0;
         for (int i = index; i < sql.length(); ++i) {
@@ -174,22 +178,22 @@ public class SelectLobParser {
 
         if (start != -1 && last != -1) {
             final String value = sql.substring(start, last);
-            collector.accept(value.equalsIgnoreCase("null") ? null : value);
+            if (!value.equalsIgnoreCase("null")) {
+                columnValues[columnIndex] = value;
+            }
         }
 
         return index;
     }
 
-    private int parseWhere(String sql, int index) {
+    private int parseWhere(String sql, int index, Table table) {
         for (int i = index; i < sql.length(); ++i) {
             // parse column name
             StringBuilder columnName = new StringBuilder();
             index = parseQuotedValue(sql, index, columnName::append);
             index = parseOperator(sql, index);
-            final LogMinerColumnValueImpl column = new LogMinerColumnValueImpl(columnName.toString());
-            index = parseColumnValue(sql, index, column::setColumnData);
+            index = parseColumnValue(sql, index, LogMinerHelper.getColumnIndexByName(columnName.toString(), table));
             index += 1; // space
-            columns.add(column);
 
             if (sql.indexOf(AND, index) == index) {
                 // 'and' detected
@@ -236,11 +240,11 @@ public class SelectLobParser {
         return index;
     }
 
-    private void reset() {
+    private void reset(Table table) {
         columnName = null;
         schemaName = null;
         tableName = null;
         binary = false;
-        columns = new ArrayList<>();
+        columnValues = new Object[table.columns().size()];
     }
 }

@@ -5,6 +5,11 @@
  */
 package io.debezium.connector.oracle.logminer.valueholder;
 
+/**
+ * @deprecated This has been deprecated and should no longer be used.
+ * This will be removed in conjunction with {@link io.debezium.connector.oracle.logminer.parser.SimpleDmlParser}.
+ */
+@Deprecated
 public interface LogMinerColumnValue {
 
     /**
@@ -17,16 +22,6 @@ public interface LogMinerColumnValue {
      * @return column name
      */
     String getColumnName();
-
-    /**
-     * @return {@code true} if the column value is an empty clob function call, otherwise {@code false}.
-     */
-    boolean isEmptyClobFunction();
-
-    /**
-     * @return {@code true} if the column value is an empty blob function call, otherwise {@code false}.
-     */
-    boolean isEmptyBlobFunction();
 
     /**
      * This sets the database record value with the exception of LOBs

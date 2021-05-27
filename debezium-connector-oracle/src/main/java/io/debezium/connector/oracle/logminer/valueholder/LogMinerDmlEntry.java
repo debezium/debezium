@@ -5,22 +5,17 @@
  */
 package io.debezium.connector.oracle.logminer.valueholder;
 
-import java.util.List;
-
 public interface LogMinerDmlEntry {
     /**
-     * This getter
-     * @return old(current) values of the database record.
-     * They represent values in WHERE clauses
+     * @return object array that contains the before state, values from WHERE clause.
      */
-    List<LogMinerColumnValue> getOldValues();
+    Object[] getOldValues();
 
     /**
-     * this getter
-     * @return new values to be applied to the database record
-     * Those values are applicable for INSERT and UPDATE statements
+     * @return object array that contains the after state, values from an insert's
+     * values list or the values in the SET clause of an update statement.
      */
-    List<LogMinerColumnValue> getNewValues();
+    Object[] getNewValues();
 
     /**
      * @return LogMiner event operation type
