@@ -159,7 +159,7 @@ public class DB2ConnectorIT extends ConnectorTestBase {
     @Order(8)
     public void shouldResumeStreamingAfterCrash() throws InterruptedException {
         operatorController.enable();
-        kafkaConnectController.waitForConnectCluster();
+        kafkaConnectController.waitForCluster();
         awaitAssert(() -> assertions.assertMinimalRecordsCount(dbServerName + ".DB2INST1.CUSTOMERS", 7));
         awaitAssert(() -> assertions.assertRecordsContain(dbServerName + ".DB2INST1.CUSTOMERS", "nibbles@test.com"));
     }

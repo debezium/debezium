@@ -22,7 +22,7 @@ import io.debezium.testing.openshift.tools.OpenShiftUtils;
 import io.debezium.testing.openshift.tools.OperatorController;
 import io.debezium.testing.openshift.tools.WaitConditions;
 import io.debezium.testing.openshift.tools.YAML;
-import io.debezium.testing.openshift.tools.kafka.KafkaController;
+import io.debezium.testing.openshift.tools.kafka.OcpKafkaController;
 import io.fabric8.kubernetes.api.model.apiextensions.v1.CustomResourceDefinition;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.kubernetes.client.dsl.NonNamespaceOperation;
@@ -44,9 +44,9 @@ public class RegistryDeployer {
     private final OkHttpClient http;
     private final OpenShiftUtils ocpUtils;
     private final String project;
-    private final KafkaController kafkaController;
+    private final OcpKafkaController kafkaController;
 
-    public RegistryDeployer(String project, OpenShiftClient ocp, OkHttpClient http, KafkaController kafkaController) {
+    public RegistryDeployer(String project, OpenShiftClient ocp, OkHttpClient http, OcpKafkaController kafkaController) {
         this.project = project;
         this.ocp = ocp;
         this.http = http;

@@ -156,7 +156,7 @@ public class PostgreSqlConnectorIT extends ConnectorTestBase {
     @Order(8)
     public void shouldResumeStreamingAfterCrash() throws InterruptedException {
         operatorController.enable();
-        kafkaConnectController.waitForConnectCluster();
+        kafkaConnectController.waitForCluster();
         awaitAssert(() -> assertions.assertMinimalRecordsCount(dbServerName + ".inventory.customers", 7));
         awaitAssert(() -> assertions.assertRecordsContain(dbServerName + ".inventory.customers", "nibbles@test.com"));
     }

@@ -158,7 +158,7 @@ public class SqlServerConnectorIT extends ConnectorTestBase {
     @Order(8)
     public void shouldResumeStreamingAfterCrash() throws InterruptedException {
         operatorController.enable();
-        kafkaConnectController.waitForConnectCluster();
+        kafkaConnectController.waitForCluster();
         awaitAssert(() -> assertions.assertMinimalRecordsCount(dbServerName + ".dbo.customers", 7));
         awaitAssert(() -> assertions.assertRecordsContain(dbServerName + ".dbo.customers", "nibbles@test.com"));
     }
