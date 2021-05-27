@@ -47,6 +47,7 @@ Braden Groom
 Braden Staudacher
 Brandon Brown
 Brandon Maguire
+Cao Manh Dat
 Cheng Pan
 Ching Tsai
 Chris Cranford
@@ -140,6 +141,7 @@ Johan Venant
 John Graf
 John Martin
 John Psoroulas
+John Wu
 Jon Casstevens
 Jonas Lins
 Jordan Bragg
@@ -207,6 +209,7 @@ Olivier Lemasle
 Omar Al-Safi
 Ori Popowski
 Orr Ganani
+Patrick Chu
 Paul Mellor
 Peng Lyu
 Peter Goransson
@@ -268,6 +271,7 @@ Thomas Prelle
 Thomas Thornton
 Tom Bentley
 Tomaz Lemos Fernandes
+Tommy Karlsson
 Tony Rizko
 Tova Cohen
 Travis Elnicky

@@ -2,6 +2,59 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 1.5.1.Final
+May 27th 2021 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12354249)
+
+### New features since 1.5.0.Final
+
+* Retry logic for "No more data to read from socket" is too strict [DBZ-3472](https://issues.jboss.org/browse/DBZ-3472)
+
+
+### Breaking changes since 1.5.0.Final
+
+None
+
+
+### Fixes since 1.5.0.Final
+
+* io.debezium.text.ParsingException: no viable alternative at input 'IDNUMBER(4)GENERATEDBY' [DBZ-1721](https://issues.jboss.org/browse/DBZ-1721)
+* oracle logminer cannot add duplicate logfile [DBZ-3266](https://issues.jboss.org/browse/DBZ-3266)
+* First online log query does not limit results to those that are available. [DBZ-3332](https://issues.jboss.org/browse/DBZ-3332)
+* Connector crashing after running for some time [DBZ-3377](https://issues.jboss.org/browse/DBZ-3377)
+* An exception in resolveOracleDatabaseVersion if system language is not English [DBZ-3397](https://issues.jboss.org/browse/DBZ-3397)
+* Rename table stores only a fragment of DDL in schema history [DBZ-3399](https://issues.jboss.org/browse/DBZ-3399)
+* Broken link in downstream Monitoring chapter 7.3 [DBZ-3409](https://issues.jboss.org/browse/DBZ-3409)
+* Broken link in content-based routing chapter to page for downloading the SMT scripting archive  [DBZ-3411](https://issues.jboss.org/browse/DBZ-3411)
+* LogMinerDmlParser mishandles double single quotes in WHERE clauses [DBZ-3413](https://issues.jboss.org/browse/DBZ-3413)
+* Incorrectly formatted links in downstream automatic topic creation doc [DBZ-3414](https://issues.jboss.org/browse/DBZ-3414)
+* SMT acronym incorrectly expanded in Debezium User Guide [DBZ-3415](https://issues.jboss.org/browse/DBZ-3415)
+* Debezium mapped diagnostic contexts doesn't work [DBZ-3438](https://issues.jboss.org/browse/DBZ-3438)
+* source.timestamp.mode=commit imposes a significant performance penalty [DBZ-3452](https://issues.jboss.org/browse/DBZ-3452)
+* Debezium MySQL connector does not process tables with partitions [DBZ-3468](https://issues.jboss.org/browse/DBZ-3468)
+* "Found null value for non-optional schema" error when issuing TRUNCATE from Postgres on a table with a PK [DBZ-3469](https://issues.jboss.org/browse/DBZ-3469)
+* Connector crashes when table name contains '-' character [DBZ-3485](https://issues.jboss.org/browse/DBZ-3485)
+* MySQL8 GRANT statement not parsable [DBZ-3499](https://issues.jboss.org/browse/DBZ-3499)
+* ReadToInsertEvent SMT needs to set ConfigDef [DBZ-3508](https://issues.jboss.org/browse/DBZ-3508)
+* SQLServer low throughput tables increase usage of TempDB [DBZ-3515](https://issues.jboss.org/browse/DBZ-3515)
+* Oracle redo log switch not detected when using multiple archiver process threads [DBZ-3516](https://issues.jboss.org/browse/DBZ-3516)
+* Missing schema function in DDL Parser [DBZ-3543](https://issues.jboss.org/browse/DBZ-3543)
+* DDL ParsingException "mismatched input 'sharing'" for create table syntax. [DBZ-3549](https://issues.jboss.org/browse/DBZ-3549)
+
+
+### Other changes since 1.5.0.Final
+
+* User Guide corrections for SQL Server connector [DBZ-3297](https://issues.jboss.org/browse/DBZ-3297)
+* User Guide corrections for Db2 connector [DBZ-3298](https://issues.jboss.org/browse/DBZ-3298)
+* User Guide corrections for MySQL connector [DBZ-3299](https://issues.jboss.org/browse/DBZ-3299)
+* User Guide corrections for MongoDB connector [DBZ-3300](https://issues.jboss.org/browse/DBZ-3300)
+* Scope RHEL support for Debezium [DBZ-3354](https://issues.jboss.org/browse/DBZ-3354)
+* Reword prereq in downstream SQL Server connector doc  [DBZ-3392](https://issues.jboss.org/browse/DBZ-3392)
+* Duplicate entry in MySQL connector properties table for `mysql-property-skipped-operations`  [DBZ-3402](https://issues.jboss.org/browse/DBZ-3402)
+* Upgrade binlog client [DBZ-3463](https://issues.jboss.org/browse/DBZ-3463)
+* Backport documentation fixes to 1.5 [DBZ-3532](https://issues.jboss.org/browse/DBZ-3532)
+
+
+
 ## 1.5.0.Final
 April 7th 2021 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12354718)
 
@@ -27,7 +80,7 @@ None
 * Invalid Decimal schema: scale parameter not found [DBZ-3371](https://issues.jboss.org/browse/DBZ-3371)
 
 
-### Other changes since 1.5.0.Beta2
+### Other changes since 1.5.0.CR1
 
 * Allow Debezium Server to be used with Apicurio converters [DBZ-2388](https://issues.jboss.org/browse/DBZ-2388)
 * Literal attribute rendered in deployment instructions for the downstream PostgreSQL connector  [DBZ-3338](https://issues.jboss.org/browse/DBZ-3338)
