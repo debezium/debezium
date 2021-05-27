@@ -146,13 +146,13 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withInvisibleRecommender()
             .withDescription("Allows connector deployment to capture log mining results");
 
-    public static final Field LOG_MINING_HISTORY_RETENTION = Field.create("database.history.retention.hours")
+    public static final Field LOG_MINING_HISTORY_RETENTION = Field.create("log.mining.history.retention.hours")
             .withDisplayName("Log Mining history retention")
             .withType(Type.LONG)
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
             .withDefault(0)
-            .withDescription("Hours to keep Log Mining history.  By default, no history is retained.");
+            .withDescription("When supplying a log.mining.history.recorder.class, this option specifies the number of hours the recorder should keep the history recorder.  The default, 0, indicates that no history should be retained.");
 
     public static final Field LOG_MINING_TRANSACTION_RETENTION = Field.create("log.mining.transaction.retention.hours")
             .withDisplayName("Log Mining long running transaction retention")
