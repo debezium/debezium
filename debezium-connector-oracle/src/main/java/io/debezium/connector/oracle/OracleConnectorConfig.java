@@ -401,6 +401,9 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         if (!config.hasKey(LOG_MINING_HISTORY_RECORDER_CLASS.name())) {
             return new NeverHistoryRecorder();
         }
+        if (config.getLong(LOG_MINING_HISTORY_RETENTION) == 0L) {
+            return new NeverHistoryRecorder();
+        }
         return config.getInstance(LOG_MINING_HISTORY_RECORDER_CLASS, HistoryRecorder.class);
     }
 
