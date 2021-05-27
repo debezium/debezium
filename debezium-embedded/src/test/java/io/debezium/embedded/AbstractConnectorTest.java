@@ -420,7 +420,7 @@ public abstract class AbstractConnectorTest implements Testing {
     /**
      * Try to consume the specified number of records from the connector, calling the given function for each, and return the
      * actual number of records that were consumed.
-     * For slower connectors it is possible to receive no records form the connector multiple times in a row
+     * For slower connectors it is possible to receive no records from the connector multiple times in a row
      * till the waiting is terminated.
      *
      * @param numberOfRecords the number of records that should be consumed
@@ -467,7 +467,7 @@ public abstract class AbstractConnectorTest implements Testing {
     /**
      * Try to consume the specified number of records from the connector, calling the given function for each, and return the
      * actual number of records that were consumed.
-     * For slower connectors it is possible to receive no records form the connector at most 3 times in a row
+     * For slower connectors it is possible to receive no records from the connector at most 3 times in a row
      * till the waiting is terminated.
      *
      * @param numberOfRecords the number of records that should be consumed
@@ -476,7 +476,8 @@ public abstract class AbstractConnectorTest implements Testing {
      * @throws InterruptedException if the thread was interrupted while waiting for a record to be returned
      */
     protected int consumeRecords(int numberOfRecords, Consumer<SourceRecord> recordConsumer) throws InterruptedException {
-        return consumeRecords(numberOfRecords, 3, recordConsumer, true);
+        int breakAfterNulls = waitTimeForRecordsAfterNulls();
+        return consumeRecords(numberOfRecords, breakAfterNulls, recordConsumer, true);
     }
 
     /**
@@ -515,7 +516,8 @@ public abstract class AbstractConnectorTest implements Testing {
      */
     protected SourceRecords consumeRecordsByTopic(int numRecords, boolean assertRecords) throws InterruptedException {
         SourceRecords records = new SourceRecords();
-        consumeRecords(numRecords, 3, records::add, assertRecords);
+        int breakAfterNulls = waitTimeForRecordsAfterNulls();
+        consumeRecords(numRecords, breakAfterNulls, records::add, assertRecords);
         return records;
     }
 
@@ -538,7 +540,7 @@ public abstract class AbstractConnectorTest implements Testing {
     /**
      * Try to consume the specified number of records from the connector, calling the given function for each, and return the
      * actual number of Dml records that were consumed.
-     * For slower connectors it is possible to receive no records form the connector at most 3 times in a row
+     * For slower connectors it is possible to receive no records from the connector at most 3 times in a row
      * till the waiting is terminated.
      *
      * @param numberDmlRecords the number of Dml records that should be consumed
@@ -547,7 +549,8 @@ public abstract class AbstractConnectorTest implements Testing {
      * @throws InterruptedException if the thread was interrupted while waiting for a record to be returned
      */
     protected int consumeDmlRecordsByTopic(int numberDmlRecords, Consumer<SourceRecord> recordConsumer) throws InterruptedException {
-        return consumeDmlRecordsByTopic(numberDmlRecords, 3, recordConsumer, true);
+        int breakAfterNulls = waitTimeForRecordsAfterNulls();
+        return consumeDmlRecordsByTopic(numberDmlRecords, breakAfterNulls, recordConsumer, true);
     }
 
     /**
@@ -1050,6 +1053,10 @@ public abstract class AbstractConnectorTest implements Testing {
 
     public static int waitTimeForRecords() {
         return Integer.parseInt(System.getProperty(TEST_PROPERTY_PREFIX + "records.waittime", "2"));
+    }
+
+    public static int waitTimeForRecordsAfterNulls() {
+        return Integer.parseInt(System.getProperty(TEST_PROPERTY_PREFIX + "records.waittime.after.nulls", "3"));
     }
 
     public static void waitForSnapshotToBeCompleted(String connector, String server) throws InterruptedException {
