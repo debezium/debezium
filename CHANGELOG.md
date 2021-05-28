@@ -2,6 +2,29 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 1.5.2.Final
+May 28th 2021 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12357966)
+
+### New features since 1.5.1.Final
+
+None
+
+### Breaking changes since 1.5.1.Final
+
+None
+
+
+### Fixes since 1.5.1.Final
+
+* Release 1.5.1.Final requires JDK >= 11 [DBZ-3574](https://issues.jboss.org/browse/DBZ-3574)
+
+
+### Other changes since 1.5.0.Final
+
+* Update external links in downstream docs to AMQ Streams deployment information  [DBZ-3525](https://issues.jboss.org/browse/DBZ-3525)
+
+
+
 ## 1.5.1.Final
 May 27th 2021 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12354249)
 
