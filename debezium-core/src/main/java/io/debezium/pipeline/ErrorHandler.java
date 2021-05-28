@@ -9,11 +9,11 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.errors.RetriableException;
-import org.apache.kafka.connect.source.SourceConnector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.base.ChangeEventQueue;
+import io.debezium.connector.common.SourceConnectorWrapper;
 
 public class ErrorHandler {
 
@@ -22,7 +22,7 @@ public class ErrorHandler {
     private final ChangeEventQueue<?> queue;
     private final AtomicReference<Throwable> producerThrowable;
 
-    public ErrorHandler(Class<? extends SourceConnector> connectorType, String logicalName, ChangeEventQueue<?> queue) {
+    public ErrorHandler(Class<? extends SourceConnectorWrapper> connectorType, String logicalName, ChangeEventQueue<?> queue) {
         this.queue = queue;
         this.producerThrowable = new AtomicReference<>();
     }

@@ -13,16 +13,12 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.kafka.common.config.ConfigDef;
-import org.apache.kafka.connect.connector.ConnectRecord;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.header.Headers;
-import org.apache.kafka.connect.transforms.ExtractField;
-import org.apache.kafka.connect.transforms.RegexRouter;
-import org.apache.kafka.connect.transforms.Transformation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,7 +28,7 @@ import io.debezium.data.Envelope;
 import io.debezium.time.MicroTimestamp;
 import io.debezium.time.NanoTimestamp;
 import io.debezium.time.Timestamp;
-import io.debezium.transforms.SmtManager;
+import io.debezium.transforms.*;
 import io.debezium.transforms.outbox.EventRouterConfigDefinition.AdditionalField;
 import io.debezium.transforms.tracing.ActivateTracingSpan;
 
@@ -42,14 +38,14 @@ import io.debezium.transforms.tracing.ActivateTracingSpan;
  * @author Renato mefi (gh@mefi.in)
  */
 @Incubating
-public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R> {
+public class EventRouter<R extends ConnectRecordWrapper<R>> implements TransformationWrapper<R> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(EventRouter.class);
 
     private static final String ENVELOPE_PAYLOAD = "payload";
 
-    private final ExtractField<R> afterExtractor = new ExtractField.Value<>();
-    private final RegexRouter<R> regexRouter = new RegexRouter<>();
+    private final ExtractFieldWrapper<R> afterExtractor = new ExtractFieldWrapper.Value<>();
+    private final EventRouterWrapper<R> regexRouter = new EventRouterWrapper<>();
     private EventRouterConfigDefinition.InvalidOperationBehavior invalidOperationBehavior;
     private final ActivateTracingSpan<R> tracingSmt = new ActivateTracingSpan<>();
 

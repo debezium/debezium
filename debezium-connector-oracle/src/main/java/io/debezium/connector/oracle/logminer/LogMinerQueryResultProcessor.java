@@ -11,6 +11,7 @@ import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
 
+import io.debezium.connector.common.SourceRecordWrapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,7 +43,7 @@ import io.debezium.util.Clock;
  * On commit it executes all registered callbacks, which dispatch ChangeRecords.
  * This also calculates metrics
  */
-class LogMinerQueryResultProcessor {
+class LogMinerQueryResultProcessor<SourceRecord extends SourceRecordWrapper> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(LogMinerQueryResultProcessor.class);
 
@@ -52,7 +53,7 @@ class LogMinerQueryResultProcessor {
     private final DmlParser dmlParser;
     private final OracleOffsetContext offsetContext;
     private final OracleDatabaseSchema schema;
-    private final EventDispatcher<TableId> dispatcher;
+    private final EventDispatcher<TableId, SourceRecord> dispatcher;
     private final OracleConnectorConfig connectorConfig;
     private final Clock clock;
     private final HistoryRecorder historyRecorder;
@@ -65,7 +66,7 @@ class LogMinerQueryResultProcessor {
                                  OracleConnectorConfig connectorConfig, OracleStreamingChangeEventSourceMetrics streamingMetrics,
                                  TransactionalBuffer transactionalBuffer,
                                  OracleOffsetContext offsetContext, OracleDatabaseSchema schema,
-                                 EventDispatcher<TableId> dispatcher,
+                                 EventDispatcher<TableId, SourceRecord> dispatcher,
                                  Clock clock, HistoryRecorder historyRecorder) {
         this.context = context;
         this.streamingMetrics = streamingMetrics;

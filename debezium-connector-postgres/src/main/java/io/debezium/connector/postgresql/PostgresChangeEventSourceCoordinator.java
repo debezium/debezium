@@ -7,12 +7,13 @@ package io.debezium.connector.postgresql;
 
 import java.sql.SQLException;
 
-import org.apache.kafka.connect.source.SourceConnector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig;
+import io.debezium.connector.common.SourceConnectorWrapper;
+import io.debezium.connector.common.SourceRecordWrapper;
 import io.debezium.connector.postgresql.spi.SlotState;
 import io.debezium.connector.postgresql.spi.Snapshotter;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
@@ -30,7 +31,7 @@ import io.debezium.schema.DatabaseSchema;
  * Coordinates one or more {@link ChangeEventSource}s and executes them in order. Extends the base
  * {@link ChangeEventSourceCoordinator} to support a pre-snapshot catch up streaming phase.
  */
-public class PostgresChangeEventSourceCoordinator extends ChangeEventSourceCoordinator {
+public class PostgresChangeEventSourceCoordinator<R extends SourceRecordWrapper> extends ChangeEventSourceCoordinator<R> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PostgresChangeEventSourceCoordinator.class);
 
@@ -38,11 +39,11 @@ public class PostgresChangeEventSourceCoordinator extends ChangeEventSourceCoord
     private final SlotState slotInfo;
 
     public PostgresChangeEventSourceCoordinator(OffsetContext previousOffset, ErrorHandler errorHandler,
-                                                Class<? extends SourceConnector> connectorType,
+                                                Class<? extends SourceConnectorWrapper> connectorType,
                                                 CommonConnectorConfig connectorConfig,
                                                 ChangeEventSourceFactory changeEventSourceFactory,
                                                 ChangeEventSourceMetricsFactory changeEventSourceMetricsFactory,
-                                                EventDispatcher<?> eventDispatcher, DatabaseSchema<?> schema,
+                                                EventDispatcher<?, R> eventDispatcher, DatabaseSchema<?> schema,
                                                 Snapshotter snapshotter, SlotState slotInfo) {
         super(previousOffset, errorHandler, connectorType, connectorConfig, changeEventSourceFactory, changeEventSourceMetricsFactory, eventDispatcher, schema);
         this.snapshotter = snapshotter;

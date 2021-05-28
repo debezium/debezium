@@ -45,7 +45,6 @@ import org.apache.kafka.common.errors.UnsupportedVersionException;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.connect.errors.ConnectException;
-import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,6 +54,7 @@ import io.debezium.annotation.NotThreadSafe;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.config.Field.Validator;
+import io.debezium.connector.common.SourceConnectorWrapper;
 import io.debezium.document.DocumentReader;
 import io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig;
 import io.debezium.util.Collect;
@@ -84,7 +84,6 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
     /**
      * The name of broker property defining default replication factor for topics without the explicit setting.
      *
-     * @see kafka.server.KafkaConfig.DefaultReplicationFactorProp
      */
     private static final String DEFAULT_TOPIC_REPLICATION_FACTOR_PROP_NAME = "default.replication.factor";
 
@@ -219,7 +218,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
         try {
             final String connectorClassname = config.getString(INTERNAL_CONNECTOR_CLASS);
             if (connectorClassname != null) {
-                checkTopicSettingsExecutor = Threads.newSingleThreadExecutor((Class<? extends SourceConnector>) Class.forName(connectorClassname),
+                checkTopicSettingsExecutor = Threads.newSingleThreadExecutor((Class<? extends SourceConnectorWrapper>) Class.forName(connectorClassname),
                         config.getString(INTERNAL_CONNECTOR_ID), "db-history-config-check", true);
             }
         }

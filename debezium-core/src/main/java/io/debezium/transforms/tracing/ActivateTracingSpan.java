@@ -8,11 +8,9 @@ package io.debezium.transforms.tracing;
 import java.util.Map;
 
 import org.apache.kafka.common.config.ConfigDef;
-import org.apache.kafka.connect.connector.ConnectRecord;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
-import org.apache.kafka.connect.transforms.Transformation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,7 +20,9 @@ import io.debezium.config.Field;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.data.Envelope;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.transforms.ConnectRecordWrapper;
 import io.debezium.transforms.SmtManager;
+import io.debezium.transforms.TransformationWrapper;
 import io.opentracing.Scope;
 import io.opentracing.Span;
 import io.opentracing.SpanContext;
@@ -43,10 +43,10 @@ import io.opentracing.util.GlobalTracer;
  * @see {@link EventDispatcher} for example of such implementation
  * 
  *
- * @param <R> the subtype of {@link ConnectRecord} on which this transformation will operate
+ * @param <R> the subtype of {@link ConnectRecordWrapper} on which this transformation will operate
  * @author Jiri Pechanec
  */
-public class ActivateTracingSpan<R extends ConnectRecord<R>> implements Transformation<R> {
+public class ActivateTracingSpan<R extends ConnectRecordWrapper<R>> implements TransformationWrapper<R> {
 
     private static final String DB_FIELDS_PREFIX = "db.";
 

@@ -11,7 +11,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
-import org.apache.kafka.connect.source.SourceConnector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,6 +18,8 @@ import io.debezium.annotation.ThreadSafe;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.base.ChangeEventQueueMetrics;
 import io.debezium.connector.common.CdcSourceTaskContext;
+import io.debezium.connector.common.SourceConnectorWrapper;
+import io.debezium.connector.common.SourceRecordWrapper;
 import io.debezium.pipeline.metrics.SnapshotChangeEventSourceMetrics;
 import io.debezium.pipeline.metrics.StreamingChangeEventSourceMetrics;
 import io.debezium.pipeline.metrics.spi.ChangeEventSourceMetricsFactory;
@@ -40,7 +41,7 @@ import io.debezium.util.Threads;
  * @author Gunnar Morling
  */
 @ThreadSafe
-public class ChangeEventSourceCoordinator {
+public class ChangeEventSourceCoordinator<SourceRecord extends SourceRecordWrapper> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ChangeEventSourceCoordinator.class);
 
@@ -54,7 +55,7 @@ public class ChangeEventSourceCoordinator {
     private final ChangeEventSourceFactory changeEventSourceFactory;
     private final ChangeEventSourceMetricsFactory changeEventSourceMetricsFactory;
     private final ExecutorService executor;
-    private final EventDispatcher<?> eventDispatcher;
+    private final EventDispatcher<?, SourceRecord> eventDispatcher;
     private final DatabaseSchema<?> schema;
 
     private volatile boolean running;
@@ -64,10 +65,11 @@ public class ChangeEventSourceCoordinator {
     private SnapshotChangeEventSourceMetrics snapshotMetrics;
     private StreamingChangeEventSourceMetrics streamingMetrics;
 
-    public ChangeEventSourceCoordinator(OffsetContext previousOffset, ErrorHandler errorHandler, Class<? extends SourceConnector> connectorType,
+    public ChangeEventSourceCoordinator(OffsetContext previousOffset, ErrorHandler errorHandler, Class<? extends SourceConnectorWrapper> connectorType,
                                         CommonConnectorConfig connectorConfig,
                                         ChangeEventSourceFactory changeEventSourceFactory,
-                                        ChangeEventSourceMetricsFactory changeEventSourceMetricsFactory, EventDispatcher<?> eventDispatcher, DatabaseSchema<?> schema) {
+                                        ChangeEventSourceMetricsFactory changeEventSourceMetricsFactory, EventDispatcher<?, SourceRecord> eventDispatcher,
+                                        DatabaseSchema<?> schema) {
         this.previousOffset = previousOffset;
         this.errorHandler = errorHandler;
         this.changeEventSourceFactory = changeEventSourceFactory;

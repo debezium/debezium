@@ -11,10 +11,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
 
-import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.connector.common.SourceRecordWrapper;
 import io.debezium.connector.mysql.HaltingPredicate;
 import io.debezium.document.Document;
 
@@ -113,8 +113,8 @@ public class ReconcilingBinlogReader implements Reader {
     }
 
     @Override
-    public List<SourceRecord> poll() throws InterruptedException {
-        List<SourceRecord> innerReaderPoll = reconcilingReader.poll();
+    public List<SourceRecordWrapper> poll() throws InterruptedException {
+        List<SourceRecordWrapper> innerReaderPoll = reconcilingReader.poll();
         if (innerReaderPoll == null) {
             completeSuccessfully();
         }
@@ -216,7 +216,7 @@ public class ReconcilingBinlogReader implements Reader {
         }
 
         @Override
-        public boolean accepts(SourceRecord sourceRecord) {
+        public boolean accepts(SourceRecordWrapper sourceRecord) {
             Document offsetDocument = SourceInfo.createDocumentFromOffset(sourceRecord.sourceOffset());
             // .isPositionAtOrBefore is true IFF leadingReaderFinalOffsetDocument <= offsetDocument
             // we should stop (return false) IFF leadingReaderFinalOffsetDocument <= offsetDocument

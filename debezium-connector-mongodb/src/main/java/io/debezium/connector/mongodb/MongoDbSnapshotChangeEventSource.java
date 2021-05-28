@@ -30,6 +30,7 @@ import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
 
+import io.debezium.connector.common.SourceRecordWrapper;
 import io.debezium.connector.mongodb.ConnectionContext.MongoPrimary;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
@@ -50,7 +51,7 @@ import io.debezium.util.Threads;
  *
  * @author Chris Cranford
  */
-public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEventSource {
+public class MongoDbSnapshotChangeEventSource<SourceRecord extends SourceRecordWrapper> extends AbstractSnapshotChangeEventSource {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MongoDbSnapshotChangeEventSource.class);
 
@@ -61,7 +62,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
     private final MongoDbOffsetContext previousOffset;
     private final ConnectionContext connectionContext;
     private final ReplicaSets replicaSets;
-    private final EventDispatcher<CollectionId> dispatcher;
+    private final EventDispatcher<CollectionId, SourceRecord> dispatcher;
     protected final Clock clock;
     private final SnapshotProgressListener snapshotProgressListener;
     private final ErrorHandler errorHandler;
@@ -69,7 +70,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
 
     public MongoDbSnapshotChangeEventSource(MongoDbConnectorConfig connectorConfig, MongoDbTaskContext taskContext,
                                             ReplicaSets replicaSets, MongoDbOffsetContext previousOffset,
-                                            EventDispatcher<CollectionId> dispatcher, Clock clock,
+                                            EventDispatcher<CollectionId, SourceRecord> dispatcher, Clock clock,
                                             SnapshotProgressListener snapshotProgressListener, ErrorHandler errorHandler) {
         super(connectorConfig, previousOffset, snapshotProgressListener);
         this.connectorConfig = connectorConfig;

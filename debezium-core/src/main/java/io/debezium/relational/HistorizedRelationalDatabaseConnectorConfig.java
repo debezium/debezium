@@ -9,11 +9,11 @@ import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
 import org.apache.kafka.connect.errors.ConnectException;
-import org.apache.kafka.connect.source.SourceConnector;
 
 import io.debezium.config.ConfigDefinition;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
+import io.debezium.connector.common.SourceConnectorWrapper;
 import io.debezium.relational.Selectors.TableIdToStringMapper;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.history.DatabaseHistory;
@@ -32,7 +32,7 @@ public abstract class HistorizedRelationalDatabaseConnectorConfig extends Relati
 
     private boolean useCatalogBeforeSchema;
     private final String logicalName;
-    private final Class<? extends SourceConnector> connectorClass;
+    private final Class<? extends SourceConnectorWrapper> connectorClass;
 
     /**
      * The database history class is hidden in the {@link #configDef()} since that is designed to work with a user interface,
@@ -58,7 +58,7 @@ public abstract class HistorizedRelationalDatabaseConnectorConfig extends Relati
                     KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS)
             .create();
 
-    protected HistorizedRelationalDatabaseConnectorConfig(Class<? extends SourceConnector> connectorClass, Configuration config, String logicalName,
+    protected HistorizedRelationalDatabaseConnectorConfig(Class<? extends SourceConnectorWrapper> connectorClass, Configuration config, String logicalName,
                                                           TableFilter systemTablesFilter,
                                                           boolean useCatalogBeforeSchema, int defaultSnapshotFetchSize, ColumnFilterMode columnFilterMode) {
         super(config, logicalName, systemTablesFilter, TableId::toString, defaultSnapshotFetchSize, columnFilterMode);
@@ -67,12 +67,12 @@ public abstract class HistorizedRelationalDatabaseConnectorConfig extends Relati
         this.connectorClass = connectorClass;
     }
 
-    protected HistorizedRelationalDatabaseConnectorConfig(Class<? extends SourceConnector> connectorClass, Configuration config, String logicalName,
+    protected HistorizedRelationalDatabaseConnectorConfig(Class<? extends SourceConnectorWrapper> connectorClass, Configuration config, String logicalName,
                                                           TableFilter systemTablesFilter, boolean useCatalogBeforeSchema, ColumnFilterMode columnFilterMode) {
         this(connectorClass, config, logicalName, systemTablesFilter, useCatalogBeforeSchema, DEFAULT_SNAPSHOT_FETCH_SIZE, columnFilterMode);
     }
 
-    protected HistorizedRelationalDatabaseConnectorConfig(Class<? extends SourceConnector> connectorClass, Configuration config, String logicalName,
+    protected HistorizedRelationalDatabaseConnectorConfig(Class<? extends SourceConnectorWrapper> connectorClass, Configuration config, String logicalName,
                                                           TableFilter systemTablesFilter, TableIdToStringMapper tableIdMapper,
                                                           boolean useCatalogBeforeSchema, ColumnFilterMode columnFilterMode) {
         super(config, logicalName, systemTablesFilter, tableIdMapper, DEFAULT_SNAPSHOT_FETCH_SIZE, columnFilterMode);

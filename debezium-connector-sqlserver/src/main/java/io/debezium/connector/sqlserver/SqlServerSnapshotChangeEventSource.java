@@ -21,6 +21,7 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.connector.common.SourceRecordWrapper;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotIsolationMode;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
@@ -33,7 +34,7 @@ import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.schema.SchemaChangeEvent.SchemaChangeEventType;
 import io.debezium.util.Clock;
 
-public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChangeEventSource {
+public class SqlServerSnapshotChangeEventSource<SourceRecord extends SourceRecordWrapper> extends RelationalSnapshotChangeEventSource<SourceRecord> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SqlServerSnapshotChangeEventSource.class);
 
@@ -48,7 +49,7 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
     private Map<TableId, SqlServerChangeTable> changeTables;
 
     public SqlServerSnapshotChangeEventSource(SqlServerConnectorConfig connectorConfig, SqlServerOffsetContext previousOffset, SqlServerConnection jdbcConnection,
-                                              SqlServerDatabaseSchema schema, EventDispatcher<TableId> dispatcher, Clock clock,
+                                              SqlServerDatabaseSchema schema, EventDispatcher<TableId, SourceRecord> dispatcher, Clock clock,
                                               SnapshotProgressListener snapshotProgressListener) {
         super(connectorConfig, previousOffset, jdbcConnection, schema, dispatcher, clock, snapshotProgressListener);
         this.connectorConfig = connectorConfig;

@@ -5,7 +5,7 @@
  */
 package io.debezium.connector.postgresql;
 
-import org.apache.kafka.connect.source.SourceRecord;
+import io.debezium.connector.common.SourceRecordWrapper;
 
 /**
  * Container for {@link SourceRecord}s and associated metadata
@@ -13,7 +13,7 @@ import org.apache.kafka.connect.source.SourceRecord;
  * @author Jiri Pechanec
  *
  */
-public class ChangeEvent {
+public class ChangeEvent<SourceRecord extends SourceRecordWrapper> {
 
     /*
      * source record to be sent

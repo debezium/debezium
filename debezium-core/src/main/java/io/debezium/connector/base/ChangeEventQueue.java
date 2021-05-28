@@ -16,7 +16,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-import org.apache.kafka.connect.source.SourceRecord;
+// import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,7 +52,7 @@ import io.debezium.util.Threads.Timer;
  * @author Gunnar Morling
  *
  * @param <T>
- *            the type of events in this queue. Usually {@link SourceRecord} is
+ *            the type of events in this queue. Usually {@link Record} is
  *            used, but in cases where additional metadata must be passed from
  *            producers to the consumer, a custom type wrapping source records
  *            may be used.

@@ -11,11 +11,11 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
-import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.common.SourceRecordWrapper;
 import io.debezium.connector.mysql.HaltingPredicate;
 
 /**
@@ -146,10 +146,10 @@ public class ParallelSnapshotReader implements Reader {
     }
 
     @Override
-    public List<SourceRecord> poll() throws InterruptedException {
+    public List<SourceRecordWrapper> poll() throws InterruptedException {
         // the old tables reader is a raw BinlogReader and will throw an exception of poll is called when it is not running.
-        List<SourceRecord> allRecords = oldTablesReader.isRunning() ? oldTablesReader.poll() : null;
-        List<SourceRecord> newTablesRecords = newTablesReader.poll();
+        List<SourceRecordWrapper> allRecords = oldTablesReader.isRunning() ? oldTablesReader.poll() : null;
+        List<SourceRecordWrapper> newTablesRecords = newTablesReader.poll();
         if (newTablesRecords != null) {
             if (allRecords == null) {
                 allRecords = newTablesRecords;
@@ -222,7 +222,7 @@ public class ParallelSnapshotReader implements Reader {
         }
 
         @Override
-        public boolean accepts(SourceRecord ourSourceRecord) {
+        public boolean accepts(SourceRecordWrapper ourSourceRecord) {
             // we assume if we ever end up near the end of the binlog, then we will remain there.
             if (!thisReaderNearEnd.get()) {
                 Long sourceRecordTimestamp = (Long) ourSourceRecord.sourceOffset().get(SourceInfo.TIMESTAMP_KEY);

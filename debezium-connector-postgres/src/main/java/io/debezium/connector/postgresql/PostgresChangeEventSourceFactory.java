@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.postgresql;
 
+import io.debezium.connector.common.SourceRecordWrapper;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.connector.postgresql.spi.SlotCreationResult;
@@ -20,12 +21,12 @@ import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.relational.TableId;
 import io.debezium.util.Clock;
 
-public class PostgresChangeEventSourceFactory implements ChangeEventSourceFactory {
+public class PostgresChangeEventSourceFactory<R extends SourceRecordWrapper> implements ChangeEventSourceFactory {
 
     private final PostgresConnectorConfig configuration;
     private final PostgresConnection jdbcConnection;
     private final ErrorHandler errorHandler;
-    private final EventDispatcher<TableId> dispatcher;
+    private final EventDispatcher<TableId, R> dispatcher;
     private final Clock clock;
     private final PostgresSchema schema;
     private final PostgresTaskContext taskContext;
@@ -35,7 +36,7 @@ public class PostgresChangeEventSourceFactory implements ChangeEventSourceFactor
     private final SlotState startingSlotInfo;
 
     public PostgresChangeEventSourceFactory(PostgresConnectorConfig configuration, Snapshotter snapshotter, PostgresConnection jdbcConnection,
-                                            ErrorHandler errorHandler, EventDispatcher<TableId> dispatcher, Clock clock, PostgresSchema schema,
+                                            ErrorHandler errorHandler, EventDispatcher<TableId, R> dispatcher, Clock clock, PostgresSchema schema,
                                             PostgresTaskContext taskContext,
                                             ReplicationConnection replicationConnection, SlotCreationResult slotCreatedInfo, SlotState startingSlotInfo) {
         this.configuration = configuration;

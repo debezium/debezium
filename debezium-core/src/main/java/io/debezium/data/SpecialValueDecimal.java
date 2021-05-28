@@ -144,7 +144,7 @@ public class SpecialValueDecimal implements Serializable {
     }
 
     /**
-     * Returns a {@link SchemaBuilder} for a decimal number depending on {@link JdbcValueConverters.DecimalMode}. You
+     * Returns a {@link SchemaBuilder} for a decimal number depending. You
      * can use the resulting schema builder to set additional schema settings such as required/optional, default value,
      * and documentation.
      *

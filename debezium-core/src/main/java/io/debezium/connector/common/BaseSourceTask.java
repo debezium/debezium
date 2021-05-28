@@ -17,8 +17,6 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.errors.RetriableException;
-import org.apache.kafka.connect.source.SourceRecord;
-import org.apache.kafka.connect.source.SourceTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,12 +32,13 @@ import io.debezium.util.Metronome;
 import io.debezium.util.Strings;
 
 /**
- * Base class for Debezium's CDC {@link SourceTask} implementations. Provides functionality common to all connectors,
+ * Base class for Debezium's CDC {@link BaseSourceTaskWrapper} implementations. Provides functionality common to all connectors,
  * such as validation of the configuration.
  *
  * @author Gunnar Morling
  */
-public abstract class BaseSourceTask extends SourceTask {
+public abstract class BaseSourceTask<SourceTaskContext extends SourceTaskContextWrapper, SourceRecord extends SourceRecordWrapper, RecordMetadata>
+        extends BaseSourceTaskWrapper<SourceTaskContext, SourceRecord, RecordMetadata> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(BaseSourceTask.class);
     private static final long INITIAL_POLL_PERIOD_IN_MILLIS = TimeUnit.SECONDS.toMillis(5);

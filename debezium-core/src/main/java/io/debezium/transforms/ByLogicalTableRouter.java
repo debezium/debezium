@@ -16,12 +16,10 @@ import org.apache.kafka.common.cache.Cache;
 import org.apache.kafka.common.cache.LRUCache;
 import org.apache.kafka.common.cache.SynchronizedCache;
 import org.apache.kafka.common.config.ConfigDef;
-import org.apache.kafka.connect.connector.ConnectRecord;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
-import org.apache.kafka.connect.transforms.Transformation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,11 +46,11 @@ import io.debezium.util.Strings;
  * {@link #KEY_FIELD_REPLACEMENT} may be used to change it. For instance, in our above example, we might choose to
  * make the identifier `db_shard1` and `db_shard2` respectively.
  *
- * @param <R> the subtype of {@link ConnectRecord} on which this transformation will operate
+ * @param <R> the subtype of {@link ConnectRecordWrapper} on which this transformation will operate
  * @author David Leibovic
  * @author Mario Mueller
  */
-public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transformation<R> {
+public class ByLogicalTableRouter<R extends ConnectRecordWrapper<R>> implements TransformationWrapper<R> {
 
     private static final Field TOPIC_REGEX = Field.create("topic.regex")
             .withDisplayName("Topic regex")
@@ -119,10 +117,10 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
     private boolean keyEnforceUniqueness;
     private String keyFieldReplacement;
     private String keyFieldName;
-    private final Cache<Schema, Schema> keySchemaUpdateCache = new SynchronizedCache<>(new LRUCache<Schema, Schema>(16));
-    private final Cache<Schema, Schema> envelopeSchemaUpdateCache = new SynchronizedCache<>(new LRUCache<Schema, Schema>(16));
-    private final Cache<String, String> keyRegexReplaceCache = new SynchronizedCache<>(new LRUCache<String, String>(16));
-    private final Cache<String, String> topicRegexReplaceCache = new SynchronizedCache<>(new LRUCache<String, String>(16));
+    private final Cache<Schema, Schema> keySchemaUpdateCache = new SynchronizedCache<>(new LRUCache<>(16));
+    private final Cache<Schema, Schema> envelopeSchemaUpdateCache = new SynchronizedCache<>(new LRUCache<>(16));
+    private final Cache<String, String> keyRegexReplaceCache = new SynchronizedCache<>(new LRUCache<>(16));
+    private final Cache<String, String> topicRegexReplaceCache = new SynchronizedCache<>(new LRUCache<>(16));
     private SmtManager<R> smtManager;
 
     /**
@@ -184,7 +182,6 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
         smtManager = new SmtManager<>(config);
     }
 
-    @Override
     public R apply(R record) {
         final String oldTopic = record.topic();
         final String newTopic = determineNewTopic(oldTopic);

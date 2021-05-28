@@ -23,8 +23,10 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.connector.common.SourceRecordWrapper;
 import io.debezium.data.Envelope;
 import io.debezium.function.BlockingConsumer;
+import io.debezium.pipeline.txmetadata.SimpleSourceRecordWrapper;
 import io.debezium.relational.RelationalChangeRecordEmitter;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
@@ -65,7 +67,6 @@ public class RecordMakers {
      *                      restart from an offset with information with this prefix it will
      *                      create an offset from the prefixed information rather than restarting
      *                      from the base offset.
-     * @see MySqlConnectorTask#getRestartOffset(Map)
      */
     public RecordMakers(MySqlSchema schema, SourceInfo source, TopicSelector<TableId> topicSelector,
                         boolean emitTombstoneOnDelete, Map<String, ?> restartOffset) {
@@ -94,7 +95,7 @@ public class RecordMakers {
      * @param consumer the consumer for all produced records; may not be null
      * @return the table-specific record maker; may be null if the table is not included in the connector
      */
-    public RecordsForTable forTable(TableId tableId, BitSet includedColumns, BlockingConsumer<SourceRecord> consumer) {
+    public RecordsForTable forTable(TableId tableId, BitSet includedColumns, BlockingConsumer<SourceRecordWrapper> consumer) {
         Long tableNumber = tableNumbersByTableId.get(tableId);
         return tableNumber != null ? forTable(tableNumber, includedColumns, consumer) : null;
     }
@@ -123,7 +124,7 @@ public class RecordMakers {
      * @param consumer the consumer for all produced records; may not be null
      * @return the table-specific record maker; may be null if the table is not included in the connector
      */
-    public RecordsForTable forTable(long tableNumber, BitSet includedColumns, BlockingConsumer<SourceRecord> consumer) {
+    public RecordsForTable forTable(long tableNumber, BitSet includedColumns, BlockingConsumer<SourceRecordWrapper> consumer) {
         Converter converter = convertersByTableNumber.get(tableNumber);
         if (converter == null) {
             return null;
@@ -140,12 +141,12 @@ public class RecordMakers {
      * @param consumer the consumer for all produced records; may not be null
      * @return the number of records produced; will be 0 or more
      */
-    public int schemaChanges(String databaseName, Set<TableId> tables, String ddlStatements, BlockingConsumer<SourceRecord> consumer) {
+    public int schemaChanges(String databaseName, Set<TableId> tables, String ddlStatements, BlockingConsumer<SourceRecordWrapper> consumer) {
         String topicName = topicSelector.getPrimaryTopic();
         Integer partition = 0;
         Struct key = schemaChangeRecordKey(databaseName);
         Struct value = schemaChangeRecordValue(databaseName, tables, ddlStatements);
-        SourceRecord record = new SourceRecord(source.partition(), source.offset(),
+        SourceRecordWrapper record = new SimpleSourceRecordWrapper(source.partition(), source.offset(),
                 topicName, partition, schemaChangeKeySchema, key, schemaChangeValueSchema, value);
         try {
             consumer.accept(record);
@@ -223,7 +224,7 @@ public class RecordMakers {
 
             @Override
             public int read(SourceInfo source, Object[] row, int rowNumber, int numberOfRows, BitSet includedColumns, Instant ts,
-                            BlockingConsumer<SourceRecord> consumer)
+                            BlockingConsumer<SourceRecordWrapper> consumer)
                     throws InterruptedException {
                 Struct key = tableSchema.keyFromColumnData(row);
                 Struct value = tableSchema.valueFromColumnData(row);
@@ -233,7 +234,7 @@ public class RecordMakers {
                     Map<String, Object> offset = source.offsetForRow(rowNumber, numberOfRows);
                     source.tableEvent(id);
                     Struct origin = source.struct();
-                    SourceRecord record = new SourceRecord(partition, getSourceRecordOffset(offset), topicName, partitionNum,
+                    SourceRecordWrapper record = new SimpleSourceRecordWrapper(partition, getSourceRecordOffset(offset), topicName, partitionNum,
                             keySchema, key, envelope.schema(), envelope.read(value, origin, ts));
                     consumer.accept(record);
                     return 1;
@@ -243,7 +244,7 @@ public class RecordMakers {
 
             @Override
             public int insert(SourceInfo source, Object[] row, int rowNumber, int numberOfRows, BitSet includedColumns, Instant ts,
-                              BlockingConsumer<SourceRecord> consumer)
+                              BlockingConsumer<SourceRecordWrapper> consumer)
                     throws InterruptedException {
                 validateColumnCount(tableSchema, row);
                 Struct key = tableSchema.keyFromColumnData(row);
@@ -254,7 +255,7 @@ public class RecordMakers {
                     Map<String, Object> offset = source.offsetForRow(rowNumber, numberOfRows);
                     source.tableEvent(id);
                     Struct origin = source.struct();
-                    SourceRecord record = new SourceRecord(partition, getSourceRecordOffset(offset), topicName, partitionNum,
+                    SourceRecordWrapper record = new SimpleSourceRecordWrapper(partition, getSourceRecordOffset(offset), topicName, partitionNum,
                             keySchema, key, envelope.schema(), envelope.create(value, origin, ts));
                     consumer.accept(record);
                     return 1;
@@ -265,7 +266,7 @@ public class RecordMakers {
             @Override
             public int update(SourceInfo source, Object[] before, Object[] after, int rowNumber, int numberOfRows, BitSet includedColumns,
                               Instant ts,
-                              BlockingConsumer<SourceRecord> consumer)
+                              BlockingConsumer<SourceRecordWrapper> consumer)
                     throws InterruptedException {
                 int count = 0;
                 validateColumnCount(tableSchema, after);
@@ -287,14 +288,14 @@ public class RecordMakers {
                         ConnectHeaders headers = new ConnectHeaders();
                         headers.add(RelationalChangeRecordEmitter.PK_UPDATE_NEWKEY_FIELD, newkey, keySchema);
 
-                        SourceRecord record = new SourceRecord(partition, getSourceRecordOffset(offset), topicName, partitionNum,
+                        SourceRecordWrapper record = new SimpleSourceRecordWrapper(partition, getSourceRecordOffset(offset), topicName, partitionNum,
                                 keySchema, oldKey, envelope.schema(), envelope.delete(valueBefore, origin, ts), null, headers);
                         consumer.accept(record);
                         ++count;
 
                         if (emitTombstoneOnDelete) {
                             // Next send a tombstone event for the old key ...
-                            record = new SourceRecord(partition, getSourceRecordOffset(offset), topicName, partitionNum, keySchema, oldKey, null, null);
+                            record = new SimpleSourceRecordWrapper(partition, getSourceRecordOffset(offset), topicName, partitionNum, keySchema, oldKey, null, null);
                             consumer.accept(record);
                             ++count;
                         }
@@ -303,14 +304,14 @@ public class RecordMakers {
                         headers.add(RelationalChangeRecordEmitter.PK_UPDATE_OLDKEY_FIELD, oldKey, keySchema);
 
                         // And finally send the create event ...
-                        record = new SourceRecord(partition, getSourceRecordOffset(offset), topicName, partitionNum,
+                        record = new SimpleSourceRecordWrapper(partition, getSourceRecordOffset(offset), topicName, partitionNum,
                                 keySchema, newkey, envelope.schema(), envelope.create(valueAfter, origin, ts), null, headers);
                         consumer.accept(record);
                         ++count;
                     }
                     else {
                         // The key has not changed, so a simple update is fine ...
-                        SourceRecord record = new SourceRecord(partition, getSourceRecordOffset(offset), topicName, partitionNum,
+                        SourceRecordWrapper record = new SimpleSourceRecordWrapper(partition, getSourceRecordOffset(offset), topicName, partitionNum,
                                 keySchema, newkey, envelope.schema(), envelope.update(valueBefore, valueAfter, origin, ts));
                         consumer.accept(record);
                         ++count;
@@ -321,7 +322,7 @@ public class RecordMakers {
 
             @Override
             public int delete(SourceInfo source, Object[] row, int rowNumber, int numberOfRows, BitSet includedColumns, Instant ts,
-                              BlockingConsumer<SourceRecord> consumer)
+                              BlockingConsumer<SourceRecordWrapper> consumer)
                     throws InterruptedException {
                 int count = 0;
                 validateColumnCount(tableSchema, row);
@@ -334,14 +335,14 @@ public class RecordMakers {
                     source.tableEvent(id);
                     Struct origin = source.struct();
                     // Send a delete message ...
-                    SourceRecord record = new SourceRecord(partition, getSourceRecordOffset(offset), topicName, partitionNum,
+                    SourceRecordWrapper record = new SimpleSourceRecordWrapper(partition, getSourceRecordOffset(offset), topicName, partitionNum,
                             keySchema, key, envelope.schema(), envelope.delete(value, origin, ts));
                     consumer.accept(record);
                     ++count;
 
                     // And send a tombstone ...
                     if (emitTombstoneOnDelete) {
-                        record = new SourceRecord(partition, getSourceRecordOffset(offset), topicName, partitionNum,
+                        record = new SimpleSourceRecordWrapper(partition, getSourceRecordOffset(offset), topicName, partitionNum,
                                 keySchema, key, null, null);
                         consumer.accept(record);
                         ++count;
@@ -391,21 +392,21 @@ public class RecordMakers {
         return result;
     }
 
-    protected static interface Converter {
+    protected interface Converter {
         int read(SourceInfo source, Object[] row, int rowNumber, int numberOfRows, BitSet includedColumns, Instant ts,
-                 BlockingConsumer<SourceRecord> consumer)
+                 BlockingConsumer<SourceRecordWrapper> consumer)
                 throws InterruptedException;
 
         int insert(SourceInfo source, Object[] row, int rowNumber, int numberOfRows, BitSet includedColumns, Instant ts,
-                   BlockingConsumer<SourceRecord> consumer)
+                   BlockingConsumer<SourceRecordWrapper> consumer)
                 throws InterruptedException;
 
         int update(SourceInfo source, Object[] before, Object[] after, int rowNumber, int numberOfRows, BitSet includedColumns, Instant ts,
-                   BlockingConsumer<SourceRecord> consumer)
+                   BlockingConsumer<SourceRecordWrapper> consumer)
                 throws InterruptedException;
 
         int delete(SourceInfo source, Object[] row, int rowNumber, int numberOfRows, BitSet includedColumns, Instant ts,
-                   BlockingConsumer<SourceRecord> consumer)
+                   BlockingConsumer<SourceRecordWrapper> consumer)
                 throws InterruptedException;
 
     }
@@ -416,9 +417,9 @@ public class RecordMakers {
     public final class RecordsForTable {
         private final BitSet includedColumns;
         private final Converter converter;
-        private final BlockingConsumer<SourceRecord> consumer;
+        private final BlockingConsumer<SourceRecordWrapper> consumer;
 
-        protected RecordsForTable(Converter converter, BitSet includedColumns, BlockingConsumer<SourceRecord> consumer) {
+        protected RecordsForTable(Converter converter, BitSet includedColumns, BlockingConsumer<SourceRecordWrapper> consumer) {
             this.converter = converter;
             this.includedColumns = includedColumns;
             this.consumer = consumer;

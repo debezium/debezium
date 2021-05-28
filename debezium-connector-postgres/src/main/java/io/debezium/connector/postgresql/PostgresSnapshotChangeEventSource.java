@@ -17,6 +17,7 @@ import org.postgresql.util.PGmoney;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.connector.common.SourceRecordWrapper;
 import io.debezium.connector.postgresql.connection.Lsn;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.spi.SlotCreationResult;
@@ -34,7 +35,7 @@ import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.schema.SchemaChangeEvent.SchemaChangeEventType;
 import io.debezium.util.Clock;
 
-public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeEventSource {
+public class PostgresSnapshotChangeEventSource<SourceRecord extends SourceRecordWrapper> extends RelationalSnapshotChangeEventSource<SourceRecord> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PostgresSnapshotChangeEventSource.class);
 
@@ -47,7 +48,7 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
     private final PostgresOffsetContext previousOffset;
 
     public PostgresSnapshotChangeEventSource(PostgresConnectorConfig connectorConfig, Snapshotter snapshotter, PostgresOffsetContext previousOffset,
-                                             PostgresConnection jdbcConnection, PostgresSchema schema, EventDispatcher<TableId> dispatcher, Clock clock,
+                                             PostgresConnection jdbcConnection, PostgresSchema schema, EventDispatcher<TableId, SourceRecord> dispatcher, Clock clock,
                                              SnapshotProgressListener snapshotProgressListener, SlotCreationResult slotCreatedInfo, SlotState startingSlotInfo) {
         super(connectorConfig, previousOffset, jdbcConnection, dispatcher, clock, snapshotProgressListener);
         this.connectorConfig = connectorConfig;

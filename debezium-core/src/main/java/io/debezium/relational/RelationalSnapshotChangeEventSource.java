@@ -25,6 +25,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
+import io.debezium.connector.common.SourceRecordWrapper;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.EventDispatcher.SnapshotReceiver;
@@ -50,7 +51,7 @@ import io.debezium.util.Threads.Timer;
  *
  * @author Gunnar Morling
  */
-public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapshotChangeEventSource {
+public abstract class RelationalSnapshotChangeEventSource<SourceRecord extends SourceRecordWrapper> extends AbstractSnapshotChangeEventSource {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RelationalSnapshotChangeEventSource.class);
 
@@ -63,13 +64,13 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
     private final OffsetContext previousOffset;
     private final JdbcConnection jdbcConnection;
     private final HistorizedRelationalDatabaseSchema schema;
-    protected final EventDispatcher<TableId> dispatcher;
+    protected final EventDispatcher<TableId, SourceRecord> dispatcher;
     protected final Clock clock;
     private final SnapshotProgressListener snapshotProgressListener;
 
     public RelationalSnapshotChangeEventSource(RelationalDatabaseConnectorConfig connectorConfig,
                                                OffsetContext previousOffset, JdbcConnection jdbcConnection, HistorizedRelationalDatabaseSchema schema,
-                                               EventDispatcher<TableId> dispatcher, Clock clock, SnapshotProgressListener snapshotProgressListener) {
+                                               EventDispatcher<TableId, SourceRecord> dispatcher, Clock clock, SnapshotProgressListener snapshotProgressListener) {
         super(connectorConfig, previousOffset, snapshotProgressListener);
         this.connectorConfig = connectorConfig;
         this.previousOffset = previousOffset;
@@ -82,7 +83,7 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
 
     public RelationalSnapshotChangeEventSource(RelationalDatabaseConnectorConfig connectorConfig,
                                                OffsetContext previousOffset, JdbcConnection jdbcConnection,
-                                               EventDispatcher<TableId> dispatcher, Clock clock, SnapshotProgressListener snapshotProgressListener) {
+                                               EventDispatcher<TableId, SourceRecord> dispatcher, Clock clock, SnapshotProgressListener snapshotProgressListener) {
         this(connectorConfig, previousOffset, jdbcConnection, null, dispatcher, clock, snapshotProgressListener);
     }
 

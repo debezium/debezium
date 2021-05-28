@@ -12,11 +12,11 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
-import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.ThreadSafe;
+import io.debezium.connector.common.SourceRecordWrapper;
 
 /**
  * A {@link Reader} implementation that runs one or more other {@link Reader}s in a consistently, completely, and sequentially.
@@ -137,7 +137,7 @@ public final class ChainedReader implements Reader {
     }
 
     @Override
-    public List<SourceRecord> poll() throws InterruptedException {
+    public List<SourceRecordWrapper> poll() throws InterruptedException {
         // We return no records when no reader is running. The caller thus gets back control
         // but must be able to handle such situation
         if (running.get() || !completed.get()) {

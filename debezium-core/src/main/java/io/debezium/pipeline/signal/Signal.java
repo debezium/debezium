@@ -17,6 +17,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.config.CommonConnectorConfig;
+import io.debezium.connector.common.SourceRecordWrapper;
 import io.debezium.data.Envelope;
 import io.debezium.document.Document;
 import io.debezium.document.DocumentReader;
@@ -40,7 +41,7 @@ import io.debezium.schema.DataCollectionId;
  *
  */
 @NotThreadSafe
-public class Signal {
+public class Signal<SourceRecord extends SourceRecordWrapper> {
 
     @FunctionalInterface
     public static interface Action {
@@ -86,11 +87,11 @@ public class Signal {
 
     private final CommonConnectorConfig connectorConfig;
     private final String signalDataCollectionId;
-    private final EventDispatcher<? extends DataCollectionId> dispatcher;
+    private final EventDispatcher<? extends DataCollectionId, SourceRecord> dispatcher;
 
     private final Map<String, Action> signalActions = new HashMap<>();
 
-    public Signal(CommonConnectorConfig connectorConfig, EventDispatcher<? extends DataCollectionId> eventDispatcher) {
+    public Signal(CommonConnectorConfig connectorConfig, EventDispatcher<? extends DataCollectionId, SourceRecord> eventDispatcher) {
         this.connectorConfig = connectorConfig;
         this.signalDataCollectionId = connectorConfig.getSignalingDataCollectionId();
         this.dispatcher = eventDispatcher;

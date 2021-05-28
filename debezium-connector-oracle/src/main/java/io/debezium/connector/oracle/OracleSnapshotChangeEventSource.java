@@ -14,6 +14,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import io.debezium.connector.common.SourceRecordWrapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,7 +36,7 @@ import io.debezium.util.Clock;
  *
  * @author Gunnar Morling
  */
-public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEventSource {
+public class OracleSnapshotChangeEventSource<SourceRecord extends SourceRecordWrapper> extends RelationalSnapshotChangeEventSource<SourceRecord> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(OracleSnapshotChangeEventSource.class);
 
@@ -43,7 +44,7 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
     private final OracleConnection jdbcConnection;
 
     public OracleSnapshotChangeEventSource(OracleConnectorConfig connectorConfig, OracleOffsetContext previousOffset, OracleConnection jdbcConnection,
-                                           OracleDatabaseSchema schema, EventDispatcher<TableId> dispatcher, Clock clock,
+                                           OracleDatabaseSchema schema, EventDispatcher<TableId, SourceRecord> dispatcher, Clock clock,
                                            SnapshotProgressListener snapshotProgressListener) {
         super(connectorConfig, previousOffset, jdbcConnection, schema, dispatcher, clock, snapshotProgressListener);
 

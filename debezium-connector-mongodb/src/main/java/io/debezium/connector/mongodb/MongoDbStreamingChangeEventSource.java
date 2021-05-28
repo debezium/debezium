@@ -32,6 +32,7 @@ import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.model.Filters;
 
+import io.debezium.connector.common.SourceRecordWrapper;
 import io.debezium.connector.mongodb.ConnectionContext.MongoPrimary;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.pipeline.ErrorHandler;
@@ -46,7 +47,7 @@ import io.debezium.util.Threads;
  *
  * @author Chris Cranford
  */
-public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSource {
+public class MongoDbStreamingChangeEventSource<SourceRecord extends SourceRecordWrapper> implements StreamingChangeEventSource {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MongoDbStreamingChangeEventSource.class);
 
@@ -57,7 +58,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
     private static final String OPERATION_CONTROL = "c";
     private static final String TX_OPS = "applyOps";
 
-    private final EventDispatcher<CollectionId> dispatcher;
+    private final EventDispatcher<CollectionId, SourceRecord> dispatcher;
     private final ErrorHandler errorHandler;
     private final Clock clock;
     private final MongoDbOffsetContext offsetContext;
@@ -67,7 +68,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
 
     public MongoDbStreamingChangeEventSource(MongoDbConnectorConfig connectorConfig, MongoDbTaskContext taskContext,
                                              ReplicaSets replicaSets, MongoDbOffsetContext offsetContext,
-                                             EventDispatcher<CollectionId> dispatcher, ErrorHandler errorHandler, Clock clock) {
+                                             EventDispatcher<CollectionId, SourceRecord> dispatcher, ErrorHandler errorHandler, Clock clock) {
         this.connectionContext = taskContext.getConnectionContext();
         this.dispatcher = dispatcher;
         this.errorHandler = errorHandler;

@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import io.debezium.connector.common.SourceRecordWrapper;
 import org.apache.kafka.connect.errors.DataException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,7 +36,7 @@ import io.debezium.pipeline.source.spi.ChangeEventSource;
  * @author Andrey Pustovetov
  */
 @NotThreadSafe
-public final class TransactionalBuffer implements AutoCloseable {
+public final class TransactionalBuffer<SourceRecord extends SourceRecordWrapper> implements AutoCloseable {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(TransactionalBuffer.class);
 
@@ -144,7 +145,7 @@ public final class TransactionalBuffer implements AutoCloseable {
     }
 
     private void commit(ChangeEventSource.ChangeEventSourceContext context, OracleOffsetContext offsetContext, Instant start,
-                        List<CommitCallback> commitCallbacks, Timestamp timestamp, Scn smallestScn, Scn scn, EventDispatcher<?> dispatcher) {
+                        List<CommitCallback> commitCallbacks, Timestamp timestamp, Scn smallestScn, Scn scn, EventDispatcher<?, SourceRecord> dispatcher) {
         try {
             int counter = commitCallbacks.size();
             for (CommitCallback callback : commitCallbacks) {

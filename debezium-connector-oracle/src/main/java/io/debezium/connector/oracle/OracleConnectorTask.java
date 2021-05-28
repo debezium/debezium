@@ -9,7 +9,8 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import org.apache.kafka.connect.source.SourceRecord;
+import io.debezium.connector.common.SourceRecordWrapper;
+import io.debezium.connector.common.SourceTaskContextWrapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,7 +28,8 @@ import io.debezium.schema.TopicSelector;
 import io.debezium.util.Clock;
 import io.debezium.util.SchemaNameAdjuster;
 
-public class OracleConnectorTask extends BaseSourceTask {
+public class OracleConnectorTask<SourceTaskContext extends SourceTaskContextWrapper, SourceRecord extends SourceRecordWrapper, RecordMetadata>
+        extends BaseSourceTask<SourceTaskContext, SourceRecord, RecordMetadata>{
 
     private static final Logger LOGGER = LoggerFactory.getLogger(OracleConnectorTask.class);
     private static final String CONTEXT_NAME = "oracle-connector-task";
@@ -78,7 +80,7 @@ public class OracleConnectorTask extends BaseSourceTask {
 
         final OracleEventMetadataProvider metadataProvider = new OracleEventMetadataProvider();
 
-        EventDispatcher<TableId> dispatcher = new EventDispatcher<>(
+        EventDispatcher<TableId, SourceRecord> dispatcher = new EventDispatcher<>(
                 connectorConfig,
                 topicSelector,
                 schema,
@@ -110,11 +112,11 @@ public class OracleConnectorTask extends BaseSourceTask {
     public List<SourceRecord> doPoll() throws InterruptedException {
         List<DataChangeEvent> records = queue.poll();
 
-        List<SourceRecord> sourceRecords = records.stream()
+        List<SourceRecordWrapper> list = records.stream()
                 .map(DataChangeEvent::getRecord)
                 .collect(Collectors.toList());
 
-        return sourceRecords;
+        return (List<SourceRecord>) list;
     }
 
     @Override

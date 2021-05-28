@@ -10,13 +10,14 @@ import java.util.Map;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.connector.ConnectRecord;
 import org.apache.kafka.connect.data.Struct;
-import org.apache.kafka.connect.transforms.Transformation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
 import io.debezium.data.Envelope;
+import io.debezium.transforms.ConnectRecordWrapper;
 import io.debezium.transforms.SmtManager;
+import io.debezium.transforms.TransformationWrapper;
 
 /**
  * This SMT allows the MySql connector to emit snapshot events as "c" operation type (CREATE) by changing the 'op' field of the records
@@ -25,7 +26,7 @@ import io.debezium.transforms.SmtManager;
  * @param <R> the subtype of {@link ConnectRecord} on which this transformation will operate
  * @author Anisha Mohanty
  */
-public class ReadToInsertEvent<R extends ConnectRecord<R>> implements Transformation<R> {
+public class ReadToInsertEvent<R extends ConnectRecordWrapper<R>> implements TransformationWrapper<R> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ReadToInsertEvent.class);
 

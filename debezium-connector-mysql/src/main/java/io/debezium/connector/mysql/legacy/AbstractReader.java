@@ -15,7 +15,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.connect.errors.ConnectException;
-import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,6 +22,7 @@ import com.github.shyiko.mysql.binlog.network.ServerException;
 
 import io.debezium.config.ConfigurationDefaults;
 import io.debezium.connector.base.ChangeEventQueueMetrics;
+import io.debezium.connector.common.SourceRecordWrapper;
 import io.debezium.connector.mysql.HaltingPredicate;
 import io.debezium.time.Temporals;
 import io.debezium.util.Clock;
@@ -42,7 +42,7 @@ public abstract class AbstractReader implements Reader {
     private final String name;
     protected final MySqlTaskContext context;
     protected final MySqlJdbcContext connectionContext;
-    private final BlockingQueue<SourceRecord> records;
+    private final BlockingQueue<SourceRecordWrapper> records;
     private final AtomicBoolean running = new AtomicBoolean(false);
     private final AtomicBoolean success = new AtomicBoolean(false);
     private final AtomicReference<ConnectException> failure = new AtomicReference<>();
@@ -55,16 +55,6 @@ public abstract class AbstractReader implements Reader {
 
     private final HaltingPredicate acceptAndContinue;
 
-    /**
-     * Create a snapshot reader.
-     *
-     * @param name the name of the reader
-     * @param context the task context in which this reader is running; may not be null
-     * @param acceptAndContinue a predicate that returns true if the tested {@link SourceRecord} should be accepted and
-     *                          false if the record and all subsequent records should be ignored. The reader will stop
-     *                          accepting records once {@link #enqueueRecord(SourceRecord)} is called with a record
-     *                          that tests as false. Can be null. If null, all records will be accepted.
-     */
     public AbstractReader(String name, MySqlTaskContext context, HaltingPredicate acceptAndContinue) {
         this.name = name;
         this.context = context;
@@ -136,7 +126,7 @@ public abstract class AbstractReader implements Reader {
             // poll() isn't called anymore but before the binlog reader is stopped; note there's still a tiny chance for
             // this to happen if enough records are added again between here and the call to disconnect(); protecting
             // against it seems not worth though it as shouldn't happen for any practical queue size
-            List<SourceRecord> unsent = new ArrayList<>();
+            List<SourceRecordWrapper> unsent = new ArrayList<>();
             records.drainTo(unsent);
             logger.info("Discarding {} unsent record(s) due to the connector shutting down", unsent.size());
             doStop();
@@ -183,10 +173,6 @@ public abstract class AbstractReader implements Reader {
      */
     protected abstract void doStop();
 
-    /**
-     * The reader has completed all processing and all {@link #enqueueRecord(SourceRecord) enqueued records} have been
-     * {@link #poll() consumed}, so this reader should clean up any resources that might remain.
-     */
     protected abstract void doCleanup();
 
     /**
@@ -260,7 +246,7 @@ public abstract class AbstractReader implements Reader {
     }
 
     @Override
-    public List<SourceRecord> poll() throws InterruptedException {
+    public List<SourceRecordWrapper> poll() throws InterruptedException {
         // Before we do anything else, determine if there was a failure and throw that exception ...
         failureException = this.failure.get();
         if (failureException != null) {
@@ -278,7 +264,7 @@ public abstract class AbstractReader implements Reader {
         }
 
         logger.trace("Polling for next batch of records");
-        List<SourceRecord> batch = new ArrayList<>(maxBatchSize);
+        List<SourceRecordWrapper> batch = new ArrayList<>(maxBatchSize);
         final Timer timeout = Threads.timer(Clock.SYSTEM, Temporals.min(pollInterval, ConfigurationDefaults.RETURN_CONTROL_INTERVAL));
         while (running.get() && (records.drainTo(batch, maxBatchSize) == 0) && !success.get()) {
             // No records are available even though the snapshot has not yet completed, so sleep for a bit ...
@@ -328,7 +314,7 @@ public abstract class AbstractReader implements Reader {
      *
      * @param batch the batch of records being recorded
      */
-    protected void pollComplete(List<SourceRecord> batch) {
+    protected void pollComplete(List<SourceRecordWrapper> batch) {
         // do nothing
     }
 
@@ -339,7 +325,7 @@ public abstract class AbstractReader implements Reader {
      * @param record the record to be enqueued
      * @throws InterruptedException if interrupted while waiting for the queue to have room for this record
      */
-    protected void enqueueRecord(SourceRecord record) throws InterruptedException {
+    protected void enqueueRecord(SourceRecordWrapper record) throws InterruptedException {
         if (record != null && running.get()) {
             if (acceptAndContinue.accepts(record)) {
                 if (logger.isTraceEnabled()) {
@@ -366,8 +352,8 @@ public abstract class AbstractReader implements Reader {
     public static class AcceptAllPredicate implements HaltingPredicate {
 
         @Override
-        public boolean accepts(SourceRecord sourceRecord) {
-            return true;
+        public boolean accepts(SourceRecordWrapper record) {
+            return false;
         }
     }
 }

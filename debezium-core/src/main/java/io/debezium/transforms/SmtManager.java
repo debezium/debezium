@@ -5,7 +5,7 @@
  */
 package io.debezium.transforms;
 
-import org.apache.kafka.connect.connector.ConnectRecord;
+import org.apache.kafka.connect.data.Schema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -15,10 +15,10 @@ import io.debezium.data.Envelope;
 /**
  * A class used by all Debezium supplied SMTs to centralize common logic.
  *
- * @param <R> the subtype of {@link ConnectRecord} on which the transformation will operate
+ * @param <R> the subtype of {@link ConnectRecordWrapper} on which the transformation will operate
  * @author Jiri Pechanec
  */
-public class SmtManager<R extends ConnectRecord<R>> {
+public class SmtManager<R extends ConnectRecordWrapper<R>> {
 
     private static final String RECORD_ENVELOPE_KEY_SCHEMA_NAME_SUFFIX = ".Key";
 
@@ -30,7 +30,7 @@ public class SmtManager<R extends ConnectRecord<R>> {
     public boolean isValidEnvelope(final R record) {
         if (record.valueSchema() == null ||
                 record.valueSchema().name() == null ||
-                !Envelope.isEnvelopeSchema(record.valueSchema())) {
+                !Envelope.isEnvelopeSchema((Schema) record.valueSchema())) {
             LOGGER.debug("Expected Envelope for transformation, passing it unchanged");
             return false;
         }

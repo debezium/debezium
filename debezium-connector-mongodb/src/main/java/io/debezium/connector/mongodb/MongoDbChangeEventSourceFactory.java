@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mongodb;
 
+import io.debezium.connector.common.SourceRecordWrapper;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.ChangeEventSource;
@@ -20,16 +21,16 @@ import io.debezium.util.Clock;
  *
  * @author Chris Cranford
  */
-public class MongoDbChangeEventSourceFactory implements ChangeEventSourceFactory {
+public class MongoDbChangeEventSourceFactory<SourceRecord extends SourceRecordWrapper> implements ChangeEventSourceFactory {
 
     private final MongoDbConnectorConfig configuration;
     private final ErrorHandler errorHandler;
-    private final EventDispatcher<CollectionId> dispatcher;
+    private final EventDispatcher<CollectionId, SourceRecord> dispatcher;
     private final Clock clock;
     private final ReplicaSets replicaSets;
     private final MongoDbTaskContext taskContext;
 
-    public MongoDbChangeEventSourceFactory(MongoDbConnectorConfig configuration, ErrorHandler errorHandler, EventDispatcher<CollectionId> dispatcher,
+    public MongoDbChangeEventSourceFactory(MongoDbConnectorConfig configuration, ErrorHandler errorHandler, EventDispatcher<CollectionId, SourceRecord> dispatcher,
                                            Clock clock, ReplicaSets replicaSets, MongoDbTaskContext taskContext) {
         this.configuration = configuration;
         this.errorHandler = errorHandler;

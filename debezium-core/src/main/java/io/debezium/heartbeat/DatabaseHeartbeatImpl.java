@@ -10,18 +10,18 @@ import java.time.Duration;
 import java.util.Map;
 
 import org.apache.kafka.common.config.ConfigDef;
-import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Field;
+import io.debezium.connector.common.SourceRecordWrapper;
 import io.debezium.function.BlockingConsumer;
 import io.debezium.jdbc.JdbcConnection;
 
 /**
  *  Implementation of the heartbeat feature that allows for a DB query to be executed with every heartbeat.
  */
-public class DatabaseHeartbeatImpl extends HeartbeatImpl {
+public class DatabaseHeartbeatImpl<SourceRecord extends SourceRecordWrapper> extends HeartbeatImpl<SourceRecord> {
     private static final Logger LOGGER = LoggerFactory.getLogger(DatabaseHeartbeatImpl.class);
 
     public static final String HEARTBEAT_ACTION_QUERY_PROPERTY_NAME = "heartbeat.action.query";
@@ -47,7 +47,7 @@ public class DatabaseHeartbeatImpl extends HeartbeatImpl {
     }
 
     @Override
-    public void forcedBeat(Map<String, ?> partition, Map<String, ?> offset, BlockingConsumer<SourceRecord> consumer) throws InterruptedException {
+    public void forcedBeat(Map<String, ?> partition, Map<String, ?> offset, BlockingConsumer<SourceRecordWrapper> consumer) throws InterruptedException {
         try {
             jdbcConnection.execute(heartBeatActionQuery);
         }

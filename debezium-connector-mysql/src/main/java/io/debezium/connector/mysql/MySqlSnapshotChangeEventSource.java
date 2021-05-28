@@ -28,12 +28,12 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Struct;
-import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
 import io.debezium.connector.SnapshotRecord;
+import io.debezium.connector.common.SourceRecordWrapper;
 import io.debezium.connector.mysql.legacy.MySqlJdbcContext.DatabaseLocales;
 import io.debezium.data.Envelope;
 import io.debezium.function.BlockingConsumer;
@@ -50,7 +50,7 @@ import io.debezium.util.Clock;
 import io.debezium.util.Collect;
 import io.debezium.util.Strings;
 
-public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEventSource {
+public class MySqlSnapshotChangeEventSource<SourceRecord extends SourceRecordWrapper> extends RelationalSnapshotChangeEventSource<SourceRecord> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MySqlSnapshotChangeEventSource.class);
 
@@ -67,7 +67,7 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
     private final BlockingConsumer<Function<SourceRecord, SourceRecord>> lastEventProcessor;
 
     public MySqlSnapshotChangeEventSource(MySqlConnectorConfig connectorConfig, MySqlOffsetContext previousOffset, MySqlConnection connection,
-                                          MySqlDatabaseSchema schema, EventDispatcher<TableId> dispatcher, Clock clock,
+                                          MySqlDatabaseSchema schema, EventDispatcher<TableId, SourceRecord> dispatcher, Clock clock,
                                           MySqlSnapshotChangeEventSourceMetrics metrics,
                                           BlockingConsumer<Function<SourceRecord, SourceRecord>> lastEventProcessor) {
         super(connectorConfig, previousOffset, connection, schema, dispatcher, clock, metrics);
@@ -440,7 +440,6 @@ public class MySqlSnapshotChangeEventSource extends RelationalSnapshotChangeEven
     /**
      * As MySQL connector/J implementation is broken for MySQL type "TIME" we have to use a binary-ish workaround
      *
-     * @see https://issues.jboss.org/browse/DBZ-342
      */
     private Object readTimeField(ResultSet rs, int fieldNo) throws SQLException {
         Blob b = rs.getBlob(fieldNo);

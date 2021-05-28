@@ -8,11 +8,11 @@ package io.debezium.connector.mysql.legacy;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
-import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.config.ConfigurationDefaults;
+import io.debezium.connector.common.SourceRecordWrapper;
 import io.debezium.util.Clock;
 import io.debezium.util.Metronome;
 
@@ -42,7 +42,7 @@ public class BlockingReader implements Reader {
      * Does nothing until the connector task is shut down, but regularly returns control back to Connect in order for being paused if requested.
      */
     @Override
-    public List<SourceRecord> poll() throws InterruptedException {
+    public List<SourceRecordWrapper> poll() throws InterruptedException {
         if (state.get() == State.STOPPED) {
             return null;
         }

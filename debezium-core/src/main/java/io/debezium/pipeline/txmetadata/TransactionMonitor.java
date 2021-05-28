@@ -15,12 +15,12 @@ import java.util.Set;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
-import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.config.CommonConnectorConfig;
+import io.debezium.connector.common.SourceRecordWrapper;
 import io.debezium.data.Envelope;
 import io.debezium.function.BlockingConsumer;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
@@ -45,7 +45,7 @@ import io.debezium.util.SchemaNameAdjuster;
  * @author Jiri Pechanec
  */
 @NotThreadSafe
-public class TransactionMonitor {
+public class TransactionMonitor<SourceRecord extends SourceRecordWrapper> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(TransactionMonitor.class);
     private static final SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create();
@@ -161,7 +161,7 @@ public class TransactionMonitor {
         value.put(DEBEZIUM_TRANSACTION_STATUS_KEY, TransactionStatus.BEGIN.name());
         value.put(DEBEZIUM_TRANSACTION_ID_KEY, offsetContext.getTransactionContext().getTransactionId());
 
-        sender.accept(new SourceRecord(offsetContext.getPartition(), offsetContext.getOffset(),
+        sender.accept((SourceRecord) new SimpleSourceRecordWrapper(offsetContext.getPartition(), offsetContext.getOffset(),
                 topicName, null, key.schema(), key, value.schema(), value));
     }
 
@@ -183,7 +183,7 @@ public class TransactionMonitor {
         }
         value.put(DEBEZIUM_TRANSACTION_DATA_COLLECTIONS_KEY, valuePerTableCount);
 
-        sender.accept(new SourceRecord(offsetContext.getPartition(), offsetContext.getOffset(),
+        sender.accept((SourceRecord) new SimpleSourceRecordWrapper(offsetContext.getPartition(), offsetContext.getOffset(),
                 topicName, null, key.schema(), key, value.schema(), value));
     }
 }

@@ -13,13 +13,14 @@ import java.util.Map;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigValue;
-import org.apache.kafka.connect.connector.Task;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.Immutable;
 import io.debezium.config.Configuration;
+import io.debezium.connector.common.ConfigWrapper;
 import io.debezium.connector.common.RelationalBaseSourceConnector;
+import io.debezium.connector.common.TaskWrapper;
 import io.debezium.connector.mysql.MySqlConnection.MySqlConnectionConfiguration;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 
@@ -33,7 +34,7 @@ import io.debezium.relational.RelationalDatabaseConnectorConfig;
  *
  * @author Randall Hauch
  */
-public class MySqlConnector extends RelationalBaseSourceConnector {
+public class MySqlConnector<Config extends ConfigWrapper<ConfigValue>> extends RelationalBaseSourceConnector<Config> {
 
     public static final String IMPLEMENTATION_PROP = "internal.implementation";
     public static final String LEGACY_IMPLEMENTATION = "legacy";
@@ -57,7 +58,7 @@ public class MySqlConnector extends RelationalBaseSourceConnector {
     }
 
     @Override
-    public Class<? extends Task> taskClass() {
+    public Class<? extends TaskWrapper> taskClass() {
         final String implementation = properties.get(IMPLEMENTATION_PROP);
         if (isLegacy(implementation)) {
             LOGGER.warn("Legacy MySQL connector implementation is enabled");

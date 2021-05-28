@@ -15,7 +15,6 @@ import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.errors.RetriableException;
-import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,6 +23,8 @@ import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.common.BaseSourceTask;
+import io.debezium.connector.common.SourceRecordWrapper;
+import io.debezium.connector.common.SourceTaskContextWrapper;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.connector.postgresql.spi.SlotCreationResult;
@@ -48,7 +49,8 @@ import io.debezium.util.SchemaNameAdjuster;
  *
  * @author Horia Chiorean (hchiorea@redhat.com)
  */
-public class PostgresConnectorTask extends BaseSourceTask {
+public class PostgresConnectorTask<SourceTaskContext extends SourceTaskContextWrapper, SourceRecord extends SourceRecordWrapper, RecordMetadata>
+        extends BaseSourceTask<SourceTaskContext, SourceRecord, RecordMetadata> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PostgresConnectorTask.class);
     private static final String CONTEXT_NAME = "postgres-connector-task";
@@ -177,7 +179,7 @@ public class PostgresConnectorTask extends BaseSourceTask {
                         }
                     });
 
-            final EventDispatcher<TableId> dispatcher = new EventDispatcher<>(
+            final EventDispatcher<TableId, SourceRecord> dispatcher = new EventDispatcher<>(
                     connectorConfig,
                     topicSelector,
                     schema,
@@ -256,11 +258,11 @@ public class PostgresConnectorTask extends BaseSourceTask {
     public List<SourceRecord> doPoll() throws InterruptedException {
         final List<DataChangeEvent> records = queue.poll();
 
-        final List<SourceRecord> sourceRecords = records.stream()
+        final List<SourceRecordWrapper> sourceRecords = records.stream()
                 .map(DataChangeEvent::getRecord)
                 .collect(Collectors.toList());
 
-        return sourceRecords;
+        return (List<SourceRecord>) sourceRecords;
     }
 
     @Override

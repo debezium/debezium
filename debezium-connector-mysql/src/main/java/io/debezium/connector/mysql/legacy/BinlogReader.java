@@ -40,7 +40,6 @@ import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 
 import org.apache.kafka.connect.errors.ConnectException;
-import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.event.Level;
 
 import com.github.shyiko.mysql.binlog.BinaryLogClient;
@@ -69,6 +68,7 @@ import com.github.shyiko.mysql.binlog.network.SSLSocketFactory;
 
 import io.debezium.config.CommonConnectorConfig.EventProcessingFailureHandlingMode;
 import io.debezium.config.Configuration;
+import io.debezium.connector.common.SourceRecordWrapper;
 import io.debezium.connector.mysql.EventDataDeserializationExceptionData;
 import io.debezium.connector.mysql.GtidSet;
 import io.debezium.connector.mysql.HaltingPredicate;
@@ -181,25 +181,10 @@ public class BinlogReader extends AbstractReader {
         }
     }
 
-    /**
-     * Create a binlog reader.
-     *
-     * @param name the name of this reader; may not be null
-     * @param context the task context in which this reader is running; may not be null
-     * @param acceptAndContinue see {@link AbstractReader#AbstractReader(String, MySqlTaskContext, Predicate)}
-     */
     public BinlogReader(String name, MySqlTaskContext context, HaltingPredicate acceptAndContinue) {
         this(name, context, acceptAndContinue, context.serverId());
     }
 
-    /**
-     * Create a binlog reader.
-     *
-     * @param name the name of this reader; may not be null
-     * @param context the task context in which this reader is running; may not be null
-     * @param acceptAndContinue see {@link AbstractReader#AbstractReader(String, MySqlTaskContext, Predicate)}
-     * @param serverId the server id to use for the {@link BinaryLogClient}
-     */
     public BinlogReader(String name, MySqlTaskContext context, HaltingPredicate acceptAndContinue, long serverId) {
         super(name, context, acceptAndContinue);
 
@@ -499,13 +484,13 @@ public class BinlogReader extends AbstractReader {
     }
 
     @Override
-    protected void pollComplete(List<SourceRecord> batch) {
+    protected void pollComplete(List<SourceRecordWrapper> batch) {
         // Record a bit about this batch ...
         int batchSize = batch.size();
         recordCounter += batchSize;
         totalRecordCounter.addAndGet(batchSize);
         if (batchSize > 0) {
-            SourceRecord lastRecord = batch.get(batchSize - 1);
+            SourceRecordWrapper lastRecord = batch.get(batchSize - 1);
             lastOffset = lastRecord.sourceOffset();
             if (pollOutputDelay.hasElapsed()) {
                 // We want to record the status ...
@@ -597,7 +582,7 @@ public class BinlogReader extends AbstractReader {
             eventHandlers.getOrDefault(eventType, this::ignoreEvent).accept(event);
 
             // Generate heartbeat message if the time is right
-            heartbeat.heartbeat(source.partition(), source.offset(), (BlockingConsumer<SourceRecord>) this::enqueueRecord);
+            heartbeat.heartbeat(source.partition(), source.offset(), (BlockingConsumer<SourceRecordWrapper>) this::enqueueRecord);
 
             // Capture that we've completed another event ...
             source.completeEvent();

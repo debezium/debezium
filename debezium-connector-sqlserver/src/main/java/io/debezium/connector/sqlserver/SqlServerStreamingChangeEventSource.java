@@ -24,6 +24,7 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.connector.common.SourceRecordWrapper;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
@@ -55,7 +56,7 @@ import io.debezium.util.Metronome;
  *
  * @author Jiri Pechanec
  */
-public class SqlServerStreamingChangeEventSource implements StreamingChangeEventSource {
+public class SqlServerStreamingChangeEventSource<SourceRecord extends SourceRecordWrapper> implements StreamingChangeEventSource {
 
     private static final Pattern MISSING_CDC_FUNCTION_CHANGES_ERROR = Pattern.compile("Invalid object name 'cdc.fn_cdc_get_all_changes_(.*)'\\.");
 
@@ -70,11 +71,10 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
      * A separate connection for retrieving timestamps; without it, adaptive
      * buffering will not work.
      *
-     * @see https://docs.microsoft.com/en-us/sql/connect/jdbc/using-adaptive-buffering?view=sql-server-2017#guidelines-for-using-adaptive-buffering
      */
     private final SqlServerConnection metadataConnection;
 
-    private final EventDispatcher<TableId> dispatcher;
+    private final EventDispatcher<TableId, SourceRecord> dispatcher;
     private final ErrorHandler errorHandler;
     private final Clock clock;
     private final SqlServerDatabaseSchema schema;
@@ -83,7 +83,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
     private final SqlServerConnectorConfig connectorConfig;
 
     public SqlServerStreamingChangeEventSource(SqlServerConnectorConfig connectorConfig, SqlServerOffsetContext offsetContext, SqlServerConnection dataConnection,
-                                               SqlServerConnection metadataConnection, EventDispatcher<TableId> dispatcher, ErrorHandler errorHandler, Clock clock,
+                                               SqlServerConnection metadataConnection, EventDispatcher<TableId, SourceRecord> dispatcher, ErrorHandler errorHandler, Clock clock,
                                                SqlServerDatabaseSchema schema) {
         this.connectorConfig = connectorConfig;
         this.dataConnection = dataConnection;

@@ -69,6 +69,7 @@ import io.debezium.DebeziumException;
 import io.debezium.annotation.SingleThreadAccess;
 import io.debezium.config.CommonConnectorConfig.EventProcessingFailureHandlingMode;
 import io.debezium.config.Configuration;
+import io.debezium.connector.common.SourceRecordWrapper;
 import io.debezium.connector.mysql.MySqlConnectorConfig.GtidNewChannelPosition;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
 import io.debezium.data.Envelope.Operation;
@@ -87,7 +88,7 @@ import io.debezium.util.Threads;
  *
  * @author Jiri Pechanec
  */
-public class MySqlStreamingChangeEventSource implements StreamingChangeEventSource {
+public class MySqlStreamingChangeEventSource<R extends SourceRecordWrapper> implements StreamingChangeEventSource {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MySqlStreamingChangeEventSource.class);
 
@@ -113,7 +114,7 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
     private final MySqlTaskContext taskContext;
     private final MySqlConnectorConfig connectorConfig;
     private final MySqlConnection connection;
-    private final EventDispatcher<TableId> eventDispatcher;
+    private final EventDispatcher<TableId, R> eventDispatcher;
     private final MySqlOffsetContext offsetContext;
     private final ErrorHandler errorHandler;
 
@@ -181,7 +182,7 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
     }
 
     public MySqlStreamingChangeEventSource(MySqlConnectorConfig connectorConfig, MySqlOffsetContext offsetContext, MySqlConnection connection,
-                                           EventDispatcher<TableId> dispatcher, ErrorHandler errorHandler, Clock clock,
+                                           EventDispatcher<TableId, R> dispatcher, ErrorHandler errorHandler, Clock clock,
                                            MySqlTaskContext taskContext, MySqlStreamingChangeEventSourceMetrics metrics) {
 
         this.taskContext = taskContext;

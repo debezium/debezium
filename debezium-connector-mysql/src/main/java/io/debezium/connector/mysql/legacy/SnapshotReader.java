@@ -34,10 +34,10 @@ import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
-import org.apache.kafka.connect.source.SourceRecord;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.SnapshotRecord;
+import io.debezium.connector.common.SourceRecordWrapper;
 import io.debezium.connector.mysql.MySqlConnector;
 import io.debezium.connector.mysql.MySqlConnectorConfig;
 import io.debezium.connector.mysql.MySqlValueConverters;
@@ -49,6 +49,7 @@ import io.debezium.function.Predicates;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.jdbc.JdbcConnection.StatementFactory;
+import io.debezium.pipeline.txmetadata.SimpleSourceRecordWrapper;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
@@ -180,7 +181,6 @@ public class SnapshotReader extends AbstractReader {
     /**
      * As MySQL connector/J implementation is broken for MySQL type "TIME" we have to use a binary-ish workaround
      *
-     * @see https://issues.jboss.org/browse/DBZ-342
      */
     private Object readTimeField(ResultSet rs, int fieldNo) throws SQLException {
         Blob b = rs.getBlob(fieldNo);
@@ -592,7 +592,7 @@ public class SnapshotReader extends AbstractReader {
                     return;
                 }
                 if (includeData) {
-                    BufferedBlockingConsumer<SourceRecord> bufferedRecordQueue = BufferedBlockingConsumer.bufferLast(super::enqueueRecord);
+                    BufferedBlockingConsumer<SourceRecordWrapper> bufferedRecordQueue = BufferedBlockingConsumer.bufferLast(super::enqueueRecord);
 
                     // Dump all of the tables and generate source records ...
                     logger.info("Step {}: scanning contents of {} tables while still in transaction", step, capturedTableIds.size());
@@ -1037,7 +1037,7 @@ public class SnapshotReader extends AbstractReader {
      * @param record the record
      * @return the updated record
      */
-    protected SourceRecord replaceOffsetAndSource(SourceRecord record) {
+    protected SourceRecordWrapper replaceOffsetAndSource(SourceRecordWrapper record) {
         if (record == null) {
             return null;
         }
@@ -1047,7 +1047,7 @@ public class SnapshotReader extends AbstractReader {
         if (SnapshotRecord.fromSource(source) == SnapshotRecord.TRUE) {
             SnapshotRecord.LAST.toSource(source);
         }
-        return new SourceRecord(record.sourcePartition(),
+        return new SimpleSourceRecordWrapper(record.sourcePartition(),
                 newOffset,
                 record.topic(),
                 record.kafkaPartition(),

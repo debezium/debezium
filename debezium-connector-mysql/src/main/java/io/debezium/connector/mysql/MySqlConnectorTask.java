@@ -9,7 +9,6 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,6 +17,8 @@ import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.common.BaseSourceTask;
+import io.debezium.connector.common.SourceRecordWrapper;
+import io.debezium.connector.common.SourceTaskContextWrapper;
 import io.debezium.connector.mysql.MySqlConnection.MySqlConnectionConfiguration;
 import io.debezium.connector.mysql.MySqlConnectorConfig.BigIntUnsignedHandlingMode;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
@@ -41,7 +42,8 @@ import io.debezium.util.SchemaNameAdjuster;
  * @author Jiri Pechanec
  *
  */
-public class MySqlConnectorTask extends BaseSourceTask {
+public class MySqlConnectorTask<SourceTaskContext extends SourceTaskContextWrapper, SourceRecord extends SourceRecordWrapper, RecordMetadata>
+        extends BaseSourceTask<SourceTaskContext, SourceRecord, RecordMetadata> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MySqlConnectorTask.class);
     private static final String CONTEXT_NAME = "mysql-connector-task";
@@ -115,7 +117,7 @@ public class MySqlConnectorTask extends BaseSourceTask {
 
         final MySqlEventMetadataProvider metadataProvider = new MySqlEventMetadataProvider();
 
-        final EventDispatcher<TableId> dispatcher = new EventDispatcher<>(
+        final EventDispatcher<TableId, SourceRecord> dispatcher = new EventDispatcher<>(
                 connectorConfig,
                 topicSelector,
                 schema,
@@ -162,12 +164,9 @@ public class MySqlConnectorTask extends BaseSourceTask {
     @Override
     public List<SourceRecord> doPoll() throws InterruptedException {
         final List<DataChangeEvent> records = queue.poll();
-
-        final List<SourceRecord> sourceRecords = records.stream()
+        return (List<SourceRecord>) records.stream()
                 .map(DataChangeEvent::getRecord)
                 .collect(Collectors.toList());
-
-        return sourceRecords;
     }
 
     @Override
@@ -214,7 +213,7 @@ public class MySqlConnectorTask extends BaseSourceTask {
     }
 
     /**
-     * Determine whether the binlog position as set on the {@link MySqlTaskContext#source() SourceInfo} is available in the
+     * Determine whether the binlog position as set is available in the
      * server.
      *
      * @return {@code true} if the server has the binlog coordinates, or {@code false} otherwise

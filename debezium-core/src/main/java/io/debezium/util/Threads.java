@@ -15,9 +15,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.LongSupplier;
 
-import org.apache.kafka.connect.source.SourceConnector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import io.debezium.connector.common.SourceConnectorWrapper;
 
 /**
  * Utilities related to threads and threading.
@@ -248,7 +249,7 @@ public class Threads {
      * @param daemon - true if the thread should be a daemon thread
      * @return the thread factory setting the correct name
      */
-    public static ThreadFactory threadFactory(Class<? extends SourceConnector> connector, String connectorId, String name, boolean indexed, boolean daemon) {
+    public static ThreadFactory threadFactory(Class<? extends SourceConnectorWrapper> connector, String connectorId, String name, boolean indexed, boolean daemon) {
         return threadFactory(connector, connectorId, name, indexed, daemon, null);
     }
 
@@ -264,7 +265,7 @@ public class Threads {
      * @param callback - a callback called on every thread created
      * @return the thread factory setting the correct name
      */
-    public static ThreadFactory threadFactory(Class<? extends SourceConnector> connector, String connectorId, String name, boolean indexed, boolean daemon,
+    public static ThreadFactory threadFactory(Class<? extends SourceConnectorWrapper> connector, String connectorId, String name, boolean indexed, boolean daemon,
                                               Consumer<Thread> callback) {
         if (LOGGER.isInfoEnabled()) {
             LOGGER.info("Requested thread factory for connector {}, id = {} named = {}", connector.getSimpleName(), connectorId, name);
@@ -295,15 +296,15 @@ public class Threads {
         };
     }
 
-    public static ExecutorService newSingleThreadExecutor(Class<? extends SourceConnector> connector, String connectorId, String name, boolean daemon) {
+    public static ExecutorService newSingleThreadExecutor(Class<? extends SourceConnectorWrapper> connector, String connectorId, String name, boolean daemon) {
         return Executors.newSingleThreadExecutor(threadFactory(connector, connectorId, name, false, daemon));
     }
 
-    public static ExecutorService newFixedThreadPool(Class<? extends SourceConnector> connector, String connectorId, String name, int threadCount) {
+    public static ExecutorService newFixedThreadPool(Class<? extends SourceConnectorWrapper> connector, String connectorId, String name, int threadCount) {
         return Executors.newFixedThreadPool(threadCount, threadFactory(connector, connectorId, name, true, false));
     }
 
-    public static ExecutorService newSingleThreadExecutor(Class<? extends SourceConnector> connector, String connectorId, String name) {
+    public static ExecutorService newSingleThreadExecutor(Class<? extends SourceConnectorWrapper> connector, String connectorId, String name) {
         return newSingleThreadExecutor(connector, connectorId, name, false);
     }
 }

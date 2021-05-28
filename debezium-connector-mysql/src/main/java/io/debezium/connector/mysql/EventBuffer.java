@@ -88,7 +88,7 @@ class EventBuffer {
         }
 
         if (event.getHeader().getEventType() == EventType.QUERY) {
-            QueryEventData command = streamingChangeEventSource.unwrapData(event);
+            QueryEventData command = (QueryEventData) streamingChangeEventSource.unwrapData(event);//FIXME
             LOGGER.debug("Received query command: {}", event);
             String sql = command.getSql().trim();
             if (sql.equalsIgnoreCase("BEGIN")) {

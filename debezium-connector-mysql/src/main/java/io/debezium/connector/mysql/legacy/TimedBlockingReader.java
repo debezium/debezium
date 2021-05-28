@@ -8,10 +8,10 @@ package io.debezium.connector.mysql.legacy;
 import java.time.Duration;
 import java.util.List;
 
-import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.connector.common.SourceRecordWrapper;
 import io.debezium.util.Clock;
 import io.debezium.util.Threads;
 import io.debezium.util.Threads.Timer;
@@ -44,7 +44,7 @@ public class TimedBlockingReader extends BlockingReader {
     }
 
     @Override
-    public List<SourceRecord> poll() throws InterruptedException {
+    public List<SourceRecordWrapper> poll() throws InterruptedException {
         super.poll();
 
         // Stop when we've reached the timeout threshold

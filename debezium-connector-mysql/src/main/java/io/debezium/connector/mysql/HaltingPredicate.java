@@ -5,7 +5,7 @@
  */
 package io.debezium.connector.mysql;
 
-import org.apache.kafka.connect.source.SourceRecord;
+import io.debezium.connector.common.SourceRecordWrapper;
 
 /**
  * A predicate invoked by {@link Reader} implementations in order to determine whether they should continue with
@@ -19,5 +19,5 @@ public interface HaltingPredicate {
     /**
      * Whether this record should be processed by the calling reader or not.
      */
-    boolean accepts(SourceRecord record);
+    boolean accepts(SourceRecordWrapper record);
 }

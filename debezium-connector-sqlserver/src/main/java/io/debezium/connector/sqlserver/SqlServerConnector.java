@@ -12,12 +12,13 @@ import java.util.Map;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigValue;
-import org.apache.kafka.connect.connector.Task;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.common.ConfigWrapper;
 import io.debezium.connector.common.RelationalBaseSourceConnector;
+import io.debezium.connector.common.TaskWrapper;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.util.Clock;
 
@@ -27,7 +28,7 @@ import io.debezium.util.Clock;
  * @author Jiri Pechanec
  *
  */
-public class SqlServerConnector extends RelationalBaseSourceConnector {
+public class SqlServerConnector<Config extends ConfigWrapper<ConfigValue>> extends RelationalBaseSourceConnector<Config> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SqlServerConnector.class);
 
@@ -44,7 +45,7 @@ public class SqlServerConnector extends RelationalBaseSourceConnector {
     }
 
     @Override
-    public Class<? extends Task> taskClass() {
+    public Class<? extends TaskWrapper> taskClass() {
         return SqlServerConnectorTask.class;
     }
 

@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.sqlserver;
 
+import io.debezium.connector.common.SourceRecordWrapper;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.ChangeEventSourceFactory;
@@ -15,18 +16,18 @@ import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.relational.TableId;
 import io.debezium.util.Clock;
 
-public class SqlServerChangeEventSourceFactory implements ChangeEventSourceFactory {
+public class SqlServerChangeEventSourceFactory<SourceRecord extends SourceRecordWrapper> implements ChangeEventSourceFactory {
 
     private final SqlServerConnectorConfig configuration;
     private final SqlServerConnection dataConnection;
     private final SqlServerConnection metadataConnection;
     private final ErrorHandler errorHandler;
-    private final EventDispatcher<TableId> dispatcher;
+    private final EventDispatcher<TableId, SourceRecord> dispatcher;
     private final Clock clock;
     private final SqlServerDatabaseSchema schema;
 
     public SqlServerChangeEventSourceFactory(SqlServerConnectorConfig configuration, SqlServerConnection dataConnection, SqlServerConnection metadataConnection,
-                                             ErrorHandler errorHandler, EventDispatcher<TableId> dispatcher, Clock clock, SqlServerDatabaseSchema schema) {
+                                             ErrorHandler errorHandler, EventDispatcher<TableId, SourceRecord> dispatcher, Clock clock, SqlServerDatabaseSchema schema) {
         this.configuration = configuration;
         this.dataConnection = dataConnection;
         this.metadataConnection = metadataConnection;

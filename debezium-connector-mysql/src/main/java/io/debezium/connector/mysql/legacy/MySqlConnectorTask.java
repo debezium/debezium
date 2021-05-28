@@ -18,7 +18,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.apache.kafka.connect.errors.ConnectException;
-import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,6 +25,8 @@ import io.debezium.annotation.NotThreadSafe;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.common.BaseSourceTask;
+import io.debezium.connector.common.SourceRecordWrapper;
+import io.debezium.connector.common.SourceTaskContextWrapper;
 import io.debezium.connector.mysql.GtidSet;
 import io.debezium.connector.mysql.Module;
 import io.debezium.connector.mysql.MySqlConnector;
@@ -44,7 +45,8 @@ import io.debezium.util.LoggingContext.PreviousContext;
  * @author Randall Hauch
  */
 @NotThreadSafe
-public final class MySqlConnectorTask extends BaseSourceTask {
+public final class MySqlConnectorTask<SourceTaskContext extends SourceTaskContextWrapper, SourceRecord extends SourceRecordWrapper, RecordMetadata>
+        extends BaseSourceTask<SourceTaskContext, SourceRecord, RecordMetadata> {
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
     private volatile MySqlTaskContext taskContext;
@@ -53,14 +55,11 @@ public final class MySqlConnectorTask extends BaseSourceTask {
 
     /**
      * Create an instance of the log reader that uses Kafka to store database schema history and the
-     * {@link TopicSelector#defaultSelector(String) default topic selector} of "{@code <serverName>.<databaseName>.<tableName>}"
-     * for
      * data and "{@code <serverName>}" for metadata.
      */
     public MySqlConnectorTask() {
     }
 
-    @Override
     public String version() {
         return Module.version();
     }
@@ -441,7 +440,7 @@ public final class MySqlConnectorTask extends BaseSourceTask {
         PreviousContext prevLoggingContext = this.taskContext.configureLoggingContext("task");
         try {
             logger.trace("Polling for events");
-            return currentReader.poll();
+            return (List<SourceRecord>) currentReader.poll();
         }
         finally {
             prevLoggingContext.restore();

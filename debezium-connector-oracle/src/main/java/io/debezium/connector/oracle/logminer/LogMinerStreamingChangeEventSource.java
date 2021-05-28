@@ -35,6 +35,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import io.debezium.connector.common.SourceRecordWrapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -60,12 +61,12 @@ import io.debezium.util.Stopwatch;
  * A {@link StreamingChangeEventSource} based on Oracle's LogMiner utility.
  * The event handler loop is executed in a separate executor.
  */
-public class LogMinerStreamingChangeEventSource implements StreamingChangeEventSource {
+public class LogMinerStreamingChangeEventSource<SourceRecord extends SourceRecordWrapper> implements StreamingChangeEventSource {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(LogMinerStreamingChangeEventSource.class);
 
     private final OracleConnection jdbcConnection;
-    private final EventDispatcher<TableId> dispatcher;
+    private final EventDispatcher<TableId, SourceRecord> dispatcher;
     private final Clock clock;
     private final OracleDatabaseSchema schema;
     private final OracleOffsetContext offsetContext;
@@ -85,7 +86,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
     private List<BigInteger> currentRedoLogSequences;
 
     public LogMinerStreamingChangeEventSource(OracleConnectorConfig connectorConfig, OracleOffsetContext offsetContext,
-                                              OracleConnection jdbcConnection, EventDispatcher<TableId> dispatcher,
+                                              OracleConnection jdbcConnection, EventDispatcher<TableId, SourceRecord> dispatcher,
                                               ErrorHandler errorHandler, Clock clock, OracleDatabaseSchema schema,
                                               OracleTaskContext taskContext, Configuration jdbcConfig,
                                               OracleStreamingChangeEventSourceMetrics streamingMetrics) {

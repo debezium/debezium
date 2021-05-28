@@ -17,16 +17,12 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.common.config.ConfigDef;
-import org.apache.kafka.connect.connector.ConnectRecord;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.header.ConnectHeaders;
 import org.apache.kafka.connect.header.Headers;
-import org.apache.kafka.connect.transforms.ExtractField;
-import org.apache.kafka.connect.transforms.InsertField;
-import org.apache.kafka.connect.transforms.Transformation;
 import org.apache.kafka.connect.transforms.util.SchemaUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,10 +53,10 @@ import io.debezium.util.Strings;
  * The SMT also has the option to insert fields from the original record (e.g. 'op' or 'source.ts_ms' into the
  * unwrapped record or ad them as header attributes.
  *
- * @param <R> the subtype of {@link ConnectRecord} on which this transformation will operate
+ * @param <R> the subtype of {@link ConnectRecordWrapper} on which this transformation will operate
  * @author Jiri Pechanec
  */
-public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transformation<R> {
+public class ExtractNewRecordState<R extends ConnectRecordWrapper<R>> implements TransformationWrapper<R> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ExtractNewRecordState.class);
 
@@ -74,10 +70,10 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
     private List<FieldReference> additionalHeaders;
     private List<FieldReference> additionalFields;
     private String routeByField;
-    private final ExtractField<R> afterDelegate = new ExtractField.Value<R>();
-    private final ExtractField<R> beforeDelegate = new ExtractField.Value<R>();
-    private final InsertField<R> removedDelegate = new InsertField.Value<R>();
-    private final InsertField<R> updatedDelegate = new InsertField.Value<R>();
+    private final ExtractFieldWrapper<R> afterDelegate = new ExtractFieldWrapper.Value<R>();
+    private final ExtractFieldWrapper<R> beforeDelegate = new ExtractFieldWrapper.Value<R>();
+    private final InsertFieldWrapper<R> removedDelegate = new InsertFieldWrapper.Value<R>();
+    private final InsertFieldWrapper<R> updatedDelegate = new InsertFieldWrapper.Value<R>();
     private BoundedConcurrentHashMap<Schema, Schema> schemaUpdateCache;
     private SmtManager<R> smtManager;
 

@@ -17,7 +17,6 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.header.ConnectHeaders;
-import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,6 +24,7 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.SnapshotRecord;
 import io.debezium.connector.base.ChangeEventQueue;
+import io.debezium.connector.common.SourceRecordWrapper;
 import io.debezium.data.Envelope;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.heartbeat.Heartbeat;
@@ -36,6 +36,7 @@ import io.debezium.pipeline.spi.ChangeRecordEmitter;
 import io.debezium.pipeline.spi.ChangeRecordEmitter.Receiver;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.SchemaChangeEventEmitter;
+import io.debezium.pipeline.txmetadata.SimpleSourceRecordWrapper;
 import io.debezium.pipeline.txmetadata.TransactionMonitor;
 import io.debezium.relational.history.ConnectTableChangeSerializer;
 import io.debezium.relational.history.HistoryRecord.Fields;
@@ -58,7 +59,7 @@ import io.debezium.util.SchemaNameAdjuster;
  *
  * @author Gunnar Morling
  */
-public class EventDispatcher<T extends DataCollectionId> {
+public class EventDispatcher<T extends DataCollectionId, SourceRecord extends SourceRecordWrapper> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(EventDispatcher.class);
 
@@ -68,11 +69,11 @@ public class EventDispatcher<T extends DataCollectionId> {
     private final ChangeEventQueue<DataChangeEvent> queue;
     private final DataCollectionFilter<T> filter;
     private final ChangeEventCreator changeEventCreator;
-    private final Heartbeat heartbeat;
+    private final Heartbeat<SourceRecordWrapper> heartbeat;
     private DataChangeEventListener eventListener = DataChangeEventListener.NO_OP;
     private final boolean emitTombstonesOnDelete;
     private final InconsistentSchemaHandler<T> inconsistentSchemaHandler;
-    private final TransactionMonitor transactionMonitor;
+    private final TransactionMonitor<SourceRecord> transactionMonitor;
     private final CommonConnectorConfig connectorConfig;
 
     private final Schema schemaChangeKeySchema;
@@ -94,14 +95,14 @@ public class EventDispatcher<T extends DataCollectionId> {
     public EventDispatcher(CommonConnectorConfig connectorConfig, TopicSelector<T> topicSelector,
                            DatabaseSchema<T> schema, ChangeEventQueue<DataChangeEvent> queue, DataCollectionFilter<T> filter,
                            ChangeEventCreator changeEventCreator, EventMetadataProvider metadataProvider,
-                           Heartbeat heartbeat, SchemaNameAdjuster schemaNameAdjuster) {
+                           Heartbeat<SourceRecordWrapper> heartbeat, SchemaNameAdjuster schemaNameAdjuster) {
         this(connectorConfig, topicSelector, schema, queue, filter, changeEventCreator, null, metadataProvider, heartbeat, schemaNameAdjuster);
     }
 
     public EventDispatcher(CommonConnectorConfig connectorConfig, TopicSelector<T> topicSelector,
                            DatabaseSchema<T> schema, ChangeEventQueue<DataChangeEvent> queue, DataCollectionFilter<T> filter,
                            ChangeEventCreator changeEventCreator, InconsistentSchemaHandler<T> inconsistentSchemaHandler,
-                           EventMetadataProvider metadataProvider, Heartbeat customHeartbeat, SchemaNameAdjuster schemaNameAdjuster) {
+                           EventMetadataProvider metadataProvider, Heartbeat<SourceRecordWrapper> customHeartbeat, SchemaNameAdjuster schemaNameAdjuster) {
         this.connectorConfig = connectorConfig;
         this.topicSelector = topicSelector;
         this.schema = schema;
@@ -115,7 +116,7 @@ public class EventDispatcher<T extends DataCollectionId> {
         this.emitTombstonesOnDelete = connectorConfig.isEmitTombstoneOnDelete();
         this.inconsistentSchemaHandler = inconsistentSchemaHandler != null ? inconsistentSchemaHandler : this::errorOnMissingSchema;
 
-        this.transactionMonitor = new TransactionMonitor(connectorConfig, metadataProvider, this::enqueueTransactionMessage);
+        this.transactionMonitor = new TransactionMonitor<SourceRecord>(connectorConfig, metadataProvider, this::enqueueTransactionMessage);
         this.signal = new Signal(connectorConfig, this);
         if (customHeartbeat != null) {
             heartbeat = customHeartbeat;
@@ -317,15 +318,15 @@ public class EventDispatcher<T extends DataCollectionId> {
         return heartbeat.isEnabled();
     }
 
-    private void enqueueHeartbeat(SourceRecord record) throws InterruptedException {
+    private void enqueueHeartbeat(SourceRecordWrapper record) throws InterruptedException {
         queue.enqueue(new DataChangeEvent(record));
     }
 
-    private void enqueueTransactionMessage(SourceRecord record) throws InterruptedException {
+    private void enqueueTransactionMessage(SourceRecordWrapper record) throws InterruptedException {
         queue.enqueue(new DataChangeEvent(record));
     }
 
-    private void enqueueSchemaChangeMessage(SourceRecord record) throws InterruptedException {
+    private void enqueueSchemaChangeMessage(SourceRecordWrapper record) throws InterruptedException {
         queue.enqueue(new DataChangeEvent(record));
     }
 
@@ -355,7 +356,7 @@ public class EventDispatcher<T extends DataCollectionId> {
             Schema keySchema = dataCollectionSchema.keySchema();
             String topicName = topicSelector.topicNameFor((T) dataCollectionSchema.id());
 
-            SourceRecord record = new SourceRecord(offsetContext.getPartition(),
+            SourceRecordWrapper record = new SimpleSourceRecordWrapper(offsetContext.getPartition(),
                     offsetContext.getOffset(), topicName, null,
                     keySchema, key,
                     dataCollectionSchema.getEnvelopeSchema().schema(),
@@ -366,7 +367,7 @@ public class EventDispatcher<T extends DataCollectionId> {
             queue.enqueue(changeEventCreator.createDataChangeEvent(record));
 
             if (emitTombstonesOnDelete && operation == Operation.DELETE) {
-                SourceRecord tombStone = record.newRecord(
+                SourceRecordWrapper tombStone = record.newRecord(
                         record.topic(),
                         record.kafkaPartition(),
                         record.keySchema(),
@@ -405,7 +406,7 @@ public class EventDispatcher<T extends DataCollectionId> {
 
             // the record is produced lazily, so to have the correct offset as per the pre/post completion callbacks
             bufferedEvent = () -> {
-                SourceRecord record = new SourceRecord(
+                SourceRecordWrapper record = new SimpleSourceRecordWrapper(
                         offsetContext.getPartition(),
                         offsetContext.getOffset(),
                         topicName, null,
@@ -464,7 +465,7 @@ public class EventDispatcher<T extends DataCollectionId> {
                 final Integer partition = 0;
                 final Struct key = schemaChangeRecordKey(event);
                 final Struct value = schemaChangeRecordValue(event);
-                final SourceRecord record = new SourceRecord(event.getPartition(), event.getOffset(), topicName, partition,
+                final SourceRecordWrapper record = new SimpleSourceRecordWrapper(event.getPartition(), event.getOffset(), topicName, partition,
                         schemaChangeKeySchema, key, schemaChangeValueSchema, value);
                 enqueueSchemaChangeMessage(record);
             }

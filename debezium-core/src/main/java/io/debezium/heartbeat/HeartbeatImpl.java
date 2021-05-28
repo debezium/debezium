@@ -12,12 +12,13 @@ import java.util.Map;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
-import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.AbstractSourceInfo;
+import io.debezium.connector.common.SourceRecordWrapper;
 import io.debezium.function.BlockingConsumer;
+import io.debezium.pipeline.txmetadata.SimpleSourceRecordWrapper;
 import io.debezium.util.Clock;
 import io.debezium.util.SchemaNameAdjuster;
 import io.debezium.util.Threads;
@@ -27,7 +28,7 @@ import io.debezium.util.Threads.Timer;
  * Default implementation of Heartbeat
  *
  */
-class HeartbeatImpl implements Heartbeat {
+class HeartbeatImpl<SourceRecord extends SourceRecordWrapper> implements Heartbeat<SourceRecord> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(HeartbeatImpl.class);
     private static final SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create();
@@ -68,7 +69,7 @@ class HeartbeatImpl implements Heartbeat {
     }
 
     @Override
-    public void heartbeat(Map<String, ?> partition, Map<String, ?> offset, BlockingConsumer<SourceRecord> consumer) throws InterruptedException {
+    public void heartbeat(Map<String, ?> partition, Map<String, ?> offset, BlockingConsumer<SourceRecordWrapper> consumer) throws InterruptedException {
         if (heartbeatTimeout.expired()) {
             forcedBeat(partition, offset, consumer);
             heartbeatTimeout = resetHeartbeat();
@@ -76,7 +77,7 @@ class HeartbeatImpl implements Heartbeat {
     }
 
     @Override
-    public void heartbeat(Map<String, ?> partition, OffsetProducer offsetProducer, BlockingConsumer<SourceRecord> consumer) throws InterruptedException {
+    public void heartbeat(Map<String, ?> partition, OffsetProducer offsetProducer, BlockingConsumer<SourceRecordWrapper> consumer) throws InterruptedException {
         if (heartbeatTimeout.expired()) {
             forcedBeat(partition, offsetProducer.offset(), consumer);
             heartbeatTimeout = resetHeartbeat();
@@ -84,7 +85,7 @@ class HeartbeatImpl implements Heartbeat {
     }
 
     @Override
-    public void forcedBeat(Map<String, ?> partition, Map<String, ?> offset, BlockingConsumer<SourceRecord> consumer)
+    public void forcedBeat(Map<String, ?> partition, Map<String, ?> offset, BlockingConsumer<SourceRecordWrapper> consumer)
             throws InterruptedException {
         LOGGER.debug("Generating heartbeat event");
         if (offset == null || offset.isEmpty()) {
@@ -123,10 +124,10 @@ class HeartbeatImpl implements Heartbeat {
      * Produce an empty record to the heartbeat topic.
      *
      */
-    private SourceRecord heartbeatRecord(Map<String, ?> sourcePartition, Map<String, ?> sourceOffset) {
+    private SourceRecordWrapper heartbeatRecord(Map<String, ?> sourcePartition, Map<String, ?> sourceOffset) {
         final Integer partition = 0;
 
-        return new SourceRecord(sourcePartition, sourceOffset,
+        return new SimpleSourceRecordWrapper(sourcePartition, sourceOffset,
                 topicName, partition, KEY_SCHEMA, serverNameKey(key), VALUE_SCHEMA, messageValue());
     }
 

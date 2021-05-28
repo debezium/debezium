@@ -13,7 +13,6 @@ import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.errors.ConnectException;
-import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,6 +21,8 @@ import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.common.BaseSourceTask;
+import io.debezium.connector.common.SourceRecordWrapper;
+import io.debezium.connector.common.SourceTaskContextWrapper;
 import io.debezium.connector.mongodb.metrics.MongoDbChangeEventSourceMetricsFactory;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.DataChangeEvent;
@@ -44,7 +45,8 @@ import io.debezium.util.SchemaNameAdjuster;
  * @author Randall Hauch
  */
 @ThreadSafe
-public final class MongoDbConnectorTask extends BaseSourceTask {
+public final class MongoDbConnectorTask<SourceTaskContext extends SourceTaskContextWrapper, SourceRecord extends SourceRecordWrapper, RecordMetadata>
+        extends BaseSourceTask<SourceTaskContext, SourceRecord, RecordMetadata> {
 
     private static final String CONTEXT_NAME = "mongodb-connector-task";
 
@@ -93,7 +95,7 @@ public final class MongoDbConnectorTask extends BaseSourceTask {
 
             final MongoDbEventMetadataProvider metadataProvider = new MongoDbEventMetadataProvider();
 
-            final EventDispatcher<CollectionId> dispatcher = new EventDispatcher<>(
+            final EventDispatcher<CollectionId, SourceRecord> dispatcher = new EventDispatcher<>(
                     connectorConfig,
                     taskContext.topicSelector(),
                     schema,
@@ -103,12 +105,12 @@ public final class MongoDbConnectorTask extends BaseSourceTask {
                     metadataProvider,
                     schemaNameAdjuster);
 
-            ChangeEventSourceCoordinator coordinator = new ChangeEventSourceCoordinator(
+            ChangeEventSourceCoordinator<SourceRecord> coordinator = new ChangeEventSourceCoordinator<SourceRecord>(
                     previousOffsets,
                     errorHandler,
                     MongoDbConnector.class,
                     connectorConfig,
-                    new MongoDbChangeEventSourceFactory(
+                    new MongoDbChangeEventSourceFactory<>(
                             connectorConfig,
                             errorHandler,
                             dispatcher,
@@ -131,7 +133,8 @@ public final class MongoDbConnectorTask extends BaseSourceTask {
     @Override
     public List<SourceRecord> doPoll() throws InterruptedException {
         List<DataChangeEvent> records = queue.poll();
-        return records.stream().map(DataChangeEvent::getRecord).collect(Collectors.toList());
+        List<SourceRecordWrapper> list = records.stream().map(DataChangeEvent::getRecord).collect(Collectors.toList());
+        return (List<SourceRecord>) list;
     }
 
     @Override

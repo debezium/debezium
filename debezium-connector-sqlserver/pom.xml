@@ -97,97 +97,97 @@
 
     <build>
         <plugins>
-            <plugin>
-                <groupId>io.fabric8</groupId>
-                <artifactId>docker-maven-plugin</artifactId>
-                <configuration>
-                    <watchInterval>500</watchInterval>
-                    <logDate>default</logDate>
-                    <verbose>true</verbose>
-                    <images>
-                        <image>
-                            <!-- A Docker image using the SQL Server -->
-                            <name>${docker.filter}</name>
-                            <run>
-                                <namingStrategy>none</namingStrategy>
-                                <env>
-                                    <ACCEPT_EULA>Y</ACCEPT_EULA>
-                                    <SA_PASSWORD>${sqlserver.password}</SA_PASSWORD>
-                                    <MSSQL_PID>Standard</MSSQL_PID>
-                                    <MSSQL_AGENT_ENABLED>true</MSSQL_AGENT_ENABLED>
-                                </env>
-                                <ports>
-                                    <port>${sqlserver.port}:1433</port>
-                                </ports>
-                                <log>
-                                    <prefix>sqlserver</prefix>
-                                    <enabled>true</enabled>
-                                    <color>yellow</color>
-                                </log>
-                                <wait>
-                                    <time>60000</time> <!-- 60 seconds max -->
-                                    <log>SQL Server is now ready for client connections</log>
-                                </wait>
-                            </run>
-                        </image>
-                    </images>
-                </configuration>
-                <!--
-                Connect this plugin to the maven lifecycle around the integration-test phase:
-                start the container in pre-integration-test and stop it in post-integration-test.
-                -->
-                <executions>
-                    <execution>
-                        <id>start</id>
-                        <phase>pre-integration-test</phase>
-                        <goals>
-                            <goal>start</goal>
-                        </goals>
-                    </execution>
-                    <execution>
-                        <id>stop</id>
-                        <phase>post-integration-test</phase>
-                        <goals>
-                            <goal>stop</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
+<!--            <plugin>-->
+<!--                <groupId>io.fabric8</groupId>-->
+<!--                <artifactId>docker-maven-plugin</artifactId>-->
+<!--                <configuration>-->
+<!--                    <watchInterval>500</watchInterval>-->
+<!--                    <logDate>default</logDate>-->
+<!--                    <verbose>true</verbose>-->
+<!--                    <images>-->
+<!--                        <image>-->
+<!--                            &lt;!&ndash; A Docker image using the SQL Server &ndash;&gt;-->
+<!--                            <name>${docker.filter}</name>-->
+<!--                            <run>-->
+<!--                                <namingStrategy>none</namingStrategy>-->
+<!--                                <env>-->
+<!--                                    <ACCEPT_EULA>Y</ACCEPT_EULA>-->
+<!--                                    <SA_PASSWORD>${sqlserver.password}</SA_PASSWORD>-->
+<!--                                    <MSSQL_PID>Standard</MSSQL_PID>-->
+<!--                                    <MSSQL_AGENT_ENABLED>true</MSSQL_AGENT_ENABLED>-->
+<!--                                </env>-->
+<!--                                <ports>-->
+<!--                                    <port>${sqlserver.port}:1433</port>-->
+<!--                                </ports>-->
+<!--                                <log>-->
+<!--                                    <prefix>sqlserver</prefix>-->
+<!--                                    <enabled>true</enabled>-->
+<!--                                    <color>yellow</color>-->
+<!--                                </log>-->
+<!--                                <wait>-->
+<!--                                    <time>60000</time> &lt;!&ndash; 60 seconds max &ndash;&gt;-->
+<!--                                    <log>SQL Server is now ready for client connections</log>-->
+<!--                                </wait>-->
+<!--                            </run>-->
+<!--                        </image>-->
+<!--                    </images>-->
+<!--                </configuration>-->
+<!--                &lt;!&ndash;-->
+<!--                Connect this plugin to the maven lifecycle around the integration-test phase:-->
+<!--                start the container in pre-integration-test and stop it in post-integration-test.-->
+<!--                &ndash;&gt;-->
+<!--                <executions>-->
+<!--                    <execution>-->
+<!--                        <id>start</id>-->
+<!--                        <phase>pre-integration-test</phase>-->
+<!--                        <goals>-->
+<!--                            <goal>start</goal>-->
+<!--                        </goals>-->
+<!--                    </execution>-->
+<!--                    <execution>-->
+<!--                        <id>stop</id>-->
+<!--                        <phase>post-integration-test</phase>-->
+<!--                        <goals>-->
+<!--                            <goal>stop</goal>-->
+<!--                        </goals>-->
+<!--                    </execution>-->
+<!--                </executions>-->
+<!--            </plugin>-->
             <!-- 
             Unlike surefire, the failsafe plugin ensures 'post-integration-test' phase always runs, even
             when there are failed integration tests. We rely upon this to always shut down the Docker container
             after the integration tests (defined as '*IT.java') are run.
             -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-failsafe-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>integration-test</id>
-                        <goals>
-                            <goal>integration-test</goal>
-                        </goals>
-                    </execution>
-                    <execution>
-                        <id>verify</id>
-                        <goals>
-                            <goal>verify</goal>
-                        </goals>
-                    </execution>
-                </executions>
-                <configuration>
-                    <skipTests>${skipITs}</skipTests>
-                    <enableAssertions>true</enableAssertions>
-                    <systemPropertyVariables>
-                        <!-- Make these available to the tests via system properties -->
-                        <database.hostname>${docker.host.address}</database.hostname>
-                        <database.port>${sqlserver.port}</database.port>
-                        <database.user>${sqlserver.user}</database.user>
-                        <database.password>${sqlserver.password}</database.password>
-                        <skipLongRunningTests>${skipLongRunningTests}</skipLongRunningTests>
-                    </systemPropertyVariables>
-                </configuration>
-            </plugin>
+<!--            <plugin>-->
+<!--                <groupId>org.apache.maven.plugins</groupId>-->
+<!--                <artifactId>maven-failsafe-plugin</artifactId>-->
+<!--                <executions>-->
+<!--                    <execution>-->
+<!--                        <id>integration-test</id>-->
+<!--                        <goals>-->
+<!--                            <goal>integration-test</goal>-->
+<!--                        </goals>-->
+<!--                    </execution>-->
+<!--                    <execution>-->
+<!--                        <id>verify</id>-->
+<!--                        <goals>-->
+<!--                            <goal>verify</goal>-->
+<!--                        </goals>-->
+<!--                    </execution>-->
+<!--                </executions>-->
+<!--                <configuration>-->
+<!--                    <skipTests>${skipITs}</skipTests>-->
+<!--                    <enableAssertions>true</enableAssertions>-->
+<!--                    <systemPropertyVariables>-->
+<!--                        &lt;!&ndash; Make these available to the tests via system properties &ndash;&gt;-->
+<!--                        <database.hostname>${docker.host.address}</database.hostname>-->
+<!--                        <database.port>${sqlserver.port}</database.port>-->
+<!--                        <database.user>${sqlserver.user}</database.user>-->
+<!--                        <database.password>${sqlserver.password}</database.password>-->
+<!--                        <skipLongRunningTests>${skipLongRunningTests}</skipLongRunningTests>-->
+<!--                    </systemPropertyVariables>-->
+<!--                </configuration>-->
+<!--            </plugin>-->
         </plugins>
         <resources>
             <!-- Apply the properties set in the POM to the resource files -->

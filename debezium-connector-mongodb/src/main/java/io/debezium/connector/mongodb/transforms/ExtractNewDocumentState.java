@@ -27,9 +27,6 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.header.ConnectHeaders;
 import org.apache.kafka.connect.header.Headers;
-import org.apache.kafka.connect.transforms.ExtractField;
-import org.apache.kafka.connect.transforms.Flatten;
-import org.apache.kafka.connect.transforms.Transformation;
 import org.apache.kafka.connect.transforms.util.SchemaUtil;
 import org.bson.BsonBoolean;
 import org.bson.BsonDocument;
@@ -47,9 +44,8 @@ import io.debezium.data.Envelope.FieldName;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.pipeline.txmetadata.TransactionMonitor;
 import io.debezium.schema.FieldNameSelector;
-import io.debezium.transforms.ExtractNewRecordStateConfigDefinition;
+import io.debezium.transforms.*;
 import io.debezium.transforms.ExtractNewRecordStateConfigDefinition.DeleteHandling;
-import io.debezium.transforms.SmtManager;
 import io.debezium.util.Strings;
 
 /**
@@ -61,7 +57,7 @@ import io.debezium.util.Strings;
  * @author Sairam Polavarapu
  * @author Renato mefi
  */
-public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Transformation<R> {
+public class ExtractNewDocumentState<R extends ConnectRecordWrapper<R>> implements TransformationWrapper<R> {
 
     private String addFieldsPrefix;
 
@@ -173,12 +169,12 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
                     + "Adds the operation type of the change event as a header."
                     + "Its key is '" + ExtractNewRecordStateConfigDefinition.DEBEZIUM_OPERATION_HEADER_KEY + "'");
 
-    private final ExtractField<R> afterExtractor = new ExtractField.Value<>();
-    private final ExtractField<R> patchExtractor = new ExtractField.Value<>();
-    private final ExtractField<R> keyExtractor = new ExtractField.Key<>();
+    private final ExtractFieldWrapper<R> afterExtractor = new ExtractFieldWrapper.Value<>();
+    private final ExtractFieldWrapper<R> patchExtractor = new ExtractFieldWrapper.Value<>();
+    private final ExtractFieldWrapper<R> keyExtractor = new ExtractFieldWrapper.Key<>();
 
     private MongoDataConverter converter;
-    private final Flatten<R> recordFlattener = new Flatten.Value<>();
+    private final FlattenWrapper<R> recordFlattener = new FlattenWrapper.Value<>();
 
     private boolean addOperationHeader;
     private List<String> addSourceFields;

@@ -11,9 +11,9 @@ import java.util.Map;
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
-import org.apache.kafka.connect.source.SourceRecord;
 
 import io.debezium.config.Field;
+import io.debezium.connector.common.SourceRecordWrapper;
 import io.debezium.function.BlockingConsumer;
 import io.debezium.jdbc.JdbcConnection;
 
@@ -24,7 +24,7 @@ import io.debezium.jdbc.JdbcConnection;
  * @author Jiri Pechanec
  *
  */
-public interface Heartbeat {
+public interface Heartbeat<SourceRecord extends SourceRecordWrapper> {
 
     String HEARTBEAT_INTERVAL_PROPERTY_NAME = "heartbeat.interval.ms";
 
@@ -62,21 +62,21 @@ public interface Heartbeat {
     /**
      * No-op Heartbeat implementation
      */
-    Heartbeat DEFAULT_NOOP_HEARTBEAT = new Heartbeat() {
+    Heartbeat<SourceRecordWrapper> DEFAULT_NOOP_HEARTBEAT = new Heartbeat<SourceRecordWrapper>() {
 
         @Override
-        public void heartbeat(Map<String, ?> partition, Map<String, ?> offset, BlockingConsumer<SourceRecord> consumer) throws InterruptedException {
+        public void heartbeat(Map<String, ?> partition, Map<String, ?> offset, BlockingConsumer<SourceRecordWrapper> consumer) throws InterruptedException {
+
         }
 
         @Override
-        public void forcedBeat(Map<String, ?> partition, Map<String, ?> offset, BlockingConsumer<SourceRecord> consumer)
-                throws InterruptedException {
+        public void heartbeat(Map<String, ?> partition, OffsetProducer offsetProducer, BlockingConsumer<SourceRecordWrapper> consumer) throws InterruptedException {
+
         }
 
         @Override
-        public void heartbeat(Map<String, ?> partition, OffsetProducer offsetProducer,
-                              BlockingConsumer<SourceRecord> consumer)
-                throws InterruptedException {
+        public void forcedBeat(Map<String, ?> partition, Map<String, ?> offset, BlockingConsumer<SourceRecordWrapper> consumer) throws InterruptedException {
+
         }
 
         @Override
@@ -93,7 +93,7 @@ public interface Heartbeat {
      * @param consumer - a code to place record among others to be sent into Connect
      */
     // TODO would be nice to pass OffsetContext here; not doing it for now, though, until MySQL is using OffsetContext, too
-    void heartbeat(Map<String, ?> partition, Map<String, ?> offset, BlockingConsumer<SourceRecord> consumer) throws InterruptedException;
+    void heartbeat(Map<String, ?> partition, Map<String, ?> offset, BlockingConsumer<SourceRecordWrapper> consumer) throws InterruptedException;
 
     /**
      * Generates a heartbeat record if defined time has elapsed
@@ -102,7 +102,7 @@ public interface Heartbeat {
      * @param offsetProducer lazily calculated offset for the heartbeat record
      * @param consumer - a code to place record among others to be sent into Connect
      */
-    void heartbeat(Map<String, ?> partition, OffsetProducer offsetProducer, BlockingConsumer<SourceRecord> consumer) throws InterruptedException;
+    void heartbeat(Map<String, ?> partition, OffsetProducer offsetProducer, BlockingConsumer<SourceRecordWrapper> consumer) throws InterruptedException;
 
     /**
      * Generates a heartbeat record unconditionaly
@@ -112,7 +112,7 @@ public interface Heartbeat {
      * @param consumer - a code to place record among others to be sent into Connect
      */
     // TODO would be nice to pass OffsetContext here; not doing it for now, though, until MySQL is using OffsetContext, too
-    void forcedBeat(Map<String, ?> partition, Map<String, ?> offset, BlockingConsumer<SourceRecord> consumer) throws InterruptedException;
+    void forcedBeat(Map<String, ?> partition, Map<String, ?> offset, BlockingConsumer<SourceRecordWrapper> consumer) throws InterruptedException;
 
     /**
      * Whether heartbeats are enabled or not.
@@ -126,12 +126,12 @@ public interface Heartbeat {
      * @param topicName topic to which the heartbeat messages will be sent
      * @param key kafka partition key to use for the heartbeat message
      */
-    static Heartbeat create(Duration heartbeatInterval, String topicName, String key) {
+    static Heartbeat<SourceRecordWrapper> create(Duration heartbeatInterval, String topicName, String key) {
         return heartbeatInterval.isZero() ? DEFAULT_NOOP_HEARTBEAT : new HeartbeatImpl(heartbeatInterval, topicName, key);
     }
 
-    static Heartbeat create(Duration heartbeatInterval, String heartbeatQuery, String topicName, String key, JdbcConnection jdbcConnection,
-                            HeartbeatErrorHandler errorHandler) {
+    static Heartbeat<SourceRecordWrapper> create(Duration heartbeatInterval, String heartbeatQuery, String topicName, String key, JdbcConnection jdbcConnection,
+                                                 HeartbeatErrorHandler errorHandler) {
         if (heartbeatInterval.isZero()) {
             return DEFAULT_NOOP_HEARTBEAT;
         }

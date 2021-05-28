@@ -5,17 +5,17 @@
  */
 package io.debezium.pipeline;
 
-import org.apache.kafka.connect.source.SourceRecord;
+import io.debezium.connector.common.SourceRecordWrapper;
 
 public class DataChangeEvent {
 
-    private final SourceRecord record;
+    private final SourceRecordWrapper record;
 
-    public DataChangeEvent(SourceRecord record) {
+    public DataChangeEvent(SourceRecordWrapper record) {
         this.record = record;
     }
 
-    public SourceRecord getRecord() {
+    public SourceRecordWrapper getRecord() {
         return record;
     }
 

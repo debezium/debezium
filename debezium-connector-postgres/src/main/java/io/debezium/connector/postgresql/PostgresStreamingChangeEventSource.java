@@ -16,6 +16,7 @@ import org.postgresql.core.BaseConnection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.connector.common.SourceRecordWrapper;
 import io.debezium.connector.postgresql.connection.Lsn;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
@@ -35,7 +36,7 @@ import io.debezium.util.DelayStrategy;
  *
  * @author Horia Chiorean (hchiorea@redhat.com), Jiri Pechanec
  */
-public class PostgresStreamingChangeEventSource implements StreamingChangeEventSource {
+public class PostgresStreamingChangeEventSource<SourceRecord extends SourceRecordWrapper> implements StreamingChangeEventSource {
 
     /**
      * Number of received events without sending anything to Kafka which will
@@ -50,7 +51,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
     private static final int THROTTLE_NO_MESSAGE_BEFORE_PAUSE = 5;
 
     private final PostgresConnection connection;
-    private final EventDispatcher<TableId> dispatcher;
+    private final EventDispatcher<TableId, SourceRecord> dispatcher;
     private final ErrorHandler errorHandler;
     private final Clock clock;
     private final PostgresSchema schema;
@@ -71,7 +72,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
     private Lsn lastCompletelyProcessedLsn;
 
     public PostgresStreamingChangeEventSource(PostgresConnectorConfig connectorConfig, Snapshotter snapshotter, PostgresOffsetContext offsetContext,
-                                              PostgresConnection connection, EventDispatcher<TableId> dispatcher, ErrorHandler errorHandler, Clock clock,
+                                              PostgresConnection connection, EventDispatcher<TableId, SourceRecord> dispatcher, ErrorHandler errorHandler, Clock clock,
                                               PostgresSchema schema, PostgresTaskContext taskContext, ReplicationConnection replicationConnection) {
         this.connectorConfig = connectorConfig;
         this.connection = connection;

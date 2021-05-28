@@ -6,6 +6,7 @@
 package io.debezium.connector.oracle;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.common.SourceRecordWrapper;
 import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSource;
 import io.debezium.connector.oracle.xstream.XstreamStreamingChangeEventSource;
 import io.debezium.pipeline.ErrorHandler;
@@ -18,12 +19,12 @@ import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.relational.TableId;
 import io.debezium.util.Clock;
 
-public class OracleChangeEventSourceFactory implements ChangeEventSourceFactory {
+public class OracleChangeEventSourceFactory<SourceRecord extends SourceRecordWrapper> implements ChangeEventSourceFactory {
 
     private final OracleConnectorConfig configuration;
     private final OracleConnection jdbcConnection;
     private final ErrorHandler errorHandler;
-    private final EventDispatcher<TableId> dispatcher;
+    private final EventDispatcher<TableId, SourceRecord> dispatcher;
     private final Clock clock;
     private final OracleDatabaseSchema schema;
     private final Configuration jdbcConfig;
@@ -31,7 +32,7 @@ public class OracleChangeEventSourceFactory implements ChangeEventSourceFactory 
     private final OracleStreamingChangeEventSourceMetrics streamingMetrics;
 
     public OracleChangeEventSourceFactory(OracleConnectorConfig configuration, OracleConnection jdbcConnection,
-                                          ErrorHandler errorHandler, EventDispatcher<TableId> dispatcher, Clock clock, OracleDatabaseSchema schema,
+                                          ErrorHandler errorHandler, EventDispatcher<TableId, SourceRecord> dispatcher, Clock clock, OracleDatabaseSchema schema,
                                           Configuration jdbcConfig, OracleTaskContext taskContext,
                                           OracleStreamingChangeEventSourceMetrics streamingMetrics) {
         this.configuration = configuration;
