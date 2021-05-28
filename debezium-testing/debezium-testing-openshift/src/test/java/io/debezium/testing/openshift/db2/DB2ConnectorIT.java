@@ -23,7 +23,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 
 import io.debezium.testing.openshift.ConnectorTestBase;
-import io.debezium.testing.openshift.resources.ConnectorFactories;
 import io.debezium.testing.openshift.tools.ConfigProperties;
 import io.debezium.testing.openshift.tools.databases.SqlDatabaseClient;
 import io.debezium.testing.openshift.tools.databases.db2.DB2Controller;
@@ -50,7 +49,6 @@ public class DB2ConnectorIT extends ConnectorTestBase {
 
     private static DB2Controller dbController;
     private static OkHttpClient httpClient = new OkHttpClient();
-    private static ConnectorFactories connectorFactories = new ConnectorFactories();
     private static ConnectorConfigBuilder connectorConfig;
     private static String connectorName;
     private static String dbServerName;
@@ -59,13 +57,14 @@ public class DB2ConnectorIT extends ConnectorTestBase {
     public static void setupDatabase() throws IOException, InterruptedException, ClassNotFoundException {
         Class.forName("com.ibm.db2.jcc.DB2Driver");
 
-        if (!ConfigProperties.DATABASE_DB2_HOST.isPresent()) {
-            dbController = new DB2Deployer(ocp)
+        if (!ConfigProperties.DATABASE_MYSQL_HOST.isPresent()) {
+            DB2Deployer deployer = new DB2Deployer.Deployer()
+                    .withOcpClient(ocp)
                     .withProject(ConfigProperties.OCP_PROJECT_DB2)
                     .withDeployment(DB_DEPLOYMENT_PATH)
-                    .withServices(DB_SERVICE_PATH_LB, DB_SERVICE_PATH)
-                    .deploy();
-            dbController.initialize();
+                    .withServices(DB_SERVICE_PATH, DB_SERVICE_PATH_LB)
+                    .build();
+            dbController = deployer.deploy();
         }
 
         connectorName = CONNECTOR_NAME + "-" + testUtils.getUniqueId();

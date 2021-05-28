@@ -19,18 +19,31 @@ import io.fabric8.openshift.client.OpenShiftClient;
 /**
  * @author Jakub Cechacek
  */
-public class MySqlDeployer extends DatabaseDeployer<MySqlDeployer, SqlDatabaseController> {
+public final class MySqlDeployer extends DatabaseDeployer<SqlDatabaseController> {
+
+    public static class Deployer extends DatabaseBuilder<Deployer, MySqlDeployer> {
+        @Override
+        public MySqlDeployer build() {
+            return new MySqlDeployer(
+                    project,
+                    deployment,
+                    services,
+                    ocpClient);
+        }
+    }
+
     private static final Logger LOGGER = LoggerFactory.getLogger(MySqlDeployer.class);
 
-    public MySqlDeployer(OpenShiftClient ocp) {
-        super("mysql", ocp);
+    private MySqlDeployer(
+                          String project,
+                          Deployment deployment,
+                          List<Service> services,
+                          OpenShiftClient ocp) {
+        super("mysql", project, deployment, services, ocp);
     }
 
-    public MySqlDeployer getThis() {
-        return this;
-    }
-
-    public SqlDatabaseController getController(Deployment deployment, List<Service> services, String dbType, OpenShiftClient ocp) {
+    public SqlDatabaseController getController(
+                                               Deployment deployment, List<Service> services, String dbType, OpenShiftClient ocp) {
         return new SqlDatabaseController(deployment, services, dbType, ocp);
     }
 }

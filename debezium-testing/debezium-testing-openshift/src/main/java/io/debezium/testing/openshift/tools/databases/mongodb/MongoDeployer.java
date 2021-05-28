@@ -16,18 +16,29 @@ import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.openshift.client.OpenShiftClient;
 
 /**
- *
  * @author Jakub Cechacek
  */
-public class MongoDeployer extends DatabaseDeployer<MongoDeployer, MongoController> {
-    private static final Logger LOGGER = LoggerFactory.getLogger(MongoDeployer.class);
+public class MongoDeployer extends DatabaseDeployer<MongoController> {
 
-    public MongoDeployer(OpenShiftClient ocp) {
-        super("mongo", ocp);
+    public static class Deployer extends DatabaseBuilder<MongoDeployer.Deployer, MongoDeployer> {
+        @Override
+        public MongoDeployer build() {
+            return new MongoDeployer(
+                    project,
+                    deployment,
+                    services,
+                    ocpClient);
+        }
     }
 
-    public MongoDeployer getThis() {
-        return this;
+    private static final Logger LOGGER = LoggerFactory.getLogger(MongoDeployer.class);
+
+    private MongoDeployer(
+                          String project,
+                          Deployment deployment,
+                          List<Service> services,
+                          OpenShiftClient ocp) {
+        super("mongo", project, deployment, services, ocp);
     }
 
     public MongoController getController(Deployment deployment, List<Service> services, String dbType, OpenShiftClient ocp) {

@@ -19,15 +19,27 @@ import io.fabric8.openshift.client.OpenShiftClient;
  *
  * @author Jakub Cechacek
  */
-public class DB2Deployer extends DatabaseDeployer<DB2Deployer, DB2Controller> {
-    private static final Logger LOGGER = LoggerFactory.getLogger(DB2Deployer.class);
+public class DB2Deployer extends DatabaseDeployer<DB2Controller> {
 
-    public DB2Deployer(OpenShiftClient ocp) {
-        super("db2", ocp);
+    public static class Deployer extends DatabaseBuilder<DB2Deployer.Deployer, DB2Deployer> {
+        @Override
+        public DB2Deployer build() {
+            return new DB2Deployer(
+                    project,
+                    deployment,
+                    services,
+                    ocpClient);
+        }
     }
 
-    public DB2Deployer getThis() {
-        return this;
+    private static final Logger LOGGER = LoggerFactory.getLogger(DB2Deployer.class);
+
+    private DB2Deployer(
+                        String project,
+                        Deployment deployment,
+                        List<Service> services,
+                        OpenShiftClient ocp) {
+        super("db2", project, deployment, services, ocp);
     }
 
     @Override
