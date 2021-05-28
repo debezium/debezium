@@ -90,6 +90,7 @@ DROP:                                'DROP';
 EACH:                                'EACH';
 ELSE:                                'ELSE';
 ELSEIF:                              'ELSEIF';
+EMPTY:                               'EMPTY';
 ENCLOSED:                            'ENCLOSED';
 ESCAPED:                             'ESCAPED';
 EXISTS:                              'EXISTS';
@@ -283,8 +284,38 @@ HOUR_MICROSECOND:                    'HOUR_MICROSECOND';
 DAY_MICROSECOND:                     'DAY_MICROSECOND';
 
 // JSON keywords
+JSON_ARRAY:                          'JSON_ARRAY';
+JSON_OBJECT:                         'JSON_OBJECT';
+JSON_QUOTE:                          'JSON_QUOTE';
+JSON_CONTAINS:                       'JSON_CONTAINS';
+JSON_CONTAINS_PATH:                  'JSON_CONTAINS_PATH';
+JSON_EXTRACT:                        'JSON_EXTRACT';
+JSON_KEYS:                           'JSON_KEYS';
+JSON_OVERLAPS:                       'JSON_OVERLAPS';
+JSON_SEARCH:                         'JSON_SEARCH';
+JSON_VALUE:                          'JSON_VALUE';
+JSON_ARRAY_APPEND:                   'JSON_ARRAY_APPEND';
+JSON_ARRAY_INSERT:                   'JSON_ARRAY_INSERT';
+JSON_INSERT:                         'JSON_INSERT';
+JSON_MERGE:                          'JSON_MERGE';
+JSON_MERGE_PATCH:                    'JSON_MERGE_PATCH';
+JSON_MERGE_PRESERVE:                 'JSON_MERGE_PRESERVE';
+JSON_REMOVE:                         'JSON_REMOVE';
+JSON_REPLACE:                        'JSON_REPLACE';
+JSON_SET:                            'JSON_SET';
+JSON_UNQUOTE:                        'JSON_UNQUOTE';
+JSON_DEPTH:                          'JSON_DEPTH';
+JSON_LENGTH:                         'JSON_LENGTH';
+JSON_TYPE:                           'JSON_TYPE';
 JSON_VALID:                          'JSON_VALID';
+JSON_TABLE:                          'JSON_TABLE';
 JSON_SCHEMA_VALID:                   'JSON_SCHEMA_VALID';
+JSON_SCHEMA_VALIDATION_REPORT:       'JSON_SCHEMA_VALIDATION_REPORT';
+JSON_PRETTY:                         'JSON_PRETTY';
+JSON_STORAGE_FREE:                   'JSON_STORAGE_FREE';
+JSON_STORAGE_SIZE:                   'JSON_STORAGE_SIZE';
+JSON_ARRAYAGG:                       'JSON_ARRAYAGG';
+JSON_OBJECTAGG:                      'JSON_OBJECTAGG';
 
 // Group function Keywords
 
@@ -572,6 +603,7 @@ REPLICATION:                         'REPLICATION';
 RESET:                               'RESET';
 RESUME:                              'RESUME';
 RETURNED_SQLSTATE:                   'RETURNED_SQLSTATE';
+RETURNING:                           'RETURNING';
 RETURNS:                             'RETURNS';
 REUSE:                               'REUSE';
 ROLE:                                'ROLE';
