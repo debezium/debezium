@@ -21,6 +21,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.testing.openshift.assertions.AvroKafkaAssertions;
 import io.debezium.testing.openshift.assertions.KafkaAssertions;
 import io.debezium.testing.openshift.assertions.PlainKafkaAssertions;
+import io.debezium.testing.openshift.resources.ConnectorFactories;
 import io.debezium.testing.openshift.tools.ConfigProperties;
 import io.debezium.testing.openshift.tools.kafka.KafkaController;
 import io.debezium.testing.openshift.tools.kafka.OcpKafkaConnectController;
@@ -64,6 +65,9 @@ public abstract class ConnectorTestBase {
     protected static KafkaController kafkaController;
     protected static OcpKafkaConnectController kafkaConnectController;
     protected static StrimziOperatorController operatorController;
+
+    // Connectors
+    protected static ConnectorFactories connectorFactories = new ConnectorFactories();
 
     // Registry Control
     protected static RegistryDeployer registryDeployer;

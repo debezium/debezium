@@ -23,7 +23,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 
 import io.debezium.testing.openshift.ConnectorTestBase;
-import io.debezium.testing.openshift.resources.ConnectorFactories;
 import io.debezium.testing.openshift.tools.ConfigProperties;
 import io.debezium.testing.openshift.tools.databases.SqlDatabaseClient;
 import io.debezium.testing.openshift.tools.databases.sqlserver.SqlServerController;
@@ -47,9 +46,7 @@ public class SqlServerConnectorIT extends ConnectorTestBase {
 
     public static final String CONNECTOR_NAME = "inventory-connector-sqlserver";
 
-    private static SqlServerDeployer dbDeployer;
     private static SqlServerController dbController;
-    private static ConnectorFactories connectorFactories = new ConnectorFactories();
     private static ConnectorConfigBuilder connectorConfig;
     private static String connectorName;
     private static String dbServerName;
@@ -58,12 +55,14 @@ public class SqlServerConnectorIT extends ConnectorTestBase {
     public static void setupDatabase() throws IOException, InterruptedException, ClassNotFoundException {
         Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver");
 
-        if (!ConfigProperties.DATABASE_SQLSERVER_HOST.isPresent()) {
-            dbController = new SqlServerDeployer(ocp)
+        if (!ConfigProperties.DATABASE_MYSQL_HOST.isPresent()) {
+            SqlServerDeployer deployer = new SqlServerDeployer.Deployer()
+                    .withOcpClient(ocp)
                     .withProject(ConfigProperties.OCP_PROJECT_SQLSERVER)
                     .withDeployment(DB_DEPLOYMENT_PATH)
-                    .withServices(DB_SERVICE_PATH_LB, DB_SERVICE_PATH)
-                    .deploy();
+                    .withServices(DB_SERVICE_PATH, DB_SERVICE_PATH_LB)
+                    .build();
+            dbController = deployer.deploy();
             dbController.initialize();
         }
 
@@ -120,7 +119,6 @@ public class SqlServerConnectorIT extends ConnectorTestBase {
         awaitAssert(() -> assertions.assertRecordsCount(dbServerName + ".dbo.customers", 4));
     }
 
-    //
     @Test
     @Order(4)
     public void shouldStreamChanges() throws SQLException {

@@ -16,18 +16,29 @@ import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.openshift.client.OpenShiftClient;
 
 /**
- *
  * @author Jakub Cechacek
  */
-public class SqlServerDeployer extends DatabaseDeployer<SqlServerDeployer, SqlServerController> {
-    private static final Logger LOGGER = LoggerFactory.getLogger(SqlServerDeployer.class);
+public class SqlServerDeployer extends DatabaseDeployer<SqlServerController> {
 
-    public SqlServerDeployer(OpenShiftClient ocp) {
-        super("sqlserver", ocp);
+    public static class Deployer extends DatabaseBuilder<SqlServerDeployer.Deployer, SqlServerDeployer> {
+        @Override
+        public SqlServerDeployer build() {
+            return new SqlServerDeployer(
+                    project,
+                    deployment,
+                    services,
+                    ocpClient);
+        }
     }
 
-    public SqlServerDeployer getThis() {
-        return this;
+    private static final Logger LOGGER = LoggerFactory.getLogger(SqlServerDeployer.class);
+
+    private SqlServerDeployer(
+                              String project,
+                              Deployment deployment,
+                              List<Service> services,
+                              OpenShiftClient ocp) {
+        super("sqlserver", project, deployment, services, ocp);
     }
 
     @Override

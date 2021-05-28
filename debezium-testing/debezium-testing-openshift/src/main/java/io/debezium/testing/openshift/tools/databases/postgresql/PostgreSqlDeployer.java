@@ -20,18 +20,31 @@ import io.fabric8.openshift.client.OpenShiftClient;
  *
  * @author Jakub Cechacek
  */
-public class PostgreSqlDeployer extends DatabaseDeployer<PostgreSqlDeployer, SqlDatabaseController> {
+public class PostgreSqlDeployer extends DatabaseDeployer<SqlDatabaseController> {
+
+    public static class Deployer extends DatabaseBuilder<PostgreSqlDeployer.Deployer, PostgreSqlDeployer> {
+        @Override
+        public PostgreSqlDeployer build() {
+            return new PostgreSqlDeployer(
+                    project,
+                    deployment,
+                    services,
+                    ocpClient);
+        }
+    }
+
     private static final Logger LOGGER = LoggerFactory.getLogger(PostgreSqlDeployer.class);
 
-    public PostgreSqlDeployer(OpenShiftClient ocp) {
-        super("postgresql", ocp);
+    public PostgreSqlDeployer(
+                              String project,
+                              Deployment deployment,
+                              List<Service> services,
+                              OpenShiftClient ocp) {
+        super("postgresql", project, deployment, services, ocp);
     }
 
-    public PostgreSqlDeployer getThis() {
-        return this;
-    }
-
-    public SqlDatabaseController getController(Deployment deployment, List<Service> services, String dbType, OpenShiftClient ocp) {
+    public SqlDatabaseController getController(
+                                               Deployment deployment, List<Service> services, String dbType, OpenShiftClient ocp) {
         return new SqlDatabaseController(deployment, services, dbType, ocp);
     }
 }
