@@ -6,10 +6,17 @@
 
 package io.debezium.connector.mysql;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+
 import java.nio.file.Path;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
+import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
 import org.junit.Before;
@@ -75,14 +82,49 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
                 connection.commit();
             }
         }
-
+        String txId = null;
+        List<SourceRecord> allRecords = new ArrayList<>();
+        // read records until the transaction is found
+        for (int i = 0; txId == null && i < 50; i++) {
+            List<SourceRecord> records = consumeRecordsByTopic(100).allRecordsInOrder();
+            txId = getTxId(records);
+            allRecords.addAll(records);
+        }
+        assertNotNull("Failed to find the transaction", txId);
+        int beginIndex = findFirstEvent(allRecords, txId);
+        if (allRecords.size() < beginIndex + 6) {
+            allRecords.addAll(consumeRecordsByTopic(6).allRecordsInOrder());
+        }
+        List<SourceRecord> transactionRecords = allRecords.subList(beginIndex, beginIndex + 1 + 4 + 1);
+        assertFalse(transactionRecords.isEmpty());
         // BEGIN + 4 INSERT + END
-        // Initial few records would have database history changes hence fetching 4+6 records
-        List<SourceRecord> records = consumeRecordsByTopic(1 + 4 + 1).allRecordsInOrder();
+        assertEquals(1 + 4 + 1, transactionRecords.size());
         String databaseName = DATABASE.getDatabaseName();
-        final String txId = assertBeginTransaction(records.get(0));
-        assertEndTransaction(records.get(5), txId, 4, Collect.hashMapOf(databaseName + ".products", 1,
+        String beginTxId = assertBeginTransaction(transactionRecords.get(0));
+        assertEquals(txId, beginTxId);
+        assertEndTransaction(transactionRecords.get(5), txId, 4, Collect.hashMapOf(databaseName + ".products", 1,
                 databaseName + ".customers", 2,
                 databaseName + ".orders", 1));
+    }
+
+    private String getTxId(List<SourceRecord> records) {
+        Optional<Struct> product = records.stream()
+                .map(sr -> (Struct) sr.value())
+                .filter(sr -> sr.schema().field("source") != null)
+                .filter(sr -> sr.getStruct("source").getString("table").equals("products"))
+                .filter(s -> s.getStruct("after").getString("description").equals("Toy robot"))
+                .findFirst();
+        return product.map(struct -> (String) struct.getStruct("transaction").get("id")).orElse(null);
+    }
+
+    private int findFirstEvent(List<SourceRecord> records, String txId) {
+        int i = 0;
+        for (SourceRecord sr : records) {
+            if (((Struct) sr.value()).getString("id").equals(txId)) {
+                return i;
+            }
+            i++;
+        }
+        return -1;
     }
 }

@@ -515,8 +515,8 @@
                                 <database.port>${mysql.port}</database.port>
                                 <database.replica.port>${mysql.port}</database.replica.port>
                                 <skipLongRunningTests>false</skipLongRunningTests>
-                                <runOrder>alphabetical</runOrder>
                             </systemPropertyVariables>
+                            <runOrder>alphabetical</runOrder>
                         </configuration>
                         <executions>
                             <!-- First run the integration tests with the non-GTID server alone -->

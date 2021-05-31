@@ -14,6 +14,7 @@ import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.connector.SnapshotRecord;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
+import io.debezium.pipeline.source.snapshot.incremental.SignalBasedIncrementalSnapshotContext;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.relational.TableId;
@@ -60,7 +61,7 @@ public class SqlServerOffsetContext implements OffsetContext {
     }
 
     public SqlServerOffsetContext(SqlServerConnectorConfig connectorConfig, TxLogPosition position, boolean snapshot, boolean snapshotCompleted) {
-        this(connectorConfig, position, snapshot, snapshotCompleted, 1, new TransactionContext(), new IncrementalSnapshotContext<>());
+        this(connectorConfig, position, snapshot, snapshotCompleted, 1, new TransactionContext(), new SignalBasedIncrementalSnapshotContext<>());
     }
 
     @Override
@@ -162,7 +163,7 @@ public class SqlServerOffsetContext implements OffsetContext {
             }
 
             return new SqlServerOffsetContext(connectorConfig, TxLogPosition.valueOf(commitLsn, changeLsn), snapshot, snapshotCompleted, eventSerialNo,
-                    TransactionContext.load(offset), IncrementalSnapshotContext.load(offset, TableId.class));
+                    TransactionContext.load(offset), SignalBasedIncrementalSnapshotContext.load(offset));
         }
     }
 

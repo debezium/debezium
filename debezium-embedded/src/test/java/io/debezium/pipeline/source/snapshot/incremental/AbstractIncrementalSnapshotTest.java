@@ -32,8 +32,8 @@ import io.debezium.util.Testing;
 
 public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector> extends AbstractConnectorTest {
 
-    private static final int ROW_COUNT = 1_000;
-    private static final int MAXIMUM_NO_RECORDS_CONSUMES = 2;
+    protected static final int ROW_COUNT = 1_000;
+    private static final int MAXIMUM_NO_RECORDS_CONSUMES = 3;
 
     protected static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-is.txt")
             .toAbsolutePath();
@@ -115,10 +115,14 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
 
     protected void sendAdHocSnapshotSignal() throws SQLException {
         try (final JdbcConnection connection = databaseConnection()) {
-            connection.execute(
-                    String.format(
-                            "INSERT INTO %s VALUES('ad-hoc', 'execute-snapshot', '{\"data-collections\": [\"%s\"]}')",
-                            signalTableName(), tableName()));
+            String query = String.format(
+                    "INSERT INTO %s VALUES('ad-hoc', 'execute-snapshot', '{\"data-collections\": [\"%s\"]}')",
+                    signalTableName(), tableName());
+            logger.info("Sending signal with query {}", query);
+            connection.execute(query);
+        }
+        catch (Exception e) {
+            logger.warn("Failed to send signal", e);
         }
     }
 
@@ -127,7 +131,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         start(connectorClass(), config);
         waitForConnectorToStart();
 
-        waitForAvailableRecords(100, TimeUnit.MILLISECONDS);
+        waitForAvailableRecords(1, TimeUnit.SECONDS);
         // there shouldn't be any snapshot records
         assertNoRecordsToConsume();
     }
@@ -220,7 +224,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         startAndConsumeTillEnd(connectorClass(), config);
         waitForConnectorToStart();
 
-        waitForAvailableRecords(100, TimeUnit.MILLISECONDS);
+        waitForAvailableRecords(1, TimeUnit.SECONDS);
         // there shouldn't be any snapshot records
         assertNoRecordsToConsume();
 
@@ -286,7 +290,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         startAndConsumeTillEnd(connectorClass(), config);
         waitForConnectorToStart();
 
-        waitForAvailableRecords(100, TimeUnit.MILLISECONDS);
+        waitForAvailableRecords(1, TimeUnit.SECONDS);
         // there shouldn't be any snapshot records
         assertNoRecordsToConsume();
 

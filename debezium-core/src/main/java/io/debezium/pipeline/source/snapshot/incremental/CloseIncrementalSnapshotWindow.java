@@ -28,7 +28,7 @@ public class CloseIncrementalSnapshotWindow implements Signal.Action {
     @SuppressWarnings({ "rawtypes", "unchecked" })
     @Override
     public boolean arrived(Payload signalPayload) throws InterruptedException {
-        dispatcher.getIncrementalSnapshotChangeEventSource().closeWindow(signalPayload.id, (EventDispatcher) dispatcher, signalPayload.offsetContext);
+        dispatcher.getIncrementalSnapshotChangeEventSource().closeWindow(signalPayload.id, signalPayload.offsetContext);
         return true;
     }
 

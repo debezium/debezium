@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mysql;
 
+import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -15,7 +16,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.function.Predicate;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+
+import com.google.common.collect.BoundType;
+import com.google.common.collect.Range;
+import com.google.common.collect.RangeSet;
+import com.google.common.collect.TreeRangeSet;
 
 import io.debezium.annotation.Immutable;
 
@@ -29,6 +36,7 @@ import io.debezium.annotation.Immutable;
 public final class GtidSet {
 
     private final Map<String, UUIDSet> uuidSetsByServerId = new TreeMap<>(); // sorts on keys
+    public static Pattern GTID_DELIMITER = Pattern.compile(":");
 
     protected GtidSet(Map<String, UUIDSet> uuidSetsByServerId) {
         this.uuidSetsByServerId.putAll(uuidSetsByServerId);
@@ -140,6 +148,29 @@ public final class GtidSet {
         return new GtidSet(newSet);
     }
 
+    public boolean contains(String gtid) {
+        String[] split = GTID_DELIMITER.split(gtid);
+        String sourceId = split[0];
+        UUIDSet uuidSet = forServerWithId(sourceId);
+        if (uuidSet == null) {
+            return false;
+        }
+        long transactionId = Long.parseLong(split[1]);
+        return uuidSet.contains(transactionId);
+    }
+
+    public GtidSet subtract(GtidSet other) {
+        if (other == null) {
+            return this;
+        }
+        Map<String, UUIDSet> newSets = this.uuidSetsByServerId.entrySet()
+                .stream()
+                .filter(entry -> !entry.getValue().isContainedWithin(other.forServerWithId(entry.getKey())))
+                .map(entry -> new AbstractMap.SimpleEntry<>(entry.getKey(), entry.getValue().subtract(other.forServerWithId(entry.getKey()))))
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+        return new GtidSet(newSets);
+    }
+
     @Override
     public int hashCode() {
         return uuidSetsByServerId.keySet().hashCode();
@@ -197,6 +228,11 @@ public final class GtidSet {
         protected UUIDSet(String uuid, Interval interval) {
             this.uuid = uuid;
             this.intervals.add(interval);
+        }
+
+        protected UUIDSet(String uuid, List<Interval> intervals) {
+            this.uuid = uuid;
+            this.intervals.addAll(intervals);
         }
 
         public UUIDSet asIntervalBeginning() {
@@ -263,6 +299,15 @@ public final class GtidSet {
             return true;
         }
 
+        public boolean contains(long transactionId) {
+            for (Interval interval : this.intervals) {
+                if (interval.contains(transactionId)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         @Override
         public int hashCode() {
             return uuid.hashCode();
@@ -297,6 +342,19 @@ public final class GtidSet {
             }
             return sb.toString();
         }
+
+        public UUIDSet subtract(UUIDSet other) {
+            if (!uuid.equals(other.getUUID())) {
+                throw new IllegalArgumentException("UUIDSet subtraction is supported only within a single server UUID");
+            }
+            RangeSet<Long> rangeSet = TreeRangeSet.create();
+            intervals.forEach(interval -> rangeSet.add(Range.closed(interval.getStart(), interval.getEnd())));
+            other.getIntervals().forEach(interval -> rangeSet.remove(Range.closed(interval.getStart(), interval.getEnd())));
+            List<Interval> intervalList = rangeSet.asRanges().stream()
+                    .map(range -> new Interval(range))
+                    .collect(Collectors.toList());
+            return new UUIDSet(uuid, intervalList);
+        }
     }
 
     @Immutable
@@ -308,6 +366,14 @@ public final class GtidSet {
         public Interval(long start, long end) {
             this.start = start;
             this.end = end;
+        }
+
+        private Interval(Range<Long> range) {
+            this.start = range.lowerBoundType() == BoundType.CLOSED ? range.lowerEndpoint() : range.lowerEndpoint() + 1;
+            this.end = range.upperBoundType() == BoundType.CLOSED ? range.upperEndpoint() : range.upperEndpoint() - 1;
+            if (start > end) {
+                throw new IllegalArgumentException("Empty interval: " + range);
+            }
         }
 
         /**
@@ -344,6 +410,10 @@ public final class GtidSet {
                 return false;
             }
             return this.getStart() >= other.getStart() && this.getEnd() <= other.getEnd();
+        }
+
+        public boolean contains(long transactionId) {
+            return getStart() <= transactionId && transactionId <= getEnd();
         }
 
         @Override

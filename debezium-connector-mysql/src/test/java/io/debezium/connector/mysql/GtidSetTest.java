@@ -132,6 +132,24 @@ public class GtidSetTest {
         assertThat(filtered.forServerWithId("7145bf69-d1ca-11e5-a588-0242ac110004")).isNull();
     }
 
+    @Test
+    public void subtract() {
+        String gtidStr1 = "036d85a9-64e5-11e6-9b48-42010af0000c:1-20,"
+                + "7145bf69-d1ca-11e5-a588-0242ac110004:1-3200,"
+                + "7c1de3f2-3fd2-11e6-9cdc-42010af000bc:1-41";
+        String gtidStr2 = "036d85a9-64e5-11e6-9b48-42010af0000c:1-21,"
+                + "7145bf69-d1ca-11e5-a588-0242ac110004:1-3200,"
+                + "7c1de3f2-3fd2-11e6-9cdc-42010af000bc:1-49";
+        String diff = "036d85a9-64e5-11e6-9b48-42010af0000c:21,"
+                + "7c1de3f2-3fd2-11e6-9cdc-42010af000bc:42-49";
+        GtidSet gtidSet1 = new GtidSet(gtidStr1);
+        GtidSet gtidSet2 = new GtidSet(gtidStr2);
+
+        GtidSet gtidSetDiff = gtidSet2.subtract(gtidSet1);
+        GtidSet expectedDiff = new GtidSet(diff);
+        assertThat(gtidSetDiff).isEqualTo(expectedDiff);
+    }
+
     protected void asertIntervalCount(String uuid, int count) {
         UUIDSet set = gtids.forServerWithId(uuid);
         assertThat(set.getIntervals().size()).isEqualTo(count);
