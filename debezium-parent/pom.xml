@@ -94,15 +94,15 @@
     <build>
         <pluginManagement>
             <plugins>
-<!--                <plugin>-->
-<!--                    <groupId>org.apache.maven.plugins</groupId>-->
-<!--                    <artifactId>maven-failsafe-plugin</artifactId>-->
-<!--                    <version>${version.failsafe.plugin}</version>-->
-<!--                    <configuration>-->
-<!--                        <argLine>${debug.argline} ${modules.argline} ${test.argline}</argLine>-->
-<!--                        <useSystemClassLoader>${useSystemClassLoader}</useSystemClassLoader>-->
-<!--                    </configuration>-->
-<!--                </plugin>-->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-failsafe-plugin</artifactId>
+                    <version>${version.failsafe.plugin}</version>
+                    <configuration>
+                        <argLine>${debug.argline} ${modules.argline} ${test.argline}</argLine>
+                        <useSystemClassLoader>${useSystemClassLoader}</useSystemClassLoader>
+                    </configuration>
+                </plugin>
                 <plugin>
                     <groupId>com.googlecode.maven-java-formatter-plugin</groupId>
                     <artifactId>maven-java-formatter-plugin</artifactId>
@@ -118,22 +118,22 @@
                     <artifactId>protoc-jar-maven-plugin</artifactId>
                     <version>${version.protoc.maven.plugin}</version>
                 </plugin>
-<!--                <plugin>-->
-<!--                    <groupId>net.revelc.code.formatter</groupId>-->
-<!--                    <artifactId>formatter-maven-plugin</artifactId>-->
-<!--                    <version>${version.code.formatter}</version>-->
-<!--                    <dependencies>-->
-<!--                        <dependency>-->
-<!--                            <groupId>io.debezium</groupId>-->
-<!--                            <artifactId>debezium-ide-configs</artifactId>-->
-<!--                            <version>${project.version}</version>-->
-<!--                        </dependency>-->
-<!--                    </dependencies>-->
-<!--                    <configuration>-->
-<!--                        <configFile>/eclipse/debezium-formatter.xml</configFile>-->
-<!--                        <skip>${format.skip}</skip>-->
-<!--                    </configuration>-->
-<!--                </plugin>-->
+                <plugin>
+                    <groupId>net.revelc.code.formatter</groupId>
+                    <artifactId>formatter-maven-plugin</artifactId>
+                    <version>${version.code.formatter}</version>
+                    <dependencies>
+                        <dependency>
+                            <groupId>io.debezium</groupId>
+                            <artifactId>debezium-ide-configs</artifactId>
+                            <version>${project.version}</version>
+                        </dependency>
+                    </dependencies>
+                    <configuration>
+                        <configFile>/eclipse/debezium-formatter.xml</configFile>
+                        <skip>${format.skip}</skip>
+                    </configuration>
+                </plugin>
                 <plugin>
                     <groupId>net.revelc.code</groupId>
                     <artifactId>impsort-maven-plugin</artifactId>
@@ -171,18 +171,18 @@
             </plugins>
         </pluginManagement>
         <plugins>
-<!--            <plugin>-->
-<!--                <groupId>net.revelc.code.formatter</groupId>-->
-<!--                <artifactId>formatter-maven-plugin</artifactId>-->
-<!--                <executions>-->
-<!--                    <execution>-->
-<!--                        <phase>process-sources</phase>-->
-<!--                        <goals>-->
-<!--                            <goal>${format.formatter.goal}</goal>-->
-<!--                        </goals>-->
-<!--                    </execution>-->
-<!--                </executions>-->
-<!--            </plugin>-->
+            <plugin>
+                <groupId>net.revelc.code.formatter</groupId>
+                <artifactId>formatter-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <phase>process-sources</phase>
+                        <goals>
+                            <goal>${format.formatter.goal}</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <groupId>net.revelc.code</groupId>
                 <artifactId>impsort-maven-plugin</artifactId>
@@ -379,11 +379,4 @@
             </properties>
         </profile>
     </profiles>
-
-    <repositories>
-        <repository>
-            <id>confluent</id>
-            <url>https://packages.confluent.io/maven</url>
-        </repository>
-    </repositories>
 </project>

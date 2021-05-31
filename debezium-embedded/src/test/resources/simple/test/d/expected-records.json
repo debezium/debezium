@@ -1,0 +1,522 @@
+[
+  {
+    "sourcePartition": {
+      "source": "simple"
+    },
+    "sourceOffset": {
+      "id": 1
+    },
+    "topic": "test-a",
+    "kafkaPartition": 1,
+    "keySchema": {
+      "type": "struct",
+      "fields": [
+        {
+          "type": "int32",
+          "optional": false,
+          "field": "id"
+        }
+      ],
+      "optional": false,
+      "name": "simple.key"
+    },
+    "key": {
+      "id": 1
+    },
+    "valueSchema": {
+      "type": "struct",
+      "fields": [
+        {
+          "type": "int32",
+          "optional": false,
+          "field": "batch"
+        },
+        {
+          "type": "int32",
+          "optional": false,
+          "field": "record"
+        },
+        {
+          "type" : "int64",
+          "optional" : true,
+          "field": "timestamp"
+        }
+      ],
+      "optional": false,
+      "name": "simple.value"
+    },
+    "value": {
+      "batch": 1,
+      "record": 1,
+      "timestamp": null
+    }
+  },
+  {
+    "sourcePartition": {
+      "source": "simple"
+    },
+    "sourceOffset": {
+      "id": 2
+    },
+    "topic": "test-a",
+    "kafkaPartition": 1,
+    "keySchema": {
+      "type": "struct",
+      "fields": [
+        {
+          "type": "int32",
+          "optional": false,
+          "field": "id"
+        }
+      ],
+      "optional": false,
+      "name": "simple.key"
+    },
+    "key": {
+      "id": 2
+    },
+    "valueSchema": {
+      "type": "struct",
+      "fields": [
+        {
+          "type": "int32",
+          "optional": false,
+          "field": "batch"
+        },
+        {
+          "type": "int32",
+          "optional": false,
+          "field": "record"
+        },
+        {
+          "type" : "int64",
+          "optional" : true,
+          "field": "timestamp"
+        }
+      ],
+      "optional": false,
+      "name": "simple.value"
+    },
+    "value": {
+      "batch": 1,
+      "record": 2,
+      "timestamp": null
+    }
+  },
+  {
+    "sourcePartition": {
+      "source": "simple"
+    },
+    "sourceOffset": {
+      "id": 3
+    },
+    "topic": "test-a",
+    "kafkaPartition": 1,
+    "keySchema": {
+      "type": "struct",
+      "fields": [
+        {
+          "type": "int32",
+          "optional": false,
+          "field": "id"
+        }
+      ],
+      "optional": false,
+      "name": "simple.key"
+    },
+    "key": {
+      "id": 3
+    },
+    "valueSchema": {
+      "type": "struct",
+      "fields": [
+        {
+          "type": "int32",
+          "optional": false,
+          "field": "batch"
+        },
+        {
+          "type": "int32",
+          "optional": false,
+          "field": "record"
+        },
+        {
+          "type" : "int64",
+          "optional" : true,
+          "field": "timestamp"
+        }
+      ],
+      "optional": false,
+      "name": "simple.value"
+    },
+    "value": {
+      "batch": 1,
+      "record": 3,
+      "timestamp": null
+    }
+  },
+  {
+    "sourcePartition": {
+      "source": "simple"
+    },
+    "sourceOffset": {
+      "id": 4
+    },
+    "topic": "test-a",
+    "kafkaPartition": 1,
+    "keySchema": {
+      "type": "struct",
+      "fields": [
+        {
+          "type": "int32",
+          "optional": false,
+          "field": "id"
+        }
+      ],
+      "optional": false,
+      "name": "simple.key"
+    },
+    "key": {
+      "id": 4
+    },
+    "valueSchema": {
+      "type": "struct",
+      "fields": [
+        {
+          "type": "int32",
+          "optional": false,
+          "field": "batch"
+        },
+        {
+          "type": "int32",
+          "optional": false,
+          "field": "record"
+        },
+        {
+          "type" : "int64",
+          "optional" : true,
+          "field": "timestamp"
+        }
+      ],
+      "optional": false,
+      "name": "simple.value"
+    },
+    "value": {
+      "batch": 1,
+      "record": 4,
+      "timestamp": null
+    }
+  },
+  {
+    "sourcePartition": {
+      "source": "simple"
+    },
+    "sourceOffset": {
+      "id": 5
+    },
+    "topic": "test-a",
+    "kafkaPartition": 1,
+    "keySchema": {
+      "type": "struct",
+      "fields": [
+        {
+          "type": "int32",
+          "optional": false,
+          "field": "id"
+        }
+      ],
+      "optional": false,
+      "name": "simple.key"
+    },
+    "key": {
+      "id": 5
+    },
+    "valueSchema": {
+      "type": "struct",
+      "fields": [
+        {
+          "type": "int32",
+          "optional": false,
+          "field": "batch"
+        },
+        {
+          "type": "int32",
+          "optional": false,
+          "field": "record"
+        },
+        {
+          "type" : "int64",
+          "optional" : true,
+          "field": "timestamp"
+        }
+      ],
+      "optional": false,
+      "name": "simple.value"
+    },
+    "value": {
+      "batch": 1,
+      "record": 5,
+      "timestamp": null
+    }
+  },
+  {
+    "sourcePartition": {
+      "source": "simple"
+    },
+    "sourceOffset": {
+      "id": 6
+    },
+    "topic": "test-a",
+    "kafkaPartition": 1,
+    "keySchema": {
+      "type": "struct",
+      "fields": [
+        {
+          "type": "int32",
+          "optional": false,
+          "field": "id"
+        }
+      ],
+      "optional": false,
+      "name": "simple.key"
+    },
+    "key": {
+      "id": 6
+    },
+    "valueSchema": {
+      "type": "struct",
+      "fields": [
+        {
+          "type": "int32",
+          "optional": false,
+          "field": "batch"
+        },
+        {
+          "type": "int32",
+          "optional": false,
+          "field": "record"
+        },
+        {
+          "type" : "int64",
+          "optional" : true,
+          "field": "timestamp"
+        }
+      ],
+      "optional": false,
+      "name": "simple.value"
+    },
+    "value": {
+      "batch": 1,
+      "record": 6,
+      "timestamp": null
+    }
+  },
+  {
+    "sourcePartition": {
+      "source": "simple"
+    },
+    "sourceOffset": {
+      "id": 7
+    },
+    "topic": "test-a",
+    "kafkaPartition": 1,
+    "keySchema": {
+      "type": "struct",
+      "fields": [
+        {
+          "type": "int32",
+          "optional": false,
+          "field": "id"
+        }
+      ],
+      "optional": false,
+      "name": "simple.key"
+    },
+    "key": {
+      "id": 7
+    },
+    "valueSchema": {
+      "type": "struct",
+      "fields": [
+        {
+          "type": "int32",
+          "optional": false,
+          "field": "batch"
+        },
+        {
+          "type": "int32",
+          "optional": false,
+          "field": "record"
+        },
+        {
+          "type" : "int64",
+          "optional" : true,
+          "field": "timestamp"
+        }
+      ],
+      "optional": false,
+      "name": "simple.value"
+    },
+    "value": {
+      "batch": 1,
+      "record": 7,
+      "timestamp": null
+    }
+  },
+  {
+    "sourcePartition": {
+      "source": "simple"
+    },
+    "sourceOffset": {
+      "id": 8
+    },
+    "topic": "test-a",
+    "kafkaPartition": 1,
+    "keySchema": {
+      "type": "struct",
+      "fields": [
+        {
+          "type": "int32",
+          "optional": false,
+          "field": "id"
+        }
+      ],
+      "optional": false,
+      "name": "simple.key"
+    },
+    "key": {
+      "id": 8
+    },
+    "valueSchema": {
+      "type": "struct",
+      "fields": [
+        {
+          "type": "int32",
+          "optional": false,
+          "field": "batch"
+        },
+        {
+          "type": "int32",
+          "optional": false,
+          "field": "record"
+        },
+        {
+          "type" : "int64",
+          "optional" : true,
+          "field": "timestamp"
+        }
+      ],
+      "optional": false,
+      "name": "simple.value"
+    },
+    "value": {
+      "batch": 1,
+      "record": 8,
+      "timestamp": null
+    }
+  },
+  {
+    "sourcePartition": {
+      "source": "simple"
+    },
+    "sourceOffset": {
+      "id": 9
+    },
+    "topic": "test-a",
+    "kafkaPartition": 1,
+    "keySchema": {
+      "type": "struct",
+      "fields": [
+        {
+          "type": "int32",
+          "optional": false,
+          "field": "id"
+        }
+      ],
+      "optional": false,
+      "name": "simple.key"
+    },
+    "key": {
+      "id": 9
+    },
+    "valueSchema": {
+      "type": "struct",
+      "fields": [
+        {
+          "type": "int32",
+          "optional": false,
+          "field": "batch"
+        },
+        {
+          "type": "int32",
+          "optional": false,
+          "field": "record"
+        },
+        {
+          "type" : "int64",
+          "optional" : true,
+          "field": "timestamp"
+        }
+      ],
+      "optional": false,
+      "name": "simple.value"
+    },
+    "value": {
+      "batch": 1,
+      "record": 9,
+      "timestamp": null
+    }
+  },
+  {
+    "sourcePartition": {
+      "source": "simple"
+    },
+    "sourceOffset": {
+      "id": 10
+    },
+    "topic": "test-a",
+    "kafkaPartition": 1,
+    "keySchema": {
+      "type": "struct",
+      "fields": [
+        {
+          "type": "int32",
+          "optional": false,
+          "field": "id"
+        }
+      ],
+      "optional": false,
+      "name": "simple.key"
+    },
+    "key": {
+      "id": 10
+    },
+    "valueSchema": {
+      "type": "struct",
+      "fields": [
+        {
+          "type": "int32",
+          "optional": false,
+          "field": "batch"
+        },
+        {
+          "type": "int32",
+          "optional": false,
+          "field": "record"
+        },
+        {
+          "type" : "int64",
+          "optional" : true,
+          "field": "timestamp"
+        }
+      ],
+      "optional": false,
+      "name": "simple.value"
+    },
+    "value": {
+      "batch": 1,
+      "record": 10,
+      "timestamp": null
+    }
+  }
+]
