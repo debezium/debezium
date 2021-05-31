@@ -201,6 +201,7 @@ public class EventDispatcher<T extends DataCollectionId> {
             if (!filter.isIncluded(dataCollectionId)) {
                 LOGGER.trace("Filtered data change event for {}", dataCollectionId);
                 eventListener.onFilteredEvent("source = " + dataCollectionId);
+                dispatchFilteredEvent(changeRecordEmitter.getOffset());
             }
             else {
                 DataCollectionSchema dataCollectionSchema = schema.schemaFor(dataCollectionId);
@@ -263,6 +264,12 @@ public class EventDispatcher<T extends DataCollectionId> {
                     break;
             }
             return false;
+        }
+    }
+
+    public void dispatchFilteredEvent(OffsetContext offset) throws InterruptedException {
+        if (incrementalSnapshotChangeEventSource != null) {
+            incrementalSnapshotChangeEventSource.processFilteredEvent(offset);
         }
     }
 
@@ -348,6 +355,12 @@ public class EventDispatcher<T extends DataCollectionId> {
 
     private void enqueueSchemaChangeMessage(SourceRecord record) throws InterruptedException {
         queue.enqueue(new DataChangeEvent(record));
+    }
+
+    public void dispatchServerHeartbeatEvent(OffsetContext offset) throws InterruptedException {
+        if (incrementalSnapshotChangeEventSource != null) {
+            incrementalSnapshotChangeEventSource.processHeartbeat(offset);
+        }
     }
 
     /**

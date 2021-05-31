@@ -17,6 +17,7 @@ import org.apache.kafka.connect.errors.ConnectException;
 
 import io.debezium.connector.SnapshotRecord;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
+import io.debezium.pipeline.source.snapshot.incremental.SignalBasedIncrementalSnapshotContext;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.relational.TableId;
@@ -66,7 +67,8 @@ public class MySqlOffsetContext implements OffsetContext {
     }
 
     public MySqlOffsetContext(MySqlConnectorConfig connectorConfig, boolean snapshot, boolean snapshotCompleted, SourceInfo sourceInfo) {
-        this(connectorConfig, snapshot, snapshotCompleted, new TransactionContext(), new IncrementalSnapshotContext<>(),
+        this(connectorConfig, snapshot, snapshotCompleted, new TransactionContext(),
+                connectorConfig.isReadOnlyConnection() ? new MySqlReadOnlyIncrementalSnapshotContext<>() : new SignalBasedIncrementalSnapshotContext<>(),
                 sourceInfo);
     }
 
@@ -204,9 +206,15 @@ public class MySqlOffsetContext implements OffsetContext {
                 throw new ConnectException("Source offset '" + SourceInfo.BINLOG_FILENAME_OFFSET_KEY + "' parameter is missing");
             }
             long binlogPosition = longOffsetValue(offset, SourceInfo.BINLOG_POSITION_OFFSET_KEY);
-
+            IncrementalSnapshotContext<TableId> incrementalSnapshotContext;
+            if (connectorConfig.isReadOnlyConnection()) {
+                incrementalSnapshotContext = MySqlReadOnlyIncrementalSnapshotContext.load(offset);
+            }
+            else {
+                incrementalSnapshotContext = SignalBasedIncrementalSnapshotContext.load(offset);
+            }
             final MySqlOffsetContext offsetContext = new MySqlOffsetContext(connectorConfig, snapshot,
-                    snapshotCompleted, TransactionContext.load(offset), IncrementalSnapshotContext.load(offset, TableId.class),
+                    snapshotCompleted, TransactionContext.load(offset), incrementalSnapshotContext,
                     new SourceInfo(connectorConfig));
             offsetContext.setBinlogStartPoint(binlogFilename, binlogPosition);
             offsetContext.setInitialSkips(longOffsetValue(offset, EVENTS_TO_SKIP_OFFSET_KEY),

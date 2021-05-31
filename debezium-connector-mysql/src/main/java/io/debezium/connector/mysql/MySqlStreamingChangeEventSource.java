@@ -403,8 +403,9 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
      *
      * @param event the server stopped event to be processed; may not be null
      */
-    protected void handleServerHeartbeat(MySqlOffsetContext offsetContext, Event event) {
+    protected void handleServerHeartbeat(MySqlOffsetContext offsetContext, Event event) throws InterruptedException {
         LOGGER.trace("Server heartbeat: {}", event);
+        eventDispatcher.dispatchServerHeartbeatEvent(offsetContext);
     }
 
     /**
@@ -615,7 +616,7 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
      *
      * @param event the update event; never null
      */
-    protected void handleUpdateTableMetadata(MySqlOffsetContext offsetContext, Event event) {
+    protected void handleUpdateTableMetadata(MySqlOffsetContext offsetContext, Event event) throws InterruptedException {
         TableMapEventData metadata = unwrapData(event);
         long tableNumber = metadata.getTableId();
         String databaseName = metadata.getDatabase();
@@ -634,7 +635,7 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
      * don't know, either ignore that event or raise a warning or error as per the
      * {@link MySqlConnectorConfig#INCONSISTENT_SCHEMA_HANDLING_MODE} configuration.
      */
-    private void informAboutUnknownTableIfRequired(MySqlOffsetContext offsetContext, Event event, TableId tableId, String typeToLog) {
+    private void informAboutUnknownTableIfRequired(MySqlOffsetContext offsetContext, Event event, TableId tableId, String typeToLog) throws InterruptedException {
         if (tableId != null && connectorConfig.getTableFilters().dataCollectionFilter().isIncluded(tableId)) {
             metrics.onErroneousEvent("source = " + tableId + ", event " + event);
             EventHeaderV4 eventHeader = event.getHeader();
@@ -668,6 +669,7 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
         else {
             LOGGER.debug("Filtering {} event: {} for non-monitored table {}", typeToLog, event, tableId);
             metrics.onFilteredEvent("source = " + tableId);
+            eventDispatcher.dispatchFilteredEvent(offsetContext);
         }
     }
 

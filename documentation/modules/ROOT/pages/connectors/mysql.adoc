@@ -408,6 +408,20 @@ a|Records the completed snapshot in the connector offsets.
 
 include::{partialsdir}/modules/all-connectors/ref-connector-incremental-snapshot.adoc[leveloffset=+3]
 
+===== Read-only Incremental snapshot
+
+The MySql connector supports Incremental snapshot with read-only connection to the database.
+It's achieved by using executed GTID set as high and low watermarks.
+The state of chunk's window gets updated by comparing GTIDs of binlog events or server's heartbeats against low and high watermarks.
+
+To switch to read-only implementation set {link-prefix}:#{link-mysql-connector}-property-read-only[read.only] to `true`.
+
+.Prerequisites
+
+* {link-prefix}:{link-mysql-connector}#enable-mysql-gtids[`enable-mysql-gtids`]
+* If connector is reading from a replica, then for multithreaded replicas (replicas on which `replica_parallel_workers` is set to a value greater than 0)
+it's required to set `replica_preserve_commit_order=1` or `slave_preserve_commit_order=1`
+
 ifdef::community[]
 
 // Type: continue
@@ -2563,6 +2577,10 @@ endif::community[]
 |
 | Fully-qualified name of the data collection that is used to send {link-prefix}:{link-signalling}[signals] to the connector.
 The name format is _database-name.table-name_.
+
+|[[mysql-property-read-only]]<<mysql-property-read-only, `+read.only+`>>
+|`false`
+|Switch to alternative incremental snapshot watermarks implementation to avoid writes to signal data collection
 
 |[[mysql-property-provide-transaction-metadata]]<<mysql-property-provide-transaction-metadata, `provide.transaction.metadata`>>
 |`false`

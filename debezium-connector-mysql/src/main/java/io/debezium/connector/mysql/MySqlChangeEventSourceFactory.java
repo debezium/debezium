@@ -85,13 +85,26 @@ public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory<M
                                                                                                                               MySqlOffsetContext offsetContext,
                                                                                                                               SnapshotProgressListener snapshotProgressListener,
                                                                                                                               DataChangeEventListener dataChangeEventListener) {
-        final SignalBasedIncrementalSnapshotChangeEventSource<TableId> incrementalSnapshotChangeEventSource = new SignalBasedIncrementalSnapshotChangeEventSource<TableId>(
+        if (configuration.isReadOnlyConnection()) {
+            if (connection.isGtidModeEnabled()) {
+                return Optional.of(new MySqlReadOnlyIncrementalSnapshotChangeEventSource<>(
+                        configuration,
+                        connection,
+                        dispatcher,
+                        schema,
+                        clock,
+                        snapshotProgressListener,
+                        dataChangeEventListener));
+            }
+            throw new UnsupportedOperationException("Read only connection requires GTID_MODE to be ON");
+        }
+        return Optional.of(new SignalBasedIncrementalSnapshotChangeEventSource<>(
                 configuration,
                 connection,
+                dispatcher,
                 schema,
                 clock,
                 snapshotProgressListener,
-                dataChangeEventListener);
-        return Optional.of(incrementalSnapshotChangeEventSource);
+                dataChangeEventListener));
     }
 }
