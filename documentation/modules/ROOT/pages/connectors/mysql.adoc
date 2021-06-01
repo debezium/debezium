@@ -2624,7 +2624,7 @@ In addition to the pass-through properties for the Kafka producer and consumer, 
 The {prodname} MySQL connector provides three types of metrics that are in addition to the built-in support for JMX metrics that Zookeeper, Kafka, and Kafka Connect provide.
 
 * {link-prefix}:{link-mysql-connector}#mysql-snapshot-metrics[Snapshot metrics] provide information about connector operation while performing a snapshot.
-* {link-prefix}:{link-mysql-connector}#mysql-binlog-metrics[Binlog metrics] provide information about connector operation when the connector is reading the binlog.
+* {link-prefix}:{link-mysql-connector}#mysql-streaming-metrics[Streaming metrics] provide information about connector operation when the connector is reading the binlog.
 * {link-prefix}:{link-mysql-connector}#mysql-schema-history-metrics[Schema history metrics] provide information about the status of the connector's schema history.
 
 {link-prefix}:{link-debezium-monitoring}[{prodname} monitoring documentation] provides details for how to expose these metrics by using JMX.
@@ -2644,18 +2644,18 @@ The {prodname} MySQL connector also provides the `HoldingGlobalLock` custom snap
 // Type: reference
 // ModuleID: monitoring-debezium-mysql-connector-binlog-reading
 // Title: Monitoring {prodname} MySQL connector binlog reading
-[[mysql-binlog-metrics]]
-=== Binlog metrics
+[[mysql-streaming-metrics]]
+=== Streaming metrics
 
-The *MBean* is `debezium.mysql:type=connector-metrics,context=binlog,server=<database.server.name>`.
+The *MBean* is `debezium.mysql:type=connector-metrics,context=streaming,server=<database.server.name>`.
 
 Transaction-related attributes are available only if binlog event buffering is enabled. See {link-prefix}:{link-mysql-connector}#mysql-property-binlog-buffer-size[`binlog.buffer.size`] in the advanced connector configuration properties for more details.
 
 include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-streaming-metrics.adoc[leveloffset=+1]
 
-The {prodname} MySQL connector also provides the following custom binlog metrics:
+The {prodname} MySQL connector also provides the following additional streaming metrics:
 
-.Descriptions of custom binlog metrics
+.Descriptions of additional streaming metrics
 [cols="3,2,5",options="header"]
 |===
 |Attribute |Type |Description
