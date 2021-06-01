@@ -96,7 +96,7 @@ The following topics provide details about how the {prodname} MongoDB connector 
 * xref:how-debezium-mongodb-connectors-use-logical-names-for-replica-sets-and-sharded-clusters[]
 * xref:how-debezium-mongodb-connectors-perform-snapshots[]
 * xref:how-the-debezium-mongodb-connector-streams-change-event-records[]
-* xref:default-names-of-kafka-topics-that-receive-mongodb-change-event-records[]
+* xref:default-names-of-kafka-topics-that-receive-debezium-mongodb-change-event-records[]
 * xref:how-event-keys-control-topic-partitioning-for-the-debezium-mongodb-connector[]
 * xref:debezium-mongodb-connector-generated-events-that-represent-transaction-boundaries[]
 
@@ -186,9 +186,9 @@ Try to avoid task reassignment and reconfiguration while the connector is perfor
 // Type: concept
 // ModuleID: how-the-debezium-mongodb-connector-streams-change-event-records
 // Title: How the {prodname} MongoDB connector streams change event records
-[[mongodb-tailing-the-oplog]]
 [[mongodb-streaming-changes]]
 === Streaming changes
+[[mongodb-tailing-the-oplog]]
 
 After the connector task for a replica set records an offset, it uses the offset to determine the position in the oplog where it should start streaming changes.
 The task then connects to the replica set's primary node and start streaming changes from that position.
