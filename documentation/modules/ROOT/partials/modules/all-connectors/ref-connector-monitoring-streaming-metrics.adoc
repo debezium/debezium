@@ -23,7 +23,7 @@ _deprecated and scheduled for removal in a future release; use the 'CapturedTabl
 |`string[]`
 |The list of tables that are monitored by the connector.
 
-|[[connectors-strm-metric-capturedtables_{context}]]<<connectors-strm-metric-capturedtables{context}, `CapturedTables`>>
+|[[connectors-strm-metric-capturedtables_{context}]]<<connectors-strm-metric-capturedtables_{context}, `CapturedTables`>>
 |`string[]`
 |The list of tables that are captured by the connector.
 
