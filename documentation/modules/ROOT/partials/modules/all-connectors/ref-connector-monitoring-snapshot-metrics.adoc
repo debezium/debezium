@@ -23,7 +23,7 @@ _deprecated and scheduled for removal in a future release; use the 'CapturedTabl
 |`string[]`
 |The list of tables that are monitored by the connector.
 
-|[[connectors-snaps-metric-capturedtables_{context}]]<<connectors-snaps-metric-capturedtables__{context}, `MonitoredTables`>>
+|[[connectors-snaps-metric-capturedtables_{context}]]<<connectors-snaps-metric-capturedtables_{context}, `MonitoredTables`>>
 |`string[]`
 |The list of tables that are captured by the connector.
 
