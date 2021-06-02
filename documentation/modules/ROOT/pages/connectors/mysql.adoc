@@ -2642,8 +2642,8 @@ include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-snapshot-
 The {prodname} MySQL connector also provides the `HoldingGlobalLock` custom snapshot metric. This metric is set to a Boolean value that indicates whether the connector currently holds a global or table write lock.
 
 // Type: reference
-// ModuleID: monitoring-debezium-mysql-connector-binlog-reading
-// Title: Monitoring {prodname} MySQL connector binlog reading
+// ModuleID: monitoring-debezium-mysql-connector-record-streaming
+// Title: Monitoring {prodname} MySQL connector record streaming
 [[mysql-streaming-metrics]]
 === Streaming metrics
 
