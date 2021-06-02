@@ -580,7 +580,7 @@ At least `bootstrap.servers`, `key.serializer` and `value.serializer` properties
 
 ==== Pravega
 
-https://pravega.io/[Pravega] is a cloud-native storage system for event streams and data streams. This sink offers two modes: non-transactional and transactional. The non-transactional sink individually writes each event in a Debezium batch to Pravega. The transactional sink writes the Debezium batch to a Pravega transaction that commits when the batch is completed.
+https://pravega.io/[Pravega] is a cloud-native storage system for event streams and data streams. This sink offers two modes: non-transactional and transactional. The non-transactional mode individually writes each event in a Debezium batch to Pravega. The transactional made writes the Debezium batch to a Pravega transaction that commits when the batch is completed.
 
 The Pravega sink expects destination scope and streams to already be created.
 
@@ -592,7 +592,7 @@ The Pravega sink expects destination scope and streams to already be created.
 
 |[[pravega-type]]<<pravega-type, `debezium.sink.type`>>
 |
-|Set to `pravega` for non-transactional writer. Set to `pravega-txn` for transactional writer.
+|Must be set to `pravega`.
 
 |[[pravega-url]]<<pravega-url, `debezium.sink.pravega.controller.uri`>>
 |`tcp://localhost:9090`
@@ -601,6 +601,10 @@ The Pravega sink expects destination scope and streams to already be created.
 |[[pravega-scope]]<<pravega-scope, `debezium.sink.pravega.scope`>>
 |
 |The name of the scope in which to find the destination streams.
+
+|[[pravega-transaction]]<<pravega-transaction, `debezium.sink.pravega.transaction`>>
+|
+|Defaults to `false`. Set to `true` to have the sink use Pravega transactions for each Debezium batch.
 
 |===
 

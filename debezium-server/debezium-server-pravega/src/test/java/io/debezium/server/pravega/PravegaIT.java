@@ -35,7 +35,7 @@ import io.quarkus.test.junit.QuarkusTest;
 @QuarkusTest
 @QuarkusTestResource(PostgresTestResourceLifecycleManager.class)
 @QuarkusTestResource(PravegaTestResource.class)
-@EnabledIfSystemProperty(named = "debezium.sink.type", matches = "pravega")
+@EnabledIfSystemProperty(named = "debezium.sink.pravega.transaction", matches = "false")
 public class PravegaIT {
 
     private static final int MESSAGE_COUNT = 4;

@@ -27,6 +27,9 @@ import io.pravega.client.ClientConfig;
 import io.pravega.client.EventStreamClientFactory;
 import io.pravega.client.stream.EventStreamWriter;
 import io.pravega.client.stream.EventWriterConfig;
+import io.pravega.client.stream.Transaction;
+import io.pravega.client.stream.TransactionalEventStreamWriter;
+import io.pravega.client.stream.TxnFailedException;
 import io.pravega.client.stream.impl.ByteArraySerializer;
 
 @Named("pravega")
@@ -38,14 +41,16 @@ public class PravegaChangeConsumer extends BaseChangeConsumer implements ChangeC
     private static final String PROP_PREFIX = "debezium.sink.pravega.";
     private static final String PROP_CONTROLLER = PROP_PREFIX + "controller.uri";
     private static final String PROP_SCOPE = PROP_PREFIX + "scope";
-
-    private final Map<String, EventStreamWriter<byte[]>> writers = new HashMap<>();
+    private static final String PROP_TXN = PROP_PREFIX + "transaction";
 
     @ConfigProperty(name = PROP_CONTROLLER, defaultValue = "tcp://localhost:9090")
     URI controllerUri;
 
     @ConfigProperty(name = PROP_SCOPE)
     String scope;
+
+    @ConfigProperty(name = PROP_TXN)
+    boolean txn;
 
     private ClientConfig clientConfig;
     private EventStreamClientFactory factory;
@@ -63,31 +68,101 @@ public class PravegaChangeConsumer extends BaseChangeConsumer implements ChangeC
 
     @PreDestroy
     void destructor() {
-        LOGGER.debug("Closing {} writer(s)", writers.size());
-        writers.values().forEach(EventStreamWriter::close);
-        LOGGER.debug("Closing client factory", writers.size());
+        LOGGER.debug("Closing client factory");
         factory.close();
     }
 
     @Override
     public void handleBatch(List<ChangeEvent<Object, Object>> records, RecordCommitter<ChangeEvent<Object, Object>> committer) throws InterruptedException {
-        for (ChangeEvent<Object, Object> changeEvent : records) {
-            String streamName = streamNameMapper.map(changeEvent.destination());
-            final EventStreamWriter<byte[]> writer = writers.computeIfAbsent(streamName, (stream) -> createWriter(stream));
-            if (changeEvent.key() != null) {
-                writer.writeEvent(getString(changeEvent.key()), getBytes(changeEvent.value()));
-            }
-            else {
-                writer.writeEvent(getBytes(changeEvent.value()));
-            }
-            committer.markProcessed(changeEvent);
+        try (PravegaSink impl = (txn) ? new PravegaTxnSinkImpl() : new PravegaSinkImpl()) {
+            impl.handleBatch(records, committer);
         }
-        committer.markBatchFinished();
+        catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
-    private EventStreamWriter<byte[]> createWriter(String stream) {
-        LOGGER.debug("Creating writer for stream {}", stream);
-        return factory.createEventWriter(stream, new ByteArraySerializer(), writerConfig);
+    class PravegaSinkImpl implements PravegaSink {
+        private final Map<String, EventStreamWriter<byte[]>> writers = new HashMap<>();
+
+        @Override
+        public void handleBatch(List<ChangeEvent<Object, Object>> records, RecordCommitter<ChangeEvent<Object, Object>> committer) throws InterruptedException {
+            for (ChangeEvent<Object, Object> changeEvent : records) {
+                String streamName = streamNameMapper.map(changeEvent.destination());
+                final EventStreamWriter<byte[]> writer = writers.computeIfAbsent(streamName, (stream) -> createWriter(stream));
+                if (changeEvent.key() != null) {
+                    writer.writeEvent(getString(changeEvent.key()), getBytes(changeEvent.value()));
+                }
+                else {
+                    writer.writeEvent(getBytes(changeEvent.value()));
+                }
+                committer.markProcessed(changeEvent);
+            }
+            committer.markBatchFinished();
+        }
+
+        private EventStreamWriter<byte[]> createWriter(String stream) {
+            LOGGER.debug("Creating writer for stream {}", stream);
+            return factory.createEventWriter(stream, new ByteArraySerializer(), writerConfig);
+        }
+
+        @Override
+        public void close() throws Exception {
+            LOGGER.debug("Closing {} writer(s)", writers.size());
+            writers.values().forEach(EventStreamWriter::close);
+        }
+    }
+
+    class PravegaTxnSinkImpl implements PravegaSink {
+        private final Map<String, TransactionalEventStreamWriter<byte[]>> writers = new HashMap<>();
+        private final Map<String, Transaction<byte[]>> txns = new HashMap<>();
+
+        @Override
+        public void handleBatch(List<ChangeEvent<Object, Object>> records, RecordCommitter<ChangeEvent<Object, Object>> committer) throws InterruptedException {
+            for (ChangeEvent<Object, Object> changeEvent : records) {
+                String streamName = streamNameMapper.map(changeEvent.destination());
+                final Transaction<byte[]> txn = txns.computeIfAbsent(streamName, (stream) -> createTxn(stream));
+                try {
+                    if (changeEvent.key() != null) {
+                        txn.writeEvent(getString(changeEvent.key()), getBytes(changeEvent.value()));
+                    }
+                    else {
+                        txn.writeEvent(getBytes(changeEvent.value()));
+                    }
+                }
+                catch (TxnFailedException e) {
+                    throw new RuntimeException(e);
+                }
+                committer.markProcessed(changeEvent);
+            }
+            txns.values().forEach(t -> {
+                try {
+                    t.commit();
+                }
+                catch (TxnFailedException e) {
+                    throw new RuntimeException(e);
+                }
+            });
+            committer.markBatchFinished();
+            txns.clear();
+        }
+
+        private Transaction<byte[]> createTxn(String stream) {
+            final TransactionalEventStreamWriter<byte[]> writer = writers.computeIfAbsent(stream, (s) -> createWriter(s));
+            LOGGER.debug("Creating transaction for stream {}", stream);
+            return writer.beginTxn();
+        }
+
+        private TransactionalEventStreamWriter<byte[]> createWriter(String stream) {
+            LOGGER.debug("Creating writer for stream {}", stream);
+            return factory.createTransactionalEventWriter(stream, new ByteArraySerializer(), writerConfig);
+        }
+
+        @Override
+        public void close() throws Exception {
+            LOGGER.debug("Closing {} writer(s)", writers.size());
+            writers.values().forEach(TransactionalEventStreamWriter::close);
+        }
     }
 
 }

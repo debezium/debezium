@@ -129,6 +129,7 @@
                             <systemPropertyVariables>
                                 <debezium.sink.type>pravega</debezium.sink.type>
                                 <debezium.sink.pravega.scope>testc.inventory.customers</debezium.sink.pravega.scope>
+                                <debezium.sink.pravega.transaction>false</debezium.sink.pravega.transaction>
                             </systemPropertyVariables>
                         </configuration>
                     </execution>
@@ -139,8 +140,9 @@
                         </goals>
                         <configuration>
                             <systemPropertyVariables>
-                                <debezium.sink.type>pravega-txn</debezium.sink.type>
+                                <debezium.sink.type>pravega</debezium.sink.type>
                                 <debezium.sink.pravega.scope>testc.inventory.customers</debezium.sink.pravega.scope>
+                                <debezium.sink.pravega.transaction>true</debezium.sink.pravega.transaction>
                             </systemPropertyVariables>
                         </configuration>
                     </execution>
