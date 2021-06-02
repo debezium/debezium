@@ -138,22 +138,25 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withImportance(Importance.HIGH)
             .withDescription("A token to replace on snapshot predicate template");
 
-    public static final Field LOG_MINING_HISTORY_RECORDER_CLASS = Field.create("log.mining.history.recorder.class")
+    @Deprecated
+    public static final Field LOG_MINING_HISTORY_RECORDER_CLASS = Field.createInternal("log.mining.history.recorder.class")
             .withDisplayName("Log Mining History Recorder Class")
             .withType(Type.STRING)
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
             .withInvisibleRecommender()
-            .withDescription("Allows connector deployment to capture log mining results");
+            .withDescription("(Deprecated) Allows connector deployment to capture log mining results");
 
-    public static final Field LOG_MINING_HISTORY_RETENTION = Field.create("log.mining.history.retention.hours")
+    @Deprecated
+    public static final Field LOG_MINING_HISTORY_RETENTION = Field.createInternal("log.mining.history.retention.hours")
             .withDisplayName("Log Mining history retention")
             .withType(Type.LONG)
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
             .withDefault(0)
             .withDescription(
-                    "When supplying a log.mining.history.recorder.class, this option specifies the number of hours the recorder should keep the history.  The default, 0, indicates that no history should be retained.");
+                    "(Deprecated) When supplying a log.mining.history.recorder.class, this option specifies the number of hours "
+                            + "the recorder should keep the history.  The default, 0, indicates that no history should be retained.");
 
     public static final Field LOG_MINING_TRANSACTION_RETENTION = Field.create("log.mining.transaction.retention.hours")
             .withDisplayName("Log Mining long running transaction retention")
