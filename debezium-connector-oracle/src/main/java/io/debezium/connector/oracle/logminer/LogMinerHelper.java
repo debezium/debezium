@@ -503,6 +503,9 @@ public class LogMinerHelper {
         LOGGER.trace("Getting logs to be mined for offset scn {}", offsetScn);
 
         final List<LogFile> logFiles = new ArrayList<>();
+        final List<LogFile> onlineLogFiles = new ArrayList<>();
+        final List<LogFile> archivedLogFiles = new ArrayList<>();
+
         connection.query(SqlUtils.allMinableLogsQuery(offsetScn, archiveLogRetention), rs -> {
             while (rs.next()) {
                 String fileName = rs.getString(1);
@@ -510,26 +513,42 @@ public class LogMinerHelper {
                 Scn nextScn = getScnFromString(rs.getString(3));
                 String status = rs.getString(5);
                 String type = rs.getString(6);
+                Long sequence = rs.getLong(7);
                 if ("ARCHIVED".equals(type)) {
                     // archive log record
-                    LogFile logFile = new LogFile(fileName, firstScn, nextScn);
+                    LogFile logFile = new LogFile(fileName, firstScn, nextScn, sequence);
                     if (logFile.getNextScn().compareTo(offsetScn) >= 0) {
-                        LOGGER.trace("Archive log {} with SCN range {} to {} to be added.", fileName, firstScn, nextScn);
-                        logFiles.add(logFile);
+                        LOGGER.trace("Archive log {} with SCN range {} to {} sequence {} to be added.", fileName, firstScn, nextScn, sequence);
+                        archivedLogFiles.add(logFile);
                     }
                 }
                 else if ("ONLINE".equals(type)) {
-                    LogFile logFile = new LogFile(fileName, firstScn, nextScn, CURRENT.equalsIgnoreCase(status));
+                    LogFile logFile = new LogFile(fileName, firstScn, nextScn, sequence, CURRENT.equalsIgnoreCase(status));
                     if (logFile.isCurrent() || logFile.getNextScn().compareTo(offsetScn) >= 0) {
-                        LOGGER.trace("Online redo log {} with SCN range {} to {} ({}) to be added.", fileName, firstScn, nextScn, status);
-                        logFiles.add(logFile);
+                        LOGGER.trace("Online redo log {} with SCN range {} to {} ({}) sequence {} to be added.", fileName, firstScn, nextScn, status, sequence);
+                        onlineLogFiles.add(logFile);
                     }
                     else {
-                        LOGGER.trace("Online redo log {} with SCN range {} to {} ({}) to be excluded.", fileName, firstScn, nextScn, status);
+                        LOGGER.trace("Online redo log {} with SCN range {} to {} ({}) sequence {} to be excluded.", fileName, firstScn, nextScn, status, sequence);
                     }
                 }
             }
         });
+
+        // DBZ-3563
+        // To avoid duplicate log files (ORA-01289 cannot add duplicate logfile)
+        // Remove the archive log which has the same sequence number.
+        for (LogFile redoLog : onlineLogFiles) {
+            archivedLogFiles.removeIf(f -> {
+                if (f.getSequence().equals(redoLog.getSequence())) {
+                    LOGGER.trace("Removing archive log {} with duplicate sequence {} to {}", f.getFileName(), f.getSequence(), redoLog.getFileName());
+                    return true;
+                }
+                return false;
+            });
+        }
+        logFiles.addAll(archivedLogFiles);
+        logFiles.addAll(onlineLogFiles);
 
         return logFiles;
     }
