@@ -53,6 +53,9 @@ public class LogMinerHelperTest {
         Mockito.when(rs.getString(anyInt())).thenAnswer(it -> {
             return mockRows[current - 1][(Integer) it.getArguments()[0] - 1];
         });
+        Mockito.when(rs.getLong(anyInt())).thenAnswer(it -> {
+            return Long.valueOf(mockRows[current - 1][(Integer) it.getArguments()[0] - 1]);
+        });
 
         Mockito.doAnswer(a -> {
             JdbcConnection.ResultSetConsumer consumer = a.getArgument(1);
