@@ -1520,16 +1520,6 @@ Any transaction that exceeds this configured value will be discarded entirely an
 While this option allows the behavior to be configured on a case-by-case basis,
 we have plans to enhance this behavior in a future release by means of adding a scalable transaction buffer, (see {link-prefix}:{jira-url}/browse/DBZ-3123[DBZ-3123]).
 
-|[[oracle-property-log-mining-history-recorder-class]]<<oracle-property-log-mining-history-recorder-class, `+log.mining.history.recorder.class+`>>
-|
-|The fully qualified class name to an implementation of `HistoryReader` to be used during LogMining streaming.
-
-|[[oracle-property-log-mining-history-retention-hours]]<<oracle-property-log-mining-history-retention-hours, `+log.mining.history.retention.hours+`>>
-|`0`
-|Specifies the number of hours that the log mining history recorder, should retain entries in the history table.
-The default value of `0` indicates that no history is retained and is therefore disabled.
-See the option, <<oracle-property-log-mining-history-recorder-class, `+log.mining.history.recorder.class+`>>, to know how to define a recorder implementation.
-
 |[[oracle-property-rac-nodes]]<<oracle-property-rac-nodes, `+rac.nodes+`>>
 |
 |A comma-separated list of RAC node host names or addresses.
