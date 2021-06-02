@@ -97,12 +97,7 @@ public class OracleSnapshotChangeEventSource<SourceRecord extends SourceRecordWr
                     }
 
                     LOGGER.debug("Locking table {}", tableId);
-                    if (connectorConfig.getSnapshotLockingMode().usesExclusiveLocking()) {
-                        statement.execute("LOCK TABLE " + quote(tableId) + " IN EXCLUSIVE MODE");
-                    }
-                    else {
-                        statement.execute("LOCK TABLE " + quote(tableId) + " IN SHARE UPDATE MODE");
-                    }
+                    statement.execute("LOCK TABLE " + quote(tableId) + " IN ROW SHARE MODE");
                 }
             }
         }
