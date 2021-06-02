@@ -21,7 +21,6 @@ public class LogMinerChangeRecordEmitter extends BaseChangeRecordEmitter<Object>
     private final int operation;
     private final Object[] oldValues;
     private final Object[] newValues;
-    protected final Table table;
 
     public LogMinerChangeRecordEmitter(OffsetContext offset, int operation, Object[] oldValues,
                                        Object[] newValues, Table table, Clock clock) {
@@ -29,7 +28,6 @@ public class LogMinerChangeRecordEmitter extends BaseChangeRecordEmitter<Object>
         this.operation = operation;
         this.oldValues = oldValues;
         this.newValues = newValues;
-        this.table = table;
     }
 
     @Override
