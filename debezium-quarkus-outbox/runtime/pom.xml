@@ -27,11 +27,6 @@
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-smallrye-opentracing</artifactId>
         </dependency>
-        <dependency>
-            <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-resteasy</artifactId>
-        </dependency>
-
         <!-- Needed primarily for @Incubating annotation -->
         <dependency>
             <groupId>io.debezium</groupId>
