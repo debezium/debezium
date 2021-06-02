@@ -93,16 +93,15 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
     public static final Field SNAPSHOT_LOCKING_MODE = Field.create("snapshot.locking.mode")
             .withDisplayName("Snapshot locking mode")
-            .withEnum(SnapshotLockingMode.class, SnapshotLockingMode.EXCLUSIVE)
+            .withEnum(SnapshotLockingMode.class, SnapshotLockingMode.SHARED)
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
-            .withDescription("Controls how the connector holds locks on tables while performing the schema snapshot. The default is 'exclusive', "
-                    + "which means the connector will hold an exclusive table lock (prevents any updates) for just the initial portion of the snapshot "
+            .withDescription("Controls how the connector holds locks on tables while performing the schema snapshot. The default is 'shared', "
+                    + "which means the connector will hold a table lock that prevents exclusive table access for just the initial portion of the snapshot "
                     + "while the database schemas and other metadata are being read. The remaining work in a snapshot involves selecting all rows from "
-                    + "each table, and this is done using a flashback query that requires no locks. However, in some cases it may be desirable to allow "
-                    + "concurrent access to the table but prevent locking the entire table; in such cases set this property to 'shared'. Using a value of "
-                    + "'none' will prevent the connector from acquiring any locks during the snapshot process. This mode is only safe to use if no schema "
-                    + "changes are happening while the snapshot is taken.");
+                    + "each table, and this is done using a flashback query that requires no locks. However, in some cases it may be desirable to avoid "
+                    + "locks entirely which can be done by specifying 'none'. This mode is only safe to use if no schema changes are happening while the "
+                    + "snapshot is taken.");
 
     public static final Field ORACLE_VERSION = Field.createInternal("database.oracle.version")
             .withDisplayName("Oracle version, 11 or 12+")
@@ -526,12 +525,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
     public enum SnapshotLockingMode implements EnumeratedValue {
         /**
-         * This mode will block all updates and writes for the duration of lock.
-         * This is the default mode.
-         */
-        EXCLUSIVE("exclusive"),
-
-        /**
          * This mode will allow concurrent access to the table during the snapshot but prevents any
          * session from acquiring any table-level exclusive lock.
          */
@@ -552,10 +545,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         @Override
         public String getValue() {
             return value;
-        }
-
-        public boolean usesExclusiveLocking() {
-            return value.equals(EXCLUSIVE.value);
         }
 
         public boolean usesLocking() {
