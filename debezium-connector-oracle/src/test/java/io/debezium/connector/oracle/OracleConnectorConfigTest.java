@@ -193,20 +193,11 @@ public class OracleConnectorConfigTest {
 
         OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
         assertThat(connectorConfig.getSnapshotLockingMode().usesLocking()).isTrue();
-        assertThat(connectorConfig.getSnapshotLockingMode().usesExclusiveLocking()).isFalse();
-
-        config = Configuration.create().with(snapshotLockMode, "exclusive").build();
-        assertThat(config.validateAndRecord(Collections.singletonList(snapshotLockMode), LOGGER::error)).isTrue();
-
-        connectorConfig = new OracleConnectorConfig(config);
-        assertThat(connectorConfig.getSnapshotLockingMode().usesLocking()).isTrue();
-        assertThat(connectorConfig.getSnapshotLockingMode().usesExclusiveLocking()).isTrue();
 
         config = Configuration.create().with(snapshotLockMode, "none").build();
         assertThat(config.validateAndRecord(Collections.singletonList(snapshotLockMode), LOGGER::error)).isTrue();
 
         connectorConfig = new OracleConnectorConfig(config);
         assertThat(connectorConfig.getSnapshotLockingMode().usesLocking()).isFalse();
-        assertThat(connectorConfig.getSnapshotLockingMode().usesExclusiveLocking()).isFalse();
     }
 }
