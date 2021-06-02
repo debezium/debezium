@@ -171,9 +171,10 @@ DDLs are not recorded in commit logs. When the schema of a table change, this ch
 
 Schema changes in Cassandra will be detected by an implemented SchemaChangeListener with latency less than 1s, which will then update the schema instance loaded from Cassandra as well as the Kafka key value schemas cached for each table.
 
-Please note that with the current schema evolution approach, Cassandra Connector won't be able provide accurate data change information for the following cases:
-1). If CDC is disabled for a table, data changes which have happened before CDC gets disabled will be skipped.
-2). If a column is removed from a table, data changes involving this column before it's removed cannot be deserialized correctly and will be skipped.
+Please note that with the current schema evolution approach, the Cassandra connector won't be able to provide accurate data change information for a small period of time in the following cases:
+
+. If CDC gets disabled for a table, data changes which have happened before CDC got disabled will be skipped.
+. If a column is removed from a table, data changes involving this column before it's removed cannot be deserialized correctly and will be skipped.
 
 [[cassandra-events]]
 === Events
