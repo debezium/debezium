@@ -33,6 +33,7 @@ alter table add_test modify column if exists col9 tinyint;
 alter table add_test modify column if exists col5 varchar(255);
 alter table add_test drop column if exists col99;
 alter table add_test drop column if exists col5;
+alter table add_test add column optional bool default 0 null;
 #end
 #begin
 -- Alter database
