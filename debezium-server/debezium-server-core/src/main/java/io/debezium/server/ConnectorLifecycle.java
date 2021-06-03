@@ -87,7 +87,7 @@ public class ConnectorLifecycle implements HealthCheck, DebeziumEngine.Connector
     @Override
     public HealthCheckResponse call() {
         LOGGER.trace("Healthcheck called - live = '{}'", live);
-        return HealthCheckResponse.named("debezium").state(live).build();
+        return HealthCheckResponse.named("debezium").status(live).build();
     }
 
 }
