@@ -14,8 +14,8 @@ GIT_CREDENTIALS_ID = 'debezium-github'
 DEBEZIUM_DIR = 'debezium'
 HOME_DIR = '/home/cloud-user'
 
-ORACLE_ARTIFACT_DIR = "$HOME_DIR/oracle-libs/12.2.0.1.0"
-ORACLE_ARTIFACT_VERSION = '12.2.0.1'
+ORACLE_ARTIFACT_DIR = "$HOME_DIR/oracle-libs/21.1.0.0.0"
+ORACLE_ARTIFACT_VERSION = '21.1.0.0'
 
 def additionalDirs = []
 node('Slave') {
