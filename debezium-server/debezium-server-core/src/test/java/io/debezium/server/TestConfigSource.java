@@ -8,6 +8,7 @@ package io.debezium.server;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.kafka.connect.runtime.standalone.StandaloneConfig;
 import org.eclipse.microprofile.config.spi.ConfigSource;
@@ -94,6 +95,11 @@ public class TestConfigSource implements ConfigSource {
     @Override
     public String getName() {
         return "test";
+    }
+
+    @Override
+    public Set<String> getPropertyNames() {
+        return config.keySet();
     }
 
     public static int waitForSeconds() {
