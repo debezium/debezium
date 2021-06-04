@@ -302,7 +302,8 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
             LOGGER.debug("starting streaming from LSN '{}'", lsn);
         }
 
-        int maxRetries = originalConfig.getInteger(PostgresConnectorConfig.MAX_RETRIES);
+        int maxRetries = config().getInteger(PostgresConnectorConfig.MAX_RETRIES);
+        int delay = config().getInteger(PostgresConnectorConfig.RETRY_DELAY_MS);
         int tryCount = 0;
         while (true) {
             try {
@@ -317,13 +318,9 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                     throw new DebeziumException(message, e);
                 }
                 else {
-                    LOGGER.warn(message);
-                    LOGGER.warn("Waiting 2s and retrying, attempt number " + tryCount + " over " + maxRetries);
-                    try {
-                        Thread.sleep(2000);
-                    }
-                    catch (Exception e1) {
-                    }
+                    LOGGER.warn(message + ", waiting for {} ms and retrying, attempt number {} over {}", delay, tryCount, maxRetries);
+                    final Metronome metronome = Metronome.sleeper(Duration.ofMillis(delay), Clock.SYSTEM);
+                    metronome.pause();
                 }
             }
         }
