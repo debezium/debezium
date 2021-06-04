@@ -38,9 +38,13 @@ public class TransactionContext {
     private final Map<String, Long> perTableEventCount = new HashMap<>();
     private final Map<String, Long> viewPerTableEventCount = Collections.unmodifiableMap(perTableEventCount);
     private long totalEventCount = 0;
+    private long transactionStartTime = 0;
+    private long transactionEndTime = 0;
 
     private void reset() {
         transactionId = null;
+        transactionStartTime = 0;
+        transactionEndTime = 0;
         totalEventCount = 0;
         perTableEventCount.clear();
     }
@@ -86,13 +90,30 @@ public class TransactionContext {
         return totalEventCount;
     }
 
+    public long getTransactionStartTime() {
+        return transactionStartTime;
+    }
+
+    public long getTransactionEndTime() {
+        return transactionEndTime;
+    }
+
     public void beginTransaction(String txId) {
         reset();
         transactionId = txId;
     }
 
+    public void beginTransaction(String txId, long transactionStartTime) {
+        beginTransaction(txId);
+        this.transactionStartTime = transactionStartTime;
+    }
+
     public void endTransaction() {
         reset();
+    }
+
+    public void setTransactionEndTime(long transactionEndTime) {
+        this.transactionEndTime = transactionEndTime;
     }
 
     public long event(DataCollectionId source) {

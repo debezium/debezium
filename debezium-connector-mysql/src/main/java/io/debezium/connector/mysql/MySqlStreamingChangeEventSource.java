@@ -526,7 +526,7 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
         if (sql.equalsIgnoreCase("BEGIN")) {
             // We are starting a new transaction ...
             offsetContext.startNextTransaction();
-            eventDispatcher.dispatchTransactionStartedEvent(offsetContext.getTransactionId(), offsetContext);
+            eventDispatcher.dispatchTransactionStartedEvent(offsetContext.getTransactionId(), offsetContext, event.getHeader().getTimestamp());
             offsetContext.setBinlogThread(command.getThreadId());
             if (initialEventsToSkip != 0) {
                 LOGGER.debug("Restarting partially-processed transaction; change events will not be created for the first {} events plus {} more rows in the next event",
@@ -593,7 +593,7 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
 
     private void handleTransactionCompletion(Event event) throws InterruptedException {
         // We are completing the transaction ...
-        eventDispatcher.dispatchTransactionCommittedEvent(offsetContext);
+        eventDispatcher.dispatchTransactionCommittedEvent(offsetContext, event.getHeader().getTimestamp());
         offsetContext.commitTransaction();
         offsetContext.setBinlogThread(-1L);
         skipEvent = false;
