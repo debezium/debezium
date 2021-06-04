@@ -140,7 +140,7 @@ public class OracleValueConverters extends JdbcValueConverters {
                 return SchemaBuilder.string();
             default: {
                 SchemaBuilder builder = super.schemaBuilder(column);
-                logger.debug("JdbcValueConverters returned '{}' for column '{}'", builder.getClass().getName(), column.name());
+                logger.debug("JdbcValueConverters returned '{}' for column '{}'", builder != null ? builder.getClass().getName() : null, column.name());
                 return builder;
             }
         }
