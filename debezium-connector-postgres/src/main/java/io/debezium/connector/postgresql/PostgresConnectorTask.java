@@ -11,7 +11,6 @@ import java.sql.SQLException;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.errors.ConnectException;
@@ -27,6 +26,7 @@ import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.connector.common.SourceRecordWrapper;
 import io.debezium.connector.common.SourceTaskContextWrapper;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
+import io.debezium.connector.postgresql.connection.PostgresConnection.PostgresValueConverterBuilder;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.connector.postgresql.spi.SlotCreationResult;
 import io.debezium.connector.postgresql.spi.SlotState;
@@ -76,7 +76,7 @@ public class PostgresConnectorTask<SourceTaskContext extends SourceTaskContextWr
         heartbeatConnection = new PostgresConnection(connectorConfig.jdbcConfig());
         final Charset databaseCharset = heartbeatConnection.getDatabaseCharset();
 
-        final Function<TypeRegistry, PostgresValueConverter> valueConverterBuilder = (typeRegistry) -> PostgresValueConverter.of(
+        final PostgresValueConverterBuilder valueConverterBuilder = (typeRegistry) -> PostgresValueConverter.of(
                 connectorConfig,
                 databaseCharset,
                 typeRegistry);
@@ -93,7 +93,7 @@ public class PostgresConnectorTask<SourceTaskContext extends SourceTaskContextWr
 
         final TypeRegistry typeRegistry = jdbcConnection.getTypeRegistry();
 
-        schema = new PostgresSchema(connectorConfig, typeRegistry, topicSelector, valueConverterBuilder.apply(typeRegistry));
+        schema = new PostgresSchema(connectorConfig, typeRegistry, topicSelector, valueConverterBuilder.build(typeRegistry));
         this.taskContext = new PostgresTaskContext(connectorConfig, schema, topicSelector);
         final PostgresOffsetContext previousOffset = (PostgresOffsetContext) getPreviousOffset(new PostgresOffsetContext.Loader(connectorConfig));
         final Clock clock = Clock.system();
