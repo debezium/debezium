@@ -24,7 +24,7 @@
         <version.sqlserver.driver>7.2.2.jre8</version.sqlserver.driver>
         <version.oracle.driver>21.1.0.0</version.oracle.driver>
         <version.db2.driver>11.5.0.0</version.db2.driver>
-        <version.cassandra.driver>3.5.0</version.cassandra.driver>
+        <version.cassandra.driver>3.11.0</version.cassandra.driver>
 
         <!-- Connectors -->
         <version.com.google.protobuf>3.8.0</version.com.google.protobuf>
