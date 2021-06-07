@@ -22,7 +22,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.awaitility.Awaitility;
@@ -34,6 +33,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SecureConnectionMode;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
+import io.debezium.connector.postgresql.connection.PostgresConnection.PostgresValueConverterBuilder;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
@@ -368,10 +368,10 @@ public final class TestHelper {
     }
 
     private static PostgresValueConverter getPostgresValueConverter(TypeRegistry typeRegistry, PostgresConnectorConfig config) {
-        return getPostgresValueConverterBuilder(config).apply(typeRegistry);
+        return getPostgresValueConverterBuilder(config).build(typeRegistry);
     }
 
-    private static Function<TypeRegistry, PostgresValueConverter> getPostgresValueConverterBuilder(PostgresConnectorConfig config) {
+    private static PostgresValueConverterBuilder getPostgresValueConverterBuilder(PostgresConnectorConfig config) {
         return typeRegistry -> new PostgresValueConverter(
                 Charset.forName("UTF-8"),
                 config.getDecimalMode(),

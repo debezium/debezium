@@ -16,7 +16,6 @@ import java.time.Duration;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.Function;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.postgresql.core.BaseConnection;
@@ -82,11 +81,9 @@ public class PostgresConnection extends JdbcConnection {
      * Usually only one such connection per connector is needed.
      *
      * @param config {@link Configuration} instance, may not be null.
-     * @param valueConverterBuilder {@link Function} a function which supplies a configured {@link PostgresValueConverter
-        }
-     *                                               for a given {@link TypeRegistry}
+     * @param valueConverterBuilder supplies a configured {@link PostgresValueConverter} for a given {@link TypeRegistry}
      */
-    public PostgresConnection(Configuration config, Function<TypeRegistry, PostgresValueConverter> valueConverterBuilder) {
+    public PostgresConnection(Configuration config, PostgresValueConverterBuilder valueConverterBuilder) {
         super(config, FACTORY, PostgresConnection::validateServerVersion, PostgresConnection::defaultSettings);
 
         if (Objects.isNull(valueConverterBuilder)) {
@@ -96,7 +93,7 @@ public class PostgresConnection extends JdbcConnection {
         else {
             this.typeRegistry = new TypeRegistry(this);
 
-            final PostgresValueConverter valueConverter = valueConverterBuilder.apply(this.typeRegistry);
+            final PostgresValueConverter valueConverter = valueConverterBuilder.build(this.typeRegistry);
             this.defaultValueConverter = new PostgresDefaultValueConverter(valueConverter, this.getTimestampUtils());
         }
     }
@@ -572,6 +569,7 @@ public class PostgresConnection extends JdbcConnection {
         return Optional.empty();
     }
 
+    @Override
     protected Optional<Object> getDefaultValue(Column column, String defaultValue) {
         return defaultValueConverter.parseDefaultValue(column, defaultValue);
     }
@@ -639,5 +637,10 @@ public class PostgresConnection extends JdbcConnection {
             // not a known type
             return super.getColumnValue(rs, columnIndex, column, table, schema);
         }
+    }
+
+    @FunctionalInterface
+    public interface PostgresValueConverterBuilder {
+        PostgresValueConverter build(TypeRegistry registry);
     }
 }
