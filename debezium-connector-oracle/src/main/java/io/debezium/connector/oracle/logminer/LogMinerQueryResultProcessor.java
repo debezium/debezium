@@ -186,6 +186,11 @@ class LogMinerQueryResultProcessor {
                 case RowMapper.SELECT_LOB_LOCATOR: {
                     LOGGER.trace("SEL_LOB_LOCATOR: {}, REDO_SQL: {}", logMessage, redoSql);
                     final TableId tableId = RowMapper.getTableId(connectorConfig.getCatalogName(), resultSet);
+                    final Table table = schema.tableFor(tableId);
+                    if (table == null) {
+                        LogMinerHelper.logWarn(streamingMetrics, "SEL_LOB_LOCATOR for table '{}' is not known to the connector, skipped.", tableId);
+                        continue;
+                    }
                     final LogMinerDmlEntry entry = selectLobParser.parse(redoSql, schema.tableFor(tableId));
                     entry.setObjectOwner(segOwner);
                     entry.setObjectName(tableName);
@@ -195,12 +200,20 @@ class LogMinerQueryResultProcessor {
                 }
                 case RowMapper.LOB_WRITE: {
                     final TableId tableId = RowMapper.getTableId(connectorConfig.getCatalogName(), resultSet);
+                    if (schema.tableFor(tableId) == null) {
+                        LogMinerHelper.logWarn(streamingMetrics, "LOB_WRITE for table '{}' is not known to the connector, skipped.", tableId);
+                        continue;
+                    }
                     transactionalBuffer.registerLobWriteOperation(operationCode, txId, scn, tableId, redoSql,
                             changeTime.toInstant(), rowId, rsId, hash);
                     break;
                 }
                 case RowMapper.LOB_ERASE: {
                     final TableId tableId = RowMapper.getTableId(connectorConfig.getCatalogName(), resultSet);
+                    if (schema.tableFor(tableId) == null) {
+                        LogMinerHelper.logWarn(streamingMetrics, "LOB_ERASE for table '{}' is not known to the connector, skipped.", tableId);
+                        continue;
+                    }
                     transactionalBuffer.registerLobEraseOperation(operationCode, txId, scn, tableId, changeTime.toInstant(), rowId, rsId, hash);
                     break;
                 }
