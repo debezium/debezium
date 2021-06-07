@@ -119,7 +119,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         this.dropSlotOnClose = dropSlotOnClose;
         this.statusUpdateInterval = statusUpdateInterval;
         this.exportSnapshot = exportSnapshot;
-        this.messageDecoder = plugin.messageDecoder(new MessageDecoderConfig(config, schema, publicationName, exportSnapshot, doSnapshot, truncateHandlingMode));
+        this.messageDecoder = plugin.messageDecoder(new MessageDecoderConfig(config, schema, publicationName, truncateHandlingMode));
         this.typeRegistry = typeRegistry;
         this.streamParams = streamParams;
         this.slotCreationInfo = null;

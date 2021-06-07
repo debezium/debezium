@@ -19,7 +19,6 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.postgresql.TypeRegistry;
 import io.debezium.connector.postgresql.connection.AbstractMessageDecoder;
-import io.debezium.connector.postgresql.connection.MessageDecoderConfig;
 import io.debezium.connector.postgresql.connection.ReplicationMessage.Operation;
 import io.debezium.connector.postgresql.connection.ReplicationStream.ReplicationMessageProcessor;
 import io.debezium.connector.postgresql.connection.TransactionMessage;
@@ -44,10 +43,6 @@ public class NonStreamingWal2JsonMessageDecoder extends AbstractMessageDecoder {
 
     private final DateTimeFormat dateTime = DateTimeFormat.get();
     private boolean containsMetadata = false;
-
-    public NonStreamingWal2JsonMessageDecoder(MessageDecoderConfig config) {
-        super(config);
-    }
 
     @Override
     public void processNotEmptyMessage(ByteBuffer buffer, ReplicationMessageProcessor processor, TypeRegistry typeRegistry) throws SQLException, InterruptedException {
