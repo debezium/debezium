@@ -124,7 +124,7 @@ public class PostgresConnectorTask extends BaseSourceTask {
             SlotCreationResult slotCreatedInfo = null;
             if (snapshotter.shouldStream()) {
                 final boolean doSnapshot = snapshotter.shouldSnapshot();
-                replicationConnection = createReplicationConnection(this.taskContext, true,
+                replicationConnection = createReplicationConnection(this.taskContext,
                         doSnapshot, connectorConfig.maxRetries(), connectorConfig.retryDelay());
 
                 // we need to create the slot before we start streaming if it doesn't exist
@@ -229,15 +229,14 @@ public class PostgresConnectorTask extends BaseSourceTask {
         }
     }
 
-    public ReplicationConnection createReplicationConnection(PostgresTaskContext taskContext, boolean shouldExport,
-                                                             boolean doSnapshot, int maxRetries, Duration retryDelay)
+    public ReplicationConnection createReplicationConnection(PostgresTaskContext taskContext, boolean doSnapshot, int maxRetries, Duration retryDelay)
             throws ConnectException {
         final Metronome metronome = Metronome.parker(retryDelay, Clock.SYSTEM);
         short retryCount = 0;
         ReplicationConnection replicationConnection = null;
         while (retryCount <= maxRetries) {
             try {
-                return taskContext.createReplicationConnection(shouldExport, doSnapshot);
+                return taskContext.createReplicationConnection(doSnapshot);
             }
             catch (SQLException ex) {
                 retryCount++;
