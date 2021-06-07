@@ -34,7 +34,7 @@ public class PostgresConnectorTaskIT {
         }
 
         @Override
-        protected ReplicationConnection createReplicationConnection(boolean exportSnapshot, boolean doSnapshot) throws SQLException {
+        protected ReplicationConnection createReplicationConnection(boolean doSnapshot) throws SQLException {
             throw new SQLException("Could not connect");
         }
     }
@@ -48,7 +48,7 @@ public class PostgresConnectorTaskIT {
         postgresConnectorTask.createReplicationConnection(new FakeContext(config, new PostgresSchema(
                 config,
                 null,
-                PostgresTopicSelector.create(config), null)), true, true, 3, Duration.ofSeconds(2));
+                PostgresTopicSelector.create(config), null)), true, 3, Duration.ofSeconds(2));
 
         // Verify retry happened for 10 seconds
         long endTime = System.currentTimeMillis();

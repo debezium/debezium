@@ -105,7 +105,6 @@ public interface ReplicationConnection extends AutoCloseable {
         String DEFAULT_SLOT_NAME = "debezium";
         String DEFAULT_PUBLICATION_NAME = "dbz_publication";
         boolean DEFAULT_DROP_SLOT_ON_CLOSE = true;
-        boolean DEFAULT_EXPORT_SNAPSHOT = false;
 
         /**
          * Sets the name for the PG logical replication slot
@@ -197,14 +196,6 @@ public interface ReplicationConnection extends AutoCloseable {
          * @see #STREAM_PARAMS
          */
         Builder streamParams(final String streamParams);
-
-        /**
-         * Whether or not to export the snapshot when creating the slot
-         * @param exportSnapshot true if a snapshot should be exported, false if otherwise
-         * @return this instance
-         * @see #DEFAULT_EXPORT_SNAPSHOT
-         */
-        Builder exportSnapshotOnCreate(final boolean exportSnapshot);
 
         /**
          * Whether or not the snapshot is executed

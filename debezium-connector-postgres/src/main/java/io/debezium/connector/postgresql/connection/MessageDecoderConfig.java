@@ -21,7 +21,8 @@ public class MessageDecoderConfig {
     private final String publicationName;
     private final PostgresConnectorConfig.TruncateHandlingMode truncateHandlingMode;
 
-    public MessageDecoderConfig(Configuration configuration, PostgresSchema schema, String publicationName, PostgresConnectorConfig.TruncateHandlingMode truncateHandlingMode) {
+    public MessageDecoderConfig(Configuration configuration, PostgresSchema schema, String publicationName,
+                                PostgresConnectorConfig.TruncateHandlingMode truncateHandlingMode) {
         this.configuration = configuration;
         this.schema = schema;
         this.publicationName = publicationName;
