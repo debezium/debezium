@@ -36,10 +36,10 @@ public class SqlUtilsTest {
             "XID, CSF, TABLE_NAME, SEG_OWNER, OPERATION, USERNAME, ROW_ID, ROLLBACK, RS_ID, " +
             "ORA_HASH(SCN||OPERATION||RS_ID||SEQUENCE#||RTRIM(SUBSTR(SQL_REDO,1,256))) " +
             "FROM V$LOGMNR_CONTENTS WHERE SCN > ? AND SCN <= ? AND ((" +
-            "OPERATION_CODE IN (5,9,10,11,29,34) AND USERNAME NOT IN ('SYS','SYSTEM','${user}') AND INFO NOT LIKE 'INTERNAL DDL%' " +
+            "OPERATION_CODE IN (5,11,34) AND USERNAME NOT IN ('SYS','SYSTEM','${user}') AND INFO NOT LIKE 'INTERNAL DDL%' " +
             "AND (TABLE_NAME IS NULL OR TABLE_NAME NOT LIKE 'ORA_TEMP_%')) " +
             "OR (OPERATION_CODE IN (6,7,36)) " +
-            "OR (OPERATION_CODE IN (1,2,3) " +
+            "OR (OPERATION_CODE IN (1,2,3,9,10,29) " +
             "AND TABLE_NAME != '" + SqlUtils.LOGMNR_FLUSH_TABLE + "' " +
             "${systemTablePredicate}" +
             "${schemaPredicate}" +

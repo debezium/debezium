@@ -290,13 +290,13 @@ public class SqlUtils {
         // MISSING_SCN/DDL only when not performed by excluded users
         // For DDL, the `INTERNAL DDL%` info rows should be excluded as these are commands executed by the database that
         // typically perform operations such as renaming a deleted object when dropped if the drop doesn't specify PURGE
-        query.append("(OPERATION_CODE IN (5,9,10,11,29,34) AND USERNAME NOT IN (").append(getExcludedUsers(logMinerUser)).append(") AND INFO NOT LIKE 'INTERNAL DDL%' ");
+        query.append("(OPERATION_CODE IN (5,11,34) AND USERNAME NOT IN (").append(getExcludedUsers(logMinerUser)).append(") AND INFO NOT LIKE 'INTERNAL DDL%' ");
         query.append("AND " + getExcludedDdlTables() + ") ");
         // COMMIT/ROLLBACK
         query.append("OR (OPERATION_CODE IN (6,7,36)) ");
         // INSERT/UPDATE/DELETE
         query.append("OR ");
-        query.append("(OPERATION_CODE IN (1,2,3) ");
+        query.append("(OPERATION_CODE IN (1,2,3,9,10,29) ");
         query.append("AND TABLE_NAME != '").append(LOGMNR_FLUSH_TABLE).append("' ");
 
         // There are some common schemas that we automatically ignore when building the filter predicates
