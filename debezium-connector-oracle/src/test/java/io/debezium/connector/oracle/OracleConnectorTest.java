@@ -65,8 +65,8 @@ public class OracleConnectorTest {
             }
             assertThat(key.dependents).isEqualTo(expected.dependents());
             assertThat(key.width).isNotNull();
-            assertThat(key.group).isNotNull();
-            assertThat(key.orderInGroup).isGreaterThan(0);
+            assertThat(key.group).isEqualTo(expected.groupName());
+            assertThat(key.orderInGroup).isEqualTo(expected.orderInGroup());
             assertThat(key.validator).isNull();
             assertThat(key.recommender).isNull();
         });

@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -382,6 +383,10 @@ public final class Field {
 
     /**
      * Add this field to the given configuration definition.
+     * <p>
+     * If the groupName is not {@code null}, this method will first set the groupName
+     * for each field before adding the fields to the parent configDef.
+     * 
      * @param configDef the definition of the configuration; may be null if none of the fields are to be added
      * @param groupName the name of the group; may be null
      * @param fields the fields to be added as a group to the definition of the configuration
@@ -389,19 +394,13 @@ public final class Field {
      */
     public static ConfigDef group(ConfigDef configDef, String groupName, Field... fields) {
         if (configDef != null) {
-            if (groupName != null) {
-                for (int i = 0; i != fields.length; ++i) {
-                    Field f = fields[i];
-                    configDef.define(f.name(), f.type(), f.defaultValue(), null, f.importance(), f.description(),
-                            groupName, i + 1, f.width(), f.displayName(), f.dependents(), null);
-                }
-            }
-            else {
-                for (int i = 0; i != fields.length; ++i) {
-                    Field f = fields[i];
-                    configDef.define(f.name(), f.type(), f.defaultValue(), null, f.importance(), f.description(),
-                            null, 1, f.width(), f.displayName(), f.dependents(), null);
-                }
+            // first set the group for each field
+            List<Field> groupedFields = addGroupNameAndOrderInGroup(groupName, fields);
+
+            for (final Field f : groupedFields) {
+                int orderInGroup = f.groupName() == null ? 1 : f.orderInGroup();
+                configDef.define(f.name(), f.type(), f.defaultValue(), null, f.importance(), f.description(),
+                        f.groupName(), orderInGroup, f.width(), f.displayName(), f.dependents(), null);
             }
         }
         return configDef;
@@ -417,6 +416,8 @@ public final class Field {
     private final Importance importance;
     private final List<String> dependents;
     private final Recommender recommender;
+    private final String groupName;
+    private final int orderInGroup;
 
     protected Field(String name, String displayName, Type type, Width width, String description, Importance importance,
                     Supplier<Object> defaultValueGenerator, Validator validator) {
@@ -426,6 +427,12 @@ public final class Field {
     protected Field(String name, String displayName, Type type, Width width, String description, Importance importance,
                     List<String> dependents, Supplier<Object> defaultValueGenerator, Validator validator,
                     Recommender recommender) {
+        this(name, displayName, type, width, description, importance, dependents, defaultValueGenerator, validator, recommender, null, 0);
+    }
+
+    protected Field(String name, String displayName, Type type, Width width, String description, Importance importance,
+                    List<String> dependents, Supplier<Object> defaultValueGenerator, Validator validator,
+                    Recommender recommender, String groupName, int orderInGroup) {
         Objects.requireNonNull(name, "The field name is required");
         this.name = name;
         this.displayName = displayName;
@@ -437,6 +444,8 @@ public final class Field {
         this.importance = importance != null ? importance : Importance.MEDIUM;
         this.dependents = dependents != null ? dependents : Collections.emptyList();
         this.recommender = recommender;
+        this.groupName = groupName;
+        this.orderInGroup = orderInGroup;
         assert this.name != null;
     }
 
@@ -527,6 +536,24 @@ public final class Field {
      */
     public Recommender recommender() {
         return recommender;
+    }
+
+    /**
+     * Get the {@link groupName} for this field.
+     * 
+     * @return the groupName; may be null if no groupName is set for this  field.
+     */
+    public String groupName() {
+        return groupName;
+    }
+
+    /**
+     * Get the {@link orderInGroup} for this field.
+     * 
+     * @return the orderInGroup; defaults to 0 if not set.
+     */
+    public int orderInGroup() {
+        return orderInGroup;
     }
 
     /**
@@ -806,6 +833,29 @@ public final class Field {
         }
         return new Field(name(), displayName(), type(), width(), description(), importance(), dependents,
                 defaultValueGenerator, actualValidator, recommender);
+    }
+
+    /**
+     * Create and return a new Field instance that is a copy of this Field instance but with the given group name.
+     * 
+     * @param groupName the group name of the new field.
+     * @return          the new Field; never null.
+     */
+    public Field withGroupName(final String groupName) {
+        return new Field(name(), displayName(), type(), width(), description(), importance(), dependents(),
+                defaultValueGenerator, validator(), recommender(), groupName, 0);
+    }
+
+    /**
+     * Create and return a new Field instance that is a copy of this Field instance but with a defined ordering for
+     * the field in the group it belongs to.
+     * 
+     * @param orderInGroup  The order for the new field.
+     * @return              a new field; never null.
+     */
+    public Field withOrderInGroup(final int orderInGroup) {
+        return new Field(name(), displayName(), type(), width(), description(), importance(), dependents(),
+                defaultValueGenerator, validator(), recommender(), groupName(), orderInGroup);
     }
 
     @Override
@@ -1238,5 +1288,83 @@ public final class Field {
             return 1;
         }
         return 0;
+    }
+
+    /**
+     * Add the groupName and orderInGroup properties of the supplied fields.
+     * <p>
+     * If the groupName is {@code null}, this method simply returns the given array of  fields.
+     *
+     * @param groupName  The name of the group to set for each field.
+     * @param fields     The fields whose group name needs to be set.
+     * @return           A list of fields with the groupName and orderInGroup properties added.
+     * @throws NullpointerException if the groupName is null.
+     */
+    public static List<Field> addGroupNameAndOrderInGroup(final String groupName, Field... fields) {
+        if (groupName == null) {
+            return Arrays.asList(fields);
+        }
+        List<Field> result = new ArrayList<>();
+        int orderInGroup = 1;
+        for (Field field : fields) {
+            result.add(field.withGroupName(groupName)
+                    .withOrderInGroup(orderInGroup++));
+        }
+
+        return result;
+    }
+
+    /**
+     * Sorts the given collection of fields, taking the 'group' and 'oderInGroup' of each field
+     * into account.
+     * 
+     * @param fields The fields to be sorted.
+     */
+    public static void sort(final List<Field> fields) {
+        final List<String> groupNames = new ArrayList<>();
+        for (Field f : fields) {
+            if (f.groupName() != null && !groupNames.contains(f.groupName())) {
+                groupNames.add(f.groupName());
+            }
+        }
+
+        // sort group names in lexicographic order and assign a unique ID to each group name.
+        Collections.sort(groupNames, (s1, s2) -> s1.compareTo(s2));
+
+        final Map<String, Integer> groupOrder = new HashMap<>(groupNames.size());
+        int ord = 0;
+        for (String group : groupNames) {
+            groupOrder.put(group, ord++);
+        }
+        Collections.sort(fields, (field1, field2) -> compare(field1, field2, groupOrder));
+    }
+
+    /*
+     * copied and adapted from org.apache.kafka.common.config.sortedConfigs()
+     * since that method is private and cannot be called from outside
+     */
+    private static int compare(final Field field1, final Field field2, final Map<String, Integer> groupOrd) {
+        int cmp = field1.groupName() == null
+                ? (field2.groupName() == null ? 0 : -1)
+                : (field2.groupName() == null ? 1 : Integer.compare(groupOrd.get(field1.groupName()), groupOrd.get(field2.groupName())));
+        if (cmp == 0) {
+            cmp = Integer.compare(field1.orderInGroup(), field2.orderInGroup());
+            if (cmp == 0) {
+                // first take anything with no default value
+                if (field1.defaultValue() == null && field2.defaultValue() != null) {
+                    cmp = -1;
+                }
+                else if (field2.defaultValue() == null && field1.defaultValue() != null) {
+                    cmp = 1;
+                }
+                else {
+                    cmp = field1.importance().compareTo(field2.importance());
+                    if (cmp == 0) {
+                        return field1.name().compareTo(field2.name());
+                    }
+                }
+            }
+        }
+        return cmp;
     }
 }

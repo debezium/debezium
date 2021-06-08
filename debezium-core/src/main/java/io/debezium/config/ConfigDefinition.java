@@ -24,11 +24,17 @@ import io.debezium.annotation.ThreadSafe;
 @Immutable
 public class ConfigDefinition {
 
+    private static final String CONNECTOR_GROUP = "Connector";
+    private static final String HISTORY_STORAGE_GROUP = "History Storage";
+    private static final String EVENTS_GROUP = "Events";
+
     private final String connectorName;
     private final List<Field> type;
     private final List<Field> connector;
     private final List<Field> history;
     private final List<Field> events;
+
+    private List<Field> mergedFields;
 
     ConfigDefinition(String connectorName, List<Field> type, List<Field> connector, List<Field> history,
                      List<Field> events) {
@@ -53,23 +59,31 @@ public class ConfigDefinition {
         return new ConfigDefinitionEditor(this);
     }
 
+    /**
+     * Gets a sorted collection of all configuration fields for a connector.
+     * <p>
+     * If the fields in this definition are not already sorted, this method sorts
+     * the fields taking 'group' and 'orderInGroup' into account.
+     *
+     * @return A sorted collection of configuration fields; never null.
+     */
     public Iterable<Field> all() {
-        final List<Field> all = new ArrayList<>();
-
-        addToList(all, type);
-        addToList(all, connector);
-        addToList(all, history);
-        addToList(all, events);
-
-        return all;
+        return getOrCreateMergeFields();
     }
 
+    /**
+     * Gets a ConfigDef whose fields are sorted according to the 'groupName' and 'orderInGroup'
+     * properties of each individual field.
+     *
+     * @return A sorted ConfigDef; never null
+     */
     public ConfigDef configDef() {
         final ConfigDef config = new ConfigDef();
-        addToConfigDef(config, connectorName, type);
-        addToConfigDef(config, "Connector", connector);
-        addToConfigDef(config, "History Storage", history);
-        addToConfigDef(config, "Events", events);
+
+        final List<Field> fields = getOrCreateMergeFields();
+
+        // group was already added during merging
+        Field.group(config, null, fields.toArray(new Field[fields.size()]));
         return config;
     }
 
@@ -93,15 +107,29 @@ public class ConfigDefinition {
         return events;
     }
 
-    private void addToList(List<Field> list, List<Field> fields) {
-        if (fields != null) {
-            list.addAll(fields);
+    private List<Field> getOrCreateMergeFields() {
+        if (mergedFields != null) {
+            return mergedFields;
+        }
+
+        mergedFields = new ArrayList<>();
+
+        addToMergedList(mergedFields, connectorName, this.type);
+        addToMergedList(mergedFields, CONNECTOR_GROUP, this.connector);
+        addToMergedList(mergedFields, HISTORY_STORAGE_GROUP, this.history);
+        addToMergedList(mergedFields, EVENTS_GROUP, this.events);
+
+        Field.sort(mergedFields);
+        return mergedFields;
+    }
+
+    private void addToMergedList(final List<Field> mergedFields, String groupName, List<Field> fields) {
+        if (!isNullOrEmpty(fields) && groupName != null) {
+            mergedFields.addAll(Field.addGroupNameAndOrderInGroup(groupName, fields.toArray(new Field[fields.size()])));
         }
     }
 
-    private void addToConfigDef(ConfigDef configDef, String group, List<Field> fields) {
-        if (!fields.isEmpty()) {
-            Field.group(configDef, group, fields.toArray(new Field[fields.size()]));
-        }
+    private static boolean isNullOrEmpty(final List<Field> fields) {
+        return fields == null ? true : fields.isEmpty();
     }
 }
