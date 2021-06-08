@@ -78,6 +78,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
     private final OracleStreamingChangeEventSourceMetrics streamingMetrics;
     private final OracleConnectorConfig connectorConfig;
     private final Duration archiveLogRetention;
+    private final boolean archiveLogOnlyMode;
 
     private Scn startScn;
     private Scn endScn;
@@ -104,6 +105,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
             instantiateFlushConnections(jdbcConfiguration, racHosts);
         }
         this.archiveLogRetention = connectorConfig.getLogMiningArchiveLogRetention();
+        this.archiveLogOnlyMode = connectorConfig.isArchiveLogOnlyMode();
     }
 
     /**
@@ -229,7 +231,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                 buildDataDictionary(connection);
             }
             if (!isContinuousMining) {
-                setLogFilesForMining(connection, startScn, archiveLogRetention);
+                setLogFilesForMining(connection, startScn, archiveLogRetention, archiveLogOnlyMode);
             }
         }
         else {
@@ -237,7 +239,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                 if (OracleConnectorConfig.LogMiningStrategy.CATALOG_IN_REDO.equals(strategy)) {
                     buildDataDictionary(connection);
                 }
-                setLogFilesForMining(connection, startScn, archiveLogRetention);
+                setLogFilesForMining(connection, startScn, archiveLogRetention, archiveLogOnlyMode);
             }
         }
     }

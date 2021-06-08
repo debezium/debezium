@@ -285,6 +285,16 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withDescription(
                     "The maximum amount of time that the connector will use to tune the optimal sleep time when reading data from LogMiner. Value is in milliseconds.");
 
+    public static final Field LOG_MINING_ARCHIVE_LOG_ONLY_MODE = Field.create("log.mining.archive.log.only.mode")
+            .withDisplayName("Specifies whether log mining should only target archive logs or both archive and redo logs")
+            .withType(Type.BOOLEAN)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(false)
+            .withDescription("When set to `false`, the default, the connector will mine both archive log and redo logs to emit change events. " +
+                    "When set to `true`, the connector will only mine archive logs. There are circumstances where its advantageous to only " +
+                    "mine archive logs and accept latency in event emission due to frequent revolving redo logs.");
+
     private static final ConfigDefinition CONFIG_DEFINITION = HistorizedRelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .name("Oracle")
             .excluding(
@@ -324,7 +334,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LOG_MINING_SLEEP_TIME_MAX_MS,
                     LOG_MINING_SLEEP_TIME_INCREMENT_MS,
                     LOG_MINING_TRANSACTION_RETENTION,
-                    LOG_MINING_DML_PARSER)
+                    LOG_MINING_DML_PARSER,
+                    LOG_MINING_ARCHIVE_LOG_ONLY_MODE)
             .create();
 
     /**
@@ -369,6 +380,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final Duration logMiningSleepTimeIncrement;
     private final Duration logMiningTransactionRetention;
     private final LogMiningDmlParser dmlParser;
+    private final boolean archiveLogOnlyMode;
 
     public OracleConnectorConfig(Configuration config) {
         super(OracleConnector.class, config, config.getString(SERVER_NAME), new SystemTablesPredicate(config), x -> x.schema() + "." + x.table(), true,
@@ -406,6 +418,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.logMiningSleepTimeIncrement = Duration.ofMillis(config.getInteger(LOG_MINING_SLEEP_TIME_INCREMENT_MS));
         this.logMiningTransactionRetention = Duration.ofHours(config.getInteger(LOG_MINING_TRANSACTION_RETENTION));
         this.dmlParser = LogMiningDmlParser.parse(config.getString(LOG_MINING_DML_PARSER));
+        this.archiveLogOnlyMode = config.getBoolean(LOG_MINING_ARCHIVE_LOG_ONLY_MODE);
     }
 
     private static String toUpperCase(String property) {
@@ -957,6 +970,13 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
      */
     public LogMiningDmlParser getLogMiningDmlParser() {
         return dmlParser;
+    }
+
+    /**
+     * @return true if the connector is to mine archive logs only, false to mine all logs.
+     */
+    public boolean isArchiveLogOnlyMode() {
+        return archiveLogOnlyMode;
     }
 
     public Configuration jdbcConfig() {

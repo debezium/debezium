@@ -16,11 +16,17 @@ import io.debezium.connector.oracle.Scn;
  */
 public class LogFile {
 
+    public enum Type {
+        ARCHIVE,
+        REDO
+    }
+
     private final String fileName;
     private final Scn firstScn;
     private final Scn nextScn;
     private final Long sequence;
     private final boolean current;
+    private final Type type;
 
     /**
      * Create a log file that represents an archived log record.
@@ -29,9 +35,10 @@ public class LogFile {
      * @param firstScn the first system change number in the log
      * @param nextScn the first system change number in the following log
      * @param sequence the unique log sequence number
+     * @param type the log type
      */
-    public LogFile(String fileName, Scn firstScn, Scn nextScn, Long sequence) {
-        this(fileName, firstScn, nextScn, sequence, false);
+    public LogFile(String fileName, Scn firstScn, Scn nextScn, Long sequence, Type type) {
+        this(fileName, firstScn, nextScn, sequence, type, false);
     }
 
     /**
@@ -41,14 +48,16 @@ public class LogFile {
      * @param firstScn the first system change number in the log
      * @param nextScn the first system change number in the following log
      * @param sequence the unique log sequence number
+     * @param type the type of archive log
      * @param current whether the log file is the current one
      */
-    public LogFile(String fileName, Scn firstScn, Scn nextScn, Long sequence, boolean current) {
+    public LogFile(String fileName, Scn firstScn, Scn nextScn, Long sequence, Type type, boolean current) {
         this.fileName = fileName;
         this.firstScn = firstScn;
         this.nextScn = nextScn;
         this.sequence = sequence;
         this.current = current;
+        this.type = type;
     }
 
     public String getFileName() {
@@ -72,6 +81,10 @@ public class LogFile {
      */
     public boolean isCurrent() {
         return current;
+    }
+
+    public Type getType() {
+        return type;
     }
 
     @Override

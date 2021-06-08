@@ -149,9 +149,10 @@ public class SqlUtils {
      *
      * @param scn oldest system change number to search by
      * @param archiveLogRetention duration archive logs will be mined
+     * @param archiveLogOnlyMode true if to only mine archive logs, false to mine all available logs
      * @return the query string to obtain minable log files
      */
-    public static String allMinableLogsQuery(Scn scn, Duration archiveLogRetention) {
+    public static String allMinableLogsQuery(Scn scn, Duration archiveLogRetention, boolean archiveLogOnlyMode) {
         // The generated query performs a union in order to obtain a list of all archive logs that should be mined
         // combined with a list of redo logs that should be mined.
         //
@@ -197,15 +198,17 @@ public class SqlUtils {
         // logs may be added to a single mining session.
 
         final StringBuilder sb = new StringBuilder();
-        sb.append("SELECT MIN(F.MEMBER) AS FILE_NAME, L.FIRST_CHANGE# FIRST_CHANGE, L.NEXT_CHANGE# NEXT_CHANGE, L.ARCHIVED, ");
-        sb.append("L.STATUS, 'ONLINE' AS TYPE, L.SEQUENCE# AS SEQ, 'NO' AS DICT_START, 'NO' AS DICT_END ");
-        sb.append("FROM ").append(LOGFILE_VIEW).append(" F, ").append(LOG_VIEW).append(" L ");
-        sb.append("LEFT JOIN ").append(ARCHIVED_LOG_VIEW).append(" A ");
-        sb.append("ON A.FIRST_CHANGE# = L.FIRST_CHANGE# AND A.NEXT_CHANGE# = L.NEXT_CHANGE# ");
-        sb.append("WHERE A.FIRST_CHANGE# IS NULL ");
-        sb.append("AND F.GROUP# = L.GROUP# ");
-        sb.append("GROUP BY F.GROUP#, L.FIRST_CHANGE#, L.NEXT_CHANGE#, L.STATUS, L.ARCHIVED, L.SEQUENCE# ");
-        sb.append("UNION ");
+        if (!archiveLogOnlyMode) {
+            sb.append("SELECT MIN(F.MEMBER) AS FILE_NAME, L.FIRST_CHANGE# FIRST_CHANGE, L.NEXT_CHANGE# NEXT_CHANGE, L.ARCHIVED, ");
+            sb.append("L.STATUS, 'ONLINE' AS TYPE, L.SEQUENCE# AS SEQ, 'NO' AS DICT_START, 'NO' AS DICT_END ");
+            sb.append("FROM ").append(LOGFILE_VIEW).append(" F, ").append(LOG_VIEW).append(" L ");
+            sb.append("LEFT JOIN ").append(ARCHIVED_LOG_VIEW).append(" A ");
+            sb.append("ON A.FIRST_CHANGE# = L.FIRST_CHANGE# AND A.NEXT_CHANGE# = L.NEXT_CHANGE# ");
+            sb.append("WHERE A.FIRST_CHANGE# IS NULL ");
+            sb.append("AND F.GROUP# = L.GROUP# ");
+            sb.append("GROUP BY F.GROUP#, L.FIRST_CHANGE#, L.NEXT_CHANGE#, L.STATUS, L.ARCHIVED, L.SEQUENCE# ");
+            sb.append("UNION ");
+        }
         sb.append("SELECT A.NAME AS FILE_NAME, A.FIRST_CHANGE# FIRST_CHANGE, A.NEXT_CHANGE# NEXT_CHANGE, 'YES', ");
         sb.append("NULL, 'ARCHIVED', A.SEQUENCE# AS SEQ, A.DICTIONARY_BEGIN, A.DICTIONARY_END ");
         sb.append("FROM ").append(ARCHIVED_LOG_VIEW).append(" A ");

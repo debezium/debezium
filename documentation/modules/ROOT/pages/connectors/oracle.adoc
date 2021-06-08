@@ -1519,6 +1519,14 @@ If the captured table(s) schema changes infrequently or never, this is the ideal
 |The number of hours in the past from SYSDATE to mine archive logs.
 Using the default `0` will mine all archive logs.
 
+|[[oracle-property-log-mining-archive-log-only-mode]]<<oracle-property-log-mining-archive-log-only-mode, `+log.mining.archive.log.only.mode+`>>
+|`false`
+|Controls whether or not the connector mines changes from just archive logs or a combination of the online redo logs and archive logs (the default). +
+ +
+For some environments where online redo logs are archived frequently enough to cause LogMiner session failures,
+this opt-in feature only mines archive logs which are guaranteed to be reliable unlike the circular buffer nature of redo logs that can be archived at any point, leading to LogMiner session errors.
+Note that by using this opt-in feature, events will be emitted with a certain amount of latency that is entirely dependent on how frequently online redo logs are archived by Oracle.
+
 |[[oracle-property-log-mining-transaction-retention-hours]]<<oracle-property-log-mining-transaction-retention-hours, `log.mining.transaction.retention.hours`>>
 |`0`
 |Positive integer value that specifies the number of hours to retain long running transactions between redo log switches.
