@@ -24,7 +24,7 @@ public class PulsarTestConfigSource extends TestConfigSource {
         pulsarTest.put("debezium.source.offset.flush.interval.ms", "0");
         pulsarTest.put("debezium.source.database.server.name", "testc");
         pulsarTest.put("debezium.source.schema.include.list", "inventory");
-        pulsarTest.put("debezium.source.table.include.list", "inventory.customers");
+        pulsarTest.put("debezium.source.table.include.list", "inventory.customers,inventory.nokey");
 
         config = pulsarTest;
     }
