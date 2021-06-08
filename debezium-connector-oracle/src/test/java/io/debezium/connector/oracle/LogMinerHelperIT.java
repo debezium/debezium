@@ -72,16 +72,16 @@ public class LogMinerHelperIT extends AbstractConnectorTest {
     public void shouldAddCorrectLogFiles() throws Exception {
         // case 1 : oldest scn = current scn
         Scn currentScn = conn.getCurrentScn();
-        List<LogFile> files = LogMinerHelper.getLogFilesForOffsetScn(conn, currentScn, Duration.ofHours(0L));
+        List<LogFile> files = LogMinerHelper.getLogFilesForOffsetScn(conn, currentScn, Duration.ofHours(0L), false);
         assertThat(files).hasSize(1); // just the current redo log
 
         // case 2 : oldest scn = oldest in not cleared archive
         List<Scn> oneDayArchivedNextScn = getOneDayArchivedLogNextScn(conn);
         Scn oldestArchivedScn = getOldestArchivedScn(oneDayArchivedNextScn);
-        files = LogMinerHelper.getLogFilesForOffsetScn(conn, oldestArchivedScn, Duration.ofHours(0L));
+        files = LogMinerHelper.getLogFilesForOffsetScn(conn, oldestArchivedScn, Duration.ofHours(0L), false);
         assertThat(files.size()).isEqualTo(oneDayArchivedNextScn.size());
 
-        files = LogMinerHelper.getLogFilesForOffsetScn(conn, oldestArchivedScn.subtract(Scn.valueOf(1L)), Duration.ofHours(0L));
+        files = LogMinerHelper.getLogFilesForOffsetScn(conn, oldestArchivedScn.subtract(Scn.valueOf(1L)), Duration.ofHours(0L), false);
         assertThat(files.size()).isEqualTo(oneDayArchivedNextScn.size() + 1);
     }
 
@@ -90,10 +90,17 @@ public class LogMinerHelperIT extends AbstractConnectorTest {
     public void shouldSetCorrectLogFiles() throws Exception {
         List<Scn> oneDayArchivedNextScn = getOneDayArchivedLogNextScn(conn);
         Scn oldestArchivedScn = getOldestArchivedScn(oneDayArchivedNextScn);
-        LogMinerHelper.setLogFilesForMining(conn, oldestArchivedScn, Duration.ofHours(0L));
+        LogMinerHelper.setLogFilesForMining(conn, oldestArchivedScn, Duration.ofHours(0L), false);
 
-        List<LogFile> files = LogMinerHelper.getLogFilesForOffsetScn(conn, oldestArchivedScn, Duration.ofHours(0L));
+        List<LogFile> files = LogMinerHelper.getLogFilesForOffsetScn(conn, oldestArchivedScn, Duration.ofHours(0L), false);
         assertThat(files.size()).isEqualTo(getNumberOfAddedLogFiles(conn));
+    }
+
+    @Test
+    @FixFor("DBZ-3561")
+    public void shouldOnlyReturnArchiveLogs() throws Exception {
+        List<LogFile> files = LogMinerHelper.getLogFilesForOffsetScn(conn, Scn.valueOf(0), Duration.ofHours(0L), true);
+        files.forEach(file -> assertThat(file.getType()).isEqualTo(LogFile.Type.ARCHIVE));
     }
 
     private Scn getOldestArchivedScn(List<Scn> oneDayArchivedNextScn) {
