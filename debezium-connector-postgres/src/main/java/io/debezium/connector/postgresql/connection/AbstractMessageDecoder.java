@@ -47,4 +47,8 @@ public abstract class AbstractMessageDecoder implements MessageDecoder {
         }
         return false;
     }
+
+    @Override
+    public void close() {
+    }
 }

@@ -37,7 +37,7 @@ import io.debezium.connector.postgresql.UnchangedToastedReplicationMessageColumn
 import io.debezium.connector.postgresql.connection.AbstractMessageDecoder;
 import io.debezium.connector.postgresql.connection.AbstractReplicationMessageColumn;
 import io.debezium.connector.postgresql.connection.Lsn;
-import io.debezium.connector.postgresql.connection.MessageDecoderConfig;
+import io.debezium.connector.postgresql.connection.MessageDecoderContext;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationMessage.Column;
 import io.debezium.connector.postgresql.connection.ReplicationMessage.NoopMessage;
@@ -60,14 +60,16 @@ import io.debezium.util.Strings;
  *
  */
 public class PgOutputMessageDecoder extends AbstractMessageDecoder {
+
     private static final Logger LOGGER = LoggerFactory.getLogger(PgOutputMessageDecoder.class);
     private static final Instant PG_EPOCH = LocalDate.of(2000, 1, 1).atStartOfDay().toInstant(ZoneOffset.UTC);
     private static final byte SPACE = 32;
 
+    private final MessageDecoderContext decoderContext;
+    private final PostgresConnection connection;
+
     private Instant commitTimestamp;
     private int transactionId;
-
-    private final MessageDecoderConfig config;
 
     public enum MessageType {
         RELATION,
@@ -106,8 +108,9 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
         }
     }
 
-    public PgOutputMessageDecoder(MessageDecoderConfig config) {
-        this.config = config;
+    public PgOutputMessageDecoder(MessageDecoderContext decoderContext) {
+        this.decoderContext = decoderContext;
+        this.connection = new PostgresConnection(decoderContext.getConfig().jdbcConfig(), decoderContext.getSchema().getTypeRegistry());
     }
 
     @Override
@@ -182,7 +185,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
                 decodeDelete(buffer, typeRegistry, processor);
                 break;
             case TRUNCATE:
-                if (config.getTruncateHandlingMode() == PostgresConnectorConfig.TruncateHandlingMode.INCLUDE) {
+                if (decoderContext.getConfig().truncateHandlingMode() == PostgresConnectorConfig.TruncateHandlingMode.INCLUDE) {
                     decodeTruncate(buffer, typeRegistry, processor);
                 }
                 else {
@@ -198,7 +201,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
     @Override
     public ChainedLogicalStreamBuilder optionsWithMetadata(ChainedLogicalStreamBuilder builder) {
         return builder.withSlotOption("proto_version", 1)
-                .withSlotOption("publication_names", config.getPublicationName());
+                .withSlotOption("publication_names", decoderContext.getConfig().publicationName());
     }
 
     @Override
@@ -262,21 +265,20 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
         Map<String, Optional<Object>> columnDefaults;
         Map<String, Boolean> columnOptionality;
         List<String> primaryKeyColumns;
-        try (final PostgresConnection connection = new PostgresConnection(config.getConfiguration(), config.getSchema().getTypeRegistry())) {
-            final DatabaseMetaData databaseMetadata = connection.connection().getMetaData();
-            final TableId tableId = new TableId(null, schemaName, tableName);
 
-            final List<io.debezium.relational.Column> readColumns = getTableColumnsFromDatabase(connection, databaseMetadata, tableId);
-            columnDefaults = readColumns.stream()
-                    .filter(io.debezium.relational.Column::hasDefaultValue)
-                    .collect(toMap(io.debezium.relational.Column::name, column -> Optional.ofNullable(column.defaultValue())));
+        final DatabaseMetaData databaseMetadata = connection.connection().getMetaData();
+        final TableId tableId = new TableId(null, schemaName, tableName);
 
-            columnOptionality = readColumns.stream().collect(toMap(io.debezium.relational.Column::name, io.debezium.relational.Column::isOptional));
-            primaryKeyColumns = connection.readPrimaryKeyNames(databaseMetadata, tableId);
-            if (primaryKeyColumns == null || primaryKeyColumns.isEmpty()) {
-                LOGGER.warn("Primary keys are not defined for table '{}', defaulting to unique indices", tableName);
-                primaryKeyColumns = connection.readTableUniqueIndices(databaseMetadata, tableId);
-            }
+        final List<io.debezium.relational.Column> readColumns = getTableColumnsFromDatabase(connection, databaseMetadata, tableId);
+        columnDefaults = readColumns.stream()
+                .filter(io.debezium.relational.Column::hasDefaultValue)
+                .collect(toMap(io.debezium.relational.Column::name, column -> Optional.ofNullable(column.defaultValue())));
+
+        columnOptionality = readColumns.stream().collect(toMap(io.debezium.relational.Column::name, io.debezium.relational.Column::isOptional));
+        primaryKeyColumns = connection.readPrimaryKeyNames(databaseMetadata, tableId);
+        if (primaryKeyColumns == null || primaryKeyColumns.isEmpty()) {
+            LOGGER.warn("Primary keys are not defined for table '{}', defaulting to unique indices", tableName);
+            primaryKeyColumns = connection.readTableUniqueIndices(databaseMetadata, tableId);
         }
 
         List<ColumnMetaData> columns = new ArrayList<>();
@@ -321,17 +323,15 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
         primaryKeyColumns.retainAll(columnNames);
 
         Table table = resolveRelationFromMetadata(new PgOutputRelationMetaData(relationId, schemaName, tableName, columns, primaryKeyColumns));
-        config.getSchema().applySchemaChangesForTable(relationId, table);
+        decoderContext.getSchema().applySchemaChangesForTable(relationId, table);
     }
 
     private List<io.debezium.relational.Column> getTableColumnsFromDatabase(PostgresConnection connection, DatabaseMetaData databaseMetadata, TableId tableId) {
-        final PostgresConnectorConfig connectorConfig = new PostgresConnectorConfig(config.getConfiguration());
-
         List<io.debezium.relational.Column> readColumns = new ArrayList<>();
         try {
             try (ResultSet columnMetadata = databaseMetadata.getColumns(null, tableId.schema(), tableId.table(), null)) {
                 while (columnMetadata.next()) {
-                    connection.readColumnForDecoder(columnMetadata, tableId, connectorConfig.getColumnFilter())
+                    connection.readColumnForDecoder(columnMetadata, tableId, decoderContext.getConfig().getColumnFilter())
                             .ifPresent(readColumns::add);
                 }
             }
@@ -361,7 +361,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
         else if (primaryKeyColumns.isEmpty()) {
             // The table's metadata was either not fetched or table no longer has a primary key
             // Lets attempt to use the known schema primary key configuration as a fallback
-            Table existingTable = config.getSchema().tableFor(new TableId(null, schemaName, tableName));
+            Table existingTable = decoderContext.getSchema().tableFor(new TableId(null, schemaName, tableName));
             if (existingTable != null && existingTable.primaryKeyColumnNames().contains(columnName)) {
                 return true;
             }
@@ -560,7 +560,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
      * or empty when the table is filtered
      */
     private Optional<Table> resolveRelation(int relationId) {
-        return Optional.ofNullable(config.getSchema().tableFor(relationId));
+        return Optional.ofNullable(decoderContext.getSchema().tableFor(relationId));
     }
 
     /**
@@ -692,5 +692,10 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
 
         columns.forEach(c -> LOGGER.trace("Column: {}", c));
         return columns;
+    }
+
+    @Override
+    public void close() {
+        connection.close();
     }
 }
