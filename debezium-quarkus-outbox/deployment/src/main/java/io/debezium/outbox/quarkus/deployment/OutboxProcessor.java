@@ -145,11 +145,9 @@ public final class OutboxProcessor {
                       BuildProducer<AdditionalBeanBuildItem> additionalBeanProducer,
                       BuildProducer<GeneratedResourceBuildItem> generatedResourcesProducer,
                       BuildProducer<ReflectiveClassBuildItem> reflectiveClassProducer,
-                      BuildProducer<OutboxOpenTracingBuildItem> buildItemBuildProducer,
                       Capabilities capabilities) {
         if (debeziumOutboxConfig.tracingEnabled && capabilities.isPresent(Capability.OPENTRACING)) {
             additionalBeanProducer.produce(AdditionalBeanBuildItem.unremovableOf(DebeziumTracerEventDispatcher.class));
-            buildItemBuildProducer.produce(new OutboxOpenTracingBuildItem(true));
         }
         else {
             additionalBeanProducer.produce(AdditionalBeanBuildItem.unremovableOf(DefaultEventDispatcher.class));
