@@ -354,7 +354,8 @@ public class LogMinerHelper {
 
     // todo use pool
     private static OracleConnection createFlushConnection(JdbcConfiguration config, String host) throws SQLException {
-        JdbcConfiguration hostConfig = JdbcConfiguration.adapt(config.edit().with(JdbcConfiguration.DATABASE, host).build());
+        JdbcConfiguration hostConfig = JdbcConfiguration.adapt(config.edit().with(JdbcConfiguration.HOSTNAME, host).build());
+        LOGGER.debug("Creating RAC flush connection to '{}:{}'", hostConfig.getHostname(), hostConfig.getPort());
         OracleConnection connection = new OracleConnection(hostConfig, () -> LogMinerHelper.class.getClassLoader());
         connection.setAutoCommit(false);
         return connection;
