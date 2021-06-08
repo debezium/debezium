@@ -86,7 +86,7 @@ public final class TestHelper {
     public static ReplicationConnection createForReplication(String slotName, boolean dropOnClose) throws SQLException {
         final PostgresConnectorConfig.LogicalDecoder plugin = decoderPlugin();
         final PostgresConnectorConfig config = new PostgresConnectorConfig(defaultConfig().build());
-        return ReplicationConnection.builder(defaultJdbcConfig())
+        return ReplicationConnection.builder(config)
                 .withPlugin(plugin)
                 .withSlot(slotName)
                 .withTypeRegistry(getTypeRegistry())

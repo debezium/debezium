@@ -70,4 +70,9 @@ public interface MessageDecoder {
      * @return {@code true} if the incoming message should be skipped, {@code false} otherwise
      */
     boolean shouldMessageBeSkipped(ByteBuffer buffer, Lsn lastReceivedLsn, Lsn startLsn, WalPositionLocator walPosition);
+
+    /**
+     * Closes this decoder, freeing and/or closing all resources it may potentially hold.
+     */
+    void close();
 }

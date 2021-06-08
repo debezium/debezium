@@ -13,7 +13,6 @@ import java.util.Optional;
 import org.postgresql.replication.PGReplicationStream;
 
 import io.debezium.annotation.NotThreadSafe;
-import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig;
 import io.debezium.connector.postgresql.PostgresSchema;
 import io.debezium.connector.postgresql.TypeRegistry;
@@ -85,11 +84,11 @@ public interface ReplicationConnection extends AutoCloseable {
     /**
      * Creates a new {@link Builder} instance which can be used for creating replication connections.
      *
-     * @param jdbcConfig a {@link Configuration} instance that contains JDBC settings; may not be null
+     * @param config a {@link PostgresConnectorConfig} instance; may not be null
      * @return a builder, never null
      */
-    static Builder builder(Configuration jdbcConfig) {
-        return new PostgresReplicationConnection.ReplicationConnectionBuilder(jdbcConfig);
+    static Builder builder(PostgresConnectorConfig config) {
+        return new PostgresReplicationConnection.ReplicationConnectionBuilder(config);
     }
 
     public void reconnect() throws SQLException;

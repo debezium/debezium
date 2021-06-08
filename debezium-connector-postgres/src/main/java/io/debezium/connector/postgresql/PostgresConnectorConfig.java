@@ -27,7 +27,7 @@ import io.debezium.config.Field;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.connector.postgresql.connection.MessageDecoder;
-import io.debezium.connector.postgresql.connection.MessageDecoderConfig;
+import io.debezium.connector.postgresql.connection.MessageDecoderContext;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.connector.postgresql.connection.pgoutput.PgOutputMessageDecoder;
 import io.debezium.connector.postgresql.connection.pgproto.PgProtoMessageDecoder;
@@ -357,7 +357,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     public enum LogicalDecoder implements EnumeratedValue {
         PGOUTPUT("pgoutput") {
             @Override
-            public MessageDecoder messageDecoder(MessageDecoderConfig config) {
+            public MessageDecoder messageDecoder(MessageDecoderContext config) {
                 return new PgOutputMessageDecoder(config);
             }
 
@@ -373,7 +373,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         },
         DECODERBUFS("decoderbufs") {
             @Override
-            public MessageDecoder messageDecoder(MessageDecoderConfig config) {
+            public MessageDecoder messageDecoder(MessageDecoderContext config) {
                 return new PgProtoMessageDecoder();
             }
 
@@ -389,7 +389,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         },
         WAL2JSON_STREAMING("wal2json_streaming") {
             @Override
-            public MessageDecoder messageDecoder(MessageDecoderConfig config) {
+            public MessageDecoder messageDecoder(MessageDecoderContext config) {
                 return new StreamingWal2JsonMessageDecoder();
             }
 
@@ -415,7 +415,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         },
         WAL2JSON_RDS_STREAMING("wal2json_rds_streaming") {
             @Override
-            public MessageDecoder messageDecoder(MessageDecoderConfig config) {
+            public MessageDecoder messageDecoder(MessageDecoderContext config) {
                 return new StreamingWal2JsonMessageDecoder();
             }
 
@@ -446,7 +446,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         },
         WAL2JSON("wal2json") {
             @Override
-            public MessageDecoder messageDecoder(MessageDecoderConfig config) {
+            public MessageDecoder messageDecoder(MessageDecoderContext config) {
                 return new NonStreamingWal2JsonMessageDecoder();
             }
 
@@ -472,7 +472,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         },
         WAL2JSON_RDS("wal2json_rds") {
             @Override
-            public MessageDecoder messageDecoder(MessageDecoderConfig config) {
+            public MessageDecoder messageDecoder(MessageDecoderContext config) {
                 return new NonStreamingWal2JsonMessageDecoder();
             }
 
@@ -508,7 +508,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             this.decoderName = decoderName;
         }
 
-        public abstract MessageDecoder messageDecoder(MessageDecoderConfig config);
+        public abstract MessageDecoder messageDecoder(MessageDecoderContext config);
 
         public boolean forceRds() {
             return false;
@@ -1021,7 +1021,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         return getConfig().getBoolean(DROP_SLOT_ON_STOP);
     }
 
-    protected String publicationName() {
+    public String publicationName() {
         return getConfig().getString(PUBLICATION_NAME);
     }
 
@@ -1045,7 +1045,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         return Duration.ofMillis(getConfig().getLong(PostgresConnectorConfig.STATUS_UPDATE_INTERVAL_MS));
     }
 
-    protected TruncateHandlingMode truncateHandlingMode() {
+    public TruncateHandlingMode truncateHandlingMode() {
         return truncateHandlingMode;
     }
 
