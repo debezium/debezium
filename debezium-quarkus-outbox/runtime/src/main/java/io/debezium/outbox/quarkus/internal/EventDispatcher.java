@@ -1,4 +1,3 @@
-
 /*
  * Copyright Debezium Authors.
  *

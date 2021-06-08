@@ -5,16 +5,18 @@
  */
 package io.debezium.outbox.quarkus.it;
 
+import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 
 /**
- * Integration tests for the Debezium Outbox extension, enabling OpenTracing behavior by default.
+ * Integration tests for the Debezium Outbox extension, disabling OpenTracing behavior.
  *
  * @author Chris Cranford
  */
 @QuarkusTest
-@TestProfile(OutboxProfiles.OpenTracing.class)
-public class OutboxOpenTracingTest extends AbstractOutboxTest {
+@TestProfile(OutboxProfiles.OpenTracingDisabled.class)
+@QuarkusTestResource(DatabaseTestResource.class)
+public class OutboxWithoutOpenTracingTest extends AbstractOutboxTest {
 
 }

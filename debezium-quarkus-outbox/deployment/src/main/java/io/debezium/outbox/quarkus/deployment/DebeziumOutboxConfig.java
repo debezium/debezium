@@ -71,9 +71,9 @@ public class DebeziumOutboxConfig {
     public DebeziumOutboxConfigTracingSpan tracingSpan;
 
     /**
-     * Whether or not smallrye-opentracing extension is present.
+     * smallrye-opentracing configuration option
      */
-    @ConfigItem(name = "tracing.enabled", defaultValue = "false")
+    @ConfigItem(name = "tracing.enabled", defaultValue = "true")
     public boolean tracingEnabled;
 
     @ConfigGroup

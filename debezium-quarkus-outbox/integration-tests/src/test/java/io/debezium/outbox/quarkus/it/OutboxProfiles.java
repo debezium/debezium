@@ -23,12 +23,12 @@ public class OutboxProfiles {
     }
 
     /**
-     * Enables OpenTracing support that is disabled by default.
+     * Disables OpenTracing support that is enabled by default.
      */
-    public static class OpenTracing implements QuarkusTestProfile {
+    public static class OpenTracingDisabled implements QuarkusTestProfile {
         @Override
         public Map<String, String> getConfigOverrides() {
-            return Collections.singletonMap("quarkus.debezium-outbox.tracing.enabled", "true");
+            return Collections.singletonMap("quarkus.debezium-outbox.tracing.enabled", "false");
         }
     }
 }
