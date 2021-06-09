@@ -88,7 +88,7 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlOffsetContext> {
 
         validateBinlogConfiguration(connectorConfig);
 
-        MySqlOffsetContext previousOffset = (MySqlOffsetContext) getPreviousOffset(new MySqlOffsetContext.Loader(connectorConfig));
+        MySqlOffsetContext previousOffset = getPreviousOffset(new MySqlOffsetContext.Loader(connectorConfig));
         if (previousOffset == null) {
             LOGGER.info("No previous offset found");
         }

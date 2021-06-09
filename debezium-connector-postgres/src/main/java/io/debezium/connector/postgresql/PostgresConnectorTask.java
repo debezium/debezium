@@ -93,7 +93,7 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresOffsetContext>
 
         schema = new PostgresSchema(connectorConfig, typeRegistry, topicSelector, valueConverterBuilder.build(typeRegistry));
         this.taskContext = new PostgresTaskContext(connectorConfig, schema, topicSelector);
-        final PostgresOffsetContext previousOffset = (PostgresOffsetContext) getPreviousOffset(new PostgresOffsetContext.Loader(connectorConfig));
+        final PostgresOffsetContext previousOffset = getPreviousOffset(new PostgresOffsetContext.Loader(connectorConfig));
         final Clock clock = Clock.system();
 
         LoggingContext.PreviousContext previousContext = taskContext.configureLoggingContext(CONTEXT_NAME);
@@ -197,7 +197,7 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresOffsetContext>
                     schemaNameAdjuster,
                     jdbcConnection);
 
-            ChangeEventSourceCoordinator coordinator = new PostgresChangeEventSourceCoordinator(
+            ChangeEventSourceCoordinator<PostgresOffsetContext> coordinator = new PostgresChangeEventSourceCoordinator (
                     previousOffset,
                     errorHandler,
                     PostgresConnector.class,

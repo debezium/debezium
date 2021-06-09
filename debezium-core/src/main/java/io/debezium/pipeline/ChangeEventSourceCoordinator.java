@@ -82,7 +82,7 @@ public class ChangeEventSourceCoordinator<O extends OffsetContext> {
         this.schema = schema;
     }
 
-    public synchronized <T extends CdcSourceTaskContext> void start(T taskContext, ChangeEventQueueMetrics changeEventQueueMetrics,
+    public synchronized void start(CdcSourceTaskContext taskContext, ChangeEventQueueMetrics changeEventQueueMetrics,
                                                                     EventMetadataProvider metadataProvider) {
         AtomicReference<LoggingContext.PreviousContext> previousLogContext = new AtomicReference<>();
         try {
@@ -141,7 +141,7 @@ public class ChangeEventSourceCoordinator<O extends OffsetContext> {
         }
     }
 
-    protected CatchUpStreamingResult executeCatchUpStreaming(OffsetContext previousOffset, ChangeEventSourceContext context,
+    protected CatchUpStreamingResult executeCatchUpStreaming(O previousOffset, ChangeEventSourceContext context,
                                                              SnapshotChangeEventSource<O> snapshotSource)
             throws InterruptedException {
         return new CatchUpStreamingResult(false);

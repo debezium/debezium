@@ -20,7 +20,7 @@ import io.debezium.pipeline.txmetadata.TransactionContext;
  *
  * @author Chris Cranford
  */
-public class XStreamOracleOffsetContextLoader implements OffsetContext.Loader {
+public class XStreamOracleOffsetContextLoader implements OffsetContext.Loader<OracleOffsetContext> {
 
     private final OracleConnectorConfig connectorConfig;
 
@@ -34,7 +34,7 @@ public class XStreamOracleOffsetContextLoader implements OffsetContext.Loader {
     }
 
     @Override
-    public OffsetContext load(Map<String, ?> offset) {
+    public OracleOffsetContext load(Map<String, ?> offset) {
         boolean snapshot = Boolean.TRUE.equals(offset.get(SourceInfo.SNAPSHOT_KEY));
         boolean snapshotCompleted = Boolean.TRUE.equals(offset.get(OracleOffsetContext.SNAPSHOT_COMPLETED_KEY));
 
