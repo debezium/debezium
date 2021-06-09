@@ -57,7 +57,9 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
     }
 
     public static DebeziumContainer latestStable() {
-        return new DebeziumContainer("debezium/connect:" + DEBEZIUM_VERSION);
+        // Temporarily requires hard-coded 1.6 as there is no stable release with Apicurio 2.0 baked
+        // return new DebeziumContainer("debezium/connect:" + DEBEZIUM_VERSION);
+        return new DebeziumContainer("debezium/connect:" + "1.6-devel");
     }
 
     private void defaultConfig() {
