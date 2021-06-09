@@ -28,6 +28,7 @@ public class DatabaseTestResource implements QuarkusTestResourceLifecycleManager
     private static PostgreSQLContainer<?> postgresContainer;
 
     @Override
+    @SuppressWarnings("resource") // closed in stop()
     public Map<String, String> start() {
         try {
             postgresContainer = new PostgreSQLContainer<>(POSTGRES_DOCKER_IMAGE_NAME)
