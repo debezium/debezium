@@ -80,6 +80,10 @@ public interface OffsetContext {
      */
     TransactionContext getTransactionContext();
 
+    /**
+     * Signals that the streaming of a batch of <i>incremental</i> snapshot events will begin,
+     * which should reflect in an updated offset state.
+     */
     default void incrementalSnapshotEvents() {
     }
 
