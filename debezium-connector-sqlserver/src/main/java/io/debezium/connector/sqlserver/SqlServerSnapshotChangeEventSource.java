@@ -198,10 +198,14 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
                 Table sourceTable = snapshotContext.tables.forTable(tableId);
                 // SourceTable will be null for tables that have cdc enabled, but are excluded in the configuration.
                 if (sourceTable != null) {
-                    List<Column> cdcEnabledSourceColumns = sourceTable.filterColumns(
+                    final List<Column> cdcEnabledSourceColumns = sourceTable.filterColumns(
                             column -> sqlServerChangeTable.getCapturedColumns().contains(column.name()));
+                    final List<String> cdcEnabledPkColumns = sourceTable.primaryKeyColumnNames().stream()
+                            .filter(column -> sqlServerChangeTable.getCapturedColumns().contains(column))
+                            .collect(Collectors.toList());
+
                     snapshotContext.tables.overwriteTable(sourceTable.id(), cdcEnabledSourceColumns,
-                            sourceTable.primaryKeyColumnNames(), sourceTable.defaultCharsetName());
+                            cdcEnabledPkColumns, sourceTable.defaultCharsetName());
                 }
             });
         }
