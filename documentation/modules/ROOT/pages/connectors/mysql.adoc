@@ -2549,7 +2549,7 @@ The name format is _database-name.table-name_.
 [id="{context}-pass-through-configuration-properties-for-database-drivers"]
 ==== Pass-through configuration properties for database drivers
 
-The {prodname} MySQL connector provides for pass-through configuration of the database driver.
+The {prodname} connector provides for pass-through configuration of the database driver.
 Pass-through database properties begin with the prefix `database.*`.
 For example, the property `database.tinyInt1isBit=false` is passed to the JDBC URL.
 Debezium strips the prefix before it passes the property to the database driver.

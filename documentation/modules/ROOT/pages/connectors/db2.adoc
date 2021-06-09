@@ -1835,16 +1835,21 @@ The connector then starts generating data change events for row-level operations
 [[db2-connector-properties]]
 === Connector properties
 
-The {prodname} Db2 connector has numerous configuration properties that you can use to achieve the right connector behavior for your application. Many properties have default values. Information about the properties is organized as follows:
+The {prodname} Db2 connector has numerous configuration properties that you can use to achieve the right connector behavior for your application.
+Many properties have default values.
+Information about the properties is organized as follows:
 
 * xref:db2-required-configuration-properties[Required configuration properties]
 * xref:db2-advanced-configuration-properties[Advanced configuration properties]
-* xref:db2-pass-through-properties[Pass-through configuration properties]
+* xref:db2-pass-through-configuration-properties-for-database-drivers[Pass-through configuration properties for database drivers]
+* xref:db2-passthrough-database-history-properties-for-configuring-producer-and-consumer-clients[Pass-through database history properties for configuring producer and consumer clients]
+* xref:db2-database-history-properties-for-configuring-connector-behavior[Database history properties for configuring connector behavior]
 
 [id="db2-required-configuration-properties"]
+==== Required connector configuration properties
+
 The following configuration properties are _required_ unless a default value is available.
 
-.Required connector configuration properties
 [cols="30%a,25%a,45%a",options="header"]
 |===
 |Property |Default |Description
@@ -1983,9 +1988,10 @@ If `table_a` has a an `id` column, and `regex_1` is `^i` (matches any column tha
 |===
 
 [id="db2-advanced-configuration-properties"]
+==== Advanced connector configuration properties
+
 The following _advanced_ configuration properties have defaults that work in most situations and therefore rarely need to be specified in the connector's configuration.
 
-.Advanced connector configuration properties
 [cols="30%a,25%a,45%a",options="header"]
 |===
 |Property |Default |Description

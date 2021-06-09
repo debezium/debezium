@@ -1954,6 +1954,18 @@ The connector then starts generating data change events for row-level operations
 The {prodname} SQL Server connector has numerous configuration properties that you can use to achieve the right connector behavior for your application.
 Many properties have default values.
 
+Information about the properties is organized as follows:
+
+* xref:{context}-required-connector-configuration-properties[Required connector configuration properties]
+* xref:{context}-advanced-connector-configuration-properties[Advanced connector configuration properties]
+* xref:{context}-pass-through-configuration-properties-for-database-drivers[Pass-through configuration properties for database drivers]
+* xref:{context}-passthrough-database-history-properties-for-configuring-producer-and-consumer-clients[Pass-through database history properties for configuring producer and consumer clients]
+* xref:{context}-database-history-properties-for-configuring-connector-behavior[Database history properties for configuring connector behavior]
+
+
+[id="{context}-required-connector-configuration-properties"]
+==== Required SQL Server connector configuration properties
+
 The following configuration properties are _required_ unless a default value is available.
 
 [cols="30%a,25%a,45%a",options="header"]
@@ -1998,15 +2010,6 @@ The following configuration properties are _required_ unless a default value is 
 |
 |Logical name that identifies and provides a namespace for the SQL Server database server that you want {prodname} to capture. The logical name should be unique across all other connectors, since it is used as a prefix for all Kafka topic names emanating from this connector.
 Only alphanumeric characters, hyphens and underscores must be used.
-
-|[[sqlserver-property-database-history-kafka-topic]]<<sqlserver-property-database-history-kafka-topic, `+database.history.kafka.topic+`>>
-|
-|The full name of the Kafka topic where the connector will store the database schema history.
-
-|[[sqlserver-property-database-history-kafka-bootstrap-servers]]<<sqlserver-property-database-history-kafka-bootstrap-servers, `+database.history.kafka.bootstrap.servers+`>>
-|
-|A list of host and port pairs that the connector will use for establishing an initial connection to the Kafka cluster.
-This connection is used for retrieving database schema history previously stored by the connector, and for writing each DDL statement read from the source database. This should point to the same Kafka cluster used by the Kafka Connect process.
 
 |[[sqlserver-property-table-include-list]]<<sqlserver-property-table-include-list, `+table.include.list+`>>
 |
@@ -2111,6 +2114,9 @@ Fully-qualified tables could be defined as _schemaName_._tableName_.
 |bytes
 |Specifies how binary (`binary`, `varbinary`) columns should be represented in change events, including: `bytes` represents binary data as byte array (default), `base64` represents binary data as base64-encoded String, `hex` represents binary data as hex-encoded (base16) String
 |===
+
+[id="sqlserver-advanced-connector-configuration-properties"]
+==== Advanced SQL Server connector configuration properties
 
 The following _advanced_ configuration properties have good defaults that will work in most situations and therefore rarely need to be specified in the connector's configuration.
 
@@ -2270,13 +2276,22 @@ The name format is _database_name.schema-name.table-name_.
 
 |===
 
-The connector also supports _pass-through_ configuration properties that are used when creating the Kafka producer and consumer. Specifically, all connector configuration properties that begin with the `database.history.producer.` prefix are used (without the prefix) when creating the Kafka producer that writes to the database history, and all those that begin with the prefix `database.history.consumer.` are used (without the prefix) when creating the Kafka consumer that reads the database history upon connector startup.
+[id="{context}-pass-through-configuration-properties-for-database-drivers"]
+==== Pass-through configuration properties for database drivers
 
-For example, the following connector configuration properties can be used to {link-kafka-docs}.html#security_configclients[secure connections to the Kafka broker]:
+The {prodname} connector provides for pass-through configuration of the database driver.
+Pass-through database properties begin with the prefix `database.*`.
+For example, the property `database.tinyInt1isBit=false` is passed to the JDBC URL.
+Debezium strips the prefix before it passes the property to the database driver.
 
-In addition to the _pass-through_ to the Kafka producer and consumer, the properties starting with `database.`, e.g. `database.applicationName=debezium` are passed to the JDBC URL.
+[id="{context}-passthrough-database-history-properties-for-configuring-producer-and-consumer-clients"]
+==== Pass-through database history properties for configuring producer and consumer clients
 
-[source,properties,indent=0]
+{prodname} relies on a Kafka producer to write schema changes to database history topics, and a Kafka consumer to read from database history topics when a connector starts.
+You define the configuration for the Kafka producer and consumer clients by assigning values to a set of pass-through configuration properties that begin with the `database.history.producer.*` and `database.history.consumer.*` prefixes.
+The pass-through producer and consumer database history properties control a range of behaviors, such as how these clients secure connections with the Kafka broker, as shown in the following example:
+
+[source, indent=0]
 ----
 database.history.producer.security.protocol=SSL
 database.history.producer.ssl.keystore.location=/var/private/ssl/kafka.server.keystore.jks
@@ -2292,7 +2307,19 @@ database.history.consumer.ssl.truststore.password=test1234
 database.history.consumer.ssl.key.password=test1234
 ----
 
-Be sure to consult the {link-kafka-docs}.html[Kafka documentation] for all of the configuration properties for Kafka producers and consumers. (The SQL Server connector does use the {link-kafka-docs}.html#newconsumerconfigs[new consumer].)
+As is the case with the xref:{context}-pass-through-configuration-properties-for-database-drivers[pass-through properties for database drivers], {prodname} strips the prefixes from the properties before {prodname} it passes them to configure the database history producer or consumer client.
+
+See the Kafka documentation for more details about link:https://kafka.apache.org/documentation.html#producerconfigs[Kafka producer configuration properties] and link:https://kafka.apache.org/documentation.html#consumerconfigs[Kafka consumer configuration properties].
+
+[id="{context}-database-history-properties-for-configuring-connector-behavior"]
+==== Database history properties for configuring connector behavior
+
+In addition to the pass-through database history properties that you use to configure producers or consumers, there is a set of `database.history.*` properties whose names do not include `producer` or `consumer`.
+You use these `database.history` properties to define how the {context} connector processes event data that it reads from the schema history.
+
+The following table describes the `database.history` properties for configuring the {prodname} {context} connector.
+
+include::{partialsdir}/modules/all-connectors/ref-connector-configuration-database-history-properties.adoc[leveloffset=+1]
 
 // Type: assembly
 // ModuleID: refreshing-capture-tables-after-a-schema-change
