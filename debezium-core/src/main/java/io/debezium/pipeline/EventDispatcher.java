@@ -424,7 +424,7 @@ public class EventDispatcher<T extends DataCollectionId, SourceRecord extends So
                 // this way we ensure that the last event is always marked as last
                 // even if it originates form non-last table
                 final DataChangeEvent event = bufferedEvent.get();
-                final Struct envelope = (Struct) event.getRecord().value();
+                final Struct envelope = (Struct) event.getRecord().rawValue();
                 if (envelope.schema().field(Envelope.FieldName.SOURCE) != null) {
                     final Struct source = envelope.getStruct(Envelope.FieldName.SOURCE);
                     final SnapshotRecord snapshot = SnapshotRecord.fromSource(source);
