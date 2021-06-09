@@ -1,9 +1,10 @@
 package io.debezium.connector.common;
 
+import java.io.Serializable;
 import java.util.Collection;
 import java.util.Map;
 
-public interface OffsetStorageReaderWrapper {
+public interface OffsetStorageReaderWrapper extends Serializable {
 
     <T> Map<String, Object> offset(Map<String, T> partition);
 

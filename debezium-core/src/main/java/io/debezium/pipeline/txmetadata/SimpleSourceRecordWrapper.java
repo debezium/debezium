@@ -1,7 +1,10 @@
 package io.debezium.pipeline.txmetadata;
 
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
+import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.header.ConnectHeaders;
@@ -10,30 +13,22 @@ import org.apache.kafka.connect.header.Headers;
 
 import io.debezium.connector.common.SourceRecordWrapper;
 
-public class SimpleSourceRecordWrapper implements SourceRecordWrapper {
+public class SimpleSourceRecordWrapper implements SourceRecordWrapper, HeaderMapWrapper {
 
     private String topic;
     private Integer kafkaPartition;
     private Schema keySchema;
     private Object key;
+    private Object rawKey;
     private Schema valueSchema;
     private Object value;
+    private Object rawValue;
     private Long timestamp;
     private Headers headers;
+    private Map<String, Object> headerMap;
 
     private Map<String, ?> sourcePartition;
     private Map<String, ?> sourceOffset;
-
-    public SimpleSourceRecordWrapper(Map<String, ?> partition, Map<String, ?> offset, String topicName, Object o, Schema schema, Struct key, Schema valueSchema,
-                                     Struct value) {
-        this.sourcePartition = partition;
-        this.sourceOffset = offset;
-        this.topic = topicName;
-        this.keySchema = schema;
-        this.key = key;
-        this.valueSchema = valueSchema;
-        this.value = value;
-    }
 
     public SimpleSourceRecordWrapper(Map<String, ?> sourcePartition, Map<String, ?> sourceOffset, String topic, Integer kafkaPartition, Schema keySchema, Object key,
                                      Schema valueSchema, Object value, Long timestamp, Iterable<Header> headers) {
@@ -42,26 +37,36 @@ public class SimpleSourceRecordWrapper implements SourceRecordWrapper {
         this.topic = topic;
         this.kafkaPartition = kafkaPartition;
         this.keySchema = keySchema;
-        this.key = key;
+        this.rawKey = key;
+        this.key = key instanceof Struct ? toObject((Struct) key) : key;
         this.valueSchema = valueSchema;
-        this.value = value;
+        this.rawValue = value;
+        this.value = value instanceof Struct ? toObject((Struct) value) : value;;
         this.timestamp = timestamp;
         this.headers = new ConnectHeaders(headers);
+        this.headerMap = new HashMap<>();
+        if(headers != null) {
+            for (Header header : headers) {
+                headerMap.put(header.key(), header.value() instanceof Struct ? toObject((Struct) header.value()) : header.value());
+            }
+        }
     }
 
     public SimpleSourceRecordWrapper(String sourcePartition, Map<String, ?> newOffset, String topic, Integer kafkaPartition, Schema keySchema, Object key,
                                      Schema valueSchema, Object value) {
-
+//        Map<String, Object> partition = new HashMap<>();
+//        partition.put(sourcePartition, sourcePartition);
+        this(new HashMap<>(), newOffset, topic, kafkaPartition, keySchema, key, valueSchema, value, -1L , null);
     }
 
     public SimpleSourceRecordWrapper(Map<String, ?> partition, Map<String, ?> sourceRecordOffset, String topicName, Integer partitionNum, Schema keySchema, Object oldKey,
                                      Object o, Object o1) {
-
+        this(partition, sourceRecordOffset, topicName, partitionNum, keySchema, oldKey, (Schema) o, o1, -1L, null);
     }
 
     public SimpleSourceRecordWrapper(Map<String, ?> partition, Map<String, ?> sourceRecordOffset, String topicName, Integer partitionNum, Schema keySchema, Struct newkey,
                                      Schema schema, Struct update) {
-
+        this(partition, sourceRecordOffset, topicName, partitionNum, keySchema, newkey, schema, update, -1L, null);
     }
 
     @Override
@@ -91,8 +96,18 @@ public class SimpleSourceRecordWrapper implements SourceRecordWrapper {
     }
 
     @Override
+    public Object rawKey() {
+        return rawKey;
+    }
+
+    @Override
     public Object value() {
         return value;
+    }
+
+    @Override
+    public Object rawValue() {
+        return rawValue;
     }
 
     public SimpleSourceRecordWrapper(String topic, Integer kafkaPartition,
@@ -181,5 +196,24 @@ public class SimpleSourceRecordWrapper implements SourceRecordWrapper {
         result = 31 * result + (timestamp != null ? timestamp.hashCode() : 0);
         result = 31 * result + headers.hashCode();
         return result;
+    }
+
+    private Map<String, Object> toObject(Struct struct) {
+        Map<String, Object> result = new HashMap<>();
+        List<Field> fields = struct.schema().fields();
+        for (Field field : fields) {
+            Object value = struct.get(field);
+            if(value instanceof Struct) {
+                value = toObject((Struct) value);
+            }
+            result.put(field.name(), value);
+        }
+
+        return result;
+    }
+
+    @Override
+    public Map<String, Object> headerMap() {
+        return headerMap;
     }
 }

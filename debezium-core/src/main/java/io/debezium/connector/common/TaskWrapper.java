@@ -1,8 +1,9 @@
 package io.debezium.connector.common;
 
+import java.io.Serializable;
 import java.util.Map;
 
-public interface TaskWrapper {
+public interface TaskWrapper extends Serializable {
 
     String version();
 

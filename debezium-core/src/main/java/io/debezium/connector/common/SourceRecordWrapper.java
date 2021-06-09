@@ -19,7 +19,11 @@ public interface SourceRecordWrapper {
 
     Object key();
 
+    Object rawKey();
+
     Object value();
+
+    Object rawValue();
 
     Integer kafkaPartition();
 
