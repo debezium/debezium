@@ -5,6 +5,17 @@
  */
 package io.debezium.outbox.quarkus.it;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.fail;
+
+import org.hibernate.QueryException;
+import org.hibernate.engine.spi.SessionImplementor;
+import org.hibernate.metamodel.spi.MetamodelImplementor;
+import org.hibernate.persister.entity.EntityPersister;
+import org.junit.jupiter.api.Test;
+
+import io.debezium.outbox.quarkus.internal.OutboxConstants;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
@@ -19,4 +30,20 @@ import io.quarkus.test.junit.TestProfile;
 @QuarkusTestResource(DatabaseTestResource.class)
 public class OutboxWithoutOpenTracingTest extends AbstractOutboxTest {
 
+    @Test
+    public void testOutboxEntityMetamodelDoesntHaveTracingSpanColumn() throws Exception {
+        final MetamodelImplementor metadata = entityManager.unwrap(SessionImplementor.class).getFactory().getMetamodel();
+
+        final EntityPersister persister = metadata.entityPersister(OutboxConstants.OUTBOX_ENTITY_FULLNAME);
+        assertNotNull(persister);
+
+        try {
+            assertEquals(String.class, persister.getPropertyType("aggregateType").getReturnedClass());
+            persister.getPropertyType("tracingspancontext");
+            fail("Expected exception not thrown");
+        }
+        catch (QueryException e) {
+            assertEquals("could not resolve property: tracingspancontext of: io.debezium.outbox.quarkus.internal.OutboxEvent", e.getMessage());
+        }
+    }
 }
