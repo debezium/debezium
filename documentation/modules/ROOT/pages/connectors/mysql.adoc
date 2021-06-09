@@ -2120,12 +2120,14 @@ Information about the properties is organized as follows:
 
 * xref:mysql-required-connector-configuration-properties[Required connector configuration properties]
 * xref:mysql-advanced-connector-configuration-properties[Advanced connector configuration properties]
-* xref:mysql-pass-through-configuration-properties[Pass-through configuration properties]
+* xref:mysql-pass-through-configuration-properties-for-database-drivers[Pass-through configuration properties for database drivers]
+* xref:mysql-passthrough-database-history-properties-for-configuring-producer-and-consumer-clients[Pass-through database history properties for configuring producer and consumer clients]
+* xref:mysql-database-history-properties-for-configuring-connector-behavior[Database history properties for configuring connector behavior]
 
 [id="mysql-required-connector-configuration-properties"]
 The following configuration properties are _required_ unless a default value is available.
 
-.Required MySQL connector configuration properties
+==== Required MySQL connector configuration properties
 [cols="33%a,17%a,50%a",options="header",subs="+attributes"]
 |===
 |Property |Default |Description
@@ -2166,14 +2168,6 @@ Only alphanumeric characters, hyphens and underscores must be used in the databa
 |[[mysql-property-database-server-id]]<<mysql-property-database-server-id, `+database.server.id+`>>
 |_random_
 |A numeric ID of this database client, which must be unique across all currently-running database processes in the MySQL cluster. This connector joins the MySQL database cluster as another server (with this unique ID) so it can read the binlog. By default, a random number between 5400 and 6400 is generated, though the recommendation is to explicitly set a value.
-
-|[[mysql-property-database-history-kafka-topic]]<<mysql-property-database-history-kafka-topic, `+database.history.kafka.topic+`>>
-|
-|The full name of the Kafka topic where the connector stores the database schema history.
-
-|[[mysql-property-database-history-kafka-bootstrap-servers]]<<mysql-property-database-history-kafka-bootstrap-servers, `+database.history.kafka.bootstrap.servers+`>>
-|
-|A list of host/port pairs that the connector uses for establishing an initial connection to the Kafka cluster. This connection is used for retrieving database schema history previously stored by the connector, and for writing each DDL statement read from the source database. Each pair should point to the same Kafka cluster used by the Kafka Connect process.
 
 |[[mysql-property-database-include-list]]<<mysql-property-database-include-list, `+database.include.list+`>>
 |_empty string_
@@ -2395,7 +2389,7 @@ If `table_a` has an `id` column, and `regex_1` is `^i` (matches any column that 
 |===
 
 [id="mysql-advanced-connector-configuration-properties"]
-.Advanced MySQL connector configuration properties
+==== Advanced MySQL connector configuration properties
 
 The following table describes {link-prefix}:{link-mysql-connector}#mysql-advanced-connector-configuration-properties[advanced MySQL connector properties]. The default values for these properties rarely need to be changed. Therefore, you do not need to specify them in the connector configuration.
 
@@ -2412,37 +2406,6 @@ The following table describes {link-prefix}:{link-mysql-connector}#mysql-advance
 |`true`
 |A Boolean value that specifies whether built-in system tables should be ignored. This applies regardless of the table include and exclude lists. By default, system tables are excluded from having their changes captured, and no events are generated when changes are made to any system tables.
 
-|[[mysql-property-database-history-kafka-recovery-poll-interval-ms]]<<mysql-property-database-history-kafka-recovery-poll-interval-ms, `+database.history.kafka.recovery.poll.interval.ms+`>>
-|`100`
-|An integer value that specifies the maximum number of milliseconds the connector should wait during startup/recovery while polling for persisted data. The default is 100ms.
-
-|[[mysql-property-database-history-kafka-recovery-attempts]]<<mysql-property-database-history-kafka-recovery-attempts, `+database.history.kafka.recovery.attempts+`>>
-|`4`
-|The maximum number of times that the connector should try to read persisted history data before the connector recovery fails with an error. The maximum amount of time to wait after receiving no data is `recovery.attempts` x `recovery.poll.interval.ms`.
-
-|[[mysql-property-database-history-skip-unparseable-ddl]]<<mysql-property-database-history-skip-unparseable-ddl, `+database.history.skip.unparseable.ddl+`>>
-|`false`
-|A Boolean value that specifies whether the connector should ignore malformed or unknown database statements or stop processing so a human can fix the issue.
-The safe default is `false`.
-Skipping should be used only with care as it can lead to data loss or mangling when the binlog is being processed.
-
-|[[mysql-property-database-history-store-only-monitored-tables-ddl]]<<mysql-property-database-history-store-only-monitored-tables-ddl, `+database.history.store.only.monitored.tables.ddl+`>>
-_Deprecated and scheduled for removal in a future release; use {link-prefix}:{link-mysql-connector}#mysql-property-database-history-store-only-captured-tables-ddl[`database.history.store.only.captured.tables.ddl`] instead._
-|`false`
-|A Boolean value that specifies whether the connector should record all DDL statements  +
- +
-`true` records only those DDL statements that are relevant to tables whose changes are being captured by {prodname}. Set to `true` with care because missing data might become necessary if you change which tables have their changes captured. +
- +
-The safe default is `false`.
-
-|[[mysql-property-database-history-store-only-captured-tables-ddl]]<<mysql-property-database-history-store-only-captured-tables-ddl, `+database.history.store.only.captured.tables.ddl+`>>
-|`false`
-|A Boolean value that specifies whether the connector should record all DDL statements  +
- +
-`true` records only those DDL statements that are relevant to tables whose changes are being captured by {prodname}. Set to `true` with care because missing data might become necessary if you change which tables have their changes captured. +
- +
-The safe default is `false`.
-
 |[[mysql-property-database-ssl-mode]]<<mysql-property-database-ssl-mode, `+database.ssl.mode+`>>
 |`disabled`
 |Specifies whether to use an encrypted connection. Possible settings are: +
@@ -2456,7 +2419,7 @@ The safe default is `false`.
 `verify_ca` behaves like `required` but additionally it verifies the server TLS certificate against the configured Certificate Authority (CA) certificates and fails if the server TLS certificate does not match any valid CA certificates. +
  +
 `verify_identity` behaves like `verify_ca` but additionally verifies that the server certificate matches the host of the remote connection.
-
+ifdef::community[]
 |[[mysql-property-binlog-buffer-size]]<<mysql-property-binlog-buffer-size, `+binlog.buffer.size+`>>
 |0
 |The size of a look-ahead buffer used by the binlog reader. The default setting of `0` disables buffering. +
@@ -2469,7 +2432,7 @@ The size of the binlog buffer defines the maximum number of changes in the trans
 If the size of the transaction is larger than the buffer then {prodname} must rewind and re-read the events that have not fit into the buffer while streaming. +
  +
 NOTE: This feature is incubating. Feedback is encouraged. It is expected that this feature is not completely polished.
-
+endif::community[]
 |[[mysql-property-snapshot-mode]]<<mysql-property-snapshot-mode, `+snapshot.mode+`>>
 |`initial`
 |Specifies the criteria for running a snapshot when the connector starts. Possible settings are: +
@@ -2583,14 +2546,20 @@ The name format is _database-name.table-name_.
 
 |===
 
-[id="mysql-pass-through-configuration-properties"]
-.Pass-through configuration properties
+[id="{context}-pass-through-configuration-properties-for-database-drivers"]
+==== Pass-through configuration properties for database drivers
 
-The MySQL connector also supports pass-through configuration properties that are used when creating the Kafka producer and consumer.
-Specifically, all connector configuration properties that begin with the `database.history.producer.` prefix are used (without the prefix) when creating the Kafka producer that writes to the database history.
-All properties that begin with the prefix `database.history.consumer.` are used (without the prefix) when creating the Kafka consumer that reads the database history upon connector start-up.
+The {prodname} MySQL connector provides for pass-through configuration of the database driver.
+Pass-through database properties begin with the prefix `database.*`.
+For example, the property `database.tinyInt1isBit=false` is passed to the JDBC URL.
+Debezium strips the prefix before it passes the property to the database driver.
 
-For example, the following connector configuration properties can be used to secure connections to the Kafka broker:
+[id="{context}-passthrough-database-history-properties-for-configuring-producer-and-consumer-clients"]
+==== Pass-through database history properties for configuring producer and consumer clients
+
+{prodname} relies on a Kafka producer to write schema changes to database history topics, and a Kafka consumer to read from database history topics when a connector starts.
+You define the configuration for the Kafka producer and consumer clients by assigning values to a set of pass-through configuration properties that begin with the `database.history.producer.*` and `database.history.consumer.*` prefixes.
+The pass-through producer and consumer database history properties control a range of behaviors, such as how these clients secure connections with the Kafka broker, as shown in the following example:
 
 ----
 database.history.producer.security.protocol=SSL
@@ -2607,12 +2576,19 @@ database.history.consumer.ssl.truststore.password=test1234
 database.history.consumer.ssl.key.password=test1234
 ----
 
-See link:{link-kafka-docs}.html[the Kafka documentation] for more details about _pass-through_ properties.
+As is the case with the xref:{context}-pass-through-configuration-properties-for-database-drivers[pass-through properties for database drivers], {prodname} strips the prefixes from the properties before {prodname} it passes them to configure the database history producer or consumer client.
 
-[id="mysql-pass-through-properties-for-database-drivers"]
-.Pass-through properties for database drivers
+See the Kafka documentation for more details about link:https://kafka.apache.org/documentation.html#producerconfigs[Kafka producer configuration properties] and link:https://kafka.apache.org/documentation.html#consumerconfigs[Kafka consumer configuration properties].
 
-In addition to the pass-through properties for the Kafka producer and consumer, there are {link-prefix}:{link-mysql-connector}#mysql-pass-through-properties-for-database-drivers[pass-through properties for database drivers]. These properties have the `database.` prefix. For example, `database.tinyInt1isBit=false` is passed to the JDBC URL.
+[id="{context}-database-history-properties-for-configuring-connector-behavior"]
+==== Database history properties for configuring connector behavior
+
+In addition to the pass-through database history properties that you use to configure producers or consumers, there is a set of `database.history.*` properties whose names do not include `producer` or `consumer`.
+You use these `database.history` properties to define how the {context} connector processes event data that it reads from the schema history.
+
+The following table describes the `database.history` properties for configuring the {prodname} {context} connector.
+
+include::{partialsdir}/modules/all-connectors/ref-connector-configuration-database-history-properties.adoc[leveloffset=+1]
 
 
 // Type: assembly
