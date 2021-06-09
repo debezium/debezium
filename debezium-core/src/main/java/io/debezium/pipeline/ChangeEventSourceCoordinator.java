@@ -83,7 +83,7 @@ public class ChangeEventSourceCoordinator<O extends OffsetContext> {
     }
 
     public synchronized void start(CdcSourceTaskContext taskContext, ChangeEventQueueMetrics changeEventQueueMetrics,
-                                                                    EventMetadataProvider metadataProvider) {
+                                   EventMetadataProvider metadataProvider) {
         AtomicReference<LoggingContext.PreviousContext> previousLogContext = new AtomicReference<>();
         try {
             this.snapshotMetrics = changeEventSourceMetricsFactory.getSnapshotMetrics(taskContext, changeEventQueueMetrics, metadataProvider);

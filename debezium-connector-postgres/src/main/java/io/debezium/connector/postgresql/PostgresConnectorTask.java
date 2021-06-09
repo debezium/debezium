@@ -197,7 +197,7 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresOffsetContext>
                     schemaNameAdjuster,
                     jdbcConnection);
 
-            ChangeEventSourceCoordinator<PostgresOffsetContext> coordinator = new PostgresChangeEventSourceCoordinator (
+            ChangeEventSourceCoordinator<PostgresOffsetContext> coordinator = new PostgresChangeEventSourceCoordinator(
                     previousOffset,
                     errorHandler,
                     PostgresConnector.class,
