@@ -1885,14 +1885,6 @@ The following configuration properties are _required_ unless a default value is 
 |
 |Logical name that identifies and provides a namespace for the particular Db2 database server that hosts the database for which {prodname} is capturing changes. Only alphanumeric characters, hyphens and underscores must be used in the database server logical name. The logical name should be unique across all other connectors, since it is used as a topic name prefix for all Kafka topics that receive records from this connector.
 
-|[[db2-property-database-history-kafka-topic]]<<db2-property-database-history-kafka-topic, `+database.history.kafka.topic+`>>
-|
-|The full name of the Kafka topic where the connector stores the database schema history.
-
-|[[db2-property-database-history-kafka-bootstrap-servers]]<<db2-property-database-history-kafka-bootstrap-servers, `+database.history.kafka.bootstrap.servers+`>>
-|
-|A list of host/port pairs that the connector uses to establish an initial connection to the Kafka cluster. This connection is used for retrieving database schema history previously stored by the connector, and for writing each DDL statement read from the source database. Each pair should point to the same Kafka cluster used by the {prodname} Kafka Connect process.
-
 |[[db2-property-table-include-list]]<<db2-property-table-include-list, `+table.include.list+`>>
 |
 |An optional, comma-separated list of regular expressions that match fully-qualified table identifiers for tables whose changes you want the connector to capture. Any table not included in the include list does not have its changes captured. Each identifier is of the form _schemaName_._tableName_. By default, the connector captures changes in every non-system table. Do not also set the `table.exclude.list` property.
@@ -2103,16 +2095,20 @@ The name format is _schema-name.table-name_.
 
 |===
 
-[id="db2-pass-through-properties"]
-.Pass-through connector configuration properties
+[id="{context}-pass-through-configuration-properties-for-database-drivers"]
+==== Pass-through configuration properties for database drivers
 
-The connector also supports _pass-through_ configuration properties that it uses when it creates Kafka producers and consumers:
+The {prodname} connector provides for pass-through configuration of the database driver.
+Pass-through database properties begin with the prefix `database.*`.
+For example, the property `database.tinyInt1isBit=false` is passed to the JDBC URL.
+Debezium strips the prefix before it passes the property to the database driver.
 
- * All connector configuration properties that begin with the `database.history.producer.` prefix are used (without the prefix) when creating the Kafka producer that writes to the database history topic.
+[id="{context}-passthrough-database-history-properties-for-configuring-producer-and-consumer-clients"]
+==== Pass-through database history properties for configuring producer and consumer clients
 
- * All connector configuration properties that begin with the  `database.history.consumer.` prefix are used (without the prefix) when creating the Kafka consumer that reads the database history when the connector starts.
-
-For example, the following connector configuration properties {link-kafka-docs}.html#security_configclients[secure connections to the Kafka broker]:
+{prodname} relies on a Kafka producer to write schema changes to database history topics, and a Kafka consumer to read from database history topics when a connector starts.
+You define the configuration for the Kafka producer and consumer clients by assigning values to a set of pass-through configuration properties that begin with the `database.history.producer.*` and `database.history.consumer.*` prefixes.
+The pass-through producer and consumer database history properties control a range of behaviors, such as how these clients secure connections with the Kafka broker, as shown in the following example:
 
 [source,indent=0]
 ----
@@ -2130,9 +2126,19 @@ database.history.consumer.ssl.truststore.password=test1234
 database.history.consumer.ssl.key.password=test1234
 ----
 
-Be sure to consult the {link-kafka-docs}.html[Kafka documentation] for all of the configuration properties for Kafka producers and consumers. Note that the Db2 connector uses the {link-kafka-docs}.html#newconsumerconfigs[new consumer].
+As is the case with the xref:{context}-pass-through-configuration-properties-for-database-drivers[pass-through properties for database drivers], {prodname} strips the prefixes from the properties before {prodname} it passes them to configure the database history producer or consumer client.
 
-Also, the connector passes configuration properties that start with `database.` to the JDBC URL, for example, `database.applicationName=debezium`.
+See the Kafka documentation for more details about link:https://kafka.apache.org/documentation.html#producerconfigs[Kafka producer configuration properties] and link:https://kafka.apache.org/documentation.html#consumerconfigs[Kafka consumer configuration properties].
+
+[id="{context}-database-history-properties-for-configuring-connector-behavior"]
+==== Database history properties for configuring connector behavior
+
+In addition to the pass-through database history properties that you use to configure producers or consumers, there is a set of `database.history.*` properties whose names do not include `producer` or `consumer`.
+You use these `database.history` properties to define how the {context} connector processes event data that it reads from the schema history.
+
+The following table describes the `database.history` properties for configuring the {prodname} {context} connector.
+
+include::{partialsdir}/modules/all-connectors/ref-connector-configuration-database-history-properties.adoc[leveloffset=+1]
 
 // Type: assembly
 // ModuleID: monitoring-debezium-db2-connector-performance
