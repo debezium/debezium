@@ -2141,7 +2141,7 @@ truncate_table
     ;
 
 drop_table
-    : DROP TABLE tableview_name (AS tableview_name)? PURGE? SEMICOLON
+    : DROP TABLE tableview_name (AS tableview_name)? (CASCADE CONSTRAINTS)? PURGE? SEMICOLON
     ;
 
 drop_view
