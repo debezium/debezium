@@ -140,7 +140,7 @@ public class SqlServerOffsetContext implements OffsetContext {
         sourceInfo.setSnapshot(SnapshotRecord.FALSE);
     }
 
-    public static class Loader implements OffsetContext.Loader {
+    public static class Loader implements OffsetContext.Loader<SqlServerOffsetContext> {
 
         private final SqlServerConnectorConfig connectorConfig;
 
@@ -154,7 +154,7 @@ public class SqlServerOffsetContext implements OffsetContext {
         }
 
         @Override
-        public OffsetContext load(Map<String, ?> offset) {
+        public SqlServerOffsetContext load(Map<String, ?> offset) {
             final Lsn changeLsn = Lsn.valueOf((String) offset.get(SourceInfo.CHANGE_LSN_KEY));
             final Lsn commitLsn = Lsn.valueOf((String) offset.get(SourceInfo.COMMIT_LSN_KEY));
             boolean snapshot = Boolean.TRUE.equals(offset.get(SourceInfo.SNAPSHOT_KEY));

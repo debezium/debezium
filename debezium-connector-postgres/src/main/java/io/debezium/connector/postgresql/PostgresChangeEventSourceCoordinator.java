@@ -21,26 +21,24 @@ import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.metrics.spi.ChangeEventSourceMetricsFactory;
 import io.debezium.pipeline.source.spi.ChangeEventSource;
 import io.debezium.pipeline.source.spi.ChangeEventSource.ChangeEventSourceContext;
-import io.debezium.pipeline.source.spi.ChangeEventSourceFactory;
 import io.debezium.pipeline.source.spi.SnapshotChangeEventSource;
-import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.schema.DatabaseSchema;
 
 /**
  * Coordinates one or more {@link ChangeEventSource}s and executes them in order. Extends the base
  * {@link ChangeEventSourceCoordinator} to support a pre-snapshot catch up streaming phase.
  */
-public class PostgresChangeEventSourceCoordinator extends ChangeEventSourceCoordinator {
+public class PostgresChangeEventSourceCoordinator extends ChangeEventSourceCoordinator<PostgresOffsetContext> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PostgresChangeEventSourceCoordinator.class);
 
     private final Snapshotter snapshotter;
     private final SlotState slotInfo;
 
-    public PostgresChangeEventSourceCoordinator(OffsetContext previousOffset, ErrorHandler errorHandler,
+    public PostgresChangeEventSourceCoordinator(PostgresOffsetContext previousOffset, ErrorHandler errorHandler,
                                                 Class<? extends SourceConnector> connectorType,
                                                 CommonConnectorConfig connectorConfig,
-                                                ChangeEventSourceFactory changeEventSourceFactory,
+                                                PostgresChangeEventSourceFactory changeEventSourceFactory,
                                                 ChangeEventSourceMetricsFactory changeEventSourceMetricsFactory,
                                                 EventDispatcher<?> eventDispatcher, DatabaseSchema<?> schema,
                                                 Snapshotter snapshotter, SlotState slotInfo) {
@@ -50,19 +48,19 @@ public class PostgresChangeEventSourceCoordinator extends ChangeEventSourceCoord
     }
 
     @Override
-    protected CatchUpStreamingResult executeCatchUpStreaming(OffsetContext previousOffset, ChangeEventSourceContext context,
-                                                             SnapshotChangeEventSource snapshotSource)
+    protected CatchUpStreamingResult executeCatchUpStreaming(PostgresOffsetContext previousOffset, ChangeEventSourceContext context,
+                                                             SnapshotChangeEventSource<PostgresOffsetContext> snapshotSource)
             throws InterruptedException {
         if (previousOffset != null && !snapshotter.shouldStreamEventsStartingFromSnapshot() && slotInfo != null) {
             try {
                 setSnapshotStartLsn((PostgresSnapshotChangeEventSource) snapshotSource,
-                        (PostgresOffsetContext) previousOffset);
+                        previousOffset);
             }
             catch (SQLException e) {
                 throw new DebeziumException("Failed to determine catch-up streaming stopping LSN");
             }
             LOGGER.info("Previous connector state exists and will stream events until {} then perform snapshot",
-                    ((PostgresOffsetContext) previousOffset).getStreamingStoppingLsn());
+                    previousOffset.getStreamingStoppingLsn());
             streamEvents(previousOffset, context);
             return new CatchUpStreamingResult(true);
         }

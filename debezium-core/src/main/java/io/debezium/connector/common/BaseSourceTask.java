@@ -298,11 +298,11 @@ public abstract class BaseSourceTask<O extends OffsetContext> extends SourceTask
     /**
      * Loads the connector's persistent offset (if present) via the given loader.
      */
-    protected OffsetContext getPreviousOffset(OffsetContext.Loader loader) {
+    protected O getPreviousOffset(OffsetContext.Loader<O> loader) {
         Map<String, ?> partition = loader.getPartition();
 
         if (lastOffset != null) {
-            OffsetContext offsetContext = loader.load(lastOffset);
+            O offsetContext = loader.load(lastOffset);
             LOGGER.info("Found previous offset after restart {}", offsetContext);
             return offsetContext;
         }
@@ -312,7 +312,7 @@ public abstract class BaseSourceTask<O extends OffsetContext> extends SourceTask
                 .get(partition);
 
         if (previousOffset != null) {
-            OffsetContext offsetContext = loader.load(previousOffset);
+            O offsetContext = loader.load(previousOffset);
             LOGGER.info("Found previous offset {}", offsetContext);
             return offsetContext;
         }

@@ -46,7 +46,7 @@ public interface StreamingAdapter {
 
     HistoryRecordComparator getHistoryRecordComparator();
 
-    OffsetContext.Loader getOffsetContextLoader();
+    OffsetContext.Loader<OracleOffsetContext> getOffsetContextLoader();
 
     StreamingChangeEventSource<OracleOffsetContext> getSource(OracleConnection connection, EventDispatcher<TableId> dispatcher,
                                                               ErrorHandler errorHandler, Clock clock, OracleDatabaseSchema schema,

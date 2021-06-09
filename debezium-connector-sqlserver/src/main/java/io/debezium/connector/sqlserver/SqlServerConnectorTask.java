@@ -83,7 +83,7 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerOffsetContex
         this.schema = new SqlServerDatabaseSchema(connectorConfig, valueConverters, topicSelector, schemaNameAdjuster);
         this.schema.initializeStorage();
 
-        final SqlServerOffsetContext previousOffset = (SqlServerOffsetContext) getPreviousOffset(new SqlServerOffsetContext.Loader(connectorConfig));
+        final SqlServerOffsetContext previousOffset = getPreviousOffset(new SqlServerOffsetContext.Loader(connectorConfig));
         if (previousOffset != null) {
             schema.recover(previousOffset);
         }

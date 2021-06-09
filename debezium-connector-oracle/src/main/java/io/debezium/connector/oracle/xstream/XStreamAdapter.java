@@ -60,7 +60,7 @@ public class XStreamAdapter extends AbstractStreamingAdapter {
     }
 
     @Override
-    public OffsetContext.Loader getOffsetContextLoader() {
+    public OffsetContext.Loader<OracleOffsetContext> getOffsetContextLoader() {
         return new XStreamOracleOffsetContextLoader(connectorConfig);
     }
 
