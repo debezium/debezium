@@ -1241,9 +1241,21 @@ When using CDB installations, specify `database.pdb.name`. +
 When using a non-CDB installation, do *not* specify the `database.pdb.name`.
 ====
 
+
 [[oracle-connector-properties]]
 === Connector Properties
 
+The {prodname} Oracle connector has numerous configuration properties that you can use to achieve the right connector behavior for your application.
+Many properties have default values.
+Information about the properties is organized as follows:
+
+* xref:required-debezium-{context}-connector-configuration-properties[Required {prodname} Oracle connector configuration properties]
+* xref:debezium-{context}-connector-database-history-configuration-properties[Database history connector configuration properties] that control how {prodname} processes events that it reads from the database history topic.
+** xref:{context}-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients[Pass-through database history properties]
+* xref:debezium-{context}-connector-pass-through-database-driver-configuration-properties[Pass-through database driver properties] that control the behavior of the database driver.
+
+[id="required-debezium-{context}-connector-configuration-properties"]
+==== Required {prodname} Oracle connector configuration properties
 The following configuration properties are _required_ unless a default value is available.
 
 [cols="30%a,25%a,45%a"]
@@ -1567,6 +1579,16 @@ By default, no operations are skipped.
 
 |===
 
+[id="debezium-{context}-connector-database-history-configuration-properties"]
+==== {prodname} connector database history configuration properties
+
+include::{partialsdir}/modules/all-connectors/ref-connector-configuration-database-history-properties.adoc[leveloffset=+1]
+
+[id="debezium-{context}-connector-pass-through-database-driver-configuration-properties"]
+==== {prodname} connector pass-through database driver configuration properties
+
+include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-database-driver-configuration-properties.adoc[leveloffset=+1]
+
 [[oracle-monitoring]]
 == Monitoring
 
@@ -1579,17 +1601,17 @@ The {prodname} Oracle connector has three metric types in addition to the built-
 Please refer to the {link-prefix}:{link-debezium-monitoring}#monitoring-debezium[monitoring documentation] for details of how to expose these metrics via JMX.
 
 [[oracle-monitoring-snapshots]]
-[[oracle-snapshot-metrics]]
 === Snapshot Metrics
 
+[[oracle-snapshot-metrics]]
 The *MBean* is `debezium.oracle:type=connector-metrics,context=snapshot,server=_<database.server.name>_`.
 
 include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-snapshot-metrics.adoc[leveloffset=+1]
 
 [[oracle-monitoring-streaming]]
-[[oracle-streaming-metrics]]
 === Streaming Metrics
 
+[[oracle-streaming-metrics]]
 The *MBean* is `debezium.oracle:type=connector-metrics,context=streaming,server=_<database.server.name>_`.
 
 include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-streaming-metrics.adoc[leveloffset=+1]

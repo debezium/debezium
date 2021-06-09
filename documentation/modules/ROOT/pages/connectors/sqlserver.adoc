@@ -1954,6 +1954,17 @@ The connector then starts generating data change events for row-level operations
 The {prodname} SQL Server connector has numerous configuration properties that you can use to achieve the right connector behavior for your application.
 Many properties have default values.
 
+Information about the properties is organized as follows:
+
+* xref:{context}-required-connector-configuration-properties[Required connector configuration properties]
+* xref:{context}-advanced-connector-configuration-properties[Advanced connector configuration properties]
+* xref:debezium-{context}-connector-database-history-configuration-properties[Database history connector configuration properties] that control how {prodname} processes events that it reads from the database history topic.
+** xref:{context}-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients[Pass-through database history properties]
+* xref:debezium-{context}-connector-pass-through-database-driver-configuration-properties[Pass-through database driver properties] that control the behavior of the database driver.
+
+[id="{context}-required-connector-configuration-properties"]
+==== Required {prodname} SQL Server connector configuration properties
+
 The following configuration properties are _required_ unless a default value is available.
 
 [cols="30%a,25%a,45%a",options="header"]
@@ -1998,15 +2009,6 @@ The following configuration properties are _required_ unless a default value is 
 |
 |Logical name that identifies and provides a namespace for the SQL Server database server that you want {prodname} to capture. The logical name should be unique across all other connectors, since it is used as a prefix for all Kafka topic names emanating from this connector.
 Only alphanumeric characters, hyphens and underscores must be used.
-
-|[[sqlserver-property-database-history-kafka-topic]]<<sqlserver-property-database-history-kafka-topic, `+database.history.kafka.topic+`>>
-|
-|The full name of the Kafka topic where the connector will store the database schema history.
-
-|[[sqlserver-property-database-history-kafka-bootstrap-servers]]<<sqlserver-property-database-history-kafka-bootstrap-servers, `+database.history.kafka.bootstrap.servers+`>>
-|
-|A list of host and port pairs that the connector will use for establishing an initial connection to the Kafka cluster.
-This connection is used for retrieving database schema history previously stored by the connector, and for writing each DDL statement read from the source database. This should point to the same Kafka cluster used by the Kafka Connect process.
 
 |[[sqlserver-property-table-include-list]]<<sqlserver-property-table-include-list, `+table.include.list+`>>
 |
@@ -2111,6 +2113,9 @@ Fully-qualified tables could be defined as _schemaName_._tableName_.
 |bytes
 |Specifies how binary (`binary`, `varbinary`) columns should be represented in change events, including: `bytes` represents binary data as byte array (default), `base64` represents binary data as base64-encoded String, `hex` represents binary data as hex-encoded (base16) String
 |===
+
+[id="sqlserver-advanced-connector-configuration-properties"]
+==== Advanced SQL Server connector configuration properties
 
 The following _advanced_ configuration properties have good defaults that will work in most situations and therefore rarely need to be specified in the connector's configuration.
 
@@ -2270,29 +2275,16 @@ The name format is _database_name.schema-name.table-name_.
 
 |===
 
-The connector also supports _pass-through_ configuration properties that are used when creating the Kafka producer and consumer. Specifically, all connector configuration properties that begin with the `database.history.producer.` prefix are used (without the prefix) when creating the Kafka producer that writes to the database history, and all those that begin with the prefix `database.history.consumer.` are used (without the prefix) when creating the Kafka consumer that reads the database history upon connector startup.
+[id="debezium-{context}-connector-database-history-configuration-properties"]
+==== {prodname} connector database history configuration properties
 
-For example, the following connector configuration properties can be used to {link-kafka-docs}.html#security_configclients[secure connections to the Kafka broker]:
+include::{partialsdir}/modules/all-connectors/ref-connector-configuration-database-history-properties.adoc[leveloffset=+1]
 
-In addition to the _pass-through_ to the Kafka producer and consumer, the properties starting with `database.`, e.g. `database.applicationName=debezium` are passed to the JDBC URL.
+[id="debezium-{context}-connector-pass-through-database-driver-configuration-properties"]
+==== {prodname} connector pass-through database driver configuration properties
 
-[source,properties,indent=0]
-----
-database.history.producer.security.protocol=SSL
-database.history.producer.ssl.keystore.location=/var/private/ssl/kafka.server.keystore.jks
-database.history.producer.ssl.keystore.password=test1234
-database.history.producer.ssl.truststore.location=/var/private/ssl/kafka.server.truststore.jks
-database.history.producer.ssl.truststore.password=test1234
-database.history.producer.ssl.key.password=test1234
-database.history.consumer.security.protocol=SSL
-database.history.consumer.ssl.keystore.location=/var/private/ssl/kafka.server.keystore.jks
-database.history.consumer.ssl.keystore.password=test1234
-database.history.consumer.ssl.truststore.location=/var/private/ssl/kafka.server.truststore.jks
-database.history.consumer.ssl.truststore.password=test1234
-database.history.consumer.ssl.key.password=test1234
-----
+include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-database-driver-configuration-properties.adoc[leveloffset=+1]
 
-Be sure to consult the {link-kafka-docs}.html[Kafka documentation] for all of the configuration properties for Kafka producers and consumers. (The SQL Server connector does use the {link-kafka-docs}.html#newconsumerconfigs[new consumer].)
 
 // Type: assembly
 // ModuleID: refreshing-capture-tables-after-a-schema-change
