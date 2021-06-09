@@ -6,6 +6,7 @@
 package io.debezium.connector.oracle.logminer;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.common.SourceRecordWrapper;
 import io.debezium.connector.oracle.AbstractStreamingAdapter;
 import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnectorConfig;
@@ -21,11 +22,12 @@ import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.relational.TableId;
 import io.debezium.relational.history.HistoryRecordComparator;
 import io.debezium.util.Clock;
+import org.apache.kafka.connect.source.SourceRecord;
 
 /**
  * @author Chris Cranford
  */
-public class LogMinerAdapter extends AbstractStreamingAdapter {
+public class LogMinerAdapter<T extends SourceRecordWrapper> extends AbstractStreamingAdapter<T> {
 
     private static final String TYPE = "logminer";
 
@@ -56,7 +58,7 @@ public class LogMinerAdapter extends AbstractStreamingAdapter {
     @Override
     public StreamingChangeEventSource getSource(OffsetContext offsetContext,
                                                 OracleConnection connection,
-                                                EventDispatcher<TableId> dispatcher,
+                                                EventDispatcher<TableId, T> dispatcher,
                                                 ErrorHandler errorHandler,
                                                 Clock clock,
                                                 OracleDatabaseSchema schema,

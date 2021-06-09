@@ -226,7 +226,7 @@ public final class TransactionalBuffer<SourceRecord extends SourceRecordWrapper>
      * @return true if committed transaction is in the buffer, was not processed yet and processed now
      */
     boolean commit(String transactionId, Scn scn, OracleOffsetContext offsetContext, Timestamp timestamp,
-                   ChangeEventSource.ChangeEventSourceContext context, String debugMessage, EventDispatcher<TableId> dispatcher) {
+                   ChangeEventSource.ChangeEventSourceContext context, String debugMessage, EventDispatcher<TableId, SourceRecord> dispatcher) {
 
         Instant start = Instant.now();
         Transaction transaction = transactions.remove(transactionId);

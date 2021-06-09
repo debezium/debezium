@@ -29,7 +29,6 @@ import io.debezium.connector.common.SourceRecordWrapper;
 import io.debezium.data.Envelope;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.heartbeat.Heartbeat;
-import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.signal.Signal;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
@@ -481,7 +480,7 @@ public class EventDispatcher<T extends DataCollectionId, SourceRecord extends So
             Schema keySchema = dataCollectionSchema.keySchema();
             String topicName = topicSelector.topicNameFor((T) dataCollectionSchema.id());
 
-            SourceRecord record = new SourceRecord(
+            SourceRecordWrapper record = new SimpleSourceRecordWrapper(
                     offsetContext.getPartition(),
                     offsetContext.getOffset(),
                     topicName, null,
@@ -543,7 +542,7 @@ public class EventDispatcher<T extends DataCollectionId, SourceRecord extends So
     /**
      * Enable support for incremental snapshotting.
      *
-     * @param eventListener
+     * @param incrementalSnapshotChangeEventSource
      */
     public void setIncrementalSnapshotChangeEventSource(Optional<IncrementalSnapshotChangeEventSource<? extends DataCollectionId>> incrementalSnapshotChangeEventSource) {
         this.incrementalSnapshotChangeEventSource = (IncrementalSnapshotChangeEventSource<T>) incrementalSnapshotChangeEventSource.orElse(null);

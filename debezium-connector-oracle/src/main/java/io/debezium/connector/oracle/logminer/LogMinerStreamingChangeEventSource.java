@@ -138,7 +138,7 @@ public class LogMinerStreamingChangeEventSource<SourceRecord extends SourceRecor
 
                     final LogMinerQueryResultProcessor processor = new LogMinerQueryResultProcessor(context,
                             connectorConfig, streamingMetrics, transactionalBuffer, offsetContext, schema, dispatcher,
-                            historyRecorder);
+                            clock, historyRecorder);
 
                     final String query = SqlUtils.logMinerContentsQuery(connectorConfig, jdbcConnection.username());
                     try (PreparedStatement miningView = jdbcConnection.connection().prepareStatement(query, ResultSet.TYPE_FORWARD_ONLY,

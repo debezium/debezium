@@ -121,7 +121,7 @@ public class MySqlConnectorTask<SourceTaskContext extends SourceTaskContextWrapp
 
         final MySqlEventMetadataProvider metadataProvider = new MySqlEventMetadataProvider();
 
-        final EventDispatcher<TableId> dispatcher = new EventDispatcher<>(
+        final EventDispatcher<TableId, SourceRecord> dispatcher = new EventDispatcher<>(
                 connectorConfig,
                 topicSelector,
                 schema,

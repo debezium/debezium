@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.oracle;
 
+import io.debezium.connector.common.SourceRecordWrapper;
 import io.debezium.document.Document;
 
 /**
@@ -12,7 +13,7 @@ import io.debezium.document.Document;
  *
  * @author Chris Cranford
  */
-public abstract class AbstractStreamingAdapter implements StreamingAdapter {
+public abstract class AbstractStreamingAdapter<T extends SourceRecordWrapper> implements StreamingAdapter<T> {
 
     protected final OracleConnectorConfig connectorConfig;
 

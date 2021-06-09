@@ -17,6 +17,8 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicReference;
 
+import io.debezium.DebeziumException;
+import io.debezium.connector.common.SourceRecordWrapper;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.bson.BsonTimestamp;
 import org.bson.Document;
@@ -32,7 +34,6 @@ import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.model.Filters;
 
-import io.debezium.connector.common.SourceRecordWrapper;
 import io.debezium.DebeziumException;
 import io.debezium.connector.mongodb.ConnectionContext.MongoPrimary;
 import io.debezium.data.Envelope.Operation;

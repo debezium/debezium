@@ -6,6 +6,7 @@
 package io.debezium.connector.oracle;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.common.SourceRecordWrapper;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
@@ -19,7 +20,7 @@ import io.debezium.util.Clock;
  *
  * @author Chris Cranford
  */
-public interface StreamingAdapter {
+public interface StreamingAdapter<T extends SourceRecordWrapper> {
 
     /**
      * Controls whether table names are viewed as case-sensitive or not.
@@ -48,7 +49,7 @@ public interface StreamingAdapter {
 
     OffsetContext.Loader getOffsetContextLoader();
 
-    StreamingChangeEventSource getSource(OffsetContext offsetContext, OracleConnection connection, EventDispatcher<TableId> dispatcher,
+    StreamingChangeEventSource getSource(OffsetContext offsetContext, OracleConnection connection, EventDispatcher<TableId, T> dispatcher,
                                          ErrorHandler errorHandler, Clock clock, OracleDatabaseSchema schema,
                                          OracleTaskContext taskContext, Configuration jdbcConfig,
                                          OracleStreamingChangeEventSourceMetrics streamingMetrics);
