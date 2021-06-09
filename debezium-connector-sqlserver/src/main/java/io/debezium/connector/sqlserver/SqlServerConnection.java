@@ -388,7 +388,9 @@ public class SqlServerConnection extends JdbcConnection {
             }
         }
 
-        final List<String> pkColumnNames = readPrimaryKeyOrUniqueIndexNames(metadata, changeTable.getSourceTableId());
+        final List<String> pkColumnNames = readPrimaryKeyOrUniqueIndexNames(metadata, changeTable.getSourceTableId()).stream()
+                .filter(column -> changeTable.getCapturedColumns().contains(column))
+                .collect(Collectors.toList());
         Collections.sort(columns);
         return Table.editor()
                 .tableId(changeTable.getSourceTableId())
