@@ -21,7 +21,7 @@ public class PostgresDatabaseVersionResolver implements DatabaseVersionResolver 
     public DatabaseVersion getVersion() {
         try {
             final DatabaseMetaData metadata = TestHelper.create().connection().getMetaData();
-            return new DatabaseVersion(metadata.getDatabaseMajorVersion(), metadata.getDatabaseMajorVersion(), 0);
+            return new DatabaseVersion(metadata.getDatabaseMajorVersion(), metadata.getDatabaseMinorVersion(), 0);
         }
         catch (SQLException e) {
             throw new RuntimeException(e);
