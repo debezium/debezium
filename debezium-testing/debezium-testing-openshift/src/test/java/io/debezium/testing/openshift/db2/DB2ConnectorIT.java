@@ -25,8 +25,8 @@ import org.junit.jupiter.api.TestMethodOrder;
 import io.debezium.testing.openshift.ConnectorTestBase;
 import io.debezium.testing.openshift.tools.ConfigProperties;
 import io.debezium.testing.openshift.tools.databases.SqlDatabaseClient;
-import io.debezium.testing.openshift.tools.databases.db2.DB2Controller;
-import io.debezium.testing.openshift.tools.databases.db2.DB2Deployer;
+import io.debezium.testing.openshift.tools.databases.db2.OcpDB2Controller;
+import io.debezium.testing.openshift.tools.databases.db2.OcpDB2Deployer;
 import io.debezium.testing.openshift.tools.kafka.ConnectorConfigBuilder;
 
 import okhttp3.OkHttpClient;
@@ -47,7 +47,7 @@ public class DB2ConnectorIT extends ConnectorTestBase {
 
     public static final String CONNECTOR_NAME = "inventory-connector-db2";
 
-    private static DB2Controller dbController;
+    private static OcpDB2Controller dbController;
     private static OkHttpClient httpClient = new OkHttpClient();
     private static ConnectorConfigBuilder connectorConfig;
     private static String connectorName;
@@ -58,7 +58,7 @@ public class DB2ConnectorIT extends ConnectorTestBase {
         Class.forName("com.ibm.db2.jcc.DB2Driver");
 
         if (!ConfigProperties.DATABASE_MYSQL_HOST.isPresent()) {
-            DB2Deployer deployer = new DB2Deployer.Deployer()
+            OcpDB2Deployer deployer = new OcpDB2Deployer.Deployer()
                     .withOcpClient(ocp)
                     .withProject(ConfigProperties.OCP_PROJECT_DB2)
                     .withDeployment(DB_DEPLOYMENT_PATH)

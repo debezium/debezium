@@ -29,10 +29,10 @@ import io.debezium.testing.openshift.tools.databases.DatabaseClient;
  */
 public class MongoDatabaseClient implements DatabaseClient<MongoClient, RuntimeException> {
 
-    private String url;
-    private String username;
-    private String password;
-    private String authSource;
+    private final String url;
+    private final String username;
+    private final String password;
+    private final String authSource;
 
     public MongoDatabaseClient(String url, String username, String password, String authSource) {
         this.url = url;
@@ -71,7 +71,8 @@ public class MongoDatabaseClient implements DatabaseClient<MongoClient, RuntimeE
         });
     }
 
-    public void execute(String database, String collection, Commands<MongoCollection<Document>, RuntimeException> commands) {
+    public void execute(
+                        String database, String collection, Commands<MongoCollection<Document>, RuntimeException> commands) {
         execute(database, db -> {
             MongoCollection<Document> col = db.getCollection(collection);
             commands.execute(col);

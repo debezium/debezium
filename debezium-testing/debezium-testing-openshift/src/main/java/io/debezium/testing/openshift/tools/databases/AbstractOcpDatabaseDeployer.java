@@ -24,9 +24,47 @@ import io.fabric8.openshift.client.OpenShiftClient;
 /**
  * @author Jakub Cechacek
  */
-public abstract class DatabaseDeployer<T> implements Deployer<T> {
+public abstract class AbstractOcpDatabaseDeployer<T> implements Deployer<T> {
 
-    static abstract public class DatabaseBuilder<B extends DatabaseBuilder<B, D>, D extends DatabaseDeployer<?>>
+    private static final Logger LOGGER = LoggerFactory.getLogger(AbstractOcpDatabaseDeployer.class);
+    private final OpenShiftClient ocp;
+    private final OpenShiftUtils ocpUtils;
+    private final String project;
+    private Deployment deployment;
+    private List<Service> services;
+
+    public AbstractOcpDatabaseDeployer(
+                                       String project,
+                                       Deployment deployment,
+                                       List<Service> services,
+                                       OpenShiftClient ocp) {
+        this.ocp = ocp;
+        this.ocpUtils = new OpenShiftUtils(ocp);
+        this.project = project;
+        this.deployment = deployment;
+        this.services = services;
+    }
+
+    @Override
+    public T deploy() {
+        LOGGER.info("Deploying database");
+        deployment = ocp.apps().deployments().inNamespace(project).createOrReplace(deployment);
+
+        ocpUtils.waitForPods(project, deployment.getMetadata().getLabels());
+
+        List<Service> svcs = services.stream()
+                .map(s -> ocp.services().inNamespace(project).createOrReplace(s))
+                .collect(Collectors.toList());
+        LOGGER.info("Database deployed successfully");
+
+        this.services = svcs;
+
+        return getController(deployment, services, ocp);
+    }
+
+    protected abstract T getController(Deployment deployment, List<Service> services, OpenShiftClient ocp);
+
+    static abstract public class DatabaseBuilder<B extends DatabaseBuilder<B, D>, D extends AbstractOcpDatabaseDeployer<?>>
             implements Deployer.Builder<D> {
 
         protected String project;
@@ -67,47 +105,4 @@ public abstract class DatabaseDeployer<T> implements Deployer<T> {
         }
 
     }
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(DatabaseDeployer.class);
-
-    private final OpenShiftClient ocp;
-    private final OpenShiftUtils ocpUtils;
-    private final String dbType;
-    private final String project;
-
-    private Deployment deployment;
-    private List<Service> services;
-
-    public DatabaseDeployer(
-                            String dbType,
-                            String project,
-                            Deployment deployment,
-                            List<Service> services,
-                            OpenShiftClient ocp) {
-        this.ocp = ocp;
-        this.ocpUtils = new OpenShiftUtils(ocp);
-        this.dbType = dbType;
-        this.project = project;
-        this.deployment = deployment;
-        this.services = services;
-    }
-
-    @Override
-    public T deploy() {
-        LOGGER.info("Deploying database");
-        deployment = ocp.apps().deployments().inNamespace(project).createOrReplace(deployment);
-
-        ocpUtils.waitForPods(project, deployment.getMetadata().getLabels());
-
-        List<Service> svcs = services.stream()
-                .map(s -> ocp.services().inNamespace(project).createOrReplace(s))
-                .collect(Collectors.toList());
-        LOGGER.info("Database deployed successfully");
-
-        this.services = svcs;
-
-        return getController(deployment, services, dbType, ocp);
-    }
-
-    protected abstract T getController(Deployment deployment, List<Service> services, String dbType, OpenShiftClient ocp);
 }

@@ -23,11 +23,11 @@ import org.slf4j.LoggerFactory;
  */
 public class SqlDatabaseClient implements DatabaseClient<Connection, SQLException> {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(DatabaseController.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(AbstractOcpDatabaseController.class);
 
-    private String url;
-    private String username;
-    private String password;
+    private final String url;
+    private final String username;
+    private final String password;
 
     public SqlDatabaseClient(String url, String username, String password) {
         this.url = url;

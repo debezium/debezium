@@ -15,8 +15,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.testing.openshift.tools.ConfigProperties;
+import io.debezium.testing.openshift.tools.databases.OcpSqlDatabaseController;
 import io.debezium.testing.openshift.tools.databases.SqlDatabaseClient;
-import io.debezium.testing.openshift.tools.databases.SqlDatabaseController;
 import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.openshift.client.OpenShiftClient;
@@ -25,15 +25,16 @@ import io.fabric8.openshift.client.OpenShiftClient;
  *
  * @author Jakub Cechacek
  */
-public class DB2Controller extends SqlDatabaseController {
+public class OcpDB2Controller extends OcpSqlDatabaseController {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(DB2Controller.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(OcpDB2Controller.class);
     private static final String READINESS_SQL_SELECT = "SELECT 1 FROM DB2INST1.CUSTOMERS;";
 
-    public DB2Controller(Deployment deployment, List<Service> services, String dbType, OpenShiftClient ocp) {
-        super(deployment, services, dbType, ocp);
+    public OcpDB2Controller(Deployment deployment, List<Service> services, OpenShiftClient ocp) {
+        super(deployment, services, "db2", ocp);
     }
 
+    @Override
     public void initialize() {
         LOGGER.info("Waiting until DB2 instance is ready");
         SqlDatabaseClient client = getDatabaseClient(DATABASE_DB2_DBZ_USERNAME, DATABASE_DB2_DBZ_PASSWORD);
@@ -46,11 +47,7 @@ public class DB2Controller extends SqlDatabaseController {
     }
 
     @Override
-    protected String constructDatabaseUrl(String hostname, int port) {
-        return super.constructDatabaseUrl(hostname, port) + ConfigProperties.DATABASE_DB2_DBZ_DBNAME;
-    }
-
-    private String getLog(String podName) {
-        return ocp.pods().inNamespace(project).withName(podName).getLog();
+    public String getDatabaseUrl() {
+        return super.getDatabaseUrl() + ConfigProperties.DATABASE_DB2_DBZ_DBNAME;
     }
 }
