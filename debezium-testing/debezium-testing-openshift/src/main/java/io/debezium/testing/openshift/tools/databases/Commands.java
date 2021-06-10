@@ -16,11 +16,11 @@ import java.util.function.Consumer;
 public interface Commands<T, E extends Throwable> {
 
     /**
-    * Performs this operation on the given argument.
-    *
-    * @param t the input argument
-    * @throws E possibly thrown exception
-    */
+     * Performs this operation on the given argument.
+     *
+     * @param t the input argument
+     * @throws E possibly thrown exception
+     */
     void execute(T t) throws E;
 
     /**
