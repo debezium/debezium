@@ -2558,7 +2558,7 @@ Debezium strips the prefix before it passes the property to the database driver.
 ==== Pass-through database history properties for configuring producer and consumer clients
 
 {prodname} relies on a Kafka producer to write schema changes to database history topics, and a Kafka consumer to read from database history topics when a connector starts.
-You define the configuration for the Kafka producer and consumer clients by assigning values to a set of pass-through configuration properties that begin with the `database.history.producer.*` and `database.history.consumer.*` prefixes.
+You define the configuration for the Kafka producer and consumer clients by assigning values to a set of pass-through configuration properties that begin with the `database.history.producer.\*` and `database.history.consumer.*` prefixes.
 The pass-through producer and consumer database history properties control a range of behaviors, such as how these clients secure connections with the Kafka broker, as shown in the following example:
 
 [source,indent=0]
