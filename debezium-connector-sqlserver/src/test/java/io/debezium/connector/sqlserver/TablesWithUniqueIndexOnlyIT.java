@@ -7,9 +7,7 @@
 package io.debezium.connector.sqlserver;
 
 import java.sql.SQLException;
-import java.util.concurrent.TimeUnit;
 
-import org.awaitility.Awaitility;
 import org.fest.assertions.Assertions;
 import org.junit.After;
 import org.junit.Before;
@@ -103,27 +101,11 @@ public class TablesWithUniqueIndexOnlyIT extends AbstractConnectorTest {
 
         connection.execute(DDL_STATEMENTS_STREAM);
         TestHelper.enableTableCdc(connection, "t2", "t2_CT", Collect.arrayListOf("key1", "key2"));
-        waitForEnabledCdc(connection, "t2");
+        TestHelper.waitForEnabledCdc(connection, "t2");
         connection.execute("INSERT INTO t2 VALUES (2, 20, 'data2', 200);");
 
         records = consumeRecordsByTopic(expectedRecordsCount);
         Assertions.assertThat(records.recordsForTopic("server1.dbo.t2").get(0).keySchema().field("key1")).isNotNull();
         Assertions.assertThat(records.recordsForTopic("server1.dbo.t2").get(0).keySchema().field("key2")).isNotNull();
-    }
-
-    private void waitForEnabledCdc(SqlServerConnection connection, String table) throws SQLException, InterruptedException {
-        Awaitility
-                .await("CDC " + table)
-                .atMost(1, TimeUnit.MINUTES)
-                .pollInterval(100, TimeUnit.MILLISECONDS)
-                .until(() -> TestHelper.isCdcEnabled(connection, table));
-    }
-
-    private void waitForDisabledCdc(SqlServerConnection connection, String table) throws SQLException, InterruptedException {
-        Awaitility
-                .await("CDC " + table)
-                .atMost(1, TimeUnit.MINUTES)
-                .pollInterval(100, TimeUnit.MILLISECONDS)
-                .until(() -> !TestHelper.isCdcEnabled(connection, table));
     }
 }
