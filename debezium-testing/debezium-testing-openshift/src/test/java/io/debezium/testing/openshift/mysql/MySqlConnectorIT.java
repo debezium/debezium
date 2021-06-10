@@ -23,9 +23,9 @@ import org.junit.jupiter.api.TestMethodOrder;
 
 import io.debezium.testing.openshift.ConnectorTestBase;
 import io.debezium.testing.openshift.tools.ConfigProperties;
+import io.debezium.testing.openshift.tools.databases.OcpSqlDatabaseController;
 import io.debezium.testing.openshift.tools.databases.SqlDatabaseClient;
-import io.debezium.testing.openshift.tools.databases.SqlDatabaseController;
-import io.debezium.testing.openshift.tools.databases.mysql.MySqlDeployer;
+import io.debezium.testing.openshift.tools.databases.mysql.OcpMySqlDeployer;
 import io.debezium.testing.openshift.tools.kafka.ConnectorConfigBuilder;
 
 import okhttp3.Request;
@@ -45,7 +45,7 @@ public class MySqlConnectorIT extends ConnectorTestBase {
 
     public static final String CONNECTOR_NAME = "inventory-connector-mysql";
 
-    private static SqlDatabaseController dbController;
+    private static OcpSqlDatabaseController dbController;
     private static ConnectorConfigBuilder connectorConfig;
     private static String connectorName;
     private static String dbServerName;
@@ -55,7 +55,7 @@ public class MySqlConnectorIT extends ConnectorTestBase {
         Class.forName("com.mysql.cj.jdbc.Driver");
 
         if (!ConfigProperties.DATABASE_MYSQL_HOST.isPresent()) {
-            MySqlDeployer deployer = new MySqlDeployer.Deployer()
+            OcpMySqlDeployer deployer = new OcpMySqlDeployer.Deployer()
                     .withOcpClient(ocp)
                     .withProject(ConfigProperties.OCP_PROJECT_MYSQL)
                     .withDeployment(DB_DEPLOYMENT_PATH)

@@ -25,8 +25,8 @@ import org.junit.jupiter.api.TestMethodOrder;
 import io.debezium.testing.openshift.ConnectorTestBase;
 import io.debezium.testing.openshift.tools.ConfigProperties;
 import io.debezium.testing.openshift.tools.databases.SqlDatabaseClient;
+import io.debezium.testing.openshift.tools.databases.sqlserver.OcpSqlServerDeployer;
 import io.debezium.testing.openshift.tools.databases.sqlserver.SqlServerController;
-import io.debezium.testing.openshift.tools.databases.sqlserver.SqlServerDeployer;
 import io.debezium.testing.openshift.tools.kafka.ConnectorConfigBuilder;
 
 import okhttp3.Request;
@@ -56,7 +56,7 @@ public class SqlServerConnectorIT extends ConnectorTestBase {
         Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver");
 
         if (!ConfigProperties.DATABASE_MYSQL_HOST.isPresent()) {
-            SqlServerDeployer deployer = new SqlServerDeployer.Deployer()
+            OcpSqlServerDeployer deployer = new OcpSqlServerDeployer.Deployer()
                     .withOcpClient(ocp)
                     .withProject(ConfigProperties.OCP_PROJECT_SQLSERVER)
                     .withDeployment(DB_DEPLOYMENT_PATH)

@@ -17,7 +17,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.testing.openshift.tools.WaitConditions;
 import io.debezium.testing.openshift.tools.databases.DatabaseInitListener;
-import io.debezium.testing.openshift.tools.databases.SqlDatabaseController;
+import io.debezium.testing.openshift.tools.databases.OcpSqlDatabaseController;
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
@@ -28,7 +28,7 @@ import io.fabric8.openshift.client.OpenShiftClient;
  *
  * @author Jakub Cechacek
  */
-public class SqlServerController extends SqlDatabaseController {
+public class SqlServerController extends OcpSqlDatabaseController {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SqlServerController.class);
     private static final String DB_INIT_SCRIPT_PATH = "/database-resources/sqlserver/inventory.sql";
@@ -47,8 +47,9 @@ public class SqlServerController extends SqlDatabaseController {
     }
 
     @Override
-    protected String constructDatabaseUrl(String hostname, int port) {
-        return "jdbc:" + dbType + "://" + hostname + ":" + port;
+    public String getDatabaseUrl() {
+        return "jdbc:" + getDatabaseType() + "://" + getDatabaseHostname() + ":" + getDatabasePort();
+
     }
 
     public void initialize() throws InterruptedException {
