@@ -1500,6 +1500,9 @@ grantStatement
           (tlsNone=NONE | tlsOption (AND? tlsOption)* )
         )?
       (WITH (GRANT OPTION | userResourceOption)* )?
+    | GRANT uid (',' uid)*
+      TO (userName | uid) (',' (userName | uid))*
+      (WITH ADMIN OPTION)?
     ;
 
 grantProxy
@@ -1521,6 +1524,8 @@ revokeStatement
       FROM userName (',' userName)*                                 #detailRevoke
     | REVOKE ALL PRIVILEGES? ',' GRANT OPTION
       FROM userName (',' userName)*                                 #shortRevoke
+    | REVOKE uid (',' uid)*
+      FROM (userName | uid) (',' (userName | uid))*                 #roleRevoke
     ;
 
 revokeProxy
