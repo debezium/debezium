@@ -85,6 +85,10 @@ GRANT SYSTEM_VARIABLES_ADMIN ON *.* TO 'mysqluser'@'localhost'
 GRANT TABLE_ENCRYPTION_ADMIN ON *.* TO 'mysqluser'@'localhost'
 GRANT VERSION_TOKEN_ADMIN ON *.* TO 'mysqluser'@'localhost'
 GRANT XA_RECOVER_ADMIN ON *.* TO 'mysqluser'@'localhost'
+GRANT reader TO 'mysqluser'@'localhost'
+GRANT reader TO topreader
+REVOKE reader FROM 'mysqluser'@'localhost'
+REVOKE reader FROM topreader
 
 -- MariaDB
 GRANT BINLOG_MONITOR ON *.* TO 'mysqluser'@'localhost'
