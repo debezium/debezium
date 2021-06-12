@@ -18,7 +18,7 @@ import io.fabric8.openshift.client.OpenShiftClient;
 /**
  * @author Jakub Cechacek
  */
-public class OcpMongoDeployer extends AbstractOcpDatabaseDeployer<MongoController> {
+public class OcpMongoDeployer extends AbstractOcpDatabaseDeployer<OcpMongoController> {
 
     public static class Deployer extends DatabaseBuilder<OcpMongoDeployer.Deployer, OcpMongoDeployer> {
         @Override
@@ -42,7 +42,7 @@ public class OcpMongoDeployer extends AbstractOcpDatabaseDeployer<MongoControlle
     }
 
     @Override
-    protected MongoController getController(Deployment deployment, List<Service> services, OpenShiftClient ocp) {
-        return new MongoController(deployment, services, ocp);
+    protected OcpMongoController getController(Deployment deployment, List<Service> services, OpenShiftClient ocp) {
+        return new OcpMongoController(deployment, services, ocp);
     }
 }
