@@ -18,7 +18,7 @@ import io.fabric8.openshift.client.OpenShiftClient;
 /**
  * @author Jakub Cechacek
  */
-public class OcpSqlServerDeployer extends AbstractOcpDatabaseDeployer<SqlServerController> {
+public class OcpSqlServerDeployer extends AbstractOcpDatabaseDeployer<OcpSqlServerController> {
 
     public static class Deployer extends DatabaseBuilder<OcpSqlServerDeployer.Deployer, OcpSqlServerDeployer> {
         @Override
@@ -42,7 +42,7 @@ public class OcpSqlServerDeployer extends AbstractOcpDatabaseDeployer<SqlServerC
     }
 
     @Override
-    public SqlServerController getController(Deployment deployment, List<Service> services, OpenShiftClient ocp) {
-        return new SqlServerController(deployment, services, "sqlserver", ocp);
+    public OcpSqlServerController getController(Deployment deployment, List<Service> services, OpenShiftClient ocp) {
+        return new OcpSqlServerController(deployment, services, "sqlserver", ocp);
     }
 }
