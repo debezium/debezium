@@ -28,15 +28,15 @@ import io.fabric8.openshift.client.OpenShiftClient;
  *
  * @author Jakub Cechacek
  */
-public class SqlServerController extends OcpSqlDatabaseController {
+public class OcpSqlServerController extends OcpSqlDatabaseController {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(SqlServerController.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(OcpSqlServerController.class);
     private static final String DB_INIT_SCRIPT_PATH = "/database-resources/sqlserver/inventory.sql";
     private static final String DB_INIT_SCRIPT_PATH_CONTAINER = "/opt/inventory.sql";
 
     private final Path initScript;
 
-    public SqlServerController(Deployment deployment, List<Service> services, String dbType, OpenShiftClient ocp) {
+    public OcpSqlServerController(Deployment deployment, List<Service> services, String dbType, OpenShiftClient ocp) {
         super(deployment, services, dbType, ocp);
         try {
             initScript = Paths.get(getClass().getResource(DB_INIT_SCRIPT_PATH).toURI());
