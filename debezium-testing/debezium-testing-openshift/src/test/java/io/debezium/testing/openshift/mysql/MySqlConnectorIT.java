@@ -23,8 +23,8 @@ import org.junit.jupiter.api.TestMethodOrder;
 
 import io.debezium.testing.openshift.ConnectorTestBase;
 import io.debezium.testing.openshift.tools.ConfigProperties;
-import io.debezium.testing.openshift.tools.databases.OcpSqlDatabaseController;
 import io.debezium.testing.openshift.tools.databases.SqlDatabaseClient;
+import io.debezium.testing.openshift.tools.databases.SqlDatabaseController;
 import io.debezium.testing.openshift.tools.databases.mysql.OcpMySqlDeployer;
 import io.debezium.testing.openshift.tools.kafka.ConnectorConfigBuilder;
 
@@ -45,7 +45,7 @@ public class MySqlConnectorIT extends ConnectorTestBase {
 
     public static final String CONNECTOR_NAME = "inventory-connector-mysql";
 
-    private static OcpSqlDatabaseController dbController;
+    private static SqlDatabaseController dbController;
     private static ConnectorConfigBuilder connectorConfig;
     private static String connectorName;
     private static String dbServerName;

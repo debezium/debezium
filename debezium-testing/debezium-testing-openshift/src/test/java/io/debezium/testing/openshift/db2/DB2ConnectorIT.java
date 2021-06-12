@@ -25,7 +25,7 @@ import org.junit.jupiter.api.TestMethodOrder;
 import io.debezium.testing.openshift.ConnectorTestBase;
 import io.debezium.testing.openshift.tools.ConfigProperties;
 import io.debezium.testing.openshift.tools.databases.SqlDatabaseClient;
-import io.debezium.testing.openshift.tools.databases.db2.OcpDB2Controller;
+import io.debezium.testing.openshift.tools.databases.SqlDatabaseController;
 import io.debezium.testing.openshift.tools.databases.db2.OcpDB2Deployer;
 import io.debezium.testing.openshift.tools.kafka.ConnectorConfigBuilder;
 
@@ -47,7 +47,7 @@ public class DB2ConnectorIT extends ConnectorTestBase {
 
     public static final String CONNECTOR_NAME = "inventory-connector-db2";
 
-    private static OcpDB2Controller dbController;
+    private static SqlDatabaseController dbController;
     private static OkHttpClient httpClient = new OkHttpClient();
     private static ConnectorConfigBuilder connectorConfig;
     private static String connectorName;
