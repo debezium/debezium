@@ -32,7 +32,7 @@ In order to start using the {prodname} Outbox Quarkus extension, the extension n
 ----
 <dependency>
   <groupId>io.debezium</groupId>
-  <artfiactId>debezium-quarkus-outbox</artfiactId>
+  <artifactId>debezium-quarkus-outbox</artifactId>
   <version>{debezium-version}</version>
 </dependency>
 ----
