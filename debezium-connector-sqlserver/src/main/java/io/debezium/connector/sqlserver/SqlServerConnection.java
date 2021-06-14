@@ -34,6 +34,7 @@ import com.microsoft.sqlserver.jdbc.SQLServerDriver;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
+import io.debezium.data.Envelope;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.relational.Column;
@@ -69,6 +70,7 @@ public class SqlServerConnection extends JdbcConnection {
     private static final String SQL_SERVER_VERSION = "SELECT @@VERSION AS 'SQL Server Version'";
     private static final String INCREMENT_LSN = "SELECT sys.fn_cdc_increment_lsn(?)";
     private static final String GET_ALL_CHANGES_FOR_TABLE = "SELECT *# FROM cdc.[fn_cdc_get_all_changes_#](?, ?, N'all update old') order by [__$start_lsn] ASC, [__$seqval] ASC, [__$operation] ASC";
+    private final String get_all_changes_for_table;
     protected static final String LSN_TIMESTAMP_SELECT_STATEMENT = "sys.fn_cdc_map_lsn_to_time([__$start_lsn])";
     protected static final String AT_TIME_ZONE_UTC = "AT TIME ZONE 'UTC'";
     private static final String GET_LIST_OF_CDC_ENABLED_TABLES = "EXEC sys.sp_cdc_help_change_data_capture";
@@ -104,7 +106,7 @@ public class SqlServerConnection extends JdbcConnection {
      * @param valueConverters {@link SqlServerValueConverters} instance
      */
     public SqlServerConnection(Configuration config, Clock clock, SourceTimestampMode sourceTimestampMode, SqlServerValueConverters valueConverters) {
-        this(config, clock, sourceTimestampMode, valueConverters, null);
+        this(config, clock, sourceTimestampMode, valueConverters, null, Collections.<Envelope.Operation> emptySet());
     }
 
     /**
@@ -115,17 +117,48 @@ public class SqlServerConnection extends JdbcConnection {
      * @param sourceTimestampMode strategy for populating {@code source.ts_ms}.
      * @param valueConverters {@link SqlServerValueConverters} instance
      * @param classLoaderSupplier class loader supplier
+     * @param skippedOperations a set of {@link Envelope.Operation} to skip in streaming
      */
     public SqlServerConnection(Configuration config, Clock clock, SourceTimestampMode sourceTimestampMode, SqlServerValueConverters valueConverters,
-                               Supplier<ClassLoader> classLoaderSupplier) {
+                               Supplier<ClassLoader> classLoaderSupplier, Set<Envelope.Operation> skippedOperations) {
         super(config, FACTORY, classLoaderSupplier);
         realDatabaseName = retrieveRealDatabaseName();
         boolean supportsAtTimeZone = supportsAtTimeZone();
         transactionTimezone = retrieveTransactionTimezone(supportsAtTimeZone);
-        getAllChangesForTable = GET_ALL_CHANGES_FOR_TABLE.replaceFirst(STATEMENTS_PLACEHOLDER,
-                Matcher.quoteReplacement(sourceTimestampMode.lsnTimestampSelectStatement(supportsAtTimeZone)));
         defaultValueConverter = new SqlServerDefaultValueConverter(this::connection, valueConverters);
         this.queryFetchSize = config().getInteger(CommonConnectorConfig.QUERY_FETCH_SIZE);
+
+        if (!skippedOperations.isEmpty()) {
+            Set<String> skippedOps = new HashSet<>();
+            StringBuilder getAllChangesForTableStatement = new StringBuilder(
+                    "SELECT *# FROM cdc.[fn_cdc_get_all_changes_#](?, ?, N'all update old') WHERE __$operation NOT IN (");
+            skippedOperations.forEach((Envelope.Operation operation) -> {
+                // This number are the __$operation number in the SQLServer
+                // https://docs.microsoft.com/en-us/sql/relational-databases/system-functions/cdc-fn-cdc-get-all-changes-capture-instance-transact-sql?view=sql-server-ver15#table-returned
+                switch (operation) {
+                    case CREATE:
+                        skippedOps.add("2");
+                        break;
+                    case UPDATE:
+                        skippedOps.add("3");
+                        skippedOps.add("4");
+                        break;
+                    case DELETE:
+                        skippedOps.add("1");
+                        break;
+                }
+            });
+            getAllChangesForTableStatement.append(String.join(",", skippedOps));
+            getAllChangesForTableStatement.append(") order by [__$start_lsn] ASC, [__$seqval] ASC, [__$operation] ASC");
+            get_all_changes_for_table = getAllChangesForTableStatement.toString();
+        }
+        else {
+            get_all_changes_for_table = GET_ALL_CHANGES_FOR_TABLE;
+
+        }
+
+        getAllChangesForTable = get_all_changes_for_table.replaceFirst(STATEMENTS_PLACEHOLDER,
+                Matcher.quoteReplacement(sourceTimestampMode.lsnTimestampSelectStatement(supportsAtTimeZone)));
     }
 
     /**
