@@ -49,7 +49,7 @@ public class PravegaChangeConsumer extends BaseChangeConsumer implements ChangeC
     @ConfigProperty(name = PROP_SCOPE)
     String scope;
 
-    @ConfigProperty(name = PROP_TXN)
+    @ConfigProperty(name = PROP_TXN, defaultValue = "false")
     boolean txn;
 
     private ClientConfig clientConfig;
