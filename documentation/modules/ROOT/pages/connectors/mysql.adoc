@@ -2548,7 +2548,7 @@ endif::community[]
 
 |[[mysql-property-skipped-operations]]<<mysql-property-skipped-operations, `+skipped.operations+`>>
 |
-|Comma-separated list of oplog operations to skip during streaming. Values that you can specify are: `c` for inserts/create, `u` for updates, `d` for deletes. By default, no operations are skipped.
+|Comma-separated list of operation types to skip during streaming. The following values are possible: `c` for inserts/create, `u` for updates, `d` for deletes. By default, no operations are skipped.
 
 |[[mysql-property-provide-transaction-metadata]]<<mysql-property-provide-transaction-metadata, `provide.transaction.metadata`>>
 |`false`
