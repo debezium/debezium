@@ -2102,7 +2102,7 @@ supplemental_log_grp_clause
 supplemental_id_key_clause
     : DATA '('( ','? ( ALL
                      | PRIMARY KEY
-                     | UNIQUE
+                     | UNIQUE INDEX?
                      | FOREIGN KEY
                      )
               )+
