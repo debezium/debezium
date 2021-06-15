@@ -149,8 +149,13 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                             // Calculate time difference before each mining session to detect time zone offset changes (e.g. DST) on database server
                             streamingMetrics.calculateTimeDifference(getSystime(jdbcConnection));
 
+                            Scn miningStartScn = offsetContext.getCommitScn();
+                            if (miningStartScn == null) {
+                                miningStartScn = offsetContext.getScn();
+                            }
+
                             Instant start = Instant.now();
-                            endScn = getEndScn(jdbcConnection, startScn, streamingMetrics, connectorConfig.getLogMiningBatchSizeDefault());
+                            endScn = getEndScn(jdbcConnection, miningStartScn, streamingMetrics, connectorConfig.getLogMiningBatchSizeDefault());
                             flushLogWriter(jdbcConnection, jdbcConfiguration, isRac, racHosts);
 
                             if (hasLogSwitchOccurred()) {
@@ -170,17 +175,16 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                                 currentRedoLogSequences = getCurrentRedoLogSequences();
                             }
 
-                            Scn miningStartScn = offsetContext.getCommitScn();
-                            if (miningStartScn == null) {
-                                miningStartScn = offsetContext.getScn();
-                            }
+                            LOGGER.trace("log mining miningStartScn={}, endScn={}, scnJump={} , offsetContext scn : {}, offsetContext commit scn : {} startScn: {} ",
+                                    miningStartScn, endScn, endScn.longValue() - miningStartScn.longValue(), offsetContext.getScn(), offsetContext.getCommitScn(),
+                                    startScn);
                             startLogMining(jdbcConnection, miningStartScn, endScn, strategy, isContinuousMining, streamingMetrics);
 
                             LOGGER.trace("Fetching LogMiner view results SCN {} to {}", startScn, endScn);
                             stopwatch.start();
                             miningView.setFetchSize(connectorConfig.getMaxQueueSize());
                             miningView.setFetchDirection(ResultSet.FETCH_FORWARD);
-                            miningView.setString(1, startScn.toString());
+                            miningView.setString(1, miningStartScn.toString());
                             miningView.setString(2, endScn.toString());
                             try (ResultSet rs = miningView.executeQuery()) {
                                 Duration lastDurationOfBatchCapturing = stopwatch.stop().durations().statistics().getTotal();
