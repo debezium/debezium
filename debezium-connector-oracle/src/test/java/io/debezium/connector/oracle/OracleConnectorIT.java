@@ -29,6 +29,8 @@ import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.awaitility.Awaitility;
+import org.awaitility.Durations;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -51,6 +53,7 @@ import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.heartbeat.Heartbeat;
+import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.util.Testing;
 
@@ -1836,6 +1839,65 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         }
         finally {
             TestHelper.dropTables(connection, "dbz3062a", "dbz3062b");
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-3616")
+    public void shouldNotLogWarningsAboutCommittedTransactionsWhileStreamingNormally() throws Exception {
+        final LogInterceptor logInterceptor = new LogInterceptor();
+        TestHelper.dropTables(connection, "dbz3616", "dbz3616");
+        try {
+            connection.execute("CREATE TABLE dbz3616 (id number(9,0), data varchar2(50))");
+            TestHelper.streamTable(connection, "dbz3616");
+            connection.commit();
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ3616.*")
+                    // use online_catalog mode explicitly due to Awaitility timer below.
+                    .with(OracleConnectorConfig.LOG_MINING_STRATEGY, "online_catalog")
+                    .build();
+
+            // Start connector
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            // Wait for streaming
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            // Start second connection and write an insert, without commit.
+            OracleConnection connection2 = TestHelper.testConnection();
+            connection2.executeWithoutCommitting("INSERT INTO dbz3616 (id,data) values (1,'Conn2')");
+
+            // One first connection write an insert without commit, then explicitly commit it.
+            connection.executeWithoutCommitting("INSERT INTO dbz3616 (id,data) values (2,'Conn1')");
+            connection.commit();
+
+            // Connector should continually re-mine the first transaction until committed.
+            // During this time, there should not be these extra log messages that we
+            // will assert against later via LogInterceptor.
+            Awaitility.await()
+                    .pollDelay(Durations.ONE_MINUTE)
+                    .timeout(Durations.TWO_MINUTES)
+                    .until(() -> true);
+
+            // Now commit connection2, this means we should get 2 inserts.
+            connection2.commit();
+
+            // Now get the 2 records, two inserts from both transactions
+            SourceRecords records = consumeRecordsByTopic(2);
+            assertThat(records.recordsForTopic("server1.DEBEZIUM.DBZ3616")).hasSize(2);
+
+            List<SourceRecord> tableRecords = records.recordsForTopic("server1.DEBEZIUM.DBZ3616");
+            assertThat(((Struct) tableRecords.get(0).value()).getStruct("after").get("ID")).isEqualTo(2);
+            assertThat(((Struct) tableRecords.get(1).value()).getStruct("after").get("ID")).isEqualTo(1);
+
+            // Now check that we didn't get the unnecessary warning messages.
+            assertThat(logInterceptor.containsWarnMessage("was already processed, ignore.")).isFalse();
+        }
+        finally {
+            TestHelper.dropTables(connection, "dbz3616", "dbz3616");
         }
     }
 
