@@ -60,6 +60,10 @@ public class AlterTableParserListener extends BaseParserListener {
     public void enterAlter_table(PlSqlParser.Alter_tableContext ctx) {
         previousTableId = null;
         TableId tableId = new TableId(catalogName, schemaName, getTableName(ctx.tableview_name()));
+        if (parser.databaseTables().forTable(tableId) == null) {
+            LOGGER.debug("Ignoring ALTER TABLE statement for non-captured table {}", tableId);
+            return;
+        }
         tableEditor = parser.databaseTables().editTable(tableId);
         if (tableEditor == null) {
             throw new ParsingException(null, "Trying to alter table " + tableId.toString()
