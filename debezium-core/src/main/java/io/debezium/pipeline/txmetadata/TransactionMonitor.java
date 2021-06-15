@@ -129,7 +129,9 @@ public class TransactionMonitor {
         if (!connectorConfig.shouldProvideTransactionMetadata()) {
             return;
         }
-        endTransaction(offset);
+        if (offset.getTransactionContext().isTransactionInProgress()) {
+            endTransaction(offset);
+        }
         offset.getTransactionContext().endTransaction();
     }
 
