@@ -55,6 +55,7 @@ public final class TransactionalBuffer implements AutoCloseable {
     private final Set<String> abandonedTransactionIds;
     private final Set<String> rolledBackTransactionIds;
     private final Set<RecentlyCommittedTransaction> recentlyCommittedTransactionIds;
+    private final Set<Scn> recentlyEmittedDdls;
     private final OracleStreamingChangeEventSourceMetrics streamingMetrics;
 
     private Scn lastCommittedScn;
@@ -78,6 +79,7 @@ public final class TransactionalBuffer implements AutoCloseable {
         this.abandonedTransactionIds = new HashSet<>();
         this.rolledBackTransactionIds = new HashSet<>();
         this.recentlyCommittedTransactionIds = new HashSet<>();
+        this.recentlyEmittedDdls = new HashSet<>();
         this.streamingMetrics = streamingMetrics;
     }
 
@@ -86,6 +88,25 @@ public final class TransactionalBuffer implements AutoCloseable {
      */
     Set<String> getRolledBackTransactionIds() {
         return new HashSet<>(rolledBackTransactionIds);
+    }
+
+    /**
+     * Registers a DDL operation with the buffer.
+     *
+     * @param scn the system change number
+     */
+    void registerDdlOperation(Scn scn) {
+        recentlyEmittedDdls.add(scn);
+    }
+
+    /**
+     * Returns whether the ddl operation has been registered.
+     *
+     * @param scn the system change number
+     * @return true if the ddl operation has been seen and processed, false otherwise.
+     */
+    boolean isDdlOperationRegistered(Scn scn) {
+        return recentlyEmittedDdls.contains(scn);
     }
 
     /**
@@ -205,7 +226,7 @@ public final class TransactionalBuffer implements AutoCloseable {
      */
     void registerTransaction(String transactionId, Scn scn) {
         Transaction transaction = transactions.get(transactionId);
-        if (transaction == null) {
+        if (transaction == null && !isRecentlyCommitted(transactionId)) {
             transactions.put(transactionId, new Transaction(transactionId, scn));
             streamingMetrics.setActiveTransactions(transactions.size());
         }
@@ -236,6 +257,10 @@ public final class TransactionalBuffer implements AutoCloseable {
         Scn smallestScn = calculateSmallestScn();
 
         abandonedTransactionIds.remove(transactionId);
+
+        if (isRecentlyCommitted(transactionId)) {
+            return false;
+        }
 
         // On the restarting connector, we start from SCN in the offset. There is possibility to commit a transaction(s) which were already committed.
         // Currently we cannot use ">=", because we may lose normal commit which may happen at the same time. TODO use audit table to prevent duplications
@@ -335,6 +360,8 @@ public final class TransactionalBuffer implements AutoCloseable {
             if (!minStartScn.isNull()) {
                 LOGGER.trace("Removing all commits up to SCN '{}'", minStartScn);
                 recentlyCommittedTransactionIds.removeIf(t -> t.firstScn.compareTo(minStartScn) < 0);
+                LOGGER.trace("Removing all tracked DDL operations up to SCN '{}'", minStartScn);
+                recentlyEmittedDdls.removeIf(scn -> scn.compareTo(minStartScn) < 0);
                 offsetContext.setScn(minStartScn.subtract(Scn.valueOf(1)));
             }
             else {
@@ -459,7 +486,7 @@ public final class TransactionalBuffer implements AutoCloseable {
             LogMinerHelper.logWarn(streamingMetrics, "Event for rolled back transaction {}, ignored.", transactionId);
             return;
         }
-        if (recentlyCommittedTransactionIds.contains(transactionId)) {
+        if (isRecentlyCommitted(transactionId)) {
             LOGGER.trace("Event for transaction {} skipped, transaction already committed.", transactionId);
             return;
         }
@@ -472,6 +499,25 @@ public final class TransactionalBuffer implements AutoCloseable {
             transaction.eventHashes.add(hash);
             transaction.events.add(supplier.get());
         }
+    }
+
+    /**
+     * Returns whether the specified transaction has recently been committed.
+     *
+     * @param transactionId the transaction identifier
+     * @return true if the transaction has been recently committed (seen by the connector), otherwise false.
+     */
+    private boolean isRecentlyCommitted(String transactionId) {
+        if (recentlyCommittedTransactionIds.isEmpty()) {
+            return false;
+        }
+
+        for (RecentlyCommittedTransaction transaction : recentlyCommittedTransactionIds) {
+            if (transaction.transactionId.equals(transactionId)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

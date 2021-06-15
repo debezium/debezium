@@ -156,11 +156,16 @@ class LogMinerQueryResultProcessor {
                     break;
                 }
                 case RowMapper.DDL: {
+                    if (transactionalBuffer.isDdlOperationRegistered(scn)) {
+                        LOGGER.trace("DDL: {} has already been seen, skipped.", redoSql);
+                        continue;
+                    }
                     historyRecorder.record(scn, tableName, segOwner, operationCode, changeTime, txId, 0, redoSql);
                     LOGGER.info("DDL: {}, REDO_SQL: {}", logMessage, redoSql);
                     try {
                         if (tableName != null) {
                             final TableId tableId = RowMapper.getTableId(connectorConfig.getCatalogName(), resultSet);
+                            transactionalBuffer.registerDdlOperation(scn);
                             dispatcher.dispatchSchemaChangeEvent(tableId,
                                     new OracleSchemaChangeEventEmitter(
                                             connectorConfig,
