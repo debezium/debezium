@@ -180,7 +180,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                                     startScn);
                             startLogMining(jdbcConnection, miningStartScn, endScn, strategy, isContinuousMining, streamingMetrics);
 
-                            LOGGER.trace("Fetching LogMiner view results SCN {} to {}", startScn, endScn);
+                            LOGGER.trace("Fetching LogMiner view results SCN {} to {}", miningStartScn, endScn);
                             stopwatch.start();
                             miningView.setFetchSize(connectorConfig.getMaxQueueSize());
                             miningView.setFetchDirection(ResultSet.FETCH_FORWARD);
