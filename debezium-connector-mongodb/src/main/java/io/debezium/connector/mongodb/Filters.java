@@ -5,8 +5,11 @@
  */
 package io.debezium.connector.mongodb;
 
+import java.util.List;
 import java.util.Set;
 import java.util.function.Predicate;
+
+import org.apache.kafka.common.config.ConfigException;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.FieldSelector.FieldFilter;
@@ -98,5 +101,9 @@ public final class Filters {
 
     protected boolean isNotBuiltIn(CollectionId id) {
         return !BUILT_IN_DB_NAMES.contains(id.dbName());
+    }
+
+    public List<ConfigException> getErrors() {
+        return fieldSelector.getErrors();
     }
 }
