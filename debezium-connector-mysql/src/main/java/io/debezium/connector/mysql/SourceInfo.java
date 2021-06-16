@@ -89,7 +89,7 @@ import io.debezium.relational.TableId;
  * @author Randall Hauch
  */
 @NotThreadSafe
-final class SourceInfo extends BaseSourceInfo {
+public final class SourceInfo extends BaseSourceInfo {
 
     // Avro Schema doesn't allow "-" to be included as field name, use "_" instead.
     // Ref https://issues.apache.org/jira/browse/AVRO-838.
