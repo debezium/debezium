@@ -19,7 +19,6 @@ public class ApproximateStructSizeCalculator {
     public static long getApproximateRecordSize(SourceRecord changeEvent) {
         // assuming 100 bytes per entry of partition / offset / header
         long value = changeEvent.sourcePartition().size() * 100 + changeEvent.sourceOffset().size() * 100 + changeEvent.headers().size() * 100;
-        ;
         value += 8; // timestamp
 
         // key and value, ignoring schemas, assuming they are constant, shared on the heap

@@ -72,11 +72,11 @@ public class ChangeEventQueue<T extends DataChangeEvent> implements ChangeEventQ
     private final Metronome metronome;
     private final Supplier<PreviousContext> loggingContextSupplier;
 
-	/**
-	 * Approximate current size in bytes of the queue. Used to cap the size and
-	 * block further enqueuing when
-	 * {@link CommonConnectorConfig#MAX_QUEUE_SIZE_IN_BYTES} is enabled.
-	 */
+    /**
+     * Approximate current size in bytes of the queue. Used to cap the size and
+     * block further enqueuing when
+     * {@link CommonConnectorConfig#MAX_QUEUE_SIZE_IN_BYTES} is enabled.
+     */
     private final AtomicLong currentQueueSizeInBytes = new AtomicLong(0);
     private final Lock lock = new ReentrantLock();
     private final Condition canEnqueue = lock.newCondition();
