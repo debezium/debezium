@@ -9,12 +9,14 @@ import static org.fest.assertions.Assertions.assertThat;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.sql.Blob;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.data.Struct;
@@ -1001,6 +1003,64 @@ public class OracleBlobDataTypesIT extends AbstractConnectorTest {
         assertThat(after.get("VAL_BLOBS")).isEqualTo(getByteBufferFromBlob(blob1aUpdate));
         assertThat(after.get("VAL_BLOB")).isEqualTo(getByteBufferFromBlob(blob1bUpdate));
         assertThat(after.get("VAL_DATA")).isEqualTo("Test1U");
+    }
+
+    @Test
+    @FixFor("DBZ-3631")
+    public void shouldReconcileTransactionWhenAllBlobClobAreInitializedAsNull() throws Exception {
+        final String DDL = "CREATE TABLE dbz3631 ("
+                + "ID NUMBER(38) NOT NULL,"
+                + "ENTITY_ID NUMBER(38) NOT NULL,"
+                + "DOCX BLOB,"
+                + "DOCX_SIGNATURE BLOB,"
+                + "XML_OOS BLOB,"
+                + "XML_OOS_SIGNATURE BLOB,"
+                + "PRIMARY KEY(ID))";
+
+        TestHelper.dropTable(connection, "dbz3631");
+        try {
+            connection.execute(DDL);
+            TestHelper.streamTable(connection, "dbz3631");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM.DBZ3631")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            // Performs an insert with several blob fields, should produce an insert/update pair
+            connection.executeWithoutCommitting("INSERT INTO dbz3631 ("
+                    + "ID,"
+                    + "ENTITY_ID"
+                    + ") VALUES ("
+                    + "13268281,"
+                    + "13340568"
+                    + ")");
+
+            connection.commit();
+
+            SourceRecords records = consumeRecordsByTopic(1);
+
+            List<SourceRecord> table = records.recordsForTopic("server1.DEBEZIUM.DBZ3631");
+            assertThat(table).hasSize(1);
+
+            SourceRecord record = table.get(0);
+            Struct value = (Struct) record.value();
+            Struct after = value.getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.get("ID")).isEqualTo(BigDecimal.valueOf(13268281));
+            assertThat(after.get("ENTITY_ID")).isEqualTo(BigDecimal.valueOf(13340568));
+            assertThat(after.get("DOCX")).isNull();
+            assertThat(after.get("DOCX_SIGNATURE")).isNull();
+            assertThat(after.get("XML_OOS")).isNull();
+            assertThat(after.get("XML_OOS_SIGNATURE")).isNull();
+            assertThat(value.get(Envelope.FieldName.OPERATION)).isEqualTo(Envelope.Operation.CREATE.code());
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz3631");
+        }
     }
 
     private static byte[] part(byte[] buffer, int start, int length) {
