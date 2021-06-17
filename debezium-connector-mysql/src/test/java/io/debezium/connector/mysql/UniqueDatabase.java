@@ -57,9 +57,9 @@ public class UniqueDatabase {
     private Path dbHistoryPath;
     private final String identifier;
 
-    private UniqueDatabase(final String serverName, final String databaseName, final String identifier, final String charset) {
+    public UniqueDatabase(final String serverName, final String databaseName, final String identifier, final String charset) {
         this.identifier = identifier;
-        this.databaseName = databaseName + "_" + identifier;
+        this.databaseName = (identifier != null) ? (databaseName + "_" + identifier) : databaseName;
         this.templateName = databaseName;
         this.serverName = serverName;
         this.charset = charset;
@@ -195,12 +195,20 @@ public class UniqueDatabase {
      * @return Configuration builder initialized with JDBC connection parameters and most frequently used parameters
      */
     public Configuration.Builder defaultConfig() {
+        return defaultConfigWithoutDatabaseFilter()
+                .with(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, getDatabaseName());
+    }
+
+    /**
+     * @return Configuration builder initialized with JDBC connection parameters and most frequently used parameters,
+     * database not filtered by default
+     */
+    public Configuration.Builder defaultConfigWithoutDatabaseFilter() {
         final Configuration.Builder builder = defaultJdbcConfigBuilder()
                 .with(MySqlConnectorConfig.SSL_MODE, MySqlConnectorConfig.SecureConnectionMode.DISABLED)
                 .with(MySqlConnectorConfig.SERVER_ID, 18765)
                 .with(MySqlConnectorConfig.SERVER_NAME, getServerName())
                 .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
-                .with(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, getDatabaseName())
                 .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
                 .with(MySqlConnectorConfig.BUFFER_SIZE_FOR_BINLOG_READER, 10_000)
                 .with(MySqlConnector.IMPLEMENTATION_PROP, System.getProperty(MySqlConnector.IMPLEMENTATION_PROP, "new"));
