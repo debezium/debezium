@@ -1531,6 +1531,9 @@ By default, no operations are skipped.
 
 |===
 
+include::{partialsdir}/modules/all-connectors/ref-connector-configuration-database-history-properties.adoc[leveloffset=+1]
+
+////
 [id="{context}-pass-through-configuration-properties-for-database-drivers"]
 ==== Pass-through configuration properties for database drivers
 
@@ -1538,6 +1541,8 @@ The {prodname} connector provides for pass-through configuration of the database
 Pass-through database properties begin with the prefix `database.*`.
 For example, the property `database.tinyInt1isBit=false` is passed to the JDBC URL.
 Debezium strips the prefix before it passes the property to the database driver.
+
+See the Kafka documentation for more details about link:https://kafka.apache.org/documentation.html#producerconfigs[Kafka producer configuration properties] and link:https://kafka.apache.org/documentation.html#consumerconfigs[Kafka consumer configuration properties].
 
 [id="{context}-passthrough-database-history-properties-for-configuring-producer-and-consumer-clients"]
 ==== Pass-through database history properties for configuring producer and consumer clients
@@ -1564,7 +1569,6 @@ database.history.consumer.ssl.key.password=test1234
 
 As is the case with the xref:{context}-pass-through-configuration-properties-for-database-drivers[pass-through properties for database drivers], {prodname} strips the prefixes from the properties before {prodname} it passes them to configure the database history producer or consumer client.
 
-See the Kafka documentation for more details about link:https://kafka.apache.org/documentation.html#producerconfigs[Kafka producer configuration properties] and link:https://kafka.apache.org/documentation.html#consumerconfigs[Kafka consumer configuration properties].
 
 [id="{context}-database-history-properties-for-configuring-connector-behavior"]
 ==== Database history properties for configuring connector behavior
@@ -1573,8 +1577,8 @@ In addition to the pass-through database history properties that you use to conf
 You use these `database.history` properties to define how the {context} connector processes event data that it reads from the schema history.
 
 The following table describes the `database.history` properties for configuring the {prodname} {context} connector.
+////
 
-include::{partialsdir}/modules/all-connectors/ref-connector-configuration-database-history-properties.adoc[leveloffset=+1]
 
 
 [[oracle-monitoring]]

@@ -2276,6 +2276,9 @@ The name format is _database_name.schema-name.table-name_.
 
 |===
 
+include::{partialsdir}/modules/all-connectors/ref-connector-configuration-database-history-properties.adoc[leveloffset=+1]
+
+////
 [id="{context}-pass-through-configuration-properties-for-database-drivers"]
 ==== Pass-through configuration properties for database drivers
 
@@ -2318,8 +2321,8 @@ In addition to the pass-through database history properties that you use to conf
 You use these `database.history` properties to define how the {context} connector processes event data that it reads from the schema history.
 
 The following table describes the `database.history` properties for configuring the {prodname} {context} connector.
+////
 
-include::{partialsdir}/modules/all-connectors/ref-connector-configuration-database-history-properties.adoc[leveloffset=+1]
 
 // Type: assembly
 // ModuleID: refreshing-capture-tables-after-a-schema-change

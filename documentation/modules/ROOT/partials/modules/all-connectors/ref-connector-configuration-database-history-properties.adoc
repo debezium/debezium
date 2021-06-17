@@ -1,3 +1,47 @@
+[id="{context}-pass-through-configuration-properties-for-database-drivers"]
+=== Pass-through configuration properties for database drivers
+
+The {prodname} connector provides for pass-through configuration of the database driver.
+Pass-through database properties begin with the prefix `database.*`.
+For example, the connector passes properties such as `database.foobar=false` to the JDBC URL.
+Debezium strips the `database.` prefix before it passes the property to the database driver.
+
+See the Kafka documentation for more details about link:https://kafka.apache.org/documentation.html#producerconfigs[Kafka producer configuration properties] and link:https://kafka.apache.org/documentation.html#consumerconfigs[Kafka consumer configuration properties].
+
+[id="{context}-passthrough-database-history-properties-for-configuring-producer-and-consumer-clients"]
+=== Pass-through database history properties for configuring producer and consumer clients
+
+{prodname} relies on a Kafka producer to write schema changes to database history topics.
+Similarly, it relies on a Kafka consumer to read from database history topics when a connector starts.
+You define the configuration for the Kafka producer and consumer clients by assigning values to a set of pass-through configuration properties that begin with the `database.history.producer.\*` and `database.history.consumer.*` prefixes.
+The pass-through producer and consumer database history properties control a range of behaviors, such as how these clients secure connections with the Kafka broker, as shown in the following example:
+
+[source,indent=0]
+----
+database.history.producer.security.protocol=SSL
+database.history.producer.ssl.keystore.location=/var/private/ssl/kafka.server.keystore.jks
+database.history.producer.ssl.keystore.password=test1234
+database.history.producer.ssl.truststore.location=/var/private/ssl/kafka.server.truststore.jks
+database.history.producer.ssl.truststore.password=test1234
+database.history.producer.ssl.key.password=test1234
+database.history.consumer.security.protocol=SSL
+database.history.consumer.ssl.keystore.location=/var/private/ssl/kafka.server.keystore.jks
+database.history.consumer.ssl.keystore.password=test1234
+database.history.consumer.ssl.truststore.location=/var/private/ssl/kafka.server.truststore.jks
+database.history.consumer.ssl.truststore.password=test1234
+database.history.consumer.ssl.key.password=test1234
+----
+
+As is the case with the xref:{context}-pass-through-configuration-properties-for-database-drivers[pass-through properties for database drivers], {prodname} strips the prefixes from the properties before {prodname} it passes them to configure the database history producer or consumer client.
+
+[id="{context}-database-history-properties-for-configuring-connector-behavior"]
+=== Database history properties for configuring connector behavior
+
+In addition to the pass-through database history properties that you use to configure producers or consumers, there is a set of `database.history.*` properties whose names do not include `producer` or `consumer`.
+You use these `database.history` properties to define how the {context} connector processes event data that it reads from the schema history.
+
+The following table describes the `database.history` properties for configuring the {prodname} {context} connector.
+
 .Connector database history configuration properties
 [cols="33%a,17%a,50%a",options="header",subs="+attributes"]
 |===
