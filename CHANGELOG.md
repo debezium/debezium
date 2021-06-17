@@ -2,6 +2,41 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 1.5.3.Final
+June 17th 2021 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12358421)
+
+### New features since 1.5.2.Final
+
+None
+
+### Breaking changes since 1.5.2.Final
+
+None
+
+
+### Fixes since 1.5.2.Final
+
+* Oracle connector does not correctly handle partially committed transactions [DBZ-3322](https://issues.jboss.org/browse/DBZ-3322)
+* Broken links in User guide table of routing SMT configuration options [DBZ-3410](https://issues.jboss.org/browse/DBZ-3410)
+* Broken link to basic configuration example in downstream content-based routing topic [DBZ-3412](https://issues.jboss.org/browse/DBZ-3412)
+* source.timestamp.mode=commit imposes a significant performance penalty [DBZ-3452](https://issues.jboss.org/browse/DBZ-3452)
+* Timezone difference not considered in `LagFromSourceInMilliseconds` calculation [DBZ-3456](https://issues.jboss.org/browse/DBZ-3456)
+* MySQL metrics documentation refers to legacy implementation [DBZ-3572](https://issues.jboss.org/browse/DBZ-3572)
+* Update downstream MySQL doc to reference streaming metrics vs. binlog metrics  [DBZ-3582](https://issues.jboss.org/browse/DBZ-3582)
+* Transaction commit event dispatch fails if no active transaction in progress. [DBZ-3593](https://issues.jboss.org/browse/DBZ-3593)
+* GRANT/REVOKE for roles is not working [DBZ-3610](https://issues.jboss.org/browse/DBZ-3610)
+* DDL ParsingException - "SUPPLEMENTAL LOG DATA (UNIQUE INDEX) COLUMNS" [DBZ-3619](https://issues.jboss.org/browse/DBZ-3619)
+
+
+### Other changes since 1.5.2.Final
+
+* Modularize doc for MongoDB component [DBZ-2334](https://issues.jboss.org/browse/DBZ-2334)
+* Docs clarification around tombstone events [DBZ-3416](https://issues.jboss.org/browse/DBZ-3416)
+* Update external link to AMQ Streams documentation [DBZ-3502](https://issues.jboss.org/browse/DBZ-3502)
+* Formatting updates to correct errors in documentation builds [DBZ-3518](https://issues.jboss.org/browse/DBZ-3518)
+
+
+
 ## 1.5.2.Final
 May 28th 2021 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12357966)
 
@@ -19,7 +54,7 @@ None
 * Release 1.5.1.Final requires JDK >= 11 [DBZ-3574](https://issues.jboss.org/browse/DBZ-3574)
 
 
-### Other changes since 1.5.0.Final
+### Other changes since 1.5.1.Final
 
 * Update external links in downstream docs to AMQ Streams deployment information  [DBZ-3525](https://issues.jboss.org/browse/DBZ-3525)
 
