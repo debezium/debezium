@@ -128,6 +128,7 @@ Jakub Cechacek
 James Gormley
 Jan-Hendrik Dolling
 Jan Uyttenhove
+JapuDCret
 Jaromir Hamala
 Javier Holguera
 Jeremy Finzel
@@ -205,6 +206,7 @@ Nishant Singh
 Nitin Agarwal
 Olavi Mustanoja
 Oliver Weiler
+Olivier Jacquemart
 Olivier Lemasle
 Omar Al-Safi
 Ori Popowski
@@ -267,6 +269,7 @@ Tautvydas Januskevicius
 Taylor Rolison
 Theofanis Despoudis
 Thierry De Leeuw
+Thomas Aregger
 Thomas Deblock
 Thomas Prelle
 Thomas Thornton
