@@ -269,7 +269,7 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
                     }
                 });
             }
-            else if (acceptableDatabase(databaseName)) {
+            else {
                 offset.databaseEvent(databaseName, sourceTime);
                 schemaChangeEvents
                         .add(new SchemaChangeEvent(offset.getPartition(), offset.getOffset(), offset.getSourceInfo(),
@@ -290,7 +290,10 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
     }
 
     private boolean acceptableDatabase(final String databaseName) {
-        return filters.databaseFilter().test(databaseName) || databaseName == null || databaseName.isEmpty();
+        return !storeOnlyCapturedTables()
+                || filters.databaseFilter().test(databaseName)
+                || databaseName == null
+                || databaseName.isEmpty();
     }
 
     private TableId getTableId(Event event) {
