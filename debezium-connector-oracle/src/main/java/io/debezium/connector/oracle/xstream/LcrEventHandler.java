@@ -322,7 +322,10 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
     }
 
     private byte[] resolveBlobChunkValue(List<ChunkColumnValue> chunkValues) {
-        long size = chunkValues.stream().map(ChunkColumnValue::getColumnData).mapToLong(Datum::getLength).sum();
+        long size = 0;
+        for (ChunkColumnValue chunkValue : chunkValues) {
+            size += ((Datum) chunkValue).getLength();
+        }
         if (size > 0) {
             ByteBuffer buffer = ByteBuffer.allocate((int) size);
             for (ChunkColumnValue columnValue : chunkValues) {
