@@ -7,10 +7,12 @@ package io.debezium.connector.oracle;
 
 import static org.fest.assertions.Assertions.assertThat;
 
+import java.math.BigDecimal;
 import java.sql.Clob;
 import java.sql.NClob;
 import java.sql.SQLException;
 import java.time.Duration;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.data.Struct;
@@ -1386,6 +1388,64 @@ public class OracleClobDataTypeIT extends AbstractConnectorTest {
         assertThat(before.get("VAL_VARCHAR2")).isEqualTo("Test3U");
 
         assertThat(after(record)).isNull();
+    }
+
+    @Test
+    @FixFor("DBZ-3631")
+    public void shouldReconcileTransactionWhenAllBlobClobAreInitializedAsNull() throws Exception {
+        final String DDL = "CREATE TABLE dbz3631 ("
+                + "ID NUMBER(38) NOT NULL,"
+                + "ENTITY_ID NUMBER(38) NOT NULL,"
+                + "DOCX CLOB,"
+                + "DOCX_SIGNATURE CLOB,"
+                + "XML_OOS CLOB,"
+                + "XML_OOS_SIGNATURE CLOB,"
+                + "PRIMARY KEY(ID))";
+
+        TestHelper.dropTable(connection, "dbz3631");
+        try {
+            connection.execute(DDL);
+            TestHelper.streamTable(connection, "dbz3631");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM.DBZ3631")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            // Performs an insert with several blob fields, should produce an insert/update pair
+            connection.executeWithoutCommitting("INSERT INTO dbz3631 ("
+                    + "ID,"
+                    + "ENTITY_ID"
+                    + ") VALUES ("
+                    + "13268281,"
+                    + "13340568"
+                    + ")");
+
+            connection.commit();
+
+            SourceRecords records = consumeRecordsByTopic(1);
+
+            List<SourceRecord> table = records.recordsForTopic("server1.DEBEZIUM.DBZ3631");
+            assertThat(table).hasSize(1);
+
+            SourceRecord record = table.get(0);
+            Struct value = (Struct) record.value();
+            Struct after = value.getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.get("ID")).isEqualTo(BigDecimal.valueOf(13268281));
+            assertThat(after.get("ENTITY_ID")).isEqualTo(BigDecimal.valueOf(13340568));
+            assertThat(after.get("DOCX")).isNull();
+            assertThat(after.get("DOCX_SIGNATURE")).isNull();
+            assertThat(after.get("XML_OOS")).isNull();
+            assertThat(after.get("XML_OOS_SIGNATURE")).isNull();
+            assertThat(value.get(Envelope.FieldName.OPERATION)).isEqualTo(Envelope.Operation.CREATE.code());
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz3631");
+        }
     }
 
     private Clob createClob(String data) throws SQLException {
