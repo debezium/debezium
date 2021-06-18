@@ -103,6 +103,7 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
                 while (context.isRunning()) {
                     LOGGER.trace("Receiving LCR");
                     xsOut.receiveLCRCallback(eventHandler, XStreamOut.DEFAULT_MODE);
+                    dispatcher.dispatchHeartbeatEvent(offsetContext);
                 }
             }
             finally {
