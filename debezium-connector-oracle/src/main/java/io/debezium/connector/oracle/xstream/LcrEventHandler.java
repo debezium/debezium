@@ -5,14 +5,11 @@
  */
 package io.debezium.connector.oracle.xstream;
 
-import java.nio.ByteBuffer;
 import java.sql.SQLException;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 
 import org.slf4j.Logger;
@@ -32,7 +29,6 @@ import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.util.Clock;
 
-import oracle.sql.Datum;
 import oracle.streams.ChunkColumnValue;
 import oracle.streams.DDLLCR;
 import oracle.streams.LCR;
@@ -59,7 +55,7 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
     private final boolean tablenameCaseInsensitive;
     private final XstreamStreamingChangeEventSource eventSource;
     private final OracleStreamingChangeEventSourceMetrics streamingMetrics;
-    private final Map<String, List<ChunkColumnValue>> columnChunks;
+    private final Map<String, ChunkColumnValues> columnChunks;
     private RowLCR currentRow;
 
     public LcrEventHandler(OracleConnectorConfig connectorConfig, ErrorHandler errorHandler, EventDispatcher<TableId> dispatcher, Clock clock,
@@ -266,7 +262,7 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
     public void processChunk(ChunkColumnValue chunk) throws StreamsException {
         // Store the chunk in the chunk map
         // Chunks will be processed once the end of the row is reached
-        columnChunks.computeIfAbsent(chunk.getColumnName(), v -> new ArrayList<>()).add(chunk);
+        columnChunks.computeIfAbsent(chunk.getColumnName(), v -> new ChunkColumnValues()).add(chunk);
 
         if (chunk.isEndOfRow()) {
             try {
@@ -274,24 +270,24 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
                 Map<String, Object> resolvedChunkValues = new HashMap<>();
 
                 // All chunks have been dispatched to the event handler, combine the chunks now.
-                for (Map.Entry<String, List<ChunkColumnValue>> entry : columnChunks.entrySet()) {
+                for (Map.Entry<String, ChunkColumnValues> entry : columnChunks.entrySet()) {
                     final String columnName = entry.getKey();
-                    final List<ChunkColumnValue> chunkValues = entry.getValue();
+                    final ChunkColumnValues chunkValues = entry.getValue();
 
                     if (chunkValues.isEmpty()) {
                         LOGGER.trace("Column '{}' has no chunk values.", columnName);
                         continue;
                     }
 
-                    final int type = chunkValues.get(0).getChunkType();
+                    final int type = chunkValues.getChunkType();
                     switch (type) {
                         case ChunkColumnValue.CLOB:
                         case ChunkColumnValue.NCLOB:
-                            resolvedChunkValues.put(columnName, resolveClobChunkValue(chunkValues));
+                            resolvedChunkValues.put(columnName, chunkValues.getStringValue());
                             break;
 
                         case ChunkColumnValue.BLOB:
-                            resolvedChunkValues.put(columnName, resolveBlobChunkValue(chunkValues));
+                            resolvedChunkValues.put(columnName, chunkValues.getByteArray());
                             break;
 
                         default:
@@ -311,29 +307,6 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
                 throw new DebeziumException("Failed to process chunk data", e);
             }
         }
-    }
-
-    private String resolveClobChunkValue(List<ChunkColumnValue> chunkValues) throws SQLException {
-        StringBuilder data = new StringBuilder();
-        for (ChunkColumnValue chunkValue : chunkValues) {
-            data.append(chunkValue.getColumnData().stringValue());
-        }
-        return data.length() == 0 ? null : data.toString();
-    }
-
-    private byte[] resolveBlobChunkValue(List<ChunkColumnValue> chunkValues) {
-        long size = 0;
-        for (ChunkColumnValue chunkValue : chunkValues) {
-            size += ((Datum) chunkValue).getLength();
-        }
-        if (size > 0) {
-            ByteBuffer buffer = ByteBuffer.allocate((int) size);
-            for (ChunkColumnValue columnValue : chunkValues) {
-                buffer.put(columnValue.getColumnData().getBytes());
-            }
-            return buffer.array();
-        }
-        return null;
     }
 
     @Override
