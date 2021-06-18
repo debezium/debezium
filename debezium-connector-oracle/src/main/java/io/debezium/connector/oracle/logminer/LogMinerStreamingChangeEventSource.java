@@ -186,7 +186,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                                 Duration lastDurationOfBatchCapturing = stopwatch.stop().durations().statistics().getTotal();
                                 streamingMetrics.setLastDurationOfBatchCapturing(lastDurationOfBatchCapturing);
                                 processor.processResult(rs);
-                                startScn = transactionalBuffer.updateOffsetContext(offsetContext);
+                                startScn = transactionalBuffer.updateOffsetContext(offsetContext, dispatcher);
                             }
 
                             streamingMetrics.setCurrentBatchProcessingTime(Duration.between(start, Instant.now()));

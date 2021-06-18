@@ -16,6 +16,7 @@ import static org.fest.assertions.MapAssert.entry;
 
 import java.math.BigDecimal;
 import java.sql.SQLException;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
@@ -24,6 +25,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
@@ -723,24 +725,32 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         connection.execute("INSERT INTO debezium.dbz800b VALUES (2, 'BBB')");
         connection.execute("COMMIT");
 
-        // expecting two heartbeat records and one actual change record
-        List<SourceRecord> records = consumeRecordsByTopic(3).allRecordsInOrder();
+        // The number of heartbeat events may vary depending on how fast the events are seen in
+        // LogMiner, so to compensate for the varied number of heartbeats that might be emitted
+        // the following waits until we have seen the DBZ800B event before returning.
+        final AtomicReference<SourceRecords> records = new AtomicReference<>();
+        Awaitility.await()
+                .atMost(Duration.ofSeconds(60))
+                .until(() -> {
+                    if (records.get() == null) {
+                        records.set(consumeRecordsByTopic(1));
+                    }
+                    else {
+                        consumeRecordsByTopic(1).allRecordsInOrder().forEach(records.get()::add);
+                    }
+                    return records.get().recordsForTopic("server1.DEBEZIUM.DBZ800B") != null;
+                });
 
-        if (TestHelper.adapter().equals(OracleConnectorConfig.ConnectorAdapter.XSTREAM)) {
-            // expecting no change record for s1.a but a heartbeat
-            verifyHeartbeatRecord(records.get(0));
+        List<SourceRecord> heartbeats = records.get().recordsForTopic("__debezium-heartbeat.server1");
+        List<SourceRecord> tableA = records.get().recordsForTopic("server1.DEBEZIUM.DBZ800A");
+        List<SourceRecord> tableB = records.get().recordsForTopic("server1.DEBEZIUM.DBZ800B");
 
-            // and then a change record for s1.b and a heartbeat
-            verifyHeartbeatRecord(records.get(1));
-            VerifyRecord.isValidInsert(records.get(2), "ID", 2);
-        }
-        else {
-            // Unlike Xstream, LogMiner's query will exclude the insert for dbz800a and
-            // so we won't actually emit a Heartbeat for that record at all but we will
-            // instead emit one when we detect dbz800b only.
-            verifyHeartbeatRecord(records.get(0));
-            VerifyRecord.isValidInsert(records.get(1), "ID", 2);
-        }
+        // there should be at least one heartbeat, no events for DBZ800A and one for DBZ800B
+        assertThat(heartbeats).isNotEmpty();
+        assertThat(tableA).isNull();
+        assertThat(tableB).hasSize(1);
+
+        VerifyRecord.isValidInsert(tableB.get(0), "ID", 2);
     }
 
     @Test
