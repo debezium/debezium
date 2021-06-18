@@ -8,9 +8,6 @@ package io.debezium.connector.oracle.logminer;
 import java.io.IOException;
 import java.sql.SQLRecoverableException;
 import java.time.Duration;
-import java.util.Iterator;
-import java.util.List;
-import java.util.regex.Pattern;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,7 +15,6 @@ import org.slf4j.LoggerFactory;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.relational.TableId;
-import io.debezium.util.Strings;
 
 import oracle.net.ns.NetException;
 
@@ -50,7 +46,6 @@ public class SqlUtils {
     private static final String LOGFILE_VIEW = "V$LOGFILE";
     private static final String ARCHIVED_LOG_VIEW = "V$ARCHIVED_LOG";
     private static final String ARCHIVE_DEST_STATUS_VIEW = "V$ARCHIVE_DEST_STATUS";
-    private static final String LOGMNR_CONTENTS_VIEW = "V$LOGMNR_CONTENTS";
     private static final String ALL_LOG_GROUPS = "ALL_LOG_GROUPS";
 
     // LogMiner statements
@@ -259,146 +254,6 @@ public class SqlUtils {
                 "OPTIONS => " + miningStrategy +
                 " + DBMS_LOGMNR.NO_ROWID_IN_STMT);" +
                 "END;";
-    }
-
-    /**
-     * This is the query from the LogMiner view to get changes.
-     *
-     * The query uses the following columns from the view:
-     * <pre>
-     * SCN - The SCN at which a change was made
-     * SQL_REDO Reconstructed SQL statement that is equivalent to the original SQL statement that made the change
-     * OPERATION_CODE - Number of the operation code
-     * TIMESTAMP - Timestamp when the database change was made
-     * XID - Transaction Identifier
-     * CSF - Continuation SQL flag, identifies rows that should be processed together as a single row (0=no,1=yes)
-     * TABLE_NAME - Name of the modified table
-     * SEG_OWNER - Schema/Tablespace name
-     * OPERATION - Database operation type
-     * USERNAME - Name of the user who executed the transaction
-     * </pre>
-     *
-     * @param connectorConfig the connector configuration
-     * @param logMinerUser log mining session user name
-     * @return the query
-     */
-    static String logMinerContentsQuery(OracleConnectorConfig connectorConfig, String logMinerUser) {
-        StringBuilder query = new StringBuilder();
-        query.append("SELECT SCN, SQL_REDO, OPERATION_CODE, TIMESTAMP, XID, CSF, TABLE_NAME, SEG_OWNER, OPERATION, USERNAME, ");
-        query.append("ROW_ID, ROLLBACK, RS_ID, ORA_HASH(SCN||OPERATION||RS_ID||SEQUENCE#||RTRIM(SUBSTR(SQL_REDO,1,256))) ");
-        query.append("FROM ").append(LOGMNR_CONTENTS_VIEW).append(" ");
-        query.append("WHERE ");
-        query.append("SCN > ? AND SCN <= ? ");
-        query.append("AND (");
-        // MISSING_SCN/DDL only when not performed by excluded users
-        // For DDL, the `INTERNAL DDL%` info rows should be excluded as these are commands executed by the database that
-        // typically perform operations such as renaming a deleted object when dropped if the drop doesn't specify PURGE
-        query.append("(OPERATION_CODE IN (5,11,34) AND USERNAME NOT IN (").append(getExcludedUsers(logMinerUser)).append(") AND INFO NOT LIKE 'INTERNAL DDL%' ");
-        query.append("AND " + getExcludedDdlTables() + ") ");
-        // COMMIT/ROLLBACK
-        query.append("OR (OPERATION_CODE IN (6,7,36)) ");
-        // INSERT/UPDATE/DELETE
-        query.append("OR ");
-        query.append("(OPERATION_CODE IN (1,2,3,9,10,29) ");
-        query.append("AND TABLE_NAME != '").append(LOGMNR_FLUSH_TABLE).append("' ");
-
-        // There are some common schemas that we automatically ignore when building the filter predicates
-        // and we pull that same list of schemas in here and apply those exclusions in the generated SQL.
-        if (!OracleConnectorConfig.EXCLUDED_SCHEMAS.isEmpty()) {
-            query.append("AND SEG_OWNER NOT IN (");
-            for (Iterator<String> i = OracleConnectorConfig.EXCLUDED_SCHEMAS.iterator(); i.hasNext();) {
-                String excludedSchema = i.next();
-                query.append("'").append(excludedSchema.toUpperCase()).append("'");
-                if (i.hasNext()) {
-                    query.append(",");
-                }
-            }
-            query.append(") ");
-        }
-
-        String schemaPredicate = buildSchemaPredicate(connectorConfig);
-        if (!Strings.isNullOrEmpty(schemaPredicate)) {
-            query.append("AND ").append(schemaPredicate).append(" ");
-        }
-
-        String tablePredicate = buildTablePredicate(connectorConfig);
-        if (!Strings.isNullOrEmpty(tablePredicate)) {
-            query.append("AND ").append(tablePredicate).append(" ");
-        }
-
-        query.append("))");
-
-        return query.toString();
-    }
-
-    private static String getExcludedUsers(String logMinerUser) {
-        return "'SYS','SYSTEM','" + logMinerUser.toUpperCase() + "'";
-    }
-
-    private static String getExcludedDdlTables() {
-        return "(TABLE_NAME IS NULL OR TABLE_NAME NOT LIKE 'ORA_TEMP_%')";
-    }
-
-    private static String buildSchemaPredicate(OracleConnectorConfig connectorConfig) {
-        StringBuilder predicate = new StringBuilder();
-        if (Strings.isNullOrEmpty(connectorConfig.schemaIncludeList())) {
-            if (!Strings.isNullOrEmpty(connectorConfig.schemaExcludeList())) {
-                List<Pattern> patterns = Strings.listOfRegex(connectorConfig.schemaExcludeList(), 0);
-                predicate.append("(").append(listOfPatternsToSql(patterns, "SEG_OWNER", true)).append(")");
-            }
-        }
-        else {
-            List<Pattern> patterns = Strings.listOfRegex(connectorConfig.schemaIncludeList(), 0);
-            predicate.append("(").append(listOfPatternsToSql(patterns, "SEG_OWNER", false)).append(")");
-        }
-        return predicate.toString();
-    }
-
-    private static String buildTablePredicate(OracleConnectorConfig connectorConfig) {
-        StringBuilder predicate = new StringBuilder();
-        if (Strings.isNullOrEmpty(connectorConfig.tableIncludeList())) {
-            if (!Strings.isNullOrEmpty(connectorConfig.tableExcludeList())) {
-                List<Pattern> patterns = Strings.listOfRegex(connectorConfig.tableExcludeList(), 0);
-                predicate.append("(").append(listOfPatternsToSql(patterns, "SEG_OWNER || '.' || TABLE_NAME", true)).append(")");
-            }
-        }
-        else {
-            List<Pattern> patterns = Strings.listOfRegex(connectorConfig.tableIncludeList(), 0);
-            predicate.append("(").append(listOfPatternsToSql(patterns, "SEG_OWNER || '.' || TABLE_NAME", false)).append(")");
-        }
-        return predicate.toString();
-    }
-
-    private static String listOfPatternsToSql(List<Pattern> patterns, String columnName, boolean applyNot) {
-        StringBuilder predicate = new StringBuilder();
-        for (Iterator<Pattern> i = patterns.iterator(); i.hasNext();) {
-            Pattern pattern = i.next();
-            if (applyNot) {
-                predicate.append("NOT ");
-            }
-            // NOTE: The REGEXP_LIKE operator was added in Oracle 10g (10.1.0.0.0)
-            final String text = resolveRegExpLikePattern(pattern);
-            predicate.append("REGEXP_LIKE(").append(columnName).append(",'").append(text).append("','i')");
-            if (i.hasNext()) {
-                // Exclude lists imply combining them via AND, Include lists imply combining them via OR?
-                predicate.append(applyNot ? " AND " : " OR ");
-            }
-        }
-        return predicate.toString();
-    }
-
-    private static String resolveRegExpLikePattern(Pattern pattern) {
-        // The REGEXP_LIKE operator acts identical to LIKE in that it automatically prepends/appends "%".
-        // We need to resolve our matches to be explicit with "^" and "$" if they don't already exist so
-        // that the LIKE aspect of the match doesn't mistakenly filter "DEBEZIUM2" when using "DEBEZIUM".
-        String text = pattern.pattern();
-        if (!text.startsWith("^")) {
-            text = "^" + text;
-        }
-        if (!text.endsWith("$")) {
-            text += "$";
-        }
-        return text;
     }
 
     static String addLogFileStatement(String option, String fileName) {

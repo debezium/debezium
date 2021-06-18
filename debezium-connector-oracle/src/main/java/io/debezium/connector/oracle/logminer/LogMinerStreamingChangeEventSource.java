@@ -139,7 +139,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                             connectorConfig, streamingMetrics, transactionalBuffer, offsetContext, schema, dispatcher,
                             historyRecorder);
 
-                    final String query = SqlUtils.logMinerContentsQuery(connectorConfig, jdbcConnection.username());
+                    final String query = LogMinerQueryBuilder.build(connectorConfig, jdbcConnection.username());
                     try (PreparedStatement miningView = jdbcConnection.connection().prepareStatement(query, ResultSet.TYPE_FORWARD_ONLY,
                             ResultSet.CONCUR_READ_ONLY, ResultSet.HOLD_CURSORS_OVER_COMMIT)) {
 
