@@ -6,24 +6,20 @@
 package io.debezium.connector.oracle.logminer;
 
 import static org.fest.assertions.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
 
 import java.io.IOException;
 import java.sql.SQLRecoverableException;
 import java.time.Duration;
-import java.util.Iterator;
 
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestRule;
-import org.mockito.Mockito;
 
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot.AdapterName;
-import io.debezium.doc.FixFor;
 import io.debezium.relational.TableId;
 
 @SkipWhenAdapterNameIsNot(value = AdapterName.LOGMINER)
@@ -31,148 +27,6 @@ public class SqlUtilsTest {
 
     @Rule
     public TestRule skipRule = new SkipTestDependingOnAdapterNameRule();
-
-    private static final String LOG_MINER_CONTENT_QUERY_TEMPLATE = "SELECT SCN, SQL_REDO, OPERATION_CODE, TIMESTAMP, " +
-            "XID, CSF, TABLE_NAME, SEG_OWNER, OPERATION, USERNAME, ROW_ID, ROLLBACK, RS_ID, " +
-            "ORA_HASH(SCN||OPERATION||RS_ID||SEQUENCE#||RTRIM(SUBSTR(SQL_REDO,1,256))) " +
-            "FROM V$LOGMNR_CONTENTS WHERE SCN > ? AND SCN <= ? AND ((" +
-            "OPERATION_CODE IN (5,11,34) AND USERNAME NOT IN ('SYS','SYSTEM','${user}') AND INFO NOT LIKE 'INTERNAL DDL%' " +
-            "AND (TABLE_NAME IS NULL OR TABLE_NAME NOT LIKE 'ORA_TEMP_%')) " +
-            "OR (OPERATION_CODE IN (6,7,36)) " +
-            "OR (OPERATION_CODE IN (1,2,3,9,10,29) " +
-            "AND TABLE_NAME != '" + SqlUtils.LOGMNR_FLUSH_TABLE + "' " +
-            "${systemTablePredicate}" +
-            "${schemaPredicate}" +
-            "${tablePredicate}" +
-            "))";
-
-    private static final String USERNAME = "USERNAME";
-
-    @Test
-    @FixFor("DBZ-3009")
-    public void testLogMinerQueryWithNoFilters() {
-        OracleConnectorConfig config = mock(OracleConnectorConfig.class);
-        Mockito.when(config.schemaIncludeList()).thenReturn(null);
-        Mockito.when(config.schemaExcludeList()).thenReturn(null);
-        Mockito.when(config.tableIncludeList()).thenReturn(null);
-        Mockito.when(config.tableExcludeList()).thenReturn(null);
-
-        String result = SqlUtils.logMinerContentsQuery(config, USERNAME);
-        assertThat(result).isEqualTo(resolveLogMineryContentQueryFromTemplate(null, null));
-    }
-
-    @Test
-    @FixFor("DBZ-3009")
-    public void testLogMinerQueryWithSchemaInclude() {
-        OracleConnectorConfig config = mock(OracleConnectorConfig.class);
-        Mockito.when(config.schemaIncludeList()).thenReturn("SCHEMA1,SCHEMA2");
-        Mockito.when(config.schemaExcludeList()).thenReturn(null);
-        Mockito.when(config.tableIncludeList()).thenReturn(null);
-        Mockito.when(config.tableExcludeList()).thenReturn(null);
-
-        String schema = "AND (REGEXP_LIKE(SEG_OWNER,'^SCHEMA1$','i') OR REGEXP_LIKE(SEG_OWNER,'^SCHEMA2$','i')) ";
-
-        String result = SqlUtils.logMinerContentsQuery(config, USERNAME);
-        assertThat(result).isEqualTo(resolveLogMineryContentQueryFromTemplate(schema, null));
-    }
-
-    @Test
-    @FixFor("DBZ-3009")
-    public void testLogMinerQueryWithSchemaExclude() {
-        OracleConnectorConfig config = mock(OracleConnectorConfig.class);
-        Mockito.when(config.schemaIncludeList()).thenReturn(null);
-        Mockito.when(config.schemaExcludeList()).thenReturn("SCHEMA1,SCHEMA2");
-        Mockito.when(config.tableIncludeList()).thenReturn(null);
-        Mockito.when(config.tableExcludeList()).thenReturn(null);
-
-        String schema = "AND (NOT REGEXP_LIKE(SEG_OWNER,'^SCHEMA1$','i') AND NOT REGEXP_LIKE(SEG_OWNER,'^SCHEMA2$','i')) ";
-
-        String result = SqlUtils.logMinerContentsQuery(config, USERNAME);
-        assertThat(result).isEqualTo(resolveLogMineryContentQueryFromTemplate(schema, null));
-    }
-
-    @Test
-    @FixFor("DBZ-3009")
-    public void testLogMinerQueryWithTableInclude() {
-        OracleConnectorConfig config = mock(OracleConnectorConfig.class);
-        Mockito.when(config.schemaIncludeList()).thenReturn(null);
-        Mockito.when(config.schemaExcludeList()).thenReturn(null);
-        Mockito.when(config.tableIncludeList()).thenReturn("DEBEZIUM\\.TABLEA,DEBEZIUM\\.TABLEB");
-        Mockito.when(config.tableExcludeList()).thenReturn(null);
-
-        String table = "AND (REGEXP_LIKE(SEG_OWNER || '.' || TABLE_NAME,'^DEBEZIUM\\.TABLEA$','i') " +
-                "OR REGEXP_LIKE(SEG_OWNER || '.' || TABLE_NAME,'^DEBEZIUM\\.TABLEB$','i')) ";
-
-        String result = SqlUtils.logMinerContentsQuery(config, USERNAME);
-        assertThat(result).isEqualTo(resolveLogMineryContentQueryFromTemplate(null, table));
-    }
-
-    @Test
-    @FixFor("DBZ-3009")
-    public void testLogMinerQueryWithTableExcludes() {
-        OracleConnectorConfig config = mock(OracleConnectorConfig.class);
-        Mockito.when(config.schemaIncludeList()).thenReturn(null);
-        Mockito.when(config.schemaExcludeList()).thenReturn(null);
-        Mockito.when(config.tableIncludeList()).thenReturn(null);
-        Mockito.when(config.tableExcludeList()).thenReturn("DEBEZIUM\\.TABLEA,DEBEZIUM\\.TABLEB");
-
-        String table = "AND (NOT REGEXP_LIKE(SEG_OWNER || '.' || TABLE_NAME,'^DEBEZIUM\\.TABLEA$','i') " +
-                "AND NOT REGEXP_LIKE(SEG_OWNER || '.' || TABLE_NAME,'^DEBEZIUM\\.TABLEB$','i')) ";
-
-        String result = SqlUtils.logMinerContentsQuery(config, USERNAME);
-        assertThat(result).isEqualTo(resolveLogMineryContentQueryFromTemplate(null, table));
-    }
-
-    @Test
-    @FixFor("DBZ-3009")
-    public void testLogMinerQueryWithSchemaTableIncludes() {
-        OracleConnectorConfig config = mock(OracleConnectorConfig.class);
-        Mockito.when(config.schemaIncludeList()).thenReturn("SCHEMA1,SCHEMA2");
-        Mockito.when(config.schemaExcludeList()).thenReturn(null);
-        Mockito.when(config.tableIncludeList()).thenReturn("DEBEZIUM\\.TABLEA,DEBEZIUM\\.TABLEB");
-        Mockito.when(config.tableExcludeList()).thenReturn(null);
-
-        String schema = "AND (REGEXP_LIKE(SEG_OWNER,'^SCHEMA1$','i') OR REGEXP_LIKE(SEG_OWNER,'^SCHEMA2$','i')) ";
-        String table = "AND (REGEXP_LIKE(SEG_OWNER || '.' || TABLE_NAME,'^DEBEZIUM\\.TABLEA$','i') " +
-                "OR REGEXP_LIKE(SEG_OWNER || '.' || TABLE_NAME,'^DEBEZIUM\\.TABLEB$','i')) ";
-
-        String result = SqlUtils.logMinerContentsQuery(config, USERNAME);
-        assertThat(result).isEqualTo(resolveLogMineryContentQueryFromTemplate(schema, table));
-    }
-
-    @Test
-    @FixFor("DBZ-3009")
-    public void testLogMinerQueryWithSchemaTableExcludes() {
-        OracleConnectorConfig config = mock(OracleConnectorConfig.class);
-        Mockito.when(config.schemaIncludeList()).thenReturn(null);
-        Mockito.when(config.schemaExcludeList()).thenReturn("SCHEMA1,SCHEMA2");
-        Mockito.when(config.tableIncludeList()).thenReturn(null);
-        Mockito.when(config.tableExcludeList()).thenReturn("DEBEZIUM\\.TABLEA,DEBEZIUM\\.TABLEB");
-
-        String schema = "AND (NOT REGEXP_LIKE(SEG_OWNER,'^SCHEMA1$','i') AND NOT REGEXP_LIKE(SEG_OWNER,'^SCHEMA2$','i')) ";
-        String table = "AND (NOT REGEXP_LIKE(SEG_OWNER || '.' || TABLE_NAME,'^DEBEZIUM\\.TABLEA$','i') " +
-                "AND NOT REGEXP_LIKE(SEG_OWNER || '.' || TABLE_NAME,'^DEBEZIUM\\.TABLEB$','i')) ";
-
-        String result = SqlUtils.logMinerContentsQuery(config, USERNAME);
-        assertThat(result).isEqualTo(resolveLogMineryContentQueryFromTemplate(schema, table));
-    }
-
-    @Test
-    @FixFor("DBZ-3009")
-    public void testLogMinerQueryWithSchemaExcludeTableInclude() {
-        OracleConnectorConfig config = mock(OracleConnectorConfig.class);
-        Mockito.when(config.schemaIncludeList()).thenReturn(null);
-        Mockito.when(config.schemaExcludeList()).thenReturn("SCHEMA1,SCHEMA2");
-        Mockito.when(config.tableIncludeList()).thenReturn("DEBEZIUM\\.TABLEA,DEBEZIUM\\.TABLEB");
-        Mockito.when(config.tableExcludeList()).thenReturn(null);
-
-        String schema = "AND (NOT REGEXP_LIKE(SEG_OWNER,'^SCHEMA1$','i') AND NOT REGEXP_LIKE(SEG_OWNER,'^SCHEMA2$','i')) ";
-        String table = "AND (REGEXP_LIKE(SEG_OWNER || '.' || TABLE_NAME,'^DEBEZIUM\\.TABLEA$','i') " +
-                "OR REGEXP_LIKE(SEG_OWNER || '.' || TABLE_NAME,'^DEBEZIUM\\.TABLEB$','i')) ";
-
-        String result = SqlUtils.logMinerContentsQuery(config, USERNAME);
-        assertThat(result).isEqualTo(resolveLogMineryContentQueryFromTemplate(schema, table));
-    }
 
     @Test
     public void testStatements() {
@@ -325,29 +179,4 @@ public class SqlUtilsTest {
         assertThat(SqlUtils.connectionProblem(new Exception("12543 problem"))).isFalse();
     }
 
-    private String resolveLogMineryContentQueryFromTemplate(String schemaReplacement, String tableReplacement) {
-        String query = LOG_MINER_CONTENT_QUERY_TEMPLATE;
-
-        if (!OracleConnectorConfig.EXCLUDED_SCHEMAS.isEmpty()) {
-            StringBuilder systemPredicate = new StringBuilder();
-            systemPredicate.append("AND SEG_OWNER NOT IN (");
-            for (Iterator<String> i = OracleConnectorConfig.EXCLUDED_SCHEMAS.iterator(); i.hasNext();) {
-                String excludedSchema = i.next();
-                systemPredicate.append("'").append(excludedSchema.toUpperCase()).append("'");
-                if (i.hasNext()) {
-                    systemPredicate.append(",");
-                }
-            }
-            systemPredicate.append(") ");
-            query = query.replace("${systemTablePredicate}", systemPredicate.toString());
-        }
-        else {
-            query = query.replace("${systemTablePredicate}", "");
-        }
-
-        query = query.replace("${schemaPredicate}", schemaReplacement == null ? "" : schemaReplacement);
-        query = query.replace("${tablePredicate}", tableReplacement == null ? "" : tableReplacement);
-        query = query.replace("${user}", USERNAME);
-        return query;
-    }
 }
