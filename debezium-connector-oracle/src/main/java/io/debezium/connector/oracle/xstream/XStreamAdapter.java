@@ -11,6 +11,7 @@ import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OracleOffsetContext;
+import io.debezium.connector.oracle.OraclePartition;
 import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.OracleTaskContext;
 import io.debezium.connector.oracle.Scn;
@@ -65,14 +66,14 @@ public class XStreamAdapter extends AbstractStreamingAdapter {
     }
 
     @Override
-    public StreamingChangeEventSource<OracleOffsetContext> getSource(OracleConnection connection,
-                                                                     EventDispatcher<TableId> dispatcher,
-                                                                     ErrorHandler errorHandler,
-                                                                     Clock clock,
-                                                                     OracleDatabaseSchema schema,
-                                                                     OracleTaskContext taskContext,
-                                                                     Configuration jdbcConfig,
-                                                                     OracleStreamingChangeEventSourceMetrics streamingMetrics) {
+    public StreamingChangeEventSource<OraclePartition, OracleOffsetContext> getSource(OracleConnection connection,
+                                                                                      EventDispatcher<TableId> dispatcher,
+                                                                                      ErrorHandler errorHandler,
+                                                                                      Clock clock,
+                                                                                      OracleDatabaseSchema schema,
+                                                                                      OracleTaskContext taskContext,
+                                                                                      Configuration jdbcConfig,
+                                                                                      OracleStreamingChangeEventSourceMetrics streamingMetrics) {
         return new XstreamStreamingChangeEventSource(
                 connectorConfig,
                 connection,

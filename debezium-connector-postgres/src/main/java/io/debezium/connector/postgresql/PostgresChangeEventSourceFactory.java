@@ -25,7 +25,7 @@ import io.debezium.relational.TableId;
 import io.debezium.schema.DataCollectionId;
 import io.debezium.util.Clock;
 
-public class PostgresChangeEventSourceFactory implements ChangeEventSourceFactory<PostgresOffsetContext> {
+public class PostgresChangeEventSourceFactory implements ChangeEventSourceFactory<PostgresPartition, PostgresOffsetContext> {
 
     private final PostgresConnectorConfig configuration;
     private final PostgresConnection jdbcConnection;
@@ -57,7 +57,7 @@ public class PostgresChangeEventSourceFactory implements ChangeEventSourceFactor
     }
 
     @Override
-    public SnapshotChangeEventSource<PostgresOffsetContext> getSnapshotChangeEventSource(SnapshotProgressListener snapshotProgressListener) {
+    public SnapshotChangeEventSource<PostgresPartition, PostgresOffsetContext> getSnapshotChangeEventSource(SnapshotProgressListener snapshotProgressListener) {
         return new PostgresSnapshotChangeEventSource(
                 configuration,
                 snapshotter,
@@ -71,7 +71,7 @@ public class PostgresChangeEventSourceFactory implements ChangeEventSourceFactor
     }
 
     @Override
-    public StreamingChangeEventSource<PostgresOffsetContext> getStreamingChangeEventSource() {
+    public StreamingChangeEventSource<PostgresPartition, PostgresOffsetContext> getStreamingChangeEventSource() {
         return new PostgresStreamingChangeEventSource(
                 configuration,
                 snapshotter,

@@ -45,6 +45,7 @@ import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OracleOffsetContext;
+import io.debezium.connector.oracle.OraclePartition;
 import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.jdbc.JdbcConfiguration;
@@ -60,7 +61,7 @@ import io.debezium.util.Stopwatch;
  * A {@link StreamingChangeEventSource} based on Oracle's LogMiner utility.
  * The event handler loop is executed in a separate executor.
  */
-public class LogMinerStreamingChangeEventSource implements StreamingChangeEventSource<OracleOffsetContext> {
+public class LogMinerStreamingChangeEventSource implements StreamingChangeEventSource<OraclePartition, OracleOffsetContext> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(LogMinerStreamingChangeEventSource.class);
 
@@ -115,7 +116,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
      *         change event source context
      */
     @Override
-    public void execute(ChangeEventSourceContext context, OracleOffsetContext offsetContext) {
+    public void execute(ChangeEventSourceContext context, OraclePartition partition, OracleOffsetContext offsetContext) {
         try (TransactionalBuffer transactionalBuffer = new TransactionalBuffer(connectorConfig, schema, clock, errorHandler, streamingMetrics)) {
             try {
                 startScn = offsetContext.getScn();

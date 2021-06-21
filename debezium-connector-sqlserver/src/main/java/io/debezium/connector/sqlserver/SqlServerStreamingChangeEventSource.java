@@ -56,7 +56,7 @@ import io.debezium.util.Metronome;
  *
  * @author Jiri Pechanec
  */
-public class SqlServerStreamingChangeEventSource implements StreamingChangeEventSource<SqlServerOffsetContext> {
+public class SqlServerStreamingChangeEventSource implements StreamingChangeEventSource<SqlServerPartition, SqlServerOffsetContext> {
 
     private static final Pattern MISSING_CDC_FUNCTION_CHANGES_ERROR = Pattern.compile("Invalid object name 'cdc.fn_cdc_get_all_changes_(.*)'\\.");
 
@@ -107,7 +107,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
     }
 
     @Override
-    public void execute(ChangeEventSourceContext context, SqlServerOffsetContext offsetContext) throws InterruptedException {
+    public void execute(ChangeEventSourceContext context, SqlServerPartition partition, SqlServerOffsetContext offsetContext) throws InterruptedException {
         if (connectorConfig.getSnapshotMode().equals(SnapshotMode.INITIAL_ONLY)) {
             LOGGER.info("Streaming is not enabled in current configuration");
             return;

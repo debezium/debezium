@@ -17,6 +17,7 @@ import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OracleDatabaseVersion;
 import io.debezium.connector.oracle.OracleOffsetContext;
+import io.debezium.connector.oracle.OraclePartition;
 import io.debezium.connector.oracle.OracleStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.SourceInfo;
@@ -39,7 +40,7 @@ import oracle.streams.XStreamUtility;
  *
  * @author Gunnar Morling
  */
-public class XstreamStreamingChangeEventSource implements StreamingChangeEventSource<OracleOffsetContext> {
+public class XstreamStreamingChangeEventSource implements StreamingChangeEventSource<OraclePartition, OracleOffsetContext> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(XstreamStreamingChangeEventSource.class);
 
@@ -78,7 +79,8 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
     }
 
     @Override
-    public void execute(ChangeEventSourceContext context, OracleOffsetContext offsetContext) throws InterruptedException {
+    public void execute(ChangeEventSourceContext context, OraclePartition partition, OracleOffsetContext offsetContext)
+            throws InterruptedException {
 
         LcrEventHandler eventHandler = new LcrEventHandler(connectorConfig, errorHandler, dispatcher, clock, schema, offsetContext,
                 TableNameCaseSensitivity.INSENSITIVE.equals(connectorConfig.getAdapter().getTableNameCaseSensitivity(jdbcConnection)), this,

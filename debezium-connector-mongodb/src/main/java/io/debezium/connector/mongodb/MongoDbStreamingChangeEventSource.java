@@ -47,7 +47,7 @@ import io.debezium.util.Threads;
  *
  * @author Chris Cranford
  */
-public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSource<MongoDbOffsetContext> {
+public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSource<MongoDbPartition, MongoDbOffsetContext> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MongoDbStreamingChangeEventSource.class);
 
@@ -79,7 +79,8 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
     }
 
     @Override
-    public void execute(ChangeEventSourceContext context, MongoDbOffsetContext offsetContext) throws InterruptedException {
+    public void execute(ChangeEventSourceContext context, MongoDbPartition partition, MongoDbOffsetContext offsetContext)
+            throws InterruptedException {
         final List<ReplicaSet> validReplicaSets = replicaSets.validReplicaSets();
 
         if (offsetContext == null) {

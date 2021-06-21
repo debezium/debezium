@@ -25,7 +25,7 @@ import io.debezium.relational.TableId;
 import io.debezium.schema.DataCollectionId;
 import io.debezium.util.Clock;
 
-public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory<MySqlOffsetContext> {
+public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory<MySqlPartition, MySqlOffsetContext> {
 
     private final MySqlConnectorConfig configuration;
     private final MySqlConnection connection;
@@ -57,7 +57,7 @@ public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory<M
     }
 
     @Override
-    public SnapshotChangeEventSource<MySqlOffsetContext> getSnapshotChangeEventSource(SnapshotProgressListener snapshotProgressListener) {
+    public SnapshotChangeEventSource<MySqlPartition, MySqlOffsetContext> getSnapshotChangeEventSource(SnapshotProgressListener snapshotProgressListener) {
         return new MySqlSnapshotChangeEventSource(configuration, connection, taskContext.getSchema(), dispatcher, clock,
                 (MySqlSnapshotChangeEventSourceMetrics) snapshotProgressListener, record -> modifyAndFlushLastRecord(record));
     }
@@ -68,7 +68,7 @@ public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory<M
     }
 
     @Override
-    public StreamingChangeEventSource<MySqlOffsetContext> getStreamingChangeEventSource() {
+    public StreamingChangeEventSource<MySqlPartition, MySqlOffsetContext> getStreamingChangeEventSource() {
         queue.disableBuffering();
         return new MySqlStreamingChangeEventSource(
                 configuration,

@@ -32,7 +32,7 @@ import io.debezium.util.Clock;
  *
  * @author Gunnar Morling
  */
-public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEventSource<OracleOffsetContext> {
+public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEventSource<OraclePartition, OracleOffsetContext> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(OracleSnapshotChangeEventSource.class);
 

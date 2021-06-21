@@ -19,7 +19,7 @@ import io.debezium.util.Clock;
  *
  * @author Chris Cranford
  */
-public class MongoDbChangeEventSourceFactory implements ChangeEventSourceFactory<MongoDbOffsetContext> {
+public class MongoDbChangeEventSourceFactory implements ChangeEventSourceFactory<MongoDbPartition, MongoDbOffsetContext> {
 
     private final MongoDbConnectorConfig configuration;
     private final ErrorHandler errorHandler;
@@ -39,7 +39,7 @@ public class MongoDbChangeEventSourceFactory implements ChangeEventSourceFactory
     }
 
     @Override
-    public SnapshotChangeEventSource<MongoDbOffsetContext> getSnapshotChangeEventSource(SnapshotProgressListener snapshotProgressListener) {
+    public SnapshotChangeEventSource<MongoDbPartition, MongoDbOffsetContext> getSnapshotChangeEventSource(SnapshotProgressListener snapshotProgressListener) {
         return new MongoDbSnapshotChangeEventSource(
                 configuration,
                 taskContext,
@@ -51,7 +51,7 @@ public class MongoDbChangeEventSourceFactory implements ChangeEventSourceFactory
     }
 
     @Override
-    public StreamingChangeEventSource<MongoDbOffsetContext> getStreamingChangeEventSource() {
+    public StreamingChangeEventSource<MongoDbPartition, MongoDbOffsetContext> getStreamingChangeEventSource() {
         return new MongoDbStreamingChangeEventSource(
                 configuration,
                 taskContext,

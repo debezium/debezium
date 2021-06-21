@@ -11,6 +11,7 @@ import java.sql.SQLException;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.errors.ConnectException;
@@ -49,7 +50,7 @@ import io.debezium.util.SchemaNameAdjuster;
  *
  * @author Horia Chiorean (hchiorea@redhat.com)
  */
-public class PostgresConnectorTask extends BaseSourceTask<PostgresOffsetContext> {
+public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, PostgresOffsetContext> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PostgresConnectorTask.class);
     private static final String CONTEXT_NAME = "postgres-connector-task";
@@ -61,7 +62,7 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresOffsetContext>
     private volatile PostgresSchema schema;
 
     @Override
-    public ChangeEventSourceCoordinator<PostgresOffsetContext> start(Configuration config) {
+    public ChangeEventSourceCoordinator<PostgresPartition, PostgresOffsetContext> start(Configuration config) {
         final PostgresConnectorConfig connectorConfig = new PostgresConnectorConfig(config);
         final TopicSelector<TableId> topicSelector = PostgresTopicSelector.create(connectorConfig);
         final Snapshotter snapshotter = connectorConfig.getSnapshotter();
@@ -93,8 +94,10 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresOffsetContext>
 
         schema = new PostgresSchema(connectorConfig, typeRegistry, topicSelector, valueConverterBuilder.build(typeRegistry));
         this.taskContext = new PostgresTaskContext(connectorConfig, schema, topicSelector);
-        final PostgresOffsetContext previousOffset = getPreviousOffset(new PostgresOffsetContext.Loader(connectorConfig));
+        final Map<PostgresPartition, PostgresOffsetContext> previousOffsets = getPreviousOffsets(
+                new PostgresPartition.Provider(connectorConfig), new PostgresOffsetContext.Loader(connectorConfig));
         final Clock clock = Clock.system();
+        final PostgresOffsetContext previousOffset = getTheOnlyOffset(previousOffsets);
 
         LoggingContext.PreviousContext previousContext = taskContext.configureLoggingContext(CONTEXT_NAME);
         try {
@@ -197,8 +200,8 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresOffsetContext>
                     schemaNameAdjuster,
                     jdbcConnection);
 
-            ChangeEventSourceCoordinator<PostgresOffsetContext> coordinator = new PostgresChangeEventSourceCoordinator(
-                    previousOffset,
+            ChangeEventSourceCoordinator<PostgresPartition, PostgresOffsetContext> coordinator = new PostgresChangeEventSourceCoordinator(
+                    previousOffsets,
                     errorHandler,
                     PostgresConnector.class,
                     connectorConfig,

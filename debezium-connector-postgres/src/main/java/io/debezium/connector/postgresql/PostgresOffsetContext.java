@@ -195,11 +195,6 @@ public class PostgresOffsetContext implements OffsetContext {
             this.connectorConfig = connectorConfig;
         }
 
-        @Override
-        public Map<String, ?> getPartition() {
-            return Collections.singletonMap(SERVER_PARTITION_KEY, connectorConfig.getLogicalName());
-        }
-
         private Long readOptionalLong(Map<String, ?> offset, String key) {
             final Object obj = offset.get(key);
             return (obj == null) ? null : ((Number) obj).longValue();
